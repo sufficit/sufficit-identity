@@ -1,0 +1,145 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      ui_ref:
+        description: >-
+          sufficit-identity-ui git ref (commit SHA, branch, or tag) to check
+          out. Leave empty to use the pinned default (env.UI_REF below).
+        required: false
+        default: ""
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    env:
+      # ---------------------------------------------------------------------
+      # Sibling UI repo pin (P0 #11 — eval "CI baixa a UI em `main` não
+      # pinado -> build não-hermético"). Previously this checked out
+      # `sufficit/sufficit-identity-ui` with no `ref:` at all, i.e. whatever
+      # `main` happens to be at build time — not reproducible: a green run
+      # today can silently build different UI code tomorrow with no change
+      # in this repo.
+      #
+      # This SHA is sufficit-identity-ui's HEAD on `main` as of 2026-07-21,
+      # carrying the P0 UI security fixes that pair with this repo's own P0
+      # remediation pass:
+      #   - LocalUrlValidator (open-redirect guards on every returnUrl)
+      #   - ExternalLoginController: no auto-link by email-match alone
+      #     (account-takeover fix); EmailConfirmed only when provider asserts
+      #     email_verified
+      #   - Consent.razor: real deny-button wiring as static SSR form POST
+      #     with AntiforgeryToken (pairs with the CSRF fix on the STS side)
+      #   - Device/UserCode.razor: real user_code validation against
+      #     /connect/device/info + static SSR approve/deny form
+      #   - ResetPassword.razor: CS8601 nullable fix (was hiding -warnaserror)
+      #   - TwoFactor.razor: deterministic authenticator key re-derivation
+      #   - EmailSenders: never log email body (reset links are bearer creds)
+      #
+      # Do not repoint this at a moving branch — the whole point of pinning
+      # is reproducibility. Bump to a new SHA deliberately when the UI repo
+      # ships a new commit you want CI to pick up.
+      UI_REF: 0def296a6fd38bbf14268d3c6cf70799f977c8cf
+
+    steps:
+      - name: Checkout sufficit-identity
+        uses: actions/checkout@v5
+        with:
+          path: sufficit-identity
+
+      # Sufficit.Identity.STS.csproj references the UI project via a relative
+      # path (../../../sufficit-identity-ui/src/Sufficit.Identity.UI/...), i.e.
+      # it expects sufficit-identity-ui to be checked out as a sibling
+      # directory of this repo's root. Replicate that layout here, pinned to
+      # a concrete commit (see UI_REF above/comment) instead of a moving
+      # branch.
+      #
+      # sufficit-identity-ui is public at the time of writing; if it is ever
+      # made private, this checkout will need a PAT with read access passed
+      # as `token: ${{ secrets.<PAT_SECRET_NAME> }}` (the default
+      # GITHUB_TOKEN cannot read other repositories).
+      - name: Checkout sufficit-identity-ui
+        uses: actions/checkout@v5
+        with:
+          repository: sufficit/sufficit-identity-ui
+          ref: ${{ github.event.inputs.ui_ref || env.UI_REF }}
+          path: sufficit-identity-ui
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore
+        working-directory: sufficit-identity
+        run: dotnet restore Sufficit.Identity.sln
+
+      # P0 #11 hardening: the eval found `dotnet build -warnaserror` failing
+      # (a CS8601 in the UI's ResetPassword.razor) with the repo's own
+      # TreatWarningsAsErrors=false silently hiding it. That warning is fixed
+      # as of the UI_REF pin above (verified: this solution — STS + UI —
+      # builds 0 warnings/0 errors with warnings treated as errors). Keep
+      # this flag on so a REGRESSION (new warning introduced anywhere in the
+      # solution, including the UI via the ProjectReference) fails CI
+      # instead of being silently absorbed again.
+      - name: Build (warnings treated as errors)
+        working-directory: sufficit-identity
+        run: dotnet build Sufficit.Identity.sln --configuration Release --no-restore -warnaserror
+
+      - name: Test
+        working-directory: sufficit-identity
+        run: dotnet test Sufficit.Identity.sln --configuration Release --no-build
+
+      # P0 #11 hardening: fail the build on any known-vulnerable package
+      # (direct or transitive) at High/Critical severity — e.g. the
+      # SQLitePCLRaw.lib.e_sqlite3 GHSA-2m69-gcr7-jv3q advisory this same
+      # pass bumped src/tests off of (Directory.Packages.props). Advisory
+      # data comes from NuGet's vulnerability feed, so this needs network
+      # access (available on GitHub-hosted runners).
+      - name: Dependency vulnerability audit
+        working-directory: sufficit-identity
+        run: |
+          set -o pipefail
+          dotnet list Sufficit.Identity.sln package --vulnerable --include-transitive 2>&1 | tee vulnerability-report.txt
+          if grep -Eq '[[:space:]](High|Critical)[[:space:]]' vulnerability-report.txt; then
+            echo "::error::High or Critical severity vulnerable package(s) found — see the report above and Directory.Packages.props."
+            exit 1
+          fi
+          echo "No High/Critical severity advisories found."
+
+  secret-scan:
+    name: Secret scanning (gitleaks)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          # Full history: gitleaks also scans past commits, not just the
+          # working tree — catches a secret that was committed and later
+          # deleted (still readable from history), which is exactly the
+          # class of incident docs/EVALUATION-2026-07-20.md §2 (C4) flagged
+          # (MySQL/RabbitMQ/introspection secrets in the repo).
+          fetch-depth: 0
+
+      # Installs the OSS gitleaks CLI binary directly (MIT-licensed, from
+      # the project's own GitHub releases) rather than a marketplace Action
+      # wrapper — some gitleaks Actions require a paid license for
+      # organization-owned private repositories; the CLI itself does not.
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          GITLEAKS_VERSION="8.30.1"
+          curl -sSL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          tar -xzf gitleaks.tar.gz gitleaks
+          sudo mv gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Run gitleaks (fails on any finding)
+        run: gitleaks detect --source . --redact --verbose --exit-code 1

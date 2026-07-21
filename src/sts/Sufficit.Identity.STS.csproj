@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>Sufficit.Identity.STS</RootNamespace>
+    <AssemblyName>Sufficit.Identity.STS</AssemblyName>
+    <UserSecretsId>sufficit-identity-sts</UserSecretsId>
+    <Description>Sufficit Identity — host web (OAuth/OIDC API, no UI).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <PackageReference Include="OpenIddict.AspNetCore" />
+    <PackageReference Include="OpenIddict.EntityFrameworkCore" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\core\Sufficit.Identity.Core.csproj" />
+    <ProjectReference Include="..\server\Sufficit.Identity.Server.csproj" />
+    <ProjectReference Include="..\management\Sufficit.Identity.Management.csproj" />
+    <!-- Sufficit Identity UI (Blazor Server login/consent/logout/manage) -->
+    <ProjectReference Include="..\..\..\sufficit-identity-ui\src\Sufficit.Identity.UI\Sufficit.Identity.UI.csproj" />
+  </ItemGroup>
+
+</Project>

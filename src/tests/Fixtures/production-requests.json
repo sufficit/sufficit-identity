@@ -1,0 +1,214 @@
+{
+  "$comment": "Requisições reais capturadas dos logs nginx de eveo-apps (produção, STS Skoruba/Duende legado porta 26501) em 2026-07-21. Sanitizadas: state/nonce/code_challenge/code_verifier/tokens substituídos por placeholders. NÃO contêm credenciais. Finalidade: validar compatibilidade do novo STS OpenIddict com o tráfego real que ele precisa absorver no cutover (Onda A).",
+  "$source": "eveo-apps /var/log/nginx/access.log* filtrado por /(connect|account|consent|device|grants|/.well-known) — ~220k amostras históricas",
+  "$captureDate": "2026-07-21",
+  "$stats": {
+    "endpointsHitByVolume": {
+      "/connect/userinfo": 200768,
+      "/connect/authorize": 11390,
+      "/connect/introspect": 2553,
+      "/connect/token": 1222,
+      "/connect/par": 84,
+      "/connect/authorize/callback": 71,
+      "/account/login": 32,
+      "/connect/authorize_raw": 18,
+      "/device": 17,
+      "/connect/deviceauthorization": 16,
+      "/consent": 12,
+      "/connect/endsession": 9,
+      "/connect/ciba": 2
+    },
+    "clientIdsByVolume": {
+      "SufficitWebForms": 13328,
+      "Grafana": 3300,
+      "sufficitwebforms": 154,
+      "sufficit-quepasa": 152,
+      "SufficitBlazorServer": 84,
+      "SufficitAIServer": 49,
+      "sufficit-phone-desktop": 21,
+      "sufficit_mobile_ai_models": 13,
+      "SufficitChromeExtension": 9,
+      "skoruba_identity_admin": 8,
+      "SufficitKnowledgeBase": 6,
+      "hermes": 3,
+      "sufficit_mobile_apps": 2,
+      "SufficitEndPointsSwaggerUI": 1
+    },
+    "statusDistribution": {
+      "POST_/connect/token": { "200": 1053, "400": 154, "499": 11, "500": 2 },
+      "POST_/connect/introspect": { "200": 2487, "499": 48, "500": 10, "502": 6 },
+      "POST_/connect/par": { "201": 82 },
+      "POST_/connect/deviceauthorization": { "200": 10, "500": 5 }
+    }
+  },
+  "samples": [
+    {
+      "id": "authz-01-webforms-implicit-formpost",
+      "$comment": "WebForms legado (sufficit-web) — fluxo implicit + form_post. OAuth 2.1 remove implicit; este client DEVE ser migrado para authorization_code+PKCE antes da Onda E (quando LegacyGrants.None for desligado). Por enquanto, o novo STS ainda aceita None (LegacyGrants.None default true).",
+      "method": "GET",
+      "path": "/connect/authorize",
+      "queryParams": {
+        "client_id": "SufficitWebForms",
+        "redirect_uri": "https://www.sufficit.com.br/oauth/authenticated",
+        "response_type": "code id_token",
+        "scope": "offline_access openid profile roles",
+        "state": "STATE.authenticationproperties=<opaque-base64>",
+        "response_mode": "form_post",
+        "nonce": "NONCE.<opaque-base64>",
+        "x-client-sku": "id_net472",
+        "x-client-ver": "8.14.0.0"
+      },
+      "expectedBehavior": {
+        "oauth21": "BLOCKED when LegacyGrants.None=false (implicit removed). Default ON for now (compat).",
+        "openiddict": "Hybrid/implicit flow NOT enabled in OpenIddict 5+. Response: unsupported_response_type."
+      }
+    },
+    {
+      "id": "authz-02-mobile-appauth-pkce",
+      "$comment": "Cliente mobile AppAuth (sufficit_mobile_apps) — fluxo authorization_code + PKCE. Este é o fluxo que todos os 26 clients DEVERIAM usar. Já suportado pelo novo STS.",
+      "method": "GET",
+      "path": "/connect/authorize",
+      "queryParams": {
+        "redirect_uri": "sufficitaigateway://callback",
+        "client_id": "sufficit_mobile_apps",
+        "response_type": "code",
+        "state": "STATE",
+        "nonce": "NONCE",
+        "scope": "openid profile email offline_access",
+        "code_challenge": "PKCE_CHALLENGE",
+        "code_challenge_method": "S256"
+      },
+      "expectedBehavior": {
+        "oauth21": "SUPPORTED (canonical PKCE flow).",
+        "openiddict": "Works as-is — covered by AuthorizationCodeFlowTests."
+      }
+    },
+    {
+      "id": "authz-03-mobile-aimodels-pkce",
+      "$comment": "Variante do mobile para o app sufficit_mobile_ai_models — mesmo padrão PKCE, custom scheme diferente.",
+      "method": "GET",
+      "path": "/connect/authorize",
+      "queryParams": {
+        "redirect_uri": "sufficitmobileaimodels://callback",
+        "client_id": "sufficit_mobile_ai_models",
+        "response_type": "code",
+        "state": "STATE",
+        "nonce": "NONCE",
+        "scope": "openid profile email offline_access",
+        "code_challenge": "PKCE_CHALLENGE",
+        "code_challenge_method": "S256"
+      },
+      "expectedBehavior": {
+        "oauth21": "SUPPORTED.",
+        "openiddict": "Works — needs client registered with same redirect_uri."
+      }
+    },
+    {
+      "id": "authz-04-endpoints-swagger-implicit",
+      "$comment": "SwaggerUI do sufficit-endpoints usando implicit flow (response_type=token). OAuth 2.1 removes; SwaggerUI moderno suporta PKCE. Mesma situação do WebForms.",
+      "method": "GET",
+      "path": "/connect/authorize",
+      "queryParams": {
+        "response_type": "token",
+        "client_id": "SufficitEndPointsSwaggerUI",
+        "redirect_uri": "https://endpoints.sufficit.com.br/oauth2-redirect.html",
+        "scope": "policies",
+        "state": "STATE="
+      },
+      "expectedBehavior": {
+        "oauth21": "BLOCKED when LegacyGrants.None=false. Default ON for now.",
+        "openiddict": "unsupported_response_type (implicit token not enabled)."
+      }
+    },
+    {
+      "id": "token-01-status-distribution",
+      "$comment": "Distribuição real de status codes do POST /connect/token em produção. 1053 sucesso (86%), 154 inválido (13% — tentativas erradas/expiradas, normal), 11 client-closed, 2 erros 500 (provável DB blip). O novo STS deve manter proporção similar.",
+      "method": "POST",
+      "path": "/connect/token",
+      "observedStatusCodes": { "200": 1053, "400": 154, "499": 11, "500": 2 },
+      "expectedBehavior": "200/400 ratio preserved; 500 should be 0 with new STS (no DB-coupled grant store)."
+    },
+    {
+      "id": "introspect-01-high-volume",
+      "$comment": "POST /connect/introspect é o segundo endpoint mais batido (2553 amostras). Usado por sufficit-endpoints, SufficitAIServer, SufficitBlazorServer para validar reference tokens a cada request. Reference tokens estão default ON no novo STS (Tokens.UseReferenceAccessTokens=true).",
+      "method": "POST",
+      "path": "/connect/introspect",
+      "observedStatusCodes": { "200": 2487, "499": 48, "500": 10, "502": 6 },
+      "expectedBehavior": "200 for valid tokens, 200 active=false for revoked/expired (RFC 7662). 500/502 should be 0."
+    },
+    {
+      "id": "userinfo-01-highest-volume",
+      "$comment": "/connect/userinfo é disparadamente o endpoint mais batido (200k+ amostras). Quase todos User-Agent vazio (-) — chamada server-to-server com Bearer token. Bug do sub-lookup (Claims.Subject vs ClaimTypes.NameIdentifier) que corrigimos em AuthorizationController.cs:561 AFETA este endpoint diretamente — sem o fix, sempre retornaria null.",
+      "method": "GET",
+      "path": "/connect/userinfo",
+      "userAgents": { "-": 4985, "node": 14, "Go-http-client/2.0": 1 },
+      "expectedBehavior": "200 with {sub, name, email, email_verified, role} depending on scopes granted. Bug fix #B1 (sub) is load-bearing here."
+    },
+    {
+      "id": "par-01-success",
+      "$comment": "POST /connect/par retorna 201 (Created) — PAR registrado com sucesso. 84 amostras, todas 201. PAR endpoint está configurado no novo STS (ServiceCollectionExtensions.cs:163) mas não é required.",
+      "method": "POST",
+      "path": "/connect/par",
+      "observedStatusCodes": { "201": 82 },
+      "expectedBehavior": "201 with request_uri. OpenIddict returns 201 for PAR by default."
+    },
+    {
+      "id": "device-01-deviceauthorization",
+      "$comment": "POST /connect/deviceauthorization — RFC 8628 Device Authorization Grant. 16 amostras (pequeno volume, client_vscode_symposium). Bug do sub-resolution que corrigimos (AuthorizationController.cs:355 ExchangeForDeviceCodeAsync) impedia este fluxo de completar E2E no novo STS antes do fix.",
+      "method": "POST",
+      "path": "/connect/deviceauthorization",
+      "observedStatusCodes": { "200": 10, "500": 5 },
+      "expectedBehavior": "200 with device_code, user_code, verification_uri, verification_uri_complete, expires_in, interval."
+    },
+    {
+      "id": "account-01-login-page",
+      "$comment": "GET /account/login — 32 amostras. Página de login interativo servida pela UI Blazor Server (sufficit-identity-ui). Path lowercase canonicalizado pelo novo STS (LowercasePathMiddleware).",
+      "method": "GET",
+      "path": "/account/login",
+      "expectedBehavior": "200 HTML login page. Served by sibling UI project."
+    },
+    {
+      "id": "endsession-01-rp-initiated-logout",
+      "$comment": "POST/GET /connect/endsession — RP-initiated logout (OIDC 1.0). 9 amostras. O novo STS implementation redireciona para /account/logout na UI Blazor, que confirma e POST de volta.",
+      "method": "GET",
+      "path": "/connect/endsession",
+      "expectedBehavior": "302 to /account/logout with forwarded id_token_hint/post_logout_redirect_uri/state."
+    },
+    {
+      "id": "probe-01-checksession",
+      "$comment": "GET /connect/check-session e /connect/checksession — 2 amostras (provavelmente probes/scanners). NÃO implementado no novo STS (removido honestamente do discovery).",
+      "method": "GET",
+      "path": "/connect/check-session",
+      "expectedBehavior": "404 (endpoint not registered, not advertised)."
+    },
+    {
+      "id": "probe-02-backchannel-logout",
+      "$comment": "POST /connect/backchannel-logout — 1 amostra. Endpoint existe no novo STS como no-op ack stub, MAS discovery agora corretamente anuncia backchannel_logout_supported=false (B4 fix).",
+      "method": "POST",
+      "path": "/connect/backchannel-logout",
+      "expectedBehavior": "200 {status: 'ok'} (ack stub). NOT advertised in discovery."
+    },
+    {
+      "id": "scanner-01-wordpress-wlwmanifest",
+      "$comment": "Várias tentativas de scanner wordpress contra /connect/authorize?...wlwmanifest.xml e /xmlrpc.php — tráfego malicioso de bot. Não é OAuth válido; deve ser rejeitado normalmente.",
+      "method": "GET",
+      "path": "/connect/authorize?...wp-includes/wlwmanifest.xml",
+      "expectedBehavior": "400 invalid_request (OpenIddict rejects malformed client_id/response_type)."
+    },
+    {
+      "id": "scanner-02-dotenv",
+      "$comment": "Scanner tentando /account/.env — expor credenciais. Deve 404.",
+      "method": "GET",
+      "path": "/account/.env",
+      "expectedBehavior": "404."
+    }
+  ],
+  "incident": {
+    "$comment": "ESTADO DO STS LEGADO NO MOMENTO DA CAPTURA",
+    "status": "DEGRADED — 'Unable to connect to any of the specified MySQL hosts' repetindo desde ~11:28 UTC de 2026-07-21",
+    "affectedEndpoints": ["/.well-known/openid-configuration", "/connect/userinfo", "/health"],
+    "dbReachability": "proxy.sufficit.com.br:26493 REACHABLE do eveo-apps (rede OK); problema é na camada app/auth do MySQL",
+    "lastRestart": "2026-07-21 08:26:08 -03 (cerca de 3h antes da captura)",
+    "action": "ALERTAR USUÁRIO — incidente em andamento independente desta avaliação"
+  }
+}

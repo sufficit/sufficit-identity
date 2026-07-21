@@ -1,0 +1,87 @@
+## .NET
+*.swp
+*.*~
+project.lock.json
+.DS_Store
+*.pyc
+nupkg/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# .NET Core / SDK
+project.lock.json
+project.fragment.lock.json
+artifacts/
+.dotnet/
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# Visual Studio Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# Publish / deploy artifacts
+_publish/
+[Pp]ublish/
+publish/
+
+# App secrets (never commit)
+# All appsettings*.json may contain connection strings, API keys and OAuth
+# secrets. Use User Secrets (dotnet user-secrets) or environment variables
+# instead. Templates with placeholders use the .template suffix.
+appsettings.json
+appsettings.*.json
+!appsettings.json.template
+!appsettings.*.json.template
+secrets.json
+*.pfx
+*.key
+*.pem
+!*sample*.pfx
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+TestResult.xml
+coverage*
+*.coverage
+*.coveragexml
+
+# Logs / runtime
+*.log
+Log/
+[Bb]ackup*/

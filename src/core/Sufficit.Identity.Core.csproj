@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>Sufficit.Identity.Core</RootNamespace>
+    <AssemblyName>Sufficit.Identity.Core</AssemblyName>
+    <Description>Sufficit Identity — core domain (DbContext, entities).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+    <PackageReference Include="OpenIddict.EntityFrameworkCore" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" />
+    <!-- AppDbContext implements IDataProtectionKeyContext (DataProtectionKey
+         entity/table) so the STS's Data Protection key ring can be
+         persisted via PersistKeysToDbContext<AppDbContext> (P0 #B4, wired
+         up in src/server/ServiceCollectionExtensions.cs). -->
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
+  </ItemGroup>
+
+</Project>

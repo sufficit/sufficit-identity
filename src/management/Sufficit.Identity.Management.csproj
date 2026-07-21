@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>Sufficit.Identity.Management</RootNamespace>
+    <AssemblyName>Sufficit.Identity.Management</AssemblyName>
+    <Description>Sufficit Identity — optional management REST API (clients/scopes/users). Opt-in.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Needs the ASP.NET Core framework (controllers, auth) -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenIddict.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\core\Sufficit.Identity.Core.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,34 @@
+# Sufficit Identity STS — Docker build context exclusions.
+# See Dockerfile's top comment for the build-context requirements (this repo
+# + the sibling sufficit-identity-ui repo as a named "ui" build context).
+
+# --- Secrets: NEVER let these ride into an image layer ---
+# Real, untracked, developer-local config (see .gitignore) that can contain
+# live DB/RabbitMQ/OAuth credentials (docs/EVALUATION-2026-07-20.md §2 C4).
+# The Dockerfile also deletes these defensively after COPY, but excluding
+# them here means they never even reach the build context/cache in the
+# first place.
+**/appsettings.json
+**/appsettings.*.json
+!**/appsettings.json.template
+.env
+.env.*
+**/*.pfx
+**/*.p12
+**/*.key
+
+# --- Build artifacts (never needed in the context; slows every build) ---
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/.idea/
+
+# --- VCS / CI / docs (irrelevant to the image, only bloats the context) ---
+.git/
+.github/
+docs/
+*.md
+
+# --- Test project (not part of the published STS) ---
+src/tests/

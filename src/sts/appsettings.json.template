@@ -1,0 +1,126 @@
+{
+  "//": "Copy this file to appsettings.json and fill in the real values, OR use User Secrets (dotnet user-secrets) / environment variables. NEVER commit real appsettings.json — it is gitignored.",
+  "ConnectionStrings": {
+    "DefaultConnection": "server=YOUR_MYSQL_HOST;port=3306;database=identity;user=YOUR_USER;password=YOUR_PASSWORD;keepalive=30;ConnectionIdleTimeout=180;ConnectionReset=false;Maximum Pool Size=150;Connection Lifetime=180"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "Microsoft.EntityFrameworkCore": "Warning"
+    }
+  },
+  "// AllowedHosts": "Kestrel's Host-header allowlist, semicolon-separated (e.g. \"your-identity-host;www.your-identity-host\"). '*' accepts ANY Host header — combined with a reverse proxy that forwards the client's original Host unchecked, this enables host-header poisoning (spoofed password-reset links, cache-poisoning). Set this to the real production host(s); it does not need to match Issuer's scheme, only its host.",
+  "AllowedHosts": "your-identity-host",
+  "Sufficit": {
+    "Identity": {
+      "Issuer": "https://your-identity-host/",
+      "ConnectionStringName": "DefaultConnection",
+      "// TrustedProxies": "PLACEHOLDER — the value below (203.0.113.0/24, RFC 5737 TEST-NET-3, a documentation-only range that can never match a real address) MUST be replaced with the real reverse-proxy/cluster CIDR(s) before any production deploy. Array of CIDR strings (e.g. [\"10.0.0.0/8\"]) for reverse-proxy networks allowed to set X-Forwarded-* headers. Leaving this unset/empty in production trusts only loopback: the rate limiter then partitions by the proxy's own IP (effectively ONE shared bucket for the whole deployment — self-inflicted 429s) and X-Forwarded-Proto is dropped (Request.Scheme stays http, defeating the cookie Secure policy and HTTPS-only assumptions).",
+      "TrustedProxies": ["203.0.113.0/24"],
+      "Management": {
+        "Enabled": false,
+        "RoutePrefix": "api",
+        "RequireAuthorization": true,
+        "RequiredScope": "skoruba_identity_admin_api"
+      },
+      "// Certificates": "Required in production. PFX files (X509Certificate2) used to sign and encrypt tokens. Leave empty only in Development, where ephemeral dev certificates are used automatically; any other environment fails to start without these.",
+      "Certificates": {
+        "// SigningPath": "Path to the PFX file used to sign tokens.",
+        "SigningPath": "",
+        "// SigningPassword": "Password protecting the signing PFX file.",
+        "SigningPassword": "",
+        "// EncryptionPath": "Path to the PFX file used to encrypt tokens.",
+        "EncryptionPath": "",
+        "// EncryptionPassword": "Password protecting the encryption PFX file.",
+        "EncryptionPassword": ""
+      },
+      "// LegacyGrants": "Feature flags for OAuth 2.0 grant types removed by OAuth 2.1 (Resource Owner Password Credentials and the 'none' grant). Both default to true to preserve compatibility with clients not yet migrated to authorization_code + PKCE; will be flipped to false for the 'Onda E' cutover.",
+      "LegacyGrants": {
+        "// Password": "Enables grant_type=password. Removed by OAuth 2.1.",
+        "Password": true,
+        "// None": "Enables the 'none' grant/response type. Removed by OAuth 2.1.",
+        "None": true
+      },
+      "// RateLimit": "Fixed-window rate limit applied to POST /connect/token, per client IP, no queueing. Complements (never replaces) account lockout. Disable only if an upstream gateway already throttles the token endpoint.",
+      "RateLimit": {
+        "Enabled": true,
+        "// PermitLimit": "Requests allowed per window, per client IP.",
+        "PermitLimit": 30,
+        "// WindowSeconds": "Window length in seconds; also sent as Retry-After on 429.",
+        "WindowSeconds": 60
+      },
+      "// Tokens": "Token lifetimes. Null access/identity values use the OpenIddict defaults (60 and 20 minutes). Refresh token rotation is always on; only lifetimes are configurable.",
+      "Tokens": {
+        "AccessTokenLifetimeMinutes": null,
+        "IdentityTokenLifetimeMinutes": null,
+        "RefreshTokenLifetimeDays": 14,
+        "// UseReferenceAccessTokens": "P0 #5 / eval #B2 — MIGRATION-CONTRACT DECISION, not a mechanical toggle. true (default, current/legacy behavior) = opaque reference access tokens validated only via /connect/introspect. false = self-contained JWT access tokens validated locally by any resource server holding the signing public key. This applies to ALL clients at once (OpenIddict has no per-client token-format switch) — but the legacy inventory (docs/migration/PLAN.md) shows only ONE of the 26 legacy clients (sufficit-endpoints) actually used reference tokens; the rest expect a JWT they validate locally. Do NOT flip to false without first confirming every resource server can handle the new format (JWT: faster, no introspection dependency, but un-revocable before expiry; reference: instantly revocable, opaque, but every validation is a network round-trip here).",
+        "UseReferenceAccessTokens": true
+      },
+      "// Lockout": "Account lockout enforced on password verification (interactive login and grant_type=password).",
+      "Lockout": {
+        "// MaxFailedAttempts": "Consecutive failures before the account locks.",
+        "MaxFailedAttempts": 5,
+        "// DurationMinutes": "How long the account stays locked.",
+        "DurationMinutes": 5
+      },
+      "// Hsts": "HSTS policy applied outside Development.",
+      "Hsts": {
+        "MaxAgeDays": 365,
+        "IncludeSubDomains": true,
+        "Preload": true
+      },
+      "Register": {
+        "// Enabled": "false disables /account/register entirely (login-only STS).",
+        "Enabled": true,
+        "// RequireUsername": "true shows a separate username field in Register and 'E-mail ou usuario' in Login. false (Sufficit default) uses email as the username.",
+        "RequireUsername": false
+      },
+      "// Smtp": "Optional fallback IEmailSender used when Sufficit:Exchange:RabbitMQ is NOT configured. When Host is set, the UI uses SmtpEmailSender; otherwise falls back to a logging-only sender visible in the STS console.",
+      "Smtp": {
+        "Host": "",
+        "Port": 587,
+        "Login": "",
+        "Password": "",
+        "EnableSsl": true,
+        "From": "no-reply@your-domain.com",
+        "FromName": "Sufficit Identity"
+      },
+      "// PublicUrl": "Optional. Used to build absolute URLs in emails (e.g. https://identity.sufficit.com.br). If empty, the request scheme/host is used.",
+      "PublicUrl": "",
+      "Email": {
+        "// TestEmailAddress": "When non-empty, ALL outgoing emails are redirected to this address (dev/staging safety net). Leave empty in production.",
+        "TestEmailAddress": ""
+      },
+      "ExternalProviders": {
+        "Google": {
+          "Enabled": false,
+          "ClientId": "",
+          "ClientSecret": ""
+        },
+        "Facebook": {
+          "Enabled": false,
+          "ClientId": "",
+          "ClientSecret": "",
+          "// ConfigurationId": "Optional. Set only for Facebook Login for Business (Business apps). Leave empty for classic OAuth."
+        },
+        "GitHub": {
+          "Enabled": false,
+          "ClientId": "",
+          "ClientSecret": ""
+        }
+      }
+    },
+    "Exchange": {
+      "// RabbitMQ": "Sufficit production email pipeline. When HostName is set, the STS replaces the default IEmailSender with RabbitMQEmailQueue (publishes to Q-EMAIL queue). Move credentials to User Secrets or env vars in real environments.",
+      "RabbitMQ": {
+        "Persistent": true,
+        "HostName": "",
+        "UserName": "",
+        "Password": "",
+        "Heartbeat": null
+      }
+    }
+  }
+}

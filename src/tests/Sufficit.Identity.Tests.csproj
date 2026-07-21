@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>Sufficit.Identity.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <!-- Direct (version-less; version comes from Directory.Packages.props)
+         reference to force this project's resolution of the
+         SQLitePCLRaw.bundle_e_sqlite3 family onto the patched 2.1.12 —
+         Microsoft.EntityFrameworkCore.Sqlite above only pulls it in
+         transitively at "2.1.10" (a floor, not a pin), which is the version
+         with advisory GHSA-2m69-gcr7-jv3q (High). Scoped to this project
+         only — see the longer explanation in Directory.Packages.props for
+         why CentralPackageTransitivePinningEnabled was not used instead. -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Transitively brings core/server/management/UI. -->
+    <ProjectReference Include="..\sts\Sufficit.Identity.STS.csproj" />
+  </ItemGroup>
+
+</Project>

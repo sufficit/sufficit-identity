@@ -1,0 +1,21 @@
+<Project>
+
+  <PropertyGroup>
+    <Product>Sufficit Identity</Product>
+    <Company>Sufficit</Company>
+    <Authors>Sufficit</Authors>
+    <Copyright>Copyright (c) 2026 Sufficit</Copyright>
+    <Version>0.2.0-alpha</Version>
+    <NeutralLanguage>en-US</NeutralLanguage>
+
+    <!-- Strongly encourage modern C# -->
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+
+    <!-- Central package management -->
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+</Project>
