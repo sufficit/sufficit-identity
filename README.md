@@ -20,6 +20,28 @@ Skoruba/Duende-based implementation that lives in [`sufficit-identity-legacy`](h
 - Reference tokens, introspection, device flow, server-side sessions, PKCE.
 - MIT-0 licensed — free for any use, no attribution required.
 
+## Architecture
+
+The solution has one executable composition host and three focused modules:
+
+| Project | Role | Runnable |
+| --- | --- | --- |
+| `src/server` | Composition root for STS, management, UI, middleware and runtime configuration | Yes |
+| `src/sts` | OAuth/OIDC identity API, ASP.NET Core Identity and OpenIddict | No |
+| `src/management` | Optional management API | No |
+| `src/core` | Shared entities and persistence classes | No |
+
+`Program.cs`, launch profiles and `appsettings` belong to `src/server`, the
+only project that builds an ASP.NET Core host. Real configuration must be
+provided through User Secrets, environment variables or mounted configuration;
+`src/server/appsettings.json.template` documents the available keys.
+
+Run the composition host with:
+
+```sh
+dotnet run --project src/server/Sufficit.Identity.Server.csproj
+```
+
 ## License
 
 [MIT-0](./LICENSE) (MIT No Attribution). Use, copy, modify, distribute, sell — no

@@ -10,53 +10,46 @@
     <PackageVersion Include="OpenIddict.EntityFrameworkCore" Version="7.6.0" />
 
     <!-- External login providers -->
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="9.0.3" />
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Facebook" Version="9.0.3" />
-    <PackageVersion Include="AspNet.Security.OAuth.GitHub" Version="9.4.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Facebook" Version="10.0.10" />
+    <PackageVersion Include="AspNet.Security.OAuth.GitHub" Version="10.0.0" />
 
     <!-- ASP.NET Core Identity -->
-    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.18" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
 
     <!-- ASP.NET Core Data Protection key-ring persistence (P0 #B4) -->
-    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="9.0.18" />
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.10" />
 
-    <!-- EF Core + MySQL provider (Pomelo — MariaDB 10.4 compatible) -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.18" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.18" />
-    <PackageVersion Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
+    <!-- EF Core + MySQL provider (Oracle MySql.EntityFrameworkCore — ver docs/NOTICE-mysql-license.md) -->
+    <!-- Migração concluída em 2026-07-21: troca temporária de Pomelo (MIT, sem EF Core 10)
+         por Oracle MySql.EntityFrameworkCore (GPLv2+FOSS Exception, suporta EF Core 10)
+         para desbloquear net10.0 + AddPasskeys(). Reverter quando Pomelo shipar EF10. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10" />
+    <PackageVersion Include="MySql.EntityFrameworkCore" Version="10.0.7" />
 
     <!-- Health checks -->
-    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.18" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.10" />
 
     <!-- Logging / config -->
-    <PackageVersion Include="Serilog.AspNetCore" Version="9.0.0" />
+    <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
+
+    <!-- Direct Q-EMAIL publisher. Kept local to Identity so the STS does not
+         pull the full Sufficit.Communication/EFData/Pomelo graph into EF10. -->
+    <PackageVersion Include="RabbitMQ.Client" Version="7.2.1" />
 
     <!-- API docs -->
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="7.2.0" />
-
-    <!-- Sufficit sibling NuGet fallback. Sufficit.Identity.Server.csproj uses
-         a ProjectReference when the sibling repo is checked out locally
-         (development) and falls back to this NuGet package otherwise (CI,
-         Docker build without the sibling context). Pinned to the latest
-         published version on nuget.org (1.26.701.1846, 2026-07-01) — bump
-         deliberately when Sufficit.Communication ships a new release you
-         want CI to pick up. Required by CPM
-         (ManagePackageVersionsCentrally=true): without this entry, the
-         <PackageReference Version="1.*"> in the csproj fails restore with
-         NU1008 (no version allowed on PackageReference under CPM) or NU1011
-         (no floating version allowed on PackageVersion under CPM by default)
-         when the sibling repo is absent. -->
-    <PackageVersion Include="Sufficit.Communication" Version="1.26.701.1846" />
 
     <!-- Test project (src/tests) -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageVersion Include="xunit" Version="2.9.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.1" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.18" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.18" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
 
     <!-- Pin for a TRANSITIVE dependency: Microsoft.EntityFrameworkCore.Sqlite
-         9.0.18 floats SQLitePCLRaw.bundle_e_sqlite3 to "2.1.10" (NuGet's
+         historically floated SQLitePCLRaw.bundle_e_sqlite3 to "2.1.10" (NuGet's
          version syntax for ">= 2.1.10", not an exact pin), which resolved to
          the vulnerable 2.1.10 release — GHSA-2m69-gcr7-jv3q / CVE-2025-6965
          (High, CVSS 9.8): SQLitePCLRaw.lib.e_sqlite3 <= 2.1.11 bundles a
@@ -66,11 +59,7 @@
          rather than jumping to the 3.x line (which restarted versioning to
          track the bundled SQLite version directly) to keep this a minimal,
          same-line patch bump.
-         NOTE: deliberately NOT using CentralPackageTransitivePinningEnabled
-         for this — turning that on repo-wide made NuGet treat the
-         (pre-existing, unrelated) Pomelo.EntityFrameworkCore.MySql preview
-         pin below as a transitive "downgrade" against Sufficit.EFData's
-         >=9.0.0-stable floor and fail restore for src/server and src/sts.
+         NOTE: deliberately NOT using CentralPackageTransitivePinningEnabled.
          Instead, src/tests/Sufficit.Identity.Tests.csproj adds a direct
          (version-less, CPM-controlled) <PackageReference> for
          SQLitePCLRaw.bundle_e_sqlite3 so ONLY that project's resolution is

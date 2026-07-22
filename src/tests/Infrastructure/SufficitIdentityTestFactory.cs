@@ -13,7 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
-using Sufficit.Identity.Server;
+using Sufficit.Identity.STS;
 using Sufficit.Identity.STS.Controllers;
 using Xunit;
 
@@ -24,15 +24,14 @@ namespace Sufficit.Identity.Tests.Infrastructure;
 /// Identity STS.
 ///
 /// <para>
-/// <b>Why not <c>WebApplicationFactory&lt;Program&gt;</c>:</b> src/sts/Program.cs
+/// <b>Why not <c>WebApplicationFactory&lt;Program&gt;</c>:</b> src/server/Program.cs
 /// uses top-level statements, which the compiler turns into an
 /// <c>internal sealed partial class Program</c> — invisible to this separate
-/// test assembly without an <c>InternalsVisibleTo</c> attribute added to the
-/// STS project. Editing src/sts is out of scope for this test project, so
-/// instead of touching Program.cs this factory replicates the minimal host
-/// wiring Program.cs itself performs (<c>AddSufficitIdentitySTS</c> + the
-/// <c>/connect/*</c> MVC controllers + health checks), directly against the
-/// generic host. <see cref="SufficitIdentityTestFactory"/> is used as its own
+/// test assembly. More importantly, these tests exercise the STS API module
+/// in isolation from the composition host's UI and management modules. This
+/// factory reproduces the minimal wiring it needs
+/// (<c>AddSufficitIdentitySTS</c> + health checks) directly against the generic
+/// host. <see cref="SufficitIdentityTestFactory"/> is used as its own
 /// <c>TEntryPoint</c> purely so <see cref="WebApplicationFactory{TEntryPoint}"/>
 /// has *some* assembly to resolve a (unused) content root from; all real
 /// wiring happens in <see cref="ConfigureWebHost"/> below, which is the
@@ -85,7 +84,7 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
 
     public SufficitIdentityTestFactory()
     {
-        // AddSufficitIdentitySTS (src/server/ServiceCollectionExtensions.cs) reads
+        // AddSufficitIdentitySTS (src/sts/ServiceCollectionExtensions.cs) reads
         // ASPNETCORE_ENVIRONMENT directly from the process environment (not the
         // generic host's IHostEnvironment abstraction) to decide whether to fall
         // back to ephemeral development signing/encryption certificates and to
@@ -99,7 +98,7 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
         _connection.Open();
 
         // AppDbContext maps ApplicationUser.Timestamp with
-        // HasDefaultValueSql("UTC_TIMESTAMP()") — a MySQL-only function. SQLite
+        // HasDefaultValueSql("(UTC_TIMESTAMP())") — a MySQL-only function. SQLite
         // has no such builtin; register it as a user-defined function on the
         // connection so inserts that rely on the DB-generated default (i.e. every
         // UserManager.CreateAsync call) succeed unmodified.
@@ -134,6 +133,13 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                 // registers is fully replaced below before anything resolves it.
                 ["ConnectionStrings:DefaultConnection"] = "unused",
                 ["Sufficit:Identity:Issuer"] = "https://sts.tests.local",
+                // EVALUATION-2026-07-21 §5 P0 #8 — defaults flipped to false
+                // (secure-by-default). Tests that exercise these grants explicitly
+                // need to opt back in, mirroring what a real environment that
+                // still needs them would do via appsettings.<env>.json.
+                ["Sufficit:Identity:LegacyGrants:Password"] = "true",
+                ["Sufficit:Identity:LegacyGrants:None"] = "true",
+                ["Sufficit:Identity:TokenExchange:Enabled"] = "true",
             });
 
             // Layered on top so a per-test override (e.g. a restricted
@@ -162,7 +168,7 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
             services.AddHealthChecks()
                 .AddDbContextCheck<AppDbContext>("database");
 
-            // Defensive: src/sts/Program.cs registers MVC via AddControllers()
+            // Defensive: src/server/Program.cs registers MVC via AddControllers()
             // only (no AddMvc/AddRazorPages), and this factory does not
             // reproduce Program.cs line-for-line (see the class doc above),
             // so whether antiforgery services end up registered as a side
@@ -192,7 +198,7 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                 endpoints.MapHealthChecks("/health/ready");
 
                 // -------------------------------------------------------------
-                // TEST-ONLY endpoints (never registered by src/sts/Program.cs).
+                // TEST-ONLY endpoints (never registered by src/server/Program.cs).
                 //
                 // The real interactive login/consent/device UI lives in the
                 // sibling sufficit-identity-ui repo (a separate Blazor Server

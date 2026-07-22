@@ -52,7 +52,7 @@ jobs:
         with:
           path: sufficit-identity
 
-      # Sufficit.Identity.STS.csproj references the UI project via a relative
+      # Sufficit.Identity.Server.csproj references the UI project via a relative
       # path (../../../sufficit-identity-ui/src/Sufficit.Identity.UI/...), i.e.
       # it expects sufficit-identity-ui to be checked out as a sibling
       # directory of this repo's root. Replicate that layout here, pinned to
@@ -73,7 +73,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "9.0.x"
+          dotnet-version: "10.0.x"
 
       - name: Restore
         working-directory: sufficit-identity
@@ -82,7 +82,7 @@ jobs:
       # P0 #11 hardening: the eval found `dotnet build -warnaserror` failing
       # (a CS8601 in the UI's ResetPassword.razor) with the repo's own
       # TreatWarningsAsErrors=false silently hiding it. That warning is fixed
-      # as of the UI_REF pin above (verified: this solution — STS + UI —
+      # as of the UI_REF pin above (verified: this solution — Server + STS + UI —
       # builds 0 warnings/0 errors with warnings treated as errors). Keep
       # this flag on so a REGRESSION (new warning introduced anywhere in the
       # solution, including the UI via the ProjectReference) fails CI
@@ -142,4 +142,11 @@ jobs:
           gitleaks version
 
       - name: Run gitleaks (fails on any finding)
-        run: gitleaks detect --source . --redact --verbose --exit-code 1
+        # Uses the repo's .gitleaks.toml which EXTENDS the default ruleset
+        # with Sufficit-specific patterns that the default generic-api-key
+        # rule empirically does NOT catch (EVALUATION-fable-2026-07-21 §VI):
+        # bare UUID secrets in prose, MySQL connection passwords, RabbitMQ
+        # password blocks, OAuth ClientSecret values, and jump-host topology.
+        # --config explicitly points at the repo file so a stray gitleaks
+        # default elsewhere doesn't silently weaken the scan.
+        run: gitleaks detect --source . --config .gitleaks.toml --redact --verbose --exit-code 1

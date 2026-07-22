@@ -17,7 +17,7 @@ public sealed class ApplicationUser : IdentityUser
 {
     /// <summary>
     /// Row creation/update timestamp populated by MySQL
-    /// (<c>DEFAULT UTC_TIMESTAMP()</c>). Not used by Identity itself but kept
+    /// (<c>DEFAULT (UTC_TIMESTAMP())</c>). Not used by Identity itself but kept
     /// for compatibility with the legacy schema and audit/debug tooling.
     /// </summary>
     public DateTime Timestamp { get; set; }

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Sufficit.Identity.Management</RootNamespace>
     <AssemblyName>Sufficit.Identity.Management</AssemblyName>
     <Description>Sufficit Identity — optional management REST API (clients/scopes/users). Opt-in.</Description>

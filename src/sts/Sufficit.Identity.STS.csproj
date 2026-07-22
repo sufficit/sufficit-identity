@@ -1,32 +1,41 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Sufficit.Identity.STS</RootNamespace>
     <AssemblyName>Sufficit.Identity.STS</AssemblyName>
-    <UserSecretsId>sufficit-identity-sts</UserSecretsId>
-    <Description>Sufficit Identity — host web (OAuth/OIDC API, no UI).</Description>
+    <Description>Sufficit Identity — OAuth/OIDC identity API module.</Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
     <PackageReference Include="OpenIddict.AspNetCore" />
     <PackageReference Include="OpenIddict.EntityFrameworkCore" />
-    <PackageReference Include="Serilog.AspNetCore" />
-    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Facebook" />
+    <PackageReference Include="AspNet.Security.OAuth.GitHub" />
+    <!-- Data Protection key-ring persistence configured by the STS module. -->
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
+    <PackageReference Include="RabbitMQ.Client" />
+    <!-- EF Core Design-time: needed for `dotnet ef migrations add` (startup
+         project). Reference is PrivateAssets="all" so it never ships in a
+         publish output — it's a dev-time only dependency. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\core\Sufficit.Identity.Core.csproj" />
-    <ProjectReference Include="..\server\Sufficit.Identity.Server.csproj" />
-    <ProjectReference Include="..\management\Sufficit.Identity.Management.csproj" />
-    <!-- Sufficit Identity UI (Blazor Server login/consent/logout/manage) -->
-    <ProjectReference Include="..\..\..\sufficit-identity-ui\src\Sufficit.Identity.UI\Sufficit.Identity.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sufficit.Identity.Tests" />
   </ItemGroup>
 
 </Project>

@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Sufficit.Identity.Tests</RootNamespace>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
@@ -28,8 +28,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Transitively brings core/server/management/UI. -->
-    <ProjectReference Include="..\sts\Sufficit.Identity.STS.csproj" />
+    <!-- Composition host; transitively brings STS/core/management/UI. -->
+    <ProjectReference Include="..\server\Sufficit.Identity.Server.csproj" />
   </ItemGroup>
 
 </Project>

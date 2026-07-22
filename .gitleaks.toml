@@ -1,0 +1,105 @@
+# Gitleaks custom rules — Sufficit Identity
+#
+# Extends the default gitleaks ruleset with Sufficit-specific patterns that
+# the generic-api-key rule does NOT catch (validated empirically: gitleaks 8.30.1
+# returned "no leaks found" while the introspection secret was sitting in
+# docs/migration/PLAN.md:65 as a bare UUID in prose — EVALUATION-fable-2026-07-21
+# §VI). The default rule requires `key=value` adjacency which a bare UUID in
+# narrative text never matches.
+#
+# To run locally: `gitleaks detect --source . --config .gitleaks.toml -v`
+# CI uses the same file via .github/workflows/ci.yml.
+
+title = "Sufficit Identity — custom gitleaks rules"
+
+[extend]
+# Inherits ALL default rules from gitleaks (so we keep generic-api-key,
+# AWS keys, GCP keys, private keys, etc.) and ADD our custom rules on top.
+useDefault = true
+
+[[rules]]
+id = "sufficit-introspection-secret-uuid"
+description = "Sufficit introspection API secret (bare UUID in prose)"
+# Matches a Sufficit-flavored keyword near a UUID-shaped token. Catches the
+# exact pattern that escaped the default rule in PLAN.md:65: prose like
+# "secret de introspecção 3b6fad5a-..." or "ApiSecret: <uuid>" — where the
+# default generic-api-key rule requires key=value adjacency that bare prose
+# never matches. Relaxed to allow up to ~40 chars between the keyword and
+# the UUID so Portuguese phrasing ("secret de introspecção") still catches.
+regex = '''(?i)(?:introspec[tc][a-zçã]+|apisecret|api_secret|secret\s+de\s+\w+)[^\n]{0,40}?([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})'''
+keywords = ["introspec", "introspect", "apisecret", "api_secret", "secret de"]
+
+[[rules]]
+id = "sufficit-mysql-connection-password"
+description = "MySQL connection string with non-placeholder password"
+# Catches the leaked pattern `password=<high-entropy-value>` in
+# appsettings.json. Excludes the obvious placeholders (YOUR_, CHANGE_ME,
+# test-*, etc.) and short test passwords already covered by the default rules.
+# The high-entropy threshold (12+ chars) reduces false positives on dev defaults
+# like password=test or password=Passw0rd-123 (those have <12 alnum chars).
+regex = '''password\s*=\s*["']?[A-Za-z0-9+/=_!@#$*-]{12,}["']?'''
+keywords = ["password"]
+  [[rules.allowlists]]
+  # Exclude known placeholders and the test-fixture passwords in this repo's
+  # own src/tests (those are intentional and tracked as test-* constants).
+  regexes = [
+    '''YOUR_(?:PASSWORD|MYSQL_?PASSWORD|DB_?PASSWORD|SECRET|CLIENT_SECRET)''',
+    '''CHANGE_ME''',
+    '''password\s*=\s*(?:placeholder|YOUR_|<REDACTED>|PKCE_)''',
+    '''test-(?:cc|ropc|exchange|introspect|device|authcode)-secret''',
+    '''Str0ng!Passw0rd#\d+''',
+    '''Passw0rd-123''',
+  ]
+  # Also allow anything in src/tests/ (test fixtures are supposed to have
+  # constants that look like secrets).
+  paths = ['''src/tests/.*''']
+
+[[rules]]
+id = "sufficit-rabbitmq-password"
+description = "RabbitMQ password block with non-placeholder value"
+# Catches the JSON form: "Password": "<high-entropy-value>" (which leaked in
+# appsettings.Production.json across all 3 *-apps servers). Same 12+ char
+# high-entropy threshold as the MySQL rule.
+regex = '''"(?:Password|RabbitMQ:Password|Sufficit\.Exchange\.RabbitMQ\.Password)"\s*:\s*"[A-Za-z0-9+/=_!@#$*-]{12,}"'''
+keywords = ["rabbitmq", "password"]
+  [[rules.allowlists]]
+  paths = ['''src/tests/.*''']
+
+[[rules]]
+id = "sufficit-oauth-client-secret"
+description = "OAuth provider ClientSecret with non-placeholder value"
+# Catches Google/Facebook/GitHub OAuth ClientSecret values in
+# ExternalProviders configuration. Catches the exact pattern that leaked in
+# commit message 0a56f5a: `ClientSecret = <redacted>`.
+regex = '''(?:ClientSecret|client_secret)\s*[=:]\s*["']?[A-Za-z0-9_-]{20,}["']?'''
+keywords = ["clientsecret", "client_secret"]
+  [[rules.allowlists]]
+  regexes = [
+    '''YOUR_CLIENT_SECRET''',
+    '''CLIENT_SECRET''',
+    '''CHANGE_ME''',
+    '''client_secret=PKCE_''',
+  ]
+  paths = ['''src/tests/.*''', '''appsettings\.json\.template''']
+
+[[rules]]
+id = "sufficit-jump-host-topology"
+description = "Sufficit jump host / SSH key path topology leak"
+# Catches the pattern that leaked in commit c706b64: SSH jump commands with
+# the Sufficit identityFile path + Sufficit internal IPv6 address. This is
+# infrastructure topology, not a credential per se, but exposes the internal
+# network layout. Split into two simpler alternations (any order of ssh flags).
+regex = '''id_ed25519_sufficit.*?2804:1740:[0-9a-f:]+|2804:1740:[0-9a-f:]+.*?id_ed25519_sufficit'''
+keywords = ["id_ed25519_sufficit", "2804:1740"]
+
+# Global allowlist — these paths are explicitly allowed and never scanned:
+[allowlist]
+description = "Global allowlist — build artifacts, dependencies, and lock files"
+paths = [
+  '''(^|/)(bin|obj|node_modules|\.vs|\.idea)/''',
+  '''\.git/''',
+  '''\.(dll|exe|pdb|so|dylib|jar|zip|tar\.gz|nupkg|snupkg)$''',
+  '''package-lock\.json''',
+  '''yarn\.lock''',
+  '''Directory\.Packages\.props''',  # version pins, no secrets
+]

@@ -1,4 +1,4 @@
-namespace Sufficit.Identity.Server;
+namespace Sufficit.Identity.STS;
 
 /// <summary>
 /// Root configuration for the Sufficit Identity STS.
@@ -212,23 +212,29 @@ public sealed class CertificatesOptions
 /// <summary>
 /// Feature flags for legacy OAuth 2.0 grant types that OAuth 2.1 removes
 /// (Resource Owner Password Credentials and the "none" grant/response type).
-/// Both default to <c>true</c> to preserve compatibility with clients that
-/// have not yet migrated to authorization_code + PKCE; they exist so the
-/// future cutover ("Onda E") can disable each grant per-environment without
-/// a code change.
+/// Both default to <c>false</c> — secure-by-default (EVALUATION-2026-07-21 §5
+/// P0 #8). Environments that still need these grants during the migration
+/// must opt-in explicitly via <c>Sufficit:Identity:LegacyGrants:Password=true</c>
+/// and/or <c>None=true</c> in the per-environment <c>appsettings.&lt;env&gt;.json</c>.
+/// This forces conscious opt-in instead of ship-a-insecure.
 /// </summary>
 public sealed class LegacyGrantsOptions
 {
     /// <summary>
     /// Enables the Resource Owner Password Credentials grant
-    /// (<c>grant_type=password</c>). Removed by OAuth 2.1.
+    /// (<c>grant_type=password</c>). Removed by OAuth 2.1. Default
+    /// <c>false</c> — opt-in per environment if a legacy client still
+    /// requires it (with telemetry and a removal date).
     /// </summary>
-    public bool Password { get; init; } = true;
+    public bool Password { get; init; } = false;
 
     /// <summary>
-    /// Enables the "none" grant/response type. Removed by OAuth 2.1.
+    /// Enables the "none" grant/response type (implicit access_token without
+    /// PKCE). Removed by OAuth 2.1. Default <c>false</c> — opt-in per
+    /// environment only while migrating legacy WebForms/old-SwaggerUI clients
+    /// to authorization_code + PKCE.
     /// </summary>
-    public bool None { get; init; } = true;
+    public bool None { get; init; } = false;
 }
 
 /// <summary>

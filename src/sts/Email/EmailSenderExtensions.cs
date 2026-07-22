@@ -2,10 +2,9 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Sufficit.Exchange;
-using Sufficit.Identity.Server.Email;
+using Sufficit.Identity.STS.Email;
 
-namespace Sufficit.Identity.Server;
+namespace Sufficit.Identity.STS;
 
 public static class EmailSenderExtensions
 {
@@ -46,9 +45,9 @@ public static class EmailSenderExtensions
             return services;
         }
 
-        // Register IExchangeBrokerService / RabbitMQ connection via the
-        // extension shipped in the Sufficit.Communication package.
-        services.AddSufficitExchange(configuration);
+        services.Configure<RabbitMqEmailOptions>(
+            configuration.GetSection(RabbitMqEmailOptions.SectionName));
+        services.TryAddSingleton<IEmailMessagePublisher, RabbitMqEmailPublisher>();
 
         // Replace any IEmailSender previously registered by the UI layer
         // (SmtpEmailSender / LoggingEmailSender) with the RabbitMQ queue.

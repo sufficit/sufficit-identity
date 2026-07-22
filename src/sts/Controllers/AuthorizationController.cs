@@ -4,6 +4,7 @@ using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
@@ -861,24 +862,22 @@ public class AuthorizationController : Controller
 /// plain <see cref="Microsoft.Extensions.Configuration.IConfiguration"/>
 /// injection in <see cref="AuthorizationController"/> rather than being added
 /// to <c>SufficitIdentityOptions</c>, since that type lives in
-/// <c>src/server</c> (out of this file's ownership) — no other project needs
+/// <c>src/sts/ServiceCollectionExtensions.cs</c> — no other project needs
 /// to reference this type.
 /// </summary>
 public sealed class TokenExchangeOptions
 {
     /// <summary>
-    /// Master switch for the token-exchange grant. Defaults to <c>true</c>
-    /// (preserves the pre-existing behavior — and the "test-exchange" client
-    /// TokenExchangeTests relies on) so this hardening pass doesn't silently
-    /// break clients already depending on it without an explicit opt-in.
-    /// Flip to <c>false</c> per-environment to kill the grant entirely until
-    /// a delegation policy is signed off (the eval's recommendation was to
-    /// default this OFF; kept ON here deliberately — see the conservative
-    /// notes in the accompanying report — because flipping the *existing*
-    /// default without a coordinated config rollout would break whatever
-    /// production clients may already depend on it with zero warning).
+    /// Master switch for the token-exchange grant (RFC 8693). Default
+    /// <c>false</c> — secure-by-default (EVALUATION-2026-07-21 §5 P0 #8).
+    /// Production environments that have signed off a delegation policy
+    /// must opt-in explicitly via
+    /// <c>Sufficit:Identity:TokenExchange:Enabled=true</c> AND configure
+    /// <see cref="AllowedClientIds"/> to a closed allowlist. The "test-exchange"
+    /// client used by <c>TokenExchangeTests</c> still works because the
+    /// integration test factory overrides this default via test configuration.
     /// </summary>
-    public bool Enabled { get; init; } = true;
+    public bool Enabled { get; init; } = false;
 
     /// <summary>
     /// Client IDs allowed to act as the "actor" in a token exchange, on TOP of

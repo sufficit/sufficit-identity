@@ -1,39 +1,34 @@
 # syntax=docker/dockerfile:1
 #
 # =============================================================================
-# Sufficit Identity STS — multi-stage container build.
+# Sufficit Identity Server — multi-stage container build.
 #
-# WHAT THIS BUILDS: publishes src/sts (Sufficit.Identity.STS, the headless
-# OAuth/OIDC host) together with the sibling Blazor Server UI it hosts
-# in-process (login/consent/logout/manage pages).
+# WHAT THIS BUILDS: publishes src/server (Sufficit.Identity.Server, the
+# composition host) together with the STS identity API, management API and
+# sibling Blazor Server UI it hosts in-process.
 #
 # -----------------------------------------------------------------------------
 # BUILD CONTEXT REQUIREMENT — READ BEFORE BUILDING
 # -----------------------------------------------------------------------------
-# src/sts/Sufficit.Identity.STS.csproj references the sibling
+# src/server/Sufficit.Identity.Server.csproj references the sibling
 # sufficit-identity-ui repo via an UNCONDITIONAL <ProjectReference
 # Include="..\..\..\sufficit-identity-ui\src\Sufficit.Identity.UI\..."/>.
-# Unlike Sufficit.Communication (referenced from src/server, which already
-# carries a Condition="Exists(...)"/NuGet Version="1.*" fallback pair), there
-# is currently NO published `Sufficit.Identity.UI` NuGet package to fall back
+# There is currently NO published `Sufficit.Identity.UI` NuGet package to fall back
 # to (checked nuget.org: no such package exists as of 2026-07-20) — so this
 # image genuinely CANNOT be built from this repo alone today. The sibling
 # UI source must be supplied as a second Docker build context.
 #
-# The OTHER sibling ProjectReferences this solution transitively pulls in
-# (Sufficit.Communication, and via IT, Sufficit.Base/Utils/EFData/Json) DO
-# already carry that Condition="Exists(...)" + NuGet-fallback pair in their
-# own .csproj files — so as long as those sibling repo folders are simply
-# absent from both contexts below, MSBuild resolves them from NuGet
-# automatically. Only sufficit-identity (this repo) and sufficit-identity-ui
-# need to be supplied.
+# Only sufficit-identity (this repo) and sufficit-identity-ui need to be
+# supplied. The Q-EMAIL integration is implemented directly with
+# RabbitMQ.Client, so the image no longer pulls the unrelated
+# Sufficit.Communication/EFData/Pomelo source graph.
 #
 # BUILD (Docker Buildx / BuildKit — additional named build context):
 #
 #   cd sufficit-identity      # this repo; context = "." (repo root)
 #   docker build \
 #     --build-context ui=../sufficit-identity-ui \
-#     -t sufficit-identity-sts:latest \
+#     -t sufficit-identity-server:latest \
 #     .
 #
 # This keeps the DEFAULT build context this repo alone, so .dockerignore at
@@ -61,23 +56,18 @@
 # (appsettings.json.template documents every key).
 # =============================================================================
 
-# Base images pinned to the exact .NET 9 patch version that matches the
+# Base images pinned to the exact .NET 10 SDK/runtime patch versions that match the
 # package graph in Directory.Packages.props (Microsoft.EntityFrameworkCore
-# 9.0.18, Identity.EntityFrameworkCore 9.0.18, DataProtection.EntityFrameworkCore
-# 9.0.18, Mvc.Testing 9.0.18, Sqlite 9.0.18 — all on the same patch). The
-# 9.0 floating tag was previously used; pinning the patch version makes builds
+# 10.0.10, Identity.EntityFrameworkCore 10.0.10, DataProtection.EntityFrameworkCore
+# 10.0.10, Mvc.Testing 10.0.10, Sqlite 10.0.10 — all on the same patch). The
+# floating tag was previously used; pinning the patch version makes builds
 # reproducible and prevents silent rollforward when Microsoft ships a new patch.
 #
-# TODO(supply-chain): additionally pin by SHA digest for cryptographic
-# immutability, once a digest-fetching tool (crane / skopeo / docker manifest
-# inspect) is available in the build environment:
-#   crane digest mcr.microsoft.com/dotnet/sdk:9.0.18
-#   crane digest mcr.microsoft.com/dotnet/aspnet:9.0.18
-# then append `@sha256:<digest>` to each ARG default. The patch tag alone is
-# immutable-in-practice (Microsoft does not move 9.0.18 once shipped) but is
-# not a cryptographic guarantee the way a digest is.
-ARG DOTNET_SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:9.0.18
-ARG DOTNET_RUNTIME_IMAGE=mcr.microsoft.com/dotnet/aspnet:9.0.18
+# Multi-architecture manifest digests verified directly against MCR on
+# 2026-07-21. Keep the readable tags alongside the digests and update both
+# deliberately when applying a .NET servicing patch.
+ARG DOTNET_SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:10.0.302@sha256:ed034a8bf0b24ded0cbbac07e17825d8e9ebfe21e308191d0f7421eaf5ad4664
+ARG DOTNET_RUNTIME_IMAGE=mcr.microsoft.com/dotnet/aspnet:10.0.10@sha256:1fa23fc4872d95fd71c2833ebe65d7e84a43b2d51a31d119516852f13d9505a7
 
 # -----------------------------------------------------------------------------
 # Stage 1: restore + publish
@@ -94,12 +84,12 @@ COPY . /src/sufficit-identity/
 COPY --from=ui . /src/sufficit-identity-ui/
 
 # Defense in depth on top of .dockerignore — see the SECRETS note above.
-RUN rm -f /src/sufficit-identity/src/sts/appsettings.json \
-          /src/sufficit-identity/src/sts/appsettings.Development.json
+RUN rm -f /src/sufficit-identity/src/server/appsettings.json \
+          /src/sufficit-identity/src/server/appsettings.Development.json
 
-RUN dotnet restore /src/sufficit-identity/src/sts/Sufficit.Identity.STS.csproj
+RUN dotnet restore /src/sufficit-identity/src/server/Sufficit.Identity.Server.csproj
 
-RUN dotnet publish /src/sufficit-identity/src/sts/Sufficit.Identity.STS.csproj \
+RUN dotnet publish /src/sufficit-identity/src/server/Sufficit.Identity.Server.csproj \
       --configuration Release \
       --no-restore \
       --output /app/publish
@@ -116,7 +106,7 @@ RUN groupadd --gid 1654 sufficit \
     && useradd --uid 1654 --gid sufficit --create-home --shell /usr/sbin/nologin sufficit
 
 # Install curl as root (BEFORE the USER directive — apt-get needs root) so
-# the HEALTHCHECK below can probe the liveness endpoint. The aspnet:9.0
+# the HEALTHCHECK below can probe the liveness endpoint. The aspnet:10.0
 # Debian Slim base does NOT ship curl or wget by default. --no-install-
 # recommends + apt list cleanup keep the layer small (~5 MB).
 RUN apt-get update \
@@ -128,7 +118,7 @@ USER sufficit
 COPY --from=build /app/publish .
 
 # Configuration is supplied at deploy time (env vars / mounted secrets /
-# orchestrator config) — see appsettings.json.template in this repo for every
+# orchestrator config) — see src/server/appsettings.json.template for every
 # key, and docs/EVALUATION-2026-07-20.md §10 (P0 #9) for the production
 # checklist (Certificates, TrustedProxies, cookie SecurePolicy, real
 # RabbitMQ, etc.). Nothing environment-specific is baked into this image.
@@ -145,4 +135,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD curl -fsS http://localhost:8080/health || exit 1
 
-ENTRYPOINT ["dotnet", "Sufficit.Identity.STS.dll"]
+ENTRYPOINT ["dotnet", "Sufficit.Identity.Server.dll"]

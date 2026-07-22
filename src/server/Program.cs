@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management;
 using Sufficit.Identity.Server;
+using Sufficit.Identity.STS;
 using Sufficit.Identity.UI;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -40,7 +41,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
 
     if (trustedProxies.Length > 0)
     {
-        o.KnownNetworks.Clear();
+        o.KnownIPNetworks.Clear();
         o.KnownProxies.Clear();
 
         foreach (var cidr in trustedProxies)
@@ -51,14 +52,14 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
                 ? int.Parse(parts[1])
                 : (prefix.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 32 : 128);
 
-            o.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(prefix, prefixLength));
+            o.KnownIPNetworks.Add(new System.Net.IPNetwork(prefix, prefixLength));
         }
     }
     else if (builder.Environment.IsDevelopment())
     {
         // No TrustedProxies configured; in Development accept any upstream
         // (we run inside Docker/k8s/Nginx on private networks).
-        o.KnownNetworks.Clear();
+        o.KnownIPNetworks.Clear();
         o.KnownProxies.Clear();
     }
     // else: leave the ASP.NET Core defaults (loopback only) in place.

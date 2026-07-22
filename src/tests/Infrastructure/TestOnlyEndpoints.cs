@@ -8,7 +8,7 @@ namespace Sufficit.Identity.Tests.Infrastructure;
 /// <summary>
 /// Thin wrappers around the "/test-only/*" endpoints registered by
 /// <see cref="SufficitIdentityTestFactory"/> (never present in the real
-/// src/sts host) — see that file for the rationale.
+/// src/server host) — see that file for the rationale.
 /// </summary>
 internal static class TestOnlyEndpoints
 {

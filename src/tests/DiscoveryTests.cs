@@ -53,7 +53,7 @@ public sealed class DiscoveryTests
             // Per-client registration metadata, not OP discovery metadata —
             // deliberately never surfaced here (see the comment above
             // AddEventHandler<HandleConfigurationRequestContext> in
-            // src/server/ServiceCollectionExtensions.cs).
+            // src/sts/ServiceCollectionExtensions.cs).
             "backchannel_logout_url",
         })
         {

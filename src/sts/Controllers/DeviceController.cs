@@ -3,6 +3,7 @@ using Microsoft.AspNetCore; // GetOpenIddictServerRequest() extension lives here
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
@@ -32,7 +33,7 @@ namespace Sufficit.Identity.STS.Controllers;
 ///    The RFC 8628 verification_uri / verification_uri_complete OpenIddict
 ///    itself hands to the polling client/device. This is the ONE URI
 ///    configured server-side via SetEndUserVerificationEndpointUris
-///    (src/server/ServiceCollectionExtensions.cs, out of this file's
+///    (src/sts/ServiceCollectionExtensions.cs, out of this file's
 ///    ownership) with EnableEndUserVerificationEndpointPassthrough() already
 ///    on — it is not a path this controller invented, and it cannot be
 ///    renamed from here. This action does nothing but redirect the browser
@@ -52,7 +53,7 @@ namespace Sufficit.Identity.STS.Controllers;
 ///    documented as "not stored by the default token stores". Surfacing
 ///    scopes here would need a custom OpenIddict event handler stashing them
 ///    as token Properties at /connect/deviceauthorization time — that lives
-///    in src/server/ServiceCollectionExtensions.cs, out of this file's
+///    in src/sts/ServiceCollectionExtensions.cs, out of this file's
 ///    scope. Flagged as follow-up, not implemented here. This lookup is
 ///    also best-effort: any unexpected exception degrades to
 ///    <c>valid:false</c> rather than a 500, since it is a display

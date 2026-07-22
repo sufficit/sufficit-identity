@@ -1,38 +1,41 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Sufficit.Identity.Server</RootNamespace>
     <AssemblyName>Sufficit.Identity.Server</AssemblyName>
-    <Description>Sufficit Identity — OpenIddict server configuration (AddSufficitIdentitySTS).</Description>
+    <!-- Kept for compatibility with existing local User Secrets. -->
+    <UserSecretsId>sufficit-identity-sts</UserSecretsId>
+    <Description>Sufficit Identity — composition host for STS, management and UI modules.</Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenIddict.AspNetCore" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.Facebook" />
-    <PackageReference Include="AspNet.Security.OAuth.GitHub" />
-    <!-- Data Protection key-ring persistence (P0 #B4): AddDataProtection()
-         .PersistKeysToDbContext<AppDbContext>() in ServiceCollectionExtensions.cs. -->
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" />
-  </ItemGroup>
-
-  <ItemGroup Label="Sufficit Dependencies (use local source if available, otherwise NuGet)">
-    <!-- Sufficit.Communication provides IExchangeBrokerService for the
-         RabbitMQEmailQueue (Sufficit.Exchange / Q-EMAIL broker).
-         Falls back to NuGet when the local repo is not present (CI, Docker
-         build without the sibling context). The version is controlled by
-         Central Package Management in Directory.Packages.props (CPM does
-         not allow Version on PackageReference). -->
-    <ProjectReference Include="..\..\..\sufficit-communication\src\Sufficit.Communication.csproj"
-                      Condition="Exists('..\..\..\sufficit-communication\src\Sufficit.Communication.csproj')" />
-    <PackageReference Include="Sufficit.Communication"
-                      Condition="!Exists('..\..\..\sufficit-communication\src\Sufficit.Communication.csproj')" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\core\Sufficit.Identity.Core.csproj" />
+    <ProjectReference Include="..\sts\Sufficit.Identity.STS.csproj" />
+    <ProjectReference Include="..\management\Sufficit.Identity.Management.csproj" />
+    <!-- Sufficit Identity UI (Blazor Server login/consent/logout/manage). -->
+    <ProjectReference Include="..\..\..\sufficit-identity-ui\src\Sufficit.Identity.UI\Sufficit.Identity.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Real appsettings files are developer-local/ignored and may contain
+         credentials. Runtime configuration must come from User Secrets,
+         environment variables, or mounted configuration — never from a
+         build/publish artifact. -->
+    <Content Update="appsettings.json;appsettings.*.json"
+             CopyToOutputDirectory="Never"
+             CopyToPublishDirectory="Never" />
   </ItemGroup>
 
 </Project>

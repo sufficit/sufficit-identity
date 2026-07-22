@@ -21,7 +21,7 @@ public sealed class AppDbContext
     : IdentityDbContext<ApplicationUser, ApplicationRole, string,
         IdentityUserClaim<string>, IdentityUserRole<string>,
         IdentityUserLogin<string>, IdentityRoleClaim<string>,
-        IdentityUserToken<string>>, IDataProtectionKeyContext
+        IdentityUserToken<string>, IdentityUserPasskey<string>>, IDataProtectionKeyContext
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
@@ -42,6 +42,44 @@ public sealed class AppDbContext
         MapIdentityTables(builder);
         MapOpenIddictTables(builder);
         MapDataProtectionTable(builder);
+        ConfigurePasskeyEntities(builder);
+    }
+
+    /// <summary>
+    /// Configura as entidades de passkey do .NET 10 Identity.
+    /// O IdentityDbContext base registra <see cref="IdentityUserPasskey{TKey}"/>
+    /// como entidade, mas a navigation <c>Data</c> (do tipo
+    /// <see cref="IdentityPasskeyData"/>) não é configurada automaticamente
+    /// como owned type em todos os cenários (especialmente com TUser customizado
+    /// e chave string). Aqui declaramos explicitamente OwnsOne para resolver.
+    /// </summary>
+    private static void ConfigurePasskeyEntities(ModelBuilder builder)
+    {
+        builder.Entity<IdentityUserPasskey<string>>(b =>
+        {
+            b.ToTable("userpasskeys");
+            // PK composta: UserId + CredentialId (ambos juntos identificam
+            // unicamente uma passkey). O base IdentityDbContext deveria
+            // definir isto automaticamente, mas não está fazendo para nosso
+            // TUser customizado — definimos explicitamente.
+            b.HasKey(p => new { p.UserId, p.CredentialId });
+            // Data é um owned type (inline na mesma tabela).
+            b.OwnsOne(p => p.Data, d =>
+            {
+                // Transports é string[] — EF Core não mapeia arrays nativamente.
+                // Converter para JSON (string separada por vírgula ou JSON completo).
+                // JSON é mais robusto (escapa vírgulas em valores, preserva null).
+                d.Property(p => p.Transports)
+                    .HasConversion(
+                        v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                        v => v == null ? Array.Empty<string>() : System.Text.Json.JsonSerializer.Deserialize<string[]>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? Array.Empty<string>())
+                    .Metadata.SetValueComparer(
+                        new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<string[]>(
+                            (a, c) => (a == null && c == null) || (a != null && c != null && a.SequenceEqual(c)),
+                            v => v == null ? 0 : v.GetHashCode(),
+                            v => v == null ? Array.Empty<string>() : v.ToArray()));
+            });
+        });
     }
 
     /// <summary>
@@ -57,7 +95,9 @@ public sealed class AppDbContext
             b.Property(u => u.Timestamp)
              .HasColumnName("timestamp")
              .HasColumnType("timestamp")
-             .HasDefaultValueSql("UTC_TIMESTAMP()")
+             // MySQL 8.4 requires parentheses around non-CURRENT_TIMESTAMP
+             // default expressions. Keep UTC_TIMESTAMP for legacy semantics.
+             .HasDefaultValueSql("(UTC_TIMESTAMP())")
              .ValueGeneratedOnAddOrUpdate();
         });
 
@@ -118,6 +158,10 @@ public sealed class AppDbContext
         builder.Entity<OpenIddictEntityFrameworkCoreAuthorization>(b =>
         {
             b.ToTable("authorizations");
+            // Subjects are Identity user IDs (varchar(255)). Matching that
+            // limit also keeps OpenIddict's composite index below MySQL's
+            // 3072-byte utf8mb4 key limit.
+            b.Property(a => a.Subject).HasMaxLength(255);
             SnakeCaseColumns(b, [
                 ("Id", "id"),
                 ("ApplicationId", "application_id"),
@@ -152,6 +196,7 @@ public sealed class AppDbContext
         builder.Entity<OpenIddictEntityFrameworkCoreToken>(b =>
         {
             b.ToTable("tokens");
+            b.Property(t => t.Subject).HasMaxLength(255);
             SnakeCaseColumns(b, [
                 ("Id", "id"),
                 ("ApplicationId", "application_id"),

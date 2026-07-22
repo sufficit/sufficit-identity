@@ -14,7 +14,7 @@ using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
-namespace Sufficit.Identity.Server;
+namespace Sufficit.Identity.STS;
 
 /// <summary>
 /// DI extensions that wire up the Sufficit Identity STS server
@@ -31,6 +31,12 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration,
         string configurationSection = "Sufficit:Identity")
     {
+        // The STS is a self-contained API module. Register its controllers as
+        // an MVC application part so any composition host can map them without
+        // relying on entry-assembly discovery.
+        services.AddControllers()
+            .AddApplicationPart(typeof(Controllers.AuthorizationController).Assembly);
+
         var options = configuration
             .GetSection(configurationSection)
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
@@ -44,14 +50,19 @@ public static class ServiceCollectionExtensions
         var isDevelopmentEnvironment =
             Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
 
-        // ---- Database (MySQL via Pomelo) ----
+        // ---- Database (MySQL via Oracle MySql.EntityFrameworkCore) ----
+        // Stage 1 da migração Pomelo→Oracle (2026-07-21) — ver
+        // docs/NOTICE-mysql-license.md para o racional de licença (GPLv2+
+        // FOSS Exception temporária, voltar a Pomelo MIT quando shipar EF10).
+        // API diff: UseMySQL(connectionString) — sem ServerVersion.AutoDetect
+        // (Oracle provider deriva a versão do servidor da própria connection).
         var connectionString = configuration.GetConnectionString(options.ConnectionStringName)
             ?? throw new InvalidOperationException(
                 $"Connection string '{options.ConnectionStringName}' not configured.");
 
         services.AddDbContext<AppDbContext>(db =>
         {
-            db.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+            db.UseMySQL(connectionString);
             db.UseOpenIddict();
         });
 
@@ -115,6 +126,15 @@ public static class ServiceCollectionExtensions
             })
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
+        // .NET 10 native passkeys (WebAuthn/FIDO2): a inclusão do 9º generic
+        // arg IdentityUserPasskey<string> em IdentityDbContext (AppDbContext)
+        // faz AddEntityFrameworkStores<AppDbContext>() registrar automaticamente
+        // IUserPasskeyStore<ApplicationUser>. UserManager<T> ganha os métodos
+        // AddOrUpdatePasskeyAsync / GetPasskeysAsync / RemovePasskeyAsync /
+        // FindByPasskeyIdAsync, e SignInManager<T> ganha CheckPasskeySignIn.
+        // A UI Blazor (sufficit-identity-ui) invoca via JS interop com
+        // navigator.credentials.create/get. A tabela userpasskeys é mapeada
+        // em AppDbContext.MapIdentityTables.
 
         // Cookies used by the OpenIddict ASP.NET Core host.
         services.ConfigureApplicationCookie(o =>
