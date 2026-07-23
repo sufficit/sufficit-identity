@@ -85,3 +85,6 @@ coverage*
 *.log
 Log/
 [Bb]ackup*/
+
+# AI Evaluations, local only, sensivity informations
+docs/eval/
