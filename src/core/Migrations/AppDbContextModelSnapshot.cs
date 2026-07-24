@@ -23,13 +23,16 @@ namespace Sufficit.Identity.Core.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     b.Property<string>("FriendlyName")
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("friendlyname");
 
                     b.Property<string>("Xml")
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("xml");
 
                     b.HasKey("Id");
 
@@ -40,17 +43,21 @@ namespace Sufficit.Identity.Core.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     b.Property<string>("ClaimType")
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("claimtype");
 
                     b.Property<string>("ClaimValue")
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("claimvalue");
 
                     b.Property<string>("RoleId")
                         .IsRequired()
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("roleid");
 
                     b.HasKey("Id");
 
@@ -63,17 +70,21 @@ namespace Sufficit.Identity.Core.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("id");
 
                     b.Property<string>("ClaimType")
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("claimtype");
 
                     b.Property<string>("ClaimValue")
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("claimvalue");
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("userid");
 
                     b.HasKey("Id");
 
@@ -86,18 +97,22 @@ namespace Sufficit.Identity.Core.Migrations
                 {
                     b.Property<string>("LoginProvider")
                         .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("loginprovider");
 
                     b.Property<string>("ProviderKey")
                         .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("providerkey");
 
                     b.Property<string>("ProviderDisplayName")
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("providerdisplayname");
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("userid");
 
                     b.HasKey("LoginProvider", "ProviderKey");
 
@@ -108,13 +123,20 @@ namespace Sufficit.Identity.Core.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserPasskey<string>", b =>
                 {
-                    b.Property<string>("UserId")
-                        .HasColumnType("varchar(255)");
-
                     b.Property<byte[]>("CredentialId")
-                        .HasColumnType("varbinary(3072)");
+                        .HasMaxLength(1024)
+                        .HasColumnType("varbinary(1024)")
+                        .HasColumnName("credentialid");
 
-                    b.HasKey("UserId", "CredentialId");
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("userid");
+
+                    b.HasKey("CredentialId");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_userpasskeys_userid");
 
                     b.ToTable("userpasskeys", (string)null);
                 });
@@ -122,10 +144,12 @@ namespace Sufficit.Identity.Core.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<string>", b =>
                 {
                     b.Property<string>("UserId")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("userid");
 
                     b.Property<string>("RoleId")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("roleid");
 
                     b.HasKey("UserId", "RoleId");
 
@@ -137,18 +161,22 @@ namespace Sufficit.Identity.Core.Migrations
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
                     b.Property<string>("UserId")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("userid");
 
                     b.Property<string>("LoginProvider")
                         .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("loginprovider");
 
                     b.Property<string>("Name")
                         .HasMaxLength(255)
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("name");
 
                     b.Property<string>("Value")
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("value");
 
                     b.HasKey("UserId", "LoginProvider", "Name");
 
@@ -158,15 +186,18 @@ namespace Sufficit.Identity.Core.Migrations
             modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
                         .HasColumnName("id");
 
                     b.Property<string>("ApplicationType")
-                        .HasColumnType("longtext")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
                         .HasColumnName("application_type");
 
                     b.Property<string>("ClientId")
-                        .HasColumnType("longtext")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
                         .HasColumnName("client_id");
 
                     b.Property<string>("ClientSecret")
@@ -174,15 +205,18 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasColumnName("client_secret");
 
                     b.Property<string>("ClientType")
-                        .HasColumnType("longtext")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
                         .HasColumnName("client_type");
 
                     b.Property<string>("ConcurrencyToken")
-                        .HasColumnType("longtext")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
                         .HasColumnName("concurrency_token");
 
                     b.Property<string>("ConsentType")
-                        .HasColumnType("longtext")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
                         .HasColumnName("consent_type");
 
                     b.Property<string>("DisplayName")
@@ -223,21 +257,28 @@ namespace Sufficit.Identity.Core.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ClientId")
+                        .IsUnique()
+                        .HasDatabaseName("AK_OpenIddictApplications_ClientId");
+
                     b.ToTable("applications", (string)null);
                 });
 
             modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreAuthorization", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
                         .HasColumnName("id");
 
                     b.Property<string>("ApplicationId")
-                        .HasColumnType("varchar(255)")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
                         .HasColumnName("application_id");
 
                     b.Property<string>("ConcurrencyToken")
-                        .HasColumnType("longtext")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
                         .HasColumnName("concurrency_token");
 
                     b.Property<DateTime?>("CreationDate")
@@ -253,21 +294,24 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasColumnName("scopes");
 
                     b.Property<string>("Status")
-                        .HasColumnType("longtext")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
                         .HasColumnName("status");
 
                     b.Property<string>("Subject")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
+                        .HasMaxLength(400)
+                        .HasColumnType("varchar(400)")
                         .HasColumnName("subject");
 
                     b.Property<string>("Type")
-                        .HasColumnType("longtext")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
                         .HasColumnName("type");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ApplicationId");
+                    b.HasIndex("ApplicationId", "Status", "Subject", "Type")
+                        .HasDatabaseName("IX_OpenIddictAuthorizations_ApplicationId_Status_Subject_Type");
 
                     b.ToTable("authorizations", (string)null);
                 });
@@ -275,11 +319,13 @@ namespace Sufficit.Identity.Core.Migrations
             modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreScope", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
                         .HasColumnName("id");
 
                     b.Property<string>("ConcurrencyToken")
-                        .HasColumnType("longtext")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
                         .HasColumnName("concurrency_token");
 
                     b.Property<string>("Description")
@@ -299,7 +345,8 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasColumnName("display_names");
 
                     b.Property<string>("Name")
-                        .HasColumnType("longtext")
+                        .HasMaxLength(200)
+                        .HasColumnType("varchar(200)")
                         .HasColumnName("name");
 
                     b.Property<string>("Properties")
@@ -312,25 +359,33 @@ namespace Sufficit.Identity.Core.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("AK_OpenIddictScopes_Name");
+
                     b.ToTable("scopes", (string)null);
                 });
 
             modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreToken", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
                         .HasColumnName("id");
 
                     b.Property<string>("ApplicationId")
-                        .HasColumnType("varchar(255)")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
                         .HasColumnName("application_id");
 
                     b.Property<string>("AuthorizationId")
-                        .HasColumnType("varchar(255)")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
                         .HasColumnName("authorization_id");
 
                     b.Property<string>("ConcurrencyToken")
-                        .HasColumnType("longtext")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
                         .HasColumnName("concurrency_token");
 
                     b.Property<DateTime?>("CreationDate")
@@ -354,27 +409,36 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasColumnName("redemption_date");
 
                     b.Property<string>("ReferenceId")
-                        .HasColumnType("longtext")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
                         .HasColumnName("reference_id");
 
                     b.Property<string>("Status")
-                        .HasColumnType("longtext")
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
                         .HasColumnName("status");
 
                     b.Property<string>("Subject")
-                        .HasMaxLength(255)
-                        .HasColumnType("varchar(255)")
+                        .HasMaxLength(400)
+                        .HasColumnType("varchar(400)")
                         .HasColumnName("subject");
 
                     b.Property<string>("Type")
-                        .HasColumnType("longtext")
+                        .HasMaxLength(150)
+                        .HasColumnType("varchar(150)")
                         .HasColumnName("type");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ApplicationId");
+                    b.HasIndex("AuthorizationId")
+                        .HasDatabaseName("IX_OpenIddictTokens_AuthorizationId");
 
-                    b.HasIndex("AuthorizationId");
+                    b.HasIndex("ReferenceId")
+                        .IsUnique()
+                        .HasDatabaseName("AK_OpenIddictTokens_ReferenceId");
+
+                    b.HasIndex("ApplicationId", "Status", "Subject", "Type")
+                        .HasDatabaseName("IX_OpenIddictTokens_ApplicationId_Status_Subject_Type");
 
                     b.ToTable("tokens", (string)null);
                 });
@@ -382,19 +446,23 @@ namespace Sufficit.Identity.Core.Migrations
             modelBuilder.Entity("Sufficit.Identity.Core.Entities.ApplicationRole", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("id");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("concurrencystamp");
 
                     b.Property<string>("Name")
                         .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("name");
 
                     b.Property<string>("NormalizedName")
                         .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("normalizedname");
 
                     b.HasKey("Id");
 
@@ -408,47 +476,60 @@ namespace Sufficit.Identity.Core.Migrations
             modelBuilder.Entity("Sufficit.Identity.Core.Entities.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("varchar(255)");
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("id");
 
                     b.Property<int>("AccessFailedCount")
-                        .HasColumnType("int");
+                        .HasColumnType("int")
+                        .HasColumnName("accessfailedcount");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("concurrencystamp");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("email");
 
                     b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("emailconfirmed");
 
                     b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("lockoutenabled");
 
                     b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("datetime");
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("lockoutend");
 
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("normalizedemail");
 
                     b.Property<string>("NormalizedUserName")
                         .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("normalizedusername");
 
                     b.Property<string>("PasswordHash")
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("passwordhash");
 
                     b.Property<string>("PhoneNumber")
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("phonenumber");
 
                     b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("phonenumberconfirmed");
 
                     b.Property<string>("SecurityStamp")
-                        .HasColumnType("longtext");
+                        .HasColumnType("longtext")
+                        .HasColumnName("securitystamp");
 
                     b.Property<DateTime>("Timestamp")
                         .ValueGeneratedOnAddOrUpdate()
@@ -457,11 +538,13 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasDefaultValueSql("(UTC_TIMESTAMP())");
 
                     b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("tinyint(1)");
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("twofactorenabled");
 
                     b.Property<string>("UserName")
                         .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("username");
 
                     b.HasKey("Id");
 
@@ -506,51 +589,59 @@ namespace Sufficit.Identity.Core.Migrations
                 {
                     b.OwnsOne("Microsoft.AspNetCore.Identity.IdentityPasskeyData", "Data", b1 =>
                         {
-                            b1.Property<string>("IdentityUserPasskeyUserId")
-                                .HasColumnType("varchar(255)");
-
                             b1.Property<byte[]>("IdentityUserPasskeyCredentialId")
-                                .HasColumnType("varbinary(3072)");
+                                .HasColumnType("varbinary(1024)");
 
                             b1.Property<byte[]>("AttestationObject")
                                 .IsRequired()
-                                .HasColumnType("longblob");
+                                .HasColumnType("longblob")
+                                .HasColumnName("attestationobject");
 
                             b1.Property<byte[]>("ClientDataJson")
                                 .IsRequired()
-                                .HasColumnType("longblob");
+                                .HasColumnType("longblob")
+                                .HasColumnName("clientdatajson");
 
                             b1.Property<DateTimeOffset>("CreatedAt")
-                                .HasColumnType("datetime");
+                                .HasColumnType("datetime(6)")
+                                .HasColumnName("createdat");
 
                             b1.Property<bool>("IsBackedUp")
-                                .HasColumnType("tinyint(1)");
+                                .HasColumnType("tinyint(1)")
+                                .HasColumnName("isbackedup");
 
                             b1.Property<bool>("IsBackupEligible")
-                                .HasColumnType("tinyint(1)");
+                                .HasColumnType("tinyint(1)")
+                                .HasColumnName("isbackupeligible");
 
                             b1.Property<bool>("IsUserVerified")
-                                .HasColumnType("tinyint(1)");
+                                .HasColumnType("tinyint(1)")
+                                .HasColumnName("isuserverified");
 
                             b1.Property<string>("Name")
-                                .HasColumnType("longtext");
+                                .HasColumnType("longtext")
+                                .HasColumnName("name");
 
                             b1.Property<byte[]>("PublicKey")
                                 .IsRequired()
-                                .HasColumnType("longblob");
+                                .HasColumnType("longblob")
+                                .HasColumnName("publickey");
 
                             b1.Property<uint>("SignCount")
-                                .HasColumnType("int unsigned");
+                                .HasColumnType("int unsigned")
+                                .HasColumnName("signcount");
 
                             b1.Property<string>("Transports")
-                                .HasColumnType("longtext");
+                                .IsRequired()
+                                .HasColumnType("longtext")
+                                .HasColumnName("transports");
 
-                            b1.HasKey("IdentityUserPasskeyUserId", "IdentityUserPasskeyCredentialId");
+                            b1.HasKey("IdentityUserPasskeyCredentialId");
 
                             b1.ToTable("userpasskeys");
 
                             b1.WithOwner()
-                                .HasForeignKey("IdentityUserPasskeyUserId", "IdentityUserPasskeyCredentialId");
+                                .HasForeignKey("IdentityUserPasskeyCredentialId");
                         });
 
                     b.Navigation("Data")

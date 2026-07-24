@@ -19,13 +19,13 @@ namespace Sufficit.Identity.Core.Migrations
                 name: "applications",
                 columns: table => new
                 {
-                    id = table.Column<string>(type: "varchar(255)", nullable: false),
-                    application_type = table.Column<string>(type: "longtext", nullable: true),
-                    client_id = table.Column<string>(type: "longtext", nullable: true),
+                    id = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false),
+                    application_type = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: true),
+                    client_id = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true),
                     client_secret = table.Column<string>(type: "longtext", nullable: true),
-                    client_type = table.Column<string>(type: "longtext", nullable: true),
-                    concurrency_token = table.Column<string>(type: "longtext", nullable: true),
-                    consent_type = table.Column<string>(type: "longtext", nullable: true),
+                    client_type = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: true),
+                    concurrency_token = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: true),
+                    consent_type = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: true),
                     display_name = table.Column<string>(type: "longtext", nullable: true),
                     display_names = table.Column<string>(type: "longtext", nullable: true),
                     json_web_key_set = table.Column<string>(type: "longtext", nullable: true),
@@ -46,14 +46,14 @@ namespace Sufficit.Identity.Core.Migrations
                 name: "dataprotectionkeys",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
-                    FriendlyName = table.Column<string>(type: "longtext", nullable: true),
-                    Xml = table.Column<string>(type: "longtext", nullable: true)
+                    friendlyname = table.Column<string>(type: "longtext", nullable: true),
+                    xml = table.Column<string>(type: "longtext", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_dataprotectionkeys", x => x.Id);
+                    table.PrimaryKey("PK_dataprotectionkeys", x => x.id);
                 })
                 .Annotation("MySQL:Charset", "utf8mb4");
 
@@ -61,14 +61,14 @@ namespace Sufficit.Identity.Core.Migrations
                 name: "roles",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "varchar(255)", nullable: false),
-                    Name = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true),
-                    NormalizedName = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true),
-                    ConcurrencyStamp = table.Column<string>(type: "longtext", nullable: true)
+                    id = table.Column<string>(type: "varchar(255)", nullable: false),
+                    name = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true),
+                    normalizedname = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true),
+                    concurrencystamp = table.Column<string>(type: "longtext", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_roles", x => x.Id);
+                    table.PrimaryKey("PK_roles", x => x.id);
                 })
                 .Annotation("MySQL:Charset", "utf8mb4");
 
@@ -76,13 +76,13 @@ namespace Sufficit.Identity.Core.Migrations
                 name: "scopes",
                 columns: table => new
                 {
-                    id = table.Column<string>(type: "varchar(255)", nullable: false),
-                    concurrency_token = table.Column<string>(type: "longtext", nullable: true),
+                    id = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false),
+                    concurrency_token = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: true),
                     description = table.Column<string>(type: "longtext", nullable: true),
                     descriptions = table.Column<string>(type: "longtext", nullable: true),
                     display_name = table.Column<string>(type: "longtext", nullable: true),
                     display_names = table.Column<string>(type: "longtext", nullable: true),
-                    name = table.Column<string>(type: "longtext", nullable: true),
+                    name = table.Column<string>(type: "varchar(200)", maxLength: 200, nullable: true),
                     properties = table.Column<string>(type: "longtext", nullable: true),
                     resources = table.Column<string>(type: "longtext", nullable: true)
                 },
@@ -96,22 +96,22 @@ namespace Sufficit.Identity.Core.Migrations
                 name: "userpasskeys",
                 columns: table => new
                 {
-                    UserId = table.Column<string>(type: "varchar(255)", nullable: false),
-                    CredentialId = table.Column<byte[]>(type: "varbinary(3072)", nullable: false),
-                    Data_PublicKey = table.Column<byte[]>(type: "longblob", nullable: false),
-                    Data_Name = table.Column<string>(type: "longtext", nullable: true),
-                    Data_CreatedAt = table.Column<DateTimeOffset>(type: "datetime", nullable: false),
-                    Data_SignCount = table.Column<uint>(type: "int unsigned", nullable: false),
-                    Data_Transports = table.Column<string>(type: "longtext", nullable: true),
-                    Data_IsUserVerified = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    Data_IsBackupEligible = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    Data_IsBackedUp = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    Data_AttestationObject = table.Column<byte[]>(type: "longblob", nullable: false),
-                    Data_ClientDataJson = table.Column<byte[]>(type: "longblob", nullable: false)
+                    credentialid = table.Column<byte[]>(type: "varbinary(1024)", maxLength: 1024, nullable: false),
+                    userid = table.Column<string>(type: "varchar(255)", nullable: false),
+                    publickey = table.Column<byte[]>(type: "longblob", nullable: false),
+                    name = table.Column<string>(type: "longtext", nullable: true),
+                    createdat = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: false),
+                    signcount = table.Column<uint>(type: "int unsigned", nullable: false),
+                    transports = table.Column<string>(type: "longtext", nullable: false),
+                    isuserverified = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    isbackupeligible = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    isbackedup = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    attestationobject = table.Column<byte[]>(type: "longblob", nullable: false),
+                    clientdatajson = table.Column<byte[]>(type: "longblob", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_userpasskeys", x => new { x.UserId, x.CredentialId });
+                    table.PrimaryKey("PK_userpasskeys", x => x.credentialid);
                 })
                 .Annotation("MySQL:Charset", "utf8mb4");
 
@@ -119,26 +119,26 @@ namespace Sufficit.Identity.Core.Migrations
                 name: "users",
                 columns: table => new
                 {
-                    Id = table.Column<string>(type: "varchar(255)", nullable: false),
+                    id = table.Column<string>(type: "varchar(255)", nullable: false),
                     timestamp = table.Column<DateTime>(type: "timestamp", nullable: false, defaultValueSql: "(UTC_TIMESTAMP())"),
-                    UserName = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true),
-                    NormalizedUserName = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true),
-                    Email = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true),
-                    NormalizedEmail = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true),
-                    EmailConfirmed = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    PasswordHash = table.Column<string>(type: "longtext", nullable: true),
-                    SecurityStamp = table.Column<string>(type: "longtext", nullable: true),
-                    ConcurrencyStamp = table.Column<string>(type: "longtext", nullable: true),
-                    PhoneNumber = table.Column<string>(type: "longtext", nullable: true),
-                    PhoneNumberConfirmed = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    TwoFactorEnabled = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    LockoutEnd = table.Column<DateTimeOffset>(type: "datetime", nullable: true),
-                    LockoutEnabled = table.Column<bool>(type: "tinyint(1)", nullable: false),
-                    AccessFailedCount = table.Column<int>(type: "int", nullable: false)
+                    username = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true),
+                    normalizedusername = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true),
+                    email = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true),
+                    normalizedemail = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: true),
+                    emailconfirmed = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    passwordhash = table.Column<string>(type: "longtext", nullable: true),
+                    securitystamp = table.Column<string>(type: "longtext", nullable: true),
+                    concurrencystamp = table.Column<string>(type: "longtext", nullable: true),
+                    phonenumber = table.Column<string>(type: "longtext", nullable: true),
+                    phonenumberconfirmed = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    twofactorenabled = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    lockoutend = table.Column<DateTimeOffset>(type: "datetime(6)", nullable: true),
+                    lockoutenabled = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    accessfailedcount = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_users", x => x.Id);
+                    table.PrimaryKey("PK_users", x => x.id);
                 })
                 .Annotation("MySQL:Charset", "utf8mb4");
 
@@ -146,15 +146,15 @@ namespace Sufficit.Identity.Core.Migrations
                 name: "authorizations",
                 columns: table => new
                 {
-                    id = table.Column<string>(type: "varchar(255)", nullable: false),
-                    application_id = table.Column<string>(type: "varchar(255)", nullable: true),
-                    concurrency_token = table.Column<string>(type: "longtext", nullable: true),
+                    id = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false),
+                    application_id = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true),
+                    concurrency_token = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: true),
                     creation_date = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     properties = table.Column<string>(type: "longtext", nullable: true),
                     scopes = table.Column<string>(type: "longtext", nullable: true),
-                    status = table.Column<string>(type: "longtext", nullable: true),
-                    subject = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true),
-                    type = table.Column<string>(type: "longtext", nullable: true)
+                    status = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: true),
+                    subject = table.Column<string>(type: "varchar(400)", maxLength: 400, nullable: true),
+                    type = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -171,20 +171,20 @@ namespace Sufficit.Identity.Core.Migrations
                 name: "roleclaims",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
-                    RoleId = table.Column<string>(type: "varchar(255)", nullable: false),
-                    ClaimType = table.Column<string>(type: "longtext", nullable: true),
-                    ClaimValue = table.Column<string>(type: "longtext", nullable: true)
+                    roleid = table.Column<string>(type: "varchar(255)", nullable: false),
+                    claimtype = table.Column<string>(type: "longtext", nullable: true),
+                    claimvalue = table.Column<string>(type: "longtext", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_roleclaims", x => x.Id);
+                    table.PrimaryKey("PK_roleclaims", x => x.id);
                     table.ForeignKey(
-                        name: "FK_roleclaims_roles_RoleId",
-                        column: x => x.RoleId,
+                        name: "FK_roleclaims_roles_roleid",
+                        column: x => x.roleid,
                         principalTable: "roles",
-                        principalColumn: "Id",
+                        principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 })
                 .Annotation("MySQL:Charset", "utf8mb4");
@@ -193,20 +193,20 @@ namespace Sufficit.Identity.Core.Migrations
                 name: "userclaims",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("MySQL:ValueGenerationStrategy", MySQLValueGenerationStrategy.IdentityColumn),
-                    UserId = table.Column<string>(type: "varchar(255)", nullable: false),
-                    ClaimType = table.Column<string>(type: "longtext", nullable: true),
-                    ClaimValue = table.Column<string>(type: "longtext", nullable: true)
+                    userid = table.Column<string>(type: "varchar(255)", nullable: false),
+                    claimtype = table.Column<string>(type: "longtext", nullable: true),
+                    claimvalue = table.Column<string>(type: "longtext", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_userclaims", x => x.Id);
+                    table.PrimaryKey("PK_userclaims", x => x.id);
                     table.ForeignKey(
-                        name: "FK_userclaims_users_UserId",
-                        column: x => x.UserId,
+                        name: "FK_userclaims_users_userid",
+                        column: x => x.userid,
                         principalTable: "users",
-                        principalColumn: "Id",
+                        principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 })
                 .Annotation("MySQL:Charset", "utf8mb4");
@@ -215,19 +215,19 @@ namespace Sufficit.Identity.Core.Migrations
                 name: "userlogins",
                 columns: table => new
                 {
-                    LoginProvider = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false),
-                    ProviderKey = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false),
-                    ProviderDisplayName = table.Column<string>(type: "longtext", nullable: true),
-                    UserId = table.Column<string>(type: "varchar(255)", nullable: false)
+                    loginprovider = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false),
+                    providerkey = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false),
+                    providerdisplayname = table.Column<string>(type: "longtext", nullable: true),
+                    userid = table.Column<string>(type: "varchar(255)", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_userlogins", x => new { x.LoginProvider, x.ProviderKey });
+                    table.PrimaryKey("PK_userlogins", x => new { x.loginprovider, x.providerkey });
                     table.ForeignKey(
-                        name: "FK_userlogins_users_UserId",
-                        column: x => x.UserId,
+                        name: "FK_userlogins_users_userid",
+                        column: x => x.userid,
                         principalTable: "users",
-                        principalColumn: "Id",
+                        principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 })
                 .Annotation("MySQL:Charset", "utf8mb4");
@@ -236,23 +236,23 @@ namespace Sufficit.Identity.Core.Migrations
                 name: "userroles",
                 columns: table => new
                 {
-                    UserId = table.Column<string>(type: "varchar(255)", nullable: false),
-                    RoleId = table.Column<string>(type: "varchar(255)", nullable: false)
+                    userid = table.Column<string>(type: "varchar(255)", nullable: false),
+                    roleid = table.Column<string>(type: "varchar(255)", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_userroles", x => new { x.UserId, x.RoleId });
+                    table.PrimaryKey("PK_userroles", x => new { x.userid, x.roleid });
                     table.ForeignKey(
-                        name: "FK_userroles_roles_RoleId",
-                        column: x => x.RoleId,
+                        name: "FK_userroles_roles_roleid",
+                        column: x => x.roleid,
                         principalTable: "roles",
-                        principalColumn: "Id",
+                        principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_userroles_users_UserId",
-                        column: x => x.UserId,
+                        name: "FK_userroles_users_userid",
+                        column: x => x.userid,
                         principalTable: "users",
-                        principalColumn: "Id",
+                        principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 })
                 .Annotation("MySQL:Charset", "utf8mb4");
@@ -261,19 +261,19 @@ namespace Sufficit.Identity.Core.Migrations
                 name: "usertokens",
                 columns: table => new
                 {
-                    UserId = table.Column<string>(type: "varchar(255)", nullable: false),
-                    LoginProvider = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false),
-                    Name = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false),
-                    Value = table.Column<string>(type: "longtext", nullable: true)
+                    userid = table.Column<string>(type: "varchar(255)", nullable: false),
+                    loginprovider = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false),
+                    name = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false),
+                    value = table.Column<string>(type: "longtext", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_usertokens", x => new { x.UserId, x.LoginProvider, x.Name });
+                    table.PrimaryKey("PK_usertokens", x => new { x.userid, x.loginprovider, x.name });
                     table.ForeignKey(
-                        name: "FK_usertokens_users_UserId",
-                        column: x => x.UserId,
+                        name: "FK_usertokens_users_userid",
+                        column: x => x.userid,
                         principalTable: "users",
-                        principalColumn: "Id",
+                        principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 })
                 .Annotation("MySQL:Charset", "utf8mb4");
@@ -282,19 +282,19 @@ namespace Sufficit.Identity.Core.Migrations
                 name: "tokens",
                 columns: table => new
                 {
-                    id = table.Column<string>(type: "varchar(255)", nullable: false),
-                    application_id = table.Column<string>(type: "varchar(255)", nullable: true),
-                    authorization_id = table.Column<string>(type: "varchar(255)", nullable: true),
-                    concurrency_token = table.Column<string>(type: "longtext", nullable: true),
+                    id = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: false),
+                    application_id = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true),
+                    authorization_id = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true),
+                    concurrency_token = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: true),
                     creation_date = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     expiration_date = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     payload = table.Column<string>(type: "longtext", nullable: true),
                     properties = table.Column<string>(type: "longtext", nullable: true),
                     redemption_date = table.Column<DateTime>(type: "datetime(6)", nullable: true),
-                    reference_id = table.Column<string>(type: "longtext", nullable: true),
-                    status = table.Column<string>(type: "longtext", nullable: true),
-                    subject = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true),
-                    type = table.Column<string>(type: "longtext", nullable: true)
+                    reference_id = table.Column<string>(type: "varchar(100)", maxLength: 100, nullable: true),
+                    status = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: true),
+                    subject = table.Column<string>(type: "varchar(400)", maxLength: 400, nullable: true),
+                    type = table.Column<string>(type: "varchar(150)", maxLength: 150, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -313,55 +313,78 @@ namespace Sufficit.Identity.Core.Migrations
                 .Annotation("MySQL:Charset", "utf8mb4");
 
             migrationBuilder.CreateIndex(
-                name: "IX_authorizations_application_id",
-                table: "authorizations",
-                column: "application_id");
+                name: "AK_OpenIddictApplications_ClientId",
+                table: "applications",
+                column: "client_id",
+                unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_roleclaims_RoleId",
+                name: "IX_OpenIddictAuthorizations_ApplicationId_Status_Subject_Type",
+                table: "authorizations",
+                columns: new[] { "application_id", "status", "subject", "type" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_roleclaims_roleid",
                 table: "roleclaims",
-                column: "RoleId");
+                column: "roleid");
 
             migrationBuilder.CreateIndex(
                 name: "RoleNameIndex",
                 table: "roles",
-                column: "NormalizedName",
+                column: "normalizedname",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_tokens_application_id",
-                table: "tokens",
-                column: "application_id");
+                name: "AK_OpenIddictScopes_Name",
+                table: "scopes",
+                column: "name",
+                unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_tokens_authorization_id",
+                name: "AK_OpenIddictTokens_ReferenceId",
+                table: "tokens",
+                column: "reference_id",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OpenIddictTokens_ApplicationId_Status_Subject_Type",
+                table: "tokens",
+                columns: new[] { "application_id", "status", "subject", "type" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OpenIddictTokens_AuthorizationId",
                 table: "tokens",
                 column: "authorization_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_userclaims_UserId",
+                name: "IX_userclaims_userid",
                 table: "userclaims",
-                column: "UserId");
+                column: "userid");
 
             migrationBuilder.CreateIndex(
-                name: "IX_userlogins_UserId",
+                name: "IX_userlogins_userid",
                 table: "userlogins",
-                column: "UserId");
+                column: "userid");
 
             migrationBuilder.CreateIndex(
-                name: "IX_userroles_RoleId",
+                name: "IX_userpasskeys_userid",
+                table: "userpasskeys",
+                column: "userid");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_userroles_roleid",
                 table: "userroles",
-                column: "RoleId");
+                column: "roleid");
 
             migrationBuilder.CreateIndex(
                 name: "EmailIndex",
                 table: "users",
-                column: "NormalizedEmail");
+                column: "normalizedemail");
 
             migrationBuilder.CreateIndex(
                 name: "UserNameIndex",
                 table: "users",
-                column: "NormalizedUserName",
+                column: "normalizedusername",
                 unique: true);
         }
 

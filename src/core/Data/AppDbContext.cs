@@ -58,18 +58,42 @@ public sealed class AppDbContext
         builder.Entity<IdentityUserPasskey<string>>(b =>
         {
             b.ToTable("userpasskeys");
-            // PK composta: UserId + CredentialId (ambos juntos identificam
-            // unicamente uma passkey). O base IdentityDbContext deveria
-            // definir isto automaticamente, mas não está fazendo para nosso
-            // TUser customizado — definimos explicitamente.
-            b.HasKey(p => new { p.UserId, p.CredentialId });
-            // Data é um owned type (inline na mesma tabela).
+            b.Property(p => p.UserId).HasColumnName("userid");
+            b.Property(p => p.UserId).IsRequired();
+            b.Property(p => p.CredentialId)
+                .HasColumnName("credentialid")
+                .HasMaxLength(IdentityDatabaseSchema.PasskeyCredentialIdLength);
+
+            // This is the .NET 10 Identity schema already present in the
+            // production database: credentialid is globally unique and
+            // userid is a lookup index. Do not replace this with a composite
+            // key; doing so makes the generated migration diverge from the
+            // existing shared Identity tables.
+            b.HasKey(p => p.CredentialId);
+            b.HasIndex(p => p.UserId).HasDatabaseName("IX_userpasskeys_userid");
+
+            // Data is an owned type stored inline. Every property is mapped
+            // explicitly because the default owned-property names use a
+            // "Data_" prefix while the established schema uses flat names.
             b.OwnsOne(p => p.Data, d =>
             {
-                // Transports é string[] — EF Core não mapeia arrays nativamente.
-                // Converter para JSON (string separada por vírgula ou JSON completo).
-                // JSON é mais robusto (escapa vírgulas em valores, preserva null).
+                d.Property(p => p.PublicKey).HasColumnName("publickey");
+                d.Property(p => p.Name).HasColumnName("name");
+                d.Property(p => p.CreatedAt)
+                    .HasColumnName("createdat")
+                    .HasColumnType("datetime(6)");
+                d.Property(p => p.SignCount).HasColumnName("signcount");
+                d.Property(p => p.IsUserVerified).HasColumnName("isuserverified");
+                d.Property(p => p.IsBackupEligible).HasColumnName("isbackupeligible");
+                d.Property(p => p.IsBackedUp).HasColumnName("isbackedup");
+                d.Property(p => p.AttestationObject).HasColumnName("attestationobject");
+                d.Property(p => p.ClientDataJson).HasColumnName("clientdatajson");
+
+                // Transports is a string[] and therefore needs a stable JSON
+                // representation for a relational string column.
                 d.Property(p => p.Transports)
+                    .HasColumnName("transports")
+                    .IsRequired()
                     .HasConversion(
                         v => v == null ? null : System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
                         v => v == null ? Array.Empty<string>() : System.Text.Json.JsonSerializer.Deserialize<string[]>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? Array.Empty<string>())
@@ -92,31 +116,101 @@ public sealed class AppDbContext
         builder.Entity<ApplicationUser>(b =>
         {
             b.ToTable("users");
+            SnakeCaseColumns(b, [
+                ("Id", "id"),
+                ("UserName", "username"),
+                ("NormalizedUserName", "normalizedusername"),
+                ("Email", "email"),
+                ("NormalizedEmail", "normalizedemail"),
+                ("EmailConfirmed", "emailconfirmed"),
+                ("PasswordHash", "passwordhash"),
+                ("SecurityStamp", "securitystamp"),
+                ("ConcurrencyStamp", "concurrencystamp"),
+                ("PhoneNumber", "phonenumber"),
+                ("PhoneNumberConfirmed", "phonenumberconfirmed"),
+                ("TwoFactorEnabled", "twofactorenabled"),
+                ("LockoutEnd", "lockoutend"),
+                ("LockoutEnabled", "lockoutenabled"),
+                ("AccessFailedCount", "accessfailedcount"),
+            ]);
             b.Property(u => u.Timestamp)
              .HasColumnName("timestamp")
              .HasColumnType("timestamp")
-             // MySQL 8.4 requires parentheses around non-CURRENT_TIMESTAMP
-             // default expressions. Keep UTC_TIMESTAMP for legacy semantics.
+             // Keep UTC_TIMESTAMP for the existing MariaDB schema semantics.
+             // Parentheses also keep the provisional Oracle EF provider from
+             // treating this as a literal/default keyword.
              .HasDefaultValueSql("(UTC_TIMESTAMP())")
              .ValueGeneratedOnAddOrUpdate();
+            b.Property(u => u.LockoutEnd).HasColumnType("datetime(6)");
         });
 
-        builder.Entity<ApplicationRole>(b => b.ToTable("roles"));
-        builder.Entity<IdentityUserRole<string>>(b => b.ToTable("userroles"));
-        builder.Entity<IdentityUserClaim<string>>(b => b.ToTable("userclaims"));
+        builder.Entity<ApplicationRole>(b =>
+        {
+            b.ToTable("roles");
+            SnakeCaseColumns(b, [
+                ("Id", "id"),
+                ("Name", "name"),
+                ("NormalizedName", "normalizedname"),
+                ("ConcurrencyStamp", "concurrencystamp"),
+            ]);
+        });
+
+        builder.Entity<IdentityUserRole<string>>(b =>
+        {
+            b.ToTable("userroles");
+            SnakeCaseColumns(b, [
+                ("UserId", "userid"),
+                ("RoleId", "roleid"),
+            ]);
+        });
+
+        builder.Entity<IdentityUserClaim<string>>(b =>
+        {
+            b.ToTable("userclaims");
+            SnakeCaseColumns(b, [
+                ("Id", "id"),
+                ("UserId", "userid"),
+                ("ClaimType", "claimtype"),
+                ("ClaimValue", "claimvalue"),
+            ]);
+        });
+
         builder.Entity<IdentityUserLogin<string>>(b =>
         {
             b.ToTable("userlogins");
+            SnakeCaseColumns(b, [
+                ("LoginProvider", "loginprovider"),
+                ("ProviderKey", "providerkey"),
+                ("ProviderDisplayName", "providerdisplayname"),
+                ("UserId", "userid"),
+            ]);
             b.Property(l => l.LoginProvider).HasMaxLength(255);
             b.Property(l => l.ProviderKey).HasMaxLength(255);
         });
+
         builder.Entity<IdentityUserToken<string>>(b =>
         {
             b.ToTable("usertokens");
+            SnakeCaseColumns(b, [
+                ("UserId", "userid"),
+                ("LoginProvider", "loginprovider"),
+                ("Name", "name"),
+                ("Value", "value"),
+            ]);
             b.Property(t => t.LoginProvider).HasMaxLength(255);
             b.Property(t => t.Name).HasMaxLength(255);
         });
-        builder.Entity<IdentityRoleClaim<string>>(b => b.ToTable("roleclaims"));
+
+        builder.Entity<IdentityRoleClaim<string>>(b =>
+        {
+            b.ToTable("roleclaims");
+            SnakeCaseColumns(b, [
+                ("Id", "id"),
+                ("RoleId", "roleid"),
+                ("ClaimType", "claimtype"),
+                ("ClaimValue", "claimvalue"),
+            ]);
+        });
     }
 
     /// <summary>
@@ -134,6 +228,15 @@ public sealed class AppDbContext
         builder.Entity<OpenIddictEntityFrameworkCoreApplication>(b =>
         {
             b.ToTable("applications");
+            b.Property(a => a.Id).HasMaxLength(IdentityDatabaseSchema.OpenIddictKeyLength);
+            b.Property(a => a.ApplicationType).HasMaxLength(IdentityDatabaseSchema.OpenIddictShortValueLength);
+            b.Property(a => a.ClientId).HasMaxLength(IdentityDatabaseSchema.OpenIddictClientIdLength);
+            b.Property(a => a.ClientType).HasMaxLength(IdentityDatabaseSchema.OpenIddictShortValueLength);
+            b.Property(a => a.ConcurrencyToken).HasMaxLength(IdentityDatabaseSchema.OpenIddictShortValueLength);
+            b.Property(a => a.ConsentType).HasMaxLength(IdentityDatabaseSchema.OpenIddictShortValueLength);
+            b.HasIndex(a => a.ClientId)
+                .IsUnique()
+                .HasDatabaseName("AK_OpenIddictApplications_ClientId");
             SnakeCaseColumns(b, [
                 ("Id", "id"),
                 ("ApplicationType", "application_type"),
@@ -158,10 +261,14 @@ public sealed class AppDbContext
         builder.Entity<OpenIddictEntityFrameworkCoreAuthorization>(b =>
         {
             b.ToTable("authorizations");
-            // Subjects are Identity user IDs (varchar(255)). Matching that
-            // limit also keeps OpenIddict's composite index below MySQL's
-            // 3072-byte utf8mb4 key limit.
-            b.Property(a => a.Subject).HasMaxLength(255);
+            b.Property(a => a.Id).HasMaxLength(IdentityDatabaseSchema.OpenIddictKeyLength);
+            b.Property<string>("ApplicationId").HasMaxLength(IdentityDatabaseSchema.OpenIddictKeyLength);
+            b.Property(a => a.ConcurrencyToken).HasMaxLength(IdentityDatabaseSchema.OpenIddictShortValueLength);
+            b.Property(a => a.Status).HasMaxLength(IdentityDatabaseSchema.OpenIddictShortValueLength);
+            b.Property(a => a.Subject).HasMaxLength(IdentityDatabaseSchema.OpenIddictSubjectLength);
+            b.Property(a => a.Type).HasMaxLength(IdentityDatabaseSchema.OpenIddictShortValueLength);
+            b.HasIndex("ApplicationId", "Status", "Subject", "Type")
+                .HasDatabaseName("IX_OpenIddictAuthorizations_ApplicationId_Status_Subject_Type");
             SnakeCaseColumns(b, [
                 ("Id", "id"),
                 ("ApplicationId", "application_id"),
@@ -179,6 +286,12 @@ public sealed class AppDbContext
         builder.Entity<OpenIddictEntityFrameworkCoreScope>(b =>
         {
             b.ToTable("scopes");
+            b.Property(s => s.Id).HasMaxLength(IdentityDatabaseSchema.OpenIddictKeyLength);
+            b.Property(s => s.ConcurrencyToken).HasMaxLength(IdentityDatabaseSchema.OpenIddictShortValueLength);
+            b.Property(s => s.Name).HasMaxLength(IdentityDatabaseSchema.OpenIddictScopeNameLength);
+            b.HasIndex(s => s.Name)
+                .IsUnique()
+                .HasDatabaseName("AK_OpenIddictScopes_Name");
             SnakeCaseColumns(b, [
                 ("Id", "id"),
                 ("ConcurrencyToken", "concurrency_token"),
@@ -196,7 +309,21 @@ public sealed class AppDbContext
         builder.Entity<OpenIddictEntityFrameworkCoreToken>(b =>
         {
             b.ToTable("tokens");
-            b.Property(t => t.Subject).HasMaxLength(255);
+            b.Property(t => t.Id).HasMaxLength(IdentityDatabaseSchema.OpenIddictKeyLength);
+            b.Property<string>("ApplicationId").HasMaxLength(IdentityDatabaseSchema.OpenIddictKeyLength);
+            b.Property<string>("AuthorizationId").HasMaxLength(IdentityDatabaseSchema.OpenIddictKeyLength);
+            b.Property(t => t.ConcurrencyToken).HasMaxLength(IdentityDatabaseSchema.OpenIddictShortValueLength);
+            b.Property(t => t.ReferenceId).HasMaxLength(IdentityDatabaseSchema.OpenIddictKeyLength);
+            b.Property(t => t.Status).HasMaxLength(IdentityDatabaseSchema.OpenIddictShortValueLength);
+            b.Property(t => t.Subject).HasMaxLength(IdentityDatabaseSchema.OpenIddictSubjectLength);
+            b.Property(t => t.Type).HasMaxLength(IdentityDatabaseSchema.OpenIddictTokenTypeLength);
+            b.HasIndex(t => t.ReferenceId)
+                .IsUnique()
+                .HasDatabaseName("AK_OpenIddictTokens_ReferenceId");
+            b.HasIndex("ApplicationId", "Status", "Subject", "Type")
+                .HasDatabaseName("IX_OpenIddictTokens_ApplicationId_Status_Subject_Type");
+            b.HasIndex("AuthorizationId")
+                .HasDatabaseName("IX_OpenIddictTokens_AuthorizationId");
             SnakeCaseColumns(b, [
                 ("Id", "id"),
                 ("ApplicationId", "application_id"),
@@ -234,7 +361,15 @@ public sealed class AppDbContext
     /// </summary>
     private static void MapDataProtectionTable(ModelBuilder builder)
     {
-        builder.Entity<DataProtectionKey>(b => b.ToTable("dataprotectionkeys"));
+        builder.Entity<DataProtectionKey>(b =>
+        {
+            b.ToTable("dataprotectionkeys");
+            SnakeCaseColumns(b, [
+                ("Id", "id"),
+                ("FriendlyName", "friendlyname"),
+                ("Xml", "xml"),
+            ]);
+        });
     }
 
     /// <summary>

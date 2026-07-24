@@ -20,10 +20,15 @@
     <!-- ASP.NET Core Data Protection key-ring persistence (P0 #B4) -->
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.10" />
 
-    <!-- EF Core + MySQL provider (Oracle MySql.EntityFrameworkCore — ver docs/NOTICE-mysql-license.md) -->
-    <!-- Migração concluída em 2026-07-21: troca temporária de Pomelo (MIT, sem EF Core 10)
-         por Oracle MySql.EntityFrameworkCore (GPLv2+FOSS Exception, suporta EF Core 10)
-         para desbloquear net10.0 + AddPasskeys(). Reverter quando Pomelo shipar EF10. -->
+    <!-- EF Core + compatibility provider for the existing MariaDB database
+         (Oracle MySql.EntityFrameworkCore — see docs/NOTICE-mysql-license.md).
+         This is deliberately provisional: as of 2026-07-24, stable Pomelo
+         targets EF Core 9 while this project needs Identity/EF Core 10 for
+         passkeys. Oracle's provider does not declare MariaDB support, so CI
+         must exercise every migration against the configured compatibility
+         baseline (MariaDB 10.4.34). Re-evaluate the stable MariaDB provider
+         before any future deployment. No MySQL migration is
+         planned or implied by this package choice. -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10" />
     <PackageVersion Include="MySql.EntityFrameworkCore" Version="10.0.7" />

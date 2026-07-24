@@ -17,6 +17,22 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      mariadb:
+        # Match the configured MariaDB compatibility baseline. This is an
+        # ephemeral CI database; no local or remote database is created.
+        image: mariadb:10.4.34
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "1"
+          MARIADB_DATABASE: identity_contract
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping --silent"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
     env:
       # ---------------------------------------------------------------------
       # Sibling UI repo pin (P0 #11 — eval "CI baixa a UI em `main` não
@@ -26,7 +42,7 @@ jobs:
       # today can silently build different UI code tomorrow with no change
       # in this repo.
       #
-      # This SHA is sufficit-identity-ui's HEAD on `main` as of 2026-07-21,
+      # This SHA is sufficit-identity-ui's HEAD on `main` as of 2026-07-22,
       # carrying the P0 UI security fixes that pair with this repo's own P0
       # remediation pass:
       #   - LocalUrlValidator (open-redirect guards on every returnUrl)
@@ -44,7 +60,14 @@ jobs:
       # Do not repoint this at a moving branch — the whole point of pinning
       # is reproducibility. Bump to a new SHA deliberately when the UI repo
       # ships a new commit you want CI to pick up.
-      UI_REF: 0def296a6fd38bbf14268d3c6cf70799f977c8cf
+      UI_REF: 4ffbc90289e7c1285fe2999da854774e866e278c
+      # Ephemeral CI-only database. No MariaDB service is required on
+      # developer machines, and no remote connection is ever used here.
+      SUFFICIT_IDENTITY_MARIADB_CONNECTION: >-
+        server=127.0.0.1;port=3306;database=identity_contract;user=root;SslMode=Disabled
+      # Destructive operations are restricted by the integration test to this
+      # loopback CI service and the fixed identity_legacy_rehearsal database.
+      SUFFICIT_IDENTITY_ALLOW_EPHEMERAL_DATABASE_REHEARSAL: "true"
 
     steps:
       - name: Checkout sufficit-identity
@@ -90,6 +113,29 @@ jobs:
       - name: Build (warnings treated as errors)
         working-directory: sufficit-identity
         run: dotnet build Sufficit.Identity.sln --configuration Release --no-restore -warnaserror
+
+      # Oracle's EF Core 10 migration lock implementation casts MariaDB
+      # GET_LOCK() NULL to Int64 and fails before executing any DDL. Apply the
+      # checked-in canonical SQL with MariaDB's own client instead. The schema
+      # contract test independently regenerates this SQL from the EF migration
+      # and requires an exact match, so this does not create a second source of
+      # truth or hide provider-generated drift.
+      - name: Apply canonical SQL to ephemeral MariaDB 10.4.34
+        working-directory: sufficit-identity
+        run: |
+          set -euo pipefail
+          mapfile -t mariadb_containers < <(
+            docker ps \
+              --filter "ancestor=mariadb:10.4.34" \
+              --format "{{.ID}}"
+          )
+          if [[ "${#mariadb_containers[@]}" -ne 1 ]]; then
+            echo "::error::Expected exactly one MariaDB 10.4.34 service container."
+            exit 1
+          fi
+          docker exec -i "${mariadb_containers[0]}" \
+            mysql --user=root identity_contract \
+            < docs/migration/sql/001-create-empty-database.sql
 
       - name: Test
         working-directory: sufficit-identity

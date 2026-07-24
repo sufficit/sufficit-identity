@@ -62,7 +62,9 @@ public static class ServiceCollectionExtensions
 
         services.AddDbContext<AppDbContext>(db =>
         {
-            db.UseMySQL(connectionString);
+            db.UseMySQL(
+                connectionString,
+                mysql => mysql.MigrationsHistoryTable(IdentityDatabaseSchema.MigrationsHistoryTable));
             db.UseOpenIddict();
         });
 

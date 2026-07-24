@@ -10,26 +10,27 @@ namespace Sufficit.Identity.Core.Data;
 /// tooling tenta resolver <c>DbContextOptions&lt;AppDbContext&gt;</c> via DI
 /// rodando <c>Program.cs</c> do startup project, mas o STS exige connection
 /// string válida + ambiente Development para subir — inadequado para
-/// design-time. Esta factory fornece um DbContextOptions mínimo (SQLite
-/// in-memory) só para o EF conseguir ler o modelo e gerar a migration.
+/// design-time. Esta factory fornece um <c>DbContextOptions</c> mínimo, com uma
+/// conexão fictícia que nunca é aberta, só para o EF ler o modelo e gerar a
+/// migration.
 ///
-/// A migration gerada é provider-agnóstica o suficiente para MySQL/Oracle
-/// (usa tipos genéricos do EF Core; anotações específicas como
-/// <c>timestamp</c> + <c>UTC_TIMESTAMP()</c> estão no <c>OnModelCreating</c>
-/// e viram annotations na migration).
+/// O provider Oracle é provisório para o modelo EF 10. O banco continua sendo
+/// MariaDB e toda migration gerada deve ser exercitada contra a versão exata
+/// desse engine antes de qualquer publicação.
 /// </summary>
 public sealed class AppDbContextDesignTimeFactory
     : IDesignTimeDbContextFactory<AppDbContext>
 {
     public AppDbContext CreateDbContext(string[] args)
     {
-        // Provider Oracle MySql.EntityFrameworkCore — mesmo provider de produção
-        // (Stage 1 da migração Pomelo→Oracle). Connection string dummy: o EF
-        // tooling não abre conexão para gerar migrations, só precisa saber o
-        // provider para emitir annotations corretas (MySQL-specific types,
-        // identity columns, etc).
+        // Provisional Oracle compatibility provider used by the EF 10 model.
+        // The real database remains MariaDB; every generated migration is
+        // validated against the configured MariaDB compatibility baseline.
+        // This dummy connection is never opened at design time.
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseMySQL("server=localhost;database=identity_design;user=root;password=dummy")
+            .UseMySQL(
+                "server=localhost;database=identity_design;user=root",
+                mysql => mysql.MigrationsHistoryTable(IdentityDatabaseSchema.MigrationsHistoryTable))
             .Options;
 
         return new AppDbContext(options);

@@ -1,0 +1,252 @@
+using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
+using OpenIddict.EntityFrameworkCore.Models;
+using Sufficit.Identity.Core.Data;
+using Xunit;
+
+namespace Sufficit.Identity.Tests;
+
+public sealed class DatabaseSchemaContractTests
+{
+    [Fact]
+    public void MySql_model_matches_the_established_identity_and_openiddict_contract()
+    {
+        using var context = CreateContext();
+        var model = context.Model;
+
+        var application = RequiredEntity<OpenIddictEntityFrameworkCoreApplication>(model);
+        AssertProperty(application, "Id", "id", "varchar(100)", 100, nullable: false);
+        AssertProperty(application, "ClientId", "client_id", "varchar(100)", 100, nullable: true);
+        AssertIndex(application, "AK_OpenIddictApplications_ClientId", unique: true,
+            "ClientId");
+
+        var authorization = RequiredEntity<OpenIddictEntityFrameworkCoreAuthorization>(model);
+        AssertProperty(authorization, "Id", "id", "varchar(100)", 100, nullable: false);
+        AssertProperty(authorization, "ApplicationId", "application_id", "varchar(100)", 100, nullable: true);
+        AssertProperty(authorization, "Subject", "subject", "varchar(400)", 400, nullable: true);
+        AssertIndex(authorization,
+            "IX_OpenIddictAuthorizations_ApplicationId_Status_Subject_Type",
+            unique: false, "ApplicationId", "Status", "Subject", "Type");
+
+        var scope = RequiredEntity<OpenIddictEntityFrameworkCoreScope>(model);
+        AssertProperty(scope, "Id", "id", "varchar(100)", 100, nullable: false);
+        AssertProperty(scope, "Name", "name", "varchar(200)", 200, nullable: true);
+        AssertIndex(scope, "AK_OpenIddictScopes_Name", unique: true, "Name");
+
+        var token = RequiredEntity<OpenIddictEntityFrameworkCoreToken>(model);
+        AssertProperty(token, "Id", "id", "varchar(100)", 100, nullable: false);
+        AssertProperty(token, "ReferenceId", "reference_id", "varchar(100)", 100, nullable: true);
+        AssertProperty(token, "Subject", "subject", "varchar(400)", 400, nullable: true);
+        AssertProperty(token, "Type", "type", "varchar(150)", 150, nullable: true);
+        AssertIndex(token, "AK_OpenIddictTokens_ReferenceId", unique: true, "ReferenceId");
+        AssertIndex(token, "IX_OpenIddictTokens_ApplicationId_Status_Subject_Type",
+            unique: false, "ApplicationId", "Status", "Subject", "Type");
+        AssertIndex(token, "IX_OpenIddictTokens_AuthorizationId",
+            unique: false, "AuthorizationId");
+
+        var passkey = RequiredEntity<IdentityUserPasskey<string>>(model);
+        Assert.Equal("userpasskeys", passkey.GetTableName());
+        Assert.Equal(["CredentialId"], passkey.FindPrimaryKey()!.Properties.Select(p => p.Name));
+        AssertProperty(passkey, "CredentialId", "credentialid", "varbinary(1024)", 1024, nullable: false);
+        AssertProperty(passkey, "UserId", "userid", "varchar(255)", null, nullable: false);
+        AssertIndex(passkey, "IX_userpasskeys_userid", unique: false, "UserId");
+
+        var passkeyData = model.GetEntityTypes().Single(entity =>
+            entity.IsOwned() && entity.ClrType == typeof(IdentityPasskeyData));
+        AssertOwnedColumn(passkeyData, "PublicKey", "publickey");
+        AssertOwnedColumn(passkeyData, "CreatedAt", "createdat", "datetime(6)");
+        AssertOwnedColumn(passkeyData, "Transports", "transports");
+        AssertOwnedColumn(passkeyData, "AttestationObject", "attestationobject");
+        AssertOwnedColumn(passkeyData, "ClientDataJson", "clientdatajson");
+
+        var dataProtection = RequiredEntity<DataProtectionKey>(model);
+        AssertProperty(dataProtection, "Id", "id", "int", null, nullable: false);
+        AssertProperty(dataProtection, "FriendlyName", "friendlyname", "longtext", null, nullable: true);
+        AssertProperty(dataProtection, "Xml", "xml", "longtext", null, nullable: true);
+    }
+
+    [Fact]
+    public void Migration_history_is_isolated_from_the_legacy_duende_history()
+    {
+        using var context = CreateContext();
+
+        Assert.Equal([IdentityDatabaseSchema.InitialMigrationId], context.Database.GetMigrations());
+
+        var history = context.GetService<IHistoryRepository>().GetCreateScript();
+        Assert.Contains($"`{IdentityDatabaseSchema.MigrationsHistoryTable}`", history,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("`__efmigrationshistory`", history,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Checked_in_empty_database_script_matches_the_current_migration()
+    {
+        using var context = CreateContext();
+        var generated = context.GetService<IMigrator>().GenerateScript(
+            fromMigration: null,
+            toMigration: null,
+            MigrationsSqlGenerationOptions.Default);
+
+        var tracked = File.ReadAllText(MigrationFile("sql", "001-create-empty-database.sql"));
+
+        Assert.Equal(NormalizeSql(generated), NormalizeSql(tracked));
+        Assert.DoesNotContain("\nIF NOT EXISTS(", tracked, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("\nBEGIN\n", tracked, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Legacy_path_is_additive_and_preflight_is_read_only()
+    {
+        var fixture = File.ReadAllText(
+            MigrationFile("fixtures", "legacy-schema-mariadb-10.4.sql"));
+        var preflight = File.ReadAllText(MigrationFile("sql", "010-preflight-legacy.sql"));
+        var additive = File.ReadAllText(MigrationFile("sql", "011-add-openiddict-to-legacy.sql"));
+
+        Assert.Equal(39,
+            Regex.Matches(fixture, @"(?im)^\s*CREATE TABLE `([^`]+)`").Count);
+        Assert.DoesNotMatch(
+            new Regex(
+                @"(?im)^\s*(INSERT|REPLACE|UPDATE|DELETE|CREATE\s+(VIEW|TRIGGER|PROCEDURE|FUNCTION|EVENT)|LOCK\s+TABLES|USE|CREATE\s+DATABASE)\b"),
+            fixture);
+        Assert.DoesNotContain("DEFINER=", fixture, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotMatch(new Regex(@"(?i)\bAUTO_INCREMENT=\d+"), fixture);
+        Assert.Contains("SET FOREIGN_KEY_CHECKS=0;", fixture,
+            StringComparison.Ordinal);
+        Assert.EndsWith("SET FOREIGN_KEY_CHECKS=1;", fixture.Trim(),
+            StringComparison.Ordinal);
+
+        Assert.DoesNotMatch(
+            new Regex(@"(?im)^\s*(INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|TRUNCATE)\s+"),
+            preflight);
+
+        var createdTables = Regex.Matches(additive, @"(?im)^\s*CREATE TABLE `([^`]+)`")
+            .Select(match => match.Groups[1].Value)
+            .ToArray();
+
+        Assert.Equal([
+            IdentityDatabaseSchema.MigrationsHistoryTable,
+            "applications",
+            "scopes",
+            "authorizations",
+            "tokens",
+        ], createdTables);
+
+        foreach (var sharedTable in new[]
+                 {
+                     "users", "roles", "roleclaims", "userclaims", "userlogins",
+                     "userroles", "usertokens", "userpasskeys", "dataprotectionkeys",
+                 })
+        {
+            Assert.DoesNotContain($"CREATE TABLE `{sharedTable}`", additive,
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        Assert.Contains($"('{IdentityDatabaseSchema.InitialMigrationId}', '10.0.10')", additive,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("CREATE TABLE IF NOT EXISTS", additive,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static AppDbContext CreateContext()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseMySQL(
+                "server=localhost;database=identity_contract;user=contract",
+                mysql => mysql.MigrationsHistoryTable(IdentityDatabaseSchema.MigrationsHistoryTable))
+            .Options;
+
+        return new AppDbContext(options);
+    }
+
+    private static IEntityType RequiredEntity<TEntity>(IModel model)
+        where TEntity : class =>
+        model.FindEntityType(typeof(TEntity))
+        ?? throw new InvalidOperationException($"Entity {typeof(TEntity).Name} was not mapped.");
+
+    private static void AssertProperty(
+        IEntityType entity,
+        string propertyName,
+        string columnName,
+        string columnType,
+        int? maxLength,
+        bool nullable)
+    {
+        var property = entity.FindProperty(propertyName)
+            ?? throw new InvalidOperationException(
+                $"Property {entity.DisplayName()}.{propertyName} was not mapped.");
+
+        var table = StoreObjectIdentifier.Table(entity.GetTableName()!, entity.GetSchema());
+        Assert.Equal(columnName, property.GetColumnName(table));
+        Assert.Equal(columnType, property.GetColumnType());
+        Assert.Equal(maxLength, property.GetMaxLength());
+        Assert.Equal(nullable, property.IsNullable);
+    }
+
+    private static void AssertOwnedColumn(
+        IEntityType entity,
+        string propertyName,
+        string columnName,
+        string? columnType = null)
+    {
+        var property = entity.FindProperty(propertyName)
+            ?? throw new InvalidOperationException(
+                $"Owned property {entity.DisplayName()}.{propertyName} was not mapped.");
+
+        var table = StoreObjectIdentifier.Table(entity.GetTableName()!, entity.GetSchema());
+        Assert.Equal(columnName, property.GetColumnName(table));
+
+        if (columnType is not null)
+        {
+            Assert.Equal(columnType, property.GetColumnType());
+        }
+    }
+
+    private static void AssertIndex(
+        IEntityType entity,
+        string databaseName,
+        bool unique,
+        params string[] properties)
+    {
+        var index = entity.GetIndexes().Single(candidate =>
+            string.Equals(candidate.GetDatabaseName(), databaseName,
+                StringComparison.Ordinal));
+
+        Assert.Equal(properties, index.Properties.Select(property => property.Name));
+        Assert.Equal(unique, index.IsUnique);
+    }
+
+    private static string MigrationFile(params string[] path)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (directory is not null &&
+               !File.Exists(Path.Combine(directory.FullName, "Sufficit.Identity.sln")))
+        {
+            directory = directory.Parent;
+        }
+
+        if (directory is null)
+        {
+            throw new DirectoryNotFoundException(
+                "Could not locate the Sufficit.Identity repository root.");
+        }
+
+        return Path.Combine([
+            directory.FullName,
+            "docs",
+            "migration",
+            .. path,
+        ]);
+    }
+
+    private static string NormalizeSql(string sql) =>
+        sql.TrimStart('\uFEFF')
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Trim();
+}
