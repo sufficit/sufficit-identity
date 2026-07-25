@@ -208,8 +208,10 @@ for the additive legacy path.
 | `docs/migration/sql/010-preflight-legacy.sql` | Read-only compatibility gate for a legacy clone |
 | `docs/migration/sql/011-add-openiddict-to-legacy.sql` | Add only OpenIddict tables and isolated history |
 | `docs/migration/fixtures/legacy-schema-mariadb-10.4.sql` | Schema-only disposable rehearsal fixture |
+| `docs/migration/examples/identity-manifest.v1.json` | Secret-free client/scope manifest example |
 | `src/tests/DatabaseSchemaContractTests.cs` | Enforce model, SQL and additive-contract invariants |
 | `src/tests/MariaDbMigrationIntegrationTests.cs` | Execute empty and legacy paths against MariaDB |
+| `src/tests/ProvisioningManifestTests.cs` | Enforce manifest safety, adoption, rotation and idempotency |
 
 The fixture is structural test data. It contains no rows or credentials.
 Because table definitions may be captured in alphabetical rather than
@@ -280,25 +282,77 @@ For each client, test:
 - logout behavior;
 - error handling without redirect loops.
 
-### Example public client manifest
+### Versioned client and scope manifest
+
+The machine-readable example is
+[`docs/migration/examples/identity-manifest.v1.json`](migration/examples/identity-manifest.v1.json).
+Its top-level contract is:
 
 ```json
 {
-  "client_id": "example_web",
-  "display_name": "Example Web",
-  "client_type": "confidential",
-  "grant_types": ["authorization_code", "refresh_token"],
-  "require_pkce": true,
-  "pkce_methods": ["S256"],
-  "redirect_uris": ["https://example.invalid/oauth/callback"],
-  "post_logout_redirect_uris": ["https://example.invalid/"],
-  "scopes": ["openid", "profile", "email", "example_api"],
-  "secret_reference": "secret-store://identity/example_web"
+  "schemaVersion": 1,
+  "scopes": [
+    {
+      "name": "example_api",
+      "resources": ["example_api"]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "example_web",
+      "clientType": "confidential",
+      "secretReference": "identity/clients/example_web",
+      "grantTypes": ["authorization_code", "refresh_token"],
+      "responseTypes": ["code"],
+      "requirePkce": true,
+      "redirectUris": [
+        "https://client.example.invalid/signin-oidc"
+      ],
+      "postLogoutRedirectUris": [
+        "https://client.example.invalid/signout-callback-oidc"
+      ],
+      "scopes": ["openid", "profile", "offline_access", "example_api"]
+    }
+  ]
 }
 ```
 
-The manifest stores a logical secret reference, never a secret value or
-password-derived hash.
+The implementation uses `System.Text.Json` with unknown-member rejection.
+This prevents a misspelled field or an accidental `clientSecret` field from
+being silently ignored.
+
+The manifest has deliberately narrow semantics:
+
+- it creates or updates only declared clients and scopes;
+- it never deletes an object merely because it is absent;
+- it accepts authorization code with PKCE, client credentials, device code,
+  refresh token and token exchange;
+- it rejects implicit, hybrid, password and non-`code` response types;
+- it rejects non-loopback HTTP callbacks;
+- it derives the required OpenIddict endpoint permissions;
+- it stores a logical secret reference, never a secret value or
+  password-derived hash.
+
+When the Management module is enabled, an authorized administrator can call:
+
+- `POST /api/provisioning/manifest/preview` to validate and return
+  `create`/`update`/`unchanged` without changing the database or consulting a
+  secret store;
+- `POST /api/provisioning/manifest/apply` to apply the same additive plan.
+
+Applying a confidential client requires an environment-specific
+`IClientSecretResolver`. Source control contains only its logical reference.
+
+Secret behavior is designed for safe adoption:
+
+1. creating a confidential client resolves and hashes the referenced secret;
+2. adopting an existing confidential client with no manifest marker preserves
+   its current secret and stamps the logical reference;
+3. reapplying the same manifest does not consult the secret store;
+4. changing a previously stamped reference explicitly requests rotation.
+
+Preview and apply must still run first against a disposable rehearsal
+database. The API does not auto-apply manifests during host startup.
 
 ## Phase 2: create the schema baseline
 
@@ -525,6 +579,8 @@ Run secret scanning on:
 
 ### Clients and protocol
 
+- [x] A versioned, secret-free manifest has strict validation, preview and
+  idempotent additive apply.
 - [ ] Every active client has an owner and final state.
 - [ ] Implicit/hybrid/password consumers are migrated or retired.
 - [ ] Confidential clients have newly issued credentials.
@@ -564,6 +620,17 @@ Keep entries generic and evidence-based.
   EF-to-SQL comparison in tests.
 - Added foreign-key reconstruction guards to the synthetic fixture.
 - Passed build, test, dependency audit and secret scanning in CI.
+
+### 2026-07-25
+
+- Added a strict, versioned client/scope manifest using `System.Text.Json`.
+- Added additive preview and apply operations to the authorized Management
+  module.
+- Added runtime-only secret resolution with safe existing-client adoption and
+  explicit reference-based rotation.
+- Added a generic `.invalid` example with no credential values.
+- Added tests for unsafe redirects, obsolete grants, unknown JSON fields,
+  create/update/unchanged planning, no-delete behavior and secret lifecycle.
 
 ## Primary references
 

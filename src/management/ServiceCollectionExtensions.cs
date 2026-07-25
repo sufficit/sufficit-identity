@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Sufficit.Identity.Management.Provisioning;
 
 namespace Sufficit.Identity.Management;
 
@@ -40,6 +42,9 @@ public static class ServiceCollectionExtensions
         // Register the controllers in this assembly.
         services.AddControllers()
             .PartManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
+
+        services.TryAddScoped<OpenIddictManifestProvisioner>();
+        services.TryAddSingleton<IClientSecretResolver, MissingClientSecretResolver>();
 
         // Authorization policy for the management endpoints.
         if (options.RequireAuthorization)

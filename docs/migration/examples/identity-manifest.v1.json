@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "scopes": [
+    {
+      "name": "example_api",
+      "displayName": "Example API",
+      "description": "Access to the example resource server.",
+      "resources": [
+        "example_api"
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "example_web",
+      "displayName": "Example web application",
+      "clientType": "confidential",
+      "consentType": "explicit",
+      "secretReference": "identity/clients/example_web",
+      "requirePkce": true,
+      "grantTypes": [
+        "authorization_code",
+        "refresh_token"
+      ],
+      "responseTypes": [
+        "code"
+      ],
+      "scopes": [
+        "openid",
+        "profile",
+        "offline_access",
+        "example_api"
+      ],
+      "redirectUris": [
+        "https://client.example.invalid/signin-oidc"
+      ],
+      "postLogoutRedirectUris": [
+        "https://client.example.invalid/signout-callback-oidc"
+      ]
+    },
+    {
+      "clientId": "example_worker",
+      "displayName": "Example background worker",
+      "clientType": "confidential",
+      "consentType": "implicit",
+      "secretReference": "identity/clients/example_worker",
+      "requirePkce": false,
+      "grantTypes": [
+        "client_credentials"
+      ],
+      "responseTypes": [],
+      "scopes": [
+        "example_api"
+      ],
+      "redirectUris": [],
+      "postLogoutRedirectUris": []
+    }
+  ]
+}
