@@ -93,6 +93,24 @@ jobs:
           ref: ${{ github.event.inputs.ui_ref || env.UI_REF }}
           path: sufficit-identity-ui
 
+      # The Sufficit fork of Pomelo.EntityFrameworkCore.MySql (EF Core 10)
+      # ships as a folder feed (.nuget-feed/) committed inside sufficit-identity.
+      # The sibling sufficit-identity-ui repo references it transitively (via
+      # ProjectReference) but cannot see the folder feed from its own tree.
+      # This step writes a nuget.config at the workspace root (the common parent
+      # of both repos) so MSBuild's upward config walk finds it from either
+      # project. TEMPORARY: drop when Pomelo ships EF Core 10 stable.
+      - name: Expose Pomelo folder feed to the sibling UI repo
+        run: |
+          cat > nuget.config <<'CFG'
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <packageSources>
+              <add key="sufficit-pomelo-fork" value="sufficit-identity/.nuget-feed" />
+            </packageSources>
+          </configuration>
+          CFG
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
