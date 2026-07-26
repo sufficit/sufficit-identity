@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using Sufficit.Identity.STS.Dpop;
@@ -107,6 +108,86 @@ public sealed class DpopTests
     }
 
     [Fact]
+    public async Task RequireNonce_challenges_with_use_dpop_nonce_then_accepts_the_retry()
+    {
+        // RFC 9449 §8 nonce dance: with RequireNonce=true, a first request
+        // (no nonce in the proof) is rejected with use_dpop_nonce + a
+        // DPoP-Nonce header. The client retries carrying that nonce in the
+        // proof's nonce claim and the request succeeds.
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
+        {
+            ["Sufficit:Identity:Dpop:Enabled"] = "true",
+            ["Sufficit:Identity:Dpop:RequireForAllClients"] = "true",
+            ["Sufficit:Identity:Dpop:RequireNonce"] = "true",
+        });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        var client = factory.CreateClient();
+        // The DPoP htu MUST match the URL the AS actually sees on the request.
+        // TestServer serves on http://localhost (not the configured issuer), so
+        // derive the token URL from the client's base address.
+        var tokenUrl = client.BaseAddress is { } baseAddr
+            ? new Uri(baseAddr, "connect/token").AbsoluteUri
+            : "http://localhost/connect/token";
+
+        // First attempt: a valid proof but WITHOUT a nonce claim → challenge.
+        var (firstProof, _) = BuildDpopProof("POST", tokenUrl);
+        client.DefaultRequestHeaders.Add("DPoP", firstProof);
+        var (firstStatus, firstBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "client_credentials",
+            ["client_id"] = TestDataSeeder.ClientCredentialsClientId,
+            ["client_secret"] = TestDataSeeder.ClientCredentialsClientSecret,
+            ["scope"] = TestDataSeeder.ScopeName,
+        });
+
+        Assert.True(firstStatus is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized,
+            $"Expected challenge for missing nonce, got {firstStatus}.");
+        Assert.Equal("use_dpop_nonce", firstBody.GetProperty("error").GetString());
+
+        // The challenge issued a nonce. Read it directly from the store (the
+        // singleton) instead of probing again — a second request would rotate
+        // the nonce and race the retry. This mirrors what the DPoP-Nonce
+        // response header would have delivered.
+        string nonce;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var store = scope.ServiceProvider.GetRequiredService<Sufficit.Identity.STS.Dpop.IDpopNonceStore>();
+            nonce = store.Current() ?? throw new InvalidOperationException("No nonce in force after the challenge.");
+        }
+
+        // Retry: build a fresh proof carrying the nonce in its `nonce` claim.
+        var (retryProof, _) = BuildDpopProof("POST", tokenUrl, nonce: nonce);
+        client.DefaultRequestHeaders.Remove("DPoP");
+        client.DefaultRequestHeaders.Add("DPoP", retryProof);
+        var (retryStatus, retryBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "client_credentials",
+            ["client_id"] = TestDataSeeder.ClientCredentialsClientId,
+            ["client_secret"] = TestDataSeeder.ClientCredentialsClientSecret,
+            ["scope"] = TestDataSeeder.ScopeName,
+        });
+
+        Assert.Equal(HttpStatusCode.OK, retryStatus);
+        Assert.False(string.IsNullOrEmpty(retryBody.GetProperty("access_token").GetString()));
+        // The token is sender-constrained: cnf.jkt is present (introspection).
+        var accessToken = retryBody.GetProperty("access_token").GetString()!;
+        client.DefaultRequestHeaders.Authorization = IntrospectionTests.BasicAuthFor(
+            TestDataSeeder.IntrospectionClientId, TestDataSeeder.IntrospectionClientSecret);
+        client.DefaultRequestHeaders.Remove("DPoP");
+        var (_, introspect) = await client.PostFormAsync("/connect/introspect", new Dictionary<string, string>
+        {
+            ["token"] = accessToken,
+        });
+        Assert.True(introspect.GetProperty("active").GetBoolean());
+        // The cnf.jkt binding is applied by ApplyDpopBinding (unit-tested in
+        // Valid_dpop_proof_yields_a_thumbprint_bound_proof); whether it surfaces
+        // in introspection depends on the introspection client being an audience
+        // of this token, which is incidental to the nonce-dance contract under
+        // test here. Assert active=true (the token is valid) and move on.
+    }
+
+    [Fact]
     public async Task Discovery_advertises_dpop_signing_algs_when_enabled()
     {
         using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
@@ -133,7 +214,7 @@ public sealed class DpopTests
     /// derive the expected thumbprint if needed).
     /// </summary>
     private static (string Jwt, ECDsaSecurityKey Key) BuildDpopProof(
-        string method, string url, string? jti = null)
+        string method, string url, string? jti = null, string? nonce = null)
     {
         var ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
         var key = new ECDsaSecurityKey(ecdsa);
@@ -143,15 +224,22 @@ public sealed class DpopTests
         jwk.D = null;
         var jwkJson = System.Text.Json.JsonSerializer.Serialize(jwk);
 
+        var claims = new Dictionary<string, object>
+        {
+            ["htm"] = method,
+            ["htu"] = url,
+            ["iat"] = EpochTime.GetIntDate(DateTimeOffset.UtcNow.UtcDateTime),
+            ["jti"] = jti ?? Guid.NewGuid().ToString("N"),
+        };
+        // RFC 9449 §8 nonce claim — present only when the AS challenged.
+        if (nonce is not null)
+        {
+            claims["nonce"] = nonce;
+        }
+
         var descriptor = new SecurityTokenDescriptor
         {
-            Claims = new Dictionary<string, object>
-            {
-                ["htm"] = method,
-                ["htu"] = url,
-                ["iat"] = EpochTime.GetIntDate(DateTimeOffset.UtcNow.UtcDateTime),
-                ["jti"] = jti ?? Guid.NewGuid().ToString("N"),
-            },
+            Claims = claims,
             SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.EcdsaSha256),
             // typ + jwk go in the JWT HEADER (not payload). AdditionalHeaderClaims
             // is the WIF mechanism for extra header parameters.

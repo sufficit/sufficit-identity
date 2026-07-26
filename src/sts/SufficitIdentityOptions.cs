@@ -520,6 +520,17 @@ public sealed class DpopOptions
     /// client sends DPoP proofs.
     /// </summary>
     public bool RequireForAllClients { get; init; } = false;
+
+    /// <summary>
+    /// When <c>true</c>, the AS enforces the DPoP nonce dance (RFC 9449 §8):
+    /// a proof without a valid <c>nonce</c> claim is rejected with HTTP 400
+    /// <c>use_dpop_nonce</c> and a <c>DPoP-Nonce</c> response header; the
+    /// client retries carrying that nonce. RECOMMENDED by the RFC (bounds
+    /// pre-computation attacks) but not required. Default <c>false</c> — flip
+    /// to harden once clients implement the retry. Ignored when
+    /// <see cref="Enabled"/> is false.
+    /// </summary>
+    public bool RequireNonce { get; init; } = false;
 }
 
 /// <summary>

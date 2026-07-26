@@ -38,6 +38,7 @@ public class AuthorizationController : Controller
     private readonly Logout.IBackchannelLogoutDispatcher _backchannelLogoutDispatcher;
     private readonly Dpop.DpopProofValidator _dpopProofValidator;
     private readonly DpopOptions _dpopOptions;
+    private readonly Dpop.IDpopNonceStore _dpopNonceStore;
     private readonly IAntiforgery _antiforgery;
 
     public AuthorizationController(
@@ -49,7 +50,8 @@ public class AuthorizationController : Controller
         IConfiguration configuration,
         IAntiforgery antiforgery,
         Logout.IBackchannelLogoutDispatcher backchannelLogoutDispatcher,
-        Dpop.DpopProofValidator dpopProofValidator)
+        Dpop.DpopProofValidator dpopProofValidator,
+        Dpop.IDpopNonceStore dpopNonceStore)
     {
         _applicationManager = applicationManager;
         _authorizationManager = authorizationManager;
@@ -70,6 +72,7 @@ public class AuthorizationController : Controller
         _antiforgery = antiforgery;
         _backchannelLogoutDispatcher = backchannelLogoutDispatcher;
         _dpopProofValidator = dpopProofValidator;
+        _dpopNonceStore = dpopNonceStore;
         // DPoP options (item 3.1, RFC 9449).
         var rootOptions = configuration.GetSection("Sufficit:Identity")
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
@@ -292,12 +295,57 @@ public class AuthorizationController : Controller
         // lives in the controller (portable for a future move off OpenIddict).
         if (_dpopOptions.Enabled)
         {
+            // DPoP nonce dance (RFC 9449 §8). When RequireNonce is on, the AS
+            // challenges the client: the proof must carry a `nonce` claim
+            // matching the AS's current nonce. A first request without it (or
+            // with a stale one) gets HTTP 400 `use_dpop_nonce` + a `DPoP-Nonce`
+            // response header; the client retries carrying that nonce.
+            string? expectedNonce = null;
+            if (_dpopOptions.RequireNonce)
+            {
+                expectedNonce = _dpopNonceStore.Current();
+                if (expectedNonce is null)
+                {
+                    // No nonce in force yet — issue one and challenge.
+                    expectedNonce = _dpopNonceStore.Issue();
+                    Response.Headers["DPoP-Nonce"] = expectedNonce;
+                    return Forbid(
+                        authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                        properties: new AuthenticationProperties(new Dictionary<string, string?>
+                        {
+                            [OpenIddictServerAspNetCoreConstants.Properties.Error] = "use_dpop_nonce",
+                            [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
+                                "A DPoP nonce is required. Retry the request with the DPoP-Nonce value in the proof's nonce claim."
+                        }));
+                }
+            }
+
             var proof = await _dpopProofValidator.ValidateAsync(
                 Request.Headers["DPoP"].ToString(),
                 Request.Method,
                 Request.Scheme + "://" + Request.Host + Request.Path.Value,
-                expectedNonce: null,
+                expectedNonce,
                 HttpContext.RequestAborted);
+
+            // If the nonce was required and the proof failed specifically
+            // because of a missing/mismatched nonce, re-challenge with a fresh
+            // nonce (the validator logs the reason; we detect by checking the
+            // nonce validity directly since the validator returns null for any
+            // failure).
+            if (proof is null && _dpopOptions.RequireNonce
+                && !_dpopNonceStore.IsValid(ExtractNonceFromHeader(Request.Headers["DPoP"].ToString())))
+            {
+                var freshNonce = _dpopNonceStore.Issue();
+                Response.Headers["DPoP-Nonce"] = freshNonce;
+                return Forbid(
+                    authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = "use_dpop_nonce",
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
+                            "The DPoP nonce is missing or invalid. Retry with the current DPoP-Nonce value."
+                    }));
+            }
 
             if (proof is null && _dpopOptions.RequireForAllClients)
             {
@@ -496,6 +544,27 @@ public class AuthorizationController : Controller
             {
                 jkt = proof.KeyThumbprint,
             }));
+    }
+
+    /// <summary>
+    /// Best-effort extraction of the <c>nonce</c> claim from a DPoP proof
+    /// header, without full validation. Used by the nonce-dance logic to decide
+    /// whether a failed proof was rejected specifically for a nonce mismatch
+    /// (→ re-challenge with a fresh nonce) vs. another reason. Returns null when
+    /// the header is unparseable or has no nonce claim.
+    /// </summary>
+    private static string? ExtractNonceFromHeader(string? dpopHeader)
+    {
+        if (string.IsNullOrWhiteSpace(dpopHeader)) return null;
+        try
+        {
+            var jwt = new Microsoft.IdentityModel.JsonWebTokens.JsonWebToken(dpopHeader);
+            return jwt.TryGetPayloadValue("nonce", out string nonce) ? nonce : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private async Task<IActionResult> ExchangeForPasswordAsync(OpenIddictRequest request)

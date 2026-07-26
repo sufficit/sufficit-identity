@@ -584,6 +584,11 @@ public static class ServiceCollectionExtensions
             Microsoft.Extensions.Logging.LoggerFactoryExtensions.CreateLogger<Dpop.DpopProofValidator>(
                 sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>())));
 
+        // DPoP nonce store (RFC 9449 §8). Registered unconditionally (cheap
+        // single-value holder); only used when Dpop.RequireNonce is true.
+        services.AddSingleton<Dpop.IDpopNonceStore>(_ =>
+            new Dpop.InMemoryDpopNonceStore(timeProvider: TimeProvider.System));
+
         // ---- CIBA (RFC 9126, item 3.5) ----
         // The pending-request store is registered unconditionally (cheap; it is
         // an in-memory ConcurrentDictionary). The CibaController and the CIBA
@@ -591,6 +596,23 @@ public static class ServiceCollectionExtensions
         // always available so the dependency resolves regardless.
         services.AddSingleton<Ciba.ICibaPendingRequestStore>(_ =>
             new Ciba.InMemoryCibaPendingRequestStore(TimeProvider.System));
+
+        // CIBA access-token generator (item 3.5 / Limitation 2). Registered only
+        // when CIBA is enabled — it needs the STS signing key (same family as
+        // logout_token / OpenIddict access tokens) so resource servers validate
+        // the hand-built CIBA JWT against the STS JWKS. The access-token
+        // lifetime reuses the configured Tokens.AccessTokenLifetimeMinutes
+        // (null → OpenIddict default 60).
+        if (options.Ciba.Enabled)
+        {
+            var cibaSigning = ResolveLogoutSigningCredentials(options, isDevelopmentEnvironment);
+            var issuer = string.IsNullOrWhiteSpace(options.Issuer)
+                ? "https://localhost/"
+                : options.Issuer;
+            var accessTokenMinutes = options.Tokens.AccessTokenLifetimeMinutes ?? 60;
+            services.AddSingleton(new Ciba.CibaAccessTokenGenerator(
+                cibaSigning, issuer, accessTokenMinutes));
+        }
 
         return services;
     }

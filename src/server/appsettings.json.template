@@ -121,9 +121,11 @@
         "_Enabled": "true validates the DPoP header on token requests and sender-constrains tokens whose requests carried a valid proof. Default false.",
         "Enabled": false,
         "_RequireForAllClients": "true REJECTS token requests without a valid DPoP proof (bearer tokens no longer issued). Default false (accept-but-don't-require) for gradual rollout.",
-        "RequireForAllClients": false
+        "RequireForAllClients": false,
+        "_RequireNonce": "true enforces the DPoP nonce dance (RFC 9449 §8): a proof without a valid nonce claim is rejected with HTTP 400 use_dpop_nonce + a DPoP-Nonce response header; the client retries carrying that nonce. RECOMMENDED by the RFC; default false (flip once clients implement the retry). Ignored when Enabled is false.",
+        "RequireNonce": false
       },
-      "_Ciba": "CIBA (Client-Initiated Backchannel Authentication, RFC 9126, item 3.5) — decoupled auth where the consumption device (kiosk/call-center/AI agent) is NOT the authentication device. OpenIddict 7.6 has NO CIBA support; the STS implements it from scratch: /bc-authorize initiation, an in-memory ICibaPendingRequestStore, /connect/ciba/complete (out-of-band approval), and /connect/ciba/token (poll). NOTE: token emission on poll currently throws because OpenIddict forbids SignIn from unregistered endpoints — full token emission becomes native once OpenIddict adds CIBA OR the STS moves off OpenIddict. The pending/approval/poll logic (the CIBA-specific core) is complete and tested.",
+      "_Ciba": "CIBA (Client-Initiated Backchannel Authentication, RFC 9126, item 3.5) — decoupled auth where the consumption device (kiosk/call-center/AI agent) is NOT the authentication device. OpenIddict 7.6 has NO CIBA support; the STS implements it from scratch: /bc-authorize initiation, an in-memory ICibaPendingRequestStore, /connect/ciba/complete (out-of-band approval), and /connect/ciba/token (poll). The access token is emitted by CibaAccessTokenGenerator (a hand-built JWT signed with the STS key, validatable against the STS JWKS) because OpenIddict forbids SignIn from the unregistered endpoint. LIMITATION: the CIBA JWT is NOT an OpenIddict reference token (no /connect/introspect or /connect/revocation); insert into IOpenIddictTokenManager when a client needs those.",
       "Ciba": {
         "_Enabled": "true registers the CIBA endpoints (initiation, completion, poll) and the pending-request store. Default false.",
         "Enabled": false,
