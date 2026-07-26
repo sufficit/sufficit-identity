@@ -99,17 +99,13 @@ public sealed class CibaInitiationTests
     }
 
     [Fact]
-    public async Task Approved_request_is_consumed_one_shot_from_the_store()
+    public async Task Poll_after_approval_emits_an_access_token_one_shot()
     {
-        // The poll handler, once it sees an approved request, removes it from
-        // the store (one-shot) so the auth_req_id cannot be replayed. We
-        // exercise the store directly rather than the token emission path
-        // because OpenIddict 7.6 does not allow SignIn from an unregistered
-        // endpoint (the dedicated /connect/ciba/token is not a registered
-        // OpenIddict endpoint, so a successful SignIn throws). Token emission
-        // for CIBA becomes native once OpenIddict adds CIBA support OR once
-        // the STS moves off OpenIddict; the poll/approval/store logic — the
-        // CIBA-specific part implemented here — is what this test covers.
+        // End-to-end CIBA happy path: initiate → approve (via the store,
+        // simulating the out-of-band completion channel) → poll → token.
+        // The token is emitted by CibaAccessTokenGenerator (a hand-built JWT,
+        // since OpenIddict forbids SignIn from the unregistered
+        // /connect/ciba/token endpoint). A second poll is rejected (one-shot).
         using var factory = SufficitIdentityTestFactory.CreateIsolated(CibaEnabledWithShortInterval());
         await ((IAsyncLifetime)factory).InitializeAsync();
         await EnsureCibaClientAsync(factory);
@@ -124,21 +120,37 @@ public sealed class CibaInitiationTests
             Assert.True(store.Approve(authReqId, subject));
         }
 
-        // The poll hits the SignIn path (which throws inside OpenIddict), so we
-        // catch the 500 and instead assert the store-side one-shot semantics
-        // directly: after the approval was consumed (or the request removed),
-        // Find returns null.
-        using (var scope = factory.Services.CreateScope())
+        var (status, body) = await client.PostFormAsync("/connect/ciba/token", new Dictionary<string, string>
         {
-            var store = scope.ServiceProvider.GetRequiredService<ICibaPendingRequestStore>();
-            var approved = store.Find(authReqId);
-            Assert.NotNull(approved);
-            Assert.Equal(subject, approved!.ApprovedSubject);
+            ["grant_type"] = "urn:openid:params:grant-type:ciba",
+            ["auth_req_id"] = authReqId,
+            ["client_id"] = "test-ciba",
+            ["client_secret"] = "test-ciba-secret",
+        });
 
-            // Deny (one-shot consume): next Find returns null.
-            Assert.True(store.Deny(authReqId));
-            Assert.Null(store.Find(authReqId));
-        }
+        Assert.Equal(HttpStatusCode.OK, status);
+        var accessToken = body.GetProperty("access_token").GetString();
+        Assert.False(string.IsNullOrEmpty(accessToken));
+        Assert.Equal("Bearer", body.GetProperty("token_type").GetString());
+        Assert.Equal("test.scope", body.GetProperty("scope").GetString());
+
+        // The token is a self-contained JWT (typ=at+jwt). Decode the header to
+        // confirm it is signed (not opaque) and carries the access-token type.
+        var handler = new Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler();
+        var jwt = handler.ReadJsonWebToken(accessToken!);
+        Assert.Equal("at+jwt", jwt.Typ);
+        Assert.Equal(subject, jwt.GetClaim("sub").Value);
+
+        // One-shot: a second poll after issuance must NOT replay the token
+        // (the store removed the auth_req_id on emission).
+        var (replayStatus, _) = await client.PostFormAsync("/connect/ciba/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "urn:openid:params:grant-type:ciba",
+            ["auth_req_id"] = authReqId,
+            ["client_id"] = "test-ciba",
+            ["client_secret"] = "test-ciba-secret",
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, replayStatus);
     }
 
     private static IReadOnlyDictionary<string, string?> CibaEnabled() => new Dictionary<string, string?>

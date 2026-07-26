@@ -37,8 +37,8 @@ public class CibaController : Controller
     public const string CibaGrantType = "urn:openid:params:grant-type:ciba";
 
     private readonly IOpenIddictApplicationManager _applicationManager;
-    private readonly IOpenIddictScopeManager _scopeManager;
     private readonly Ciba.ICibaPendingRequestStore _pendingStore;
+    private readonly Ciba.CibaAccessTokenGenerator _accessTokenGenerator;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAntiforgery _antiforgery;
@@ -46,16 +46,16 @@ public class CibaController : Controller
 
     public CibaController(
         IOpenIddictApplicationManager applicationManager,
-        IOpenIddictScopeManager scopeManager,
         Ciba.ICibaPendingRequestStore pendingStore,
+        Ciba.CibaAccessTokenGenerator accessTokenGenerator,
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         IConfiguration configuration,
         IAntiforgery antiforgery)
     {
         _applicationManager = applicationManager;
-        _scopeManager = scopeManager;
         _pendingStore = pendingStore;
+        _accessTokenGenerator = accessTokenGenerator;
         _signInManager = signInManager;
         _userManager = userManager;
         _antiforgery = antiforgery;
@@ -244,21 +244,42 @@ public class CibaController : Controller
                 return BadRequest(new { error = Errors.InvalidGrant });
             }
 
-            var identity = new ClaimsIdentity(
-                authenticationType: TokenValidationParameters.DefaultAuthenticationType,
-                nameType: Claims.Name,
-                roleType: Claims.Role);
-            identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
-                    .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                    .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
-                    .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
-                    .SetClaims(Claims.Role, [.. await _userManager.GetRolesAsync(user)]);
-            identity.SetScopes(pending.Scopes);
-            identity.SetResources(await ToListAsync(_scopeManager.ListResourcesAsync(identity.GetScopes())));
-            identity.SetDestinations(GetDestinations);
+            // Emit the access token MANUALLY (Limitation 2). SignIn would throw
+            // ("A sign-in response cannot be returned from this endpoint")
+            // because /connect/ciba/token is not a registered OpenIddict
+            // endpoint. CibaAccessTokenGenerator builds a self-contained JWT
+            // signed with the STS key, validatable against the STS JWKS. This
+            // is NOT an OpenIddict reference token (no introspection/revocation)
+            // — documented limitation; deferred until a client needs it.
+            var scopes = pending.Scopes.ToList();
+            var extraClaims = new List<System.Security.Claims.Claim>
+            {
+                new(Claims.Email, (await _userManager.GetEmailAsync(user)) ?? string.Empty),
+                new(Claims.Name, (await _userManager.GetUserNameAsync(user)) ?? string.Empty),
+                new(Claims.PreferredUsername, (await _userManager.GetUserNameAsync(user)) ?? string.Empty),
+            };
+            foreach (var role in await _userManager.GetRolesAsync(user))
+            {
+                extraClaims.Add(new System.Security.Claims.Claim(Claims.Role, role));
+            }
+
+            var accessToken = _accessTokenGenerator.Generate(
+                subject: subject,
+                audience: pending.ClientId,
+                scopes: scopes,
+                clientId: pending.ClientId,
+                extraClaims: extraClaims);
 
             _pendingStore.Deny(authReqId); // one-shot: remove so it can't be replayed
-            return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+
+            // RFC 9126 §3.2 / RFC 6749 §5.1 successful token response.
+            return Ok(new
+            {
+                access_token = accessToken,
+                token_type = "Bearer",
+                expires_in = 3600,
+                scope = string.Join(' ', scopes),
+            });
         }
 
         // Slow-down enforcement (RFC 9126 §3): reject polls faster than the
@@ -270,53 +291,5 @@ public class CibaController : Controller
 
         // Still pending — the canonical polling response.
         return BadRequest(new { error = Errors.AuthorizationPending, error_description = "The authorization request is still pending approval." });
-    }
-
-    private static IEnumerable<string> GetDestinations(Claim claim)
-    {
-        // Same destination logic as AuthorizationController.GetDestinations but
-        // duplicated here to keep CibaController self-contained/portable (the
-        // claim→scope map feature is not relevant to CIBA tokens). When this
-        // moves to AuthorizationController post-OpenIddict, it consolidates.
-        switch (claim.Type)
-        {
-            case Claims.Name:
-            case Claims.PreferredUsername:
-                if (claim.Subject!.HasScope(Scopes.Profile))
-                {
-                    yield return Destinations.AccessToken;
-                    yield return Destinations.IdentityToken;
-                }
-                yield break;
-            case Claims.Email:
-                if (claim.Subject!.HasScope(Scopes.Email))
-                {
-                    yield return Destinations.AccessToken;
-                    yield return Destinations.IdentityToken;
-                }
-                yield break;
-            case Claims.Role:
-                if (claim.Subject!.HasScope(Scopes.Roles))
-                {
-                    yield return Destinations.AccessToken;
-                    yield return Destinations.IdentityToken;
-                }
-                yield break;
-            case "AspNet.Identity.SecurityStamp":
-                yield break;
-            default:
-                yield return Destinations.AccessToken;
-                break;
-        }
-    }
-
-    private static async Task<List<T>> ToListAsync<T>(IAsyncEnumerable<T> source)
-    {
-        var list = new List<T>();
-        await foreach (var item in source)
-        {
-            list.Add(item);
-        }
-        return list;
     }
 }
