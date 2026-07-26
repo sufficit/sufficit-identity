@@ -125,6 +125,25 @@ public static class ServiceCollectionExtensions
                 // password grant (lockoutOnFailure: true).
                 identity.Lockout.MaxFailedAccessAttempts = options.Lockout.MaxFailedAttempts;
                 identity.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(options.Lockout.DurationMinutes);
+
+                // Password complexity policy from Sufficit:Identity:Password
+                // (eval M2). Applied on creation/change/reset only — never
+                // retroactively against existing users (ASP.NET Core Identity
+                // semantics), so flipping this does not force a mass password
+                // reset on login.
+                identity.Password.RequiredLength = options.Password.RequiredLength;
+                identity.Password.RequireDigit = options.Password.RequireDigit;
+                identity.Password.RequireLowercase = options.Password.RequireLowercase;
+                identity.Password.RequireUppercase = options.Password.RequireUppercase;
+                identity.Password.RequireNonAlphanumeric = options.Password.RequireNonAlphanumeric;
+                identity.Password.RequiredUniqueChars = options.Password.RequiredUniqueChars;
+
+                // Sign-in policy from Sufficit:Identity:SignIn (eval M3). Every
+                // grant in AuthorizationController consults CanSignInAsync, so
+                // RequireConfirmedEmail gates interactive login AND every token
+                // grant uniformly. See SignInPolicyOptions XML doc for the
+                // external-login cross-repo dependency and the runbook.
+                identity.SignIn.RequireConfirmedEmail = options.SignIn.RequireConfirmedEmail;
             })
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
@@ -196,6 +215,38 @@ public static class ServiceCollectionExtensions
                       .SetPushedAuthorizationEndpointUris("connect/par");
 
                 // -------------------------------------------------------------------
+                // Mutual TLS (mTLS) endpoint aliases (RFC 8705, item 3.4).
+                // Opt-in via Sufficit:Identity:Mtls:Enabled — mTLS requires the
+                // HOST to request/validate client certificates at the TLS layer,
+                // so this just registers the aliased paths (distinct from the
+                // plain endpoints) so clients can target them for certificate-
+                // based authentication. The discovery metadata flag below
+                // advertises the capability only when Enabled. private_key_jwt
+                // (RFC 7523) is enabled by OpenIddict unconditionally and is
+                // NOT gated here — it is the OTHER strong client-auth method.
+                // -------------------------------------------------------------------
+                if (options.Mtls.Enabled)
+                {
+                    // MTLS alias setters require ABSOLUTE URI strings (unlike
+                    // SetTokenEndpointUris, which accepts relative paths and
+                    // resolves them against the issuer). Build absolute URIs
+                    // from the configured issuer so they parse cleanly; the
+                    // discovery handler re-roots them to the real request
+                    // issuer at runtime.
+                    var mtlsIssuer = string.IsNullOrWhiteSpace(options.Issuer)
+                        ? "https://localhost/"
+                        : options.Issuer;
+                    var mtlsBase = new Uri(mtlsIssuer, UriKind.Absolute);
+
+                    server.SetMtlsTokenEndpointAliasUri(new Uri(mtlsBase, "connect/token/mtls").AbsoluteUri)
+                          .SetMtlsIntrospectionEndpointAliasUri(new Uri(mtlsBase, "connect/introspect/mtls").AbsoluteUri)
+                          .SetMtlsRevocationEndpointAliasUri(new Uri(mtlsBase, "connect/revocation/mtls").AbsoluteUri)
+                          .SetMtlsDeviceAuthorizationEndpointAliasUri(new Uri(mtlsBase, "connect/deviceauthorization/mtls").AbsoluteUri)
+                          .SetMtlsUserInfoEndpointAliasUri(new Uri(mtlsBase, "connect/userinfo/mtls").AbsoluteUri)
+                          .SetMtlsPushedAuthorizationEndpointAliasUri(new Uri(mtlsBase, "connect/par/mtls").AbsoluteUri);
+                }
+
+                // -------------------------------------------------------------------
                 // Issuer (#8). Without this, OpenIddict derives `issuer` /
                 // the token `iss` claim from the incoming request's
                 // scheme+host on every call — which silently tracks
@@ -230,6 +281,28 @@ public static class ServiceCollectionExtensions
                     "policies",
                     "skoruba_identity_admin_api",
                     "sufficit_ai_openai_bridge");
+
+                // MCP / agent-AI resource servers (RFC 8707, item 4.2). MCP
+                // resource URIs are inherently dynamic (each deployment has its
+                // own), so the STS trusts the per-client oi_rprm permission
+                // (Permissions.Prefixes.Resource + uri, checked by OpenIddict's
+                // ValidateResourcePermissions) rather than a static allowlist.
+                // DisableResourceValidation turns OFF the static "is this a
+                // known audience" check (ID2190 invalid_target) while keeping
+                // the per-client permission check — the right tradeoff for an
+                // AS serving many dynamic MCP/RS endpoints. RegisterAudiences/
+                // RegisterResources would require listing every resource up
+                // front, which does not fit the MCP model.
+                if (options.Mcp.Resources.Count > 0 || options.Mcp.ProtectedResourceMetadataEnabled)
+                {
+                    server.DisableResourceValidation();
+                    // Still advertise the explicitly-configured resources for
+                    // discoverability (clients can read them from discovery).
+                    if (options.Mcp.Resources.Count > 0)
+                    {
+                        server.RegisterAudiences(options.Mcp.Resources.ToArray());
+                    }
+                }
 
                 // -------------------------------------------------------------------
                 // Claims advertised in discovery (matches what the
@@ -398,15 +471,51 @@ public static class ServiceCollectionExtensions
                     .CreateBuilder<OpenIddictServerEvents.HandleConfigurationRequestContext>()
                     .UseInlineHandler(context =>
                     {
-                        // Backchannel logout (OIDC Back-Channel Logout 1.0):
-                        // NOT implemented — ack stub only.
-                        context.Metadata["backchannel_logout_supported"] = JsonValue.Create(false);
-                        context.Metadata["backchannel_logout_session_supported"] = JsonValue.Create(false);
+                        // Backchannel logout (OIDC Back-Channel Logout 1.0,
+                        // item 3.2 [L1]): advertised as supported ONLY when the
+                        // STS is configured to distribute logout_tokens to RPs
+                        // (BackchannelLogoutOptions.Enabled). When disabled,
+                        // publish `false` so OIDC clients natively skip the
+                        // flow instead of probing.
+                        context.Metadata["backchannel_logout_supported"] =
+                            JsonValue.Create(options.BackchannelLogout.Enabled);
+                        // session_supported=true means the logout_token carries
+                        // a sid; we always do when sid is available, so this
+                        // tracks Enabled.
+                        context.Metadata["backchannel_logout_session_supported"] =
+                            JsonValue.Create(options.BackchannelLogout.Enabled);
 
                         // Frontchannel logout (OIDC Front-Channel Logout 1.0):
-                        // NOT implemented — ack stub only.
+                        // NOT implemented — ack stub only. (Back-channel is the
+                        // more reliable mechanism; front-channel iframe-based
+                        // logout is deliberately left off.)
                         context.Metadata["frontchannel_logout_supported"] = JsonValue.Create(false);
                         context.Metadata["frontchannel_logout_session_supported"] = JsonValue.Create(false);
+
+                        // mTLS sender-constrained access tokens (RFC 8705, item
+                        // 3.4). Advertised ONLY when Mtls.Enabled — the host
+                        // must be configured for client certificates at the TLS
+                        // layer for this to be true (see MtlsOptions XML doc).
+                        // OpenIddict 7.6 does not advertise this automatically,
+                        // so we publish it here to match the actual capability.
+                        context.Metadata["tls_client_certificate_bound_access_tokens"] =
+                            JsonValue.Create(options.Mtls.Enabled);
+
+                        // DPoP (RFC 9449, item 3.1). Advertised ONLY when
+                        // Dpop.Enabled: the STS validates DPoP proofs and
+                        // sender-constrains tokens. The signing-algorithms list
+                        // matches what DpopProofValidator accepts (EC P-256 and
+                        // RSA). OpenIddict 7.6 omits this entirely (no DPoP
+                        // support), so DiscoveryTests previously pinned its
+                        // absence — that assertion is updated alongside this.
+                        if (options.Dpop.Enabled)
+                        {
+                            // dpop_signing_alg_values_supported is a JSON array
+                            // of JWS alg names the AS accepts in DPoP proofs.
+                            context.Metadata["dpop_signing_alg_values_supported"] =
+                                System.Text.Json.JsonSerializer.SerializeToNode(
+                                    new[] { "ES256", "RS256" });
+                        }
 
                         return default;
                     })
@@ -440,7 +549,87 @@ public static class ServiceCollectionExtensions
                 validation.UseAspNetCore();
             });
 
+        // ---- OIDC Back-Channel Logout 1.0 (item 3.2 [L1]) ----
+        // OpenIddict 7.6 only consumes logout_tokens; the STS generates them
+        // (LogoutTokenGenerator) and distributes them (BackchannelLogoutDistributor).
+        // The IBackchannelLogoutDispatcher is ALWAYS registered (so the
+        // AuthorizationController can take it as a hard dependency): when the
+        // feature is disabled, a no-op implementation is used, so logout just
+        // skips RP fan-out. The real generator+distributor+HttpClient are only
+        // wired when Enabled, to avoid creating an HttpClient that is never used.
+        if (options.BackchannelLogout.Enabled)
+        {
+            var logoutSigning = ResolveLogoutSigningCredentials(options, isDevelopmentEnvironment);
+            var issuer = string.IsNullOrWhiteSpace(options.Issuer)
+                ? "https://localhost/"
+                : options.Issuer;
+
+            services.AddSingleton(new Logout.LogoutTokenGenerator(logoutSigning, issuer));
+            services.AddHttpClient<Logout.IBackchannelLogoutDispatcher, Logout.BackchannelLogoutDistributor>();
+        }
+        else
+        {
+            services.AddSingleton<Logout.IBackchannelLogoutDispatcher, Logout.NullBackchannelLogoutDispatcher>();
+        }
+
+        // ---- DPoP (RFC 9449, item 3.1) ----
+        // The proof validator is registered unconditionally (cheap; it only
+        // runs when invoked from AuthorizationController.Exchange AND the
+        // option is enabled). TimeProvider.System is fine — the proof's own
+        // iat binding carries the freshness guarantee. The logger is resolved
+        // from the provider via the factory overload (avoids building an
+        // intermediate service provider inside registration).
+        services.AddSingleton(sp => new Dpop.DpopProofValidator(
+            TimeProvider.System,
+            Microsoft.Extensions.Logging.LoggerFactoryExtensions.CreateLogger<Dpop.DpopProofValidator>(
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>())));
+
+        // ---- CIBA (RFC 9126, item 3.5) ----
+        // The pending-request store is registered unconditionally (cheap; it is
+        // an in-memory ConcurrentDictionary). The CibaController and the CIBA
+        // poll branch only run when the option is enabled, but the store is
+        // always available so the dependency resolves regardless.
+        services.AddSingleton<Ciba.ICibaPendingRequestStore>(_ =>
+            new Ciba.InMemoryCibaPendingRequestStore(TimeProvider.System));
+
         return services;
+    }
+
+    /// <summary>
+    /// Resolves the signing credentials used for back-channel <c>logout_token</c>
+    /// JWTs. Reuses the STS signing certificate when configured (so RPs
+    /// validate the logout_token against the same JWKS they already trust);
+    /// otherwise falls back to an ephemeral ECDSA P-256 key (Development/tests
+    /// only — production requires a real certificate, enforced separately by
+    /// the OpenIddict server startup).
+    /// </summary>
+    private static Microsoft.IdentityModel.Tokens.SigningCredentials ResolveLogoutSigningCredentials(
+        SufficitIdentityOptions options, bool isDevelopmentEnvironment)
+    {
+        if (!string.IsNullOrWhiteSpace(options.Certificates.SigningPath))
+        {
+            var certificate = X509CertificateLoader.LoadPkcs12FromFile(
+                options.Certificates.SigningPath, options.Certificates.SigningPassword);
+            return new Microsoft.IdentityModel.Tokens.SigningCredentials(
+                new Microsoft.IdentityModel.Tokens.X509SecurityKey(certificate),
+                Microsoft.IdentityModel.Tokens.SecurityAlgorithms.RsaSha256);
+        }
+
+        if (isDevelopmentEnvironment)
+        {
+            // Ephemeral ECDSA P-256 key — fine for tests/dev where the issuer
+            // and validator are the same process. Never used in production.
+            var ecdsa = System.Security.Cryptography.ECDsa.Create(
+                System.Security.Cryptography.ECCurve.NamedCurves.nistP256);
+            return new Microsoft.IdentityModel.Tokens.SigningCredentials(
+                new Microsoft.IdentityModel.Tokens.ECDsaSecurityKey(ecdsa),
+                Microsoft.IdentityModel.Tokens.SecurityAlgorithms.EcdsaSha256);
+        }
+
+        throw new InvalidOperationException(
+            "Back-channel logout is enabled but no signing certificate is configured. " +
+            "Production deployments require Sufficit:Identity:Certificates:SigningPath " +
+            "(the logout_token is signed with the same key as access tokens).");
     }
 
     /// <summary>

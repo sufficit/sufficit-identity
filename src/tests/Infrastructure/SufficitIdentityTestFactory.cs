@@ -182,6 +182,15 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
 
         builder.Configure(app =>
         {
+            // Same security-headers middleware (incl. CSP) as the composition
+            // host's Program.cs — exercised here so CspHeaderTests can assert
+            // the header is emitted without a separate Program.cs-reproducing
+            // factory. See SecurityHeadersMiddlewareExtensions. IConfiguration
+            // is resolved from the built provider (the Configure(app) overload
+            // has no context parameter, unlike ConfigureServices).
+            var configuration = app.ApplicationServices.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
+            app.UseSufficitSecurityHeaders(configuration);
+
             app.UseRouting();
 
             app.UseAuthentication();

@@ -55,10 +55,24 @@ public static class ServiceCollectionExtensions
                 {
                     policy.RequireAuthenticatedUser();
                     policy.Requirements.Add(new ScopeRequirement(options.RequiredScope));
+
+                    // Item 5.2 [L3]: optionally require evidence of multi-factor
+                    // authentication (an `amr` claim carrying mfa/otp/hwk) for
+                    // the high-privilege management endpoints. Off by default so
+                    // the existing admin-token flow keeps working; flip to true
+                    // once the login UI emits `amr` for MFA-completed sessions.
+                    if (options.RequireMfa)
+                    {
+                        policy.Requirements.Add(new MfaRequirement());
+                    }
                 });
             });
 
             services.AddSingleton<IAuthorizationHandler, ScopeHandler>();
+            if (options.RequireMfa)
+            {
+                services.AddSingleton<IAuthorizationHandler, MfaHandler>();
+            }
         }
 
         return services;
@@ -92,6 +106,43 @@ public sealed class ScopeHandler : AuthorizationHandler<ScopeRequirement>
     }
 }
 
+/// <summary>
+/// Policy requirement that the access token carries evidence of multi-factor
+/// authentication (RFC 8705 / OIDC Core <c>amr</c> claim — item 5.2 [L3]).
+/// Accepts the standard <c>amr</c> values that indicate a second factor was
+/// used: <c>mfa</c> (MFA performed), <c>otp</c> (one-time password), and
+/// <c>hwk</c> (hardware key). A token minted from a password-only session has
+/// none of these, so it is rejected when this requirement is active.
+/// </summary>
+public sealed class MfaRequirement : IAuthorizationRequirement;
+
+/// <summary>
+/// Validates the <see cref="MfaRequirement"/>: the principal must carry an
+/// <c>amr</c> claim with at least one MFA-indicating value. Succeeds only then;
+/// otherwise leaves the requirement unsatisfied (the policy then denies).
+/// </summary>
+public sealed class MfaHandler : AuthorizationHandler<MfaRequirement>
+{
+    private const string AmrClaimType = "amr";
+
+    // amr values per RFC 8176 that prove a second factor was used.
+    private static readonly HashSet<string> MfaValues = new(StringComparer.Ordinal)
+    {
+        "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina"
+    };
+
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context, MfaRequirement requirement)
+    {
+        var amrValues = context.User.FindAll(AmrClaimType).Select(c => c.Value);
+        if (amrValues.Any(v => MfaValues.Contains(v)))
+        {
+            context.Succeed(requirement);
+        }
+        return Task.CompletedTask;
+    }
+}
+
 /// <summary>Bindable options for the management API.</summary>
 public sealed class ManagementOptions
 {
@@ -99,6 +150,14 @@ public sealed class ManagementOptions
     public string RoutePrefix { get; init; } = "api";
     public bool RequireAuthorization { get; init; } = true;
     public string RequiredScope { get; init; } = "skoruba_identity_admin_api";
+
+    /// <summary>
+    /// When <c>true</c>, the management policy additionally requires an <c>amr</c>
+    /// claim proving multi-factor authentication (item 5.2 [L3]). Default
+    /// <c>false</c>: flip only after the login UI emits <c>amr</c> for
+    /// MFA-completed sessions, otherwise every admin token is rejected.
+    /// </summary>
+    public bool RequireMfa { get; init; } = false;
 }
 
 /// <summary>Endpoint mapping helper (call from Program.cs after Build).</summary>

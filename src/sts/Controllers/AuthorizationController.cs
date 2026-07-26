@@ -34,6 +34,10 @@ public class AuthorizationController : Controller
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly TokenExchangeOptions _tokenExchangeOptions;
+    private readonly IReadOnlyDictionary<string, string> _claimScopeMap;
+    private readonly Logout.IBackchannelLogoutDispatcher _backchannelLogoutDispatcher;
+    private readonly Dpop.DpopProofValidator _dpopProofValidator;
+    private readonly DpopOptions _dpopOptions;
     private readonly IAntiforgery _antiforgery;
 
     public AuthorizationController(
@@ -43,7 +47,9 @@ public class AuthorizationController : Controller
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         IConfiguration configuration,
-        IAntiforgery antiforgery)
+        IAntiforgery antiforgery,
+        Logout.IBackchannelLogoutDispatcher backchannelLogoutDispatcher,
+        Dpop.DpopProofValidator dpopProofValidator)
     {
         _applicationManager = applicationManager;
         _authorizationManager = authorizationManager;
@@ -52,7 +58,22 @@ public class AuthorizationController : Controller
         _userManager = userManager;
         _tokenExchangeOptions = configuration.GetSection("Sufficit:Identity:TokenExchange").Get<TokenExchangeOptions>()
             ?? new TokenExchangeOptions();
+        // Claim-type → required-scope map (eval #10 / item 2.5 [M5]). Bound
+        // from Sufficit:Identity:ClaimScopeMap:ClaimToScope. Empty by default
+        // → GetDestinations behavior is byte-identical to before until an
+        // operator adds an entry. Same IConfiguration-read pattern as
+        // TokenExchangeOptions above (the SufficitIdentityOptions type lives
+        // in src/sts and is already referenced here).
+        var claimScopeOptions = configuration.GetSection("Sufficit:Identity:ClaimScopeMap")
+            .Get<ClaimScopeMapOptions>() ?? new ClaimScopeMapOptions();
+        _claimScopeMap = claimScopeOptions.ClaimToScope;
         _antiforgery = antiforgery;
+        _backchannelLogoutDispatcher = backchannelLogoutDispatcher;
+        _dpopProofValidator = dpopProofValidator;
+        // DPoP options (item 3.1, RFC 9449).
+        var rootOptions = configuration.GetSection("Sufficit:Identity")
+            .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
+        _dpopOptions = rootOptions.Dpop;
     }
 
     // -----------------------------------------------------------------------
@@ -236,7 +257,7 @@ public class AuthorizationController : Controller
 
         var identity = await BuildIdentityAsync(user);
         identity.SetScopes(request.GetScopes());
-        identity.SetResources(await ToListAsync(_scopeManager.ListResourcesAsync(identity.GetScopes())));
+        identity.SetResources(await ResolveResourcesAsync(identity, request));
 
         var authorization = authorizations.LastOrDefault() ?? await _authorizationManager.CreateAsync(
             identity: identity,
@@ -261,6 +282,38 @@ public class AuthorizationController : Controller
     {
         var request = HttpContext.GetOpenIddictServerRequest() ??
             throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
+
+        // DPoP (RFC 9449, item 3.1): when enabled, validate the DPoP proof
+        // header once here, before dispatching to any grant branch. The proof
+        // binds the issued token to the client's key (cnf.jkt). When
+        // RequireForAllClients is set, a missing/invalid proof is fatal.
+        // Branches that build the token identity attach the cnf claim via
+        // ApplyDpopBinding below. OpenIddict 7.6 has no DPoP support, so this
+        // lives in the controller (portable for a future move off OpenIddict).
+        if (_dpopOptions.Enabled)
+        {
+            var proof = await _dpopProofValidator.ValidateAsync(
+                Request.Headers["DPoP"].ToString(),
+                Request.Method,
+                Request.Scheme + "://" + Request.Host + Request.Path.Value,
+                expectedNonce: null,
+                HttpContext.RequestAborted);
+
+            if (proof is null && _dpopOptions.RequireForAllClients)
+            {
+                return Forbid(
+                    authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidClient,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
+                            "A valid DPoP proof header is required for this token request."
+                    }));
+            }
+            // Stash the proof for branches to attach; null when absent (accepted
+            // when not required). HttpContext.Items is per-request safe.
+            HttpContext.Items["dpop.proof"] = proof;
+        }
 
         if (request.IsAuthorizationCodeGrantType() || request.IsRefreshTokenGrantType())
         {
@@ -398,7 +451,7 @@ public class AuthorizationController : Controller
         // as ExchangeForUserAsync's re-sync above.
         var identity = await BuildIdentityAsync(user);
         identity.SetScopes(result.Principal.GetScopes());
-        identity.SetResources(await ToListAsync(_scopeManager.ListResourcesAsync(identity.GetScopes())));
+        identity.SetResources(await ResolveResourcesAsync(identity, request));
         identity.SetDestinations(GetDestinations);
 
         return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
@@ -418,10 +471,31 @@ public class AuthorizationController : Controller
         identity.SetClaim(Claims.Subject, (await _applicationManager.GetClientIdAsync(application))!);
         identity.SetClaim(Claims.Name, (await _applicationManager.GetDisplayNameAsync(application)) ?? request.ClientId!);
         identity.SetScopes(request.GetScopes());
-        identity.SetResources(await ToListAsync(_scopeManager.ListResourcesAsync(identity.GetScopes())));
+        identity.SetResources(await ResolveResourcesAsync(identity, request));
+        ApplyDpopBinding(identity);
         identity.SetDestinations(GetDestinations);
 
         return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+    }
+
+    /// <summary>
+    /// Attaches the DPoP confirmation (<c>cnf</c>) claim to the token identity
+    /// when the request carried a valid DPoP proof (RFC 9449 §7.2). The claim
+    /// is a JSON object <c>{"jkt":"&lt;thumbprint&gt;"}</c> that resource
+    /// servers use to reject the token unless a later request presents a proof
+    /// signed by the matching key. No-op when DPoP is disabled or the proof
+    /// was absent/invalid (and not required).
+    /// </summary>
+    private void ApplyDpopBinding(ClaimsIdentity identity)
+    {
+        if (HttpContext.Items["dpop.proof"] is not Dpop.DpopProof proof) return;
+
+        // cnf claim value per RFC 9449 §7.2: {"jkt":"<base64url-thumbprint>"}.
+        identity.SetClaim(Dpop.DpopProofValidator.ConfirmationClaimType,
+            System.Text.Json.JsonSerializer.SerializeToElement(new
+            {
+                jkt = proof.KeyThumbprint,
+            }));
     }
 
     private async Task<IActionResult> ExchangeForPasswordAsync(OpenIddictRequest request)
@@ -454,7 +528,7 @@ public class AuthorizationController : Controller
 
         var identity = await BuildIdentityAsync(user);
         identity.SetScopes(request.GetScopes());
-        identity.SetResources(await ToListAsync(_scopeManager.ListResourcesAsync(identity.GetScopes())));
+        identity.SetResources(await ResolveResourcesAsync(identity, request));
         identity.SetDestinations(GetDestinations);
 
         return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
@@ -545,7 +619,7 @@ public class AuthorizationController : Controller
             ? requestedScopes.Intersect(subjectScopes)
             : (IEnumerable<string>)subjectScopes);
 
-        identity.SetResources(await ToListAsync(_scopeManager.ListResourcesAsync(identity.GetScopes())));
+        identity.SetResources(await ResolveResourcesAsync(identity, request));
 
         // RFC 8693 §4.1: identify the acting party (the client performing the
         // exchange) with an "act" claim, NESTING any actor chain the
@@ -667,7 +741,38 @@ public class AuthorizationController : Controller
             return BadRequest(new { error = "invalid_request", error_description = ex.Message });
         }
 
+        // Capture the subject BEFORE SignOutAsync clears the cookie principal —
+        // we need it to enumerate the RPs whose sessions to terminate via
+        // back-channel logout (item 3.2 [L1]). The distributor is a no-op when
+        // BackchannelLogout is disabled, so this call is cheap in that case.
+        var userId = await _userManager.GetUserIdAsync(
+            await _userManager.GetUserAsync(User) ?? throw new InvalidOperationException(
+                "The user details cannot be retrieved."));
+
         await _signInManager.SignOutAsync();
+
+        // Distribute the back-channel logout to RPs. Fire-and-forget relative
+        // to the user's redirect: the distributor schedules per-RP POSTs on
+        // background tasks and returns immediately, so a slow/down RP cannot
+        // delay the logout response. No await needed for the user-facing path,
+        // but we DO await DistributeAsync itself (it only schedules; it does
+        // not wait for the POSTs). Wrapped so a distribution failure never
+        // breaks the local sign-out (the user IS already signed out here).
+        if (!string.IsNullOrEmpty(userId))
+        {
+            try
+            {
+                await _backchannelLogoutDispatcher.DistributeAsync(userId, sessionId: null, HttpContext.RequestAborted);
+            }
+            catch (Exception)
+            {
+                // Defense in depth: the distributor already swallows per-RP
+                // errors, but never let any exception here surface — local
+                // logout succeeded and that is what the user sees.
+                // (No logger field on this controller; the distributor logs.)
+            }
+        }
+
         return SignOut(
             authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
             properties: new AuthenticationProperties { RedirectUri = "/" });
@@ -775,18 +880,48 @@ public class AuthorizationController : Controller
     }
 
     /// <summary>
+    /// Resolves the resource/audience set for an issued token: the UNION of
+    /// (a) resources derived from the granted scopes (via ListResourcesAsync —
+    /// the pre-existing behavior) and (b) any <c>resource</c> indicators the
+    /// client explicitly requested (RFC 8707, item 4.2). Without (b), a token
+    /// requested for <c>resource=https://mcp.example</c> would NOT carry that
+    /// audience, defeating audience-binding (the MCP/server confused-deputy
+    /// mitigation). OpenIddict validates the requested resource against the
+    /// client's <c>oi_rprm</c> permission BEFORE this runs, so only
+    /// authorized resources reach here.
+    /// </summary>
+    private async Task<IEnumerable<string>> ResolveResourcesAsync(
+        ClaimsIdentity identity, OpenIddictRequest? request)
+    {
+        var resources = await ToListAsync(_scopeManager.ListResourcesAsync(identity.GetScopes()));
+        if (request is not null)
+        {
+            // request.GetResources() returns the explicit resource parameter
+            // values (RFC 8707 §2). Union them in; SetResources dedupes.
+            foreach (var resource in request.GetResources())
+            {
+                if (!resources.Contains(resource, StringComparer.Ordinal))
+                {
+                    resources.Add(resource);
+                }
+            }
+        }
+        return resources;
+    }
+
+    /// <summary>
     /// Gates which token(s) — access, identity, or neither — each claim reaches
-    /// (#4/#10). <c>name</c>/<c>email</c>/<c>role</c> are now bound to their
+    /// (#4/#10). <c>name</c>/<c>email</c>/<c>role</c> are bound to their
     /// matching scope (profile/email/roles respectively) for BOTH tokens: a
     /// claim only reaches ANY token when the caller was actually granted the
-    /// corresponding scope. Previously these three always went to the access
-    /// token unconditionally, regardless of scope — that's what let a
-    /// narrowly-scoped token (e.g. a token-exchange delegation that only
-    /// asked for a resource-specific scope) still carry the subject's full
-    /// name/email/role breadth (only the scope SET was ever narrowed, never
-    /// the claims — see ExchangeForTokenExchangeAsync).
+    /// corresponding scope. Custom persisted claims (e.g. <c>directive</c>) are
+    /// gated by the config-driven <see cref="_claimScopeMap"/> (item 2.5 [M5]):
+    /// a claim type present in the map reaches the access token ONLY if the
+    /// subject was granted the mapped scope; a claim type NOT in the map keeps
+    /// the pre-existing behavior (access token, never id_token) — so an empty
+    /// map is byte-identical to the old behavior.
     /// </summary>
-    private static IEnumerable<string> GetDestinations(Claim claim)
+    private IEnumerable<string> GetDestinations(Claim claim)
     {
         switch (claim.Type)
         {
@@ -818,22 +953,31 @@ public class AuthorizationController : Controller
             case "AspNet.Identity.SecurityStamp":
                 yield break;
 
+            case Dpop.DpopProofValidator.ConfirmationClaimType:
+                // DPoP confirmation (RFC 9449 §7.2): route to the access token
+                // only — resource servers validate it; the id_token is for the
+                // client and must not carry the sender-binding thumbprint.
+                yield return Destinations.AccessToken;
+                yield break;
+
             default:
-                // Custom persisted claims (AspNetUserClaims, e.g. `directive`)
-                // have no scope of their own to gate on in this codebase —
-                // routing them to the access token only (never the id_token)
-                // is unchanged from before. KNOWN RESIDUAL GAP (eval #10): any
-                // client that is a valid audience/resource for the token still
-                // sees every persisted claim of this kind, not just ones
-                // relevant to what it asked for. Closing that properly needs a
-                // claim-type→scope allowlist (config-driven, analogous to
-                // TokenExchangeOptions below) — deliberately NOT invented here
-                // rather than guessing a mapping that could silently break
-                // `directive` for existing resource servers (IntrospectionTests
-                // pins today's behavior: `directive` must reach the access
-                // token for a caller requesting only a plain custom scope,
-                // with no profile/email/roles requested at all). Flagged as
-                // follow-up hardening, not implemented in this pass.
+                // Custom persisted claims (AspNetUserClaims, e.g. `directive`).
+                // Item 2.5 [M5] (closes eval #10): if the claim type is in the
+                // config-driven _claimScopeMap, it reaches the access token
+                // ONLY when the subject was granted the mapped scope; otherwise
+                // it is dropped. Claim types NOT in the map fall through to the
+                // pre-existing behavior (access token, never id_token), so an
+                // empty map (the default) is byte-identical to before — and
+                // IntrospectionTests' pinning of `directive` for a caller
+                // requesting only a plain custom scope still holds.
+                if (_claimScopeMap.TryGetValue(claim.Type, out var requiredScope))
+                {
+                    if (claim.Subject!.HasScope(requiredScope))
+                    {
+                        yield return Destinations.AccessToken;
+                    }
+                    yield break;
+                }
                 yield return Destinations.AccessToken;
                 break;
         }

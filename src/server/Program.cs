@@ -156,9 +156,49 @@ var app = builder.Build();
 
 if (trustedProxies.Length == 0 && !app.Environment.IsDevelopment())
 {
-    app.Logger.LogWarning(
+    var message =
         "Sufficit:Identity:TrustedProxies is not configured; only loopback proxies are trusted, so " +
-        "X-Forwarded-* headers from remote reverse proxies will be ignored until it is set.");
+        "X-Forwarded-* headers from remote reverse proxies will be ignored until it is set. " +
+        "With the rate limiter partitioning by RemoteIpAddress, this means ALL token-endpoint " +
+        "traffic shares ONE bucket (the proxy's IP) — a single source or even normal load can " +
+        "trigger self-inflicted 429s for everyone.";
+
+    // Item 5.1 [L4]: optionally make this a fatal startup error so a missing
+    // TrustedProxies cannot silently turn the rate limiter into a self-DoS.
+    if (identityOptions.RateLimit.FailOnUntrustedProxy)
+    {
+        throw new InvalidOperationException(message + " Set Sufficit:Identity:TrustedProxies " +
+            "(or disable Sufficit:Identity:RateLimit:FailOnUntrustedProxy to degrade to a warning).");
+    }
+
+    app.Logger.LogWarning(message);
+}
+
+// ---- mTLS (mutual TLS, RFC 8705) host configuration reminder ----
+// When Sufficit:Identity:Mtls:Enabled is true, the STS registers the MTLS-
+// aliased endpoint paths and advertises tls_client_certificate_bound_access_tokens
+// in discovery. But the actual client-certificate enforcement happens at the
+// TLS layer and is the HOST's responsibility — this Program.cs does NOT
+// configure it (it would require a real cert + Listen/Kestrel configuration
+// that depends on the deployment topology). Operators enabling mTLS MUST also:
+//
+//   * For Kestrel directly: configure Kestrel's Listen options with
+//       https.ClientCertificateMode = ClientCertificateMode.RequireCertificate
+//       and a ClientCertificateValidation callback, on the MTLS-aliased paths.
+//   * Behind nginx/Envoy: terminate mTLS at the proxy, forward the validated
+//       client cert (or its thumbprint) to the app, and restrict the MTLS
+//       paths at the proxy so only cert-authenticated traffic reaches them.
+//
+// Without that host configuration, Enabled=true here would advertise a
+// capability the deployment does not actually enforce — a false signal to
+// clients. This log is the only in-app reminder; the real wiring lives in
+// the deployment.
+if (identityOptions.Mtls.Enabled)
+{
+    app.Logger.LogWarning(
+        "Sufficit:Identity:Mtls:Enabled is true — the STS advertises mTLS sender-constrained tokens and MTLS endpoint aliases, " +
+        "but the HOST (Kestrel/nginx) must also be configured to require and validate client certificates at the TLS layer. " +
+        "Without that host configuration, the advertised mTLS capability is NOT actually enforced. See Program.cs comments.");
 }
 
 // ---- Honor X-Forwarded-* headers from reverse proxy (Nginx/k8s/CloudFlare) ----
@@ -169,8 +209,9 @@ app.UseForwardedHeaders();
 
 // ---- HSTS + baseline security headers ----
 // Must run AFTER UseForwardedHeaders (so it sees the real scheme) and
-// BEFORE static files/endpoints. No CSP yet — the Blazor Server UI would
-// need careful script/style allowances, tracked separately.
+// BEFORE static files/endpoints. CSP (Content-Security-Policy) is emitted in
+// the header middleware below in Report-Only mode by default — see
+// CspOptions and the inline comment there for the calibration rollout.
 if (!app.Environment.IsDevelopment())
 {
     app.UseHsts();
@@ -187,13 +228,13 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
-app.Use(async (context, next) =>
-{
-    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
-    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-    context.Response.Headers["X-Frame-Options"] = "DENY";
-    await next();
-});
+// ---- Baseline security headers (X-Content-Type-Options, Referrer-Policy,
+// X-Frame-Options, Content-Security-Policy). Implemented in the STS module
+// (UseSufficitSecurityHeaders) so the same code runs in the integration test
+// factory; see SecurityHeadersMiddlewareExtensions. CSP ships in Report-Only
+// mode by default (CspOptions.ReportOnly=true) — flip to enforce only after
+// calibrating against the real UI pages. ----
+app.UseSufficitSecurityHeaders(identityOptions);
 
 // ---- Canonicalize URL paths to lowercase (308 redirect) ----
 // Must run before any endpoint matching, so that /Account/Login,
