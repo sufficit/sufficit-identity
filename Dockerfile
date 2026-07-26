@@ -11,12 +11,26 @@
 # BUILD CONTEXT REQUIREMENT — READ BEFORE BUILDING
 # -----------------------------------------------------------------------------
 # src/server/Sufficit.Identity.Server.csproj references the sibling
-# sufficit-identity-ui repo via an UNCONDITIONAL <ProjectReference
-# Include="..\..\..\sufficit-identity-ui\src\Sufficit.Identity.UI\..."/>.
-# There is currently NO published `Sufficit.Identity.UI` NuGet package to fall back
-# to (checked nuget.org: no such package exists as of 2026-07-20) — so this
-# image genuinely CANNOT be built from this repo alone today. The sibling
-# UI source must be supplied as a second Docker build context.
+# sufficit-identity-ui repo via a CONDITIONAL <ProjectReference> gated on
+# Exists(..\..\sufficit-identity-ui\..). Two resolution modes, picked by MSBuild
+# from the filesystem at restore time:
+#
+#   1. Sibling repo present (default for this image): the ProjectReference
+#      resolves and the UI is source-built into the image. There is currently
+#      NO published `Sufficit.Identity.UI` NuGet package to fall back to
+#      (checked nuget.org: no such package exists as of 2026-07-20), so the
+#      sibling UI source MUST be supplied as a second Docker build context for
+#      this image to build.
+#
+#   2. Sibling repo absent: the csproj fires an MSBuild <Error> target with a
+#      clear, actionable message ("check out sufficit-identity-ui as a sibling
+#      directory...") instead of an opaque "ProjectReference could not be
+#      resolved". (A PackageReference on a placeholder NuGet package was
+#      considered but rejected: this repo uses Central Package Management, so
+#      the version would have to live permanently in Directory.Packages.props
+#      for a package that does not exist.) When a real Sufficit.Identity.UI
+#      package is eventually published, replace the error with a PackageReference
+#      and THIS second build context is no longer needed.
 #
 # Only sufficit-identity (this repo) and sufficit-identity-ui need to be
 # supplied. The Q-EMAIL integration is implemented directly with
