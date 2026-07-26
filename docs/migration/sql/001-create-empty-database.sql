@@ -1,170 +1,172 @@
 ﻿CREATE TABLE IF NOT EXISTS `__sufficit_identity_migrations` (
-    `MigrationId` varchar(150) NOT NULL,
-    `ProductVersion` varchar(32) NOT NULL,
-    PRIMARY KEY (`MigrationId`)
-);
+    `MigrationId` varchar(150) CHARACTER SET utf8mb4 NOT NULL,
+    `ProductVersion` varchar(32) CHARACTER SET utf8mb4 NOT NULL,
+    CONSTRAINT `PK___sufficit_identity_migrations` PRIMARY KEY (`MigrationId`)
+) CHARACTER SET=utf8mb4;
 
 START TRANSACTION;
+ALTER DATABASE CHARACTER SET utf8mb4;
+
 CREATE TABLE `applications` (
-    `id` varchar(100) NOT NULL,
-    `application_type` varchar(50) NULL,
-    `client_id` varchar(100) NULL,
-    `client_secret` longtext NULL,
-    `client_type` varchar(50) NULL,
-    `concurrency_token` varchar(50) NULL,
-    `consent_type` varchar(50) NULL,
-    `display_name` longtext NULL,
-    `display_names` longtext NULL,
-    `json_web_key_set` longtext NULL,
-    `permissions` longtext NULL,
-    `post_logout_redirect_uris` longtext NULL,
-    `properties` longtext NULL,
-    `redirect_uris` longtext NULL,
-    `requirements` longtext NULL,
-    `settings` longtext NULL,
-    PRIMARY KEY (`id`)
-);
+    `id` varchar(100) CHARACTER SET utf8mb4 NOT NULL,
+    `application_type` varchar(50) CHARACTER SET utf8mb4 NULL,
+    `client_id` varchar(100) CHARACTER SET utf8mb4 NULL,
+    `client_secret` longtext CHARACTER SET utf8mb4 NULL,
+    `client_type` varchar(50) CHARACTER SET utf8mb4 NULL,
+    `concurrency_token` varchar(50) CHARACTER SET utf8mb4 NULL,
+    `consent_type` varchar(50) CHARACTER SET utf8mb4 NULL,
+    `display_name` longtext CHARACTER SET utf8mb4 NULL,
+    `display_names` longtext CHARACTER SET utf8mb4 NULL,
+    `json_web_key_set` longtext CHARACTER SET utf8mb4 NULL,
+    `permissions` longtext CHARACTER SET utf8mb4 NULL,
+    `post_logout_redirect_uris` longtext CHARACTER SET utf8mb4 NULL,
+    `properties` longtext CHARACTER SET utf8mb4 NULL,
+    `redirect_uris` longtext CHARACTER SET utf8mb4 NULL,
+    `requirements` longtext CHARACTER SET utf8mb4 NULL,
+    `settings` longtext CHARACTER SET utf8mb4 NULL,
+    CONSTRAINT `PK_applications` PRIMARY KEY (`id`)
+) CHARACTER SET=utf8mb4;
 
 CREATE TABLE `dataprotectionkeys` (
     `id` int NOT NULL AUTO_INCREMENT,
-    `friendlyname` longtext NULL,
-    `xml` longtext NULL,
-    PRIMARY KEY (`id`)
-);
+    `friendlyname` longtext CHARACTER SET utf8mb4 NULL,
+    `xml` longtext CHARACTER SET utf8mb4 NULL,
+    CONSTRAINT `PK_dataprotectionkeys` PRIMARY KEY (`id`)
+) CHARACTER SET=utf8mb4;
 
 CREATE TABLE `roles` (
-    `id` varchar(255) NOT NULL,
-    `name` varchar(256) NULL,
-    `normalizedname` varchar(256) NULL,
-    `concurrencystamp` longtext NULL,
-    PRIMARY KEY (`id`)
-);
+    `id` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `name` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `normalizedname` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `concurrencystamp` longtext CHARACTER SET utf8mb4 NULL,
+    CONSTRAINT `PK_roles` PRIMARY KEY (`id`)
+) CHARACTER SET=utf8mb4;
 
 CREATE TABLE `scopes` (
-    `id` varchar(100) NOT NULL,
-    `concurrency_token` varchar(50) NULL,
-    `description` longtext NULL,
-    `descriptions` longtext NULL,
-    `display_name` longtext NULL,
-    `display_names` longtext NULL,
-    `name` varchar(200) NULL,
-    `properties` longtext NULL,
-    `resources` longtext NULL,
-    PRIMARY KEY (`id`)
-);
+    `id` varchar(100) CHARACTER SET utf8mb4 NOT NULL,
+    `concurrency_token` varchar(50) CHARACTER SET utf8mb4 NULL,
+    `description` longtext CHARACTER SET utf8mb4 NULL,
+    `descriptions` longtext CHARACTER SET utf8mb4 NULL,
+    `display_name` longtext CHARACTER SET utf8mb4 NULL,
+    `display_names` longtext CHARACTER SET utf8mb4 NULL,
+    `name` varchar(200) CHARACTER SET utf8mb4 NULL,
+    `properties` longtext CHARACTER SET utf8mb4 NULL,
+    `resources` longtext CHARACTER SET utf8mb4 NULL,
+    CONSTRAINT `PK_scopes` PRIMARY KEY (`id`)
+) CHARACTER SET=utf8mb4;
 
 CREATE TABLE `userpasskeys` (
     `credentialid` varbinary(1024) NOT NULL,
-    `userid` varchar(255) NOT NULL,
+    `userid` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
     `publickey` longblob NOT NULL,
-    `name` longtext NULL,
+    `name` longtext CHARACTER SET utf8mb4 NULL,
     `createdat` datetime(6) NOT NULL,
     `signcount` int unsigned NOT NULL,
-    `transports` longtext NOT NULL,
+    `transports` longtext CHARACTER SET utf8mb4 NOT NULL,
     `isuserverified` tinyint(1) NOT NULL,
     `isbackupeligible` tinyint(1) NOT NULL,
     `isbackedup` tinyint(1) NOT NULL,
     `attestationobject` longblob NOT NULL,
     `clientdatajson` longblob NOT NULL,
-    PRIMARY KEY (`credentialid`)
-);
+    CONSTRAINT `PK_userpasskeys` PRIMARY KEY (`credentialid`)
+) CHARACTER SET=utf8mb4;
 
 CREATE TABLE `users` (
-    `id` varchar(255) NOT NULL,
-    `timestamp` timestamp NOT NULL DEFAULT (UTC_TIMESTAMP()),
-    `username` varchar(256) NULL,
-    `normalizedusername` varchar(256) NULL,
-    `email` varchar(256) NULL,
-    `normalizedemail` varchar(256) NULL,
+    `id` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `timestamp` timestamp NOT NULL DEFAULT (UTC_TIMESTAMP()) ON UPDATE CURRENT_TIMESTAMP(),
+    `username` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `normalizedusername` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `email` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `normalizedemail` varchar(256) CHARACTER SET utf8mb4 NULL,
     `emailconfirmed` tinyint(1) NOT NULL,
-    `passwordhash` longtext NULL,
-    `securitystamp` longtext NULL,
-    `concurrencystamp` longtext NULL,
-    `phonenumber` longtext NULL,
+    `passwordhash` longtext CHARACTER SET utf8mb4 NULL,
+    `securitystamp` longtext CHARACTER SET utf8mb4 NULL,
+    `concurrencystamp` longtext CHARACTER SET utf8mb4 NULL,
+    `phonenumber` longtext CHARACTER SET utf8mb4 NULL,
     `phonenumberconfirmed` tinyint(1) NOT NULL,
     `twofactorenabled` tinyint(1) NOT NULL,
     `lockoutend` datetime(6) NULL,
     `lockoutenabled` tinyint(1) NOT NULL,
     `accessfailedcount` int NOT NULL,
-    PRIMARY KEY (`id`)
-);
+    CONSTRAINT `PK_users` PRIMARY KEY (`id`)
+) CHARACTER SET=utf8mb4;
 
 CREATE TABLE `authorizations` (
-    `id` varchar(100) NOT NULL,
-    `application_id` varchar(100) NULL,
-    `concurrency_token` varchar(50) NULL,
+    `id` varchar(100) CHARACTER SET utf8mb4 NOT NULL,
+    `application_id` varchar(100) CHARACTER SET utf8mb4 NULL,
+    `concurrency_token` varchar(50) CHARACTER SET utf8mb4 NULL,
     `creation_date` datetime(6) NULL,
-    `properties` longtext NULL,
-    `scopes` longtext NULL,
-    `status` varchar(50) NULL,
-    `subject` varchar(400) NULL,
-    `type` varchar(50) NULL,
-    PRIMARY KEY (`id`),
+    `properties` longtext CHARACTER SET utf8mb4 NULL,
+    `scopes` longtext CHARACTER SET utf8mb4 NULL,
+    `status` varchar(50) CHARACTER SET utf8mb4 NULL,
+    `subject` varchar(400) CHARACTER SET utf8mb4 NULL,
+    `type` varchar(50) CHARACTER SET utf8mb4 NULL,
+    CONSTRAINT `PK_authorizations` PRIMARY KEY (`id`),
     CONSTRAINT `FK_authorizations_applications_application_id` FOREIGN KEY (`application_id`) REFERENCES `applications` (`id`)
-);
+) CHARACTER SET=utf8mb4;
 
 CREATE TABLE `roleclaims` (
     `id` int NOT NULL AUTO_INCREMENT,
-    `roleid` varchar(255) NOT NULL,
-    `claimtype` longtext NULL,
-    `claimvalue` longtext NULL,
-    PRIMARY KEY (`id`),
+    `roleid` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `claimtype` longtext CHARACTER SET utf8mb4 NULL,
+    `claimvalue` longtext CHARACTER SET utf8mb4 NULL,
+    CONSTRAINT `PK_roleclaims` PRIMARY KEY (`id`),
     CONSTRAINT `FK_roleclaims_roles_roleid` FOREIGN KEY (`roleid`) REFERENCES `roles` (`id`) ON DELETE CASCADE
-);
+) CHARACTER SET=utf8mb4;
 
 CREATE TABLE `userclaims` (
     `id` int NOT NULL AUTO_INCREMENT,
-    `userid` varchar(255) NOT NULL,
-    `claimtype` longtext NULL,
-    `claimvalue` longtext NULL,
-    PRIMARY KEY (`id`),
+    `userid` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `claimtype` longtext CHARACTER SET utf8mb4 NULL,
+    `claimvalue` longtext CHARACTER SET utf8mb4 NULL,
+    CONSTRAINT `PK_userclaims` PRIMARY KEY (`id`),
     CONSTRAINT `FK_userclaims_users_userid` FOREIGN KEY (`userid`) REFERENCES `users` (`id`) ON DELETE CASCADE
-);
+) CHARACTER SET=utf8mb4;
 
 CREATE TABLE `userlogins` (
-    `loginprovider` varchar(255) NOT NULL,
-    `providerkey` varchar(255) NOT NULL,
-    `providerdisplayname` longtext NULL,
-    `userid` varchar(255) NOT NULL,
-    PRIMARY KEY (`loginprovider`, `providerkey`),
+    `loginprovider` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `providerkey` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `providerdisplayname` longtext CHARACTER SET utf8mb4 NULL,
+    `userid` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    CONSTRAINT `PK_userlogins` PRIMARY KEY (`loginprovider`, `providerkey`),
     CONSTRAINT `FK_userlogins_users_userid` FOREIGN KEY (`userid`) REFERENCES `users` (`id`) ON DELETE CASCADE
-);
+) CHARACTER SET=utf8mb4;
 
 CREATE TABLE `userroles` (
-    `userid` varchar(255) NOT NULL,
-    `roleid` varchar(255) NOT NULL,
-    PRIMARY KEY (`userid`, `roleid`),
+    `userid` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `roleid` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    CONSTRAINT `PK_userroles` PRIMARY KEY (`userid`, `roleid`),
     CONSTRAINT `FK_userroles_roles_roleid` FOREIGN KEY (`roleid`) REFERENCES `roles` (`id`) ON DELETE CASCADE,
     CONSTRAINT `FK_userroles_users_userid` FOREIGN KEY (`userid`) REFERENCES `users` (`id`) ON DELETE CASCADE
-);
+) CHARACTER SET=utf8mb4;
 
 CREATE TABLE `usertokens` (
-    `userid` varchar(255) NOT NULL,
-    `loginprovider` varchar(255) NOT NULL,
-    `name` varchar(255) NOT NULL,
-    `value` longtext NULL,
-    PRIMARY KEY (`userid`, `loginprovider`, `name`),
+    `userid` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `loginprovider` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `name` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `value` longtext CHARACTER SET utf8mb4 NULL,
+    CONSTRAINT `PK_usertokens` PRIMARY KEY (`userid`, `loginprovider`, `name`),
     CONSTRAINT `FK_usertokens_users_userid` FOREIGN KEY (`userid`) REFERENCES `users` (`id`) ON DELETE CASCADE
-);
+) CHARACTER SET=utf8mb4;
 
 CREATE TABLE `tokens` (
-    `id` varchar(100) NOT NULL,
-    `application_id` varchar(100) NULL,
-    `authorization_id` varchar(100) NULL,
-    `concurrency_token` varchar(50) NULL,
+    `id` varchar(100) CHARACTER SET utf8mb4 NOT NULL,
+    `application_id` varchar(100) CHARACTER SET utf8mb4 NULL,
+    `authorization_id` varchar(100) CHARACTER SET utf8mb4 NULL,
+    `concurrency_token` varchar(50) CHARACTER SET utf8mb4 NULL,
     `creation_date` datetime(6) NULL,
     `expiration_date` datetime(6) NULL,
-    `payload` longtext NULL,
-    `properties` longtext NULL,
+    `payload` longtext CHARACTER SET utf8mb4 NULL,
+    `properties` longtext CHARACTER SET utf8mb4 NULL,
     `redemption_date` datetime(6) NULL,
-    `reference_id` varchar(100) NULL,
-    `status` varchar(50) NULL,
-    `subject` varchar(400) NULL,
-    `type` varchar(150) NULL,
-    PRIMARY KEY (`id`),
+    `reference_id` varchar(100) CHARACTER SET utf8mb4 NULL,
+    `status` varchar(50) CHARACTER SET utf8mb4 NULL,
+    `subject` varchar(400) CHARACTER SET utf8mb4 NULL,
+    `type` varchar(150) CHARACTER SET utf8mb4 NULL,
+    CONSTRAINT `PK_tokens` PRIMARY KEY (`id`),
     CONSTRAINT `FK_tokens_applications_application_id` FOREIGN KEY (`application_id`) REFERENCES `applications` (`id`),
     CONSTRAINT `FK_tokens_authorizations_authorization_id` FOREIGN KEY (`authorization_id`) REFERENCES `authorizations` (`id`)
-);
+) CHARACTER SET=utf8mb4;
 
 CREATE UNIQUE INDEX `AK_OpenIddictApplications_ClientId` ON `applications` (`client_id`);
 
@@ -195,6 +197,7 @@ CREATE INDEX `EmailIndex` ON `users` (`normalizedemail`);
 CREATE UNIQUE INDEX `UserNameIndex` ON `users` (`normalizedusername`);
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260724213612_Initial', '10.0.10');
+VALUES ('20260726213918_Initial', '10.0.10');
 
 COMMIT;
+

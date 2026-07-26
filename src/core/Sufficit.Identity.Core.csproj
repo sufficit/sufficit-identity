@@ -10,7 +10,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <PackageReference Include="OpenIddict.EntityFrameworkCore" />
-    <PackageReference Include="MySql.EntityFrameworkCore" />
+    <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" />
     <!-- AppDbContext implements IDataProtectionKeyContext (DataProtectionKey
          entity/table) so the STS's Data Protection key ring can be
          persisted via PersistKeysToDbContext<AppDbContext> (P0 #B4, wired

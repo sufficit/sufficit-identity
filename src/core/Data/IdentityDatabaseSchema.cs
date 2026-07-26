@@ -6,7 +6,7 @@ namespace Sufficit.Identity.Core.Data;
 /// </summary>
 public static class IdentityDatabaseSchema
 {
-    public const string InitialMigrationId = "20260724213612_Initial";
+    public const string InitialMigrationId = "20260726213918_Initial";
 
     /// <summary>
     /// Migration history owned by the new Sufficit Identity model.

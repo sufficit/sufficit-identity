@@ -156,8 +156,10 @@ public sealed class DatabaseSchemaContractTests
     private static AppDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseMySQL(
+            .UseMySql(
                 "server=localhost;database=identity_contract;user=contract",
+                new MariaDbServerVersion(
+                    new Version(10, 4, 34)),
                 mysql => mysql.MigrationsHistoryTable(IdentityDatabaseSchema.MigrationsHistoryTable))
             .Options;
 

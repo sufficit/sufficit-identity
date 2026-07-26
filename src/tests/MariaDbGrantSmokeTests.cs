@@ -51,37 +51,21 @@ public sealed class MariaDbGrantSmokeTests
     [Trait("Category", "MariaDbIntegration")]
     public async Task Client_credentials_grant_works_end_to_end_against_real_mariadb()
     {
-        // KNOWN UPSTREAM BUG (discovered 2026-07-26 by this very test, then
-        // confirmed in CI run 30207874696): the Oracle MySql.EntityFrameworkCore
-        // provider (10.0.7) fails to translate OpenIddict's
-        // ScopeStore.FindByNamesAsync query — a `WHERE Name IN (@scopes)` over
-        // an ImmutableArray<string> — throwing
-        // "Expression '@p' in the SQL tree does not have a type mapping assigned."
-        // FindByNamesAsync is called by ListResourcesAsync, which EVERY grant
-        // invokes (AuthorizationController.ResolveResourcesAsync →
-        // _scopeManager.ListResourcesAsync). So as things stand, NO grant can
-        // issue a token against real MariaDB via the Oracle provider. This is
-        // exactly the risk item 1.1 [M6] flagged ("Oracle provider does not
-        // declare MariaDB support"). The smoke is GATED behind an opt-in env var
-        // so the CI stays green until the provider issue is resolved (Pomelo EF
-        // Core 10 release, or an upstream fix); set
-        // SUFFICIT_IDENTITY_RUN_KNOWN_BROKEN_GRANT_SMOKE=true to reproduce.
-        // The schema-only MariaDb tests (MariaDbMigrationIntegrationTests)
-        // remain UNgated and green — they do not hit ListResourcesAsync.
-        var runKnownBrokenSmoke = Environment.GetEnvironmentVariable(
-            "SUFFICIT_IDENTITY_RUN_KNOWN_BROKEN_GRANT_SMOKE");
-        if (!string.Equals(runKnownBrokenSmoke, "true", StringComparison.OrdinalIgnoreCase))
-        {
-            return; // skip: see the comment above.
-        }
-
+        // 2026-07-26: this smoke exposed a production-blocking bug in the Oracle
+        // provider (FindByNamesAsync IN(@p) translation failure, CI run
+        // 30207874696). That bug is now RESOLVED by migrating to a Sufficit fork
+        // of Pomelo.EntityFrameworkCore.MySql (EF Core 10, built from upstream
+        // PR #2019). The gate that was added when the bug was Oracle-side is
+        // removed: this test now runs in CI against real MariaDB as originally
+        // intended. If it fails again, the cause is in this project's code, not
+        // the provider.
         var connectionString = Environment.GetEnvironmentVariable(ConnectionEnvironmentVariable);
         if (string.IsNullOrWhiteSpace(connectionString))
         {
             Assert.False(
                 string.Equals(Environment.GetEnvironmentVariable("CI"), "true",
                     StringComparison.OrdinalIgnoreCase),
-                $"{ConnectionEnvironmentVariable} is required in CI when the smoke is explicitly opted into.");
+                $"{ConnectionEnvironmentVariable} is required in CI.");
             return;
         }
 
@@ -91,7 +75,7 @@ public sealed class MariaDbGrantSmokeTests
                 StringComparison.OrdinalIgnoreCase))
         {
             Assert.False(IsContinuousIntegration(),
-                $"{RehearsalEnvironmentVariable}=true is required in CI when the smoke is explicitly opted into.");
+                $"{RehearsalEnvironmentVariable}=true is required in CI.");
             return;
         }
 
@@ -217,8 +201,10 @@ public sealed class MariaDbGrantSmokeTests
     private static AppDbContext CreateContext(string connectionString)
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseMySQL(
+            .UseMySql(
                 connectionString,
+                new MariaDbServerVersion(
+                    new Version(10, 4, 34)),
                 mysql => mysql.MigrationsHistoryTable(IdentityDatabaseSchema.MigrationsHistoryTable))
             .Options;
         return new AppDbContext(options);

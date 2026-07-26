@@ -62,8 +62,9 @@ public static class ServiceCollectionExtensions
 
         services.AddDbContext<AppDbContext>(db =>
         {
-            db.UseMySQL(
+            db.UseMySql(
                 connectionString,
+                MariaDbServerVersion.AutoDetect(connectionString),
                 mysql => mysql.MigrationsHistoryTable(IdentityDatabaseSchema.MigrationsHistoryTable));
             db.UseOpenIddict();
         });

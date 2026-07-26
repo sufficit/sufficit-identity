@@ -20,18 +20,19 @@
     <!-- ASP.NET Core Data Protection key-ring persistence (P0 #B4) -->
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.10" />
 
-    <!-- EF Core + compatibility provider for the existing MariaDB database
-         (Oracle MySql.EntityFrameworkCore — see docs/NOTICE-mysql-license.md).
-         This is deliberately provisional: as of 2026-07-24, stable Pomelo
-         targets EF Core 9 while this project needs Identity/EF Core 10 for
-         passkeys. Oracle's provider does not declare MariaDB support, so CI
-         must exercise every migration against the configured compatibility
-         baseline (MariaDB 10.4.34). Re-evaluate the stable MariaDB provider
-         before any future deployment. No MySQL migration is
-         planned or implied by this package choice. -->
+    <!-- EF Core + MariaDB provider.
+         FORK POMELO (2026-07-26): migrated off Oracle MySql.EntityFrameworkCore
+         (which has a confirmed production-blocking bug — OpenIddict's
+         FindByNamesAsync `IN (@p)` query fails to translate, breaking ALL
+         grants against MariaDB; see docs/NOTICE-mysql-license.md "Atualização
+         2026-07-26"). Now using a Sufficit fork of Pomelo.EntityFrameworkCore.MySql
+         (MIT, MariaDB 1st-class support) built from the upstream PR #2019
+         branch (upgrade/10.0.0, EF Core 10). The package lives in the local
+         .nuget-feed folder (see nuget.config). TEMPORARY: when Pomelo ships EF
+         Core 10 stable (issue #2007), drop the fork and the folder feed. -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10" />
-    <PackageVersion Include="MySql.EntityFrameworkCore" Version="10.0.7" />
+    <PackageVersion Include="Pomelo.EntityFrameworkCore.MySql" Version="10.0.0-preview.1.efcore.10.0.0" />
 
     <!-- Health checks -->
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.10" />

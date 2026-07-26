@@ -103,9 +103,28 @@ critério de aceite do plano:
    (`client_credentials`) end-to-end contra MariaDB real, fechando o critério de
    aceite do plano que antes só era coberto em SQLite.
 
-## Atualização 2026-07-26 — Bug confirmado do provider Oracle (produção-bloqueante)
+## Atualização 2026-07-26 — Bug do provider Oracle RESOLVIDO (migração para Pomelo fork)
 
-**Status:** Caminho B comprometido empiricamente. O smoke de grant acima,
+**Status: RESOLVIDO.** O bug abaixo (provider Oracle não traduz
+`FindByNamesAsync`) foi corrigido migrando para um **fork Sufficit do
+Pomelo.EntityFrameworkCore.MySql** (MIT, MariaDB 1ª classe), compilado da branch
+`upgrade/10.0.0` do PR upstream [#2019](https://github.com/PomeloFoundation/Pomelo.EntityFrameworkCore.MySql/pull/2019)
+(EF Core 10). O pacote vive em `.nuget-feed/` (folder feed commitado, ver
+`nuget.config`). O `MariaDbGrantSmokeTests` (que expôs o bug) teve o gate
+removido e roda novamente no CI.
+
+A migração é **temporária**: quando o Pomelo upstream shipar EF Core 10 estável
+(issue [#2007](https://github.com/PomeloFoundation/Pomelo.EntityFrameworkCore.MySql/issues/2007)),
+dropa-se o fork + folder feed e usa-se a versão oficial. A licença volta a ser
+MIT (a exceção GPL do Oracle não se aplica mais).
+
+A seção abaixo preserva o registro histórico do bug e da investigação.
+
+---
+
+## Atualização 2026-07-26 — Bug confirmado do provider Oracle (produção-bloqueante) [RESOLVIDO acima]
+
+**Status (histórico):** Caminho B comprometido empiricamente. O smoke de grant acima,
 rodado pela primeira vez no CI (run `30207874696`), revelou um bug real de
 produção do provider Oracle `MySql.EntityFrameworkCore 10.0.7`:
 

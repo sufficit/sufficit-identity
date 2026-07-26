@@ -101,4 +101,4 @@ CREATE INDEX `IX_OpenIddictTokens_AuthorizationId`
 INSERT INTO `__sufficit_identity_migrations`
     (`MigrationId`, `ProductVersion`)
 VALUES
-    ('20260724213612_Initial', '10.0.10');
+    ('20260726213918_Initial', '10.0.10');

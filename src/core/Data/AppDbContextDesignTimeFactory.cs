@@ -23,13 +23,14 @@ public sealed class AppDbContextDesignTimeFactory
 {
     public AppDbContext CreateDbContext(string[] args)
     {
-        // Provisional Oracle compatibility provider used by the EF 10 model.
-        // The real database remains MariaDB; every generated migration is
-        // validated against the configured MariaDB compatibility baseline.
-        // This dummy connection is never opened at design time.
+        // Pomelo provider (Sufficit fork, EF Core 10). The real database remains
+        // MariaDB; every generated migration is validated against the configured
+        // MariaDB compatibility baseline. This dummy connection is never opened
+        // at design time; a fixed MariaDbServerVersion avoids AutoDetect round-trip.
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseMySQL(
+            .UseMySql(
                 "server=localhost;database=identity_design;user=root",
+                new MariaDbServerVersion(new Version(10, 4, 34)),
                 mysql => mysql.MigrationsHistoryTable(IdentityDatabaseSchema.MigrationsHistoryTable))
             .Options;
 

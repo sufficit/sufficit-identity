@@ -46,8 +46,10 @@ public sealed class MariaDbMigrationIntegrationTests
         }
 
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseMySQL(
+            .UseMySql(
                 connectionString,
+                new MariaDbServerVersion(
+                    new Version(10, 4, 34)),
                 mysql => mysql.MigrationsHistoryTable(
                     IdentityDatabaseSchema.MigrationsHistoryTable))
             .Options;
@@ -212,8 +214,10 @@ public sealed class MariaDbMigrationIntegrationTests
     private static AppDbContext CreateContext(string connectionString)
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseMySQL(
+            .UseMySql(
                 connectionString,
+                new MariaDbServerVersion(
+                    new Version(10, 4, 34)),
                 mysql => mysql.MigrationsHistoryTable(
                     IdentityDatabaseSchema.MigrationsHistoryTable))
             .Options;
