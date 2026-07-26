@@ -103,6 +103,49 @@ critério de aceite do plano:
    (`client_credentials`) end-to-end contra MariaDB real, fechando o critério de
    aceite do plano que antes só era coberto em SQLite.
 
+## Atualização 2026-07-26 — Bug confirmado do provider Oracle (produção-bloqueante)
+
+**Status:** Caminho B comprometido empiricamente. O smoke de grant acima,
+rodado pela primeira vez no CI (run `30207874696`), revelou um bug real de
+produção do provider Oracle `MySql.EntityFrameworkCore 10.0.7`:
+
+```
+System.InvalidOperationException : Expression '@p' in the SQL tree does not
+have a type mapping assigned.
+   at ...RelationalTypeMappingPostprocessor.VisitExtension(Expression expression)
+   at ...InExpression.VisitChildren(...)
+   ...
+   at OpenIddict.EntityFrameworkCore.OpenIddictEntityFrameworkCoreScopeStore
+       .FindByNamesAsync(...)
+```
+
+O provider não consegue traduzir a query `WHERE Name IN (@scopes)` que o
+OpenIddict gera em `ScopeStore.FindByNamesAsync` (chamada por
+`ListResourcesAsync`, que **todo grant** invoca via
+`AuthorizationController.ResolveResourcesAsync`). Resultado concreto: **nenhum
+grant consegue emitir token contra MariaDB real** via o provider Oracle hoje.
+O SQLite (testes locais) tolera a query; o Oracle não.
+
+Isso é exatamente o risco que o item 1.1 [M6] do plano sinalizou ("o provider
+Oracle não declara suporte a MariaDB") — agora confirmado empiricamente, não
+mais teórico.
+
+**Ação imediata:** o `MariaDbGrantSmokeTests` foi gated atrás de
+`SUFFICIT_IDENTITY_RUN_KNOWN_BROKEN_GRANT_SMOKE=true` (opt-in para reproduzir)
+para manter o CI verde, mas o bug NÃO está resolvido. Os testes de
+schema/migration (`MariaDbMigrationIntegrationTests`,
+`DatabaseSchemaContractTests`) continuam passando contra MariaDB real — eles
+não invocam `ListResourcesAsync`.
+
+**Implicação de prioridade:** o Caminho A (migrar para
+`Pomelo.EntityFrameworkCore.MySql`, MIT, suporte MariaDB de 1ª classe) deixa de
+ser "preferido quando disponível" e passa a ser **necessário para produção
+viável contra MariaDB**. Enquanto Pomelo não shipar release estável para EF
+Core 10, o STS NÃO deve ser considerado pronto para emissão de tokens contra
+MariaDB em produção. Reavaliar Pomelo com urgência (milestone EF10); avaliar
+também um downgrade temporário do EF Core para 9 (onde Pomelo é estável) se a
+janela de produção apertar.
+
 O compromisso da seção "Mitigação e compromisso" acima (monitorar Pomelo,
 reverter quando viável, reavaliar antes de distribuição externa) permanece
 integralmente em vigor.
