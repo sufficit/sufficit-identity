@@ -90,6 +90,18 @@ public sealed class DpopProofValidator
             return null;
         }
 
+        // L4 fix (eval L4): restrict the JWS alg to the set advertised in
+        // discovery (dpop_signing_alg_values_supported = ES256, RS256). Without
+        // this, the validator would accept any asymmetric alg the handler
+        // supports (ES384, PS256, etc.) — a hardening gap vs the advertised
+        // capability.
+        if (!jwt.TryGetHeaderValue("alg", out string alg)
+            || (alg != "ES256" && alg != "RS256"))
+        {
+            _logger.LogWarning("DPoP proof alg '{Alg}' is not in the advertised set (ES256, RS256).", alg);
+            return null;
+        }
+
         // Extract the client's public key from the embedded jwk header. The
         // proof is signed with the corresponding private key; validating
         // against this key proves possession.

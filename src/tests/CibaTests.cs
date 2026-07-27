@@ -55,8 +55,14 @@ public sealed class CibaInitiationTests
     }
 
     [Fact]
-    public async Task Bc_authorize_with_an_unknown_login_hint_returns_unknown_user()
+    public async Task Bc_authorize_with_an_unknown_login_hint_does_not_leak_user_existence()
     {
+        // M3 fix (eval M3): /bc-authorize no longer returns unknown_user (a
+        // user-existence oracle). Instead it returns the same success response
+        // (auth_req_id) regardless of whether the login_hint resolves — the
+        // pending request just never gets approved, so the poll stays
+        // authorization_pending until expiry. Indistinguishable from a real
+        // pending request.
         using var factory = SufficitIdentityTestFactory.CreateIsolated(CibaEnabled());
         await ((IAsyncLifetime)factory).InitializeAsync();
         await EnsureCibaClientAsync(factory);
@@ -70,8 +76,9 @@ public sealed class CibaInitiationTests
             ["login_hint"] = $"nobody-{Guid.NewGuid():N}",
         });
 
-        Assert.Equal(HttpStatusCode.NotFound, status);
-        Assert.Equal("unknown_user", body.GetProperty("error").GetString());
+        // Same 200 + auth_req_id as a known user — no oracle.
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.False(string.IsNullOrEmpty(body.GetProperty("auth_req_id").GetString()));
     }
 
     [Fact]

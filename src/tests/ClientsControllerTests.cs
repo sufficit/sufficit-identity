@@ -206,4 +206,23 @@ public sealed class ClientsControllerTests
         // If "requirements" is absent entirely, that also satisfies the assertion
         // (no requirement was persisted).
     }
+
+    // ----------------------------------------------------------------------
+    // Eval test-coverage gap: assert that the management authz gate actually
+    // rejects requests without the admin scope. Uses a factory variant that
+    // does NOT bypass authorization (the real ScopeHandler runs).
+    // ----------------------------------------------------------------------
+
+    [Fact]
+    public async Task Management_endpoints_reject_request_without_admin_scope()
+    {
+        using var factory = ManagementTestFactory.CreateWithRealAuthz();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+
+        // No Authorization header → the [Authorize(Policy=...)] gate rejects.
+        using var response = await client.GetAsync("/api/clients");
+        Assert.True(response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden,
+            $"Expected 401/403 without admin scope, got {response.StatusCode}.");
+    }
 }

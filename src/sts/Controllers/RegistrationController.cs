@@ -67,7 +67,13 @@ public sealed class RegistrationController : ControllerBase
             }
 
             var header = Request.Headers.Authorization.ToString();
-            if (!string.Equals(header, $"Bearer {_options.InitialAccessToken}", StringComparison.Ordinal))
+            // L2 fix (eval L2): constant-time comparison to avoid a theoretical
+            // timing side-channel on the initial access token.
+            var expected = "Bearer " + _options.InitialAccessToken;
+            var headerBytes = System.Text.Encoding.UTF8.GetBytes(header);
+            var expectedBytes = System.Text.Encoding.UTF8.GetBytes(expected);
+            if (headerBytes.Length != expectedBytes.Length
+                || !System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(headerBytes, expectedBytes))
             {
                 return Unauthorized(new { error = "invalid_token" });
             }

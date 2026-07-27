@@ -37,6 +37,29 @@ namespace Sufficit.Identity.Tests.Infrastructure;
 public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTestFactory>, IAsyncLifetime
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
+    private readonly bool _bypassAuthz;
+
+    /// <summary>
+    /// Creates a factory that does NOT bypass authorization — the real
+    /// <c>ScopeHandler</c> runs, so requests without the admin scope get
+    /// <c>401/403</c>. Used by the authz-negative test (eval: test-coverage
+    /// gap). The default constructor bypasses authz for logic tests.
+    /// </summary>
+    public static ManagementTestFactory CreateWithRealAuthz()
+    {
+        var factory = new ManagementTestFactory(bypassAuthz: false);
+        return factory;
+    }
+
+    public ManagementTestFactory(bool bypassAuthz = true)
+    {
+        _bypassAuthz = bypassAuthz;
+        _connection.Open();
+        // Same UTC_TIMESTAMP shim as SufficitIdentityTestFactory: AppDbContext
+        // maps ApplicationUser.Timestamp with HasDefaultValueSql("(UTC_TIMESTAMP())"),
+        // a MySQL-only function absent from SQLite.
+        _connection.CreateFunction("UTC_TIMESTAMP", () => DateTime.UtcNow);
+    }
 
     static ManagementTestFactory()
     {
@@ -44,15 +67,6 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
         // accepts ephemeral dev certificates and does not require HTTPS.
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
         Environment.SetEnvironmentVariable("ASPNETCORE_URLS", null);
-    }
-
-    public ManagementTestFactory()
-    {
-        _connection.Open();
-        // Same UTC_TIMESTAMP shim as SufficitIdentityTestFactory: AppDbContext
-        // maps ApplicationUser.Timestamp with HasDefaultValueSql("(UTC_TIMESTAMP())"),
-        // a MySQL-only function absent from SQLite.
-        _connection.CreateFunction("UTC_TIMESTAMP", () => DateTime.UtcNow);
     }
 
     protected override IHostBuilder CreateHostBuilder() => Host.CreateDefaultBuilder();
@@ -87,9 +101,13 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
             // Swap the real ScopeHandler for a test-only one that always
             // satisfies the sufficit-identity-management policy, so the
             // endpoints are reachable without a real OAuth token. Scoped to
-            // this factory only.
-            services.RemoveAll<IAuthorizationHandler>();
-            services.AddSingleton<IAuthorizationHandler, AlwaysSucceedHandler>();
+            // this factory only. Skipped when _bypassAuthz is false (real-authz
+            // test variant).
+            if (_bypassAuthz)
+            {
+                services.RemoveAll<IAuthorizationHandler>();
+                services.AddSingleton<IAuthorizationHandler, AlwaysSucceedHandler>();
+            }
 
             ReplaceDatabaseWithSqlite(services, _connection);
         });

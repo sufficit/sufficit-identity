@@ -107,26 +107,23 @@ public class CibaController : Controller
         }
 
         // Resolve the target user from login_hint (email-or-username).
+        // M3 fix (eval M3): do NOT return unknown_user — that is a user-existence
+        // oracle. Instead, create a pending request that will NEVER be approved
+        // (subject=null). The poll returns authorization_pending until expiry,
+        // then expired_token — indistinguishable from a real request whose user
+        // hasn't approved yet. This mirrors the password grant's anti-enumeration.
         ApplicationUser? user = null;
         if (!string.IsNullOrWhiteSpace(loginHint))
         {
             user = await _userManager.FindByNameAsync(loginHint)
                 ?? await _userManager.FindByEmailAsync(loginHint);
         }
-        if (user is null)
-        {
-            return NotFound(new
-            {
-                error = "unknown_user",
-                error_description = "The user could not be identified from the provided hints."
-            });
-        }
 
         IReadOnlyCollection<string> scopes = scope.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
         var pending = _pendingStore.Create(
             clientId,
-            await _userManager.GetUserIdAsync(user),
+            user is null ? string.Empty : await _userManager.GetUserIdAsync(user),
             scopes,
             string.IsNullOrWhiteSpace(bindingMessage) ? null : bindingMessage,
             TimeSpan.FromSeconds(_options.ExpiresInSeconds));
@@ -161,7 +158,8 @@ public class CibaController : Controller
         var authReqId = Request.Form["auth_req_id"].ToString();
         var approved = string.Equals(Request.Form["approved"].ToString(), "true", StringComparison.OrdinalIgnoreCase);
 
-        if (_pendingStore.Find(authReqId) is null)
+        var pendingRequest = _pendingStore.Find(authReqId);
+        if (pendingRequest is null)
         {
             return NotFound(new { error = "expired_token", error_description = "The auth_req_id is unknown or expired." });
         }
@@ -198,7 +196,26 @@ public class CibaController : Controller
                 }));
         }
 
-        _pendingStore.Approve(authReqId, await _userManager.GetUserIdAsync(user));
+        // M3 fix (eval M3): subject-binding check — the approving user MUST be
+        // the same user the client asked to authenticate (pending.Subject).
+        // Without this, a different user could approve and the client would
+        // receive a token for the wrong identity.
+        var approverId = await _userManager.GetUserIdAsync(user);
+        if (!string.IsNullOrEmpty(pendingRequest.Subject)
+            && !string.Equals(pendingRequest.Subject, approverId, StringComparison.Ordinal))
+        {
+            _pendingStore.Deny(authReqId);
+            return Forbid(
+                authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                properties: new AuthenticationProperties(new Dictionary<string, string?>
+                {
+                    [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.AccessDenied,
+                    [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
+                        "The approving user does not match the requested user."
+                }));
+        }
+
+        _pendingStore.Approve(authReqId, approverId);
         return Ok(new { status = "approved" });
     }
 
@@ -221,9 +238,35 @@ public class CibaController : Controller
     {
         var authReqId = Request.Form["auth_req_id"].ToString();
         var grantType = Request.Form["grant_type"].ToString();
+        var clientId = Request.Form["client_id"].ToString();
+        var clientSecret = Request.Form["client_secret"].ToString();
+
         if (!string.Equals(grantType, CibaGrantType, StringComparison.Ordinal))
         {
             return BadRequest(new { error = Errors.UnsupportedGrantType });
+        }
+
+        // M3 fix (eval M3): authenticate the polling client. RFC 9126 §3
+        // requires client authentication at the token endpoint — the auth_req_id
+        // alone must NOT redeem a token. Validate client_id + client_secret
+        // against the OpenIddict application store (same as Initiate).
+        if (string.IsNullOrEmpty(clientId))
+        {
+            return Unauthorized(new { error = Errors.InvalidClient });
+        }
+        var pollApplication = await _applicationManager.FindByClientIdAsync(clientId);
+        if (pollApplication is null)
+        {
+            return Unauthorized(new { error = Errors.InvalidClient });
+        }
+        var pollClientType = (string?)await _applicationManager.GetClientTypeAsync(pollApplication);
+        if (string.Equals(pollClientType, OpenIddictConstants.ClientTypes.Confidential, StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrEmpty(clientSecret)
+                || !await _applicationManager.ValidateClientSecretAsync(pollApplication, clientSecret))
+            {
+                return Unauthorized(new { error = Errors.InvalidClient });
+            }
         }
 
         var pending = _pendingStore.Find(authReqId);

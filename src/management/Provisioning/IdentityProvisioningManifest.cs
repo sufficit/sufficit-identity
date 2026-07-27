@@ -37,7 +37,11 @@ public sealed class IdentityClientManifest
     public string ClientId { get; init; } = "";
     public string? DisplayName { get; init; }
     public string ClientType { get; init; } = ManifestClientTypes.Public;
-    public string ConsentType { get; init; } = ManifestConsentTypes.Implicit;
+    // L5 fix (eval L5): default to Explicit (secure-by-default — matches
+    // ClientsController.Create and RegistrationController). A manifest that
+    // omits consentType now provisions a client that prompts for consent,
+    // not one that never asks.
+    public string ConsentType { get; init; } = ManifestConsentTypes.Explicit;
     public string? SecretReference { get; init; }
     public bool RequirePkce { get; init; }
     public List<string> GrantTypes { get; init; } = [];

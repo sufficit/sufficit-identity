@@ -50,12 +50,12 @@ public static class ServiceCollectionExtensions
         var isDevelopmentEnvironment =
             Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
 
-        // ---- Database (MySQL via Oracle MySql.EntityFrameworkCore) ----
-        // Stage 1 da migração Pomelo→Oracle (2026-07-21) — ver
-        // docs/NOTICE-mysql-license.md para o racional de licença (GPLv2+
-        // FOSS Exception temporária, voltar a Pomelo MIT quando shipar EF10).
-        // API diff: UseMySQL(connectionString) — sem ServerVersion.AutoDetect
-        // (Oracle provider deriva a versão do servidor da própria connection).
+        // ---- Database (MySQL/MariaDB via Pomelo.EntityFrameworkCore.MySql) ----
+        // Sufficit fork of Pomelo (EF Core 10), built from upstream PR #2019.
+        // Migrated off Oracle MySql.EntityFrameworkCore on 2026-07-26 because
+        // of a production-blocking translation bug (FindByNamesAsync IN(@p)).
+        // See docs/NOTICE-mysql-license.md for the full rationale + fork details.
+        // API: UseMySql(connectionString, MariaDbServerVersion.AutoDetect(...)).
         var connectionString = configuration.GetConnectionString(options.ConnectionStringName)
             ?? throw new InvalidOperationException(
                 $"Connection string '{options.ConnectionStringName}' not configured.");
@@ -327,7 +327,7 @@ public static class ServiceCollectionExtensions
                 // impersonation logic itself lives in AuthorizationController.
                 // Password and None are legacy grants removed by OAuth 2.1 and are
                 // gated behind the Sufficit:Identity:LegacyGrants feature flags
-                // below (both default to true during migration; the "Onda E"
+                // below (both default to FALSE — secure-by-default; the "Onda E"
                 // cutover will flip them off).
                 // -------------------------------------------------------------------
                 server.AllowAuthorizationCodeFlow()
