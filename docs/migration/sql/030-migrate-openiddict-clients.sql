@@ -55,7 +55,13 @@ SELECT
     CASE WHEN c.`requirepkce` = 1 THEN '["ft:pkce"]' ELSE '[]' END,
     CONCAT('{"access_token_lifetime":"', c.`accesstokenlifetime`, '","id_token_lifetime":"', c.`identitytokenlifetime`, '","authorization_code_lifetime":"', c.`authorizationcodelifetime`, '","absolute_refresh_token_lifetime":"', c.`absoluterefreshtokenlifetime`, '","sliding_refresh_token_lifetime":"', c.`slidingrefreshtokenlifetime`, '"}')
 FROM `identity`.`clients` c
-WHERE c.`enabled` = 1 AND c.`clientid` IS NOT NULL AND c.`clientid` != '';
+WHERE c.`enabled` = 1
+AND c.`clientid` IS NOT NULL AND c.`clientid` != ''
+-- Excluir clients depreciados/obsoletos (marcados na descricao).
+-- COALESCE garante que NULL descriptions passem (NULL NOT LIKE = NULL = falso em SQL).
+AND COALESCE(c.`description`, '') NOT LIKE '%OBSOLETE%'
+AND COALESCE(c.`description`, '') NOT LIKE '%DEPRECATED%'
+AND COALESCE(c.`description`, '') NOT LIKE '%deprec%';
 
 -- ============================================================
 -- PERMISSIONS: tabela temporaria + UPDATE por JOIN
