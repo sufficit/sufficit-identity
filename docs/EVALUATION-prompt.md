@@ -1,43 +1,58 @@
-Faça uma avaliação e comparação completa e independente do projeto
-/mnt/sufficit/sufficit-identity (STS OAuth 2.0/OIDC em .NET, OpenIddict,
-ASP.NET Core Identity, MySQL). Não assuma nada de antemão — investigue o
-código do zero, como se fosse a primeira vez que o vê.
+Perform a complete, independent evaluation and comparison of the project at
+/mnt/sufficit/sufficit-identity (OAuth 2.0/OIDC STS built in .NET, OpenIddict,
+ASP.NET Core Identity, MySQL). Assume nothing going in — investigate the code
+from scratch, as if seeing it for the first time.
 
-1. RECONHECIMENTO — mapeie a arquitetura sozinho: projetos, dependências,
-   fluxo de dados, schema de banco, endpoints expostos, superfície de
-   configuração. Leia o código-fonte inteiro, não resuma por nomes de arquivo.
+> **HARD RULE — source of truth is the code, not the docs.** For THIS project
+> (sufficit-identity), you must NOT read its own documentation (README, /docs,
+> comments claiming what something does, changelogs, design notes, etc.) as a
+> source of truth. Project docs may be stale, aspirational, or simply wrong,
+> and relying on them would give you a false picture of the real system. Build
+> your understanding exclusively by reading and reasoning over the actual
+> source code — classes, configuration, migrations, tests, wiring — and form
+> your own independent judgment of what the system truly does. The ONLY
+> documentation you may read is for THIRD-PARTY / PUBLIC projects (competitors,
+> RFCs, official docs of Keycloak, Duende, OpenIddict upstream, etc.) during
+> the market comparison step. If project docs and code ever disagree, the code
+> wins, full stop — and note the discrepancy as a finding.
 
-2. VULNERABILIDADES — audite ativamente por conta própria: autenticação e
-   fluxos OAuth/OIDC (grants habilitados, PKCE, redirect_uri, emissão e
-   validação de tokens, claims vazadas ou faltando), gestão de segredos e
-   certificados, brute-force/lockout/rate limiting, injeção, autorização
-   quebrada, exposição de dados sensíveis, configuração insegura por default,
-   dependências desatualizadas ou com CVEs conhecidas, superfície de ataque
-   dos endpoints /connect/*. Classifique cada achado por severidade com
-   cenário de exploração concreto.
+1. RECOGNITION — map the architecture on your own: projects, dependencies,
+   data flow, database schema, exposed endpoints, configuration surface. Read
+   the entire source code, do not summarize based on file names alone, and do
+   not read this project's own documentation to shortcut this step.
 
-3. COMPARAÇÃO DE MERCADO — pesquise na web o estado atual (mais recente
-   possível) de concorrentes diretos: Keycloak, Duende IdentityServer,
-   OpenIddict puro, Zitadel, Ory (Hydra/Kratos), Authentik, Authelia,
-   Auth0/Okta, Microsoft Entra ID, e qualquer player relevante que surgir
-   na pesquisa. Compare versões, licenciamento, arquitetura, cobertura de
-   protocolo, postura de segurança padrão, e o que hoje é considerado
-   baseline "moderno" para um STS (passkeys, OAuth 2.1, FAPI 2.0, DPoP,
-   token exchange RFC 8693, SSF/CAEP, autorização para agentes de IA/MCP).
+2. VULNERABILITIES — actively audit on your own: authentication and OAuth/OIDC
+   flows (enabled grants, PKCE, redirect_uri, token issuance and validation,
+   leaked or missing claims), secrets and certificate management,
+   brute-force/lockout/rate limiting, injection, broken authorization,
+   sensitive data exposure, insecure defaults, outdated dependencies or known
+   CVEs, attack surface of the /connect/* endpoints. Classify each finding by
+   severity with a concrete exploitation scenario.
 
-4. PONTUAÇÃO — dê uma nota de 0 a 10 por dimensão (segurança, arquitetura,
-   qualidade de código, completude de protocolo, prontidão para produção)
-   e uma nota geral, com justificativa objetiva para cada uma. Posicione
-   o projeto no ranking frente aos concorrentes pesquisados.
+3. MARKET COMPARISON — research the web for the current (most recent
+   possible) state of direct competitors: Keycloak, Duende IdentityServer,
+   plain OpenIddict, Zitadel, Ory (Hydra/Kratos), Authentik, Authelia,
+   Auth0/Okta, Microsoft Entra ID, and any other relevant player that turns up.
+   Compare versions, licensing, architecture, protocol coverage, default
+   security posture, and what is currently considered the "modern" baseline
+   for an STS (passkeys, OAuth 2.1, FAPI 2.0, DPoP, RFC 8693 token exchange,
+   SSF/CAEP, authorization for AI agents/MCP). For this step, and only for
+   this step, you may read the public documentation of these third-party
+   projects.
 
-5. VEREDITO — conclusão direta: pontos fortes, riscos que bloqueiam uso em
-   produção, e se você recomendaria adotar este software hoje.
+4. SCORING — give a score from 0 to 10 per dimension (security, architecture,
+   code quality, protocol completeness, production readiness) and an overall
+   score, with objective justification for each. Rank the project against the
+   competitors researched.
 
-Trabalhe com autonomia total: pode rodar comandos, ler qualquer arquivo do
-repositório, pesquisar na web, e usar agentes em paralelo para acelerar a
-investigação e a pesquisa de mercado. Não pergunte antes de agir — decida e
-execute.
+5. VERDICT — direct conclusion: strengths, risks that block production use,
+   and whether you would recommend adopting this software today.
 
-Salve o resultado em /mnt/sufficit/sufficit-identity/docs/eval/EVALUATION-<data>-<nome-do-modelo>.md
-(nome do modelo usado nesta avaliação no nome do arquivo). Não faça commit
-de nada.
+Work with full autonomy: run commands, read any file in the repository,
+search the web, and use parallel agents to speed up investigation and market
+research. Do not ask before acting — decide and execute.
+
+Save the result to
+/mnt/sufficit/sufficit-identity/docs/eval/EVALUATION-<date>-<model-name>.md
+(name of the model used for this evaluation in the file name). Do not commit
+anything.
