@@ -42,6 +42,20 @@ jobs:
           ref: ${{ github.event.inputs.identity_ref || env.IDENTITY_REF }}
           path: sufficit-identity
 
+      # The EF Core 10-compatible Pomelo fork is a folder feed committed in
+      # sufficit-identity. Put its source in the workspace-level NuGet config
+      # so restore from either sibling repository resolves the same package.
+      - name: Expose Pomelo folder feed from sufficit-identity
+        run: |
+          cat > nuget.config <<'CFG'
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <packageSources>
+              <add key="sufficit-pomelo-fork" value="sufficit-identity/.nuget-feed" />
+            </packageSources>
+          </configuration>
+          CFG
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
