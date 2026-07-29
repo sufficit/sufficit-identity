@@ -13,6 +13,7 @@ using Sufficit.Identity.Management.Branding;
 using Sufficit.Identity.Management.Clients;
 using Sufficit.Identity.Management.Controllers;
 using Sufficit.Identity.Management.Provisioning;
+using Sufficit.Identity.Management.Users;
 
 namespace Sufficit.Identity.Management;
 
@@ -57,12 +58,19 @@ public static class ServiceCollectionExtensions
             .PartManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
 
         services.TryAddScoped<OpenIddictManifestProvisioner>();
+        services.TryAddScoped<IManagementEntitlementResolver,
+            RoleAndClaimManagementEntitlementResolver>();
+        services.TryAddScoped<IManagementAccessPolicyProvider,
+            ConfigurationManagementAccessPolicyProvider>();
         services.TryAddScoped<IManagementAuthorizationEvaluator,
             RoleBasedManagementAuthorizationEvaluator>();
         services.TryAddScoped<IManagementAuditService, ManagementAuditService>();
         services.TryAddScoped<IClientManagementService, ClientManagementService>();
         services.TryAddScoped<IBrandingManagementService,
             BrandingManagementService>();
+        services.TryAddScoped<IUserManagementService, UserManagementService>();
+        services.TryAddScoped<IManagementUserContextStore,
+            EmptyManagementUserContextStore>();
         services.TryAddSingleton<IBrandingThemeProvider,
             BrandingThemeProvider>();
         services.TryAddSingleton<IClientSecretResolver, MissingClientSecretResolver>();

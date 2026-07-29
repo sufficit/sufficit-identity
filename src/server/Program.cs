@@ -8,7 +8,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Sufficit.Identity.Core.Branding;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management;
+using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Management.Users;
 using Sufficit.Identity.Server;
+using Sufficit.Identity.Server.Management;
 using Sufficit.Identity.STS;
 using Sufficit.Identity.UI;
 using Sufficit.Identity.UI.Management;
@@ -108,6 +111,14 @@ var mgmtEnabled = builder.Configuration
 if (mgmtEnabled)
 {
     builder.Services.AddSufficitIdentityManagement(builder.Configuration);
+    builder.Services.Replace(
+        ServiceDescriptor.Scoped<
+            IManagementEntitlementResolver,
+            SufficitDirectiveManagementEntitlementResolver>());
+    builder.Services.Replace(
+        ServiceDescriptor.Scoped<
+            IManagementUserContextStore,
+            SufficitDirectiveUserContextStore>());
     builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
 }
 

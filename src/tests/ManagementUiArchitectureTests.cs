@@ -86,6 +86,26 @@ public sealed class ManagementUiArchitectureTests
         Assert.DoesNotContain("BrandingThemeProvider", controller, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Users_controller_is_only_an_http_adapter()
+    {
+        var repositoryRoot = ResolveIdentityRepository();
+        var controller = File.ReadAllText(Path.Combine(
+            repositoryRoot,
+            "src",
+            "management",
+            "Controllers",
+            "UsersController.cs"));
+
+        Assert.Contains(
+            "IUserManagementService",
+            controller,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("AppDbContext", controller, StringComparison.Ordinal);
+        Assert.DoesNotContain("DbContext", controller, StringComparison.Ordinal);
+        Assert.DoesNotContain("UserManager<", controller, StringComparison.Ordinal);
+    }
+
     private static string ResolveManagementUiSource()
     {
         var repositoryRoot = ResolveIdentityRepository();

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.Extensions.Options;
 using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Server.Management;
 using Xunit;
 
 namespace Sufficit.Identity.Tests;
@@ -21,6 +22,13 @@ public sealed class ManagementApplicationAuthorizationTests
                      ManagementCapabilities.ClientsDelete,
                      ManagementCapabilities.BrandingRead,
                      ManagementCapabilities.BrandingManage,
+                     ManagementCapabilities.UsersRead,
+                     ManagementCapabilities.UsersCreate,
+                     ManagementCapabilities.UsersUpdate,
+                     ManagementCapabilities.UsersDisable,
+                     ManagementCapabilities.UsersDelete,
+                     ManagementCapabilities.UsersResetPassword,
+                     ManagementCapabilities.UsersPermissionsManage,
                      ManagementCapabilities.AuditRead,
                  })
         {
@@ -30,6 +38,118 @@ public sealed class ManagementApplicationAuthorizationTests
                 new ManagementResource(ManagementResourceTypes.Client));
             Assert.True(decision.IsAllowed, capability);
         }
+    }
+
+    [Fact]
+    public async Task Manager_is_limited_to_contexts_from_normalized_grants()
+    {
+        const string allowedContext = "4082aef4-42d3-4b1b-a321-f405af935940";
+        var options = Options.Create(new ManagementOptions());
+        var resolver = new RoleAndClaimManagementEntitlementResolver(options);
+        var evaluator = new RoleBasedManagementAuthorizationEvaluator(
+            resolver,
+            new ConfigurationManagementAccessPolicyProvider(options));
+        var principal = PrincipalWithRole(
+            "manager",
+            new Claim("management_context", allowedContext));
+
+        var allowed = await evaluator.EvaluateAsync(
+            principal,
+            ManagementCapabilities.UsersRead,
+            new ManagementResource(
+                ManagementResourceTypes.UserCollection,
+                ContextId: allowedContext));
+        var denied = await evaluator.EvaluateAsync(
+            principal,
+            ManagementCapabilities.UsersRead,
+            new ManagementResource(
+                ManagementResourceTypes.UserCollection,
+                ContextId: "f96802a6-8d90-4143-a939-dd5258f3cfaa"));
+        var missing = await evaluator.EvaluateAsync(
+            principal,
+            ManagementCapabilities.UsersRead,
+            new ManagementResource(ManagementResourceTypes.UserCollection));
+
+        Assert.True(allowed.IsAllowed);
+        Assert.Equal("capability_not_granted", denied.ReasonCode);
+        Assert.Equal("context_required", missing.ReasonCode);
+    }
+
+    [Fact]
+    public async Task Context_policy_can_require_mfa_without_changing_global_policy()
+    {
+        const string contextId = "4082aef4-42d3-4b1b-a321-f405af935940";
+        var options = Options.Create(new ManagementOptions
+        {
+            Authorization = new ManagementAuthorizationOptions
+            {
+                Contexts = new Dictionary<
+                    string,
+                    ManagementContextAccessPolicyOptions>(
+                    StringComparer.OrdinalIgnoreCase)
+                {
+                    [contextId] = new() { RequireMfa = true }
+                }
+            }
+        });
+        var evaluator = new RoleBasedManagementAuthorizationEvaluator(
+            new RoleAndClaimManagementEntitlementResolver(options),
+            new ConfigurationManagementAccessPolicyProvider(options));
+
+        var decision = await evaluator.EvaluateAsync(
+            PrincipalWithRole(
+                "manager",
+                new Claim("management_context", contextId)),
+            ManagementCapabilities.UsersRead,
+            new ManagementResource(
+                ManagementResourceTypes.UserCollection,
+                ContextId: contextId));
+
+        Assert.Equal(
+            ManagementAuthorizationOutcome.StepUpRequired,
+            decision.Outcome);
+    }
+
+    [Fact]
+    public async Task Sufficit_adapter_reads_scalar_and_json_directives()
+    {
+        const string firstContext = "4082aef4-42d3-4b1b-a321-f405af935940";
+        const string secondContext = "f96802a6-8d90-4143-a939-dd5258f3cfaa";
+        var resolver = new SufficitDirectiveManagementEntitlementResolver(
+            Options.Create(new ManagementOptions()));
+        var principal = PrincipalWithRole(
+            "manager",
+            new Claim("directive", $"phonecalls:{firstContext}"),
+            new Claim(
+                "directive",
+                $"[\"clientadmin:{secondContext}\",\"broken\","
+                + "\"policyupdate:00000000-0000-0000-0000-000000000000\"]"));
+
+        var grants = await resolver.ResolveAsync(principal);
+
+        Assert.False(grants.HasGlobalAdministratorAccess);
+        Assert.Equal(
+            new[] { firstContext, secondContext },
+            grants.ManagedContextIds.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task Sufficit_adapter_never_turns_manager_wildcard_into_global_access()
+    {
+        var resolver = new SufficitDirectiveManagementEntitlementResolver(
+            Options.Create(new ManagementOptions()));
+        var manager = await resolver.ResolveAsync(
+            PrincipalWithRole(
+                "manager",
+                new Claim(
+                    "directive",
+                    "phonecalls:00000000-0000-0000-0000-000000000000")));
+        var administrator = await resolver.ResolveAsync(
+            PrincipalWithRole("administrator"));
+
+        Assert.False(manager.HasGlobalAdministratorAccess);
+        Assert.Empty(manager.ManagedContextIds);
+        Assert.True(administrator.HasGlobalAdministratorAccess);
     }
 
     [Fact]
@@ -65,11 +185,16 @@ public sealed class ManagementApplicationAuthorizationTests
     }
 
     private static RoleBasedManagementAuthorizationEvaluator CreateEvaluator(
-        bool requireMfa = false) =>
-        new(Options.Create(new ManagementOptions
+        bool requireMfa = false)
+    {
+        var options = Options.Create(new ManagementOptions
         {
             RequireMfa = requireMfa
-        }));
+        });
+        return new RoleBasedManagementAuthorizationEvaluator(
+            new RoleAndClaimManagementEntitlementResolver(options),
+            new ConfigurationManagementAccessPolicyProvider(options));
+    }
 
     private static ClaimsPrincipal PrincipalWithRole(
         string role,
