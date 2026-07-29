@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Sufficit.Identity.Management.Audit;
+using Sufficit.Identity.Management.Branding;
 using Sufficit.Identity.Management.Clients;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.UI.Management;
@@ -39,7 +40,7 @@ public sealed class ManagementUiRoutingTests
     }
 
     [Fact]
-    public async Task Manager_enters_management_but_client_page_is_denied()
+    public async Task Manager_enters_management_but_global_pages_are_denied()
     {
         await using var app = await CreateHostAsync();
         using var client = app.GetTestClient();
@@ -60,6 +61,12 @@ public sealed class ManagementUiRoutingTests
         Assert.Equal(
             "/account/accessdenied",
             LocationPath(forwarded.Headers.Location));
+
+        using var branding = await client.GetAsync("/management/branding");
+        Assert.Equal(HttpStatusCode.Redirect, branding.StatusCode);
+        Assert.Equal(
+            "/management/account/accessdenied",
+            LocationPath(branding.Headers.Location));
     }
 
     [Fact]
@@ -127,6 +134,38 @@ public sealed class ManagementUiRoutingTests
         Assert.Contains("test-correlation", html, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Administrator_renders_persisted_branding_and_rooted_logo()
+    {
+        await using var app = await CreateHostAsync();
+        using var client = app.GetTestClient();
+
+        await SignInAsync(client, "administrator");
+
+        using var response = await client.GetAsync("/management/branding");
+        var html = WebUtility.HtmlDecode(
+            await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Sufficit padrão", html, StringComparison.Ordinal);
+        Assert.Contains(
+            "src=\"/_content/Sufficit.Identity.UI/img/header-icon.png\"",
+            html,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "src=\"/_content/Sufficit.Identity.UI/img/logo-full.png\"",
+            html,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "src=\"img/logo-mark.png\"",
+            html,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "Conecte a API",
+            html,
+            StringComparison.Ordinal);
+    }
+
     private static async Task<WebApplication> CreateHostAsync()
     {
         var builder = WebApplication.CreateBuilder();
@@ -146,6 +185,7 @@ public sealed class ManagementUiRoutingTests
             });
         builder.Services.AddAuthorization();
         builder.Services.AddSingleton<IClientManagementService, StubClientManagementService>();
+        builder.Services.AddSingleton<IBrandingManagementService, StubBrandingManagementService>();
         builder.Services.AddSingleton<IManagementAuditService, StubManagementAuditService>();
         builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
 
@@ -242,6 +282,75 @@ public sealed class ManagementUiRoutingTests
 
         public Task DeleteAsync(
             string clientId,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class StubBrandingManagementService
+        : IBrandingManagementService
+    {
+        private static readonly ManagementBrandingTheme Theme =
+            new(
+                Id: 1,
+                Name: "Sufficit padrão",
+                IsActive: true,
+                LogoUrl:
+                    "/_content/Sufficit.Identity.UI/img/logo-full.png",
+                FaviconUrl:
+                    "/_content/Sufficit.Identity.UI/img/favicon.png",
+                HeaderIconUrl:
+                    "/_content/Sufficit.Identity.UI/img/header-icon.png",
+                BackgroundImageUrl:
+                    "/_content/Sufficit.Identity.UI/img/login-bg.jpg",
+                BrandColor: "#cc0000",
+                BrandHoverColor: "#a30000",
+                BrandSoftColor: "#fbe9e9",
+                ThemeColor: "#cc0000",
+                Title: "Sufficit Identity",
+                BrandName: "Sufficit",
+                BrandSubtitle: "Identity",
+                AvatarUrlTemplate: null,
+                CreatedAt: DateTime.UtcNow,
+                UpdatedAt: DateTime.UtcNow);
+
+        public Task<IReadOnlyList<ManagementBrandingTheme>> ListAsync(
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ManagementBrandingTheme>>([Theme]);
+
+        public Task<ManagementBrandingTheme?> GetActiveAsync(
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<ManagementBrandingTheme?>(Theme);
+
+        public Task<ManagementBrandingTheme> GetAsync(
+            int id,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Theme);
+
+        public Task<ManagementBrandingTheme> CreateAsync(
+            SaveManagementBrandingThemeCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<ManagementBrandingTheme> UpdateAsync(
+            int id,
+            SaveManagementBrandingThemeCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<ManagementBrandingTheme> ActivateAsync(
+            int id,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task DeleteAsync(
+            int id,
             ManagementRequestContext context,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
