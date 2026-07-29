@@ -79,8 +79,8 @@ auditoria em todo o fluxo.
 - Contrato atual confirmado: clientes possuem listar, obter, criar e excluir;
   branding possui CRUD e ativação; provisionamento possui preview e aplicação
   aditiva.
-- Usuários, papéis, claims, scopes isolados, sessões, grants e auditoria ainda
-  dependem de novos contratos.
+- Usuários, papéis, claims, scopes isolados, sessões e grants ainda dependem
+  de novos contratos; auditoria e branding já usam contratos compartilhados.
 - O modelo genérico, o adaptador Sufficit e a matriz inicial de capacidades
   estão definidos em
   [`../../docs/management-authorization-architecture.md`](../../docs/management-authorization-architecture.md).

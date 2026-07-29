@@ -1,12 +1,23 @@
 @page "/branding"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageBranding)]
+@inject ManagementBrandingDataSource BrandingData
 
 <PageTitle>Branding | Sufficit Identity</PageTitle>
 
-<PageHeader Eyebrow="Experiência"
-            Title="Branding"
-            Description="Configure temas usados nas superfícies públicas do serviço de identidade.">
+<PageHeader Title="Branding"
+            Description="Gerencie a identidade visual aplicada às superfícies públicas do serviço.">
     <Actions>
-        <button class="button button--primary" type="button" disabled>
+        <button class="button button--secondary"
+                type="button"
+                disabled="@busy"
+                @onclick="RefreshAsync">
+            <AppIcon Name="refresh" Size="17" />
+            Atualizar
+        </button>
+        <button class="button button--primary"
+                type="button"
+                disabled="@busy"
+                @onclick="BeginCreate">
             <AppIcon Name="plus" Size="17" />
             Novo tema
         </button>
@@ -14,70 +25,765 @@
 </PageHeader>
 
 <section class="contract-strip contract-strip--success">
-    <AppIcon Name="check" Size="20" />
+    <AppIcon Name="shield" Size="20" />
     <div>
-        <strong>Contrato completo na API</strong>
-        <span>Listagem, detalhe, criação, edição, ativação e exclusão estão disponíveis.</span>
+        <strong>Uma fonte de verdade</strong>
+        <span>Esta tela e a API executam os mesmos casos de uso, validações, autorização e auditoria.</span>
     </div>
-    <StatusBadge Tone="success">7 operações</StatusBadge>
+    <StatusBadge Tone="success">Integrado</StatusBadge>
 </section>
 
-<div class="branding-grid">
-    <section class="panel" aria-labelledby="themes-heading">
+@if (ActiveThemeCount > 1)
+{
+    <section class="inline-notice inline-notice--danger" role="alert">
+        <AppIcon Name="alert" Size="19" />
+        <div>
+            <strong>Mais de um tema está marcado como ativo</strong>
+            <span>Ative o tema correto abaixo; a operação desativará os demais de forma atômica.</span>
+        </div>
+    </section>
+}
+
+@if (!string.IsNullOrWhiteSpace(successMessage))
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Branding atualizado</strong>
+            <span>@successMessage</span>
+        </div>
+    </section>
+}
+
+@if (operation?.IsSuccess is false)
+{
+    <section class="inline-notice inline-notice--danger" role="alert">
+        <AppIcon Name="alert" Size="19" />
+        <div>
+            <strong>Não foi possível concluir a operação</strong>
+            <span>@operation.ErrorMessage</span>
+        </div>
+    </section>
+}
+
+<div class="branding-workspace">
+    <section class="panel branding-themes" aria-labelledby="themes-heading">
         <div class="panel-header">
             <div>
-                <p class="section-kicker">Temas</p>
                 <h2 id="themes-heading">Configurações salvas</h2>
             </div>
+            @if (!loading && themes.Count > 0)
+            {
+                <StatusBadge Tone="neutral">@themes.Count</StatusBadge>
+            }
         </div>
-        <EmptyState Icon="palette"
-                    Title="Conecte a API para carregar temas"
-                    Description="A prévia ao lado usa somente os tokens locais do sistema visual.">
-            <Actions>
-                <a class="button button--secondary" href="settings">Configurar endpoint</a>
-            </Actions>
-        </EmptyState>
+
+        @if (loading)
+        {
+            <div class="theme-list theme-list--loading"
+                 aria-busy="true"
+                 aria-label="Carregando temas">
+                <div class="theme-row-skeleton"></div>
+                <div class="theme-row-skeleton"></div>
+            </div>
+        }
+        else if (loadResult?.IsSuccess is false)
+        {
+            <EmptyState Icon="alert"
+                        Title="Não foi possível carregar os temas"
+                        Description="@loadResult.ErrorMessage">
+                <Actions>
+                    <button class="button button--primary"
+                            type="button"
+                            @onclick="RefreshAsync">
+                        Tentar novamente
+                    </button>
+                </Actions>
+            </EmptyState>
+        }
+        else if (themes.Count is 0)
+        {
+            <EmptyState Icon="palette"
+                        Title="Nenhum tema configurado"
+                        Description="Crie a primeira identidade visual; ela só será publicada após a ativação.">
+                <Actions>
+                    <button class="button button--primary"
+                            type="button"
+                            @onclick="BeginCreate">
+                        Criar tema
+                    </button>
+                </Actions>
+            </EmptyState>
+        }
+        else
+        {
+            <div class="theme-list">
+                @foreach (var theme in themes)
+                {
+                    <button class="theme-row @(Selected?.Id == theme.Id ? "theme-row--selected" : null)"
+                            type="button"
+                            aria-pressed="@(Selected?.Id == theme.Id)"
+                            @onclick="() => Select(theme)">
+                        <span class="theme-row__mark"
+                              style="@ThemeMarkStyle(theme)"
+                              aria-hidden="true"></span>
+                        <span class="theme-row__copy">
+                            <strong>@theme.Name</strong>
+                            <small>@ThemeIdentity(theme)</small>
+                        </span>
+                        @if (theme.IsActive)
+                        {
+                            <StatusBadge Tone="success">Ativo</StatusBadge>
+                        }
+                        else
+                        {
+                            <AppIcon Name="arrow-right" Size="16" />
+                        }
+                    </button>
+                }
+            </div>
+        }
     </section>
 
     <section class="brand-preview-panel" aria-labelledby="brand-preview-heading">
-        <div class="brand-preview-panel__header">
-            <div>
-                <p class="section-kicker">Prévia local</p>
-                <h2 id="brand-preview-heading">Sufficit padrão</h2>
-            </div>
-            <StatusBadge Tone="neutral">Não publicado</StatusBadge>
-        </div>
+        @if (Selected is null)
+        {
+            <EmptyState Icon="palette"
+                        Title="Selecione um tema"
+                        Description="A prévia usa os valores persistidos pelo serviço de identidade." />
+        }
+        else
+        {
+            var theme = Selected;
 
-        <div class="identity-preview">
-            <div class="identity-preview__top">
-                <img src="img/logo-mark.png" width="32" height="32" alt="" />
-                <span>Sufficit Identity</span>
+            <div class="brand-preview-panel__header">
+                <div>
+                    <h2 id="brand-preview-heading">@theme.Name</h2>
+                </div>
+                <StatusBadge Tone="@(theme.IsActive ? "success" : "neutral")">
+                    @(theme.IsActive ? "Publicado" : "Rascunho")
+                </StatusBadge>
             </div>
-            <div class="identity-preview__body">
-                <div class="identity-preview__card">
-                    <div class="preview-line preview-line--title"></div>
-                    <div class="preview-line"></div>
-                    <div class="preview-field"></div>
-                    <div class="preview-line preview-line--short"></div>
-                    <div class="preview-field"></div>
-                    <div class="preview-button"></div>
+
+            <div class="identity-preview" style="@PreviewStyle(theme)">
+                <div class="identity-preview__top">
+                    <img @key="PreviewHeaderIcon"
+                         src="@PreviewHeaderIcon"
+                         width="32"
+                         height="32"
+                         alt=""
+                         @onerror="UseHeaderFallback" />
+                    <span>@ThemeIdentity(theme)</span>
+                </div>
+                <div class="identity-preview__body">
+                    <div class="identity-preview__card">
+                        <img @key="PreviewLogo"
+                             class="identity-preview__logo"
+                             src="@PreviewLogo"
+                             alt="@ThemeIdentity(theme)"
+                             @onerror="UseLogoFallback" />
+                        <div class="preview-line"></div>
+                        <div class="preview-field"></div>
+                        <div class="preview-line preview-line--short"></div>
+                        <div class="preview-field"></div>
+                        <div class="preview-button"></div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <dl class="token-list">
-            <div>
-                <dt>Marca</dt>
-                <dd><span class="color-swatch color-swatch--brand"></span><code>#cc0000</code></dd>
+            <dl class="token-list">
+                <div>
+                    <dt>Marca</dt>
+                    <dd>
+                        <span class="color-swatch"
+                              style="@SwatchStyle(theme.BrandColor)"></span>
+                        <code>@DisplayColor(theme.BrandColor)</code>
+                    </dd>
+                </div>
+                <div>
+                    <dt>Destaque suave</dt>
+                    <dd>
+                        <span class="color-swatch"
+                              style="@SwatchStyle(theme.BrandSoftColor)"></span>
+                        <code>@DisplayColor(theme.BrandSoftColor)</code>
+                    </dd>
+                </div>
+                <div>
+                    <dt>Atualizado</dt>
+                    <dd><time datetime="@theme.UpdatedAt.ToString("O")">@FormatDate(theme.UpdatedAt)</time></dd>
+                </div>
+            </dl>
+
+            <div class="brand-preview-actions">
+                <button class="button button--secondary"
+                        type="button"
+                        disabled="@busy"
+                        @onclick="BeginEdit">
+                    <AppIcon Name="edit" Size="17" />
+                    Editar tema
+                </button>
+                @if (!theme.IsActive)
+                {
+                    <button class="button button--primary"
+                            type="button"
+                            disabled="@busy"
+                            @onclick="ActivateAsync">
+                        @if (activating)
+                        {
+                            <span class="button-spinner" aria-hidden="true"></span>
+                            <span>Publicando…</span>
+                        }
+                        else
+                        {
+                            <AppIcon Name="check" Size="17" />
+                            <span>Publicar tema</span>
+                        }
+                    </button>
+                }
             </div>
-            <div>
-                <dt>Texto</dt>
-                <dd><span class="color-swatch color-swatch--ink"></span><code>#343132</code></dd>
-            </div>
-            <div>
-                <dt>Superfície</dt>
-                <dd><span class="color-swatch color-swatch--surface"></span><code>#f6f6f7</code></dd>
-            </div>
-        </dl>
+        }
     </section>
 </div>
+
+@if (editing)
+{
+    <EditForm Model="model"
+              OnValidSubmit="SaveAsync"
+              FormName="branding-theme"
+              class="management-form branding-form">
+        <DataAnnotationsValidator />
+
+        <section class="form-section" aria-labelledby="branding-identity-heading">
+            <div class="form-section__heading">
+                <h2 id="branding-identity-heading">@(creating ? "Novo tema" : "Editar tema")</h2>
+                <p>Textos e ativos são persistidos no serviço e reutilizados pelas superfícies públicas.</p>
+            </div>
+
+            <div class="form-grid form-grid--two">
+                <div class="field-group">
+                    <label for="theme-name">Nome do tema</label>
+                    <InputText id="theme-name"
+                               class="form-control"
+                               @bind-Value="model.Name"
+                               autocomplete="off" />
+                    <ValidationMessage For="() => model.Name" />
+                </div>
+                <div class="field-group">
+                    <label for="theme-title">Título do navegador</label>
+                    <InputText id="theme-title"
+                               class="form-control"
+                               @bind-Value="model.Title"
+                               autocomplete="off" />
+                </div>
+                <div class="field-group">
+                    <label for="brand-name">Nome da marca</label>
+                    <InputText id="brand-name"
+                               class="form-control"
+                               @bind-Value="model.BrandName"
+                               autocomplete="off" />
+                </div>
+                <div class="field-group">
+                    <label for="brand-subtitle">Complemento da marca</label>
+                    <InputText id="brand-subtitle"
+                               class="form-control"
+                               @bind-Value="model.BrandSubtitle"
+                               autocomplete="off" />
+                </div>
+            </div>
+        </section>
+
+        <section class="form-section" aria-labelledby="branding-assets-heading">
+            <div class="form-section__heading">
+                <h2 id="branding-assets-heading">Ativos visuais</h2>
+                <p>Use caminhos relativos à raiz, como /_content/…, ou URLs HTTP(S) absolutas.</p>
+            </div>
+
+            <div class="form-grid form-grid--two">
+                <div class="field-group">
+                    <label for="logo-url">Logo principal</label>
+                    <InputText id="logo-url"
+                               class="form-control"
+                               @bind-Value="model.LogoUrl"
+                               autocomplete="url" />
+                </div>
+                <div class="field-group">
+                    <label for="header-icon-url">Ícone do cabeçalho</label>
+                    <InputText id="header-icon-url"
+                               class="form-control"
+                               @bind-Value="model.HeaderIconUrl"
+                               autocomplete="url" />
+                </div>
+                <div class="field-group">
+                    <label for="favicon-url">Favicon</label>
+                    <InputText id="favicon-url"
+                               class="form-control"
+                               @bind-Value="model.FaviconUrl"
+                               autocomplete="url" />
+                </div>
+                <div class="field-group">
+                    <label for="background-url">Imagem de fundo</label>
+                    <InputText id="background-url"
+                               class="form-control"
+                               @bind-Value="model.BackgroundImageUrl"
+                               autocomplete="url" />
+                </div>
+            </div>
+        </section>
+
+        <section class="form-section" aria-labelledby="branding-colors-heading">
+            <div class="form-section__heading">
+                <h2 id="branding-colors-heading">Cores</h2>
+                <p>Valores opcionais no formato hexadecimal #RRGGBB; campos vazios usam o padrão do host.</p>
+            </div>
+
+            <div class="form-grid form-grid--four">
+                <div class="field-group">
+                    <label for="brand-color">Marca</label>
+                    <InputText id="brand-color"
+                               class="form-control"
+                               @bind-Value="model.BrandColor"
+                               placeholder="#cc0000"
+                               autocomplete="off" />
+                </div>
+                <div class="field-group">
+                    <label for="brand-hover-color">Interação</label>
+                    <InputText id="brand-hover-color"
+                               class="form-control"
+                               @bind-Value="model.BrandHoverColor"
+                               placeholder="#a30000"
+                               autocomplete="off" />
+                </div>
+                <div class="field-group">
+                    <label for="brand-soft-color">Fundo suave</label>
+                    <InputText id="brand-soft-color"
+                               class="form-control"
+                               @bind-Value="model.BrandSoftColor"
+                               placeholder="#fbe9e9"
+                               autocomplete="off" />
+                </div>
+                <div class="field-group">
+                    <label for="theme-color">Navegador</label>
+                    <InputText id="theme-color"
+                               class="form-control"
+                               @bind-Value="model.ThemeColor"
+                               placeholder="#cc0000"
+                               autocomplete="off" />
+                </div>
+            </div>
+        </section>
+
+        <section class="form-section" aria-labelledby="branding-avatar-heading">
+            <div class="form-section__heading">
+                <h2 id="branding-avatar-heading">Avatares administrativos</h2>
+                <p>O marcador &#123;userid&#125; será substituído pelo identificador do usuário.</p>
+            </div>
+            <div class="field-group">
+                <label for="avatar-url-template">Template de URL</label>
+                <InputText id="avatar-url-template"
+                           class="form-control"
+                           @bind-Value="model.AvatarUrlTemplate"
+                           autocomplete="off" />
+            </div>
+        </section>
+
+        <footer class="form-actions">
+            <button class="button button--secondary"
+                    type="button"
+                    disabled="@saving"
+                    @onclick="CancelEdit">
+                Cancelar
+            </button>
+            <button class="button button--primary"
+                    type="submit"
+                    disabled="@saving">
+                @if (saving)
+                {
+                    <span class="button-spinner" aria-hidden="true"></span>
+                    <span>Salvando…</span>
+                }
+                else
+                {
+                    <AppIcon Name="check" Size="17" />
+                    <span>@(creating ? "Criar tema" : "Salvar alterações")</span>
+                }
+            </button>
+        </footer>
+    </EditForm>
+}
+
+@if (Selected is { IsActive: false } selectedTheme && !editing)
+{
+    <section class="danger-zone" aria-labelledby="delete-theme-heading">
+        <div>
+            <h2 id="delete-theme-heading">Excluir tema</h2>
+            <p>A exclusão remove este rascunho e registra a operação na auditoria administrativa.</p>
+        </div>
+
+        @if (!confirmingDelete)
+        {
+            <button class="button button--danger"
+                    type="button"
+                    disabled="@busy"
+                    @onclick="BeginDelete">
+                <AppIcon Name="trash" Size="17" />
+                Excluir tema
+            </button>
+        }
+        else
+        {
+            <div class="delete-confirmation">
+                <label for="delete-theme-confirmation">
+                    Digite <code>@selectedTheme.Name</code> para confirmar
+                </label>
+                <input id="delete-theme-confirmation"
+                       class="form-control"
+                       autocomplete="off"
+                       @bind="deleteConfirmation"
+                       @bind:event="oninput" />
+                <div class="delete-confirmation__actions">
+                    <button class="button button--secondary"
+                            type="button"
+                            disabled="@deleting"
+                            @onclick="CancelDelete">
+                        Cancelar
+                    </button>
+                    <button class="button button--danger"
+                            type="button"
+                            disabled="@(!CanDelete)"
+                            @onclick="DeleteAsync">
+                        @if (deleting)
+                        {
+                            <span class="button-spinner" aria-hidden="true"></span>
+                            <span>Excluindo…</span>
+                        }
+                        else
+                        {
+                            <AppIcon Name="trash" Size="17" />
+                            <span>Confirmar exclusão</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private const string FallbackIcon =
+        "/_content/Sufficit.Identity.UI.Management/img/logo-mark.png";
+
+    private IReadOnlyList<ManagementBrandingTheme> themes = [];
+    private ManagementDataResult<IReadOnlyList<ManagementBrandingTheme>>?
+        loadResult;
+    private ManagementDataResult<object>? operation;
+    private ManagementBrandingTheme? Selected { get; set; }
+    private BrandingEditModel model = new();
+    private bool loading = true;
+    private bool editing;
+    private bool creating;
+    private bool saving;
+    private bool activating;
+    private bool deleting;
+    private bool confirmingDelete;
+    private bool headerFallback;
+    private bool logoFallback;
+    private string deleteConfirmation = string.Empty;
+    private string? successMessage;
+
+    private bool busy => loading || saving || activating || deleting;
+    private int ActiveThemeCount => themes.Count(theme => theme.IsActive);
+    private bool CanDelete =>
+        !deleting
+        && Selected is { IsActive: false }
+        && string.Equals(
+            deleteConfirmation,
+            Selected.Name,
+            StringComparison.Ordinal);
+    private string PreviewHeaderIcon =>
+        headerFallback
+            ? FallbackIcon
+            : Selected?.HeaderIconUrl ?? FallbackIcon;
+    private string PreviewLogo =>
+        logoFallback
+            ? FallbackIcon
+            : Selected?.LogoUrl ?? FallbackIcon;
+
+    protected override async Task OnInitializedAsync() =>
+        await LoadAsync();
+
+    private async Task RefreshAsync() =>
+        await LoadAsync(Selected?.Id);
+
+    private async Task LoadAsync(int? preferredId = null)
+    {
+        loading = true;
+        loadResult = await BrandingData.GetThemesAsync();
+        themes = loadResult.Value ?? [];
+        Selected = preferredId is null
+            ? themes.FirstOrDefault(theme => theme.IsActive)
+                ?? themes.FirstOrDefault()
+            : themes.FirstOrDefault(theme => theme.Id == preferredId)
+                ?? themes.FirstOrDefault(theme => theme.IsActive)
+                ?? themes.FirstOrDefault();
+        ResetPreviewFallbacks();
+        loading = false;
+    }
+
+    private void Select(ManagementBrandingTheme theme)
+    {
+        Selected = theme;
+        operation = null;
+        successMessage = null;
+        confirmingDelete = false;
+        ResetPreviewFallbacks();
+    }
+
+    private void BeginCreate()
+    {
+        model = BrandingEditModel.CreateDefault();
+        creating = true;
+        editing = true;
+        operation = null;
+        successMessage = null;
+    }
+
+    private void BeginEdit()
+    {
+        if (Selected is null)
+        {
+            return;
+        }
+
+        model = BrandingEditModel.From(Selected);
+        creating = false;
+        editing = true;
+        operation = null;
+        successMessage = null;
+    }
+
+    private void CancelEdit()
+    {
+        editing = false;
+        creating = false;
+        operation = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (saving)
+        {
+            return;
+        }
+
+        saving = true;
+        var command = model.ToCommand();
+        if (creating)
+        {
+            var created = await BrandingData.CreateThemeAsync(command);
+            operation = Box(created);
+            if (created.IsSuccess && created.Value is not null)
+            {
+                successMessage = $"O tema “{created.Value.Name}” foi criado como rascunho.";
+                editing = false;
+                creating = false;
+                await LoadAsync(created.Value.Id);
+            }
+        }
+        else if (Selected is not null)
+        {
+            var updated = await BrandingData.UpdateThemeAsync(
+                Selected.Id,
+                command);
+            operation = Box(updated);
+            if (updated.IsSuccess && updated.Value is not null)
+            {
+                successMessage = $"As alterações de “{updated.Value.Name}” foram salvas.";
+                editing = false;
+                await LoadAsync(updated.Value.Id);
+            }
+        }
+        saving = false;
+    }
+
+    private async Task ActivateAsync()
+    {
+        if (Selected is null || activating)
+        {
+            return;
+        }
+
+        activating = true;
+        var activated = await BrandingData.ActivateThemeAsync(Selected.Id);
+        operation = Box(activated);
+        if (activated.IsSuccess && activated.Value is not null)
+        {
+            successMessage = $"O tema “{activated.Value.Name}” está publicado.";
+            await LoadAsync(activated.Value.Id);
+        }
+        activating = false;
+    }
+
+    private void BeginDelete()
+    {
+        confirmingDelete = true;
+        deleteConfirmation = string.Empty;
+        operation = null;
+    }
+
+    private void CancelDelete()
+    {
+        confirmingDelete = false;
+        deleteConfirmation = string.Empty;
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (!CanDelete || Selected is null)
+        {
+            return;
+        }
+
+        deleting = true;
+        var deletedName = Selected.Name;
+        var deleted = await BrandingData.DeleteThemeAsync(Selected.Id);
+        operation = Box(deleted);
+        if (deleted.IsSuccess)
+        {
+            successMessage = $"O tema “{deletedName}” foi excluído.";
+            confirmingDelete = false;
+            await LoadAsync();
+        }
+        deleting = false;
+    }
+
+    private void ResetPreviewFallbacks()
+    {
+        headerFallback = false;
+        logoFallback = false;
+    }
+
+    private void UseHeaderFallback() => headerFallback = true;
+
+    private void UseLogoFallback() => logoFallback = true;
+
+    private static string ThemeIdentity(ManagementBrandingTheme theme)
+    {
+        var parts = new[] { theme.BrandName, theme.BrandSubtitle }
+            .Where(value => !string.IsNullOrWhiteSpace(value));
+        var value = string.Join(' ', parts);
+        return string.IsNullOrWhiteSpace(value)
+            ? theme.Title ?? theme.Name
+            : value;
+    }
+
+    private static string PreviewStyle(ManagementBrandingTheme theme) =>
+        $"--preview-brand:{theme.BrandColor ?? "#cc0000"};"
+        + $"--preview-brand-soft:{theme.BrandSoftColor ?? "#fbe9e9"};";
+
+    private static string ThemeMarkStyle(ManagementBrandingTheme theme) =>
+        $"background:{theme.BrandColor ?? "#cc0000"}";
+
+    private static string SwatchStyle(string? color) =>
+        $"background:{color ?? "#cc0000"}";
+
+    private static string DisplayColor(string? color) =>
+        color ?? "padrão do host";
+
+    private static string FormatDate(DateTime value) =>
+        value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+
+    private static ManagementDataResult<object> Box<T>(
+        ManagementDataResult<T> result) =>
+        result.IsSuccess
+            ? ManagementDataResult<object>.Success(result.Value!)
+            : ManagementDataResult<object>.Failure(
+                result.Outcome,
+                result.ErrorMessage,
+                result.ErrorField);
+
+    private sealed class BrandingEditModel
+    {
+        [Required(ErrorMessage = "Informe o nome do tema.")]
+        [StringLength(100, ErrorMessage = "Use no máximo 100 caracteres.")]
+        public string Name { get; set; } = string.Empty;
+
+        [StringLength(512)]
+        public string? LogoUrl { get; set; }
+
+        [StringLength(512)]
+        public string? FaviconUrl { get; set; }
+
+        [StringLength(512)]
+        public string? HeaderIconUrl { get; set; }
+
+        [StringLength(512)]
+        public string? BackgroundImageUrl { get; set; }
+
+        [StringLength(7)]
+        public string? BrandColor { get; set; }
+
+        [StringLength(7)]
+        public string? BrandHoverColor { get; set; }
+
+        [StringLength(7)]
+        public string? BrandSoftColor { get; set; }
+
+        [StringLength(7)]
+        public string? ThemeColor { get; set; }
+
+        [StringLength(200)]
+        public string? Title { get; set; }
+
+        [StringLength(100)]
+        public string? BrandName { get; set; }
+
+        [StringLength(100)]
+        public string? BrandSubtitle { get; set; }
+
+        [StringLength(512)]
+        public string? AvatarUrlTemplate { get; set; }
+
+        public SaveManagementBrandingThemeCommand ToCommand() =>
+            new(
+                Name,
+                LogoUrl,
+                FaviconUrl,
+                HeaderIconUrl,
+                BackgroundImageUrl,
+                BrandColor,
+                BrandHoverColor,
+                BrandSoftColor,
+                ThemeColor,
+                Title,
+                BrandName,
+                BrandSubtitle,
+                AvatarUrlTemplate);
+
+        public static BrandingEditModel CreateDefault() =>
+            new()
+            {
+                BrandColor = "#cc0000",
+                BrandHoverColor = "#a30000",
+                BrandSoftColor = "#fbe9e9",
+                ThemeColor = "#cc0000"
+            };
+
+        public static BrandingEditModel From(ManagementBrandingTheme theme) =>
+            new()
+            {
+                Name = theme.Name,
+                LogoUrl = theme.LogoUrl,
+                FaviconUrl = theme.FaviconUrl,
+                HeaderIconUrl = theme.HeaderIconUrl,
+                BackgroundImageUrl = theme.BackgroundImageUrl,
+                BrandColor = theme.BrandColor,
+                BrandHoverColor = theme.BrandHoverColor,
+                BrandSoftColor = theme.BrandSoftColor,
+                ThemeColor = theme.ThemeColor,
+                Title = theme.Title,
+                BrandName = theme.BrandName,
+                BrandSubtitle = theme.BrandSubtitle,
+                AvatarUrlTemplate = theme.AvatarUrlTemplate
+            };
+    }
+}

@@ -91,11 +91,13 @@ consistência.
 
 ## Violações atuais conhecidas
 
-O vertical administrativo de clientes aplica o padrão canônico: tanto
-`ClientsController` quanto `ManagementClientDataSource` usam
-`IClientManagementService` para lista, detalhe, criação e exclusão. O serviço
-concentra validação, defaults, autorização e auditoria; o escopo DI curto
-protege o circuito Blazor sem criar uma segunda implementação.
+Os verticais administrativos de clientes e branding aplicam o padrão
+canônico. Controllers HTTP e data sources da UI usam, respectivamente,
+`IClientManagementService` e `IBrandingManagementService` para executar os
+mesmos casos de uso. Esses serviços concentram validação, defaults,
+autorização e auditoria; o escopo DI curto protege o circuito Blazor sem criar
+uma segunda implementação. Branding inclui listagem, detalhe, criação, edição,
+ativação exclusiva e exclusão de temas inativos.
 
 Ainda existem violações a migrar:
 
@@ -113,8 +115,8 @@ nova tela deve repetir esse padrão.
 
 1. Expandir o contrato administrativo de sessão com operador, capabilities,
    escopos autorizados, política MFA e metadados necessários ao shell.
-2. Migrar configurações, branding e provisionamento para use cases
-   compartilhados.
+2. Migrar configurações e provisionamento para use cases compartilhados
+   (branding concluído em 2026-07-29).
 3. Criar contratos de aplicação para autoatendimento e migrar a UI pública.
 4. Remover das UIs todas as referências a Core, stores e gerenciadores de
    persistência/protocolo.

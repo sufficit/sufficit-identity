@@ -19,6 +19,8 @@ Implementado:
   camada de aplicação;
 - listagem, detalhe, criação e exclusão de clientes pelo mesmo serviço de
   aplicação usado pela API, sem uma chamada HTTP ao próprio host;
+- listagem, criação, edição, prévia, ativação exclusiva e exclusão de temas de
+  branding pelo mesmo serviço de aplicação usado pela API;
 - defaults seguros para consentimento, HTTPS, PKCE e PAR;
 - confirmação explícita antes da exclusão;
 - auditoria persistente de mutações e tentativas negadas, com consulta
@@ -60,7 +62,7 @@ Navegador
 /management (Razor Components)
    │ DI + cookie ASP.NET Identity
    ▼
-IClientManagementService
+IClientManagementService / IBrandingManagementService
    ▼
 OpenIddict / ASP.NET Identity
 
@@ -68,7 +70,7 @@ Automação externa
    │ bearer token + escopo administrativo
    ▼
 /api/* (Management REST API)
-   │ IClientManagementService
+   │ IClientManagementService / IBrandingManagementService
    ▼
 OpenIddict / ASP.NET Identity
 ```
@@ -154,5 +156,4 @@ Management habilitado e um usuário autenticado com um dos papéis configurados.
    de aplicação compartilhado.
 2. Implementar o adaptador Sufficit de diretivas e contextos.
 3. Publicar contratos de usuários e aplicar MFA configurável por tenant.
-4. Migrar branding, provisionamento, scopes e sessões para use cases
-   compartilhados.
+4. Migrar provisionamento, scopes e sessões para use cases compartilhados.

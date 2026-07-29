@@ -24,7 +24,7 @@ jobs:
       # This SHA is sufficit-identity's compatible Management contracts and
       # branding/audit model on main as of 2026-07-29.
       # Do not repoint at a moving branch — pinning ensures reproducible builds.
-      IDENTITY_REF: 8dbee875a0308be03f1c0cba55decdb4c290616c
+      IDENTITY_REF: 3e12ba75a0d7181f0409e50766bb00328654fb05
 
     steps:
       - name: Checkout sufficit-identity-ui
