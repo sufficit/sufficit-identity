@@ -76,6 +76,14 @@ public sealed class ManagementUiRoutingTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Clientes registrados", html, StringComparison.Ordinal);
         Assert.Contains("test-client", html, StringComparison.Ordinal);
+        Assert.Contains(
+            "src=\"/_content/Sufficit.Identity.UI/_framework/blazor.web.js\"",
+            html,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "src=\"/_framework/blazor.web.js\"",
+            html,
+            StringComparison.Ordinal);
     }
 
     [Fact]
