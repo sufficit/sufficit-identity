@@ -12,6 +12,7 @@ using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Branding;
 using Sufficit.Identity.Management.Clients;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Management.Users;
 using Sufficit.Identity.UI.Management;
 using Xunit;
 
@@ -166,6 +167,29 @@ public sealed class ManagementUiRoutingTests
             StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("administrator", "Visão global de Administrator")]
+    [InlineData("manager", "4082aef4…5940")]
+    public async Task Authorized_operator_renders_contextual_user_directory(
+        string role,
+        string expectedScope)
+    {
+        await using var app = await CreateHostAsync();
+        using var client = app.GetTestClient();
+
+        await SignInAsync(client, role);
+
+        using var response = await client.GetAsync("/management/users");
+        var html = WebUtility.HtmlDecode(
+            await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Diretório de identidades", html, StringComparison.Ordinal);
+        Assert.Contains("alice@tests.local", html, StringComparison.Ordinal);
+        Assert.Contains(expectedScope, html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Aguardando API", html, StringComparison.Ordinal);
+    }
+
     private static async Task<WebApplication> CreateHostAsync()
     {
         var builder = WebApplication.CreateBuilder();
@@ -186,6 +210,7 @@ public sealed class ManagementUiRoutingTests
         builder.Services.AddAuthorization();
         builder.Services.AddSingleton<IClientManagementService, StubClientManagementService>();
         builder.Services.AddSingleton<IBrandingManagementService, StubBrandingManagementService>();
+        builder.Services.AddSingleton<IUserManagementService, StubUserManagementService>();
         builder.Services.AddSingleton<IManagementAuditService, StubManagementAuditService>();
         builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
 
@@ -386,5 +411,59 @@ public sealed class ManagementUiRoutingTests
                         CorrelationId: "test-correlation",
                         AuthenticationMethods: "pwd mfa")
                 ]);
+    }
+
+    private sealed class StubUserManagementService : IUserManagementService
+    {
+        private const string ContextId =
+            "4082aef4-42d3-4b1b-a321-f405af935940";
+
+        private static readonly ManagementUserSummary Summary = new(
+            "user-1",
+            "alice",
+            "alice@tests.local",
+            EmailConfirmed: true,
+            TwoFactorEnabled: true,
+            IsLockedOut: false,
+            Roles: ["user"]);
+
+        public Task<ManagementUserAccess> GetAccessAsync(
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(
+                context.Operator.IsInRole("administrator")
+                    ? new ManagementUserAccess(true, [ContextId])
+                    : new ManagementUserAccess(false, [ContextId]));
+
+        public Task<ManagementUserPage> SearchAsync(
+            ManagementUserSearch query,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new ManagementUserPage(
+                [Summary],
+                1,
+                25,
+                1,
+                query.ContextId));
+
+        public Task<ManagementUserDetail> GetAsync(
+            string id,
+            string? contextId,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new ManagementUserDetail(
+                Summary.Id,
+                Summary.UserName,
+                Summary.Email,
+                Summary.EmailConfirmed,
+                null,
+                false,
+                Summary.TwoFactorEnabled,
+                true,
+                null,
+                0,
+                Summary.Roles,
+                contextId is null ? [ContextId] : [contextId],
+                DateTime.UtcNow));
     }
 }
