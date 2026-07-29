@@ -35,6 +35,12 @@ public sealed class AppDbContext
     /// </summary>
     public DbSet<DataProtectionKey> DataProtectionKeys { get; set; } = null!;
 
+    /// <summary>
+    /// Branding themes for the Sufficit Identity UI. Only one record should
+    /// have IsActive = true. Cached by <c>BrandingThemeProvider</c>.
+    /// </summary>
+    public DbSet<Entities.BrandingTheme> BrandingThemes => Set<Entities.BrandingTheme>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -43,6 +49,53 @@ public sealed class AppDbContext
         MapOpenIddictTables(builder);
         MapDataProtectionTable(builder);
         ConfigurePasskeyEntities(builder);
+        MapBrandingTables(builder);
+    }
+
+    private static void MapBrandingTables(ModelBuilder builder)
+    {
+        builder.Entity<Entities.BrandingTheme>(b =>
+        {
+            b.ToTable("brandingthemes");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).ValueGeneratedOnAdd();
+            b.Property(x => x.Name).HasMaxLength(IdentityDatabaseSchema.BrandingNameLength).IsRequired();
+            b.Property(x => x.IsActive).IsRequired();
+            b.Property(x => x.LogoUrl).HasMaxLength(IdentityDatabaseSchema.BrandingUrlLength);
+            b.Property(x => x.FaviconUrl).HasMaxLength(IdentityDatabaseSchema.BrandingUrlLength);
+            b.Property(x => x.HeaderIconUrl).HasMaxLength(IdentityDatabaseSchema.BrandingUrlLength);
+            b.Property(x => x.BackgroundImageUrl).HasMaxLength(IdentityDatabaseSchema.BrandingUrlLength);
+            b.Property(x => x.BrandColor).HasMaxLength(IdentityDatabaseSchema.BrandingColorLength);
+            b.Property(x => x.BrandHoverColor).HasMaxLength(IdentityDatabaseSchema.BrandingColorLength);
+            b.Property(x => x.BrandSoftColor).HasMaxLength(IdentityDatabaseSchema.BrandingColorLength);
+            b.Property(x => x.ThemeColor).HasMaxLength(IdentityDatabaseSchema.BrandingColorLength);
+            b.Property(x => x.Title).HasMaxLength(IdentityDatabaseSchema.BrandingTitleLength);
+            b.Property(x => x.BrandName).HasMaxLength(IdentityDatabaseSchema.BrandingNameLength);
+            b.Property(x => x.BrandSubtitle).HasMaxLength(IdentityDatabaseSchema.BrandingNameLength);
+            b.Property(x => x.AvatarUrlTemplate).HasMaxLength(IdentityDatabaseSchema.BrandingUrlLength);
+            b.Property(x => x.CreatedAt).IsRequired();
+            b.Property(x => x.UpdatedAt).IsRequired();
+            b.HasIndex(x => x.IsActive).HasDatabaseName("IX_brandingthemes_isactive");
+            SnakeCaseColumns(b, [
+                ("Id", "id"),
+                ("Name", "name"),
+                ("IsActive", "isactive"),
+                ("LogoUrl", "logourl"),
+                ("FaviconUrl", "faviconurl"),
+                ("HeaderIconUrl", "headericonurl"),
+                ("BackgroundImageUrl", "backgroundimageurl"),
+                ("BrandColor", "brandcolor"),
+                ("BrandHoverColor", "brandhovercolor"),
+                ("BrandSoftColor", "brandsoftcolor"),
+                ("ThemeColor", "themecolor"),
+                ("Title", "title"),
+                ("BrandName", "brandname"),
+                ("BrandSubtitle", "brandsubtitle"),
+                ("AvatarUrlTemplate", "avatarurltemplate"),
+                ("CreatedAt", "createdat"),
+                ("UpdatedAt", "updatedat"),
+            ]);
+        });
     }
 
     /// <summary>

@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Sufficit.Identity.Core.Branding;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management;
 using Sufficit.Identity.Server;
@@ -65,8 +67,29 @@ builder.Services.Configure<ForwardedHeadersOptions>(o =>
     // else: leave the ASP.NET Core defaults (loopback only) in place.
 });
 
+// ---- Compact JSON globally (before STS so OpenIddict picks it up) ----
+builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(o =>
+{
+    o.SerializerOptions.WriteIndented = false;
+});
+builder.Services.Configure<Microsoft.AspNetCore.Mvc.JsonOptions>(o =>
+{
+    o.JsonSerializerOptions.WriteIndented = false;
+});
+// OpenIddict resolves a root-level JsonSerializerOptions for discovery/JSON
+// serialization — register one with WriteIndented=false so responses are compact.
+builder.Services.AddSingleton(new System.Text.Json.JsonSerializerOptions
+{
+    WriteIndented = false,
+    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+});
+
 // ---- Sufficit Identity STS (Identity + OpenIddict server/validation) ----
 builder.Services.AddSufficitIdentitySTS(builder.Configuration);
+
+// ---- Branding theme provider (singleton cache, DB-backed) ----
+// Registered before UI and management so both can resolve it.
+builder.Services.TryAddSingleton<IBrandingThemeProvider, BrandingThemeProvider>();
 
 // ---- Sufficit Identity UI (Blazor Server: login/consent/logout/manage) ----
 builder.Services.AddSufficitIdentityUI(builder.Configuration);

@@ -533,7 +533,8 @@ public static class ServiceCollectionExtensions
                       .EnableTokenEndpointPassthrough()
                       .EnableUserInfoEndpointPassthrough()
                       .EnableEndUserVerificationEndpointPassthrough()
-                      .EnableStatusCodePagesIntegration();
+                      .EnableStatusCodePagesIntegration()
+                      .SuppressJsonResponseIndentation();
 
                 // In Development with HTTPS (same port as the legacy STS:
                 // https://localhost:26501), no transport security override needed.

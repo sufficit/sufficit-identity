@@ -21,4 +21,10 @@ public static class IdentityDatabaseSchema
     public const int OpenIddictSubjectLength = 400;
     public const int OpenIddictTokenTypeLength = 150;
     public const int PasskeyCredentialIdLength = 1024;
+
+    // Branding
+    public const int BrandingUrlLength = 512;
+    public const int BrandingColorLength = 7;   // #RRGGBB
+    public const int BrandingNameLength = 100;
+    public const int BrandingTitleLength = 200;
 }
