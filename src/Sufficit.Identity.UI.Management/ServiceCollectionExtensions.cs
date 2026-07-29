@@ -11,6 +11,7 @@ using Sufficit.Identity.UI.Management.Audit;
 using Sufficit.Identity.UI.Management.Branding;
 using Sufficit.Identity.UI.Management.Clients;
 using Sufficit.Identity.UI.Management.Configuration;
+using Sufficit.Identity.UI.Management.Users;
 
 namespace Sufficit.Identity.UI.Management;
 
@@ -86,6 +87,10 @@ public static class ServiceCollectionExtensions
             .Bind(configuration.GetSection("Sufficit:Identity:Management"));
         services.TryAddScoped<IManagementAuthorizationEvaluator,
             RoleBasedManagementAuthorizationEvaluator>();
+        services.TryAddScoped<IManagementEntitlementResolver,
+            RoleAndClaimManagementEntitlementResolver>();
+        services.TryAddScoped<IManagementAccessPolicyProvider,
+            ConfigurationManagementAccessPolicyProvider>();
 
         services.AddAuthorization(authorization =>
         {
@@ -129,6 +134,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<ManagementClientDataSource>();
         services.TryAddScoped<ManagementBrandingDataSource>();
         services.TryAddScoped<ManagementAuditDataSource>();
+        services.TryAddScoped<ManagementUserDataSource>();
 
         services.AddCascadingAuthenticationState();
         services.AddRazorComponents()

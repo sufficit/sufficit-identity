@@ -1,8 +1,9 @@
 # Management authorization architecture
 
-> Status: host integration, global client capabilities and persistent mutation
-> audit implemented; tenant grants, Sufficit directives and per-tenant MFA
-> remain planned.
+> Status: host integration, global client/branding capabilities, persistent
+> audit, normalized grants, Sufficit directive resolution, per-context MFA
+> policy and contextual user read contracts implemented. User mutations remain
+> planned.
 > Authorization is decided by the shared application layer used by the UI and
 > Management API. The canonical boundary is
 > [`single-source-ui-architecture.md`](single-source-ui-architecture.md).
@@ -172,8 +173,9 @@ Administrator
     -> identity.audit.read        (global, subject to the audit policy)
 ```
 
-The user-management delivery adds manager/directive mappings scoped to each
-authorized `ContextId`.
+The user-management read delivery maps explicit Manager roles to the non-empty
+`ContextId` values carried by their valid Sufficit directive claims. A
+`Guid.Empty` directive never promotes a Manager to global access.
 
 ## Authorization matrix
 
@@ -305,12 +307,15 @@ authorization headers are always redacted.
 
 ### Phase 5 — Contextual user administration
 
-- Add paginated user contracts.
-- Resolve each user's tenant/context before authorization.
-- Add manager capabilities derived from Sufficit directives.
-- Apply per-tenant MFA policy.
+- Add paginated user contracts. **Concluído para acesso, lista e detalhe.**
+- Resolve each user's tenant/context before authorization. **Concluído para
+  claims Sufficit `directive`.**
+- Add manager capabilities derived from Sufficit directives. **Concluído para
+  `identity.users.read`; Manager never receives global bypass.**
+- Apply per-tenant MFA policy. **Contrato e configuração concluídos; provider
+  externo continua substituível.**
 - Add delegation limits for roles, claims and directives.
-- Audit all read and mutation paths.
+- Audit all read and mutation paths. **Leituras concluídas.**
 
 ### Phase 6 — Remaining modules
 
@@ -361,11 +366,13 @@ authorization headers are always redacted.
 
 ## Open decisions
 
-1. Which backend is the source of tenant MFA policies in the Sufficit host?
-2. Is MFA required globally for client administration?
+1. Qual backend substituirá a configuração local como fonte das políticas MFA
+   por tenant no host Sufficit?
+2. Uma ação global sobre conta multicontexto (reset de senha, bloqueio ou
+   exclusão) exige autoridade sobre todos os contextos da conta, escalonamento
+   para Administrator ou outra regra?
 3. Which user capabilities may a manager delegate to another operator?
 4. What are the audit retention and export requirements?
-5. Which host environments enable the `/management` route?
 
 ## Current implementation evidence
 
@@ -373,14 +380,15 @@ authorization headers are always redacted.
   `/management` by `Sufficit.Identity.Server`.
 - It reuses the host Identity cookie; no OIDC/BFF client or token propagation
   is required.
-- Module access accepts configured Administrator/Manager roles, while the
-  clients page requires a configured Administrator role.
+- Module access accepts configured Administrator/Manager roles. Client and
+  branding operations require global Administrator grants; user reads accept
+  Administrator globally or Manager only in resolved contexts.
 - The real client list correctly uses `IClientManagementService` through a
   short DI scope, and the REST controller uses the same service.
-- Client detail, creation and deletion still contain controller-local business
-  logic that must move into the shared application service.
-- The Management API currently gates endpoints by authentication and OAuth
-  scope, without an operator capability or resource requirement.
+- Client and branding controllers are thin adapters over their shared
+  application services.
+- The Management API gates transport by authentication/scope and every
+  delivered application service evaluates operator capability and resource.
 - The API exposes client, branding and provisioning operations.
-- User, role, audit, independent scope and session/grant management contracts do
-  not yet exist.
+- User access, paginated list and detail contracts exist. User mutations,
+  role/claim delegation, independent scope and session/grant contracts do not.

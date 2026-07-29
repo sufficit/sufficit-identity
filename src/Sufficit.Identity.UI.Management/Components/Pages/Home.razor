@@ -81,13 +81,13 @@
 
         <article class="metric-card">
             <div class="metric-card__top">
-                <span class="metric-icon"><AppIcon Name="users" /></span>
-                <StatusBadge Tone="neutral">Próxima etapa</StatusBadge>
+                <span class="metric-icon metric-icon--success"><AppIcon Name="users" /></span>
+                <StatusBadge Tone="success">Integrado</StatusBadge>
             </div>
             <p class="metric-label">Usuários e acesso</p>
-            <strong class="metric-value metric-value--text">Contrato necessário</strong>
+            <strong class="metric-value metric-value--text">Consulta contextual</strong>
             <a href="users" class="metric-link">
-                Ver dependências
+                Abrir diretório
                 <AppIcon Name="arrow-right" Size="15" />
             </a>
         </article>
@@ -117,18 +117,18 @@
                 <span class="capability-row__icon"><AppIcon Name="users" /></span>
                 <span class="capability-row__copy">
                     <strong>Usuários, papéis e claims</strong>
-                    <span>Contrato de usuário e escopo por tenant ainda não implementados</span>
+                    <span>Listagem e detalhe por contexto; mutações permanecem protegidas</span>
                 </span>
-                <StatusBadge Tone="neutral">Manager</StatusBadge>
+                <StatusBadge Tone="info">Manager</StatusBadge>
                 <AppIcon Name="arrow-right" Size="17" CssClass="capability-row__arrow" />
             </a>
             <a class="capability-row" href="audit">
                 <span class="capability-row__icon"><AppIcon Name="audit" /></span>
                 <span class="capability-row__copy">
                     <strong>Auditoria</strong>
-                    <span>Obrigatória antes de habilitar mutações na interface</span>
+                    <span>Eventos persistentes de autorização, leitura e mutações</span>
                 </span>
-                <StatusBadge Tone="neutral">Pendente</StatusBadge>
+                <StatusBadge Tone="success">Ativa</StatusBadge>
                 <AppIcon Name="arrow-right" Size="17" CssClass="capability-row__arrow" />
             </a>
         </div>
@@ -165,18 +165,18 @@
                     <span>Administrators gerenciam clientes; Managers entram na área de usuários.</span>
                 </div>
             </li>
-            <li class="setup-item">
-                <span class="setup-marker">4</span>
+            <li class="setup-item setup-item--done">
+                <span class="setup-marker"><AppIcon Name="check" Size="15" /></span>
                 <div>
                     <strong>Registrar auditoria de mutações</strong>
                     <span>Operador, tenant, ação, alvo e resultado.</span>
                 </div>
             </li>
-            <li class="setup-item">
-                <span class="setup-marker">5</span>
+            <li class="setup-item setup-item--done">
+                <span class="setup-marker"><AppIcon Name="check" Size="15" /></span>
                 <div>
                     <strong>Adaptar diretivas por tenant</strong>
-                    <span>Plugin Sufficit sobre o contrato genérico de autorização.</span>
+                    <span>Adaptador Sufficit sobre grants normalizados e sem bypass global de Manager.</span>
                 </div>
             </li>
         </ol>

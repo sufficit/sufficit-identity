@@ -1,0 +1,208 @@
+@page "/users/{Id}"
+@inject ManagementUserDataSource UserData
+
+<PageTitle>@PageTitleText</PageTitle>
+
+<PageHeader Title="@HeaderTitle"
+            Description="Dados de identidade autorizados pelo contexto selecionado.">
+    <Actions>
+        <a class="button button--secondary" href="@BackHref">
+            <AppIcon Name="arrow-left" Size="17" />
+            Voltar para usuários
+        </a>
+    </Actions>
+</PageHeader>
+
+@if (loading)
+{
+    <section class="detail-shell" aria-busy="true" aria-label="Carregando detalhes do usuário">
+        <div class="detail-skeleton"></div>
+        <div class="detail-skeleton detail-skeleton--short"></div>
+    </section>
+}
+else if (result?.IsSuccess is true && result.Value is not null)
+{
+    var user = result.Value;
+
+    <section class="detail-shell">
+        <div class="detail-summary detail-summary--users">
+            <div>
+                <span class="detail-label">Nome de usuário</span>
+                <strong class="detail-value">@Display(user.UserName)</strong>
+            </div>
+            <div>
+                <span class="detail-label">E-mail</span>
+                <span class="detail-value">@Display(user.Email)</span>
+            </div>
+            <div>
+                <span class="detail-label">Confirmação</span>
+                <StatusBadge Tone="@(user.EmailConfirmed ? "success" : "neutral")">
+                    @(user.EmailConfirmed ? "E-mail confirmado" : "Pendente")
+                </StatusBadge>
+            </div>
+            <div>
+                <span class="detail-label">Identificador</span>
+                <code class="detail-value detail-value--code">@user.Id</code>
+            </div>
+        </div>
+
+        <div class="detail-columns detail-columns--users">
+            <section aria-labelledby="user-security-heading">
+                <h2 id="user-security-heading">Segurança da conta</h2>
+                <dl class="property-list">
+                    <div>
+                        <dt>Autenticação multifator</dt>
+                        <dd>
+                            <StatusBadge Tone="@(user.TwoFactorEnabled ? "success" : "neutral")">
+                                @(user.TwoFactorEnabled ? "Ativa" : "Inativa")
+                            </StatusBadge>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>Bloqueio</dt>
+                        <dd>@LockoutLabel(user)</dd>
+                    </div>
+                    <div>
+                        <dt>Falhas de acesso</dt>
+                        <dd>@user.AccessFailedCount</dd>
+                    </div>
+                    <div>
+                        <dt>Telefone</dt>
+                        <dd>@Display(user.PhoneNumber)</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section aria-labelledby="user-authority-heading">
+                <h2 id="user-authority-heading">Autoridade visível</h2>
+                <div class="authority-group">
+                    <span class="detail-label">Papéis</span>
+                    @if (user.Roles.Count is 0)
+                    {
+                        <p class="detail-empty">Nenhum papel atribuído.</p>
+                    }
+                    else
+                    {
+                        <div class="token-row">
+                            @foreach (var role in user.Roles)
+                            {
+                                <StatusBadge Tone="info">@role</StatusBadge>
+                            }
+                        </div>
+                    }
+                </div>
+                <div class="authority-group">
+                    <span class="detail-label">Contextos</span>
+                    @if (user.ContextIds.Count is 0)
+                    {
+                        <p class="detail-empty">Nenhum contexto exposto para esta consulta.</p>
+                    }
+                    else
+                    {
+                        <ul class="technical-list technical-list--tokens">
+                            @foreach (var contextId in user.ContextIds)
+                            {
+                                <li><code>@contextId</code></li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </section>
+        </div>
+
+        <section class="requirements-line" aria-labelledby="user-audit-heading">
+            <div>
+                <h2 id="user-audit-heading">Consulta auditada</h2>
+                <p>O operador, o usuário, o contexto, a decisão e a correlação foram registrados sem claims ou credenciais.</p>
+            </div>
+            <StatusBadge Tone="success" Icon="audit">Registrada</StatusBadge>
+        </section>
+    </section>
+
+    <section class="decision-note decision-note--neutral">
+        <AppIcon Name="lock" Size="21" />
+        <div>
+            <h2>Mutações protegidas nesta etapa</h2>
+            <p>Criação, redefinição de senha e edição de autoridade permanecem indisponíveis até definirmos o efeito sobre contas vinculadas a vários contextos.</p>
+        </div>
+    </section>
+}
+else
+{
+    <EmptyState Icon="alert"
+                Title="@ErrorTitle"
+                Description="@ErrorDescription">
+        <Actions>
+            <a class="button button--secondary" href="@BackHref">Voltar para usuários</a>
+            @if (result?.Outcome is ManagementDataOutcome.Unavailable)
+            {
+                <button class="button button--primary"
+                        type="button"
+                        @onclick="LoadAsync">
+                    Tentar novamente
+                </button>
+            }
+        </Actions>
+    </EmptyState>
+}
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    [SupplyParameterFromQuery(Name = "context")]
+    public string? ContextId { get; set; }
+
+    private ManagementDataResult<ManagementUserDetail>? result;
+    private bool loading = true;
+
+    private string HeaderTitle =>
+        result?.Value?.UserName
+        ?? result?.Value?.Email
+        ?? "Detalhes do usuário";
+
+    private string PageTitleText =>
+        $"{HeaderTitle} | Sufficit Identity";
+
+    private string BackHref =>
+        ContextId is null
+            ? "users"
+            : $"users?context={Uri.EscapeDataString(ContextId)}";
+
+    private string ErrorTitle =>
+        result?.Outcome is ManagementDataOutcome.NotFound
+            ? "Usuário não encontrado neste contexto"
+            : result?.Outcome is ManagementDataOutcome.StepUpRequired
+                ? "MFA exigido neste contexto"
+                : result?.Outcome is ManagementDataOutcome.Forbidden
+                    ? "Acesso ao usuário negado"
+                    : "Não foi possível abrir o usuário";
+
+    private string ErrorDescription =>
+        result?.ErrorMessage
+        ?? "O serviço de identidade não conseguiu ler esse registro.";
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        result = await UserData.GetAsync(Id, ContextId);
+        loading = false;
+    }
+
+    private static string Display(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "Não informado" : value;
+
+    private static string LockoutLabel(ManagementUserDetail user)
+    {
+        if (!user.LockoutEnabled)
+        {
+            return "Desabilitado";
+        }
+
+        return user.LockoutEnd is { } end && end > DateTimeOffset.UtcNow
+            ? $"Bloqueado até {end.ToLocalTime():dd/MM/yyyy HH:mm}"
+            : "Sem bloqueio ativo";
+    }
+}

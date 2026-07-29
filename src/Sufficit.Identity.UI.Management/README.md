@@ -21,6 +21,11 @@ Implementado:
   aplicação usado pela API, sem uma chamada HTTP ao próprio host;
 - listagem, criação, edição, prévia, ativação exclusiva e exclusão de temas de
   branding pelo mesmo serviço de aplicação usado pela API;
+- acesso, pesquisa paginada e detalhe de usuários pelo mesmo serviço de
+  aplicação usado pela API;
+- `Administrator` global e `Manager` limitado aos contextos calculados a partir
+  de claims `directive` escalares ou em array no adaptador Sufficit;
+- política MFA substituível e configurável por contexto;
 - defaults seguros para consentimento, HTTPS, PKCE e PAR;
 - confirmação explícita antes da exclusão;
 - auditoria persistente de mutações e tentativas negadas, com consulta
@@ -30,11 +35,10 @@ Implementado:
 
 Ainda não implementado:
 
-- contratos administrativos de usuários, papéis, claims, scopes isolados,
-  sessões e grants;
-- resolução de capabilities com escopo de tenant/contexto;
-- adaptador Sufficit de diretivas e contextos;
-- política de MFA configurável por tenant.
+- criação, atualização, bloqueio, exclusão e reset de senha de usuários;
+- delegação administrativa de papéis, claims e diretivas;
+- títulos amigáveis dos contextos e fonte externa de políticas MFA;
+- contratos administrativos de scopes isolados, sessões e grants.
 
 ## Composição no host
 
@@ -62,7 +66,7 @@ Navegador
 /management (Razor Components)
    │ DI + cookie ASP.NET Identity
    ▼
-IClientManagementService / IBrandingManagementService
+IClientManagementService / IBrandingManagementService / IUserManagementService
    ▼
 OpenIddict / ASP.NET Identity
 
@@ -70,7 +74,7 @@ Automação externa
    │ bearer token + escopo administrativo
    ▼
 /api/* (Management REST API)
-   │ IClientManagementService / IBrandingManagementService
+   │ contratos de clientes, branding e usuários
    ▼
 OpenIddict / ASP.NET Identity
 ```
@@ -89,7 +93,13 @@ operar a interface incorporada.
         "Enabled": true,
         "RequireMfa": false,
         "Authorization": {
-          "AdministratorRoles": [ "administrator" ]
+          "AdministratorRoles": [ "administrator" ],
+          "ManagerRoles": [ "manager" ],
+          "Contexts": {
+            "4082aef4-42d3-4b1b-a321-f405af935940": {
+              "RequireMfa": true
+            }
+          }
         }
       },
       "ManagementUI": {
@@ -152,8 +162,8 @@ Management habilitado e um usuário autenticado com um dos papéis configurados.
 
 ## Próximas entregas
 
-1. Publicar sessão, capabilities contextuais e tenants autorizados no contrato
-   de aplicação compartilhado.
-2. Implementar o adaptador Sufficit de diretivas e contextos.
-3. Publicar contratos de usuários e aplicar MFA configurável por tenant.
+1. Definir o efeito de criação, reset de senha e bloqueio sobre contas
+   vinculadas a vários contextos.
+2. Implementar mutações de usuários e limites de delegação de autoridade.
+3. Resolver títulos de contextos e políticas MFA por uma fonte substituível.
 4. Migrar provisionamento, scopes e sessões para use cases compartilhados.

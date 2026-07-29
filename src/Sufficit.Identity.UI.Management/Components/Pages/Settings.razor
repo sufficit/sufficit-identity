@@ -94,7 +94,7 @@
                     <span class="config-value">
                         @string.Join(", ", Options.GetManagerRoles())
                     </span>
-                    <StatusBadge Tone="neutral">Contrato pendente</StatusBadge>
+                    <StatusBadge Tone="success">Contextual</StatusBadge>
                 </dd>
             </div>
         </dl>
@@ -102,7 +102,7 @@
             <AppIcon Name="shield" Size="18" />
             <p>
                 Administrator herda as capacidades de Manager. O adaptador de
-                diretivas limitará Managers por tenant quando o contrato de usuários existir.
+                diretivas limita Managers aos contextos presentes em seus grants.
             </p>
         </footer>
     </section>

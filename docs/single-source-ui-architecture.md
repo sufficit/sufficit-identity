@@ -91,13 +91,13 @@ consistência.
 
 ## Violações atuais conhecidas
 
-Os verticais administrativos de clientes e branding aplicam o padrão
-canônico. Controllers HTTP e data sources da UI usam, respectivamente,
-`IClientManagementService` e `IBrandingManagementService` para executar os
-mesmos casos de uso. Esses serviços concentram validação, defaults,
-autorização e auditoria; o escopo DI curto protege o circuito Blazor sem criar
-uma segunda implementação. Branding inclui listagem, detalhe, criação, edição,
-ativação exclusiva e exclusão de temas inativos.
+Os verticais administrativos de clientes, branding e leitura de usuários
+aplicam o padrão canônico. Controllers HTTP e data sources da UI usam
+`IClientManagementService`, `IBrandingManagementService` e
+`IUserManagementService` para executar os mesmos casos de uso. Esses serviços
+concentram validação, defaults, autorização e auditoria; o escopo DI curto
+protege o circuito Blazor sem criar uma segunda implementação. Usuários
+incluem acesso, pesquisa paginada e detalhe com escopo contextual.
 
 Ainda existem violações a migrar:
 
