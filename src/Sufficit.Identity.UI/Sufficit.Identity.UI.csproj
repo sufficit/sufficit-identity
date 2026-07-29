@@ -29,9 +29,11 @@
 
   <ItemGroup>
     <!--
-      Minimal coupling to the STS: only the Core (entities/DbContext) is referenced.
+      Current migration debt: the public UI still references Core and resolves
+      Identity/OpenIddict managers directly. The target architecture exposes
+      canonical application contracts shared with API controllers, without a
+      UI dependency on entities, DbContext or protocol/persistence managers.
       This project does NOT reference Server (OpenIddict configuration) or STS (host).
-      The host STS must provide OpenIddict + Identity services via its own DI.
     -->
     <ProjectReference Include="..\..\..\sufficit-identity\src\core\Sufficit.Identity.Core.csproj" />
   </ItemGroup>

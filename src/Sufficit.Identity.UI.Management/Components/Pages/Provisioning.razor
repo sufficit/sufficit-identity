@@ -1,0 +1,69 @@
+@page "/provisioning"
+
+<PageTitle>Provisionamento | Sufficit Identity</PageTitle>
+
+<PageHeader Eyebrow="Operações"
+            Title="Provisionamento"
+            Description="Visualize e aplique manifestos aditivos de clientes e scopes com revisão obrigatória." />
+
+<section class="contract-strip contract-strip--warning">
+    <AppIcon Name="alert" Size="20" />
+    <div>
+        <strong>Operação privilegiada</strong>
+        <span>A aplicação ficará desabilitada até a policy administrativa e a auditoria de mutações estarem completas.</span>
+    </div>
+    <StatusBadge Tone="warning">Protegido</StatusBadge>
+</section>
+
+<ol class="workflow-steps" aria-label="Etapas do provisionamento">
+    <li class="workflow-step workflow-step--current">
+        <span>1</span>
+        <div><strong>Manifesto</strong><small>Definir intenção</small></div>
+    </li>
+    <li class="workflow-connector" aria-hidden="true"></li>
+    <li class="workflow-step">
+        <span>2</span>
+        <div><strong>Preview</strong><small>Revisar mudanças</small></div>
+    </li>
+    <li class="workflow-connector" aria-hidden="true"></li>
+    <li class="workflow-step">
+        <span>3</span>
+        <div><strong>Aplicar</strong><small>Confirmar operação</small></div>
+    </li>
+</ol>
+
+<div class="provisioning-grid">
+    <section class="manifest-panel" aria-labelledby="manifest-heading">
+        <div class="panel-header">
+            <div>
+                <p class="section-kicker">Entrada</p>
+                <h2 id="manifest-heading">Manifesto JSON</h2>
+            </div>
+            <StatusBadge Tone="neutral">Schema v1</StatusBadge>
+        </div>
+        <label class="manifest-editor">
+            <span class="visually-hidden">Conteúdo do manifesto JSON</span>
+            <textarea spellcheck="false" disabled>{
+  "schemaVersion": 1,
+  "scopes": [],
+  "clients": []
+}</textarea>
+        </label>
+        <footer class="manifest-actions">
+            <span>Nenhum segredo deve ser inserido no manifesto.</span>
+            <button class="button button--primary" type="button" disabled>Gerar preview</button>
+        </footer>
+    </section>
+
+    <aside class="safety-panel" aria-labelledby="safety-heading">
+        <span class="safety-panel__icon"><AppIcon Name="shield" Size="24" /></span>
+        <h2 id="safety-heading">Garantias do fluxo</h2>
+        <ul class="plain-check-list">
+            <li><AppIcon Name="check" Size="16" /> Preview não altera o banco</li>
+            <li><AppIcon Name="check" Size="16" /> Objetos omitidos não são excluídos</li>
+            <li><AppIcon Name="check" Size="16" /> Segredos usam referência externa</li>
+            <li><AppIcon Name="check" Size="16" /> Aplicação exige nova confirmação</li>
+        </ul>
+        <a href="audit">Revisar requisitos de auditoria <AppIcon Name="arrow-right" Size="15" /></a>
+    </aside>
+</div>

@@ -1,0 +1,73 @@
+<div class="sidebar-brand">
+    <img src="/_content/Sufficit.Identity.UI.Management/img/logo-mark.png" width="36" height="36" alt="" />
+    <div class="sidebar-brand__text">
+        <strong>Sufficit Identity</strong>
+        <span>Administração</span>
+    </div>
+</div>
+
+<nav class="sidebar-nav" aria-label="Navegação principal">
+    <div class="nav-section">
+        <span class="nav-section__label">Visão geral</span>
+        <NavLink class="nav-item" href="" Match="NavLinkMatch.All">
+            <AppIcon Name="dashboard" />
+            <span>Início</span>
+        </NavLink>
+    </div>
+
+    <div class="nav-section">
+        <span class="nav-section__label">Identidade</span>
+        <NavLink class="nav-item" href="users">
+            <AppIcon Name="users" />
+            <span>Usuários</span>
+            <span class="nav-item__meta">API</span>
+        </NavLink>
+        <NavLink class="nav-item" href="access">
+            <AppIcon Name="shield" />
+            <span>Acesso</span>
+            <span class="nav-item__meta">API</span>
+        </NavLink>
+    </div>
+
+    <div class="nav-section">
+        <span class="nav-section__label">OAuth &amp; OIDC</span>
+        <NavLink class="nav-item" href="clients">
+            <AppIcon Name="key" />
+            <span>Clientes</span>
+        </NavLink>
+    </div>
+
+    <div class="nav-section">
+        <span class="nav-section__label">Experiência</span>
+        <NavLink class="nav-item" href="branding">
+            <AppIcon Name="palette" />
+            <span>Branding</span>
+        </NavLink>
+    </div>
+
+    <div class="nav-section">
+        <span class="nav-section__label">Operações</span>
+        <NavLink class="nav-item" href="provisioning">
+            <AppIcon Name="workflow" />
+            <span>Provisionamento</span>
+        </NavLink>
+        <NavLink class="nav-item" href="audit">
+            <AppIcon Name="audit" />
+            <span>Auditoria</span>
+        </NavLink>
+    </div>
+</nav>
+
+<div class="sidebar-footer">
+    <NavLink class="nav-item" href="settings">
+        <AppIcon Name="settings" />
+        <span>Configurações</span>
+    </NavLink>
+    <div class="sidebar-status">
+        <span class="status-dot status-dot--success" aria-hidden="true"></span>
+        <div>
+            <strong>Módulo administrativo</strong>
+            <span>Hospedado pelo Identity</span>
+        </div>
+    </div>
+</div>

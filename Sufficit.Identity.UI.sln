@@ -7,6 +7,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sufficit.Identity.UI", "src\Sufficit.Identity.UI\Sufficit.Identity.UI.csproj", "{F4FAE448-7D38-4452-A512-9EBEB742F572}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sufficit.Identity.UI.Management", "src\Sufficit.Identity.UI.Management\Sufficit.Identity.UI.Management.csproj", "{B609634A-17E0-4D2A-9145-7DB6E31B0F0C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,11 +31,24 @@ Global
 		{F4FAE448-7D38-4452-A512-9EBEB742F572}.Release|x64.Build.0 = Release|Any CPU
 		{F4FAE448-7D38-4452-A512-9EBEB742F572}.Release|x86.ActiveCfg = Release|Any CPU
 		{F4FAE448-7D38-4452-A512-9EBEB742F572}.Release|x86.Build.0 = Release|Any CPU
+		{B609634A-17E0-4D2A-9145-7DB6E31B0F0C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B609634A-17E0-4D2A-9145-7DB6E31B0F0C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B609634A-17E0-4D2A-9145-7DB6E31B0F0C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B609634A-17E0-4D2A-9145-7DB6E31B0F0C}.Debug|x64.Build.0 = Debug|Any CPU
+		{B609634A-17E0-4D2A-9145-7DB6E31B0F0C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B609634A-17E0-4D2A-9145-7DB6E31B0F0C}.Debug|x86.Build.0 = Debug|Any CPU
+		{B609634A-17E0-4D2A-9145-7DB6E31B0F0C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B609634A-17E0-4D2A-9145-7DB6E31B0F0C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B609634A-17E0-4D2A-9145-7DB6E31B0F0C}.Release|x64.ActiveCfg = Release|Any CPU
+		{B609634A-17E0-4D2A-9145-7DB6E31B0F0C}.Release|x64.Build.0 = Release|Any CPU
+		{B609634A-17E0-4D2A-9145-7DB6E31B0F0C}.Release|x86.ActiveCfg = Release|Any CPU
+		{B609634A-17E0-4D2A-9145-7DB6E31B0F0C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{F4FAE448-7D38-4452-A512-9EBEB742F572} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{B609634A-17E0-4D2A-9145-7DB6E31B0F0C} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

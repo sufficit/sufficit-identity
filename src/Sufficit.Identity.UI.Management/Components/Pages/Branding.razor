@@ -1,0 +1,83 @@
+@page "/branding"
+
+<PageTitle>Branding | Sufficit Identity</PageTitle>
+
+<PageHeader Eyebrow="Experiência"
+            Title="Branding"
+            Description="Configure temas usados nas superfícies públicas do serviço de identidade.">
+    <Actions>
+        <button class="button button--primary" type="button" disabled>
+            <AppIcon Name="plus" Size="17" />
+            Novo tema
+        </button>
+    </Actions>
+</PageHeader>
+
+<section class="contract-strip contract-strip--success">
+    <AppIcon Name="check" Size="20" />
+    <div>
+        <strong>Contrato completo na API</strong>
+        <span>Listagem, detalhe, criação, edição, ativação e exclusão estão disponíveis.</span>
+    </div>
+    <StatusBadge Tone="success">7 operações</StatusBadge>
+</section>
+
+<div class="branding-grid">
+    <section class="panel" aria-labelledby="themes-heading">
+        <div class="panel-header">
+            <div>
+                <p class="section-kicker">Temas</p>
+                <h2 id="themes-heading">Configurações salvas</h2>
+            </div>
+        </div>
+        <EmptyState Icon="palette"
+                    Title="Conecte a API para carregar temas"
+                    Description="A prévia ao lado usa somente os tokens locais do sistema visual.">
+            <Actions>
+                <a class="button button--secondary" href="settings">Configurar endpoint</a>
+            </Actions>
+        </EmptyState>
+    </section>
+
+    <section class="brand-preview-panel" aria-labelledby="brand-preview-heading">
+        <div class="brand-preview-panel__header">
+            <div>
+                <p class="section-kicker">Prévia local</p>
+                <h2 id="brand-preview-heading">Sufficit padrão</h2>
+            </div>
+            <StatusBadge Tone="neutral">Não publicado</StatusBadge>
+        </div>
+
+        <div class="identity-preview">
+            <div class="identity-preview__top">
+                <img src="img/logo-mark.png" width="32" height="32" alt="" />
+                <span>Sufficit Identity</span>
+            </div>
+            <div class="identity-preview__body">
+                <div class="identity-preview__card">
+                    <div class="preview-line preview-line--title"></div>
+                    <div class="preview-line"></div>
+                    <div class="preview-field"></div>
+                    <div class="preview-line preview-line--short"></div>
+                    <div class="preview-field"></div>
+                    <div class="preview-button"></div>
+                </div>
+            </div>
+        </div>
+
+        <dl class="token-list">
+            <div>
+                <dt>Marca</dt>
+                <dd><span class="color-swatch color-swatch--brand"></span><code>#cc0000</code></dd>
+            </div>
+            <div>
+                <dt>Texto</dt>
+                <dd><span class="color-swatch color-swatch--ink"></span><code>#343132</code></dd>
+            </div>
+            <div>
+                <dt>Superfície</dt>
+                <dd><span class="color-swatch color-swatch--surface"></span><code>#f6f6f7</code></dd>
+            </div>
+        </dl>
+    </section>
+</div>

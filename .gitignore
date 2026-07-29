@@ -69,3 +69,6 @@ secrets.json
 
 # Blazor static assets (generated)
 wwwroot/_framework/
+
+# Impeccable visual review captures
+**/.impeccable/screenshots/

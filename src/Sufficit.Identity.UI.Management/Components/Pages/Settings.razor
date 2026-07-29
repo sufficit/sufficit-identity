@@ -1,0 +1,139 @@
+@page "/settings"
+@inject Microsoft.Extensions.Options.IOptions<ManagementUiOptions> ManagementOptions
+@inject Microsoft.Extensions.Options.IOptions<Sufficit.Identity.Management.ManagementOptions> SharedManagementOptions
+
+<PageTitle>Configurações | Sufficit Identity</PageTitle>
+
+<PageHeader Eyebrow="Módulo administrativo"
+            Title="Configurações"
+            Description="Estado da incorporação, da rota e das policies fornecidas pelo host." />
+
+<div class="settings-grid">
+    <section class="settings-panel" aria-labelledby="host-settings-heading">
+        <div class="panel-header">
+            <div>
+                <p class="section-kicker">Integração</p>
+                <h2 id="host-settings-heading">Host e rota</h2>
+            </div>
+        </div>
+        <dl class="config-list">
+            <div>
+                <dt>
+                    <span>Modo de hospedagem</span>
+                    <code>Razor Class Library</code>
+                </dt>
+                <dd>
+                    <span class="config-value">Processo do Sufficit Identity</span>
+                    <StatusBadge Tone="success">Incorporado</StatusBadge>
+                </dd>
+            </div>
+            <div>
+                <dt>
+                    <span>Caminho base</span>
+                    <code>PathBase</code>
+                </dt>
+                <dd>
+                    <span class="config-value"><code>@Options.GetPathBase()</code></span>
+                    <StatusBadge Tone="success">Mapeado</StatusBadge>
+                </dd>
+            </div>
+            <div>
+                <dt>
+                    <span>Autenticação</span>
+                    <code>ASP.NET Identity cookie</code>
+                </dt>
+                <dd>
+                    <span class="config-value">Sessão do host</span>
+                    <StatusBadge Tone="success">Ativa</StatusBadge>
+                </dd>
+            </div>
+        </dl>
+        <footer class="settings-help">
+            <AppIcon Name="code" Size="18" />
+            <p>
+                Não há URL da Management API, porta, client ID ou secret próprios
+                para este módulo.
+            </p>
+        </footer>
+    </section>
+
+    <section class="settings-panel" aria-labelledby="authorization-settings-heading">
+        <div class="panel-header">
+            <div>
+                <p class="section-kicker">Autorização</p>
+                <h2 id="authorization-settings-heading">Papéis do host</h2>
+            </div>
+        </div>
+        <dl class="config-list">
+            <div>
+                <dt>
+                    <span>Acesso ao Management</span>
+                    <code>Authorization</code>
+                </dt>
+                <dd>
+                    <span class="config-value">@string.Join(", ", AccessRoles)</span>
+                    <StatusBadge Tone="success">Policy ativa</StatusBadge>
+                </dd>
+            </div>
+            <div>
+                <dt>
+                    <span>Gerenciar clientes</span>
+                    <code>AdministratorRoles</code>
+                </dt>
+                <dd>
+                    <span class="config-value">@string.Join(", ", AdministratorRoles)</span>
+                    <StatusBadge Tone="info">Administrator</StatusBadge>
+                </dd>
+            </div>
+            <div>
+                <dt>
+                    <span>Gerenciar usuários</span>
+                    <code>ManagerRoles</code>
+                </dt>
+                <dd>
+                    <span class="config-value">
+                        @string.Join(", ", Options.GetManagerRoles())
+                    </span>
+                    <StatusBadge Tone="neutral">Contrato pendente</StatusBadge>
+                </dd>
+            </div>
+        </dl>
+        <footer class="settings-help">
+            <AppIcon Name="shield" Size="18" />
+            <p>
+                Administrator herda as capacidades de Manager. O adaptador de
+                diretivas limitará Managers por tenant quando o contrato de usuários existir.
+            </p>
+        </footer>
+    </section>
+</div>
+
+<section class="config-path" aria-labelledby="config-path-heading">
+    <AppIcon Name="settings" Size="21" />
+    <div>
+        <h2 id="config-path-heading">Seção de configuração</h2>
+        <code>Sufficit:Identity:ManagementUI</code>
+    </div>
+    <span>Configuração do host · variáveis de ambiente · secret store</span>
+</section>
+
+@code {
+    private ManagementUiOptions Options => ManagementOptions.Value;
+
+    private string[] AdministratorRoles
+    {
+        get
+        {
+            var roles = SharedManagementOptions.Value.Authorization
+                .AdministratorRoles
+                .Where(role => !string.IsNullOrWhiteSpace(role))
+                .Select(role => role.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            return roles.Length is 0 ? ["administrator"] : roles;
+        }
+    }
+
+    private string[] AccessRoles =>
+        Options.GetAccessRoles(AdministratorRoles);
+}

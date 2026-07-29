@@ -1,0 +1,56 @@
+@page "/access"
+
+<PageTitle>Acesso | Sufficit Identity</PageTitle>
+
+<PageHeader Eyebrow="Identidade"
+            Title="Acesso"
+            Description="Papéis, claims e scopes que determinam o que cada identidade pode fazer." />
+
+<div class="access-grid">
+    <section class="module-card" aria-labelledby="roles-heading">
+        <div class="module-card__header">
+            <span class="module-card__icon"><AppIcon Name="shield" /></span>
+            <StatusBadge Tone="neutral">API necessária</StatusBadge>
+        </div>
+        <h2 id="roles-heading">Papéis e claims</h2>
+        <p>Autoridades organizacionais, vínculos de usuário e regras de delegação.</p>
+        <ul class="plain-check-list">
+            <li><AppIcon Name="clock" Size="16" /> CRUD de papéis</li>
+            <li><AppIcon Name="clock" Size="16" /> Vínculo com usuários</li>
+            <li><AppIcon Name="clock" Size="16" /> Claims e diretivas</li>
+        </ul>
+        <button class="button button--secondary" type="button" disabled>Abrir papéis</button>
+    </section>
+
+    <section class="module-card" aria-labelledby="scopes-heading">
+        <div class="module-card__header">
+            <span class="module-card__icon module-card__icon--info"><AppIcon Name="key" /></span>
+            <StatusBadge Tone="info">Via manifesto</StatusBadge>
+        </div>
+        <h2 id="scopes-heading">Scopes OAuth</h2>
+        <p>Permissões solicitadas por clientes e reconhecidas pelos recursos protegidos.</p>
+        <ul class="plain-check-list">
+            <li><AppIcon Name="check" Size="16" /> Provisionamento por manifesto</li>
+            <li><AppIcon Name="clock" Size="16" /> Listagem isolada</li>
+            <li><AppIcon Name="clock" Size="16" /> CRUD administrativo</li>
+        </ul>
+        <a class="button button--secondary" href="provisioning">Abrir provisionamento</a>
+    </section>
+</div>
+
+<section class="authorization-model" aria-labelledby="authorization-model-heading">
+    <div>
+        <p class="section-kicker">Política recomendada</p>
+        <h2 id="authorization-model-heading">Escopo + autoridade + contexto</h2>
+        <p>A presença do escopo administrativo sozinha não deve autorizar uma operação humana.</p>
+    </div>
+    <div class="policy-flow" aria-label="Fluxo da política de autorização">
+        <span>Token válido</span>
+        <AppIcon Name="arrow-right" Size="17" />
+        <span>Escopo admin</span>
+        <AppIcon Name="arrow-right" Size="17" />
+        <span>Papel ou diretiva</span>
+        <AppIcon Name="arrow-right" Size="17" />
+        <span>Limite do recurso</span>
+    </div>
+</section>

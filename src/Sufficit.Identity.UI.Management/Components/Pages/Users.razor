@@ -1,0 +1,81 @@
+@page "/users"
+
+<PageTitle>Usuários | Sufficit Identity</PageTitle>
+
+<PageHeader Eyebrow="Identidade"
+            Title="Usuários"
+            Description="Administração do ciclo de vida, credenciais e vínculos de acesso dos usuários.">
+    <Actions>
+        <button class="button button--primary" type="button" disabled>
+            <AppIcon Name="plus" Size="17" />
+            Novo usuário
+        </button>
+    </Actions>
+</PageHeader>
+
+<section class="module-gate" aria-labelledby="users-gate-heading">
+    <div class="module-gate__visual">
+        <span><AppIcon Name="users" Size="28" /></span>
+    </div>
+    <div class="module-gate__copy">
+        <p class="section-kicker">Dependência de backend</p>
+        <h2 id="users-gate-heading">O contrato administrativo de usuários ainda não existe</h2>
+        <p>
+            A tela está reservada, mas permanecerá sem dados até a API oferecer
+            operações paginadas, autorizadas e auditáveis.
+        </p>
+    </div>
+    <StatusBadge Tone="neutral" Icon="clock">Aguardando API</StatusBadge>
+</section>
+
+<section aria-labelledby="user-contract-heading">
+    <div class="section-heading">
+        <div>
+            <p class="section-kicker">Contrato necessário</p>
+            <h2 id="user-contract-heading">Capacidades mínimas</h2>
+        </div>
+    </div>
+
+    <div class="requirement-grid">
+        <article class="requirement-card">
+            <span class="requirement-card__index">01</span>
+            <div>
+                <h3>Descoberta</h3>
+                <p>Busca paginada, filtros por estado e detalhe sem campos sensíveis.</p>
+            </div>
+            <StatusBadge Tone="neutral">Pendente</StatusBadge>
+        </article>
+        <article class="requirement-card">
+            <span class="requirement-card__index">02</span>
+            <div>
+                <h3>Ciclo de vida</h3>
+                <p>Criação, edição, bloqueio, desbloqueio e exclusão com concorrência.</p>
+            </div>
+            <StatusBadge Tone="neutral">Pendente</StatusBadge>
+        </article>
+        <article class="requirement-card">
+            <span class="requirement-card__index">03</span>
+            <div>
+                <h3>Credenciais</h3>
+                <p>Redefinição de senha e confirmação de e-mail sem revelar segredos.</p>
+            </div>
+            <StatusBadge Tone="neutral">Pendente</StatusBadge>
+        </article>
+        <article class="requirement-card">
+            <span class="requirement-card__index">04</span>
+            <div>
+                <h3>Autoridade</h3>
+                <p>Papéis, claims e limites de delegação por gerente ou revendedor.</p>
+            </div>
+            <StatusBadge Tone="neutral">Pendente</StatusBadge>
+        </article>
+    </div>
+</section>
+
+<section class="decision-note">
+    <AppIcon Name="alert" Size="21" />
+    <div>
+        <h2>Decisão de produto necessária</h2>
+        <p>Definir se o gerente possui alcance global ou somente sobre sua carteira antes de implementar os endpoints.</p>
+    </div>
+</section>

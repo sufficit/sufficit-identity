@@ -7,10 +7,10 @@ The single most important security principle for an OAuth/OIDC login UI:
 > **Tokens and credentials never reach the browser.**
 
 A Blazor Server component runs on the server and streams UI diffs over a
-WebSocket (SignalR). The user types credentials into a form, the C# code behind
-runs on the server, calls `SignInManager.PasswordSignInAsync(...)`, and the
-server issues an `HttpOnly + SameSite=Lax` auth cookie. The browser only sees
-the cookie, never the password, never the token.
+WebSocket (SignalR). It invokes a canonical authentication use case in the
+application layer; that implementation owns `SignInManager` and issues an
+`HttpOnly + SameSite=Lax` auth cookie. An HTTP controller may expose the same
+use case, but an internal self-call is not required.
 
 A JavaScript SPA (Vue/React) runs in the browser. Even with HTTPS, a XSS
 payload in the SPA's bundle, a third-party script, or a compromised dependency
@@ -37,32 +37,35 @@ When the UI is hosted by the STS app itself (same origin), we eliminate:
 - **Team separation** — frontend-focused work can happen in parallel.
 - **Reusability** — any OpenIddict + ASP.NET Identity STS can plug this in via
   the `AddSufficitIdentityUI()` / `UseSufficitIdentityUI()` pair.
-- **Minimal coupling** — the UI references only `Sufficit.Identity.Core`
-  (entities) and OpenIddict/Identity abstractions. It does NOT reference the
-  STS host or the server configuration project.
+- **Minimal coupling** — the target UI references only versioned application
+  contracts shared with API controllers. It does not reference the STS host,
+  Core entities, persistence or infrastructure implementations.
 
 ## Dependency graph
 
 ```
-sufficit-identity-ui/src/Sufficit.Identity.UI
+sufficit-identity-ui
     │
-    ├── OpenIddict.AspNetCore  (NuGet)      // read AuthorizationRequest
-    ├── Microsoft.AspNetCore.Identity        // UserManager, SignInManager
-    ├── Microsoft.AspNetCore.Identity.EntityFrameworkCore
-    ├── QRCoder                              // QR codes for 2FA
-    │
-    └── Sufficit.Identity.Core  (project)    // ApplicationUser, AppDbContext
+    ├── Razor Components / presentation
+    └── application contracts / use cases ◄── HTTP API controllers
             │
-            ├── Microsoft.AspNetCore.Identity.EntityFrameworkCore
-            ├── OpenIddict.EntityFrameworkCore
-            └── Pomelo.EntityFrameworkCore.MySql
+            ├── authorization and validation
+            ├── ASP.NET Core Identity / OpenIddict
+            └── persistence
 ```
 
-The UI does **NOT** reference:
+The target UI does **NOT** reference:
 
 - `Sufficit.Identity.Server` (OpenIddict configuration)
 - `Sufficit.Identity.STS` (the host web app)
-- `Sufficit.Identity.Management` (the admin REST API)
+- `Sufficit.Identity.Core` (entities and persistence)
+- infrastructure implementations from `Sufficit.Identity.Management`
+- `UserManager`, `SignInManager` or OpenIddict managers
+
+The current public UI still contains some of these direct dependencies. They
+are migration debt under the canonical
+[`single-source-ui-architecture.md`](single-source-ui-architecture.md), not the target
+architecture.
 
 ## How the STS host injects the UI
 
