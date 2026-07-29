@@ -2,7 +2,11 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
+using Sufficit.Identity.Core.Data;
+using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Controllers;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
@@ -26,7 +30,7 @@ public sealed class ClientsControllerTests
         ClientSecret = $"secret-{clientId}",
         DisplayName = $"Test client {clientId}",
         GrantTypes = { Permissions.GrantTypes.AuthorizationCode },
-        RedirectUris = redirectUris.Select(u => new Uri(u, UriKind.Absolute)).ToList(),
+        RedirectUris = redirectUris.ToList(),
     };
 
     [Fact]
@@ -224,5 +228,104 @@ public sealed class ClientsControllerTests
         using var response = await client.GetAsync("/api/clients");
         Assert.True(response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden,
             $"Expected 401/403 without admin scope, got {response.StatusCode}.");
+    }
+
+    [Fact]
+    public async Task Detail_returns_the_canonical_client_contract()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        var clientId = $"cc-detail-{Guid.NewGuid():N}";
+        var request = ConfidentialClient(
+            clientId,
+            "https://client.tests.local/callback");
+        request.RequirePar = true;
+
+        using var created = await client.PostAsJsonAsync("/api/clients", request);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+
+        using var response = await client.GetAsync(
+            $"/api/clients/{Uri.EscapeDataString(clientId)}");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(clientId, body.GetProperty("clientId").GetString());
+        Assert.Contains(
+            body.GetProperty("redirectUris").EnumerateArray(),
+            value => value.GetString() == "https://client.tests.local/callback");
+        Assert.False(body.TryGetProperty("clientSecret", out _));
+    }
+
+    [Fact]
+    public async Task Create_and_delete_append_redacted_audit_events()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        var clientId = $"cc-audit-{Guid.NewGuid():N}";
+        var secret = $"secret-{Guid.NewGuid():N}";
+        var request = ConfidentialClient(
+            clientId,
+            "https://client.tests.local/callback");
+        request.ClientSecret = secret;
+
+        using var created = await client.PostAsJsonAsync("/api/clients", request);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+
+        using var deleted = await client.DeleteAsync(
+            $"/api/clients/{Uri.EscapeDataString(clientId)}");
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var events = await database.ManagementAuditEvents
+            .Where(entry => entry.ResourceId == clientId)
+            .OrderBy(entry => entry.Id)
+            .ToArrayAsync();
+
+        Assert.Collection(
+            events,
+            entry =>
+            {
+                Assert.Equal("identity.clients.create", entry.Capability);
+                Assert.Equal("succeeded", entry.OperationOutcome);
+            },
+            entry =>
+            {
+                Assert.Equal("identity.clients.delete", entry.Capability);
+                Assert.Equal("succeeded", entry.OperationOutcome);
+            });
+        Assert.All(events, entry =>
+        {
+            Assert.DoesNotContain(secret, entry.OperatorSubject, StringComparison.Ordinal);
+            Assert.DoesNotContain(secret, entry.CorrelationId, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public async Task Audit_endpoint_returns_persisted_mutations()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        var clientId = $"cc-audit-list-{Guid.NewGuid():N}";
+
+        using var created = await client.PostAsJsonAsync(
+            "/api/clients",
+            ConfidentialClient(
+                clientId,
+                "https://client.tests.local/callback"));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+
+        using var response = await client.GetAsync("/api/audit?limit=10");
+        var records = await response.Content
+            .ReadFromJsonAsync<ManagementAuditRecord[]>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains(
+            records!,
+            entry => entry.ResourceId == clientId
+                && entry.Capability == "identity.clients.create");
     }
 }

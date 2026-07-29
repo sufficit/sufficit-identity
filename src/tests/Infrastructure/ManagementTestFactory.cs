@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management;
+using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.STS;
 using Xunit;
 
@@ -107,6 +108,9 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
             {
                 services.RemoveAll<IAuthorizationHandler>();
                 services.AddSingleton<IAuthorizationHandler, AlwaysSucceedHandler>();
+                services.RemoveAll<IManagementAuthorizationEvaluator>();
+                services.AddSingleton<IManagementAuthorizationEvaluator,
+                    AlwaysAllowManagementAuthorizationEvaluator>();
             }
 
             ReplaceDatabaseWithSqlite(services, _connection);
@@ -187,4 +191,15 @@ file sealed class AlwaysSucceedHandler : IAuthorizationHandler
         }
         return Task.CompletedTask;
     }
+}
+
+file sealed class AlwaysAllowManagementAuthorizationEvaluator
+    : IManagementAuthorizationEvaluator
+{
+    public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+        System.Security.Claims.ClaimsPrincipal principal,
+        string capability,
+        ManagementResource resource,
+        CancellationToken cancellationToken = default) =>
+        ValueTask.FromResult(ManagementAuthorizationDecision.Allowed());
 }

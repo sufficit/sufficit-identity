@@ -11,6 +11,7 @@ using Sufficit.Identity.Management;
 using Sufficit.Identity.Server;
 using Sufficit.Identity.STS;
 using Sufficit.Identity.UI;
+using Sufficit.Identity.UI.Management;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -107,6 +108,7 @@ var mgmtEnabled = builder.Configuration
 if (mgmtEnabled)
 {
     builder.Services.AddSufficitIdentityManagement(builder.Configuration);
+    builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
 }
 
 // ---- MVC (for the /connect/* passthrough controllers) ----
@@ -309,6 +311,7 @@ app.MapHealthChecks("/health/ready");
 if (mgmtEnabled)
 {
     app.UseSufficitIdentityManagementEndpoints(builder.Configuration);
+    app.UseSufficitIdentityManagementUI();
 }
 
 // ---- Sufficit Identity UI (Blazor Server endpoints + static assets) ----

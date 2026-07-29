@@ -6,6 +6,10 @@ using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Sufficit.Identity.Management.Audit;
+using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Management.Clients;
+using Sufficit.Identity.Management.Controllers;
 using Sufficit.Identity.Management.Provisioning;
 
 namespace Sufficit.Identity.Management;
@@ -38,12 +42,23 @@ public static class ServiceCollectionExtensions
         var options = configuration
             .GetSection(configurationSection)
             .Get<ManagementOptions>() ?? new ManagementOptions();
+        var configurationRoot = configuration.GetSection(configurationSection);
+
+        services.AddOptions<ManagementOptions>()
+            .Bind(configurationRoot);
 
         // Register the controllers in this assembly.
-        services.AddControllers()
+        services.AddControllers(options =>
+            {
+                options.Filters.Add<ManagementExceptionFilter>();
+            })
             .PartManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
 
         services.TryAddScoped<OpenIddictManifestProvisioner>();
+        services.TryAddScoped<IManagementAuthorizationEvaluator,
+            RoleBasedManagementAuthorizationEvaluator>();
+        services.TryAddScoped<IManagementAuditService, ManagementAuditService>();
+        services.TryAddScoped<IClientManagementService, ClientManagementService>();
         services.TryAddSingleton<IClientSecretResolver, MissingClientSecretResolver>();
 
         // Authorization policy for the management endpoints.
@@ -56,23 +71,14 @@ public static class ServiceCollectionExtensions
                     policy.RequireAuthenticatedUser();
                     policy.Requirements.Add(new ScopeRequirement(options.RequiredScope));
 
-                    // Item 5.2 [L3]: optionally require evidence of multi-factor
-                    // authentication (an `amr` claim carrying mfa/otp/hwk) for
-                    // the high-privilege management endpoints. Off by default so
-                    // the existing admin-token flow keeps working; flip to true
-                    // once the login UI emits `amr` for MFA-completed sessions.
-                    if (options.RequireMfa)
-                    {
-                        policy.Requirements.Add(new MfaRequirement());
-                    }
+                    // Capability and MFA decisions are applied by the shared
+                    // application services, so embedded UI and HTTP adapters
+                    // cannot diverge. This transport policy owns only bearer
+                    // authentication and the Management API scope.
                 });
             });
 
             services.AddSingleton<IAuthorizationHandler, ScopeHandler>();
-            if (options.RequireMfa)
-            {
-                services.AddSingleton<IAuthorizationHandler, MfaHandler>();
-            }
         }
 
         return services;
@@ -150,6 +156,8 @@ public sealed class ManagementOptions
     public string RoutePrefix { get; init; } = "api";
     public bool RequireAuthorization { get; init; } = true;
     public string RequiredScope { get; init; } = "skoruba_identity_admin_api";
+
+    public ManagementAuthorizationOptions Authorization { get; init; } = new();
 
     /// <summary>
     /// When <c>true</c>, the management policy additionally requires an <c>amr</c>

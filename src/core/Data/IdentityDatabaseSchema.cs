@@ -8,6 +8,7 @@ public static class IdentityDatabaseSchema
 {
     public const string InitialMigrationId = "20260726213918_Initial";
     public const string BrandingThemesMigrationId = "20260729025623_AddBrandingThemes";
+    public const string ManagementAuditMigrationId = "20260729221512_AddManagementAuditEvents";
 
     /// <summary>
     /// Migration history owned by the new Sufficit Identity model.
@@ -28,4 +29,14 @@ public static class IdentityDatabaseSchema
     public const int BrandingColorLength = 7;   // #RRGGBB
     public const int BrandingNameLength = 100;
     public const int BrandingTitleLength = 200;
+
+    // Management audit
+    public const int AuditOperatorLength = 255;
+    public const int AuditCapabilityLength = 150;
+    public const int AuditResourceTypeLength = 100;
+    public const int AuditResourceIdLength = 255;
+    public const int AuditOutcomeLength = 50;
+    public const int AuditReasonLength = 100;
+    public const int AuditCorrelationLength = 100;
+    public const int AuditAuthenticationMethodsLength = 255;
 }

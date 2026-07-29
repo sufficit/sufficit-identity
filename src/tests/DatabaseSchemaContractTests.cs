@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using OpenIddict.EntityFrameworkCore.Models;
 using Sufficit.Identity.Core.Data;
+using Sufficit.Identity.Core.Entities;
 using Xunit;
 
 namespace Sufficit.Identity.Tests;
@@ -68,6 +69,35 @@ public sealed class DatabaseSchemaContractTests
         AssertProperty(dataProtection, "Id", "id", "int", null, nullable: false);
         AssertProperty(dataProtection, "FriendlyName", "friendlyname", "longtext", null, nullable: true);
         AssertProperty(dataProtection, "Xml", "xml", "longtext", null, nullable: true);
+
+        var audit = RequiredEntity<ManagementAuditEvent>(model);
+        Assert.Equal("managementauditevents", audit.GetTableName());
+        AssertProperty(audit, "Id", "id", "bigint", null, nullable: false);
+        AssertProperty(
+            audit,
+            "OperatorSubject",
+            "operatorsubject",
+            "varchar(255)",
+            255,
+            nullable: false);
+        AssertProperty(
+            audit,
+            "Capability",
+            "capability",
+            "varchar(150)",
+            150,
+            nullable: false);
+        AssertIndex(
+            audit,
+            "IX_managementauditevents_occurredatutc",
+            unique: false,
+            "OccurredAtUtc");
+        AssertIndex(
+            audit,
+            "IX_managementauditevents_resource",
+            unique: false,
+            "ResourceType",
+            "ResourceId");
     }
 
     [Fact]
@@ -78,6 +108,7 @@ public sealed class DatabaseSchemaContractTests
         Assert.Equal([
             IdentityDatabaseSchema.InitialMigrationId,
             IdentityDatabaseSchema.BrandingThemesMigrationId,
+            IdentityDatabaseSchema.ManagementAuditMigrationId,
         ], context.Database.GetMigrations());
 
         var history = context.GetService<IHistoryRepository>().GetCreateScript();

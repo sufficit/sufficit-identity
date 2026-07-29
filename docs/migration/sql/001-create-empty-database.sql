@@ -229,3 +229,32 @@ VALUES ('20260729025623_AddBrandingThemes', '10.0.10');
 
 COMMIT;
 
+START TRANSACTION;
+ALTER TABLE `brandingthemes` ADD `avatarurltemplate` varchar(512) CHARACTER SET utf8mb4 NULL;
+
+CREATE TABLE `managementauditevents` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `occurredatutc` datetime(6) NOT NULL,
+    `operatorsubject` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `operatordisplayname` varchar(255) CHARACTER SET utf8mb4 NULL,
+    `capability` varchar(150) CHARACTER SET utf8mb4 NOT NULL,
+    `resourcetype` varchar(100) CHARACTER SET utf8mb4 NOT NULL,
+    `resourceid` varchar(255) CHARACTER SET utf8mb4 NULL,
+    `contextid` varchar(255) CHARACTER SET utf8mb4 NULL,
+    `authorizationoutcome` varchar(50) CHARACTER SET utf8mb4 NOT NULL,
+    `operationoutcome` varchar(50) CHARACTER SET utf8mb4 NOT NULL,
+    `reasoncode` varchar(100) CHARACTER SET utf8mb4 NULL,
+    `correlationid` varchar(100) CHARACTER SET utf8mb4 NOT NULL,
+    `authenticationmethods` varchar(255) CHARACTER SET utf8mb4 NULL,
+    CONSTRAINT `PK_managementauditevents` PRIMARY KEY (`id`)
+) CHARACTER SET=utf8mb4;
+
+CREATE INDEX `IX_managementauditevents_occurredatutc` ON `managementauditevents` (`occurredatutc`);
+
+CREATE INDEX `IX_managementauditevents_resource` ON `managementauditevents` (`resourcetype`, `resourceid`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260729221512_AddManagementAuditEvents', '10.0.10');
+
+COMMIT;
+

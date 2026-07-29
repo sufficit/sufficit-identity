@@ -62,24 +62,26 @@ public sealed class MariaDbMigrationIntegrationTests
             [
                 IdentityDatabaseSchema.InitialMigrationId,
                 IdentityDatabaseSchema.BrandingThemesMigrationId,
+                IdentityDatabaseSchema.ManagementAuditMigrationId,
             ],
             await context.Database.GetAppliedMigrationsAsync());
 
         await using var connection = context.Database.GetDbConnection();
         await connection.OpenAsync();
 
-        Assert.Equal(15, await ScalarIntAsync(connection, """
+        Assert.Equal(16, await ScalarIntAsync(connection, """
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
             """));
 
-        Assert.Equal(2, await ScalarIntAsync(connection, $"""
+        Assert.Equal(3, await ScalarIntAsync(connection, $"""
             SELECT COUNT(*)
             FROM `{IdentityDatabaseSchema.MigrationsHistoryTable}`
             WHERE `MigrationId` IN (
                 '{IdentityDatabaseSchema.InitialMigrationId}',
-                '{IdentityDatabaseSchema.BrandingThemesMigrationId}'
+                '{IdentityDatabaseSchema.BrandingThemesMigrationId}',
+                '{IdentityDatabaseSchema.ManagementAuditMigrationId}'
               )
             """));
 
@@ -111,6 +113,15 @@ public sealed class MariaDbMigrationIntegrationTests
               AND table_name = 'brandingthemes'
               AND index_name = 'IX_brandingthemes_isactive'
               AND column_name = 'isactive'
+            """));
+
+        Assert.Equal(1, await ScalarIntAsync(connection, """
+            SELECT COUNT(*)
+            FROM information_schema.statistics
+            WHERE table_schema = DATABASE()
+              AND table_name = 'managementauditevents'
+              AND index_name = 'IX_managementauditevents_resource'
+              AND column_name = 'resourceid'
             """));
     }
 

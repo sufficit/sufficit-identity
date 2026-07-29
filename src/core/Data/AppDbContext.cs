@@ -41,6 +41,12 @@ public sealed class AppDbContext
     /// </summary>
     public DbSet<Entities.BrandingTheme> BrandingThemes => Set<Entities.BrandingTheme>();
 
+    /// <summary>
+    /// Append-only administrative authorization and mutation audit trail.
+    /// </summary>
+    public DbSet<Entities.ManagementAuditEvent> ManagementAuditEvents =>
+        Set<Entities.ManagementAuditEvent>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -50,6 +56,65 @@ public sealed class AppDbContext
         MapDataProtectionTable(builder);
         ConfigurePasskeyEntities(builder);
         MapBrandingTables(builder);
+        MapManagementAuditTables(builder);
+    }
+
+    private static void MapManagementAuditTables(ModelBuilder builder)
+    {
+        builder.Entity<Entities.ManagementAuditEvent>(b =>
+        {
+            b.ToTable("managementauditevents");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).ValueGeneratedOnAdd();
+            b.Property(x => x.OccurredAtUtc).IsRequired();
+            b.Property(x => x.OperatorSubject)
+                .HasMaxLength(IdentityDatabaseSchema.AuditOperatorLength)
+                .IsRequired();
+            b.Property(x => x.OperatorDisplayName)
+                .HasMaxLength(IdentityDatabaseSchema.AuditOperatorLength);
+            b.Property(x => x.Capability)
+                .HasMaxLength(IdentityDatabaseSchema.AuditCapabilityLength)
+                .IsRequired();
+            b.Property(x => x.ResourceType)
+                .HasMaxLength(IdentityDatabaseSchema.AuditResourceTypeLength)
+                .IsRequired();
+            b.Property(x => x.ResourceId)
+                .HasMaxLength(IdentityDatabaseSchema.AuditResourceIdLength);
+            b.Property(x => x.ContextId)
+                .HasMaxLength(IdentityDatabaseSchema.AuditResourceIdLength);
+            b.Property(x => x.AuthorizationOutcome)
+                .HasMaxLength(IdentityDatabaseSchema.AuditOutcomeLength)
+                .IsRequired();
+            b.Property(x => x.OperationOutcome)
+                .HasMaxLength(IdentityDatabaseSchema.AuditOutcomeLength)
+                .IsRequired();
+            b.Property(x => x.ReasonCode)
+                .HasMaxLength(IdentityDatabaseSchema.AuditReasonLength);
+            b.Property(x => x.CorrelationId)
+                .HasMaxLength(IdentityDatabaseSchema.AuditCorrelationLength)
+                .IsRequired();
+            b.Property(x => x.AuthenticationMethods)
+                .HasMaxLength(IdentityDatabaseSchema.AuditAuthenticationMethodsLength);
+            b.HasIndex(x => x.OccurredAtUtc)
+                .HasDatabaseName("IX_managementauditevents_occurredatutc");
+            b.HasIndex(x => new { x.ResourceType, x.ResourceId })
+                .HasDatabaseName("IX_managementauditevents_resource");
+            SnakeCaseColumns(b, [
+                ("Id", "id"),
+                ("OccurredAtUtc", "occurredatutc"),
+                ("OperatorSubject", "operatorsubject"),
+                ("OperatorDisplayName", "operatordisplayname"),
+                ("Capability", "capability"),
+                ("ResourceType", "resourcetype"),
+                ("ResourceId", "resourceid"),
+                ("ContextId", "contextid"),
+                ("AuthorizationOutcome", "authorizationoutcome"),
+                ("OperationOutcome", "operationoutcome"),
+                ("ReasonCode", "reasoncode"),
+                ("CorrelationId", "correlationid"),
+                ("AuthenticationMethods", "authenticationmethods"),
+            ]);
+        });
     }
 
     private static void MapBrandingTables(ModelBuilder builder)

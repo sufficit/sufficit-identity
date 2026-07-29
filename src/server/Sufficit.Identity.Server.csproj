@@ -57,10 +57,18 @@
   <ItemGroup Condition="Exists('..\..\..\sufficit-identity-ui\src\Sufficit.Identity.UI\Sufficit.Identity.UI.csproj')">
     <ProjectReference Include="..\..\..\sufficit-identity-ui\src\Sufficit.Identity.UI\Sufficit.Identity.UI.csproj" />
   </ItemGroup>
+  <ItemGroup Condition="Exists('..\..\..\sufficit-identity-ui\src\Sufficit.Identity.UI.Management\Sufficit.Identity.UI.Management.csproj')">
+    <ProjectReference Include="..\..\..\sufficit-identity-ui\src\Sufficit.Identity.UI.Management\Sufficit.Identity.UI.Management.csproj" />
+  </ItemGroup>
   <Target Name="RequireSiblingUiRepo"
           Condition="!Exists('..\..\..\sufficit-identity-ui\src\Sufficit.Identity.UI\Sufficit.Identity.UI.csproj')"
           BeforeTargets="Build;Restore">
     <Error Text="Sufficit.Identity.UI (Blazor Server login/consent/logout UI) is required but was not found at '..\..\..\sufficit-identity-ui\src\Sufficit.Identity.UI\Sufficit.Identity.UI.csproj'. This repo references the sibling repo sufficit-identity-ui as a ProjectReference when present (dev machines, CI). Either: (1) check out sufficit-identity-ui as a sibling directory of this repo, or (2) once a Sufficit.Identity.UI NuGet package is published, replace this error with a PackageReference (see the comment above). Until then this repo cannot build in isolation." />
+  </Target>
+  <Target Name="RequireSiblingManagementUiRepo"
+          Condition="!Exists('..\..\..\sufficit-identity-ui\src\Sufficit.Identity.UI.Management\Sufficit.Identity.UI.Management.csproj')"
+          BeforeTargets="Build;Restore">
+    <Error Text="Sufficit.Identity.UI.Management (embedded administrative UI) is required but was not found at '..\..\..\sufficit-identity-ui\src\Sufficit.Identity.UI.Management\Sufficit.Identity.UI.Management.csproj'. Check out a compatible sufficit-identity-ui sibling repository before restoring or building the composition host." />
   </Target>
 
   <ItemGroup>

@@ -16,7 +16,8 @@ a database server on a developer machine.
 
 Use `sql/001-create-empty-database.sql`. It is generated from the canonical EF
 model and creates the shared ASP.NET Core Identity tables, Data Protection,
-passkeys, the OpenIddict tables and the generic branding-theme table.
+passkeys, the OpenIddict tables, the generic branding-theme table and the
+append-only administrative audit table.
 
 Regenerate it with:
 
@@ -94,7 +95,7 @@ The local contract test regenerates the SQL from the EF migration and requires
 an exact match, so the tracked script cannot drift from the model.
 
 1. **Empty database:** verifies there are no pending migrations, the isolated
-   migration history contains every canonical migration, all 15 expected tables
+   migration history contains every canonical migration, all 16 expected tables
    exist and critical OpenIddict/passkey indexes and types match.
 2. **Legacy rehearsal:** creates the fixed
    `identity_legacy_rehearsal` database on the loopback CI service, loads the
