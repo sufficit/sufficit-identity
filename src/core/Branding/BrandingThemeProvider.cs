@@ -67,7 +67,10 @@ public sealed class BrandingThemeProvider : IBrandingThemeProvider
             {
                 result = await db.BrandingThemes
                     .AsNoTracking()
-                    .FirstOrDefaultAsync(t => t.IsActive, cancellationToken);
+                    .Where(theme => theme.IsActive)
+                    .OrderByDescending(theme => theme.UpdatedAt)
+                    .ThenByDescending(theme => theme.Id)
+                    .FirstOrDefaultAsync(cancellationToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {

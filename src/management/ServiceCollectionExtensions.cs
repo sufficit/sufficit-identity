@@ -6,8 +6,10 @@ using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Sufficit.Identity.Core.Branding;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Management.Branding;
 using Sufficit.Identity.Management.Clients;
 using Sufficit.Identity.Management.Controllers;
 using Sufficit.Identity.Management.Provisioning;
@@ -59,6 +61,10 @@ public static class ServiceCollectionExtensions
             RoleBasedManagementAuthorizationEvaluator>();
         services.TryAddScoped<IManagementAuditService, ManagementAuditService>();
         services.TryAddScoped<IClientManagementService, ClientManagementService>();
+        services.TryAddScoped<IBrandingManagementService,
+            BrandingManagementService>();
+        services.TryAddSingleton<IBrandingThemeProvider,
+            BrandingThemeProvider>();
         services.TryAddSingleton<IClientSecretResolver, MissingClientSecretResolver>();
 
         // Authorization policy for the management endpoints.

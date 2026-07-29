@@ -8,6 +8,8 @@ public static class ManagementCapabilities
     public const string ClientsRead = "identity.clients.read";
     public const string ClientsCreate = "identity.clients.create";
     public const string ClientsDelete = "identity.clients.delete";
+    public const string BrandingRead = "identity.branding.read";
+    public const string BrandingManage = "identity.branding.manage";
     public const string AuditRead = "identity.audit.read";
 }
 
@@ -15,6 +17,8 @@ public static class ManagementResourceTypes
 {
     public const string Client = "client";
     public const string ClientCollection = "client-collection";
+    public const string BrandingTheme = "branding-theme";
+    public const string BrandingCollection = "branding-collection";
     public const string Audit = "audit";
 }
 
@@ -123,6 +127,8 @@ public sealed class RoleBasedManagementAuthorizationEvaluator(
             ManagementCapabilities.ClientsRead or
             ManagementCapabilities.ClientsCreate or
             ManagementCapabilities.ClientsDelete or
+            ManagementCapabilities.BrandingRead or
+            ManagementCapabilities.BrandingManage or
             ManagementCapabilities.AuditRead;
 
         if (!isAdministrator || !isKnownCapability)

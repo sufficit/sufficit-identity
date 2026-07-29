@@ -9,7 +9,7 @@ namespace Sufficit.Identity.Tests;
 public sealed class ManagementApplicationAuthorizationTests
 {
     [Fact]
-    public async Task Administrator_receives_client_and_audit_capabilities()
+    public async Task Administrator_receives_global_management_capabilities()
     {
         var evaluator = CreateEvaluator();
         var principal = PrincipalWithRole("administrator");
@@ -19,6 +19,8 @@ public sealed class ManagementApplicationAuthorizationTests
                      ManagementCapabilities.ClientsRead,
                      ManagementCapabilities.ClientsCreate,
                      ManagementCapabilities.ClientsDelete,
+                     ManagementCapabilities.BrandingRead,
+                     ManagementCapabilities.BrandingManage,
                      ManagementCapabilities.AuditRead,
                  })
         {
