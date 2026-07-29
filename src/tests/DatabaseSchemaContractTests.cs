@@ -75,7 +75,10 @@ public sealed class DatabaseSchemaContractTests
     {
         using var context = CreateContext();
 
-        Assert.Equal([IdentityDatabaseSchema.InitialMigrationId], context.Database.GetMigrations());
+        Assert.Equal([
+            IdentityDatabaseSchema.InitialMigrationId,
+            IdentityDatabaseSchema.BrandingThemesMigrationId,
+        ], context.Database.GetMigrations());
 
         var history = context.GetService<IHistoryRepository>().GetCreateScript();
         Assert.Contains($"`{IdentityDatabaseSchema.MigrationsHistoryTable}`", history,

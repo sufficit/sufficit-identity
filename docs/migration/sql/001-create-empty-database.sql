@@ -201,3 +201,31 @@ VALUES ('20260726213918_Initial', '10.0.10');
 
 COMMIT;
 
+START TRANSACTION;
+CREATE TABLE `brandingthemes` (
+    `id` int NOT NULL AUTO_INCREMENT,
+    `name` varchar(100) CHARACTER SET utf8mb4 NOT NULL,
+    `isactive` tinyint(1) NOT NULL,
+    `logourl` varchar(512) CHARACTER SET utf8mb4 NULL,
+    `faviconurl` varchar(512) CHARACTER SET utf8mb4 NULL,
+    `headericonurl` varchar(512) CHARACTER SET utf8mb4 NULL,
+    `backgroundimageurl` varchar(512) CHARACTER SET utf8mb4 NULL,
+    `brandcolor` varchar(7) CHARACTER SET utf8mb4 NULL,
+    `brandhovercolor` varchar(7) CHARACTER SET utf8mb4 NULL,
+    `brandsoftcolor` varchar(7) CHARACTER SET utf8mb4 NULL,
+    `themecolor` varchar(7) CHARACTER SET utf8mb4 NULL,
+    `title` varchar(200) CHARACTER SET utf8mb4 NULL,
+    `brandname` varchar(100) CHARACTER SET utf8mb4 NULL,
+    `brandsubtitle` varchar(100) CHARACTER SET utf8mb4 NULL,
+    `createdat` datetime(6) NOT NULL,
+    `updatedat` datetime(6) NOT NULL,
+    CONSTRAINT `PK_brandingthemes` PRIMARY KEY (`id`)
+) CHARACTER SET=utf8mb4;
+
+CREATE INDEX `IX_brandingthemes_isactive` ON `brandingthemes` (`isactive`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260729025623_AddBrandingThemes', '10.0.10');
+
+COMMIT;
+

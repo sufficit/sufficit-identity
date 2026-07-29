@@ -1,13 +1,14 @@
 -- ============================================================================
 -- 050-add-branding-themes.sql
--- Creates the brandingthemes table and seeds the default Sufficit theme.
--- Run against the identity2 database after 001-create-empty-database.sql.
+-- Ensures the brandingthemes table exists and seeds the default Sufficit theme.
+-- It may run after the canonical 001 script (where the EF migration is already
+-- recorded) or after the additive legacy path. Repeated execution is safe.
 -- ============================================================================
 
 CREATE TABLE IF NOT EXISTS `brandingthemes` (
     `id`                 INT AUTO_INCREMENT PRIMARY KEY,
     `name`               VARCHAR(100)  NOT NULL,
-    `isactive`           TINYINT(1)    NOT NULL DEFAULT 0,
+    `isactive`           TINYINT(1)    NOT NULL,
     `logourl`            VARCHAR(512)  NULL,
     `faviconurl`         VARCHAR(512)  NULL,
     `headericonurl`      VARCHAR(512)  NULL,
@@ -19,8 +20,8 @@ CREATE TABLE IF NOT EXISTS `brandingthemes` (
     `title`              VARCHAR(200)  NULL,
     `brandname`          VARCHAR(100)  NULL,
     `brandsubtitle`      VARCHAR(100)  NULL,
-    `createdat`          DATETIME      NOT NULL,
-    `updatedat`          DATETIME      NOT NULL,
+    `createdat`          DATETIME(6)   NOT NULL,
+    `updatedat`          DATETIME(6)   NOT NULL,
     INDEX `IX_brandingthemes_isactive` (`isactive`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -31,7 +32,7 @@ INSERT INTO `brandingthemes` (
     `brandcolor`, `brandhovercolor`, `brandsoftcolor`, `themecolor`,
     `title`, `brandname`, `brandsubtitle`,
     `createdat`, `updatedat`
-) VALUES (
+) SELECT
     'Sufficit padrão',
     1,
     '_content/Sufficit.Identity.UI/img/logo-full.png',
@@ -47,4 +48,16 @@ INSERT INTO `brandingthemes` (
     'Identity',
     UTC_TIMESTAMP(),
     UTC_TIMESTAMP()
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM `brandingthemes`
+    WHERE `name` = 'Sufficit padrão'
+);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+SELECT '20260729025623_AddBrandingThemes', '10.0.10'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM `__sufficit_identity_migrations`
+    WHERE `MigrationId` = '20260729025623_AddBrandingThemes'
 );

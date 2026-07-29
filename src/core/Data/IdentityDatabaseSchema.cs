@@ -7,6 +7,7 @@ namespace Sufficit.Identity.Core.Data;
 public static class IdentityDatabaseSchema
 {
     public const string InitialMigrationId = "20260726213918_Initial";
+    public const string BrandingThemesMigrationId = "20260729025623_AddBrandingThemes";
 
     /// <summary>
     /// Migration history owned by the new Sufficit Identity model.

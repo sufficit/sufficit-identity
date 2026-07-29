@@ -59,22 +59,28 @@ public sealed class MariaDbMigrationIntegrationTests
         Assert.True(await context.Database.CanConnectAsync());
         Assert.Empty(await context.Database.GetPendingMigrationsAsync());
         Assert.Equal(
-            [IdentityDatabaseSchema.InitialMigrationId],
+            [
+                IdentityDatabaseSchema.InitialMigrationId,
+                IdentityDatabaseSchema.BrandingThemesMigrationId,
+            ],
             await context.Database.GetAppliedMigrationsAsync());
 
         await using var connection = context.Database.GetDbConnection();
         await connection.OpenAsync();
 
-        Assert.Equal(14, await ScalarIntAsync(connection, """
+        Assert.Equal(15, await ScalarIntAsync(connection, """
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
             """));
 
-        Assert.Equal(1, await ScalarIntAsync(connection, $"""
+        Assert.Equal(2, await ScalarIntAsync(connection, $"""
             SELECT COUNT(*)
             FROM `{IdentityDatabaseSchema.MigrationsHistoryTable}`
-            WHERE `MigrationId` = '{IdentityDatabaseSchema.InitialMigrationId}'
+            WHERE `MigrationId` IN (
+                '{IdentityDatabaseSchema.InitialMigrationId}',
+                '{IdentityDatabaseSchema.BrandingThemesMigrationId}'
+              )
             """));
 
         Assert.Equal(1, await ScalarIntAsync(connection, """
@@ -96,6 +102,15 @@ public sealed class MariaDbMigrationIntegrationTests
               AND column_type = 'varbinary(1024)'
               AND is_nullable = 'NO'
               AND column_key = 'PRI'
+            """));
+
+        Assert.Equal(1, await ScalarIntAsync(connection, """
+            SELECT COUNT(*)
+            FROM information_schema.statistics
+            WHERE table_schema = DATABASE()
+              AND table_name = 'brandingthemes'
+              AND index_name = 'IX_brandingthemes_isactive'
+              AND column_name = 'isactive'
             """));
     }
 
