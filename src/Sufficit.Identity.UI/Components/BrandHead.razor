@@ -1,0 +1,49 @@
+@* BrandHead renders favicon, theme-color, title and dynamic CSS overrides
+   from the active BrandingTheme (DB-backed, cached). Placed inside <head>
+   via App.razor's <HeadOutlet/>. Falls back to hardcoded defaults when
+   no theme is active or the table doesn't exist yet. *@
+
+@code {
+    [Inject] IBrandingThemeProvider BrandingProvider { get; set; } = null!;
+
+    private Sufficit.Identity.Core.Entities.BrandingTheme? _theme;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _theme = await BrandingProvider.GetActiveAsync();
+    }
+}
+
+<link rel="icon" href="@(_theme?.FaviconUrl ?? "_content/Sufficit.Identity.UI/img/favicon.png")" type="image/png" />
+<link rel="apple-touch-icon" href="@(_theme?.FaviconUrl ?? "_content/Sufficit.Identity.UI/img/favicon.png")" />
+<meta name="theme-color" content="@(_theme?.ThemeColor ?? "#cc0000")" />
+<title>@(_theme?.Title ?? "Sufficit Identity")</title>
+
+@if (!string.IsNullOrEmpty(_theme?.BrandColor))
+{
+    <style>
+        :root {
+            --brand: @_theme.BrandColor;
+            --brand-ring: @(_theme.BrandColor)40;
+            @if (!string.IsNullOrEmpty(_theme.BrandHoverColor))
+            {
+                <text>--brand-hover: @_theme.BrandHoverColor;</text>
+            }
+            @if (!string.IsNullOrEmpty(_theme.BrandSoftColor))
+            {
+                <text>--brand-soft: @_theme.BrandSoftColor;</text>
+            }
+        }
+    </style>
+}
+
+@if (!string.IsNullOrEmpty(_theme?.BackgroundImageUrl))
+{
+    <style>
+        body {
+            background:
+                linear-gradient(rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.15)),
+                url("@_theme.BackgroundImageUrl") center / cover fixed no-repeat !important;
+        }
+    </style>
+}

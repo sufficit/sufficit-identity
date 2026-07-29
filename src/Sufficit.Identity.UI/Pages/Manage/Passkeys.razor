@@ -1,5 +1,6 @@
 @page "/manage/passkeys"
 @attribute [Authorize]
+@rendermode @(RenderMode.InteractiveServer)
 @using Microsoft.AspNetCore.Identity
 @using Sufficit.Identity.UI.Services
 @inject UserManager<ApplicationUser> UserManager
@@ -10,6 +11,7 @@
 <PageTitle>Passkeys — Sufficit Identity</PageTitle>
 
 <div class="auth-card">
+    <ManageBackLink />
     <h1>Passkeys (WebAuthn)</h1>
     <p class="info">Chaves de segurança biométricas (impressão digital, Face ID, etc.) para login sem senha.</p>
 

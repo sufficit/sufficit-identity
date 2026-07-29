@@ -1,13 +1,25 @@
 @page "/manage/externallogins"
 @attribute [Authorize]
+@using Microsoft.AspNetCore.Authentication
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
+@inject IBrandingThemeProvider BrandingProvider
 
 <PageTitle>Logins externos — Sufficit Identity</PageTitle>
 
 <div class="auth-card">
+    <ManageBackLink />
     <h1>Logins externos</h1>
     <p class="info">Gerencie os provedores externos vinculados à sua conta.</p>
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-error" role="alert">@_error</div>
+    }
+    @if (_success is not null)
+    {
+        <div class="alert alert-success" role="alert">@_success</div>
+    }
 
     <h3>Vinculados</h3>
     @if (_linked.Any())
@@ -15,7 +27,20 @@
         <ul class="external-list">
             @foreach (var info in _linked)
             {
-                <li><span class="badge">@info.LoginProvider</span></li>
+                <li>
+                    <span class="external-item-info">
+                        <span class="external-item-name">@info.LoginProvider</span>
+                        <br />
+                        <span class="muted">@info.ProviderKey</span>
+                    </span>
+                    @* RemoveLoginAsync requires exactly (loginProvider, providerKey, user).
+                       We use a plain form POST (not Blazor EditForm) because the button
+                       submits to the same page via the @onclick handler. *@
+                    <button type="button" class="btn btn-danger btn-sm"
+                            @onclick="@(async () => await RemoveLoginAsync(info.LoginProvider, info.ProviderKey))">
+                        Remover
+                    </button>
+                </li>
             }
         </ul>
     }
@@ -24,32 +49,73 @@
         <p class="muted">Nenhum provedor externo vinculado.</p>
     }
 
-    <h3>Disponíveis</h3>
-    <div class="external-providers">
-        @foreach (var scheme in _availableSchemes)
-        {
-            var linked = _linked.Any(l => l.LoginProvider == scheme.Name);
-            <span class="badge @(linked ? "badge-success" : "badge-outline")">@scheme.DisplayName</span>
-        }
-    </div>
+    @{
+        var unlinked = _availableSchemes
+            .Where(s => !_linked.Any(l => l.LoginProvider == s.Name))
+            .ToList();
+    }
+
+    @if (unlinked.Any())
+    {
+        <h3>Disponíveis</h3>
+        <div class="external-providers">
+            @foreach (var scheme in unlinked)
+            {
+                var providerClass = scheme.Name.ToLowerInvariant() switch
+                {
+                    "google" => "btn-google",
+                    "facebook" => "btn-facebook",
+                    _ => "btn-secondary"
+                };
+                <a href="/account/externalchallenge?provider=@scheme.Name&returnUrl=/manage/externallogins"
+                   class="btn btn-block @providerClass"
+                   data-enhance-nav="false"
+                   data-redirect-overlay="@scheme.DisplayName">
+                    Vincular @scheme.DisplayName
+                </a>
+            }
+        </div>
+    }
 </div>
 
 @code {
     [CascadingParameter] private Task<AuthenticationState>? _authTask { get; set; }
+    private ApplicationUser? _user;
     private IList<UserLoginInfo> _linked = new List<UserLoginInfo>();
-    private List<Microsoft.AspNetCore.Authentication.AuthenticationScheme> _availableSchemes = new();
+    private List<AuthenticationScheme> _availableSchemes = new();
+    private string? _error;
+    private string? _success;
 
     protected override async Task OnInitializedAsync()
     {
-        // _availableSchemes can always be populated, even before auth resolves.
         _availableSchemes = (await SignInManager.GetExternalAuthenticationSchemesAsync()).ToList();
 
         if (_authTask is null) return;
         var authState = await _authTask;
         if (authState?.User?.Identity?.IsAuthenticated != true) return;
 
-        var user = await UserManager.GetUserAsync(authState.User);
-        if (user is null) return;
-        _linked = await UserManager.GetLoginsAsync(user);
+        _user = await UserManager.GetUserAsync(authState.User);
+        if (_user is null) return;
+        _linked = await UserManager.GetLoginsAsync(_user);
+    }
+
+    private async Task RemoveLoginAsync(string loginProvider, string providerKey)
+    {
+        _error = null;
+        _success = null;
+
+        if (_user is null) return;
+
+        var result = await UserManager.RemoveLoginAsync(_user, loginProvider, providerKey);
+        if (result.Succeeded)
+        {
+            await SignInManager.RefreshSignInAsync(_user);
+            _linked = await UserManager.GetLoginsAsync(_user);
+            _success = $"{loginProvider} removido da sua conta.";
+        }
+        else
+        {
+            _error = $"Erro ao remover {loginProvider}: {string.Join(", ", result.Errors.Select(e => e.Description))}";
+        }
     }
 }

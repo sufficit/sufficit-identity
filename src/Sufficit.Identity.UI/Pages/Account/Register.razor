@@ -7,6 +7,7 @@
 @inject RegisterConfiguration RegisterConfig
 @inject NavigationManager Navigation
 @inject ILogger<Register> Logger
+@inject IBrandingThemeProvider BrandingProvider
 @using System.Web
 
 <PageTitle>Criar conta — Sufficit Identity</PageTitle>
@@ -24,7 +25,11 @@
 else
 {
     <div class="auth-card">
+        <div class="auth-brand">
+            <img src="@_logoUrl" alt="Sufficit Identity" height="44" />
+        </div>
         <h1>Criar conta</h1>
+        <p class="auth-card-subtitle">Crie sua conta em poucos segundos</p>
 
         @if (_registered)
         {
@@ -101,11 +106,17 @@ else
     private string? _returnUrl;
     private string? _error;
     private bool _registered;
+    private string _logoUrl = "_content/Sufficit.Identity.UI/img/logo-full.png";
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         // Reject absolute/off-host returnUrl (authenticated open redirect).
         _returnUrl = LocalUrlValidator.EnsureLocal(_returnUrlQuery);
+
+        // Load branding theme logo
+        var theme = await BrandingProvider.GetActiveAsync();
+        if (theme?.LogoUrl is not null)
+            _logoUrl = theme.LogoUrl;
     }
 
     private async Task RegisterAsync()

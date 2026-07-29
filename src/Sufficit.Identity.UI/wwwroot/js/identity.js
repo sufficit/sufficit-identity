@@ -28,3 +28,26 @@ window.sufficitIdentityDownloadFile = function (fileName, base64, mimeType) {
     document.body.removeChild(a);
     setTimeout(function () { URL.revokeObjectURL(url); }, 0);
 };
+
+/**
+ * External-login redirect overlay.
+ * Shows a full-page "connecting…" overlay when the user clicks an
+ * external-login link (Google/Facebook). Pages are statically rendered
+ * (no Blazor interactivity), so this is plain JS with a delegated
+ * listener that survives page navigation.
+ */
+(function () {
+    document.addEventListener('click', function (e) {
+        var el = e.target.closest('[data-redirect-overlay]');
+        if (!el || document.querySelector('.redirect-overlay')) return;
+        var overlay = document.createElement('div');
+        overlay.className = 'redirect-overlay';
+        overlay.innerHTML =
+            '<div class="redirect-overlay-box">' +
+            '<div class="spinner"></div>' +
+            '<p>Conectando a ' + el.getAttribute('data-redirect-overlay') + '…</p>' +
+            '<p class="redirect-overlay-hint">Você será redirecionado automaticamente.</p>' +
+            '</div>';
+        document.body.appendChild(overlay);
+    });
+})();

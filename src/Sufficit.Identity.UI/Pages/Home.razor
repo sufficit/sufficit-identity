@@ -1,22 +1,19 @@
 @page "/"
-<PageTitle>Sufficit Identity</PageTitle>
+@inject NavigationManager Navigation
+@inject IBrandingThemeProvider BrandingProvider
 
-<div class="auth-card" style="text-align:center">
-    <h1>Sufficit Identity</h1>
-    <p class="info">Serviço de identidade e autorização</p>
-    <AuthorizeView>
-        <Authorized>
-            <p>Olá, @context.User.Identity?.Name!</p>
-            <a href="/manage" class="btn btn-primary">Minha conta</a>
-            <a href="/account/logout" class="btn btn-secondary">Sair</a>
-        </Authorized>
-        <NotAuthorized>
-            <a href="/account/login" class="btn btn-primary btn-block">Entrar</a>
-        </NotAuthorized>
-    </AuthorizeView>
-    <hr style="margin:1.5rem 0;border:none;border-top:1px solid var(--border)" />
-    <p class="muted">
-        <a href="/.well-known/openid-configuration">Discovery</a> ·
-        <a href="/swagger">API Swagger</a>
-    </p>
-</div>
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? _authTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Warm the branding cache on first hit (cheap, singleton).
+        await BrandingProvider.GetActiveAsync();
+
+        // Redirect before the page renders — no blank flash.
+        var auth = _authTask is not null ? await _authTask : null;
+        var isAuth = auth?.User?.Identity?.IsAuthenticated ?? false;
+        Navigation.NavigateTo(isAuth ? "/manage" : "/account/login", forceLoad: true);
+    }
+}

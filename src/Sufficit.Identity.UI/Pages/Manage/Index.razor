@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @inject UserManager<ApplicationUser> UserManager
 @inject NavigationManager Navigation
+@inject IBrandingThemeProvider BrandingProvider
 
 <PageTitle>Minha conta — Sufficit Identity</PageTitle>
 
@@ -9,7 +10,14 @@
     <h1>Minha conta</h1>
 
     <div class="profile-card">
-        <div class="profile-avatar">@(_user?.UserName?.Substring(0,1).ToUpper())</div>
+        @if (!string.IsNullOrEmpty(_avatarUrl))
+        {
+            <img src="@_avatarUrl" class="profile-avatar" alt="" />
+        }
+        else
+        {
+            <div class="profile-avatar">@(_user?.UserName?.Substring(0,1).ToUpper())</div>
+        }
         <div>
             <h2>@_user?.UserName</h2>
             <p class="muted">@_user?.Email</p>
@@ -39,11 +47,19 @@
     [CascadingParameter] private Task<AuthenticationState>? _authTask { get; set; }
     private ApplicationUser? _user;
     private bool _emailConfirmed;
+    private string? _avatarUrl;
 
     protected override async Task OnInitializedAsync()
     {
         _user = await _authTask.GetAuthenticatedUserAsync(UserManager);
         if (_user is not null)
             _emailConfirmed = await UserManager.IsEmailConfirmedAsync(_user);
+
+        // Resolve avatar URL template from branding theme
+        var theme = await BrandingProvider.GetActiveAsync();
+        if (!string.IsNullOrEmpty(theme?.AvatarUrlTemplate) && _user is not null)
+        {
+            _avatarUrl = theme.AvatarUrlTemplate.Replace("{userid}", _user.Id, StringComparison.Ordinal);
+        }
     }
 }

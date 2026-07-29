@@ -91,6 +91,11 @@ public static class ServiceCollectionExtensions
     {
         app.UseAntiforgery();
 
+        // Redirect /favicon.ico to the real asset so browsers that auto-request
+        // the root favicon don't get a 404.
+        app.MapGet("/favicon.ico", () => Results.Redirect(
+            "/_content/Sufficit.Identity.UI/img/favicon.png", permanent: true));
+
         app.MapStaticAssets();
         app.MapRazorComponents<Components.App>()
            .AddInteractiveServerRenderMode();
