@@ -165,6 +165,50 @@ public sealed class ManagementUiArchitectureTests
         Assert.DoesNotContain("UserManager<", controller, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void User_permissions_controller_is_only_an_http_adapter()
+    {
+        var repositoryRoot = ResolveIdentityRepository();
+        var controller = File.ReadAllText(Path.Combine(
+            repositoryRoot,
+            "src",
+            "management",
+            "Controllers",
+            "UserPermissionsController.cs"));
+
+        Assert.Contains(
+            "IUserPermissionManagementService",
+            controller,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("AppDbContext", controller, StringComparison.Ordinal);
+        Assert.DoesNotContain("DbContext", controller, StringComparison.Ordinal);
+        Assert.DoesNotContain("UserManager<", controller, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "directive",
+            controller,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Access_page_uses_the_canonical_permission_contract()
+    {
+        var page = File.ReadAllText(Path.Combine(
+            ResolveManagementUiSource(),
+            "Components",
+            "Pages",
+            "Access.razor"));
+
+        Assert.Contains("GetPermissionsAsync", page, StringComparison.Ordinal);
+        Assert.Contains("SetRoleAsync", page, StringComparison.Ordinal);
+        Assert.Contains(
+            "SetContextualPermissionAsync",
+            page,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("API necessária", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("Claim(", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("key:ContextId", page, StringComparison.Ordinal);
+    }
+
     private static string ResolveManagementUiSource()
     {
         var repositoryRoot = ResolveIdentityRepository();

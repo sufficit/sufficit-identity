@@ -29,6 +29,7 @@ public static class ManagementResourceTypes
     public const string BrandingCollection = "branding-collection";
     public const string User = "user";
     public const string UserCollection = "user-collection";
+    public const string UserPermission = "user-permission";
     public const string Audit = "audit";
 }
 
