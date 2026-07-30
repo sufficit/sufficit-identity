@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Management.Permissions;
 using Sufficit.Identity.Management.Users;
 using Sufficit.Identity.UI.Management.Clients;
 
@@ -102,10 +103,74 @@ public sealed class ManagementUserDataSource(
                 : "User unlock",
             cancellationToken);
 
+    public Task<ManagementDataResult<ManagementUserPermissions>>
+        GetPermissionsAsync(
+            string id,
+            string? contextId,
+            CancellationToken cancellationToken = default) =>
+        ExecutePermissionAsync(
+            (permissions, context) => permissions.GetAsync(
+                id,
+                contextId,
+                context,
+                cancellationToken),
+            "User permission detail",
+            cancellationToken);
+
+    public Task<ManagementDataResult<ManagementUserPermissions>> SetRoleAsync(
+        string id,
+        SetManagementUserRoleCommand command,
+        CancellationToken cancellationToken = default) =>
+        ExecutePermissionAsync(
+            (permissions, context) => permissions.SetRoleAsync(
+                id,
+                command,
+                context,
+                cancellationToken),
+            "User role change",
+            cancellationToken);
+
+    public Task<ManagementDataResult<ManagementUserPermissions>>
+        SetContextualPermissionAsync(
+            string id,
+            SetManagementUserContextualPermissionCommand command,
+            CancellationToken cancellationToken = default) =>
+        ExecutePermissionAsync(
+            (permissions, context) =>
+                permissions.SetContextualPermissionAsync(
+                    id,
+                    command,
+                    context,
+                    cancellationToken),
+            "User contextual permission change",
+            cancellationToken);
+
     private async Task<ManagementDataResult<T>> ExecuteAsync<T>(
         Func<IUserManagementService, ManagementRequestContext, Task<T>> operation,
         string operationName,
+        CancellationToken cancellationToken) =>
+        await ExecuteServiceAsync(
+            operation,
+            operationName,
+            cancellationToken);
+
+    private async Task<ManagementDataResult<T>> ExecutePermissionAsync<T>(
+        Func<
+            IUserPermissionManagementService,
+            ManagementRequestContext,
+            Task<T>> operation,
+        string operationName,
+        CancellationToken cancellationToken) =>
+        await ExecuteServiceAsync(
+            operation,
+            operationName,
+            cancellationToken);
+
+    private async Task<ManagementDataResult<T>> ExecuteServiceAsync<TService, T>(
+        Func<TService, ManagementRequestContext, Task<T>> operation,
+        string operationName,
         CancellationToken cancellationToken)
+        where TService : notnull
     {
         try
         {
@@ -116,10 +181,10 @@ public sealed class ManagementUserDataSource(
                 Activity.Current?.Id ?? $"management-ui-{Guid.NewGuid():N}");
 
             await using var scope = scopeFactory.CreateAsyncScope();
-            var users = scope.ServiceProvider
-                .GetRequiredService<IUserManagementService>();
+            var service = scope.ServiceProvider
+                .GetRequiredService<TService>();
             return ManagementDataResult<T>.Success(
-                await operation(users, context));
+                await operation(service, context));
         }
         catch (ManagementValidationException exception)
         {

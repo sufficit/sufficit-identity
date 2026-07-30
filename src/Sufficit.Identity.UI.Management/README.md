@@ -36,6 +36,9 @@ Implementado:
   confirmação reiniciada para contatos alterados, rotação do security stamp e
   revogação apenas dos tokens ativos, preservando autorizações duráveis;
 - política MFA substituível e configurável por contexto;
+- delegação de papéis e diretivas contextuais pelo serviço canônico, com
+  limites por autoridade, rotação do security stamp, revogação de sessões e
+  auditoria;
 - avatar do operador resolvido pelo mesmo `IUserAvatarUrlResolver` usado pela
   UI pública, a partir do tema ativo do runtime, com iniciais como fallback;
 - defaults seguros para consentimento, HTTPS, PKCE e PAR;
@@ -48,7 +51,7 @@ Implementado:
 Ainda não implementado:
 
 - exclusão de usuários;
-- delegação administrativa de papéis, claims e diretivas;
+- gestão arbitrária de claims de perfil que não representam diretivas;
 - títulos amigáveis dos contextos e fonte externa de políticas MFA;
 - contratos administrativos de scopes isolados, sessões e grants.
 
@@ -185,7 +188,6 @@ Management habilitado e um usuário autenticado com um dos papéis configurados.
 
 ## Próximas entregas
 
-1. Implementar limites de delegação de papéis, claims e diretivas.
-2. Implementar exclusão de usuários.
-3. Resolver títulos de contextos e políticas MFA por uma fonte substituível.
-4. Migrar provisionamento, scopes e sessões para use cases compartilhados.
+1. Implementar exclusão de usuários.
+2. Resolver títulos de contextos e políticas MFA por uma fonte substituível.
+3. Migrar provisionamento, scopes e sessões para use cases compartilhados.

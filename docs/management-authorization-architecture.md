@@ -7,7 +7,9 @@
 > rule recorded below. Profile update invalidates active tokens while
 > preserving durable authorizations; lockout also invalidates the Identity
 > session and revokes the target subject's OpenIddict tokens and
-> authorizations.
+> authorizations. Role and contextual directive delegation are implemented
+> through the same canonical application boundary, including exact
+> same-context delegation limits, session revocation and audit.
 > Authorization is decided by the shared application layer used by the UI and
 > Management API. The canonical boundary is
 > [`single-source-ui-architecture.md`](single-source-ui-architecture.md).
@@ -57,6 +59,19 @@ through a replaceable adapter at the composition boundary.
   telefone alterados voltam ao estado não confirmado; um comando sem mudanças
   não invalida sessão.
 - Um operador não pode bloquear a própria conta pela Management UI/API.
+- Papéis são grants sobre a conta inteira. Somente um `Administrator` global
+  pode conceder ou remover papéis persistidos no Identity; um `Manager` não
+  pode promover outro usuário a `Manager` ou `Administrator`.
+- Diretivas Sufficit são grants contextuais. Um `Manager` pode conceder ou
+  remover somente uma diretiva que ele próprio possui no mesmo `ContextId`;
+  diretiva global (`Guid.Empty`), malformada ou de outro contexto nunca é
+  delegável por um `Manager`.
+- Um `Administrator` pode administrar papéis e diretivas conhecidas de qualquer
+  contexto. Nenhum operador pode alterar os próprios papéis ou diretivas pela
+  Management UI/API.
+- Toda mudança de autoridade gira o security stamp, revoga tokens e
+  autorizações OpenIddict do usuário afetado e grava auditoria no mesmo fluxo
+  transacional.
 
 ## Existing Sufficit model
 
@@ -149,6 +164,11 @@ IManagementAuthorizationEvaluator
 
 IManagementAccessPolicyProvider
     global or resource scope -> MFA and other access requirements
+
+IManagementContextualPermissionStore
+    persisted grants -> catalog and assignments for one context
+    operator + grant + context -> exact delegation decision
+    command -> add/remove the persisted contextual grant
 ```
 
 An authorization decision is not only a boolean. It distinguishes:
@@ -167,6 +187,12 @@ can replace the entitlement resolver without replacing the Management API.
 ASP.NET Core policies and resource-based authorization handlers enforce the
 decision.
 
+Roles are managed through ASP.NET Core Identity and remain account-wide. The
+generic application contract exposes existing role names and contextual
+permission options, but does not know a host's claim type or wire format. An
+empty contextual permission store is the fail-closed default. A host that
+supports contextual delegation replaces it at composition time.
+
 ## Sufficit adapter
 
 The optional Sufficit adapter:
@@ -182,6 +208,23 @@ The optional Sufficit adapter:
   addition to administrator-only capabilities;
 - fails closed for malformed or unknown grants;
 - never makes a Sufficit type part of a generic API DTO.
+
+For permission delegation, the Sufficit contextual store:
+
+- persists grants in the existing `directive` user claim;
+- reads both scalar and JSON-array claim values for backward compatibility;
+- lists directive keys already persisted by the runtime instead of copying a
+  second directive catalog into the UI;
+- allows a Manager to change only the exact `key:ContextId` grant already held
+  by that operator;
+- lets a global Administrator operate the persisted catalog in any non-empty
+  context;
+- rejects `Guid.Empty`, malformed values, self-delegation and cross-context
+  delegation.
+
+The UI receives labels, assignment state and `CanChange` decisions from the
+application use case. It does not parse claims, compare roles or reproduce the
+delegation matrix.
 
 For the first delivery, the essential mapping is:
 
@@ -245,6 +288,14 @@ association is stored separately from authority directives, so creating an
 identity cannot accidentally delegate a role or capability. The Sufficit
 adapter reads this explicit association alongside legacy directive-derived
 membership; existing accounts remain compatible without a data migration.
+
+Permission changes use a separate canonical application service shared by the
+embedded UI and the HTTP controller. Before mutation, that service resolves the
+target's real membership, validates the selected context and evaluates
+`identity.users.permissions.manage`. Role changes additionally require global
+administrator access. Contextual changes additionally ask the replaceable
+permission store whether the operator may delegate the exact grant. A browser
+supplied role, directive key or context is never trusted as proof of authority.
 
 ## Enforcement flow
 
@@ -376,9 +427,14 @@ authorization headers are always redacted.
   reiniciar confirmações alteradas e revogar apenas tokens ativos.
   **Concluído, incluindo no-op seguro, rollback transacional, auditoria por
   contexto e MFA por tenant.**
-- Add delegation limits for roles, claims and directives.
+- Implement role and contextual directive delegation through the canonical
+  permission service, with role changes restricted to Administrator and exact
+  same-context delegation for Manager. **Concluído, incluindo proteção do
+  último Administrator, bloqueio de autodelegação, claims escalares/JSON,
+  security stamp, revogação e auditoria.**
 - Audit all read and mutation paths. **Leituras, criação, reset de senha e
-  atualização de perfil e bloqueio/desbloqueio concluídos.**
+  atualização de perfil, bloqueio/desbloqueio e delegação de autoridade
+  concluídos.**
 
 ### Phase 6 — Remaining modules
 
@@ -432,8 +488,7 @@ authorization headers are always redacted.
 
 1. Qual backend substituirá a configuração local como fonte das políticas MFA
    por tenant no host Sufficit?
-2. Which user capabilities may a manager delegate to another operator?
-3. What are the audit retention and export requirements?
+2. What are the audit retention and export requirements?
 
 ## Current implementation evidence
 
@@ -456,5 +511,7 @@ authorization headers are always redacted.
   resets changed contact confirmations, revokes active tokens and preserves
   durable authorizations. Account lockout/unlock also exists with
   security-stamp rotation and OpenIddict token/authorization revocation.
-  Delete, role/claim delegation, independent scope and session/grant contracts
-  do not.
+  Role and contextual directive delegation also exists through
+  `IUserPermissionManagementService`; the Sufficit composition adapter uses the
+  existing persisted `directive` claims. Delete, arbitrary profile-claim
+  delegation, independent scope and session/grant contracts do not.

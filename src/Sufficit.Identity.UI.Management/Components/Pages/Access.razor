@@ -1,56 +1,728 @@
 @page "/access"
+@attribute [StreamRendering]
+@inject ManagementUserDataSource UserData
 
 <PageTitle>Acesso | Sufficit Identity</PageTitle>
 
-<PageHeader Eyebrow="Identidade"
-            Title="Acesso"
-            Description="Papéis, claims e scopes que determinam o que cada identidade pode fazer." />
+<PageHeader Title="Acesso"
+            Description="Delegue papéis e diretivas sem ultrapassar a autoridade do operador.">
+    <Actions>
+        <StatusBadge Tone="info" Icon="shield">Gestão contextual</StatusBadge>
+    </Actions>
+</PageHeader>
 
-<div class="access-grid">
-    <section class="module-card" aria-labelledby="roles-heading">
-        <div class="module-card__header">
-            <span class="module-card__icon"><AppIcon Name="shield" /></span>
-            <StatusBadge Tone="neutral">API necessária</StatusBadge>
-        </div>
-        <h2 id="roles-heading">Papéis e claims</h2>
-        <p>Autoridades organizacionais, vínculos de usuário e regras de delegação.</p>
-        <ul class="plain-check-list">
-            <li><AppIcon Name="clock" Size="16" /> CRUD de papéis</li>
-            <li><AppIcon Name="clock" Size="16" /> Vínculo com usuários</li>
-            <li><AppIcon Name="clock" Size="16" /> Claims e diretivas</li>
-        </ul>
-        <button class="button button--secondary" type="button" disabled>Abrir papéis</button>
-    </section>
-
-    <section class="module-card" aria-labelledby="scopes-heading">
-        <div class="module-card__header">
-            <span class="module-card__icon module-card__icon--info"><AppIcon Name="key" /></span>
-            <StatusBadge Tone="info">Via manifesto</StatusBadge>
-        </div>
-        <h2 id="scopes-heading">Scopes OAuth</h2>
-        <p>Permissões solicitadas por clientes e reconhecidas pelos recursos protegidos.</p>
-        <ul class="plain-check-list">
-            <li><AppIcon Name="check" Size="16" /> Provisionamento por manifesto</li>
-            <li><AppIcon Name="clock" Size="16" /> Listagem isolada</li>
-            <li><AppIcon Name="clock" Size="16" /> CRUD administrativo</li>
-        </ul>
-        <a class="button button--secondary" href="provisioning">Abrir provisionamento</a>
-    </section>
-</div>
-
-<section class="authorization-model" aria-labelledby="authorization-model-heading">
+<section class="contract-strip contract-strip--info">
+    <AppIcon Name="shield" Size="20" />
     <div>
-        <p class="section-kicker">Política recomendada</p>
-        <h2 id="authorization-model-heading">Escopo + autoridade + contexto</h2>
-        <p>A presença do escopo administrativo sozinha não deve autorizar uma operação humana.</p>
+        <strong>Delegação calculada no serviço</strong>
+        <span>Administrator administra papéis globais; Manager só delega uma diretiva que possui no mesmo contexto.</span>
     </div>
-    <div class="policy-flow" aria-label="Fluxo da política de autorização">
-        <span>Token válido</span>
-        <AppIcon Name="arrow-right" Size="17" />
-        <span>Escopo admin</span>
-        <AppIcon Name="arrow-right" Size="17" />
-        <span>Papel ou diretiva</span>
-        <AppIcon Name="arrow-right" Size="17" />
-        <span>Limite do recurso</span>
-    </div>
+    <StatusBadge Tone="info">Auditado</StatusBadge>
 </section>
+
+@if (accessLoading)
+{
+    <section class="access-loading panel" aria-busy="true">
+        <div class="table-skeleton" aria-label="Carregando autoridade">
+            @for (var index = 0; index < 4; index++)
+            {
+                <span></span>
+            }
+        </div>
+    </section>
+}
+else if (accessResult?.IsSuccess is false)
+{
+    <section class="panel">
+        <EmptyState Icon="shield"
+                    Title="@AccessErrorTitle"
+                    Description="@accessResult.ErrorMessage">
+            <Actions>
+                <button class="button button--secondary"
+                        type="button"
+                        @onclick="LoadAsync">
+                    Tentar novamente
+                </button>
+            </Actions>
+        </EmptyState>
+    </section>
+}
+else
+{
+    <section class="access-workspace" aria-labelledby="access-directory-heading">
+        <div class="data-toolbar data-toolbar--users">
+            <div>
+                <h2 id="access-directory-heading">Identidade e contexto</h2>
+                <p>@ToolbarDescription</p>
+            </div>
+            <div class="data-toolbar__actions user-filters">
+                @if (ShowContextSelector)
+                {
+                    <label class="select-field">
+                        <span>Contexto</span>
+                        <select value="@selectedContextId"
+                                disabled="@(usersLoading || permissionLoading || mutationLoading)"
+                                @onchange="ChangeContextAsync">
+                            @if (AuthorityAccess.HasGlobalAccess)
+                            {
+                                <option value="">Visão global · somente papéis</option>
+                            }
+                            @foreach (var contextId in AuthorityAccess.ContextIds)
+                            {
+                                <option value="@contextId">@ContextLabel(contextId)</option>
+                            }
+                        </select>
+                    </label>
+                }
+
+                <form class="user-search"
+                      @onsubmit="SearchAsync"
+                      @onsubmit:preventDefault>
+                    <label class="search-field">
+                        <span class="visually-hidden">Pesquisar usuários</span>
+                        <AppIcon Name="search" Size="18" />
+                        <input type="search"
+                               placeholder="Nome ou e-mail"
+                               autocomplete="off"
+                               disabled="@usersLoading"
+                               @bind="search"
+                               @bind:event="oninput" />
+                    </label>
+                    <button class="button button--secondary"
+                            type="submit"
+                            disabled="@usersLoading">
+                        Pesquisar
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="access-workspace__body">
+            <aside class="access-directory" aria-label="Usuários encontrados">
+                <div class="access-directory__heading">
+                    <div>
+                        <h3>Usuários</h3>
+                        <p>@ResultCountLabel</p>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(search))
+                    {
+                        <button class="text-button"
+                                type="button"
+                                disabled="@usersLoading"
+                                @onclick="ClearSearchAsync">
+                            Limpar
+                        </button>
+                    }
+                </div>
+
+                @if (usersLoading)
+                {
+                    <div class="access-directory__skeleton" aria-label="Carregando usuários">
+                        @for (var index = 0; index < 5; index++)
+                        {
+                            <span></span>
+                        }
+                    </div>
+                }
+                else if (usersResult?.IsSuccess is false)
+                {
+                    <EmptyState Icon="alert"
+                                Title="@UsersErrorTitle"
+                                Description="@usersResult.ErrorMessage">
+                        <Actions>
+                            <button class="button button--secondary button--compact"
+                                    type="button"
+                                    @onclick="LoadUsersAsync">
+                                Tentar novamente
+                            </button>
+                        </Actions>
+                    </EmptyState>
+                }
+                else if (Page.Items.Count is 0)
+                {
+                    <EmptyState Icon="users"
+                                Title="Nenhum usuário encontrado"
+                                Description="Revise o contexto ou a pesquisa informada." />
+                }
+                else
+                {
+                    <div class="access-user-list">
+                        @foreach (var user in Page.Items)
+                        {
+                            <button class="access-user @(selectedUserId == user.Id ? "access-user--selected" : null)"
+                                    type="button"
+                                    aria-pressed="@(selectedUserId == user.Id)"
+                                    disabled="@(permissionLoading || mutationLoading)"
+                                    @onclick="() => SelectUserAsync(user.Id)">
+                                <span class="access-user__avatar" aria-hidden="true">
+                                    @UserInitials(user)
+                                </span>
+                                <span class="access-user__copy">
+                                    <strong>@DisplayUserName(user)</strong>
+                                    <small>@DisplayEmail(user)</small>
+                                </span>
+                                <AppIcon Name="arrow-right" Size="16" />
+                            </button>
+                        }
+                    </div>
+                }
+            </aside>
+
+            <section id="permission-inspector"
+                     class="permission-inspector"
+                     aria-live="polite"
+                     tabindex="-1"
+                     @ref="permissionInspector">
+                @if (permissionLoading)
+                {
+                    <div class="permission-inspector__loading" aria-busy="true">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                }
+                else if (selectedUserId is null)
+                {
+                    <EmptyState Icon="shield"
+                                Title="Selecione uma identidade"
+                                Description="Escolha um usuário para consultar papéis e diretivas delegáveis." />
+                }
+                else if (permissionsResult?.IsSuccess is false)
+                {
+                    <EmptyState Icon="alert"
+                                Title="@PermissionsErrorTitle"
+                                Description="@permissionsResult.ErrorMessage">
+                        <Actions>
+                            <button class="button button--secondary"
+                                    type="button"
+                                    @onclick="LoadPermissionsAsync">
+                                Tentar novamente
+                            </button>
+                        </Actions>
+                    </EmptyState>
+                }
+                else if (permissionsResult?.Value is { } permissions)
+                {
+                    <header class="permission-inspector__header">
+                        <div>
+                            <h2>@DisplayUserName(permissions)</h2>
+                            <p>@DisplayEmail(permissions)</p>
+                        </div>
+                        <a class="row-action" href="@UserHref(permissions.UserId)">
+                            Ver usuário
+                            <AppIcon Name="arrow-right" Size="15" />
+                        </a>
+                    </header>
+
+                    @if (!string.IsNullOrWhiteSpace(successMessage))
+                    {
+                        <section class="inline-notice inline-notice--success" role="status">
+                            <AppIcon Name="check" Size="18" />
+                            <div>
+                                <strong>Autoridade atualizada</strong>
+                                <span>@successMessage</span>
+                            </div>
+                        </section>
+                    }
+
+                    @if (mutationResult?.IsSuccess is false)
+                    {
+                        <section class="inline-notice inline-notice--danger" role="alert">
+                            <AppIcon Name="alert" Size="18" />
+                            <div>
+                                <strong>Não foi possível alterar o acesso</strong>
+                                <span>@mutationResult.ErrorMessage</span>
+                            </div>
+                        </section>
+                    }
+
+                    <div class="permission-section">
+                        <div class="permission-section__heading">
+                            <div>
+                                <h3>Papéis da conta</h3>
+                                <p>Valem para a identidade inteira e só podem ser alterados por Administrator.</p>
+                            </div>
+                            <StatusBadge Tone="neutral">Global</StatusBadge>
+                        </div>
+                        <div class="permission-list">
+                            @foreach (var option in permissions.Roles)
+                            {
+                                <div class="permission-row">
+                                    <div class="permission-row__copy">
+                                        <strong>@option.Label</strong>
+                                        <span>@option.Description</span>
+                                    </div>
+                                    <div class="permission-row__action">
+                                        <StatusBadge Tone="@(option.IsAssigned ? "success" : "neutral")">
+                                            @(option.IsAssigned ? "Concedido" : "Não concedido")
+                                        </StatusBadge>
+                                        @if (option.CanChange)
+                                        {
+                                            <button class="button button--secondary button--compact"
+                                                    type="button"
+                                                    disabled="@mutationLoading"
+                                                    @onclick="() => BeginChange(PermissionKind.Role, option)">
+                                                @(option.IsAssigned ? "Remover" : "Conceder")
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <span class="permission-row__reason"
+                                                  title="@UnavailableReason(option.ReasonCode)">
+                                                Somente leitura
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                                @if (IsPending(PermissionKind.Role, option.Key))
+                                {
+                                    <div class="permission-confirmation"
+                                         role="group"
+                                         aria-label="Confirmar alteração de papel">
+                                        <p>
+                                            Confirma @(pendingChange!.Assign ? "conceder" : "remover")
+                                            <strong>@option.Label</strong> para esta conta?
+                                        </p>
+                                        <div>
+                                            <button class="button button--secondary button--compact"
+                                                    type="button"
+                                                    disabled="@mutationLoading"
+                                                    @onclick="CancelChange">
+                                                Cancelar
+                                            </button>
+                                            <button class="button button--primary button--compact"
+                                                    type="button"
+                                                    disabled="@mutationLoading"
+                                                    @onclick="ConfirmChangeAsync">
+                                                @(mutationLoading ? "Salvando…" : "Confirmar alteração")
+                                            </button>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
+                    </div>
+
+                    <div class="permission-section">
+                        <div class="permission-section__heading">
+                            <div>
+                                <h3>Diretivas do contexto</h3>
+                                <p>@ContextualDescription</p>
+                            </div>
+                            @if (permissions.ContextId is not null)
+                            {
+                                <StatusBadge Tone="info">@ContextLabel(permissions.ContextId)</StatusBadge>
+                            }
+                        </div>
+
+                        @if (permissions.ContextId is null)
+                        {
+                            <div class="permission-section__empty">
+                                <AppIcon Name="key" Size="19" />
+                                <span>Selecione um contexto para consultar e delegar diretivas.</span>
+                            </div>
+                        }
+                        else if (permissions.ContextualPermissions.Count is 0)
+                        {
+                            <div class="permission-section__empty">
+                                <AppIcon Name="lock" Size="19" />
+                                <span>Nenhuma diretiva delegável foi retornada para este operador.</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="permission-list">
+                                @foreach (var option in permissions.ContextualPermissions)
+                                {
+                                    <div class="permission-row">
+                                        <div class="permission-row__copy">
+                                            <strong>@option.Label</strong>
+                                            <span>@option.Description</span>
+                                        </div>
+                                        <div class="permission-row__action">
+                                            <StatusBadge Tone="@(option.IsAssigned ? "success" : "neutral")">
+                                                @(option.IsAssigned ? "Concedida" : "Não concedida")
+                                            </StatusBadge>
+                                            @if (option.CanChange)
+                                            {
+                                                <button class="button button--secondary button--compact"
+                                                        type="button"
+                                                        disabled="@mutationLoading"
+                                                        @onclick="() => BeginChange(PermissionKind.Contextual, option)">
+                                                    @(option.IsAssigned ? "Remover" : "Conceder")
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <span class="permission-row__reason"
+                                                      title="@UnavailableReason(option.ReasonCode)">
+                                                    Somente leitura
+                                                </span>
+                                            }
+                                        </div>
+                                    </div>
+                                    @if (IsPending(PermissionKind.Contextual, option.Key))
+                                    {
+                                        <div class="permission-confirmation"
+                                             role="group"
+                                             aria-label="Confirmar alteração de diretiva">
+                                            <p>
+                                                Confirma @(pendingChange!.Assign ? "conceder" : "remover")
+                                                <strong>@option.Label</strong> neste contexto?
+                                            </p>
+                                            <div>
+                                                <button class="button button--secondary button--compact"
+                                                        type="button"
+                                                        disabled="@mutationLoading"
+                                                        @onclick="CancelChange">
+                                                    Cancelar
+                                                </button>
+                                                <button class="button button--primary button--compact"
+                                                        type="button"
+                                                        disabled="@mutationLoading"
+                                                        @onclick="ConfirmChangeAsync">
+                                                    @(mutationLoading ? "Salvando…" : "Confirmar alteração")
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    <footer class="permission-inspector__footer">
+                        <AppIcon Name="lock" Size="17" />
+                        <span>Mudanças giram o security stamp, revogam sessões e ficam registradas na auditoria.</span>
+                    </footer>
+                }
+            </section>
+        </div>
+    </section>
+
+    <section class="access-scope-note" aria-labelledby="scope-note-heading">
+        <div>
+            <h2 id="scope-note-heading">Scopes OAuth continuam no provisionamento</h2>
+            <p>Scopes pertencem ao manifesto do servidor e não são claims de autoridade de um usuário.</p>
+        </div>
+        <a class="button button--secondary" href="provisioning">
+            Abrir provisionamento
+            <AppIcon Name="arrow-right" Size="16" />
+        </a>
+    </section>
+}
+
+@code {
+    private ManagementDataResult<ManagementUserAccess>? accessResult;
+    private ManagementDataResult<ManagementUserPage>? usersResult;
+    private ManagementDataResult<ManagementUserPermissions>? permissionsResult;
+    private ManagementDataResult<ManagementUserPermissions>? mutationResult;
+    private bool accessLoading = true;
+    private bool usersLoading;
+    private bool permissionLoading;
+    private bool mutationLoading;
+    private string search = string.Empty;
+    private string? selectedContextId;
+    private string? selectedUserId;
+    private string? successMessage;
+    private PendingPermissionChange? pendingChange;
+    private ElementReference permissionInspector;
+    private const int PageSize = 25;
+
+    [SupplyParameterFromQuery(Name = "context")]
+    public string? RequestedContextId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "user")]
+    public string? RequestedUserId { get; set; }
+
+    private ManagementUserAccess AuthorityAccess =>
+        accessResult?.Value ?? new(false, []);
+
+    private ManagementUserPage Page =>
+        usersResult?.Value ?? new([], 1, PageSize, 0, selectedContextId);
+
+    private bool ShowContextSelector =>
+        AuthorityAccess.HasGlobalAccess || AuthorityAccess.ContextIds.Count > 1;
+
+    private string AccessErrorTitle =>
+        accessResult?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? "Autenticação adicional necessária"
+            : "Nenhum contexto administrativo disponível";
+
+    private string UsersErrorTitle =>
+        usersResult?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? "MFA exigido neste contexto"
+            : usersResult?.Outcome is ManagementDataOutcome.Forbidden
+                ? "Acesso ao contexto negado"
+                : "Não foi possível consultar os usuários";
+
+    private string PermissionsErrorTitle =>
+        permissionsResult?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? "MFA exigido para administrar este acesso"
+            : permissionsResult?.Outcome is ManagementDataOutcome.Forbidden
+                ? "Delegação não autorizada"
+                : "Não foi possível consultar as permissões";
+
+    private string ToolbarDescription =>
+        usersLoading
+            ? "Consultando o diretório autorizado…"
+            : selectedContextId is null
+                ? "Visão global para papéis da conta."
+                : $"Diretivas restritas ao contexto {ContextLabel(selectedContextId)}.";
+
+    private string ResultCountLabel =>
+        usersLoading
+            ? "Carregando usuários"
+            : usersResult?.IsSuccess is true
+                ? Page.TotalCount > Page.Items.Count
+                    ? $"Mostrando {Page.Items.Count} de {Page.TotalCount}"
+                    : $"{Page.TotalCount} {Pluralize(Page.TotalCount, "usuário", "usuários")}"
+                : "Nenhum resultado carregado";
+
+    private string ContextualDescription =>
+        selectedContextId is null
+            ? "Escolha um contexto para ver os grants disponíveis."
+            : "Manager só altera as diretivas que possui neste mesmo contexto.";
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        accessLoading = true;
+        accessResult = await UserData.GetAccessAsync();
+        accessLoading = false;
+        usersResult = null;
+        permissionsResult = null;
+        selectedUserId = null;
+
+        if (accessResult.IsSuccess)
+        {
+            selectedContextId =
+                !string.IsNullOrWhiteSpace(RequestedContextId)
+                && AuthorityAccess.ContextIds.Contains(
+                    RequestedContextId,
+                    StringComparer.OrdinalIgnoreCase)
+                    ? RequestedContextId
+                    : AuthorityAccess.HasGlobalAccess
+                        ? null
+                        : AuthorityAccess.ContextIds.FirstOrDefault();
+            await LoadUsersAsync();
+            if (!string.IsNullOrWhiteSpace(RequestedUserId)
+                && Page.Items.Any(user => user.Id == RequestedUserId))
+            {
+                await SelectUserAsync(RequestedUserId, focusInspector: false);
+            }
+        }
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        usersLoading = true;
+        usersResult = await UserData.SearchAsync(
+            new ManagementUserSearch(
+                search,
+                selectedContextId,
+                Page: 1,
+                PageSize: PageSize));
+        usersLoading = false;
+
+        if (usersResult.IsSuccess
+            && selectedUserId is not null
+            && !Page.Items.Any(user => user.Id == selectedUserId))
+        {
+            selectedUserId = null;
+            permissionsResult = null;
+        }
+    }
+
+    private async Task SearchAsync()
+    {
+        selectedUserId = null;
+        permissionsResult = null;
+        pendingChange = null;
+        await LoadUsersAsync();
+    }
+
+    private async Task ClearSearchAsync()
+    {
+        search = string.Empty;
+        await SearchAsync();
+    }
+
+    private async Task ChangeContextAsync(ChangeEventArgs args)
+    {
+        selectedContextId = string.IsNullOrWhiteSpace(args.Value?.ToString())
+            ? null
+            : args.Value!.ToString();
+        selectedUserId = null;
+        permissionsResult = null;
+        mutationResult = null;
+        successMessage = null;
+        pendingChange = null;
+        await LoadUsersAsync();
+    }
+
+    private async Task SelectUserAsync(
+        string userId,
+        bool focusInspector = true)
+    {
+        selectedUserId = userId;
+        pendingChange = null;
+        mutationResult = null;
+        successMessage = null;
+        await LoadPermissionsAsync();
+        if (focusInspector)
+        {
+            await permissionInspector.FocusAsync();
+        }
+    }
+
+    private async Task LoadPermissionsAsync()
+    {
+        if (selectedUserId is null)
+        {
+            return;
+        }
+
+        permissionLoading = true;
+        permissionsResult = await UserData.GetPermissionsAsync(
+            selectedUserId,
+            selectedContextId);
+        permissionLoading = false;
+    }
+
+    private void BeginChange(
+        PermissionKind kind,
+        ManagementPermissionOption option)
+    {
+        mutationResult = null;
+        successMessage = null;
+        pendingChange = new PendingPermissionChange(
+            kind,
+            option.Key,
+            option.Label,
+            Assign: !option.IsAssigned);
+    }
+
+    private void CancelChange() => pendingChange = null;
+
+    private bool IsPending(PermissionKind kind, string key) =>
+        pendingChange is not null
+        && pendingChange.Kind == kind
+        && string.Equals(
+            pendingChange.Key,
+            key,
+            StringComparison.OrdinalIgnoreCase);
+
+    private async Task ConfirmChangeAsync()
+    {
+        if (selectedUserId is null || pendingChange is null)
+        {
+            return;
+        }
+
+        mutationLoading = true;
+        var change = pendingChange;
+        mutationResult = change.Kind is PermissionKind.Role
+            ? await UserData.SetRoleAsync(
+                selectedUserId,
+                new SetManagementUserRoleCommand(
+                    change.Key,
+                    change.Assign))
+            : await UserData.SetContextualPermissionAsync(
+                selectedUserId,
+                new SetManagementUserContextualPermissionCommand(
+                    change.Key,
+                    selectedContextId ?? string.Empty,
+                    change.Assign));
+        mutationLoading = false;
+
+        if (mutationResult.IsSuccess)
+        {
+            permissionsResult = mutationResult;
+            successMessage = change.Kind is PermissionKind.Role
+                ? change.Assign
+                    ? $"O papel {change.Label} foi concedido."
+                    : $"O papel {change.Label} foi removido."
+                : change.Assign
+                    ? $"A diretiva {change.Label} foi concedida."
+                    : $"A diretiva {change.Label} foi removida.";
+            pendingChange = null;
+            await LoadUsersAsync();
+        }
+    }
+
+    private string UserHref(string id)
+    {
+        var href = $"users/{Uri.EscapeDataString(id)}";
+        return selectedContextId is null
+            ? href
+            : $"{href}?context={Uri.EscapeDataString(selectedContextId)}";
+    }
+
+    private static string DisplayUserName(ManagementUserSummary user) =>
+        string.IsNullOrWhiteSpace(user.UserName)
+            ? user.Email ?? user.Id
+            : user.UserName;
+
+    private static string DisplayUserName(ManagementUserPermissions user) =>
+        string.IsNullOrWhiteSpace(user.UserName)
+            ? user.Email ?? user.UserId
+            : user.UserName;
+
+    private static string DisplayEmail(ManagementUserSummary user) =>
+        string.IsNullOrWhiteSpace(user.Email) ? "E-mail não informado" : user.Email;
+
+    private static string DisplayEmail(ManagementUserPermissions user) =>
+        string.IsNullOrWhiteSpace(user.Email) ? "E-mail não informado" : user.Email;
+
+    private static string UserInitials(ManagementUserSummary user)
+    {
+        var source = DisplayUserName(user).Trim();
+        if (source.Length is 0)
+        {
+            return "?";
+        }
+
+        var parts = source.Split(
+            [' ', '.', '_', '-', '@'],
+            StringSplitOptions.RemoveEmptyEntries);
+        return string.Concat(parts.Take(2).Select(part => part[0]))
+            .ToUpperInvariant();
+    }
+
+    private static string ContextLabel(string contextId) =>
+        contextId.Length > 12
+            ? $"{contextId[..8]}…{contextId[^4..]}"
+            : contextId;
+
+    private static string UnavailableReason(string reasonCode) =>
+        reasonCode switch
+        {
+            "user_self_permission_change_not_allowed" =>
+                "A própria autoridade não pode ser alterada por este módulo.",
+            "contextual_permission_not_delegable" =>
+                "O operador não possui esta diretiva no contexto selecionado.",
+            "mfa_required" =>
+                "Conclua a autenticação multifator para alterar esta diretiva.",
+            _ => "A alteração não foi autorizada pelo serviço."
+        };
+
+    private static string Pluralize(
+        int count,
+        string singular,
+        string plural) =>
+        count is 1 ? singular : plural;
+
+    private enum PermissionKind
+    {
+        Role,
+        Contextual
+    }
+
+    private sealed record PendingPermissionChange(
+        PermissionKind Kind,
+        string Key,
+        string Label,
+        bool Assign);
+}

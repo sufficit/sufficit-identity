@@ -94,11 +94,13 @@ consistência.
 Os verticais administrativos de clientes, branding e usuários
 aplicam o padrão canônico. Controllers HTTP e data sources da UI usam
 `IClientManagementService`, `IBrandingManagementService` e
-`IUserManagementService` para executar os mesmos casos de uso. Esses serviços
-concentram validação, defaults, autorização e auditoria; o escopo DI curto
-protege o circuito Blazor sem criar uma segunda implementação. Usuários
-incluem acesso, pesquisa paginada, detalhe, criação contextual, atualização de
-perfil e reset de senha com validação completa da associação multicontexto.
+`IUserManagementService` para executar os mesmos casos de uso. A gestão de
+papéis e diretivas usa `IUserPermissionManagementService` tanto na tela de
+Acesso quanto no controller HTTP. Esses serviços concentram validação,
+defaults, autorização e auditoria; o escopo DI curto protege o circuito Blazor
+sem criar uma segunda implementação. Usuários incluem acesso, pesquisa
+paginada, detalhe, criação contextual, atualização de perfil, reset de senha e
+delegação de autoridade com validação completa da associação multicontexto.
 Atualização de perfil, bloqueio e desbloqueio também passam por esse serviço:
 a UI recebe a decisão de capability e apenas envia o comando; Identity,
 confirmações, security stamp, tokens, autorizações e auditoria permanecem no
