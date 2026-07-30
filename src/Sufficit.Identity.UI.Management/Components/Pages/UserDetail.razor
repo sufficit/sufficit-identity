@@ -437,7 +437,7 @@ else
         $"users/{Uri.EscapeDataString(Id)}/edit";
 
     private string ClaimsHref =>
-        $"users/{Uri.EscapeDataString(Id)}/claims";
+        $"claims?user={Uri.EscapeDataString(Id)}";
 
     private string SessionsHref =>
         $"sessions?user={Uri.EscapeDataString(Id)}";

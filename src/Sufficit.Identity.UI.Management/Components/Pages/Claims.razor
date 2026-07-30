@@ -1,4 +1,4 @@
-@page "/users/{UserId}/claims"
+@page "/claims"
 @attribute [Authorize(Policy = ManagementUiPolicies.ManageClaims)]
 @attribute [StreamRendering]
 @inject ManagementClaimDataSource ClaimData
@@ -13,185 +13,201 @@
             <AppIcon Name="arrow-left" Size="17" />
             Voltar para o usuário
         </a>
-        <a class="button button--primary" href="@CreateHref">
-            <AppIcon Name="plus" Size="17" />
-            Atribuir claim
-        </a>
+        @if (HasUserContext)
+        {
+            <a class="button button--primary" href="@CreateHref">
+                <AppIcon Name="plus" Size="17" />
+                Atribuir claim
+            </a>
+        }
     </Actions>
 </PageHeader>
 
-@if (Created is 1)
+@if (!HasUserContext)
 {
-    <section class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
-        <div>
-            <strong>Claim atribuída</strong>
-            <span>O selo de segurança foi atualizado e os tokens anteriores foram revogados.</span>
-        </div>
-    </section>
+    <EmptyState Icon="users"
+                Title="Selecione um usuário"
+                Description="Abra uma conta no diretório de identidades para consultar e administrar suas claims.">
+        <Actions>
+            <a class="button button--primary" href="users">Abrir diretório de usuários</a>
+        </Actions>
+    </EmptyState>
 }
-
-@if (Deleted is 1)
+else
 {
-    <section class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
-        <div>
-            <strong>Claim removida</strong>
-            <span>A atribuição foi excluída e as credenciais emitidas anteriormente foram revogadas.</span>
-        </div>
-    </section>
-}
-
-<section class="contract-strip contract-strip--info">
-    <AppIcon Name="users" Size="20" />
-    <div>
-        <strong>@AccountLabel</strong>
-        <span>@AccountDescription</span>
-    </div>
-    <StatusBadge Tone="info">Conta selecionada</StatusBadge>
-</section>
-
-<section class="table-panel" aria-labelledby="claims-list-heading" aria-busy="@loading">
-    <div class="data-toolbar data-toolbar--users">
-        <div>
-            <h2 id="claims-list-heading">Claims da conta</h2>
-            <p>Tipos multivalorados aparecem em linhas separadas e podem ser editados individualmente.</p>
-        </div>
-        <div class="data-toolbar__actions">
-            <form class="user-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
-                <label class="search-field">
-                    <span class="visually-hidden">Pesquisar claims da conta</span>
-                    <AppIcon Name="search" Size="18" />
-                    <input type="search"
-                           placeholder="Tipo ou valor"
-                           autocomplete="off"
-                           @bind="search" />
-                </label>
-                <button class="button button--secondary" type="submit" disabled="@loading">
-                    Pesquisar
-                </button>
-                @if (!string.IsNullOrWhiteSpace(search))
-                {
-                    <button class="button button--secondary button--compact"
-                            type="button"
-                            @onclick="ClearSearchAsync">
-                        Limpar
-                    </button>
-                }
-            </form>
-        </div>
-    </div>
-
-    <div class="client-results" aria-live="polite">
-        @if (loading)
-        {
-            <div class="table-skeleton" aria-label="Carregando claims">
-                @for (var index = 0; index < 4; index++)
-                {
-                    <span></span>
-                }
+    @if (Created is 1)
+    {
+        <section class="inline-notice inline-notice--success" role="status">
+            <AppIcon Name="check" Size="19" />
+            <div>
+                <strong>Claim atribuída</strong>
+                <span>O selo de segurança foi atualizado e os tokens anteriores foram revogados.</span>
             </div>
-        }
-        else if (userResult?.IsSuccess is false)
-        {
-            <EmptyState Icon="alert"
-                        Title="@UserErrorTitle"
-                        Description="@(userResult.ErrorMessage ?? "O serviço não conseguiu ler a conta.")">
-                <Actions>
-                    <a class="button button--secondary" href="users">Voltar para usuários</a>
-                </Actions>
-            </EmptyState>
-        }
-        else if (result?.IsSuccess is true)
-        {
-            @if (Page.Items.Count is 0)
+        </section>
+    }
+
+    @if (Deleted is 1)
+    {
+        <section class="inline-notice inline-notice--success" role="status">
+            <AppIcon Name="check" Size="19" />
+            <div>
+                <strong>Claim removida</strong>
+                <span>A atribuição foi excluída e as credenciais emitidas anteriormente foram revogadas.</span>
+            </div>
+        </section>
+    }
+
+    <section class="contract-strip contract-strip--info">
+        <AppIcon Name="users" Size="20" />
+        <div>
+            <strong>@AccountLabel</strong>
+            <span>@AccountDescription</span>
+        </div>
+        <StatusBadge Tone="info">Conta selecionada</StatusBadge>
+    </section>
+
+    <section class="table-panel" aria-labelledby="claims-list-heading" aria-busy="@loading">
+        <div class="data-toolbar data-toolbar--users">
+            <div>
+                <h2 id="claims-list-heading">Claims da conta</h2>
+                <p>Tipos multivalorados aparecem em linhas separadas e podem ser editados individualmente.</p>
+            </div>
+            <div class="data-toolbar__actions">
+                <form class="user-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
+                    <label class="search-field">
+                        <span class="visually-hidden">Pesquisar claims da conta</span>
+                        <AppIcon Name="search" Size="18" />
+                        <input type="search"
+                               placeholder="Tipo ou valor"
+                               autocomplete="off"
+                               @bind="search" />
+                    </label>
+                    <button class="button button--secondary" type="submit" disabled="@loading">
+                        Pesquisar
+                    </button>
+                    @if (!string.IsNullOrWhiteSpace(search))
+                    {
+                        <button class="button button--secondary button--compact"
+                                type="button"
+                                @onclick="ClearSearchAsync">
+                            Limpar
+                        </button>
+                    }
+                </form>
+            </div>
+        </div>
+
+        <div class="client-results" aria-live="polite">
+            @if (loading)
             {
-                <EmptyState Icon="shield"
-                            Title="Nenhuma claim atribuída"
-                            Description="@EmptyDescription">
+                <div class="table-skeleton" aria-label="Carregando claims">
+                    @for (var index = 0; index < 4; index++)
+                    {
+                        <span></span>
+                    }
+                </div>
+            }
+            else if (userResult?.IsSuccess is false)
+            {
+                <EmptyState Icon="alert"
+                            Title="@UserErrorTitle"
+                            Description="@(userResult.ErrorMessage ?? "O serviço não conseguiu ler a conta.")">
                     <Actions>
-                        <a class="button button--primary" href="@CreateHref">Atribuir primeira claim</a>
+                        <a class="button button--secondary" href="users">Voltar para usuários</a>
                     </Actions>
                 </EmptyState>
             }
+            else if (result?.IsSuccess is true)
+            {
+                @if (Page.Items.Count is 0)
+                {
+                    <EmptyState Icon="shield"
+                                Title="Nenhuma claim atribuída"
+                                Description="@EmptyDescription">
+                        <Actions>
+                            <a class="button button--primary" href="@CreateHref">Atribuir primeira claim</a>
+                        </Actions>
+                    </EmptyState>
+                }
+                else
+                {
+                    <div class="table-scroll">
+                        <table class="data-table data-table--claims">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Tipo</th>
+                                    <th scope="col">Valor</th>
+                                    <th scope="col">Estado</th>
+                                    <th scope="col"><span class="visually-hidden">Ações</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var claim in Page.Items)
+                                {
+                                    <tr>
+                                        <td data-label="Tipo"><code class="client-id">@claim.Type</code></td>
+                                        <td data-label="Valor"><span class="claim-value">@claim.Value</span></td>
+                                        <td data-label="Estado"><StatusBadge Tone="success">Atribuída</StatusBadge></td>
+                                        <td data-label="Ações">
+                                            <a class="row-action" href="@ClaimHref(claim.Id)">
+                                                Editar
+                                                <AppIcon Name="edit" Size="15" />
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            }
             else
             {
-                <div class="table-scroll">
-                    <table class="data-table data-table--claims">
-                        <thead>
-                            <tr>
-                                <th scope="col">Tipo</th>
-                                <th scope="col">Valor</th>
-                                <th scope="col">Estado</th>
-                                <th scope="col"><span class="visually-hidden">Ações</span></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var claim in Page.Items)
-                            {
-                                <tr>
-                                    <td data-label="Tipo"><code class="client-id">@claim.Type</code></td>
-                                    <td data-label="Valor"><span class="claim-value">@claim.Value</span></td>
-                                    <td data-label="Estado"><StatusBadge Tone="success">Atribuída</StatusBadge></td>
-                                    <td data-label="Ações">
-                                        <a class="row-action" href="@ClaimHref(claim.Id)">
-                                            Editar
-                                            <AppIcon Name="edit" Size="15" />
-                                        </a>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
+                <EmptyState Icon="alert"
+                            Title="@ErrorTitle"
+                            Description="@(result?.ErrorMessage ?? "O serviço não conseguiu ler as atribuições agora.")">
+                    <Actions>
+                        <button class="button button--secondary" type="button" @onclick="LoadAsync">
+                            Tentar novamente
+                        </button>
+                    </Actions>
+                </EmptyState>
+            }
+        </div>
+
+        <footer class="table-footer table-footer--paginated">
+            <span>@ResultCountLabel</span>
+            @if (result?.IsSuccess is true && Page.TotalCount > Page.PageSize)
+            {
+                <div class="pagination" aria-label="Paginação de claims">
+                    <button class="button button--secondary button--compact" type="button"
+                            disabled="@(Page.Page <= 1 || loading)"
+                            @onclick="PreviousPageAsync">Anterior</button>
+                    <span>Página @Page.Page de @TotalPages</span>
+                    <button class="button button--secondary button--compact" type="button"
+                            disabled="@(Page.Page >= TotalPages || loading)"
+                            @onclick="NextPageAsync">Próxima</button>
                 </div>
             }
-        }
-        else
-        {
-            <EmptyState Icon="alert"
-                        Title="@ErrorTitle"
-                        Description="@(result?.ErrorMessage ?? "O serviço não conseguiu ler as atribuições agora.")">
-                <Actions>
-                    <button class="button button--secondary" type="button" @onclick="LoadAsync">
-                        Tentar novamente
-                    </button>
-                </Actions>
-            </EmptyState>
-        }
-    </div>
+        </footer>
+    </section>
 
-    <footer class="table-footer table-footer--paginated">
-        <span>@ResultCountLabel</span>
-        @if (result?.IsSuccess is true && Page.TotalCount > Page.PageSize)
-        {
-            <div class="pagination" aria-label="Paginação de claims">
-                <button class="button button--secondary button--compact" type="button"
-                        disabled="@(Page.Page <= 1 || loading)"
-                        @onclick="PreviousPageAsync">Anterior</button>
-                <span>Página @Page.Page de @TotalPages</span>
-                <button class="button button--secondary button--compact" type="button"
-                        disabled="@(Page.Page >= TotalPages || loading)"
-                        @onclick="NextPageAsync">Próxima</button>
-            </div>
-        }
-    </footer>
-</section>
-
-<section class="client-guardrails" aria-labelledby="claim-boundary-heading">
-    <div>
-        <h2 id="claim-boundary-heading">Atributos do protocolo, não regras empresariais</h2>
-        <p>O provedor armazena os valores; cada aplicação decide como interpretá-los.</p>
-    </div>
-    <ul>
-        <li><AppIcon Name="shield" Size="18" /> Claims reservadas permanecem protegidas</li>
-        <li><AppIcon Name="refresh" Size="18" /> Cada mutação revoga tokens da conta</li>
-        <li><AppIcon Name="audit" Size="18" /> Valores não entram na auditoria</li>
-    </ul>
-</section>
+    <section class="client-guardrails" aria-labelledby="claim-boundary-heading">
+        <div>
+            <h2 id="claim-boundary-heading">Atributos do protocolo, não regras empresariais</h2>
+            <p>O provedor armazena os valores; cada aplicação decide como interpretá-los.</p>
+        </div>
+        <ul>
+            <li><AppIcon Name="shield" Size="18" /> Claims reservadas permanecem protegidas</li>
+            <li><AppIcon Name="refresh" Size="18" /> Cada mutação revoga tokens da conta</li>
+            <li><AppIcon Name="audit" Size="18" /> Valores não entram na auditoria</li>
+        </ul>
+    </section>
+}
 
 @code {
-    [Parameter]
-    public string UserId { get; set; } = string.Empty;
+    [SupplyParameterFromQuery(Name = "user")]
+    public string? UserId { get; set; }
 
     [SupplyParameterFromQuery(Name = "created")]
     public int Created { get; set; }
@@ -206,8 +222,11 @@
     private bool loading = true;
     private const int PageSize = 25;
 
+    private bool HasUserContext =>
+        !string.IsNullOrWhiteSpace(UserId);
+
     private ManagementClaimPage Page =>
-        result?.Value ?? new([], 1, PageSize, 0, UserId);
+        result?.Value ?? new([], 1, PageSize, 0, UserId ?? string.Empty);
 
     private string HeaderTitle =>
         userResult?.Value is { } user
@@ -224,13 +243,15 @@
     private string AccountDescription =>
         userResult?.Value is { } user
             ? $"{user.Email ?? "E-mail não informado"} · {user.Id}"
-            : UserId;
+            : UserId ?? string.Empty;
 
     private string UserHref =>
-        $"users/{Uri.EscapeDataString(UserId)}";
+        HasUserContext
+            ? $"users/{Uri.EscapeDataString(UserId!)}"
+            : "users";
 
     private string CreateHref =>
-        $"{UserHref}/claims/new";
+        $"claims/new?user={Uri.EscapeDataString(UserId!)}";
 
     private int TotalPages =>
         Math.Max(1, (int)Math.Ceiling(Page.TotalCount / (double)Page.PageSize));
@@ -268,7 +289,16 @@
     private async Task LoadAsync()
     {
         loading = true;
-        var userTask = UserData.GetAsync(UserId);
+        userResult = null;
+        result = null;
+
+        if (!HasUserContext)
+        {
+            loading = false;
+            return;
+        }
+
+        var userTask = UserData.GetAsync(UserId!);
         var claimsTask = ClaimData.SearchAsync(
             new ManagementClaimSearch(search, UserId, currentPage, PageSize));
         await Task.WhenAll(userTask, claimsTask);
@@ -303,7 +333,7 @@
     }
 
     private string ClaimHref(int id) =>
-        $"{UserHref}/claims/{id}";
+        $"claims/edit?user={Uri.EscapeDataString(UserId!)}&claim={id}";
 
     private static string DisplayName(ManagementUserDetail user) =>
         user.UserName ?? user.Email ?? user.Id;

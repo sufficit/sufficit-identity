@@ -1,4 +1,4 @@
-@page "/users/{UserId}/claims/{ClaimId:int}"
+@page "/claims/edit"
 @attribute [Authorize(Policy = ManagementUiPolicies.ManageClaims)]
 @inject ManagementClaimDataSource ClaimData
 @inject NavigationManager Navigation
@@ -26,7 +26,17 @@
     </section>
 }
 
-@if (loading)
+@if (!HasClaimContext)
+{
+    <EmptyState Icon="users"
+                Title="Selecione uma claim"
+                Description="Abra as claims de um usuário e escolha a atribuição que deseja editar.">
+        <Actions>
+            <a class="button button--primary" href="users">Abrir diretório de usuários</a>
+        </Actions>
+    </EmptyState>
+}
+else if (loading)
 {
     <section class="detail-shell" aria-busy="true" aria-label="Carregando claim">
         <div class="detail-skeleton"></div>
@@ -163,11 +173,11 @@ else
 }
 
 @code {
-    [Parameter]
-    public string UserId { get; set; } = string.Empty;
+    [SupplyParameterFromQuery(Name = "user")]
+    public string? UserId { get; set; }
 
-    [Parameter]
-    public int ClaimId { get; set; }
+    [SupplyParameterFromQuery(Name = "claim")]
+    public int? ClaimId { get; set; }
 
     private readonly ClaimEditModel model = new();
     private ManagementDataResult<ManagementClaimAssignment>? result;
@@ -179,11 +189,18 @@ else
     private bool confirmed;
     private bool updated;
 
+    private bool HasClaimContext =>
+        !string.IsNullOrWhiteSpace(UserId) && ClaimId is > 0;
+
     private string BackHref =>
-        $"users/{Uri.EscapeDataString(UserId)}/claims";
+        !string.IsNullOrWhiteSpace(UserId)
+            ? $"claims?user={Uri.EscapeDataString(UserId)}"
+            : "users";
 
     private string UserHref =>
-        $"users/{Uri.EscapeDataString(UserId)}";
+        !string.IsNullOrWhiteSpace(UserId)
+            ? $"users/{Uri.EscapeDataString(UserId)}"
+            : "users";
 
     private string ErrorTitle =>
         result?.Outcome is ManagementDataOutcome.NotFound
@@ -195,7 +212,19 @@ else
     protected override async Task OnParametersSetAsync()
     {
         loading = true;
-        result = await ClaimData.GetAsync(ClaimId);
+        result = null;
+        submission = null;
+        deletion = null;
+        updated = false;
+        confirmed = false;
+
+        if (!HasClaimContext)
+        {
+            loading = false;
+            return;
+        }
+
+        result = await ClaimData.GetAsync(ClaimId!.Value);
         if (result.Value is { } claim)
         {
             model.Type = claim.Type;
@@ -206,7 +235,7 @@ else
 
     private async Task UpdateAsync()
     {
-        if (saving)
+        if (!HasClaimContext || saving)
         {
             return;
         }
@@ -214,7 +243,7 @@ else
         saving = true;
         updated = false;
         submission = await ClaimData.UpdateAsync(
-            ClaimId,
+            ClaimId!.Value,
             new UpdateManagementClaimCommand(model.Type, model.Value));
         saving = false;
         if (submission.IsSuccess && submission.Value is not null)
@@ -226,17 +255,17 @@ else
 
     private async Task DeleteAsync()
     {
-        if (!confirmed || deleting)
+        if (!HasClaimContext || !confirmed || deleting)
         {
             return;
         }
 
         deleting = true;
-        deletion = await ClaimData.DeleteAsync(ClaimId);
+        deletion = await ClaimData.DeleteAsync(ClaimId!.Value);
         deleting = false;
         if (deletion.IsSuccess)
         {
-            Navigation.NavigateTo($"{BackHref}?deleted=1");
+            Navigation.NavigateTo($"{BackHref}&deleted=1");
         }
     }
 

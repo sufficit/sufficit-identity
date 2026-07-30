@@ -66,6 +66,24 @@ Uma UI fora do processo usa HTTP e um cliente tipado. Uma UI no mesmo processo
 pode usar HTTP quando houver motivo operacional, mas isso não é requisito de
 consistência.
 
+## Convenção de URLs da UI
+
+As páginas da Management UI usam caminhos estáveis para identificar a
+funcionalidade. Identificadores, filtros e o contexto da operação são
+transportados preferencialmente pela query string, em vez de criar hierarquias
+variáveis no caminho.
+
+Claims continuam obrigatoriamente contextuais a um usuário, mas usam:
+
+- `/management/claims?user={userId}` para consulta;
+- `/management/claims/new?user={userId}` para criação;
+- `/management/claims/edit?user={userId}&claim={claimId}` para edição.
+
+Sem o parâmetro `user`, a interface falha fechado e orienta o operador a
+selecionar uma conta; ela nunca converte a ausência do contexto numa listagem
+global. Essa convenção é de navegação da UI e não altera os recursos REST
+publicados pelos adaptadores HTTP.
+
 ## Autorização
 
 - Controllers e UIs usam o mesmo avaliador de capabilities e recursos.
@@ -109,7 +127,8 @@ runtime canônico.
 Claims são atribuições persistidas nas contas. Sua criação, edição e remoção
 atualizam o security stamp e revogam tokens pelo serviço de aplicação; o valor
 nunca é duplicado na auditoria. A interface de claims existe no contexto do
-detalhe de cada usuário, sem uma lista global paralela. Scopes são definições
+detalhe de cada usuário e transporta esse contexto na query string, sem uma
+lista global paralela. Scopes são definições
 do OpenIddict. A UI distingue
 scopes criados manualmente dos marcados pelo manifesto de provisionamento:
 estes últimos são somente leitura, porque sua fonte autoritativa é o próprio

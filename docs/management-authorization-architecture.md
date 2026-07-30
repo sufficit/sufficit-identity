@@ -141,7 +141,9 @@ The corrected UI:
   security operations;
 - removes the former generic `/management/access` information page;
 - exposes Claims from each user detail as persisted custom-claim assignments,
-  with per-account search, creation, editing and removal;
+  with per-account search, creation, editing and removal; the stable Claims
+  routes receive `user` and `claim` through the query string rather than
+  embedding identifiers in the path;
 - exposes Scopes under OAuth/OIDC as custom OpenIddict definitions, with list,
   creation, detail, update and guarded deletion;
 - exposes Authorizations under OAuth/OIDC as grants/consents with scopes and
@@ -197,5 +199,6 @@ Sufficit Blazor ──> identity/SCIM API ──> identity application service
   credentials and remain audited.
 - Claims are contextual to a user; scopes, sessions and authorizations have
   independent routes, capabilities and navigation entries.
+- Claims routes fail closed when their required `user` query context is absent.
 - Manifest-managed scopes cannot be manually updated or deleted.
 - Claim values are never copied into management audit events.
