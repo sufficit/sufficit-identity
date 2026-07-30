@@ -14,6 +14,7 @@ using Sufficit.Identity.Management.Branding;
 using Sufficit.Identity.Management.Claims;
 using Sufficit.Identity.Management.Clients;
 using Sufficit.Identity.Management.Controllers;
+using Sufficit.Identity.Management.Overview;
 using Sufficit.Identity.Management.Provisioning;
 using Sufficit.Identity.Management.Scopes;
 using Sufficit.Identity.Management.Sessions;
@@ -79,6 +80,8 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IBrandingManagementService,
             BrandingManagementService>();
         services.TryAddScoped<IUserManagementService, UserManagementService>();
+        services.TryAddScoped<IManagementOverviewService,
+            ManagementOverviewService>();
         services.TryAddScoped<IManagementUserSessionRevoker,
             OpenIddictManagementUserSessionRevoker>();
         services.TryAddSingleton<IBrandingThemeProvider,

@@ -79,6 +79,7 @@ public static class ManagementResourceTypes
     public const string Authorization = "authorization";
     public const string AuthorizationCollection = "authorization-collection";
     public const string Audit = "audit";
+    public const string Overview = "overview";
 }
 
 public sealed record ManagementRequestContext(

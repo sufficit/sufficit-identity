@@ -67,6 +67,62 @@ public sealed class ManagementUiRoutingTests
     }
 
     [Fact]
+    public async Task Provider_operator_renders_runtime_driven_home_and_settings()
+    {
+        await using var app = await CreateHostAsync();
+        using var client = app.GetTestClient();
+
+        await SignInAsync(client, "administrator");
+
+        using var home = await client.GetAsync("/management/");
+        var homeHtml = WebUtility.HtmlDecode(
+            await home.Content.ReadAsStringAsync());
+        using var settings = await client.GetAsync("/management/settings");
+        var settingsHtml = WebUtility.HtmlDecode(
+            await settings.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, home.StatusCode);
+        Assert.Contains(
+            "Estado fornecido pelo runtime",
+            homeHtml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Política administrativa verificada",
+            homeHtml,
+            StringComparison.Ordinal);
+        Assert.Contains("Clientes", homeHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Parcial", homeHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("5 de 5", homeHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "Listagem incorporada",
+            homeHtml,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "href=\"provisioning\"",
+            homeHtml,
+            StringComparison.Ordinal);
+
+        Assert.Equal(HttpStatusCode.OK, settings.StatusCode);
+        Assert.Contains(
+            "Configuração fornecida pelo serviço",
+            settingsHtml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "skoruba_identity_admin_api",
+            settingsHtml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Contrato de aplicação ainda não disponível",
+            settingsHtml,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "Razor Class Library",
+            settingsHtml,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("PathBase", settingsHtml, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Administrator_can_render_the_real_client_list()
     {
         await using var app = await CreateHostAsync();

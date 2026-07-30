@@ -109,6 +109,57 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Runtime_surfaces_project_the_canonical_overview_contract()
+    {
+        var uiRoot = ResolveManagementUiSource();
+        var pages = Path.Combine(uiRoot, "Components", "Pages");
+        var layout = File.ReadAllText(Path.Combine(
+            uiRoot,
+            "Components",
+            "Layout",
+            "MainLayout.razor"));
+        var navigation = File.ReadAllText(Path.Combine(
+            uiRoot,
+            "Components",
+            "Layout",
+            "NavMenu.razor"));
+        var home = File.ReadAllText(Path.Combine(pages, "Home.razor"));
+        var settings = File.ReadAllText(Path.Combine(pages, "Settings.razor"));
+        var combined = layout + navigation + home + settings;
+
+        Assert.Contains(
+            "ManagementOverviewDataSource",
+            layout,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "ManagementModulePresentations",
+            navigation,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "CascadingParameter(Name = \"ManagementOverview\")",
+            home,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "CascadingParameter(Name = \"ManagementOverview\")",
+            settings,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("IOptions<", home + settings, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "IWebHostEnvironment",
+            layout,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "Prontidão dos módulos",
+            combined,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("5 de 5", combined, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "Listagem incorporada",
+            combined,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Client_controller_is_only_an_http_adapter()
     {
         var repositoryRoot = ResolveIdentityRepository();
@@ -143,6 +194,28 @@ public sealed class ManagementUiArchitectureTests
         Assert.DoesNotContain("AppDbContext", controller, StringComparison.Ordinal);
         Assert.DoesNotContain("DbContext", controller, StringComparison.Ordinal);
         Assert.DoesNotContain("BrandingThemeProvider", controller, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Overview_controller_is_only_an_http_adapter()
+    {
+        var controller = File.ReadAllText(Path.Combine(
+            ResolveIdentityRepository(),
+            "src",
+            "management",
+            "Controllers",
+            "OverviewController.cs"));
+
+        Assert.Contains(
+            "IManagementOverviewService",
+            controller,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("IOptions<", controller, StringComparison.Ordinal);
+        Assert.DoesNotContain("IHostEnvironment", controller, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "IManagementEntitlementResolver",
+            controller,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -273,6 +346,10 @@ public sealed class ManagementUiArchitectureTests
             "Components",
             "Layout",
             "NavMenu.razor"));
+        var presentations = File.ReadAllText(Path.Combine(
+            ResolveManagementUiSource(),
+            "Overview",
+            "ManagementModulePresentation.cs"));
 
         Assert.False(File.Exists(Path.Combine(pages, "Access.razor")));
         Assert.Contains("ManagementClaimDataSource", claims, StringComparison.Ordinal);
@@ -306,7 +383,7 @@ public sealed class ManagementUiArchitectureTests
             claims + claimCreate + claimDetail,
             StringComparison.Ordinal);
         Assert.DoesNotContain("href=\"claims\"", navigation, StringComparison.Ordinal);
-        Assert.Contains("href=\"scopes\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("\"scopes\"", presentations, StringComparison.Ordinal);
         Assert.Contains(
             "ManagementSessionDataSource",
             sessions,
@@ -315,10 +392,10 @@ public sealed class ManagementUiArchitectureTests
             "ManagementAuthorizationDataSource",
             authorizations,
             StringComparison.Ordinal);
-        Assert.Contains("href=\"sessions\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("\"sessions\"", presentations, StringComparison.Ordinal);
         Assert.Contains(
-            "href=\"authorizations\"",
-            navigation,
+            "\"authorizations\"",
+            presentations,
             StringComparison.Ordinal);
         Assert.DoesNotContain("href=\"access\"", navigation, StringComparison.Ordinal);
         Assert.DoesNotContain("manager", claims, StringComparison.OrdinalIgnoreCase);

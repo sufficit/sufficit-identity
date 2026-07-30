@@ -1,7 +1,10 @@
 using System.Security.Claims;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Management.Overview;
 using Sufficit.Identity.Server.Management;
 using Xunit;
 
@@ -128,6 +131,52 @@ public sealed class ManagementApplicationAuthorizationTests
             administrator.Capabilities.Order(StringComparer.Ordinal));
     }
 
+    [Fact]
+    public async Task Overview_projects_runtime_modules_and_effective_access()
+    {
+        var options = Options.Create(new ManagementOptions
+        {
+            RoutePrefix = "/management-api/",
+            RequiredScope = "identity_management"
+        });
+        var resolver = new ScopeAndRoleManagementEntitlementResolver(options);
+        var accessPolicies =
+            new ConfigurationManagementAccessPolicyProvider(options);
+        var evaluator = new CapabilityManagementAuthorizationEvaluator(
+            resolver,
+            accessPolicies);
+        var service = new ManagementOverviewService(
+            resolver,
+            accessPolicies,
+            evaluator,
+            options,
+            new TestHostEnvironment());
+
+        var overview = await service.GetAsync(
+            new ManagementRequestContext(
+                PrincipalWithClaims(new Claim(
+                    "permission",
+                    ManagementCapabilities.UsersRead)),
+                "overview-test"));
+
+        Assert.Equal("Test", overview.EnvironmentName);
+        Assert.Equal("management-api", overview.Api.RoutePrefix);
+        Assert.Equal("identity_management", overview.Api.RequiredScope);
+        Assert.Equal(
+            [ManagementCapabilities.UsersRead],
+            overview.Operator.Capabilities);
+        Assert.True(overview.Modules.Single(
+            module => module.Key == "users").CanAccess);
+        Assert.False(overview.Modules.Single(
+            module => module.Key == "clients").CanAccess);
+        var provisioning = overview.Modules.Single(
+            module => module.Key == "provisioning");
+        Assert.False(provisioning.IsAvailable);
+        Assert.Equal(
+            "application_contract_required",
+            provisioning.ReasonCode);
+    }
+
     private static CapabilityManagementAuthorizationEvaluator CreateEvaluator(
         bool requireMfa = false,
         string[]? operatorRoles = null)
@@ -164,4 +213,16 @@ public sealed class ManagementApplicationAuthorizationTests
             authenticationType: "test",
             nameType: ClaimTypes.Name,
             roleType: ClaimTypes.Role));
+
+    private sealed class TestHostEnvironment : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = "Test";
+
+        public string ApplicationName { get; set; } = "Sufficit.Identity.Tests";
+
+        public string ContentRootPath { get; set; } = "/tmp";
+
+        public IFileProvider ContentRootFileProvider { get; set; } =
+            new NullFileProvider();
+    }
 }
