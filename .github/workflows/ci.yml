@@ -58,12 +58,13 @@ jobs:
       #   - EmailSenders: never log email body (reset links are bearer creds)
       #   - Management UI: shared client, branding and contextual user use
       #     cases, including creation and multi-context password reset,
-      #     capability policies and persistent administrative audit
+      #     capability policies, shared avatar resolution and persistent
+      #     administrative audit
       #
       # Do not repoint this at a moving branch — the whole point of pinning
       # is reproducibility. Bump to a new SHA deliberately when the UI repo
       # ships a new commit you want CI to pick up.
-      UI_REF: a3c0a4e889c91957529dcf9d12215dc8c4fd7d68
+      UI_REF: 9961c4666e9ef56c56fce74335df1dd93e336422
       # Ephemeral CI-only database. No MariaDB service is required on
       # developer machines, and no remote connection is ever used here.
       SUFFICIT_IDENTITY_MARIADB_CONNECTION: >-
