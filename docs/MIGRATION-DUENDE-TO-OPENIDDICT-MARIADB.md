@@ -340,6 +340,13 @@ When the Management module is enabled, an authorized administrator can call:
   secret store;
 - `POST /api/provisioning/manifest/apply` to apply the same additive plan.
 
+Both adapters use the canonical `IProvisioningManagementService`. Preview
+requires `identity.provisioning.preview`; apply requires the separate
+`identity.provisioning.apply` capability. Authorization outcomes, validation
+rejections and successful operations are persisted in the management audit
+trail without storing the manifest or any secret reference. Apply and its
+success audit record commit in the same database transaction.
+
 Applying a confidential client requires an environment-specific
 `IClientSecretResolver`. Source control contains only its logical reference.
 

@@ -64,11 +64,7 @@ public sealed class ManagementOverviewService(
         new("branding", ManagementCapabilities.BrandingRead),
         new("sessions", ManagementCapabilities.SessionsRead),
         new("audit", ManagementCapabilities.AuditRead),
-        new(
-            "provisioning",
-            RequiredCapability: null,
-            IsAvailable: false,
-            UnavailableReasonCode: "application_contract_required")
+        new("provisioning", ManagementCapabilities.ProvisioningPreview)
     ];
 
     public async Task<ManagementOverview> GetAsync(

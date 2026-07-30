@@ -171,9 +171,13 @@ public sealed class ManagementApplicationAuthorizationTests
             module => module.Key == "clients").CanAccess);
         var provisioning = overview.Modules.Single(
             module => module.Key == "provisioning");
-        Assert.False(provisioning.IsAvailable);
+        Assert.True(provisioning.IsAvailable);
         Assert.Equal(
-            "application_contract_required",
+            ManagementCapabilities.ProvisioningPreview,
+            provisioning.RequiredCapability);
+        Assert.False(provisioning.CanAccess);
+        Assert.Equal(
+            "capability_not_granted",
             provisioning.ReasonCode);
     }
 

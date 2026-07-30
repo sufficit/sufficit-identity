@@ -63,6 +63,8 @@ public static class ServiceCollectionExtensions
             .PartManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
 
         services.TryAddScoped<OpenIddictManifestProvisioner>();
+        services.TryAddScoped<IProvisioningManagementService,
+            ProvisioningManagementService>();
         services.TryAddScoped<IManagementEntitlementResolver,
             ScopeAndRoleManagementEntitlementResolver>();
         services.TryAddScoped<IManagementAccessPolicyProvider,

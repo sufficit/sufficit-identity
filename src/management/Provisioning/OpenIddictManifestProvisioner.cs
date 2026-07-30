@@ -227,8 +227,7 @@ public sealed class OpenIddictManifestProvisioner
         var secret = await _secrets.ResolveAsync(reference, cancellationToken);
         if (string.IsNullOrWhiteSpace(secret))
         {
-            throw new InvalidOperationException(
-                $"Secret reference '{reference}' resolved to an empty value.");
+            throw new ClientSecretResolutionException();
         }
 
         return secret;

@@ -219,6 +219,41 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Provisioning_adapters_use_only_the_canonical_contract()
+    {
+        var repositoryRoot = ResolveIdentityRepository();
+        var controller = File.ReadAllText(Path.Combine(
+            repositoryRoot,
+            "src",
+            "management",
+            "Controllers",
+            "ProvisioningController.cs"));
+        var dataSource = File.ReadAllText(Path.Combine(
+            ResolveManagementUiSource(),
+            "Provisioning",
+            "ManagementProvisioningDataSource.cs"));
+
+        Assert.Contains(
+            "IProvisioningManagementService",
+            controller,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "IProvisioningManagementService",
+            dataSource,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "OpenIddictManifestProvisioner",
+            controller,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("DbContext", controller, StringComparison.Ordinal);
+        Assert.DoesNotContain("DbContext", dataSource, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "IOpenIddictApplicationManager",
+            dataSource,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Users_controller_is_only_an_http_adapter()
     {
         var repositoryRoot = ResolveIdentityRepository();

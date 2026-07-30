@@ -94,6 +94,12 @@ internal sealed class MissingClientSecretResolver : IClientSecretResolver
     public ValueTask<string> ResolveAsync(
         string reference,
         CancellationToken cancellationToken = default) =>
-        throw new InvalidOperationException(
-            $"No {nameof(IClientSecretResolver)} is configured for secret reference '{reference}'.");
+        throw new ClientSecretResolverUnavailableException();
 }
+
+public sealed class ClientSecretResolverUnavailableException()
+    : Exception(
+        $"No {nameof(IClientSecretResolver)} is configured for this environment.");
+
+public sealed class ClientSecretResolutionException()
+    : Exception("The secret reference did not resolve to a usable value.");

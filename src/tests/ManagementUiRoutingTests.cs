@@ -15,6 +15,7 @@ using Sufficit.Identity.Management.Claims;
 using Sufficit.Identity.Management.Clients;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Authorizations;
+using Sufficit.Identity.Management.Provisioning;
 using Sufficit.Identity.Management.Scopes;
 using Sufficit.Identity.Management.Sessions;
 using Sufficit.Identity.Management.Users;
@@ -97,7 +98,7 @@ public sealed class ManagementUiRoutingTests
             "Listagem incorporada",
             homeHtml,
             StringComparison.Ordinal);
-        Assert.DoesNotContain(
+        Assert.Contains(
             "href=\"provisioning\"",
             homeHtml,
             StringComparison.Ordinal);
@@ -112,7 +113,7 @@ public sealed class ManagementUiRoutingTests
             settingsHtml,
             StringComparison.Ordinal);
         Assert.Contains(
-            "Contrato de aplicação ainda não disponível",
+            ManagementCapabilities.ProvisioningPreview,
             settingsHtml,
             StringComparison.Ordinal);
         Assert.DoesNotContain(
@@ -144,6 +145,36 @@ public sealed class ManagementUiRoutingTests
             "src=\"/_framework/blazor.web.js\"",
             html,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Administrator_can_render_the_interactive_provisioning_flow()
+    {
+        await using var app = await CreateHostAsync();
+        using var client = app.GetTestClient();
+
+        await SignInAsync(client, "administrator");
+
+        using var response = await client.GetAsync(
+            "/management/provisioning");
+        var html = WebUtility.HtmlDecode(
+            await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Manifesto JSON", html, StringComparison.Ordinal);
+        Assert.Contains("Gerar preview", html, StringComparison.Ordinal);
+        Assert.Contains(
+            "Use somente referências externas para segredos",
+            html,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "<textarea disabled",
+            html,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "aplicação ficará desabilitada",
+            html,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -481,6 +512,9 @@ public sealed class ManagementUiRoutingTests
         builder.Services.AddSingleton<IAuthorizationManagementService, StubAuthorizationManagementService>();
         builder.Services.AddSingleton<IBrandingManagementService, StubBrandingManagementService>();
         builder.Services.AddSingleton<IUserManagementService, StubUserManagementService>();
+        builder.Services.AddSingleton<
+            IProvisioningManagementService,
+            StubProvisioningManagementService>();
         builder.Services.AddSingleton<IManagementAuditService, StubManagementAuditService>();
         builder.Services.AddSingleton<
             IUserAvatarUrlResolver,
@@ -795,6 +829,31 @@ public sealed class ManagementUiRoutingTests
             ManagementRequestContext context,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+    }
+
+    private sealed class StubProvisioningManagementService
+        : IProvisioningManagementService
+    {
+        public Task<IdentityProvisioningPlan> PreviewAsync(
+            IdentityProvisioningManifest manifest,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Plan());
+
+        public Task<IdentityProvisioningPlan> ApplyAsync(
+            IdentityProvisioningManifest manifest,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Plan());
+
+        private static IdentityProvisioningPlan Plan() =>
+            new(
+                [
+                    new(
+                        "client",
+                        "test-client",
+                        IdentityManifestChangeKind.Create)
+                ]);
     }
 
     private sealed class StubBrandingManagementService

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Management.Provisioning;
 
 namespace Sufficit.Identity.Management.Controllers;
 
@@ -9,6 +10,28 @@ internal sealed class ManagementExceptionFilter : IExceptionFilter
 {
     public void OnException(ExceptionContext context)
     {
+        if (context.Exception is IdentityProvisioningManifestException manifest)
+        {
+            var manifestDetails = new ProblemDetails
+            {
+                Status = StatusCodes.Status400BadRequest,
+                Title = "Invalid identity provisioning manifest",
+                Detail = "No database changes were made.",
+                Instance = context.HttpContext.Request.Path
+            };
+            manifestDetails.Extensions["reasonCode"] =
+                "provisioning_manifest_invalid";
+            manifestDetails.Extensions["correlationId"] =
+                context.HttpContext.TraceIdentifier;
+            manifestDetails.Extensions["errors"] = manifest.Errors;
+            context.Result = new ObjectResult(manifestDetails)
+            {
+                StatusCode = StatusCodes.Status400BadRequest
+            };
+            context.ExceptionHandled = true;
+            return;
+        }
+
         var mapping = context.Exception switch
         {
             ManagementValidationException validation =>

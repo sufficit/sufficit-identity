@@ -30,6 +30,10 @@ public static class ManagementCapabilities
     public const string AuthorizationsRevoke =
         "identity.authorizations.revoke";
     public const string AuditRead = "identity.audit.read";
+    public const string ProvisioningPreview =
+        "identity.provisioning.preview";
+    public const string ProvisioningApply =
+        "identity.provisioning.apply";
 
     public static IReadOnlySet<string> All { get; } =
         new HashSet<string>(
@@ -57,7 +61,9 @@ public static class ManagementCapabilities
                 SessionsRevoke,
                 AuthorizationsRead,
                 AuthorizationsRevoke,
-                AuditRead
+                AuditRead,
+                ProvisioningPreview,
+                ProvisioningApply
             ],
             StringComparer.Ordinal);
 }
@@ -80,6 +86,7 @@ public static class ManagementResourceTypes
     public const string AuthorizationCollection = "authorization-collection";
     public const string Audit = "audit";
     public const string Overview = "overview";
+    public const string Provisioning = "provisioning";
 }
 
 public sealed record ManagementRequestContext(

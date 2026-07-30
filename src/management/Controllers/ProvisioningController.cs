@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Provisioning;
 
 namespace Sufficit.Identity.Management.Controllers;
@@ -12,62 +12,35 @@ namespace Sufficit.Identity.Management.Controllers;
 [ApiController]
 [Authorize(Policy = "sufficit-identity-management")]
 [Route("api/provisioning/manifest")]
-public sealed class ProvisioningController : ControllerBase
+public sealed class ProvisioningController(
+    IProvisioningManagementService provisioning) : ControllerBase
 {
-    private readonly OpenIddictManifestProvisioner _provisioner;
-
-    public ProvisioningController(OpenIddictManifestProvisioner provisioner)
-        => _provisioner = provisioner;
-
     /// <summary>
     /// Returns the create/update/unchanged plan without changing the database
     /// or resolving any secret references.
     /// </summary>
     [HttpPost("preview")]
-    public async Task<IActionResult> Preview(
+    public async Task<ActionResult<IdentityProvisioningPlan>> Preview(
         [FromBody] IdentityProvisioningManifest manifest,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            return Ok(await _provisioner.PreviewAsync(manifest, cancellationToken));
-        }
-        catch (IdentityProvisioningManifestException exception)
-        {
-            return InvalidManifest(exception);
-        }
-    }
+        CancellationToken cancellationToken) =>
+        Ok(await provisioning.PreviewAsync(
+            manifest,
+            RequestContext(),
+            cancellationToken));
 
     /// <summary>
     /// Applies the additive plan. Creating a confidential client or rotating
     /// its secret requires an environment-specific IClientSecretResolver.
     /// </summary>
     [HttpPost("apply")]
-    public async Task<IActionResult> Apply(
+    public async Task<ActionResult<IdentityProvisioningPlan>> Apply(
         [FromBody] IdentityProvisioningManifest manifest,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            return Ok(await _provisioner.ApplyAsync(manifest, cancellationToken));
-        }
-        catch (IdentityProvisioningManifestException exception)
-        {
-            return InvalidManifest(exception);
-        }
-    }
+        CancellationToken cancellationToken) =>
+        Ok(await provisioning.ApplyAsync(
+            manifest,
+            RequestContext(),
+            cancellationToken));
 
-    private BadRequestObjectResult InvalidManifest(
-        IdentityProvisioningManifestException exception)
-    {
-        var details = new ProblemDetails
-        {
-            Status = StatusCodes.Status400BadRequest,
-            Title = "Invalid identity provisioning manifest",
-            Detail = "No database changes were made.",
-        };
-        details.Extensions["errors"] = exception.Errors;
-
-        return BadRequest(details);
-    }
+    private ManagementRequestContext RequestContext() =>
+        new(User, HttpContext.TraceIdentifier);
 }
