@@ -57,12 +57,13 @@ jobs:
       #   - TwoFactor.razor: deterministic authenticator key re-derivation
       #   - EmailSenders: never log email body (reset links are bearer creds)
       #   - Management UI: shared client, branding and contextual user use
-      #     cases, capability policies and persistent administrative audit
+      #     cases, including creation and multi-context password reset,
+      #     capability policies and persistent administrative audit
       #
       # Do not repoint this at a moving branch — the whole point of pinning
       # is reproducibility. Bump to a new SHA deliberately when the UI repo
       # ships a new commit you want CI to pick up.
-      UI_REF: 525c668f98ebcf87686eb2b557cb7652ac7b9c4a
+      UI_REF: 197baa36a64bee8b855ea8f2a32742bd2981ded2
       # Ephemeral CI-only database. No MariaDB service is required on
       # developer machines, and no remote connection is ever used here.
       SUFFICIT_IDENTITY_MARIADB_CONNECTION: >-
