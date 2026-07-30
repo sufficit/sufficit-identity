@@ -2282,6 +2282,16 @@ h3 {
     color: var(--ink-strong);
 }
 
+.workflow-step--complete > span {
+    border-color: var(--success);
+    background: var(--success-soft);
+    color: var(--success);
+}
+
+.workflow-step--complete strong {
+    color: var(--ink-strong);
+}
+
 .workflow-connector {
     height: 1px;
     margin-inline: 14px;
@@ -2316,6 +2326,11 @@ h3 {
     -webkit-text-fill-color: #f4f3f4;
 }
 
+.manifest-editor textarea:focus-visible {
+    border-color: #f4f3f4;
+    box-shadow: 0 0 0 3px rgba(244, 243, 244, 0.18);
+}
+
 .manifest-actions {
     display: flex;
     min-height: 68px;
@@ -2326,8 +2341,18 @@ h3 {
     border-top: 1px solid var(--line);
 }
 
-.manifest-actions > span {
+.manifest-actions > div {
+    display: grid;
+    gap: 3px;
+}
+
+.manifest-actions span {
     color: var(--ink-subtle);
+    font-size: 11px;
+}
+
+.manifest-actions div span + span {
+    color: var(--ink-muted);
     font-size: 10px;
 }
 
@@ -2372,6 +2397,104 @@ h3 {
 .safety-panel > a:hover {
     text-decoration: underline;
     text-underline-offset: 3px;
+}
+
+.provisioning-errors {
+    display: grid;
+    gap: 4px;
+    margin: 8px 0 0;
+    padding-left: 18px;
+}
+
+.provisioning-errors li {
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.provisioning-plan {
+    overflow: hidden;
+    margin-top: 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+}
+
+.provisioning-plan__counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.provisioning-plan__counts span {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--ink-muted);
+    font-size: 11px;
+}
+
+.provisioning-plan__counts strong {
+    color: var(--ink-strong);
+    font-size: 13px;
+}
+
+.data-table--provisioning code {
+    overflow-wrap: anywhere;
+}
+
+.provisioning-apply {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 18px 20px;
+    border-top: 1px solid var(--line);
+    background: var(--surface-subtle);
+}
+
+.provisioning-confirmation {
+    display: flex;
+    max-width: 620px;
+    align-items: flex-start;
+    gap: 11px;
+    cursor: pointer;
+}
+
+.provisioning-confirmation input {
+    width: 17px;
+    height: 17px;
+    flex: 0 0 17px;
+    margin-top: 2px;
+    accent-color: var(--brand);
+}
+
+.provisioning-confirmation span {
+    display: grid;
+    gap: 3px;
+}
+
+.provisioning-confirmation strong {
+    color: var(--ink-strong);
+    font-size: 12px;
+}
+
+.provisioning-confirmation small {
+    color: var(--ink-muted);
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+.provisioning-current {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--success);
+    font-size: 12px;
+    font-weight: 650;
 }
 
 .audit-principles {
@@ -3791,6 +3914,25 @@ h3 {
     }
 
     .manifest-actions .button {
+        width: 100%;
+    }
+
+    .provisioning-plan .data-toolbar,
+    .provisioning-apply {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .provisioning-plan__counts {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .provisioning-plan__counts span {
+        justify-content: center;
+    }
+
+    .provisioning-apply .button {
         width: 100%;
     }
 

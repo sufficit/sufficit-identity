@@ -149,6 +149,14 @@ consomem essa mesma projeção; não mantêm indicadores locais de prontidão. U
 módulo indisponível não aparece na navegação e conserva no contrato um
 `reasonCode` estável para diagnóstico.
 
+Provisionamento também atravessa essa fronteira. Controller HTTP e UI
+incorporada chamam `IProvisioningManagementService`; o adapter Blazor converte
+somente o JSON em contrato tipado. Validação, preview, autorização, resolução
+de referências externas, transação de aplicação e auditoria permanecem no
+runtime canônico. A UI invalida o preview quando o texto muda e exige uma
+confirmação explícita antes do apply, sem manter estado de persistência
+paralelo.
+
 O avatar do operador também segue essa fronteira. A UI pública e a Management
 UI resolvem a imagem por `IUserAvatarUrlResolver`, que consome o tema ativo
 armazenado no runtime e aplica o `AvatarUrlTemplate` uma única vez, com o
@@ -161,8 +169,6 @@ Ainda existem violações a migrar:
 
 - páginas da UI pública injetam `UserManager`, `SignInManager` e gerenciadores
   do OpenIddict;
-- o fluxo interativo de provisionamento ainda precisa migrar para um contrato
-  de aplicação compartilhado antes de ser exposto na navegação.
 
 Esses caminhos são débitos de migração, não precedentes arquiteturais. Nenhuma
 nova tela deve repetir esse padrão.
@@ -170,8 +176,8 @@ nova tela deve repetir esse padrão.
 ## Ordem de migração
 
 1. Migrar configurações e provisionamento para use cases compartilhados
-   (branding concluído em 2026-07-29; claims e scopes concluídos em
-   2026-07-30; sessões e autorizações concluídas em 2026-07-30).
+   (branding concluído em 2026-07-29; claims, scopes, sessões, autorizações e
+   provisionamento concluídos em 2026-07-30).
 2. Criar contratos de aplicação para autoatendimento e migrar a UI pública.
 3. Remover das UIs referências a entidades mutáveis, stores e gerenciadores de
    persistência/protocolo. Permanecem permitidos contratos puros de aplicação,

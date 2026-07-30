@@ -162,7 +162,8 @@ public sealed record ManagementDataResult<T>(
     ManagementDataOutcome Outcome,
     T? Value = default,
     string? ErrorMessage = null,
-    string? ErrorField = null)
+    string? ErrorField = null,
+    IReadOnlyList<string>? ErrorDetails = null)
 {
     public bool IsSuccess => Outcome is ManagementDataOutcome.Success;
 
@@ -172,6 +173,11 @@ public sealed record ManagementDataResult<T>(
     public static ManagementDataResult<T> Failure(
         ManagementDataOutcome outcome,
         string? errorMessage = null,
-        string? errorField = null) =>
-        new(outcome, ErrorMessage: errorMessage, ErrorField: errorField);
+        string? errorField = null,
+        IReadOnlyList<string>? errorDetails = null) =>
+        new(
+            outcome,
+            ErrorMessage: errorMessage,
+            ErrorField: errorField,
+            ErrorDetails: errorDetails);
 }

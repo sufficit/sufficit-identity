@@ -15,6 +15,7 @@ using Sufficit.Identity.UI.Management.Claims;
 using Sufficit.Identity.UI.Management.Clients;
 using Sufficit.Identity.UI.Management.Configuration;
 using Sufficit.Identity.UI.Management.Overview;
+using Sufficit.Identity.UI.Management.Provisioning;
 using Sufficit.Identity.UI.Management.Scopes;
 using Sufficit.Identity.UI.Management.Sessions;
 using Sufficit.Identity.UI.Management.Users;
@@ -33,6 +34,8 @@ public static class ManagementUiPolicies
         "sufficit-identity-management-ui-authorizations";
     public const string ManageBranding = "sufficit-identity-management-ui-branding";
     public const string ReadAudit = "sufficit-identity-management-ui-audit";
+    public const string ManageProvisioning =
+        "sufficit-identity-management-ui-provisioning";
 }
 
 public sealed class ManagementCapabilityRequirement(
@@ -189,6 +192,17 @@ public static class ServiceCollectionExtensions
                         ManagementCapabilities.AuditRead,
                         ManagementResourceTypes.Audit));
             });
+
+            authorization.AddPolicy(
+                ManagementUiPolicies.ManageProvisioning,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.Requirements.Add(
+                        new ManagementCapabilityRequirement(
+                            ManagementCapabilities.ProvisioningPreview,
+                            ManagementResourceTypes.Provisioning));
+                });
         });
 
         services.TryAddEnumerable(
@@ -206,6 +220,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<ManagementAuditDataSource>();
         services.TryAddScoped<ManagementUserDataSource>();
         services.TryAddScoped<ManagementOverviewDataSource>();
+        services.TryAddScoped<ManagementProvisioningDataSource>();
 
         services.AddCascadingAuthenticationState();
         services.AddRazorComponents()
