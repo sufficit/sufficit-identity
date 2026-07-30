@@ -11,6 +11,7 @@ using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Server;
 using Sufficit.Identity.Server.Management;
+using Sufficit.Identity.Scim;
 using Sufficit.Identity.STS;
 using Sufficit.Identity.UI;
 using Sufficit.Identity.UI.Management;
@@ -116,6 +117,14 @@ if (mgmtEnabled)
             IManagementEntitlementResolver,
             SufficitOperatorManagementEntitlementResolver>());
     builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
+}
+
+// ---- Optional: SCIM 2.0 provisioning (RFC 7643/7644) ----
+var scimEnabled = builder.Configuration
+    .GetValue<bool>("Sufficit:Identity:Scim:Enabled");
+if (scimEnabled)
+{
+    builder.Services.AddSufficitIdentityScim(builder.Configuration);
 }
 
 // ---- MVC (for the /connect/* passthrough controllers) ----

@@ -84,8 +84,6 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IUserManagementService, UserManagementService>();
         services.TryAddScoped<IManagementOverviewService,
             ManagementOverviewService>();
-        services.TryAddScoped<IManagementUserSessionRevoker,
-            OpenIddictManagementUserSessionRevoker>();
         services.TryAddSingleton<IBrandingThemeProvider,
             BrandingThemeProvider>();
         services.TryAddSingleton<IUserAvatarUrlResolver,

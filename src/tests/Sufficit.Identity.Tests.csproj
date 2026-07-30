@@ -30,6 +30,7 @@
   <ItemGroup>
     <!-- Composition host; transitively brings STS/core/management/UI. -->
     <ProjectReference Include="..\server\Sufficit.Identity.Server.csproj" />
+    <ProjectReference Include="..\scim\Sufficit.Identity.Scim.csproj" />
   </ItemGroup>
 
 </Project>

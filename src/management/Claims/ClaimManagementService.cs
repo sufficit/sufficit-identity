@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Users;
@@ -88,7 +89,7 @@ internal sealed class ClaimManagementService(
     AppDbContext database,
     UserManager<ApplicationUser> userManager,
     IManagementAuthorizationEvaluator authorization,
-    IManagementUserSessionRevoker sessionRevoker,
+    IIdentityUserSessionRevoker sessionRevoker,
     ILogger<ClaimManagementService> logger) : IClaimManagementService
 {
     private const int ClaimTypeMaxLength = 256;

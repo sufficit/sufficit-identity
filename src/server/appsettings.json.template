@@ -31,6 +31,13 @@
         "_RequireMfa": "true requires the access token to carry an amr claim proving multi-factor auth (item 5.2 [L3]) for the management endpoints. Default false — flip only after the login UI emits amr for MFA sessions, otherwise every admin token is rejected.",
         "RequireMfa": false
       },
+      "_Scim": "Optional SCIM 2.0 provisioning endpoint at /scim/v2. Groups are opaque provisioning groups and are never interpreted as ASP.NET Identity roles or Sufficit business authorities.",
+      "Scim": {
+        "Enabled": false,
+        "RequireAuthorization": true,
+        "RequiredScope": "scim",
+        "MaxResults": 100
+      },
       "_Certificates": "Required in production. PFX files (X509Certificate2) used to sign and encrypt tokens. Leave empty only in Development, where ephemeral dev certificates are used automatically; any other environment fails to start without these.",
       "Certificates": {
         "_SigningPath": "Path to the PFX file used to sign tokens.",

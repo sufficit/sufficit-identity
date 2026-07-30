@@ -5,6 +5,7 @@ using OpenIddict.Abstractions;
 using OpenIddict.EntityFrameworkCore.Models;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Users;
@@ -65,11 +66,15 @@ public sealed record ManagementSessionSummary(
     DateTimeOffset? RedeemedAt,
     bool IsActive);
 
+public sealed record ManagementUserSessionRevocation(
+    long RevokedTokens,
+    long RevokedAuthorizations);
+
 internal sealed class SessionManagementService(
     AppDbContext database,
     UserManager<ApplicationUser> userManager,
     IOpenIddictTokenManager tokenManager,
-    IManagementUserSessionRevoker sessionRevoker,
+    IIdentityUserSessionRevoker sessionRevoker,
     IManagementAuthorizationEvaluator authorization,
     ILogger<SessionManagementService> logger) : ISessionManagementService
 {
@@ -294,7 +299,9 @@ internal sealed class SessionManagementService(
             result.RevokedTokens,
             result.RevokedAuthorizations,
             context.CorrelationId);
-        return result;
+        return new ManagementUserSessionRevocation(
+            result.RevokedTokens,
+            result.RevokedAuthorizations);
     }
 
     private async Task<ManagementAuthorizationDecision> DemandAsync(

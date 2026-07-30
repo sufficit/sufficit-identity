@@ -12,6 +12,7 @@ using OpenIddict.Abstractions;
 using OpenIddict.Server;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.Core.Services;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Sufficit.Identity.STS;
@@ -558,6 +559,11 @@ public static class ServiceCollectionExtensions
                 validation.UseLocalServer();
                 validation.UseAspNetCore();
             });
+
+        services.AddScoped<IIdentityUserSessionRevoker,
+            OpenIddictIdentityUserSessionRevoker>();
+        services.AddScoped<IIdentityAccountLifecycleService,
+            IdentityAccountLifecycleService>();
 
         // ---- OIDC Back-Channel Logout 1.0 (item 3.2 [L1]) ----
         // OpenIddict 7.6 only consumes logout_tokens; the STS generates them

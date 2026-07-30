@@ -258,3 +258,66 @@ VALUES ('20260729221512_AddManagementAuditEvents', '10.0.10');
 
 COMMIT;
 
+START TRANSACTION;
+CREATE TABLE `scimgroups` (
+    `id` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `externalid` varchar(255) CHARACTER SET utf8mb4 NULL,
+    `displayname` varchar(256) CHARACTER SET utf8mb4 NOT NULL,
+    `createdatutc` datetime(6) NOT NULL,
+    `updatedatutc` datetime(6) NOT NULL,
+    `concurrencystamp` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
+    CONSTRAINT `PK_scimgroups` PRIMARY KEY (`id`)
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `scimuserprofiles` (
+    `userid` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `externalid` varchar(255) CHARACTER SET utf8mb4 NULL,
+    `displayname` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `formattedname` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `familyname` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `givenname` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `middlename` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `honorificprefix` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `honorificsuffix` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `title` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `usertype` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `preferredlanguage` varchar(35) CHARACTER SET utf8mb4 NULL,
+    `locale` varchar(35) CHARACTER SET utf8mb4 NULL,
+    `timezone` varchar(100) CHARACTER SET utf8mb4 NULL,
+    `createdatutc` datetime(6) NOT NULL,
+    `updatedatutc` datetime(6) NOT NULL,
+    CONSTRAINT `PK_scimuserprofiles` PRIMARY KEY (`userid`),
+    CONSTRAINT `FK_scimuserprofiles_users_userid` FOREIGN KEY (`userid`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `scimgroupgroupmembers` (
+    `groupid` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `membergroupid` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    CONSTRAINT `PK_scimgroupgroupmembers` PRIMARY KEY (`groupid`, `membergroupid`),
+    CONSTRAINT `FK_scimgroupgroupmembers_scimgroups_groupid` FOREIGN KEY (`groupid`) REFERENCES `scimgroups` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `FK_scimgroupgroupmembers_scimgroups_membergroupid` FOREIGN KEY (`membergroupid`) REFERENCES `scimgroups` (`id`) ON DELETE RESTRICT
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `scimgroupusermembers` (
+    `groupid` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `userid` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    CONSTRAINT `PK_scimgroupusermembers` PRIMARY KEY (`groupid`, `userid`),
+    CONSTRAINT `FK_scimgroupusermembers_scimgroups_groupid` FOREIGN KEY (`groupid`) REFERENCES `scimgroups` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `FK_scimgroupusermembers_users_userid` FOREIGN KEY (`userid`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) CHARACTER SET=utf8mb4;
+
+CREATE INDEX `IX_scimgroupgroupmembers_membergroupid` ON `scimgroupgroupmembers` (`membergroupid`);
+
+CREATE INDEX `IX_scimgroups_displayname` ON `scimgroups` (`displayname`);
+
+CREATE INDEX `IX_scimgroups_externalid` ON `scimgroups` (`externalid`);
+
+CREATE INDEX `IX_scimgroupusermembers_userid` ON `scimgroupusermembers` (`userid`);
+
+CREATE INDEX `IX_scimuserprofiles_externalid` ON `scimuserprofiles` (`externalid`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260730220100_AddScimProvisioning', '10.0.10');
+
+COMMIT;
+

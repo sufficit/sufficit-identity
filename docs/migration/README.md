@@ -17,7 +17,7 @@ a database server on a developer machine.
 Use `sql/001-create-empty-database.sql`. It is generated from the canonical EF
 model and creates the shared ASP.NET Core Identity tables, Data Protection,
 passkeys, the OpenIddict tables, the generic branding-theme table and the
-append-only administrative audit table.
+append-only administrative audit table, plus the SCIM profile/group tables.
 
 Regenerate it with:
 
@@ -29,8 +29,8 @@ dotnet tool run dotnet-ef migrations script \
   --output docs/migration/sql/001-create-empty-database.sql
 ```
 
-Do not add `--idempotent`: Oracle `MySql.EntityFrameworkCore` 10.0.7 currently
-emits `IF ... BEGIN` blocks that are not valid MySQL/MariaDB syntax.
+Do not add `--idempotent`: the checked-in contract intentionally matches the
+normal ordered migration script and MariaDB-compatible syntax exactly.
 
 ### Existing Skoruba/Duende database
 
@@ -47,6 +47,11 @@ tables.
 5. Run `sql/011-add-openiddict-to-legacy.sql` only against the rehearsal copy.
 6. Run the schema contract tests and data reconciliation.
 7. Repeat from a fresh backup to prove the process is deterministic.
+
+Deployments already running the canonical model apply later additive steps in
+order: `050-add-branding-themes.sql`,
+`060-add-management-audit-events.sql` and
+`070-add-scim-provisioning.sql`.
 
 `011-add-openiddict-to-legacy.sql` intentionally does not use
 `CREATE TABLE IF NOT EXISTS`: encountering an existing protocol table is drift
@@ -95,8 +100,8 @@ The local contract test regenerates the SQL from the EF migration and requires
 an exact match, so the tracked script cannot drift from the model.
 
 1. **Empty database:** verifies there are no pending migrations, the isolated
-   migration history contains every canonical migration, all 16 expected tables
-   exist and critical OpenIddict/passkey indexes and types match.
+   migration history contains every canonical migration, all 20 expected tables
+   exist and critical OpenIddict/passkey/SCIM indexes and types match.
 2. **Legacy rehearsal:** creates the fixed
    `identity_legacy_rehearsal` database on the loopback CI service, loads the
    39-table fixture, requires a zero-row preflight, applies the additive
@@ -112,18 +117,9 @@ The destructive rehearsal guard requires all three conditions: CI mode, an
 explicit opt-in variable and a connection to `identity_contract` on loopback.
 It cannot accept a remote hostname or arbitrary database name.
 
-The current Oracle EF Core 10 provider is a compatibility provider only. It
-does not imply a move to MySQL. Select a provider that explicitly supports the
-chosen MariaDB and EF Core versions before deployment.
-
-As an additional non-mutating check, all 27 generated DDL statements were
-compiled with `PREPARE`/`DEALLOCATE` by a MariaDB 10.4.34 parser. No prepared
-statement was executed and no database object or data changed.
-
-The Oracle EF Core 10 migrator itself is not used to execute MariaDB DDL in CI:
-its migration-lock implementation fails before the first DDL by attempting to
-cast MariaDB's `GET_LOCK()` `NULL` result to `Int64`. This is recorded evidence
-for the open provider gate, not a reason to change database engines.
+The runtime and migration tests use the Sufficit Pomelo EF Core 10 fork with
+explicit MariaDB 10.4 compatibility; this remains the same MariaDB deployment,
+not a database-engine migration.
 
 ## Secrets
 

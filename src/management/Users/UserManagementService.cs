@@ -3,9 +3,9 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
-using OpenIddict.Abstractions;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorization;
 
@@ -51,6 +51,11 @@ public interface IUserManagementService
     Task<ManagementUserDetail> SetLockoutAsync(
         string id,
         SetManagementUserLockoutCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
+    Task DeleteAsync(
+        string id,
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 }
@@ -103,58 +108,10 @@ public sealed record ManagementUserActions(
     string SetLockoutReasonCode = "not_evaluated",
     bool CanUpdateProfile = false,
     bool UpdateProfileRequiresMfa = false,
-    string UpdateProfileReasonCode = "not_evaluated");
-
-public sealed record ManagementUserSessionRevocation(
-    long RevokedTokens,
-    long RevokedAuthorizations);
-
-public interface IManagementUserSessionRevoker
-{
-    Task<long> RevokeTokensAsync(
-        string subject,
-        CancellationToken cancellationToken = default);
-
-    Task<ManagementUserSessionRevocation> RevokeAsync(
-        string subject,
-        CancellationToken cancellationToken = default);
-}
-
-internal sealed class OpenIddictManagementUserSessionRevoker(
-    IOpenIddictTokenManager tokens,
-    IOpenIddictAuthorizationManager authorizations)
-    : IManagementUserSessionRevoker
-{
-    public async Task<long> RevokeTokensAsync(
-        string subject,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(subject);
-
-        return await tokens.RevokeBySubjectAsync(
-            subject,
-            cancellationToken);
-    }
-
-    public async Task<ManagementUserSessionRevocation> RevokeAsync(
-        string subject,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(subject);
-
-        var revokedTokens = await tokens.RevokeBySubjectAsync(
-            subject,
-            cancellationToken);
-        var revokedAuthorizations =
-            await authorizations.RevokeBySubjectAsync(
-                subject,
-                cancellationToken);
-
-        return new ManagementUserSessionRevocation(
-            revokedTokens,
-            revokedAuthorizations);
-    }
-}
+    string UpdateProfileReasonCode = "not_evaluated",
+    bool CanDelete = false,
+    bool DeleteRequiresMfa = false,
+    string DeleteReasonCode = "not_evaluated");
 
 [method: JsonConstructor]
 public sealed record ManagementUserDetail(
@@ -207,15 +164,10 @@ internal sealed class UserManagementService(
     AppDbContext database,
     UserManager<ApplicationUser> userManager,
     IManagementAuthorizationEvaluator authorization,
-    IManagementUserSessionRevoker sessionRevoker,
+    IIdentityUserSessionRevoker sessionRevoker,
+    IIdentityAccountLifecycleService accountLifecycle,
     ILogger<UserManagementService> logger) : IUserManagementService
 {
-    private static readonly DateTimeOffset IndefiniteLockoutEnd =
-        new(
-            DateTimeOffset.MaxValue.Ticks
-                - DateTimeOffset.MaxValue.Ticks % TimeSpan.TicksPerMicrosecond,
-            TimeSpan.Zero);
-
     public async Task<ManagementUserAccess> GetAccessAsync(
         ManagementRequestContext context,
         CancellationToken cancellationToken = default)
@@ -380,6 +332,10 @@ internal sealed class UserManagementService(
             ManagementCapabilities.UsersUpdate,
             resource,
             cancellationToken);
+        var deleteDecision = await EvaluateDeleteAsync(
+            user.Id,
+            context,
+            cancellationToken);
 
         await WriteAuditAsync(
             context,
@@ -405,7 +361,8 @@ internal sealed class UserManagementService(
             Actions(
                 resetDecision,
                 lockoutDecision,
-                updateProfileDecision));
+                updateProfileDecision,
+                deleteDecision));
     }
 
     public async Task<ManagementUserDetail> CreateAsync(
@@ -889,26 +846,9 @@ internal sealed class UserManagementService(
             .BeginTransactionAsync(cancellationToken);
         try
         {
-            EnsureLockoutChangeSucceeded(
-                await userManager.SetLockoutEnabledAsync(user, true));
-            EnsureLockoutChangeSucceeded(
-                await userManager.SetLockoutEndDateAsync(
-                    user,
-                    command.Locked
-                        ? IndefiniteLockoutEnd
-                        : null));
-
-            if (!command.Locked)
-            {
-                EnsureLockoutChangeSucceeded(
-                    await userManager.ResetAccessFailedCountAsync(user));
-            }
-
-            EnsureLockoutChangeSucceeded(
-                await userManager.UpdateSecurityStampAsync(user));
-
-            var revocation = await sessionRevoker.RevokeAsync(
-                user.Id,
+            var revocation = await accountLifecycle.SetActiveAsync(
+                user,
+                active: !command.Locked,
                 cancellationToken);
             logger.LogInformation(
                 "Revoked {TokenCount} tokens and {AuthorizationCount} authorizations for management user {UserId}. CorrelationId={CorrelationId}",
@@ -974,6 +914,103 @@ internal sealed class UserManagementService(
             cancellationToken);
     }
 
+    public async Task DeleteAsync(
+        string id,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+
+        var auditResource = new ManagementResource(
+            ManagementResourceTypes.User,
+            id);
+        var decision = await EvaluateDeleteAsync(
+            id,
+            context,
+            cancellationToken);
+        if (!decision.IsAllowed)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.UsersDelete,
+                auditResource,
+                decision,
+                "denied",
+                decision.ReasonCode,
+                cancellationToken);
+            throw new ManagementAccessException(decision);
+        }
+
+        var user = await userManager.FindByIdAsync(id);
+        if (user is null)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.UsersDelete,
+                auditResource,
+                decision,
+                "not-found",
+                "user_not_found",
+                cancellationToken);
+            throw new ManagementNotFoundException(
+                "user_not_found",
+                "O usuário não foi encontrado.");
+        }
+
+        await using var transaction = await database.Database
+            .BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var revocation = await accountLifecycle.DeleteAsync(
+                user,
+                cancellationToken);
+
+            database.ManagementAuditEvents.Add(
+                ManagementAuditEventFactory.Create(
+                    context,
+                    ManagementCapabilities.UsersDelete,
+                    auditResource,
+                    decision,
+                    "succeeded",
+                    "user_deleted"));
+            await database.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            logger.LogInformation(
+                "Deleted identity user {UserId} after revoking {TokenCount} tokens and {AuthorizationCount} authorizations. CorrelationId={CorrelationId}",
+                user.Id,
+                revocation.RevokedTokens,
+                revocation.RevokedAuthorizations,
+                context.CorrelationId);
+        }
+        catch (OperationCanceledException)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            database.ChangeTracker.Clear();
+            throw;
+        }
+        catch (Exception exception)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            database.ChangeTracker.Clear();
+            logger.LogError(
+                exception,
+                "Unable to delete a management user. CorrelationId={CorrelationId}",
+                context.CorrelationId);
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.UsersDelete,
+                auditResource,
+                decision,
+                "failed",
+                "user_delete_failed",
+                CancellationToken.None);
+            throw new ManagementConflictException(
+                "user_delete_failed",
+                "Não foi possível excluir o usuário.");
+        }
+    }
+
     private async Task<ManagementAuthorizationDecision>
         EvaluateLockoutChangeAsync(
             string userId,
@@ -1000,10 +1037,34 @@ internal sealed class UserManagementService(
             cancellationToken);
     }
 
+    private async Task<ManagementAuthorizationDecision> EvaluateDeleteAsync(
+        string userId,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken)
+    {
+        if (string.Equals(
+            userId,
+            context.OperatorSubject,
+            StringComparison.Ordinal))
+        {
+            return ManagementAuthorizationDecision.Denied(
+                "user_self_delete_not_allowed");
+        }
+
+        return await authorization.EvaluateAsync(
+            context.Operator,
+            ManagementCapabilities.UsersDelete,
+            new ManagementResource(
+                ManagementResourceTypes.User,
+                userId),
+            cancellationToken);
+    }
+
     private static ManagementUserActions Actions(
         ManagementAuthorizationDecision resetDecision,
         ManagementAuthorizationDecision lockoutDecision,
-        ManagementAuthorizationDecision updateProfileDecision) =>
+        ManagementAuthorizationDecision updateProfileDecision,
+        ManagementAuthorizationDecision deleteDecision) =>
         new(
             resetDecision.IsAllowed,
             resetDecision.Outcome is
@@ -1016,7 +1077,11 @@ internal sealed class UserManagementService(
             updateProfileDecision.IsAllowed,
             updateProfileDecision.Outcome is
                 ManagementAuthorizationOutcome.StepUpRequired,
-            updateProfileDecision.ReasonCode);
+            updateProfileDecision.ReasonCode,
+            deleteDecision.IsAllowed,
+            deleteDecision.Outcome is
+                ManagementAuthorizationOutcome.StepUpRequired,
+            deleteDecision.ReasonCode);
 
     private static void EnsureProfileChangeSucceeded(
         IdentityResult result)
@@ -1024,19 +1089,6 @@ internal sealed class UserManagementService(
         if (!result.Succeeded)
         {
             throw new ProfileIdentityException(result);
-        }
-    }
-
-    private static void EnsureLockoutChangeSucceeded(
-        IdentityResult result)
-    {
-        if (!result.Succeeded)
-        {
-            throw new InvalidOperationException(
-                string.Join(
-                    ' ',
-                    result.Errors.Select(error =>
-                        $"{error.Code}: {error.Description}")));
         }
     }
 

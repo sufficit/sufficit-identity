@@ -322,6 +322,14 @@ public sealed class ManagementUiRoutingTests
             "Editar perfil",
             detailHtml,
             StringComparison.Ordinal);
+        Assert.Contains(
+            "Excluir conta do provedor",
+            detailHtml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Digite <strong>alice</strong> para confirmar",
+            detailHtml,
+            StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
         Assert.Contains(
             "Salvar perfil",
@@ -1019,7 +1027,10 @@ public sealed class ManagementUiRoutingTests
                     SetLockoutReasonCode: "allowed",
                     CanUpdateProfile: true,
                     UpdateProfileRequiresMfa: false,
-                    UpdateProfileReasonCode: "allowed")));
+                    UpdateProfileReasonCode: "allowed",
+                    CanDelete: true,
+                    DeleteRequiresMfa: false,
+                    DeleteReasonCode: "allowed")));
 
         public Task<ManagementUserDetail> CreateAsync(
             CreateManagementUserCommand command,
@@ -1044,6 +1055,12 @@ public sealed class ManagementUiRoutingTests
         public Task<ManagementUserDetail> SetLockoutAsync(
             string id,
             SetManagementUserLockoutCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task DeleteAsync(
+            string id,
             ManagementRequestContext context,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();

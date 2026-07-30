@@ -9,6 +9,7 @@ public static class IdentityDatabaseSchema
     public const string InitialMigrationId = "20260726213918_Initial";
     public const string BrandingThemesMigrationId = "20260729025623_AddBrandingThemes";
     public const string ManagementAuditMigrationId = "20260729221512_AddManagementAuditEvents";
+    public const string ScimProvisioningMigrationId = "20260730220100_AddScimProvisioning";
 
     /// <summary>
     /// Migration history owned by the new Sufficit Identity model.
@@ -39,4 +40,12 @@ public static class IdentityDatabaseSchema
     public const int AuditReasonLength = 100;
     public const int AuditCorrelationLength = 100;
     public const int AuditAuthenticationMethodsLength = 255;
+
+    // SCIM
+    public const int ScimIdentifierLength = 255;
+    public const int ScimDisplayNameLength = 256;
+    public const int ScimProfileValueLength = 256;
+    public const int ScimLanguageLength = 35;
+    public const int ScimTimezoneLength = 100;
+    public const int ScimConcurrencyStampLength = 64;
 }

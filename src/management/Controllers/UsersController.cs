@@ -83,6 +83,18 @@ public sealed class UsersController(IUserManagementService users)
             RequestContext(),
             cancellationToken));
 
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(
+        string id,
+        CancellationToken cancellationToken)
+    {
+        await users.DeleteAsync(
+            id,
+            RequestContext(),
+            cancellationToken);
+        return NoContent();
+    }
+
     private ManagementRequestContext RequestContext() =>
         new(User, HttpContext.TraceIdentifier);
 }

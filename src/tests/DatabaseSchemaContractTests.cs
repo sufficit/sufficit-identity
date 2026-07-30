@@ -98,6 +98,50 @@ public sealed class DatabaseSchemaContractTests
             unique: false,
             "ResourceType",
             "ResourceId");
+
+        var scimProfile = RequiredEntity<ScimUserProfile>(model);
+        Assert.Equal("scimuserprofiles", scimProfile.GetTableName());
+        AssertProperty(
+            scimProfile,
+            "UserId",
+            "userid",
+            "varchar(255)",
+            255,
+            nullable: false);
+        AssertIndex(
+            scimProfile,
+            "IX_scimuserprofiles_externalid",
+            unique: false,
+            "ExternalId");
+
+        var scimGroup = RequiredEntity<ScimGroup>(model);
+        Assert.Equal("scimgroups", scimGroup.GetTableName());
+        AssertProperty(
+            scimGroup,
+            "DisplayName",
+            "displayname",
+            "varchar(256)",
+            256,
+            nullable: false);
+        AssertIndex(
+            scimGroup,
+            "IX_scimgroups_displayname",
+            unique: false,
+            "DisplayName");
+
+        var scimUserMember = RequiredEntity<ScimGroupUserMember>(model);
+        Assert.Equal("scimgroupusermembers", scimUserMember.GetTableName());
+        Assert.Equal(
+            ["GroupId", "UserId"],
+            scimUserMember.FindPrimaryKey()!.Properties.Select(
+                property => property.Name));
+
+        var scimGroupMember = RequiredEntity<ScimGroupGroupMember>(model);
+        Assert.Equal("scimgroupgroupmembers", scimGroupMember.GetTableName());
+        Assert.Equal(
+            ["GroupId", "MemberGroupId"],
+            scimGroupMember.FindPrimaryKey()!.Properties.Select(
+                property => property.Name));
     }
 
     [Fact]
@@ -109,6 +153,7 @@ public sealed class DatabaseSchemaContractTests
             IdentityDatabaseSchema.InitialMigrationId,
             IdentityDatabaseSchema.BrandingThemesMigrationId,
             IdentityDatabaseSchema.ManagementAuditMigrationId,
+            IdentityDatabaseSchema.ScimProvisioningMigrationId,
         ], context.Database.GetMigrations());
 
         var history = context.GetService<IHistoryRepository>().GetCreateScript();

@@ -63,25 +63,27 @@ public sealed class MariaDbMigrationIntegrationTests
                 IdentityDatabaseSchema.InitialMigrationId,
                 IdentityDatabaseSchema.BrandingThemesMigrationId,
                 IdentityDatabaseSchema.ManagementAuditMigrationId,
+                IdentityDatabaseSchema.ScimProvisioningMigrationId,
             ],
             await context.Database.GetAppliedMigrationsAsync());
 
         await using var connection = context.Database.GetDbConnection();
         await connection.OpenAsync();
 
-        Assert.Equal(16, await ScalarIntAsync(connection, """
+        Assert.Equal(20, await ScalarIntAsync(connection, """
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
             """));
 
-        Assert.Equal(3, await ScalarIntAsync(connection, $"""
+        Assert.Equal(4, await ScalarIntAsync(connection, $"""
             SELECT COUNT(*)
             FROM `{IdentityDatabaseSchema.MigrationsHistoryTable}`
             WHERE `MigrationId` IN (
                 '{IdentityDatabaseSchema.InitialMigrationId}',
                 '{IdentityDatabaseSchema.BrandingThemesMigrationId}',
-                '{IdentityDatabaseSchema.ManagementAuditMigrationId}'
+                '{IdentityDatabaseSchema.ManagementAuditMigrationId}',
+                '{IdentityDatabaseSchema.ScimProvisioningMigrationId}'
               )
             """));
 
@@ -122,6 +124,15 @@ public sealed class MariaDbMigrationIntegrationTests
               AND table_name = 'managementauditevents'
               AND index_name = 'IX_managementauditevents_resource'
               AND column_name = 'resourceid'
+            """));
+
+        Assert.Equal(1, await ScalarIntAsync(connection, """
+            SELECT COUNT(*)
+            FROM information_schema.statistics
+            WHERE table_schema = DATABASE()
+              AND table_name = 'scimgroupusermembers'
+              AND index_name = 'IX_scimgroupusermembers_userid'
+              AND column_name = 'userid'
             """));
     }
 
