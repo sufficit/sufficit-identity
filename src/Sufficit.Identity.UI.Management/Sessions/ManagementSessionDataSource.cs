@@ -3,90 +3,57 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Management.Authorization;
-using Sufficit.Identity.Management.Claims;
+using Sufficit.Identity.Management.Sessions;
+using Sufficit.Identity.Management.Users;
 using Sufficit.Identity.UI.Management.Clients;
 
-namespace Sufficit.Identity.UI.Management.Claims;
+namespace Sufficit.Identity.UI.Management.Sessions;
 
 /// <summary>
-/// Circuit-safe UI adapter over the canonical claim-management service.
-/// Persistence, authorization and token invalidation remain in the Identity
-/// application layer.
+/// Circuit-safe UI adapter over the canonical provider-session service.
 /// </summary>
-public sealed class ManagementClaimDataSource(
+public sealed class ManagementSessionDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
-    ILogger<ManagementClaimDataSource> logger)
+    ILogger<ManagementSessionDataSource> logger)
 {
-    public Task<ManagementDataResult<ManagementClaimMetadata>> GetMetadataAsync(
+    public Task<ManagementDataResult<ManagementSessionPage>> SearchAsync(
+        ManagementSessionSearch query,
         CancellationToken cancellationToken = default) =>
         ExecuteAsync(
-            (claims, context) => claims.GetMetadataAsync(
-                context,
-                cancellationToken),
-            "Claim metadata",
-            cancellationToken);
-
-    public Task<ManagementDataResult<ManagementClaimPage>> SearchAsync(
-        ManagementClaimSearch query,
-        CancellationToken cancellationToken = default) =>
-        ExecuteAsync(
-            (claims, context) => claims.SearchAsync(
+            (sessions, context) => sessions.SearchAsync(
                 query,
                 context,
                 cancellationToken),
-            "Claim listing",
+            "Session listing",
             cancellationToken);
 
-    public Task<ManagementDataResult<ManagementClaimAssignment>> GetAsync(
-        int id,
+    public Task<ManagementDataResult<bool>> RevokeAsync(
+        string id,
         CancellationToken cancellationToken = default) =>
         ExecuteAsync(
-            (claims, context) => claims.GetAsync(
-                id,
-                context,
-                cancellationToken),
-            "Claim detail",
-            cancellationToken);
-
-    public Task<ManagementDataResult<ManagementClaimAssignment>> CreateAsync(
-        CreateManagementClaimCommand command,
-        CancellationToken cancellationToken = default) =>
-        ExecuteAsync(
-            (claims, context) => claims.CreateAsync(
-                command,
-                context,
-                cancellationToken),
-            "Claim assignment",
-            cancellationToken);
-
-    public Task<ManagementDataResult<ManagementClaimAssignment>> UpdateAsync(
-        int id,
-        UpdateManagementClaimCommand command,
-        CancellationToken cancellationToken = default) =>
-        ExecuteAsync(
-            (claims, context) => claims.UpdateAsync(
-                id,
-                command,
-                context,
-                cancellationToken),
-            "Claim update",
-            cancellationToken);
-
-    public Task<ManagementDataResult<bool>> DeleteAsync(
-        int id,
-        CancellationToken cancellationToken = default) =>
-        ExecuteAsync(
-            async (claims, context) =>
+            async (sessions, context) =>
             {
-                await claims.DeleteAsync(id, context, cancellationToken);
+                await sessions.RevokeAsync(id, context, cancellationToken);
                 return true;
             },
-            "Claim removal",
+            "Session revocation",
+            cancellationToken);
+
+    public Task<ManagementDataResult<ManagementUserSessionRevocation>>
+        RevokeAllForUserAsync(
+            string userId,
+            CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (sessions, context) => sessions.RevokeAllForUserAsync(
+                userId,
+                context,
+                cancellationToken),
+            "Account session revocation",
             cancellationToken);
 
     private async Task<ManagementDataResult<T>> ExecuteAsync<T>(
-        Func<IClaimManagementService, ManagementRequestContext, Task<T>> operation,
+        Func<ISessionManagementService, ManagementRequestContext, Task<T>> operation,
         string operationName,
         CancellationToken cancellationToken)
     {
@@ -97,10 +64,9 @@ public sealed class ManagementClaimDataSource(
             var context = new ManagementRequestContext(
                 authentication.User,
                 Activity.Current?.Id ?? $"management-ui-{Guid.NewGuid():N}");
-
             await using var scope = scopeFactory.CreateAsyncScope();
             var service = scope.ServiceProvider
-                .GetRequiredService<IClaimManagementService>();
+                .GetRequiredService<ISessionManagementService>();
             return ManagementDataResult<T>.Success(
                 await operation(service, context));
         }

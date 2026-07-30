@@ -100,11 +100,16 @@ The generic management application evaluates stable capabilities such as:
 - `identity.clients.delete`
 - `identity.claims.read`
 - `identity.claims.create`
+- `identity.claims.update`
 - `identity.claims.delete`
 - `identity.scopes.read`
 - `identity.scopes.create`
 - `identity.scopes.update`
 - `identity.scopes.delete`
+- `identity.sessions.read`
+- `identity.sessions.revoke`
+- `identity.authorizations.read`
+- `identity.authorizations.revoke`
 - `identity.users.read`
 - `identity.users.create`
 - `identity.users.update`
@@ -135,10 +140,14 @@ The corrected UI:
 - keeps password reset, profile update and session revocation as provider
   security operations;
 - removes the former generic `/management/access` information page;
-- exposes Claims under Identity as persisted custom-claim assignments to
-  accounts, with search, filtering, creation, detail and removal;
+- exposes Claims from each user detail as persisted custom-claim assignments,
+  with per-account search, creation, editing and removal;
 - exposes Scopes under OAuth/OIDC as custom OpenIddict definitions, with list,
   creation, detail, update and guarded deletion;
+- exposes Authorizations under OAuth/OIDC as grants/consents with scopes and
+  guarded revocation of the authorization and its related credentials;
+- exposes Sessions under Operations as safe OpenIddict credential metadata,
+  with individual revocation and account-wide invalidation;
 - treats claims as opaque attributes and never suggests Sufficit business roles;
 - protects protocol/profile claim types from manual override;
 - rotates the target user's security stamp and revokes active tokens whenever a
@@ -151,9 +160,11 @@ claim names may be suggested by the presentation layer for usability, but the
 application service accepts opaque custom types and values after enforcing its
 reserved-claim boundary. SCIM remains a separate future protocol surface.
 
-Claims use the existing ASP.NET Identity `userclaims` store and scopes use the
-existing OpenIddict `scopes` store. This vertical therefore requires no new
-database table or migration.
+Claims use the existing ASP.NET Identity `userclaims` store; scopes, sessions
+and authorizations use the existing OpenIddict `scopes`, `tokens` and
+`authorizations` stores. These verticals therefore require no new database
+table or migration. Token payloads and reference identifiers are deliberately
+absent from management DTOs and audit events.
 
 ## Source-of-truth rule
 
@@ -184,6 +195,7 @@ Sufficit Blazor ──> identity/SCIM API ──> identity application service
 - Existing company role/directive management remains in `sufficit-blazor`.
 - Authentication state changes rotate/revoke the appropriate provider
   credentials and remain audited.
-- Claims and scopes have separate routes, capabilities and navigation entries.
+- Claims are contextual to a user; scopes, sessions and authorizations have
+  independent routes, capabilities and navigation entries.
 - Manifest-managed scopes cannot be manually updated or deleted.
 - Claim values are never copied into management audit events.

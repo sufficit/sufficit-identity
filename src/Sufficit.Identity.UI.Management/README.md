@@ -9,8 +9,8 @@ Library: não possui processo, porta, health check ou cliente OIDC próprios.
 Implementado:
 
 - shell administrativo responsivo e acessível;
-- rotas de visão geral, clientes, usuários, claims e scopes, branding,
-  provisionamento, auditoria e configurações;
+- rotas de visão geral, clientes, usuários e suas claims, scopes, sessões,
+  autorizações, branding, provisionamento, auditoria e configurações;
 - incorporação em `/management` no mesmo processo e origem do Identity;
 - autenticação pela sessão ASP.NET Identity já emitida pelo host;
 - autorização por capabilities estáveis do provedor;
@@ -18,12 +18,16 @@ Implementado:
   pela Management API;
 - listagem global, detalhe, criação, edição de perfil, reset de senha e
   bloqueio/desbloqueio de contas pelo mesmo serviço usado pela API;
-- listagem paginada, pesquisa, atribuição, detalhe e remoção de claims
-  personalizadas, com revogação dos tokens da conta;
+- listagem paginada por usuário, pesquisa, atribuição, edição e remoção de
+  claims personalizadas, com revogação dos tokens da conta;
 - listagem, criação, detalhe, edição e exclusão protegida de scopes OAuth,
   incluindo vínculo com clientes e origem declarativa;
 - atualização de security stamp e revogação de tokens/sessões conforme a
   operação de segurança;
+- listagem segura e revogação de credenciais persistidas pelo OpenIddict, sem
+  expor payload ou referência de token;
+- listagem e revogação de autorizações/consentimentos com invalidação das
+  credenciais relacionadas;
 - CRUD e ativação exclusiva de temas de branding;
 - avatar do operador resolvido pelo mesmo `IUserAvatarUrlResolver` da UI
   pública;
@@ -45,8 +49,7 @@ usuário.
 Ainda não implementado:
 
 - exclusão de usuários;
-- SCIM RFC 7643/7644;
-- contratos administrativos isolados para sessões e grants.
+- SCIM RFC 7643/7644.
 
 ## Composição no host
 
@@ -128,4 +131,3 @@ dotnet run --project src/server/Sufficit.Identity.Server.csproj
 
 1. Implementar exclusão segura de usuários.
 2. Implementar SCIM Users/Groups e descoberta de schemas.
-3. Migrar sessões e grants para use cases compartilhados.

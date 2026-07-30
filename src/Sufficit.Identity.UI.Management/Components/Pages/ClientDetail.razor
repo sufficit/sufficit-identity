@@ -12,6 +12,27 @@
             <AppIcon Name="arrow-left" Size="17" />
             Voltar para clientes
         </a>
+        @if (result?.Value is { } selectedClient)
+        {
+            <AuthorizeView Policy="@ManagementUiPolicies.ManageSessions">
+                <Authorized>
+                    <a class="button button--secondary"
+                       href="@SessionsHref(selectedClient.ClientId)">
+                        <AppIcon Name="clock" Size="17" />
+                        Sessões
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+            <AuthorizeView Policy="@ManagementUiPolicies.ManageAuthorizations">
+                <Authorized>
+                    <a class="button button--secondary"
+                       href="@AuthorizationsHref(selectedClient.ClientId)">
+                        <AppIcon Name="shield" Size="17" />
+                        Autorizações
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+        }
     </Actions>
 </PageHeader>
 
@@ -214,6 +235,12 @@ else
 
     private string PageTitleText =>
         $"{HeaderTitle} | Sufficit Identity";
+
+    private static string SessionsHref(string clientId) =>
+        $"sessions?client={Uri.EscapeDataString(clientId)}";
+
+    private static string AuthorizationsHref(string clientId) =>
+        $"authorizations?client={Uri.EscapeDataString(clientId)}";
 
     private bool CanDelete =>
         !deleting

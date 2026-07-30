@@ -1,4 +1,4 @@
-@page "/claims/new"
+@page "/users/{UserId}/claims/new"
 @attribute [Authorize(Policy = ManagementUiPolicies.ManageClaims)]
 @inject ManagementClaimDataSource ClaimData
 @inject ManagementUserDataSource UserData
@@ -7,7 +7,7 @@
 <PageTitle>Atribuir claim | Sufficit Identity</PageTitle>
 
 <PageHeader Title="Atribuir claim"
-            Description="Associe um atributo adicional a uma conta sem incorporar regras de negócio da aplicação.">
+            Description="@HeaderDescription">
     <Actions>
         <a class="button button--secondary" href="@BackHref">
             <AppIcon Name="arrow-left" Size="17" />
@@ -22,7 +22,7 @@
         <strong>Alteração efetiva na próxima emissão</strong>
         <span>A atribuição atualiza o selo de segurança e revoga tokens ativos da conta.</span>
     </div>
-    <StatusBadge Tone="warning">Impacta sessões</StatusBadge>
+    <StatusBadge Tone="warning">Impacta credenciais</StatusBadge>
 </section>
 
 @if (submission?.IsSuccess is false)
@@ -45,43 +45,22 @@
     <section class="form-section" aria-labelledby="claim-account-heading">
         <div class="form-section__heading">
             <h2 id="claim-account-heading">Conta</h2>
-            <p>Pesquise no diretório do provedor. A lista também usa o serviço canônico de usuários.</p>
+            <p>A claim será vinculada somente a esta identidade.</p>
         </div>
-
-        <div class="user-picker">
-            <div class="field-group">
-                <label for="user-search">Pesquisar conta</label>
-                <div class="user-search">
-                    <input id="user-search"
-                           class="form-control"
-                           type="search"
-                           placeholder="Nome de usuário ou e-mail"
-                           autocomplete="off"
-                           @bind="userSearch" />
-                    <button class="button button--secondary"
-                            type="button"
-                            disabled="@loadingUsers"
-                            @onclick="SearchUsersAsync">
-                        Pesquisar
-                    </button>
-                </div>
+        <dl class="property-list">
+            <div>
+                <dt>Usuário</dt>
+                <dd>@AccountLabel</dd>
             </div>
-
-            <div class="field-group">
-                <label for="claim-user">Conta selecionada</label>
-                <InputSelect id="claim-user"
-                             class="form-control"
-                             @bind-Value="model.UserId">
-                    <option value="">Selecione uma conta</option>
-                    @foreach (var user in Users)
-                    {
-                        <option value="@user.Id">@UserLabel(user)</option>
-                    }
-                </InputSelect>
-                <ValidationMessage For="() => model.UserId" />
-                <span class="field-hint">@UserPickerHint</span>
+            <div>
+                <dt>E-mail</dt>
+                <dd>@(userResult?.Value?.Email ?? "Não informado")</dd>
             </div>
-        </div>
+            <div>
+                <dt>Identificador</dt>
+                <dd><code class="client-id">@UserId</code></dd>
+            </div>
+        </dl>
     </section>
 
     <section class="form-section" aria-labelledby="claim-value-heading">
@@ -119,7 +98,8 @@
 
     <footer class="form-actions">
         <a class="button button--secondary" href="@BackHref">Cancelar</a>
-        <button class="button button--primary" type="submit" disabled="@submitting">
+        <button class="button button--primary" type="submit"
+                disabled="@(submitting || userResult?.IsSuccess is not true)">
             @if (submitting)
             {
                 <span class="button-spinner" aria-hidden="true"></span>
@@ -135,54 +115,36 @@
 </EditForm>
 
 @code {
-    [SupplyParameterFromQuery(Name = "user")]
-    public string? User { get; set; }
+    [Parameter]
+    public string UserId { get; set; } = string.Empty;
 
     private readonly ClaimCreateModel model = new();
     private ManagementDataResult<ManagementClaimMetadata>? metadataResult;
-    private ManagementDataResult<ManagementUserPage>? usersResult;
+    private ManagementDataResult<ManagementUserDetail>? userResult;
     private ManagementDataResult<ManagementClaimAssignment>? submission;
-    private string userSearch = string.Empty;
-    private bool loadingUsers;
     private bool submitting;
-
-    private IReadOnlyList<ManagementUserSummary> Users =>
-        usersResult?.Value?.Items ?? [];
 
     private IReadOnlyList<string> SuggestedTypes =>
         metadataResult?.Value?.SuggestedTypes ?? [];
 
+    private string AccountLabel =>
+        userResult?.Value is { } user
+            ? user.UserName ?? user.Email ?? user.Id
+            : "Carregando conta…";
+
+    private string HeaderDescription =>
+        $"Associe um atributo adicional a {AccountLabel} sem incorporar regras da aplicação.";
+
     private string BackHref =>
-        string.IsNullOrWhiteSpace(User)
-            ? "claims"
-            : $"claims?user={Uri.EscapeDataString(User)}";
+        $"users/{Uri.EscapeDataString(UserId)}/claims";
 
-    private string UserPickerHint =>
-        loadingUsers
-            ? "Consultando o diretório…"
-            : usersResult?.IsSuccess is false
-                ? usersResult.ErrorMessage ?? "Não foi possível consultar as contas."
-                : Users.Count is 0
-                    ? "Nenhuma conta encontrada."
-                    : $"{Users.Count} conta(s) disponível(is) nesta pesquisa.";
-
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
-        model.UserId = User ?? string.Empty;
-        await Task.WhenAll(
-            SearchUsersAsync(),
-            LoadMetadataAsync());
-    }
-
-    private async Task LoadMetadataAsync() =>
-        metadataResult = await ClaimData.GetMetadataAsync();
-
-    private async Task SearchUsersAsync()
-    {
-        loadingUsers = true;
-        usersResult = await UserData.SearchAsync(
-            new ManagementUserSearch(userSearch, 1, 100));
-        loadingUsers = false;
+        var metadataTask = ClaimData.GetMetadataAsync();
+        var userTask = UserData.GetAsync(UserId);
+        await Task.WhenAll(metadataTask, userTask);
+        metadataResult = await metadataTask;
+        userResult = await userTask;
     }
 
     private async Task CreateAsync()
@@ -195,31 +157,19 @@
         submitting = true;
         submission = await ClaimData.CreateAsync(
             new CreateManagementClaimCommand(
-                model.UserId,
+                UserId,
                 model.Type,
                 model.Value));
         submitting = false;
 
-        if (submission.IsSuccess && submission.Value is not null)
+        if (submission.IsSuccess)
         {
-            Navigation.NavigateTo($"claims/{submission.Value.Id}?created=1");
+            Navigation.NavigateTo($"{BackHref}?created=1");
         }
-    }
-
-    private static string UserLabel(ManagementUserSummary user)
-    {
-        var primary = user.UserName ?? user.Email ?? user.Id;
-        return user.Email is not null
-            && !string.Equals(primary, user.Email, StringComparison.OrdinalIgnoreCase)
-                ? $"{primary} — {user.Email}"
-                : primary;
     }
 
     private sealed class ClaimCreateModel
     {
-        [Required(ErrorMessage = "Selecione uma conta.")]
-        public string UserId { get; set; } = string.Empty;
-
         [Required(ErrorMessage = "Informe o tipo da claim.")]
         [StringLength(256, ErrorMessage = "Use no máximo 256 caracteres.")]
         public string Type { get; set; } = string.Empty;

@@ -2718,6 +2718,19 @@ h3 {
     color: var(--brand-hover);
 }
 
+.row-action--button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.row-action--button:focus-visible {
+    border-radius: var(--radius-sm);
+    outline: 3px solid var(--brand-ring);
+    outline-offset: 3px;
+}
+
 .button--danger {
     background: var(--danger);
     color: #ffffff;

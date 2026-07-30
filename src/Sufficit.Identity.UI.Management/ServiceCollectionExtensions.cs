@@ -8,11 +8,13 @@ using Microsoft.Extensions.Options;
 using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.UI.Management.Audit;
+using Sufficit.Identity.UI.Management.Authorizations;
 using Sufficit.Identity.UI.Management.Branding;
 using Sufficit.Identity.UI.Management.Claims;
 using Sufficit.Identity.UI.Management.Clients;
 using Sufficit.Identity.UI.Management.Configuration;
 using Sufficit.Identity.UI.Management.Scopes;
+using Sufficit.Identity.UI.Management.Sessions;
 using Sufficit.Identity.UI.Management.Users;
 
 namespace Sufficit.Identity.UI.Management;
@@ -23,6 +25,10 @@ public static class ManagementUiPolicies
     public const string ManageClients = "sufficit-identity-management-ui-clients";
     public const string ManageClaims = "sufficit-identity-management-ui-claims";
     public const string ManageScopes = "sufficit-identity-management-ui-scopes";
+    public const string ManageSessions =
+        "sufficit-identity-management-ui-sessions";
+    public const string ManageAuthorizations =
+        "sufficit-identity-management-ui-authorizations";
     public const string ManageBranding = "sufficit-identity-management-ui-branding";
     public const string ReadAudit = "sufficit-identity-management-ui-audit";
 }
@@ -140,6 +146,28 @@ public static class ServiceCollectionExtensions
                         ManagementResourceTypes.ScopeCollection));
             });
 
+            authorization.AddPolicy(
+                ManagementUiPolicies.ManageSessions,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.Requirements.Add(
+                        new ManagementCapabilityRequirement(
+                            ManagementCapabilities.SessionsRead,
+                            ManagementResourceTypes.SessionCollection));
+                });
+
+            authorization.AddPolicy(
+                ManagementUiPolicies.ManageAuthorizations,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.Requirements.Add(
+                        new ManagementCapabilityRequirement(
+                            ManagementCapabilities.AuthorizationsRead,
+                            ManagementResourceTypes.AuthorizationCollection));
+                });
+
             authorization.AddPolicy(ManagementUiPolicies.ManageBranding, policy =>
             {
                 policy.RequireAuthenticatedUser();
@@ -168,6 +196,8 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<ManagementClientDataSource>();
         services.TryAddScoped<ManagementClaimDataSource>();
         services.TryAddScoped<ManagementScopeDataSource>();
+        services.TryAddScoped<ManagementSessionDataSource>();
+        services.TryAddScoped<ManagementAuthorizationDataSource>();
         services.TryAddScoped<ManagementBrandingDataSource>();
         services.TryAddScoped<ManagementAuditDataSource>();
         services.TryAddScoped<ManagementUserDataSource>();

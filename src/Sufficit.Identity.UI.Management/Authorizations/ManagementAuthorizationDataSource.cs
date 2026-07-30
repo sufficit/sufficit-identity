@@ -3,90 +3,49 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Management.Authorization;
-using Sufficit.Identity.Management.Claims;
+using Sufficit.Identity.Management.Authorizations;
 using Sufficit.Identity.UI.Management.Clients;
 
-namespace Sufficit.Identity.UI.Management.Claims;
+namespace Sufficit.Identity.UI.Management.Authorizations;
 
 /// <summary>
-/// Circuit-safe UI adapter over the canonical claim-management service.
-/// Persistence, authorization and token invalidation remain in the Identity
-/// application layer.
+/// Circuit-safe UI adapter over the canonical OAuth/OIDC authorization
+/// service.
 /// </summary>
-public sealed class ManagementClaimDataSource(
+public sealed class ManagementAuthorizationDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
-    ILogger<ManagementClaimDataSource> logger)
+    ILogger<ManagementAuthorizationDataSource> logger)
 {
-    public Task<ManagementDataResult<ManagementClaimMetadata>> GetMetadataAsync(
+    public Task<ManagementDataResult<ManagementAuthorizationPage>> SearchAsync(
+        ManagementAuthorizationSearch query,
         CancellationToken cancellationToken = default) =>
         ExecuteAsync(
-            (claims, context) => claims.GetMetadataAsync(
-                context,
-                cancellationToken),
-            "Claim metadata",
-            cancellationToken);
-
-    public Task<ManagementDataResult<ManagementClaimPage>> SearchAsync(
-        ManagementClaimSearch query,
-        CancellationToken cancellationToken = default) =>
-        ExecuteAsync(
-            (claims, context) => claims.SearchAsync(
+            (authorizations, context) => authorizations.SearchAsync(
                 query,
                 context,
                 cancellationToken),
-            "Claim listing",
+            "Authorization listing",
             cancellationToken);
 
-    public Task<ManagementDataResult<ManagementClaimAssignment>> GetAsync(
-        int id,
+    public Task<ManagementDataResult<bool>> RevokeAsync(
+        string id,
         CancellationToken cancellationToken = default) =>
         ExecuteAsync(
-            (claims, context) => claims.GetAsync(
-                id,
-                context,
-                cancellationToken),
-            "Claim detail",
-            cancellationToken);
-
-    public Task<ManagementDataResult<ManagementClaimAssignment>> CreateAsync(
-        CreateManagementClaimCommand command,
-        CancellationToken cancellationToken = default) =>
-        ExecuteAsync(
-            (claims, context) => claims.CreateAsync(
-                command,
-                context,
-                cancellationToken),
-            "Claim assignment",
-            cancellationToken);
-
-    public Task<ManagementDataResult<ManagementClaimAssignment>> UpdateAsync(
-        int id,
-        UpdateManagementClaimCommand command,
-        CancellationToken cancellationToken = default) =>
-        ExecuteAsync(
-            (claims, context) => claims.UpdateAsync(
-                id,
-                command,
-                context,
-                cancellationToken),
-            "Claim update",
-            cancellationToken);
-
-    public Task<ManagementDataResult<bool>> DeleteAsync(
-        int id,
-        CancellationToken cancellationToken = default) =>
-        ExecuteAsync(
-            async (claims, context) =>
+            async (authorizations, context) =>
             {
-                await claims.DeleteAsync(id, context, cancellationToken);
+                await authorizations.RevokeAsync(
+                    id,
+                    context,
+                    cancellationToken);
                 return true;
             },
-            "Claim removal",
+            "Authorization revocation",
             cancellationToken);
 
     private async Task<ManagementDataResult<T>> ExecuteAsync<T>(
-        Func<IClaimManagementService, ManagementRequestContext, Task<T>> operation,
+        Func<IAuthorizationManagementService, ManagementRequestContext, Task<T>>
+            operation,
         string operationName,
         CancellationToken cancellationToken)
     {
@@ -97,10 +56,9 @@ public sealed class ManagementClaimDataSource(
             var context = new ManagementRequestContext(
                 authentication.User,
                 Activity.Current?.Id ?? $"management-ui-{Guid.NewGuid():N}");
-
             await using var scope = scopeFactory.CreateAsyncScope();
             var service = scope.ServiceProvider
-                .GetRequiredService<IClaimManagementService>();
+                .GetRequiredService<IAuthorizationManagementService>();
             return ManagementDataResult<T>.Success(
                 await operation(service, context));
         }

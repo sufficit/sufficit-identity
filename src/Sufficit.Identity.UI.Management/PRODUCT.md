@@ -84,15 +84,18 @@ auditoria em todo o fluxo.
   preserva autorizações duráveis e reinicia a confirmação dos contatos
   alterados. O bloqueio revoga sessões, tokens e autorizações pelo runtime
   canônico.
-- Claims personalizadas possuem pesquisa paginada, filtro por conta,
-  atribuição, detalhe e remoção. Tipos reservados de protocolo/perfil são
+- Claims personalizadas possuem pesquisa paginada por conta, atribuição,
+  edição e remoção. Tipos reservados de protocolo/perfil são
   protegidos; mutações giram o security stamp, revogam tokens e não registram
   valores na auditoria.
 - Scopes personalizados possuem listar, obter, criar, atualizar e excluir.
   Nomes são imutáveis, exclusões são bloqueadas quando clientes usam o scope e
   scopes gerenciados pelo manifesto são somente leitura na interface.
-- Exclusão de usuários, SCIM, sessões e grants ainda dependem de novos
-  contratos; auditoria, branding, claims e scopes já usam contratos
+- Sessões projetam metadados seguros de credenciais OpenIddict, permitem
+  revogação individual e encerramento total por conta. Autorizações projetam
+  grants/consentimentos e revogam também as credenciais relacionadas.
+- Exclusão de usuários e SCIM ainda dependem de novos contratos; auditoria,
+  branding, claims, scopes, sessões e autorizações já usam contratos
   compartilhados.
 - A fronteira entre o provedor e a autorização das aplicações
   estão definidos em

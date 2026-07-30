@@ -91,12 +91,14 @@ consistência.
 
 ## Violações atuais conhecidas
 
-Os verticais administrativos de clientes, branding, contas, claims e scopes
-aplicam o padrão canônico. Controllers HTTP e data sources da UI usam
+Os verticais administrativos de clientes, branding, contas, claims, scopes,
+sessões e autorizações aplicam o padrão canônico. Controllers HTTP e data
+sources da UI usam
 `IClientManagementService`, `IBrandingManagementService` e
 `IUserManagementService`, `IClaimManagementService` e
-`IScopeManagementService` para executar os mesmos casos de uso. Esses serviços
-concentram validação, defaults, autorização e auditoria; o escopo DI curto
+`IScopeManagementService`, `ISessionManagementService` e
+`IAuthorizationManagementService` para executar os mesmos casos de uso. Esses
+serviços concentram validação, defaults, autorização e auditoria; o escopo DI curto
 protege o circuito Blazor sem criar uma segunda implementação. Usuários incluem
 acesso, pesquisa paginada global, detalhe, criação, atualização de perfil,
 reset de senha, bloqueio e desbloqueio:
@@ -104,13 +106,22 @@ a UI recebe a decisão de capability e apenas envia o comando; Identity,
 confirmações, security stamp, tokens, autorizações e auditoria permanecem no
 runtime canônico.
 
-Claims são atribuições persistidas nas contas. Sua criação e remoção atualizam
-o security stamp e revogam tokens pelo serviço de aplicação; o valor nunca é
-duplicado na auditoria. Scopes são definições do OpenIddict. A UI distingue
+Claims são atribuições persistidas nas contas. Sua criação, edição e remoção
+atualizam o security stamp e revogam tokens pelo serviço de aplicação; o valor
+nunca é duplicado na auditoria. A interface de claims existe no contexto do
+detalhe de cada usuário, sem uma lista global paralela. Scopes são definições
+do OpenIddict. A UI distingue
 scopes criados manualmente dos marcados pelo manifesto de provisionamento:
 estes últimos são somente leitura, porque sua fonte autoritativa é o próprio
 manifesto. O serviço também impede excluir um scope ainda autorizado para
 clientes.
+
+Sessões projetam somente metadados não sensíveis das credenciais persistidas
+pelo OpenIddict. A revogação individual atinge a credencial selecionada; o
+encerramento total de uma conta também gira o security stamp e revoga tokens e
+autorizações. Autorizações projetam grants/consentimentos, scopes e contagem de
+credenciais. Sua revogação também revoga as credenciais relacionadas. Payload,
+reference ID e conteúdo de tokens nunca atravessam o contrato de aplicação.
 
 O avatar do operador também segue essa fronteira. A UI pública e a Management
 UI resolvem a imagem por `IUserAvatarUrlResolver`, que consome o tema ativo
@@ -134,16 +145,14 @@ nova tela deve repetir esse padrão.
 
 ## Ordem de migração
 
-1. Expandir o contrato administrativo de sessão com operador, capabilities,
-   escopos autorizados, política MFA e metadados necessários ao shell.
-2. Migrar configurações e provisionamento para use cases compartilhados
+1. Migrar configurações e provisionamento para use cases compartilhados
    (branding concluído em 2026-07-29; claims e scopes concluídos em
-   2026-07-30).
-3. Criar contratos de aplicação para autoatendimento e migrar a UI pública.
-4. Remover das UIs referências a entidades mutáveis, stores e gerenciadores de
+   2026-07-30; sessões e autorizações concluídas em 2026-07-30).
+2. Criar contratos de aplicação para autoatendimento e migrar a UI pública.
+3. Remover das UIs referências a entidades mutáveis, stores e gerenciadores de
    persistência/protocolo. Permanecem permitidos contratos puros de aplicação,
    como `IUserAvatarUrlResolver`, resolvidos pelo composition host.
-5. Adicionar testes arquiteturais que falhem quando uma UI ou controller
+4. Adicionar testes arquiteturais que falhem quando uma UI ou controller
    reimplementar validação ou acessar dependências proibidas.
 
 ## Critérios de aceite

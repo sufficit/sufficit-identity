@@ -18,6 +18,22 @@
                 </a>
             </Authorized>
         </AuthorizeView>
+        <AuthorizeView Policy="@ManagementUiPolicies.ManageSessions">
+            <Authorized>
+                <a class="button button--secondary" href="@SessionsHref">
+                    <AppIcon Name="clock" Size="17" />
+                    Sessões
+                </a>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Policy="@ManagementUiPolicies.ManageAuthorizations">
+            <Authorized>
+                <a class="button button--secondary" href="@AuthorizationsHref">
+                    <AppIcon Name="shield" Size="17" />
+                    Autorizações
+                </a>
+            </Authorized>
+        </AuthorizeView>
         @if (result?.Value?.Actions.CanUpdateProfile is true)
         {
             <a class="button button--primary" href="@EditHref">
@@ -421,7 +437,13 @@ else
         $"users/{Uri.EscapeDataString(Id)}/edit";
 
     private string ClaimsHref =>
-        $"claims?user={Uri.EscapeDataString(Id)}";
+        $"users/{Uri.EscapeDataString(Id)}/claims";
+
+    private string SessionsHref =>
+        $"sessions?user={Uri.EscapeDataString(Id)}";
+
+    private string AuthorizationsHref =>
+        $"authorizations?user={Uri.EscapeDataString(Id)}";
 
     private string ErrorTitle =>
         result?.Outcome is ManagementDataOutcome.NotFound
