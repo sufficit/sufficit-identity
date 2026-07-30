@@ -22,10 +22,10 @@ jobs:
       # Sibling identity repo pin — sufficit-identity/src/core is referenced
       # via relative ProjectReference (../../../sufficit-identity/src/core/).
       # This SHA is sufficit-identity's compatible Management contracts and
-      # branding/audit and contextual user-mutation contracts on main as of
-      # 2026-07-29.
+      # branding/audit, contextual user-mutation and shared avatar contracts
+      # on main as of 2026-07-30.
       # Do not repoint at a moving branch — pinning ensures reproducible builds.
-      IDENTITY_REF: e0733f7ff4b01c71c5517a32eb2a79e5b94a1cf2
+      IDENTITY_REF: 75db707a199d08e9a98eb1566d408966ca7eae03
 
     steps:
       - name: Checkout sufficit-identity-ui

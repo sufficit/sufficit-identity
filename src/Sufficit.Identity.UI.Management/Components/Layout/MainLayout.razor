@@ -1,5 +1,8 @@
 @inherits LayoutComponentBase
 @inject IWebHostEnvironment HostEnvironment
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IUserAvatarUrlResolver AvatarUrlResolver
+@inject ILogger<MainLayout> Logger
 
 <div class="app-shell @(navigationOpen ? "app-shell--nav-open" : null)">
     <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
@@ -61,7 +64,19 @@
                     <Authorized Context="authentication">
                         <div class="operator-placeholder" aria-label="Operador autenticado">
                             <span class="operator-placeholder__avatar">
-                                @OperatorInitial(authentication.User.Identity?.Name)
+                                @if (!avatarLoadFailed
+                                    && !string.IsNullOrWhiteSpace(avatarUrl))
+                                {
+                                    <img src="@avatarUrl"
+                                         alt=""
+                                         decoding="async"
+                                         referrerpolicy="no-referrer"
+                                         @onerror="HandleAvatarError" />
+                                }
+                                else
+                                {
+                                    @OperatorInitial(authentication.User.Identity?.Name)
+                                }
                             </span>
                             <div>
                                 <strong>@OperatorName(authentication.User.Identity?.Name)</strong>
@@ -83,6 +98,8 @@
 
 @code {
     private bool navigationOpen;
+    private bool avatarLoadFailed;
+    private string? avatarUrl;
     private ElementReference openNavigationButton;
     private ElementReference closeNavigationButton;
 
@@ -102,6 +119,32 @@
         string.IsNullOrWhiteSpace(name)
             ? "ID"
             : name.Trim()[..1].ToUpperInvariant();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var authentication =
+                await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var subject = authentication.User.FindFirst("sub")?.Value
+                ?? authentication.User.FindFirst(
+                    System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            avatarUrl = await AvatarUrlResolver.ResolveAsync(subject);
+        }
+        catch (Exception exception)
+            when (exception is not OperationCanceledException)
+        {
+            Logger.LogWarning(
+                exception,
+                "Unable to resolve the authenticated operator avatar.");
+            avatarUrl = null;
+        }
+    }
+
+    private void HandleAvatarError()
+    {
+        avatarLoadFailed = true;
+    }
 
     private async Task HandleNavigationKeyDown(KeyboardEventArgs args)
     {

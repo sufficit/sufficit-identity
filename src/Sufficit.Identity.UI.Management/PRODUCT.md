@@ -74,6 +74,9 @@ auditoria em todo o fluxo.
   serviços de infraestrutura diretamente.
 - Capabilities, escopo de tenant, MFA e opções de negócio vêm do mesmo contrato
   de aplicação usado pela API; a UI não mantém uma matriz paralela.
+- A UI pública e a administrativa obtêm a URL do avatar pelo mesmo resolver de
+  aplicação. O tema ativo e seu template permanecem no runtime; as interfaces
+  apenas exibem a imagem ou as iniciais de fallback.
 - Estados `loading`, vazio, erro, acesso negado e indisponibilidade precisam
   ser distintos.
 - Contrato atual confirmado: clientes possuem listar, obter, criar e excluir;

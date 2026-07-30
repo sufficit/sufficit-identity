@@ -36,6 +36,8 @@ Implementado:
   confirmação reiniciada para contatos alterados, rotação do security stamp e
   revogação apenas dos tokens ativos, preservando autorizações duráveis;
 - política MFA substituível e configurável por contexto;
+- avatar do operador resolvido pelo mesmo `IUserAvatarUrlResolver` usado pela
+  UI pública, a partir do tema ativo do runtime, com iniciais como fallback;
 - defaults seguros para consentimento, HTTPS, PKCE e PAR;
 - confirmação explícita antes da exclusão;
 - auditoria persistente de mutações e tentativas negadas, com consulta
@@ -79,6 +81,14 @@ Navegador
 IClientManagementService / IBrandingManagementService / IUserManagementService
    ▼
 OpenIddict / ASP.NET Identity
+
+Cabeçalho público e administrativo
+   │ identificador do usuário autenticado
+   ▼
+IUserAvatarUrlResolver
+   │ tema ativo + template canônico
+   ▼
+origem de imagem configurada / fallback por iniciais
 
 Automação externa
    │ bearer token + escopo administrativo
@@ -135,6 +145,9 @@ administrativas.
 O RCL referencia contratos de aplicação de `Sufficit.Identity.Management` e
 pode resolvê-los por DI. Ele não abre conexões, não referencia o composition
 host e não cria `UserManager`/`SignInManager` ou gerenciadores do OpenIddict.
+
+O avatar não é uma exceção: o RCL não consulta tema nem compõe URL. Ele entrega
+o identificador ao contrato compartilhado e renderiza a URL resolvida.
 
 Cada operação abre um escopo DI curto e chama exatamente o mesmo use case
 utilizado pelo controller da API. Validação, autorização por recurso, defaults

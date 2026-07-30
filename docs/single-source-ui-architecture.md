@@ -104,6 +104,14 @@ a UI recebe a decisão de capability e apenas envia o comando; Identity,
 confirmações, security stamp, tokens, autorizações e auditoria permanecem no
 runtime canônico.
 
+O avatar do operador também segue essa fronteira. A UI pública e a Management
+UI resolvem a imagem por `IUserAvatarUrlResolver`, que consome o tema ativo
+armazenado no runtime e aplica o `AvatarUrlTemplate` uma única vez, com o
+identificador codificado para URL. A origem HTTP configurada no tema continua
+responsável por entregar e armazenar em cache a imagem; as UIs apenas exibem o
+resultado e usam as iniciais quando não existe imagem ou seu carregamento
+falha.
+
 Ainda existem violações a migrar:
 
 - páginas da UI pública injetam `UserManager`, `SignInManager` e gerenciadores
@@ -123,8 +131,9 @@ nova tela deve repetir esse padrão.
 2. Migrar configurações e provisionamento para use cases compartilhados
    (branding concluído em 2026-07-29).
 3. Criar contratos de aplicação para autoatendimento e migrar a UI pública.
-4. Remover das UIs todas as referências a Core, stores e gerenciadores de
-   persistência/protocolo.
+4. Remover das UIs referências a entidades mutáveis, stores e gerenciadores de
+   persistência/protocolo. Permanecem permitidos contratos puros de aplicação,
+   como `IUserAvatarUrlResolver`, resolvidos pelo composition host.
 5. Adicionar testes arquiteturais que falhem quando uma UI ou controller
    reimplementar validação ou acessar dependências proibidas.
 
@@ -141,3 +150,5 @@ nova tela deve repetir esse padrão.
 - Trocar o adaptador de UI ou HTTP não altera o resultado do domínio.
 - Estados de loading, vazio, erro, acesso negado e step-up refletem resultados
   reais do use case.
+- A URL de avatar é resolvida pelo mesmo contrato em todas as UIs; nenhuma tela
+  lê o tema ou substitui `AvatarUrlTemplate` localmente.
