@@ -90,6 +90,25 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Management_navigation_does_not_invent_api_status_labels()
+    {
+        var navigation = File.ReadAllText(Path.Combine(
+            ResolveManagementUiSource(),
+            "Components",
+            "Layout",
+            "NavMenu.razor"));
+
+        Assert.DoesNotContain(
+            "nav-item__meta",
+            navigation,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            ">API<",
+            navigation,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Client_controller_is_only_an_http_adapter()
     {
         var repositoryRoot = ResolveIdentityRepository();
