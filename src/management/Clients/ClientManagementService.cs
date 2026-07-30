@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
+using OpenIddict.EntityFrameworkCore.Models;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorization;
@@ -67,6 +68,8 @@ public sealed record CreateManagementClientCommand(
 
 internal sealed class ClientManagementService(
     IOpenIddictApplicationManager applications,
+    IOpenIddictApplicationCache<OpenIddictEntityFrameworkCoreApplication>
+        applicationCache,
     AppDbContext database,
     IManagementAuthorizationEvaluator authorization,
     ILogger<ClientManagementService> logger) : IClientManagementService
@@ -212,10 +215,12 @@ internal sealed class ClientManagementService(
                     : OpenIddictConstants.ClientTypes.Confidential,
             };
 
-            foreach (var grantType in NormalizeGrantTypes(command.GrantTypes))
+            var grantTypes = NormalizeGrantTypes(command.GrantTypes);
+            foreach (var grantType in grantTypes)
             {
                 descriptor.Permissions.Add(grantType);
             }
+            AddDerivedProtocolPermissions(descriptor, grantTypes);
 
             foreach (var scope in NormalizeScopes(command.Scopes))
             {
@@ -328,7 +333,41 @@ internal sealed class ClientManagementService(
             await using var transaction = await database.Database
                 .BeginTransactionAsync(cancellationToken);
 
-            await applications.DeleteAsync(application, cancellationToken);
+            if (application is not OpenIddictEntityFrameworkCoreApplication entity)
+            {
+                throw new InvalidOperationException(
+                    "The configured OpenIddict application entity is unsupported.");
+            }
+
+            var applicationId = entity.Id;
+            // OpenIddict's EF bulk-delete query joins each dependent table
+            // back to itself through the application navigation. MariaDB
+            // rejects that shape with error 1093, so delete by the mapped
+            // shadow foreign keys in dependency order and invalidate the
+            // same application cache entry the manager would invalidate.
+            await database.Set<OpenIddictEntityFrameworkCoreToken>()
+                .Where(token =>
+                    EF.Property<string?>(token, "ApplicationId") ==
+                    applicationId)
+                .ExecuteDeleteAsync(cancellationToken);
+            await database.Set<OpenIddictEntityFrameworkCoreAuthorization>()
+                .Where(authorization =>
+                    EF.Property<string?>(authorization, "ApplicationId") ==
+                    applicationId)
+                .ExecuteDeleteAsync(cancellationToken);
+            var deleted = await database
+                .Set<OpenIddictEntityFrameworkCoreApplication>()
+                .Where(candidate =>
+                    candidate.Id == applicationId
+                    && candidate.ConcurrencyToken == entity.ConcurrencyToken)
+                .ExecuteDeleteAsync(cancellationToken);
+            if (deleted != 1)
+            {
+                throw new DbUpdateConcurrencyException(
+                    $"Client '{clientId}' changed before it could be deleted.");
+            }
+
+            await applicationCache.RemoveAsync(entity, cancellationToken);
             database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
                 context,
                 ManagementCapabilities.ClientsDelete,
@@ -558,6 +597,47 @@ internal sealed class ClientManagementService(
                 : OpenIddictConstants.Permissions.Prefixes.Scope + value)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+
+    private static void AddDerivedProtocolPermissions(
+        OpenIddictApplicationDescriptor descriptor,
+        IReadOnlyCollection<string> grantTypes)
+    {
+        if (grantTypes.Contains(
+                OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
+                StringComparer.Ordinal)
+            || grantTypes.Contains(
+                OpenIddictConstants.Permissions.GrantTypes.Implicit,
+                StringComparer.Ordinal))
+        {
+            descriptor.Permissions.Add(
+                OpenIddictConstants.Permissions.Endpoints.Authorization);
+        }
+
+        if (grantTypes.Contains(
+                OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
+                StringComparer.Ordinal)
+            || grantTypes.Contains(
+                OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
+                StringComparer.Ordinal)
+            || grantTypes.Contains(
+                OpenIddictConstants.Permissions.GrantTypes.Password,
+                StringComparer.Ordinal)
+            || grantTypes.Contains(
+                OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+                StringComparer.Ordinal))
+        {
+            descriptor.Permissions.Add(
+                OpenIddictConstants.Permissions.Endpoints.Token);
+        }
+
+        if (grantTypes.Contains(
+                OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
+                StringComparer.Ordinal))
+        {
+            descriptor.Permissions.Add(
+                OpenIddictConstants.Permissions.ResponseTypes.Code);
+        }
+    }
 
     private static string? NormalizeConsentType(string? raw)
     {

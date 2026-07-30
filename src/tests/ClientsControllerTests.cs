@@ -140,6 +140,62 @@ public sealed class ClientsControllerTests
     }
 
     [Fact]
+    public async Task Client_credentials_client_can_issue_token_and_delete_dependents()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        var clientId = $"cc-machine-{Guid.NewGuid():N}";
+        var clientSecret = $"secret-{Guid.NewGuid():N}";
+        var request = new CreateClientRequest
+        {
+            ClientId = clientId,
+            ClientSecret = clientSecret,
+            DisplayName = "Machine client",
+            GrantTypes = ["client_credentials"],
+            Scopes = [TestDataSeeder.ScopeName]
+        };
+
+        using var created = await client.PostAsJsonAsync(
+            "/api/clients",
+            request);
+        var createdBody = await created.Content
+            .ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        Assert.Contains(
+            createdBody.GetProperty("permissions").EnumerateArray(),
+            permission => permission.GetString()
+                == Permissions.Endpoints.Token);
+
+        var (status, token) = await client.PostFormAsync(
+            "/connect/token",
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "client_credentials",
+                ["client_id"] = clientId,
+                ["client_secret"] = clientSecret,
+                ["scope"] = TestDataSeeder.ScopeName
+            });
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.False(string.IsNullOrWhiteSpace(
+            token.GetProperty("access_token").GetString()));
+
+        using var deleted = await client.DeleteAsync(
+            $"/api/clients/{Uri.EscapeDataString(clientId)}");
+        Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+
+        await using var verification = factory.Services.CreateAsyncScope();
+        var database = verification.ServiceProvider
+            .GetRequiredService<AppDbContext>();
+        Assert.False(await database.Set<
+            OpenIddict.EntityFrameworkCore.Models
+                .OpenIddictEntityFrameworkCoreApplication>()
+            .AnyAsync(application => application.ClientId == clientId));
+    }
+
+    [Fact]
     public async Task Create_rejects_unknown_consent_type()
     {
         using var factory = new ManagementTestFactory();
