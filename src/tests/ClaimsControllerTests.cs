@@ -59,7 +59,7 @@ public sealed class ClaimsControllerTests
     }
 
     [Fact]
-    public async Task Create_and_delete_change_security_stamp_and_redact_audit()
+    public async Task Create_update_and_delete_change_security_stamp_and_redact_audit()
     {
         using var factory = new ManagementTestFactory();
         await ((IAsyncLifetime)factory).InitializeAsync();
@@ -106,6 +106,35 @@ public sealed class ClaimsControllerTests
         }
         Assert.NotEqual(initialStamp, stampAfterCreate);
 
+        var updatedSecretValue = $"updated-private-value-{Guid.NewGuid():N}";
+        using var updated = await client.PutAsJsonAsync(
+            $"/api/claims/{claimId}",
+            new UpdateClaimRequest
+            {
+                Type = "urn:tests:office",
+                Value = updatedSecretValue
+            });
+        var updatedBody = await updated.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+        Assert.Equal(
+            "urn:tests:office",
+            updatedBody.GetProperty("type").GetString());
+        Assert.Equal(
+            updatedSecretValue,
+            updatedBody.GetProperty("value").GetString());
+
+        string stampAfterUpdate;
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await users.FindByIdAsync(userId)
+                ?? throw new InvalidOperationException("Seeded user is missing.");
+            stampAfterUpdate = await users.GetSecurityStampAsync(user);
+        }
+        Assert.NotEqual(stampAfterCreate, stampAfterUpdate);
+
         using var deleted = await client.DeleteAsync($"/api/claims/{claimId}");
         Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
 
@@ -117,13 +146,15 @@ public sealed class ClaimsControllerTests
             .Where(entry =>
                 entry.ResourceType == "claim"
                 && (entry.Capability == "identity.claims.create"
+                    || entry.Capability == "identity.claims.update"
                     || entry.Capability == "identity.claims.delete"))
             .OrderBy(entry => entry.Id)
             .ToArrayAsync();
 
-        Assert.Equal(2, events.Length);
+        Assert.Equal(3, events.Length);
         Assert.Equal("identity.claims.create", events[0].Capability);
-        Assert.Equal("identity.claims.delete", events[1].Capability);
+        Assert.Equal("identity.claims.update", events[1].Capability);
+        Assert.Equal("identity.claims.delete", events[2].Capability);
         Assert.All(events, entry =>
         {
             Assert.DoesNotContain(
@@ -132,6 +163,10 @@ public sealed class ClaimsControllerTests
                 StringComparison.Ordinal);
             Assert.DoesNotContain(
                 secretValue,
+                entry.CorrelationId,
+                StringComparison.Ordinal);
+            Assert.DoesNotContain(
+                updatedSecretValue,
                 entry.CorrelationId,
                 StringComparison.Ordinal);
         });

@@ -74,6 +74,19 @@ public sealed class ClaimsController(IClaimManagementService claims)
         return NoContent();
     }
 
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<ManagementClaimAssignment>> Update(
+        int id,
+        [FromBody] UpdateClaimRequest request,
+        CancellationToken cancellationToken) =>
+        Ok(await claims.UpdateAsync(
+            id,
+            new UpdateManagementClaimCommand(
+                request.Type,
+                request.Value),
+            RequestContext(),
+            cancellationToken));
+
     private ManagementRequestContext RequestContext() =>
         new(User, HttpContext.TraceIdentifier);
 }
@@ -83,6 +96,15 @@ public sealed class CreateClaimRequest
     [Required]
     public string UserId { get; set; } = string.Empty;
 
+    [Required]
+    public string Type { get; set; } = string.Empty;
+
+    [Required]
+    public string Value { get; set; } = string.Empty;
+}
+
+public sealed class UpdateClaimRequest
+{
     [Required]
     public string Type { get; set; } = string.Empty;
 

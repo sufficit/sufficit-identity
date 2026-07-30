@@ -14,7 +14,9 @@ using Sufficit.Identity.Management.Branding;
 using Sufficit.Identity.Management.Claims;
 using Sufficit.Identity.Management.Clients;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Management.Authorizations;
 using Sufficit.Identity.Management.Scopes;
+using Sufficit.Identity.Management.Sessions;
 using Sufficit.Identity.Management.Users;
 using Sufficit.Identity.UI.Management;
 using Xunit;
@@ -245,14 +247,15 @@ public sealed class ManagementUiRoutingTests
     }
 
     [Fact]
-    public async Task Provider_operator_renders_separate_claims_and_scopes()
+    public async Task Provider_operator_renders_user_claims_and_separate_scopes()
     {
         await using var app = await CreateHostAsync();
         using var client = app.GetTestClient();
 
         await SignInAsync(client, "administrator");
 
-        using var claims = await client.GetAsync("/management/claims");
+        using var claims = await client.GetAsync(
+            "/management/users/user-1/claims");
         var claimsHtml = WebUtility.HtmlDecode(
             await claims.Content.ReadAsStringAsync());
         using var scopes = await client.GetAsync("/management/scopes");
@@ -261,7 +264,7 @@ public sealed class ManagementUiRoutingTests
         using var removed = await client.GetAsync("/management/access");
 
         Assert.Equal(HttpStatusCode.OK, claims.StatusCode);
-        Assert.Contains("Claims atribuídas", claimsHtml, StringComparison.Ordinal);
+        Assert.Contains("Claims de alice", claimsHtml, StringComparison.Ordinal);
         Assert.Contains("urn:tests:locale", claimsHtml, StringComparison.Ordinal);
         Assert.DoesNotContain("manager", claimsHtml, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(HttpStatusCode.OK, scopes.StatusCode);
@@ -281,11 +284,11 @@ public sealed class ManagementUiRoutingTests
         await SignInAsync(client, "administrator");
 
         using var claimCreate = await client.GetAsync(
-            "/management/claims/new");
+            "/management/users/user-1/claims/new");
         var claimCreateHtml = WebUtility.HtmlDecode(
             await claimCreate.Content.ReadAsStringAsync());
         using var claimDetail = await client.GetAsync(
-            "/management/claims/1");
+            "/management/users/user-1/claims/1");
         var claimDetailHtml = WebUtility.HtmlDecode(
             await claimDetail.Content.ReadAsStringAsync());
         using var scopeCreate = await client.GetAsync(
@@ -305,7 +308,7 @@ public sealed class ManagementUiRoutingTests
         Assert.Contains("locale", claimCreateHtml, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.OK, claimDetail.StatusCode);
         Assert.Contains(
-            "Remover atribuição",
+            "Salvar claim",
             claimDetailHtml,
             StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.OK, scopeCreate.StatusCode);
@@ -319,6 +322,47 @@ public sealed class ManagementUiRoutingTests
             scopeDetailHtml,
             StringComparison.Ordinal);
         Assert.Contains("test-client", scopeDetailHtml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Provider_operator_renders_sessions_and_authorizations()
+    {
+        await using var app = await CreateHostAsync();
+        using var client = app.GetTestClient();
+
+        await SignInAsync(client, "administrator");
+
+        using var sessions = await client.GetAsync(
+            "/management/sessions?user=user-1");
+        var sessionsHtml = WebUtility.HtmlDecode(
+            await sessions.Content.ReadAsStringAsync());
+        using var authorizations = await client.GetAsync(
+            "/management/authorizations?user=user-1");
+        var authorizationsHtml = WebUtility.HtmlDecode(
+            await authorizations.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, sessions.StatusCode);
+        Assert.Contains(
+            "Sessões e credenciais",
+            sessionsHtml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "refresh token",
+            sessionsHtml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Metadados seguros",
+            sessionsHtml,
+            StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, authorizations.StatusCode);
+        Assert.Contains(
+            "Grants e consentimentos",
+            authorizationsHtml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "test.scope",
+            authorizationsHtml,
+            StringComparison.Ordinal);
     }
 
     private static async Task<WebApplication> CreateHostAsync()
@@ -344,6 +388,8 @@ public sealed class ManagementUiRoutingTests
         builder.Services.AddSingleton<IClientManagementService, StubClientManagementService>();
         builder.Services.AddSingleton<IClaimManagementService, StubClaimManagementService>();
         builder.Services.AddSingleton<IScopeManagementService, StubScopeManagementService>();
+        builder.Services.AddSingleton<ISessionManagementService, StubSessionManagementService>();
+        builder.Services.AddSingleton<IAuthorizationManagementService, StubAuthorizationManagementService>();
         builder.Services.AddSingleton<IBrandingManagementService, StubBrandingManagementService>();
         builder.Services.AddSingleton<IUserManagementService, StubUserManagementService>();
         builder.Services.AddSingleton<IManagementAuditService, StubManagementAuditService>();
@@ -494,8 +540,117 @@ public sealed class ManagementUiRoutingTests
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
+        public Task<ManagementClaimAssignment> UpdateAsync(
+            int id,
+            UpdateManagementClaimCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task DeleteAsync(
             int id,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class StubSessionManagementService
+        : ISessionManagementService
+    {
+        public Task<ManagementSessionPage> SearchAsync(
+            ManagementSessionSearch query,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new ManagementSessionPage(
+                [
+                    new ManagementSessionSummary(
+                        "token-1",
+                        "user-1",
+                        "alice",
+                        "alice@tests.local",
+                        "test-client",
+                        "Test Client",
+                        "authorization-1",
+                        "refresh_token",
+                        "valid",
+                        new DateTimeOffset(
+                            2026,
+                            7,
+                            30,
+                            12,
+                            0,
+                            0,
+                            TimeSpan.Zero),
+                        new DateTimeOffset(
+                            2026,
+                            8,
+                            29,
+                            12,
+                            0,
+                            0,
+                            TimeSpan.Zero),
+                        null,
+                        true)
+                ],
+                1,
+                25,
+                1,
+                query.UserId,
+                query.ClientId,
+                query.ActiveOnly));
+
+        public Task RevokeAsync(
+            string id,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<ManagementUserSessionRevocation> RevokeAllForUserAsync(
+            string userId,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class StubAuthorizationManagementService
+        : IAuthorizationManagementService
+    {
+        public Task<ManagementAuthorizationPage> SearchAsync(
+            ManagementAuthorizationSearch query,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new ManagementAuthorizationPage(
+                [
+                    new ManagementAuthorizationSummary(
+                        "authorization-1",
+                        "user-1",
+                        "alice",
+                        "alice@tests.local",
+                        "test-client",
+                        "Test Client",
+                        "permanent",
+                        "valid",
+                        new DateTimeOffset(
+                            2026,
+                            7,
+                            30,
+                            12,
+                            0,
+                            0,
+                            TimeSpan.Zero),
+                        ["openid", "test.scope"],
+                        1,
+                        true)
+                ],
+                1,
+                25,
+                1,
+                query.UserId,
+                query.ClientId,
+                query.ActiveOnly));
+
+        public Task RevokeAsync(
+            string id,
             ManagementRequestContext context,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();

@@ -37,6 +37,12 @@ public interface IClaimManagementService
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 
+    Task<ManagementClaimAssignment> UpdateAsync(
+        int id,
+        UpdateManagementClaimCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
     Task DeleteAsync(
         int id,
         ManagementRequestContext context,
@@ -71,6 +77,10 @@ public sealed record ManagementClaimAssignment(
 
 public sealed record CreateManagementClaimCommand(
     string UserId,
+    string Type,
+    string Value);
+
+public sealed record UpdateManagementClaimCommand(
     string Type,
     string Value);
 
@@ -469,6 +479,124 @@ internal sealed class ClaimManagementService(
             throw new ManagementConflictException(
                 "claim_remove_failed",
                 "Não foi possível remover a claim.");
+        }
+    }
+
+    public async Task<ManagementClaimAssignment> UpdateAsync(
+        int id,
+        UpdateManagementClaimCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        var type = ValidateClaimType(command.Type);
+        var value = ValidateClaimValue(command.Value);
+        var resource = new ManagementResource(
+            ManagementResourceTypes.Claim,
+            id.ToString());
+        var decision = await DemandAsync(
+            context,
+            ManagementCapabilities.ClaimsUpdate,
+            resource,
+            cancellationToken);
+        var claim = await database.Set<IdentityUserClaim<string>>()
+            .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+        if (claim is null)
+        {
+            throw new ManagementNotFoundException(
+                "claim_not_found",
+                "A claim atribuída não foi encontrada.");
+        }
+
+        var user = await userManager.FindByIdAsync(claim.UserId);
+        if (user is null)
+        {
+            throw new ManagementConflictException(
+                "claim_user_not_found",
+                "A conta vinculada à claim não foi encontrada.");
+        }
+
+        if (await database.Set<IdentityUserClaim<string>>().AnyAsync(
+                item =>
+                    item.Id != id
+                    && item.UserId == claim.UserId
+                    && item.ClaimType == type
+                    && item.ClaimValue == value,
+                cancellationToken))
+        {
+            throw new ManagementConflictException(
+                "claim_already_assigned",
+                "Essa conta já possui a mesma claim e valor.");
+        }
+
+        await using var transaction = await database.Database
+            .BeginTransactionAsync(cancellationToken);
+        try
+        {
+            claim.ClaimType = type;
+            claim.ClaimValue = value;
+            await database.SaveChangesAsync(cancellationToken);
+
+            EnsureIdentitySucceeded(
+                await userManager.UpdateSecurityStampAsync(user),
+                "claim_session_invalidation_failed");
+            var revokedTokens = await sessionRevoker.RevokeTokensAsync(
+                user.Id,
+                cancellationToken);
+
+            database.ManagementAuditEvents.Add(
+                ManagementAuditEventFactory.Create(
+                    context,
+                    ManagementCapabilities.ClaimsUpdate,
+                    resource,
+                    decision,
+                    "succeeded",
+                    "claim_updated"));
+            await database.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            logger.LogInformation(
+                "Updated custom claim {ClaimId} for identity account {UserId} and revoked {TokenCount} tokens. CorrelationId={CorrelationId}",
+                id,
+                user.Id,
+                revokedTokens,
+                context.CorrelationId);
+
+            return new ManagementClaimAssignment(
+                id,
+                user.Id,
+                user.UserName,
+                user.Email,
+                type,
+                value);
+        }
+        catch (ManagementConflictException)
+        {
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            database.ChangeTracker.Clear();
+            logger.LogError(
+                exception,
+                "Unable to update custom claim {ClaimId}. CorrelationId={CorrelationId}",
+                id,
+                context.CorrelationId);
+            await TryWriteFailureAuditAsync(
+                context,
+                ManagementCapabilities.ClaimsUpdate,
+                resource,
+                decision,
+                "claim_update_failed");
+            throw new ManagementConflictException(
+                "claim_update_failed",
+                "Não foi possível atualizar a claim.");
         }
     }
 

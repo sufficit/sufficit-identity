@@ -198,6 +198,41 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Session_and_authorization_controllers_are_only_http_adapters()
+    {
+        var controllers = Path.Combine(
+            ResolveIdentityRepository(),
+            "src",
+            "management",
+            "Controllers");
+        var sessions = File.ReadAllText(Path.Combine(
+            controllers,
+            "SessionsController.cs"));
+        var authorizations = File.ReadAllText(Path.Combine(
+            controllers,
+            "AuthorizationsController.cs"));
+
+        Assert.Contains(
+            "ISessionManagementService",
+            sessions,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "IAuthorizationManagementService",
+            authorizations,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("DbContext", sessions, StringComparison.Ordinal);
+        Assert.DoesNotContain("DbContext", authorizations, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "IOpenIddictTokenManager",
+            sessions,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "IOpenIddictAuthorizationManager",
+            authorizations,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Generic_provider_has_no_business_permission_controller()
     {
         var repositoryRoot = ResolveIdentityRepository();
@@ -212,7 +247,7 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
-    public void Claims_and_scopes_are_separate_functional_surfaces()
+    public void Claims_are_user_contextual_and_protocol_surfaces_stay_separate()
     {
         var pages = Path.Combine(
             ResolveManagementUiSource(),
@@ -220,6 +255,13 @@ public sealed class ManagementUiArchitectureTests
             "Pages");
         var claims = File.ReadAllText(Path.Combine(pages, "Claims.razor"));
         var scopes = File.ReadAllText(Path.Combine(pages, "Scopes.razor"));
+        var sessions = File.ReadAllText(Path.Combine(pages, "Sessions.razor"));
+        var authorizations = File.ReadAllText(Path.Combine(
+            pages,
+            "Authorizations.razor"));
+        var userDetail = File.ReadAllText(Path.Combine(
+            pages,
+            "UserDetail.razor"));
         var navigation = File.ReadAllText(Path.Combine(
             ResolveManagementUiSource(),
             "Components",
@@ -229,8 +271,29 @@ public sealed class ManagementUiArchitectureTests
         Assert.False(File.Exists(Path.Combine(pages, "Access.razor")));
         Assert.Contains("ManagementClaimDataSource", claims, StringComparison.Ordinal);
         Assert.Contains("ManagementScopeDataSource", scopes, StringComparison.Ordinal);
-        Assert.Contains("href=\"claims\"", navigation, StringComparison.Ordinal);
+        Assert.Contains(
+            "@page \"/users/{UserId}/claims\"",
+            claims,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "users/{Uri.EscapeDataString(Id)}/claims",
+            userDetail,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("href=\"claims\"", navigation, StringComparison.Ordinal);
         Assert.Contains("href=\"scopes\"", navigation, StringComparison.Ordinal);
+        Assert.Contains(
+            "ManagementSessionDataSource",
+            sessions,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "ManagementAuthorizationDataSource",
+            authorizations,
+            StringComparison.Ordinal);
+        Assert.Contains("href=\"sessions\"", navigation, StringComparison.Ordinal);
+        Assert.Contains(
+            "href=\"authorizations\"",
+            navigation,
+            StringComparison.Ordinal);
         Assert.DoesNotContain("href=\"access\"", navigation, StringComparison.Ordinal);
         Assert.DoesNotContain("manager", claims, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("administrator", claims, StringComparison.OrdinalIgnoreCase);

@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Sufficit.Identity.Core.Branding;
 using Sufficit.Identity.Management.Audit;
+using Sufficit.Identity.Management.Authorizations;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Branding;
 using Sufficit.Identity.Management.Claims;
@@ -15,6 +16,7 @@ using Sufficit.Identity.Management.Clients;
 using Sufficit.Identity.Management.Controllers;
 using Sufficit.Identity.Management.Provisioning;
 using Sufficit.Identity.Management.Scopes;
+using Sufficit.Identity.Management.Sessions;
 using Sufficit.Identity.Management.Users;
 
 namespace Sufficit.Identity.Management;
@@ -70,6 +72,10 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IClientManagementService, ClientManagementService>();
         services.TryAddScoped<IClaimManagementService, ClaimManagementService>();
         services.TryAddScoped<IScopeManagementService, ScopeManagementService>();
+        services.TryAddScoped<ISessionManagementService,
+            SessionManagementService>();
+        services.TryAddScoped<IAuthorizationManagementService,
+            AuthorizationManagementService>();
         services.TryAddScoped<IBrandingManagementService,
             BrandingManagementService>();
         services.TryAddScoped<IUserManagementService, UserManagementService>();

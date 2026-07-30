@@ -18,11 +18,17 @@ public static class ManagementCapabilities
     public const string UsersResetPassword = "identity.users.reset-password";
     public const string ClaimsRead = "identity.claims.read";
     public const string ClaimsCreate = "identity.claims.create";
+    public const string ClaimsUpdate = "identity.claims.update";
     public const string ClaimsDelete = "identity.claims.delete";
     public const string ScopesRead = "identity.scopes.read";
     public const string ScopesCreate = "identity.scopes.create";
     public const string ScopesUpdate = "identity.scopes.update";
     public const string ScopesDelete = "identity.scopes.delete";
+    public const string SessionsRead = "identity.sessions.read";
+    public const string SessionsRevoke = "identity.sessions.revoke";
+    public const string AuthorizationsRead = "identity.authorizations.read";
+    public const string AuthorizationsRevoke =
+        "identity.authorizations.revoke";
     public const string AuditRead = "identity.audit.read";
 
     public static IReadOnlySet<string> All { get; } =
@@ -41,11 +47,16 @@ public static class ManagementCapabilities
                 UsersResetPassword,
                 ClaimsRead,
                 ClaimsCreate,
+                ClaimsUpdate,
                 ClaimsDelete,
                 ScopesRead,
                 ScopesCreate,
                 ScopesUpdate,
                 ScopesDelete,
+                SessionsRead,
+                SessionsRevoke,
+                AuthorizationsRead,
+                AuthorizationsRevoke,
                 AuditRead
             ],
             StringComparer.Ordinal);
@@ -63,6 +74,10 @@ public static class ManagementResourceTypes
     public const string ClaimCollection = "claim-collection";
     public const string Scope = "scope";
     public const string ScopeCollection = "scope-collection";
+    public const string Session = "session";
+    public const string SessionCollection = "session-collection";
+    public const string Authorization = "authorization";
+    public const string AuthorizationCollection = "authorization-collection";
     public const string Audit = "audit";
 }
 
