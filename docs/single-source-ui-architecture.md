@@ -97,11 +97,12 @@ aplicam o padrão canônico. Controllers HTTP e data sources da UI usam
 `IUserManagementService` para executar os mesmos casos de uso. Esses serviços
 concentram validação, defaults, autorização e auditoria; o escopo DI curto
 protege o circuito Blazor sem criar uma segunda implementação. Usuários
-incluem acesso, pesquisa paginada, detalhe, criação contextual e reset de senha
-com validação completa da associação multicontexto. Bloqueio e desbloqueio
-também passam por esse serviço: a UI recebe a decisão de capability e apenas
-envia o comando; Identity, security stamp, tokens, autorizações e auditoria
-permanecem no runtime canônico.
+incluem acesso, pesquisa paginada, detalhe, criação contextual, atualização de
+perfil e reset de senha com validação completa da associação multicontexto.
+Atualização de perfil, bloqueio e desbloqueio também passam por esse serviço:
+a UI recebe a decisão de capability e apenas envia o comando; Identity,
+confirmações, security stamp, tokens, autorizações e auditoria permanecem no
+runtime canônico.
 
 Ainda existem violações a migrar:
 

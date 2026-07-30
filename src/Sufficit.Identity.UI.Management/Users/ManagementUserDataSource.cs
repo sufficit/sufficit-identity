@@ -61,6 +61,19 @@ public sealed class ManagementUserDataSource(
             "User creation",
             cancellationToken);
 
+    public Task<ManagementDataResult<ManagementUserDetail>> UpdateProfileAsync(
+        string id,
+        UpdateManagementUserProfileCommand command,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (users, context) => users.UpdateProfileAsync(
+                id,
+                command,
+                context,
+                cancellationToken),
+            "User profile update",
+            cancellationToken);
+
     public Task<ManagementDataResult<ManagementUserDetail>> ResetPasswordAsync(
         string id,
         ResetManagementUserPasswordCommand command,

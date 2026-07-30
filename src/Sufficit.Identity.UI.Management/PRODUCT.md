@@ -80,11 +80,13 @@ auditoria em todo o fluxo.
   branding possui CRUD e ativação; provisionamento possui preview e aplicação
   aditiva.
 - Usuários possuem acesso, pesquisa paginada, detalhe, criação contextual,
-  reset de senha e bloqueio/desbloqueio protegidos por escopo completo. O
-  bloqueio revoga sessões, tokens e autorizações pelo runtime canônico.
-  Atualização de perfil, exclusão, papéis, claims, scopes isolados, sessões e
-  grants ainda dependem de novos contratos; auditoria e branding já usam
-  contratos compartilhados.
+  atualização de perfil, reset de senha e bloqueio/desbloqueio protegidos por
+  escopo completo. A atualização gira o security stamp, revoga tokens ativos,
+  preserva autorizações duráveis e reinicia a confirmação dos contatos
+  alterados. O bloqueio revoga sessões, tokens e autorizações pelo runtime
+  canônico. Exclusão, papéis, claims, scopes isolados, sessões e grants ainda
+  dependem de novos contratos; auditoria e branding já usam contratos
+  compartilhados.
 - O modelo genérico, o adaptador Sufficit e a matriz inicial de capacidades
   estão definidos em
   [`../../docs/management-authorization-architecture.md`](../../docs/management-authorization-architecture.md).

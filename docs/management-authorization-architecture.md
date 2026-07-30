@@ -3,9 +3,11 @@
 > Status: host integration, global client/branding capabilities, persistent
 > audit, normalized grants, Sufficit directive resolution, per-context MFA
 > policy and contextual user read contracts implemented. Contextual creation
-> password reset, lockout and unlock follow the multi-context rule recorded
-> below. Lockout also invalidates the Identity session and revokes the target
-> subject's OpenIddict tokens and authorizations.
+> profile update, password reset, lockout and unlock follow the multi-context
+> rule recorded below. Profile update invalidates active tokens while
+> preserving durable authorizations; lockout also invalidates the Identity
+> session and revokes the target subject's OpenIddict tokens and
+> authorizations.
 > Authorization is decided by the shared application layer used by the UI and
 > Management API. The canonical boundary is
 > [`single-source-ui-architecture.md`](single-source-ui-architecture.md).
@@ -49,6 +51,11 @@ through a replaceable adapter at the composition boundary.
 - Bloqueio e desbloqueio são mutações sobre a conta inteira e seguem a mesma
   validação de todos os contextos. Bloquear atualiza o security stamp e revoga
   tokens e autorizações; desbloquear não restaura nenhuma sessão anterior.
+- Nome de usuário, e-mail e telefone também pertencem à conta inteira. Uma
+  alteração real valida todos os contextos, gira o security stamp e revoga
+  tokens ativos, mas preserva autorizações e consentimentos duráveis. E-mail e
+  telefone alterados voltam ao estado não confirmado; um comando sem mudanças
+  não invalida sessão.
 - Um operador não pode bloquear a própria conta pela Management UI/API.
 
 ## Existing Sufficit model
@@ -215,6 +222,14 @@ membership from persistence and evaluates `identity.users.reset-password`
 against every context before touching the credential. A context supplied by
 the browser is never accepted as proof of the account's complete scope.
 
+Profile update uses the same account-wide authorization rule with
+`identity.users.update`. The application service validates and normalizes the
+new username, email and phone, delegates the Identity mutations to
+`UserManager`, resets confirmation for changed contact channels and rotates the
+security stamp. It revokes active OpenIddict tokens but deliberately preserves
+durable authorizations and consent. A no-op update is audited without rotating
+the stamp or revoking tokens.
+
 Lockout and unlock use the same account-wide authorization rule with
 `identity.users.disable`. The application service changes the ASP.NET Identity
 lockout state, rotates the security stamp and revokes every OpenIddict token and
@@ -357,9 +372,13 @@ authorization headers are always redacted.
 - Bloquear/desbloquear a conta após validar todos os contextos, revogar
   sessões/tokens/autorizações e impedir autobloqueio. **Concluído, incluindo
   auditoria por contexto e MFA por tenant.**
+- Atualizar nome de usuário, e-mail e telefone após validar todos os contextos,
+  reiniciar confirmações alteradas e revogar apenas tokens ativos.
+  **Concluído, incluindo no-op seguro, rollback transacional, auditoria por
+  contexto e MFA por tenant.**
 - Add delegation limits for roles, claims and directives.
 - Audit all read and mutation paths. **Leituras, criação, reset de senha e
-  bloqueio/desbloqueio concluídos.**
+  atualização de perfil e bloqueio/desbloqueio concluídos.**
 
 ### Phase 6 — Remaining modules
 
@@ -432,8 +451,10 @@ authorization headers are always redacted.
 - The Management API gates transport by authentication/scope and every
   delivered application service evaluates operator capability and resource.
 - The API exposes client, branding and provisioning operations.
-- User access, paginated list, detail, contextual creation and password-reset
-  contracts exist. Account lockout/unlock also exists with security-stamp
-  rotation and OpenIddict token/authorization revocation. Profile update,
-  delete, role/claim delegation, independent scope and session/grant contracts
+- User access, paginated list, detail, contextual creation, profile update and
+  password-reset contracts exist. Profile update rotates the security stamp,
+  resets changed contact confirmations, revokes active tokens and preserves
+  durable authorizations. Account lockout/unlock also exists with
+  security-stamp rotation and OpenIddict token/authorization revocation.
+  Delete, role/claim delegation, independent scope and session/grant contracts
   do not.

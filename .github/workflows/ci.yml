@@ -25,7 +25,7 @@ jobs:
       # branding/audit and contextual user-mutation contracts on main as of
       # 2026-07-29.
       # Do not repoint at a moving branch — pinning ensures reproducible builds.
-      IDENTITY_REF: 1b18424fdbbdca674eb1cf20df0f0a95ffcfee4a
+      IDENTITY_REF: e0733f7ff4b01c71c5517a32eb2a79e5b94a1cf2
 
     steps:
       - name: Checkout sufficit-identity-ui
