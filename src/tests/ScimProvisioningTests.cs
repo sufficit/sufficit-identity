@@ -107,10 +107,13 @@ public sealed class ScimProvisioningTests
             $"/scim/v2/users?filter={Uri.EscapeDataString($"userName eq \"{userName}\"")}&startIndex=1&count=10");
         var filtered = await filteredResponse.Content
             .ReadFromJsonAsync<ScimListResponse<ScimUserResource>>();
+        var filteredJson = await filteredResponse.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.OK, filteredResponse.StatusCode);
         Assert.NotNull(filtered);
         Assert.Equal(1, filtered.TotalResults);
         Assert.Equal(created.Id, Assert.Single(filtered.Resources).Id);
+        Assert.Contains("\"Resources\":", filteredJson);
+        Assert.DoesNotContain("\"resources\":", filteredJson);
 
         using var patchedResponse = await client.PatchAsync(
             $"/scim/v2/users/{created.Id}",

@@ -132,6 +132,7 @@ public sealed class ScimListResponse<T>
 
     public int ItemsPerPage { get; set; }
 
+    [JsonPropertyName("Resources")]
     public IReadOnlyList<T> Resources { get; set; } = [];
 }
 
