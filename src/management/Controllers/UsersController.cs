@@ -6,8 +6,9 @@ using Sufficit.Identity.Management.Users;
 namespace Sufficit.Identity.Management.Controllers;
 
 /// <summary>
-/// HTTP adapter for contextual user discovery. Mutations are deliberately
-/// absent until multi-context account semantics are defined.
+/// HTTP adapter for contextual user administration. Authorization,
+/// validation and multi-context semantics live in the shared application
+/// service used by this controller and the embedded UI.
 /// </summary>
 [ApiController]
 [Authorize(Policy = "sufficit-identity-management")]
@@ -40,6 +41,26 @@ public sealed class UsersController(IUserManagementService users)
         Ok(await users.GetAsync(
             id,
             contextId,
+            RequestContext(),
+            cancellationToken));
+
+    [HttpPost]
+    public async Task<ActionResult<ManagementUserDetail>> Create(
+        [FromBody] CreateManagementUserCommand command,
+        CancellationToken cancellationToken) =>
+        Ok(await users.CreateAsync(
+            command,
+            RequestContext(),
+            cancellationToken));
+
+    [HttpPost("{id}/reset-password")]
+    public async Task<ActionResult<ManagementUserDetail>> ResetPassword(
+        string id,
+        [FromBody] ResetManagementUserPasswordCommand command,
+        CancellationToken cancellationToken) =>
+        Ok(await users.ResetPasswordAsync(
+            id,
+            command,
             RequestContext(),
             cancellationToken));
 

@@ -190,6 +190,42 @@ public sealed class ManagementUiRoutingTests
         Assert.DoesNotContain("Aguardando API", html, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Manager_can_render_contextual_user_create_and_password_reset()
+    {
+        await using var app = await CreateHostAsync();
+        using var client = app.GetTestClient();
+
+        await SignInAsync(client, "manager");
+
+        using var create = await client.GetAsync(
+            "/management/users/new");
+        var createHtml = WebUtility.HtmlDecode(
+            await create.Content.ReadAsStringAsync());
+        using var detail = await client.GetAsync(
+            "/management/users/user-1"
+            + "?context=4082aef4-42d3-4b1b-a321-f405af935940");
+        var detailHtml = WebUtility.HtmlDecode(
+            await detail.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, create.StatusCode);
+        Assert.Contains("Novo usuário", createHtml, StringComparison.Ordinal);
+        Assert.Contains("Senha inicial", createHtml, StringComparison.Ordinal);
+        Assert.Contains(
+            "Privilégio mínimo desde a criação",
+            createHtml,
+            StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
+        Assert.Contains(
+            "Redefinir senha",
+            detailHtml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Todos os contextos",
+            detailHtml,
+            StringComparison.Ordinal);
+    }
+
     private static async Task<WebApplication> CreateHostAsync()
     {
         var builder = WebApplication.CreateBuilder();
@@ -432,8 +468,8 @@ public sealed class ManagementUiRoutingTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult(
                 context.Operator.IsInRole("administrator")
-                    ? new ManagementUserAccess(true, [ContextId])
-                    : new ManagementUserAccess(false, [ContextId]));
+                    ? new ManagementUserAccess(true, [ContextId], true)
+                    : new ManagementUserAccess(false, [ContextId], true));
 
         public Task<ManagementUserPage> SearchAsync(
             ManagementUserSearch query,
@@ -464,6 +500,23 @@ public sealed class ManagementUiRoutingTests
                 0,
                 Summary.Roles,
                 contextId is null ? [ContextId] : [contextId],
-                DateTime.UtcNow));
+                DateTime.UtcNow,
+                new ManagementUserActions(
+                    CanResetPassword: true,
+                    ResetPasswordRequiresMfa: false,
+                    ResetPasswordReasonCode: "allowed")));
+
+        public Task<ManagementUserDetail> CreateAsync(
+            CreateManagementUserCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<ManagementUserDetail> ResetPasswordAsync(
+            string id,
+            ResetManagementUserPasswordCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }
