@@ -10,6 +10,14 @@
             <AppIcon Name="arrow-left" Size="17" />
             Voltar para usuários
         </a>
+        <AuthorizeView Policy="@ManagementUiPolicies.ManageClaims">
+            <Authorized>
+                <a class="button button--secondary" href="@ClaimsHref">
+                    <AppIcon Name="shield" Size="17" />
+                    Claims da conta
+                </a>
+            </Authorized>
+        </AuthorizeView>
         @if (result?.Value?.Actions.CanUpdateProfile is true)
         {
             <a class="button button--primary" href="@EditHref">
@@ -411,6 +419,9 @@ else
 
     private string EditHref =>
         $"users/{Uri.EscapeDataString(Id)}/edit";
+
+    private string ClaimsHref =>
+        $"claims?user={Uri.EscapeDataString(Id)}";
 
     private string ErrorTitle =>
         result?.Outcome is ManagementDataOutcome.NotFound

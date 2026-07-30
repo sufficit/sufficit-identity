@@ -98,6 +98,13 @@ The generic management application evaluates stable capabilities such as:
 - `identity.clients.read`
 - `identity.clients.create`
 - `identity.clients.delete`
+- `identity.claims.read`
+- `identity.claims.create`
+- `identity.claims.delete`
+- `identity.scopes.read`
+- `identity.scopes.create`
+- `identity.scopes.update`
+- `identity.scopes.delete`
 - `identity.users.read`
 - `identity.users.create`
 - `identity.users.update`
@@ -127,12 +134,26 @@ The corrected UI:
 - presents account, verification, MFA and lockout state;
 - keeps password reset, profile update and session revocation as provider
   security operations;
-- replaces the former delegation screen with an honest protocol boundary for
-  claims, OAuth scopes and future SCIM support.
+- removes the former generic `/management/access` information page;
+- exposes Claims under Identity as persisted custom-claim assignments to
+  accounts, with search, filtering, creation, detail and removal;
+- exposes Scopes under OAuth/OIDC as custom OpenIddict definitions, with list,
+  creation, detail, update and guarded deletion;
+- treats claims as opaque attributes and never suggests Sufficit business roles;
+- protects protocol/profile claim types from manual override;
+- rotates the target user's security stamp and revokes active tokens whenever a
+  claim assignment changes;
+- leaves manifest-managed scopes read-only and blocks scope deletion while a
+  client still has permission to request it.
 
-Business claims may later be exposed through a generic, schema-aware claim or
-SCIM administration contract. That contract must enumerate data supplied by
-the host/client and must not contain a built-in Sufficit catalog.
+The claim contract deliberately has no built-in business catalog. Standard
+claim names may be suggested by the presentation layer for usability, but the
+application service accepts opaque custom types and values after enforcing its
+reserved-claim boundary. SCIM remains a separate future protocol surface.
+
+Claims use the existing ASP.NET Identity `userclaims` store and scopes use the
+existing OpenIddict `scopes` store. This vertical therefore requires no new
+database table or migration.
 
 ## Source-of-truth rule
 
@@ -163,3 +184,6 @@ Sufficit Blazor ──> identity/SCIM API ──> identity application service
 - Existing company role/directive management remains in `sufficit-blazor`.
 - Authentication state changes rotate/revoke the appropriate provider
   credentials and remain audited.
+- Claims and scopes have separate routes, capabilities and navigation entries.
+- Manifest-managed scopes cannot be manually updated or deleted.
+- Claim values are never copied into management audit events.

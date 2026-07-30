@@ -1,0 +1,263 @@
+@page "/claims"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageClaims)]
+@attribute [StreamRendering]
+@inject ManagementClaimDataSource ClaimData
+
+<PageTitle>Claims atribuídas | Sufficit Identity</PageTitle>
+
+<PageHeader Title="Claims atribuídas"
+            Description="Gerencie atributos adicionais associados às contas deste provedor de identidade.">
+    <Actions>
+        <a class="button button--primary" href="@CreateHref">
+            <AppIcon Name="plus" Size="17" />
+            Atribuir claim
+        </a>
+    </Actions>
+</PageHeader>
+
+@if (!string.IsNullOrWhiteSpace(User))
+{
+    <section class="contract-strip contract-strip--info">
+        <AppIcon Name="users" Size="20" />
+        <div>
+            <strong>Filtro por conta ativo</strong>
+            <span>Exibindo somente claims atribuídas ao identificador <code>@User</code>.</span>
+        </div>
+        <a class="button button--secondary button--compact" href="claims">Remover filtro</a>
+    </section>
+}
+
+@if (Deleted is 1)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Claim removida</strong>
+            <span>Os tokens da conta foram revogados e a operação foi auditada.</span>
+        </div>
+    </section>
+}
+
+<section class="table-panel" aria-labelledby="claims-list-heading" aria-busy="@loading">
+    <div class="data-toolbar data-toolbar--users">
+        <div>
+            <h2 id="claims-list-heading">Atribuições persistidas</h2>
+            <p>Claims reservadas do protocolo e do perfil básico não aparecem como atribuições manuais.</p>
+        </div>
+        <div class="data-toolbar__actions">
+            <form class="user-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
+                <label class="search-field">
+                    <span class="visually-hidden">Pesquisar claims</span>
+                    <AppIcon Name="search" Size="18" />
+                    <input type="search"
+                           placeholder="Conta, tipo ou valor"
+                           autocomplete="off"
+                           @bind="search" />
+                </label>
+                <button class="button button--secondary" type="submit" disabled="@loading">
+                    Pesquisar
+                </button>
+                @if (!string.IsNullOrWhiteSpace(search))
+                {
+                    <button class="button button--secondary button--compact" type="button" @onclick="ClearSearchAsync">
+                        Limpar
+                    </button>
+                }
+            </form>
+        </div>
+    </div>
+
+    <div class="client-results" aria-live="polite">
+        @if (loading)
+        {
+            <div class="table-skeleton" aria-label="Carregando claims">
+                @for (var index = 0; index < 4; index++)
+                {
+                    <span></span>
+                }
+            </div>
+        }
+        else if (result?.IsSuccess is true)
+        {
+            @if (Page.Items.Count is 0)
+            {
+                <EmptyState Icon="shield"
+                            Title="Nenhuma claim atribuída"
+                            Description="@EmptyDescription">
+                    <Actions>
+                        <a class="button button--primary" href="@CreateHref">Atribuir primeira claim</a>
+                    </Actions>
+                </EmptyState>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="data-table data-table--claims">
+                        <thead>
+                            <tr>
+                                <th scope="col">Conta</th>
+                                <th scope="col">Tipo</th>
+                                <th scope="col">Valor</th>
+                                <th scope="col"><span class="visually-hidden">Ações</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var claim in Page.Items)
+                            {
+                                <tr>
+                                    <td data-label="Conta">
+                                        <a class="client-name" href="@UserHref(claim.UserId)">
+                                            @AccountLabel(claim)
+                                        </a>
+                                    </td>
+                                    <td data-label="Tipo"><code class="client-id">@claim.Type</code></td>
+                                    <td data-label="Valor"><span class="claim-value">@claim.Value</span></td>
+                                    <td data-label="Ações">
+                                        <a class="row-action" href="@ClaimHref(claim.Id)">
+                                            Detalhes
+                                            <AppIcon Name="arrow-right" Size="15" />
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        }
+        else
+        {
+            <EmptyState Icon="alert"
+                        Title="@ErrorTitle"
+                        Description="@(result?.ErrorMessage ?? "O serviço não conseguiu ler as atribuições agora.")">
+                <Actions>
+                    <button class="button button--secondary" type="button" @onclick="LoadAsync">
+                        Tentar novamente
+                    </button>
+                </Actions>
+            </EmptyState>
+        }
+    </div>
+
+    <footer class="table-footer table-footer--paginated">
+        <span>@ResultCountLabel</span>
+        @if (result?.IsSuccess is true && Page.TotalCount > Page.PageSize)
+        {
+            <div class="pagination" aria-label="Paginação de claims">
+                <button class="button button--secondary button--compact" type="button"
+                        disabled="@(Page.Page <= 1 || loading)"
+                        @onclick="PreviousPageAsync">Anterior</button>
+                <span>Página @Page.Page de @TotalPages</span>
+                <button class="button button--secondary button--compact" type="button"
+                        disabled="@(Page.Page >= TotalPages || loading)"
+                        @onclick="NextPageAsync">Próxima</button>
+            </div>
+        }
+    </footer>
+</section>
+
+<section class="client-guardrails" aria-labelledby="claim-boundary-heading">
+    <div>
+        <h2 id="claim-boundary-heading">Atributos, não regras empresariais</h2>
+        <p>O provedor armazena e emite dados; cada aplicação decide como interpretá-los.</p>
+    </div>
+    <ul>
+        <li><AppIcon Name="shield" Size="18" /> Claims reservadas não podem ser sobrescritas</li>
+        <li><AppIcon Name="refresh" Size="18" /> Mutações revogam tokens da conta</li>
+        <li><AppIcon Name="audit" Size="18" /> Valores não são gravados na auditoria</li>
+    </ul>
+</section>
+
+@code {
+    [SupplyParameterFromQuery(Name = "user")]
+    public string? User { get; set; }
+
+    [SupplyParameterFromQuery(Name = "deleted")]
+    public int Deleted { get; set; }
+
+    private ManagementDataResult<ManagementClaimPage>? result;
+    private string search = string.Empty;
+    private int currentPage = 1;
+    private bool loading = true;
+    private const int PageSize = 25;
+
+    private ManagementClaimPage Page =>
+        result?.Value ?? new([], 1, PageSize, 0, User);
+
+    private int TotalPages =>
+        Math.Max(1, (int)Math.Ceiling(Page.TotalCount / (double)Page.PageSize));
+
+    private string CreateHref =>
+        string.IsNullOrWhiteSpace(User)
+            ? "claims/new"
+            : $"claims/new?user={Uri.EscapeDataString(User)}";
+
+    private string EmptyDescription =>
+        string.IsNullOrWhiteSpace(search)
+            ? "Não há atributos adicionais neste recorte. Claims padrão continuam sendo emitidas pelo protocolo."
+            : "Revise a conta, o tipo ou o valor pesquisado.";
+
+    private string ErrorTitle =>
+        result?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? "MFA exigido para consultar claims"
+            : result?.Outcome is ManagementDataOutcome.Forbidden
+                ? "Acesso às claims negado"
+                : "Não foi possível consultar as claims";
+
+    private string ResultCountLabel =>
+        loading
+            ? "Carregando claims"
+            : result?.IsSuccess is true
+                ? $"{Page.TotalCount} {Pluralize(Page.TotalCount, "atribuição", "atribuições")}"
+                : "Nenhum resultado carregado";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        result = await ClaimData.SearchAsync(
+            new ManagementClaimSearch(search, User, currentPage, PageSize));
+        loading = false;
+    }
+
+    private async Task SearchAsync()
+    {
+        currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task ClearSearchAsync()
+    {
+        search = string.Empty;
+        currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        currentPage = Math.Max(1, currentPage - 1);
+        await LoadAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        currentPage = Math.Min(TotalPages, currentPage + 1);
+        await LoadAsync();
+    }
+
+    private static string AccountLabel(ManagementClaimAssignment claim) =>
+        claim.UserName ?? claim.Email ?? claim.UserId;
+
+    private static string ClaimHref(int id) => $"claims/{id}";
+
+    private static string UserHref(string id) =>
+        $"users/{Uri.EscapeDataString(id)}";
+
+    private static string Pluralize(int count, string singular, string plural) =>
+        count is 1 ? singular : plural;
+}

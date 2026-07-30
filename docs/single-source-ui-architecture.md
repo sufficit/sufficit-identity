@@ -91,10 +91,11 @@ consistência.
 
 ## Violações atuais conhecidas
 
-Os verticais administrativos de clientes, branding e contas
+Os verticais administrativos de clientes, branding, contas, claims e scopes
 aplicam o padrão canônico. Controllers HTTP e data sources da UI usam
 `IClientManagementService`, `IBrandingManagementService` e
-`IUserManagementService` para executar os mesmos casos de uso. Esses serviços
+`IUserManagementService`, `IClaimManagementService` e
+`IScopeManagementService` para executar os mesmos casos de uso. Esses serviços
 concentram validação, defaults, autorização e auditoria; o escopo DI curto
 protege o circuito Blazor sem criar uma segunda implementação. Usuários incluem
 acesso, pesquisa paginada global, detalhe, criação, atualização de perfil,
@@ -102,6 +103,14 @@ reset de senha, bloqueio e desbloqueio:
 a UI recebe a decisão de capability e apenas envia o comando; Identity,
 confirmações, security stamp, tokens, autorizações e auditoria permanecem no
 runtime canônico.
+
+Claims são atribuições persistidas nas contas. Sua criação e remoção atualizam
+o security stamp e revogam tokens pelo serviço de aplicação; o valor nunca é
+duplicado na auditoria. Scopes são definições do OpenIddict. A UI distingue
+scopes criados manualmente dos marcados pelo manifesto de provisionamento:
+estes últimos são somente leitura, porque sua fonte autoritativa é o próprio
+manifesto. O serviço também impede excluir um scope ainda autorizado para
+clientes.
 
 O avatar do operador também segue essa fronteira. A UI pública e a Management
 UI resolvem a imagem por `IUserAvatarUrlResolver`, que consome o tema ativo
@@ -128,7 +137,8 @@ nova tela deve repetir esse padrão.
 1. Expandir o contrato administrativo de sessão com operador, capabilities,
    escopos autorizados, política MFA e metadados necessários ao shell.
 2. Migrar configurações e provisionamento para use cases compartilhados
-   (branding concluído em 2026-07-29).
+   (branding concluído em 2026-07-29; claims e scopes concluídos em
+   2026-07-30).
 3. Criar contratos de aplicação para autoatendimento e migrar a UI pública.
 4. Remover das UIs referências a entidades mutáveis, stores e gerenciadores de
    persistência/protocolo. Permanecem permitidos contratos puros de aplicação,

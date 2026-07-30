@@ -1,0 +1,156 @@
+@page "/claims/{Id:int}"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageClaims)]
+@inject ManagementClaimDataSource ClaimData
+@inject NavigationManager Navigation
+
+<PageTitle>Detalhes da claim | Sufficit Identity</PageTitle>
+
+<PageHeader Title="Detalhes da claim"
+            Description="Atribuição persistida a uma conta do provedor de identidade.">
+    <Actions>
+        <a class="button button--secondary" href="@BackHref">
+            <AppIcon Name="arrow-left" Size="17" />
+            Voltar para claims
+        </a>
+    </Actions>
+</PageHeader>
+
+@if (Created is 1)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Claim atribuída</strong>
+            <span>A alteração foi persistida, auditada e os tokens anteriores da conta foram revogados.</span>
+        </div>
+    </section>
+}
+
+@if (loading)
+{
+    <section class="detail-shell" aria-busy="true" aria-label="Carregando claim">
+        <div class="detail-skeleton"></div>
+    </section>
+}
+else if (result?.IsSuccess is true && result.Value is not null)
+{
+    var claim = result.Value;
+
+    <section class="detail-shell">
+        <div class="detail-summary">
+            <div>
+                <span class="detail-label">Conta</span>
+                <a class="detail-value client-name" href="@UserHref(claim.UserId)">@AccountLabel(claim)</a>
+            </div>
+            <div>
+                <span class="detail-label">Tipo</span>
+                <code class="detail-value detail-value--code">@claim.Type</code>
+            </div>
+            <div>
+                <span class="detail-label">Identificador</span>
+                <code class="detail-value detail-value--code">@claim.Id</code>
+            </div>
+            <div>
+                <span class="detail-label">Estado</span>
+                <StatusBadge Tone="success">Atribuída</StatusBadge>
+            </div>
+        </div>
+        <section class="detail-content-block" aria-labelledby="claim-value-heading">
+            <h2 id="claim-value-heading">Valor</h2>
+            <pre class="claim-value-block">@claim.Value</pre>
+        </section>
+    </section>
+
+    <section class="delete-zone" aria-labelledby="delete-claim-heading">
+        <div>
+            <h2 id="delete-claim-heading">Remover atribuição</h2>
+            <p>A claim é imutável. Para corrigi-la, remova esta atribuição e crie outra.</p>
+        </div>
+        @if (deletion?.IsSuccess is false)
+        {
+            <section class="inline-notice inline-notice--danger" role="alert">
+                <AppIcon Name="alert" Size="19" />
+                <div>
+                    <strong>Não foi possível remover a claim</strong>
+                    <span>@deletion.ErrorMessage</span>
+                </div>
+            </section>
+        }
+        <label class="delete-confirmation">
+            <input type="checkbox" @bind="confirmed" />
+            <span>Confirmo que tokens e sessões da conta serão invalidados.</span>
+        </label>
+        <button class="button button--danger"
+                type="button"
+                disabled="@(!confirmed || deleting)"
+                @onclick="DeleteAsync">
+            <AppIcon Name="trash" Size="17" />
+            @(deleting ? "Removendo…" : "Remover claim")
+        </button>
+    </section>
+}
+else
+{
+    <EmptyState Icon="alert"
+                Title="@ErrorTitle"
+                Description="@(result?.ErrorMessage ?? "O serviço não conseguiu ler a atribuição.")">
+        <Actions>
+            <a class="button button--secondary" href="claims">Voltar para claims</a>
+        </Actions>
+    </EmptyState>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    [SupplyParameterFromQuery(Name = "created")]
+    public int Created { get; set; }
+
+    private ManagementDataResult<ManagementClaimAssignment>? result;
+    private ManagementDataResult<bool>? deletion;
+    private bool loading = true;
+    private bool deleting;
+    private bool confirmed;
+
+    private string BackHref =>
+        result?.Value is { } claim
+            ? $"claims?user={Uri.EscapeDataString(claim.UserId)}"
+            : "claims";
+
+    private string ErrorTitle =>
+        result?.Outcome is ManagementDataOutcome.NotFound
+            ? "Claim não encontrada"
+            : result?.Outcome is ManagementDataOutcome.StepUpRequired
+                ? "MFA exigido para consultar a claim"
+                : "Não foi possível abrir a claim";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        result = await ClaimData.GetAsync(Id);
+        loading = false;
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (!confirmed || deleting)
+        {
+            return;
+        }
+
+        deleting = true;
+        deletion = await ClaimData.DeleteAsync(Id);
+        deleting = false;
+        if (deletion.IsSuccess)
+        {
+            Navigation.NavigateTo($"{BackHref}&deleted=1");
+        }
+    }
+
+    private static string AccountLabel(ManagementClaimAssignment claim) =>
+        claim.UserName ?? claim.Email ?? claim.UserId;
+
+    private static string UserHref(string id) =>
+        $"users/{Uri.EscapeDataString(id)}";
+}
