@@ -3369,6 +3369,22 @@ h3 {
     gap: 9px;
 }
 
+.delete-confirmation label,
+.delete-confirmation small {
+    color: var(--ink-muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.delete-confirmation label strong {
+    color: var(--ink-strong);
+    overflow-wrap: anywhere;
+}
+
+.delete-confirmation small {
+    color: var(--danger);
+}
+
 .delete-confirmation code {
     font-family: var(--font-mono);
 }

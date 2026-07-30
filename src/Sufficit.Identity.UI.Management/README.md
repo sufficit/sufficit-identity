@@ -16,8 +16,9 @@ Implementado:
 - autorização por capabilities estáveis do provedor;
 - listagem, detalhe, criação e exclusão de clientes pelo mesmo serviço usado
   pela Management API;
-- listagem global, detalhe, criação, edição de perfil, reset de senha e
-  bloqueio/desbloqueio de contas pelo mesmo serviço usado pela API;
+- listagem global, detalhe, criação, edição de perfil, reset de senha,
+  bloqueio/desbloqueio e exclusão segura de contas pelo mesmo serviço usado
+  pela API;
 - listagem paginada por usuário, pesquisa, atribuição, edição e remoção de
   claims personalizadas, com revogação dos tokens da conta;
 - listagem, criação, detalhe, edição e exclusão protegida de scopes OAuth,
@@ -32,6 +33,8 @@ Implementado:
 - avatar do operador resolvido pelo mesmo `IUserAvatarUrlResolver` da UI
   pública;
 - auditoria persistente de mutações e tentativas negadas;
+- confirmação nominal, proteção contra autoexclusão e revogação de sessões,
+  tokens e autorizações antes da exclusão permanente;
 - preview e aplicação transacional de manifestos declarativos por contrato
   compartilhado, com confirmação explícita e erros estruturados;
 - overview canônico de ambiente, transporte HTTP, política MFA, capabilities e
@@ -50,10 +53,9 @@ No deployment Sufficit, essas regras permanecem em `sufficit-identity-core`,
 operacional para capabilities do provedor sem expor essa role como opção de
 usuário.
 
-Ainda não implementado:
-
-- exclusão de usuários;
-- SCIM RFC 7643/7644.
+O composition host também publica o módulo SCIM RFC 7643/7644 em `/scim/v2`
+quando habilitado. Esse adaptador não pertence ao RCL visual, mas reutiliza o
+mesmo ciclo de vida de conta e mantém Groups separados das roles Identity.
 
 ## Composição no host
 
@@ -133,5 +135,5 @@ dotnet run --project src/server/Sufficit.Identity.Server.csproj
 
 ## Próximas entregas
 
-1. Implementar exclusão segura de usuários.
-2. Implementar SCIM Users/Groups e descoberta de schemas.
+1. Migrar os débitos restantes da UI pública para contratos de aplicação.
+2. Expandir a matriz de interoperabilidade SCIM conforme integrações reais.

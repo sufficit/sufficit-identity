@@ -100,6 +100,21 @@ public sealed class ManagementUserDataSource(
                 : "User unlock",
             cancellationToken);
 
+    public Task<ManagementDataResult<bool>> DeleteAsync(
+        string id,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            async (users, context) =>
+            {
+                await users.DeleteAsync(
+                    id,
+                    context,
+                    cancellationToken);
+                return true;
+            },
+            "User deletion",
+            cancellationToken);
+
     private async Task<ManagementDataResult<T>> ExecuteAsync<T>(
         Func<IUserManagementService, ManagementRequestContext, Task<T>> operation,
         string operationName,

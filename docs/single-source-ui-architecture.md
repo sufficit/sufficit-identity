@@ -120,10 +120,17 @@ os mesmos casos de uso. Esses
 serviços concentram validação, defaults, autorização e auditoria; o escopo DI curto
 protege o circuito Blazor sem criar uma segunda implementação. Usuários incluem
 acesso, pesquisa paginada global, detalhe, criação, atualização de perfil,
-reset de senha, bloqueio e desbloqueio:
+reset de senha, bloqueio, desbloqueio e exclusão segura:
 a UI recebe a decisão de capability e apenas envia o comando; Identity,
 confirmações, security stamp, tokens, autorizações e auditoria permanecem no
 runtime canônico.
+
+O adaptador SCIM publica Users e Groups em `/scim/v2`. Ele não é uma segunda
+fonte de contas: Users projetam o mesmo ASP.NET Identity e as mutações de
+ativação, revogação e exclusão passam pelo mesmo
+`IIdentityAccountLifecycleService` usado pelo Management. Groups possuem
+persistência SCIM própria e opaca, deliberadamente separada de roles e
+autoridades empresariais.
 
 Claims são atribuições persistidas nas contas. Sua criação, edição e remoção
 atualizam o security stamp e revogam tokens pelo serviço de aplicação; o valor
@@ -177,7 +184,8 @@ nova tela deve repetir esse padrão.
 
 1. Migrar configurações e provisionamento para use cases compartilhados
    (branding concluído em 2026-07-29; claims, scopes, sessões, autorizações e
-   provisionamento concluídos em 2026-07-30).
+   provisionamento, exclusão de conta e ciclo de vida SCIM concluídos em
+   2026-07-30).
 2. Criar contratos de aplicação para autoatendimento e migrar a UI pública.
 3. Remover das UIs referências a entidades mutáveis, stores e gerenciadores de
    persistência/protocolo. Permanecem permitidos contratos puros de aplicação,

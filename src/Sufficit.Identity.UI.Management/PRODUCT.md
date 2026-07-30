@@ -79,11 +79,12 @@ auditoria em todo o fluxo.
   branding possui CRUD e ativação; provisionamento possui preview e aplicação
   aditiva.
 - Usuários possuem acesso, pesquisa paginada global, detalhe, criação,
-  atualização de perfil, reset de senha e bloqueio/desbloqueio protegidos por
-  capabilities do provedor. A atualização gira o security stamp, revoga tokens ativos,
+  atualização de perfil, reset de senha, bloqueio/desbloqueio e exclusão
+  protegidos por capabilities do provedor. A atualização gira o security stamp, revoga tokens ativos,
   preserva autorizações duráveis e reinicia a confirmação dos contatos
   alterados. O bloqueio revoga sessões, tokens e autorizações pelo runtime
-  canônico.
+  canônico. A exclusão exige confirmação nominal, bloqueia autoexclusão e
+  revoga sessões, tokens e autorizações antes de remover a conta.
 - Claims personalizadas possuem pesquisa paginada por conta, atribuição,
   edição e remoção. Tipos reservados de protocolo/perfil são
   protegidos; mutações giram o security stamp, revogam tokens e não registram
@@ -97,9 +98,9 @@ auditoria em todo o fluxo.
 - Home, Settings, navegação e layout projetam um overview canônico do runtime
   com ambiente, transporte HTTP, política MFA, capabilities efetivas e
   disponibilidade de módulos.
-- Exclusão de usuários e SCIM ainda dependem de novos contratos; auditoria,
-  branding, claims, scopes, sessões e autorizações já usam contratos
-  compartilhados.
+- O host publica SCIM Users/Groups e descoberta quando habilitado. SCIM e
+  Management compartilham o ciclo de vida canônico da conta; Groups SCIM usam
+  persistência própria e nunca são roles empresariais.
 - A fronteira entre o provedor e a autorização das aplicações
   estão definidos em
   [`../../docs/management-authorization-architecture.md`](../../docs/management-authorization-architecture.md).

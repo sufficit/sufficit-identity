@@ -114,6 +114,7 @@ The generic management application evaluates stable capabilities such as:
 - `identity.users.create`
 - `identity.users.update`
 - `identity.users.disable`
+- `identity.users.delete`
 - `identity.users.reset-password`
 - `identity.audit.read`
 
@@ -139,6 +140,8 @@ The corrected UI:
 - presents account, verification, MFA and lockout state;
 - keeps password reset, profile update and session revocation as provider
   security operations;
+- requires an exact user-name confirmation before permanent account deletion,
+  blocks self-deletion and revokes sessions, tokens and authorizations first;
 - removes the former generic `/management/access` information page;
 - exposes Claims from each user detail as persisted custom-claim assignments,
   with per-account search, creation, editing and removal; the stable Claims
@@ -162,7 +165,13 @@ The corrected UI:
 The claim contract deliberately has no built-in business catalog. Standard
 claim names may be suggested by the presentation layer for usability, but the
 application service accepts opaque custom types and values after enforcing its
-reserved-claim boundary. SCIM remains a separate future protocol surface.
+reserved-claim boundary.
+
+SCIM is a separate protocol adapter under `/scim/v2`. Its Users project the
+same Identity accounts and its Groups use dedicated SCIM tables rather than
+legacy `roles`/`userroles`. Management and SCIM share the neutral
+`IIdentityAccountLifecycleService` for activation, revocation and deletion, so
+transport does not create a second security implementation.
 
 Claims use the existing ASP.NET Identity `userclaims` store; scopes, sessions
 and authorizations use the existing OpenIddict `scopes`, `tokens` and
@@ -199,6 +208,8 @@ Sufficit Blazor ──> identity/SCIM API ──> identity application service
 - Existing company role/directive management remains in `sufficit-blazor`.
 - Authentication state changes rotate/revoke the appropriate provider
   credentials and remain audited.
+- Management and SCIM account deletion execute the same lifecycle service.
+- SCIM Group membership never mutates ASP.NET Identity roles.
 - Home, Settings, navigation and layout project the canonical runtime overview;
   they do not invent readiness or availability labels.
 - Claims are contextual to a user; scopes, sessions and authorizations have

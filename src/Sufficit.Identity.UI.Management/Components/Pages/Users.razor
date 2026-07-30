@@ -18,6 +18,17 @@
     </Actions>
 </PageHeader>
 
+@if (Deleted)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Conta excluída</strong>
+            <span>As credenciais foram removidas e as sessões, os tokens e as autorizações anteriores foram revogados.</span>
+        </div>
+    </section>
+}
+
 <section class="contract-strip contract-strip--info">
     <AppIcon Name="shield" Size="20" />
     <div>
@@ -228,6 +239,9 @@ else
 }
 
 @code {
+    [SupplyParameterFromQuery(Name = "deleted")]
+    public int DeletedFlag { get; set; }
+
     private ManagementDataResult<ManagementUserAccess>? accessResult;
     private ManagementDataResult<ManagementUserPage>? usersResult;
     private bool accessLoading = true;
@@ -235,6 +249,8 @@ else
     private string search = string.Empty;
     private int currentPage = 1;
     private const int PageSize = 25;
+
+    private bool Deleted => DeletedFlag is 1;
 
     private ManagementUserAccess Access =>
         accessResult?.Value ?? new(false, false);
