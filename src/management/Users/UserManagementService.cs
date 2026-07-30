@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
+using OpenIddict.Abstractions;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Management.Audit;
@@ -38,6 +39,12 @@ public interface IUserManagementService
     Task<ManagementUserDetail> ResetPasswordAsync(
         string id,
         ResetManagementUserPasswordCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
+    Task<ManagementUserDetail> SetLockoutAsync(
+        string id,
+        SetManagementUserLockoutCommand command,
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 }
@@ -84,6 +91,9 @@ public sealed record CreateManagementUserCommand(
 public sealed record ResetManagementUserPasswordCommand(
     string NewPassword);
 
+public sealed record SetManagementUserLockoutCommand(
+    bool Locked);
+
 public sealed record ManagementUserSearch(
     string? Search = null,
     string? ContextId = null,
@@ -113,7 +123,46 @@ public sealed record ManagementUserMembership(
 public sealed record ManagementUserActions(
     bool CanResetPassword,
     bool ResetPasswordRequiresMfa,
-    string ResetPasswordReasonCode);
+    string ResetPasswordReasonCode,
+    bool CanSetLockout = false,
+    bool SetLockoutRequiresMfa = false,
+    string SetLockoutReasonCode = "not_evaluated");
+
+public sealed record ManagementUserSessionRevocation(
+    long RevokedTokens,
+    long RevokedAuthorizations);
+
+public interface IManagementUserSessionRevoker
+{
+    Task<ManagementUserSessionRevocation> RevokeAsync(
+        string subject,
+        CancellationToken cancellationToken = default);
+}
+
+internal sealed class OpenIddictManagementUserSessionRevoker(
+    IOpenIddictTokenManager tokens,
+    IOpenIddictAuthorizationManager authorizations)
+    : IManagementUserSessionRevoker
+{
+    public async Task<ManagementUserSessionRevocation> RevokeAsync(
+        string subject,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(subject);
+
+        var revokedTokens = await tokens.RevokeBySubjectAsync(
+            subject,
+            cancellationToken);
+        var revokedAuthorizations =
+            await authorizations.RevokeBySubjectAsync(
+                subject,
+                cancellationToken);
+
+        return new ManagementUserSessionRevocation(
+            revokedTokens,
+            revokedAuthorizations);
+    }
+}
 
 [method: JsonConstructor]
 public sealed record ManagementUserDetail(
@@ -216,8 +265,15 @@ internal sealed class UserManagementService(
     IManagementAuthorizationEvaluator authorization,
     IManagementEntitlementResolver entitlements,
     IManagementUserContextStore userContexts,
+    IManagementUserSessionRevoker sessionRevoker,
     ILogger<UserManagementService> logger) : IUserManagementService
 {
+    private static readonly DateTimeOffset IndefiniteLockoutEnd =
+        new(
+            DateTimeOffset.MaxValue.Ticks
+                - DateTimeOffset.MaxValue.Ticks % TimeSpan.TicksPerMicrosecond,
+            TimeSpan.Zero);
+
     public async Task<ManagementUserAccess> GetAccessAsync(
         ManagementRequestContext context,
         CancellationToken cancellationToken = default)
@@ -414,10 +470,19 @@ internal sealed class UserManagementService(
             : new HashSet<string>(
                 normalizedContextId is null ? [] : [normalizedContextId],
                 StringComparer.OrdinalIgnoreCase);
-        var resetDecision = await EvaluatePasswordResetAsync(
+        var resetDecision = await EvaluateAccountWideActionAsync(
             user.Id,
             membership,
             context,
+            ManagementCapabilities.UsersResetPassword,
+            cancellationToken);
+        var isLockedOut = user.LockoutEnd is { } lockoutEnd
+            && lockoutEnd > DateTimeOffset.UtcNow;
+        var lockoutDecision = await EvaluateLockoutChangeAsync(
+            user.Id,
+            membership,
+            context,
+            locking: !isLockedOut,
             cancellationToken);
 
         await WriteAuditAsync(
@@ -443,7 +508,7 @@ internal sealed class UserManagementService(
             roles.GetValueOrDefault(user.Id, []),
             visibleContexts.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
             user.Timestamp,
-            Actions(resetDecision));
+            Actions(resetDecision, lockoutDecision));
     }
 
     public async Task<ManagementUserDetail> CreateAsync(
@@ -599,16 +664,18 @@ internal sealed class UserManagementService(
         var membership = await userContexts.GetMembershipAsync(
             id,
             cancellationToken);
-        var decision = await EvaluatePasswordResetAsync(
+        var decision = await EvaluateAccountWideActionAsync(
             id,
             membership,
             context,
+            ManagementCapabilities.UsersResetPassword,
             cancellationToken);
-        var auditResource = await PasswordResetAuditResourceAsync(
+        var auditResource = await AccountWideAuditResourceAsync(
             id,
             membership,
             context,
             decision,
+            ManagementCapabilities.UsersResetPassword,
             cancellationToken);
 
         if (!decision.IsAllowed)
@@ -666,7 +733,7 @@ internal sealed class UserManagementService(
                 ThrowIdentityFailure(reset, creatingUser: false);
             }
 
-            foreach (var resource in PasswordResetAuditResources(
+            foreach (var resource in AccountWideAuditResources(
                 id,
                 membership,
                 auditResource))
@@ -724,11 +791,197 @@ internal sealed class UserManagementService(
             cancellationToken);
     }
 
+    public async Task<ManagementUserDetail> SetLockoutAsync(
+        string id,
+        SetManagementUserLockoutCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        ArgumentNullException.ThrowIfNull(command);
+
+        var membership = await userContexts.GetMembershipAsync(
+            id,
+            cancellationToken);
+        var decision = await EvaluateLockoutChangeAsync(
+            id,
+            membership,
+            context,
+            command.Locked,
+            cancellationToken);
+        var auditResource = await AccountWideAuditResourceAsync(
+            id,
+            membership,
+            context,
+            decision,
+            ManagementCapabilities.UsersDisable,
+            cancellationToken);
+
+        if (!decision.IsAllowed)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.UsersDisable,
+                auditResource,
+                decision,
+                "denied",
+                decision.ReasonCode,
+                cancellationToken);
+            throw new ManagementAccessException(decision);
+        }
+
+        var user = await userManager.FindByIdAsync(id);
+        if (user is null)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.UsersDisable,
+                auditResource,
+                decision,
+                "not-found",
+                "user_not_found",
+                cancellationToken);
+            throw new ManagementNotFoundException(
+                "user_not_found",
+                "O usuário não foi encontrado.");
+        }
+
+        await using var transaction = await database.Database
+            .BeginTransactionAsync(cancellationToken);
+        try
+        {
+            EnsureLockoutChangeSucceeded(
+                await userManager.SetLockoutEnabledAsync(user, true));
+            EnsureLockoutChangeSucceeded(
+                await userManager.SetLockoutEndDateAsync(
+                    user,
+                    command.Locked
+                        ? IndefiniteLockoutEnd
+                        : null));
+
+            if (!command.Locked)
+            {
+                EnsureLockoutChangeSucceeded(
+                    await userManager.ResetAccessFailedCountAsync(user));
+            }
+
+            EnsureLockoutChangeSucceeded(
+                await userManager.UpdateSecurityStampAsync(user));
+
+            var revocation = await sessionRevoker.RevokeAsync(
+                user.Id,
+                cancellationToken);
+            logger.LogInformation(
+                "Revoked {TokenCount} tokens and {AuthorizationCount} authorizations for management user {UserId}. CorrelationId={CorrelationId}",
+                revocation.RevokedTokens,
+                revocation.RevokedAuthorizations,
+                user.Id,
+                context.CorrelationId);
+
+            foreach (var resource in AccountWideAuditResources(
+                id,
+                membership,
+                auditResource))
+            {
+                database.ManagementAuditEvents.Add(
+                    ManagementAuditEventFactory.Create(
+                        context,
+                        ManagementCapabilities.UsersDisable,
+                        resource,
+                        decision,
+                        "succeeded",
+                        command.Locked
+                            ? "user_locked"
+                            : "user_unlocked"));
+            }
+
+            await database.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            database.ChangeTracker.Clear();
+            throw;
+        }
+        catch (Exception exception)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            // UserManager and the OpenIddict managers share this scoped
+            // DbContext. After rollback their tracked mutations must be
+            // discarded before the failure audit is saved, otherwise the
+            // audit SaveChanges could accidentally reapply the lockout.
+            database.ChangeTracker.Clear();
+            logger.LogError(
+                exception,
+                "Unable to change a management user lockout. CorrelationId={CorrelationId}",
+                context.CorrelationId);
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.UsersDisable,
+                auditResource,
+                decision,
+                "failed",
+                command.Locked
+                    ? "user_lock_failed"
+                    : "user_unlock_failed",
+                cancellationToken);
+            throw new ManagementConflictException(
+                command.Locked
+                    ? "user_lock_failed"
+                    : "user_unlock_failed",
+                command.Locked
+                    ? "Não foi possível bloquear o acesso do usuário."
+                    : "Não foi possível desbloquear o acesso do usuário.");
+        }
+
+        var grants = await entitlements.ResolveAsync(
+            context.Operator,
+            cancellationToken);
+        var detailContext = grants.HasGlobalAdministratorAccess
+            ? null
+            : membership.ContextIds
+                .Order(StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault();
+        return await GetAsync(
+            id,
+            detailContext,
+            context,
+            cancellationToken);
+    }
+
     private async Task<ManagementAuthorizationDecision>
-        EvaluatePasswordResetAsync(
+        EvaluateLockoutChangeAsync(
             string userId,
             ManagementUserMembership membership,
             ManagementRequestContext context,
+            bool locking,
+            CancellationToken cancellationToken)
+    {
+        if (locking
+            && string.Equals(
+                userId,
+                context.OperatorSubject,
+                StringComparison.Ordinal))
+        {
+            return ManagementAuthorizationDecision.Denied(
+                "user_self_lockout_not_allowed");
+        }
+
+        return await EvaluateAccountWideActionAsync(
+            userId,
+            membership,
+            context,
+            ManagementCapabilities.UsersDisable,
+            cancellationToken);
+    }
+
+    private async Task<ManagementAuthorizationDecision>
+        EvaluateAccountWideActionAsync(
+            string userId,
+            ManagementUserMembership membership,
+            ManagementRequestContext context,
+            string capability,
             CancellationToken cancellationToken)
     {
         var grants = await entitlements.ResolveAsync(
@@ -738,7 +991,7 @@ internal sealed class UserManagementService(
         {
             return await authorization.EvaluateAsync(
                 context.Operator,
-                ManagementCapabilities.UsersResetPassword,
+                capability,
                 new ManagementResource(
                     ManagementResourceTypes.User,
                     userId),
@@ -762,7 +1015,7 @@ internal sealed class UserManagementService(
         {
             var decision = await authorization.EvaluateAsync(
                 context.Operator,
-                ManagementCapabilities.UsersResetPassword,
+                capability,
                 new ManagementResource(
                     ManagementResourceTypes.User,
                     userId,
@@ -784,11 +1037,12 @@ internal sealed class UserManagementService(
         return ManagementAuthorizationDecision.Allowed();
     }
 
-    private async Task<ManagementResource> PasswordResetAuditResourceAsync(
+    private async Task<ManagementResource> AccountWideAuditResourceAsync(
         string userId,
         ManagementUserMembership membership,
         ManagementRequestContext context,
         ManagementAuthorizationDecision aggregateDecision,
+        string capability,
         CancellationToken cancellationToken)
     {
         var grants = await entitlements.ResolveAsync(
@@ -806,7 +1060,7 @@ internal sealed class UserManagementService(
         {
             var decision = await authorization.EvaluateAsync(
                 context.Operator,
-                ManagementCapabilities.UsersResetPassword,
+                capability,
                 new ManagementResource(
                     ManagementResourceTypes.User,
                     userId,
@@ -831,7 +1085,7 @@ internal sealed class UserManagementService(
     }
 
     private static IEnumerable<ManagementResource>
-        PasswordResetAuditResources(
+        AccountWideAuditResources(
             string userId,
             ManagementUserMembership membership,
             ManagementResource fallback)
@@ -853,12 +1107,30 @@ internal sealed class UserManagementService(
     }
 
     private static ManagementUserActions Actions(
-        ManagementAuthorizationDecision resetDecision) =>
+        ManagementAuthorizationDecision resetDecision,
+        ManagementAuthorizationDecision lockoutDecision) =>
         new(
             resetDecision.IsAllowed,
             resetDecision.Outcome is
                 ManagementAuthorizationOutcome.StepUpRequired,
-            resetDecision.ReasonCode);
+            resetDecision.ReasonCode,
+            lockoutDecision.IsAllowed,
+            lockoutDecision.Outcome is
+                ManagementAuthorizationOutcome.StepUpRequired,
+            lockoutDecision.ReasonCode);
+
+    private static void EnsureLockoutChangeSucceeded(
+        IdentityResult result)
+    {
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException(
+                string.Join(
+                    ' ',
+                    result.Errors.Select(error =>
+                        $"{error.Code}: {error.Description}")));
+        }
+    }
 
     private static string Required(
         string? value,

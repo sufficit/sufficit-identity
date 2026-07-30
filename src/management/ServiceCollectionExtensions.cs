@@ -69,6 +69,8 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IBrandingManagementService,
             BrandingManagementService>();
         services.TryAddScoped<IUserManagementService, UserManagementService>();
+        services.TryAddScoped<IManagementUserSessionRevoker,
+            OpenIddictManagementUserSessionRevoker>();
         services.TryAddScoped<IManagementUserContextStore,
             EmptyManagementUserContextStore>();
         services.TryAddSingleton<IBrandingThemeProvider,

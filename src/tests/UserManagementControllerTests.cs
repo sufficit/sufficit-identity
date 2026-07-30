@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using OpenIddict.Abstractions;
+using OpenIddict.EntityFrameworkCore.Models;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Management;
@@ -140,6 +142,7 @@ public sealed class UserManagementControllerTests
         Assert.NotNull(created);
         Assert.Contains(FirstContext, created.ContextIds);
         Assert.True(created.Actions.CanResetPassword);
+        Assert.True(created.Actions.CanSetLockout);
         Assert.DoesNotContain(
             initialPassword,
             createdJson,
@@ -159,6 +162,24 @@ public sealed class UserManagementControllerTests
             replacementPassword,
             resetJson,
             StringComparison.Ordinal);
+
+        using var lockedResponse = await client.PostAsJsonAsync(
+            $"/api/users/{created.Id}/lockout",
+            new SetManagementUserLockoutCommand(Locked: true));
+        var locked = await lockedResponse.Content
+            .ReadFromJsonAsync<ManagementUserDetail>();
+        Assert.Equal(HttpStatusCode.OK, lockedResponse.StatusCode);
+        Assert.NotNull(locked);
+        Assert.True(locked.LockoutEnd > DateTimeOffset.UtcNow);
+
+        using var unlockedResponse = await client.PostAsJsonAsync(
+            $"/api/users/{created.Id}/lockout",
+            new SetManagementUserLockoutCommand(Locked: false));
+        var unlocked = await unlockedResponse.Content
+            .ReadFromJsonAsync<ManagementUserDetail>();
+        Assert.Equal(HttpStatusCode.OK, unlockedResponse.StatusCode);
+        Assert.NotNull(unlocked);
+        Assert.Null(unlocked.LockoutEnd);
 
         await using var scope = contextualFactory.Services.CreateAsyncScope();
         var userManager = scope.ServiceProvider
@@ -194,6 +215,16 @@ public sealed class UserManagementControllerTests
                 entry.Capability
                     == ManagementCapabilities.UsersResetPassword
                 && entry.ReasonCode == "user_password_reset");
+        Assert.Contains(
+            audit,
+            entry =>
+                entry.Capability == ManagementCapabilities.UsersDisable
+                && entry.ReasonCode == "user_locked");
+        Assert.Contains(
+            audit,
+            entry =>
+                entry.Capability == ManagementCapabilities.UsersDisable
+                && entry.ReasonCode == "user_unlocked");
     }
 
     [Fact]
@@ -458,6 +489,284 @@ public sealed class UserManagementControllerTests
     }
 
     [Fact]
+    public async Task Lockout_revokes_identity_session_tokens_and_authorizations()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        string targetId;
+        string? originalSecurityStamp;
+        var authorizationId = Guid.NewGuid().ToString("N");
+        var tokenId = Guid.NewGuid().ToString("N");
+        await using (var setup = factory.Services.CreateAsyncScope())
+        {
+            var userManager = setup.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            var target = await TestDataSeeder.CreateUserAsync(
+                userManager,
+                $"lockout-{Guid.NewGuid():N}",
+                "Original!Passw0rd#10");
+            targetId = target.Id;
+            originalSecurityStamp = target.SecurityStamp;
+
+            var setupDatabase = setup.ServiceProvider
+                .GetRequiredService<AppDbContext>();
+            setupDatabase.Set<OpenIddictEntityFrameworkCoreAuthorization>().Add(
+                new OpenIddictEntityFrameworkCoreAuthorization
+                {
+                    Id = authorizationId,
+                    ConcurrencyToken = Guid.NewGuid().ToString("N"),
+                    CreationDate = DateTime.UtcNow,
+                    Status = OpenIddictConstants.Statuses.Valid,
+                    Subject = targetId,
+                    Type = OpenIddictConstants.AuthorizationTypes.Permanent
+                });
+            setupDatabase.Set<OpenIddictEntityFrameworkCoreToken>().Add(
+                new OpenIddictEntityFrameworkCoreToken
+                {
+                    Id = tokenId,
+                    ConcurrencyToken = Guid.NewGuid().ToString("N"),
+                    CreationDate = DateTime.UtcNow,
+                    Status = OpenIddictConstants.Statuses.Valid,
+                    Subject = targetId,
+                    Type = OpenIddictConstants.TokenTypeHints.RefreshToken
+                });
+            await setupDatabase.SaveChangesAsync();
+        }
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider
+            .GetRequiredService<IUserManagementService>();
+        var locked = await service.SetLockoutAsync(
+            targetId,
+            new SetManagementUserLockoutCommand(Locked: true),
+            RequestContext("administrator"));
+
+        Assert.True(locked.LockoutEnabled);
+        Assert.True(locked.LockoutEnd > DateTimeOffset.UtcNow);
+
+        var database = scope.ServiceProvider
+            .GetRequiredService<AppDbContext>();
+        database.ChangeTracker.Clear();
+        var persisted = await database.Users.SingleAsync(
+            user => user.Id == targetId);
+        var authorization = await database
+            .Set<OpenIddictEntityFrameworkCoreAuthorization>()
+            .SingleAsync(entry => entry.Id == authorizationId);
+        var token = await database
+            .Set<OpenIddictEntityFrameworkCoreToken>()
+            .SingleAsync(entry => entry.Id == tokenId);
+
+        Assert.NotEqual(originalSecurityStamp, persisted.SecurityStamp);
+        Assert.Equal(
+            OpenIddictConstants.Statuses.Revoked,
+            authorization.Status);
+        Assert.Equal(OpenIddictConstants.Statuses.Revoked, token.Status);
+
+        var signInManager = scope.ServiceProvider
+            .GetRequiredService<SignInManager<ApplicationUser>>();
+        var signIn = await signInManager.CheckPasswordSignInAsync(
+            persisted,
+            "Original!Passw0rd#10",
+            lockoutOnFailure: false);
+        Assert.True(signIn.IsLockedOut);
+
+        var unlocked = await service.SetLockoutAsync(
+            targetId,
+            new SetManagementUserLockoutCommand(Locked: false),
+            RequestContext("administrator"));
+        Assert.Null(unlocked.LockoutEnd);
+        Assert.Equal(0, unlocked.AccessFailedCount);
+
+        var audits = await database.ManagementAuditEvents
+            .Where(entry =>
+                entry.ResourceId == targetId
+                && entry.Capability == ManagementCapabilities.UsersDisable)
+            .ToArrayAsync();
+        Assert.Contains(
+            audits,
+            entry => entry.ReasonCode == "user_locked");
+        Assert.Contains(
+            audits,
+            entry => entry.ReasonCode == "user_unlocked");
+
+        var stampOptions = scope.ServiceProvider
+            .GetRequiredService<IOptions<SecurityStampValidatorOptions>>();
+        Assert.Equal(TimeSpan.Zero, stampOptions.Value.ValidationInterval);
+    }
+
+    [Fact]
+    public async Task Failed_session_revocation_rolls_back_lockout_before_auditing()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var failingFactory = factory.WithWebHostBuilder(builder =>
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IManagementUserSessionRevoker>();
+                services.AddSingleton<
+                    IManagementUserSessionRevoker,
+                    ThrowingManagementUserSessionRevoker>();
+            }));
+
+        string targetId;
+        string? originalSecurityStamp;
+        await using (var setup = failingFactory.Services.CreateAsyncScope())
+        {
+            var userManager = setup.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            var target = await TestDataSeeder.CreateUserAsync(
+                userManager,
+                $"lockout-rollback-{Guid.NewGuid():N}",
+                "Original!Passw0rd#13");
+            targetId = target.Id;
+            originalSecurityStamp = target.SecurityStamp;
+        }
+
+        await using var scope = failingFactory.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider
+            .GetRequiredService<IUserManagementService>();
+        var failure = await Assert.ThrowsAsync<ManagementConflictException>(
+            () => service.SetLockoutAsync(
+                targetId,
+                new SetManagementUserLockoutCommand(Locked: true),
+                RequestContext("administrator")));
+        Assert.Equal("user_lock_failed", failure.ReasonCode);
+
+        var database = scope.ServiceProvider
+            .GetRequiredService<AppDbContext>();
+        database.ChangeTracker.Clear();
+        var persisted = await database.Users.SingleAsync(
+            user => user.Id == targetId);
+        Assert.Null(persisted.LockoutEnd);
+        Assert.Equal(originalSecurityStamp, persisted.SecurityStamp);
+        Assert.Contains(
+            await database.ManagementAuditEvents
+                .Where(entry => entry.ResourceId == targetId)
+                .ToArrayAsync(),
+            entry =>
+                entry.Capability == ManagementCapabilities.UsersDisable
+                && entry.OperationOutcome == "failed"
+                && entry.ReasonCode == "user_lock_failed");
+    }
+
+    [Fact]
+    public async Task Manager_lockout_requires_every_context_and_tenant_mfa()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var contextualFactory = factory.WithWebHostBuilder(builder =>
+            builder.ConfigureServices(services =>
+            {
+                services.Configure<ManagementOptions>(management =>
+                    management.Authorization.Contexts[SecondContext] =
+                        new ManagementContextAccessPolicyOptions
+                        {
+                            RequireMfa = true
+                        });
+                services.RemoveAll<IManagementUserContextStore>();
+                services.AddScoped<
+                    IManagementUserContextStore,
+                    SufficitDirectiveUserContextStore>();
+                services.RemoveAll<IManagementEntitlementResolver>();
+                services.AddScoped<
+                    IManagementEntitlementResolver,
+                    SufficitDirectiveManagementEntitlementResolver>();
+                services.RemoveAll<IManagementAuthorizationEvaluator>();
+                services.AddScoped<
+                    IManagementAuthorizationEvaluator,
+                    RoleBasedManagementAuthorizationEvaluator>();
+            }));
+
+        string targetId;
+        await using (var setup = contextualFactory.Services.CreateAsyncScope())
+        {
+            var userManager = setup.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            var target = await TestDataSeeder.CreateUserAsync(
+                userManager,
+                $"lockout-context-{Guid.NewGuid():N}",
+                "Original!Passw0rd#11",
+                $"[\"phonecalls:{FirstContext}\","
+                + $"\"phonecalls:{SecondContext}\"]");
+            targetId = target.Id;
+        }
+
+        await using var scope =
+            contextualFactory.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider
+            .GetRequiredService<IUserManagementService>();
+        var onlyFirst = await Assert.ThrowsAsync<ManagementAccessException>(
+            () => service.SetLockoutAsync(
+                targetId,
+                new SetManagementUserLockoutCommand(Locked: true),
+                RequestContext(
+                    "manager",
+                    new Claim(
+                        "directive",
+                        $"phonecalls:{FirstContext}"))));
+        Assert.Equal(
+            "user_context_scope_incomplete",
+            onlyFirst.Decision.ReasonCode);
+
+        var bothContexts = new Claim(
+            "directive",
+            $"[\"phonecalls:{FirstContext}\","
+            + $"\"phonecalls:{SecondContext}\"]");
+        var withoutMfa = await Assert.ThrowsAsync<ManagementAccessException>(
+            () => service.SetLockoutAsync(
+                targetId,
+                new SetManagementUserLockoutCommand(Locked: true),
+                RequestContext("manager", bothContexts)));
+        Assert.Equal(
+            ManagementAuthorizationOutcome.StepUpRequired,
+            withoutMfa.Decision.Outcome);
+
+        var locked = await service.SetLockoutAsync(
+            targetId,
+            new SetManagementUserLockoutCommand(Locked: true),
+            RequestContext(
+                "manager",
+                bothContexts,
+                new Claim("amr", "pwd mfa")));
+        Assert.True(locked.LockoutEnd > DateTimeOffset.UtcNow);
+    }
+
+    [Fact]
+    public async Task Operator_cannot_lock_own_account()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        string targetId;
+        await using (var setup = factory.Services.CreateAsyncScope())
+        {
+            var userManager = setup.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            var target = await TestDataSeeder.CreateUserAsync(
+                userManager,
+                $"self-lockout-{Guid.NewGuid():N}",
+                "Original!Passw0rd#12");
+            targetId = target.Id;
+        }
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider
+            .GetRequiredService<IUserManagementService>();
+        var denied = await Assert.ThrowsAsync<ManagementAccessException>(
+            () => service.SetLockoutAsync(
+                targetId,
+                new SetManagementUserLockoutCommand(Locked: true),
+                RequestContextForSubject(
+                    targetId,
+                    "administrator")));
+
+        Assert.Equal(
+            "user_self_lockout_not_allowed",
+            denied.Decision.ReasonCode);
+    }
+
+    [Fact]
     public async Task Context_list_never_returns_users_outside_resolved_scope()
     {
         using var factory = new ManagementTestFactory();
@@ -577,4 +886,31 @@ public sealed class UserManagementControllerTests
                     ClaimTypes.Name,
                     ClaimTypes.Role)),
             $"test-{Guid.NewGuid():N}");
+
+    private static ManagementRequestContext RequestContextForSubject(
+        string subject,
+        string role,
+        params Claim[] claims) =>
+        new(
+            new ClaimsPrincipal(
+                new ClaimsIdentity(
+                    [
+                        new Claim(ClaimTypes.NameIdentifier, subject),
+                        new Claim(ClaimTypes.Role, role),
+                        .. claims
+                    ],
+                    "test",
+                    ClaimTypes.Name,
+                    ClaimTypes.Role)),
+            $"test-{Guid.NewGuid():N}");
+
+    private sealed class ThrowingManagementUserSessionRevoker
+        : IManagementUserSessionRevoker
+    {
+        public Task<ManagementUserSessionRevocation> RevokeAsync(
+            string subject,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException(
+                "Session revocation failed for test.");
+    }
 }

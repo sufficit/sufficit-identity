@@ -224,6 +224,14 @@ public sealed class ManagementUiRoutingTests
             "Todos os contextos",
             detailHtml,
             StringComparison.Ordinal);
+        Assert.Contains(
+            "Bloquear acesso",
+            detailHtml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Confirmo o bloqueio desta conta",
+            detailHtml,
+            StringComparison.Ordinal);
     }
 
     private static async Task<WebApplication> CreateHostAsync()
@@ -504,7 +512,10 @@ public sealed class ManagementUiRoutingTests
                 new ManagementUserActions(
                     CanResetPassword: true,
                     ResetPasswordRequiresMfa: false,
-                    ResetPasswordReasonCode: "allowed")));
+                    ResetPasswordReasonCode: "allowed",
+                    CanSetLockout: true,
+                    SetLockoutRequiresMfa: false,
+                    SetLockoutReasonCode: "allowed")));
 
         public Task<ManagementUserDetail> CreateAsync(
             CreateManagementUserCommand command,
@@ -515,6 +526,13 @@ public sealed class ManagementUiRoutingTests
         public Task<ManagementUserDetail> ResetPasswordAsync(
             string id,
             ResetManagementUserPasswordCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<ManagementUserDetail> SetLockoutAsync(
+            string id,
+            SetManagementUserLockoutCommand command,
             ManagementRequestContext context,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();

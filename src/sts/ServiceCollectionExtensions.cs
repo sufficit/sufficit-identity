@@ -183,6 +183,14 @@ public static class ServiceCollectionExtensions
                 ? CookieSecurePolicy.SameAsRequest
                 : CookieSecurePolicy.Always;
         });
+        services.Configure<SecurityStampValidatorOptions>(options =>
+        {
+            // Administrative lockout updates the user's security stamp. Check
+            // it on every cookie-authenticated request so a blocked account
+            // loses its local Identity session immediately instead of waiting
+            // for the framework's default validation interval.
+            options.ValidationInterval = TimeSpan.Zero;
+        });
 
         // ---- External login providers (Google, GitHub, etc) ----
         // Reads from "Sufficit:Identity:ExternalProviders" section.

@@ -64,6 +64,17 @@ public sealed class UsersController(IUserManagementService users)
             RequestContext(),
             cancellationToken));
 
+    [HttpPost("{id}/lockout")]
+    public async Task<ActionResult<ManagementUserDetail>> SetLockout(
+        string id,
+        [FromBody] SetManagementUserLockoutCommand command,
+        CancellationToken cancellationToken) =>
+        Ok(await users.SetLockoutAsync(
+            id,
+            command,
+            RequestContext(),
+            cancellationToken));
+
     private ManagementRequestContext RequestContext() =>
         new(User, HttpContext.TraceIdentifier);
 }
