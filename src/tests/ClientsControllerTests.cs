@@ -228,6 +228,13 @@ public sealed class ClientsControllerTests
         using var response = await client.GetAsync("/api/clients");
         Assert.True(response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden,
             $"Expected 401/403 without admin scope, got {response.StatusCode}.");
+        Assert.Null(response.Headers.Location);
+        Assert.Contains(
+            response.Headers.WwwAuthenticate,
+            challenge => string.Equals(
+                challenge.Scheme,
+                "Bearer",
+                StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]

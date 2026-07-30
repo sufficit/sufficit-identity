@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenIddict.Validation.AspNetCore;
 using Sufficit.Identity.Core.Branding;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorizations;
@@ -97,6 +98,8 @@ public static class ServiceCollectionExtensions
             {
                 builder.AddPolicy("sufficit-identity-management", policy =>
                 {
+                    policy.AuthenticationSchemes.Add(
+                        OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
                     policy.RequireAuthenticatedUser();
                     policy.Requirements.Add(new ScopeRequirement(options.RequiredScope));
 
