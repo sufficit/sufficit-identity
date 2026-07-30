@@ -12,7 +12,7 @@ using Sufficit.Identity.Management.Authorization;
 namespace Sufficit.Identity.Management.Users;
 
 /// <summary>
-/// Canonical application boundary for contextual user administration.
+/// Canonical application boundary for identity-account administration.
 /// Both embedded UI and HTTP adapters execute these same use cases.
 /// </summary>
 public interface IUserManagementService
@@ -28,7 +28,6 @@ public interface IUserManagementService
 
     Task<ManagementUserDetail> GetAsync(
         string id,
-        string? contextId,
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 
@@ -56,44 +55,14 @@ public interface IUserManagementService
         CancellationToken cancellationToken = default);
 }
 
-public interface IManagementUserContextStore
-{
-    Task<IReadOnlySet<string>> ListKnownContextIdsAsync(
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlySet<string>> ListUserIdsAsync(
-        string contextId,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlySet<string>> ListContextIdsAsync(
-        string userId,
-        CancellationToken cancellationToken = default);
-
-    Task<ManagementUserMembership> GetMembershipAsync(
-        string userId,
-        CancellationToken cancellationToken = default);
-
-    Task<bool> UserBelongsToAsync(
-        string userId,
-        string contextId,
-        CancellationToken cancellationToken = default);
-
-    Task AddToContextAsync(
-        string userId,
-        string contextId,
-        CancellationToken cancellationToken = default);
-}
-
 public sealed record ManagementUserAccess(
-    bool HasGlobalAccess,
-    IReadOnlyList<string> ContextIds,
-    bool CanCreate = false);
+    bool CanRead,
+    bool CanCreate);
 
 public sealed record CreateManagementUserCommand(
     string UserName,
     string Email,
-    string InitialPassword,
-    string ContextId);
+    string InitialPassword);
 
 public sealed record UpdateManagementUserProfileCommand(
     string UserName,
@@ -108,7 +77,6 @@ public sealed record SetManagementUserLockoutCommand(
 
 public sealed record ManagementUserSearch(
     string? Search = null,
-    string? ContextId = null,
     int Page = 1,
     int PageSize = 25);
 
@@ -116,8 +84,7 @@ public sealed record ManagementUserPage(
     IReadOnlyList<ManagementUserSummary> Items,
     int Page,
     int PageSize,
-    int TotalCount,
-    string? ContextId);
+    int TotalCount);
 
 public sealed record ManagementUserSummary(
     string Id,
@@ -125,12 +92,7 @@ public sealed record ManagementUserSummary(
     string? Email,
     bool EmailConfirmed,
     bool TwoFactorEnabled,
-    bool IsLockedOut,
-    IReadOnlyList<string> Roles);
-
-public sealed record ManagementUserMembership(
-    IReadOnlySet<string> ContextIds,
-    bool RequiresAdministrator);
+    bool IsLockedOut);
 
 public sealed record ManagementUserActions(
     bool CanResetPassword,
@@ -206,8 +168,6 @@ public sealed record ManagementUserDetail(
     bool LockoutEnabled,
     DateTimeOffset? LockoutEnd,
     int AccessFailedCount,
-    IReadOnlyList<string> Roles,
-    IReadOnlyList<string> ContextIds,
     DateTime UpdatedAt,
     ManagementUserActions Actions)
 {
@@ -222,8 +182,6 @@ public sealed record ManagementUserDetail(
         bool lockoutEnabled,
         DateTimeOffset? lockoutEnd,
         int accessFailedCount,
-        IReadOnlyList<string> roles,
-        IReadOnlyList<string> contextIds,
         DateTime updatedAt)
         : this(
             id,
@@ -236,8 +194,6 @@ public sealed record ManagementUserDetail(
             lockoutEnabled,
             lockoutEnd,
             accessFailedCount,
-            roles,
-            contextIds,
             updatedAt,
             new ManagementUserActions(
                 CanResetPassword: false,
@@ -247,54 +203,10 @@ public sealed record ManagementUserDetail(
     }
 }
 
-internal sealed class EmptyManagementUserContextStore
-    : IManagementUserContextStore
-{
-    public Task<IReadOnlySet<string>> ListKnownContextIdsAsync(
-        CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlySet<string>>(
-            new HashSet<string>(StringComparer.OrdinalIgnoreCase));
-
-    public Task<IReadOnlySet<string>> ListUserIdsAsync(
-        string contextId,
-        CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlySet<string>>(
-            new HashSet<string>(StringComparer.Ordinal));
-
-    public Task<IReadOnlySet<string>> ListContextIdsAsync(
-        string userId,
-        CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlySet<string>>(
-            new HashSet<string>(StringComparer.OrdinalIgnoreCase));
-
-    public Task<ManagementUserMembership> GetMembershipAsync(
-        string userId,
-        CancellationToken cancellationToken = default) =>
-        Task.FromResult(
-            new ManagementUserMembership(
-                new HashSet<string>(StringComparer.OrdinalIgnoreCase),
-                RequiresAdministrator: false));
-
-    public Task<bool> UserBelongsToAsync(
-        string userId,
-        string contextId,
-        CancellationToken cancellationToken = default) =>
-        Task.FromResult(false);
-
-    public Task AddToContextAsync(
-        string userId,
-        string contextId,
-        CancellationToken cancellationToken = default) =>
-        throw new InvalidOperationException(
-            "No management user-context store is configured.");
-}
-
 internal sealed class UserManagementService(
     AppDbContext database,
     UserManager<ApplicationUser> userManager,
     IManagementAuthorizationEvaluator authorization,
-    IManagementEntitlementResolver entitlements,
-    IManagementUserContextStore userContexts,
     IManagementUserSessionRevoker sessionRevoker,
     ILogger<UserManagementService> logger) : IUserManagementService
 {
@@ -308,27 +220,27 @@ internal sealed class UserManagementService(
         ManagementRequestContext context,
         CancellationToken cancellationToken = default)
     {
-        var grants = await entitlements.ResolveAsync(
+        var resource = new ManagementResource(
+            ManagementResourceTypes.UserCollection);
+        var readDecision = await authorization.EvaluateAsync(
             context.Operator,
+            ManagementCapabilities.UsersRead,
+            resource,
             cancellationToken);
-        if (!grants.HasGlobalAdministratorAccess
-            && grants.ManagedContextIds.Count is 0)
+        if (!readDecision.IsAllowed)
         {
-            throw new ManagementAccessException(
-                ManagementAuthorizationDecision.Denied(
-                    "capability_not_granted"));
+            throw new ManagementAccessException(readDecision);
         }
 
-        var contextIds = grants.HasGlobalAdministratorAccess
-            ? await userContexts.ListKnownContextIdsAsync(cancellationToken)
-            : grants.ManagedContextIds;
+        var createDecision = await authorization.EvaluateAsync(
+            context.Operator,
+            ManagementCapabilities.UsersCreate,
+            resource,
+            cancellationToken);
 
         return new ManagementUserAccess(
-            grants.HasGlobalAdministratorAccess,
-            contextIds
-                .Order(StringComparer.OrdinalIgnoreCase)
-                .ToArray(),
-            contextIds.Count is not 0);
+            CanRead: true,
+            CanCreate: createDecision.IsAllowed);
     }
 
     public async Task<ManagementUserPage> SearchAsync(
@@ -340,10 +252,8 @@ internal sealed class UserManagementService(
 
         var page = Math.Max(query.Page, 1);
         var pageSize = Math.Clamp(query.PageSize, 1, 100);
-        var contextId = NormalizeContextId(query.ContextId);
         var resource = new ManagementResource(
-            ManagementResourceTypes.UserCollection,
-            ContextId: contextId);
+            ManagementResourceTypes.UserCollection);
         var decision = await DemandAsync(
             context,
             ManagementCapabilities.UsersRead,
@@ -351,13 +261,6 @@ internal sealed class UserManagementService(
             cancellationToken);
 
         var users = database.Users.AsNoTracking();
-        if (contextId is not null)
-        {
-            var visibleUserIds = await userContexts.ListUserIdsAsync(
-                contextId,
-                cancellationToken);
-            users = users.Where(user => visibleUserIds.Contains(user.Id));
-        }
 
         var search = query.Search?.Trim();
         if (!string.IsNullOrWhiteSpace(search))
@@ -385,10 +288,6 @@ internal sealed class UserManagementService(
                     && user.LockoutEnd > now
             })
             .ToArrayAsync(cancellationToken);
-        var roles = await RolesByUserAsync(
-            pageRows.Select(user => user.Id).ToArray(),
-            cancellationToken);
-
         var items = pageRows
             .Select(user => new ManagementUserSummary(
                 user.Id,
@@ -396,8 +295,7 @@ internal sealed class UserManagementService(
                 user.Email,
                 user.EmailConfirmed,
                 user.TwoFactorEnabled,
-                user.IsLockedOut,
-                roles.GetValueOrDefault(user.Id, [])))
+                user.IsLockedOut))
             .ToArray();
 
         await WriteAuditAsync(
@@ -413,47 +311,24 @@ internal sealed class UserManagementService(
             items,
             page,
             pageSize,
-            totalCount,
-            contextId);
+            totalCount);
     }
 
     public async Task<ManagementUserDetail> GetAsync(
         string id,
-        string? contextId,
         ManagementRequestContext context,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
 
-        var normalizedContextId = NormalizeContextId(contextId);
         var resource = new ManagementResource(
             ManagementResourceTypes.User,
-            id,
-            normalizedContextId);
+            id);
         var decision = await DemandAsync(
             context,
             ManagementCapabilities.UsersRead,
             resource,
             cancellationToken);
-
-        if (normalizedContextId is not null
-            && !await userContexts.UserBelongsToAsync(
-                id,
-                normalizedContextId,
-                cancellationToken))
-        {
-            await WriteAuditAsync(
-                context,
-                ManagementCapabilities.UsersRead,
-                resource,
-                decision,
-                "not-found",
-                "user_not_found_in_context",
-                cancellationToken);
-            throw new ManagementNotFoundException(
-                "user_not_found",
-                "The user was not found in the requested context.");
-        }
 
         var user = await database.Users
             .AsNoTracking()
@@ -488,37 +363,22 @@ internal sealed class UserManagementService(
                 "The user was not found.");
         }
 
-        var roles = await RolesByUserAsync([user.Id], cancellationToken);
-        var membership = await userContexts.GetMembershipAsync(
-            user.Id,
-            cancellationToken);
-        var grants = await entitlements.ResolveAsync(
+        var resetDecision = await authorization.EvaluateAsync(
             context.Operator,
-            cancellationToken);
-        var visibleContexts = grants.HasGlobalAdministratorAccess
-            ? membership.ContextIds
-            : new HashSet<string>(
-                normalizedContextId is null ? [] : [normalizedContextId],
-                StringComparer.OrdinalIgnoreCase);
-        var resetDecision = await EvaluateAccountWideActionAsync(
-            user.Id,
-            membership,
-            context,
             ManagementCapabilities.UsersResetPassword,
+            resource,
             cancellationToken);
         var isLockedOut = user.LockoutEnd is { } lockoutEnd
             && lockoutEnd > DateTimeOffset.UtcNow;
         var lockoutDecision = await EvaluateLockoutChangeAsync(
             user.Id,
-            membership,
             context,
             locking: !isLockedOut,
             cancellationToken);
-        var updateProfileDecision = await EvaluateAccountWideActionAsync(
-            user.Id,
-            membership,
-            context,
+        var updateProfileDecision = await authorization.EvaluateAsync(
+            context.Operator,
             ManagementCapabilities.UsersUpdate,
+            resource,
             cancellationToken);
 
         await WriteAuditAsync(
@@ -541,8 +401,6 @@ internal sealed class UserManagementService(
             user.LockoutEnabled,
             user.LockoutEnd,
             user.AccessFailedCount,
-            roles.GetValueOrDefault(user.Id, []),
-            visibleContexts.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
             user.Timestamp,
             Actions(
                 resetDecision,
@@ -594,14 +452,8 @@ internal sealed class UserManagementService(
             "Informe a senha inicial.",
             "initialPassword",
             trim: false);
-        var contextId = NormalizeContextId(command.ContextId)
-            ?? throw new ManagementValidationException(
-                "user_context_invalid",
-                "Informe um contexto válido para o novo usuário.",
-                "contextId");
         var collection = new ManagementResource(
-            ManagementResourceTypes.UserCollection,
-            ContextId: contextId);
+            ManagementResourceTypes.UserCollection);
         var decision = await DemandAsync(
             context,
             ManagementCapabilities.UsersCreate,
@@ -637,19 +489,13 @@ internal sealed class UserManagementService(
                 ThrowIdentityFailure(created, creatingUser: true);
             }
 
-            await userContexts.AddToContextAsync(
-                user.Id,
-                contextId,
-                cancellationToken);
-
             database.ManagementAuditEvents.Add(
                 ManagementAuditEventFactory.Create(
                     context,
                     ManagementCapabilities.UsersCreate,
                     new ManagementResource(
                         ManagementResourceTypes.User,
-                        user.Id,
-                        contextId),
+                        user.Id),
                     decision,
                     "succeeded",
                     "user_created"));
@@ -670,7 +516,7 @@ internal sealed class UserManagementService(
             await transaction.DisposeAsync();
             logger.LogError(
                 exception,
-                "Unable to create a contextual management user. CorrelationId={CorrelationId}",
+                "Unable to create a management user. CorrelationId={CorrelationId}",
                 context.CorrelationId);
             await TryWriteAuditAsync(
                 context,
@@ -682,12 +528,11 @@ internal sealed class UserManagementService(
                 cancellationToken);
             throw new ManagementConflictException(
                 "user_create_failed",
-                "Não foi possível criar e associar o usuário ao contexto.");
+                "Não foi possível criar o usuário.");
         }
 
         return await GetAsync(
             user.Id,
-            contextId,
             context,
             cancellationToken);
     }
@@ -743,35 +588,14 @@ internal sealed class UserManagementService(
                 "phoneNumber");
         }
 
-        var membership = await userContexts.GetMembershipAsync(
-            id,
-            cancellationToken);
-        var decision = await EvaluateAccountWideActionAsync(
-            id,
-            membership,
+        var auditResource = new ManagementResource(
+            ManagementResourceTypes.User,
+            id);
+        var decision = await DemandAsync(
             context,
             ManagementCapabilities.UsersUpdate,
+            auditResource,
             cancellationToken);
-        var auditResource = await AccountWideAuditResourceAsync(
-            id,
-            membership,
-            context,
-            decision,
-            ManagementCapabilities.UsersUpdate,
-            cancellationToken);
-
-        if (!decision.IsAllowed)
-        {
-            await TryWriteAuditAsync(
-                context,
-                ManagementCapabilities.UsersUpdate,
-                auditResource,
-                decision,
-                "denied",
-                decision.ReasonCode,
-                cancellationToken);
-            throw new ManagementAccessException(decision);
-        }
 
         var user = await userManager.FindByIdAsync(id);
         if (user is null)
@@ -842,22 +666,16 @@ internal sealed class UserManagementService(
                     context.CorrelationId);
             }
 
-            foreach (var resource in AccountWideAuditResources(
-                id,
-                membership,
-                auditResource))
-            {
-                database.ManagementAuditEvents.Add(
-                    ManagementAuditEventFactory.Create(
-                        context,
-                        ManagementCapabilities.UsersUpdate,
-                        resource,
-                        decision,
-                        "succeeded",
-                        hasChanges
-                            ? "user_profile_updated"
-                            : "user_profile_unchanged"));
-            }
+            database.ManagementAuditEvents.Add(
+                ManagementAuditEventFactory.Create(
+                    context,
+                    ManagementCapabilities.UsersUpdate,
+                    auditResource,
+                    decision,
+                    "succeeded",
+                    hasChanges
+                        ? "user_profile_updated"
+                        : "user_profile_unchanged"));
 
             await database.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
@@ -905,17 +723,8 @@ internal sealed class UserManagementService(
                 "Não foi possível atualizar o perfil do usuário.");
         }
 
-        var grants = await entitlements.ResolveAsync(
-            context.Operator,
-            cancellationToken);
-        var detailContext = grants.HasGlobalAdministratorAccess
-            ? null
-            : membership.ContextIds
-                .Order(StringComparer.OrdinalIgnoreCase)
-                .FirstOrDefault();
         return await GetAsync(
             id,
-            detailContext,
             context,
             cancellationToken);
     }
@@ -935,35 +744,14 @@ internal sealed class UserManagementService(
             "Informe a nova senha.",
             "newPassword",
             trim: false);
-        var membership = await userContexts.GetMembershipAsync(
-            id,
-            cancellationToken);
-        var decision = await EvaluateAccountWideActionAsync(
-            id,
-            membership,
+        var auditResource = new ManagementResource(
+            ManagementResourceTypes.User,
+            id);
+        var decision = await DemandAsync(
             context,
             ManagementCapabilities.UsersResetPassword,
+            auditResource,
             cancellationToken);
-        var auditResource = await AccountWideAuditResourceAsync(
-            id,
-            membership,
-            context,
-            decision,
-            ManagementCapabilities.UsersResetPassword,
-            cancellationToken);
-
-        if (!decision.IsAllowed)
-        {
-            await TryWriteAuditAsync(
-                context,
-                ManagementCapabilities.UsersResetPassword,
-                auditResource,
-                decision,
-                "denied",
-                decision.ReasonCode,
-                cancellationToken);
-            throw new ManagementAccessException(decision);
-        }
 
         var user = await userManager.FindByIdAsync(id);
         if (user is null)
@@ -1007,20 +795,14 @@ internal sealed class UserManagementService(
                 ThrowIdentityFailure(reset, creatingUser: false);
             }
 
-            foreach (var resource in AccountWideAuditResources(
-                id,
-                membership,
-                auditResource))
-            {
-                database.ManagementAuditEvents.Add(
-                    ManagementAuditEventFactory.Create(
-                        context,
-                        ManagementCapabilities.UsersResetPassword,
-                        resource,
-                        decision,
-                        "succeeded",
-                        "user_password_reset"));
-            }
+            database.ManagementAuditEvents.Add(
+                ManagementAuditEventFactory.Create(
+                    context,
+                    ManagementCapabilities.UsersResetPassword,
+                    auditResource,
+                    decision,
+                    "succeeded",
+                    "user_password_reset"));
 
             await database.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
@@ -1050,17 +832,8 @@ internal sealed class UserManagementService(
                 "Não foi possível redefinir a senha do usuário.");
         }
 
-        var grants = await entitlements.ResolveAsync(
-            context.Operator,
-            cancellationToken);
-        var detailContext = grants.HasGlobalAdministratorAccess
-            ? null
-            : membership.ContextIds
-                .Order(StringComparer.OrdinalIgnoreCase)
-                .FirstOrDefault();
         return await GetAsync(
             id,
-            detailContext,
             context,
             cancellationToken);
     }
@@ -1074,22 +847,14 @@ internal sealed class UserManagementService(
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentNullException.ThrowIfNull(command);
 
-        var membership = await userContexts.GetMembershipAsync(
-            id,
-            cancellationToken);
         var decision = await EvaluateLockoutChangeAsync(
             id,
-            membership,
             context,
             command.Locked,
             cancellationToken);
-        var auditResource = await AccountWideAuditResourceAsync(
-            id,
-            membership,
-            context,
-            decision,
-            ManagementCapabilities.UsersDisable,
-            cancellationToken);
+        var auditResource = new ManagementResource(
+            ManagementResourceTypes.User,
+            id);
 
         if (!decision.IsAllowed)
         {
@@ -1152,22 +917,16 @@ internal sealed class UserManagementService(
                 user.Id,
                 context.CorrelationId);
 
-            foreach (var resource in AccountWideAuditResources(
-                id,
-                membership,
-                auditResource))
-            {
-                database.ManagementAuditEvents.Add(
-                    ManagementAuditEventFactory.Create(
-                        context,
-                        ManagementCapabilities.UsersDisable,
-                        resource,
-                        decision,
-                        "succeeded",
-                        command.Locked
-                            ? "user_locked"
-                            : "user_unlocked"));
-            }
+            database.ManagementAuditEvents.Add(
+                ManagementAuditEventFactory.Create(
+                    context,
+                    ManagementCapabilities.UsersDisable,
+                    auditResource,
+                    decision,
+                    "succeeded",
+                    command.Locked
+                        ? "user_locked"
+                        : "user_unlocked"));
 
             await database.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
@@ -1209,17 +968,8 @@ internal sealed class UserManagementService(
                     : "Não foi possível desbloquear o acesso do usuário.");
         }
 
-        var grants = await entitlements.ResolveAsync(
-            context.Operator,
-            cancellationToken);
-        var detailContext = grants.HasGlobalAdministratorAccess
-            ? null
-            : membership.ContextIds
-                .Order(StringComparer.OrdinalIgnoreCase)
-                .FirstOrDefault();
         return await GetAsync(
             id,
-            detailContext,
             context,
             cancellationToken);
     }
@@ -1227,7 +977,6 @@ internal sealed class UserManagementService(
     private async Task<ManagementAuthorizationDecision>
         EvaluateLockoutChangeAsync(
             string userId,
-            ManagementUserMembership membership,
             ManagementRequestContext context,
             bool locking,
             CancellationToken cancellationToken)
@@ -1242,142 +991,13 @@ internal sealed class UserManagementService(
                 "user_self_lockout_not_allowed");
         }
 
-        return await EvaluateAccountWideActionAsync(
-            userId,
-            membership,
-            context,
+        return await authorization.EvaluateAsync(
+            context.Operator,
             ManagementCapabilities.UsersDisable,
-            cancellationToken);
-    }
-
-    private async Task<ManagementAuthorizationDecision>
-        EvaluateAccountWideActionAsync(
-            string userId,
-            ManagementUserMembership membership,
-            ManagementRequestContext context,
-            string capability,
-            CancellationToken cancellationToken)
-    {
-        var grants = await entitlements.ResolveAsync(
-            context.Operator,
-            cancellationToken);
-        if (grants.HasGlobalAdministratorAccess)
-        {
-            return await authorization.EvaluateAsync(
-                context.Operator,
-                capability,
-                new ManagementResource(
-                    ManagementResourceTypes.User,
-                    userId),
-                cancellationToken);
-        }
-
-        if (membership.RequiresAdministrator)
-        {
-            return ManagementAuthorizationDecision.Denied(
-                "user_scope_requires_administrator");
-        }
-
-        if (membership.ContextIds.Count is 0)
-        {
-            return ManagementAuthorizationDecision.Denied(
-                "user_context_required");
-        }
-
-        foreach (var contextId in membership.ContextIds
-            .Order(StringComparer.OrdinalIgnoreCase))
-        {
-            var decision = await authorization.EvaluateAsync(
-                context.Operator,
-                capability,
-                new ManagementResource(
-                    ManagementResourceTypes.User,
-                    userId,
-                    contextId),
-                cancellationToken);
-            if (decision.Outcome is
-                ManagementAuthorizationOutcome.StepUpRequired)
-            {
-                return decision;
-            }
-
-            if (!decision.IsAllowed)
-            {
-                return ManagementAuthorizationDecision.Denied(
-                    "user_context_scope_incomplete");
-            }
-        }
-
-        return ManagementAuthorizationDecision.Allowed();
-    }
-
-    private async Task<ManagementResource> AccountWideAuditResourceAsync(
-        string userId,
-        ManagementUserMembership membership,
-        ManagementRequestContext context,
-        ManagementAuthorizationDecision aggregateDecision,
-        string capability,
-        CancellationToken cancellationToken)
-    {
-        var grants = await entitlements.ResolveAsync(
-            context.Operator,
-            cancellationToken);
-        if (grants.HasGlobalAdministratorAccess)
-        {
-            return new ManagementResource(
+            new ManagementResource(
                 ManagementResourceTypes.User,
-                userId);
-        }
-
-        foreach (var contextId in membership.ContextIds
-            .Order(StringComparer.OrdinalIgnoreCase))
-        {
-            var decision = await authorization.EvaluateAsync(
-                context.Operator,
-                capability,
-                new ManagementResource(
-                    ManagementResourceTypes.User,
-                    userId,
-                    contextId),
-                cancellationToken);
-            if (decision.Outcome == aggregateDecision.Outcome
-                && !decision.IsAllowed)
-            {
-                return new ManagementResource(
-                    ManagementResourceTypes.User,
-                    userId,
-                    contextId);
-            }
-        }
-
-        return new ManagementResource(
-            ManagementResourceTypes.User,
-            userId,
-            membership.ContextIds
-                .Order(StringComparer.OrdinalIgnoreCase)
-                .FirstOrDefault());
-    }
-
-    private static IEnumerable<ManagementResource>
-        AccountWideAuditResources(
-            string userId,
-            ManagementUserMembership membership,
-            ManagementResource fallback)
-    {
-        if (fallback.ContextId is null)
-        {
-            yield return fallback;
-            yield break;
-        }
-
-        foreach (var contextId in membership.ContextIds
-            .Order(StringComparer.OrdinalIgnoreCase))
-        {
-            yield return new ManagementResource(
-                ManagementResourceTypes.User,
-                userId,
-                contextId);
-        }
+                userId),
+            cancellationToken);
     }
 
     private static ManagementUserActions Actions(
@@ -1553,39 +1173,6 @@ internal sealed class UserManagementService(
         public IdentityResult Result { get; } = result;
     }
 
-    private async Task<Dictionary<string, IReadOnlyList<string>>>
-        RolesByUserAsync(
-            string[] userIds,
-            CancellationToken cancellationToken)
-    {
-        if (userIds.Length is 0)
-        {
-            return new Dictionary<string, IReadOnlyList<string>>(
-                StringComparer.Ordinal);
-        }
-
-        var rows = await (
-            from userRole in database.UserRoles.AsNoTracking()
-            join role in database.Roles.AsNoTracking()
-                on userRole.RoleId equals role.Id
-            where userIds.Contains(userRole.UserId)
-            select new { userRole.UserId, role.Name })
-            .ToArrayAsync(cancellationToken);
-
-        return rows
-            .GroupBy(row => row.UserId, StringComparer.Ordinal)
-            .ToDictionary(
-                group => group.Key,
-                group => (IReadOnlyList<string>)group
-                    .Select(row => row.Name)
-                    .Where(name => !string.IsNullOrWhiteSpace(name))
-                    .Select(name => name!)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .Order(StringComparer.OrdinalIgnoreCase)
-                    .ToArray(),
-                StringComparer.Ordinal);
-    }
-
     private async Task<ManagementAuthorizationDecision> DemandAsync(
         ManagementRequestContext context,
         string capability,
@@ -1659,19 +1246,4 @@ internal sealed class UserManagementService(
             reasonCode,
             cancellationToken);
 
-    private static string? NormalizeContextId(string? value)
-    {
-        var normalized =
-            RoleAndClaimManagementEntitlementResolver.NormalizeContextId(
-                value);
-        if (value is not null && normalized is null)
-        {
-            throw new ManagementValidationException(
-                "user_context_invalid",
-                "A non-empty context identifier is required.",
-                "contextId");
-        }
-
-        return normalized;
-    }
 }

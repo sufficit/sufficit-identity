@@ -13,7 +13,6 @@ using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Branding;
 using Sufficit.Identity.Management.Clients;
 using Sufficit.Identity.Management.Authorization;
-using Sufficit.Identity.Management.Permissions;
 using Sufficit.Identity.Management.Users;
 using Sufficit.Identity.UI.Management;
 using Xunit;
@@ -43,33 +42,24 @@ public sealed class ManagementUiRoutingTests
     }
 
     [Fact]
-    public async Task Manager_enters_management_but_global_pages_are_denied()
+    public async Task Business_manager_role_does_not_enter_provider_management()
     {
         await using var app = await CreateHostAsync();
         using var client = app.GetTestClient();
 
         await SignInAsync(client, "manager");
 
-        using var home = await client.GetAsync("/management/");
-        Assert.Equal(HttpStatusCode.OK, home.StatusCode);
-
-        using var clients = await client.GetAsync("/management/clients");
-        Assert.Equal(HttpStatusCode.Redirect, clients.StatusCode);
+        using var response = await client.GetAsync("/management/");
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.Equal(
             "/management/account/accessdenied",
-            LocationPath(clients.Headers.Location));
+            LocationPath(response.Headers.Location));
 
-        using var forwarded = await client.GetAsync(clients.Headers.Location);
+        using var forwarded = await client.GetAsync(response.Headers.Location);
         Assert.Equal(HttpStatusCode.Redirect, forwarded.StatusCode);
         Assert.Equal(
             "/account/accessdenied",
             LocationPath(forwarded.Headers.Location));
-
-        using var branding = await client.GetAsync("/management/branding");
-        Assert.Equal(HttpStatusCode.Redirect, branding.StatusCode);
-        Assert.Equal(
-            "/management/account/accessdenied",
-            LocationPath(branding.Headers.Location));
     }
 
     [Fact]
@@ -169,17 +159,13 @@ public sealed class ManagementUiRoutingTests
             StringComparison.Ordinal);
     }
 
-    [Theory]
-    [InlineData("administrator", "Visão global de Administrator")]
-    [InlineData("manager", "4082aef4…5940")]
-    public async Task Authorized_operator_renders_contextual_user_directory(
-        string role,
-        string expectedScope)
+    [Fact]
+    public async Task Provider_operator_renders_global_user_directory()
     {
         await using var app = await CreateHostAsync();
         using var client = app.GetTestClient();
 
-        await SignInAsync(client, role);
+        await SignInAsync(client, "administrator");
 
         using var response = await client.GetAsync("/management/users");
         var html = WebUtility.HtmlDecode(
@@ -188,34 +174,34 @@ public sealed class ManagementUiRoutingTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Diretório de identidades", html, StringComparison.Ordinal);
         Assert.Contains("alice@tests.local", html, StringComparison.Ordinal);
-        Assert.Contains(expectedScope, html, StringComparison.Ordinal);
+        Assert.Contains("Diretório global", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Manager", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Contexto", html, StringComparison.Ordinal);
         Assert.Contains(
-            $"src=\"https://avatars.tests.local/operator-{role}.jpg\"",
+            "src=\"https://avatars.tests.local/operator-administrator.jpg\"",
             html,
             StringComparison.Ordinal);
         Assert.DoesNotContain("Aguardando API", html, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task Manager_can_render_contextual_user_create_and_password_reset()
+    public async Task Provider_operator_can_render_global_user_flows()
     {
         await using var app = await CreateHostAsync();
         using var client = app.GetTestClient();
 
-        await SignInAsync(client, "manager");
+        await SignInAsync(client, "administrator");
 
         using var create = await client.GetAsync(
             "/management/users/new");
         var createHtml = WebUtility.HtmlDecode(
             await create.Content.ReadAsStringAsync());
         using var detail = await client.GetAsync(
-            "/management/users/user-1"
-            + "?context=4082aef4-42d3-4b1b-a321-f405af935940");
+            "/management/users/user-1");
         var detailHtml = WebUtility.HtmlDecode(
             await detail.Content.ReadAsStringAsync());
         using var edit = await client.GetAsync(
-            "/management/users/user-1/edit"
-            + "?context=4082aef4-42d3-4b1b-a321-f405af935940");
+            "/management/users/user-1/edit");
         var editHtml = WebUtility.HtmlDecode(
             await edit.Content.ReadAsStringAsync());
 
@@ -223,7 +209,7 @@ public sealed class ManagementUiRoutingTests
         Assert.Contains("Novo usuário", createHtml, StringComparison.Ordinal);
         Assert.Contains("Senha inicial", createHtml, StringComparison.Ordinal);
         Assert.Contains(
-            "Privilégio mínimo desde a criação",
+            "Conta de autenticação, não perfil empresarial",
             createHtml,
             StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
@@ -231,10 +217,8 @@ public sealed class ManagementUiRoutingTests
             "Redefinir senha",
             detailHtml,
             StringComparison.Ordinal);
-        Assert.Contains(
-            "Todos os contextos",
-            detailHtml,
-            StringComparison.Ordinal);
+        Assert.DoesNotContain("Contexto", detailHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Manager", detailHtml, StringComparison.Ordinal);
         Assert.Contains(
             "Bloquear acesso",
             detailHtml,
@@ -253,36 +237,29 @@ public sealed class ManagementUiRoutingTests
             editHtml,
             StringComparison.Ordinal);
         Assert.Contains(
-            "Alteração válida para a conta inteira",
+            "Alteração da conta no provedor",
             editHtml,
             StringComparison.Ordinal);
     }
 
-    [Theory]
-    [InlineData("administrator")]
-    [InlineData("manager")]
-    public async Task Authorized_operator_renders_operational_access_directory(
-        string role)
+    [Fact]
+    public async Task Provider_operator_renders_standards_access_boundary()
     {
         await using var app = await CreateHostAsync();
         using var client = app.GetTestClient();
 
-        await SignInAsync(client, role);
+        await SignInAsync(client, "administrator");
 
-        using var response = await client.GetAsync(
-            "/management/access"
-            + "?context=4082aef4-42d3-4b1b-a321-f405af935940"
-            + "&user=user-1");
+        using var response = await client.GetAsync("/management/access");
         var html = WebUtility.HtmlDecode(
             await response.Content.ReadAsStringAsync());
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("Identidade e contexto", html, StringComparison.Ordinal);
-        Assert.Contains("alice@tests.local", html, StringComparison.Ordinal);
-        Assert.Contains("Papéis da conta", html, StringComparison.Ordinal);
-        Assert.Contains("phonecalls", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("API necessária", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("Abrir papéis", html, StringComparison.Ordinal);
+        Assert.Contains("Claims e scopes", html, StringComparison.Ordinal);
+        Assert.Contains("Claims OpenID Connect", html, StringComparison.Ordinal);
+        Assert.Contains("Provisionamento SCIM", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("Papéis da conta", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("manager", html, StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task<WebApplication> CreateHostAsync()
@@ -292,7 +269,9 @@ public sealed class ManagementUiRoutingTests
 
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["Sufficit:Identity:ManagementUI:PathBase"] = "management"
+            ["Sufficit:Identity:ManagementUI:PathBase"] = "management",
+            ["Sufficit:Identity:Management:Authorization:OperatorRoles:0"] =
+                "administrator"
         });
 
         builder.Services
@@ -306,9 +285,6 @@ public sealed class ManagementUiRoutingTests
         builder.Services.AddSingleton<IClientManagementService, StubClientManagementService>();
         builder.Services.AddSingleton<IBrandingManagementService, StubBrandingManagementService>();
         builder.Services.AddSingleton<IUserManagementService, StubUserManagementService>();
-        builder.Services.AddSingleton<
-            IUserPermissionManagementService,
-            StubUserPermissionManagementService>();
         builder.Services.AddSingleton<IManagementAuditService, StubManagementAuditService>();
         builder.Services.AddSingleton<
             IUserAvatarUrlResolver,
@@ -531,25 +507,18 @@ public sealed class ManagementUiRoutingTests
 
     private sealed class StubUserManagementService : IUserManagementService
     {
-        private const string ContextId =
-            "4082aef4-42d3-4b1b-a321-f405af935940";
-
         private static readonly ManagementUserSummary Summary = new(
             "user-1",
             "alice",
             "alice@tests.local",
             EmailConfirmed: true,
             TwoFactorEnabled: true,
-            IsLockedOut: false,
-            Roles: ["user"]);
+            IsLockedOut: false);
 
         public Task<ManagementUserAccess> GetAccessAsync(
             ManagementRequestContext context,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult(
-                context.Operator.IsInRole("administrator")
-                    ? new ManagementUserAccess(true, [ContextId], true)
-                    : new ManagementUserAccess(false, [ContextId], true));
+            Task.FromResult(new ManagementUserAccess(true, true));
 
         public Task<ManagementUserPage> SearchAsync(
             ManagementUserSearch query,
@@ -559,12 +528,10 @@ public sealed class ManagementUiRoutingTests
                 [Summary],
                 1,
                 25,
-                1,
-                query.ContextId));
+                1));
 
         public Task<ManagementUserDetail> GetAsync(
             string id,
-            string? contextId,
             ManagementRequestContext context,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new ManagementUserDetail(
@@ -578,8 +545,6 @@ public sealed class ManagementUiRoutingTests
                 true,
                 null,
                 0,
-                Summary.Roles,
-                contextId is null ? [ContextId] : [contextId],
                 DateTime.UtcNow,
                 new ManagementUserActions(
                     CanResetPassword: true,
@@ -620,66 +585,4 @@ public sealed class ManagementUiRoutingTests
             throw new NotSupportedException();
     }
 
-    private sealed class StubUserPermissionManagementService
-        : IUserPermissionManagementService
-    {
-        public Task<ManagementUserPermissions> GetAsync(
-            string userId,
-            string? contextId,
-            ManagementRequestContext context,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(new ManagementUserPermissions(
-                userId,
-                "alice",
-                "alice@tests.local",
-                contextId,
-                [
-                    new(
-                        "manager",
-                        "manager",
-                        "Papel global da conta",
-                        IsAssigned: false,
-                        CanChange: context.Operator.IsInRole("administrator"),
-                        ReasonCode: context.Operator.IsInRole("administrator")
-                            ? "allowed"
-                            : "context_required")
-                ],
-                contextId is null
-                    ? []
-                    : [
-                        new(
-                            "phonecalls",
-                            "phonecalls",
-                            "Diretiva Sufficit no contexto selecionado",
-                            IsAssigned: false,
-                            CanChange: true,
-                            ReasonCode: "allowed")
-                    ],
-                new ManagementUserPermissionActions(
-                    CanManageRoles:
-                        context.Operator.IsInRole("administrator"),
-                    RolesRequireMfa: false,
-                    RolesReasonCode:
-                        context.Operator.IsInRole("administrator")
-                            ? "allowed"
-                            : "context_required",
-                    CanManageContextualPermissions: contextId is not null,
-                    ContextualPermissionsRequireMfa: false,
-                    ContextualPermissionsReasonCode:
-                        contextId is null ? "context_required" : "allowed")));
-
-        public Task<ManagementUserPermissions> SetRoleAsync(
-            string userId,
-            SetManagementUserRoleCommand command,
-            ManagementRequestContext context,
-            CancellationToken cancellationToken = default) =>
-            GetAsync(userId, null, context, cancellationToken);
-
-        public Task<ManagementUserPermissions> SetContextualPermissionAsync(
-            string userId,
-            SetManagementUserContextualPermissionCommand command,
-            ManagementRequestContext context,
-            CancellationToken cancellationToken = default) =>
-            GetAsync(userId, command.ContextId, context, cancellationToken);
-    }
 }

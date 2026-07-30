@@ -12,7 +12,6 @@ using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Branding;
 using Sufficit.Identity.Management.Clients;
 using Sufficit.Identity.Management.Controllers;
-using Sufficit.Identity.Management.Permissions;
 using Sufficit.Identity.Management.Provisioning;
 using Sufficit.Identity.Management.Users;
 
@@ -60,24 +59,18 @@ public static class ServiceCollectionExtensions
 
         services.TryAddScoped<OpenIddictManifestProvisioner>();
         services.TryAddScoped<IManagementEntitlementResolver,
-            RoleAndClaimManagementEntitlementResolver>();
+            ScopeAndRoleManagementEntitlementResolver>();
         services.TryAddScoped<IManagementAccessPolicyProvider,
             ConfigurationManagementAccessPolicyProvider>();
         services.TryAddScoped<IManagementAuthorizationEvaluator,
-            RoleBasedManagementAuthorizationEvaluator>();
+            CapabilityManagementAuthorizationEvaluator>();
         services.TryAddScoped<IManagementAuditService, ManagementAuditService>();
         services.TryAddScoped<IClientManagementService, ClientManagementService>();
         services.TryAddScoped<IBrandingManagementService,
             BrandingManagementService>();
         services.TryAddScoped<IUserManagementService, UserManagementService>();
-        services.TryAddScoped<IUserPermissionManagementService,
-            UserPermissionManagementService>();
         services.TryAddScoped<IManagementUserSessionRevoker,
             OpenIddictManagementUserSessionRevoker>();
-        services.TryAddScoped<IManagementUserContextStore,
-            EmptyManagementUserContextStore>();
-        services.TryAddScoped<IManagementContextualPermissionStore,
-            EmptyManagementContextualPermissionStore>();
         services.TryAddSingleton<IBrandingThemeProvider,
             BrandingThemeProvider>();
         services.TryAddSingleton<IUserAvatarUrlResolver,

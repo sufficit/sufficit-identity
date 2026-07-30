@@ -16,9 +16,25 @@ public static class ManagementCapabilities
     public const string UsersDisable = "identity.users.disable";
     public const string UsersDelete = "identity.users.delete";
     public const string UsersResetPassword = "identity.users.reset-password";
-    public const string UsersPermissionsManage =
-        "identity.users.permissions.manage";
     public const string AuditRead = "identity.audit.read";
+
+    public static IReadOnlySet<string> All { get; } =
+        new HashSet<string>(
+            [
+                ClientsRead,
+                ClientsCreate,
+                ClientsDelete,
+                BrandingRead,
+                BrandingManage,
+                UsersRead,
+                UsersCreate,
+                UsersUpdate,
+                UsersDisable,
+                UsersDelete,
+                UsersResetPassword,
+                AuditRead
+            ],
+            StringComparer.Ordinal);
 }
 
 public static class ManagementResourceTypes
@@ -29,7 +45,6 @@ public static class ManagementResourceTypes
     public const string BrandingCollection = "branding-collection";
     public const string User = "user";
     public const string UserCollection = "user-collection";
-    public const string UserPermission = "user-permission";
     public const string Audit = "audit";
 }
 
@@ -101,8 +116,11 @@ public interface IManagementAuthorizationEvaluator
 }
 
 public sealed record ManagementEntitlements(
-    bool HasGlobalAdministratorAccess,
-    IReadOnlySet<string> ManagedContextIds);
+    IReadOnlySet<string> Capabilities)
+{
+    public bool Contains(string capability) =>
+        Capabilities.Contains(capability);
+}
 
 public interface IManagementEntitlementResolver
 {
@@ -122,25 +140,23 @@ public interface IManagementAccessPolicyProvider
 
 public sealed class ManagementAuthorizationOptions
 {
-    public string[] AdministratorRoles { get; set; } = ["administrator"];
+    /// <summary>
+    /// Deployment-specific roles that receive every provider-management
+    /// capability. The generic default is deliberately not a Sufficit
+    /// business role.
+    /// </summary>
+    public string[] OperatorRoles { get; set; } =
+        ["identity-administrator"];
 
-    public string[] ManagerRoles { get; set; } = ["manager"];
-
-    public string[] ContextClaimTypes { get; set; } = ["management_context"];
-
-    public Dictionary<string, ManagementContextAccessPolicyOptions> Contexts
-    {
-        get;
-        set;
-    } = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// Claim types that can carry exact management capability names. Values
+    /// may contain one capability or a space-delimited OAuth scope list.
+    /// </summary>
+    public string[] CapabilityClaimTypes { get; set; } =
+        ["permission", "scope"];
 }
 
-public sealed class ManagementContextAccessPolicyOptions
-{
-    public bool RequireMfa { get; set; }
-}
-
-public sealed class RoleAndClaimManagementEntitlementResolver(
+public sealed class ScopeAndRoleManagementEntitlementResolver(
     IOptions<ManagementOptions> options) : IManagementEntitlementResolver
 {
     public ValueTask<ManagementEntitlements> ResolveAsync(
@@ -155,73 +171,50 @@ public sealed class RoleAndClaimManagementEntitlementResolver(
         }
 
         var authorization = options.Value.Authorization;
-        if (NormalizeRoles(
-                authorization.AdministratorRoles,
-                "administrator")
-            .Any(principal.IsInRole))
-        {
-            return ValueTask.FromResult(
-                new ManagementEntitlements(
-                    HasGlobalAdministratorAccess: true,
-                    ManagedContextIds: new HashSet<string>(
-                        StringComparer.OrdinalIgnoreCase)));
-        }
-
-        if (!NormalizeRoles(authorization.ManagerRoles, "manager")
-            .Any(principal.IsInRole))
-        {
-            return ValueTask.FromResult(Empty());
-        }
-
-        var claimTypes = NormalizeRoles(
-            authorization.ContextClaimTypes,
-            "management_context");
-        var contexts = principal.Claims
+        var capabilities = new HashSet<string>(StringComparer.Ordinal);
+        var claimTypes = NormalizeValues(
+            authorization.CapabilityClaimTypes,
+            ["permission", "scope"]);
+        foreach (var capability in principal.Claims
             .Where(claim => claimTypes.Contains(
                 claim.Type,
                 StringComparer.OrdinalIgnoreCase))
-            .Select(claim => NormalizeContextId(claim.Value))
-            .Where(contextId => contextId is not null)
-            .Select(contextId => contextId!)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            .SelectMany(claim => claim.Value.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries)))
+        {
+            if (ManagementCapabilities.All.Contains(capability))
+            {
+                capabilities.Add(capability);
+            }
+        }
+
+        var operatorRoles = NormalizeValues(
+            authorization.OperatorRoles,
+            ["identity-administrator"]);
+        if (operatorRoles.Any(principal.IsInRole))
+        {
+            capabilities.UnionWith(ManagementCapabilities.All);
+        }
 
         return ValueTask.FromResult(
-            new ManagementEntitlements(
-                HasGlobalAdministratorAccess: false,
-                ManagedContextIds: contexts));
+            new ManagementEntitlements(capabilities));
     }
 
     private static ManagementEntitlements Empty() =>
-        new(
-            HasGlobalAdministratorAccess: false,
-            ManagedContextIds: new HashSet<string>(
-                StringComparer.OrdinalIgnoreCase));
+        new(new HashSet<string>(StringComparer.Ordinal));
 
-    internal static string? NormalizeContextId(string? value)
+    internal static string[] NormalizeValues(
+        string[]? values,
+        string[] fallback)
     {
-        var normalized = value?.Trim();
-        if (string.IsNullOrWhiteSpace(normalized)
-            || normalized == Guid.Empty.ToString("D"))
-        {
-            return null;
-        }
-
-        return Guid.TryParse(normalized, out var contextId)
-            ? contextId.ToString("D")
-            : normalized;
-    }
-
-    internal static string[] NormalizeRoles(
-        string[]? roles,
-        string fallback)
-    {
-        var normalized = (roles ?? [])
-            .Where(role => !string.IsNullOrWhiteSpace(role))
-            .Select(role => role.Trim())
+        var normalized = (values ?? [])
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        return normalized.Length is 0 ? [fallback] : normalized;
+        return normalized.Length is 0 ? fallback : normalized;
     }
 }
 
@@ -234,25 +227,12 @@ public sealed class ConfigurationManagementAccessPolicyProvider(
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var configuration = options.Value;
-        var requireMfa = configuration.RequireMfa;
-        var contextId =
-            RoleAndClaimManagementEntitlementResolver.NormalizeContextId(
-                resource.ContextId);
-
-        if (contextId is not null
-            && configuration.Authorization.Contexts.TryGetValue(
-                contextId,
-                out var contextPolicy))
-        {
-            requireMfa = contextPolicy.RequireMfa;
-        }
-
-        return ValueTask.FromResult(new ManagementAccessPolicy(requireMfa));
+        return ValueTask.FromResult(
+            new ManagementAccessPolicy(options.Value.RequireMfa));
     }
 }
 
-public sealed class RoleBasedManagementAuthorizationEvaluator
+public sealed class CapabilityManagementAuthorizationEvaluator
     : IManagementAuthorizationEvaluator
 {
     private readonly IManagementEntitlementResolver entitlements;
@@ -264,7 +244,7 @@ public sealed class RoleBasedManagementAuthorizationEvaluator
             "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina"
         };
 
-    public RoleBasedManagementAuthorizationEvaluator(
+    public CapabilityManagementAuthorizationEvaluator(
         IManagementEntitlementResolver entitlements,
         IManagementAccessPolicyProvider accessPolicies)
     {
@@ -275,13 +255,13 @@ public sealed class RoleBasedManagementAuthorizationEvaluator
     // Source-compatible fallback for a sibling UI pinned to the preceding
     // contract commit. New hosts register both replaceable dependencies; an
     // older composition surface still receives the same fail-closed defaults.
-    public RoleBasedManagementAuthorizationEvaluator(
+    public CapabilityManagementAuthorizationEvaluator(
         IOptions<ManagementOptions> options,
         IManagementEntitlementResolver? entitlements = null,
         IManagementAccessPolicyProvider? accessPolicies = null)
     {
         this.entitlements = entitlements
-            ?? new RoleAndClaimManagementEntitlementResolver(options);
+            ?? new ScopeAndRoleManagementEntitlementResolver(options);
         this.accessPolicies = accessPolicies
             ?? new ConfigurationManagementAccessPolicyProvider(options);
     }
@@ -300,22 +280,7 @@ public sealed class RoleBasedManagementAuthorizationEvaluator
                 ManagementAuthorizationDecision.Denied("operator_not_authenticated"));
         }
 
-        var isKnownCapability = capability is
-            ManagementCapabilities.ClientsRead or
-            ManagementCapabilities.ClientsCreate or
-            ManagementCapabilities.ClientsDelete or
-            ManagementCapabilities.BrandingRead or
-            ManagementCapabilities.BrandingManage or
-            ManagementCapabilities.UsersRead or
-            ManagementCapabilities.UsersCreate or
-            ManagementCapabilities.UsersUpdate or
-            ManagementCapabilities.UsersDisable or
-            ManagementCapabilities.UsersDelete or
-            ManagementCapabilities.UsersResetPassword or
-            ManagementCapabilities.UsersPermissionsManage or
-            ManagementCapabilities.AuditRead;
-
-        if (!isKnownCapability)
+        if (!ManagementCapabilities.All.Contains(capability))
         {
             return ValueTask.FromResult(
                 ManagementAuthorizationDecision.Denied("capability_not_granted"));
@@ -338,24 +303,10 @@ public sealed class RoleBasedManagementAuthorizationEvaluator
         var grants = await entitlements.ResolveAsync(
             principal,
             cancellationToken);
-        var isUserCapability = capability.StartsWith(
-            "identity.users.",
-            StringComparison.Ordinal);
-        var normalizedContextId =
-            RoleAndClaimManagementEntitlementResolver.NormalizeContextId(
-                resource.ContextId);
-
-        var isGranted = grants.HasGlobalAdministratorAccess
-            || isUserCapability
-                && normalizedContextId is not null
-                && grants.ManagedContextIds.Contains(normalizedContextId);
-
-        if (!isGranted)
+        if (!grants.Contains(capability))
         {
             return ManagementAuthorizationDecision.Denied(
-                isUserCapability && normalizedContextId is null
-                    ? "context_required"
-                    : "capability_not_granted");
+                "capability_not_granted");
         }
 
         var policy = await accessPolicies.GetAsync(

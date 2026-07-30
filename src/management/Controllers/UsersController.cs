@@ -6,9 +6,9 @@ using Sufficit.Identity.Management.Users;
 namespace Sufficit.Identity.Management.Controllers;
 
 /// <summary>
-/// HTTP adapter for contextual user administration. Authorization,
-/// validation and multi-context semantics live in the shared application
-/// service used by this controller and the embedded UI.
+/// HTTP adapter for identity-account administration. Authorization and
+/// validation live in the shared application service used by this controller
+/// and the embedded UI.
 /// </summary>
 [ApiController]
 [Authorize(Policy = "sufficit-identity-management")]
@@ -24,23 +24,20 @@ public sealed class UsersController(IUserManagementService users)
     [HttpGet]
     public async Task<ActionResult<ManagementUserPage>> Search(
         [FromQuery] string? search,
-        [FromQuery] string? contextId,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 25,
         CancellationToken cancellationToken = default) =>
         Ok(await users.SearchAsync(
-            new ManagementUserSearch(search, contextId, page, pageSize),
+            new ManagementUserSearch(search, page, pageSize),
             RequestContext(),
             cancellationToken));
 
     [HttpGet("{id}")]
     public async Task<ActionResult<ManagementUserDetail>> Get(
         string id,
-        [FromQuery] string? contextId,
         CancellationToken cancellationToken) =>
         Ok(await users.GetAsync(
             id,
-            contextId,
             RequestContext(),
             cancellationToken));
 

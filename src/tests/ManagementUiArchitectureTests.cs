@@ -166,31 +166,21 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
-    public void User_permissions_controller_is_only_an_http_adapter()
+    public void Generic_provider_has_no_business_permission_controller()
     {
         var repositoryRoot = ResolveIdentityRepository();
-        var controller = File.ReadAllText(Path.Combine(
+        var controllerPath = Path.Combine(
             repositoryRoot,
             "src",
             "management",
             "Controllers",
-            "UserPermissionsController.cs"));
+            "UserPermissionsController.cs");
 
-        Assert.Contains(
-            "IUserPermissionManagementService",
-            controller,
-            StringComparison.Ordinal);
-        Assert.DoesNotContain("AppDbContext", controller, StringComparison.Ordinal);
-        Assert.DoesNotContain("DbContext", controller, StringComparison.Ordinal);
-        Assert.DoesNotContain("UserManager<", controller, StringComparison.Ordinal);
-        Assert.DoesNotContain(
-            "directive",
-            controller,
-            StringComparison.OrdinalIgnoreCase);
+        Assert.False(File.Exists(controllerPath));
     }
 
     [Fact]
-    public void Access_page_uses_the_canonical_permission_contract()
+    public void Access_page_explains_open_standards_without_business_roles()
     {
         var page = File.ReadAllText(Path.Combine(
             ResolveManagementUiSource(),
@@ -198,15 +188,41 @@ public sealed class ManagementUiArchitectureTests
             "Pages",
             "Access.razor"));
 
-        Assert.Contains("GetPermissionsAsync", page, StringComparison.Ordinal);
-        Assert.Contains("SetRoleAsync", page, StringComparison.Ordinal);
-        Assert.Contains(
-            "SetContextualPermissionAsync",
-            page,
+        Assert.Contains("OpenID Connect", page, StringComparison.Ordinal);
+        Assert.Contains("OAuth", page, StringComparison.Ordinal);
+        Assert.Contains("SCIM", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("SetRoleAsync", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("manager", page, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("administrator", page, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("directive", page, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Managed_user_contract_has_no_business_roles_or_contexts()
+    {
+        var source = File.ReadAllText(Path.Combine(
+            ResolveIdentityRepository(),
+            "src",
+            "management",
+            "Users",
+            "UserManagementService.cs"));
+
+        Assert.DoesNotContain(
+            "IManagementUserContextStore",
+            source,
             StringComparison.Ordinal);
-        Assert.DoesNotContain("API necessária", page, StringComparison.Ordinal);
-        Assert.DoesNotContain("Claim(", page, StringComparison.Ordinal);
-        Assert.DoesNotContain("key:ContextId", page, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "IUserPermissionManagementService",
+            source,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "IReadOnlyList<string> Roles",
+            source,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "IReadOnlySet<string> ContextIds",
+            source,
+            StringComparison.Ordinal);
     }
 
     private static string ResolveManagementUiSource()

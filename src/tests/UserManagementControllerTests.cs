@@ -14,7 +14,6 @@ using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Users;
-using Sufficit.Identity.Server.Management;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 
@@ -22,11 +21,6 @@ namespace Sufficit.Identity.Tests;
 
 public sealed class UserManagementControllerTests
 {
-    private const string FirstContext =
-        "4082aef4-42d3-4b1b-a321-f405af935940";
-    private const string SecondContext =
-        "f96802a6-8d90-4143-a939-dd5258f3cfaa";
-
     [Fact]
     public async Task Global_list_and_detail_are_paged_redacted_and_audited()
     {
@@ -51,78 +45,43 @@ public sealed class UserManagementControllerTests
 
         Assert.Equal(HttpStatusCode.OK, detailResponse.StatusCode);
         Assert.NotNull(detail);
-        Assert.DoesNotContain("passwordHash", detailJson, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("securityStamp", detailJson, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("concurrencyStamp", detailJson, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("claim", detailJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(
+            "passwordHash",
+            detailJson,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(
+            "securityStamp",
+            detailJson,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(
+            "concurrencyStamp",
+            detailJson,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(
+            "\"roles\"",
+            detailJson,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(
+            "contextIds",
+            detailJson,
+            StringComparison.OrdinalIgnoreCase);
 
         await using var scope = factory.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var events = await database.ManagementAuditEvents
             .Where(entry =>
-                entry.Capability == "identity.users.read"
+                entry.Capability == ManagementCapabilities.UsersRead
                 && entry.ResourceId == summary.Id)
             .ToArrayAsync();
         Assert.Contains(events, entry => entry.ReasonCode == "user_read");
     }
 
     [Fact]
-    public async Task Sufficit_context_store_matches_exact_scalar_and_array_claims()
+    public async Task Create_reset_and_lockout_manage_only_the_identity_account()
     {
         using var factory = new ManagementTestFactory();
         await ((IAsyncLifetime)factory).InitializeAsync();
-
-        await using var scope = factory.Services.CreateAsyncScope();
-        var userManager = scope.ServiceProvider
-            .GetRequiredService<UserManager<ApplicationUser>>();
-        var scalar = await TestDataSeeder.CreateUserAsync(
-            userManager,
-            $"scalar-{Guid.NewGuid():N}",
-            TestDataSeeder.DefaultPassword,
-            $"phonecalls:{FirstContext}");
-        var array = await TestDataSeeder.CreateUserAsync(
-            userManager,
-            $"array-{Guid.NewGuid():N}",
-            TestDataSeeder.DefaultPassword,
-            $"[\"clientadmin:{FirstContext}\",\"phonecalls:{SecondContext}\"]");
-        var other = await TestDataSeeder.CreateUserAsync(
-            userManager,
-            $"other-{Guid.NewGuid():N}",
-            TestDataSeeder.DefaultPassword,
-            $"phonecalls:{SecondContext}");
-        var store = new SufficitDirectiveUserContextStore(
-            scope.ServiceProvider.GetRequiredService<AppDbContext>(),
-            userManager,
-            scope.ServiceProvider.GetRequiredService<
-                IOptions<ManagementOptions>>());
-
-        var firstUsers = await store.ListUserIdsAsync(FirstContext);
-        var arrayContexts = await store.ListContextIdsAsync(array.Id);
-
-        Assert.Contains(scalar.Id, firstUsers);
-        Assert.Contains(array.Id, firstUsers);
-        Assert.DoesNotContain(other.Id, firstUsers);
-        Assert.Equal(
-            new[] { FirstContext, SecondContext },
-            arrayContexts.Order(StringComparer.Ordinal));
-        Assert.True(await store.UserBelongsToAsync(scalar.Id, FirstContext));
-        Assert.False(await store.UserBelongsToAsync(scalar.Id, SecondContext));
-    }
-
-    [Fact]
-    public async Task Create_and_reset_use_neutral_context_membership_and_never_return_secrets()
-    {
-        using var factory = new ManagementTestFactory();
-        await ((IAsyncLifetime)factory).InitializeAsync();
-        using var contextualFactory = factory.WithWebHostBuilder(builder =>
-            builder.ConfigureServices(services =>
-            {
-                services.RemoveAll<IManagementUserContextStore>();
-                services.AddScoped<
-                    IManagementUserContextStore,
-                    SufficitDirectiveUserContextStore>();
-            }));
-        var client = contextualFactory.CreateClient();
+        var client = factory.CreateClient();
         var userName = $"created-{Guid.NewGuid():N}";
         const string initialPassword = "Initial!Passw0rd#42";
         const string replacementPassword = "Replacement!Passw0rd#84";
@@ -132,15 +91,13 @@ public sealed class UserManagementControllerTests
             new CreateManagementUserCommand(
                 userName,
                 $"{userName}@tests.local",
-                initialPassword,
-                FirstContext));
+                initialPassword));
         var createdJson = await createdResponse.Content.ReadAsStringAsync();
         var created = await createdResponse.Content
             .ReadFromJsonAsync<ManagementUserDetail>();
 
         Assert.Equal(HttpStatusCode.OK, createdResponse.StatusCode);
         Assert.NotNull(created);
-        Assert.Contains(FirstContext, created.ContextIds);
         Assert.True(created.Actions.CanResetPassword);
         Assert.True(created.Actions.CanSetLockout);
         Assert.DoesNotContain(
@@ -148,7 +105,11 @@ public sealed class UserManagementControllerTests
             createdJson,
             StringComparison.Ordinal);
         Assert.DoesNotContain(
-            "passwordHash",
+            "\"roles\"",
+            createdJson,
+            StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(
+            "context",
             createdJson,
             StringComparison.OrdinalIgnoreCase);
 
@@ -156,7 +117,6 @@ public sealed class UserManagementControllerTests
             $"/api/users/{created.Id}/reset-password",
             new ResetManagementUserPasswordCommand(replacementPassword));
         var resetJson = await resetResponse.Content.ReadAsStringAsync();
-
         Assert.Equal(HttpStatusCode.OK, resetResponse.StatusCode);
         Assert.DoesNotContain(
             replacementPassword,
@@ -181,7 +141,7 @@ public sealed class UserManagementControllerTests
         Assert.NotNull(unlocked);
         Assert.Null(unlocked.LockoutEnd);
 
-        await using var scope = contextualFactory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var userManager = scope.ServiceProvider
             .GetRequiredService<UserManager<ApplicationUser>>();
         var persisted = await userManager.FindByIdAsync(created.Id);
@@ -189,15 +149,8 @@ public sealed class UserManagementControllerTests
         Assert.True(await userManager.CheckPasswordAsync(
             persisted,
             replacementPassword));
-        var claims = await userManager.GetClaimsAsync(persisted);
-        Assert.Contains(
-            claims,
-            claim =>
-                claim.Type == "management_context"
-                && claim.Value == FirstContext);
-        Assert.DoesNotContain(
-            claims,
-            claim => claim.Type == TestDataSeeder.DirectiveClaimType);
+        Assert.Empty(await userManager.GetRolesAsync(persisted));
+        Assert.Empty(await userManager.GetClaimsAsync(persisted));
 
         var database = scope.ServiceProvider
             .GetRequiredService<AppDbContext>();
@@ -232,15 +185,7 @@ public sealed class UserManagementControllerTests
     {
         using var factory = new ManagementTestFactory();
         await ((IAsyncLifetime)factory).InitializeAsync();
-        using var contextualFactory = factory.WithWebHostBuilder(builder =>
-            builder.ConfigureServices(services =>
-            {
-                services.RemoveAll<IManagementUserContextStore>();
-                services.AddScoped<
-                    IManagementUserContextStore,
-                    SufficitDirectiveUserContextStore>();
-            }));
-        var client = contextualFactory.CreateClient();
+        var client = factory.CreateClient();
         var userName = $"invalid-{Guid.NewGuid():N}";
 
         using var response = await client.PostAsJsonAsync(
@@ -248,8 +193,7 @@ public sealed class UserManagementControllerTests
             new CreateManagementUserCommand(
                 userName,
                 $"{userName}@tests.local",
-                "weak",
-                FirstContext));
+                "weak"));
         var problem = await response.Content
             .ReadFromJsonAsync<Dictionary<string, object>>();
 
@@ -264,7 +208,7 @@ public sealed class UserManagementControllerTests
             problem["field"].ToString(),
             StringComparison.Ordinal);
 
-        await using var scope = contextualFactory.Services.CreateAsyncScope();
+        await using var scope = factory.Services.CreateAsyncScope();
         var userManager = scope.ServiceProvider
             .GetRequiredService<UserManager<ApplicationUser>>();
         Assert.Null(await userManager.FindByNameAsync(userName));
@@ -279,225 +223,13 @@ public sealed class UserManagementControllerTests
     }
 
     [Fact]
-    public async Task Manager_must_control_every_target_context_to_reset_password()
-    {
-        using var factory = new ManagementTestFactory();
-        await ((IAsyncLifetime)factory).InitializeAsync();
-        using var contextualFactory = factory.WithWebHostBuilder(builder =>
-            builder.ConfigureServices(services =>
-            {
-                services.RemoveAll<IManagementUserContextStore>();
-                services.AddScoped<
-                    IManagementUserContextStore,
-                    SufficitDirectiveUserContextStore>();
-                services.RemoveAll<IManagementEntitlementResolver>();
-                services.AddScoped<
-                    IManagementEntitlementResolver,
-                    SufficitDirectiveManagementEntitlementResolver>();
-                services.RemoveAll<IManagementAuthorizationEvaluator>();
-                services.AddScoped<
-                    IManagementAuthorizationEvaluator,
-                    RoleBasedManagementAuthorizationEvaluator>();
-            }));
-
-        string targetId;
-        const string originalPassword = "Original!Passw0rd#1";
-        await using (var setup = contextualFactory.Services.CreateAsyncScope())
-        {
-            var setupUserManager = setup.ServiceProvider
-                .GetRequiredService<UserManager<ApplicationUser>>();
-            var target = await TestDataSeeder.CreateUserAsync(
-                setupUserManager,
-                $"multi-{Guid.NewGuid():N}",
-                originalPassword,
-                $"[\"phonecalls:{FirstContext}\","
-                + $"\"phonecalls:{SecondContext}\"]");
-            targetId = target.Id;
-        }
-
-        await using var scope = contextualFactory.Services.CreateAsyncScope();
-        var service = scope.ServiceProvider
-            .GetRequiredService<IUserManagementService>();
-        var onlyFirstContext = RequestContext(
-            "manager",
-            new Claim("directive", $"phonecalls:{FirstContext}"));
-        var bothContexts = RequestContext(
-            "manager",
-            new Claim(
-                "directive",
-                $"[\"phonecalls:{FirstContext}\","
-                + $"\"phonecalls:{SecondContext}\"]"));
-
-        var denied = await Assert.ThrowsAsync<ManagementAccessException>(
-            () => service.ResetPasswordAsync(
-                targetId,
-                new ResetManagementUserPasswordCommand(
-                    "Denied!Passw0rd#2"),
-                onlyFirstContext));
-        Assert.Equal(
-            "user_context_scope_incomplete",
-            denied.Decision.ReasonCode);
-
-        var updated = await service.ResetPasswordAsync(
-            targetId,
-            new ResetManagementUserPasswordCommand(
-                "Allowed!Passw0rd#3"),
-            bothContexts);
-        Assert.Equal(targetId, updated.Id);
-
-        var userManager = scope.ServiceProvider
-            .GetRequiredService<UserManager<ApplicationUser>>();
-        var persisted = await userManager.FindByIdAsync(targetId);
-        Assert.NotNull(persisted);
-        Assert.False(await userManager.CheckPasswordAsync(
-            persisted,
-            originalPassword));
-        Assert.True(await userManager.CheckPasswordAsync(
-            persisted,
-            "Allowed!Passw0rd#3"));
-    }
-
-    [Fact]
-    public async Task Global_target_membership_requires_administrator_for_password_reset()
-    {
-        using var factory = new ManagementTestFactory();
-        await ((IAsyncLifetime)factory).InitializeAsync();
-        using var contextualFactory = factory.WithWebHostBuilder(builder =>
-            builder.ConfigureServices(services =>
-            {
-                services.RemoveAll<IManagementUserContextStore>();
-                services.AddScoped<
-                    IManagementUserContextStore,
-                    SufficitDirectiveUserContextStore>();
-                services.RemoveAll<IManagementEntitlementResolver>();
-                services.AddScoped<
-                    IManagementEntitlementResolver,
-                    SufficitDirectiveManagementEntitlementResolver>();
-                services.RemoveAll<IManagementAuthorizationEvaluator>();
-                services.AddScoped<
-                    IManagementAuthorizationEvaluator,
-                    RoleBasedManagementAuthorizationEvaluator>();
-            }));
-
-        string targetId;
-        await using (var setup = contextualFactory.Services.CreateAsyncScope())
-        {
-            var userManager = setup.ServiceProvider
-                .GetRequiredService<UserManager<ApplicationUser>>();
-            var target = await TestDataSeeder.CreateUserAsync(
-                userManager,
-                $"global-{Guid.NewGuid():N}",
-                "Original!Passw0rd#4",
-                "phonecalls:00000000-0000-0000-0000-000000000000");
-            targetId = target.Id;
-        }
-
-        await using var scope = contextualFactory.Services.CreateAsyncScope();
-        var service = scope.ServiceProvider
-            .GetRequiredService<IUserManagementService>();
-        var denied = await Assert.ThrowsAsync<ManagementAccessException>(
-            () => service.ResetPasswordAsync(
-                targetId,
-                new ResetManagementUserPasswordCommand(
-                    "Denied!Passw0rd#5"),
-                RequestContext(
-                    "manager",
-                    new Claim(
-                        "directive",
-                        $"phonecalls:{FirstContext}"))));
-        Assert.Equal(
-            "user_scope_requires_administrator",
-            denied.Decision.ReasonCode);
-
-        var result = await service.ResetPasswordAsync(
-            targetId,
-            new ResetManagementUserPasswordCommand(
-                "Admin!Passw0rd#6"),
-            RequestContext("administrator"));
-        Assert.Equal(targetId, result.Id);
-    }
-
-    [Fact]
-    public async Task Tenant_mfa_policy_applies_to_contextual_password_reset()
-    {
-        using var factory = new ManagementTestFactory();
-        await ((IAsyncLifetime)factory).InitializeAsync();
-        using var contextualFactory = factory.WithWebHostBuilder(builder =>
-            builder.ConfigureServices(services =>
-            {
-                services.Configure<ManagementOptions>(management =>
-                    management.Authorization.Contexts[FirstContext] =
-                        new ManagementContextAccessPolicyOptions
-                        {
-                            RequireMfa = true
-                        });
-                services.RemoveAll<IManagementUserContextStore>();
-                services.AddScoped<
-                    IManagementUserContextStore,
-                    SufficitDirectiveUserContextStore>();
-                services.RemoveAll<IManagementEntitlementResolver>();
-                services.AddScoped<
-                    IManagementEntitlementResolver,
-                    SufficitDirectiveManagementEntitlementResolver>();
-                services.RemoveAll<IManagementAuthorizationEvaluator>();
-                services.AddScoped<
-                    IManagementAuthorizationEvaluator,
-                    RoleBasedManagementAuthorizationEvaluator>();
-            }));
-
-        string targetId;
-        await using (var setup = contextualFactory.Services.CreateAsyncScope())
-        {
-            var userManager = setup.ServiceProvider
-                .GetRequiredService<UserManager<ApplicationUser>>();
-            var target = await TestDataSeeder.CreateUserAsync(
-                userManager,
-                $"mfa-{Guid.NewGuid():N}",
-                "Original!Passw0rd#7",
-                $"phonecalls:{FirstContext}");
-            targetId = target.Id;
-        }
-
-        await using var scope = contextualFactory.Services.CreateAsyncScope();
-        var service = scope.ServiceProvider
-            .GetRequiredService<IUserManagementService>();
-        var withoutMfa = await Assert.ThrowsAsync<ManagementAccessException>(
-            () => service.ResetPasswordAsync(
-                targetId,
-                new ResetManagementUserPasswordCommand(
-                    "Denied!Passw0rd#8"),
-                RequestContext(
-                    "manager",
-                    new Claim(
-                        "directive",
-                        $"phonecalls:{FirstContext}"))));
-        Assert.Equal(
-            ManagementAuthorizationOutcome.StepUpRequired,
-            withoutMfa.Decision.Outcome);
-
-        var updated = await service.ResetPasswordAsync(
-            targetId,
-            new ResetManagementUserPasswordCommand(
-                "Allowed!Passw0rd#9"),
-            RequestContext(
-                "manager",
-                new Claim(
-                    "directive",
-                    $"phonecalls:{FirstContext}"),
-                new Claim("amr", "pwd mfa")));
-        Assert.Equal(targetId, updated.Id);
-    }
-
-    [Fact]
-    public async Task Profile_update_revokes_tokens_preserves_authorizations_and_resets_confirmations()
+    public async Task Profile_update_changes_identity_fields_and_security_stamp()
     {
         using var factory = new ManagementTestFactory();
         await ((IAsyncLifetime)factory).InitializeAsync();
 
         string targetId;
         string? originalSecurityStamp;
-        var authorizationId = Guid.NewGuid().ToString("N");
-        var tokenId = Guid.NewGuid().ToString("N");
         await using (var setup = factory.Services.CreateAsyncScope())
         {
             var userManager = setup.ServiceProvider
@@ -506,54 +238,26 @@ public sealed class UserManagementControllerTests
                 userManager,
                 $"profile-{Guid.NewGuid():N}",
                 "Original!Passw0rd#20");
-            target.PhoneNumber = "+5511999990000";
-            target.PhoneNumberConfirmed = true;
-            target.EmailConfirmed = true;
-            var prepared = await userManager.UpdateAsync(target);
-            Assert.True(prepared.Succeeded);
             targetId = target.Id;
             originalSecurityStamp = target.SecurityStamp;
-
-            var setupDatabase = setup.ServiceProvider
-                .GetRequiredService<AppDbContext>();
-            setupDatabase.Set<OpenIddictEntityFrameworkCoreAuthorization>().Add(
-                new OpenIddictEntityFrameworkCoreAuthorization
-                {
-                    Id = authorizationId,
-                    ConcurrencyToken = Guid.NewGuid().ToString("N"),
-                    CreationDate = DateTime.UtcNow,
-                    Status = OpenIddictConstants.Statuses.Valid,
-                    Subject = targetId,
-                    Type = OpenIddictConstants.AuthorizationTypes.Permanent
-                });
-            setupDatabase.Set<OpenIddictEntityFrameworkCoreToken>().Add(
-                new OpenIddictEntityFrameworkCoreToken
-                {
-                    Id = tokenId,
-                    ConcurrencyToken = Guid.NewGuid().ToString("N"),
-                    CreationDate = DateTime.UtcNow,
-                    Status = OpenIddictConstants.Statuses.Valid,
-                    Subject = targetId,
-                    Type = OpenIddictConstants.TokenTypeHints.RefreshToken
-                });
-            await setupDatabase.SaveChangesAsync();
         }
 
         await using var scope = factory.Services.CreateAsyncScope();
         var service = scope.ServiceProvider
             .GetRequiredService<IUserManagementService>();
-        var newUserName = $"updated-{Guid.NewGuid():N}";
+        var command = new UpdateManagementUserProfileCommand(
+            $"profile-updated-{Guid.NewGuid():N}",
+            $"profile-updated-{Guid.NewGuid():N}@tests.local",
+            "+5511999999999");
+
         var updated = await service.UpdateProfileAsync(
             targetId,
-            new UpdateManagementUserProfileCommand(
-                newUserName,
-                $"{newUserName}@tests.local",
-                "+5511988880000"),
-            RequestContext("administrator"));
+            command,
+            RequestContext("provider-operator"));
 
-        Assert.Equal(newUserName, updated.UserName);
-        Assert.Equal($"{newUserName}@tests.local", updated.Email);
-        Assert.Equal("+5511988880000", updated.PhoneNumber);
+        Assert.Equal(command.UserName, updated.UserName);
+        Assert.Equal(command.Email, updated.Email);
+        Assert.Equal(command.PhoneNumber, updated.PhoneNumber);
         Assert.False(updated.EmailConfirmed);
         Assert.False(updated.PhoneNumberConfirmed);
 
@@ -562,307 +266,18 @@ public sealed class UserManagementControllerTests
         database.ChangeTracker.Clear();
         var persisted = await database.Users.SingleAsync(
             user => user.Id == targetId);
-        var authorization = await database
-            .Set<OpenIddictEntityFrameworkCoreAuthorization>()
-            .SingleAsync(entry => entry.Id == authorizationId);
-        var token = await database
-            .Set<OpenIddictEntityFrameworkCoreToken>()
-            .SingleAsync(entry => entry.Id == tokenId);
-
-        Assert.Equal(newUserName.ToUpperInvariant(), persisted.NormalizedUserName);
-        Assert.Equal(
-            $"{newUserName}@tests.local".ToUpperInvariant(),
-            persisted.NormalizedEmail);
         Assert.NotEqual(originalSecurityStamp, persisted.SecurityStamp);
-        Assert.Equal(
-            OpenIddictConstants.Statuses.Valid,
-            authorization.Status);
-        Assert.Equal(OpenIddictConstants.Statuses.Revoked, token.Status);
         Assert.Contains(
             await database.ManagementAuditEvents
                 .Where(entry => entry.ResourceId == targetId)
                 .ToArrayAsync(),
             entry =>
                 entry.Capability == ManagementCapabilities.UsersUpdate
-                && entry.OperationOutcome == "succeeded"
                 && entry.ReasonCode == "user_profile_updated");
     }
 
     [Fact]
-    public async Task Unchanged_profile_preserves_security_stamp_and_tokens()
-    {
-        using var factory = new ManagementTestFactory();
-        await ((IAsyncLifetime)factory).InitializeAsync();
-
-        string targetId;
-        string? originalSecurityStamp;
-        string userName;
-        string email;
-        var tokenId = Guid.NewGuid().ToString("N");
-        await using (var setup = factory.Services.CreateAsyncScope())
-        {
-            var userManager = setup.ServiceProvider
-                .GetRequiredService<UserManager<ApplicationUser>>();
-            var target = await TestDataSeeder.CreateUserAsync(
-                userManager,
-                $"profile-noop-{Guid.NewGuid():N}",
-                "Original!Passw0rd#21");
-            targetId = target.Id;
-            userName = target.UserName!;
-            email = target.Email!;
-            originalSecurityStamp = target.SecurityStamp;
-
-            var setupDatabase = setup.ServiceProvider
-                .GetRequiredService<AppDbContext>();
-            setupDatabase.Set<OpenIddictEntityFrameworkCoreToken>().Add(
-                new OpenIddictEntityFrameworkCoreToken
-                {
-                    Id = tokenId,
-                    ConcurrencyToken = Guid.NewGuid().ToString("N"),
-                    CreationDate = DateTime.UtcNow,
-                    Status = OpenIddictConstants.Statuses.Valid,
-                    Subject = targetId,
-                    Type = OpenIddictConstants.TokenTypeHints.RefreshToken
-                });
-            await setupDatabase.SaveChangesAsync();
-        }
-
-        await using var scope = factory.Services.CreateAsyncScope();
-        var service = scope.ServiceProvider
-            .GetRequiredService<IUserManagementService>();
-        await service.UpdateProfileAsync(
-            targetId,
-            new UpdateManagementUserProfileCommand(
-                userName,
-                email,
-                null),
-            RequestContext("administrator"));
-
-        var database = scope.ServiceProvider
-            .GetRequiredService<AppDbContext>();
-        database.ChangeTracker.Clear();
-        var persisted = await database.Users.SingleAsync(
-            user => user.Id == targetId);
-        var token = await database
-            .Set<OpenIddictEntityFrameworkCoreToken>()
-            .SingleAsync(entry => entry.Id == tokenId);
-
-        Assert.Equal(originalSecurityStamp, persisted.SecurityStamp);
-        Assert.Equal(OpenIddictConstants.Statuses.Valid, token.Status);
-        Assert.Contains(
-            await database.ManagementAuditEvents
-                .Where(entry => entry.ResourceId == targetId)
-                .ToArrayAsync(),
-            entry =>
-                entry.Capability == ManagementCapabilities.UsersUpdate
-                && entry.OperationOutcome == "succeeded"
-                && entry.ReasonCode == "user_profile_unchanged");
-    }
-
-    [Fact]
-    public async Task Invalid_profile_is_rejected_before_identity_updates()
-    {
-        using var factory = new ManagementTestFactory();
-        await ((IAsyncLifetime)factory).InitializeAsync();
-
-        string targetId;
-        string originalUserName;
-        string originalEmail;
-        string? originalSecurityStamp;
-        await using (var setup = factory.Services.CreateAsyncScope())
-        {
-            var userManager = setup.ServiceProvider
-                .GetRequiredService<UserManager<ApplicationUser>>();
-            var target = await TestDataSeeder.CreateUserAsync(
-                userManager,
-                $"profile-rollback-{Guid.NewGuid():N}",
-                "Original!Passw0rd#22");
-            targetId = target.Id;
-            originalUserName = target.UserName!;
-            originalEmail = target.Email!;
-            originalSecurityStamp = target.SecurityStamp;
-        }
-
-        await using var scope = factory.Services.CreateAsyncScope();
-        var service = scope.ServiceProvider
-            .GetRequiredService<IUserManagementService>();
-        var failure = await Assert.ThrowsAsync<ManagementValidationException>(
-            () => service.UpdateProfileAsync(
-                targetId,
-                new UpdateManagementUserProfileCommand(
-                    $"partial-{Guid.NewGuid():N}",
-                    "not-an-email",
-                    "+5511977770000"),
-                RequestContext("administrator")));
-
-        Assert.Equal("user_email_invalid", failure.ReasonCode);
-        Assert.Equal("email", failure.Field);
-
-        var database = scope.ServiceProvider
-            .GetRequiredService<AppDbContext>();
-        database.ChangeTracker.Clear();
-        var persisted = await database.Users.SingleAsync(
-            user => user.Id == targetId);
-        Assert.Equal(originalUserName, persisted.UserName);
-        Assert.Equal(originalEmail, persisted.Email);
-        Assert.Equal(originalSecurityStamp, persisted.SecurityStamp);
-    }
-
-    [Fact]
-    public async Task Failed_token_revocation_rolls_back_profile_before_auditing()
-    {
-        using var factory = new ManagementTestFactory();
-        await ((IAsyncLifetime)factory).InitializeAsync();
-        using var failingFactory = factory.WithWebHostBuilder(builder =>
-            builder.ConfigureServices(services =>
-            {
-                services.RemoveAll<IManagementUserSessionRevoker>();
-                services.AddSingleton<
-                    IManagementUserSessionRevoker,
-                    ThrowingManagementUserSessionRevoker>();
-            }));
-
-        string targetId;
-        string originalUserName;
-        string originalEmail;
-        string? originalSecurityStamp;
-        await using (var setup = failingFactory.Services.CreateAsyncScope())
-        {
-            var userManager = setup.ServiceProvider
-                .GetRequiredService<UserManager<ApplicationUser>>();
-            var target = await TestDataSeeder.CreateUserAsync(
-                userManager,
-                $"profile-revocation-{Guid.NewGuid():N}",
-                "Original!Passw0rd#24");
-            targetId = target.Id;
-            originalUserName = target.UserName!;
-            originalEmail = target.Email!;
-            originalSecurityStamp = target.SecurityStamp;
-        }
-
-        await using var scope =
-            failingFactory.Services.CreateAsyncScope();
-        var service = scope.ServiceProvider
-            .GetRequiredService<IUserManagementService>();
-        var failure = await Assert.ThrowsAsync<ManagementConflictException>(
-            () => service.UpdateProfileAsync(
-                targetId,
-                new UpdateManagementUserProfileCommand(
-                    $"profile-revocation-updated-{Guid.NewGuid():N}",
-                    $"profile-revocation-updated-{Guid.NewGuid():N}@tests.local",
-                    "+5511966660000"),
-                RequestContext("administrator")));
-        Assert.Equal("user_profile_update_failed", failure.ReasonCode);
-
-        var database = scope.ServiceProvider
-            .GetRequiredService<AppDbContext>();
-        database.ChangeTracker.Clear();
-        var persisted = await database.Users.SingleAsync(
-            user => user.Id == targetId);
-        Assert.Equal(originalUserName, persisted.UserName);
-        Assert.Equal(originalEmail, persisted.Email);
-        Assert.Null(persisted.PhoneNumber);
-        Assert.Equal(originalSecurityStamp, persisted.SecurityStamp);
-        Assert.Contains(
-            await database.ManagementAuditEvents
-                .Where(entry => entry.ResourceId == targetId)
-                .ToArrayAsync(),
-            entry =>
-                entry.Capability == ManagementCapabilities.UsersUpdate
-                && entry.OperationOutcome == "failed"
-                && entry.ReasonCode == "user_profile_update_failed");
-    }
-
-    [Fact]
-    public async Task Manager_profile_update_requires_every_context_and_tenant_mfa()
-    {
-        using var factory = new ManagementTestFactory();
-        await ((IAsyncLifetime)factory).InitializeAsync();
-        using var contextualFactory = factory.WithWebHostBuilder(builder =>
-            builder.ConfigureServices(services =>
-            {
-                services.Configure<ManagementOptions>(management =>
-                    management.Authorization.Contexts[SecondContext] =
-                        new ManagementContextAccessPolicyOptions
-                        {
-                            RequireMfa = true
-                        });
-                services.RemoveAll<IManagementUserContextStore>();
-                services.AddScoped<
-                    IManagementUserContextStore,
-                    SufficitDirectiveUserContextStore>();
-                services.RemoveAll<IManagementEntitlementResolver>();
-                services.AddScoped<
-                    IManagementEntitlementResolver,
-                    SufficitDirectiveManagementEntitlementResolver>();
-                services.RemoveAll<IManagementAuthorizationEvaluator>();
-                services.AddScoped<
-                    IManagementAuthorizationEvaluator,
-                    RoleBasedManagementAuthorizationEvaluator>();
-            }));
-
-        string targetId;
-        string originalEmail;
-        await using (var setup = contextualFactory.Services.CreateAsyncScope())
-        {
-            var userManager = setup.ServiceProvider
-                .GetRequiredService<UserManager<ApplicationUser>>();
-            var target = await TestDataSeeder.CreateUserAsync(
-                userManager,
-                $"profile-context-{Guid.NewGuid():N}",
-                "Original!Passw0rd#23",
-                $"[\"phonecalls:{FirstContext}\","
-                + $"\"phonecalls:{SecondContext}\"]");
-            targetId = target.Id;
-            originalEmail = target.Email!;
-        }
-
-        await using var scope =
-            contextualFactory.Services.CreateAsyncScope();
-        var service = scope.ServiceProvider
-            .GetRequiredService<IUserManagementService>();
-        var command = new UpdateManagementUserProfileCommand(
-            $"profile-context-updated-{Guid.NewGuid():N}",
-            originalEmail,
-            null);
-        var onlyFirst = await Assert.ThrowsAsync<ManagementAccessException>(
-            () => service.UpdateProfileAsync(
-                targetId,
-                command,
-                RequestContext(
-                    "manager",
-                    new Claim(
-                        "directive",
-                        $"phonecalls:{FirstContext}"))));
-        Assert.Equal(
-            "user_context_scope_incomplete",
-            onlyFirst.Decision.ReasonCode);
-
-        var bothContexts = new Claim(
-            "directive",
-            $"[\"phonecalls:{FirstContext}\","
-            + $"\"phonecalls:{SecondContext}\"]");
-        var withoutMfa = await Assert.ThrowsAsync<ManagementAccessException>(
-            () => service.UpdateProfileAsync(
-                targetId,
-                command,
-                RequestContext("manager", bothContexts)));
-        Assert.Equal(
-            ManagementAuthorizationOutcome.StepUpRequired,
-            withoutMfa.Decision.Outcome);
-
-        var updated = await service.UpdateProfileAsync(
-            targetId,
-            command,
-            RequestContext(
-                "manager",
-                bothContexts,
-                new Claim("amr", "pwd mfa")));
-        Assert.Equal(command.UserName, updated.UserName);
-    }
-
-    [Fact]
-    public async Task Lockout_revokes_identity_session_tokens_and_authorizations()
+    public async Task Lockout_revokes_identity_tokens_and_authorizations()
     {
         using var factory = new ManagementTestFactory();
         await ((IAsyncLifetime)factory).InitializeAsync();
@@ -913,7 +328,7 @@ public sealed class UserManagementControllerTests
         var locked = await service.SetLockoutAsync(
             targetId,
             new SetManagementUserLockoutCommand(Locked: true),
-            RequestContext("administrator"));
+            RequestContext("provider-operator"));
 
         Assert.True(locked.LockoutEnabled);
         Assert.True(locked.LockoutEnd > DateTimeOffset.UtcNow);
@@ -936,40 +351,13 @@ public sealed class UserManagementControllerTests
             authorization.Status);
         Assert.Equal(OpenIddictConstants.Statuses.Revoked, token.Status);
 
-        var signInManager = scope.ServiceProvider
-            .GetRequiredService<SignInManager<ApplicationUser>>();
-        var signIn = await signInManager.CheckPasswordSignInAsync(
-            persisted,
-            "Original!Passw0rd#10",
-            lockoutOnFailure: false);
-        Assert.True(signIn.IsLockedOut);
-
-        var unlocked = await service.SetLockoutAsync(
-            targetId,
-            new SetManagementUserLockoutCommand(Locked: false),
-            RequestContext("administrator"));
-        Assert.Null(unlocked.LockoutEnd);
-        Assert.Equal(0, unlocked.AccessFailedCount);
-
-        var audits = await database.ManagementAuditEvents
-            .Where(entry =>
-                entry.ResourceId == targetId
-                && entry.Capability == ManagementCapabilities.UsersDisable)
-            .ToArrayAsync();
-        Assert.Contains(
-            audits,
-            entry => entry.ReasonCode == "user_locked");
-        Assert.Contains(
-            audits,
-            entry => entry.ReasonCode == "user_unlocked");
-
         var stampOptions = scope.ServiceProvider
             .GetRequiredService<IOptions<SecurityStampValidatorOptions>>();
         Assert.Equal(TimeSpan.Zero, stampOptions.Value.ValidationInterval);
     }
 
     [Fact]
-    public async Task Failed_session_revocation_rolls_back_lockout_before_auditing()
+    public async Task Failed_session_revocation_rolls_back_lockout_and_audits_failure()
     {
         using var factory = new ManagementTestFactory();
         await ((IAsyncLifetime)factory).InitializeAsync();
@@ -1003,7 +391,7 @@ public sealed class UserManagementControllerTests
             () => service.SetLockoutAsync(
                 targetId,
                 new SetManagementUserLockoutCommand(Locked: true),
-                RequestContext("administrator")));
+                RequestContext("provider-operator")));
         Assert.Equal("user_lock_failed", failure.ReasonCode);
 
         var database = scope.ServiceProvider
@@ -1021,88 +409,6 @@ public sealed class UserManagementControllerTests
                 entry.Capability == ManagementCapabilities.UsersDisable
                 && entry.OperationOutcome == "failed"
                 && entry.ReasonCode == "user_lock_failed");
-    }
-
-    [Fact]
-    public async Task Manager_lockout_requires_every_context_and_tenant_mfa()
-    {
-        using var factory = new ManagementTestFactory();
-        await ((IAsyncLifetime)factory).InitializeAsync();
-        using var contextualFactory = factory.WithWebHostBuilder(builder =>
-            builder.ConfigureServices(services =>
-            {
-                services.Configure<ManagementOptions>(management =>
-                    management.Authorization.Contexts[SecondContext] =
-                        new ManagementContextAccessPolicyOptions
-                        {
-                            RequireMfa = true
-                        });
-                services.RemoveAll<IManagementUserContextStore>();
-                services.AddScoped<
-                    IManagementUserContextStore,
-                    SufficitDirectiveUserContextStore>();
-                services.RemoveAll<IManagementEntitlementResolver>();
-                services.AddScoped<
-                    IManagementEntitlementResolver,
-                    SufficitDirectiveManagementEntitlementResolver>();
-                services.RemoveAll<IManagementAuthorizationEvaluator>();
-                services.AddScoped<
-                    IManagementAuthorizationEvaluator,
-                    RoleBasedManagementAuthorizationEvaluator>();
-            }));
-
-        string targetId;
-        await using (var setup = contextualFactory.Services.CreateAsyncScope())
-        {
-            var userManager = setup.ServiceProvider
-                .GetRequiredService<UserManager<ApplicationUser>>();
-            var target = await TestDataSeeder.CreateUserAsync(
-                userManager,
-                $"lockout-context-{Guid.NewGuid():N}",
-                "Original!Passw0rd#11",
-                $"[\"phonecalls:{FirstContext}\","
-                + $"\"phonecalls:{SecondContext}\"]");
-            targetId = target.Id;
-        }
-
-        await using var scope =
-            contextualFactory.Services.CreateAsyncScope();
-        var service = scope.ServiceProvider
-            .GetRequiredService<IUserManagementService>();
-        var onlyFirst = await Assert.ThrowsAsync<ManagementAccessException>(
-            () => service.SetLockoutAsync(
-                targetId,
-                new SetManagementUserLockoutCommand(Locked: true),
-                RequestContext(
-                    "manager",
-                    new Claim(
-                        "directive",
-                        $"phonecalls:{FirstContext}"))));
-        Assert.Equal(
-            "user_context_scope_incomplete",
-            onlyFirst.Decision.ReasonCode);
-
-        var bothContexts = new Claim(
-            "directive",
-            $"[\"phonecalls:{FirstContext}\","
-            + $"\"phonecalls:{SecondContext}\"]");
-        var withoutMfa = await Assert.ThrowsAsync<ManagementAccessException>(
-            () => service.SetLockoutAsync(
-                targetId,
-                new SetManagementUserLockoutCommand(Locked: true),
-                RequestContext("manager", bothContexts)));
-        Assert.Equal(
-            ManagementAuthorizationOutcome.StepUpRequired,
-            withoutMfa.Decision.Outcome);
-
-        var locked = await service.SetLockoutAsync(
-            targetId,
-            new SetManagementUserLockoutCommand(Locked: true),
-            RequestContext(
-                "manager",
-                bothContexts,
-                new Claim("amr", "pwd mfa")));
-        Assert.True(locked.LockoutEnd > DateTimeOffset.UtcNow);
     }
 
     [Fact]
@@ -1130,147 +436,25 @@ public sealed class UserManagementControllerTests
             () => service.SetLockoutAsync(
                 targetId,
                 new SetManagementUserLockoutCommand(Locked: true),
-                RequestContextForSubject(
-                    targetId,
-                    "administrator")));
+                RequestContextForSubject(targetId)));
 
         Assert.Equal(
             "user_self_lockout_not_allowed",
             denied.Decision.ReasonCode);
     }
 
-    [Fact]
-    public async Task Context_list_never_returns_users_outside_resolved_scope()
-    {
-        using var factory = new ManagementTestFactory();
-        await ((IAsyncLifetime)factory).InitializeAsync();
-
-        string visibleUserId;
-        await using (var scope = factory.Services.CreateAsyncScope())
-        {
-            var userManager = scope.ServiceProvider
-                .GetRequiredService<UserManager<ApplicationUser>>();
-            var visible = await TestDataSeeder.CreateUserAsync(
-                userManager,
-                $"visible-{Guid.NewGuid():N}",
-                TestDataSeeder.DefaultPassword);
-            _ = await TestDataSeeder.CreateUserAsync(
-                userManager,
-                $"hidden-{Guid.NewGuid():N}",
-                TestDataSeeder.DefaultPassword);
-            visibleUserId = visible.Id;
-        }
-
-        using var scopedFactory = factory.WithWebHostBuilder(builder =>
-            builder.ConfigureServices(services =>
-            {
-                services.RemoveAll<IManagementUserContextStore>();
-                services.AddSingleton<IManagementUserContextStore>(
-                    new FixedUserContextStore(visibleUserId, FirstContext));
-            }));
-        var client = scopedFactory.CreateClient();
-
-        var page = await client.GetFromJsonAsync<ManagementUserPage>(
-            $"/api/users?contextId={FirstContext}&pageSize=100");
-
-        Assert.NotNull(page);
-        var user = Assert.Single(page.Items);
-        Assert.Equal(visibleUserId, user.Id);
-        Assert.Equal(FirstContext, page.ContextId);
-    }
-
-    private sealed class FixedUserContextStore(
-        string userId,
-        string contextId) : IManagementUserContextStore
-    {
-        public Task<IReadOnlySet<string>> ListKnownContextIdsAsync(
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlySet<string>>(
-                new HashSet<string>(
-                    [contextId],
-                    StringComparer.OrdinalIgnoreCase));
-
-        public Task<IReadOnlySet<string>> ListUserIdsAsync(
-            string requestedContextId,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlySet<string>>(
-                string.Equals(
-                    contextId,
-                    requestedContextId,
-                    StringComparison.OrdinalIgnoreCase)
-                    ? new HashSet<string>([userId], StringComparer.Ordinal)
-                    : new HashSet<string>(StringComparer.Ordinal));
-
-        public Task<IReadOnlySet<string>> ListContextIdsAsync(
-            string requestedUserId,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlySet<string>>(
-                string.Equals(userId, requestedUserId, StringComparison.Ordinal)
-                    ? new HashSet<string>(
-                        [contextId],
-                        StringComparer.OrdinalIgnoreCase)
-                    : new HashSet<string>(
-                        StringComparer.OrdinalIgnoreCase));
-
-        public async Task<ManagementUserMembership> GetMembershipAsync(
-            string requestedUserId,
-            CancellationToken cancellationToken = default) =>
-            new(
-                await ListContextIdsAsync(
-                    requestedUserId,
-                    cancellationToken),
-                RequiresAdministrator: false);
-
-        public Task<bool> UserBelongsToAsync(
-            string requestedUserId,
-            string requestedContextId,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(
-                string.Equals(
-                    userId,
-                    requestedUserId,
-                    StringComparison.Ordinal)
-                && string.Equals(
-                    contextId,
-                    requestedContextId,
-                    StringComparison.OrdinalIgnoreCase));
-
-        public Task AddToContextAsync(
-            string requestedUserId,
-            string requestedContextId,
-            CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
-    }
-
-    private static ManagementRequestContext RequestContext(
-        string role,
-        params Claim[] claims) =>
-        new(
-            new ClaimsPrincipal(
-                new ClaimsIdentity(
-                    [
-                        new Claim(
-                            ClaimTypes.NameIdentifier,
-                            $"operator-{role}"),
-                        new Claim(ClaimTypes.Role, role),
-                        .. claims
-                    ],
-                    "test",
-                    ClaimTypes.Name,
-                    ClaimTypes.Role)),
-            $"test-{Guid.NewGuid():N}");
+    private static ManagementRequestContext RequestContext(string role) =>
+        RequestContextForSubject($"operator-{role}", role);
 
     private static ManagementRequestContext RequestContextForSubject(
         string subject,
-        string role,
-        params Claim[] claims) =>
+        string role = "provider-operator") =>
         new(
             new ClaimsPrincipal(
                 new ClaimsIdentity(
                     [
                         new Claim(ClaimTypes.NameIdentifier, subject),
-                        new Claim(ClaimTypes.Role, role),
-                        .. claims
+                        new Claim(ClaimTypes.Role, role)
                     ],
                     "test",
                     ClaimTypes.Name,

@@ -9,8 +9,6 @@ using Sufficit.Identity.Core.Branding;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
-using Sufficit.Identity.Management.Permissions;
-using Sufficit.Identity.Management.Users;
 using Sufficit.Identity.Server;
 using Sufficit.Identity.Server.Management;
 using Sufficit.Identity.STS;
@@ -116,15 +114,7 @@ if (mgmtEnabled)
     builder.Services.Replace(
         ServiceDescriptor.Scoped<
             IManagementEntitlementResolver,
-            SufficitDirectiveManagementEntitlementResolver>());
-    builder.Services.Replace(
-        ServiceDescriptor.Scoped<
-            IManagementUserContextStore,
-            SufficitDirectiveUserContextStore>());
-    builder.Services.Replace(
-        ServiceDescriptor.Scoped<
-            IManagementContextualPermissionStore,
-            SufficitDirectiveUserPermissionStore>());
+            SufficitOperatorManagementEntitlementResolver>());
     builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
 }
 
