@@ -1,64 +1,51 @@
 # Sufficit Identity UI Management
 
-Módulo administrativo Blazor Server injetado no composition host
-`sufficit-identity`, assim como `Sufficit.Identity.UI`. Este projeto é uma
-Razor Class Library: não possui processo, porta, health check, proxy ou
-configuração OIDC próprios.
+Módulo administrativo Blazor Server incorporado ao composition host
+`sufficit-identity`, assim como `Sufficit.Identity.UI`. É uma Razor Class
+Library: não possui processo, porta, health check ou cliente OIDC próprios.
 
 ## Estado
 
 Implementado:
 
 - shell administrativo responsivo e acessível;
-- rotas de visão geral, clientes, usuários, acesso, branding,
+- rotas de visão geral, clientes, usuários, claims e scopes, branding,
   provisionamento, auditoria e configurações;
 - incorporação em `/management` no mesmo processo e origem do Identity;
 - autenticação pela sessão ASP.NET Identity já emitida pelo host;
-- policy de entrada para `administrator` ou `manager`;
-- policies de clientes e auditoria avaliadas pelas mesmas capabilities da
-  camada de aplicação;
-- listagem, detalhe, criação e exclusão de clientes pelo mesmo serviço de
-  aplicação usado pela API, sem uma chamada HTTP ao próprio host;
-- listagem, criação, edição, prévia, ativação exclusiva e exclusão de temas de
-  branding pelo mesmo serviço de aplicação usado pela API;
-- acesso, pesquisa paginada, detalhe, criação contextual, atualização de
-  perfil, reset de senha e bloqueio/desbloqueio de usuários pelo mesmo serviço
-  de aplicação usado pela API;
-- `Administrator` global e `Manager` limitado aos contextos calculados a partir
-  de claims `directive` escalares ou em array no adaptador Sufficit;
-- criação sem autoridade implícita, usando associação explícita ao contexto, e
-  reset de senha permitido a Manager somente quando todos os contextos da conta
-  estão dentro de sua autoridade;
-- bloqueio com confirmação explícita, prevenção de autobloqueio, atualização do
-  security stamp e revogação de tokens/autorizações; desbloqueio não restaura
-  sessões anteriores;
-- atualização de nome, e-mail e telefone com validação no servidor,
-  confirmação reiniciada para contatos alterados, rotação do security stamp e
-  revogação apenas dos tokens ativos, preservando autorizações duráveis;
-- política MFA substituível e configurável por contexto;
-- delegação de papéis e diretivas contextuais pelo serviço canônico, com
-  limites por autoridade, rotação do security stamp, revogação de sessões e
-  auditoria;
-- avatar do operador resolvido pelo mesmo `IUserAvatarUrlResolver` usado pela
-  UI pública, a partir do tema ativo do runtime, com iniciais como fallback;
-- defaults seguros para consentimento, HTTPS, PKCE e PAR;
-- confirmação explícita antes da exclusão;
-- auditoria persistente de mutações e tentativas negadas, com consulta
-  administrativa e redação de segredos;
-- estados de loading, erro, vazio, pesquisa e tabela responsiva;
-- ativos estáticos servidos como conteúdo do RCL.
+- autorização por capabilities estáveis do provedor;
+- listagem, detalhe, criação e exclusão de clientes pelo mesmo serviço usado
+  pela Management API;
+- listagem global, detalhe, criação, edição de perfil, reset de senha e
+  bloqueio/desbloqueio de contas pelo mesmo serviço usado pela API;
+- atualização de security stamp e revogação de tokens/sessões conforme a
+  operação de segurança;
+- CRUD e ativação exclusiva de temas de branding;
+- avatar do operador resolvido pelo mesmo `IUserAvatarUrlResolver` da UI
+  pública;
+- auditoria persistente de mutações e tentativas negadas;
+- estados de loading, erro, vazio, pesquisa e composição responsiva.
+
+Não pertencem a este módulo:
+
+- catálogo ou hierarquia de papéis empresariais;
+- diretivas e permissões específicas de aplicações;
+- associações de tenant, revendedor, cliente ou departamento;
+- decisão sobre o efeito de uma role, group ou entitlement.
+
+No deployment Sufficit, essas regras permanecem em `sufficit-identity-core`,
+`sufficit-blazor` e nas APIs de negócio. O host pode mapear sua autoridade
+operacional para capabilities do provedor sem expor essa role como opção de
+usuário.
 
 Ainda não implementado:
 
 - exclusão de usuários;
-- gestão arbitrária de claims de perfil que não representam diretivas;
-- títulos amigáveis dos contextos e fonte externa de políticas MFA;
-- contratos administrativos de scopes isolados, sessões e grants.
+- gestão genérica e schema-aware de claims;
+- SCIM RFC 7643/7644;
+- contratos administrativos isolados para scopes, sessões e grants.
 
 ## Composição no host
-
-O composition host registra o backend e a UI quando
-`Sufficit:Identity:Management:Enabled=true`:
 
 ```csharp
 builder.Services.AddSufficitIdentityManagement(builder.Configuration);
@@ -71,40 +58,20 @@ app.UseSufficitIdentityManagementUI();
 app.UseSufficitIdentityUI();
 ```
 
-A interface e a API compartilham a mesma fonte de verdade na camada de
-aplicação:
+A interface e a API compartilham os mesmos serviços:
 
 ```text
-Navegador
-   │ cookie ASP.NET Identity do host
-   ▼
-/management (Razor Components)
-   │ DI + cookie ASP.NET Identity
-   ▼
-IClientManagementService / IBrandingManagementService / IUserManagementService
-   ▼
-OpenIddict / ASP.NET Identity
+Management UI ─┐
+               ├──> application service ──> Identity / OpenIddict
+Management API ┘
 
-Cabeçalho público e administrativo
-   │ identificador do usuário autenticado
-   ▼
-IUserAvatarUrlResolver
-   │ tema ativo + template canônico
-   ▼
-origem de imagem configurada / fallback por iniciais
-
-Automação externa
-   │ bearer token + escopo administrativo
-   ▼
-/api/* (Management REST API)
-   │ contratos de clientes, branding e usuários
-   ▼
-OpenIddict / ASP.NET Identity
+Sufficit Blazor ──> identity/SCIM API ──> contas e credenciais
+        └────────> Sufficit API ──> roles, diretivas e contextos
 ```
 
-Não deve ser registrado um cliente OIDC para a Management UI falar com o
-próprio Identity host. O navegador não recebe access ou refresh tokens para
-operar a interface incorporada.
+O RCL não abre conexões, não acessa `DbContext`, não cria `UserManager` ou
+`SignInManager` e não resolve gerenciadores do OpenIddict. Cada operação abre
+um escopo DI curto e chama o mesmo use case utilizado pelo controller HTTP.
 
 ## Configuração
 
@@ -114,55 +81,30 @@ operar a interface incorporada.
     "Identity": {
       "Management": {
         "Enabled": true,
+        "RequiredScope": "identity_management",
         "RequireMfa": false,
         "Authorization": {
-          "AdministratorRoles": [ "administrator" ],
-          "ManagerRoles": [ "manager" ],
-          "Contexts": {
-            "4082aef4-42d3-4b1b-a321-f405af935940": {
-              "RequireMfa": true
-            }
-          }
+          "OperatorRoles": [ "identity-administrator" ],
+          "CapabilityClaimTypes": [ "permission", "scope" ]
         }
       },
       "ManagementUI": {
-        "PathBase": "management",
-        "Authorization": {
-          "ManagerRoles": [ "manager" ]
-        }
+        "PathBase": "management"
       }
     }
   }
 }
 ```
 
-`PathBase` deve ser uma rota não raiz. O papel administrativo vem da
-configuração compartilhada do Management; a UI mantém apenas os papéis que
-podem entrar no shell antes das futuras capabilities contextuais. No adaptador
-Sufficit, `administrator` herda
-todas as capacidades de `manager` com escopo global e adiciona capacidades
-administrativas.
+`OperatorRoles` é uma integração do deployment para pessoas que operam o
+provedor. Não é um catálogo de roles oferecido aos usuários administrados.
+Tokens da Management API também podem receber capabilities exatas em claims
+configurados.
 
-## Limites de dependência
+## Desenvolvimento
 
-O RCL referencia contratos de aplicação de `Sufficit.Identity.Management` e
-pode resolvê-los por DI. Ele não abre conexões, não referencia o composition
-host e não cria `UserManager`/`SignInManager` ou gerenciadores do OpenIddict.
-
-O avatar não é uma exceção: o RCL não consulta tema nem compõe URL. Ele entrega
-o identificador ao contrato compartilhado e renderiza a URL resolvida.
-
-Cada operação abre um escopo DI curto e chama exatamente o mesmo use case
-utilizado pelo controller da API. Validação, autorização por recurso, defaults
-e auditoria pertencem a essa implementação compartilhada, nunca à página.
-
-As páginas aplicam policies para a experiência do operador. Os controllers
-REST continuam aplicando autorização própria, e os serviços de aplicação não
-devem ser expostos por um transporte sem uma policy correspondente.
-
-## Desenvolvimento e validação
-
-O módulo não roda com `dotnet run`. Compile a biblioteca ou execute o host:
+O módulo não roda de forma independente. Compile a biblioteca ou execute o
+composition host:
 
 ```bash
 dotnet build src/Sufficit.Identity.UI.Management/Sufficit.Identity.UI.Management.csproj \
@@ -172,22 +114,16 @@ cd /caminho/para/sufficit-identity
 dotnet run --project src/server/Sufficit.Identity.Server.csproj
 ```
 
-Para abrir `/management/`, o host precisa de banco/configuração válidos,
-Management habilitado e um usuário autenticado com um dos papéis configurados.
-
 ## Documentos
 
-- [`PRODUCT.md`](PRODUCT.md) — propósito, usuários e limites do módulo.
-- [`DESIGN.md`](DESIGN.md) — sistema visual administrativo.
+- [`PRODUCT.md`](PRODUCT.md)
+- [`DESIGN.md`](DESIGN.md)
 - [`../../docs/single-source-ui-architecture.md`](../../docs/single-source-ui-architecture.md)
-  — fronteira canônica entre UI, use cases e API.
 - [`../../docs/management-authorization-architecture.md`](../../docs/management-authorization-architecture.md)
-  — modelo genérico, adaptador Sufficit, fases e critérios de aceite.
-- [`.impeccable/surfaces/components-pages-clients-razor.md`](.impeccable/surfaces/components-pages-clients-razor.md)
-  — contrato da fatia de clientes.
 
 ## Próximas entregas
 
-1. Implementar exclusão de usuários.
-2. Resolver títulos de contextos e políticas MFA por uma fonte substituível.
-3. Migrar provisionamento, scopes e sessões para use cases compartilhados.
+1. Implementar exclusão segura de usuários.
+2. Projetar claims genéricas sem catálogo empresarial embutido.
+3. Implementar SCIM Users/Groups e descoberta de schemas.
+4. Migrar scopes, sessões e grants para use cases compartilhados.

@@ -6,7 +6,7 @@
 <PageTitle>Novo usuário | Sufficit Identity</PageTitle>
 
 <PageHeader Title="Novo usuário"
-            Description="Crie uma identidade no contexto autorizado sem conceder papéis ou diretivas implicitamente.">
+            Description="Crie uma conta no provedor sem atribuir autoridades próprias de aplicações.">
     <Actions>
         <a class="button button--secondary" href="users">
             <AppIcon Name="arrow-left" Size="17" />
@@ -18,8 +18,8 @@
 <section class="contract-strip contract-strip--success">
     <AppIcon Name="shield" Size="20" />
     <div>
-        <strong>Privilégio mínimo desde a criação</strong>
-        <span>A associação ao contexto é persistida separadamente; autoridade só nasce de regras explícitas.</span>
+        <strong>Conta de autenticação, não perfil empresarial</strong>
+        <span>Esta operação cria identificação e credencial. Grupos, cargos e permissões são definidos pelos sistemas que os utilizam.</span>
     </div>
     <StatusBadge Tone="success">Auditável</StatusBadge>
 </section>
@@ -27,7 +27,7 @@
 @if (loading)
 {
     <section class="form-section" aria-busy="true">
-        <div class="table-skeleton" aria-label="Carregando contextos autorizados">
+        <div class="table-skeleton" aria-label="Carregando autorização">
             @for (var index = 0; index < 4; index++)
             {
                 <span></span>
@@ -51,12 +51,12 @@ else if (accessResult?.IsSuccess is false)
         </EmptyState>
     </section>
 }
-else if (!Access.CanCreate || Access.ContextIds.Count is 0)
+else if (!Access.CanCreate)
 {
     <section class="panel">
         <EmptyState Icon="users"
-                    Title="Nenhum contexto disponível para criação"
-                    Description="A conta possui acesso ao módulo, mas não recebeu um contexto válido para criar usuários.">
+                    Title="Criação de usuários não autorizada"
+                    Description="Sua sessão pode consultar o diretório, mas não possui a capability necessária para criar contas.">
             <Actions>
                 <a class="button button--secondary" href="users">Voltar para usuários</a>
             </Actions>
@@ -81,31 +81,6 @@ else
               FormName="create-management-user"
               class="management-form">
         <DataAnnotationsValidator />
-
-        <section class="form-section" aria-labelledby="user-context-heading">
-            <div class="form-section__heading">
-                <h2 id="user-context-heading">Contexto de origem</h2>
-                <p>O contexto limita esta criação e passa a compor a associação persistida da conta.</p>
-            </div>
-
-            <div class="field-group">
-                <label for="user-context">Contexto</label>
-                <InputSelect id="user-context"
-                             class="form-control"
-                             @bind-Value="model.ContextId">
-                    @foreach (var contextId in Access.ContextIds)
-                    {
-                        <option value="@contextId">@ContextLabel(contextId)</option>
-                    }
-                </InputSelect>
-                <ValidationMessage For="() => model.ContextId" />
-                @if (submission?.ErrorField is "contextId")
-                {
-                    <p class="validation-message">@submission.ErrorMessage</p>
-                }
-                <span class="field-hint">A senha e a identidade continuam únicas, mesmo se a conta ganhar outros contextos depois.</span>
-            </div>
-        </section>
 
         <section class="form-section" aria-labelledby="user-identity-heading">
             <div class="form-section__heading">
@@ -200,9 +175,6 @@ else
 }
 
 @code {
-    [SupplyParameterFromQuery(Name = "context")]
-    public string? RequestedContextId { get; set; }
-
     private readonly UserCreateModel model = new();
     private ManagementDataResult<ManagementUserAccess>? accessResult;
     private ManagementDataResult<ManagementUserDetail>? submission;
@@ -210,7 +182,7 @@ else
     private bool submitting;
 
     private ManagementUserAccess Access =>
-        accessResult?.Value ?? new(false, [], false);
+        accessResult?.Value ?? new(false, false);
 
     private string AccessErrorTitle =>
         accessResult?.Outcome is ManagementDataOutcome.StepUpRequired
@@ -219,7 +191,7 @@ else
 
     private string SubmissionTitle =>
         submission?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? "MFA exigido para criar neste contexto"
+            ? "MFA exigido para criar usuários"
             : submission?.Outcome is ManagementDataOutcome.Conflict
                 ? "Já existe uma identidade com esses dados"
                 : "Não foi possível criar o usuário";
@@ -232,16 +204,6 @@ else
         accessResult = await UserData.GetAccessAsync();
         loading = false;
 
-        if (accessResult.IsSuccess)
-        {
-            model.ContextId =
-                !string.IsNullOrWhiteSpace(RequestedContextId)
-                && Access.ContextIds.Contains(
-                    RequestedContextId,
-                    StringComparer.OrdinalIgnoreCase)
-                    ? RequestedContextId
-                    : Access.ContextIds.FirstOrDefault() ?? string.Empty;
-        }
     }
 
     private async Task CreateAsync()
@@ -256,28 +218,18 @@ else
             new CreateManagementUserCommand(
                 model.UserName,
                 model.Email,
-                model.InitialPassword,
-                model.ContextId));
+                model.InitialPassword));
         submitting = false;
 
         if (submission.IsSuccess && submission.Value is not null)
         {
             Navigation.NavigateTo(
-                $"users/{Uri.EscapeDataString(submission.Value.Id)}" +
-                $"?created=1&context={Uri.EscapeDataString(model.ContextId)}");
+                $"users/{Uri.EscapeDataString(submission.Value.Id)}?created=1");
         }
     }
 
-    private static string ContextLabel(string contextId) =>
-        contextId.Length > 12
-            ? $"{contextId[..8]}…{contextId[^4..]}"
-            : contextId;
-
     private sealed class UserCreateModel
     {
-        [Required(ErrorMessage = "Selecione o contexto.")]
-        public string ContextId { get; set; } = string.Empty;
-
         [Required(ErrorMessage = "Informe o nome de usuário.")]
         [StringLength(256, ErrorMessage = "Use no máximo 256 caracteres.")]
         public string UserName { get; set; } = string.Empty;

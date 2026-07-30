@@ -4,7 +4,7 @@
 <PageTitle>@PageTitleText</PageTitle>
 
 <PageHeader Title="@HeaderTitle"
-            Description="Dados de identidade autorizados pelo contexto selecionado.">
+            Description="Perfil, credenciais e estado de autenticação mantidos pelo provedor.">
     <Actions>
         <a class="button button--secondary" href="@BackHref">
             <AppIcon Name="arrow-left" Size="17" />
@@ -26,7 +26,7 @@
         <AppIcon Name="check" Size="19" />
         <div>
             <strong>Usuário criado</strong>
-            <span>A identidade foi associada ao contexto sem receber papéis ou diretivas implicitamente.</span>
+            <span>A conta foi criada sem atribuir cargos ou permissões próprias de aplicações.</span>
         </div>
     </section>
 }
@@ -128,47 +128,33 @@ else if (result?.IsSuccess is true && result.Value is not null)
                 </dl>
             </section>
 
-            <section aria-labelledby="user-authority-heading">
-                <h2 id="user-authority-heading">Autoridade visível</h2>
-                <div class="authority-group">
-                    <span class="detail-label">Papéis</span>
-                    @if (user.Roles.Count is 0)
-                    {
-                        <p class="detail-empty">Nenhum papel atribuído.</p>
-                    }
-                    else
-                    {
-                        <div class="token-row">
-                            @foreach (var role in user.Roles)
-                            {
-                                <StatusBadge Tone="info">@role</StatusBadge>
-                            }
-                        </div>
-                    }
-                </div>
-                <div class="authority-group">
-                    <span class="detail-label">Contextos</span>
-                    @if (user.ContextIds.Count is 0)
-                    {
-                        <p class="detail-empty">Nenhum contexto exposto para esta consulta.</p>
-                    }
-                    else
-                    {
-                        <ul class="technical-list technical-list--tokens">
-                            @foreach (var contextId in user.ContextIds)
-                            {
-                                <li><code>@contextId</code></li>
-                            }
-                        </ul>
-                    }
-                </div>
+            <section aria-labelledby="user-state-heading">
+                <h2 id="user-state-heading">Estados da identidade</h2>
+                <dl class="property-list">
+                    <div>
+                        <dt>E-mail verificado</dt>
+                        <dd>@(user.EmailConfirmed ? "Sim" : "Não")</dd>
+                    </div>
+                    <div>
+                        <dt>Telefone verificado</dt>
+                        <dd>@(user.PhoneNumberConfirmed ? "Sim" : "Não")</dd>
+                    </div>
+                    <div>
+                        <dt>Bloqueio habilitado</dt>
+                        <dd>@(user.LockoutEnabled ? "Sim" : "Não")</dd>
+                    </div>
+                    <div>
+                        <dt>Última atualização</dt>
+                        <dd>@user.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
+                    </div>
+                </dl>
             </section>
         </div>
 
         <section class="requirements-line" aria-labelledby="user-audit-heading">
             <div>
                 <h2 id="user-audit-heading">Consulta auditada</h2>
-                <p>O operador, o usuário, o contexto, a decisão e a correlação foram registrados sem claims ou credenciais.</p>
+                <p>O operador, o usuário, a decisão e a correlação foram registrados sem claims ou credenciais.</p>
             </div>
             <StatusBadge Tone="success" Icon="audit">Registrada</StatusBadge>
         </section>
@@ -191,7 +177,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     <p>
                         @(currentlyLocked
                             ? "Remove o bloqueio da conta sem restaurar sessões ou tokens anteriores."
-                            : "Interrompe novas autenticações e revoga sessões, tokens e autorizações em todos os contextos.")
+                            : "Interrompe novas autenticações e revoga sessões, tokens e autorizações desta conta.")
                     </p>
                 </div>
                 <StatusBadge Tone="@(currentlyLocked ? "warning" : "danger")">
@@ -224,7 +210,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
             }
 
             <div class="account-access-panel__actions">
-                <span>Esta operação afeta a conta inteira e fica registrada por contexto.</span>
+                <span>Esta operação afeta a conta no provedor e fica registrada na auditoria.</span>
                 <button class="button @(currentlyLocked ? "button--secondary" : "button--danger")"
                         type="button"
                         disabled="@(changingLockout || (!currentlyLocked && !lockoutConfirmed))"
@@ -249,7 +235,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
             <AppIcon Name="shield" Size="21" />
             <div>
                 <h2>MFA necessário para alterar o acesso</h2>
-                <p>Ao menos um contexto desta conta exige autenticação multifator. Conclua o MFA na sessão administrativa e retorne a esta página.</p>
+                <p>A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.</p>
             </div>
         </section>
     }
@@ -268,8 +254,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
         <section class="decision-note decision-note--neutral">
             <AppIcon Name="lock" Size="21" />
             <div>
-                <h2>Bloqueio protegido por escopo completo</h2>
-                <p>Somente Administrator ou um Manager com autoridade em todos os contextos pode bloquear ou desbloquear esta conta.</p>
+                <h2>Bloqueio não autorizado</h2>
+                <p>Sua sessão não possui a capability necessária para bloquear ou desbloquear contas.</p>
             </div>
         </section>
     }
@@ -287,9 +273,9 @@ else if (result?.IsSuccess is true && result.Value is not null)
                 </div>
                 <div>
                     <h2>Redefinir senha</h2>
-                    <p>A alteração vale para a conta inteira e só foi liberada após validar todos os contextos persistidos.</p>
+                    <p>A nova credencial substitui a senha atual e invalida os tokens afetados.</p>
                 </div>
-                <StatusBadge Tone="info">Todos os contextos</StatusBadge>
+                <StatusBadge Tone="info">Conta do provedor</StatusBadge>
             </div>
 
             @if (resetResult?.IsSuccess is false)
@@ -353,7 +339,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
             <AppIcon Name="shield" Size="21" />
             <div>
                 <h2>MFA necessário para redefinir a senha</h2>
-                <p>Este contexto exige autenticação multifator. Conclua o MFA na sua sessão administrativa e retorne a esta página.</p>
+                <p>A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.</p>
             </div>
         </section>
     }
@@ -362,8 +348,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
         <section class="decision-note decision-note--neutral">
             <AppIcon Name="lock" Size="21" />
             <div>
-                <h2>Credencial protegida por escopo completo</h2>
-                <p>A senha afeta a conta inteira. Somente Administrator ou um Manager com autoridade em todos os contextos pode redefini-la.</p>
+                <h2>Redefinição não autorizada</h2>
+                <p>Sua sessão não possui a capability necessária para redefinir credenciais.</p>
             </div>
         </section>
     }
@@ -390,9 +376,6 @@ else
 @code {
     [Parameter]
     public string Id { get; set; } = string.Empty;
-
-    [SupplyParameterFromQuery(Name = "context")]
-    public string? ContextId { get; set; }
 
     [SupplyParameterFromQuery(Name = "created")]
     public int CreatedFlag { get; set; }
@@ -424,22 +407,16 @@ else
     private string PageTitleText =>
         $"{HeaderTitle} | Sufficit Identity";
 
-    private string BackHref =>
-        ContextId is null
-            ? "users"
-            : $"users?context={Uri.EscapeDataString(ContextId)}";
+    private const string BackHref = "users";
 
     private string EditHref =>
-        ContextId is null
-            ? $"users/{Uri.EscapeDataString(Id)}/edit"
-            : $"users/{Uri.EscapeDataString(Id)}/edit" +
-              $"?context={Uri.EscapeDataString(ContextId)}";
+        $"users/{Uri.EscapeDataString(Id)}/edit";
 
     private string ErrorTitle =>
         result?.Outcome is ManagementDataOutcome.NotFound
-            ? "Usuário não encontrado neste contexto"
+            ? "Usuário não encontrado"
             : result?.Outcome is ManagementDataOutcome.StepUpRequired
-                ? "MFA exigido neste contexto"
+                ? "MFA exigido para consultar o usuário"
                 : result?.Outcome is ManagementDataOutcome.Forbidden
                     ? "Acesso ao usuário negado"
                     : "Não foi possível abrir o usuário";
@@ -467,7 +444,7 @@ else
     private async Task LoadAsync()
     {
         loading = true;
-        result = await UserData.GetAsync(Id, ContextId);
+        result = await UserData.GetAsync(Id);
         loading = false;
     }
 

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Management.Authorization;
-using Sufficit.Identity.Management.Permissions;
 using Sufficit.Identity.Management.Users;
 using Sufficit.Identity.UI.Management.Clients;
 
@@ -11,7 +10,7 @@ namespace Sufficit.Identity.UI.Management.Users;
 
 /// <summary>
 /// Circuit-safe adapter over the canonical user-management application
-/// contract. Claims, persistence and tenant rules remain outside the UI.
+/// contract. Claims, persistence and authorization rules remain outside the UI.
 /// </summary>
 public sealed class ManagementUserDataSource(
     IServiceScopeFactory scopeFactory,
@@ -40,12 +39,10 @@ public sealed class ManagementUserDataSource(
 
     public Task<ManagementDataResult<ManagementUserDetail>> GetAsync(
         string id,
-        string? contextId,
         CancellationToken cancellationToken = default) =>
         ExecuteAsync(
             (users, context) => users.GetAsync(
                 id,
-                contextId,
                 context,
                 cancellationToken),
             "User detail",
@@ -103,62 +100,8 @@ public sealed class ManagementUserDataSource(
                 : "User unlock",
             cancellationToken);
 
-    public Task<ManagementDataResult<ManagementUserPermissions>>
-        GetPermissionsAsync(
-            string id,
-            string? contextId,
-            CancellationToken cancellationToken = default) =>
-        ExecutePermissionAsync(
-            (permissions, context) => permissions.GetAsync(
-                id,
-                contextId,
-                context,
-                cancellationToken),
-            "User permission detail",
-            cancellationToken);
-
-    public Task<ManagementDataResult<ManagementUserPermissions>> SetRoleAsync(
-        string id,
-        SetManagementUserRoleCommand command,
-        CancellationToken cancellationToken = default) =>
-        ExecutePermissionAsync(
-            (permissions, context) => permissions.SetRoleAsync(
-                id,
-                command,
-                context,
-                cancellationToken),
-            "User role change",
-            cancellationToken);
-
-    public Task<ManagementDataResult<ManagementUserPermissions>>
-        SetContextualPermissionAsync(
-            string id,
-            SetManagementUserContextualPermissionCommand command,
-            CancellationToken cancellationToken = default) =>
-        ExecutePermissionAsync(
-            (permissions, context) =>
-                permissions.SetContextualPermissionAsync(
-                    id,
-                    command,
-                    context,
-                    cancellationToken),
-            "User contextual permission change",
-            cancellationToken);
-
     private async Task<ManagementDataResult<T>> ExecuteAsync<T>(
         Func<IUserManagementService, ManagementRequestContext, Task<T>> operation,
-        string operationName,
-        CancellationToken cancellationToken) =>
-        await ExecuteServiceAsync(
-            operation,
-            operationName,
-            cancellationToken);
-
-    private async Task<ManagementDataResult<T>> ExecutePermissionAsync<T>(
-        Func<
-            IUserPermissionManagementService,
-            ManagementRequestContext,
-            Task<T>> operation,
         string operationName,
         CancellationToken cancellationToken) =>
         await ExecuteServiceAsync(
@@ -215,7 +158,7 @@ public sealed class ManagementUserDataSource(
                 outcome,
                 outcome is ManagementDataOutcome.StepUpRequired
                     ? "Conclua a autenticação multifator para continuar."
-                    : "Sua conta não possui autoridade neste contexto.");
+                    : "Sua conta não possui a capability necessária.");
         }
         catch (OperationCanceledException)
             when (!cancellationToken.IsCancellationRequested)

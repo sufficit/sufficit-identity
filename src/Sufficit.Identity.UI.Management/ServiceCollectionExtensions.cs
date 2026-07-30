@@ -33,6 +33,24 @@ public sealed class ManagementCapabilityRequirement(
     public string ResourceType { get; } = resourceType;
 }
 
+public sealed class ManagementUiAccessRequirement : IAuthorizationRequirement;
+
+internal sealed class ManagementUiAccessAuthorizationHandler(
+    IManagementEntitlementResolver entitlements)
+    : AuthorizationHandler<ManagementUiAccessRequirement>
+{
+    protected override async Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        ManagementUiAccessRequirement requirement)
+    {
+        var resolved = await entitlements.ResolveAsync(context.User);
+        if (resolved.Capabilities.Count is not 0)
+        {
+            context.Succeed(requirement);
+        }
+    }
+}
+
 internal sealed class ManagementCapabilityAuthorizationHandler(
     IManagementAuthorizationEvaluator evaluator)
     : AuthorizationHandler<ManagementCapabilityRequirement>
@@ -72,23 +90,14 @@ public static class ServiceCollectionExtensions
         // Resolve these eagerly so invalid/root PathBase values fail at startup,
         // before the host accepts traffic.
         _ = options.GetPathBase();
-        var managementAuthorization = configuration
-            .GetSection("Sufficit:Identity:Management:Authorization")
-            .Get<ManagementAuthorizationOptions>()
-            ?? new ManagementAuthorizationOptions();
-        var administratorRoles = NormalizeRoles(
-            managementAuthorization.AdministratorRoles,
-            "administrator");
-        var accessRoles = options.GetAccessRoles(administratorRoles);
-
         services.AddOptions<ManagementUiOptions>()
             .Bind(configurationRoot);
         services.AddOptions<ManagementOptions>()
             .Bind(configuration.GetSection("Sufficit:Identity:Management"));
         services.TryAddScoped<IManagementAuthorizationEvaluator,
-            RoleBasedManagementAuthorizationEvaluator>();
+            CapabilityManagementAuthorizationEvaluator>();
         services.TryAddScoped<IManagementEntitlementResolver,
-            RoleAndClaimManagementEntitlementResolver>();
+            ScopeAndRoleManagementEntitlementResolver>();
         services.TryAddScoped<IManagementAccessPolicyProvider,
             ConfigurationManagementAccessPolicyProvider>();
 
@@ -97,7 +106,7 @@ public static class ServiceCollectionExtensions
             authorization.AddPolicy(ManagementUiPolicies.Access, policy =>
             {
                 policy.RequireAuthenticatedUser();
-                policy.RequireRole(accessRoles);
+                policy.Requirements.Add(new ManagementUiAccessRequirement());
             });
 
             authorization.AddPolicy(ManagementUiPolicies.ManageClients, policy =>
@@ -131,6 +140,9 @@ public static class ServiceCollectionExtensions
         services.TryAddEnumerable(
             ServiceDescriptor.Scoped<IAuthorizationHandler,
                 ManagementCapabilityAuthorizationHandler>());
+        services.TryAddEnumerable(
+            ServiceDescriptor.Scoped<IAuthorizationHandler,
+                ManagementUiAccessAuthorizationHandler>());
         services.TryAddScoped<ManagementClientDataSource>();
         services.TryAddScoped<ManagementBrandingDataSource>();
         services.TryAddScoped<ManagementAuditDataSource>();
@@ -142,17 +154,6 @@ public static class ServiceCollectionExtensions
         services.AddAntiforgery();
 
         return services;
-    }
-
-    private static string[] NormalizeRoles(string[]? roles, string fallback)
-    {
-        var normalized = (roles ?? [])
-            .Where(role => !string.IsNullOrWhiteSpace(role))
-            .Select(role => role.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToArray();
-
-        return normalized.Length is 0 ? [fallback] : normalized;
     }
 
     /// <summary>

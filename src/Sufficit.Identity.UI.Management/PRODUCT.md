@@ -14,18 +14,14 @@ Razor Class Library ASP.NET Core Blazor com interatividade no servidor, em
 
 ## Users
 
-- Administradores operam clientes OAuth e configurações globais do serviço de
-  identidade.
-- Gerentes e revendedores administram usuários somente nos contextos sobre os
-  quais receberam autoridade.
-- Na integração Sufficit, `Administrator` herda todas as capacidades de
-  `Manager` com alcance global e acrescenta as capacidades administrativas.
-- Ambos usam a mesma aplicação; capacidades e alcance são decididos pela API a
-  partir de grants normalizados. O host Sufficit calcula esses grants a partir
-  de roles e diretivas contextuais.
+- Operadores autorizados administram o provedor por capabilities estáveis.
+- Aplicações e resource servers administram seus próprios papéis, grupos,
+  diretivas, tenants e regras de delegação.
+- Um deployment pode mapear uma autoridade local para operar o provedor, mas
+  esse mapeamento não vira um papel sugerido aos usuários administrados.
 
 Os operadores trabalham em tarefas deliberadas e de maior risco: cadastrar
-clientes OAuth, administrar identidades e permissões, publicar branding,
+clientes OAuth, administrar contas e credenciais, publicar branding,
 provisionar configurações e investigar alterações.
 
 ## Product Purpose
@@ -37,8 +33,8 @@ rastreabilidade, sem ampliar a superfície pública de autenticação nem acopla
 interface ao armazenamento interno do serviço.
 
 O primeiro sucesso ponta a ponta é cadastrar e administrar um cliente OAuth com
-defaults seguros. O produto completo também cobre usuários, papéis, claims,
-scopes, sessões, grants, branding, provisionamento e auditoria conforme os
+defaults seguros. O produto completo também cobre contas, claims OIDC, scopes,
+sessões, grants, branding, provisionamento, SCIM e auditoria conforme os
 contratos forem publicados pela API.
 
 ## Positioning
@@ -72,8 +68,8 @@ auditoria em todo o fluxo.
 - Nenhum dado operacional, KPI, cliente, usuário ou evento pode ser inventado.
 - Nenhuma página pode consultar banco, gerenciadores de Identity/OpenIddict ou
   serviços de infraestrutura diretamente.
-- Capabilities, escopo de tenant, MFA e opções de negócio vêm do mesmo contrato
-  de aplicação usado pela API; a UI não mantém uma matriz paralela.
+- Capabilities e MFA vêm do mesmo contrato de aplicação usado pela API; a UI
+  não mantém uma matriz paralela.
 - A UI pública e a administrativa obtêm a URL do avatar pelo mesmo resolver de
   aplicação. O tema ativo e seu template permanecem no runtime; as interfaces
   apenas exibem a imagem ou as iniciais de fallback.
@@ -82,20 +78,19 @@ auditoria em todo o fluxo.
 - Contrato atual confirmado: clientes possuem listar, obter, criar e excluir;
   branding possui CRUD e ativação; provisionamento possui preview e aplicação
   aditiva.
-- Usuários possuem acesso, pesquisa paginada, detalhe, criação contextual,
+- Usuários possuem acesso, pesquisa paginada global, detalhe, criação,
   atualização de perfil, reset de senha e bloqueio/desbloqueio protegidos por
-  escopo completo. A atualização gira o security stamp, revoga tokens ativos,
+  capabilities do provedor. A atualização gira o security stamp, revoga tokens ativos,
   preserva autorizações duráveis e reinicia a confirmação dos contatos
   alterados. O bloqueio revoga sessões, tokens e autorizações pelo runtime
-  canônico. Exclusão, papéis, claims, scopes isolados, sessões e grants ainda
-  dependem de novos contratos; auditoria e branding já usam contratos
-  compartilhados.
-- O modelo genérico, o adaptador Sufficit e a matriz inicial de capacidades
+  canônico. Exclusão, claims configuráveis, SCIM, scopes isolados, sessões e
+  grants ainda dependem de novos contratos; auditoria e branding já usam
+  contratos compartilhados.
+- A fronteira entre o provedor e a autorização das aplicações
   estão definidos em
   [`../../docs/management-authorization-architecture.md`](../../docs/management-authorization-architecture.md).
-- MFA em operações contextuais é configurável por tenant; a fonte dessa
-  política e a exigência global para administração de clientes permanecem
-  decisões de implantação.
+- A exigência de MFA para operações administrativas é uma política do
+  deployment.
 
 ## Brand Commitments
 

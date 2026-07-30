@@ -5,24 +5,24 @@
 <PageTitle>Usuários | Sufficit Identity</PageTitle>
 
 <PageHeader Title="Usuários"
-            Description="Consulte identidades e o estado de acesso dentro da sua autoridade administrativa.">
+            Description="Consulte as contas do provedor e seus estados de autenticação.">
     <Actions>
         @if (accessResult?.IsSuccess is true && Access.CanCreate)
         {
-            <a class="button button--primary" href="@NewUserHref">
+            <a class="button button--primary" href="users/new">
                 <AppIcon Name="plus" Size="17" />
                 Novo usuário
             </a>
         }
-        <StatusBadge Tone="info" Icon="shield">Gestão contextual</StatusBadge>
+        <StatusBadge Tone="info" Icon="shield">Diretório global</StatusBadge>
     </Actions>
 </PageHeader>
 
 <section class="contract-strip contract-strip--info">
     <AppIcon Name="shield" Size="20" />
     <div>
-        <strong>Autoridade calculada no serviço</strong>
-        <span>Administrator possui visão global; Manager recebe somente os contextos derivados de suas diretivas.</span>
+        <strong>Contas do provedor de identidade</strong>
+        <span>Esta tela administra autenticação, perfil e credenciais. Autoridades empresariais permanecem nas aplicações que as definem.</span>
     </div>
     <StatusBadge Tone="info">Auditado</StatusBadge>
 </section>
@@ -65,25 +65,6 @@ else
                 <p>@ToolbarDescription</p>
             </div>
             <div class="data-toolbar__actions user-filters">
-                @if (ShowContextSelector)
-                {
-                    <label class="select-field">
-                        <span>Contexto</span>
-                        <select value="@selectedContextId"
-                                disabled="@usersLoading"
-                                @onchange="ChangeContextAsync">
-                            @if (Access.HasGlobalAccess)
-                            {
-                                <option value="">Todos os contextos</option>
-                            }
-                            @foreach (var contextId in Access.ContextIds)
-                            {
-                                <option value="@contextId">@ContextLabel(contextId)</option>
-                            }
-                        </select>
-                    </label>
-                }
-
                 <form class="user-search"
                       @onsubmit="SearchAsync"
                       @onsubmit:preventDefault>
@@ -154,7 +135,6 @@ else
                             <tr>
                                 <th scope="col">Usuário</th>
                                 <th scope="col">E-mail</th>
-                                <th scope="col">Papéis</th>
                                 <th scope="col">MFA</th>
                                 <th scope="col">Estado</th>
                                 <th scope="col"><span class="visually-hidden">Ações</span></th>
@@ -182,16 +162,6 @@ else
                                                 </span>
                                             }
                                         </span>
-                                    </td>
-                                    <td data-label="Papéis">
-                                        @if (user.Roles.Count is 0)
-                                        {
-                                            <span class="muted-value">Sem papel</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="role-list">@string.Join(", ", user.Roles)</span>
-                                        }
                                     </td>
                                     <td data-label="MFA">
                                         <StatusBadge Tone="@(user.TwoFactorEnabled ? "success" : "neutral")">
@@ -246,11 +216,11 @@ else
 
     <section class="client-guardrails" aria-labelledby="user-safety-heading">
         <div>
-            <h2 id="user-safety-heading">Limites desta entrega</h2>
-            <p>Criação e credenciais seguem a autoridade persistida; papéis e diretivas não são concedidos implicitamente.</p>
+            <h2 id="user-safety-heading">Fronteira desta administração</h2>
+            <p>Operações alteram somente a conta no provedor; cargos, permissões e vínculos empresariais não são interpretados aqui.</p>
         </div>
         <ul>
-            <li><AppIcon Name="shield" Size="18" /> Manager nunca recebe bypass global</li>
+            <li><AppIcon Name="shield" Size="18" /> Capabilities do operador são avaliadas no serviço</li>
             <li><AppIcon Name="audit" Size="18" /> Leituras e mutações geram eventos de auditoria</li>
             <li><AppIcon Name="lock" Size="18" /> Senhas, hashes, tokens e claims não são expostos</li>
         </ul>
@@ -263,52 +233,38 @@ else
     private bool accessLoading = true;
     private bool usersLoading;
     private string search = string.Empty;
-    private string? selectedContextId;
     private int currentPage = 1;
     private const int PageSize = 25;
 
-    [SupplyParameterFromQuery(Name = "context")]
-    public string? RequestedContextId { get; set; }
-
     private ManagementUserAccess Access =>
-        accessResult?.Value ?? new(false, []);
+        accessResult?.Value ?? new(false, false);
 
     private ManagementUserPage Page =>
-        usersResult?.Value ?? new([], 1, PageSize, 0, selectedContextId);
-
-    private bool ShowContextSelector =>
-        Access.HasGlobalAccess || Access.ContextIds.Count > 1;
+        usersResult?.Value ?? new([], 1, PageSize, 0);
 
     private int TotalPages =>
         Math.Max(1, (int)Math.Ceiling(Page.TotalCount / (double)Page.PageSize));
 
-    private string NewUserHref =>
-        selectedContextId is null
-            ? "users/new"
-            : $"users/new?context={Uri.EscapeDataString(selectedContextId)}";
-
     private string AccessErrorTitle =>
         accessResult?.Outcome is ManagementDataOutcome.StepUpRequired
             ? "Autenticação adicional necessária"
-            : "Nenhum contexto administrativo disponível";
+            : "Acesso ao diretório não autorizado";
 
     private string UsersErrorTitle =>
         usersResult?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? "MFA exigido neste contexto"
+            ? "MFA exigido para esta operação"
             : usersResult?.Outcome is ManagementDataOutcome.Forbidden
-                ? "Acesso ao contexto negado"
+                ? "Acesso ao diretório negado"
                 : "Não foi possível consultar os usuários";
 
     private string ToolbarDescription =>
         usersLoading
             ? "Consultando o diretório autorizado…"
-            : selectedContextId is null
-                ? "Visão global de Administrator."
-                : $"Visão restrita ao contexto {ContextLabel(selectedContextId)}.";
+            : "Contas reconhecidas por este provedor de identidade.";
 
     private string EmptyDescription =>
         string.IsNullOrWhiteSpace(search)
-            ? "O serviço respondeu sem identidades para o contexto selecionado."
+            ? "O serviço respondeu sem identidades cadastradas."
             : "Revise o nome ou e-mail informado e tente novamente.";
 
     private string ResultCountLabel =>
@@ -329,15 +285,6 @@ else
 
         if (accessResult.IsSuccess)
         {
-            selectedContextId =
-                !string.IsNullOrWhiteSpace(RequestedContextId)
-                && Access.ContextIds.Contains(
-                    RequestedContextId,
-                    StringComparer.OrdinalIgnoreCase)
-                    ? RequestedContextId
-                    : Access.HasGlobalAccess
-                        ? null
-                        : Access.ContextIds.FirstOrDefault();
             await LoadUsersAsync();
         }
     }
@@ -348,7 +295,6 @@ else
         usersResult = await UserData.SearchAsync(
             new ManagementUserSearch(
                 search,
-                selectedContextId,
                 currentPage,
                 PageSize));
         usersLoading = false;
@@ -356,15 +302,6 @@ else
 
     private async Task SearchAsync()
     {
-        currentPage = 1;
-        await LoadUsersAsync();
-    }
-
-    private async Task ChangeContextAsync(ChangeEventArgs args)
-    {
-        selectedContextId = string.IsNullOrWhiteSpace(args.Value?.ToString())
-            ? null
-            : args.Value!.ToString();
         currentPage = 1;
         await LoadUsersAsync();
     }
@@ -388,13 +325,8 @@ else
         await LoadUsersAsync();
     }
 
-    private string UserHref(string id)
-    {
-        var href = $"users/{Uri.EscapeDataString(id)}";
-        return selectedContextId is null
-            ? href
-            : $"{href}?context={Uri.EscapeDataString(selectedContextId)}";
-    }
+    private static string UserHref(string id) =>
+        $"users/{Uri.EscapeDataString(id)}";
 
     private static string DisplayUserName(ManagementUserSummary user) =>
         string.IsNullOrWhiteSpace(user.UserName)
@@ -403,11 +335,6 @@ else
 
     private static string DisplayEmail(ManagementUserSummary user) =>
         string.IsNullOrWhiteSpace(user.Email) ? "Não informado" : user.Email;
-
-    private static string ContextLabel(string contextId) =>
-        contextId.Length > 12
-            ? $"{contextId[..8]}…{contextId[^4..]}"
-            : contextId;
 
     private static string Pluralize(
         int count,

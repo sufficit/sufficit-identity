@@ -61,48 +61,47 @@
         <div class="panel-header">
             <div>
                 <p class="section-kicker">Autorização</p>
-                <h2 id="authorization-settings-heading">Papéis do host</h2>
+                <h2 id="authorization-settings-heading">Capabilities do provedor</h2>
             </div>
         </div>
         <dl class="config-list">
             <div>
                 <dt>
-                    <span>Acesso ao Management</span>
-                    <code>Authorization</code>
+                    <span>Acesso humano</span>
+                    <code>IManagementEntitlementResolver</code>
                 </dt>
                 <dd>
-                    <span class="config-value">@string.Join(", ", AccessRoles)</span>
+                    <span class="config-value">Mapeamento fornecido pelo host</span>
                     <StatusBadge Tone="success">Policy ativa</StatusBadge>
                 </dd>
             </div>
             <div>
                 <dt>
-                    <span>Gerenciar clientes</span>
-                    <code>AdministratorRoles</code>
+                    <span>Management API</span>
+                    <code>RequiredScope</code>
                 </dt>
                 <dd>
-                    <span class="config-value">@string.Join(", ", AdministratorRoles)</span>
-                    <StatusBadge Tone="info">Administrator</StatusBadge>
+                    <span class="config-value">@SharedOptions.RequiredScope</span>
+                    <StatusBadge Tone="info">OAuth scope</StatusBadge>
                 </dd>
             </div>
             <div>
                 <dt>
-                    <span>Gerenciar usuários</span>
-                    <code>ManagerRoles</code>
+                    <span>Autenticação multifator</span>
+                    <code>RequireMfa</code>
                 </dt>
                 <dd>
-                    <span class="config-value">
-                        @string.Join(", ", Options.GetManagerRoles())
-                    </span>
-                    <StatusBadge Tone="success">Contextual</StatusBadge>
+                    <span class="config-value">@(SharedOptions.RequireMfa ? "Obrigatória" : "Opcional")</span>
+                    <StatusBadge Tone="@(SharedOptions.RequireMfa ? "warning" : "neutral")">Política global</StatusBadge>
                 </dd>
             </div>
         </dl>
         <footer class="settings-help">
             <AppIcon Name="shield" Size="18" />
             <p>
-                Administrator herda as capacidades de Manager. O adaptador de
-                diretivas limita Managers aos contextos presentes em seus grants.
+                O host pode mapear sua própria autoridade operacional para
+                capabilities do provedor. Esse mapeamento não altera nem sugere
+                papéis para os usuários administrados.
             </p>
         </footer>
     </section>
@@ -119,21 +118,6 @@
 
 @code {
     private ManagementUiOptions Options => ManagementOptions.Value;
-
-    private string[] AdministratorRoles
-    {
-        get
-        {
-            var roles = SharedManagementOptions.Value.Authorization
-                .AdministratorRoles
-                .Where(role => !string.IsNullOrWhiteSpace(role))
-                .Select(role => role.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-            return roles.Length is 0 ? ["administrator"] : roles;
-        }
-    }
-
-    private string[] AccessRoles =>
-        Options.GetAccessRoles(AdministratorRoles);
+    private Sufficit.Identity.Management.ManagementOptions SharedOptions =>
+        SharedManagementOptions.Value;
 }

@@ -33,7 +33,7 @@
         <strong>Fluxo incorporado sobre a mesma fonte de verdade</strong>
         <span>Listagem, detalhe, criação e exclusão usam os mesmos casos de uso e a mesma auditoria da API.</span>
     </div>
-    <StatusBadge Tone="info">Administrator</StatusBadge>
+    <StatusBadge Tone="info">Capability</StatusBadge>
 </section>
 
 <section class="table-panel" aria-labelledby="clients-list-heading" aria-busy="@loading">
@@ -173,7 +173,7 @@
         <p>A camada de aplicação autoriza e audita cada mutação antes de devolver o resultado à interface.</p>
     </div>
     <ul>
-        <li><AppIcon Name="shield" Size="18" /> Operações exigem a capability de Administrator</li>
+        <li><AppIcon Name="shield" Size="18" /> Operações exigem capabilities específicas do provedor</li>
         <li><AppIcon Name="lock" Size="18" /> Segredos nunca aparecem na listagem</li>
         <li><AppIcon Name="audit" Size="18" /> Criação e exclusão geram eventos persistentes</li>
     </ul>

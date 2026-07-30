@@ -53,7 +53,7 @@ else if (User.Actions.UpdateProfileRequiresMfa)
     <section class="panel">
         <EmptyState Icon="shield"
                     Title="MFA necessário para editar o perfil"
-                    Description="Ao menos um contexto desta conta exige autenticação multifator. Conclua o MFA na sessão administrativa e retorne a esta página.">
+                    Description="A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.">
             <Actions>
                 <a class="button button--secondary" href="@DetailHref">
                     Voltar para o usuário
@@ -66,8 +66,8 @@ else if (!User.Actions.CanUpdateProfile)
 {
     <section class="panel">
         <EmptyState Icon="lock"
-                    Title="Perfil protegido por escopo completo"
-                    Description="A identidade afeta a conta inteira. Somente Administrator ou um Manager com autoridade em todos os contextos pode alterá-la.">
+                    Title="Edição de perfil não autorizada"
+                    Description="Sua sessão não possui a capability necessária para alterar contas do provedor.">
             <Actions>
                 <a class="button button--secondary" href="@DetailHref">
                     Voltar para o usuário
@@ -81,10 +81,10 @@ else
     <section class="contract-strip contract-strip--warning">
         <AppIcon Name="shield" Size="20" />
         <div>
-            <strong>Alteração válida para a conta inteira</strong>
+            <strong>Alteração da conta no provedor</strong>
             <span>Dados modificados invalidam tokens ativos; consentimentos duráveis permanecem preservados.</span>
         </div>
-        <StatusBadge Tone="warning">Todos os contextos</StatusBadge>
+        <StatusBadge Tone="warning">Sessões afetadas</StatusBadge>
     </section>
 
     @if (submission?.IsSuccess is false)
@@ -185,9 +185,6 @@ else
     [Parameter]
     public string Id { get; set; } = string.Empty;
 
-    [SupplyParameterFromQuery(Name = "context")]
-    public string? ContextId { get; set; }
-
     private readonly UserEditModel model = new();
     private ManagementDataResult<ManagementUserDetail>? detailResult;
     private ManagementDataResult<ManagementUserDetail>? submission;
@@ -207,26 +204,18 @@ else
             false,
             null,
             0,
-            [],
-            [],
             DateTime.MinValue);
 
     private string DetailHref =>
-        ContextId is null
-            ? $"users/{Uri.EscapeDataString(Id)}"
-            : $"users/{Uri.EscapeDataString(Id)}" +
-              $"?context={Uri.EscapeDataString(ContextId)}";
+        $"users/{Uri.EscapeDataString(Id)}";
 
-    private string UsersHref =>
-        ContextId is null
-            ? "users"
-            : $"users?context={Uri.EscapeDataString(ContextId)}";
+    private const string UsersHref = "users";
 
     private string LoadErrorTitle =>
         detailResult?.Outcome is ManagementDataOutcome.NotFound
-            ? "Usuário não encontrado neste contexto"
+            ? "Usuário não encontrado"
             : detailResult?.Outcome is ManagementDataOutcome.StepUpRequired
-                ? "MFA exigido neste contexto"
+                ? "MFA exigido para carregar o perfil"
                 : detailResult?.Outcome is ManagementDataOutcome.Forbidden
                     ? "Acesso ao usuário negado"
                     : "Não foi possível carregar o perfil";
@@ -246,7 +235,7 @@ else
     {
         loading = true;
         submission = null;
-        detailResult = await UserData.GetAsync(Id, ContextId);
+        detailResult = await UserData.GetAsync(Id);
         if (detailResult.IsSuccess && detailResult.Value is not null)
         {
             model.UserName = detailResult.Value.UserName ?? string.Empty;
@@ -274,11 +263,8 @@ else
 
         if (submission.IsSuccess && submission.Value is not null)
         {
-            var contextQuery = ContextId is null
-                ? string.Empty
-                : $"&context={Uri.EscapeDataString(ContextId)}";
             Navigation.NavigateTo(
-                $"users/{Uri.EscapeDataString(Id)}?updated=1{contextQuery}");
+                $"users/{Uri.EscapeDataString(Id)}?updated=1");
         }
     }
 

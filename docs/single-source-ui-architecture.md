@@ -24,10 +24,10 @@ A UI nunca acessa diretamente banco, `DbContext`, `UserManager`,
 
 A camada de aplicação é proprietária de:
 
-- dados de usuários, clientes, scopes, grants, sessões, branding e auditoria;
+- dados de contas, clientes, scopes, grants, sessões, branding e auditoria;
 - identidade do operador e capabilities efetivas;
-- escopo de tenant/contexto e exigências de MFA;
-- opções, estados, regras de validação e defaults de negócio;
+- exigências de MFA e políticas administrativas do provedor;
+- opções, estados, regras de validação e defaults de protocolo;
 - paginação, filtros autorizados e resultados de comandos;
 - códigos estáveis de erro, autorização e recuperação;
 - contratos consumidos por todos os adaptadores.
@@ -41,8 +41,8 @@ A UI é proprietária somente de:
 - escolha de quais ações apresentar a partir das capabilities retornadas pelo
   use case canônico.
 
-A UI não mantém uma segunda matriz de roles/capabilities, lista de opções de
-negócio, regra de tenant, default de segurança ou cópia autoritativa de um
+A UI não mantém uma segunda matriz de capabilities, lista de opções de
+negócio, default de segurança ou cópia autoritativa de um
 recurso.
 
 ## Adaptadores permitidos
@@ -71,8 +71,8 @@ consistência.
 - Controllers e UIs usam o mesmo avaliador de capabilities e recursos.
 - Policies de rota podem melhorar challenge, navegação e explicações, mas não
   redefinem a decisão de negócio.
-- O use case recebe o operador e o recurso real, aplica tenant/contexto e MFA e
-  falha fechado.
+- O use case recebe o operador e o recurso real, aplica a capability e a
+  política MFA e falha fechado.
 - Cookie interativo e bearer são autenticações diferentes na borda, não regras
   de autorização diferentes no domínio.
 - A UI não recebe access token ou refresh token apenas para chamar o próprio
@@ -91,17 +91,14 @@ consistência.
 
 ## Violações atuais conhecidas
 
-Os verticais administrativos de clientes, branding e usuários
+Os verticais administrativos de clientes, branding e contas
 aplicam o padrão canônico. Controllers HTTP e data sources da UI usam
 `IClientManagementService`, `IBrandingManagementService` e
-`IUserManagementService` para executar os mesmos casos de uso. A gestão de
-papéis e diretivas usa `IUserPermissionManagementService` tanto na tela de
-Acesso quanto no controller HTTP. Esses serviços concentram validação,
-defaults, autorização e auditoria; o escopo DI curto protege o circuito Blazor
-sem criar uma segunda implementação. Usuários incluem acesso, pesquisa
-paginada, detalhe, criação contextual, atualização de perfil, reset de senha e
-delegação de autoridade com validação completa da associação multicontexto.
-Atualização de perfil, bloqueio e desbloqueio também passam por esse serviço:
+`IUserManagementService` para executar os mesmos casos de uso. Esses serviços
+concentram validação, defaults, autorização e auditoria; o escopo DI curto
+protege o circuito Blazor sem criar uma segunda implementação. Usuários incluem
+acesso, pesquisa paginada global, detalhe, criação, atualização de perfil,
+reset de senha, bloqueio e desbloqueio:
 a UI recebe a decisão de capability e apenas envia o comando; Identity,
 confirmações, security stamp, tokens, autorizações e auditoria permanecem no
 runtime canônico.
@@ -120,8 +117,8 @@ Ainda existem violações a migrar:
   do OpenIddict;
 - a Management UI ainda possui conteúdo local sobre ambiente e disponibilidade
   de módulos que precisa vir do contrato canônico;
-- o acesso inicial de `Manager` ao shell ainda usa uma role configurada até a
-  entrega das capabilities contextuais.
+- conteúdo local sobre prontidão de módulos ainda deve migrar para um contrato
+  de descoberta do runtime.
 
 Esses caminhos são débitos de migração, não precedentes arquiteturais. Nenhuma
 nova tela deve repetir esse padrão.
@@ -146,7 +143,7 @@ nova tela deve repetir esse padrão.
   managers ou SDKs de infraestrutura.
 - Controllers não contêm validações ou defaults de negócio ausentes no
   contrato de aplicação.
-- Nenhuma capability, regra de tenant ou default de negócio é decidido apenas
+- Nenhuma capability ou default de segurança é decidido apenas
   no frontend.
 - Testes cobrem o contrato uma vez e verificam a adaptação de UI e HTTP.
 - Trocar o adaptador de UI ou HTTP não altera o resultado do domínio.
