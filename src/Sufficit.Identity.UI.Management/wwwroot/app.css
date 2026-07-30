@@ -1688,6 +1688,106 @@ h3 {
     font-size: 11px;
 }
 
+.account-access-panel {
+    display: grid;
+    gap: 18px;
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+}
+
+.account-access-panel--restrict {
+    border-color: #f4c7c3;
+}
+
+.account-access-panel--restore {
+    border-color: #ead4af;
+}
+
+.account-access-panel__heading {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 14px;
+}
+
+.account-access-panel__icon {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border-radius: var(--radius);
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
+.account-access-panel--restore .account-access-panel__icon {
+    background: var(--warning-soft);
+    color: var(--warning);
+}
+
+.account-access-panel__heading h2 {
+    margin-bottom: 3px;
+    font-size: 15px;
+}
+
+.account-access-panel__heading p {
+    max-width: 70ch;
+    margin-bottom: 0;
+    color: var(--ink-muted);
+    font-size: 12px;
+}
+
+.account-access-confirmation {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid #f4c7c3;
+    border-radius: var(--radius);
+    background: var(--danger-soft);
+    color: var(--ink);
+    cursor: pointer;
+}
+
+.account-access-confirmation input {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 auto;
+    margin-top: 2px;
+    accent-color: var(--danger);
+}
+
+.account-access-confirmation span {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+}
+
+.account-access-confirmation strong {
+    font-size: 12px;
+}
+
+.account-access-confirmation small {
+    color: #7f1d17;
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.account-access-panel__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.account-access-panel__actions > span {
+    max-width: 68ch;
+    color: var(--ink-muted);
+    font-size: 11px;
+}
+
 .access-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3593,22 +3693,30 @@ h3 {
         padding: 20px 16px;
     }
 
-    .credential-panel__heading {
+    .credential-panel__heading,
+    .account-access-panel__heading {
         grid-template-columns: 42px minmax(0, 1fr);
     }
 
-    .credential-panel__heading > .status-badge {
+    .credential-panel__heading > .status-badge,
+    .account-access-panel__heading > .status-badge {
         grid-column: 2;
         justify-self: start;
     }
 
-    .credential-panel__actions {
+    .credential-panel__actions,
+    .account-access-panel__actions {
         align-items: stretch;
         flex-direction: column;
     }
 
-    .credential-panel__actions .button {
+    .credential-panel__actions .button,
+    .account-access-panel__actions .button {
         width: 100%;
+    }
+
+    .account-access-panel {
+        padding: 20px 16px;
     }
 
     .detail-columns > section + section {

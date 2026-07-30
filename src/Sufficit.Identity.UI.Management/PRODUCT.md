@@ -79,10 +79,12 @@ auditoria em todo o fluxo.
 - Contrato atual confirmado: clientes possuem listar, obter, criar e excluir;
   branding possui CRUD e ativação; provisionamento possui preview e aplicação
   aditiva.
-- Usuários possuem acesso, pesquisa paginada, detalhe, criação contextual e
-  reset de senha protegido por escopo completo. Atualização, bloqueio,
-  exclusão, papéis, claims, scopes isolados, sessões e grants ainda dependem de
-  novos contratos; auditoria e branding já usam contratos compartilhados.
+- Usuários possuem acesso, pesquisa paginada, detalhe, criação contextual,
+  reset de senha e bloqueio/desbloqueio protegidos por escopo completo. O
+  bloqueio revoga sessões, tokens e autorizações pelo runtime canônico.
+  Atualização de perfil, exclusão, papéis, claims, scopes isolados, sessões e
+  grants ainda dependem de novos contratos; auditoria e branding já usam
+  contratos compartilhados.
 - O modelo genérico, o adaptador Sufficit e a matriz inicial de capacidades
   estão definidos em
   [`../../docs/management-authorization-architecture.md`](../../docs/management-authorization-architecture.md).

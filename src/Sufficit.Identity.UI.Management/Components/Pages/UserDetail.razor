@@ -35,6 +35,21 @@
     </section>
 }
 
+@if (lockoutChangeSucceeded)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>@(lastLockoutState is true ? "Acesso bloqueado" : "Acesso desbloqueado")</strong>
+            <span>
+                @(lastLockoutState is true
+                    ? "As sessões, os tokens e as autorizações da conta foram revogados."
+                    : "A conta pode autenticar novamente; as sessões anteriores continuam revogadas.")
+            </span>
+        </div>
+    </section>
+}
+
 @if (loading)
 {
     <section class="detail-shell" aria-busy="true" aria-label="Carregando detalhes do usuário">
@@ -140,6 +155,106 @@ else if (result?.IsSuccess is true && result.Value is not null)
             <StatusBadge Tone="success" Icon="audit">Registrada</StatusBadge>
         </section>
     </section>
+
+    @if (user.Actions.CanSetLockout)
+    {
+        var currentlyLocked = IsLockedOut(user);
+
+        <section class="account-access-panel @(currentlyLocked ? "account-access-panel--restore" : "account-access-panel--restrict")"
+                 aria-labelledby="account-access-heading">
+            <div class="account-access-panel__heading">
+                <div class="account-access-panel__icon">
+                    <AppIcon Name="@(currentlyLocked ? "refresh" : "lock")" Size="20" />
+                </div>
+                <div>
+                    <h2 id="account-access-heading">
+                        @(currentlyLocked ? "Desbloquear acesso" : "Bloquear acesso")
+                    </h2>
+                    <p>
+                        @(currentlyLocked
+                            ? "Remove o bloqueio da conta sem restaurar sessões ou tokens anteriores."
+                            : "Interrompe novas autenticações e revoga sessões, tokens e autorizações em todos os contextos.")
+                    </p>
+                </div>
+                <StatusBadge Tone="@(currentlyLocked ? "warning" : "danger")">
+                    @(currentlyLocked ? "Conta bloqueada" : "Conta ativa")
+                </StatusBadge>
+            </div>
+
+            @if (lockoutResult?.IsSuccess is false)
+            {
+                <section class="inline-notice inline-notice--danger" role="alert">
+                    <AppIcon Name="alert" Size="19" />
+                    <div>
+                        <strong>@LockoutErrorTitle</strong>
+                        <span>@lockoutResult.ErrorMessage</span>
+                    </div>
+                </section>
+            }
+
+            @if (!currentlyLocked)
+            {
+                <label class="account-access-confirmation" for="confirm-account-lockout">
+                    <input id="confirm-account-lockout"
+                           type="checkbox"
+                           @bind="lockoutConfirmed" />
+                    <span>
+                        <strong>Confirmo o bloqueio desta conta</strong>
+                        <small>O usuário perderá o acesso na próxima validação e precisará ser desbloqueado por um operador autorizado.</small>
+                    </span>
+                </label>
+            }
+
+            <div class="account-access-panel__actions">
+                <span>Esta operação afeta a conta inteira e fica registrada por contexto.</span>
+                <button class="button @(currentlyLocked ? "button--secondary" : "button--danger")"
+                        type="button"
+                        disabled="@(changingLockout || (!currentlyLocked && !lockoutConfirmed))"
+                        @onclick="() => SetLockoutAsync(!currentlyLocked)">
+                    @if (changingLockout)
+                    {
+                        <span class="button-spinner" aria-hidden="true"></span>
+                        <span>@(currentlyLocked ? "Desbloqueando…" : "Bloqueando…")</span>
+                    }
+                    else
+                    {
+                        <AppIcon Name="@(currentlyLocked ? "refresh" : "lock")" Size="17" />
+                        <span>@(currentlyLocked ? "Desbloquear conta" : "Bloquear conta")</span>
+                    }
+                </button>
+            </div>
+        </section>
+    }
+    else if (user.Actions.SetLockoutRequiresMfa)
+    {
+        <section class="decision-note decision-note--neutral">
+            <AppIcon Name="shield" Size="21" />
+            <div>
+                <h2>MFA necessário para alterar o acesso</h2>
+                <p>Ao menos um contexto desta conta exige autenticação multifator. Conclua o MFA na sessão administrativa e retorne a esta página.</p>
+            </div>
+        </section>
+    }
+    else if (user.Actions.SetLockoutReasonCode is "user_self_lockout_not_allowed")
+    {
+        <section class="decision-note decision-note--neutral">
+            <AppIcon Name="shield" Size="21" />
+            <div>
+                <h2>Sua própria conta permanece protegida</h2>
+                <p>Para evitar perda acidental de acesso administrativo, outro operador autorizado deve bloquear esta conta.</p>
+            </div>
+        </section>
+    }
+    else
+    {
+        <section class="decision-note decision-note--neutral">
+            <AppIcon Name="lock" Size="21" />
+            <div>
+                <h2>Bloqueio protegido por escopo completo</h2>
+                <p>Somente Administrator ou um Manager com autoridade em todos os contextos pode bloquear ou desbloquear esta conta.</p>
+            </div>
+        </section>
+    }
 
     @if (user.Actions.CanResetPassword)
     {
@@ -266,10 +381,15 @@ else
 
     private ManagementDataResult<ManagementUserDetail>? result;
     private ManagementDataResult<ManagementUserDetail>? resetResult;
+    private ManagementDataResult<ManagementUserDetail>? lockoutResult;
     private readonly PasswordResetModel passwordModel = new();
     private bool loading = true;
     private bool resettingPassword;
+    private bool changingLockout;
     private bool passwordResetSucceeded;
+    private bool lockoutChangeSucceeded;
+    private bool? lastLockoutState;
+    private bool lockoutConfirmed;
 
     private bool Created => CreatedFlag is 1;
 
@@ -306,6 +426,13 @@ else
                 ? "Autoridade insuficiente sobre a conta"
                 : "Não foi possível redefinir a senha";
 
+    private string LockoutErrorTitle =>
+        lockoutResult?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? "MFA exigido para alterar o acesso"
+            : lockoutResult?.Outcome is ManagementDataOutcome.Forbidden
+                ? "Autoridade insuficiente sobre a conta"
+                : "Não foi possível alterar o acesso";
+
     protected override async Task OnParametersSetAsync() => await LoadAsync();
 
     private async Task LoadAsync()
@@ -339,6 +466,29 @@ else
         }
     }
 
+    private async Task SetLockoutAsync(bool locked)
+    {
+        if (changingLockout || (locked && !lockoutConfirmed))
+        {
+            return;
+        }
+
+        changingLockout = true;
+        lockoutChangeSucceeded = false;
+        lockoutResult = await UserData.SetLockoutAsync(
+            Id,
+            new SetManagementUserLockoutCommand(locked));
+        changingLockout = false;
+
+        if (lockoutResult.IsSuccess && lockoutResult.Value is not null)
+        {
+            result = lockoutResult;
+            lastLockoutState = locked;
+            lockoutConfirmed = false;
+            lockoutChangeSucceeded = true;
+        }
+    }
+
     private static string Display(string? value) =>
         string.IsNullOrWhiteSpace(value) ? "Não informado" : value;
 
@@ -353,6 +503,10 @@ else
             ? $"Bloqueado até {end.ToLocalTime():dd/MM/yyyy HH:mm}"
             : "Sem bloqueio ativo";
     }
+
+    private static bool IsLockedOut(ManagementUserDetail user) =>
+        user.LockoutEnd is { } end
+        && end > DateTimeOffset.UtcNow;
 
     private sealed class PasswordResetModel
     {

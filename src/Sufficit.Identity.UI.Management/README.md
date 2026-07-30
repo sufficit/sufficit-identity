@@ -21,13 +21,17 @@ Implementado:
   aplicação usado pela API, sem uma chamada HTTP ao próprio host;
 - listagem, criação, edição, prévia, ativação exclusiva e exclusão de temas de
   branding pelo mesmo serviço de aplicação usado pela API;
-- acesso, pesquisa paginada, detalhe, criação contextual e reset de senha de
-  usuários pelo mesmo serviço de aplicação usado pela API;
+- acesso, pesquisa paginada, detalhe, criação contextual, reset de senha e
+  bloqueio/desbloqueio de usuários pelo mesmo serviço de aplicação usado pela
+  API;
 - `Administrator` global e `Manager` limitado aos contextos calculados a partir
   de claims `directive` escalares ou em array no adaptador Sufficit;
 - criação sem autoridade implícita, usando associação explícita ao contexto, e
   reset de senha permitido a Manager somente quando todos os contextos da conta
   estão dentro de sua autoridade;
+- bloqueio com confirmação explícita, prevenção de autobloqueio, atualização do
+  security stamp e revogação de tokens/autorizações; desbloqueio não restaura
+  sessões anteriores;
 - política MFA substituível e configurável por contexto;
 - defaults seguros para consentimento, HTTPS, PKCE e PAR;
 - confirmação explícita antes da exclusão;
@@ -38,7 +42,7 @@ Implementado:
 
 Ainda não implementado:
 
-- atualização, bloqueio e exclusão de usuários;
+- atualização de perfil e exclusão de usuários;
 - delegação administrativa de papéis, claims e diretivas;
 - títulos amigáveis dos contextos e fonte externa de políticas MFA;
 - contratos administrativos de scopes isolados, sessões e grants.
@@ -165,7 +169,7 @@ Management habilitado e um usuário autenticado com um dos papéis configurados.
 
 ## Próximas entregas
 
-1. Implementar atualização, bloqueio e exclusão de usuários.
+1. Implementar atualização de perfil e exclusão de usuários.
 2. Implementar limites de delegação de papéis, claims e diretivas.
 3. Resolver títulos de contextos e políticas MFA por uma fonte substituível.
 4. Migrar provisionamento, scopes e sessões para use cases compartilhados.

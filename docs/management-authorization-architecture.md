@@ -3,7 +3,9 @@
 > Status: host integration, global client/branding capabilities, persistent
 > audit, normalized grants, Sufficit directive resolution, per-context MFA
 > policy and contextual user read contracts implemented. Contextual creation
-> and password reset follow the multi-context rule recorded below.
+> password reset, lockout and unlock follow the multi-context rule recorded
+> below. Lockout also invalidates the Identity session and revokes the target
+> subject's OpenIddict tokens and authorizations.
 > Authorization is decided by the shared application layer used by the UI and
 > Management API. The canonical boundary is
 > [`single-source-ui-architecture.md`](single-source-ui-architecture.md).
@@ -44,6 +46,10 @@ through a replaceable adapter at the composition boundary.
   conta. Qualquer contexto fora de sua autoridade, associação global ou conta
   sem contexto exige `Administrator`. Diretiva global, malformada ou sem
   contexto resolvível também falha fechada e exige `Administrator`.
+- Bloqueio e desbloqueio são mutações sobre a conta inteira e seguem a mesma
+  validação de todos os contextos. Bloquear atualiza o security stamp e revoga
+  tokens e autorizações; desbloquear não restaura nenhuma sessão anterior.
+- Um operador não pode bloquear a própria conta pela Management UI/API.
 
 ## Existing Sufficit model
 
@@ -209,6 +215,16 @@ membership from persistence and evaluates `identity.users.reset-password`
 against every context before touching the credential. A context supplied by
 the browser is never accepted as proof of the account's complete scope.
 
+Lockout and unlock use the same account-wide authorization rule with
+`identity.users.disable`. The application service changes the ASP.NET Identity
+lockout state, rotates the security stamp and revokes every OpenIddict token and
+authorization associated with the subject. The Identity cookie stamp is checked
+on every authenticated request, so local sessions are invalidated on their next
+request. Reference tokens and refresh tokens are rejected from their persisted
+entry immediately; deployments that issue self-contained JWT access tokens must
+also use introspection/token-entry validation or accept their configured short
+lifetime as the revocation bound.
+
 User creation is contextual and least-privileged. The initial context
 association is stored separately from authority directives, so creating an
 identity cannot accidentally delegate a role or capability. The Sufficit
@@ -338,8 +354,12 @@ authorization headers are always redacted.
   ou diretiva implícita. **Concluído.**
 - Redefinir senha somente após validar todos os contextos persistidos da conta.
   **Concluído, incluindo MFA por contexto e escalonamento para Administrator.**
+- Bloquear/desbloquear a conta após validar todos os contextos, revogar
+  sessões/tokens/autorizações e impedir autobloqueio. **Concluído, incluindo
+  auditoria por contexto e MFA por tenant.**
 - Add delegation limits for roles, claims and directives.
-- Audit all read and mutation paths. **Leituras concluídas.**
+- Audit all read and mutation paths. **Leituras, criação, reset de senha e
+  bloqueio/desbloqueio concluídos.**
 
 ### Phase 6 — Remaining modules
 
@@ -380,6 +400,7 @@ authorization headers are always redacted.
 | Attribute proves a directive in the wrong tenant | Authorize against the resolved resource |
 | Collection leaks records from other tenants | Push authorized scopes into the database query |
 | Stale role/directive claims preserve removed access | Short token lifetime, refresh/revalidation policy and revocation strategy |
+| Self-contained JWT remains valid after account lockout | Prefer reference/introspected tokens or enable token-entry validation at resource servers; otherwise bound exposure with a short access-token lifetime |
 | Production omits required role/directive scopes | Validate discovery and client permissions before rollout |
 | UI hides an action but another transport still accepts it | Each transport has a policy and the application layer gains resource-capability enforcement |
 | UI bypasses the application layer | Architecture tests reject direct UI references to persistence and Identity/OpenIddict managers |
@@ -412,5 +433,7 @@ authorization headers are always redacted.
   delivered application service evaluates operator capability and resource.
 - The API exposes client, branding and provisioning operations.
 - User access, paginated list, detail, contextual creation and password-reset
-  contracts exist. Update/disable/delete, role/claim delegation, independent
-  scope and session/grant contracts do not.
+  contracts exist. Account lockout/unlock also exists with security-stamp
+  rotation and OpenIddict token/authorization revocation. Profile update,
+  delete, role/claim delegation, independent scope and session/grant contracts
+  do not.

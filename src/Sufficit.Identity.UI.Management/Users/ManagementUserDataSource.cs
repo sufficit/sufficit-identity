@@ -74,6 +74,21 @@ public sealed class ManagementUserDataSource(
             "User password reset",
             cancellationToken);
 
+    public Task<ManagementDataResult<ManagementUserDetail>> SetLockoutAsync(
+        string id,
+        SetManagementUserLockoutCommand command,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (users, context) => users.SetLockoutAsync(
+                id,
+                command,
+                context,
+                cancellationToken),
+            command.Locked
+                ? "User lockout"
+                : "User unlock",
+            cancellationToken);
+
     private async Task<ManagementDataResult<T>> ExecuteAsync<T>(
         Func<IUserManagementService, ManagementRequestContext, Task<T>> operation,
         string operationName,
