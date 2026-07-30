@@ -255,7 +255,7 @@ public sealed class ManagementUiRoutingTests
         await SignInAsync(client, "administrator");
 
         using var claims = await client.GetAsync(
-            "/management/users/user-1/claims");
+            "/management/claims?user=user-1");
         var claimsHtml = WebUtility.HtmlDecode(
             await claims.Content.ReadAsStringAsync());
         using var scopes = await client.GetAsync("/management/scopes");
@@ -284,11 +284,11 @@ public sealed class ManagementUiRoutingTests
         await SignInAsync(client, "administrator");
 
         using var claimCreate = await client.GetAsync(
-            "/management/users/user-1/claims/new");
+            "/management/claims/new?user=user-1");
         var claimCreateHtml = WebUtility.HtmlDecode(
             await claimCreate.Content.ReadAsStringAsync());
         using var claimDetail = await client.GetAsync(
-            "/management/users/user-1/claims/1");
+            "/management/claims/edit?user=user-1&claim=1");
         var claimDetailHtml = WebUtility.HtmlDecode(
             await claimDetail.Content.ReadAsStringAsync());
         using var scopeCreate = await client.GetAsync(
@@ -322,6 +322,39 @@ public sealed class ManagementUiRoutingTests
             scopeDetailHtml,
             StringComparison.Ordinal);
         Assert.Contains("test-client", scopeDetailHtml, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Claims_without_user_query_fail_closed_to_user_selection()
+    {
+        await using var app = await CreateHostAsync();
+        using var client = app.GetTestClient();
+
+        await SignInAsync(client, "administrator");
+
+        using var claims = await client.GetAsync("/management/claims");
+        var claimsHtml = WebUtility.HtmlDecode(
+            await claims.Content.ReadAsStringAsync());
+        using var claimCreate = await client.GetAsync("/management/claims/new");
+        var claimCreateHtml = WebUtility.HtmlDecode(
+            await claimCreate.Content.ReadAsStringAsync());
+        using var claimDetail = await client.GetAsync("/management/claims/edit");
+        var claimDetailHtml = WebUtility.HtmlDecode(
+            await claimDetail.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, claims.StatusCode);
+        Assert.Contains("Selecione um usuário", claimsHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("urn:tests:locale", claimsHtml, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, claimCreate.StatusCode);
+        Assert.Contains(
+            "Selecione um usuário",
+            claimCreateHtml,
+            StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, claimDetail.StatusCode);
+        Assert.Contains(
+            "Selecione uma claim",
+            claimDetailHtml,
+            StringComparison.Ordinal);
     }
 
     [Fact]

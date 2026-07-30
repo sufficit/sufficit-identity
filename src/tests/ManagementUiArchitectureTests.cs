@@ -254,6 +254,12 @@ public sealed class ManagementUiArchitectureTests
             "Components",
             "Pages");
         var claims = File.ReadAllText(Path.Combine(pages, "Claims.razor"));
+        var claimCreate = File.ReadAllText(Path.Combine(
+            pages,
+            "ClaimCreate.razor"));
+        var claimDetail = File.ReadAllText(Path.Combine(
+            pages,
+            "ClaimDetail.razor"));
         var scopes = File.ReadAllText(Path.Combine(pages, "Scopes.razor"));
         var sessions = File.ReadAllText(Path.Combine(pages, "Sessions.razor"));
         var authorizations = File.ReadAllText(Path.Combine(
@@ -272,12 +278,32 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("ManagementClaimDataSource", claims, StringComparison.Ordinal);
         Assert.Contains("ManagementScopeDataSource", scopes, StringComparison.Ordinal);
         Assert.Contains(
-            "@page \"/users/{UserId}/claims\"",
+            "@page \"/claims\"",
             claims,
             StringComparison.Ordinal);
         Assert.Contains(
-            "users/{Uri.EscapeDataString(Id)}/claims",
+            "claims?user={Uri.EscapeDataString(Id)}",
             userDetail,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "[SupplyParameterFromQuery(Name = \"user\")]",
+            claims,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "@page \"/claims/new\"",
+            claimCreate,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "@page \"/claims/edit\"",
+            claimDetail,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "[SupplyParameterFromQuery(Name = \"claim\")]",
+            claimDetail,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "@page \"/users/{UserId}/claims",
+            claims + claimCreate + claimDetail,
             StringComparison.Ordinal);
         Assert.DoesNotContain("href=\"claims\"", navigation, StringComparison.Ordinal);
         Assert.Contains("href=\"scopes\"", navigation, StringComparison.Ordinal);
