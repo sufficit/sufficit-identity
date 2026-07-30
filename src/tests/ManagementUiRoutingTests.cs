@@ -207,6 +207,11 @@ public sealed class ManagementUiRoutingTests
             + "?context=4082aef4-42d3-4b1b-a321-f405af935940");
         var detailHtml = WebUtility.HtmlDecode(
             await detail.Content.ReadAsStringAsync());
+        using var edit = await client.GetAsync(
+            "/management/users/user-1/edit"
+            + "?context=4082aef4-42d3-4b1b-a321-f405af935940");
+        var editHtml = WebUtility.HtmlDecode(
+            await edit.Content.ReadAsStringAsync());
 
         Assert.Equal(HttpStatusCode.OK, create.StatusCode);
         Assert.Contains("Novo usuário", createHtml, StringComparison.Ordinal);
@@ -231,6 +236,19 @@ public sealed class ManagementUiRoutingTests
         Assert.Contains(
             "Confirmo o bloqueio desta conta",
             detailHtml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Editar perfil",
+            detailHtml,
+            StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
+        Assert.Contains(
+            "Salvar perfil",
+            editHtml,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Alteração válida para a conta inteira",
+            editHtml,
             StringComparison.Ordinal);
     }
 
@@ -515,10 +533,20 @@ public sealed class ManagementUiRoutingTests
                     ResetPasswordReasonCode: "allowed",
                     CanSetLockout: true,
                     SetLockoutRequiresMfa: false,
-                    SetLockoutReasonCode: "allowed")));
+                    SetLockoutReasonCode: "allowed",
+                    CanUpdateProfile: true,
+                    UpdateProfileRequiresMfa: false,
+                    UpdateProfileReasonCode: "allowed")));
 
         public Task<ManagementUserDetail> CreateAsync(
             CreateManagementUserCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<ManagementUserDetail> UpdateProfileAsync(
+            string id,
+            UpdateManagementUserProfileCommand command,
             ManagementRequestContext context,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();

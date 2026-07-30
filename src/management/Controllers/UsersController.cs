@@ -53,6 +53,17 @@ public sealed class UsersController(IUserManagementService users)
             RequestContext(),
             cancellationToken));
 
+    [HttpPut("{id}/profile")]
+    public async Task<ActionResult<ManagementUserDetail>> UpdateProfile(
+        string id,
+        [FromBody] UpdateManagementUserProfileCommand command,
+        CancellationToken cancellationToken) =>
+        Ok(await users.UpdateProfileAsync(
+            id,
+            command,
+            RequestContext(),
+            cancellationToken));
+
     [HttpPost("{id}/reset-password")]
     public async Task<ActionResult<ManagementUserDetail>> ResetPassword(
         string id,

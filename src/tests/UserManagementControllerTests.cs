@@ -489,6 +489,379 @@ public sealed class UserManagementControllerTests
     }
 
     [Fact]
+    public async Task Profile_update_revokes_tokens_preserves_authorizations_and_resets_confirmations()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        string targetId;
+        string? originalSecurityStamp;
+        var authorizationId = Guid.NewGuid().ToString("N");
+        var tokenId = Guid.NewGuid().ToString("N");
+        await using (var setup = factory.Services.CreateAsyncScope())
+        {
+            var userManager = setup.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            var target = await TestDataSeeder.CreateUserAsync(
+                userManager,
+                $"profile-{Guid.NewGuid():N}",
+                "Original!Passw0rd#20");
+            target.PhoneNumber = "+5511999990000";
+            target.PhoneNumberConfirmed = true;
+            target.EmailConfirmed = true;
+            var prepared = await userManager.UpdateAsync(target);
+            Assert.True(prepared.Succeeded);
+            targetId = target.Id;
+            originalSecurityStamp = target.SecurityStamp;
+
+            var setupDatabase = setup.ServiceProvider
+                .GetRequiredService<AppDbContext>();
+            setupDatabase.Set<OpenIddictEntityFrameworkCoreAuthorization>().Add(
+                new OpenIddictEntityFrameworkCoreAuthorization
+                {
+                    Id = authorizationId,
+                    ConcurrencyToken = Guid.NewGuid().ToString("N"),
+                    CreationDate = DateTime.UtcNow,
+                    Status = OpenIddictConstants.Statuses.Valid,
+                    Subject = targetId,
+                    Type = OpenIddictConstants.AuthorizationTypes.Permanent
+                });
+            setupDatabase.Set<OpenIddictEntityFrameworkCoreToken>().Add(
+                new OpenIddictEntityFrameworkCoreToken
+                {
+                    Id = tokenId,
+                    ConcurrencyToken = Guid.NewGuid().ToString("N"),
+                    CreationDate = DateTime.UtcNow,
+                    Status = OpenIddictConstants.Statuses.Valid,
+                    Subject = targetId,
+                    Type = OpenIddictConstants.TokenTypeHints.RefreshToken
+                });
+            await setupDatabase.SaveChangesAsync();
+        }
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider
+            .GetRequiredService<IUserManagementService>();
+        var newUserName = $"updated-{Guid.NewGuid():N}";
+        var updated = await service.UpdateProfileAsync(
+            targetId,
+            new UpdateManagementUserProfileCommand(
+                newUserName,
+                $"{newUserName}@tests.local",
+                "+5511988880000"),
+            RequestContext("administrator"));
+
+        Assert.Equal(newUserName, updated.UserName);
+        Assert.Equal($"{newUserName}@tests.local", updated.Email);
+        Assert.Equal("+5511988880000", updated.PhoneNumber);
+        Assert.False(updated.EmailConfirmed);
+        Assert.False(updated.PhoneNumberConfirmed);
+
+        var database = scope.ServiceProvider
+            .GetRequiredService<AppDbContext>();
+        database.ChangeTracker.Clear();
+        var persisted = await database.Users.SingleAsync(
+            user => user.Id == targetId);
+        var authorization = await database
+            .Set<OpenIddictEntityFrameworkCoreAuthorization>()
+            .SingleAsync(entry => entry.Id == authorizationId);
+        var token = await database
+            .Set<OpenIddictEntityFrameworkCoreToken>()
+            .SingleAsync(entry => entry.Id == tokenId);
+
+        Assert.Equal(newUserName.ToUpperInvariant(), persisted.NormalizedUserName);
+        Assert.Equal(
+            $"{newUserName}@tests.local".ToUpperInvariant(),
+            persisted.NormalizedEmail);
+        Assert.NotEqual(originalSecurityStamp, persisted.SecurityStamp);
+        Assert.Equal(
+            OpenIddictConstants.Statuses.Valid,
+            authorization.Status);
+        Assert.Equal(OpenIddictConstants.Statuses.Revoked, token.Status);
+        Assert.Contains(
+            await database.ManagementAuditEvents
+                .Where(entry => entry.ResourceId == targetId)
+                .ToArrayAsync(),
+            entry =>
+                entry.Capability == ManagementCapabilities.UsersUpdate
+                && entry.OperationOutcome == "succeeded"
+                && entry.ReasonCode == "user_profile_updated");
+    }
+
+    [Fact]
+    public async Task Unchanged_profile_preserves_security_stamp_and_tokens()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        string targetId;
+        string? originalSecurityStamp;
+        string userName;
+        string email;
+        var tokenId = Guid.NewGuid().ToString("N");
+        await using (var setup = factory.Services.CreateAsyncScope())
+        {
+            var userManager = setup.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            var target = await TestDataSeeder.CreateUserAsync(
+                userManager,
+                $"profile-noop-{Guid.NewGuid():N}",
+                "Original!Passw0rd#21");
+            targetId = target.Id;
+            userName = target.UserName!;
+            email = target.Email!;
+            originalSecurityStamp = target.SecurityStamp;
+
+            var setupDatabase = setup.ServiceProvider
+                .GetRequiredService<AppDbContext>();
+            setupDatabase.Set<OpenIddictEntityFrameworkCoreToken>().Add(
+                new OpenIddictEntityFrameworkCoreToken
+                {
+                    Id = tokenId,
+                    ConcurrencyToken = Guid.NewGuid().ToString("N"),
+                    CreationDate = DateTime.UtcNow,
+                    Status = OpenIddictConstants.Statuses.Valid,
+                    Subject = targetId,
+                    Type = OpenIddictConstants.TokenTypeHints.RefreshToken
+                });
+            await setupDatabase.SaveChangesAsync();
+        }
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider
+            .GetRequiredService<IUserManagementService>();
+        await service.UpdateProfileAsync(
+            targetId,
+            new UpdateManagementUserProfileCommand(
+                userName,
+                email,
+                null),
+            RequestContext("administrator"));
+
+        var database = scope.ServiceProvider
+            .GetRequiredService<AppDbContext>();
+        database.ChangeTracker.Clear();
+        var persisted = await database.Users.SingleAsync(
+            user => user.Id == targetId);
+        var token = await database
+            .Set<OpenIddictEntityFrameworkCoreToken>()
+            .SingleAsync(entry => entry.Id == tokenId);
+
+        Assert.Equal(originalSecurityStamp, persisted.SecurityStamp);
+        Assert.Equal(OpenIddictConstants.Statuses.Valid, token.Status);
+        Assert.Contains(
+            await database.ManagementAuditEvents
+                .Where(entry => entry.ResourceId == targetId)
+                .ToArrayAsync(),
+            entry =>
+                entry.Capability == ManagementCapabilities.UsersUpdate
+                && entry.OperationOutcome == "succeeded"
+                && entry.ReasonCode == "user_profile_unchanged");
+    }
+
+    [Fact]
+    public async Task Invalid_profile_is_rejected_before_identity_updates()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        string targetId;
+        string originalUserName;
+        string originalEmail;
+        string? originalSecurityStamp;
+        await using (var setup = factory.Services.CreateAsyncScope())
+        {
+            var userManager = setup.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            var target = await TestDataSeeder.CreateUserAsync(
+                userManager,
+                $"profile-rollback-{Guid.NewGuid():N}",
+                "Original!Passw0rd#22");
+            targetId = target.Id;
+            originalUserName = target.UserName!;
+            originalEmail = target.Email!;
+            originalSecurityStamp = target.SecurityStamp;
+        }
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider
+            .GetRequiredService<IUserManagementService>();
+        var failure = await Assert.ThrowsAsync<ManagementValidationException>(
+            () => service.UpdateProfileAsync(
+                targetId,
+                new UpdateManagementUserProfileCommand(
+                    $"partial-{Guid.NewGuid():N}",
+                    "not-an-email",
+                    "+5511977770000"),
+                RequestContext("administrator")));
+
+        Assert.Equal("user_email_invalid", failure.ReasonCode);
+        Assert.Equal("email", failure.Field);
+
+        var database = scope.ServiceProvider
+            .GetRequiredService<AppDbContext>();
+        database.ChangeTracker.Clear();
+        var persisted = await database.Users.SingleAsync(
+            user => user.Id == targetId);
+        Assert.Equal(originalUserName, persisted.UserName);
+        Assert.Equal(originalEmail, persisted.Email);
+        Assert.Equal(originalSecurityStamp, persisted.SecurityStamp);
+    }
+
+    [Fact]
+    public async Task Failed_token_revocation_rolls_back_profile_before_auditing()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var failingFactory = factory.WithWebHostBuilder(builder =>
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IManagementUserSessionRevoker>();
+                services.AddSingleton<
+                    IManagementUserSessionRevoker,
+                    ThrowingManagementUserSessionRevoker>();
+            }));
+
+        string targetId;
+        string originalUserName;
+        string originalEmail;
+        string? originalSecurityStamp;
+        await using (var setup = failingFactory.Services.CreateAsyncScope())
+        {
+            var userManager = setup.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            var target = await TestDataSeeder.CreateUserAsync(
+                userManager,
+                $"profile-revocation-{Guid.NewGuid():N}",
+                "Original!Passw0rd#24");
+            targetId = target.Id;
+            originalUserName = target.UserName!;
+            originalEmail = target.Email!;
+            originalSecurityStamp = target.SecurityStamp;
+        }
+
+        await using var scope =
+            failingFactory.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider
+            .GetRequiredService<IUserManagementService>();
+        var failure = await Assert.ThrowsAsync<ManagementConflictException>(
+            () => service.UpdateProfileAsync(
+                targetId,
+                new UpdateManagementUserProfileCommand(
+                    $"profile-revocation-updated-{Guid.NewGuid():N}",
+                    $"profile-revocation-updated-{Guid.NewGuid():N}@tests.local",
+                    "+5511966660000"),
+                RequestContext("administrator")));
+        Assert.Equal("user_profile_update_failed", failure.ReasonCode);
+
+        var database = scope.ServiceProvider
+            .GetRequiredService<AppDbContext>();
+        database.ChangeTracker.Clear();
+        var persisted = await database.Users.SingleAsync(
+            user => user.Id == targetId);
+        Assert.Equal(originalUserName, persisted.UserName);
+        Assert.Equal(originalEmail, persisted.Email);
+        Assert.Null(persisted.PhoneNumber);
+        Assert.Equal(originalSecurityStamp, persisted.SecurityStamp);
+        Assert.Contains(
+            await database.ManagementAuditEvents
+                .Where(entry => entry.ResourceId == targetId)
+                .ToArrayAsync(),
+            entry =>
+                entry.Capability == ManagementCapabilities.UsersUpdate
+                && entry.OperationOutcome == "failed"
+                && entry.ReasonCode == "user_profile_update_failed");
+    }
+
+    [Fact]
+    public async Task Manager_profile_update_requires_every_context_and_tenant_mfa()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var contextualFactory = factory.WithWebHostBuilder(builder =>
+            builder.ConfigureServices(services =>
+            {
+                services.Configure<ManagementOptions>(management =>
+                    management.Authorization.Contexts[SecondContext] =
+                        new ManagementContextAccessPolicyOptions
+                        {
+                            RequireMfa = true
+                        });
+                services.RemoveAll<IManagementUserContextStore>();
+                services.AddScoped<
+                    IManagementUserContextStore,
+                    SufficitDirectiveUserContextStore>();
+                services.RemoveAll<IManagementEntitlementResolver>();
+                services.AddScoped<
+                    IManagementEntitlementResolver,
+                    SufficitDirectiveManagementEntitlementResolver>();
+                services.RemoveAll<IManagementAuthorizationEvaluator>();
+                services.AddScoped<
+                    IManagementAuthorizationEvaluator,
+                    RoleBasedManagementAuthorizationEvaluator>();
+            }));
+
+        string targetId;
+        string originalEmail;
+        await using (var setup = contextualFactory.Services.CreateAsyncScope())
+        {
+            var userManager = setup.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            var target = await TestDataSeeder.CreateUserAsync(
+                userManager,
+                $"profile-context-{Guid.NewGuid():N}",
+                "Original!Passw0rd#23",
+                $"[\"phonecalls:{FirstContext}\","
+                + $"\"phonecalls:{SecondContext}\"]");
+            targetId = target.Id;
+            originalEmail = target.Email!;
+        }
+
+        await using var scope =
+            contextualFactory.Services.CreateAsyncScope();
+        var service = scope.ServiceProvider
+            .GetRequiredService<IUserManagementService>();
+        var command = new UpdateManagementUserProfileCommand(
+            $"profile-context-updated-{Guid.NewGuid():N}",
+            originalEmail,
+            null);
+        var onlyFirst = await Assert.ThrowsAsync<ManagementAccessException>(
+            () => service.UpdateProfileAsync(
+                targetId,
+                command,
+                RequestContext(
+                    "manager",
+                    new Claim(
+                        "directive",
+                        $"phonecalls:{FirstContext}"))));
+        Assert.Equal(
+            "user_context_scope_incomplete",
+            onlyFirst.Decision.ReasonCode);
+
+        var bothContexts = new Claim(
+            "directive",
+            $"[\"phonecalls:{FirstContext}\","
+            + $"\"phonecalls:{SecondContext}\"]");
+        var withoutMfa = await Assert.ThrowsAsync<ManagementAccessException>(
+            () => service.UpdateProfileAsync(
+                targetId,
+                command,
+                RequestContext("manager", bothContexts)));
+        Assert.Equal(
+            ManagementAuthorizationOutcome.StepUpRequired,
+            withoutMfa.Decision.Outcome);
+
+        var updated = await service.UpdateProfileAsync(
+            targetId,
+            command,
+            RequestContext(
+                "manager",
+                bothContexts,
+                new Claim("amr", "pwd mfa")));
+        Assert.Equal(command.UserName, updated.UserName);
+    }
+
+    [Fact]
     public async Task Lockout_revokes_identity_session_tokens_and_authorizations()
     {
         using var factory = new ManagementTestFactory();
@@ -907,6 +1280,12 @@ public sealed class UserManagementControllerTests
     private sealed class ThrowingManagementUserSessionRevoker
         : IManagementUserSessionRevoker
     {
+        public Task<long> RevokeTokensAsync(
+            string subject,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException(
+                "Session revocation failed for test.");
+
         public Task<ManagementUserSessionRevocation> RevokeAsync(
             string subject,
             CancellationToken cancellationToken = default) =>

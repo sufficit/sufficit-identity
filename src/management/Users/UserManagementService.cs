@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
@@ -33,6 +34,12 @@ public interface IUserManagementService
 
     Task<ManagementUserDetail> CreateAsync(
         CreateManagementUserCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
+    Task<ManagementUserDetail> UpdateProfileAsync(
+        string id,
+        UpdateManagementUserProfileCommand command,
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 
@@ -88,6 +95,11 @@ public sealed record CreateManagementUserCommand(
     string InitialPassword,
     string ContextId);
 
+public sealed record UpdateManagementUserProfileCommand(
+    string UserName,
+    string Email,
+    string? PhoneNumber);
+
 public sealed record ResetManagementUserPasswordCommand(
     string NewPassword);
 
@@ -126,7 +138,10 @@ public sealed record ManagementUserActions(
     string ResetPasswordReasonCode,
     bool CanSetLockout = false,
     bool SetLockoutRequiresMfa = false,
-    string SetLockoutReasonCode = "not_evaluated");
+    string SetLockoutReasonCode = "not_evaluated",
+    bool CanUpdateProfile = false,
+    bool UpdateProfileRequiresMfa = false,
+    string UpdateProfileReasonCode = "not_evaluated");
 
 public sealed record ManagementUserSessionRevocation(
     long RevokedTokens,
@@ -134,6 +149,10 @@ public sealed record ManagementUserSessionRevocation(
 
 public interface IManagementUserSessionRevoker
 {
+    Task<long> RevokeTokensAsync(
+        string subject,
+        CancellationToken cancellationToken = default);
+
     Task<ManagementUserSessionRevocation> RevokeAsync(
         string subject,
         CancellationToken cancellationToken = default);
@@ -144,6 +163,17 @@ internal sealed class OpenIddictManagementUserSessionRevoker(
     IOpenIddictAuthorizationManager authorizations)
     : IManagementUserSessionRevoker
 {
+    public async Task<long> RevokeTokensAsync(
+        string subject,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(subject);
+
+        return await tokens.RevokeBySubjectAsync(
+            subject,
+            cancellationToken);
+    }
+
     public async Task<ManagementUserSessionRevocation> RevokeAsync(
         string subject,
         CancellationToken cancellationToken = default)
@@ -484,6 +514,12 @@ internal sealed class UserManagementService(
             context,
             locking: !isLockedOut,
             cancellationToken);
+        var updateProfileDecision = await EvaluateAccountWideActionAsync(
+            user.Id,
+            membership,
+            context,
+            ManagementCapabilities.UsersUpdate,
+            cancellationToken);
 
         await WriteAuditAsync(
             context,
@@ -508,7 +544,10 @@ internal sealed class UserManagementService(
             roles.GetValueOrDefault(user.Id, []),
             visibleContexts.Order(StringComparer.OrdinalIgnoreCase).ToArray(),
             user.Timestamp,
-            Actions(resetDecision, lockoutDecision));
+            Actions(
+                resetDecision,
+                lockoutDecision,
+                updateProfileDecision));
     }
 
     public async Task<ManagementUserDetail> CreateAsync(
@@ -540,6 +579,13 @@ internal sealed class UserManagementService(
             throw new ManagementValidationException(
                 "user_email_too_long",
                 "Use no máximo 256 caracteres no e-mail.",
+                "email");
+        }
+        if (!new EmailAddressAttribute().IsValid(email))
+        {
+            throw new ManagementValidationException(
+                "user_email_invalid",
+                "Informe um endereço de e-mail válido.",
                 "email");
         }
         var password = Required(
@@ -642,6 +688,234 @@ internal sealed class UserManagementService(
         return await GetAsync(
             user.Id,
             contextId,
+            context,
+            cancellationToken);
+    }
+
+    public async Task<ManagementUserDetail> UpdateProfileAsync(
+        string id,
+        UpdateManagementUserProfileCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        ArgumentNullException.ThrowIfNull(command);
+
+        var userName = Required(
+            command.UserName,
+            "user_name_required",
+            "Informe o nome de usuário.",
+            "userName");
+        var email = Required(
+            command.Email,
+            "user_email_required",
+            "Informe o e-mail do usuário.",
+            "email");
+        var phoneNumber = string.IsNullOrWhiteSpace(command.PhoneNumber)
+            ? null
+            : command.PhoneNumber.Trim();
+        if (userName.Length > 256)
+        {
+            throw new ManagementValidationException(
+                "user_name_too_long",
+                "Use no máximo 256 caracteres no nome de usuário.",
+                "userName");
+        }
+        if (email.Length > 256)
+        {
+            throw new ManagementValidationException(
+                "user_email_too_long",
+                "Use no máximo 256 caracteres no e-mail.",
+                "email");
+        }
+        if (!new EmailAddressAttribute().IsValid(email))
+        {
+            throw new ManagementValidationException(
+                "user_email_invalid",
+                "Informe um endereço de e-mail válido.",
+                "email");
+        }
+        if (phoneNumber?.Length > 256)
+        {
+            throw new ManagementValidationException(
+                "user_phone_number_too_long",
+                "Use no máximo 256 caracteres no telefone.",
+                "phoneNumber");
+        }
+
+        var membership = await userContexts.GetMembershipAsync(
+            id,
+            cancellationToken);
+        var decision = await EvaluateAccountWideActionAsync(
+            id,
+            membership,
+            context,
+            ManagementCapabilities.UsersUpdate,
+            cancellationToken);
+        var auditResource = await AccountWideAuditResourceAsync(
+            id,
+            membership,
+            context,
+            decision,
+            ManagementCapabilities.UsersUpdate,
+            cancellationToken);
+
+        if (!decision.IsAllowed)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.UsersUpdate,
+                auditResource,
+                decision,
+                "denied",
+                decision.ReasonCode,
+                cancellationToken);
+            throw new ManagementAccessException(decision);
+        }
+
+        var user = await userManager.FindByIdAsync(id);
+        if (user is null)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.UsersUpdate,
+                auditResource,
+                decision,
+                "not-found",
+                "user_not_found",
+                cancellationToken);
+            throw new ManagementNotFoundException(
+                "user_not_found",
+                "O usuário não foi encontrado.");
+        }
+
+        var userNameChanged = !string.Equals(
+            user.UserName,
+            userName,
+            StringComparison.Ordinal);
+        var emailChanged = !string.Equals(
+            user.Email,
+            email,
+            StringComparison.Ordinal);
+        var phoneNumberChanged = !string.Equals(
+            user.PhoneNumber,
+            phoneNumber,
+            StringComparison.Ordinal);
+        var hasChanges =
+            userNameChanged || emailChanged || phoneNumberChanged;
+
+        await using var transaction = await database.Database
+            .BeginTransactionAsync(cancellationToken);
+        try
+        {
+            if (userNameChanged)
+            {
+                EnsureProfileChangeSucceeded(
+                    await userManager.SetUserNameAsync(user, userName));
+            }
+
+            if (emailChanged)
+            {
+                EnsureProfileChangeSucceeded(
+                    await userManager.SetEmailAsync(user, email));
+            }
+
+            if (phoneNumberChanged)
+            {
+                EnsureProfileChangeSucceeded(
+                    await userManager.SetPhoneNumberAsync(
+                        user,
+                        phoneNumber));
+            }
+
+            if (hasChanges)
+            {
+                EnsureProfileChangeSucceeded(
+                    await userManager.UpdateSecurityStampAsync(user));
+                var revokedTokens = await sessionRevoker.RevokeTokensAsync(
+                    user.Id,
+                    cancellationToken);
+                logger.LogInformation(
+                    "Revoked {TokenCount} tokens after updating management user {UserId}. Durable authorizations were preserved. CorrelationId={CorrelationId}",
+                    revokedTokens,
+                    user.Id,
+                    context.CorrelationId);
+            }
+
+            foreach (var resource in AccountWideAuditResources(
+                id,
+                membership,
+                auditResource))
+            {
+                database.ManagementAuditEvents.Add(
+                    ManagementAuditEventFactory.Create(
+                        context,
+                        ManagementCapabilities.UsersUpdate,
+                        resource,
+                        decision,
+                        "succeeded",
+                        hasChanges
+                            ? "user_profile_updated"
+                            : "user_profile_unchanged"));
+            }
+
+            await database.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+        catch (ProfileIdentityException exception)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            database.ChangeTracker.Clear();
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.UsersUpdate,
+                auditResource,
+                decision,
+                "failed",
+                IdentityReasonCode(
+                    exception.Result,
+                    "user_profile_update_rejected"),
+                CancellationToken.None);
+            throw ProfileIdentityFailure(exception.Result);
+        }
+        catch (OperationCanceledException)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            database.ChangeTracker.Clear();
+            throw;
+        }
+        catch (Exception exception)
+        {
+            await transaction.RollbackAsync(CancellationToken.None);
+            database.ChangeTracker.Clear();
+            logger.LogError(
+                exception,
+                "Unable to update a management user profile. CorrelationId={CorrelationId}",
+                context.CorrelationId);
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.UsersUpdate,
+                auditResource,
+                decision,
+                "failed",
+                "user_profile_update_failed",
+                CancellationToken.None);
+            throw new ManagementConflictException(
+                "user_profile_update_failed",
+                "Não foi possível atualizar o perfil do usuário.");
+        }
+
+        var grants = await entitlements.ResolveAsync(
+            context.Operator,
+            cancellationToken);
+        var detailContext = grants.HasGlobalAdministratorAccess
+            ? null
+            : membership.ContextIds
+                .Order(StringComparer.OrdinalIgnoreCase)
+                .FirstOrDefault();
+        return await GetAsync(
+            id,
+            detailContext,
             context,
             cancellationToken);
     }
@@ -1108,7 +1382,8 @@ internal sealed class UserManagementService(
 
     private static ManagementUserActions Actions(
         ManagementAuthorizationDecision resetDecision,
-        ManagementAuthorizationDecision lockoutDecision) =>
+        ManagementAuthorizationDecision lockoutDecision,
+        ManagementAuthorizationDecision updateProfileDecision) =>
         new(
             resetDecision.IsAllowed,
             resetDecision.Outcome is
@@ -1117,7 +1392,20 @@ internal sealed class UserManagementService(
             lockoutDecision.IsAllowed,
             lockoutDecision.Outcome is
                 ManagementAuthorizationOutcome.StepUpRequired,
-            lockoutDecision.ReasonCode);
+            lockoutDecision.ReasonCode,
+            updateProfileDecision.IsAllowed,
+            updateProfileDecision.Outcome is
+                ManagementAuthorizationOutcome.StepUpRequired,
+            updateProfileDecision.ReasonCode);
+
+    private static void EnsureProfileChangeSucceeded(
+        IdentityResult result)
+    {
+        if (!result.Succeeded)
+        {
+            throw new ProfileIdentityException(result);
+        }
+    }
 
     private static void EnsureLockoutChangeSucceeded(
         IdentityResult result)
@@ -1221,6 +1509,48 @@ internal sealed class UserManagementService(
             reasonCode,
             string.Join(' ', messages),
             field);
+    }
+
+    private static Exception ProfileIdentityFailure(
+        IdentityResult result)
+    {
+        var reasonCode = IdentityReasonCode(
+            result,
+            "user_profile_update_rejected");
+        if (reasonCode is "user_name_conflict" or "user_email_conflict")
+        {
+            return new ManagementConflictException(
+                reasonCode,
+                reasonCode == "user_name_conflict"
+                    ? "Já existe um usuário com esse nome."
+                    : "Já existe um usuário com esse e-mail.");
+        }
+
+        var field = reasonCode switch
+        {
+            "user_name_invalid" => "userName",
+            "user_email_invalid" => "email",
+            _ => null
+        };
+        var message = reasonCode switch
+        {
+            "user_name_invalid" =>
+                "O nome de usuário contém caracteres não permitidos.",
+            "user_email_invalid" =>
+                "Informe um endereço de e-mail válido.",
+            _ => "Revise os dados informados e tente novamente."
+        };
+
+        return new ManagementValidationException(
+            reasonCode,
+            message,
+            field);
+    }
+
+    private sealed class ProfileIdentityException(
+        IdentityResult result) : Exception
+    {
+        public IdentityResult Result { get; } = result;
     }
 
     private async Task<Dictionary<string, IReadOnlyList<string>>>
