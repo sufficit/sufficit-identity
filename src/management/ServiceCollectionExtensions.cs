@@ -75,6 +75,8 @@ public static class ServiceCollectionExtensions
             EmptyManagementUserContextStore>();
         services.TryAddSingleton<IBrandingThemeProvider,
             BrandingThemeProvider>();
+        services.TryAddSingleton<IUserAvatarUrlResolver,
+            UserAvatarUrlResolver>();
         services.TryAddSingleton<IClientSecretResolver, MissingClientSecretResolver>();
 
         // Authorization policy for the management endpoints.

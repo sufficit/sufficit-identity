@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Sufficit.Identity.Core.Branding;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Branding;
 using Sufficit.Identity.Management.Clients;
@@ -187,6 +188,10 @@ public sealed class ManagementUiRoutingTests
         Assert.Contains("Diretório de identidades", html, StringComparison.Ordinal);
         Assert.Contains("alice@tests.local", html, StringComparison.Ordinal);
         Assert.Contains(expectedScope, html, StringComparison.Ordinal);
+        Assert.Contains(
+            $"src=\"https://avatars.tests.local/operator-{role}.jpg\"",
+            html,
+            StringComparison.Ordinal);
         Assert.DoesNotContain("Aguardando API", html, StringComparison.Ordinal);
     }
 
@@ -274,6 +279,9 @@ public sealed class ManagementUiRoutingTests
         builder.Services.AddSingleton<IBrandingManagementService, StubBrandingManagementService>();
         builder.Services.AddSingleton<IUserManagementService, StubUserManagementService>();
         builder.Services.AddSingleton<IManagementAuditService, StubManagementAuditService>();
+        builder.Services.AddSingleton<
+            IUserAvatarUrlResolver,
+            StubUserAvatarUrlResolver>();
         builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
 
         var app = builder.Build();
@@ -285,6 +293,9 @@ public sealed class ManagementUiRoutingTests
         {
             var identity = new ClaimsIdentity(
                 [
+                    new Claim(
+                        ClaimTypes.NameIdentifier,
+                        $"operator-{role}"),
                     new Claim(ClaimTypes.Name, $"{role}@tests.local"),
                     new Claim(ClaimTypes.Role, role)
                 ],
@@ -473,6 +484,18 @@ public sealed class ManagementUiRoutingTests
                         CorrelationId: "test-correlation",
                         AuthenticationMethods: "pwd mfa")
                 ]);
+    }
+
+    private sealed class StubUserAvatarUrlResolver
+        : IUserAvatarUrlResolver
+    {
+        public Task<string?> ResolveAsync(
+            string? userId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(
+                string.IsNullOrWhiteSpace(userId)
+                    ? null
+                    : $"https://avatars.tests.local/{userId}.jpg");
     }
 
     private sealed class StubUserManagementService : IUserManagementService

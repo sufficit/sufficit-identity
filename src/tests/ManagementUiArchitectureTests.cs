@@ -50,6 +50,46 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Public_and_management_ui_reuse_the_canonical_avatar_resolver()
+    {
+        var repositoryRoot = ResolveIdentityRepository();
+        var uiRoot = Path.GetFullPath(Path.Combine(
+            repositoryRoot,
+            "..",
+            "sufficit-identity-ui",
+            "src"));
+        var publicProfile = File.ReadAllText(Path.Combine(
+            uiRoot,
+            "Sufficit.Identity.UI",
+            "Pages",
+            "Manage",
+            "Index.razor"));
+        var managementLayout = File.ReadAllText(Path.Combine(
+            uiRoot,
+            "Sufficit.Identity.UI.Management",
+            "Components",
+            "Layout",
+            "MainLayout.razor"));
+
+        Assert.Contains(
+            "IUserAvatarUrlResolver",
+            publicProfile,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "IUserAvatarUrlResolver",
+            managementLayout,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "AvatarUrlTemplate.Replace",
+            publicProfile,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "AvatarUrlTemplate.Replace",
+            managementLayout,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Client_controller_is_only_an_http_adapter()
     {
         var repositoryRoot = ResolveIdentityRepository();

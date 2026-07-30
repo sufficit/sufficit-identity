@@ -94,6 +94,7 @@ builder.Services.AddSufficitIdentitySTS(builder.Configuration);
 // ---- Branding theme provider (singleton cache, DB-backed) ----
 // Registered before UI and management so both can resolve it.
 builder.Services.TryAddSingleton<IBrandingThemeProvider, BrandingThemeProvider>();
+builder.Services.TryAddSingleton<IUserAvatarUrlResolver, UserAvatarUrlResolver>();
 
 // ---- Sufficit Identity UI (Blazor Server: login/consent/logout/manage) ----
 builder.Services.AddSufficitIdentityUI(builder.Configuration);

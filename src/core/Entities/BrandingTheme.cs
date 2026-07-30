@@ -53,9 +53,9 @@ public sealed class BrandingTheme
     public string? BrandSubtitle { get; set; }
 
     /// <summary>
-    /// URL template for user avatars in the management area. The placeholder
-    /// <c>{userid}</c> is replaced with the user's subject claim at render
-    /// time. Example: <c>https://endpoints.sufficit.com.br/contact/avatar?contextid={userid}</c>.
+    /// URL template for user avatars across the Identity UIs. The canonical
+    /// avatar resolver replaces <c>{userid}</c> with the user's encoded subject.
+    /// Example: <c>https://endpoints.sufficit.com.br/contact/avatar?contextid={userid}</c>.
     /// Null = show initials instead.
     /// </summary>
     public string? AvatarUrlTemplate { get; set; }
