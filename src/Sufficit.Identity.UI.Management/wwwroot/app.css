@@ -334,17 +334,6 @@ h3 {
     content: "";
 }
 
-.nav-item__meta {
-    margin-left: auto;
-    padding: 2px 6px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: var(--radius-pill);
-    color: rgba(255, 255, 255, 0.48);
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-}
-
 .sidebar-footer {
     padding: 12px;
     border-top: 1px solid rgba(255, 255, 255, 0.09);
