@@ -11,8 +11,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Sufficit.Identity.Core.Branding;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Branding;
+using Sufficit.Identity.Management.Claims;
 using Sufficit.Identity.Management.Clients;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Management.Scopes;
 using Sufficit.Identity.Management.Users;
 using Sufficit.Identity.UI.Management;
 using Xunit;
@@ -243,23 +245,80 @@ public sealed class ManagementUiRoutingTests
     }
 
     [Fact]
-    public async Task Provider_operator_renders_standards_access_boundary()
+    public async Task Provider_operator_renders_separate_claims_and_scopes()
     {
         await using var app = await CreateHostAsync();
         using var client = app.GetTestClient();
 
         await SignInAsync(client, "administrator");
 
-        using var response = await client.GetAsync("/management/access");
-        var html = WebUtility.HtmlDecode(
-            await response.Content.ReadAsStringAsync());
+        using var claims = await client.GetAsync("/management/claims");
+        var claimsHtml = WebUtility.HtmlDecode(
+            await claims.Content.ReadAsStringAsync());
+        using var scopes = await client.GetAsync("/management/scopes");
+        var scopesHtml = WebUtility.HtmlDecode(
+            await scopes.Content.ReadAsStringAsync());
+        using var removed = await client.GetAsync("/management/access");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("Claims e scopes", html, StringComparison.Ordinal);
-        Assert.Contains("Claims OpenID Connect", html, StringComparison.Ordinal);
-        Assert.Contains("Provisionamento SCIM", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("Papéis da conta", html, StringComparison.Ordinal);
-        Assert.DoesNotContain("manager", html, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(HttpStatusCode.OK, claims.StatusCode);
+        Assert.Contains("Claims atribuídas", claimsHtml, StringComparison.Ordinal);
+        Assert.Contains("urn:tests:locale", claimsHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("manager", claimsHtml, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(HttpStatusCode.OK, scopes.StatusCode);
+        Assert.Contains("Scopes registrados", scopesHtml, StringComparison.Ordinal);
+        Assert.Contains("test.scope", scopesHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Papéis da conta", scopesHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Atribuir cargo", scopesHtml, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.NotFound, removed.StatusCode);
+    }
+
+    [Fact]
+    public async Task Provider_operator_can_render_claim_and_scope_editing_flows()
+    {
+        await using var app = await CreateHostAsync();
+        using var client = app.GetTestClient();
+
+        await SignInAsync(client, "administrator");
+
+        using var claimCreate = await client.GetAsync(
+            "/management/claims/new");
+        var claimCreateHtml = WebUtility.HtmlDecode(
+            await claimCreate.Content.ReadAsStringAsync());
+        using var claimDetail = await client.GetAsync(
+            "/management/claims/1");
+        var claimDetailHtml = WebUtility.HtmlDecode(
+            await claimDetail.Content.ReadAsStringAsync());
+        using var scopeCreate = await client.GetAsync(
+            "/management/scopes/new");
+        var scopeCreateHtml = WebUtility.HtmlDecode(
+            await scopeCreate.Content.ReadAsStringAsync());
+        using var scopeDetail = await client.GetAsync(
+            "/management/scopes/scope-1");
+        var scopeDetailHtml = WebUtility.HtmlDecode(
+            await scopeDetail.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, claimCreate.StatusCode);
+        Assert.Contains(
+            "Atribuir claim",
+            claimCreateHtml,
+            StringComparison.Ordinal);
+        Assert.Contains("locale", claimCreateHtml, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, claimDetail.StatusCode);
+        Assert.Contains(
+            "Remover atribuição",
+            claimDetailHtml,
+            StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, scopeCreate.StatusCode);
+        Assert.Contains(
+            "Recursos protegidos",
+            scopeCreateHtml,
+            StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, scopeDetail.StatusCode);
+        Assert.Contains(
+            "Clientes vinculados",
+            scopeDetailHtml,
+            StringComparison.Ordinal);
+        Assert.Contains("test-client", scopeDetailHtml, StringComparison.Ordinal);
     }
 
     private static async Task<WebApplication> CreateHostAsync()
@@ -283,6 +342,8 @@ public sealed class ManagementUiRoutingTests
             });
         builder.Services.AddAuthorization();
         builder.Services.AddSingleton<IClientManagementService, StubClientManagementService>();
+        builder.Services.AddSingleton<IClaimManagementService, StubClaimManagementService>();
+        builder.Services.AddSingleton<IScopeManagementService, StubScopeManagementService>();
         builder.Services.AddSingleton<IBrandingManagementService, StubBrandingManagementService>();
         builder.Services.AddSingleton<IUserManagementService, StubUserManagementService>();
         builder.Services.AddSingleton<IManagementAuditService, StubManagementAuditService>();
@@ -387,6 +448,106 @@ public sealed class ManagementUiRoutingTests
 
         public Task DeleteAsync(
             string clientId,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class StubClaimManagementService : IClaimManagementService
+    {
+        private static readonly ManagementClaimAssignment Claim = new(
+            1,
+            "user-1",
+            "alice",
+            "alice@tests.local",
+            "urn:tests:locale",
+            "pt-BR");
+
+        public Task<ManagementClaimMetadata> GetMetadataAsync(
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new ManagementClaimMetadata(
+                ["locale", "zoneinfo"],
+                256,
+                4096));
+
+        public Task<ManagementClaimPage> SearchAsync(
+            ManagementClaimSearch query,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new ManagementClaimPage(
+                [Claim],
+                1,
+                25,
+                1,
+                query.UserId));
+
+        public Task<ManagementClaimAssignment> GetAsync(
+            int id,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Claim);
+
+        public Task<ManagementClaimAssignment> CreateAsync(
+            CreateManagementClaimCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task DeleteAsync(
+            int id,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class StubScopeManagementService : IScopeManagementService
+    {
+        private static readonly ManagementScopeDetail Scope = new(
+            "scope-1",
+            "test.scope",
+            "Test scope",
+            "Scope used by tests.",
+            ["test-api"],
+            ["test-client"],
+            IsManifestManaged: false);
+
+        public Task<IReadOnlyList<ManagementScopeSummary>> ListAsync(
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ManagementScopeSummary>>(
+                [
+                    new(
+                        Scope.Id,
+                        Scope.Name,
+                        Scope.DisplayName,
+                        Scope.Description,
+                        Scope.Resources.Count,
+                        Scope.ClientIds.Count,
+                        Scope.IsManifestManaged)
+                ]);
+
+        public Task<ManagementScopeDetail> GetAsync(
+            string id,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Scope);
+
+        public Task<ManagementScopeDetail> CreateAsync(
+            CreateManagementScopeCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<ManagementScopeDetail> UpdateAsync(
+            string id,
+            UpdateManagementScopeCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task DeleteAsync(
+            string id,
             ManagementRequestContext context,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();

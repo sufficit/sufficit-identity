@@ -166,6 +166,38 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Claims_and_scopes_controllers_are_only_http_adapters()
+    {
+        var controllers = Path.Combine(
+            ResolveIdentityRepository(),
+            "src",
+            "management",
+            "Controllers");
+        var claims = File.ReadAllText(Path.Combine(
+            controllers,
+            "ClaimsController.cs"));
+        var scopes = File.ReadAllText(Path.Combine(
+            controllers,
+            "ScopesController.cs"));
+
+        Assert.Contains(
+            "IClaimManagementService",
+            claims,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "IScopeManagementService",
+            scopes,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("UserManager<", claims, StringComparison.Ordinal);
+        Assert.DoesNotContain("DbContext", claims, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "IOpenIddictScopeManager",
+            scopes,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("DbContext", scopes, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Generic_provider_has_no_business_permission_controller()
     {
         var repositoryRoot = ResolveIdentityRepository();
@@ -180,21 +212,30 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
-    public void Access_page_explains_open_standards_without_business_roles()
+    public void Claims_and_scopes_are_separate_functional_surfaces()
     {
-        var page = File.ReadAllText(Path.Combine(
+        var pages = Path.Combine(
             ResolveManagementUiSource(),
             "Components",
-            "Pages",
-            "Access.razor"));
+            "Pages");
+        var claims = File.ReadAllText(Path.Combine(pages, "Claims.razor"));
+        var scopes = File.ReadAllText(Path.Combine(pages, "Scopes.razor"));
+        var navigation = File.ReadAllText(Path.Combine(
+            ResolveManagementUiSource(),
+            "Components",
+            "Layout",
+            "NavMenu.razor"));
 
-        Assert.Contains("OpenID Connect", page, StringComparison.Ordinal);
-        Assert.Contains("OAuth", page, StringComparison.Ordinal);
-        Assert.Contains("SCIM", page, StringComparison.Ordinal);
-        Assert.DoesNotContain("SetRoleAsync", page, StringComparison.Ordinal);
-        Assert.DoesNotContain("manager", page, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("administrator", page, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("directive", page, StringComparison.OrdinalIgnoreCase);
+        Assert.False(File.Exists(Path.Combine(pages, "Access.razor")));
+        Assert.Contains("ManagementClaimDataSource", claims, StringComparison.Ordinal);
+        Assert.Contains("ManagementScopeDataSource", scopes, StringComparison.Ordinal);
+        Assert.Contains("href=\"claims\"", navigation, StringComparison.Ordinal);
+        Assert.Contains("href=\"scopes\"", navigation, StringComparison.Ordinal);
+        Assert.DoesNotContain("href=\"access\"", navigation, StringComparison.Ordinal);
+        Assert.DoesNotContain("manager", claims, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("administrator", claims, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("manager", scopes, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("administrator", scopes, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

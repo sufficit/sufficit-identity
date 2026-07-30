@@ -16,6 +16,13 @@ public static class ManagementCapabilities
     public const string UsersDisable = "identity.users.disable";
     public const string UsersDelete = "identity.users.delete";
     public const string UsersResetPassword = "identity.users.reset-password";
+    public const string ClaimsRead = "identity.claims.read";
+    public const string ClaimsCreate = "identity.claims.create";
+    public const string ClaimsDelete = "identity.claims.delete";
+    public const string ScopesRead = "identity.scopes.read";
+    public const string ScopesCreate = "identity.scopes.create";
+    public const string ScopesUpdate = "identity.scopes.update";
+    public const string ScopesDelete = "identity.scopes.delete";
     public const string AuditRead = "identity.audit.read";
 
     public static IReadOnlySet<string> All { get; } =
@@ -32,6 +39,13 @@ public static class ManagementCapabilities
                 UsersDisable,
                 UsersDelete,
                 UsersResetPassword,
+                ClaimsRead,
+                ClaimsCreate,
+                ClaimsDelete,
+                ScopesRead,
+                ScopesCreate,
+                ScopesUpdate,
+                ScopesDelete,
                 AuditRead
             ],
             StringComparer.Ordinal);
@@ -45,6 +59,10 @@ public static class ManagementResourceTypes
     public const string BrandingCollection = "branding-collection";
     public const string User = "user";
     public const string UserCollection = "user-collection";
+    public const string Claim = "claim";
+    public const string ClaimCollection = "claim-collection";
+    public const string Scope = "scope";
+    public const string ScopeCollection = "scope-collection";
     public const string Audit = "audit";
 }
 
