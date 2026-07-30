@@ -1,123 +1,264 @@
 @page "/settings"
-@inject Microsoft.Extensions.Options.IOptions<ManagementUiOptions> ManagementOptions
-@inject Microsoft.Extensions.Options.IOptions<Sufficit.Identity.Management.ManagementOptions> SharedManagementOptions
+@inject ManagementOverviewDataSource OverviewData
 
 <PageTitle>Configurações | Sufficit Identity</PageTitle>
 
-<PageHeader Eyebrow="Módulo administrativo"
-            Title="Configurações"
-            Description="Estado da incorporação, da rota e das policies fornecidas pelo host." />
+<PageHeader Title="Configuração administrativa"
+            Description="Consulte a política, o transporte HTTP e os módulos informados pelo runtime." />
 
-<div class="settings-grid">
-    <section class="settings-panel" aria-labelledby="host-settings-heading">
-        <div class="panel-header">
-            <div>
-                <p class="section-kicker">Integração</p>
-                <h2 id="host-settings-heading">Host e rota</h2>
-            </div>
+@if (loading)
+{
+    <section class="detail-shell"
+             aria-busy="true"
+             aria-label="Carregando configuração administrativa">
+        <div class="detail-skeleton"></div>
+        <div class="detail-skeleton detail-skeleton--short"></div>
+    </section>
+}
+else if (result?.IsSuccess is not true || result.Value is null)
+{
+    <EmptyState Icon="alert"
+                Title="Não foi possível carregar a configuração"
+                Description="@(result?.ErrorMessage ?? "O serviço de identidade não informou sua configuração administrativa.")">
+        <Actions>
+            <button class="button button--primary"
+                    type="button"
+                    @onclick="RefreshAsync">
+                Tentar novamente
+            </button>
+        </Actions>
+    </EmptyState>
+}
+else
+{
+    var overview = result.Value;
+
+    <section class="contract-strip contract-strip--info">
+        <AppIcon Name="settings" Size="20" />
+        <div>
+            <strong>Configuração fornecida pelo serviço</strong>
+            <span>Os valores abaixo são a mesma projeção publicada pelo adaptador HTTP.</span>
         </div>
-        <dl class="config-list">
-            <div>
-                <dt>
-                    <span>Modo de hospedagem</span>
-                    <code>Razor Class Library</code>
-                </dt>
-                <dd>
-                    <span class="config-value">Processo do Sufficit Identity</span>
-                    <StatusBadge Tone="success">Incorporado</StatusBadge>
-                </dd>
-            </div>
-            <div>
-                <dt>
-                    <span>Caminho base</span>
-                    <code>PathBase</code>
-                </dt>
-                <dd>
-                    <span class="config-value"><code>@Options.GetPathBase()</code></span>
-                    <StatusBadge Tone="success">Mapeado</StatusBadge>
-                </dd>
-            </div>
-            <div>
-                <dt>
-                    <span>Autenticação</span>
-                    <code>ASP.NET Identity cookie</code>
-                </dt>
-                <dd>
-                    <span class="config-value">Sessão do host</span>
-                    <StatusBadge Tone="success">Ativa</StatusBadge>
-                </dd>
-            </div>
-        </dl>
-        <footer class="settings-help">
-            <AppIcon Name="code" Size="18" />
-            <p>
-                Não há URL da Management API, porta, client ID ou secret próprios
-                para este módulo.
-            </p>
-        </footer>
+        <StatusBadge Tone="info">@overview.EnvironmentName</StatusBadge>
     </section>
 
-    <section class="settings-panel" aria-labelledby="authorization-settings-heading">
-        <div class="panel-header">
-            <div>
-                <p class="section-kicker">Autorização</p>
-                <h2 id="authorization-settings-heading">Capabilities do provedor</h2>
+    <div class="settings-grid">
+        <section class="settings-panel" aria-labelledby="policy-settings-heading">
+            <div class="panel-header">
+                <div>
+                    <h2 id="policy-settings-heading">Política do operador</h2>
+                </div>
             </div>
-        </div>
-        <dl class="config-list">
-            <div>
-                <dt>
-                    <span>Acesso humano</span>
-                    <code>IManagementEntitlementResolver</code>
-                </dt>
-                <dd>
-                    <span class="config-value">Mapeamento fornecido pelo host</span>
-                    <StatusBadge Tone="success">Policy ativa</StatusBadge>
-                </dd>
-            </div>
-            <div>
-                <dt>
-                    <span>Management API</span>
-                    <code>RequiredScope</code>
-                </dt>
-                <dd>
-                    <span class="config-value">@SharedOptions.RequiredScope</span>
-                    <StatusBadge Tone="info">OAuth scope</StatusBadge>
-                </dd>
-            </div>
-            <div>
-                <dt>
-                    <span>Autenticação multifator</span>
-                    <code>RequireMfa</code>
-                </dt>
-                <dd>
-                    <span class="config-value">@(SharedOptions.RequireMfa ? "Obrigatória" : "Opcional")</span>
-                    <StatusBadge Tone="@(SharedOptions.RequireMfa ? "warning" : "neutral")">Política global</StatusBadge>
-                </dd>
-            </div>
-        </dl>
-        <footer class="settings-help">
-            <AppIcon Name="shield" Size="18" />
-            <p>
-                O host pode mapear sua própria autoridade operacional para
-                capabilities do provedor. Esse mapeamento não altera nem sugere
-                papéis para os usuários administrados.
-            </p>
-        </footer>
-    </section>
-</div>
+            <dl class="config-list">
+                <div>
+                    <dt>
+                        <span>Capabilities concedidas</span>
+                        <code>Capabilities</code>
+                    </dt>
+                    <dd>
+                        <span class="config-value">@overview.Operator.Capabilities.Count</span>
+                        <StatusBadge Tone="success">Calculadas</StatusBadge>
+                    </dd>
+                </div>
+                <div>
+                    <dt>
+                        <span>Autenticação multifator</span>
+                        <code>RequireMfa</code>
+                    </dt>
+                    <dd>
+                        <span class="config-value">
+                            @(overview.Operator.RequiresMfa ? "Obrigatória" : "Opcional")
+                        </span>
+                        <StatusBadge Tone="@MfaTone">@MfaStatus</StatusBadge>
+                    </dd>
+                </div>
+                <div>
+                    <dt>
+                        <span>Módulos autorizados</span>
+                        <code>CanAccess</code>
+                    </dt>
+                    <dd>
+                        <span class="config-value">@AccessibleModuleCount de @overview.Modules.Count</span>
+                        <StatusBadge Tone="neutral">Nesta sessão</StatusBadge>
+                    </dd>
+                </div>
+            </dl>
+        </section>
 
-<section class="config-path" aria-labelledby="config-path-heading">
-    <AppIcon Name="settings" Size="21" />
-    <div>
-        <h2 id="config-path-heading">Seção de configuração</h2>
-        <code>Sufficit:Identity:ManagementUI</code>
+        <section class="settings-panel" aria-labelledby="transport-settings-heading">
+            <div class="panel-header">
+                <div>
+                    <h2 id="transport-settings-heading">Transporte HTTP</h2>
+                </div>
+            </div>
+            <dl class="config-list">
+                <div>
+                    <dt>
+                        <span>Prefixo configurado</span>
+                        <code>RoutePrefix</code>
+                    </dt>
+                    <dd>
+                        <span class="config-value"><code>/@overview.Api.RoutePrefix</code></span>
+                        <StatusBadge Tone="neutral">Rota</StatusBadge>
+                    </dd>
+                </div>
+                <div>
+                    <dt>
+                        <span>Autorização do transporte</span>
+                        <code>RequireAuthorization</code>
+                    </dt>
+                    <dd>
+                        <span class="config-value">
+                            @(overview.Api.RequiresAuthorization ? "Obrigatória" : "Desabilitada")
+                        </span>
+                        <StatusBadge Tone="@(overview.Api.RequiresAuthorization ? "success" : "warning")">
+                            @(overview.Api.RequiresAuthorization ? "Protegido" : "Revisar")
+                        </StatusBadge>
+                    </dd>
+                </div>
+                <div>
+                    <dt>
+                        <span>Escopo obrigatório</span>
+                        <code>RequiredScope</code>
+                    </dt>
+                    <dd>
+                        <span class="config-value"><code>@overview.Api.RequiredScope</code></span>
+                        <StatusBadge Tone="info">OAuth</StatusBadge>
+                    </dd>
+                </div>
+            </dl>
+        </section>
     </div>
-    <span>Configuração do host · variáveis de ambiente · secret store</span>
-</section>
+
+    <section class="settings-panel" aria-labelledby="module-settings-heading">
+        <div class="panel-header">
+            <div>
+                <h2 id="module-settings-heading">Catálogo de módulos</h2>
+            </div>
+            <span class="section-meta">Informado pelo runtime</span>
+        </div>
+        <dl class="config-list">
+            @foreach (var module in Modules)
+            {
+                <div>
+                    <dt>
+                        <span>@module.Presentation.Title</span>
+                        <code>@module.Contract.Key</code>
+                    </dt>
+                    <dd>
+                        <span class="config-value">@ModuleDescription(module.Contract)</span>
+                        <StatusBadge Tone="@ModuleTone(module.Contract)">
+                            @ModuleStatus(module.Contract)
+                        </StatusBadge>
+                    </dd>
+                </div>
+            }
+        </dl>
+    </section>
+}
 
 @code {
-    private ManagementUiOptions Options => ManagementOptions.Value;
-    private Sufficit.Identity.Management.ManagementOptions SharedOptions =>
-        SharedManagementOptions.Value;
+    [CascadingParameter(Name = "ManagementOverview")]
+    public ManagementDataResult<ManagementOverview>? CascadedOverview
+    {
+        get;
+        set;
+    }
+
+    private ManagementDataResult<ManagementOverview>? result;
+    private bool loading = true;
+    private bool initialized;
+
+    private ManagementOverview Overview =>
+        result?.Value
+        ?? throw new InvalidOperationException(
+            "Overview is only available after a successful load.");
+
+    private IReadOnlyList<ModuleView> Modules =>
+        Overview.Modules
+            .Select(CreateModuleView)
+            .OfType<ModuleView>()
+            .OrderBy(item => item.Presentation.SectionOrder)
+            .ThenBy(item => item.Presentation.Order)
+            .ToArray();
+
+    private int AccessibleModuleCount =>
+        Overview.Modules.Count(module => module.CanAccess);
+
+    private string MfaStatus =>
+        !Overview.Operator.RequiresMfa
+            ? "Não exigida"
+            : Overview.Operator.MeetsMfaRequirement
+                ? "Atendida"
+                : "Pendente";
+
+    private string MfaTone =>
+        Overview.Operator is
+            { RequiresMfa: true, MeetsMfaRequirement: false }
+            ? "warning"
+            : "success";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (initialized)
+        {
+            return;
+        }
+
+        initialized = true;
+        if (CascadedOverview is not null)
+        {
+            result = CascadedOverview;
+            loading = false;
+            return;
+        }
+
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        loading = true;
+        result = await OverviewData.GetAsync();
+        loading = false;
+    }
+
+    private static string ModuleStatus(ManagementModuleDescriptor module) =>
+        !module.IsAvailable
+            ? "Indisponível"
+            : module.AccessOutcome is ManagementAuthorizationOutcome.Allowed
+                ? "Permitido"
+                : module.AccessOutcome is
+                    ManagementAuthorizationOutcome.StepUpRequired
+                    ? "Exige MFA"
+                    : "Sem capability";
+
+    private static string ModuleTone(ManagementModuleDescriptor module) =>
+        !module.IsAvailable
+            ? "neutral"
+            : module.AccessOutcome is ManagementAuthorizationOutcome.Allowed
+                ? "success"
+                : module.AccessOutcome is
+                    ManagementAuthorizationOutcome.StepUpRequired
+                    ? "warning"
+                    : "neutral";
+
+    private static string ModuleDescription(
+        ManagementModuleDescriptor module) =>
+        !module.IsAvailable
+            ? "Contrato de aplicação ainda não disponível"
+            : module.RequiredCapability ?? "Sem capability declarada";
+
+    private static ModuleView? CreateModuleView(
+        ManagementModuleDescriptor module)
+    {
+        var presentation = ManagementModulePresentations.Find(module.Key);
+        return presentation is null
+            ? null
+            : new ModuleView(module, presentation);
+    }
+
+    private sealed record ModuleView(
+        ManagementModuleDescriptor Contract,
+        ManagementModulePresentation Presentation);
 }

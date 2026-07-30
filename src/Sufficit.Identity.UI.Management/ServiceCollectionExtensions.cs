@@ -7,12 +7,14 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Management.Overview;
 using Sufficit.Identity.UI.Management.Audit;
 using Sufficit.Identity.UI.Management.Authorizations;
 using Sufficit.Identity.UI.Management.Branding;
 using Sufficit.Identity.UI.Management.Claims;
 using Sufficit.Identity.UI.Management.Clients;
 using Sufficit.Identity.UI.Management.Configuration;
+using Sufficit.Identity.UI.Management.Overview;
 using Sufficit.Identity.UI.Management.Scopes;
 using Sufficit.Identity.UI.Management.Sessions;
 using Sufficit.Identity.UI.Management.Users;
@@ -110,6 +112,8 @@ public static class ServiceCollectionExtensions
             ScopeAndRoleManagementEntitlementResolver>();
         services.TryAddScoped<IManagementAccessPolicyProvider,
             ConfigurationManagementAccessPolicyProvider>();
+        services.TryAddScoped<IManagementOverviewService,
+            ManagementOverviewService>();
 
         services.AddAuthorization(authorization =>
         {
@@ -201,6 +205,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<ManagementBrandingDataSource>();
         services.TryAddScoped<ManagementAuditDataSource>();
         services.TryAddScoped<ManagementUserDataSource>();
+        services.TryAddScoped<ManagementOverviewDataSource>();
 
         services.AddCascadingAuthenticationState();
         services.AddRazorComponents()

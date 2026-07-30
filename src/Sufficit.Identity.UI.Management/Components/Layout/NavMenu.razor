@@ -15,53 +15,19 @@
         </NavLink>
     </div>
 
-    <div class="nav-section">
-        <span class="nav-section__label">Identidade</span>
-        <NavLink class="nav-item" href="users">
-            <AppIcon Name="users" />
-            <span>Usuários</span>
-        </NavLink>
-    </div>
-
-    <div class="nav-section">
-        <span class="nav-section__label">OAuth &amp; OIDC</span>
-        <NavLink class="nav-item" href="clients">
-            <AppIcon Name="key" />
-            <span>Clientes</span>
-        </NavLink>
-        <NavLink class="nav-item" href="scopes">
-            <AppIcon Name="scope" />
-            <span>Scopes</span>
-        </NavLink>
-        <NavLink class="nav-item" href="authorizations">
-            <AppIcon Name="shield" />
-            <span>Autorizações</span>
-        </NavLink>
-    </div>
-
-    <div class="nav-section">
-        <span class="nav-section__label">Experiência</span>
-        <NavLink class="nav-item" href="branding">
-            <AppIcon Name="palette" />
-            <span>Branding</span>
-        </NavLink>
-    </div>
-
-    <div class="nav-section">
-        <span class="nav-section__label">Operações</span>
-        <NavLink class="nav-item" href="sessions">
-            <AppIcon Name="clock" />
-            <span>Sessões</span>
-        </NavLink>
-        <NavLink class="nav-item" href="provisioning">
-            <AppIcon Name="workflow" />
-            <span>Provisionamento</span>
-        </NavLink>
-        <NavLink class="nav-item" href="audit">
-            <AppIcon Name="audit" />
-            <span>Auditoria</span>
-        </NavLink>
-    </div>
+    @foreach (var section in NavigationSections)
+    {
+        <div class="nav-section">
+            <span class="nav-section__label">@section.Key</span>
+            @foreach (var item in section)
+            {
+                <NavLink class="nav-item" href="@item.Href">
+                    <AppIcon Name="@item.Icon" />
+                    <span>@item.Title</span>
+                </NavLink>
+            }
+        </div>
+    }
 </nav>
 
 <div class="sidebar-footer">
@@ -70,10 +36,50 @@
         <span>Configurações</span>
     </NavLink>
     <div class="sidebar-status">
-        <span class="status-dot status-dot--success" aria-hidden="true"></span>
+        <span class="status-dot @(Overview?.IsSuccess is true ? "status-dot--success" : null)"
+              aria-hidden="true"></span>
         <div>
-            <strong>Módulo administrativo</strong>
-            <span>Hospedado pelo Identity</span>
+            <strong>@RuntimeLabel</strong>
+            <span>@RuntimeDescription</span>
         </div>
     </div>
 </div>
+
+@code {
+    [Parameter]
+    public ManagementDataResult<ManagementOverview>? Overview { get; set; }
+
+    private IEnumerable<IGrouping<string, ManagementModulePresentation>>
+        NavigationSections =>
+        AvailablePresentations
+            .Where(item => item.ShowInNavigation)
+            .OrderBy(item => item.SectionOrder)
+            .ThenBy(item => item.Order)
+            .GroupBy(item => item.Section);
+
+    private IEnumerable<ManagementModulePresentation> AvailablePresentations =>
+        Overview?.Value?.Modules
+            .Where(module => module.CanAccess)
+            .Select(module => ManagementModulePresentations.Find(module.Key))
+            .Where(item => item is not null)
+            .Cast<ManagementModulePresentation>()
+        ?? [];
+
+    private int AvailableModuleCount =>
+        Overview?.Value?.Modules.Count(module => module.CanAccess) ?? 0;
+
+    private string RuntimeLabel =>
+        Overview?.IsSuccess is true
+            ? $"{AvailableModuleCount} {Pluralize(AvailableModuleCount, "módulo", "módulos")}"
+            : "Estado indisponível";
+
+    private string RuntimeDescription =>
+        Overview?.Value?.EnvironmentName
+        ?? "Não foi possível consultar o runtime";
+
+    private static string Pluralize(
+        int count,
+        string singular,
+        string plural) =>
+        count is 1 ? singular : plural;
+}

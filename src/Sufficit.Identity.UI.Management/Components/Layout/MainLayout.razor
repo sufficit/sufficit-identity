@@ -1,9 +1,10 @@
 @inherits LayoutComponentBase
-@inject IWebHostEnvironment HostEnvironment
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IUserAvatarUrlResolver AvatarUrlResolver
+@inject ManagementOverviewDataSource OverviewData
 @inject ILogger<MainLayout> Logger
 
+<CascadingValue Name="ManagementOverview" Value="overviewResult">
 <div class="app-shell @(navigationOpen ? "app-shell--nav-open" : null)">
     <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
 
@@ -26,7 +27,7 @@
             </button>
         </div>
         <div class="sidebar-content" @onclick="CloseNavigationAsync">
-            <NavMenu />
+            <NavMenu Overview="@overviewResult" />
         </div>
     </aside>
 
@@ -49,17 +50,10 @@
             </div>
 
             <div class="topbar-actions">
-                <StatusBadge Tone="success" Icon="check">
-                    <span class="topbar-status-full">Integrado ao Identity host</span>
-                    <span class="topbar-status-short">Integrado</span>
+                <StatusBadge Tone="@RuntimeStatusTone" Icon="@RuntimeStatusIcon">
+                    <span class="topbar-status-full">@RuntimeStatusLabel</span>
+                    <span class="topbar-status-short">@RuntimeStatusShortLabel</span>
                 </StatusBadge>
-                <button class="icon-button"
-                        type="button"
-                        aria-label="Notificações"
-                        title="Notificações ainda não estão conectadas"
-                        disabled>
-                    <AppIcon Name="bell" />
-                </button>
                 <AuthorizeView>
                     <Authorized Context="authentication">
                         <div class="operator-placeholder" aria-label="Operador autenticado">
@@ -95,22 +89,50 @@
         </main>
     </div>
 </div>
+</CascadingValue>
 
 @code {
     private bool navigationOpen;
     private bool avatarLoadFailed;
     private string? avatarUrl;
+    private ManagementDataResult<ManagementOverview>? overviewResult;
     private ElementReference openNavigationButton;
     private ElementReference closeNavigationButton;
 
     private string EnvironmentLabel =>
-        HostEnvironment.IsProduction()
-            ? "Produção"
-            : HostEnvironment.IsDevelopment()
-                ? "Desenvolvimento"
-                : HostEnvironment.IsStaging()
-                    ? "Homologação"
-                    : HostEnvironment.EnvironmentName;
+        overviewResult?.Value?.EnvironmentName ?? "Indisponível";
+
+    private string RuntimeStatusTone =>
+        overviewResult?.IsSuccess is not true
+            ? "danger"
+            : overviewResult.Value?.Operator is
+                { RequiresMfa: true, MeetsMfaRequirement: false }
+                ? "warning"
+                : "success";
+
+    private string RuntimeStatusIcon =>
+        overviewResult?.IsSuccess is true
+            ? overviewResult.Value?.Operator is
+                { RequiresMfa: true, MeetsMfaRequirement: false }
+                ? "lock"
+                : "check"
+            : "alert";
+
+    private string RuntimeStatusLabel =>
+        overviewResult?.IsSuccess is not true
+            ? "Estado do runtime indisponível"
+            : overviewResult.Value?.Operator is
+                { RequiresMfa: true, MeetsMfaRequirement: false }
+                ? "Autenticação multifator necessária"
+                : "Política administrativa verificada";
+
+    private string RuntimeStatusShortLabel =>
+        overviewResult?.IsSuccess is not true
+            ? "Indisponível"
+            : overviewResult.Value?.Operator is
+                { RequiresMfa: true, MeetsMfaRequirement: false }
+                ? "MFA necessária"
+                : "Verificado";
 
     private static string OperatorName(string? name) =>
         string.IsNullOrWhiteSpace(name) ? "Operador autenticado" : name;
@@ -121,6 +143,14 @@
             : name.Trim()[..1].ToUpperInvariant();
 
     protected override async Task OnInitializedAsync()
+    {
+        var overviewTask = OverviewData.GetAsync();
+        var avatarTask = LoadAvatarAsync();
+        await Task.WhenAll(overviewTask, avatarTask);
+        overviewResult = await overviewTask;
+    }
+
+    private async Task LoadAvatarAsync()
     {
         try
         {

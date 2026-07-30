@@ -94,6 +94,9 @@ auditoria em todo o fluxo.
 - Sessões projetam metadados seguros de credenciais OpenIddict, permitem
   revogação individual e encerramento total por conta. Autorizações projetam
   grants/consentimentos e revogam também as credenciais relacionadas.
+- Home, Settings, navegação e layout projetam um overview canônico do runtime
+  com ambiente, transporte HTTP, política MFA, capabilities efetivas e
+  disponibilidade de módulos.
 - Exclusão de usuários e SCIM ainda dependem de novos contratos; auditoria,
   branding, claims, scopes, sessões e autorizações já usam contratos
   compartilhados.

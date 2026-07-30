@@ -150,6 +150,8 @@ The corrected UI:
   guarded revocation of the authorization and its related credentials;
 - exposes Sessions under Operations as safe OpenIddict credential metadata,
   with individual revocation and account-wide invalidation;
+- projects runtime environment, HTTP transport settings, MFA policy, effective
+  capabilities and module availability through one shared overview contract;
 - treats claims as opaque attributes and never suggests Sufficit business roles;
 - protects protocol/profile claim types from manual override;
 - rotates the target user's security stamp and revokes active tokens whenever a
@@ -197,6 +199,8 @@ Sufficit Blazor ──> identity/SCIM API ──> identity application service
 - Existing company role/directive management remains in `sufficit-blazor`.
 - Authentication state changes rotate/revoke the appropriate provider
   credentials and remain audited.
+- Home, Settings, navigation and layout project the canonical runtime overview;
+  they do not invent readiness or availability labels.
 - Claims are contextual to a user; scopes, sessions and authorizations have
   independent routes, capabilities and navigation entries.
 - Claims routes fail closed when their required `user` query context is absent.

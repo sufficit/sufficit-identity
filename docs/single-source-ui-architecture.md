@@ -110,12 +110,13 @@ publicados pelos adaptadores HTTP.
 ## Violações atuais conhecidas
 
 Os verticais administrativos de clientes, branding, contas, claims, scopes,
-sessões e autorizações aplicam o padrão canônico. Controllers HTTP e data
-sources da UI usam
+sessões, autorizações e descoberta do runtime aplicam o padrão canônico.
+Controllers HTTP e data sources da UI usam
 `IClientManagementService`, `IBrandingManagementService` e
 `IUserManagementService`, `IClaimManagementService` e
-`IScopeManagementService`, `ISessionManagementService` e
-`IAuthorizationManagementService` para executar os mesmos casos de uso. Esses
+`IScopeManagementService`, `ISessionManagementService`,
+`IAuthorizationManagementService` e `IManagementOverviewService` para executar
+os mesmos casos de uso. Esses
 serviços concentram validação, defaults, autorização e auditoria; o escopo DI curto
 protege o circuito Blazor sem criar uma segunda implementação. Usuários incluem
 acesso, pesquisa paginada global, detalhe, criação, atualização de perfil,
@@ -142,6 +143,12 @@ autorizações. Autorizações projetam grants/consentimentos, scopes e contagem
 credenciais. Sua revogação também revoga as credenciais relacionadas. Payload,
 reference ID e conteúdo de tokens nunca atravessam o contrato de aplicação.
 
+O overview administrativo projeta ambiente, transporte HTTP, política MFA,
+capabilities efetivas e catálogo de módulos. Home, Settings, layout e navegação
+consomem essa mesma projeção; não mantêm indicadores locais de prontidão. Um
+módulo indisponível não aparece na navegação e conserva no contrato um
+`reasonCode` estável para diagnóstico.
+
 O avatar do operador também segue essa fronteira. A UI pública e a Management
 UI resolvem a imagem por `IUserAvatarUrlResolver`, que consome o tema ativo
 armazenado no runtime e aplica o `AvatarUrlTemplate` uma única vez, com o
@@ -154,10 +161,8 @@ Ainda existem violações a migrar:
 
 - páginas da UI pública injetam `UserManager`, `SignInManager` e gerenciadores
   do OpenIddict;
-- a Management UI ainda possui conteúdo local sobre ambiente e disponibilidade
-  de módulos que precisa vir do contrato canônico;
-- conteúdo local sobre prontidão de módulos ainda deve migrar para um contrato
-  de descoberta do runtime.
+- o fluxo interativo de provisionamento ainda precisa migrar para um contrato
+  de aplicação compartilhado antes de ser exposto na navegação.
 
 Esses caminhos são débitos de migração, não precedentes arquiteturais. Nenhuma
 nova tela deve repetir esse padrão.

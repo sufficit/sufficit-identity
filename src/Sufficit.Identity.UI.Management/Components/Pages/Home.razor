@@ -1,199 +1,242 @@
 @page "/"
+@inject ManagementOverviewDataSource OverviewData
 
 <PageTitle>Visão geral | Sufficit Identity</PageTitle>
 
-<PageHeader Eyebrow="Central de identidade"
-            Title="Visão geral"
-            Description="Acompanhe as capacidades administrativas disponíveis no mesmo host do serviço de identidade.">
+<PageHeader Title="Visão geral"
+            Description="Consulte as áreas liberadas para sua sessão e a política efetiva do serviço de identidade.">
     <Actions>
-        <a class="button button--primary" href="clients">
-            Ver clientes
-            <AppIcon Name="arrow-right" Size="17" />
+        <a class="button button--secondary" href="settings">
+            <AppIcon Name="settings" Size="17" />
+            Ver configuração
         </a>
     </Actions>
 </PageHeader>
 
-<section class="integration-banner" aria-labelledby="integration-title">
-    <div class="integration-banner__icon">
-        <AppIcon Name="shield" Size="24" />
-    </div>
-    <div class="integration-banner__content">
+@if (loading)
+{
+    <section class="detail-shell"
+             aria-busy="true"
+             aria-label="Carregando estado administrativo">
+        <div class="detail-skeleton"></div>
+        <div class="detail-skeleton detail-skeleton--short"></div>
+    </section>
+}
+else if (result?.IsSuccess is not true || result.Value is null)
+{
+    <EmptyState Icon="alert"
+                Title="Não foi possível consultar o runtime"
+                Description="@(result?.ErrorMessage ?? "O serviço de identidade não informou seu estado administrativo.")">
+        <Actions>
+            <button class="button button--primary"
+                    type="button"
+                    @onclick="RefreshAsync">
+                Tentar novamente
+            </button>
+        </Actions>
+    </EmptyState>
+}
+else
+{
+    var overview = result.Value;
+
+    <section class="contract-strip contract-strip--success">
+        <AppIcon Name="shield" Size="20" />
         <div>
-            <p class="section-kicker">Host único</p>
-            <h2 id="integration-title">Management incorporado ao serviço de identidade</h2>
+            <strong>Estado fornecido pelo runtime</strong>
+            <span>Ambiente @overview.EnvironmentName · @overview.Operator.Capabilities.Count capabilities efetivas</span>
+        </div>
+        <StatusBadge Tone="success">Atual</StatusBadge>
+    </section>
+
+    <div class="dashboard-grid">
+        <section class="panel" aria-labelledby="available-modules-heading">
+            <div class="panel-header">
+                <div>
+                    <h2 id="available-modules-heading">Áreas disponíveis</h2>
+                </div>
+                <span class="section-meta">@AccessibleModuleCount autorizadas</span>
+            </div>
+
+            @if (AccessibleModules.Count is 0)
+            {
+                <EmptyState Icon="lock"
+                            Title="@NoAccessTitle"
+                            Description="@NoAccessDescription" />
+            }
+            else
+            {
+                <div class="capability-list">
+                    @foreach (var module in AccessibleModules)
+                    {
+                        <a class="capability-row" href="@module.Presentation.Href">
+                            <span class="capability-row__icon">
+                                <AppIcon Name="@module.Presentation.Icon" />
+                            </span>
+                            <span class="capability-row__copy">
+                                <strong>@module.Presentation.Title</strong>
+                                <span>@module.Presentation.Description</span>
+                            </span>
+                            <StatusBadge Tone="success">Permitido</StatusBadge>
+                            <AppIcon Name="arrow-right"
+                                     Size="17"
+                                     CssClass="capability-row__arrow" />
+                        </a>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="settings-panel" aria-labelledby="effective-policy-heading">
+            <div class="panel-header">
+                <div>
+                    <h2 id="effective-policy-heading">Política efetiva</h2>
+                </div>
+            </div>
+            <dl class="config-list">
+                <div>
+                    <dt>
+                        <span>Ambiente</span>
+                        <code>Environment</code>
+                    </dt>
+                    <dd>
+                        <span class="config-value">@overview.EnvironmentName</span>
+                        <StatusBadge Tone="neutral">Runtime</StatusBadge>
+                    </dd>
+                </div>
+                <div>
+                    <dt>
+                        <span>Autenticação multifator</span>
+                        <code>RequireMfa</code>
+                    </dt>
+                    <dd>
+                        <span class="config-value">@MfaPolicyLabel</span>
+                        <StatusBadge Tone="@MfaTone">@MfaSessionLabel</StatusBadge>
+                    </dd>
+                </div>
+                <div>
+                    <dt>
+                        <span>Escopo do transporte HTTP</span>
+                        <code>RequiredScope</code>
+                    </dt>
+                    <dd>
+                        <span class="config-value">
+                            <code>@overview.Api.RequiredScope</code>
+                        </span>
+                        <StatusBadge Tone="info">OAuth</StatusBadge>
+                    </dd>
+                </div>
+            </dl>
+        </section>
+    </div>
+
+    <section class="security-note" aria-labelledby="runtime-source-title">
+        <AppIcon Name="check" Size="21" />
+        <div>
+            <h2 id="runtime-source-title">Uma consulta, a mesma decisão</h2>
             <p>
-                A navegação reutiliza a sessão ASP.NET Identity do host.
-                Não existe serviço, endpoint remoto ou cliente OIDC próprio para esta interface.
+                A interface e o adaptador HTTP projetam o mesmo catálogo de módulos,
+                capabilities e políticas calculado pelo serviço de aplicação.
             </p>
         </div>
-        <StatusBadge Tone="success" Icon="check">Integrado</StatusBadge>
-    </div>
-</section>
-
-<section aria-labelledby="status-heading">
-    <div class="section-heading">
-        <div>
-            <p class="section-kicker">Estado da plataforma</p>
-            <h2 id="status-heading">Prontidão dos módulos</h2>
-        </div>
-        <span class="section-meta">Dados reais, sem registros demonstrativos</span>
-    </div>
-
-    <div class="metric-grid">
-        <article class="metric-card">
-            <div class="metric-card__top">
-                <span class="metric-icon metric-icon--success"><AppIcon Name="shield" /></span>
-                <StatusBadge Tone="success">Ativa</StatusBadge>
-            </div>
-            <p class="metric-label">Sessão administrativa</p>
-            <strong class="metric-value metric-value--text">Cookie do Identity host</strong>
-            <a href="settings" class="metric-link">
-                Revisar policies
-                <AppIcon Name="arrow-right" Size="15" />
-            </a>
-        </article>
-
-        <article class="metric-card">
-            <div class="metric-card__top">
-                <span class="metric-icon metric-icon--info"><AppIcon Name="key" /></span>
-                <StatusBadge Tone="info">Parcial</StatusBadge>
-            </div>
-            <p class="metric-label">Clientes OAuth</p>
-            <strong class="metric-value metric-value--text">Listagem incorporada</strong>
-            <a href="clients" class="metric-link">
-                Consultar clientes
-                <AppIcon Name="arrow-right" Size="15" />
-            </a>
-        </article>
-
-        <article class="metric-card">
-            <div class="metric-card__top">
-                <span class="metric-icon metric-icon--success"><AppIcon Name="palette" /></span>
-                <StatusBadge Tone="success">API</StatusBadge>
-            </div>
-            <p class="metric-label">Branding</p>
-            <strong class="metric-value metric-value--text">Contrato disponível</strong>
-            <a href="branding" class="metric-link">
-                Abrir módulo
-                <AppIcon Name="arrow-right" Size="15" />
-            </a>
-        </article>
-
-        <article class="metric-card">
-            <div class="metric-card__top">
-                <span class="metric-icon metric-icon--success"><AppIcon Name="users" /></span>
-                <StatusBadge Tone="success">Integrado</StatusBadge>
-            </div>
-            <p class="metric-label">Usuários</p>
-            <strong class="metric-value metric-value--text">Diretório global</strong>
-            <a href="users" class="metric-link">
-                Abrir diretório
-                <AppIcon Name="arrow-right" Size="15" />
-            </a>
-        </article>
-    </div>
-</section>
-
-<div class="dashboard-grid">
-    <section class="panel" aria-labelledby="modules-heading">
-        <div class="panel-header">
-            <div>
-                <p class="section-kicker">Mapa de capacidade</p>
-                <h2 id="modules-heading">Superfície administrativa</h2>
-            </div>
-        </div>
-
-        <div class="capability-list">
-            <a class="capability-row" href="clients">
-                <span class="capability-row__icon"><AppIcon Name="key" /></span>
-                <span class="capability-row__copy">
-                    <strong>Clientes OAuth &amp; OIDC</strong>
-                    <span>Listagem, detalhe, criação e exclusão com auditoria persistente</span>
-                </span>
-                <StatusBadge Tone="info">Capability</StatusBadge>
-                <AppIcon Name="arrow-right" Size="17" CssClass="capability-row__arrow" />
-            </a>
-            <a class="capability-row" href="users">
-                <span class="capability-row__icon"><AppIcon Name="users" /></span>
-                <span class="capability-row__copy">
-                    <strong>Contas e credenciais</strong>
-                    <span>Consulta, criação, perfil, bloqueio e redefinição de senha</span>
-                </span>
-                <StatusBadge Tone="info">Capability</StatusBadge>
-                <AppIcon Name="arrow-right" Size="17" CssClass="capability-row__arrow" />
-            </a>
-            <a class="capability-row" href="audit">
-                <span class="capability-row__icon"><AppIcon Name="audit" /></span>
-                <span class="capability-row__copy">
-                    <strong>Auditoria</strong>
-                    <span>Eventos persistentes de autorização, leitura e mutações</span>
-                </span>
-                <StatusBadge Tone="success">Ativa</StatusBadge>
-                <AppIcon Name="arrow-right" Size="17" CssClass="capability-row__arrow" />
-            </a>
-        </div>
+        <a href="settings">
+            Ver detalhes
+            <AppIcon Name="arrow-right" Size="15" />
+        </a>
     </section>
+}
 
-    <section class="panel" aria-labelledby="next-steps-heading">
-        <div class="panel-header">
-            <div>
-                <p class="section-kicker">Fundação</p>
-                <h2 id="next-steps-heading">Integração do painel</h2>
-            </div>
-            <span class="progress-label">5 de 5</span>
-        </div>
+@code {
+    [CascadingParameter(Name = "ManagementOverview")]
+    public ManagementDataResult<ManagementOverview>? CascadedOverview
+    {
+        get;
+        set;
+    }
 
-        <ol class="setup-list">
-            <li class="setup-item setup-item--done">
-                <span class="setup-marker"><AppIcon Name="check" Size="15" /></span>
-                <div>
-                    <strong>Incorporar o módulo Razor</strong>
-                    <span>Mesmo processo, origem, configuração e ciclo de publicação do Identity.</span>
-                </div>
-            </li>
-            <li class="setup-item setup-item--done">
-                <span class="setup-marker"><AppIcon Name="check" Size="15" /></span>
-                <div>
-                    <strong>Reutilizar a sessão do host</strong>
-                    <span>Sem tokens expostos ao navegador e sem OIDC contra o próprio host.</span>
-                </div>
-            </li>
-            <li class="setup-item setup-item--done">
-                <span class="setup-marker"><AppIcon Name="check" Size="15" /></span>
-                <div>
-                    <strong>Separar policies por capacidade</strong>
-                    <span>Cada operação exige uma capability estável do provedor.</span>
-                </div>
-            </li>
-            <li class="setup-item setup-item--done">
-                <span class="setup-marker"><AppIcon Name="check" Size="15" /></span>
-                <div>
-                    <strong>Registrar auditoria de mutações</strong>
-                    <span>Operador, ação, alvo, decisão e resultado.</span>
-                </div>
-            </li>
-            <li class="setup-item setup-item--done">
-                <span class="setup-marker"><AppIcon Name="check" Size="15" /></span>
-                <div>
-                    <strong>Separar autorização empresarial</strong>
-                    <span>Roles e diretivas são interpretadas pelas aplicações, não pelo provedor.</span>
-                </div>
-            </li>
-        </ol>
-    </section>
-</div>
+    private ManagementDataResult<ManagementOverview>? result;
+    private bool loading = true;
+    private bool initialized;
 
-<section class="security-note" aria-labelledby="security-note-title">
-    <AppIcon Name="lock" Size="21" />
-    <div>
-        <h2 id="security-note-title">Postura de segurança do frontend</h2>
-        <p>
-            O navegador recebe somente o cookie HttpOnly do serviço de identidade.
-            A REST API permanece disponível como fronteira separada para automações autorizadas.
-        </p>
-    </div>
-    <a href="settings">
-        Ver configuração
-        <AppIcon Name="arrow-right" Size="15" />
-    </a>
-</section>
+    private ManagementOverview Overview =>
+        result?.Value
+        ?? throw new InvalidOperationException(
+            "Overview is only available after a successful load.");
+
+    private IReadOnlyList<ModuleView> AccessibleModules =>
+        Overview.Modules
+            .Where(module => module.CanAccess)
+            .Select(CreateModuleView)
+            .OfType<ModuleView>()
+            .OrderBy(item => item.Presentation.SectionOrder)
+            .ThenBy(item => item.Presentation.Order)
+            .ToArray();
+
+    private int AccessibleModuleCount => AccessibleModules.Count;
+
+    private string MfaPolicyLabel =>
+        Overview.Operator.RequiresMfa ? "Obrigatória" : "Opcional";
+
+    private string MfaSessionLabel =>
+        !Overview.Operator.RequiresMfa
+            ? "Não exigida"
+            : Overview.Operator.MeetsMfaRequirement
+                ? "Atendida"
+                : "Pendente";
+
+    private string MfaTone =>
+        Overview.Operator is
+            { RequiresMfa: true, MeetsMfaRequirement: false }
+            ? "warning"
+            : "success";
+
+    private string NoAccessTitle =>
+        Overview.Operator is
+            { RequiresMfa: true, MeetsMfaRequirement: false }
+            ? "Autenticação multifator necessária"
+            : "Nenhuma área liberada";
+
+    private string NoAccessDescription =>
+        Overview.Operator is
+            { RequiresMfa: true, MeetsMfaRequirement: false }
+            ? "Conclua o MFA da sua sessão para acessar os módulos administrativos."
+            : "O runtime não concedeu acesso a nenhum módulo para esta sessão.";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (initialized)
+        {
+            return;
+        }
+
+        initialized = true;
+        if (CascadedOverview is not null)
+        {
+            result = CascadedOverview;
+            loading = false;
+            return;
+        }
+
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        loading = true;
+        result = await OverviewData.GetAsync();
+        loading = false;
+    }
+
+    private static ModuleView? CreateModuleView(
+        ManagementModuleDescriptor module)
+    {
+        var presentation = ManagementModulePresentations.Find(module.Key);
+        return presentation is null
+            ? null
+            : new ModuleView(module, presentation);
+    }
+
+    private sealed record ModuleView(
+        ManagementModuleDescriptor Module,
+        ManagementModulePresentation Presentation);
+}

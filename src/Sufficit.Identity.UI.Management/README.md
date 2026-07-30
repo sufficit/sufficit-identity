@@ -10,7 +10,7 @@ Implementado:
 
 - shell administrativo responsivo e acessível;
 - rotas de visão geral, clientes, usuários e suas claims, scopes, sessões,
-  autorizações, branding, provisionamento, auditoria e configurações;
+  autorizações, branding, auditoria e configurações;
 - incorporação em `/management` no mesmo processo e origem do Identity;
 - autenticação pela sessão ASP.NET Identity já emitida pelo host;
 - autorização por capabilities estáveis do provedor;
@@ -32,6 +32,8 @@ Implementado:
 - avatar do operador resolvido pelo mesmo `IUserAvatarUrlResolver` da UI
   pública;
 - auditoria persistente de mutações e tentativas negadas;
+- overview canônico de ambiente, transporte HTTP, política MFA, capabilities e
+  disponibilidade de módulos, compartilhado com a Management API;
 - estados de loading, erro, vazio, pesquisa e composição responsiva.
 
 Não pertencem a este módulo:
@@ -48,6 +50,7 @@ usuário.
 
 Ainda não implementado:
 
+- fluxo interativo de provisionamento por contrato compartilhado;
 - exclusão de usuários;
 - SCIM RFC 7643/7644.
 
@@ -129,5 +132,7 @@ dotnet run --project src/server/Sufficit.Identity.Server.csproj
 
 ## Próximas entregas
 
-1. Implementar exclusão segura de usuários.
-2. Implementar SCIM Users/Groups e descoberta de schemas.
+1. Migrar preview/aplicação de manifestos para um serviço compartilhado e
+   liberar o módulo de provisionamento pelo overview.
+2. Implementar exclusão segura de usuários.
+3. Implementar SCIM Users/Groups e descoberta de schemas.
