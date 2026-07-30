@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenIddict.Validation.AspNetCore;
 
 namespace Sufficit.Identity.Scim;
 
@@ -36,6 +37,8 @@ public static class ScimServiceCollectionExtensions
                     return;
                 }
 
+                policy.AuthenticationSchemes.Add(
+                    OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
                 policy.RequireAuthenticatedUser();
                 policy.Requirements.Add(
                     new ScimScopeRequirement(options.RequiredScope));

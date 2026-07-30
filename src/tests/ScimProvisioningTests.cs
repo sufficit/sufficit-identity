@@ -275,6 +275,13 @@ public sealed class ScimProvisioningTests
             "/scim/v2/service-provider-config");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Null(response.Headers.Location);
+        Assert.Contains(
+            response.Headers.WwwAuthenticate,
+            challenge => string.Equals(
+                challenge.Scheme,
+                "Bearer",
+                StringComparison.OrdinalIgnoreCase));
     }
 
     private static WebApplicationFactory<ManagementTestFactory> ScimFactory(
