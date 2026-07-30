@@ -7,7 +7,14 @@
 <PageHeader Title="Usuários"
             Description="Consulte identidades e o estado de acesso dentro da sua autoridade administrativa.">
     <Actions>
-        <StatusBadge Tone="info" Icon="shield">Leitura contextual</StatusBadge>
+        @if (accessResult?.IsSuccess is true && Access.CanCreate)
+        {
+            <a class="button button--primary" href="@NewUserHref">
+                <AppIcon Name="plus" Size="17" />
+                Novo usuário
+            </a>
+        }
+        <StatusBadge Tone="info" Icon="shield">Gestão contextual</StatusBadge>
     </Actions>
 </PageHeader>
 
@@ -240,11 +247,11 @@ else
     <section class="client-guardrails" aria-labelledby="user-safety-heading">
         <div>
             <h2 id="user-safety-heading">Limites desta entrega</h2>
-            <p>Esta primeira fatia é somente leitura; criação e credenciais exigem uma regra explícita para contas multicontexto.</p>
+            <p>Criação e credenciais seguem a autoridade persistida; papéis e diretivas não são concedidos implicitamente.</p>
         </div>
         <ul>
             <li><AppIcon Name="shield" Size="18" /> Manager nunca recebe bypass global</li>
-            <li><AppIcon Name="audit" Size="18" /> Listagem e detalhe geram eventos de auditoria</li>
+            <li><AppIcon Name="audit" Size="18" /> Leituras e mutações geram eventos de auditoria</li>
             <li><AppIcon Name="lock" Size="18" /> Senhas, hashes, tokens e claims não são expostos</li>
         </ul>
     </section>
@@ -274,6 +281,11 @@ else
 
     private int TotalPages =>
         Math.Max(1, (int)Math.Ceiling(Page.TotalCount / (double)Page.PageSize));
+
+    private string NewUserHref =>
+        selectedContextId is null
+            ? "users/new"
+            : $"users/new?context={Uri.EscapeDataString(selectedContextId)}";
 
     private string AccessErrorTitle =>
         accessResult?.Outcome is ManagementDataOutcome.StepUpRequired

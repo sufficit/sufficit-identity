@@ -1633,6 +1633,61 @@ h3 {
     font-size: 11px;
 }
 
+.credential-panel {
+    display: grid;
+    gap: 20px;
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+}
+
+.credential-panel__heading {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 14px;
+}
+
+.credential-panel__icon {
+    display: grid;
+    width: 42px;
+    height: 42px;
+    place-items: center;
+    border-radius: var(--radius);
+    background: var(--brand-soft);
+    color: var(--brand);
+}
+
+.credential-panel__heading h2 {
+    margin-bottom: 3px;
+    font-size: 15px;
+}
+
+.credential-panel__heading p {
+    max-width: 70ch;
+    margin-bottom: 0;
+    color: var(--ink-muted);
+    font-size: 12px;
+}
+
+.credential-panel__fields {
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+}
+
+.credential-panel__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.credential-panel__actions > span {
+    color: var(--ink-muted);
+    font-size: 11px;
+}
+
 .access-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3531,6 +3586,28 @@ h3 {
     }
 
     .form-actions .button {
+        width: 100%;
+    }
+
+    .credential-panel {
+        padding: 20px 16px;
+    }
+
+    .credential-panel__heading {
+        grid-template-columns: 42px minmax(0, 1fr);
+    }
+
+    .credential-panel__heading > .status-badge {
+        grid-column: 2;
+        justify-self: start;
+    }
+
+    .credential-panel__actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .credential-panel__actions .button {
         width: 100%;
     }
 

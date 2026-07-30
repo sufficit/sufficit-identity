@@ -13,6 +13,28 @@
     </Actions>
 </PageHeader>
 
+@if (Created)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Usuário criado</strong>
+            <span>A identidade foi associada ao contexto sem receber papéis ou diretivas implicitamente.</span>
+        </div>
+    </section>
+}
+
+@if (passwordResetSucceeded)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Senha redefinida</strong>
+            <span>A credencial e o selo de segurança foram atualizados; o evento foi registrado na auditoria.</span>
+        </div>
+    </section>
+}
+
 @if (loading)
 {
     <section class="detail-shell" aria-busy="true" aria-label="Carregando detalhes do usuário">
@@ -119,13 +141,99 @@ else if (result?.IsSuccess is true && result.Value is not null)
         </section>
     </section>
 
-    <section class="decision-note decision-note--neutral">
-        <AppIcon Name="lock" Size="21" />
-        <div>
-            <h2>Mutações protegidas nesta etapa</h2>
-            <p>Criação, redefinição de senha e edição de autoridade permanecem indisponíveis até definirmos o efeito sobre contas vinculadas a vários contextos.</p>
-        </div>
-    </section>
+    @if (user.Actions.CanResetPassword)
+    {
+        <EditForm Model="passwordModel"
+                  OnValidSubmit="ResetPasswordAsync"
+                  FormName="reset-management-user-password"
+                  class="credential-panel">
+            <DataAnnotationsValidator />
+            <div class="credential-panel__heading">
+                <div class="credential-panel__icon">
+                    <AppIcon Name="key" Size="20" />
+                </div>
+                <div>
+                    <h2>Redefinir senha</h2>
+                    <p>A alteração vale para a conta inteira e só foi liberada após validar todos os contextos persistidos.</p>
+                </div>
+                <StatusBadge Tone="info">Todos os contextos</StatusBadge>
+            </div>
+
+            @if (resetResult?.IsSuccess is false)
+            {
+                <section class="inline-notice inline-notice--danger" role="alert">
+                    <AppIcon Name="alert" Size="19" />
+                    <div>
+                        <strong>@ResetErrorTitle</strong>
+                        <span>@resetResult.ErrorMessage</span>
+                    </div>
+                </section>
+            }
+
+            <div class="form-grid form-grid--two credential-panel__fields">
+                <div class="field-group">
+                    <label for="new-password">Nova senha</label>
+                    <InputText id="new-password"
+                               class="form-control"
+                               type="password"
+                               autocomplete="new-password"
+                               @bind-Value="passwordModel.NewPassword" />
+                    <ValidationMessage For="() => passwordModel.NewPassword" />
+                    @if (resetResult?.ErrorField is "newPassword")
+                    {
+                        <p class="validation-message">@resetResult.ErrorMessage</p>
+                    }
+                </div>
+                <div class="field-group">
+                    <label for="confirm-new-password">Confirmar nova senha</label>
+                    <InputText id="confirm-new-password"
+                               class="form-control"
+                               type="password"
+                               autocomplete="new-password"
+                               @bind-Value="passwordModel.ConfirmPassword" />
+                    <ValidationMessage For="() => passwordModel.ConfirmPassword" />
+                </div>
+            </div>
+
+            <div class="credential-panel__actions">
+                <span>A política de senha é aplicada pelo Identity no servidor.</span>
+                <button class="button button--primary"
+                        type="submit"
+                        disabled="@resettingPassword">
+                    @if (resettingPassword)
+                    {
+                        <span class="button-spinner" aria-hidden="true"></span>
+                        <span>Redefinindo…</span>
+                    }
+                    else
+                    {
+                        <AppIcon Name="key" Size="17" />
+                        <span>Redefinir senha</span>
+                    }
+                </button>
+            </div>
+        </EditForm>
+    }
+    else if (user.Actions.ResetPasswordRequiresMfa)
+    {
+        <section class="decision-note decision-note--neutral">
+            <AppIcon Name="shield" Size="21" />
+            <div>
+                <h2>MFA necessário para redefinir a senha</h2>
+                <p>Este contexto exige autenticação multifator. Conclua o MFA na sua sessão administrativa e retorne a esta página.</p>
+            </div>
+        </section>
+    }
+    else
+    {
+        <section class="decision-note decision-note--neutral">
+            <AppIcon Name="lock" Size="21" />
+            <div>
+                <h2>Credencial protegida por escopo completo</h2>
+                <p>A senha afeta a conta inteira. Somente Administrator ou um Manager com autoridade em todos os contextos pode redefini-la.</p>
+            </div>
+        </section>
+    }
 }
 else
 {
@@ -153,8 +261,17 @@ else
     [SupplyParameterFromQuery(Name = "context")]
     public string? ContextId { get; set; }
 
+    [SupplyParameterFromQuery(Name = "created")]
+    public int CreatedFlag { get; set; }
+
     private ManagementDataResult<ManagementUserDetail>? result;
+    private ManagementDataResult<ManagementUserDetail>? resetResult;
+    private readonly PasswordResetModel passwordModel = new();
     private bool loading = true;
+    private bool resettingPassword;
+    private bool passwordResetSucceeded;
+
+    private bool Created => CreatedFlag is 1;
 
     private string HeaderTitle =>
         result?.Value?.UserName
@@ -182,6 +299,13 @@ else
         result?.ErrorMessage
         ?? "O serviço de identidade não conseguiu ler esse registro.";
 
+    private string ResetErrorTitle =>
+        resetResult?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? "MFA exigido para redefinir a senha"
+            : resetResult?.Outcome is ManagementDataOutcome.Forbidden
+                ? "Autoridade insuficiente sobre a conta"
+                : "Não foi possível redefinir a senha";
+
     protected override async Task OnParametersSetAsync() => await LoadAsync();
 
     private async Task LoadAsync()
@@ -189,6 +313,30 @@ else
         loading = true;
         result = await UserData.GetAsync(Id, ContextId);
         loading = false;
+    }
+
+    private async Task ResetPasswordAsync()
+    {
+        if (resettingPassword)
+        {
+            return;
+        }
+
+        resettingPassword = true;
+        passwordResetSucceeded = false;
+        resetResult = await UserData.ResetPasswordAsync(
+            Id,
+            new ResetManagementUserPasswordCommand(
+                passwordModel.NewPassword));
+        resettingPassword = false;
+
+        if (resetResult.IsSuccess && resetResult.Value is not null)
+        {
+            result = resetResult;
+            passwordModel.NewPassword = string.Empty;
+            passwordModel.ConfirmPassword = string.Empty;
+            passwordResetSucceeded = true;
+        }
     }
 
     private static string Display(string? value) =>
@@ -204,5 +352,17 @@ else
         return user.LockoutEnd is { } end && end > DateTimeOffset.UtcNow
             ? $"Bloqueado até {end.ToLocalTime():dd/MM/yyyy HH:mm}"
             : "Sem bloqueio ativo";
+    }
+
+    private sealed class PasswordResetModel
+    {
+        [Required(ErrorMessage = "Informe a nova senha.")]
+        public string NewPassword { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Confirme a nova senha.")]
+        [Compare(
+            nameof(NewPassword),
+            ErrorMessage = "As senhas não coincidem.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
     }
 }

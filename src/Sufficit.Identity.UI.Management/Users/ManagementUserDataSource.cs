@@ -50,6 +50,30 @@ public sealed class ManagementUserDataSource(
             "User detail",
             cancellationToken);
 
+    public Task<ManagementDataResult<ManagementUserDetail>> CreateAsync(
+        CreateManagementUserCommand command,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (users, context) => users.CreateAsync(
+                command,
+                context,
+                cancellationToken),
+            "User creation",
+            cancellationToken);
+
+    public Task<ManagementDataResult<ManagementUserDetail>> ResetPasswordAsync(
+        string id,
+        ResetManagementUserPasswordCommand command,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (users, context) => users.ResetPasswordAsync(
+                id,
+                command,
+                context,
+                cancellationToken),
+            "User password reset",
+            cancellationToken);
+
     private async Task<ManagementDataResult<T>> ExecuteAsync<T>(
         Func<IUserManagementService, ManagementRequestContext, Task<T>> operation,
         string operationName,
@@ -75,6 +99,12 @@ public sealed class ManagementUserDataSource(
                 ManagementDataOutcome.Invalid,
                 exception.Message,
                 exception.Field);
+        }
+        catch (ManagementConflictException exception)
+        {
+            return ManagementDataResult<T>.Failure(
+                ManagementDataOutcome.Conflict,
+                exception.Message);
         }
         catch (ManagementNotFoundException exception)
         {

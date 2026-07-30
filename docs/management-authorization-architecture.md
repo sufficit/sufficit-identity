@@ -2,8 +2,8 @@
 
 > Status: host integration, global client/branding capabilities, persistent
 > audit, normalized grants, Sufficit directive resolution, per-context MFA
-> policy and contextual user read contracts implemented. User mutations remain
-> planned.
+> policy and contextual user read contracts implemented. Contextual creation
+> and password reset follow the multi-context rule recorded below.
 > Authorization is decided by the shared application layer used by the UI and
 > Management API. The canonical boundary is
 > [`single-source-ui-architecture.md`](single-source-ui-architecture.md).
@@ -36,6 +36,14 @@ through a replaceable adapter at the composition boundary.
   to tenants.
 - Todas as UIs consomem dados, capabilities e comandos pelos mesmos use cases
   usados pela API; HTTP é um adaptador, não uma segunda implementação.
+- Uma conta nova recebe associação explícita ao contexto, sem receber papel ou
+  diretiva de autoridade implicitamente. Diretivas continuam sendo a fonte das
+  capabilities do operador.
+- Uma mutação global de credencial em conta multicontexto só pode ser executada
+  por um `Manager` que possua a capability exigida em todos os contextos da
+  conta. Qualquer contexto fora de sua autoridade, associação global ou conta
+  sem contexto exige `Administrator`. Diretiva global, malformada ou sem
+  contexto resolvível também falha fechada e exige `Administrator`.
 
 ## Existing Sufficit model
 
@@ -195,6 +203,18 @@ The user-management read delivery maps explicit Manager roles to the non-empty
 This inheritance is an explicit Sufficit adapter rule. The generic core does
 not assume that every host treats `Administrator` as a superset of `Manager`.
 
+Password reset is a single account-wide mutation, even when the account belongs
+to several contexts. The application service therefore resolves the target
+membership from persistence and evaluates `identity.users.reset-password`
+against every context before touching the credential. A context supplied by
+the browser is never accepted as proof of the account's complete scope.
+
+User creation is contextual and least-privileged. The initial context
+association is stored separately from authority directives, so creating an
+identity cannot accidentally delegate a role or capability. The Sufficit
+adapter reads this explicit association alongside legacy directive-derived
+membership; existing accounts remain compatible without a data migration.
+
 ## Enforcement flow
 
 Every external Management API request follows this order:
@@ -314,6 +334,10 @@ authorization headers are always redacted.
   `identity.users.read`; Manager never receives global bypass.**
 - Apply per-tenant MFA policy. **Contrato e configuração concluídos; provider
   externo continua substituível.**
+- Criar usuários com associação explícita a um contexto autorizado, sem papel
+  ou diretiva implícita. **Concluído.**
+- Redefinir senha somente após validar todos os contextos persistidos da conta.
+  **Concluído, incluindo MFA por contexto e escalonamento para Administrator.**
 - Add delegation limits for roles, claims and directives.
 - Audit all read and mutation paths. **Leituras concluídas.**
 
@@ -368,11 +392,8 @@ authorization headers are always redacted.
 
 1. Qual backend substituirá a configuração local como fonte das políticas MFA
    por tenant no host Sufficit?
-2. Uma ação global sobre conta multicontexto (reset de senha, bloqueio ou
-   exclusão) exige autoridade sobre todos os contextos da conta, escalonamento
-   para Administrator ou outra regra?
-3. Which user capabilities may a manager delegate to another operator?
-4. What are the audit retention and export requirements?
+2. Which user capabilities may a manager delegate to another operator?
+3. What are the audit retention and export requirements?
 
 ## Current implementation evidence
 
@@ -390,5 +411,6 @@ authorization headers are always redacted.
 - The Management API gates transport by authentication/scope and every
   delivered application service evaluates operator capability and resource.
 - The API exposes client, branding and provisioning operations.
-- User access, paginated list and detail contracts exist. User mutations,
-  role/claim delegation, independent scope and session/grant contracts do not.
+- User access, paginated list, detail, contextual creation and password-reset
+  contracts exist. Update/disable/delete, role/claim delegation, independent
+  scope and session/grant contracts do not.
