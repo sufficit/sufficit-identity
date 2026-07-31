@@ -8,6 +8,22 @@ device flow verification, and a full self-service "Manage" area.
 
 🚧 **Early stage** — actively in development.
 
+## Repository boundary
+
+There are three top-level product modules but currently only two repositories:
+
+- `sufficit-identity` contains the runtime, STS, Management API, SCIM,
+  persistence and the only executable host;
+- this repository contains two distinct embedded presentation projects: the
+  public/account UI and the Management UI.
+
+Neither project here is a standalone application. Both are compiled into the
+same Identity host, share its session and are deployed in its single artifact.
+The repositories currently have reciprocal source references and CI pins, so
+consolidation into `sufficit-identity` is recommended while preserving the two
+UI assemblies. See the canonical
+[repository architecture and consolidation decision](https://github.com/sufficit/sufficit-identity/blob/main/docs/REPOSITORY-ARCHITECTURE.md).
+
 ## Projects
 
 - `src/Sufficit.Identity.UI` — Razor Class Library injected into the STS for
