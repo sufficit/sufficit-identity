@@ -73,10 +73,10 @@
             }
         </section>
 
-        <section class="external-section" aria-labelledby="available-identities-title">
-            <h3 id="available-identities-title">Disponíveis</h3>
-            @if (_overview.AvailableProviders.Count > 0)
-            {
+        @if (_overview.AvailableProviders.Count > 0)
+        {
+            <section class="external-section" aria-labelledby="available-identities-title">
+                <h3 id="available-identities-title">Disponíveis</h3>
                 <div class="external-providers">
                     @foreach (var provider in _overview.AvailableProviders)
                     {
@@ -88,12 +88,8 @@
                         </a>
                     }
                 </div>
-            }
-            else
-            {
-                <p class="muted">Nenhum outro provedor está disponível.</p>
-            }
-        </section>
+            </section>
+        }
     }
 </div>
 
