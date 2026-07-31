@@ -328,12 +328,24 @@ public sealed class ManagementUiArchitectureTests
             script,
             StringComparison.Ordinal);
         Assert.Contains(
-            "if (!contentType.includes(\"application/json\"))",
+            "JSON.parse(responseText.trim())",
             script,
             StringComparison.Ordinal);
         Assert.DoesNotContain(
-            "response.redirected || !contentType.includes",
+            "headers.get(\"content-type\")",
             script,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "@onsubmit=\"RegisterPasskeyAsync\"",
+            page,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "@onsubmit=\"PasskeySignInAsync\"",
+            login,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "type=\"button\" class=\"btn btn-primary\" disabled=\"@_busy\" @onclick=\"RegisterPasskeyAsync\"",
+            page,
             StringComparison.Ordinal);
         Assert.Contains("IAccountPasskeyService", controller, StringComparison.Ordinal);
         Assert.Contains("IPasskeyAuthenticationService", controller, StringComparison.Ordinal);
