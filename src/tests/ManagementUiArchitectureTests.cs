@@ -31,7 +31,6 @@ public sealed class ManagementUiArchitectureTests
             "Pages/Account/ResetPassword.razor",
             "Pages/Consent.razor",
             "Pages/Device/UserCode.razor",
-            "Pages/Manage/Passkeys.razor",
             "ServiceCollectionExtensions.cs",
             "Services/AuthContextExtensions.cs",
         };
@@ -277,6 +276,63 @@ public sealed class ManagementUiArchitectureTests
             adapter,
             StringComparison.Ordinal);
         Assert.DoesNotContain("QRCoder", adapter, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Passkey_ui_uses_canonical_contracts_and_real_http_ceremonies()
+    {
+        var publicUi = ResolvePublicUiSource();
+        var page = File.ReadAllText(Path.Combine(
+            publicUi,
+            "Pages",
+            "Manage",
+            "Passkeys.razor"));
+        var login = File.ReadAllText(Path.Combine(
+            publicUi,
+            "Pages",
+            "Account",
+            "Login.razor"));
+        var script = File.ReadAllText(Path.Combine(
+            publicUi,
+            "wwwroot",
+            "js",
+            "passkeys.js"));
+        var controller = File.ReadAllText(Path.Combine(
+            ResolveIdentityRepository(),
+            "src",
+            "sts",
+            "Controllers",
+            "AccountPasskeysController.cs"));
+        var adapter = File.ReadAllText(Path.Combine(
+            ResolveIdentityRepository(),
+            "src",
+            "sts",
+            "AspNetCoreIdentityPasskeyService.cs"));
+
+        Assert.Contains("IAccountPasskeyService", page, StringComparison.Ordinal);
+        Assert.Contains("passkeys.register", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("UserManager<", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("SignInManager<", page, StringComparison.Ordinal);
+        Assert.Contains("passkeys.signIn", login, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "MakePasskeyRequestOptionsAsync",
+            login,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("PasskeySignInAsync(credentialJson", login, StringComparison.Ordinal);
+        Assert.Contains(
+            "/account/passkeys/creation-options",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "/account/passkeys/authenticate",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains("IAccountPasskeyService", controller, StringComparison.Ordinal);
+        Assert.Contains("IPasskeyAuthenticationService", controller, StringComparison.Ordinal);
+        Assert.DoesNotContain("UserManager<", controller, StringComparison.Ordinal);
+        Assert.DoesNotContain("SignInManager<", controller, StringComparison.Ordinal);
+        Assert.Contains(": IAccountPasskeyService", adapter, StringComparison.Ordinal);
+        Assert.Contains("IPasskeyAuthenticationService", adapter, StringComparison.Ordinal);
     }
 
     [Fact]
