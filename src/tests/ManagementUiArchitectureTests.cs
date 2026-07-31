@@ -16,6 +16,30 @@ public sealed class ManagementUiArchitectureTests
         "IOpenIddictTokenManager",
     ];
 
+    private static readonly HashSet<string> KnownLegacyPublicUiFiles =
+        new(StringComparer.Ordinal)
+        {
+            "Controllers/ExternalLoginController.cs",
+            "Pages/Account/ConfirmEmail.razor",
+            "Pages/Account/ForgotPassword.razor",
+            "Pages/Account/Login.razor",
+            "Pages/Account/LoginWith2fa.razor",
+            "Pages/Account/LoginWithRecoveryCode.razor",
+            "Pages/Account/Logout.razor",
+            "Pages/Account/Register.razor",
+            "Pages/Account/ResendEmailConfirmation.razor",
+            "Pages/Account/ResetPassword.razor",
+            "Pages/Consent.razor",
+            "Pages/Device/UserCode.razor",
+            "Pages/Manage/ExternalLogins.razor",
+            "Pages/Manage/Grants.razor",
+            "Pages/Manage/Passkeys.razor",
+            "Pages/Manage/Sessions.razor",
+            "Pages/Manage/TwoFactor.razor",
+            "ServiceCollectionExtensions.cs",
+            "Services/AuthContextExtensions.cs",
+        };
+
     [Fact]
     public void Management_ui_source_uses_only_application_contracts()
     {
@@ -87,6 +111,86 @@ public sealed class ManagementUiArchitectureTests
             "AvatarUrlTemplate.Replace",
             managementLayout,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Migrated_account_pages_use_only_the_self_service_contract()
+    {
+        var pages = Path.Combine(
+            ResolvePublicUiSource(),
+            "Pages",
+            "Manage");
+        var migratedPages = new[]
+        {
+            "Index.razor",
+            "ChangePassword.razor",
+            "PersonalData.razor",
+            "DeleteAccount.razor",
+        };
+
+        foreach (var page in migratedPages)
+        {
+            var source = File.ReadAllText(Path.Combine(pages, page));
+            Assert.Contains(
+                "IAccountSelfService",
+                source,
+                StringComparison.Ordinal);
+            foreach (var forbidden in ForbiddenUiDependencies)
+            {
+                Assert.DoesNotContain(
+                    forbidden,
+                    source,
+                    StringComparison.Ordinal);
+            }
+        }
+
+        var selfService = File.ReadAllText(Path.Combine(
+            ResolveIdentityRepository(),
+            "src",
+            "sts",
+            "AccountSelfService.cs"));
+        Assert.Contains(
+            "accountLifecycle.DeleteAsync",
+            selfService,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "userManager.DeleteAsync",
+            selfService,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Public_ui_adds_no_new_direct_identity_dependencies()
+    {
+        var sourceRoot = ResolvePublicUiSource();
+        var unexpectedViolations = Directory
+            .EnumerateFiles(sourceRoot, "*", SearchOption.AllDirectories)
+            .Where(path =>
+                path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith(
+                    ".razor",
+                    StringComparison.OrdinalIgnoreCase))
+            .Where(path =>
+                !path.Contains(
+                    $"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
+                    StringComparison.Ordinal)
+                && !path.Contains(
+                    $"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}",
+                    StringComparison.Ordinal))
+            .Where(path =>
+            {
+                var source = File.ReadAllText(path);
+                return ForbiddenUiDependencies.Any(forbidden =>
+                    source.Contains(forbidden, StringComparison.Ordinal));
+            })
+            .Select(path => Path
+                .GetRelativePath(sourceRoot, path)
+                .Replace(Path.DirectorySeparatorChar, '/'))
+            .Where(path => !KnownLegacyPublicUiFiles.Contains(path))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Empty(unexpectedViolations);
     }
 
     [Fact]
@@ -481,6 +585,25 @@ public sealed class ManagementUiArchitectureTests
         {
             throw new DirectoryNotFoundException(
                 $"Management UI source was not found at '{sourceRoot}'.");
+        }
+
+        return sourceRoot;
+    }
+
+    private static string ResolvePublicUiSource()
+    {
+        var repositoryRoot = ResolveIdentityRepository();
+        var sourceRoot = Path.GetFullPath(Path.Combine(
+            repositoryRoot,
+            "..",
+            "sufficit-identity-ui",
+            "src",
+            "Sufficit.Identity.UI"));
+
+        if (!Directory.Exists(sourceRoot))
+        {
+            throw new DirectoryNotFoundException(
+                $"Public UI source was not found at '{sourceRoot}'.");
         }
 
         return sourceRoot;

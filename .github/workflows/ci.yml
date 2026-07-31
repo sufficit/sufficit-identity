@@ -60,11 +60,13 @@ jobs:
       #     cases, including creation and multi-context password reset,
       #     capability policies, shared avatar resolution, truthful navigation
       #     and persistent administrative audit
+      #   - Account UI: canonical self-service for profile, password, personal
+      #     data export and safe account deletion
       #
       # Do not repoint this at a moving branch — the whole point of pinning
       # is reproducibility. Bump to a new SHA deliberately when the UI repo
       # ships a new commit you want CI to pick up.
-      UI_REF: 6708f6d564a92d5788ee907c517fd924ff836cd8
+      UI_REF: 0e35081697e0b5bb801e02ed83cf35c15cd4706e
       # Ephemeral CI-only database. No MariaDB service is required on
       # developer machines, and no remote connection is ever used here.
       SUFFICIT_IDENTITY_MARIADB_CONNECTION: >-
