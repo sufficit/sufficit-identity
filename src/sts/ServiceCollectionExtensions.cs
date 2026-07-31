@@ -42,6 +42,7 @@ public static class ServiceCollectionExtensions
             .GetSection(configurationSection)
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
         services.AddSingleton(options.TwoFactor);
+        services.AddSingleton(options.Passkeys);
 
         // Read once, reused below both for the certificate fail-fast logic
         // and for the cookie SecurePolicy (#2): this reads the raw
@@ -150,6 +151,13 @@ public static class ServiceCollectionExtensions
             })
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
+        services.Configure<IdentityPasskeyOptions>(passkeys =>
+        {
+            if (!string.IsNullOrWhiteSpace(options.Passkeys.RelyingPartyId))
+            {
+                passkeys.ServerDomain = options.Passkeys.RelyingPartyId.Trim();
+            }
+        });
         // .NET 10 native passkeys (WebAuthn/FIDO2): a inclusão do 9º generic
         // arg IdentityUserPasskey<string> em IdentityDbContext (AppDbContext)
         // faz AddEntityFrameworkStores<AppDbContext>() registrar automaticamente
@@ -571,6 +579,11 @@ public static class ServiceCollectionExtensions
             AspNetCoreIdentityAccountExternalIdentityService>();
         services.AddScoped<IAccountTwoFactorService,
             AspNetCoreIdentityAccountTwoFactorService>();
+        services.AddScoped<AspNetCoreIdentityPasskeyService>();
+        services.AddScoped<IAccountPasskeyService>(services =>
+            services.GetRequiredService<AspNetCoreIdentityPasskeyService>());
+        services.AddScoped<IPasskeyAuthenticationService>(services =>
+            services.GetRequiredService<AspNetCoreIdentityPasskeyService>());
 
         // ---- OIDC Back-Channel Logout 1.0 (item 3.2 [L1]) ----
         // OpenIddict 7.6 only consumes logout_tokens; the STS generates them

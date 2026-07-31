@@ -84,6 +84,12 @@ public sealed class SufficitIdentityOptions
     public TwoFactorOptions TwoFactor { get; init; } = new();
 
     /// <summary>
+    /// WebAuthn/passkey resource limits and relying-party configuration.
+    /// See <see cref="AccountPasskeyOptions"/>.
+    /// </summary>
+    public AccountPasskeyOptions Passkeys { get; init; } = new();
+
+    /// <summary>
     /// Optional claim-type → required-scope map that gates which custom
     /// persisted claims (e.g. <c>directive</c>) reach the access token. See
     /// <see cref="ClaimScopeMapOptions"/>.
@@ -138,6 +144,34 @@ public sealed class TwoFactorOptions
     /// Values outside 1..20 are clamped by the runtime.
     /// </summary>
     public int RecoveryCodeCount { get; init; } = 10;
+}
+
+/// <summary>
+/// Provider-neutral account passkey settings. The STS adapter maps these
+/// values to the concrete WebAuthn implementation used at runtime.
+/// </summary>
+public sealed class AccountPasskeyOptions
+{
+    /// <summary>
+    /// Optional WebAuthn relying-party identifier. When absent, ASP.NET
+    /// Identity derives it from the validated request host.
+    /// </summary>
+    public string? RelyingPartyId { get; init; }
+
+    /// <summary>
+    /// Maximum passkeys that one account may retain.
+    /// </summary>
+    public int MaximumCredentialsPerAccount { get; init; } = 10;
+
+    /// <summary>
+    /// Maximum display-name length accepted from the account UI.
+    /// </summary>
+    public int MaximumNameLength { get; init; } = 100;
+
+    /// <summary>
+    /// Maximum UTF-8 size accepted for a serialized WebAuthn credential.
+    /// </summary>
+    public int MaximumCredentialPayloadBytes { get; init; } = 131_072;
 }
 
 /// <summary>
