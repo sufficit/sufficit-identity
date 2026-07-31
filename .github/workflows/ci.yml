@@ -26,7 +26,7 @@ jobs:
       # canonical account self-service, account-access, external-identity,
       # two-factor and passkey contracts on main as of 2026-07-31.
       # Do not repoint at a moving branch — pinning ensures reproducible builds.
-      IDENTITY_REF: ed722155b401e1192f33ba88cf4f4469c2ec397b
+      IDENTITY_REF: f0800f1040fe840e9050d497bb80a737117891b6
 
     steps:
       - name: Checkout sufficit-identity-ui
