@@ -64,7 +64,11 @@ com a sessão do host. Automação externa chama o controller por HTTP.
 
 Uma UI fora do processo usa HTTP e um cliente tipado. Uma UI no mesmo processo
 pode usar HTTP quando houver motivo operacional, mas isso não é requisito de
-consistência.
+consistência. Cerimônias que dependem da resposta HTTP, como WebAuthn no
+ASP.NET Identity, são uma exceção necessária: a emissão e o consumo do cookie
+temporário do challenge acontecem em endpoints same-origin, enquanto regras,
+validação e persistência continuam no mesmo contrato de aplicação usado pela
+UI incorporada.
 
 ## Independência do motor OAuth/OIDC
 
@@ -240,12 +244,26 @@ expõem essa dependência. A página apenas transforma a URI recebida em QR code
 e apresenta os códigos de recuperação uma única vez, sem acessar stores ou
 gerenciadores de identidade.
 
+Passkeys foram migradas em 2026-07-31 para `IAccountPasskeyService` e
+`IPasskeyAuthenticationService`. O contrato neutro concentra limites,
+propriedade da credencial, validação, registro e remoção; o adaptador concreto
+`AspNetCoreIdentityPasskeyService` explicita que ASP.NET Identity é o motor
+atual. A listagem e a remoção da própria conta usam o contrato diretamente.
+Criação e autenticação atravessam endpoints POST same-origin com antiforgery
+porque o framework protege o estado da cerimônia WebAuthn em um cookie
+temporário emitido e consumido na resposta HTTP. O JavaScript transporta
+somente opções públicas e o resultado WebAuthn produzido pelo autenticador;
+material de chave, entidade mutável e acesso ao store não atravessam a
+fronteira da UI. O login não revela se o identificador informado existe e
+continua permitindo credenciais descobríveis quando o campo está vazio.
+
 Ainda existem violações a migrar:
 
-- fluxos públicos de login, cadastro, confirmação de e-mail e recuperação de
-  senha ainda injetam `UserManager` e `SignInManager`;
-- consentimento, o fluxo anônimo de login externo e passkeys ainda
-  recebem gerenciadores do Identity/OpenIddict.
+- os fluxos públicos de login por senha, cadastro, confirmação de e-mail e
+  recuperação de senha ainda injetam `UserManager` e/ou `SignInManager`;
+- consentimento e o fluxo anônimo de login externo ainda recebem
+  gerenciadores do Identity/OpenIddict. A porção de passkeys da página de
+  login já usa o contrato e os endpoints canônicos.
 
 Esses caminhos são débitos de migração, não precedentes arquiteturais. Nenhuma
 nova tela deve repetir esse padrão.
@@ -258,8 +276,8 @@ nova tela deve repetir esse padrão.
    2026-07-30).
 2. Criar contratos de aplicação para gerenciamento de conta e migrar a UI pública
    (perfil, senha, dados pessoais e exclusão concluídos em 2026-07-30;
-   aplicações conectadas, sessões, identidades externas autenticadas e
-   autenticação em duas etapas
+   aplicações conectadas, sessões, identidades externas autenticadas,
+   autenticação em duas etapas e passkeys
    concluídas em 2026-07-31).
 3. Remover das UIs referências a entidades mutáveis, stores e gerenciadores de
    persistência/protocolo. Permanecem permitidos contratos puros de aplicação,

@@ -31,9 +31,10 @@ When the UI is hosted by the STS app itself (same origin), we eliminate:
 - **Antiforgery complexity** — Razor tag helpers emit tokens, validated by the
   same-origin cookie, end of story.
 
-## Why a separate project (not in the STS repo)
+## Why a separate UI project
 
-- **Independent evolution** — UI changes don't require redeploying the STS API.
+- **Independent source evolution** — o pacote de UI mantém fronteiras e ciclo
+  de versionamento próprios, mas é incorporado e publicado junto do host STS.
 - **Team separation** — frontend-focused work can happen in parallel.
 - **Reusability** — an OAuth/OIDC provider can plug this in through versioned
   application contracts and the `AddSufficitIdentityUI()` /
@@ -97,7 +98,7 @@ app.UseSufficitIdentityUI();                // <-- MapRazorComponents + static a
 | `/Manage` | required | profile overview |
 | `/Manage/ChangePassword` | required | old + new password form |
 | `/Manage/TwoFactor` | required | TOTP setup (QR), enable/disable, recovery codes |
-| `/Manage/Passkeys` | required | list/add/rename/remove WebAuthn passkeys |
+| `/Manage/Passkeys` | required | list/add/remove WebAuthn passkeys |
 | `/Manage/ExternalLogins` | required | list/link/unlink Google/GitHub/AzureAD |
 | `/Manage/Grants` | required | list/revoke connected applications |
 | `/Manage/Sessions` | required | active server-side sessions (host-dependent) |

@@ -1,10 +1,8 @@
 @page "/manage/passkeys"
 @attribute [Authorize]
 @rendermode @(RenderMode.InteractiveServer)
-@using Microsoft.AspNetCore.Identity
 @using Sufficit.Identity.UI.Services
-@inject UserManager<ApplicationUser> UserManager
-@inject SignInManager<ApplicationUser> SignInManager
+@inject IAccountPasskeyService PasskeyService
 @inject IJSRuntime JS
 @inject ILogger<Passkeys> Logger
 
@@ -13,113 +11,158 @@
 <div class="auth-card">
     <ManageBackLink />
     <h1>Passkeys (WebAuthn)</h1>
-    <p class="info">Chaves de segurança biométricas (impressão digital, Face ID, etc.) para login sem senha.</p>
+    <p class="info">Use biometria, o bloqueio do dispositivo ou uma chave de segurança para entrar sem senha.</p>
 
-    @if (_error is not null) { <div class="alert alert-error" role="alert">@_error</div> }
-    @if (_success is not null) { <div class="alert alert-success" role="alert">@_success</div> }
+    @if (_error is not null)
+    {
+        <div class="alert alert-error" role="alert" aria-live="assertive">@_error</div>
+    }
+    @if (_success is not null)
+    {
+        <div class="alert alert-success" role="status" aria-live="polite">@_success</div>
+    }
 
-    <h3>Seus passkeys</h3>
-    @if (_passkeys.Any())
+    <h3>Suas passkeys</h3>
+    @if (_loading)
+    {
+        <p class="muted" role="status">Carregando passkeys...</p>
+    }
+    else if (_loadFailed)
+    {
+        <div class="alert alert-error" role="alert">
+            Não foi possível carregar suas passkeys.
+            <button type="button" class="btn btn-secondary btn-sm" @onclick="LoadPasskeysAsync">
+                Tentar novamente
+            </button>
+        </div>
+    }
+    else if (_overview?.Credentials.Count > 0)
     {
         <ul class="passkey-list">
-            @foreach (var pk in _passkeys)
+            @foreach (var passkey in _overview.Credentials)
             {
-                <li>
-                    <div class="passkey-item">
-                        <span class="passkey-name">@(pk.Name ?? "Sem nome")</span>
-                        <span class="muted">criado em @pk.CreatedAt.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</span>
-                        @if (pk.IsBackedUp)
+                <li class="passkey-item">
+                    <div class="passkey-item-info">
+                        <span class="passkey-name">@(passkey.Name ?? "Passkey sem nome")</span>
+                        <span class="passkey-meta">Criada em @passkey.CreatedAt.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</span>
+                        @if (passkey.IsBackedUp)
                         {
-                            <span class="badge badge-success">sincronizado</span>
+                            <span class="badge badge-success">Sincronizada</span>
                         }
-                        <button type="button" class="btn btn-danger btn-sm" disabled="@_busy"
-                                @onclick="@(async () => await RemovePasskeyAsync(pk.CredentialId))">
-                            Remover
-                        </button>
                     </div>
+                    <button type="button" class="btn btn-danger btn-sm" disabled="@_busy"
+                            aria-label="Remover @(passkey.Name ?? "passkey sem nome")"
+                            @onclick="@(async () => await RemovePasskeyAsync(passkey.CredentialId))">
+                        Remover
+                    </button>
                 </li>
             }
         </ul>
     }
     else
     {
-        <p class="muted">Nenhum passkey cadastrado ainda.</p>
+        <p class="muted">Nenhuma passkey cadastrada. Registre uma para entrar sem digitar sua senha.</p>
     }
 
-    @if (_supported)
+    @if (!_loading && !_loadFailed && _overview is not null)
     {
         <hr />
-        <h3>Adicionar novo passkey</h3>
-        <EditForm Model="@_newPasskey" OnValidSubmit="@RegisterPasskeyAsync">
-            <DataAnnotationsValidator />
-            <div class="form-group">
-                <label for="pkName">Nome (opcional)</label>
-                <InputText id="pkName" @bind-Value="_newPasskey.Name" placeholder="Ex: Macbook Touch ID" class="form-control" autocomplete="off" />
+        <h3>Adicionar passkey</h3>
+
+        @if (!_supported)
+        {
+            <div class="alert alert-info" role="status">
+                Este navegador não oferece suporte a passkeys neste dispositivo. Tente um navegador moderno
+                com Windows Hello, Touch ID, Face ID ou uma chave de segurança USB/NFC.
             </div>
-            <button type="submit" class="btn btn-primary" disabled="@_busy">
-                @(_busy ? "Processando..." : "Registrar passkey")
-            </button>
-        </EditForm>
-    }
-    else
-    {
-        <div class="alert alert-info">
-            💡 Seu navegador não suporta passkeys. Use um navegador moderno (Chrome, Safari,
-            Firefox ou Edge) com autenticador disponível (Windows Hello, Touch ID, Face ID
-            ou security key USB/NFC).
-        </div>
+        }
+        else if (!_overview.CanRegister)
+        {
+            <div class="alert alert-info" role="status">
+                Esta conta atingiu o limite de @_overview.MaximumCredentials passkeys. Remova uma passkey antes de registrar outra.
+            </div>
+        }
+        else
+        {
+            <form @ref="_registrationForm" @onsubmit="RegisterPasskeyAsync" @onsubmit:preventDefault>
+                <AntiforgeryToken />
+                <div class="form-group">
+                    <label for="passkey-name">Nome (opcional)</label>
+                    <input id="passkey-name" name="name" @bind="_passkeyName" class="form-control"
+                           maxlength="@_overview.MaximumNameLength" autocomplete="off"
+                           placeholder="Ex.: notebook pessoal" disabled="@_busy" />
+                    <span class="field-hint">Use um nome que ajude a reconhecer o dispositivo.</span>
+                </div>
+                <button type="submit" class="btn btn-primary" disabled="@_busy">
+                    @(_busy ? "Aguardando o dispositivo..." : "Registrar passkey")
+                </button>
+            </form>
+        }
     }
 </div>
 
 @code {
     [CascadingParameter] private Task<AuthenticationState>? _authTask { get; set; }
+
+    private ElementReference _registrationForm;
+    private AccountPasskeyOverview? _overview;
+    private string? _passkeyName;
     private string? _error;
     private string? _success;
+    private bool _loading = true;
+    private bool _loadFailed;
     private bool _busy;
-    private bool _supported = true; // otimista; JS re-valida no OnAfterRender
-    private List<PasskeyView> _passkeys = new();
-    private NewPasskeyModel _newPasskey = new();
+    private bool _supported = true;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadPasskeysAsync();
-    }
+    protected override Task OnInitializedAsync() => LoadPasskeysAsync();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!firstRender)
         {
-            try
-            {
-                _supported = await JS.InvokeAsync<bool>("passkeys.isSupported");
-                StateHasChanged();
-            }
-            catch
-            {
-                // JS interop indisponível (prerender sem SignalR) — mantém true.
-            }
+            return;
+        }
+
+        try
+        {
+            _supported = await JS.InvokeAsync<bool>("passkeys.isSupported");
+            StateHasChanged();
+        }
+        catch (JSException exception)
+        {
+            Logger.LogDebug(exception, "Passkey capability detection was unavailable.");
         }
     }
 
     private async Task LoadPasskeysAsync()
     {
-        var user = await _authTask.GetAuthenticatedUserAsync(UserManager);
-        if (user is null) return;
+        _loading = true;
+        _loadFailed = false;
 
         try
         {
-            var pks = await UserManager.GetPasskeysAsync(user);
-            _passkeys = pks.Select(p => new PasskeyView(
-                p.CredentialId,
-                p.Name,
-                p.CreatedAt,
-                p.IsBackedUp
-            )).ToList();
+            var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+            if (principal is null)
+            {
+                _error = "Sua sessão expirou. Entre novamente para gerenciar passkeys.";
+                _overview = null;
+                return;
+            }
+
+            _overview = await PasskeyService.GetOverviewAsync(principal);
+            if (_overview is null)
+            {
+                _error = "Sua sessão expirou. Entre novamente para gerenciar passkeys.";
+            }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Logger.LogWarning(ex, "Falha ao carregar passkeys do usuário {UserId}", user.Id);
-            _passkeys = new();
+            Logger.LogWarning(exception, "Failed to load account passkeys.");
+            _loadFailed = true;
+        }
+        finally
+        {
+            _loading = false;
         }
     }
 
@@ -131,56 +174,30 @@
 
         try
         {
-            var user = await _authTask.GetAuthenticatedUserAsync(UserManager);
-            if (user is null) { _error = "Sessão expirada."; return; }
+            var result = await JS.InvokeAsync<AccountPasskeyResult>(
+                "passkeys.register",
+                _registrationForm,
+                _passkeyName ?? string.Empty);
 
-            // 1. Pede ao SignInManager as opções de criação (challenge + user info)
-            var userEntity = new PasskeyUserEntity
+            if (result.State is not null)
             {
-                Id = user.Id,
-                Name = user.UserName ?? user.Email!,
-                DisplayName = user.UserName ?? user.Email!
-            };
-            var creationOptions = await SignInManager.MakePasskeyCreationOptionsAsync(userEntity);
-
-            // 2. Invoca navigator.credentials.create no browser via JS interop
-            var credentialJson = await JS.InvokeAsync<string>(
-                "passkeys.create",
-                System.Text.Json.JsonSerializer.Serialize(creationOptions),
-                _newPasskey.Name ?? string.Empty
-            );
-
-            // 3. Processa o resultado no server (PerformPasskeyAttestationAsync
-            //    valida o attestation e grava no DB via UserManager)
-            var result = await SignInManager.PerformPasskeyAttestationAsync(credentialJson);
+                _overview = result.State;
+            }
 
             if (result.Succeeded)
             {
-                // Se o usuário deu um nome amigável, atualiza o passkey recém-criado.
-                // UserPasskeyInfo não é record (sem `with`), então construímos manualmente.
-                if (!string.IsNullOrWhiteSpace(_newPasskey.Name) && result.Passkey is not null)
-                {
-                    var info = result.Passkey;
-                    info.Name = _newPasskey.Name;
-                    await UserManager.AddOrUpdatePasskeyAsync(user, info);
-                }
-                _success = "Passkey registrado com sucesso!";
-                _newPasskey = new();
-                await LoadPasskeysAsync();
+                _passkeyName = null;
+                _success = "Passkey registrada com sucesso.";
             }
             else
             {
-                _error = result.Failure?.Message ?? "Falha ao registrar passkey.";
+                _error = DescribeErrors(result.Errors, "Não foi possível registrar a passkey.");
             }
         }
-        catch (Microsoft.JSInterop.JSException ex)
+        catch (JSException exception)
         {
-            _error = ex.Message; // mensagem do JS (cancelado, não suportado, etc)
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Erro ao registrar passkey");
-            _error = "Falha ao registrar passkey. Tente novamente.";
+            Logger.LogWarning(exception, "Passkey registration interaction failed.");
+            _error = "Não foi possível concluir o registro. Recarregue a página e tente novamente.";
         }
         finally
         {
@@ -188,7 +205,7 @@
         }
     }
 
-    private async Task RemovePasskeyAsync(byte[] credentialId)
+    private async Task RemovePasskeyAsync(string credentialId)
     {
         _error = null;
         _success = null;
@@ -196,24 +213,40 @@
 
         try
         {
-            var user = await _authTask.GetAuthenticatedUserAsync(UserManager);
-            if (user is null) { _error = "Sessão expirada."; return; }
+            var confirmed = await JS.InvokeAsync<bool>(
+                "confirm",
+                "Remover esta passkey? Ela deixará de funcionar para entrar nesta conta.");
+            if (!confirmed)
+            {
+                return;
+            }
 
-            var result = await UserManager.RemovePasskeyAsync(user, credentialId);
+            var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+            if (principal is null)
+            {
+                _error = "Sua sessão expirou. Entre novamente para gerenciar passkeys.";
+                return;
+            }
+
+            var result = await PasskeyService.RemoveAsync(principal, credentialId);
+            if (result.State is not null)
+            {
+                _overview = result.State;
+            }
+
             if (result.Succeeded)
             {
-                _success = "Passkey removido.";
-                await LoadPasskeysAsync();
+                _success = "Passkey removida.";
             }
             else
             {
-                _error = string.Join(" ", result.Errors.Select(e => e.Description));
+                _error = DescribeErrors(result.Errors, "Não foi possível remover a passkey.");
             }
         }
-        catch (Exception ex)
+        catch (Exception exception)
         {
-            Logger.LogError(ex, "Erro ao remover passkey");
-            _error = "Falha ao remover passkey.";
+            Logger.LogError(exception, "Failed to remove account passkey {CredentialId}.", credentialId);
+            _error = "Não foi possível remover a passkey. Tente novamente.";
         }
         finally
         {
@@ -221,11 +254,10 @@
         }
     }
 
-    private sealed class NewPasskeyModel
-    {
-        [StringLength(100, ErrorMessage = "Nome deve ter no máximo 100 caracteres.")]
-        public string? Name { get; set; }
-    }
-
-    private sealed record PasskeyView(byte[] CredentialId, string? Name, DateTimeOffset CreatedAt, bool IsBackedUp);
+    private static string DescribeErrors(
+        IReadOnlyList<AccountSelfServiceError> errors,
+        string fallback) =>
+        errors.Count == 0
+            ? fallback
+            : string.Join(" ", errors.Select(error => error.Description));
 }

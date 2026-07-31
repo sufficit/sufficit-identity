@@ -1,205 +1,278 @@
-/* Sufficit Identity — Passkeys (WebAuthn) JS interop
+/* Sufficit Identity — WebAuthn browser adapter.
  *
- * Blazor Server roda no servidor; navigator.credentials.create/get só existe
- * no browser. Estas funções são invocadas via IJSRuntime.InvokeAsync<...> do
- * Blazor, recebem as opções serializadas em JSON do server (geradas pelo
- * SignInManager.MakePasskeyCreationOptionsAsync / MakePasskeyRequestOptionsAsync),
- * chamam a WebAuthn API do browser, e retornam o resultado serializado para o
- * server processar via PerformPasskeyAttestationAsync / PerformPasskeyAssertionAsync.
- *
- * Encoding: WebAuthn usa ArrayBuffer (bytes) em muitos campos, mas JSON transporta
- * strings. Seguimos a convenção base64url (sem padding) para ida e volta.
+ * The identity runtime owns every passkey rule. This file only crosses the
+ * browser boundary required by WebAuthn and preserves the antiforgery token
+ * rendered by the account UI.
  */
 
-// ---- base64url helpers (sem dependências externas) ----
+(function () {
+    "use strict";
 
-function base64urlToBuffer(base64url) {
-    // Converte base64url → base64 → string binária → ArrayBuffer
-    const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
-    const padLen = (4 - (base64.length % 4)) % 4;
-    const padded = base64 + '='.repeat(padLen);
-    const binary = atob(padded);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
+    const endpoints = Object.freeze({
+        creationOptions: "/account/passkeys/creation-options",
+        register: "/account/passkeys/register",
+        requestOptions: "/account/passkeys/request-options",
+        authenticate: "/account/passkeys/authenticate",
+    });
+
+    function failure(code, description) {
+        return {
+            succeeded: false,
+            errors: [{ code, description }],
+            state: null,
+        };
     }
-    return bytes.buffer;
-}
 
-function bufferToBase64url(buffer) {
-    // Converte ArrayBuffer → base64url (sem padding)
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i]);
+    function base64urlToBuffer(value) {
+        const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+        const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+        const binary = atob(padded);
+        const bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index += 1) {
+            bytes[index] = binary.charCodeAt(index);
+        }
+        return bytes.buffer;
     }
-    const base64 = btoa(binary);
-    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
 
-/**
- * Decodifica as opções recebidas do server, convertendo campos base64url
- * (challenge, user.id, id) para ArrayBuffer — que é o que a WebAuthn API espera.
- */
-function decodeCreationOptions(optionsJson) {
-    const opts = JSON.parse(optionsJson);
-    if (opts.challenge) opts.challenge = base64urlToBuffer(opts.challenge);
-    if (opts.user && opts.user.id) opts.user.id = base64urlToBuffer(opts.user.id);
-    if (opts.excludeCredentials) {
-        opts.excludeCredentials = opts.excludeCredentials.map(c => ({
-            ...c,
-            id: base64urlToBuffer(c.id),
+    function bufferToBase64url(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = "";
+        for (let index = 0; index < bytes.length; index += 1) {
+            binary += String.fromCharCode(bytes[index]);
+        }
+        return btoa(binary)
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=+$/, "");
+    }
+
+    function parseCreationOptions(options) {
+        if (typeof PublicKeyCredential.parseCreationOptionsFromJSON === "function") {
+            return PublicKeyCredential.parseCreationOptionsFromJSON(options);
+        }
+
+        options.challenge = base64urlToBuffer(options.challenge);
+        options.user.id = base64urlToBuffer(options.user.id);
+        options.excludeCredentials = (options.excludeCredentials || []).map((credential) => ({
+            ...credential,
+            id: base64urlToBuffer(credential.id),
         }));
+        return options;
     }
-    return opts;
-}
 
-function decodeRequestOptions(optionsJson) {
-    const opts = JSON.parse(optionsJson);
-    if (opts.challenge) opts.challenge = base64urlToBuffer(opts.challenge);
-    if (opts.allowCredentials) {
-        opts.allowCredentials = opts.allowCredentials.map(c => ({
-            ...c,
-            id: base64urlToBuffer(c.id),
+    function parseRequestOptions(options) {
+        if (typeof PublicKeyCredential.parseRequestOptionsFromJSON === "function") {
+            return PublicKeyCredential.parseRequestOptionsFromJSON(options);
+        }
+
+        options.challenge = base64urlToBuffer(options.challenge);
+        options.allowCredentials = (options.allowCredentials || []).map((credential) => ({
+            ...credential,
+            id: base64urlToBuffer(credential.id),
         }));
+        return options;
     }
-    return opts;
-}
 
-/**
- * Serializa o PublicKeyCredential resultante para JSON (para o server processar).
- * Converte os campos ArrayBuffer (rawId, response.*) para base64url.
- */
-function serializeCredential(credential) {
-    const result = {
-        id: credential.id,
-        rawId: bufferToBase64url(credential.rawId),
-        type: credential.type,
-        response: {},
+    function serializeCredential(credential) {
+        if (typeof credential.toJSON === "function") {
+            return credential.toJSON();
+        }
+
+        const response = credential.response;
+        const serialized = {
+            id: credential.id,
+            rawId: bufferToBase64url(credential.rawId),
+            type: credential.type,
+            response: {
+                clientDataJSON: bufferToBase64url(response.clientDataJSON),
+            },
+            clientExtensionResults: credential.getClientExtensionResults
+                ? credential.getClientExtensionResults()
+                : {},
+        };
+
+        if ("attestationObject" in response) {
+            serialized.response.attestationObject = bufferToBase64url(response.attestationObject);
+            serialized.response.transports = response.getTransports
+                ? response.getTransports()
+                : [];
+
+            const publicKey = response.getPublicKey ? response.getPublicKey() : null;
+            if (publicKey) {
+                serialized.response.publicKey = bufferToBase64url(publicKey);
+            }
+
+            const publicKeyAlgorithm = response.getPublicKeyAlgorithm
+                ? response.getPublicKeyAlgorithm()
+                : null;
+            if (publicKeyAlgorithm !== null) {
+                serialized.response.publicKeyAlgorithm = publicKeyAlgorithm;
+            }
+
+            const authenticatorData = response.getAuthenticatorData
+                ? response.getAuthenticatorData()
+                : null;
+            if (authenticatorData) {
+                serialized.response.authenticatorData = bufferToBase64url(authenticatorData);
+            }
+        } else {
+            serialized.response.authenticatorData = bufferToBase64url(response.authenticatorData);
+            serialized.response.signature = bufferToBase64url(response.signature);
+            serialized.response.userHandle = response.userHandle
+                ? bufferToBase64url(response.userHandle)
+                : null;
+        }
+
+        if (credential.authenticatorAttachment) {
+            serialized.authenticatorAttachment = credential.authenticatorAttachment;
+        }
+
+        return serialized;
+    }
+
+    async function postForm(url, form, values) {
+        const body = new FormData(form);
+        Object.entries(values || {}).forEach(([key, value]) => body.set(key, value));
+
+        let response;
+        try {
+            response = await fetch(url, {
+                method: "POST",
+                body,
+                credentials: "same-origin",
+                cache: "no-store",
+                headers: { Accept: "application/json" },
+            });
+        } catch {
+            return {
+                response: null,
+                payload: failure(
+                    "network-unavailable",
+                    "Não foi possível acessar o serviço de identidade. Verifique a conexão e tente novamente."),
+            };
+        }
+
+        const contentType = response.headers.get("content-type") || "";
+        if (response.redirected || !contentType.includes("application/json")) {
+            return {
+                response,
+                payload: failure(
+                    "session-expired",
+                    "A página ou a sessão expirou. Recarregue a página e tente novamente."),
+            };
+        }
+
+        try {
+            return { response, payload: await response.json() };
+        } catch {
+            return {
+                response,
+                payload: failure(
+                    "invalid-response",
+                    "O serviço retornou uma resposta inválida. Recarregue a página e tente novamente."),
+            };
+        }
+    }
+
+    function interactionFailure(error) {
+        if (error && error.name === "NotAllowedError") {
+            return failure(
+                "passkey-interaction-cancelled",
+                "A operação foi cancelada ou expirou. Inicie novamente quando estiver pronto.");
+        }
+
+        return failure(
+            "passkey-interaction-failed",
+            "O dispositivo não conseguiu concluir a operação com a passkey.");
+    }
+
+    window.passkeys = window.passkeys || {};
+
+    window.passkeys.register = async function (form, name) {
+        if (!window.PublicKeyCredential || !navigator.credentials) {
+            return failure(
+                "passkey-unsupported",
+                "Este navegador não oferece suporte a passkeys neste dispositivo.");
+        }
+
+        const optionsResponse = await postForm(endpoints.creationOptions, form);
+        if (!optionsResponse.response || !optionsResponse.response.ok) {
+            return optionsResponse.payload;
+        }
+
+        let credential;
+        try {
+            credential = await navigator.credentials.create({
+                publicKey: parseCreationOptions(optionsResponse.payload),
+            });
+        } catch (error) {
+            return interactionFailure(error);
+        }
+
+        if (!credential) {
+            return failure(
+                "passkey-credential-missing",
+                "O dispositivo não retornou uma passkey.");
+        }
+
+        const registerResponse = await postForm(endpoints.register, form, {
+            credentialJson: JSON.stringify(serializeCredential(credential)),
+            name: name || "",
+        });
+        return registerResponse.payload;
     };
 
-    if (credential.response instanceof AuthenticatorAttestationResponse) {
-        // Registro (navigator.credentials.create)
-        result.response.clientDataJSON = bufferToBase64url(credential.response.clientDataJSON);
-        result.response.attestationObject = bufferToBase64url(credential.response.attestationObject);
-        if (credential.response.getTransports) {
-            result.response.transports = credential.response.getTransports();
+    window.passkeys.signIn = async function (form, username) {
+        if (!window.PublicKeyCredential || !navigator.credentials) {
+            return failure(
+                "passkey-unsupported",
+                "Este navegador não oferece suporte a passkeys neste dispositivo.");
         }
-        if (credential.response.getPublicKey) {
-            result.response.publicKey = bufferToBase64url(credential.response.getPublicKey());
+
+        const query = username
+            ? `?username=${encodeURIComponent(username)}`
+            : "";
+        const optionsResponse = await postForm(
+            `${endpoints.requestOptions}${query}`,
+            form);
+        if (!optionsResponse.response || !optionsResponse.response.ok) {
+            return optionsResponse.payload;
         }
-        if (credential.response.getPublicKeyAlgorithm) {
-            result.response.publicKeyAlgorithm = credential.response.getPublicKeyAlgorithm();
+
+        let credential;
+        try {
+            credential = await navigator.credentials.get({
+                publicKey: parseRequestOptions(optionsResponse.payload),
+            });
+        } catch (error) {
+            return interactionFailure(error);
         }
-        if (credential.response.getAuthenticatorData) {
-            result.response.authenticatorData = bufferToBase64url(credential.response.getAuthenticatorData());
+
+        if (!credential) {
+            return failure(
+                "passkey-credential-missing",
+                "O dispositivo não retornou uma passkey.");
         }
-    } else if (credential.response instanceof AuthenticatorAssertionResponse) {
-        // Login (navigator.credentials.get)
-        result.response.clientDataJSON = bufferToBase64url(credential.response.clientDataJSON);
-        result.response.authenticatorData = bufferToBase64url(credential.response.authenticatorData);
-        result.response.signature = bufferToBase64url(credential.response.signature);
-        result.response.userHandle = credential.response.userHandle
-            ? bufferToBase64url(credential.response.userHandle)
-            : null;
-    }
 
-    if (credential.authenticatorAttachment) {
-        result.authenticatorAttachment = credential.authenticatorAttachment;
-    }
+        const authenticationResponse = await postForm(endpoints.authenticate, form, {
+            credentialJson: JSON.stringify(serializeCredential(credential)),
+        });
+        return authenticationResponse.payload;
+    };
 
-    // clientExtensionResults se existir
-    if (credential.getClientExtensionResults) {
-        result.clientExtensionResults = credential.getClientExtensionResults();
-    }
-
-    return result;
-}
-
-// ---- Funções expostas para Blazor (window.passkeys.*) ----
-
-window.passkeys = window.passkeys || {};
-
-/**
- * Inicia o fluxo de registro de passkey (attestation).
- * @param {string} creationOptionsJson — JSON serializado de PublicKeyCredentialCreationOptions
- *   (gerado pelo server, com campos binários em base64url)
- * @param {string} passkeyName — nome amigável que o usuário deu ao passkey
- * @returns {Promise<string>} JSON serializado do PublicKeyCredential resultante
- *   (para passar de volta ao server via PerformPasskeyAttestationAsync)
- * @throws {Error} se o browser não suportar WebAuthn ou o usuário cancelar
- */
-window.passkeys.create = async function (creationOptionsJson, passkeyName) {
-    if (!window.PublicKeyCredential) {
-        throw new Error('Este navegador não suporta WebAuthn/passkeys.');
-    }
-
-    const options = decodeCreationOptions(creationOptionsJson);
-
-    // Adiciona nome do passkey como extension (se suportado pelo browser/authenticator)
-    // — alguns authenticators mostram este nome na UI de seleção.
-    if (!options.extensions) options.extensions = {};
-
-    let credential;
-    try {
-        credential = await navigator.credentials.create({ publicKey: options });
-    } catch (err) {
-        if (err.name === 'NotAllowedError') {
-            throw new Error('Operação cancelada ou expirada.');
+    window.passkeys.isSupported = async function () {
+        if (!window.PublicKeyCredential || !navigator.credentials) {
+            return false;
         }
-        throw err;
-    }
 
-    const serialized = serializeCredential(credential);
-    serialized.name = passkeyName; // nome amigável definido pelo usuário
-    return JSON.stringify(serialized);
-};
-
-/**
- * Inicia o fluxo de login por passkey (assertion).
- * @param {string} requestOptionsJson — JSON serializado de PublicKeyCredentialRequestOptions
- *   (gerado pelo server, com campos binários em base64url)
- * @returns {Promise<string>} JSON serializado do PublicKeyCredential resultante
- *   (para passar de volta ao server via PasskeySignInAsync)
- * @throws {Error} se o browser não suportar WebAuthn ou o usuário cancelar
- */
-window.passkeys.get = async function (requestOptionsJson) {
-    if (!window.PublicKeyCredential) {
-        throw new Error('Este navegador não suportar WebAuthn/passkeys.');
-    }
-
-    const options = decodeRequestOptions(requestOptionsJson);
-
-    let credential;
-    try {
-        credential = await navigator.credentials.get({ publicKey: options });
-    } catch (err) {
-        if (err.name === 'NotAllowedError') {
-            throw new Error('Operação cancelada ou expirada.');
+        try {
+            if (PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+                return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+            }
+        } catch {
+            // External USB/NFC authenticators can still work without a platform authenticator.
         }
-        throw err;
-    }
 
-    return JSON.stringify(serializeCredential(credential));
-};
-
-/**
- * Verifica se o browser suporta passkeys/WebAuthn.
- * Útil para a UI decidir se mostra ou esconde o botão de passkey.
- * @returns {Promise<boolean>}
- */
-window.passkeys.isSupported = async function () {
-    if (!window.PublicKeyCredential) return false;
-    // isConnectedUserVerifyingPlatform: verifica se há um autenticador
-    // de plataforma disponível (Windows Hello, Touch ID, Face ID, etc).
-    // Não é mandatório (usuário pode usar security key USB/NFC/BLE),
-    // mas indica que passkeys são realmente utilizáveis neste dispositivo.
-    try {
-        if (window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
-            return await window.PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-        }
-    } catch (e) {
-        // Fallback: assume suporte básico se PublicKeyCredential existe.
-    }
-    return true;
-};
+        return true;
+    };
+})();

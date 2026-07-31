@@ -4,7 +4,6 @@
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 @using Microsoft.AspNetCore.Identity
 @inject SignInManager<ApplicationUser> SignInManager
-@inject UserManager<ApplicationUser> UserManager
 @inject RegisterConfiguration RegisterConfig
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
@@ -70,11 +69,13 @@
 
             @if (_passkeySupported)
             {
-                <button type="button" class="btn btn-passkey btn-block" disabled="@_passkeyBusy"
-                        @onclick="PasskeySignInAsync">
-                    <svg class="provider-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-                    <span>@(_passkeyBusy ? "Verificando..." : "Entrar com passkey")</span>
-                </button>
+                <form @ref="_passkeyForm" class="passkey-form" @onsubmit="PasskeySignInAsync" @onsubmit:preventDefault>
+                    <AntiforgeryToken />
+                    <button type="submit" class="btn btn-passkey btn-block" disabled="@_passkeyBusy">
+                        <svg class="provider-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                        <span>@(_passkeyBusy ? "Verificando..." : "Entrar com passkey")</span>
+                    </button>
+                </form>
             }
         </div>
 
@@ -134,6 +135,7 @@
     private string? _returnUrl;
     private string? _errorMessage;
     private List<AuthenticationScheme> _externalProviders = new();
+    private ElementReference _passkeyForm;
     private bool _passkeySupported;
     private bool _passkeyBusy;
     private string _logoUrl = "_content/Sufficit.Identity.UI/img/logo-full.png";
@@ -175,60 +177,26 @@
 
         try
         {
-            // 1. Resolve o usuário pelo username (se informado). Passkey login
-            //    sem username (discoverable) é possível mas requer que o
-            //    authenticator suporte resident keys — usamos o username
-            //    quando disponível para máxima compatibilidade.
-            ApplicationUser? user = null;
-            if (!string.IsNullOrWhiteSpace(Model.UserName))
-            {
-                user = await UserManager.FindByNameAsync(Model.UserName);
-                if (user is null)
-                {
-                    _errorMessage = "Usuário não encontrado.";
-                    return;
-                }
-            }
-            else
-            {
-                // Login discoverable: usa um usuário "placeholder" para gerar
-                // opções sem allowCredentials (browser pergunta qual credencial usar).
-                // MakePasskeyRequestOptionsAsync exige TUser não-null — passamos
-                // um novo ApplicationUser vazio só para satisfazer a assinatura.
-                user = new ApplicationUser();
-            }
-            var requestOptions = await SignInManager.MakePasskeyRequestOptionsAsync(user);
-
-            // 2. Invoca navigator.credentials.get no browser
-            var credentialJson = await JS.InvokeAsync<string>(
-                "passkeys.get",
-                System.Text.Json.JsonSerializer.Serialize(requestOptions)
-            );
-
-            // 3. Processa no server: PasskeySignInAsync valida o assertion e
-            //    faz o SignIn do usuário via cookie de aplicação.
-            var result = await SignInManager.PasskeySignInAsync(credentialJson);
+            var result = await JS.InvokeAsync<PasskeyAuthenticationResult>(
+                "passkeys.signIn",
+                _passkeyForm,
+                Model.UserName ?? string.Empty);
 
             if (result.Succeeded)
             {
                 Navigation.NavigateTo(_returnUrl ?? "/", forceLoad: true);
             }
-            else if (result.IsNotAllowed)
-            {
-                _errorMessage = "Login não permitido. Confirme seu e-mail ou contate o suporte.";
-            }
-            else if (result.IsLockedOut)
-            {
-                _errorMessage = "Conta bloqueada por muitas tentativas.";
-            }
             else
             {
-                _errorMessage = "Falha na autenticação por passkey.";
+                _errorMessage = result.Errors.Count == 0
+                    ? "Não foi possível autenticar com a passkey."
+                    : string.Join(" ", result.Errors.Select(error => error.Description));
             }
         }
-        catch (Microsoft.JSInterop.JSException ex)
+        catch (JSException exception)
         {
-            _errorMessage = ex.Message; // cancelado, não suportado, etc
+            Logger.LogWarning(exception, "Passkey sign-in interaction failed.");
+            _errorMessage = "Não foi possível concluir a autenticação. Recarregue a página e tente novamente.";
         }
         catch (Exception ex)
         {

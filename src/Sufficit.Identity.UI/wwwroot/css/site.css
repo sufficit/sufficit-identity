@@ -346,6 +346,13 @@ a:hover { color: var(--brand-hover); text-decoration: underline; }
     color: var(--ink-muted);
     cursor: not-allowed;
 }
+.field-hint {
+    display: block;
+    margin-top: var(--space-2);
+    color: var(--ink-muted);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+}
 .form-control-static {
     display: block;
     padding: var(--space-3) 0;
@@ -762,7 +769,23 @@ img.profile-avatar { background: var(--surface-sunken); }
     padding: var(--space-3) 0;
     border-bottom: 1px solid var(--line);
 }
-.passkey-name { font-weight: 500; color: var(--ink); }
+.passkey-item-info {
+    flex: 1;
+    min-width: 0;
+}
+.passkey-name {
+    display: block;
+    color: var(--ink);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.passkey-meta {
+    display: block;
+    margin: var(--space-1) 0 var(--space-2);
+    color: var(--ink-muted);
+    font-size: 0.8125rem;
+}
+.passkey-form { width: 100%; }
 .passkey-list li, .external-list li {
     padding: var(--space-3) 0;
     border-bottom: 1px solid var(--line);
@@ -996,10 +1019,12 @@ img.profile-avatar { background: var(--surface-sunken); }
     }
     .manage-link::after { display: none; }
     .grant-item,
-    .session-item {
+    .session-item,
+    .passkey-item {
         align-items: stretch;
         flex-direction: column;
     }
+    .passkey-item .btn { align-self: flex-start; }
     .access-item-action {
         align-self: flex-start;
     }
