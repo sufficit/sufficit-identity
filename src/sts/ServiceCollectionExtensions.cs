@@ -564,6 +564,7 @@ public static class ServiceCollectionExtensions
             OpenIddictIdentityUserSessionRevoker>();
         services.AddScoped<IIdentityAccountLifecycleService,
             IdentityAccountLifecycleService>();
+        services.AddScoped<IAccountSelfService, AccountSelfService>();
 
         // ---- OIDC Back-Channel Logout 1.0 (item 3.2 [L1]) ----
         // OpenIddict 7.6 only consumes logout_tokens; the STS generates them
