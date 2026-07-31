@@ -250,12 +250,16 @@ propriedade da credencial, validação, registro e remoção; o adaptador concre
 `AspNetCoreIdentityPasskeyService` explicita que ASP.NET Identity é o motor
 atual. A listagem e a remoção da própria conta usam o contrato diretamente.
 Criação e autenticação atravessam endpoints POST same-origin com antiforgery
-porque o framework protege o estado da cerimônia WebAuthn em um cookie
-temporário emitido e consumido na resposta HTTP. O JavaScript transporta
-somente opções públicas e o resultado WebAuthn produzido pelo autenticador;
-material de chave, entidade mutável e acesso ao store não atravessam a
-fronteira da UI. O login não revela se o identificador informado existe e
-continua permitindo credenciais descobríveis quando o campo está vazio.
+porque o framework atualiza um ticket de autenticação temporário durante a
+resposta HTTP. Esse ticket fica protegido no `IDistributedCache` do runtime por
+um `ITicketStore`; o cookie leva somente uma chave aleatória curta. Assim, a
+cerimônia não depende do tamanho de buffer do proxy e o armazenamento pode ser
+trocado por Redis quando houver múltiplas réplicas, sem alterar contratos ou
+UI. O JavaScript transporta somente opções públicas e o resultado WebAuthn
+produzido pelo autenticador; material de chave, entidade mutável e acesso ao
+store não atravessam a fronteira da UI. O login não revela se o identificador
+informado existe e continua permitindo credenciais descobríveis quando o campo
+está vazio.
 
 Ainda existem violações a migrar:
 

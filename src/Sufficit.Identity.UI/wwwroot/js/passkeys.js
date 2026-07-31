@@ -173,13 +173,20 @@
             const authenticationWasLost = response.redirected
                 || response.status === 401
                 || response.status === 403;
+            const serviceIsUnavailable = response.status >= 500;
             return {
                 response,
                 payload: failure(
-                    authenticationWasLost ? "session-expired" : "invalid-response",
+                    authenticationWasLost
+                        ? "session-expired"
+                        : serviceIsUnavailable
+                            ? "service-unavailable"
+                            : "invalid-response",
                     authenticationWasLost
                         ? "A página ou a sessão expirou. Recarregue a página e tente novamente."
-                        : "O serviço retornou uma resposta inválida. Recarregue a página e tente novamente."),
+                        : serviceIsUnavailable
+                            ? `O serviço de identidade está temporariamente indisponível (código ${response.status}). Tente novamente em instantes.`
+                            : "O serviço retornou uma resposta inválida. Recarregue a página e tente novamente."),
             };
         }
     }
