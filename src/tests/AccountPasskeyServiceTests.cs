@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
+using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Tests.Infrastructure;
@@ -48,6 +50,12 @@ public sealed class AccountPasskeyServiceTests(
         var longName = await service.RegisterAsync(
             principal,
             new AccountPasskeyRegistration("{}", new string('x', 101)));
+        var missingRenameCredential = await service.RenameAsync(
+            principal,
+            new AccountPasskeyRename("", "workstation"));
+        var longRename = await service.RenameAsync(
+            principal,
+            new AccountPasskeyRename("missing", new string('x', 101)));
 
         Assert.False(missing.Succeeded);
         Assert.Contains(
@@ -56,6 +64,12 @@ public sealed class AccountPasskeyServiceTests(
         Assert.False(longName.Succeeded);
         Assert.Contains(
             longName.Errors,
+            error => error.Code == "passkey-name-too-long");
+        Assert.Contains(
+            missingRenameCredential.Errors,
+            error => error.Code == "passkey-credential-required");
+        Assert.Contains(
+            longRename.Errors,
             error => error.Code == "passkey-name-too-long");
         Assert.Empty(await users.GetPasskeysAsync(user));
     }
@@ -82,6 +96,56 @@ public sealed class AccountPasskeyServiceTests(
     }
 
     [Fact]
+    public async Task Rename_updates_only_the_optional_friendly_name()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var users = scope.ServiceProvider
+            .GetRequiredService<UserManager<ApplicationUser>>();
+        var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var service = scope.ServiceProvider
+            .GetRequiredService<IAccountPasskeyService>();
+        var user = await CreateUserAsync(users);
+        var credentialId = Guid.NewGuid().ToByteArray();
+        var publicKey = new byte[] { 1, 2, 3, 4 };
+        database.Set<IdentityUserPasskey<string>>().Add(
+            new IdentityUserPasskey<string>
+            {
+                UserId = user.Id,
+                CredentialId = credentialId,
+                Data = new IdentityPasskeyData
+                {
+                    PublicKey = publicKey,
+                    Name = "Original",
+                    CreatedAt = DateTimeOffset.UtcNow,
+                    Transports = ["internal"],
+                    AttestationObject = [5, 6],
+                    ClientDataJson = [7, 8],
+                },
+            });
+        await database.SaveChangesAsync();
+        var encodedCredentialId = WebEncoders.Base64UrlEncode(credentialId);
+
+        var renamed = await service.RenameAsync(
+            PrincipalFor(user),
+            new AccountPasskeyRename(encodedCredentialId, "  Notebook pessoal  "));
+        var stored = Assert.Single(await users.GetPasskeysAsync(user));
+
+        Assert.True(renamed.Succeeded);
+        Assert.Equal("Notebook pessoal", stored.Name);
+        Assert.Equal(publicKey, stored.PublicKey);
+        Assert.Equal(credentialId, stored.CredentialId);
+
+        var cleared = await service.RenameAsync(
+            PrincipalFor(user),
+            new AccountPasskeyRename(encodedCredentialId, "  "));
+        stored = Assert.Single(await users.GetPasskeysAsync(user));
+
+        Assert.True(cleared.Succeeded);
+        Assert.Null(stored.Name);
+        Assert.Equal(publicKey, stored.PublicKey);
+    }
+
+    [Fact]
     public async Task Unauthenticated_operations_fail_closed()
     {
         await using var scope = factory.Services.CreateAsyncScope();
@@ -96,13 +160,16 @@ public sealed class AccountPasskeyServiceTests(
         var registration = await account.RegisterAsync(
             anonymous,
             new AccountPasskeyRegistration("{}", null));
+        var rename = await account.RenameAsync(
+            anonymous,
+            new AccountPasskeyRename("credential", "name"));
         var removal = await account.RemoveAsync(anonymous, "credential");
         var signIn = await authentication.SignInAsync(null);
         var longUsername = await authentication.CreateRequestOptionsAsync(
             new string('u', 257));
 
         Assert.All(
-            new[] { options.Errors, registration.Errors, removal.Errors },
+            new[] { options.Errors, registration.Errors, rename.Errors, removal.Errors },
             errors => Assert.Contains(
                 errors,
                 error => error.Code == "unauthenticated"));

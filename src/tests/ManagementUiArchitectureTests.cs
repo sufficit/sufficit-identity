@@ -311,6 +311,9 @@ public sealed class ManagementUiArchitectureTests
 
         Assert.Contains("IAccountPasskeyService", page, StringComparison.Ordinal);
         Assert.Contains("passkeys.register", page, StringComparison.Ordinal);
+        Assert.Contains("PasskeyService.RenameAsync", page, StringComparison.Ordinal);
+        Assert.Contains("new AccountPasskeyRename", page, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Renomear", page, StringComparison.Ordinal);
         Assert.DoesNotContain("UserManager<", page, StringComparison.Ordinal);
         Assert.DoesNotContain("SignInManager<", page, StringComparison.Ordinal);
         Assert.Contains("passkeys.signIn", login, StringComparison.Ordinal);

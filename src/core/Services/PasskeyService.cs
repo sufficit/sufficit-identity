@@ -24,6 +24,10 @@ public sealed record AccountPasskeyRegistration(
     string? CredentialJson,
     string? Name);
 
+public sealed record AccountPasskeyRename(
+    string CredentialId,
+    string? Name);
+
 public sealed record PasskeyOptionsResult(
     bool Succeeded,
     IReadOnlyList<AccountSelfServiceError> Errors,
@@ -91,6 +95,11 @@ public interface IAccountPasskeyService
     Task<AccountPasskeyResult> RegisterAsync(
         ClaimsPrincipal principal,
         AccountPasskeyRegistration command,
+        CancellationToken cancellationToken = default);
+
+    Task<AccountPasskeyResult> RenameAsync(
+        ClaimsPrincipal principal,
+        AccountPasskeyRename command,
         CancellationToken cancellationToken = default);
 
     Task<AccountPasskeyResult> RemoveAsync(

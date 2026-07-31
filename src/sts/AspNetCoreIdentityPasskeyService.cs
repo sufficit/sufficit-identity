@@ -168,6 +168,67 @@ public sealed class AspNetCoreIdentityPasskeyService(
         return AccountPasskeyResult.Success(state);
     }
 
+    public async Task<AccountPasskeyResult> RenameAsync(
+        ClaimsPrincipal principal,
+        AccountPasskeyRename command,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        var user = await GetAuthenticatedUserAsync(principal, cancellationToken);
+        if (user is null)
+        {
+            return AccountPasskeyResult.Failure(
+                "unauthenticated",
+                "A sessão não está autenticada.");
+        }
+
+        var credentialId = command.CredentialId?.Trim() ?? "";
+        if (credentialId.Length == 0)
+        {
+            return AccountPasskeyResult.Failure(
+                "passkey-credential-required",
+                "A passkey que será renomeada não foi informada.",
+                await BuildOverviewAsync(user, cancellationToken));
+        }
+
+        var name = command.Name?.Trim();
+        if (name?.Length > MaximumNameLength)
+        {
+            return AccountPasskeyResult.Failure(
+                "passkey-name-too-long",
+                $"O nome deve ter no máximo {MaximumNameLength} caracteres.",
+                await BuildOverviewAsync(user, cancellationToken));
+        }
+
+        var passkeys = await userManager.GetPasskeysAsync(user);
+        cancellationToken.ThrowIfCancellationRequested();
+        var passkey = passkeys.FirstOrDefault(candidate => string.Equals(
+            WebEncoders.Base64UrlEncode(candidate.CredentialId),
+            credentialId,
+            StringComparison.Ordinal));
+        if (passkey is null)
+        {
+            return AccountPasskeyResult.Failure(
+                "passkey-not-found",
+                "A passkey não foi encontrada.",
+                await BuildOverviewAsync(user, cancellationToken));
+        }
+
+        passkey.Name = string.IsNullOrWhiteSpace(name) ? null : name;
+        var renamed = await userManager.AddOrUpdatePasskeyAsync(user, passkey);
+        var state = await BuildOverviewAsync(user, cancellationToken);
+        if (!renamed.Succeeded)
+        {
+            return FromIdentityResult(renamed, state);
+        }
+
+        logger.LogInformation(
+            "User {UserId} renamed passkey {CredentialId}.",
+            user.Id,
+            credentialId);
+        return AccountPasskeyResult.Success(state);
+    }
+
     public async Task<AccountPasskeyResult> RemoveAsync(
         ClaimsPrincipal principal,
         string credentialId,
