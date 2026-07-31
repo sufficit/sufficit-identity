@@ -778,8 +778,8 @@ img.profile-avatar { background: var(--surface-sunken); }
 .grant-item {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    gap: var(--space-3);
+    align-items: flex-start;
+    gap: var(--space-4);
     padding: var(--space-4);
     border: 1px solid var(--line);
     border-radius: var(--radius);
@@ -790,12 +790,63 @@ img.profile-avatar { background: var(--surface-sunken); }
 .session-item {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    gap: var(--space-3);
+    align-items: flex-start;
+    gap: var(--space-4);
     padding: var(--space-4);
     border: 1px solid var(--line);
     border-radius: var(--radius);
     margin-bottom: var(--space-2);
+}
+.access-item-body {
+    flex: 1;
+    min-width: 0;
+}
+.access-item-title {
+    display: block;
+    color: var(--ink-strong);
+    font-size: 0.9375rem;
+}
+.access-client-id {
+    display: block;
+    margin-top: var(--space-1);
+    color: var(--ink-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+}
+.access-metadata {
+    display: grid;
+    gap: var(--space-2);
+    margin: var(--space-3) 0 0;
+}
+.access-metadata div {
+    display: grid;
+    grid-template-columns: minmax(7.5rem, auto) minmax(0, 1fr);
+    gap: var(--space-2);
+}
+.access-metadata dt,
+.access-metadata dd {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+}
+.access-metadata dt {
+    color: var(--ink-muted);
+    font-weight: 600;
+}
+.access-metadata dd {
+    color: var(--ink);
+    overflow-wrap: anywhere;
+}
+.access-item-action {
+    flex-shrink: 0;
+}
+.session-revoke-all {
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--line);
+}
+.session-revoke-all .muted {
+    margin-bottom: var(--space-3);
 }
 
 /* --- 2FA / Recovery codes ------------------------------------------------- */
@@ -925,6 +976,18 @@ img.profile-avatar { background: var(--surface-sunken); }
         font-size: 0.875rem;
     }
     .manage-link::after { display: none; }
+    .grant-item,
+    .session-item {
+        align-items: stretch;
+        flex-direction: column;
+    }
+    .access-item-action {
+        align-self: flex-start;
+    }
+    .access-metadata div {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
 }
 
 @media (min-width: 769px) {

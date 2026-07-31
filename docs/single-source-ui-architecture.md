@@ -182,11 +182,23 @@ remover a conta. As páginas `/manage`, `/manage/changepassword`,
 `/manage/personaldata` e `/manage/deleteaccount` não recebem entidades
 mutáveis nem gerenciadores de persistência.
 
+O vertical de acessos da própria conta foi migrado em 2026-07-31 para
+`IAccountAccessService`. Aplicações conectadas e sessões deixaram de projetar
+a mesma coleção de autorizações. `/manage/grants` agrupa por aplicação as
+autorizações válidas, une seus scopes e informa a quantidade de credenciais
+ativas; revogar o acesso invalida todas as autorizações do usuário para aquela
+aplicação e os tokens relacionados. `/manage/sessions` projeta credenciais
+OpenIddict válidas e não expiradas, sem payload ou reference ID; a revogação
+individual afeta somente a credencial selecionada, enquanto o encerramento
+total gira o security stamp e revoga tokens e autorizações. Em todas as
+mutações, o runtime verifica a propriedade do recurso pelo principal
+autenticado e falha fechado para identificadores pertencentes a outra conta.
+
 Ainda existem violações a migrar:
 
 - fluxos públicos de login, cadastro, confirmação de e-mail e recuperação de
   senha ainda injetam `UserManager` e `SignInManager`;
-- consentimento, logins externos, grants, sessões, 2FA e passkeys ainda
+- consentimento, logins externos, 2FA e passkeys ainda
   recebem gerenciadores do Identity/OpenIddict.
 
 Esses caminhos são débitos de migração, não precedentes arquiteturais. Nenhuma
@@ -199,7 +211,8 @@ nova tela deve repetir esse padrão.
    provisionamento, exclusão de conta e ciclo de vida SCIM concluídos em
    2026-07-30).
 2. Criar contratos de aplicação para autoatendimento e migrar a UI pública
-   (perfil, senha, dados pessoais e exclusão concluídos em 2026-07-30).
+   (perfil, senha, dados pessoais e exclusão concluídos em 2026-07-30;
+   aplicações conectadas e sessões concluídas em 2026-07-31).
 3. Remover das UIs referências a entidades mutáveis, stores e gerenciadores de
    persistência/protocolo. Permanecem permitidos contratos puros de aplicação,
    como `IUserAvatarUrlResolver`, resolvidos pelo composition host.
