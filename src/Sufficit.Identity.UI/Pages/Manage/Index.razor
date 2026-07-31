@@ -1,7 +1,6 @@
 @page "/manage"
 @attribute [Authorize]
-@inject UserManager<ApplicationUser> UserManager
-@inject NavigationManager Navigation
+@inject IAccountSelfService AccountSelfService
 @inject IUserAvatarUrlResolver AvatarUrlResolver
 
 <PageTitle>Minha conta — Sufficit Identity</PageTitle>
@@ -24,8 +23,8 @@
             <div class="profile-avatar">@AvatarFallback</div>
         }
         <div>
-            <h2>@_user?.UserName</h2>
-            <p class="muted">@_user?.Email</p>
+            <h2>@_profile?.UserName</h2>
+            <p class="muted">@_profile?.Email</p>
             @if (_emailConfirmed)
             {
                 <span class="badge badge-success">E-mail confirmado</span>
@@ -50,24 +49,25 @@
 
 @code {
     [CascadingParameter] private Task<AuthenticationState>? _authTask { get; set; }
-    private ApplicationUser? _user;
+    private AccountSelfServiceProfile? _profile;
     private bool _emailConfirmed;
     private bool _avatarLoadFailed;
     private string? _avatarUrl;
     private string AvatarFallback =>
-        string.IsNullOrWhiteSpace(_user?.UserName)
+        string.IsNullOrWhiteSpace(_profile?.UserName)
             ? "ID"
-            : _user.UserName.Trim()[..1].ToUpperInvariant();
+            : _profile.UserName.Trim()[..1].ToUpperInvariant();
 
     protected override async Task OnInitializedAsync()
     {
-        _user = await _authTask.GetAuthenticatedUserAsync(UserManager);
-        if (_user is not null)
-            _emailConfirmed = await UserManager.IsEmailConfirmedAsync(_user);
+        var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+        if (principal is null) return;
 
-        if (_user is not null)
+        _profile = await AccountSelfService.GetProfileAsync(principal);
+        if (_profile is not null)
         {
-            _avatarUrl = await AvatarUrlResolver.ResolveAsync(_user.Id);
+            _emailConfirmed = _profile.EmailConfirmed;
+            _avatarUrl = await AvatarUrlResolver.ResolveAsync(_profile.UserId);
         }
     }
 

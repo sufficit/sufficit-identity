@@ -172,10 +172,22 @@ responsável por entregar e armazenar em cache a imagem; as UIs apenas exibem o
 resultado e usam as iniciais quando não existe imagem ou seu carregamento
 falha.
 
+O primeiro vertical de autoatendimento foi migrado em 2026-07-30.
+Perfil, troca de senha, exportação de dados pessoais e exclusão da própria
+conta usam `IAccountSelfService`. O contrato recebe somente o principal
+autenticado e DTOs imutáveis; sua implementação no STS concentra validação,
+Identity e atualização do cookie interativo. A exclusão reutiliza
+`IIdentityAccountLifecycleService`, revogando tokens e autorizações antes de
+remover a conta. As páginas `/manage`, `/manage/changepassword`,
+`/manage/personaldata` e `/manage/deleteaccount` não recebem entidades
+mutáveis nem gerenciadores de persistência.
+
 Ainda existem violações a migrar:
 
-- páginas da UI pública injetam `UserManager`, `SignInManager` e gerenciadores
-  do OpenIddict;
+- fluxos públicos de login, cadastro, confirmação de e-mail e recuperação de
+  senha ainda injetam `UserManager` e `SignInManager`;
+- consentimento, logins externos, grants, sessões, 2FA e passkeys ainda
+  recebem gerenciadores do Identity/OpenIddict.
 
 Esses caminhos são débitos de migração, não precedentes arquiteturais. Nenhuma
 nova tela deve repetir esse padrão.
@@ -186,7 +198,8 @@ nova tela deve repetir esse padrão.
    (branding concluído em 2026-07-29; claims, scopes, sessões, autorizações e
    provisionamento, exclusão de conta e ciclo de vida SCIM concluídos em
    2026-07-30).
-2. Criar contratos de aplicação para autoatendimento e migrar a UI pública.
+2. Criar contratos de aplicação para autoatendimento e migrar a UI pública
+   (perfil, senha, dados pessoais e exclusão concluídos em 2026-07-30).
 3. Remover das UIs referências a entidades mutáveis, stores e gerenciadores de
    persistência/protocolo. Permanecem permitidos contratos puros de aplicação,
    como `IUserAvatarUrlResolver`, resolvidos pelo composition host.

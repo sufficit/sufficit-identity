@@ -1,9 +1,6 @@
 @page "/manage/deleteaccount"
 @attribute [Authorize]
-@inject UserManager<ApplicationUser> UserManager
-@inject SignInManager<ApplicationUser> SignInManager
-@inject NavigationManager Navigation
-@inject ILogger<DeleteAccount> Logger
+@inject IAccountSelfService AccountSelfService
 
 <PageTitle>Excluir conta — Sufficit Identity</PageTitle>
 
@@ -64,50 +61,33 @@
         get => _boundModel ??= new();
         set => _boundModel = value;
     }
-    private string? _authEmail;
     private string? _error;
     private bool _deleted;
 
-    protected override async Task OnInitializedAsync()
-    {
-        var user = await _authTask.GetAuthenticatedUserAsync(UserManager);
-        if (user is null) return;
-        _authEmail = await UserManager.GetEmailAsync(user);
-        if (_authEmail is not null)
-        {
-            _model.Email = string.Empty; // Force the user to type it
-        }
-    }
-
     private async Task DeleteAsync()
     {
-        var user = await _authTask.GetAuthenticatedUserAsync(UserManager);
-        if (user is null) return;
-
-        // Require both email confirmation and password
-        if (!string.Equals(_model.Email, _authEmail, StringComparison.OrdinalIgnoreCase))
+        var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+        if (principal is null)
         {
-            _error = "E-mail não confere.";
+            _error = "Sua sessão expirou. Entre novamente.";
             return;
         }
 
-        var passwordOk = await UserManager.CheckPasswordAsync(user, _model.Password);
-        if (!passwordOk)
-        {
-            _error = "Senha incorreta.";
-            return;
-        }
-
-        var result = await UserManager.DeleteAsync(user);
+        var result = await AccountSelfService.DeleteAccountAsync(
+            principal,
+            new AccountDeletionRequest(
+                _model.Email,
+                _model.Password));
         if (result.Succeeded)
         {
-            Logger.LogInformation("User {UserId} deleted their own account.", user.Id);
-            await SignInManager.SignOutAsync();
             _deleted = true;
+            _error = null;
             return;
         }
 
-        _error = string.Join(" ", result.Errors.Select(e => e.Description));
+        _error = string.Join(
+            " ",
+            result.Errors.Select(error => error.Description));
     }
 
     private sealed class DeleteInput
