@@ -32,7 +32,6 @@ public sealed class ManagementUiArchitectureTests
             "Pages/Consent.razor",
             "Pages/Device/UserCode.razor",
             "Pages/Manage/Passkeys.razor",
-            "Pages/Manage/TwoFactor.razor",
             "ServiceCollectionExtensions.cs",
             "Services/AuthContextExtensions.cs",
         };
@@ -234,6 +233,50 @@ public sealed class ManagementUiArchitectureTests
             "externalIdentityService.LinkAsync",
             controller,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Two_factor_page_uses_only_the_canonical_account_contract()
+    {
+        var page = File.ReadAllText(Path.Combine(
+            ResolvePublicUiSource(),
+            "Pages",
+            "Manage",
+            "TwoFactor.razor"));
+
+        Assert.Contains(
+            "IAccountTwoFactorService",
+            page,
+            StringComparison.Ordinal);
+        Assert.Contains("BeginSetupAsync", page, StringComparison.Ordinal);
+        Assert.Contains("EnableAsync", page, StringComparison.Ordinal);
+        Assert.Contains(
+            "GenerateRecoveryCodesAsync",
+            page,
+            StringComparison.Ordinal);
+        foreach (var forbidden in ForbiddenUiDependencies)
+        {
+            Assert.DoesNotContain(forbidden, page, StringComparison.Ordinal);
+        }
+
+        var adapter = File.ReadAllText(Path.Combine(
+            ResolveIdentityRepository(),
+            "src",
+            "sts",
+            "AspNetCoreIdentityAccountTwoFactorService.cs"));
+        Assert.Contains(
+            ": IAccountTwoFactorService",
+            adapter,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "BuildAuthenticatorUri",
+            adapter,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Uri.EscapeDataString",
+            adapter,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("QRCoder", adapter, StringComparison.Ordinal);
     }
 
     [Fact]

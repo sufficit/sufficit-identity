@@ -68,7 +68,7 @@ jobs:
       # Do not repoint this at a moving branch — the whole point of pinning
       # is reproducibility. Bump to a new SHA deliberately when the UI repo
       # ships a new commit you want CI to pick up.
-      UI_REF: f37089fa7567d4b844990ae8b3aaa8d10fb143e7
+      UI_REF: 092e1e4e7b5a8ec4bccc968f54158b33766c1748
       # Ephemeral CI-only database. No MariaDB service is required on
       # developer machines, and no remote connection is ever used here.
       SUFFICIT_IDENTITY_MARIADB_CONNECTION: >-
