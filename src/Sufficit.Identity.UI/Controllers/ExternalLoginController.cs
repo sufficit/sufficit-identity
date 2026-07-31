@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.UI.Services;
 
 namespace Sufficit.Identity.UI.Controllers;
@@ -18,6 +19,7 @@ namespace Sufficit.Identity.UI.Controllers;
 public sealed class ExternalLoginController(
     SignInManager<ApplicationUser> signInManager,
     UserManager<ApplicationUser> userManager,
+    IAccountExternalIdentityService externalIdentityService,
     RegisterConfiguration registerConfig,
     ILogger<ExternalLoginController> logger) : ControllerBase
 {
@@ -88,30 +90,46 @@ public sealed class ExternalLoginController(
         // Manage > External logins "Link" action) — account ownership is proven by
         // the session/cookie, not by whatever email the provider happens to assert,
         // so it's safe to link directly.
-        var currentUserId = User.Identity?.IsAuthenticated == true
-            ? userManager.GetUserId(User)
-            : null;
-
-        if (currentUserId is not null)
+        if (User.Identity?.IsAuthenticated == true)
         {
-            var currentUser = await userManager.FindByIdAsync(currentUserId);
-            if (currentUser is not null)
+            var linkResult = await externalIdentityService.LinkAsync(
+                User,
+                new AccountExternalIdentityLink(
+                    info.LoginProvider,
+                    info.ProviderKey,
+                    info.ProviderDisplayName));
+            if (linkResult.Succeeded)
             {
-                var addLogin = await userManager.AddLoginAsync(currentUser,
-                    new UserLoginInfo(info.LoginProvider, info.ProviderKey, info.ProviderDisplayName));
-
-                if (addLogin.Succeeded)
+                logger.LogInformation(
+                    "Linked {Provider} to the authenticated account.",
+                    info.LoginProvider);
+                if (returnUrl.StartsWith(
+                        "/manage/externallogins",
+                        StringComparison.OrdinalIgnoreCase))
                 {
-                    logger.LogInformation(
-                        "Linked {Provider} to authenticated user {UserId} (explicit re-auth session).",
-                        info.LoginProvider, currentUserId);
-                    return Redirect(returnUrl);
+                    return Redirect(QueryHelpers.AddQueryString(
+                        returnUrl,
+                        new Dictionary<string, string?>
+                        {
+                            ["status"] = "linked",
+                            ["provider"] = info.ProviderDisplayName
+                                ?? info.LoginProvider,
+                        }));
                 }
 
-                logger.LogWarning("Failed to link {Provider} to authenticated user {UserId}: {Errors}",
-                    info.LoginProvider, currentUserId, string.Join(", ", addLogin.Errors.Select(e => e.Description)));
-                return Redirect("/manage/externallogins?error=link_failed");
+                return Redirect(returnUrl);
             }
+
+            var errorCode = linkResult.Errors.FirstOrDefault()?.Code
+                ?? "external-identity-link-failed";
+            logger.LogWarning(
+                "Failed to link {Provider} to the authenticated account: {ErrorCode}",
+                info.LoginProvider,
+                errorCode);
+            return Redirect(QueryHelpers.AddQueryString(
+                "/manage/externallogins",
+                "error",
+                errorCode));
         }
 
         // Anonymous flow (no local session). This used to look up an existing user

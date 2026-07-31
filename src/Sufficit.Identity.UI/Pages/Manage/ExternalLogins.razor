@@ -1,121 +1,253 @@
 @page "/manage/externallogins"
+@rendermode @(RenderMode.InteractiveServer)
 @attribute [Authorize]
-@using Microsoft.AspNetCore.Authentication
-@inject SignInManager<ApplicationUser> SignInManager
-@inject UserManager<ApplicationUser> UserManager
-@inject IBrandingThemeProvider BrandingProvider
+@inject IAccountExternalIdentityService ExternalIdentityService
+@inject IJSRuntime JS
+@inject ILogger<ExternalLogins> Logger
 
-<PageTitle>Logins externos — Sufficit Identity</PageTitle>
+<PageTitle>Identidades externas — Sufficit Identity</PageTitle>
 
 <div class="auth-card">
     <ManageBackLink />
-    <h1>Logins externos</h1>
-    <p class="info">Gerencie os provedores externos vinculados à sua conta.</p>
+    <h1>Identidades externas</h1>
+    <p class="info">Gerencie as contas de outros provedores usadas para entrar.</p>
 
-    @if (_error is not null)
-    {
-        <div class="alert alert-error" role="alert">@_error</div>
-    }
-    @if (_success is not null)
-    {
-        <div class="alert alert-success" role="alert">@_success</div>
-    }
+    <div aria-live="polite">
+        @if (_error is not null)
+        {
+            <div class="alert alert-error" role="alert">@_error</div>
+        }
+        @if (_success is not null)
+        {
+            <div class="alert alert-success" role="status">@_success</div>
+        }
+    </div>
 
-    <h3>Vinculados</h3>
-    @if (_linked.Any())
+    @if (_loading)
     {
-        <ul class="external-list">
-            @foreach (var info in _linked)
-            {
-                <li>
-                    <span class="external-item-info">
-                        <span class="external-item-name">@info.LoginProvider</span>
-                        <br />
-                        <span class="muted">@info.ProviderKey</span>
-                    </span>
-                    @* RemoveLoginAsync requires exactly (loginProvider, providerKey, user).
-                       We use a plain form POST (not Blazor EditForm) because the button
-                       submits to the same page via the @onclick handler. *@
-                    <button type="button" class="btn btn-danger btn-sm"
-                            @onclick="@(async () => await RemoveLoginAsync(info.LoginProvider, info.ProviderKey))">
-                        Remover
-                    </button>
-                </li>
-            }
-        </ul>
+        <p class="muted">Carregando identidades externas…</p>
+    }
+    else if (_loadFailed)
+    {
+        <button type="button" class="btn btn-secondary" @onclick="LoadAsync">
+            Tentar novamente
+        </button>
     }
     else
     {
-        <p class="muted">Nenhum provedor externo vinculado.</p>
-    }
-
-    @{
-        var unlinked = _availableSchemes
-            .Where(s => !_linked.Any(l => l.LoginProvider == s.Name))
-            .ToList();
-    }
-
-    @if (unlinked.Any())
-    {
-        <h3>Disponíveis</h3>
-        <div class="external-providers">
-            @foreach (var scheme in unlinked)
+        <section class="external-section" aria-labelledby="linked-identities-title">
+            <h3 id="linked-identities-title">Vinculadas</h3>
+            @if (_overview.LinkedIdentities.Count > 0)
             {
-                var providerClass = scheme.Name.ToLowerInvariant() switch
-                {
-                    "google" => "btn-google",
-                    "facebook" => "btn-facebook",
-                    _ => "btn-secondary"
-                };
-                <a href="/account/externalchallenge?provider=@scheme.Name&returnUrl=/manage/externallogins"
-                   class="btn btn-block @providerClass"
-                   data-enhance-nav="false"
-                   data-redirect-overlay="@scheme.DisplayName">
-                    Vincular @scheme.DisplayName
-                </a>
+                <ul class="external-list">
+                    @foreach (var identity in _overview.LinkedIdentities)
+                    {
+                        <li>
+                            <span class="external-item-info">
+                                <span class="external-item-name">@identity.DisplayName</span>
+                                @if (!identity.CanRemove)
+                                {
+                                    <span class="external-item-reason">
+                                        @identity.RemovalBlockedReason
+                                    </span>
+                                }
+                            </span>
+                            @if (identity.CanRemove)
+                            {
+                                <button type="button"
+                                        class="btn btn-danger btn-sm"
+                                        disabled="@IsBusy"
+                                        @onclick="() => RemoveAsync(identity)">
+                                    @(_busyIdentity == IdentityKey(identity)
+                                        ? "Removendo…"
+                                        : "Remover")
+                                </button>
+                            }
+                        </li>
+                    }
+                </ul>
             }
-        </div>
+            else
+            {
+                <p class="muted">Nenhuma identidade externa vinculada.</p>
+            }
+        </section>
+
+        <section class="external-section" aria-labelledby="available-identities-title">
+            <h3 id="available-identities-title">Disponíveis</h3>
+            @if (_overview.AvailableProviders.Count > 0)
+            {
+                <div class="external-providers">
+                    @foreach (var provider in _overview.AvailableProviders)
+                    {
+                        <a href="@BuildChallengeUrl(provider)"
+                           class="btn btn-block @ProviderClass(provider.AuthenticationScheme)"
+                           data-enhance-nav="false"
+                           data-redirect-overlay="@provider.DisplayName">
+                            Vincular @provider.DisplayName
+                        </a>
+                    }
+                </div>
+            }
+            else
+            {
+                <p class="muted">Nenhum outro provedor está disponível.</p>
+            }
+        </section>
     }
 </div>
 
 @code {
     [CascadingParameter] private Task<AuthenticationState>? _authTask { get; set; }
-    private ApplicationUser? _user;
-    private IList<UserLoginInfo> _linked = new List<UserLoginInfo>();
-    private List<AuthenticationScheme> _availableSchemes = new();
+    [SupplyParameterFromQuery(Name = "status")] private string? Status { get; set; }
+    [SupplyParameterFromQuery(Name = "provider")] private string? Provider { get; set; }
+    [SupplyParameterFromQuery(Name = "error")] private string? CallbackError { get; set; }
+
+    private AccountExternalIdentityOverview _overview = new([], []);
+    private bool _loading = true;
+    private bool _loadFailed;
+    private string? _busyIdentity;
     private string? _error;
     private string? _success;
+    private bool IsBusy => _busyIdentity is not null;
 
     protected override async Task OnInitializedAsync()
     {
-        _availableSchemes = (await SignInManager.GetExternalAuthenticationSchemesAsync()).ToList();
-
-        if (_authTask is null) return;
-        var authState = await _authTask;
-        if (authState?.User?.Identity?.IsAuthenticated != true) return;
-
-        _user = await UserManager.GetUserAsync(authState.User);
-        if (_user is null) return;
-        _linked = await UserManager.GetLoginsAsync(_user);
+        ApplyCallbackStatus();
+        await LoadAsync();
     }
 
-    private async Task RemoveLoginAsync(string loginProvider, string providerKey)
+    private async Task LoadAsync()
     {
+        _loading = true;
+        _loadFailed = false;
+        if (CallbackError is null)
+        {
+            _error = null;
+        }
+
+        try
+        {
+            var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+            if (principal is null)
+            {
+                _error = "Sua sessão expirou. Entre novamente.";
+                _loadFailed = true;
+                return;
+            }
+
+            var overview = await ExternalIdentityService.GetOverviewAsync(principal);
+            if (overview is null)
+            {
+                _error = "Sua sessão expirou. Entre novamente.";
+                _loadFailed = true;
+                return;
+            }
+
+            _overview = overview;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "External identities could not be loaded.");
+            _error = "Não foi possível carregar as identidades externas.";
+            _loadFailed = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RemoveAsync(AccountExternalIdentity identity)
+    {
+        var confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Remover {identity.DisplayName} das formas de entrada da sua conta?");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        _busyIdentity = IdentityKey(identity);
         _error = null;
         _success = null;
-
-        if (_user is null) return;
-
-        var result = await UserManager.RemoveLoginAsync(_user, loginProvider, providerKey);
-        if (result.Succeeded)
+        try
         {
-            await SignInManager.RefreshSignInAsync(_user);
-            _linked = await UserManager.GetLoginsAsync(_user);
-            _success = $"{loginProvider} removido da sua conta.";
+            var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+            if (principal is null)
+            {
+                _error = "Sua sessão expirou. Entre novamente.";
+                return;
+            }
+
+            var result = await ExternalIdentityService.RemoveAsync(
+                principal,
+                identity.LoginProvider,
+                identity.ProviderKey);
+            if (!result.Succeeded)
+            {
+                _error = string.Join(
+                    " ",
+                    result.Errors.Select(error => error.Description));
+                return;
+            }
+
+            _success = $"{identity.DisplayName} foi removido das suas formas de entrada.";
+            var overview = await ExternalIdentityService.GetOverviewAsync(principal);
+            if (overview is not null)
+            {
+                _overview = overview;
+            }
         }
-        else
+        catch (Exception exception)
         {
-            _error = $"Erro ao remover {loginProvider}: {string.Join(", ", result.Errors.Select(e => e.Description))}";
+            Logger.LogError(
+                exception,
+                "External identity provider {Provider} could not be removed.",
+                identity.LoginProvider);
+            _error = "Não foi possível remover a identidade externa. Tente novamente.";
+        }
+        finally
+        {
+            _busyIdentity = null;
         }
     }
+
+    private void ApplyCallbackStatus()
+    {
+        if (string.Equals(Status, "linked", StringComparison.Ordinal))
+        {
+            _success = string.IsNullOrWhiteSpace(Provider)
+                ? "A identidade externa foi vinculada."
+                : $"{Provider} foi vinculado à sua conta.";
+        }
+
+        _error = CallbackError switch
+        {
+            "external-identity-in-use" =>
+                "Esta identidade externa já está vinculada a outra conta.",
+            "external-provider-unavailable" =>
+                "O provedor externo não está mais disponível.",
+            "external-identity-invalid" =>
+                "O provedor retornou uma identidade inválida. Tente novamente.",
+            null => _error,
+            _ => "Não foi possível vincular a identidade externa. Tente novamente.",
+        };
+    }
+
+    private static string BuildChallengeUrl(AccountExternalProvider provider) =>
+        "/account/externalchallenge"
+        + $"?provider={Uri.EscapeDataString(provider.AuthenticationScheme)}"
+        + $"&returnUrl={Uri.EscapeDataString("/manage/externallogins")}";
+
+    private static string ProviderClass(string provider) =>
+        provider.ToLowerInvariant() switch
+        {
+            "google" => "btn-google",
+            "facebook" => "btn-facebook",
+            _ => "btn-secondary",
+        };
+
+    private static string IdentityKey(AccountExternalIdentity identity) =>
+        $"{identity.LoginProvider}\u001f{identity.ProviderKey}";
 }

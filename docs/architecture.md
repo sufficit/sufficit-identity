@@ -35,8 +35,10 @@ When the UI is hosted by the STS app itself (same origin), we eliminate:
 
 - **Independent evolution** — UI changes don't require redeploying the STS API.
 - **Team separation** — frontend-focused work can happen in parallel.
-- **Reusability** — any OpenIddict + ASP.NET Identity STS can plug this in via
-  the `AddSufficitIdentityUI()` / `UseSufficitIdentityUI()` pair.
+- **Reusability** — an OAuth/OIDC provider can plug this in through versioned
+  application contracts and the `AddSufficitIdentityUI()` /
+  `UseSufficitIdentityUI()` pair. OpenIddict and ASP.NET Identity are the
+  current runtime adapters, not UI dependencies.
 - **Minimal coupling** — the target UI references only versioned application
   contracts shared with API controllers. It does not reference the STS host,
   Core entities, persistence or infrastructure implementations.

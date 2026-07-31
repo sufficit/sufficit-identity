@@ -773,6 +773,16 @@ img.profile-avatar { background: var(--surface-sunken); }
 }
 .external-item-info { flex: 1; min-width: 0; }
 .external-item-name { font-weight: 600; color: var(--ink); font-size: 0.9375rem; }
+.external-item-reason {
+    display: block;
+    margin-top: var(--space-1);
+    color: var(--ink-muted);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+}
+.external-section + .external-section {
+    margin-top: var(--space-7);
+}
 
 /* Grants */
 .grant-item {
@@ -987,6 +997,9 @@ img.profile-avatar { background: var(--surface-sunken); }
     .access-metadata div {
         grid-template-columns: 1fr;
         gap: 0;
+    }
+    .external-list li {
+        align-items: flex-start;
     }
 }
 

@@ -10,7 +10,7 @@
 
 Toda informação operacional exibida ou alterada por uma UI deve passar pelo
 mesmo contrato de aplicação usado pelos controllers da API. Isso vale para a
-UI pública, a área de autoatendimento e a Management UI.
+UI pública, a área de gerenciamento de conta e a Management UI.
 
 Uma Razor Class Library incorporada ao mesmo processo pode resolver esses
 use cases por DI. Ela não precisa fazer uma chamada HTTP ao próprio host.
@@ -65,6 +65,31 @@ com a sessão do host. Automação externa chama o controller por HTTP.
 Uma UI fora do processo usa HTTP e um cliente tipado. Uma UI no mesmo processo
 pode usar HTTP quando houver motivo operacional, mas isso não é requisito de
 consistência.
+
+## Independência do motor OAuth/OIDC
+
+OpenIddict é o adaptador atual de protocolo e persistência, não o contrato
+permanente do Sufficit Identity. Sua substituição é uma previsão arquitetural
+futura e não faz parte da fase atual de implementação.
+
+Para preservar essa possibilidade:
+
+- contratos de aplicação e DTOs usam conceitos definidos pelos RFCs de
+  OAuth/OIDC, sem expor managers, descriptors ou entidades do OpenIddict;
+- UI e controllers dependem somente desses contratos neutros;
+- implementações concretas podem depender do OpenIddict, mas essa dependência
+  deve permanecer confinada ao adaptador de runtime;
+- regras próprias do provedor, validação e autorização não são implementadas
+  dentro da UI nem duplicadas em controllers;
+- testes funcionais descrevem comportamento observável do protocolo e do
+  domínio, permitindo executar as mesmas expectativas sobre outro adaptador.
+
+Uma substituição futura deverá introduzir ports próprios para clientes,
+scopes, autorizações e credenciais, handlers de protocolo testados contra os
+RFCs e uma migração explícita de persistência. Ela não deve copiar detalhes
+internos do OpenIddict: a referência normativa é OAuth/OIDC e suas extensões.
+Até essa fase ser iniciada, novas funcionalidades continuam usando o
+OpenIddict por trás das fronteiras genéricas existentes.
 
 ## Convenção de URLs da UI
 
@@ -172,7 +197,7 @@ responsável por entregar e armazenar em cache a imagem; as UIs apenas exibem o
 resultado e usam as iniciais quando não existe imagem ou seu carregamento
 falha.
 
-O primeiro vertical de autoatendimento foi migrado em 2026-07-30.
+O primeiro vertical de gerenciamento de conta foi migrado em 2026-07-30.
 Perfil, troca de senha, exportação de dados pessoais e exclusão da própria
 conta usam `IAccountSelfService`. O contrato recebe somente o principal
 autenticado e DTOs imutáveis; sua implementação no STS concentra validação,
@@ -194,11 +219,21 @@ total gira o security stamp e revoga tokens e autorizações. Em todas as
 mutações, o runtime verifica a propriedade do recurso pelo principal
 autenticado e falha fechado para identificadores pertencentes a outra conta.
 
+O gerenciamento autenticado de identidades externas também foi migrado em
+2026-07-31 para `IAccountExternalIdentityService`. A UI recebe identidades
+vinculadas e provedores disponíveis por um contrato neutro; o adaptador
+concreto `AspNetCoreIdentityAccountExternalIdentityService` concentra o store
+atual e deixa explícita sua natureza substituível. O callback autenticado usa
+o mesmo serviço para vincular a identidade e a remoção falha fechado para
+identidades de outra conta. A última forma de entrada não pode ser removida
+sem que exista senha, passkey ou outra identidade vinculada. O fluxo anônimo
+de autenticação externa permanece separado e ainda é dívida de migração.
+
 Ainda existem violações a migrar:
 
 - fluxos públicos de login, cadastro, confirmação de e-mail e recuperação de
   senha ainda injetam `UserManager` e `SignInManager`;
-- consentimento, logins externos, 2FA e passkeys ainda
+- consentimento, o fluxo anônimo de login externo, 2FA e passkeys ainda
   recebem gerenciadores do Identity/OpenIddict.
 
 Esses caminhos são débitos de migração, não precedentes arquiteturais. Nenhuma
@@ -210,9 +245,10 @@ nova tela deve repetir esse padrão.
    (branding concluído em 2026-07-29; claims, scopes, sessões, autorizações e
    provisionamento, exclusão de conta e ciclo de vida SCIM concluídos em
    2026-07-30).
-2. Criar contratos de aplicação para autoatendimento e migrar a UI pública
+2. Criar contratos de aplicação para gerenciamento de conta e migrar a UI pública
    (perfil, senha, dados pessoais e exclusão concluídos em 2026-07-30;
-   aplicações conectadas e sessões concluídas em 2026-07-31).
+   aplicações conectadas, sessões e identidades externas autenticadas
+   concluídas em 2026-07-31).
 3. Remover das UIs referências a entidades mutáveis, stores e gerenciadores de
    persistência/protocolo. Permanecem permitidos contratos puros de aplicação,
    como `IUserAvatarUrlResolver`, resolvidos pelo composition host.
