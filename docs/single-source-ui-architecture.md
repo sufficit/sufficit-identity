@@ -248,7 +248,10 @@ Passkeys foram migradas em 2026-07-31 para `IAccountPasskeyService` e
 `IPasskeyAuthenticationService`. O contrato neutro concentra limites,
 propriedade da credencial, validação, registro e remoção; o adaptador concreto
 `AspNetCoreIdentityPasskeyService` explicita que ASP.NET Identity é o motor
-atual. A listagem e a remoção da própria conta usam o contrato diretamente.
+atual. A listagem, a alteração do nome semântico e a remoção da própria conta
+usam o contrato diretamente. Renomear não altera o identificador, a chave
+pública nem qualquer propriedade funcional da credencial; nome vazio continua
+sendo um estado válido.
 Criação e autenticação atravessam endpoints POST same-origin com antiforgery
 porque o framework atualiza um ticket de autenticação temporário durante a
 resposta HTTP. Esse ticket fica protegido no `IDistributedCache` do runtime por

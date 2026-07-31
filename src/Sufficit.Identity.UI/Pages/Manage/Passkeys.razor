@@ -42,19 +42,51 @@
             @foreach (var passkey in _overview.Credentials)
             {
                 <li class="passkey-item">
-                    <div class="passkey-item-info">
-                        <span class="passkey-name">@(passkey.Name ?? "Passkey sem nome")</span>
-                        <span class="passkey-meta">Criada em @passkey.CreatedAt.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</span>
-                        @if (passkey.IsBackedUp)
-                        {
-                            <span class="badge badge-success">Sincronizada</span>
-                        }
-                    </div>
-                    <button type="button" class="btn btn-danger btn-sm" disabled="@_busy"
-                            aria-label="Remover @(passkey.Name ?? "passkey sem nome")"
-                            @onclick="@(async () => await RemovePasskeyAsync(passkey.CredentialId))">
-                        Remover
-                    </button>
+                    @if (_editingCredentialId == passkey.CredentialId)
+                    {
+                        <div class="form-group passkey-inline-editor">
+                            <label for="passkey-edit-name">Nome da passkey</label>
+                            <input id="passkey-edit-name" @ref="_renameInput"
+                                   @bind="_editingPasskeyName" @bind:event="oninput"
+                                   @onkeydown="@(args => HandleRenameKeyDownAsync(args, passkey.CredentialId))"
+                                   class="form-control" maxlength="@_overview.MaximumNameLength"
+                                   autocomplete="off" disabled="@_busy" />
+                            <span class="field-hint">Deixe em branco para remover o nome. A credencial continuará funcionando normalmente.</span>
+                            <div class="passkey-inline-actions">
+                                <button type="button" class="btn btn-primary btn-sm" disabled="@_busy"
+                                        @onclick="@(async () => await SavePasskeyNameAsync(passkey.CredentialId))">
+                                    @(_busy ? "Salvando..." : "Salvar nome")
+                                </button>
+                                <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
+                                        @onclick="CancelRenaming">
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="passkey-item-info">
+                            <span class="passkey-name">@(passkey.Name ?? "Passkey sem nome")</span>
+                            <span class="passkey-meta">Criada em @passkey.CreatedAt.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</span>
+                            @if (passkey.IsBackedUp)
+                            {
+                                <span class="badge badge-success">Sincronizada</span>
+                            }
+                        </div>
+                        <div class="passkey-item-actions">
+                            <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
+                                    aria-label="Renomear @(passkey.Name ?? "passkey sem nome")"
+                                    @onclick="@(() => StartRenaming(passkey))">
+                                Renomear
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm" disabled="@_busy"
+                                    aria-label="Remover @(passkey.Name ?? "passkey sem nome")"
+                                    @onclick="@(async () => await RemovePasskeyAsync(passkey.CredentialId))">
+                                Remover
+                            </button>
+                        </div>
+                    }
                 </li>
             }
         </ul>
@@ -105,32 +137,47 @@
     [CascadingParameter] private Task<AuthenticationState>? _authTask { get; set; }
 
     private ElementReference _registrationForm;
+    private ElementReference _renameInput;
     private AccountPasskeyOverview? _overview;
     private string? _passkeyName;
+    private string? _editingCredentialId;
+    private string? _editingPasskeyName;
     private string? _error;
     private string? _success;
     private bool _loading = true;
     private bool _loadFailed;
     private bool _busy;
     private bool _supported = true;
+    private bool _focusRenameInput;
 
     protected override Task OnInitializedAsync() => LoadPasskeysAsync();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
+        if (firstRender)
         {
-            return;
+            try
+            {
+                _supported = await JS.InvokeAsync<bool>("passkeys.isSupported");
+                StateHasChanged();
+            }
+            catch (JSException exception)
+            {
+                Logger.LogDebug(exception, "Passkey capability detection was unavailable.");
+            }
         }
 
-        try
+        if (_focusRenameInput)
         {
-            _supported = await JS.InvokeAsync<bool>("passkeys.isSupported");
-            StateHasChanged();
-        }
-        catch (JSException exception)
-        {
-            Logger.LogDebug(exception, "Passkey capability detection was unavailable.");
+            _focusRenameInput = false;
+            try
+            {
+                await _renameInput.FocusAsync();
+            }
+            catch (JSException exception)
+            {
+                Logger.LogDebug(exception, "Passkey rename input could not receive focus.");
+            }
         }
     }
 
@@ -198,6 +245,88 @@
         {
             Logger.LogWarning(exception, "Passkey registration interaction failed.");
             _error = "Não foi possível concluir o registro. Recarregue a página e tente novamente.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void StartRenaming(AccountPasskeyCredential passkey)
+    {
+        _error = null;
+        _success = null;
+        _editingCredentialId = passkey.CredentialId;
+        _editingPasskeyName = passkey.Name ?? string.Empty;
+        _focusRenameInput = true;
+    }
+
+    private void CancelRenaming()
+    {
+        _editingCredentialId = null;
+        _editingPasskeyName = null;
+        _focusRenameInput = false;
+    }
+
+    private async Task HandleRenameKeyDownAsync(
+        KeyboardEventArgs args,
+        string credentialId)
+    {
+        if (args.Key == "Enter")
+        {
+            await SavePasskeyNameAsync(credentialId);
+        }
+        else if (args.Key == "Escape")
+        {
+            CancelRenaming();
+        }
+    }
+
+    private async Task SavePasskeyNameAsync(string credentialId)
+    {
+        if (_editingCredentialId != credentialId)
+        {
+            return;
+        }
+
+        _error = null;
+        _success = null;
+        _busy = true;
+
+        try
+        {
+            var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+            if (principal is null)
+            {
+                _error = "Sua sessão expirou. Entre novamente para gerenciar passkeys.";
+                return;
+            }
+
+            var nameWasRemoved = string.IsNullOrWhiteSpace(_editingPasskeyName);
+            var result = await PasskeyService.RenameAsync(
+                principal,
+                new AccountPasskeyRename(credentialId, _editingPasskeyName));
+            if (result.State is not null)
+            {
+                _overview = result.State;
+            }
+
+            if (result.Succeeded)
+            {
+                CancelRenaming();
+                _success = nameWasRemoved
+                    ? "Nome da passkey removido."
+                    : "Nome da passkey atualizado.";
+            }
+            else
+            {
+                _error = DescribeErrors(result.Errors, "Não foi possível atualizar o nome da passkey.");
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Failed to rename account passkey {CredentialId}.", credentialId);
+            _error = "Não foi possível atualizar o nome da passkey. Tente novamente.";
         }
         finally
         {

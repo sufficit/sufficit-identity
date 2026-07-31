@@ -785,6 +785,23 @@ img.profile-avatar { background: var(--surface-sunken); }
     color: var(--ink-muted);
     font-size: 0.8125rem;
 }
+.passkey-item-actions,
+.passkey-inline-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
+}
+.passkey-inline-editor {
+    width: 100%;
+    margin: 0;
+}
+.passkey-inline-editor .form-control {
+    height: 42px;
+}
+.passkey-inline-actions {
+    margin-top: var(--space-3);
+}
 .passkey-form { width: 100%; }
 .passkey-list li, .external-list li {
     padding: var(--space-3) 0;
@@ -1025,6 +1042,11 @@ img.profile-avatar { background: var(--surface-sunken); }
         flex-direction: column;
     }
     .passkey-item .btn { align-self: flex-start; }
+    .passkey-item-actions,
+    .passkey-inline-actions {
+        align-self: flex-start;
+        flex-wrap: wrap;
+    }
     .access-item-action {
         align-self: flex-start;
     }
