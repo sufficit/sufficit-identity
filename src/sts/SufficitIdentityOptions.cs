@@ -79,6 +79,11 @@ public sealed class SufficitIdentityOptions
     public SignInPolicyOptions SignIn { get; init; } = new();
 
     /// <summary>
+    /// Authenticator-app two-factor settings. See <see cref="TwoFactorOptions"/>.
+    /// </summary>
+    public TwoFactorOptions TwoFactor { get; init; } = new();
+
+    /// <summary>
     /// Optional claim-type → required-scope map that gates which custom
     /// persisted claims (e.g. <c>directive</c>) reach the access token. See
     /// <see cref="ClaimScopeMapOptions"/>.
@@ -115,6 +120,24 @@ public sealed class SufficitIdentityOptions
     /// <see cref="McpOptions"/>.
     /// </summary>
     public McpOptions Mcp { get; init; } = new();
+}
+
+/// <summary>
+/// Authenticator-app two-factor settings used by the account-management
+/// application service.
+/// </summary>
+public sealed class TwoFactorOptions
+{
+    /// <summary>
+    /// Issuer displayed by authenticator applications.
+    /// </summary>
+    public string AuthenticatorIssuer { get; init; } = "Sufficit Identity";
+
+    /// <summary>
+    /// One-time recovery codes generated after activation or regeneration.
+    /// Values outside 1..20 are clamped by the runtime.
+    /// </summary>
+    public int RecoveryCodeCount { get; init; } = 10;
 }
 
 /// <summary>

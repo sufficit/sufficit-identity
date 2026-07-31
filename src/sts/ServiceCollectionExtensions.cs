@@ -41,6 +41,7 @@ public static class ServiceCollectionExtensions
         var options = configuration
             .GetSection(configurationSection)
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
+        services.AddSingleton(options.TwoFactor);
 
         // Read once, reused below both for the certificate fail-fast logic
         // and for the cookie SecurePolicy (#2): this reads the raw
@@ -568,6 +569,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAccountAccessService, AccountAccessService>();
         services.AddScoped<IAccountExternalIdentityService,
             AspNetCoreIdentityAccountExternalIdentityService>();
+        services.AddScoped<IAccountTwoFactorService,
+            AspNetCoreIdentityAccountTwoFactorService>();
 
         // ---- OIDC Back-Channel Logout 1.0 (item 3.2 [L1]) ----
         // OpenIddict 7.6 only consumes logout_tokens; the STS generates them
