@@ -31,7 +31,6 @@ public sealed class ManagementUiArchitectureTests
             "Pages/Account/ResetPassword.razor",
             "Pages/Consent.razor",
             "Pages/Device/UserCode.razor",
-            "Pages/Manage/ExternalLogins.razor",
             "Pages/Manage/Passkeys.razor",
             "Pages/Manage/TwoFactor.razor",
             "ServiceCollectionExtensions.cs",
@@ -191,6 +190,50 @@ public sealed class ManagementUiArchitectureTests
             StringComparison.Ordinal);
         Assert.Contains("TryRevokeAsync", service, StringComparison.Ordinal);
         Assert.DoesNotContain("DeleteAsync", service, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void External_identity_page_uses_only_the_canonical_account_contract()
+    {
+        var page = File.ReadAllText(Path.Combine(
+            ResolvePublicUiSource(),
+            "Pages",
+            "Manage",
+            "ExternalLogins.razor"));
+        Assert.Contains(
+            "IAccountExternalIdentityService",
+            page,
+            StringComparison.Ordinal);
+        Assert.Contains("GetOverviewAsync", page, StringComparison.Ordinal);
+        Assert.Contains("RemoveAsync", page, StringComparison.Ordinal);
+        foreach (var forbidden in ForbiddenUiDependencies)
+        {
+            Assert.DoesNotContain(forbidden, page, StringComparison.Ordinal);
+        }
+
+        var adapter = File.ReadAllText(Path.Combine(
+            ResolveIdentityRepository(),
+            "src",
+            "sts",
+            "AspNetCoreIdentityAccountExternalIdentityService.cs"));
+        Assert.Contains(
+            ": IAccountExternalIdentityService",
+            adapter,
+            StringComparison.Ordinal);
+        Assert.Contains("last-sign-in-method", adapter, StringComparison.Ordinal);
+
+        var controller = File.ReadAllText(Path.Combine(
+            ResolvePublicUiSource(),
+            "Controllers",
+            "ExternalLoginController.cs"));
+        Assert.Contains(
+            "IAccountExternalIdentityService",
+            controller,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "externalIdentityService.LinkAsync",
+            controller,
+            StringComparison.Ordinal);
     }
 
     [Fact]

@@ -62,12 +62,13 @@ jobs:
       #     and persistent administrative audit
       #   - Account UI: canonical self-service for profile, password, personal
       #     data export, safe account deletion, connected applications and
-      #     active provider-issued credentials
+      #     active provider-issued credentials; authenticated external identity
+      #     management with last-sign-in-method protection
       #
       # Do not repoint this at a moving branch — the whole point of pinning
       # is reproducibility. Bump to a new SHA deliberately when the UI repo
       # ships a new commit you want CI to pick up.
-      UI_REF: b2719b6671ce09714e17d1d68050eaa4e8303396
+      UI_REF: f37089fa7567d4b844990ae8b3aaa8d10fb143e7
       # Ephemeral CI-only database. No MariaDB service is required on
       # developer machines, and no remote connection is ever used here.
       SUFFICIT_IDENTITY_MARIADB_CONNECTION: >-
