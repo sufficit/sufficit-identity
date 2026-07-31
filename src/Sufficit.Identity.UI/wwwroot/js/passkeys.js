@@ -153,12 +153,17 @@
         }
 
         const contentType = response.headers.get("content-type") || "";
-        if (response.redirected || !contentType.includes("application/json")) {
+        if (!contentType.includes("application/json")) {
+            const authenticationWasLost = response.redirected
+                || response.status === 401
+                || response.status === 403;
             return {
                 response,
                 payload: failure(
-                    "session-expired",
-                    "A página ou a sessão expirou. Recarregue a página e tente novamente."),
+                    authenticationWasLost ? "session-expired" : "invalid-response",
+                    authenticationWasLost
+                        ? "A página ou a sessão expirou. Recarregue a página e tente novamente."
+                        : "O serviço retornou uma resposta inválida. Recarregue a página e tente novamente."),
             };
         }
 
