@@ -327,6 +327,14 @@ public sealed class ManagementUiArchitectureTests
             "/account/passkeys/authenticate",
             script,
             StringComparison.Ordinal);
+        Assert.Contains(
+            "if (!contentType.includes(\"application/json\"))",
+            script,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "response.redirected || !contentType.includes",
+            script,
+            StringComparison.Ordinal);
         Assert.Contains("IAccountPasskeyService", controller, StringComparison.Ordinal);
         Assert.Contains("IPasskeyAuthenticationService", controller, StringComparison.Ordinal);
         Assert.DoesNotContain("UserManager<", controller, StringComparison.Ordinal);
