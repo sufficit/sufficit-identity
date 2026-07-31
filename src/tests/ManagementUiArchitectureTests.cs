@@ -32,9 +32,7 @@ public sealed class ManagementUiArchitectureTests
             "Pages/Consent.razor",
             "Pages/Device/UserCode.razor",
             "Pages/Manage/ExternalLogins.razor",
-            "Pages/Manage/Grants.razor",
             "Pages/Manage/Passkeys.razor",
-            "Pages/Manage/Sessions.razor",
             "Pages/Manage/TwoFactor.razor",
             "ServiceCollectionExtensions.cs",
             "Services/AuthContextExtensions.cs",
@@ -157,6 +155,42 @@ public sealed class ManagementUiArchitectureTests
             "userManager.DeleteAsync",
             selfService,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Account_access_pages_use_only_the_canonical_access_contract()
+    {
+        var pages = Path.Combine(
+            ResolvePublicUiSource(),
+            "Pages",
+            "Manage");
+        var grants = File.ReadAllText(Path.Combine(pages, "Grants.razor"));
+        var sessions = File.ReadAllText(Path.Combine(pages, "Sessions.razor"));
+
+        Assert.Contains("IAccountAccessService", grants, StringComparison.Ordinal);
+        Assert.Contains("IAccountAccessService", sessions, StringComparison.Ordinal);
+        Assert.Contains(
+            "GetConnectedApplicationsAsync",
+            grants,
+            StringComparison.Ordinal);
+        Assert.Contains("GetSessionsAsync", sessions, StringComparison.Ordinal);
+        foreach (var forbidden in ForbiddenUiDependencies)
+        {
+            Assert.DoesNotContain(forbidden, grants, StringComparison.Ordinal);
+            Assert.DoesNotContain(forbidden, sessions, StringComparison.Ordinal);
+        }
+
+        var service = File.ReadAllText(Path.Combine(
+            ResolveIdentityRepository(),
+            "src",
+            "sts",
+            "AccountAccessService.cs"));
+        Assert.Contains(
+            "RevokeByAuthorizationIdAsync",
+            service,
+            StringComparison.Ordinal);
+        Assert.Contains("TryRevokeAsync", service, StringComparison.Ordinal);
+        Assert.DoesNotContain("DeleteAsync", service, StringComparison.Ordinal);
     }
 
     [Fact]

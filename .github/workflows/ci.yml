@@ -43,7 +43,7 @@ jobs:
       # in this repo.
       #
       # This SHA is sufficit-identity-ui's compatible HEAD on `main` as of
-      # 2026-07-29, carrying the P0 UI security fixes and the embedded
+      # 2026-07-31, carrying the P0 UI security fixes and the embedded
       # Management RCL that pair with this repository:
       #   - LocalUrlValidator (open-redirect guards on every returnUrl)
       #   - ExternalLoginController: no auto-link by email-match alone
@@ -61,12 +61,13 @@ jobs:
       #     capability policies, shared avatar resolution, truthful navigation
       #     and persistent administrative audit
       #   - Account UI: canonical self-service for profile, password, personal
-      #     data export and safe account deletion
+      #     data export, safe account deletion, connected applications and
+      #     active provider-issued credentials
       #
       # Do not repoint this at a moving branch — the whole point of pinning
       # is reproducibility. Bump to a new SHA deliberately when the UI repo
       # ships a new commit you want CI to pick up.
-      UI_REF: 0e35081697e0b5bb801e02ed83cf35c15cd4706e
+      UI_REF: b2719b6671ce09714e17d1d68050eaa4e8303396
       # Ephemeral CI-only database. No MariaDB service is required on
       # developer machines, and no remote connection is ever used here.
       SUFFICIT_IDENTITY_MARIADB_CONNECTION: >-
