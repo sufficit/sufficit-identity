@@ -23,10 +23,10 @@ jobs:
       # via relative ProjectReference (../../../sufficit-identity/src/core/).
       # This SHA is sufficit-identity's compatible Management contracts,
       # branding/audit, contextual user-mutation, shared avatar contracts and
-      # canonical account self-service and account-access contracts on main as
-      # of 2026-07-31.
+      # canonical account self-service, account-access and external-identity
+      # contracts on main as of 2026-07-31.
       # Do not repoint at a moving branch — pinning ensures reproducible builds.
-      IDENTITY_REF: d6fed3b03d523cd2120378a57e9148c5e5d2d0b2
+      IDENTITY_REF: 7c1a457dbeb295b7bf97ba02a28b586c19ed441b
 
     steps:
       - name: Checkout sufficit-identity-ui
