@@ -22,14 +22,28 @@ Skoruba/Duende-based implementation that lives in [`sufficit-identity-legacy`](h
 
 ## Architecture
 
-The solution has one executable composition host and three focused modules:
+The product has three top-level modules: the Identity runtime/APIs, the public
+and account UI, and the administrative Management UI. Today their source is
+split across two mutually dependent repositories; consolidation into this
+repository is recommended and documented in
+[`docs/REPOSITORY-ARCHITECTURE.md`](docs/REPOSITORY-ARCHITECTURE.md).
+
+The current Identity solution has one executable composition host and these
+focused backend projects:
 
 | Project | Role | Runnable |
 | --- | --- | --- |
 | `src/server` | Composition root for STS, management, UI, middleware and runtime configuration | Yes |
 | `src/sts` | OAuth/OIDC identity API, ASP.NET Core Identity and OpenIddict | No |
 | `src/management` | Optional management API | No |
+| `src/scim` | SCIM RFC 7643/7644 adapter | No |
 | `src/core` | Shared entities and persistence classes | No |
+| `src/tests` | Integrated host, protocol, UI and architecture tests | No |
+
+The sibling `sufficit-identity-ui` repository currently supplies two additional
+Razor Class Library projects: `Sufficit.Identity.UI` and
+`Sufficit.Identity.UI.Management`. They are incorporated into `src/server` and
+published in the same artifact; neither runs independently.
 
 `Program.cs`, launch profiles and `appsettings` belong to `src/server`, the
 only project that builds an ASP.NET Core host. Real configuration must be
