@@ -26,7 +26,7 @@ jobs:
       # canonical account self-service, account-access and external-identity
       # contracts on main as of 2026-07-31.
       # Do not repoint at a moving branch — pinning ensures reproducible builds.
-      IDENTITY_REF: 7c1a457dbeb295b7bf97ba02a28b586c19ed441b
+      IDENTITY_REF: a39893eab95212fa096f4a9e32d9d97a06d5b2d6
 
     steps:
       - name: Checkout sufficit-identity-ui

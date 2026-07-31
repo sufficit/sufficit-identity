@@ -229,11 +229,22 @@ identidades de outra conta. A última forma de entrada não pode ser removida
 sem que exista senha, passkey ou outra identidade vinculada. O fluxo anônimo
 de autenticação externa permanece separado e ainda é dívida de migração.
 
+A autenticação em duas etapas do gerenciamento de conta foi migrada em
+2026-07-31 para `IAccountTwoFactorService`. O runtime é a fonte autoritativa
+para a chave do autenticador, issuer e URI `otpauth`, normalização e validação
+do TOTP, ativação, desativação, rotação da chave e geração de códigos de
+recuperação. O adaptador concreto
+`AspNetCoreIdentityAccountTwoFactorService` deixa explícito que ASP.NET
+Identity é a implementação atual e substituível; o contrato e a UI não
+expõem essa dependência. A página apenas transforma a URI recebida em QR code
+e apresenta os códigos de recuperação uma única vez, sem acessar stores ou
+gerenciadores de identidade.
+
 Ainda existem violações a migrar:
 
 - fluxos públicos de login, cadastro, confirmação de e-mail e recuperação de
   senha ainda injetam `UserManager` e `SignInManager`;
-- consentimento, o fluxo anônimo de login externo, 2FA e passkeys ainda
+- consentimento, o fluxo anônimo de login externo e passkeys ainda
   recebem gerenciadores do Identity/OpenIddict.
 
 Esses caminhos são débitos de migração, não precedentes arquiteturais. Nenhuma
@@ -247,7 +258,8 @@ nova tela deve repetir esse padrão.
    2026-07-30).
 2. Criar contratos de aplicação para gerenciamento de conta e migrar a UI pública
    (perfil, senha, dados pessoais e exclusão concluídos em 2026-07-30;
-   aplicações conectadas, sessões e identidades externas autenticadas
+   aplicações conectadas, sessões, identidades externas autenticadas e
+   autenticação em duas etapas
    concluídas em 2026-07-31).
 3. Remover das UIs referências a entidades mutáveis, stores e gerenciadores de
    persistência/protocolo. Permanecem permitidos contratos puros de aplicação,
