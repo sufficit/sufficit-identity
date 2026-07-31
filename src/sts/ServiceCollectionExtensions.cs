@@ -566,6 +566,8 @@ public static class ServiceCollectionExtensions
             IdentityAccountLifecycleService>();
         services.AddScoped<IAccountSelfService, AccountSelfService>();
         services.AddScoped<IAccountAccessService, AccountAccessService>();
+        services.AddScoped<IAccountExternalIdentityService,
+            AspNetCoreIdentityAccountExternalIdentityService>();
 
         // ---- OIDC Back-Channel Logout 1.0 (item 3.2 [L1]) ----
         // OpenIddict 7.6 only consumes logout_tokens; the STS generates them
