@@ -152,8 +152,24 @@
             };
         }
 
-        const contentType = response.headers.get("content-type") || "";
-        if (!contentType.includes("application/json")) {
+        let responseText;
+        try {
+            responseText = await response.text();
+        } catch {
+            return {
+                response,
+                payload: failure(
+                    "response-unavailable",
+                    "Não foi possível ler a resposta do serviço. Verifique a conexão e tente novamente."),
+            };
+        }
+
+        try {
+            return {
+                response,
+                payload: JSON.parse(responseText.trim()),
+            };
+        } catch {
             const authenticationWasLost = response.redirected
                 || response.status === 401
                 || response.status === 403;
@@ -164,17 +180,6 @@
                     authenticationWasLost
                         ? "A página ou a sessão expirou. Recarregue a página e tente novamente."
                         : "O serviço retornou uma resposta inválida. Recarregue a página e tente novamente."),
-            };
-        }
-
-        try {
-            return { response, payload: await response.json() };
-        } catch {
-            return {
-                response,
-                payload: failure(
-                    "invalid-response",
-                    "O serviço retornou uma resposta inválida. Recarregue a página e tente novamente."),
             };
         }
     }

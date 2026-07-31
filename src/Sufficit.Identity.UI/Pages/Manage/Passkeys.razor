@@ -84,7 +84,7 @@
         }
         else
         {
-            <form @ref="_registrationForm" @onsubmit="RegisterPasskeyAsync" @onsubmit:preventDefault>
+            <form @ref="_registrationForm">
                 <AntiforgeryToken />
                 <div class="form-group">
                     <label for="passkey-name">Nome (opcional)</label>
@@ -93,7 +93,7 @@
                            placeholder="Ex.: notebook pessoal" disabled="@_busy" />
                     <span class="field-hint">Use um nome que ajude a reconhecer o dispositivo.</span>
                 </div>
-                <button type="submit" class="btn btn-primary" disabled="@_busy">
+                <button type="button" class="btn btn-primary" disabled="@_busy" @onclick="RegisterPasskeyAsync">
                     @(_busy ? "Aguardando o dispositivo..." : "Registrar passkey")
                 </button>
             </form>
