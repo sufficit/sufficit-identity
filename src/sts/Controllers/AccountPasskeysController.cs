@@ -9,8 +9,9 @@ namespace Sufficit.Identity.STS.Controllers;
 
 /// <summary>
 /// Thin HTTP adapter for WebAuthn ceremonies. These endpoints exist because
-/// ASP.NET Identity protects challenge state with response cookies; executing
-/// them from a Blazor Server circuit would occur after the response started.
+/// ASP.NET Identity updates protected challenge state through its temporary
+/// authentication scheme; executing them from a Blazor Server circuit would
+/// occur after the response started.
 /// </summary>
 [ApiController]
 [Route("account/passkeys")]

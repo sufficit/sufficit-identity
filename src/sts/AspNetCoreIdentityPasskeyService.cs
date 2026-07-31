@@ -12,8 +12,8 @@ namespace Sufficit.Identity.STS;
 /// <summary>
 /// ASP.NET Identity adapter for WebAuthn registration and authentication.
 /// Passkey challenge state remains in the framework's protected temporary
-/// cookie and therefore challenge-producing/consuming calls must run inside
-/// ordinary HTTP requests.
+/// authentication ticket, backed by the runtime ticket store, and therefore
+/// challenge-producing/consuming calls must run inside ordinary HTTP requests.
 /// </summary>
 public sealed class AspNetCoreIdentityPasskeyService(
     UserManager<ApplicationUser> userManager,

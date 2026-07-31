@@ -1,6 +1,7 @@
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -158,6 +159,19 @@ public static class ServiceCollectionExtensions
                 passkeys.ServerDomain = options.Passkeys.RelyingPartyId.Trim();
             }
         });
+        // ASP.NET Identity stores WebAuthn challenge state in its temporary
+        // TwoFactorUserId authentication scheme. Keeping that ticket inside
+        // the cookie can produce response headers larger than common reverse
+        // proxy buffers. Store the protected ticket server-side and send only
+        // a random lookup key to the browser. AddDistributedMemoryCache is a
+        // safe single-node default and remains replaceable by Redis or another
+        // IDistributedCache when the host is replicated.
+        services.AddDistributedMemoryCache();
+        services.AddSingleton<PasskeyAuthenticationTicketStore>();
+        services.AddOptions<CookieAuthenticationOptions>(
+                IdentityConstants.TwoFactorUserIdScheme)
+            .Configure<PasskeyAuthenticationTicketStore>((cookie, ticketStore) =>
+                cookie.SessionStore = ticketStore);
         // .NET 10 native passkeys (WebAuthn/FIDO2): a inclusão do 9º generic
         // arg IdentityUserPasskey<string> em IdentityDbContext (AppDbContext)
         // faz AddEntityFrameworkStores<AppDbContext>() registrar automaticamente

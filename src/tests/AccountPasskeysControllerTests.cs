@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -26,8 +27,16 @@ public sealed class AccountPasskeysControllerTests(
             "/account/passkeys/creation-options",
             Form(token));
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var setCookieBytes = response.Headers.TryGetValues(
+                "Set-Cookie",
+                out var setCookieHeaders)
+            ? setCookieHeaders.Sum(header => Encoding.UTF8.GetByteCount(header))
+            : 0;
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(
+            setCookieBytes is > 0 and < 4096,
+            $"Passkey ceremony emitted {setCookieBytes} bytes of Set-Cookie headers.");
         Assert.False(string.IsNullOrWhiteSpace(
             body.GetProperty("challenge").GetString()));
         Assert.Equal(
