@@ -1,0 +1,170 @@
+@page "/manage/grants"
+@rendermode @(RenderMode.InteractiveServer)
+@attribute [Authorize]
+@inject IAccountAccessService AccountAccessService
+@inject IJSRuntime JS
+@inject ILogger<Grants> Logger
+
+<PageTitle>Aplicações conectadas — Sufficit Identity</PageTitle>
+
+<div class="auth-card">
+    <ManageBackLink />
+    <h1>Aplicações conectadas</h1>
+    <p class="info">Aplicações que receberam autorização para acessar sua conta.</p>
+
+    <div aria-live="polite">
+        @if (_success is not null)
+        {
+            <div class="alert alert-success">@_success</div>
+        }
+        @if (_error is not null)
+        {
+            <div class="alert alert-error">@_error</div>
+        }
+    </div>
+
+    @if (_loading)
+    {
+        <p class="muted">Carregando aplicações…</p>
+    }
+    else if (_applications.Count == 0)
+    {
+        <p class="muted">Nenhuma aplicação conectada.</p>
+    }
+    else
+    {
+        <ul class="grant-list">
+            @foreach (var application in _applications)
+            {
+                <li class="grant-item">
+                    <div class="access-item-body">
+                        <strong class="access-item-title">@application.DisplayName</strong>
+                        @if (!string.IsNullOrWhiteSpace(application.ClientId))
+                        {
+                            <span class="access-client-id">@application.ClientId</span>
+                        }
+                        <dl class="access-metadata">
+                            <div>
+                                <dt>Escopos</dt>
+                                <dd>@FormatScopes(application.Scopes)</dd>
+                            </div>
+                            <div>
+                                <dt>Última autorização</dt>
+                                <dd>@FormatDate(application.AuthorizedAt)</dd>
+                            </div>
+                            <div>
+                                <dt>Credenciais ativas</dt>
+                                <dd>@application.ActiveCredentialCount</dd>
+                            </div>
+                        </dl>
+                    </div>
+                    <button type="button"
+                            class="btn btn-danger btn-sm access-item-action"
+                            disabled="@IsBusy"
+                            @onclick="() => RevokeAsync(application)">
+                        @(_busyApplicationId == application.ApplicationId
+                            ? "Revogando…"
+                            : "Revogar acesso")
+                    </button>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? _authTask { get; set; }
+
+    private IReadOnlyList<AccountConnectedApplication> _applications = [];
+    private bool _loading = true;
+    private string? _busyApplicationId;
+    private string? _success;
+    private string? _error;
+    private bool IsBusy => _busyApplicationId is not null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+            if (principal is null)
+            {
+                _error = "Sua sessão expirou. Entre novamente.";
+                return;
+            }
+
+            _applications = await AccountAccessService
+                .GetConnectedApplicationsAsync(principal);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Connected applications could not be loaded.");
+            _error = "Não foi possível carregar as aplicações conectadas. Tente novamente.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RevokeAsync(AccountConnectedApplication application)
+    {
+        var confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            $"Revogar todo o acesso concedido a {application.DisplayName}?");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        _busyApplicationId = application.ApplicationId;
+        _success = null;
+        _error = null;
+        try
+        {
+            var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+            if (principal is null)
+            {
+                _error = "Sua sessão expirou. Entre novamente.";
+                return;
+            }
+
+            var result = await AccountAccessService
+                .RevokeConnectedApplicationAsync(
+                    principal,
+                    application.ApplicationId);
+            if (!result.Succeeded)
+            {
+                _error = string.Join(
+                    " ",
+                    result.Errors.Select(error => error.Description));
+                return;
+            }
+
+            _applications = _applications
+                .Where(item => item.ApplicationId != application.ApplicationId)
+                .ToArray();
+            _success = $"O acesso de {application.DisplayName} foi revogado.";
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(
+                exception,
+                "Connected application {ApplicationId} could not be revoked.",
+                application.ApplicationId);
+            _error = "Não foi possível revogar o acesso da aplicação. Tente novamente.";
+        }
+        finally
+        {
+            _busyApplicationId = null;
+        }
+    }
+
+    private static string FormatScopes(IReadOnlyList<string> scopes) =>
+        scopes.Count == 0
+            ? "Nenhum escopo informado"
+            : string.Join(", ", scopes);
+
+    private static string FormatDate(DateTimeOffset? value) =>
+        value?.UtcDateTime.ToString("dd/MM/yyyy HH:mm 'UTC'") ?? "Não informada";
+}

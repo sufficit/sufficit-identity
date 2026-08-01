@@ -1,0 +1,349 @@
+@page "/authorizations"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageAuthorizations)]
+@attribute [StreamRendering]
+@inject ManagementAuthorizationDataSource AuthorizationData
+
+<PageTitle>Autorizações | Sufficit Identity</PageTitle>
+
+<PageHeader Title="Autorizações"
+            Description="Revise consentimentos e grants OAuth/OpenID Connect mantidos pelo provedor.">
+</PageHeader>
+
+<section class="contract-strip contract-strip--info">
+    <AppIcon Name="shield" Size="20" />
+    <div>
+        <strong>Autorizações persistidas</strong>
+        <span>Revogar uma autorização também invalida todas as credenciais associadas a ela.</span>
+    </div>
+    <StatusBadge Tone="info">OAuth &amp; OIDC</StatusBadge>
+</section>
+
+@if (revoked)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Autorização revogada</strong>
+            <span>O grant e suas credenciais relacionadas não podem mais ser utilizados.</span>
+        </div>
+    </section>
+}
+
+<section class="table-panel" aria-labelledby="authorizations-list-heading" aria-busy="@loading">
+    <div class="data-toolbar data-toolbar--users">
+        <div>
+            <h2 id="authorizations-list-heading">Grants e consentimentos</h2>
+            <p>@FilterDescription</p>
+        </div>
+        <div class="data-toolbar__actions">
+            <form class="user-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
+                <label class="search-field">
+                    <span class="visually-hidden">Pesquisar autorizações</span>
+                    <AppIcon Name="search" Size="18" />
+                    <input type="search"
+                           placeholder="Usuário, cliente, tipo ou estado"
+                           autocomplete="off"
+                           @bind="search" />
+                </label>
+                <label class="select-field">
+                    <span>Estado</span>
+                    <select @bind="stateFilter">
+                        <option value="active">Ativas</option>
+                        <option value="all">Todas</option>
+                    </select>
+                </label>
+                <button class="button button--secondary" type="submit" disabled="@loading">Aplicar</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="client-results" aria-live="polite">
+        @if (loading)
+        {
+            <div class="table-skeleton" aria-label="Carregando autorizações">
+                @for (var index = 0; index < 4; index++)
+                {
+                    <span></span>
+                }
+            </div>
+        }
+        else if (result?.IsSuccess is true)
+        {
+            @if (Page.Items.Count is 0)
+            {
+                <EmptyState Icon="shield"
+                            Title="Nenhuma autorização encontrada"
+                            Description="Não há grants neste recorte. Altere o estado ou a pesquisa para ampliar a consulta." />
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="data-table data-table--claims">
+                        <thead>
+                            <tr>
+                                <th scope="col">Usuário</th>
+                                <th scope="col">Cliente</th>
+                                <th scope="col">Scopes</th>
+                                <th scope="col">Tipo / criação</th>
+                                <th scope="col">Credenciais</th>
+                                <th scope="col">Estado</th>
+                                <th scope="col"><span class="visually-hidden">Ações</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var grant in Page.Items)
+                            {
+                                <tr>
+                                    <td data-label="Usuário">
+                                        @if (grant.UserId is not null)
+                                        {
+                                            <a class="client-name" href="@UserHref(grant.UserId)">@UserLabel(grant)</a>
+                                        }
+                                        else
+                                        {
+                                            <span>Sem usuário</span>
+                                        }
+                                    </td>
+                                    <td data-label="Cliente">
+                                        <span class="scope-identity">
+                                            <strong>@(grant.ClientDisplayName ?? grant.ClientId ?? "Sem cliente")</strong>
+                                            @if (grant.ClientId is not null)
+                                            {
+                                                <code>@grant.ClientId</code>
+                                            }
+                                        </span>
+                                    </td>
+                                    <td data-label="Scopes">
+                                        <span class="token-row">
+                                            @if (grant.Scopes.Count is 0)
+                                            {
+                                                <span>Sem scopes</span>
+                                            }
+                                            else
+                                            {
+                                                @foreach (var scope in grant.Scopes.Take(4))
+                                                {
+                                                    <StatusBadge Tone="neutral">@scope</StatusBadge>
+                                                }
+                                                @if (grant.Scopes.Count > 4)
+                                                {
+                                                    <StatusBadge Tone="neutral">+@(grant.Scopes.Count - 4)</StatusBadge>
+                                                }
+                                            }
+                                        </span>
+                                    </td>
+                                    <td data-label="Tipo / criação">
+                                        <span class="scope-identity">
+                                            <strong>@TypeLabel(grant.Type)</strong>
+                                            <code>@DateLabel(grant.CreatedAt)</code>
+                                        </span>
+                                    </td>
+                                    <td data-label="Credenciais">@grant.CredentialCount</td>
+                                    <td data-label="Estado">
+                                        <StatusBadge Tone="@(grant.IsActive ? "success" : "neutral")">
+                                            @StatusLabel(grant.Status)
+                                        </StatusBadge>
+                                    </td>
+                                    <td data-label="Ações">
+                                        @if (grant.IsActive)
+                                        {
+                                            <button class="row-action row-action--button"
+                                                    type="button"
+                                                    @onclick="() => SelectForRevocation(grant)">
+                                                Revogar
+                                                <AppIcon Name="lock" Size="15" />
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        }
+        else
+        {
+            <EmptyState Icon="alert"
+                        Title="@ErrorTitle"
+                        Description="@(result?.ErrorMessage ?? "O serviço não conseguiu consultar as autorizações.")">
+                <Actions>
+                    <button class="button button--secondary" type="button" @onclick="LoadAsync">Tentar novamente</button>
+                </Actions>
+            </EmptyState>
+        }
+    </div>
+
+    <footer class="table-footer table-footer--paginated">
+        <span>@ResultCountLabel</span>
+        @if (result?.IsSuccess is true && Page.TotalCount > Page.PageSize)
+        {
+            <div class="pagination" aria-label="Paginação de autorizações">
+                <button class="button button--secondary button--compact" type="button"
+                        disabled="@(Page.Page <= 1 || loading)"
+                        @onclick="PreviousPageAsync">Anterior</button>
+                <span>Página @Page.Page de @TotalPages</span>
+                <button class="button button--secondary button--compact" type="button"
+                        disabled="@(Page.Page >= TotalPages || loading)"
+                        @onclick="NextPageAsync">Próxima</button>
+            </div>
+        }
+    </footer>
+</section>
+
+@if (selected is not null)
+{
+    <section class="delete-zone" aria-labelledby="revoke-authorization-heading">
+        <div>
+            <h2 id="revoke-authorization-heading">Revogar esta autorização?</h2>
+            <p>@UserLabel(selected) · @(selected.ClientDisplayName ?? selected.ClientId ?? "Sem cliente") · @selected.CredentialCount credencial(is) associada(s).</p>
+        </div>
+        @if (revocation?.IsSuccess is false)
+        {
+            <section class="inline-notice inline-notice--danger" role="alert">
+                <AppIcon Name="alert" Size="19" />
+                <div><strong>Não foi possível revogar</strong><span>@revocation.ErrorMessage</span></div>
+            </section>
+        }
+        <button class="button button--secondary" type="button" @onclick="CancelRevocation">Cancelar</button>
+        <button class="button button--danger" type="button" disabled="@revoking" @onclick="RevokeAsync">
+            <AppIcon Name="lock" Size="17" />
+            @(revoking ? "Revogando…" : "Confirmar revogação")
+        </button>
+    </section>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "user")]
+    public string? UserId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "client")]
+    public string? ClientId { get; set; }
+
+    private ManagementDataResult<ManagementAuthorizationPage>? result;
+    private ManagementDataResult<bool>? revocation;
+    private ManagementAuthorizationSummary? selected;
+    private string search = string.Empty;
+    private string stateFilter = "active";
+    private int currentPage = 1;
+    private bool loading = true;
+    private bool revoking;
+    private bool revoked;
+    private const int PageSize = 25;
+
+    private ManagementAuthorizationPage Page =>
+        result?.Value ?? new([], 1, PageSize, 0, UserId, ClientId, true);
+
+    private int TotalPages =>
+        Math.Max(1, (int)Math.Ceiling(Page.TotalCount / (double)Page.PageSize));
+
+    private string FilterDescription =>
+        UserId is not null
+            ? $"Filtradas pela conta {UserId}."
+            : ClientId is not null
+                ? $"Filtradas pelo cliente {ClientId}."
+                : "Cada linha representa uma autorização persistida pelo OpenIddict.";
+
+    private string ErrorTitle =>
+        result?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? "MFA exigido para consultar autorizações"
+            : result?.Outcome is ManagementDataOutcome.Forbidden
+                ? "Acesso às autorizações negado"
+                : "Não foi possível consultar as autorizações";
+
+    private string ResultCountLabel =>
+        loading
+            ? "Carregando autorizações"
+            : result?.IsSuccess is true
+                ? $"{Page.TotalCount} autorização(ões)"
+                : "Nenhum resultado carregado";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        result = await AuthorizationData.SearchAsync(
+            new ManagementAuthorizationSearch(
+                search,
+                UserId,
+                ClientId,
+                stateFilter == "active",
+                currentPage,
+                PageSize));
+        loading = false;
+    }
+
+    private async Task SearchAsync()
+    {
+        currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        currentPage = Math.Max(1, currentPage - 1);
+        await LoadAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        currentPage = Math.Min(TotalPages, currentPage + 1);
+        await LoadAsync();
+    }
+
+    private void SelectForRevocation(ManagementAuthorizationSummary grant)
+    {
+        selected = grant;
+        revocation = null;
+        revoked = false;
+    }
+
+    private void CancelRevocation()
+    {
+        selected = null;
+        revocation = null;
+    }
+
+    private async Task RevokeAsync()
+    {
+        if (selected is null || revoking)
+        {
+            return;
+        }
+
+        revoking = true;
+        revocation = await AuthorizationData.RevokeAsync(selected.Id);
+        revoking = false;
+        if (revocation.IsSuccess)
+        {
+            selected = null;
+            revoked = true;
+            await LoadAsync();
+        }
+    }
+
+    private static string UserLabel(ManagementAuthorizationSummary grant) =>
+        grant.UserName ?? grant.Email ?? grant.UserId ?? "Sem usuário";
+
+    private static string UserHref(string id) =>
+        $"users/{Uri.EscapeDataString(id)}";
+
+    private static string TypeLabel(string value) =>
+        value.Replace('_', ' ');
+
+    private static string StatusLabel(string value) =>
+        value switch
+        {
+            "valid" => "Ativa",
+            "revoked" => "Revogada",
+            _ => value
+        };
+
+    private static string DateLabel(DateTimeOffset? value) =>
+        value?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "data não registrada";
+}

@@ -1,0 +1,22 @@
+@page "/account/externallogin"
+@inject NavigationManager Navigation
+
+@* Legacy deep-link route: forwards to the MVC challenge endpoint.
+   The login page now links straight to /account/externalchallenge
+   (with data-enhance-nav="false"); this page only serves old links.
+   Under static SSR, NavigateTo translates to an HTTP redirect. *@
+
+@code {
+    [SupplyParameterFromQuery] private string? Provider { get; set; }
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    protected override void OnInitialized()
+    {
+        // Reject absolute/off-host returnUrl (authenticated open redirect).
+        var returnUrl = LocalUrlValidator.EnsureLocal(ReturnUrl);
+        var provider = Provider ?? "Google";
+
+        var challengeUrl = $"/Account/ExternalChallenge?provider={Uri.EscapeDataString(provider)}&returnUrl={Uri.EscapeDataString(returnUrl)}";
+        Navigation.NavigateTo(challengeUrl, forceLoad: true);
+    }
+}

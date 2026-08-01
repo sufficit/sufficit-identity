@@ -1,0 +1,129 @@
+@page "/account/logout"
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager Navigation
+@inject ILogger<Logout> Logger
+
+<PageTitle>Sair — Sufficit Identity</PageTitle>
+
+<div class="auth-card">
+    <h1>Sair da conta</h1>
+
+    @if (_signedOut)
+    {
+        <p class="info">Você foi desconectado.</p>
+        @if (_postLogoutRedirect is not null)
+        {
+            <p class="info">Retornando para <strong>@_clientName</strong>…</p>
+            <script src="_content/Sufficit.Identity.UI/js/redirect.js" data-url="@_postLogoutRedirect"></script>
+            <p><a href="@_postLogoutRedirect" class="btn btn-primary">Continuar</a></p>
+        }
+        else
+        {
+            <a href="/" class="btn btn-primary">Voltar ao início</a>
+        }
+    }
+    else if (_showConfirm)
+    {
+        <p class="info">
+            Deseja realmente sair?
+            @if (_clientName is not null)
+            {
+                <br /><span class="muted">@_clientName solicitou o logout.</span>
+            }
+        </p>
+        @* POST goes to /connect/endsession, which runs the OpenIddict SignOut
+           handler and clears the auth cookie + OpenIddict session in one step.
+           We forward the original endsession parameters back via hidden fields
+           so the STS can apply post_logout_redirect_uri + state. *@
+        <EditForm Method="post" Model="_empty" FormName="logout"
+                  Action="/connect/endsession">
+            @if (_idTokenHint is not null)
+            {
+                <input type="hidden" name="id_token_hint" value="@_idTokenHint" />
+            }
+            @if (_postLogoutRedirectUri is not null)
+            {
+                <input type="hidden" name="post_logout_redirect_uri" value="@_postLogoutRedirectUri" />
+            }
+            @if (_state is not null)
+            {
+                <input type="hidden" name="state" value="@_state" />
+            }
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">Sim, sair</button>
+                <a href="/" class="btn btn-secondary">Cancelar</a>
+            </div>
+        </EditForm>
+    }
+    else
+    {
+        <p class="info">Saindo…</p>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "id_token_hint")]
+    private string? _idTokenHint { get; set; }
+
+    [SupplyParameterFromQuery(Name = "post_logout_redirect_uri")]
+    private string? _postLogoutRedirectUri { get; set; }
+
+    [SupplyParameterFromQuery(Name = "state")]
+    private string? _state { get; set; }
+
+    private string? _clientName;
+    private string? _postLogoutRedirect;
+    private bool _showConfirm = true;
+    private bool _signedOut;
+
+    // Marker instance so EditForm gets a non-null Model parameter (Blazor Server
+    // requires either Model or EditContext even when there are no bound fields).
+    private readonly object _empty = new();
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+            // Try to extract client_id from the id_token_hint (no validation here —
+            // OpenIddict already validated it at the /connect/endsession endpoint
+            // before passing through).
+            if (!string.IsNullOrEmpty(_idTokenHint))
+            {
+                _clientName = ExtractClientIdFromJwt(_idTokenHint) ?? "uma aplicação";
+            }
+
+            // Build the final redirect URL with state
+            if (!string.IsNullOrEmpty(_postLogoutRedirectUri))
+            {
+                _postLogoutRedirect = string.IsNullOrEmpty(_state)
+                    ? _postLogoutRedirectUri
+                    : $"{_postLogoutRedirectUri}?state={Uri.EscapeDataString(_state)}";
+            }
+        }
+        catch
+        {
+            // If anything fails (malformed id_token_hint, etc), still show the
+            // confirmation page without client info.
+            _clientName = null;
+        }
+    }
+
+    private static string? ExtractClientIdFromJwt(string jwt)
+    {
+        try
+        {
+            var parts = jwt.Split('.');
+            if (parts.Length < 2) return null;
+            var payload = parts[1];
+            // Pad base64url to base64
+            payload = payload.Replace('-', '+').Replace('_', '/');
+            switch (payload.Length % 4) { case 2: payload += "=="; break; case 3: payload += "="; break; }
+            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            return doc.RootElement.TryGetProperty("aud", out var aud) && aud.ValueKind == System.Text.Json.JsonValueKind.String
+                ? aud.GetString()
+                : null;
+        }
+        catch { return null; }
+    }
+}

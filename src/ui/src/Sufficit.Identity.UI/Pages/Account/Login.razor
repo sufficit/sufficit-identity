@@ -1,0 +1,243 @@
+@page "/account/login"
+@rendermode @(RenderMode.InteractiveServer)
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using Microsoft.AspNetCore.Identity
+@inject SignInManager<ApplicationUser> SignInManager
+@inject RegisterConfiguration RegisterConfig
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject ILogger<Login> Logger
+@inject IBrandingThemeProvider BrandingProvider
+
+<PageTitle>Entrar — Sufficit Identity</PageTitle>
+
+<div class="auth-card">
+    <div class="auth-brand">
+        <img src="@_logoUrl" alt="Sufficit Identity" height="44" />
+    </div>
+
+    @if (_errorMessage is not null)
+    {
+        <div class="alert alert-error" role="alert">@_errorMessage</div>
+    }
+
+    @if (_errorMessage is not null && _errorMessage.Contains("duas etapas"))
+    {
+        // Handled via redirect in OnValidSubmit; show fallback link in case redirect fails.
+        <p class="info">Sua conta exige autenticação em duas etapas.</p>
+        <a href="/account/loginwith2fa?returnUrl=@Uri.EscapeDataString(_returnUrl ?? "/")" class="btn btn-primary">
+            Continuar para verificação 2FA
+        </a>
+    }
+    else
+    {
+        // ---- External logins FIRST (Google, Facebook, passkey) ----
+        <div class="external-logins">
+            @if (_externalProviders.Any())
+            {
+                @foreach (var scheme in _externalProviders)
+                {
+                    @* Link straight to the MVC challenge endpoint and opt out of
+                       Blazor enhanced navigation: the endpoint 302s to an external
+                       domain (Google/Facebook), which enhanced nav can't follow —
+                       it left the page frozen for seconds before falling back.
+                       data-redirect-overlay triggers the "connecting…" overlay
+                       (script in App.razor). *@
+                    var providerClass = scheme.Name.ToLowerInvariant() switch
+                    {
+                        "google" => "btn-google",
+                        "facebook" => "btn-facebook",
+                        _ => "btn-external"
+                    };
+                    <a href="/account/externalchallenge?provider=@scheme.Name&returnUrl=@Uri.EscapeDataString(_returnUrl ?? "/")"
+                       class="btn btn-block @providerClass"
+                       data-enhance-nav="false"
+                       data-redirect-overlay="@scheme.DisplayName">
+                        @if (scheme.Name.Equals("Google", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <svg class="provider-icon" width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                        }
+                        else if (scheme.Name.Equals("Facebook", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <svg class="provider-icon" width="18" height="18" viewBox="0 0 24 24"><path fill="#fff" d="M24 12.07C24 5.41 18.63 0 12 0S0 5.41 0 12.07c0 6.02 4.39 11.01 10.13 11.93v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.49h-2.8v8.44C19.61 23.08 24 18.09 24 12.07z"/></svg>
+                        }
+                        <span>Entrar com @scheme.DisplayName</span>
+                    </a>
+                }
+            }
+
+            @if (_passkeySupported)
+            {
+                <form @ref="_passkeyForm" class="passkey-form">
+                    <AntiforgeryToken />
+                    <button type="button" class="btn btn-passkey btn-block" disabled="@_passkeyBusy" @onclick="PasskeySignInAsync">
+                        <svg class="provider-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+                        <span>@(_passkeyBusy ? "Verificando..." : "Entrar com passkey")</span>
+                    </button>
+                </form>
+            }
+        </div>
+
+        @if (_externalProviders.Any() || _passkeySupported)
+        {
+            <p class="separator"><span>ou com e-mail e senha</span></p>
+        }
+
+        // ---- Email/password form SECOND ----
+        <EditForm Model="Model" Method="post" OnValidSubmit="HandleLoginAsync" FormName="login">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label for="username">@( RegisterConfig.RequireUsername ? "E-mail ou usuário" : "E-mail" )</label>
+                <InputText id="username" @bind-Value="Model.UserName" class="form-control"
+                           autocomplete="username" />
+                <ValidationMessage For="@(() => Model.UserName)" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Senha</label>
+                <InputText id="password" type="password" @bind-Value="Model.Password" class="form-control"
+                           autocomplete="current-password" />
+                <ValidationMessage For="@(() => Model.Password)" />
+            </div>
+
+            <div class="form-check">
+                <InputCheckbox id="rememberMe" @bind-Value="Model.RememberMe" />
+                <label for="rememberMe">Manter conectado</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+        </EditForm>
+
+        <div class="auth-links">
+            <a href="/account/forgotpassword">Esqueceu a senha?</a>
+            <br />
+            <a href="/account/register">Criar nova conta</a>
+            <br />
+            <a href="/account/resendemailconfirmation">Reenviar confirmação de e-mail</a>
+        </div>
+    }
+</div>
+
+@code {
+    private LoginViewModel? _boundModel;
+    [SupplyParameterFromForm(FormName = "login")]
+    private LoginViewModel Model
+    {
+        get => _boundModel ??= new();
+        set => _boundModel = value;
+    }
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    private string? _returnUrlQuery { get; set; }
+
+    private string? _returnUrl;
+    private string? _errorMessage;
+    private List<AuthenticationScheme> _externalProviders = new();
+    private ElementReference _passkeyForm;
+    private bool _passkeySupported;
+    private bool _passkeyBusy;
+    private string _logoUrl = "_content/Sufficit.Identity.UI/img/logo-full.png";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Never trust returnUrl blindly: reject absolute/off-host URLs to prevent
+        // an authenticated open redirect (attacker crafts a login link with
+        // returnUrl=https://evil.example and phishes the victim post-login).
+        _returnUrl = LocalUrlValidator.EnsureLocal(_returnUrlQuery);
+        Model.ReturnUrl = _returnUrl;
+
+        var schemes = await SignInManager.GetExternalAuthenticationSchemesAsync();
+        _externalProviders = schemes.ToList();
+
+        // Load branding theme logo
+        var theme = await BrandingProvider.GetActiveAsync();
+        if (theme?.LogoUrl is not null)
+            _logoUrl = theme.LogoUrl;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                _passkeySupported = await JS.InvokeAsync<bool>("passkeys.isSupported");
+                StateHasChanged();
+            }
+            catch { /* JS interop indisponível no prerender */ }
+        }
+    }
+
+    private async Task PasskeySignInAsync()
+    {
+        _errorMessage = null;
+        _passkeyBusy = true;
+
+        try
+        {
+            var result = await JS.InvokeAsync<PasskeyAuthenticationResult>(
+                "passkeys.signIn",
+                _passkeyForm,
+                Model.UserName ?? string.Empty);
+
+            if (result.Succeeded)
+            {
+                Navigation.NavigateTo(_returnUrl ?? "/", forceLoad: true);
+            }
+            else
+            {
+                _errorMessage = result.Errors.Count == 0
+                    ? "Não foi possível autenticar com a passkey."
+                    : string.Join(" ", result.Errors.Select(error => error.Description));
+            }
+        }
+        catch (JSException exception)
+        {
+            Logger.LogWarning(exception, "Passkey sign-in interaction failed.");
+            _errorMessage = "Não foi possível concluir a autenticação. Recarregue a página e tente novamente.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Erro no login por passkey");
+            _errorMessage = "Falha ao autenticar com passkey.";
+        }
+        finally
+        {
+            _passkeyBusy = false;
+        }
+    }
+
+    private async Task HandleLoginAsync()
+    {
+        var result = await SignInManager.PasswordSignInAsync(
+            Model.UserName, Model.Password, Model.RememberMe, lockoutOnFailure: true);
+
+        if (result.Succeeded)
+        {
+            Logger.LogInformation("User {User} logged in.", Model.UserName);
+            Navigation.NavigateTo(_returnUrl ?? "/", forceLoad: true);
+        }
+        else if (result.RequiresTwoFactor)
+        {
+            // Redirect to 2FA verification page. SignInManager has already
+            // set the Identity.TwoFactorUserId cookie so GetTwoFactorAuthenticationUserAsync
+            // returns the user on the next request.
+            var url = $"/account/loginwith2fa?returnUrl={Uri.EscapeDataString(_returnUrl ?? "/")}&rememberMe={Model.RememberMe}";
+            Navigation.NavigateTo(url, forceLoad: true);
+        }
+        else if (result.IsLockedOut)
+        {
+            _errorMessage = "Conta bloqueada por muitas tentativas. Tente novamente mais tarde.";
+        }
+        else if (result.IsNotAllowed)
+        {
+            _errorMessage = "Login não permitido. Confirme seu e-mail ou contate o suporte.";
+        }
+        else
+        {
+            _errorMessage = "Usuário ou senha inválidos.";
+        }
+    }
+}

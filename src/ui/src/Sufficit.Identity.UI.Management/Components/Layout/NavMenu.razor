@@ -1,0 +1,85 @@
+<div class="sidebar-brand">
+    <img src="/_content/Sufficit.Identity.UI.Management/img/logo-mark.png" width="36" height="36" alt="" />
+    <div class="sidebar-brand__text">
+        <strong>Sufficit Identity</strong>
+        <span>Administração</span>
+    </div>
+</div>
+
+<nav class="sidebar-nav" aria-label="Navegação principal">
+    <div class="nav-section">
+        <span class="nav-section__label">Visão geral</span>
+        <NavLink class="nav-item" href="" Match="NavLinkMatch.All">
+            <AppIcon Name="dashboard" />
+            <span>Início</span>
+        </NavLink>
+    </div>
+
+    @foreach (var section in NavigationSections)
+    {
+        <div class="nav-section">
+            <span class="nav-section__label">@section.Key</span>
+            @foreach (var item in section)
+            {
+                <NavLink class="nav-item" href="@item.Href">
+                    <AppIcon Name="@item.Icon" />
+                    <span>@item.Title</span>
+                </NavLink>
+            }
+        </div>
+    }
+</nav>
+
+<div class="sidebar-footer">
+    <NavLink class="nav-item" href="settings">
+        <AppIcon Name="settings" />
+        <span>Configurações</span>
+    </NavLink>
+    <div class="sidebar-status">
+        <span class="status-dot @(Overview?.IsSuccess is true ? "status-dot--success" : null)"
+              aria-hidden="true"></span>
+        <div>
+            <strong>@RuntimeLabel</strong>
+            <span>@RuntimeDescription</span>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public ManagementDataResult<ManagementOverview>? Overview { get; set; }
+
+    private IEnumerable<IGrouping<string, ManagementModulePresentation>>
+        NavigationSections =>
+        AvailablePresentations
+            .Where(item => item.ShowInNavigation)
+            .OrderBy(item => item.SectionOrder)
+            .ThenBy(item => item.Order)
+            .GroupBy(item => item.Section);
+
+    private IEnumerable<ManagementModulePresentation> AvailablePresentations =>
+        Overview?.Value?.Modules
+            .Where(module => module.CanAccess)
+            .Select(module => ManagementModulePresentations.Find(module.Key))
+            .Where(item => item is not null)
+            .Cast<ManagementModulePresentation>()
+        ?? [];
+
+    private int AvailableModuleCount =>
+        Overview?.Value?.Modules.Count(module => module.CanAccess) ?? 0;
+
+    private string RuntimeLabel =>
+        Overview?.IsSuccess is true
+            ? $"{AvailableModuleCount} {Pluralize(AvailableModuleCount, "módulo", "módulos")}"
+            : "Estado indisponível";
+
+    private string RuntimeDescription =>
+        Overview?.Value?.EnvironmentName
+        ?? "Não foi possível consultar o runtime";
+
+    private static string Pluralize(
+        int count,
+        string singular,
+        string plural) =>
+        count is 1 ? singular : plural;
+}

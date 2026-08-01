@@ -1,0 +1,193 @@
+@page "/account/register"
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject Microsoft.AspNetCore.Identity.UI.Services.IEmailSender EmailSender
+@inject CallbackUrlBuilder CallbackUrls
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpAccessor
+@inject RegisterConfiguration RegisterConfig
+@inject NavigationManager Navigation
+@inject ILogger<Register> Logger
+@inject IBrandingThemeProvider BrandingProvider
+@using System.Web
+
+<PageTitle>Criar conta — Sufficit Identity</PageTitle>
+
+@if (!RegisterConfig.Enabled)
+{
+    <div class="auth-card">
+        <h1>Criar conta</h1>
+        <div class="alert alert-error" role="alert">
+            Cadastro de novas contas está desativado.
+        </div>
+        <a href="/account/login" class="btn btn-primary">Voltar ao login</a>
+    </div>
+}
+else
+{
+    <div class="auth-card">
+        <div class="auth-brand">
+            <img src="@_logoUrl" alt="Sufficit Identity" height="44" />
+        </div>
+        <h1>Criar conta</h1>
+        <p class="auth-card-subtitle">Crie sua conta em poucos segundos</p>
+
+        @if (_registered)
+        {
+            <div class="alert alert-success" role="alert">
+                Conta criada! Enviamos um e-mail de confirmação para <strong>@_model.Email</strong>.
+                Clique no link do e-mail para ativar sua conta.
+            </div>
+            <a href="/account/login" class="btn btn-primary">Voltar ao login</a>
+        }
+        else
+        {
+            @if (_error is not null)
+            {
+                <div class="alert alert-error" role="alert">@_error</div>
+            }
+
+            <EditForm Model="_model" Method="post" OnValidSubmit="RegisterAsync" FormName="register">
+                <DataAnnotationsValidator />
+
+                @if (RegisterConfig.RequireUsername)
+                {
+                    <div class="form-group">
+                        <label for="username">Usuário</label>
+                        <InputText id="username" @bind-Value="_model.UserName" class="form-control"
+                                   autocomplete="username" autofocus />
+                        <ValidationMessage For="@(() => _model.UserName)" />
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label for="email">E-mail</label>
+                    <InputText id="email" @bind-Value="_model.Email" class="form-control"
+                               autocomplete="email"
+                               autofocus="@( !RegisterConfig.RequireUsername )" />
+                    <ValidationMessage For="@(() => _model.Email)" />
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Senha</label>
+                    <InputText id="password" type="password" @bind-Value="_model.Password" class="form-control"
+                               autocomplete="new-password" />
+                    <ValidationMessage For="@(() => _model.Password)" />
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm">Confirmar senha</label>
+                    <InputText id="confirm" type="password" @bind-Value="_model.ConfirmPassword" class="form-control"
+                               autocomplete="new-password" />
+                    <ValidationMessage For="@(() => _model.ConfirmPassword)" />
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Criar conta</button>
+            </EditForm>
+
+            <div class="auth-links">
+                <a href="/account/login">Já tem conta? Entrar</a>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    private string? _returnUrlQuery { get; set; }
+
+    private RegisterInput? _boundModel;
+    [SupplyParameterFromForm(FormName = "register")]
+    private RegisterInput _model
+    {
+        get => _boundModel ??= new();
+        set => _boundModel = value;
+    }
+
+    private string? _returnUrl;
+    private string? _error;
+    private bool _registered;
+    private string _logoUrl = "_content/Sufficit.Identity.UI/img/logo-full.png";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Reject absolute/off-host returnUrl (authenticated open redirect).
+        _returnUrl = LocalUrlValidator.EnsureLocal(_returnUrlQuery);
+
+        // Load branding theme logo
+        var theme = await BrandingProvider.GetActiveAsync();
+        if (theme?.LogoUrl is not null)
+            _logoUrl = theme.LogoUrl;
+    }
+
+    private async Task RegisterAsync()
+    {
+        // When username is not required, use the email as the UserName
+        // (Identity requires a non-null UserName for the unique constraint).
+        var userName = RegisterConfig.RequireUsername
+            ? _model.UserName
+            : _model.Email;
+
+        var user = new ApplicationUser
+        {
+            UserName = userName,
+            Email = _model.Email
+        };
+
+        var result = await UserManager.CreateAsync(user, _model.Password);
+        if (!result.Succeeded)
+        {
+            _error = string.Join(" ", result.Errors.Select(e => e.Description));
+            return;
+        }
+
+        Logger.LogInformation("User {Email} registered a new account.", _model.Email);
+
+        // Generate email confirmation token + send link
+        try
+        {
+            var token = await UserManager.GenerateEmailConfirmationTokenAsync(user);
+            var encodedToken = CallbackUrlBuilder.EncodeToken(token);
+
+            var ctx = HttpAccessor.HttpContext;
+            var callbackUrl = CallbackUrls.BuildAbsolute(
+                ctx ?? throw new InvalidOperationException("HttpContext unavailable"),
+                "/account/confirmemail",
+                new Dictionary<string, string?>
+                {
+                    ["userId"] = user.Id,
+                    ["code"] = encodedToken
+                });
+
+            var body = $"Confirme sua conta <a href=\"{HttpUtility.HtmlAttributeEncode(callbackUrl)}\">clicando aqui</a>.";
+            await EmailSender.SendEmailAsync(_model.Email, "Confirme seu e-mail — Sufficit Identity", body);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to send confirmation email to {Email}", _model.Email);
+        }
+
+        _registered = true;
+    }
+
+    private sealed class RegisterInput
+    {
+        // UserName is only collected when RequireUsername=true. When false,
+        // the page falls back to the email as the UserName.
+        [StringLength(50, ErrorMessage = "O usuário deve ter entre {2} e {1} caracteres.", MinimumLength = 3)]
+        public string UserName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "O e-mail é obrigatório.")]
+        [EmailAddress(ErrorMessage = "E-mail inválido.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "A senha é obrigatória.")]
+        [StringLength(100, ErrorMessage = "A senha deve ter pelo menos {2} caracteres.", MinimumLength = 6)]
+        [DataType(System.ComponentModel.DataAnnotations.DataType.Password)]
+        public string Password { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Confirme a senha.")]
+        [DataType(System.ComponentModel.DataAnnotations.DataType.Password)]
+        [Compare(nameof(Password), ErrorMessage = "As senhas não conferem.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}

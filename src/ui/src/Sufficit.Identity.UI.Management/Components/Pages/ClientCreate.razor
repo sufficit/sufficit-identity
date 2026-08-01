@@ -1,0 +1,269 @@
+@page "/clients/new"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageClients)]
+@inject ManagementClientDataSource ClientData
+@inject NavigationManager Navigation
+
+<PageTitle>Novo cliente OAuth | Sufficit Identity</PageTitle>
+
+<PageHeader Title="Novo cliente"
+            Description="Registre uma aplicação OAuth ou OIDC com padrões seguros e auditoria automática.">
+    <Actions>
+        <a class="button button--secondary" href="clients">
+            <AppIcon Name="arrow-left" Size="17" />
+            Voltar para clientes
+        </a>
+    </Actions>
+</PageHeader>
+
+<section class="contract-strip contract-strip--success">
+    <AppIcon Name="shield" Size="20" />
+    <div>
+        <strong>Validação centralizada</strong>
+        <span>HTTPS, consentimento, PKCE e PAR são aplicados pelo mesmo caso de uso consumido pela API.</span>
+    </div>
+    <StatusBadge Tone="success">Auditável</StatusBadge>
+</section>
+
+@if (submission?.IsSuccess is false)
+{
+    <section class="inline-notice inline-notice--danger" role="alert">
+        <AppIcon Name="alert" Size="19" />
+        <div>
+            <strong>Não foi possível criar o cliente</strong>
+            <span>@submission.ErrorMessage Revise os campos e tente novamente.</span>
+        </div>
+    </section>
+}
+
+<EditForm Model="model"
+          OnValidSubmit="CreateAsync"
+          FormName="create-oauth-client"
+          class="management-form">
+    <DataAnnotationsValidator />
+
+    <section class="form-section" aria-labelledby="client-identity-heading">
+        <div class="form-section__heading">
+            <h2 id="client-identity-heading">Identificação</h2>
+            <p>Use um identificador estável; integrações dependerão dele durante todo o ciclo de vida.</p>
+        </div>
+
+        <div class="form-grid form-grid--two">
+            <div class="field-group">
+                <label for="client-id">Client ID</label>
+                <InputText id="client-id"
+                           class="form-control"
+                           @bind-Value="model.ClientId"
+                           autocomplete="off" />
+                <ValidationMessage For="() => model.ClientId" />
+                <span class="field-hint">Até 100 caracteres. Não poderá ser alterado nesta entrega.</span>
+            </div>
+
+            <div class="field-group">
+                <label for="display-name">Nome de exibição</label>
+                <InputText id="display-name"
+                           class="form-control"
+                           @bind-Value="model.DisplayName"
+                           autocomplete="off" />
+                <span class="field-hint">Nome legível exibido aos operadores e usuários.</span>
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label for="client-secret">Client secret <span class="label-optional">opcional</span></label>
+            <InputText id="client-secret"
+                       class="form-control"
+                       type="password"
+                       @bind-Value="model.ClientSecret"
+                       autocomplete="new-password" />
+            <span class="field-hint">
+                Deixe vazio para cliente público. O segredo não será exibido novamente nem gravado na auditoria.
+            </span>
+        </div>
+    </section>
+
+    <section class="form-section" aria-labelledby="client-flow-heading">
+        <div class="form-section__heading">
+            <h2 id="client-flow-heading">Fluxos e consentimento</h2>
+            <p>Selecione apenas os fluxos necessários para reduzir a superfície de autorização.</p>
+        </div>
+
+        <fieldset class="choice-fieldset">
+            <legend>Tipos de concessão</legend>
+            <div class="choice-grid">
+                <label class="choice-control">
+                    <InputCheckbox @bind-Value="model.AuthorizationCode" />
+                    <span>
+                        <strong>Authorization Code</strong>
+                        <small>Login interativo; PKCE será obrigatório para clientes públicos.</small>
+                    </span>
+                </label>
+                <label class="choice-control">
+                    <InputCheckbox @bind-Value="model.RefreshToken" />
+                    <span>
+                        <strong>Refresh Token</strong>
+                        <small>Renovação de sessão sem repetir o login do usuário.</small>
+                    </span>
+                </label>
+                <label class="choice-control">
+                    <InputCheckbox @bind-Value="model.ClientCredentials" />
+                    <span>
+                        <strong>Client Credentials</strong>
+                        <small>Comunicação entre serviços; requer um client secret.</small>
+                    </span>
+                </label>
+            </div>
+        </fieldset>
+
+        <div class="form-grid form-grid--two">
+            <div class="field-group">
+                <label for="consent-type">Consentimento</label>
+                <InputSelect id="consent-type"
+                             class="form-control"
+                             @bind-Value="model.ConsentType">
+                    <option value="explicit">Explícito — padrão seguro</option>
+                    <option value="implicit">Implícito — somente primeira parte</option>
+                    <option value="external">Externo</option>
+                    <option value="systematic">Sistemático</option>
+                </InputSelect>
+            </div>
+
+            <label class="switch-control">
+                <InputCheckbox @bind-Value="model.RequirePar" />
+                <span>
+                    <strong>Exigir PAR</strong>
+                    <small>Solicitações de autorização devem passar por Pushed Authorization Requests.</small>
+                </span>
+            </label>
+        </div>
+    </section>
+
+    <section class="form-section" aria-labelledby="client-endpoints-heading">
+        <div class="form-section__heading">
+            <h2 id="client-endpoints-heading">Endpoints e escopos</h2>
+            <p>Informe uma URI por linha. HTTP é aceito apenas para loopback local.</p>
+        </div>
+
+        <div class="field-group">
+            <label for="redirect-uris">Redirect URIs</label>
+            <InputTextArea id="redirect-uris"
+                           class="form-control form-control--textarea"
+                           @bind-Value="model.RedirectUris" />
+            <span class="field-hint">Exemplo: https://app.exemplo.com/signin-oidc</span>
+        </div>
+
+        <div class="field-group">
+            <label for="scopes">Escopos</label>
+            <InputText id="scopes"
+                       class="form-control"
+                       @bind-Value="model.Scopes"
+                       autocomplete="off" />
+            <span class="field-hint">Separe por espaço ou vírgula, por exemplo: openid profile email.</span>
+        </div>
+    </section>
+
+    <footer class="form-actions">
+        <a class="button button--secondary" href="clients">Cancelar</a>
+        <button class="button button--primary"
+                type="submit"
+                disabled="@submitting">
+            @if (submitting)
+            {
+                <span class="button-spinner" aria-hidden="true"></span>
+                <span>Criando cliente…</span>
+            }
+            else
+            {
+                <AppIcon Name="plus" Size="17" />
+                <span>Criar cliente</span>
+            }
+        </button>
+    </footer>
+</EditForm>
+
+@code {
+    private readonly ClientCreateModel model = new();
+    private ManagementDataResult<ManagementClientDetail>? submission;
+    private bool submitting;
+
+    private async Task CreateAsync()
+    {
+        if (submitting)
+        {
+            return;
+        }
+
+        submitting = true;
+        submission = await ClientData.CreateClientAsync(
+            new CreateManagementClientCommand(
+                model.ClientId,
+                model.ClientSecret,
+                model.DisplayName,
+                model.ConsentType,
+                model.RequirePar,
+                GrantTypes(),
+                SplitValues(model.Scopes),
+                SplitLines(model.RedirectUris)));
+        submitting = false;
+
+        if (submission.IsSuccess && submission.Value is not null)
+        {
+            Navigation.NavigateTo(
+                $"clients/{Uri.EscapeDataString(submission.Value.Id)}?created=1");
+        }
+    }
+
+    private IReadOnlyList<string> GrantTypes()
+    {
+        var values = new List<string>();
+        if (model.AuthorizationCode)
+        {
+            values.Add("authorization_code");
+        }
+        if (model.RefreshToken)
+        {
+            values.Add("refresh_token");
+        }
+        if (model.ClientCredentials)
+        {
+            values.Add("client_credentials");
+        }
+        return values;
+    }
+
+    private static IReadOnlyList<string> SplitValues(string? value) =>
+        (value ?? string.Empty)
+            .Split(
+                [' ', ',', '\r', '\n', '\t'],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private static IReadOnlyList<string> SplitLines(string? value) =>
+        (value ?? string.Empty)
+            .Split(
+                ['\r', '\n'],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private sealed class ClientCreateModel
+    {
+        [Required(ErrorMessage = "Informe o Client ID.")]
+        [StringLength(100, ErrorMessage = "Use no máximo 100 caracteres.")]
+        public string ClientId { get; set; } = string.Empty;
+
+        public string? DisplayName { get; set; }
+
+        public string? ClientSecret { get; set; }
+
+        public string ConsentType { get; set; } = "explicit";
+
+        public bool AuthorizationCode { get; set; } = true;
+
+        public bool RefreshToken { get; set; } = true;
+
+        public bool ClientCredentials { get; set; }
+
+        public bool RequirePar { get; set; }
+
+        public string RedirectUris { get; set; } = string.Empty;
+
+        public string Scopes { get; set; } = "openid profile";
+    }
+}

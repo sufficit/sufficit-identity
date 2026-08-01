@@ -1,0 +1,214 @@
+@page "/scopes"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageScopes)]
+@attribute [StreamRendering]
+@inject ManagementScopeDataSource ScopeData
+
+<PageTitle>Scopes OAuth | Sufficit Identity</PageTitle>
+
+<PageHeader Title="Scopes"
+            Description="Gerencie permissões OAuth personalizadas e os recursos protegidos que elas representam.">
+    <Actions>
+        <a class="button button--primary" href="scopes/new">
+            <AppIcon Name="plus" Size="17" />
+            Novo scope
+        </a>
+    </Actions>
+</PageHeader>
+
+@if (Deleted is 1)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Scope excluído</strong>
+            <span>A definição foi removida e a operação foi auditada.</span>
+        </div>
+    </section>
+}
+
+<section class="contract-strip contract-strip--info">
+    <AppIcon Name="scope" Size="20" />
+    <div>
+        <strong>Definições personalizadas do OpenIddict</strong>
+        <span>Scopes padrão como <code>openid</code>, <code>profile</code> e <code>offline_access</code> pertencem ao protocolo e não são duplicados aqui.</span>
+    </div>
+    <StatusBadge Tone="info">OAuth 2.0</StatusBadge>
+</section>
+
+<section class="table-panel" aria-labelledby="scopes-list-heading" aria-busy="@loading">
+    <div class="data-toolbar">
+        <div>
+            <h2 id="scopes-list-heading">Scopes registrados</h2>
+            <p>Scopes declarativos são visíveis, mas sua edição permanece no manifesto.</p>
+        </div>
+        <div class="data-toolbar__actions">
+            @if (AllScopes.Count > 0)
+            {
+                <label class="search-field">
+                    <span class="visually-hidden">Pesquisar scopes</span>
+                    <AppIcon Name="search" Size="18" />
+                    <input type="search"
+                           placeholder="Nome, título ou recurso"
+                           autocomplete="off"
+                           @bind="search"
+                           @bind:event="oninput" />
+                </label>
+            }
+        </div>
+    </div>
+
+    <div class="client-results" aria-live="polite">
+        @if (loading)
+        {
+            <div class="table-skeleton" aria-label="Carregando scopes">
+                @for (var index = 0; index < 4; index++)
+                {
+                    <span></span>
+                }
+            </div>
+        }
+        else if (result?.IsSuccess is true)
+        {
+            @if (FilteredScopes.Count is 0)
+            {
+                <EmptyState Icon="scope"
+                            Title="@(AllScopes.Count is 0 ? "Nenhum scope personalizado" : "Nenhum scope corresponde à pesquisa")"
+                            Description="@(AllScopes.Count is 0 ? "Crie a primeira permissão OAuth específica dos seus recursos." : "Revise o nome, título ou descrição informada.")">
+                    <Actions>
+                        @if (AllScopes.Count is 0)
+                        {
+                            <a class="button button--primary" href="scopes/new">Criar primeiro scope</a>
+                        }
+                        else
+                        {
+                            <button class="button button--secondary" type="button" @onclick="ClearSearch">Limpar pesquisa</button>
+                        }
+                    </Actions>
+                </EmptyState>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="data-table data-table--scopes">
+                        <thead>
+                            <tr>
+                                <th scope="col">Scope</th>
+                                <th scope="col">Origem</th>
+                                <th scope="col">Recursos</th>
+                                <th scope="col">Clientes</th>
+                                <th scope="col"><span class="visually-hidden">Ações</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var scope in FilteredScopes)
+                            {
+                                <tr>
+                                    <td data-label="Scope">
+                                        <a class="scope-identity" href="@ScopeHref(scope.Id)">
+                                            <strong>@DisplayName(scope)</strong>
+                                            <code>@scope.Name</code>
+                                        </a>
+                                    </td>
+                                    <td data-label="Origem">
+                                        <StatusBadge Tone="@(scope.IsManifestManaged ? "info" : "neutral")">
+                                            @(scope.IsManifestManaged ? "Manifesto" : "Manual")
+                                        </StatusBadge>
+                                    </td>
+                                    <td data-label="Recursos">@scope.ResourceCount</td>
+                                    <td data-label="Clientes">@scope.ClientCount</td>
+                                    <td data-label="Ações">
+                                        <a class="row-action" href="@ScopeHref(scope.Id)">
+                                            Detalhes
+                                            <AppIcon Name="arrow-right" Size="15" />
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        }
+        else
+        {
+            <EmptyState Icon="alert"
+                        Title="@ErrorTitle"
+                        Description="@(result?.ErrorMessage ?? "O serviço não conseguiu consultar os scopes agora.")">
+                <Actions>
+                    <button class="button button--secondary" type="button" @onclick="LoadAsync">Tentar novamente</button>
+                </Actions>
+            </EmptyState>
+        }
+    </div>
+
+    <footer class="table-footer">
+        <span>@ResultCountLabel</span>
+        <span>Registro canônico do OpenIddict</span>
+    </footer>
+</section>
+
+<section class="client-guardrails" aria-labelledby="scope-safety-heading">
+    <div>
+        <h2 id="scope-safety-heading">Ciclo de vida seguro</h2>
+        <p>A interface respeita a origem e os vínculos existentes antes de qualquer mutação.</p>
+    </div>
+    <ul>
+        <li><AppIcon Name="lock" Size="18" /> Nome imutável após a criação</li>
+        <li><AppIcon Name="workflow" Size="18" /> Scopes declarativos mudam somente no manifesto</li>
+        <li><AppIcon Name="key" Size="18" /> Exclusão bloqueada enquanto clientes utilizam o scope</li>
+    </ul>
+</section>
+
+@code {
+    [SupplyParameterFromQuery(Name = "deleted")]
+    public int Deleted { get; set; }
+
+    private ManagementDataResult<IReadOnlyList<ManagementScopeSummary>>? result;
+    private string search = string.Empty;
+    private bool loading = true;
+
+    private IReadOnlyList<ManagementScopeSummary> AllScopes =>
+        result?.Value ?? [];
+
+    private IReadOnlyList<ManagementScopeSummary> FilteredScopes =>
+        string.IsNullOrWhiteSpace(search)
+            ? AllScopes
+            : AllScopes.Where(scope =>
+                    scope.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    || (scope.DisplayName?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)
+                    || (scope.Description?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false))
+                .ToArray();
+
+    private string ErrorTitle =>
+        result?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? "MFA exigido para consultar scopes"
+            : result?.Outcome is ManagementDataOutcome.Forbidden
+                ? "Acesso aos scopes negado"
+                : "Não foi possível consultar os scopes";
+
+    private string ResultCountLabel =>
+        loading
+            ? "Carregando scopes"
+            : result?.IsSuccess is true
+                ? $"{FilteredScopes.Count} de {AllScopes.Count} scope(s)"
+                : "Nenhum resultado carregado";
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        result = await ScopeData.ListAsync();
+        loading = false;
+    }
+
+    private void ClearSearch() => search = string.Empty;
+
+    private static string ScopeHref(string id) =>
+        $"scopes/{Uri.EscapeDataString(id)}";
+
+    private static string DisplayName(ManagementScopeSummary scope) =>
+        string.IsNullOrWhiteSpace(scope.DisplayName)
+            ? scope.Name
+            : scope.DisplayName;
+}

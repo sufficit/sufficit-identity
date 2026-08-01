@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Sufficit.Identity.UI</RootNamespace>
+    <AssemblyName>Sufficit.Identity.UI</AssemblyName>
+    <Description>Sufficit Identity UI — Blazor Server login/consent/logout/manage frontend (injectable).</Description>
+    <IsPackable>true</IsPackable>
+    <!-- Static web assets (CSS, JS) served via MapStaticAssets in the host STS -->
+    <StaticWebAssetsEnabled>true</StaticWebAssetsEnabled>
+    <!--
+      Blazor Razor components define display-only state fields (e.g. _error, _signedOut)
+      that are read in markup but assigned only in code paths reached at runtime (handlers,
+      external redirects). Suppress these false positives for the project as a whole.
+    -->
+    <NoWarn>$(NoWarn);CS0414;CS0649;RZ10012</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Needs the ASP.NET Core framework (Razor Components, Identity, SignInManager, Passkeys, TOTP) -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <!-- OpenIddict: read the pending AuthorizationRequest from the HttpContext -->
+    <PackageReference Include="OpenIddict.AspNetCore" />
+    <!-- ASP.NET Core Identity EF Core (UserManager/SignInManager stores) -->
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+    <!-- QR code generation for 2FA TOTP setup -->
+    <PackageReference Include="QRCoder" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Current migration debt: the public UI still references Core and resolves
+      Identity/OpenIddict managers directly. The target architecture exposes
+      canonical application contracts shared with API controllers, without a
+      UI dependency on entities, DbContext or protocol/persistence managers.
+      This project does NOT reference Server (OpenIddict configuration) or STS (host).
+    -->
+    <ProjectReference Include="..\..\..\sufficit-identity\src\core\Sufficit.Identity.Core.csproj" />
+  </ItemGroup>
+
+</Project>

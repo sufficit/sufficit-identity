@@ -1,0 +1,295 @@
+@page "/scopes/{Id}"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageScopes)]
+@inject ManagementScopeDataSource ScopeData
+@inject NavigationManager Navigation
+
+<PageTitle>@PageTitleText</PageTitle>
+
+<PageHeader Title="@HeaderTitle"
+            Description="Definição OAuth persistida no registro canônico do OpenIddict.">
+    <Actions>
+        <a class="button button--secondary" href="scopes">
+            <AppIcon Name="arrow-left" Size="17" />
+            Voltar para scopes
+        </a>
+    </Actions>
+</PageHeader>
+
+@if (Created is 1)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Scope criado</strong>
+            <span>A definição foi persistida e a operação foi auditada.</span>
+        </div>
+    </section>
+}
+
+@if (Updated is 1)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Scope atualizado</strong>
+            <span>Nome de exibição, descrição e recursos foram persistidos.</span>
+        </div>
+    </section>
+}
+
+@if (loading)
+{
+    <section class="detail-shell" aria-busy="true" aria-label="Carregando scope">
+        <div class="detail-skeleton"></div>
+    </section>
+}
+else if (result?.IsSuccess is true && result.Value is not null)
+{
+    var scope = result.Value;
+
+    @if (scope.IsManifestManaged)
+    {
+        <section class="contract-strip contract-strip--info">
+            <AppIcon Name="workflow" Size="20" />
+            <div>
+                <strong>Gerenciado pelo manifesto declarativo</strong>
+                <span>Esta tela é somente leitura. Altere o manifesto e aplique o provisionamento para manter uma única fonte de verdade.</span>
+            </div>
+            <StatusBadge Tone="info">Somente leitura</StatusBadge>
+        </section>
+    }
+
+    @if (submission?.IsSuccess is false || deletion?.IsSuccess is false)
+    {
+        <section class="inline-notice inline-notice--danger" role="alert">
+            <AppIcon Name="alert" Size="19" />
+            <div>
+                <strong>Não foi possível concluir a operação</strong>
+                <span>@(submission?.ErrorMessage ?? deletion?.ErrorMessage)</span>
+            </div>
+        </section>
+    }
+
+    <EditForm Model="model"
+              OnValidSubmit="UpdateAsync"
+              FormName="update-oauth-scope"
+              class="management-form">
+        <DataAnnotationsValidator />
+        <section class="form-section" aria-labelledby="scope-detail-heading">
+            <div class="form-section__heading">
+                <h2 id="scope-detail-heading">Definição</h2>
+                <p>O nome é um identificador de protocolo imutável. Os demais campos podem evoluir sem alterar o contrato solicitado pelos clientes.</p>
+            </div>
+            <div class="form-grid form-grid--two">
+                <div class="field-group">
+                    <label for="scope-name">Nome</label>
+                    <input id="scope-name" class="form-control" value="@scope.Name" readonly />
+                    <span class="field-hint">Identificador OAuth imutável.</span>
+                </div>
+                <div class="field-group">
+                    <label for="scope-display-name">Nome de exibição <span class="label-optional">opcional</span></label>
+                    <InputText id="scope-display-name"
+                               class="form-control"
+                               disabled="@scope.IsManifestManaged"
+                               @bind-Value="model.DisplayName" />
+                    <ValidationMessage For="() => model.DisplayName" />
+                </div>
+            </div>
+            <div class="field-group">
+                <label for="scope-description">Descrição <span class="label-optional">opcional</span></label>
+                <InputTextArea id="scope-description"
+                               class="form-control form-control--textarea"
+                               disabled="@scope.IsManifestManaged"
+                               @bind-Value="model.Description" />
+                <ValidationMessage For="() => model.Description" />
+            </div>
+            <div class="field-group">
+                <label for="scope-resources">Resources / audiences</label>
+                <InputTextArea id="scope-resources"
+                               class="form-control form-control--textarea"
+                               disabled="@scope.IsManifestManaged"
+                               @bind-Value="model.Resources" />
+                <span class="field-hint">Um audience por linha.</span>
+            </div>
+        </section>
+
+        <section class="form-section" aria-labelledby="scope-usage-heading">
+            <div class="form-section__heading">
+                <h2 id="scope-usage-heading">Clientes vinculados</h2>
+                <p>A exclusão permanece bloqueada enquanto algum cliente possuir permissão para solicitar este scope.</p>
+            </div>
+            @if (scope.ClientIds.Count is 0)
+            {
+                <p class="detail-empty">Nenhum cliente utiliza este scope.</p>
+            }
+            else
+            {
+                <ul class="technical-list technical-list--tokens">
+                    @foreach (var clientId in scope.ClientIds)
+                    {
+                        <li><code>@clientId</code></li>
+                    }
+                </ul>
+            }
+        </section>
+
+        @if (!scope.IsManifestManaged)
+        {
+            <footer class="form-actions">
+                <a class="button button--secondary" href="scopes">Cancelar</a>
+                <button class="button button--primary" type="submit" disabled="@submitting">
+                    @if (submitting)
+                    {
+                        <span class="button-spinner" aria-hidden="true"></span>
+                        <span>Salvando…</span>
+                    }
+                    else
+                    {
+                        <AppIcon Name="check" Size="17" />
+                        <span>Salvar alterações</span>
+                    }
+                </button>
+            </footer>
+        }
+    </EditForm>
+
+    @if (!scope.IsManifestManaged)
+    {
+        <section class="delete-zone" aria-labelledby="delete-scope-heading">
+            <div>
+                <h2 id="delete-scope-heading">Excluir scope</h2>
+                <p>
+                    @(scope.ClientIds.Count is 0
+                        ? "A definição será removida do provedor. Tokens já emitidos permanecem válidos até expirar ou serem revogados."
+                        : "Remova primeiro o scope dos clientes listados acima.")
+                </p>
+            </div>
+            <label class="delete-confirmation">
+                <input type="checkbox"
+                       disabled="@(scope.ClientIds.Count > 0)"
+                       @bind="deleteConfirmed" />
+                <span>Confirmo a exclusão definitiva desta definição.</span>
+            </label>
+            <button class="button button--danger"
+                    type="button"
+                    disabled="@(!deleteConfirmed || deleting || scope.ClientIds.Count > 0)"
+                    @onclick="DeleteAsync">
+                <AppIcon Name="trash" Size="17" />
+                @(deleting ? "Excluindo…" : "Excluir scope")
+            </button>
+        </section>
+    }
+}
+else
+{
+    <EmptyState Icon="alert"
+                Title="@ErrorTitle"
+                Description="@(result?.ErrorMessage ?? "O serviço não conseguiu ler o scope.")">
+        <Actions>
+            <a class="button button--secondary" href="scopes">Voltar para scopes</a>
+        </Actions>
+    </EmptyState>
+}
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    [SupplyParameterFromQuery(Name = "created")]
+    public int Created { get; set; }
+
+    [SupplyParameterFromQuery(Name = "updated")]
+    public int Updated { get; set; }
+
+    private readonly ScopeEditModel model = new();
+    private ManagementDataResult<ManagementScopeDetail>? result;
+    private ManagementDataResult<ManagementScopeDetail>? submission;
+    private ManagementDataResult<bool>? deletion;
+    private bool loading = true;
+    private bool submitting;
+    private bool deleting;
+    private bool deleteConfirmed;
+
+    private string HeaderTitle =>
+        result?.Value?.DisplayName
+        ?? result?.Value?.Name
+        ?? "Detalhes do scope";
+
+    private string PageTitleText => $"{HeaderTitle} | Sufficit Identity";
+
+    private string ErrorTitle =>
+        result?.Outcome is ManagementDataOutcome.NotFound
+            ? "Scope não encontrado"
+            : result?.Outcome is ManagementDataOutcome.StepUpRequired
+                ? "MFA exigido para consultar o scope"
+                : "Não foi possível abrir o scope";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        result = await ScopeData.GetAsync(Id);
+        if (result.IsSuccess && result.Value is not null)
+        {
+            model.DisplayName = result.Value.DisplayName;
+            model.Description = result.Value.Description;
+            model.Resources = string.Join(Environment.NewLine, result.Value.Resources);
+        }
+        loading = false;
+    }
+
+    private async Task UpdateAsync()
+    {
+        if (submitting || result?.Value?.IsManifestManaged is true)
+        {
+            return;
+        }
+
+        submitting = true;
+        submission = await ScopeData.UpdateAsync(
+            Id,
+            new UpdateManagementScopeCommand(
+                model.DisplayName,
+                model.Description,
+                SplitLines(model.Resources)));
+        submitting = false;
+
+        if (submission.IsSuccess)
+        {
+            Navigation.NavigateTo(
+                $"scopes/{Uri.EscapeDataString(Id)}?updated=1",
+                forceLoad: true);
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (!deleteConfirmed || deleting)
+        {
+            return;
+        }
+
+        deleting = true;
+        deletion = await ScopeData.DeleteAsync(Id);
+        deleting = false;
+        if (deletion.IsSuccess)
+        {
+            Navigation.NavigateTo("scopes?deleted=1");
+        }
+    }
+
+    private static IReadOnlyList<string> SplitLines(string? value) =>
+        (value ?? string.Empty).Split(
+            ['\r', '\n'],
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private sealed class ScopeEditModel
+    {
+        [StringLength(200, ErrorMessage = "Use no máximo 200 caracteres.")]
+        public string? DisplayName { get; set; }
+
+        [StringLength(1000, ErrorMessage = "Use no máximo 1000 caracteres.")]
+        public string? Description { get; set; }
+
+        public string? Resources { get; set; }
+    }
+}

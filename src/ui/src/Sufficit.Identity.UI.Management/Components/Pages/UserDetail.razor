@@ -1,0 +1,675 @@
+@page "/users/{Id}"
+@inject ManagementUserDataSource UserData
+@inject NavigationManager Navigation
+
+<PageTitle>@PageTitleText</PageTitle>
+
+<PageHeader Title="@HeaderTitle"
+            Description="Perfil, credenciais e estado de autenticação mantidos pelo provedor.">
+    <Actions>
+        <a class="button button--secondary" href="@BackHref">
+            <AppIcon Name="arrow-left" Size="17" />
+            Voltar para usuários
+        </a>
+        <AuthorizeView Policy="@ManagementUiPolicies.ManageClaims">
+            <Authorized>
+                <a class="button button--secondary" href="@ClaimsHref">
+                    <AppIcon Name="shield" Size="17" />
+                    Claims da conta
+                </a>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Policy="@ManagementUiPolicies.ManageSessions">
+            <Authorized>
+                <a class="button button--secondary" href="@SessionsHref">
+                    <AppIcon Name="clock" Size="17" />
+                    Sessões
+                </a>
+            </Authorized>
+        </AuthorizeView>
+        <AuthorizeView Policy="@ManagementUiPolicies.ManageAuthorizations">
+            <Authorized>
+                <a class="button button--secondary" href="@AuthorizationsHref">
+                    <AppIcon Name="shield" Size="17" />
+                    Autorizações
+                </a>
+            </Authorized>
+        </AuthorizeView>
+        @if (result?.Value?.Actions.CanUpdateProfile is true)
+        {
+            <a class="button button--primary" href="@EditHref">
+                <AppIcon Name="edit" Size="17" />
+                Editar perfil
+            </a>
+        }
+    </Actions>
+</PageHeader>
+
+@if (Created)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Usuário criado</strong>
+            <span>A conta foi criada sem atribuir cargos ou permissões próprias de aplicações.</span>
+        </div>
+    </section>
+}
+
+@if (Updated)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Perfil atualizado</strong>
+            <span>Os dados foram salvos e os tokens ativos anteriores foram invalidados.</span>
+        </div>
+    </section>
+}
+
+@if (passwordResetSucceeded)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Senha redefinida</strong>
+            <span>A credencial e o selo de segurança foram atualizados; o evento foi registrado na auditoria.</span>
+        </div>
+    </section>
+}
+
+@if (lockoutChangeSucceeded)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>@(lastLockoutState is true ? "Acesso bloqueado" : "Acesso desbloqueado")</strong>
+            <span>
+                @(lastLockoutState is true
+                    ? "As sessões, os tokens e as autorizações da conta foram revogados."
+                    : "A conta pode autenticar novamente; as sessões anteriores continuam revogadas.")
+            </span>
+        </div>
+    </section>
+}
+
+@if (loading)
+{
+    <section class="detail-shell" aria-busy="true" aria-label="Carregando detalhes do usuário">
+        <div class="detail-skeleton"></div>
+        <div class="detail-skeleton detail-skeleton--short"></div>
+    </section>
+}
+else if (result?.IsSuccess is true && result.Value is not null)
+{
+    var user = result.Value;
+
+    <section class="detail-shell">
+        <div class="detail-summary detail-summary--users">
+            <div>
+                <span class="detail-label">Nome de usuário</span>
+                <strong class="detail-value">@Display(user.UserName)</strong>
+            </div>
+            <div>
+                <span class="detail-label">E-mail</span>
+                <span class="detail-value">@Display(user.Email)</span>
+            </div>
+            <div>
+                <span class="detail-label">Confirmação</span>
+                <StatusBadge Tone="@(user.EmailConfirmed ? "success" : "neutral")">
+                    @(user.EmailConfirmed ? "E-mail confirmado" : "Pendente")
+                </StatusBadge>
+            </div>
+            <div>
+                <span class="detail-label">Identificador</span>
+                <code class="detail-value detail-value--code">@user.Id</code>
+            </div>
+        </div>
+
+        <div class="detail-columns detail-columns--users">
+            <section aria-labelledby="user-security-heading">
+                <h2 id="user-security-heading">Segurança da conta</h2>
+                <dl class="property-list">
+                    <div>
+                        <dt>Autenticação multifator</dt>
+                        <dd>
+                            <StatusBadge Tone="@(user.TwoFactorEnabled ? "success" : "neutral")">
+                                @(user.TwoFactorEnabled ? "Ativa" : "Inativa")
+                            </StatusBadge>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>Bloqueio</dt>
+                        <dd>@LockoutLabel(user)</dd>
+                    </div>
+                    <div>
+                        <dt>Falhas de acesso</dt>
+                        <dd>@user.AccessFailedCount</dd>
+                    </div>
+                    <div>
+                        <dt>Telefone</dt>
+                        <dd>@Display(user.PhoneNumber)</dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section aria-labelledby="user-state-heading">
+                <h2 id="user-state-heading">Estados da identidade</h2>
+                <dl class="property-list">
+                    <div>
+                        <dt>E-mail verificado</dt>
+                        <dd>@(user.EmailConfirmed ? "Sim" : "Não")</dd>
+                    </div>
+                    <div>
+                        <dt>Telefone verificado</dt>
+                        <dd>@(user.PhoneNumberConfirmed ? "Sim" : "Não")</dd>
+                    </div>
+                    <div>
+                        <dt>Bloqueio habilitado</dt>
+                        <dd>@(user.LockoutEnabled ? "Sim" : "Não")</dd>
+                    </div>
+                    <div>
+                        <dt>Última atualização</dt>
+                        <dd>@user.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
+                    </div>
+                </dl>
+            </section>
+        </div>
+
+        <section class="requirements-line" aria-labelledby="user-audit-heading">
+            <div>
+                <h2 id="user-audit-heading">Consulta auditada</h2>
+                <p>O operador, o usuário, a decisão e a correlação foram registrados sem claims ou credenciais.</p>
+            </div>
+            <StatusBadge Tone="success" Icon="audit">Registrada</StatusBadge>
+        </section>
+    </section>
+
+    @if (user.Actions.CanSetLockout)
+    {
+        var currentlyLocked = IsLockedOut(user);
+
+        <section class="account-access-panel @(currentlyLocked ? "account-access-panel--restore" : "account-access-panel--restrict")"
+                 aria-labelledby="account-access-heading">
+            <div class="account-access-panel__heading">
+                <div class="account-access-panel__icon">
+                    <AppIcon Name="@(currentlyLocked ? "refresh" : "lock")" Size="20" />
+                </div>
+                <div>
+                    <h2 id="account-access-heading">
+                        @(currentlyLocked ? "Desbloquear acesso" : "Bloquear acesso")
+                    </h2>
+                    <p>
+                        @(currentlyLocked
+                            ? "Remove o bloqueio da conta sem restaurar sessões ou tokens anteriores."
+                            : "Interrompe novas autenticações e revoga sessões, tokens e autorizações desta conta.")
+                    </p>
+                </div>
+                <StatusBadge Tone="@(currentlyLocked ? "warning" : "danger")">
+                    @(currentlyLocked ? "Conta bloqueada" : "Conta ativa")
+                </StatusBadge>
+            </div>
+
+            @if (lockoutResult?.IsSuccess is false)
+            {
+                <section class="inline-notice inline-notice--danger" role="alert">
+                    <AppIcon Name="alert" Size="19" />
+                    <div>
+                        <strong>@LockoutErrorTitle</strong>
+                        <span>@lockoutResult.ErrorMessage</span>
+                    </div>
+                </section>
+            }
+
+            @if (!currentlyLocked)
+            {
+                <label class="account-access-confirmation" for="confirm-account-lockout">
+                    <input id="confirm-account-lockout"
+                           type="checkbox"
+                           @bind="lockoutConfirmed" />
+                    <span>
+                        <strong>Confirmo o bloqueio desta conta</strong>
+                        <small>O usuário perderá o acesso na próxima validação e precisará ser desbloqueado por um operador autorizado.</small>
+                    </span>
+                </label>
+            }
+
+            <div class="account-access-panel__actions">
+                <span>Esta operação afeta a conta no provedor e fica registrada na auditoria.</span>
+                <button class="button @(currentlyLocked ? "button--secondary" : "button--danger")"
+                        type="button"
+                        disabled="@(changingLockout || (!currentlyLocked && !lockoutConfirmed))"
+                        @onclick="() => SetLockoutAsync(!currentlyLocked)">
+                    @if (changingLockout)
+                    {
+                        <span class="button-spinner" aria-hidden="true"></span>
+                        <span>@(currentlyLocked ? "Desbloqueando…" : "Bloqueando…")</span>
+                    }
+                    else
+                    {
+                        <AppIcon Name="@(currentlyLocked ? "refresh" : "lock")" Size="17" />
+                        <span>@(currentlyLocked ? "Desbloquear conta" : "Bloquear conta")</span>
+                    }
+                </button>
+            </div>
+        </section>
+    }
+    else if (user.Actions.SetLockoutRequiresMfa)
+    {
+        <section class="decision-note decision-note--neutral">
+            <AppIcon Name="shield" Size="21" />
+            <div>
+                <h2>MFA necessário para alterar o acesso</h2>
+                <p>A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.</p>
+            </div>
+        </section>
+    }
+    else if (user.Actions.SetLockoutReasonCode is "user_self_lockout_not_allowed")
+    {
+        <section class="decision-note decision-note--neutral">
+            <AppIcon Name="shield" Size="21" />
+            <div>
+                <h2>Sua própria conta permanece protegida</h2>
+                <p>Para evitar perda acidental de acesso administrativo, outro operador autorizado deve bloquear esta conta.</p>
+            </div>
+        </section>
+    }
+    else
+    {
+        <section class="decision-note decision-note--neutral">
+            <AppIcon Name="lock" Size="21" />
+            <div>
+                <h2>Bloqueio não autorizado</h2>
+                <p>Sua sessão não possui a capability necessária para bloquear ou desbloquear contas.</p>
+            </div>
+        </section>
+    }
+
+    @if (user.Actions.CanResetPassword)
+    {
+        <EditForm Model="passwordModel"
+                  OnValidSubmit="ResetPasswordAsync"
+                  FormName="reset-management-user-password"
+                  class="credential-panel">
+            <DataAnnotationsValidator />
+            <div class="credential-panel__heading">
+                <div class="credential-panel__icon">
+                    <AppIcon Name="key" Size="20" />
+                </div>
+                <div>
+                    <h2>Redefinir senha</h2>
+                    <p>A nova credencial substitui a senha atual e invalida os tokens afetados.</p>
+                </div>
+                <StatusBadge Tone="info">Conta do provedor</StatusBadge>
+            </div>
+
+            @if (resetResult?.IsSuccess is false)
+            {
+                <section class="inline-notice inline-notice--danger" role="alert">
+                    <AppIcon Name="alert" Size="19" />
+                    <div>
+                        <strong>@ResetErrorTitle</strong>
+                        <span>@resetResult.ErrorMessage</span>
+                    </div>
+                </section>
+            }
+
+            <div class="form-grid form-grid--two credential-panel__fields">
+                <div class="field-group">
+                    <label for="new-password">Nova senha</label>
+                    <InputText id="new-password"
+                               class="form-control"
+                               type="password"
+                               autocomplete="new-password"
+                               @bind-Value="passwordModel.NewPassword" />
+                    <ValidationMessage For="() => passwordModel.NewPassword" />
+                    @if (resetResult?.ErrorField is "newPassword")
+                    {
+                        <p class="validation-message">@resetResult.ErrorMessage</p>
+                    }
+                </div>
+                <div class="field-group">
+                    <label for="confirm-new-password">Confirmar nova senha</label>
+                    <InputText id="confirm-new-password"
+                               class="form-control"
+                               type="password"
+                               autocomplete="new-password"
+                               @bind-Value="passwordModel.ConfirmPassword" />
+                    <ValidationMessage For="() => passwordModel.ConfirmPassword" />
+                </div>
+            </div>
+
+            <div class="credential-panel__actions">
+                <span>A política de senha é aplicada pelo Identity no servidor.</span>
+                <button class="button button--primary"
+                        type="submit"
+                        disabled="@resettingPassword">
+                    @if (resettingPassword)
+                    {
+                        <span class="button-spinner" aria-hidden="true"></span>
+                        <span>Redefinindo…</span>
+                    }
+                    else
+                    {
+                        <AppIcon Name="key" Size="17" />
+                        <span>Redefinir senha</span>
+                    }
+                </button>
+            </div>
+        </EditForm>
+    }
+    else if (user.Actions.ResetPasswordRequiresMfa)
+    {
+        <section class="decision-note decision-note--neutral">
+            <AppIcon Name="shield" Size="21" />
+            <div>
+                <h2>MFA necessário para redefinir a senha</h2>
+                <p>A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.</p>
+            </div>
+        </section>
+    }
+    else
+    {
+        <section class="decision-note decision-note--neutral">
+            <AppIcon Name="lock" Size="21" />
+            <div>
+                <h2>Redefinição não autorizada</h2>
+                <p>Sua sessão não possui a capability necessária para redefinir credenciais.</p>
+            </div>
+        </section>
+    }
+
+    @if (user.Actions.CanDelete)
+    {
+        <section class="delete-zone" aria-labelledby="delete-user-heading">
+            <div>
+                <h2 id="delete-user-heading">Excluir conta do provedor</h2>
+                <p>A conta, suas credenciais e os vínculos Identity serão removidos. Tokens, sessões e autorizações serão revogados antes da exclusão.</p>
+            </div>
+
+            <div class="delete-confirmation">
+                <label for="delete-user-confirmation">
+                    Digite <strong>@DeletionConfirmationValue</strong> para confirmar
+                </label>
+                <input id="delete-user-confirmation"
+                       class="form-control"
+                       type="text"
+                       autocomplete="off"
+                       spellcheck="false"
+                       aria-describedby="delete-user-help"
+                       @bind="deleteConfirmation"
+                       @bind:event="oninput" />
+                <small id="delete-user-help">Esta operação é permanente e não altera dados empresariais mantidos por outras aplicações.</small>
+            </div>
+
+            <button class="button button--danger"
+                    type="button"
+                    disabled="@(!CanSubmitDeletion)"
+                    @onclick="DeleteAsync">
+                @if (deleting)
+                {
+                    <span class="button-spinner" aria-hidden="true"></span>
+                    <span>Excluindo…</span>
+                }
+                else
+                {
+                    <AppIcon Name="trash" Size="17" />
+                    <span>Excluir conta</span>
+                }
+            </button>
+
+            @if (deleteResult?.IsSuccess is false)
+            {
+                <section class="inline-notice inline-notice--danger" role="alert">
+                    <AppIcon Name="alert" Size="19" />
+                    <div>
+                        <strong>@DeleteErrorTitle</strong>
+                        <span>@deleteResult.ErrorMessage</span>
+                    </div>
+                </section>
+            }
+        </section>
+    }
+    else if (user.Actions.DeleteRequiresMfa)
+    {
+        <section class="decision-note decision-note--neutral">
+            <AppIcon Name="shield" Size="21" />
+            <div>
+                <h2>MFA necessário para excluir a conta</h2>
+                <p>A política administrativa exige autenticação multifator antes de uma exclusão permanente.</p>
+            </div>
+        </section>
+    }
+    else if (user.Actions.DeleteReasonCode is "user_self_delete_not_allowed")
+    {
+        <section class="decision-note decision-note--neutral">
+            <AppIcon Name="shield" Size="21" />
+            <div>
+                <h2>Sua própria conta não pode ser excluída</h2>
+                <p>Outro operador autorizado deve executar esta operação para evitar perda acidental do acesso administrativo.</p>
+            </div>
+        </section>
+    }
+}
+else
+{
+    <EmptyState Icon="alert"
+                Title="@ErrorTitle"
+                Description="@ErrorDescription">
+        <Actions>
+            <a class="button button--secondary" href="@BackHref">Voltar para usuários</a>
+            @if (result?.Outcome is ManagementDataOutcome.Unavailable)
+            {
+                <button class="button button--primary"
+                        type="button"
+                        @onclick="LoadAsync">
+                    Tentar novamente
+                </button>
+            }
+        </Actions>
+    </EmptyState>
+}
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    [SupplyParameterFromQuery(Name = "created")]
+    public int CreatedFlag { get; set; }
+
+    [SupplyParameterFromQuery(Name = "updated")]
+    public int UpdatedFlag { get; set; }
+
+    private ManagementDataResult<ManagementUserDetail>? result;
+    private ManagementDataResult<ManagementUserDetail>? resetResult;
+    private ManagementDataResult<ManagementUserDetail>? lockoutResult;
+    private ManagementDataResult<bool>? deleteResult;
+    private readonly PasswordResetModel passwordModel = new();
+    private bool loading = true;
+    private bool resettingPassword;
+    private bool changingLockout;
+    private bool passwordResetSucceeded;
+    private bool lockoutChangeSucceeded;
+    private bool deleting;
+    private bool? lastLockoutState;
+    private bool lockoutConfirmed;
+    private string deleteConfirmation = string.Empty;
+
+    private bool Created => CreatedFlag is 1;
+
+    private bool Updated => UpdatedFlag is 1;
+
+    private string HeaderTitle =>
+        result?.Value?.UserName
+        ?? result?.Value?.Email
+        ?? "Detalhes do usuário";
+
+    private string PageTitleText =>
+        $"{HeaderTitle} | Sufficit Identity";
+
+    private const string BackHref = "users";
+
+    private string EditHref =>
+        $"users/{Uri.EscapeDataString(Id)}/edit";
+
+    private string ClaimsHref =>
+        $"claims?user={Uri.EscapeDataString(Id)}";
+
+    private string SessionsHref =>
+        $"sessions?user={Uri.EscapeDataString(Id)}";
+
+    private string AuthorizationsHref =>
+        $"authorizations?user={Uri.EscapeDataString(Id)}";
+
+    private string ErrorTitle =>
+        result?.Outcome is ManagementDataOutcome.NotFound
+            ? "Usuário não encontrado"
+            : result?.Outcome is ManagementDataOutcome.StepUpRequired
+                ? "MFA exigido para consultar o usuário"
+                : result?.Outcome is ManagementDataOutcome.Forbidden
+                    ? "Acesso ao usuário negado"
+                    : "Não foi possível abrir o usuário";
+
+    private string ErrorDescription =>
+        result?.ErrorMessage
+        ?? "O serviço de identidade não conseguiu ler esse registro.";
+
+    private string ResetErrorTitle =>
+        resetResult?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? "MFA exigido para redefinir a senha"
+            : resetResult?.Outcome is ManagementDataOutcome.Forbidden
+                ? "Autoridade insuficiente sobre a conta"
+                : "Não foi possível redefinir a senha";
+
+    private string LockoutErrorTitle =>
+        lockoutResult?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? "MFA exigido para alterar o acesso"
+            : lockoutResult?.Outcome is ManagementDataOutcome.Forbidden
+                ? "Autoridade insuficiente sobre a conta"
+                : "Não foi possível alterar o acesso";
+
+    private string DeleteErrorTitle =>
+        deleteResult?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? "MFA exigido para excluir a conta"
+            : deleteResult?.Outcome is ManagementDataOutcome.Forbidden
+                ? "Exclusão não autorizada"
+                : deleteResult?.Outcome is ManagementDataOutcome.NotFound
+                    ? "A conta já não existe"
+                    : "Não foi possível excluir a conta";
+
+    private string DeletionConfirmationValue =>
+        result?.Value?.UserName
+        ?? result?.Value?.Email
+        ?? Id;
+
+    private bool CanSubmitDeletion =>
+        !deleting
+        && string.Equals(
+            deleteConfirmation.Trim(),
+            DeletionConfirmationValue,
+            StringComparison.Ordinal);
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        result = await UserData.GetAsync(Id);
+        loading = false;
+    }
+
+    private async Task ResetPasswordAsync()
+    {
+        if (resettingPassword)
+        {
+            return;
+        }
+
+        resettingPassword = true;
+        passwordResetSucceeded = false;
+        resetResult = await UserData.ResetPasswordAsync(
+            Id,
+            new ResetManagementUserPasswordCommand(
+                passwordModel.NewPassword));
+        resettingPassword = false;
+
+        if (resetResult.IsSuccess && resetResult.Value is not null)
+        {
+            result = resetResult;
+            passwordModel.NewPassword = string.Empty;
+            passwordModel.ConfirmPassword = string.Empty;
+            passwordResetSucceeded = true;
+        }
+    }
+
+    private async Task SetLockoutAsync(bool locked)
+    {
+        if (changingLockout || (locked && !lockoutConfirmed))
+        {
+            return;
+        }
+
+        changingLockout = true;
+        lockoutChangeSucceeded = false;
+        lockoutResult = await UserData.SetLockoutAsync(
+            Id,
+            new SetManagementUserLockoutCommand(locked));
+        changingLockout = false;
+
+        if (lockoutResult.IsSuccess && lockoutResult.Value is not null)
+        {
+            result = lockoutResult;
+            lastLockoutState = locked;
+            lockoutConfirmed = false;
+            lockoutChangeSucceeded = true;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (!CanSubmitDeletion)
+        {
+            return;
+        }
+
+        deleting = true;
+        deleteResult = await UserData.DeleteAsync(Id);
+        deleting = false;
+
+        if (deleteResult.IsSuccess)
+        {
+            Navigation.NavigateTo("users?deleted=1");
+        }
+    }
+
+    private static string Display(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "Não informado" : value;
+
+    private static string LockoutLabel(ManagementUserDetail user)
+    {
+        if (!user.LockoutEnabled)
+        {
+            return "Desabilitado";
+        }
+
+        return user.LockoutEnd is { } end && end > DateTimeOffset.UtcNow
+            ? $"Bloqueado até {end.ToLocalTime():dd/MM/yyyy HH:mm}"
+            : "Sem bloqueio ativo";
+    }
+
+    private static bool IsLockedOut(ManagementUserDetail user) =>
+        user.LockoutEnd is { } end
+        && end > DateTimeOffset.UtcNow;
+
+    private sealed class PasswordResetModel
+    {
+        [Required(ErrorMessage = "Informe a nova senha.")]
+        public string NewPassword { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Confirme a nova senha.")]
+        [Compare(
+            nameof(NewPassword),
+            ErrorMessage = "As senhas não coincidem.")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}

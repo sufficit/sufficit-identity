@@ -1,0 +1,387 @@
+@page "/sessions"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageSessions)]
+@attribute [StreamRendering]
+@inject ManagementSessionDataSource SessionData
+
+<PageTitle>Sessões | Sufficit Identity</PageTitle>
+
+<PageHeader Title="Sessões e credenciais"
+            Description="Inspecione metadados das credenciais emitidas pelo provedor e interrompa seu uso.">
+</PageHeader>
+
+<section class="contract-strip contract-strip--info">
+    <AppIcon Name="clock" Size="20" />
+    <div>
+        <strong>Fonte canônica: OpenIddict</strong>
+        <span>Esta tela não exibe conteúdo, referência ou payload de tokens. Cookies só são invalidados no encerramento total da conta.</span>
+    </div>
+    <StatusBadge Tone="info">Metadados seguros</StatusBadge>
+</section>
+
+@if (revoked)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Credencial revogada</strong>
+            <span>Novas validações dessa credencial serão recusadas.</span>
+        </div>
+    </section>
+}
+
+@if (revokedAll is not null)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Sessões da conta encerradas</strong>
+            <span>@revokedAll.RevokedTokens credencial(is) e @revokedAll.RevokedAuthorizations autorização(ões) foram revogadas; o cookie foi invalidado pelo selo de segurança.</span>
+        </div>
+    </section>
+}
+
+<section class="table-panel" aria-labelledby="sessions-list-heading" aria-busy="@loading">
+    <div class="data-toolbar data-toolbar--users">
+        <div>
+            <h2 id="sessions-list-heading">Credenciais emitidas</h2>
+            <p>@FilterDescription</p>
+        </div>
+        <div class="data-toolbar__actions">
+            <form class="user-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
+                <label class="search-field">
+                    <span class="visually-hidden">Pesquisar sessões</span>
+                    <AppIcon Name="search" Size="18" />
+                    <input type="search"
+                           placeholder="Usuário, cliente, tipo ou estado"
+                           autocomplete="off"
+                           @bind="search" />
+                </label>
+                <label class="select-field">
+                    <span>Estado</span>
+                    <select @bind="stateFilter">
+                        <option value="active">Ativas</option>
+                        <option value="all">Todas</option>
+                    </select>
+                </label>
+                <button class="button button--secondary" type="submit" disabled="@loading">Aplicar</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="client-results" aria-live="polite">
+        @if (loading)
+        {
+            <div class="table-skeleton" aria-label="Carregando sessões">
+                @for (var index = 0; index < 4; index++)
+                {
+                    <span></span>
+                }
+            </div>
+        }
+        else if (result?.IsSuccess is true)
+        {
+            @if (Page.Items.Count is 0)
+            {
+                <EmptyState Icon="clock"
+                            Title="Nenhuma credencial encontrada"
+                            Description="Não há registros neste recorte. Altere o estado ou a pesquisa para ampliar a consulta." />
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="data-table data-table--claims">
+                        <thead>
+                            <tr>
+                                <th scope="col">Usuário</th>
+                                <th scope="col">Cliente</th>
+                                <th scope="col">Tipo</th>
+                                <th scope="col">Emissão / expiração</th>
+                                <th scope="col">Estado</th>
+                                <th scope="col"><span class="visually-hidden">Ações</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var session in Page.Items)
+                            {
+                                <tr>
+                                    <td data-label="Usuário">
+                                        @if (session.UserId is not null)
+                                        {
+                                            <a class="client-name" href="@UserHref(session.UserId)">@UserLabel(session)</a>
+                                        }
+                                        else
+                                        {
+                                            <span>Sem usuário</span>
+                                        }
+                                    </td>
+                                    <td data-label="Cliente">
+                                        <span class="scope-identity">
+                                            <strong>@(session.ClientDisplayName ?? session.ClientId ?? "Sem cliente")</strong>
+                                            @if (session.ClientId is not null)
+                                            {
+                                                <code>@session.ClientId</code>
+                                            }
+                                        </span>
+                                    </td>
+                                    <td data-label="Tipo"><code class="client-id">@TypeLabel(session.Type)</code></td>
+                                    <td data-label="Emissão / expiração">
+                                        <span class="scope-identity">
+                                            <strong>@DateLabel(session.CreatedAt)</strong>
+                                            <code>expira @DateLabel(session.ExpiresAt)</code>
+                                        </span>
+                                    </td>
+                                    <td data-label="Estado">
+                                        <StatusBadge Tone="@(session.IsActive ? "success" : "neutral")">
+                                            @StatusLabel(session.Status)
+                                        </StatusBadge>
+                                    </td>
+                                    <td data-label="Ações">
+                                        @if (session.IsActive)
+                                        {
+                                            <button class="row-action row-action--button"
+                                                    type="button"
+                                                    @onclick="() => SelectForRevocation(session)">
+                                                Revogar
+                                                <AppIcon Name="lock" Size="15" />
+                                            </button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        }
+        else
+        {
+            <EmptyState Icon="alert"
+                        Title="@ErrorTitle"
+                        Description="@(result?.ErrorMessage ?? "O serviço não conseguiu consultar as sessões.")">
+                <Actions>
+                    <button class="button button--secondary" type="button" @onclick="LoadAsync">Tentar novamente</button>
+                </Actions>
+            </EmptyState>
+        }
+    </div>
+
+    <footer class="table-footer table-footer--paginated">
+        <span>@ResultCountLabel</span>
+        @if (result?.IsSuccess is true && Page.TotalCount > Page.PageSize)
+        {
+            <div class="pagination" aria-label="Paginação de sessões">
+                <button class="button button--secondary button--compact" type="button"
+                        disabled="@(Page.Page <= 1 || loading)"
+                        @onclick="PreviousPageAsync">Anterior</button>
+                <span>Página @Page.Page de @TotalPages</span>
+                <button class="button button--secondary button--compact" type="button"
+                        disabled="@(Page.Page >= TotalPages || loading)"
+                        @onclick="NextPageAsync">Próxima</button>
+            </div>
+        }
+    </footer>
+</section>
+
+@if (selected is not null)
+{
+    <section class="delete-zone" aria-labelledby="revoke-session-heading">
+        <div>
+            <h2 id="revoke-session-heading">Revogar esta credencial?</h2>
+            <p>@UserLabel(selected) · @TypeLabel(selected.Type) · emitida @DateLabel(selected.CreatedAt).</p>
+        </div>
+        @if (revocation?.IsSuccess is false)
+        {
+            <section class="inline-notice inline-notice--danger" role="alert">
+                <AppIcon Name="alert" Size="19" />
+                <div><strong>Não foi possível revogar</strong><span>@revocation.ErrorMessage</span></div>
+            </section>
+        }
+        <button class="button button--secondary" type="button" @onclick="CancelRevocation">Cancelar</button>
+        <button class="button button--danger" type="button" disabled="@revoking" @onclick="RevokeAsync">
+            <AppIcon Name="lock" Size="17" />
+            @(revoking ? "Revogando…" : "Confirmar revogação")
+        </button>
+    </section>
+}
+
+@if (!string.IsNullOrWhiteSpace(UserId))
+{
+    <section class="danger-zone" aria-labelledby="revoke-all-heading">
+        <div>
+            <h2 id="revoke-all-heading">Encerrar todas as sessões desta conta</h2>
+            <p>Gira o selo de segurança e revoga tokens e autorizações vinculados ao usuário filtrado.</p>
+        </div>
+        <div>
+            <label class="delete-confirmation">
+                <input type="checkbox" @bind="revokeAllConfirmed" />
+                <span>Confirmo o encerramento total.</span>
+            </label>
+            <button class="button button--danger"
+                    type="button"
+                    disabled="@(!revokeAllConfirmed || revokingAll)"
+                    @onclick="RevokeAllAsync">
+                <AppIcon Name="lock" Size="17" />
+                @(revokingAll ? "Encerrando…" : "Encerrar todas")
+            </button>
+        </div>
+    </section>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "user")]
+    public string? UserId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "client")]
+    public string? ClientId { get; set; }
+
+    private ManagementDataResult<ManagementSessionPage>? result;
+    private ManagementDataResult<bool>? revocation;
+    private ManagementSessionSummary? selected;
+    private ManagementUserSessionRevocation? revokedAll;
+    private string search = string.Empty;
+    private string stateFilter = "active";
+    private int currentPage = 1;
+    private bool loading = true;
+    private bool revoking;
+    private bool revokingAll;
+    private bool revokeAllConfirmed;
+    private bool revoked;
+    private const int PageSize = 25;
+
+    private ManagementSessionPage Page =>
+        result?.Value ?? new([], 1, PageSize, 0, UserId, ClientId, true);
+
+    private int TotalPages =>
+        Math.Max(1, (int)Math.Ceiling(Page.TotalCount / (double)Page.PageSize));
+
+    private string FilterDescription =>
+        UserId is not null
+            ? $"Filtradas pela conta {UserId}."
+            : ClientId is not null
+                ? $"Filtradas pelo cliente {ClientId}."
+                : "Cada linha representa uma credencial persistida pelo OpenIddict.";
+
+    private string ErrorTitle =>
+        result?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? "MFA exigido para consultar sessões"
+            : result?.Outcome is ManagementDataOutcome.Forbidden
+                ? "Acesso às sessões negado"
+                : "Não foi possível consultar as sessões";
+
+    private string ResultCountLabel =>
+        loading
+            ? "Carregando sessões"
+            : result?.IsSuccess is true
+                ? $"{Page.TotalCount} credencial(is)"
+                : "Nenhum resultado carregado";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        result = await SessionData.SearchAsync(
+            new ManagementSessionSearch(
+                search,
+                UserId,
+                ClientId,
+                stateFilter == "active",
+                currentPage,
+                PageSize));
+        loading = false;
+    }
+
+    private async Task SearchAsync()
+    {
+        currentPage = 1;
+        await LoadAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        currentPage = Math.Max(1, currentPage - 1);
+        await LoadAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        currentPage = Math.Min(TotalPages, currentPage + 1);
+        await LoadAsync();
+    }
+
+    private void SelectForRevocation(ManagementSessionSummary session)
+    {
+        selected = session;
+        revocation = null;
+        revoked = false;
+    }
+
+    private void CancelRevocation()
+    {
+        selected = null;
+        revocation = null;
+    }
+
+    private async Task RevokeAsync()
+    {
+        if (selected is null || revoking)
+        {
+            return;
+        }
+
+        revoking = true;
+        revocation = await SessionData.RevokeAsync(selected.Id);
+        revoking = false;
+        if (revocation.IsSuccess)
+        {
+            selected = null;
+            revoked = true;
+            await LoadAsync();
+        }
+    }
+
+    private async Task RevokeAllAsync()
+    {
+        if (string.IsNullOrWhiteSpace(UserId)
+            || !revokeAllConfirmed
+            || revokingAll)
+        {
+            return;
+        }
+
+        revokingAll = true;
+        var response = await SessionData.RevokeAllForUserAsync(UserId);
+        revokingAll = false;
+        if (response.IsSuccess)
+        {
+            revokedAll = response.Value;
+            revokeAllConfirmed = false;
+            await LoadAsync();
+        }
+    }
+
+    private static string UserLabel(ManagementSessionSummary session) =>
+        session.UserName ?? session.Email ?? session.UserId ?? "Sem usuário";
+
+    private static string UserHref(string id) =>
+        $"users/{Uri.EscapeDataString(id)}";
+
+    private static string TypeLabel(string value) =>
+        value.Replace('_', ' ');
+
+    private static string StatusLabel(string value) =>
+        value switch
+        {
+            "valid" => "Ativa",
+            "revoked" => "Revogada",
+            "redeemed" => "Utilizada",
+            _ => value
+        };
+
+    private static string DateLabel(DateTimeOffset? value) =>
+        value?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "sem prazo";
+}

@@ -1,0 +1,26 @@
+@inject Microsoft.Extensions.Options.IOptions<ManagementUiOptions> ManagementOptions
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="@ManagementOptions.Value.GetBaseHref()" />
+    <link rel="icon" href="/_content/Sufficit.Identity.UI.Management/img/logo-mark.png" type="image/png" />
+    <meta name="theme-color" content="#242223" />
+    <link rel="stylesheet" href="/_content/Sufficit.Identity.UI.Management/app.css" />
+    <HeadOutlet @rendermode="InteractiveServer" />
+</head>
+
+<body>
+    <Routes @rendermode="InteractiveServer" />
+    <div id="blazor-error-ui" role="alert">
+        <span>Não foi possível manter a conexão com o painel.</span>
+        <a href="" class="reload">Recarregar</a>
+        <button type="button" class="dismiss" aria-label="Fechar aviso">×</button>
+    </div>
+    <script src="/_content/Sufficit.Identity.UI/_framework/blazor.web.js"></script>
+</body>
+
+</html>

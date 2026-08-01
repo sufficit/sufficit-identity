@@ -1,0 +1,360 @@
+@page "/users"
+@attribute [StreamRendering]
+@inject ManagementUserDataSource UserData
+
+<PageTitle>Usuários | Sufficit Identity</PageTitle>
+
+<PageHeader Title="Usuários"
+            Description="Consulte as contas do provedor e seus estados de autenticação.">
+    <Actions>
+        @if (accessResult?.IsSuccess is true && Access.CanCreate)
+        {
+            <a class="button button--primary" href="users/new">
+                <AppIcon Name="plus" Size="17" />
+                Novo usuário
+            </a>
+        }
+        <StatusBadge Tone="info" Icon="shield">Diretório global</StatusBadge>
+    </Actions>
+</PageHeader>
+
+@if (Deleted)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Conta excluída</strong>
+            <span>As credenciais foram removidas e as sessões, os tokens e as autorizações anteriores foram revogados.</span>
+        </div>
+    </section>
+}
+
+<section class="contract-strip contract-strip--info">
+    <AppIcon Name="shield" Size="20" />
+    <div>
+        <strong>Contas do provedor de identidade</strong>
+        <span>Esta tela administra autenticação, perfil e credenciais. Autoridades empresariais permanecem nas aplicações que as definem.</span>
+    </div>
+    <StatusBadge Tone="info">Auditado</StatusBadge>
+</section>
+
+@if (accessLoading)
+{
+    <section class="table-panel" aria-busy="true">
+        <div class="table-skeleton" aria-label="Carregando autoridade">
+            @for (var index = 0; index < 4; index++)
+            {
+                <span></span>
+            }
+        </div>
+    </section>
+}
+else if (accessResult?.IsSuccess is false)
+{
+    <section class="panel">
+        <EmptyState Icon="shield"
+                    Title="@AccessErrorTitle"
+                    Description="@accessResult.ErrorMessage">
+            <Actions>
+                <button class="button button--secondary"
+                        type="button"
+                        @onclick="LoadAsync">
+                    Tentar novamente
+                </button>
+            </Actions>
+        </EmptyState>
+    </section>
+}
+else
+{
+    <section class="table-panel"
+             aria-labelledby="users-list-heading"
+             aria-busy="@usersLoading">
+        <div class="data-toolbar data-toolbar--users">
+            <div>
+                <h2 id="users-list-heading">Diretório de identidades</h2>
+                <p>@ToolbarDescription</p>
+            </div>
+            <div class="data-toolbar__actions user-filters">
+                <form class="user-search"
+                      @onsubmit="SearchAsync"
+                      @onsubmit:preventDefault>
+                    <label class="search-field">
+                        <span class="visually-hidden">Pesquisar usuários</span>
+                        <AppIcon Name="search" Size="18" />
+                        <input type="search"
+                               placeholder="Nome ou e-mail"
+                               autocomplete="off"
+                               @bind="search"
+                               @bind:event="oninput" />
+                    </label>
+                    <button class="button button--secondary"
+                            type="submit"
+                            disabled="@usersLoading">
+                        Pesquisar
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="client-results" aria-live="polite">
+            @if (usersLoading)
+            {
+                <div class="table-skeleton" aria-label="Carregando usuários">
+                    @for (var index = 0; index < 5; index++)
+                    {
+                        <span></span>
+                    }
+                </div>
+            }
+            else if (usersResult?.IsSuccess is false)
+            {
+                <EmptyState Icon="alert"
+                            Title="@UsersErrorTitle"
+                            Description="@usersResult.ErrorMessage">
+                    <Actions>
+                        <button class="button button--secondary"
+                                type="button"
+                                @onclick="LoadUsersAsync">
+                            Tentar novamente
+                        </button>
+                    </Actions>
+                </EmptyState>
+            }
+            else if (Page.Items.Count is 0)
+            {
+                <EmptyState Icon="users"
+                            Title="Nenhum usuário encontrado"
+                            Description="@EmptyDescription">
+                    <Actions>
+                        @if (!string.IsNullOrWhiteSpace(search))
+                        {
+                            <button class="button button--secondary"
+                                    type="button"
+                                    @onclick="ClearSearchAsync">
+                                Limpar pesquisa
+                            </button>
+                        }
+                    </Actions>
+                </EmptyState>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="data-table data-table--users">
+                        <thead>
+                            <tr>
+                                <th scope="col">Usuário</th>
+                                <th scope="col">E-mail</th>
+                                <th scope="col">MFA</th>
+                                <th scope="col">Estado</th>
+                                <th scope="col"><span class="visually-hidden">Ações</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var user in Page.Items)
+                            {
+                                <tr>
+                                    <td data-label="Usuário">
+                                        <a class="client-name client-link"
+                                           href="@UserHref(user.Id)">
+                                            @DisplayUserName(user)
+                                        </a>
+                                    </td>
+                                    <td data-label="E-mail">
+                                        <span class="user-email">
+                                            <span>@DisplayEmail(user)</span>
+                                            @if (user.EmailConfirmed)
+                                            {
+                                                <span class="verified-mark"
+                                                      title="E-mail confirmado"
+                                                      aria-label="E-mail confirmado">
+                                                    <AppIcon Name="check" Size="13" />
+                                                </span>
+                                            }
+                                        </span>
+                                    </td>
+                                    <td data-label="MFA">
+                                        <StatusBadge Tone="@(user.TwoFactorEnabled ? "success" : "neutral")">
+                                            @(user.TwoFactorEnabled ? "Ativo" : "Inativo")
+                                        </StatusBadge>
+                                    </td>
+                                    <td data-label="Estado">
+                                        <span class="registration-state">
+                                            <span class="status-dot @(user.IsLockedOut ? "status-dot--danger" : "status-dot--success")"
+                                                  aria-hidden="true"></span>
+                                            @(user.IsLockedOut ? "Bloqueado" : "Ativo")
+                                        </span>
+                                    </td>
+                                    <td data-label="Ações">
+                                        <a class="row-action"
+                                           href="@UserHref(user.Id)"
+                                           aria-label="@($"Abrir detalhes de {DisplayUserName(user)}")">
+                                            Detalhes
+                                            <AppIcon Name="arrow-right" Size="15" />
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <footer class="table-footer table-footer--paginated">
+            <span aria-live="polite">@ResultCountLabel</span>
+            @if (TotalPages > 1)
+            {
+                <nav class="pagination" aria-label="Paginação de usuários">
+                    <button class="button button--secondary button--compact"
+                            type="button"
+                            disabled="@(usersLoading || Page.Page <= 1)"
+                            @onclick="PreviousPageAsync">
+                        Anterior
+                    </button>
+                    <span>Página @Page.Page de @TotalPages</span>
+                    <button class="button button--secondary button--compact"
+                            type="button"
+                            disabled="@(usersLoading || Page.Page >= TotalPages)"
+                            @onclick="NextPageAsync">
+                        Próxima
+                    </button>
+                </nav>
+            }
+        </footer>
+    </section>
+
+    <section class="client-guardrails" aria-labelledby="user-safety-heading">
+        <div>
+            <h2 id="user-safety-heading">Fronteira desta administração</h2>
+            <p>Operações alteram somente a conta no provedor; cargos, permissões e vínculos empresariais não são interpretados aqui.</p>
+        </div>
+        <ul>
+            <li><AppIcon Name="shield" Size="18" /> Capabilities do operador são avaliadas no serviço</li>
+            <li><AppIcon Name="audit" Size="18" /> Leituras e mutações geram eventos de auditoria</li>
+            <li><AppIcon Name="lock" Size="18" /> Senhas, hashes, tokens e claims não são expostos</li>
+        </ul>
+    </section>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "deleted")]
+    public int DeletedFlag { get; set; }
+
+    private ManagementDataResult<ManagementUserAccess>? accessResult;
+    private ManagementDataResult<ManagementUserPage>? usersResult;
+    private bool accessLoading = true;
+    private bool usersLoading;
+    private string search = string.Empty;
+    private int currentPage = 1;
+    private const int PageSize = 25;
+
+    private bool Deleted => DeletedFlag is 1;
+
+    private ManagementUserAccess Access =>
+        accessResult?.Value ?? new(false, false);
+
+    private ManagementUserPage Page =>
+        usersResult?.Value ?? new([], 1, PageSize, 0);
+
+    private int TotalPages =>
+        Math.Max(1, (int)Math.Ceiling(Page.TotalCount / (double)Page.PageSize));
+
+    private string AccessErrorTitle =>
+        accessResult?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? "Autenticação adicional necessária"
+            : "Acesso ao diretório não autorizado";
+
+    private string UsersErrorTitle =>
+        usersResult?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? "MFA exigido para esta operação"
+            : usersResult?.Outcome is ManagementDataOutcome.Forbidden
+                ? "Acesso ao diretório negado"
+                : "Não foi possível consultar os usuários";
+
+    private string ToolbarDescription =>
+        usersLoading
+            ? "Consultando o diretório autorizado…"
+            : "Contas reconhecidas por este provedor de identidade.";
+
+    private string EmptyDescription =>
+        string.IsNullOrWhiteSpace(search)
+            ? "O serviço respondeu sem identidades cadastradas."
+            : "Revise o nome ou e-mail informado e tente novamente.";
+
+    private string ResultCountLabel =>
+        usersLoading
+            ? "Carregando usuários"
+            : usersResult?.IsSuccess is true
+                ? $"{Page.TotalCount} {Pluralize(Page.TotalCount, "usuário", "usuários")}"
+                : "Nenhum resultado carregado";
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        accessLoading = true;
+        usersResult = null;
+        accessResult = await UserData.GetAccessAsync();
+        accessLoading = false;
+
+        if (accessResult.IsSuccess)
+        {
+            await LoadUsersAsync();
+        }
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        usersLoading = true;
+        usersResult = await UserData.SearchAsync(
+            new ManagementUserSearch(
+                search,
+                currentPage,
+                PageSize));
+        usersLoading = false;
+    }
+
+    private async Task SearchAsync()
+    {
+        currentPage = 1;
+        await LoadUsersAsync();
+    }
+
+    private async Task ClearSearchAsync()
+    {
+        search = string.Empty;
+        currentPage = 1;
+        await LoadUsersAsync();
+    }
+
+    private async Task PreviousPageAsync()
+    {
+        currentPage = Math.Max(1, currentPage - 1);
+        await LoadUsersAsync();
+    }
+
+    private async Task NextPageAsync()
+    {
+        currentPage = Math.Min(TotalPages, currentPage + 1);
+        await LoadUsersAsync();
+    }
+
+    private static string UserHref(string id) =>
+        $"users/{Uri.EscapeDataString(id)}";
+
+    private static string DisplayUserName(ManagementUserSummary user) =>
+        string.IsNullOrWhiteSpace(user.UserName)
+            ? user.Email ?? user.Id
+            : user.UserName;
+
+    private static string DisplayEmail(ManagementUserSummary user) =>
+        string.IsNullOrWhiteSpace(user.Email) ? "Não informado" : user.Email;
+
+    private static string Pluralize(
+        int count,
+        string singular,
+        string plural) =>
+        count is 1 ? singular : plural;
+}

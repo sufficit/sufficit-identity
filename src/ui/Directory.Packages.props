@@ -1,0 +1,17 @@
+<Project>
+
+  <ItemGroup>
+    <!-- ASP.NET Core Razor Components / Blazor Server -->
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.10" />
+
+    <!-- OpenIddict (read the AuthorizationRequest from HttpContext) -->
+    <PackageVersion Include="OpenIddict.AspNetCore" Version="7.6.0" />
+
+    <!-- ASP.NET Core Identity EF Core (UserManager, SignInManager stores) -->
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
+
+    <!-- QR codes for 2FA TOTP setup -->
+    <PackageVersion Include="QRCoder" Version="1.6.0" />
+  </ItemGroup>
+
+</Project>

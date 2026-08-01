@@ -1,0 +1,53 @@
+@inject IBrandingThemeProvider BrandingProvider
+
+@code {
+    private Sufficit.Identity.Core.Entities.BrandingTheme? _theme;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _theme = await BrandingProvider.GetActiveAsync();
+    }
+}
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="@(_theme?.FaviconUrl ?? "_content/Sufficit.Identity.UI/img/favicon.png")" type="image/png" />
+    <link rel="apple-touch-icon" href="@(_theme?.FaviconUrl ?? "_content/Sufficit.Identity.UI/img/favicon.png")" />
+    <link rel="preload" href="_content/Sufficit.Identity.UI/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="_content/Sufficit.Identity.UI/fonts/inter-latin-600.woff2" as="font" type="font/woff2" crossorigin />
+    <meta name="theme-color" content="@(_theme?.ThemeColor ?? "#cc0000")" />
+    <link rel="stylesheet" href="_content/Sufficit.Identity.UI/css/site.css" />
+    @if (!string.IsNullOrEmpty(_theme?.BrandColor))
+    {
+        <style>
+            :root {
+                --brand: @_theme.BrandColor;
+                --brand-ring: @(_theme.BrandColor)40;
+                @if (!string.IsNullOrEmpty(_theme.BrandHoverColor)) { <text>--brand-hover: @_theme.BrandHoverColor;</text> }
+                @if (!string.IsNullOrEmpty(_theme.BrandSoftColor)) { <text>--brand-soft: @_theme.BrandSoftColor;</text> }
+            }
+        </style>
+    }
+    @if (!string.IsNullOrEmpty(_theme?.BackgroundImageUrl))
+    {
+        <style>
+            body {
+                background:
+                    linear-gradient(rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.15)),
+                    url("@_theme.BackgroundImageUrl") center / cover fixed no-repeat !important;
+            }
+        </style>
+    }
+    <HeadOutlet />
+</head>
+<body>
+    <Routes />
+    <script src="_content/Sufficit.Identity.UI/js/identity.js"></script>
+    <script src="_content/Sufficit.Identity.UI/js/passkeys.js"></script>
+    <script src="_content/Sufficit.Identity.UI/_framework/blazor.web.js"></script>
+</body>
+</html>

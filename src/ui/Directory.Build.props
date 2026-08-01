@@ -1,0 +1,16 @@
+<Project>
+
+  <PropertyGroup>
+    <Product>Sufficit Identity UI</Product>
+    <Company>Sufficit</Company>
+    <Authors>Sufficit</Authors>
+    <Copyright>Copyright (c) 2026 Sufficit</Copyright>
+    <Version>0.1.0-alpha</Version>
+    <NeutralLanguage>pt-BR</NeutralLanguage>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+</Project>

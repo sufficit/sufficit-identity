@@ -1,0 +1,156 @@
+@page "/scopes/new"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageScopes)]
+@inject ManagementScopeDataSource ScopeData
+@inject NavigationManager Navigation
+
+<PageTitle>Novo scope OAuth | Sufficit Identity</PageTitle>
+
+<PageHeader Title="Novo scope"
+            Description="Registre uma permissão OAuth personalizada para um ou mais recursos protegidos.">
+    <Actions>
+        <a class="button button--secondary" href="scopes">
+            <AppIcon Name="arrow-left" Size="17" />
+            Voltar para scopes
+        </a>
+    </Actions>
+</PageHeader>
+
+<section class="contract-strip contract-strip--success">
+    <AppIcon Name="shield" Size="20" />
+    <div>
+        <strong>Validação centralizada</strong>
+        <span>Nome, recursos, autorização e auditoria passam pelo mesmo serviço usado pela Management API.</span>
+    </div>
+    <StatusBadge Tone="success">Canônico</StatusBadge>
+</section>
+
+@if (submission?.IsSuccess is false)
+{
+    <section class="inline-notice inline-notice--danger" role="alert">
+        <AppIcon Name="alert" Size="19" />
+        <div>
+            <strong>Não foi possível criar o scope</strong>
+            <span>@submission.ErrorMessage</span>
+        </div>
+    </section>
+}
+
+<EditForm Model="model"
+          OnValidSubmit="CreateAsync"
+          FormName="create-oauth-scope"
+          class="management-form">
+    <DataAnnotationsValidator />
+
+    <section class="form-section" aria-labelledby="scope-identity-heading">
+        <div class="form-section__heading">
+            <h2 id="scope-identity-heading">Identificação</h2>
+            <p>O nome faz parte do contrato OAuth e não poderá ser alterado após a criação.</p>
+        </div>
+        <div class="form-grid form-grid--two">
+            <div class="field-group">
+                <label for="scope-name">Nome</label>
+                <InputText id="scope-name"
+                           class="form-control"
+                           autocomplete="off"
+                           @bind-Value="model.Name" />
+                <ValidationMessage For="() => model.Name" />
+                <span class="field-hint">Exemplo: <code>calendar.read</code> ou <code>urn:example:orders.write</code>.</span>
+            </div>
+            <div class="field-group">
+                <label for="scope-display-name">Nome de exibição <span class="label-optional">opcional</span></label>
+                <InputText id="scope-display-name"
+                           class="form-control"
+                           autocomplete="off"
+                           @bind-Value="model.DisplayName" />
+                <ValidationMessage For="() => model.DisplayName" />
+            </div>
+        </div>
+        <div class="field-group">
+            <label for="scope-description">Descrição <span class="label-optional">opcional</span></label>
+            <InputTextArea id="scope-description"
+                           class="form-control form-control--textarea"
+                           @bind-Value="model.Description" />
+            <ValidationMessage For="() => model.Description" />
+            <span class="field-hint">Explique de forma concreta o acesso concedido ao cliente.</span>
+        </div>
+    </section>
+
+    <section class="form-section" aria-labelledby="scope-resources-heading">
+        <div class="form-section__heading">
+            <h2 id="scope-resources-heading">Recursos protegidos</h2>
+            <p>Informe os audiences que recebem este scope, um por linha.</p>
+        </div>
+        <div class="field-group">
+            <label for="scope-resources">Resources / audiences <span class="label-optional">opcional</span></label>
+            <InputTextArea id="scope-resources"
+                           class="form-control form-control--textarea"
+                           @bind-Value="model.Resources" />
+            <span class="field-hint">Exemplo: <code>https://api.example.com/calendar</code></span>
+        </div>
+    </section>
+
+    <footer class="form-actions">
+        <a class="button button--secondary" href="scopes">Cancelar</a>
+        <button class="button button--primary" type="submit" disabled="@submitting">
+            @if (submitting)
+            {
+                <span class="button-spinner" aria-hidden="true"></span>
+                <span>Criando scope…</span>
+            }
+            else
+            {
+                <AppIcon Name="plus" Size="17" />
+                <span>Criar scope</span>
+            }
+        </button>
+    </footer>
+</EditForm>
+
+@code {
+    private readonly ScopeCreateModel model = new();
+    private ManagementDataResult<ManagementScopeDetail>? submission;
+    private bool submitting;
+
+    private async Task CreateAsync()
+    {
+        if (submitting)
+        {
+            return;
+        }
+
+        submitting = true;
+        submission = await ScopeData.CreateAsync(
+            new CreateManagementScopeCommand(
+                model.Name,
+                model.DisplayName,
+                model.Description,
+                SplitLines(model.Resources)));
+        submitting = false;
+
+        if (submission.IsSuccess && submission.Value is not null)
+        {
+            Navigation.NavigateTo(
+                $"scopes/{Uri.EscapeDataString(submission.Value.Id)}?created=1");
+        }
+    }
+
+    private static IReadOnlyList<string> SplitLines(string? value) =>
+        (value ?? string.Empty).Split(
+            ['\r', '\n'],
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    private sealed class ScopeCreateModel
+    {
+        [Required(ErrorMessage = "Informe o nome do scope.")]
+        [StringLength(200, ErrorMessage = "Use no máximo 200 caracteres.")]
+        public string Name { get; set; } = string.Empty;
+
+        [StringLength(200, ErrorMessage = "Use no máximo 200 caracteres.")]
+        public string? DisplayName { get; set; }
+
+        [StringLength(1000, ErrorMessage = "Use no máximo 1000 caracteres.")]
+        public string? Description { get; set; }
+
+        public string? Resources { get; set; }
+    }
+}

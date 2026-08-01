@@ -1,0 +1,90 @@
+@page "/account/loginwithrecoverycode"
+@inject SignInManager<ApplicationUser> SignInManager
+@inject NavigationManager Navigation
+@inject ILogger<LoginWithRecoveryCode> Logger
+
+<PageTitle>Código de recuperação — Sufficit Identity</PageTitle>
+
+<div class="auth-card">
+    <h1>Código de recuperação</h1>
+    <p class="info">Digite um dos seus códigos de recuperação.</p>
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-error" role="alert">@_error</div>
+    }
+
+    <EditForm Model="_model" Method="post" OnValidSubmit="VerifyCodeAsync" FormName="recovery-code">
+        <DataAnnotationsValidator />
+
+        <div class="form-group">
+            <label for="code">Código de recuperação</label>
+            <InputText id="code" @bind-Value="_model.RecoveryCode" class="form-control"
+                       placeholder="abc-defg" autocomplete="one-time-code" autofocus />
+            <ValidationMessage For="@(() => _model.RecoveryCode)" />
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+    </EditForm>
+
+    <div class="auth-links">
+        <a href="/account/loginwith2fa?returnUrl=@Uri.EscapeDataString(_returnUrl ?? "/")">
+            Voltar para código do app autenticador
+        </a>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    private RecoveryInput? _boundModel;
+    [SupplyParameterFromForm(FormName = "recovery-code")]
+    private RecoveryInput _model
+    {
+        get => _boundModel ??= new();
+        set => _boundModel = value;
+    }
+    private string? _returnUrl;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Reject absolute/off-host returnUrl (authenticated open redirect).
+        _returnUrl = LocalUrlValidator.EnsureLocal(ReturnUrl);
+
+        var user = await SignInManager.GetTwoFactorAuthenticationUserAsync();
+        if (user is null)
+        {
+            Navigation.NavigateTo("/account/login?returnUrl=" + Uri.EscapeDataString(_returnUrl), forceLoad: true);
+        }
+    }
+
+    private async Task VerifyCodeAsync()
+    {
+        var code = _model.RecoveryCode.Replace(" ", string.Empty);
+
+        var result = await SignInManager.TwoFactorRecoveryCodeSignInAsync(code);
+
+        if (result.Succeeded)
+        {
+            var user = await SignInManager.GetTwoFactorAuthenticationUserAsync();
+            Logger.LogInformation("User {User} logged in with a recovery code.", user?.UserName);
+            Navigation.NavigateTo(_returnUrl ?? "/", forceLoad: true);
+            return;
+        }
+
+        if (result.IsLockedOut)
+        {
+            _error = "Conta bloqueada por muitas tentativas.";
+            return;
+        }
+
+        _error = "Código de recuperação inválido.";
+    }
+
+    private sealed class RecoveryInput
+    {
+        [Required(ErrorMessage = "O código é obrigatório.")]
+        public string RecoveryCode { get; set; } = string.Empty;
+    }
+}

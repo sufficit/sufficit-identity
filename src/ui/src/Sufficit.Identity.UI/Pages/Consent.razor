@@ -1,0 +1,152 @@
+@page "/consent"
+@inject IOpenIddictApplicationManager ApplicationManager
+@inject ScopeViewModelProvider ScopeProvider
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@inject ILogger<Consent> Logger
+
+<PageTitle>Autorização — Sufficit Identity</PageTitle>
+
+@if (_clientId is null)
+{
+    <div class="auth-card">
+        <h1>Solicitação inválida</h1>
+        <p class="info">Não há solicitação de autorização pendente.</p>
+        <a href="/" class="btn btn-primary">Voltar</a>
+    </div>
+}
+else
+{
+    <div class="auth-card">
+        <h1>Autorizar aplicação</h1>
+        <p class="info">
+            <strong>@_clientName</strong> está solicitando acesso à sua conta.
+        </p>
+
+        @* Real, static SSR HTML form — deliberately NOT a Blazor <EditForm>.
+           The decision must be POSTed straight to the STS's own
+           /connect/authorize endpoint (same app/origin: the UI is hosted
+           in-process inside the STS) so OpenIddict's AuthorizationController
+           re-parses the complete original authorization request and either
+           issues the code (Approve) or returns access_denied (Deny). A
+           Blazor EditForm would intercept the submit and route it back
+           through this component instead of letting the browser POST to a
+           different endpoint.
+
+           CONTRACT (documented for the STS agent to align field names with —
+           see EVALUATION-2026-07-20.md #B3 / P0 task 5):
+             - method=POST to /connect/authorize
+             - every original request parameter EXCEPT "scope" is echoed back
+               verbatim as a hidden field (client_id, redirect_uri,
+               response_type, state, nonce, code_challenge,
+               code_challenge_method, prompt, resource, ... — whatever
+               OpenIddict/the client sent)
+             - "scope" is resubmitted as one or more checkboxes, all named
+               "scope" (multi-value form field) — only the checked ones are
+               present in the POST body
+             - the button clicked selects the decision via a shared field
+               name="consent_decision" value="allow" to approve or "deny"
+               to deny — matches what the STS AuthorizationController reads
+               back off the POST body *@
+        <form method="post" action="/connect/authorize">
+            @foreach (var (key, value) in _passthroughParams)
+            {
+                <input type="hidden" name="@key" value="@value" />
+            }
+
+            <fieldset class="scope-list">
+                <legend>Permissões solicitadas:</legend>
+                @foreach (var scope in _scopes)
+                {
+                    <label class="scope-item">
+                        <input type="checkbox" name="scope" value="@scope.Name" checked="checked" />
+                        <span class="scope-name">@scope.DisplayName</span>
+                        <span class="scope-desc">@scope.Description</span>
+                    </label>
+                }
+            </fieldset>
+
+            <div class="btn-group">
+                <button type="submit" name="consent_decision" value="allow" class="btn btn-primary">
+                    Autorizar
+                </button>
+                <button type="submit" name="consent_decision" value="deny" class="btn btn-secondary">
+                    Negar
+                </button>
+            </div>
+        </form>
+    </div>
+}
+
+@code {
+    private string? _clientId;
+    private string? _clientName;
+    private IReadOnlyList<ScopeViewModel> _scopes = Array.Empty<ScopeViewModel>();
+    private List<(string Key, string Value)> _passthroughParams = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var httpContext = HttpContextAccessor.HttpContext;
+        if (httpContext is null)
+        {
+            return;
+        }
+
+        // The STS redirects here as a normal GET carrying the original
+        // /connect/authorize query string. Fall back to reading the form body
+        // too, in case a future STS implementation forwards via a preserved
+        // POST (307/308) instead of a query-string redirect.
+        IEnumerable<KeyValuePair<string, Microsoft.Extensions.Primitives.StringValues>> parameters =
+            httpContext.Request.Query;
+
+        if (httpContext.Request.HasFormContentType)
+        {
+            var form = await httpContext.Request.ReadFormAsync();
+            parameters = form;
+        }
+
+        var lookup = parameters
+            .GroupBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.SelectMany(p => p.Value).ToArray(), StringComparer.OrdinalIgnoreCase);
+
+        if (!lookup.TryGetValue("client_id", out var clientIdValues) || clientIdValues.Length == 0)
+        {
+            Logger.LogWarning("Consent page reached without a client_id — no pending authorization request.");
+            return; // _clientId stays null → "invalid request" card.
+        }
+
+        var clientId = clientIdValues[0];
+        if (string.IsNullOrEmpty(clientId))
+        {
+            Logger.LogWarning("Consent page reached with an empty client_id — no pending authorization request.");
+            return; // _clientId stays null → "invalid request" card.
+        }
+
+        _clientId = clientId;
+
+        var application = await ApplicationManager.FindByClientIdAsync(clientId);
+        _clientName = application is not null
+            ? (string?)await ApplicationManager.GetDisplayNameAsync(application) ?? clientId
+            : clientId;
+
+        // Requested scopes: OAuth/OpenIddict pass them as a single
+        // space-delimited "scope" value (occasionally repeated). Flatten +
+        // dedupe either way.
+        var requestedScopes = lookup.TryGetValue("scope", out var scopeValues)
+            ? scopeValues
+                .SelectMany(v => (v ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries))
+                .Distinct()
+                .ToList()
+            : new List<string>();
+
+        _scopes = ScopeProvider.Build(requestedScopes);
+
+        // Echo every original parameter EXCEPT "scope" (re-rendered above as
+        // user-togglable checkboxes) back as hidden fields, so the STS
+        // controller can re-parse the complete original OAuth request from
+        // this POST.
+        _passthroughParams = lookup
+            .Where(kv => !string.Equals(kv.Key, "scope", StringComparison.OrdinalIgnoreCase))
+            .SelectMany(kv => kv.Value.Select(v => (Key: kv.Key, Value: v ?? string.Empty)))
+            .ToList();
+    }
+}

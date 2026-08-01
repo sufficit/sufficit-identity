@@ -1,0 +1,285 @@
+@page "/claims/edit"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageClaims)]
+@inject ManagementClaimDataSource ClaimData
+@inject NavigationManager Navigation
+
+<PageTitle>Editar claim | Sufficit Identity</PageTitle>
+
+<PageHeader Title="Editar claim"
+            Description="Atualize o tipo ou o valor desta atribuição sem recriar o registro.">
+    <Actions>
+        <a class="button button--secondary" href="@BackHref">
+            <AppIcon Name="arrow-left" Size="17" />
+            Voltar para claims
+        </a>
+    </Actions>
+</PageHeader>
+
+@if (updated)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Claim atualizada</strong>
+            <span>A nova versão foi persistida e os tokens anteriores da conta foram revogados.</span>
+        </div>
+    </section>
+}
+
+@if (!HasClaimContext)
+{
+    <EmptyState Icon="users"
+                Title="Selecione uma claim"
+                Description="Abra as claims de um usuário e escolha a atribuição que deseja editar.">
+        <Actions>
+            <a class="button button--primary" href="users">Abrir diretório de usuários</a>
+        </Actions>
+    </EmptyState>
+}
+else if (loading)
+{
+    <section class="detail-shell" aria-busy="true" aria-label="Carregando claim">
+        <div class="detail-skeleton"></div>
+        <div class="detail-skeleton detail-skeleton--short"></div>
+    </section>
+}
+else if (result?.IsSuccess is true && result.Value is not null
+         && string.Equals(result.Value.UserId, UserId, StringComparison.Ordinal))
+{
+    var claim = result.Value;
+
+    <section class="contract-strip contract-strip--warning">
+        <AppIcon Name="refresh" Size="20" />
+        <div>
+            <strong>Atualização com invalidação</strong>
+            <span>Salvar gira o selo de segurança e revoga as credenciais emitidas para @AccountLabel(claim).</span>
+        </div>
+        <StatusBadge Tone="warning">Impacta credenciais</StatusBadge>
+    </section>
+
+    @if (submission?.IsSuccess is false)
+    {
+        <section class="inline-notice inline-notice--danger" role="alert">
+            <AppIcon Name="alert" Size="19" />
+            <div>
+                <strong>Não foi possível atualizar a claim</strong>
+                <span>@submission.ErrorMessage</span>
+            </div>
+        </section>
+    }
+
+    <EditForm Model="model"
+              OnValidSubmit="UpdateAsync"
+              FormName="update-user-claim"
+              class="management-form">
+        <DataAnnotationsValidator />
+
+        <section class="form-section" aria-labelledby="claim-identity-heading">
+            <div class="form-section__heading">
+                <h2 id="claim-identity-heading">Atribuição</h2>
+                <p>O identificador e a conta permanecem fixos; tipo e valor podem ser corrigidos.</p>
+            </div>
+            <dl class="property-list">
+                <div>
+                    <dt>Conta</dt>
+                    <dd><a class="client-name" href="@UserHref">@AccountLabel(claim)</a></dd>
+                </div>
+                <div>
+                    <dt>Identificador</dt>
+                    <dd><code class="client-id">@claim.Id</code></dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="form-section" aria-labelledby="claim-edit-heading">
+            <div class="form-section__heading">
+                <h2 id="claim-edit-heading">Tipo e valor</h2>
+                <p>Claims multivaloradas continuam representadas por atribuições independentes.</p>
+            </div>
+
+            <div class="field-group">
+                <label for="claim-type">Tipo da claim</label>
+                <InputText id="claim-type"
+                           class="form-control"
+                           autocomplete="off"
+                           @bind-Value="model.Type" />
+                <ValidationMessage For="() => model.Type" />
+            </div>
+
+            <div class="field-group">
+                <label for="claim-value">Valor</label>
+                <InputTextArea id="claim-value"
+                               class="form-control form-control--textarea"
+                               @bind-Value="model.Value" />
+                <ValidationMessage For="() => model.Value" />
+                <span class="field-hint">O conteúdo não será registrado no evento de auditoria.</span>
+            </div>
+        </section>
+
+        <footer class="form-actions">
+            <a class="button button--secondary" href="@BackHref">Cancelar</a>
+            <button class="button button--primary" type="submit" disabled="@saving">
+                @if (saving)
+                {
+                    <span class="button-spinner" aria-hidden="true"></span>
+                    <span>Salvando…</span>
+                }
+                else
+                {
+                    <AppIcon Name="edit" Size="17" />
+                    <span>Salvar claim</span>
+                }
+            </button>
+        </footer>
+    </EditForm>
+
+    <section class="delete-zone" aria-labelledby="delete-claim-heading">
+        <div>
+            <h2 id="delete-claim-heading">Remover atribuição</h2>
+            <p>Exclui somente esta claim e invalida as credenciais emitidas anteriormente.</p>
+        </div>
+        @if (deletion?.IsSuccess is false)
+        {
+            <section class="inline-notice inline-notice--danger" role="alert">
+                <AppIcon Name="alert" Size="19" />
+                <div>
+                    <strong>Não foi possível remover a claim</strong>
+                    <span>@deletion.ErrorMessage</span>
+                </div>
+            </section>
+        }
+        <label class="delete-confirmation">
+            <input type="checkbox" @bind="confirmed" />
+            <span>Confirmo a remoção desta atribuição.</span>
+        </label>
+        <button class="button button--danger"
+                type="button"
+                disabled="@(!confirmed || deleting)"
+                @onclick="DeleteAsync">
+            <AppIcon Name="trash" Size="17" />
+            @(deleting ? "Removendo…" : "Remover claim")
+        </button>
+    </section>
+}
+else
+{
+    <EmptyState Icon="alert"
+                Title="@ErrorTitle"
+                Description="@(result?.ErrorMessage ?? "A claim não pertence a esta conta ou não foi encontrada.")">
+        <Actions>
+            <a class="button button--secondary" href="@BackHref">Voltar para claims</a>
+        </Actions>
+    </EmptyState>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "user")]
+    public string? UserId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "claim")]
+    public int? ClaimId { get; set; }
+
+    private readonly ClaimEditModel model = new();
+    private ManagementDataResult<ManagementClaimAssignment>? result;
+    private ManagementDataResult<ManagementClaimAssignment>? submission;
+    private ManagementDataResult<bool>? deletion;
+    private bool loading = true;
+    private bool saving;
+    private bool deleting;
+    private bool confirmed;
+    private bool updated;
+
+    private bool HasClaimContext =>
+        !string.IsNullOrWhiteSpace(UserId) && ClaimId is > 0;
+
+    private string BackHref =>
+        !string.IsNullOrWhiteSpace(UserId)
+            ? $"claims?user={Uri.EscapeDataString(UserId)}"
+            : "users";
+
+    private string UserHref =>
+        !string.IsNullOrWhiteSpace(UserId)
+            ? $"users/{Uri.EscapeDataString(UserId)}"
+            : "users";
+
+    private string ErrorTitle =>
+        result?.Outcome is ManagementDataOutcome.NotFound
+            ? "Claim não encontrada"
+            : result?.Outcome is ManagementDataOutcome.StepUpRequired
+                ? "MFA exigido para consultar a claim"
+                : "Não foi possível abrir a claim";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        result = null;
+        submission = null;
+        deletion = null;
+        updated = false;
+        confirmed = false;
+
+        if (!HasClaimContext)
+        {
+            loading = false;
+            return;
+        }
+
+        result = await ClaimData.GetAsync(ClaimId!.Value);
+        if (result.Value is { } claim)
+        {
+            model.Type = claim.Type;
+            model.Value = claim.Value;
+        }
+        loading = false;
+    }
+
+    private async Task UpdateAsync()
+    {
+        if (!HasClaimContext || saving)
+        {
+            return;
+        }
+
+        saving = true;
+        updated = false;
+        submission = await ClaimData.UpdateAsync(
+            ClaimId!.Value,
+            new UpdateManagementClaimCommand(model.Type, model.Value));
+        saving = false;
+        if (submission.IsSuccess && submission.Value is not null)
+        {
+            result = submission;
+            updated = true;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (!HasClaimContext || !confirmed || deleting)
+        {
+            return;
+        }
+
+        deleting = true;
+        deletion = await ClaimData.DeleteAsync(ClaimId!.Value);
+        deleting = false;
+        if (deletion.IsSuccess)
+        {
+            Navigation.NavigateTo($"{BackHref}&deleted=1");
+        }
+    }
+
+    private static string AccountLabel(ManagementClaimAssignment claim) =>
+        claim.UserName ?? claim.Email ?? claim.UserId;
+
+    private sealed class ClaimEditModel
+    {
+        [Required(ErrorMessage = "Informe o tipo da claim.")]
+        [StringLength(256, ErrorMessage = "Use no máximo 256 caracteres.")]
+        public string Type { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Informe o valor da claim.")]
+        [StringLength(4096, ErrorMessage = "Use no máximo 4096 caracteres.")]
+        public string Value { get; set; } = string.Empty;
+    }
+}

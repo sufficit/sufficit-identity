@@ -1,0 +1,178 @@
+@page "/device/usercode"
+@page "/device"
+@attribute [Authorize]
+@using System.Text.Json
+@inject NavigationManager Navigation
+@inject IHttpClientFactory HttpClientFactory
+@inject ILogger<UserCode> Logger
+
+<PageTitle>Ativar dispositivo — Sufficit Identity</PageTitle>
+
+<div class="auth-card">
+    <h1>Ativar dispositivo</h1>
+
+    @if (_resultApproved is not null)
+    {
+        @* Convenience confirmation view: if the STS's /connect/device/verify
+           endpoint redirects back here with ?result=approved|denied once it
+           has processed the decision, show a friendly confirmation. This page
+           never sets this state itself — it only reflects what the STS
+           already decided. *@
+        @if (_resultApproved == true)
+        {
+            <div class="alert alert-success">
+                Dispositivo autorizado! Você já pode voltar ao seu dispositivo — ele
+                continuará conectado automaticamente.
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-error">Autorização negada para o dispositivo.</div>
+        }
+        <a href="/" class="btn btn-primary">Concluir</a>
+    }
+    else if (string.IsNullOrEmpty(_userCode))
+    {
+        <p class="info">
+            Digite o código exibido no dispositivo que você quer autorizar.
+        </p>
+
+        @* Plain GET form: just puts the typed code into this same page's URL
+           (?user_code=...) so the code lookup below can run against it.
+           No antiforgery needed — this step doesn't change any state. *@
+        <form method="get" action="/device/usercode">
+            <div class="form-group">
+                <label for="usercode">Código do dispositivo</label>
+                <input id="usercode" name="user_code" class="form-control device-code"
+                       placeholder="ABCD-EFGH" autocomplete="one-time-code" autofocus />
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Continuar</button>
+        </form>
+    }
+    else if (_error is not null)
+    {
+        <div class="alert alert-error">@_error</div>
+        <a class="btn btn-secondary" href="/device/usercode">Tentar novamente</a>
+    }
+    else
+    {
+        <p class="info">O dispositivo abaixo está solicitando acesso à sua conta:</p>
+
+        <dl class="device-info">
+            <dt>Aplicação</dt>
+            <dd>@_clientName</dd>
+            @if (_scopes.Count > 0)
+            {
+                <dt>Permissões solicitadas</dt>
+                <dd>@string.Join(", ", _scopes)</dd>
+            }
+        </dl>
+
+        @* Real, static SSR HTML form (not a Blazor EditForm) that POSTs
+           straight to the STS's OpenIddict end-user-verification endpoint
+           /connect/device — same app/origin, in-process. The POST must hit
+           the exact configured verification URI (SetEndUserVerificationEndpointUris
+           "connect/device"); OpenIddict only binds the SignIn principal to the
+           pending device_code from that URI, so a sub-path like
+           /connect/device/verify would not work. This page never marks the
+           device approved itself; the STS owns that via IOpenIddictTokenManager.
+           CONTRACT: POST fields "user_code" (hidden) and "approved"
+           ("true"/"false", selected by which button is clicked), protected by
+           the standard ASP.NET Core antiforgery pair (cookie + the hidden field
+           rendered by <AntiforgeryToken /> below), validated by the STS via
+           IAntiforgery.ValidateRequestAsync. *@
+        <form method="post" action="/connect/device">
+            <AntiforgeryToken />
+            <input type="hidden" name="user_code" value="@_userCode" />
+
+            <div class="btn-group">
+                <button type="submit" name="approved" value="true" class="btn btn-primary btn-block">
+                    Autorizar dispositivo
+                </button>
+                <button type="submit" name="approved" value="false" class="btn btn-secondary btn-block">
+                    Negar
+                </button>
+            </div>
+        </form>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "user_code")] private string? UserCodeQuery { get; set; }
+
+    // Legacy/alternate query param name used by earlier links.
+    [SupplyParameterFromQuery(Name = "code")] private string? LegacyCodeQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "result")] private string? Result { get; set; }
+
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
+
+    private string? _userCode;
+    private string? _clientName;
+    private IReadOnlyList<string> _scopes = Array.Empty<string>();
+    private string? _error;
+    private bool? _resultApproved;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(Result))
+        {
+            _resultApproved = string.Equals(Result, "approved", StringComparison.OrdinalIgnoreCase);
+            return;
+        }
+
+        var raw = UserCodeQuery ?? LegacyCodeQuery;
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return; // Show the "enter code" form.
+        }
+
+        // Normalize the code (uppercase, strip spaces/dashes — OpenIddict's
+        // default user_code format is an 8-char alphanumeric string).
+        _userCode = raw.Trim().ToUpperInvariant().Replace("-", "").Replace(" ", "");
+
+        await LoadDeviceInfoAsync(_userCode);
+    }
+
+    private async Task LoadDeviceInfoAsync(string userCode)
+    {
+        try
+        {
+            var client = HttpClientFactory.CreateClient();
+            var baseUri = new Uri(Navigation.BaseUri);
+            var infoUri = new Uri(baseUri, $"connect/device/info?user_code={Uri.EscapeDataString(userCode)}");
+
+            using var response = await client.GetAsync(infoUri);
+            if (!response.IsSuccessStatusCode)
+            {
+                _error = "Código inválido ou expirado.";
+                return;
+            }
+
+            await using var stream = await response.Content.ReadAsStreamAsync();
+            var payload = await JsonSerializer.DeserializeAsync<DeviceInfoResponse>(stream, JsonOptions);
+
+            if (payload is null || !payload.Valid)
+            {
+                _error = "Código inválido ou expirado.";
+                return;
+            }
+
+            _clientName = string.IsNullOrWhiteSpace(payload.ClientName) ? "aplicação desconhecida" : payload.ClientName;
+            _scopes = payload.Scopes ?? Array.Empty<string>();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to fetch /connect/device/info for a user_code lookup.");
+            _error = "Não foi possível verificar o código agora. Tente novamente em instantes.";
+        }
+    }
+
+    /// <summary>
+    /// Contract with the STS: GET /connect/device/info?user_code=XXX returns
+    /// this shape (property names case-insensitive). If the STS agent's
+    /// implementation differs, align either side.
+    /// </summary>
+    private sealed record DeviceInfoResponse(bool Valid, string? ClientName, string[]? Scopes);
+}

@@ -1,0 +1,56 @@
+@page "/account/confirmemail"
+@inject UserManager<ApplicationUser> UserManager
+@inject ILogger<ConfirmEmail> Logger
+
+<PageTitle>Confirmar e-mail — Sufficit Identity</PageTitle>
+
+<div class="auth-card">
+    <h1>Confirmação de e-mail</h1>
+
+    @if (_status is not null)
+    {
+        <div class="@(_success ? "alert alert-success" : "alert alert-error")">@_status</div>
+    }
+
+    <a href="/account/login" class="btn btn-primary">Voltar ao login</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] private string? UserId { get; set; }
+    [SupplyParameterFromQuery(Name = "code")] private string? Token { get; set; }
+
+    private string? _status;
+    private bool _success;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrEmpty(UserId) || string.IsNullOrEmpty(Token))
+        {
+            _status = "Link inválido.";
+            return;
+        }
+
+        var user = await UserManager.FindByIdAsync(UserId);
+        if (user is null)
+        {
+            _status = "Usuário não encontrado.";
+            return;
+        }
+
+        try
+        {
+            // Decode Base64Url token (encoded by the ForgotPassword/Register flow).
+            var token = CallbackUrlBuilder.DecodeToken(Token);
+            var result = await UserManager.ConfirmEmailAsync(user, token);
+            _success = result.Succeeded;
+            _status = _success
+                ? "E-mail confirmado com sucesso!"
+                : string.Join(" ", result.Errors.Select(e => e.Description));
+            Logger.LogInformation("Email confirmation for {UserId}: {Status}", UserId, _success ? "succeeded" : "failed");
+        }
+        catch (FormatException)
+        {
+            _status = "Token inválido (formato incorreto).";
+        }
+    }
+}
