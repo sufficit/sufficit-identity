@@ -119,7 +119,7 @@ O módulo não roda de forma independente. Compile a biblioteca ou execute o
 composition host:
 
 ```bash
-dotnet build src/Sufficit.Identity.UI.Management/Sufficit.Identity.UI.Management.csproj \
+dotnet build src/ui/Sufficit.Identity.UI.Management/Sufficit.Identity.UI.Management.csproj \
   --configuration Release
 
 cd /caminho/para/sufficit-identity
@@ -130,8 +130,8 @@ dotnet run --project src/server/Sufficit.Identity.Server.csproj
 
 - [`PRODUCT.md`](PRODUCT.md)
 - [`DESIGN.md`](DESIGN.md)
-- [`../../docs/single-source-ui-architecture.md`](../../docs/single-source-ui-architecture.md)
-- [`../../docs/management-authorization-architecture.md`](../../docs/management-authorization-architecture.md)
+- [`../../../docs/ui/single-source-ui-architecture.md`](../../../docs/ui/single-source-ui-architecture.md)
+- [`../../../docs/ui/management-authorization-architecture.md`](../../../docs/ui/management-authorization-architecture.md)
 
 ## Próximas entregas
 

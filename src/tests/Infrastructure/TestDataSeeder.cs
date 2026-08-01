@@ -164,7 +164,7 @@ public static class TestDataSeeder
         // ConsentTypes.Implicit auto-grants without an interactive /consent
         // redirect (see AuthorizationController's needsInteractiveConsent
         // switch) — deliberate, so the happy-path tests can run headless
-        // without the sibling UI's consent page. Requirements.Features.
+        // without the embedded UI's consent page. Requirements.Features.
         // ProofKeyForCodeExchange makes PKCE mandatory for this client,
         // matching the OAuth 2.1 baseline the eval recommends.
         await CreateApplicationIfMissingAsync(appManager, new OpenIddictApplicationDescriptor

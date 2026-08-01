@@ -47,14 +47,13 @@ When the UI is hosted by the STS app itself (same origin), we eliminate:
 ## Dependency graph
 
 ```
-sufficit-identity-ui
-    │
-    ├── Razor Components / presentation
-    └── application contracts / use cases ◄── HTTP API controllers
-            │
-            ├── authorization and validation
-            ├── ASP.NET Core Identity / OpenIddict
-            └── persistence
+Public/account UI ─┐
+Management UI ─────┼── application contracts / use cases ◄── HTTP API controllers
+                   │       │
+                   │       ├── authorization and validation
+                   │       ├── ASP.NET Core Identity / OpenIddict
+                   │       └── persistence
+                   └── presentation only
 ```
 
 The target UI does **NOT** reference:

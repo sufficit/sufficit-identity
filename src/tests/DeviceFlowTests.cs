@@ -16,7 +16,7 @@ namespace Sufficit.Identity.Tests;
 /// POST /connect/deviceauthorization, polling /connect/token before
 /// approval, the browser-facing POST ~/connect/device approval (stood in
 /// for by the factory's test-only sign-in + antiforgery endpoints — the
-/// real device page lives in the sibling sufficit-identity-ui repo), and
+/// real device page lives in the embedded public UI), and
 /// polling again after approval.
 /// </summary>
 [Collection(StsCollection.Name)]

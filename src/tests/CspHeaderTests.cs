@@ -12,7 +12,7 @@ namespace Sufficit.Identity.Tests;
 /// factory, so these tests exercise the SAME code the host runs — they do not
 /// re-implement it. They assert header PRESENCE and VALUE; they do NOT validate
 /// the policy against the real Blazor UI DOM (that calibration is an operational
-/// step in the sibling UI repo — see <see cref="Sufficit.Identity.STS.CspOptions"/>
+/// step in the embedded public UI — see <see cref="Sufficit.Identity.STS.CspOptions"/>
 /// class doc).
 /// </summary>
 [Collection(StsCollection.Name)]

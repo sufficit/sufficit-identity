@@ -76,7 +76,7 @@ public static class ServiceCollectionExtensions
         // ---- Antiforgery (defensive registration — #N1) ----
         // Required so the AuthorizationController's IAntiforgery dependency
         // resolves even if this STS is ever hosted headless (without the
-        // sibling sufficit-identity-ui project, which is what normally
+        // embedded Sufficit.Identity.UI project, which is what normally
         // registers AddAntiforgery in production today). AddAntiforgery is
         // TryAdd-based, so this is a no-op when the UI project has already
         // registered it. DeviceController already takes the same hard
@@ -178,7 +178,7 @@ public static class ServiceCollectionExtensions
         // IUserPasskeyStore<ApplicationUser>. UserManager<T> ganha os métodos
         // AddOrUpdatePasskeyAsync / GetPasskeysAsync / RemovePasskeyAsync /
         // FindByPasskeyIdAsync, e SignInManager<T> ganha CheckPasskeySignIn.
-        // A UI Blazor (sufficit-identity-ui) invoca via JS interop com
+        // A UI Blazor incorporada invoca via JS interop com
         // navigator.credentials.create/get. A tabela userpasskeys é mapeada
         // em AppDbContext.MapIdentityTables.
 

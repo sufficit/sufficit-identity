@@ -74,9 +74,8 @@ public sealed class ManagementUiArchitectureTests
         var repositoryRoot = ResolveIdentityRepository();
         var uiRoot = Path.GetFullPath(Path.Combine(
             repositoryRoot,
-            "..",
-            "sufficit-identity-ui",
-            "src"));
+            "src",
+            "ui"));
         var publicProfile = File.ReadAllText(Path.Combine(
             uiRoot,
             "Sufficit.Identity.UI",
@@ -775,9 +774,8 @@ public sealed class ManagementUiArchitectureTests
         var repositoryRoot = ResolveIdentityRepository();
         var sourceRoot = Path.GetFullPath(Path.Combine(
             repositoryRoot,
-            "..",
-            "sufficit-identity-ui",
             "src",
+            "ui",
             "Sufficit.Identity.UI.Management"));
 
         if (!Directory.Exists(sourceRoot))
@@ -794,9 +792,8 @@ public sealed class ManagementUiArchitectureTests
         var repositoryRoot = ResolveIdentityRepository();
         var sourceRoot = Path.GetFullPath(Path.Combine(
             repositoryRoot,
-            "..",
-            "sufficit-identity-ui",
             "src",
+            "ui",
             "Sufficit.Identity.UI"));
 
         if (!Directory.Exists(sourceRoot))

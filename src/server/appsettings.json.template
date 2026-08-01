@@ -163,7 +163,7 @@
         "IncludeSubDomains": true,
         "Preload": true
       },
-      "_Csp": "Content Security Policy baseline for the STS HTML pages (login/consent/device/logout served by the sibling UI). XSS on those pages is the highest-impact client-side risk in an IdP (forged consent / stolen session), and CSP is the missing containment layer (eval M1). Ships in Report-Only mode by default so a misconfigured policy CANNOT break the UI — flip ReportOnly to false only after calibrating against the real UI pages (exercise login/consent/device/logout, collect violation reports, tighten directives — ideally removing 'unsafe-inline' from style-src via nonces/hashes).",
+      "_Csp": "Content Security Policy baseline for the STS HTML pages (login/consent/device/logout served by the embedded public UI). XSS on those pages is the highest-impact client-side risk in an IdP (forged consent / stolen session), and CSP is the missing containment layer (eval M1). Ships in Report-Only mode by default so a misconfigured policy CANNOT break the UI — flip ReportOnly to false only after calibrating against the real UI pages (exercise login/consent/device/logout, collect violation reports, tighten directives — ideally removing 'unsafe-inline' from style-src via nonces/hashes).",
       "Csp": {
         "_Enabled": "Master switch. Disable only if an upstream gateway already injects a CSP.",
         "Enabled": true,

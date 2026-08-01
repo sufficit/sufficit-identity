@@ -103,7 +103,7 @@ auditoria em todo o fluxo.
   persistência própria e nunca são roles empresariais.
 - A fronteira entre o provedor e a autorização das aplicações
   estão definidos em
-  [`../../docs/management-authorization-architecture.md`](../../docs/management-authorization-architecture.md).
+  [`../../../docs/ui/management-authorization-architecture.md`](../../../docs/ui/management-authorization-architecture.md).
 - A exigência de MFA para operações administrativas é uma política do
   deployment.
 
@@ -119,8 +119,8 @@ auditoria em todo o fluxo.
 
 ## Evidence on Hand
 
-- Contexto compartilhado do produto: `../../PRODUCT.md`.
-- Sistema visual compartilhado: `../../DESIGN.md`.
+- Contexto compartilhado do produto: `../../../docs/ui/PRODUCT.md`.
+- Sistema visual compartilhado: `../../../docs/ui/DESIGN.md`.
 - Contrato visual administrativo: `DESIGN.md`.
 - Investigação arquitetural e inventário atual da API: `README.md`.
 - Marca e fonte oficiais: `../Sufficit.Identity.UI/wwwroot/`.

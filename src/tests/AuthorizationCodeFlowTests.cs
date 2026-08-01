@@ -22,7 +22,7 @@ namespace Sufficit.Identity.Tests;
 /// ConsentTypes.Implicit, PKCE required). The interactive login step is
 /// stood in for by the factory's test-only "/test-only/signin" endpoint —
 /// see <see cref="SufficitIdentityTestFactory"/>'s class doc — since the
-/// real login UI lives in the sibling sufficit-identity-ui repo.
+/// real login UI lives in the embedded Sufficit.Identity.UI project.
 /// </summary>
 [Collection(StsCollection.Name)]
 public sealed class AuthorizationCodeFlowTests

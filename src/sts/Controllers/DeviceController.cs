@@ -24,7 +24,7 @@ namespace Sufficit.Identity.STS.Controllers;
 /// device they used to read the polling client's displayed code.
 ///
 /// ================================ CONTRACT =================================
-/// This is the exact, load-bearing contract the sufficit-identity-ui repo's
+/// This is the exact, load-bearing contract the embedded public UI's
 /// device page must follow. The paths below are NOT an arbitrary REST
 /// convention — they are constrained by how OpenIddict's ASP.NET Core
 /// integration binds a signed-in principal to a pending device_code.
@@ -85,7 +85,7 @@ namespace Sufficit.Identity.STS.Controllers;
 ///        independent of the [ValidateAntiForgeryToken] MVC filter (see
 ///        AuthorizationController.LogoutPost's comment for why this
 ///        codebase doesn't lean on that filter for forms rendered from the
-///        sibling UI project).
+///        embedded UI project).
 ///      - the user must already be authenticated via the same cookie
 ///        /connect/authorize and the UI's Blazor pages use; if not, this
 ///        action challenges to the login page with a return URL back to

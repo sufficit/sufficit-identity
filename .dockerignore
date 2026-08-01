@@ -1,6 +1,4 @@
-# Sufficit Identity STS — Docker build context exclusions.
-# See Dockerfile's top comment for the build-context requirements (this repo
-# + the sibling sufficit-identity-ui repo as a named "ui" build context).
+# Sufficit Identity STS — monorepo Docker build context exclusions.
 
 # --- Secrets: NEVER let these ride into an image layer ---
 # Real, untracked, developer-local config (see .gitignore) that can contain

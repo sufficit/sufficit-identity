@@ -17,6 +17,9 @@
     <!-- ASP.NET Core Identity -->
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
 
+    <!-- Public Identity UI -->
+    <PackageVersion Include="QRCoder" Version="1.6.0" />
+
     <!-- ASP.NET Core Data Protection key-ring persistence (P0 #B4) -->
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.10" />
 

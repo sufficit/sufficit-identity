@@ -293,7 +293,7 @@ public sealed class CapabilityManagementAuthorizationEvaluator
         this.accessPolicies = accessPolicies;
     }
 
-    // Source-compatible fallback for a sibling UI pinned to the preceding
+    // Source-compatible fallback for an embedded UI compiled against the preceding
     // contract commit. New hosts register both replaceable dependencies; an
     // older composition surface still receives the same fail-closed defaults.
     public CapabilityManagementAuthorizationEvaluator(

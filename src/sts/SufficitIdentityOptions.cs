@@ -61,7 +61,7 @@ public sealed class SufficitIdentityOptions
 
     /// <summary>
     /// Content Security Policy applied by the host to HTML responses (login,
-    /// consent, device and logout pages served by the sibling UI). See
+    /// consent, device and logout pages served by the embedded public UI). See
     /// <see cref="CspOptions"/>.
     /// </summary>
     public CspOptions Csp { get; init; } = new();
@@ -306,7 +306,7 @@ public sealed class HstsOptions
 /// <summary>
 /// Content Security Policy (CSP) baseline for the STS's interactive HTML
 /// pages (login, consent, device verification, logout), served by the sibling
-/// <c>sufficit-identity-ui</c> Blazor Server project. XSS on those pages is
+/// embedded <c>Sufficit.Identity.UI</c> Blazor Server project. XSS on those pages is
 /// the highest-impact client-side risk in an IdP (forged consent / stolen
 /// session), and CSP is the containment layer that was missing (eval M1).
 /// </summary>
@@ -323,7 +323,7 @@ public sealed class HstsOptions
 /// <para><b>Cross-repo note.</b> The actual calibration is an operational step
 /// performed in the UI repo (the STS host emits the header; the UI renders the
 /// pages). It cannot be exercised by the STS integration tests, which do not
-/// load the sibling UI (see <c>SufficitIdentityTestFactory</c>). The tests here
+/// load the embedded UI (see <c>SufficitIdentityTestFactory</c>). The tests here
 /// assert that the header is emitted with the configured policy; they do not
 /// validate the policy against the real rendered DOM.</para>
 /// </remarks>
@@ -425,7 +425,7 @@ public sealed class SignInPolicyOptions
     /// <summary>
     /// When <c>true</c> (default — secure-by-default, eval M3), a user cannot
     /// sign in until they have proven possession of their email. Combined with
-    /// the public self-registration surface (gated separately in the sibling UI
+    /// the public self-registration surface (gated separately in the embedded UI
     /// repo via <c>Sufficit:Identity:Register:Enabled</c>), this closes the
     /// "register with someone else's email and use the account" hole. Every
     /// grant in <c>AuthorizationController</c> collapses the unconfirmed-email
@@ -434,7 +434,7 @@ public sealed class SignInPolicyOptions
     /// </summary>
     /// <remarks>
     /// <b>Cross-repo dependency (external login).</b> Accounts created via an
-    /// external provider (Google/GitHub/Facebook) in the sibling UI repo's
+    /// external provider (Google/GitHub/Facebook) in the embedded public UI's
     /// <c>ExternalLoginController</c> are only marked <c>EmailConfirmed=true</c>
     /// when the provider asserts <c>email_verified</c>. The STS wires that
     /// <c>ClaimAction</c> for Google (<c>ServiceCollectionExtensions.

@@ -10,7 +10,7 @@
 `AuthorizationController` (password, authorization_code, refresh, device,
 token exchange) — rejeite usuários com `EmailConfirmed=false`. Combinado com a
 superfície pública de auto-registro (`Sufficit:Identity:Register:Enabled`, lida
-no repo UI irmão), isto fecha o buraco "registrar com e-mail alheio e usar a
+no módulo de UI incorporado), isto fecha o buraco "registrar com e-mail alheio e usar a
 conta".
 
 O STS colapsa o caso "não confirmado" no MESMO `invalid_grant` genérico de
@@ -59,24 +59,24 @@ ORDER BY cnt DESC;
 - Documentar a decisão (quantos confirmados em massa, quantos em reconfirmação)
   e a data, neste runbook ou em `docs/activities/`.
 
-### 3. Garantir ClaimActions de TODOS os provedores externos (repo UI irmão)
+### 3. Garantir ClaimActions de TODOS os provedores externos
 
 O STS só registra o `ClaimAction` `email_verified` para **Google**
 (`src/sts/ServiceCollectionExtensions.cs`, `AddExternalProviders`).
 **Facebook e GitHub não o emitem hoje.** Antes de ativar a flag:
 
-- No repo **sufficit-identity-ui**, confirmar que
-  `ExternalLoginController` lê `email_verified` do `Principal` e seta
+- Em `src/ui/Sufficit.Identity.UI`, confirmar que `ExternalLoginController` lê
+  `email_verified` do `Principal` e seta
   `EmailConfirmed = emailVerified` apenas quando o provedor assevera `true`
-  (já faz — verificar a versão pinada em `.github/workflows/ci.yml:UI_REF`).
+  (já faz — verificar a versão compilada na solução única).
 - Para provedores que **não** asseveram `email_verified` (Facebook clássico,
   GitHub sem escopo extra de e-mail verificado), decidir uma das políticas:
   - não auto-confirmar → usuário externo recebe e-mail de confirmação pós-cadastro;
   - ou desabilitar esse provedor até resolver.
 
-### 4. Garantir fluxo de reenvio de confirmação (repo UI irmão)
+### 4. Garantir fluxo de reenvio de confirmação
 
-A UI (`sufficit-identity-ui`) deve expor um "reenviar e-mail de confirmação"
+A UI (`src/ui/Sufficit.Identity.UI`) deve expor um "reenviar e-mail de confirmação"
 acessível a partir da tela de login para usuários cuja conta existe mas não
 está confirmada. Sem isso, um usuário legado não confirmado fica sem caminho
 de saída.

@@ -59,6 +59,10 @@ _publish/
 [Pp]ublish/
 publish/
 
+# Generated Blazor static assets and visual-review captures
+wwwroot/_framework/
+**/.impeccable/screenshots/
+
 # App secrets (never commit)
 # All appsettings*.json may contain connection strings, API keys and OAuth
 # secrets. Use User Secrets (dotnet user-secrets) or environment variables

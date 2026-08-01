@@ -10,29 +10,21 @@ device flow verification, and a full self-service "Manage" area.
 
 ## Repository boundary
 
-There are three top-level product modules but currently only two repositories:
-
-- `sufficit-identity` contains the runtime, STS, Management API, SCIM,
-  persistence and the only executable host;
-- this repository contains two distinct embedded presentation projects: the
-  public/account UI and the Management UI.
-
-Neither project here is a standalone application. Both are compiled into the
-same Identity host, share its session and are deployed in its single artifact.
-The repositories currently have reciprocal source references and CI pins, so
-consolidation into `sufficit-identity` is recommended while preserving the two
-UI assemblies. See the canonical
-[repository architecture and consolidation decision](https://github.com/sufficit/sufficit-identity/blob/main/docs/REPOSITORY-ARCHITECTURE.md).
+The runtime, APIs and both embedded presentation projects live in the
+`sufficit-identity` monorepo. Neither UI project is a standalone application.
+Both are compiled into the same Identity host, share its session and are
+deployed in its single artifact, while remaining distinct assemblies. See the
+[repository architecture and consolidation record](../REPOSITORY-ARCHITECTURE.md).
 
 ## Projects
 
-- `src/Sufficit.Identity.UI` — Razor Class Library injected into the STS for
+- `src/ui/Sufficit.Identity.UI` — Razor Class Library injected into the STS for
   login, consent and end-user self-service.
-- `src/Sufficit.Identity.UI.Management` — administrative Razor Class Library
+- `src/ui/Sufficit.Identity.UI.Management` — administrative Razor Class Library
   injected into the same composition host under `/management`. It reuses the
   host Identity session and consumes the same application contracts used by
   the Management API. See its
-  [architecture and status](src/Sufficit.Identity.UI.Management/README.md).
+  [architecture and status](../../src/ui/Sufficit.Identity.UI.Management/README.md).
 
 ## Design goals
 
@@ -61,10 +53,10 @@ app.UseSufficitIdentityManagementUI();
 app.UseSufficitIdentityUI();                // <-- and this
 ```
 
-Project reference in `Sufficit.Identity.STS.csproj`:
+Project references in `src/server/Sufficit.Identity.Server.csproj`:
 ```xml
-<ProjectReference Include="..\..\sufficit-identity-ui\src\Sufficit.Identity.UI\Sufficit.Identity.UI.csproj" />
-<ProjectReference Include="..\..\sufficit-identity-ui\src\Sufficit.Identity.UI.Management\Sufficit.Identity.UI.Management.csproj" />
+<ProjectReference Include="..\ui\Sufficit.Identity.UI\Sufficit.Identity.UI.csproj" />
+<ProjectReference Include="..\ui\Sufficit.Identity.UI.Management\Sufficit.Identity.UI.Management.csproj" />
 ```
 
 ## Screens
@@ -81,11 +73,11 @@ Project reference in `Sufficit.Identity.STS.csproj`:
 Tokens and credentials never reach the browser: the auth cookie is issued
 server-side via `SignInAsync`, the cookie is `HttpOnly + SameSite=Lax`, and
 antiforgery is built-in. Hosting on the same origin as the STS removes every
-CORS / cross-origin cookie problem. See `docs/architecture.md`.
+CORS / cross-origin cookie problem. See [`architecture.md`](architecture.md).
 
 The canonical UI/backend boundary is
-[`docs/single-source-ui-architecture.md`](docs/single-source-ui-architecture.md).
+[`single-source-ui-architecture.md`](single-source-ui-architecture.md).
 
 ## License
 
-[MIT-0](./LICENSE).
+[MIT-0](../../LICENSE).

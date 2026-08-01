@@ -145,7 +145,7 @@ public class AuthorizationController : Controller
         // ---------------------------------------------------------------------
         // Interactive consent (#B3, P0 #4) + CSRF hardening (#N1).
         //
-        // CONTRACT with the UI (sufficit-identity-ui repo):
+        // CONTRACT with the embedded public UI:
         //  - When interactive consent is required (see the switch below), this
         //    action 302-redirects the browser to `/consent?{original query
         //    string, verbatim}` — every parameter THIS request itself received
@@ -761,7 +761,7 @@ public class AuthorizationController : Controller
     // /connect/endsession — OIDC RP-Initiated Logout 1.0.
     //
     // The GET handler forwards the endsession request to the UI confirmation
-    // page hosted by sufficit-identity-ui (Blazor Server, /Account/Logout).
+    // page hosted by Sufficit.Identity.UI (Blazor Server, /Account/Logout).
     // The user confirms there and POSTs back here to perform the actual
     // sign-out, which triggers the OpenIddict SignOut and the optional
     // post_logout_redirect_uri redirect.

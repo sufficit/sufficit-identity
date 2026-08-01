@@ -210,7 +210,7 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                 // TEST-ONLY endpoints (never registered by src/server/Program.cs).
                 //
                 // The real interactive login/consent/device UI lives in the
-                // sibling sufficit-identity-ui repo (a separate Blazor Server
+                // embedded Sufficit.Identity.UI project (a Blazor Server
                 // project), which this factory deliberately does not pull in
                 // (see the class doc above). Driving the authorization_code
                 // and device_code flows end-to-end still requires a genuine
@@ -222,7 +222,7 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                 // pair. These two endpoints are minimal, test-only stand-ins
                 // for "log in" and "fetch an antiforgery token" so integration
                 // tests can exercise those controllers over real HTTP without
-                // needing the sibling UI project at all.
+                // needing the embedded UI project at all.
                 // -------------------------------------------------------------
 
                 // POST /test-only/signin  (form field: username)

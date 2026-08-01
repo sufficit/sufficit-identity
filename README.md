@@ -23,13 +23,13 @@ Skoruba/Duende-based implementation that lives in [`sufficit-identity-legacy`](h
 ## Architecture
 
 The product has three top-level modules: the Identity runtime/APIs, the public
-and account UI, and the administrative Management UI. Today their source is
-split across two mutually dependent repositories; consolidation into this
-repository is recommended and documented in
+and account UI, and the administrative Management UI. Their source and full
+history are consolidated in this repository, while the projects remain
+separate assemblies with explicit dependency boundaries. The decision and
+migration record are documented in
 [`docs/REPOSITORY-ARCHITECTURE.md`](docs/REPOSITORY-ARCHITECTURE.md).
 
-The current Identity solution has one executable composition host and these
-focused backend projects:
+The solution has one executable composition host and these focused projects:
 
 | Project | Role | Runnable |
 | --- | --- | --- |
@@ -38,12 +38,14 @@ focused backend projects:
 | `src/management` | Optional management API | No |
 | `src/scim` | SCIM RFC 7643/7644 adapter | No |
 | `src/core` | Shared entities and persistence classes | No |
+| `src/ui/Sufficit.Identity.UI` | Public/account Razor Class Library | No |
+| `src/ui/Sufficit.Identity.UI.Management` | Administrative Razor Class Library | No |
 | `src/tests` | Integrated host, protocol, UI and architecture tests | No |
 
-The sibling `sufficit-identity-ui` repository currently supplies two additional
-Razor Class Library projects: `Sufficit.Identity.UI` and
-`Sufficit.Identity.UI.Management`. They are incorporated into `src/server` and
-published in the same artifact; neither runs independently.
+Both Razor Class Libraries are incorporated into `src/server` and published in
+the same artifact; neither runs independently. They consume application
+contracts from the runtime and do not own persistence or a second source of
+truth.
 
 `Program.cs`, launch profiles and `appsettings` belong to `src/server`, the
 only project that builds an ASP.NET Core host. Real configuration must be

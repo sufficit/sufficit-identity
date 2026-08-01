@@ -4,7 +4,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Sufficit.Identity.UI</RootNamespace>
     <AssemblyName>Sufficit.Identity.UI</AssemblyName>
-    <Description>Sufficit Identity UI — Blazor Server login/consent/logout/manage frontend (injectable).</Description>
+    <Description>Sufficit Identity UI — embedded public and account frontend.</Description>
+    <NeutralLanguage>pt-BR</NeutralLanguage>
     <IsPackable>true</IsPackable>
     <!-- Static web assets (CSS, JS) served via MapStaticAssets in the host STS -->
     <StaticWebAssetsEnabled>true</StaticWebAssetsEnabled>
@@ -35,7 +36,7 @@
       UI dependency on entities, DbContext or protocol/persistence managers.
       This project does NOT reference Server (OpenIddict configuration) or STS (host).
     -->
-    <ProjectReference Include="..\..\..\sufficit-identity\src\core\Sufficit.Identity.Core.csproj" />
+    <ProjectReference Include="..\..\core\Sufficit.Identity.Core.csproj" />
   </ItemGroup>
 
 </Project>
