@@ -85,6 +85,71 @@ jobs:
         working-directory: sufficit-identity
         run: dotnet test Sufficit.Identity.sln --configuration Release --no-build
 
+      # Exercise the real composition executable without either presentation
+      # assembly registered or mapped. This is intentionally stronger than the
+      # module-level test host: it proves the API/STS process remains viable
+      # when UI deployment is delegated to another service.
+      - name: Smoke API-only hosting mode
+        working-directory: sufficit-identity
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ASPNETCORE_URLS: http://127.0.0.1:5088
+          ConnectionStrings__DefaultConnection: >-
+            server=127.0.0.1;port=3306;database=identity_contract;user=root;SslMode=Disabled
+          Sufficit__Identity__Issuer: http://127.0.0.1:5088
+          Sufficit__Identity__UI__Public__Mode: None
+          Sufficit__Identity__UI__Management__Mode: None
+          Sufficit__Identity__Management__Enabled: "true"
+        run: |
+          set -euo pipefail
+          smoke_log="${RUNNER_TEMP}/sufficit-identity-api-only.log"
+          dotnet src/server/bin/Release/net10.0/Sufficit.Identity.Server.dll \
+            >"${smoke_log}" 2>&1 &
+          smoke_pid=$!
+
+          cleanup() {
+            if kill -0 "${smoke_pid}" 2>/dev/null; then
+              kill "${smoke_pid}"
+              wait "${smoke_pid}" || true
+            fi
+          }
+          trap cleanup EXIT
+
+          ready=false
+          for _ in {1..30}; do
+            if curl --fail --silent \
+              http://127.0.0.1:5088/health/ready >/dev/null; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "${smoke_pid}" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          if [[ "${ready}" != "true" ]]; then
+            echo "::error::API-only composition host did not become ready."
+            sed -n '1,240p' "${smoke_log}"
+            exit 1
+          fi
+
+          curl --fail --silent \
+            http://127.0.0.1:5088/.well-known/openid-configuration \
+            >/dev/null
+
+          public_status=$(curl --silent --output /dev/null \
+            --write-out '%{http_code}' \
+            http://127.0.0.1:5088/account/login)
+          management_status=$(curl --silent --output /dev/null \
+            --write-out '%{http_code}' \
+            http://127.0.0.1:5088/management/)
+
+          if [[ "${public_status}" != "404" || "${management_status}" != "404" ]]; then
+            echo "::error::Disabled UI surfaces must remain unmapped; public=${public_status}, management=${management_status}."
+            exit 1
+          fi
+
       # P0 #11 hardening: fail the build on any known-vulnerable package
       # (direct or transitive) at High/Critical severity — e.g. the
       # SQLitePCLRaw.lib.e_sqlite3 GHSA-2m69-gcr7-jv3q advisory this same

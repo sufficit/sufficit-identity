@@ -220,8 +220,10 @@ operational model.
 
 - [x] Add neutral hosting options with `Embedded` and `None`.
 - [x] Register and map each official UI only in `Embedded` mode.
-- [ ] Prove the complete composition executable serves discovery, token/API and
-  health surfaces with both UIs set to `None` in an integration environment.
+- [ ] Prove the complete composition executable serves discovery and health,
+  while both UI routes stay unmapped, with both surfaces set to `None` against
+  the ephemeral MariaDB integration environment. The CI smoke gate is present;
+  this item closes after its first successful run.
 - [x] Preserve the current default deployment behavior.
 
 ### Phase 1 — neutral application contracts
