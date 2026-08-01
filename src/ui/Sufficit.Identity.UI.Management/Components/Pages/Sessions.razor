@@ -12,7 +12,7 @@
 <section class="contract-strip contract-strip--info">
     <AppIcon Name="clock" Size="20" />
     <div>
-        <strong>Fonte canônica: OpenIddict</strong>
+        <strong>Fonte canônica: runtime de autorização</strong>
         <span>Esta tela não exibe conteúdo, referência ou payload de tokens. Cookies só são invalidados no encerramento total da conta.</span>
     </div>
     <StatusBadge Tone="info">Metadados seguros</StatusBadge>
@@ -259,7 +259,7 @@
             ? $"Filtradas pela conta {UserId}."
             : ClientId is not null
                 ? $"Filtradas pelo cliente {ClientId}."
-                : "Cada linha representa uma credencial persistida pelo OpenIddict.";
+                : "Cada linha representa uma credencial persistida pelo runtime de autorização.";
 
     private string ErrorTitle =>
         result?.Outcome is ManagementDataOutcome.StepUpRequired

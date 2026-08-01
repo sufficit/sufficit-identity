@@ -97,7 +97,7 @@ published from this monorepo without moving source back out.
   root.
 - Server references, tests, CI and Docker use only in-repository paths.
 - CI run `30708521192` passed secret scanning, warnings-as-errors build,
-  canonical MariaDB migration validation, 217 tests and dependency audit.
+  canonical MariaDB migration validation, 227 tests and dependency audit.
 - Commit `6c1b5a967aff6865e938e0122dfbc08f4dc37c51` was deployed on
   `castrum-apps` as release
   `20260801T164057Z-6c1b5a9-monorepo`; health, readiness, OIDC discovery,
@@ -123,8 +123,6 @@ remain outside this generic identity-provider console.
 
 Known work independent of the repository move:
 
-- migrate remaining direct public-UI Identity/OpenIddict dependencies to
-  neutral application contracts;
 - complete protocol features that remain explicitly disabled or unadvertised,
   including remaining logout interoperability work;
 - expand SCIM interoperability only for concrete integration requirements;
@@ -163,12 +161,16 @@ presentation detail remains inside the corresponding RCL.
 
 ## Next implementation work
 
-After consolidation validation, migrate the remaining public authentication
-flows to neutral application contracts in this order:
+The public authentication contract migration is complete:
 
 1. password login, login 2FA, recovery code and logout — completed on
    2026-08-01 through `IInteractiveSignInService`;
-2. registration, email confirmation/resend and password reset;
-3. consent and anonymous external login;
-4. continue tightening architecture tests as each legacy dependency is
-   removed.
+2. registration, email confirmation/resend and password reset — completed on
+   2026-08-01 through `IAccountOnboardingService`;
+3. consent and anonymous external login — completed on 2026-08-01 through
+   `IAuthorizationConsentService` and `IExternalSignInService`;
+4. architecture tests now reject every direct Identity, EF Core or protocol
+   implementation dependency in either UI, without a legacy exception list.
+
+Further work is protocol interoperability, concrete SCIM integration demand and
+the separately controlled legacy cutover, not presentation-layer decoupling.

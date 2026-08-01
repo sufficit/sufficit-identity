@@ -1,11 +1,5 @@
 @page "/account/resendemailconfirmation"
-@inject UserManager<ApplicationUser> UserManager
-@inject Microsoft.AspNetCore.Identity.UI.Services.IEmailSender EmailSender
-@inject CallbackUrlBuilder CallbackUrls
-@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpAccessor
-@inject NavigationManager Navigation
-@inject ILogger<ResendEmailConfirmation> Logger
-@using System.Web
+@inject IAccountOnboardingService AccountOnboarding
 
 <PageTitle>Reenviar confirmação — Sufficit Identity</PageTitle>
 
@@ -21,10 +15,6 @@
     }
     else
     {
-        @if (_error is not null)
-        {
-            <div class="alert alert-error">@_error</div>
-        }
         <EditForm Model="_model" Method="post" OnValidSubmit="ResendAsync" FormName="resend-confirm">
             <DataAnnotationsValidator />
 
@@ -49,44 +39,12 @@
         set => _boundModel = value;
     }
     private bool _sent;
-    private string? _error;
 
     private async Task ResendAsync()
     {
-        var user = await UserManager.FindByEmailAsync(_model.Email);
-        if (user is null)
-        {
-            // Don't leak existence
-            _sent = true;
-            return;
-        }
-
-        try
-        {
-            var token = await UserManager.GenerateEmailConfirmationTokenAsync(user);
-            var encodedToken = CallbackUrlBuilder.EncodeToken(token);
-
-            var ctx = HttpAccessor.HttpContext;
-            var callbackUrl = CallbackUrls.BuildAbsolute(
-                ctx ?? throw new InvalidOperationException("HttpContext unavailable"),
-                "/account/confirmemail",
-                new Dictionary<string, string?>
-                {
-                    ["userId"] = user.Id,
-                    ["code"] = encodedToken
-                });
-
-            var body = $"Confirme sua conta <a href=\"{HttpUtility.HtmlAttributeEncode(callbackUrl)}\">clicando aqui</a>.";
-            await EmailSender.SendEmailAsync(_model.Email, "Confirme seu e-mail — Sufficit Identity", body);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to resend confirmation email to {Email}", _model.Email);
-            _error = "Não foi possível enviar o e-mail. Tente novamente.";
-            return;
-        }
-
-        _sent = true;
+        var result = await AccountOnboarding
+            .RequestEmailConfirmationAsync(_model.Email);
+        _sent = result.Accepted;
     }
 
     private sealed class EmailInput

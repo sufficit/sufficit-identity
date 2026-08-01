@@ -2,7 +2,7 @@ namespace Sufficit.Identity.Core;
 
 /// <summary>
 /// Email pipeline options shared by all <c>IEmailSender</c> implementations
-/// (SmtpEmailSender, LoggingEmailSender, RabbitMQEmailQueue).
+/// (SMTP, development logging or RabbitMQ queue).
 /// Bound from the <c>Sufficit:Identity:Email</c> configuration section.
 /// </summary>
 public sealed class EmailOptions

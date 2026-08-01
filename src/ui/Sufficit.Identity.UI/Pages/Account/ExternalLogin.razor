@@ -16,7 +16,7 @@
         var returnUrl = LocalUrlValidator.EnsureLocal(ReturnUrl);
         var provider = Provider ?? "Google";
 
-        var challengeUrl = $"/Account/ExternalChallenge?provider={Uri.EscapeDataString(provider)}&returnUrl={Uri.EscapeDataString(returnUrl)}";
+        var challengeUrl = $"/account/externalchallenge?provider={Uri.EscapeDataString(provider)}&returnUrl={Uri.EscapeDataString(returnUrl)}";
         Navigation.NavigateTo(challengeUrl, forceLoad: true);
     }
 }

@@ -40,9 +40,9 @@ When the UI is hosted by the STS app itself (same origin), we eliminate:
   application contracts and the `AddSufficitIdentityUI()` /
   `UseSufficitIdentityUI()` pair. OpenIddict and ASP.NET Identity are the
   current runtime adapters, not UI dependencies.
-- **Minimal coupling** — the target UI references only versioned application
+- **Minimal coupling** — the UI references only versioned application
   contracts shared with API controllers. It does not reference the STS host,
-  Core entities, persistence or infrastructure implementations.
+  persistence or infrastructure implementations.
 
 ## Dependency graph
 
@@ -56,18 +56,17 @@ Management UI ─────┼── application contracts / use cases ◄─�
                    └── presentation only
 ```
 
-The target UI does **NOT** reference:
+The UI does **NOT** reference:
 
 - `Sufficit.Identity.Server` (OpenIddict configuration)
 - `Sufficit.Identity.STS` (the host web app)
-- `Sufficit.Identity.Core` (entities and persistence)
+- mutable identity entities or persistence types from `Sufficit.Identity.Core`
 - infrastructure implementations from `Sufficit.Identity.Management`
 - `UserManager`, `SignInManager` or OpenIddict managers
 
-The current public UI still contains some of these direct dependencies. They
-are migration debt under the canonical
-[`single-source-ui-architecture.md`](single-source-ui-architecture.md), not the target
-architecture.
+This boundary is enforced over both UI projects by architecture tests without
+legacy exceptions. Runtime adapters remain free to use the current engines
+behind the canonical contracts.
 
 ## How the STS host injects the UI
 

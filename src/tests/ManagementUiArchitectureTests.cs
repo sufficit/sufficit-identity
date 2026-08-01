@@ -8,28 +8,16 @@ public sealed class ManagementUiArchitectureTests
     [
         "AppDbContext",
         "DbContext",
+        "ApplicationUser",
         "UserManager<",
         "SignInManager<",
+        "Microsoft.EntityFrameworkCore",
+        "OpenIddict",
         "IOpenIddictApplicationManager",
         "IOpenIddictAuthorizationManager",
         "IOpenIddictScopeManager",
         "IOpenIddictTokenManager",
     ];
-
-    private static readonly HashSet<string> KnownLegacyPublicUiFiles =
-        new(StringComparer.Ordinal)
-        {
-            "Controllers/ExternalLoginController.cs",
-            "Pages/Account/ConfirmEmail.razor",
-            "Pages/Account/ForgotPassword.razor",
-            "Pages/Account/Register.razor",
-            "Pages/Account/ResendEmailConfirmation.razor",
-            "Pages/Account/ResetPassword.razor",
-            "Pages/Consent.razor",
-            "Pages/Device/UserCode.razor",
-            "ServiceCollectionExtensions.cs",
-            "Services/AuthContextExtensions.cs",
-        };
 
     [Fact]
     public void Management_ui_source_uses_only_application_contracts()
@@ -216,16 +204,32 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("last-sign-in-method", adapter, StringComparison.Ordinal);
 
         var controller = File.ReadAllText(Path.Combine(
-            ResolvePublicUiSource(),
+            ResolveIdentityRepository(),
+            "src",
+            "sts",
             "Controllers",
             "ExternalLoginController.cs"));
         Assert.Contains(
-            "IAccountExternalIdentityService",
+            "IExternalSignInService",
             controller,
             StringComparison.Ordinal);
         Assert.Contains(
-            "externalIdentityService.LinkAsync",
+            "externalSignInService.CompleteAsync",
             controller,
+            StringComparison.Ordinal);
+
+        var externalAdapter = File.ReadAllText(Path.Combine(
+            ResolveIdentityRepository(),
+            "src",
+            "sts",
+            "AspNetCoreIdentityExternalSignInService.cs"));
+        Assert.Contains(
+            ": IExternalSignInService",
+            externalAdapter,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "IAccountExternalIdentityService",
+            externalAdapter,
             StringComparison.Ordinal);
     }
 
@@ -319,6 +323,76 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Public_account_lifecycle_and_consent_use_canonical_contracts()
+    {
+        var publicUi = ResolvePublicUiSource();
+        var accountPages = Path.Combine(publicUi, "Pages", "Account");
+        var lifecyclePages = new[]
+        {
+            "Register.razor",
+            "ForgotPassword.razor",
+            "ResetPassword.razor",
+            "ConfirmEmail.razor",
+            "ResendEmailConfirmation.razor",
+        };
+        foreach (var pageName in lifecyclePages)
+        {
+            var page = File.ReadAllText(Path.Combine(accountPages, pageName));
+            Assert.Contains(
+                "IAccountOnboardingService",
+                page,
+                StringComparison.Ordinal);
+            foreach (var forbidden in ForbiddenUiDependencies)
+            {
+                Assert.DoesNotContain(
+                    forbidden,
+                    page,
+                    StringComparison.Ordinal);
+            }
+        }
+
+        var reset = File.ReadAllText(Path.Combine(
+            accountPages,
+            "ResetPassword.razor"));
+        Assert.Contains(
+            "name=\"_model.UserId\"",
+            reset,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "name=\"_model.EncodedToken\"",
+            reset,
+            StringComparison.Ordinal);
+
+        var consent = File.ReadAllText(Path.Combine(
+            publicUi,
+            "Pages",
+            "Consent.razor"));
+        Assert.Contains(
+            "IAuthorizationConsentService",
+            consent,
+            StringComparison.Ordinal);
+        foreach (var forbidden in ForbiddenUiDependencies)
+        {
+            Assert.DoesNotContain(
+                forbidden,
+                consent,
+                StringComparison.Ordinal);
+        }
+
+        var project = File.ReadAllText(Path.Combine(
+            publicUi,
+            "Sufficit.Identity.UI.csproj"));
+        Assert.DoesNotContain(
+            "OpenIddict.AspNetCore",
+            project,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "Identity.EntityFrameworkCore",
+            project,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Passkey_ui_uses_canonical_contracts_and_real_http_ceremonies()
     {
         var publicUi = ResolvePublicUiSource();
@@ -399,7 +473,7 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
-    public void Public_ui_adds_no_new_direct_identity_dependencies()
+    public void Public_ui_has_no_direct_identity_dependencies()
     {
         var sourceRoot = ResolvePublicUiSource();
         var unexpectedViolations = Directory
@@ -425,7 +499,6 @@ public sealed class ManagementUiArchitectureTests
             .Select(path => Path
                 .GetRelativePath(sourceRoot, path)
                 .Replace(Path.DirectorySeparatorChar, '/'))
-            .Where(path => !KnownLegacyPublicUiFiles.Contains(path))
             .Order(StringComparer.Ordinal)
             .ToArray();
 

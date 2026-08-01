@@ -1,18 +1,10 @@
 @page "/account/register"
-@inject UserManager<ApplicationUser> UserManager
-@inject SignInManager<ApplicationUser> SignInManager
-@inject Microsoft.AspNetCore.Identity.UI.Services.IEmailSender EmailSender
-@inject CallbackUrlBuilder CallbackUrls
-@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpAccessor
-@inject RegisterConfiguration RegisterConfig
-@inject NavigationManager Navigation
-@inject ILogger<Register> Logger
+@inject IAccountOnboardingService AccountOnboarding
 @inject IBrandingThemeProvider BrandingProvider
-@using System.Web
 
 <PageTitle>Criar conta — Sufficit Identity</PageTitle>
 
-@if (!RegisterConfig.Enabled)
+@if (!_registrationPolicy.Enabled)
 {
     <div class="auth-card">
         <h1>Criar conta</h1>
@@ -34,8 +26,16 @@ else
         @if (_registered)
         {
             <div class="alert alert-success" role="alert">
-                Conta criada! Enviamos um e-mail de confirmação para <strong>@_model.Email</strong>.
-                Clique no link do e-mail para ativar sua conta.
+                Conta criada!
+                @if (_confirmationMessageSent)
+                {
+                    <text> Enviamos um e-mail de confirmação para <strong>@_model.Email</strong>.
+                    Clique no link do e-mail para ativar sua conta.</text>
+                }
+                else
+                {
+                    <text> Não foi possível entregar a confirmação agora. Use a opção de reenviar confirmação.</text>
+                }
             </div>
             <a href="/account/login" class="btn btn-primary">Voltar ao login</a>
         }
@@ -49,7 +49,7 @@ else
             <EditForm Model="_model" Method="post" OnValidSubmit="RegisterAsync" FormName="register">
                 <DataAnnotationsValidator />
 
-                @if (RegisterConfig.RequireUsername)
+                @if (_registrationPolicy.RequiresUserName)
                 {
                     <div class="form-group">
                         <label for="username">Usuário</label>
@@ -63,7 +63,7 @@ else
                     <label for="email">E-mail</label>
                     <InputText id="email" @bind-Value="_model.Email" class="form-control"
                                autocomplete="email"
-                               autofocus="@( !RegisterConfig.RequireUsername )" />
+                               autofocus="@( !_registrationPolicy.RequiresUserName )" />
                     <ValidationMessage For="@(() => _model.Email)" />
                 </div>
 
@@ -92,9 +92,6 @@ else
 }
 
 @code {
-    [SupplyParameterFromQuery(Name = "returnUrl")]
-    private string? _returnUrlQuery { get; set; }
-
     private RegisterInput? _boundModel;
     [SupplyParameterFromForm(FormName = "register")]
     private RegisterInput _model
@@ -103,15 +100,16 @@ else
         set => _boundModel = value;
     }
 
-    private string? _returnUrl;
     private string? _error;
     private bool _registered;
+    private bool _confirmationMessageSent;
+    private AccountRegistrationPolicy _registrationPolicy = new(false, false);
     private string _logoUrl = "_content/Sufficit.Identity.UI/img/logo-full.png";
 
     protected override async Task OnInitializedAsync()
     {
-        // Reject absolute/off-host returnUrl (authenticated open redirect).
-        _returnUrl = LocalUrlValidator.EnsureLocal(_returnUrlQuery);
+        _registrationPolicy = await AccountOnboarding
+            .GetRegistrationPolicyAsync();
 
         // Load branding theme logo
         var theme = await BrandingProvider.GetActiveAsync();
@@ -121,58 +119,26 @@ else
 
     private async Task RegisterAsync()
     {
-        // When username is not required, use the email as the UserName
-        // (Identity requires a non-null UserName for the unique constraint).
-        var userName = RegisterConfig.RequireUsername
-            ? _model.UserName
-            : _model.Email;
-
-        var user = new ApplicationUser
-        {
-            UserName = userName,
-            Email = _model.Email
-        };
-
-        var result = await UserManager.CreateAsync(user, _model.Password);
+        var result = await AccountOnboarding.RegisterAsync(
+            new AccountRegistrationCommand(
+                _model.UserName,
+                _model.Email,
+                _model.Password));
         if (!result.Succeeded)
         {
-            _error = string.Join(" ", result.Errors.Select(e => e.Description));
+            _error = string.Join(
+                " ",
+                result.Errors.Select(error => error.Description));
             return;
         }
 
-        Logger.LogInformation("User {Email} registered a new account.", _model.Email);
-
-        // Generate email confirmation token + send link
-        try
-        {
-            var token = await UserManager.GenerateEmailConfirmationTokenAsync(user);
-            var encodedToken = CallbackUrlBuilder.EncodeToken(token);
-
-            var ctx = HttpAccessor.HttpContext;
-            var callbackUrl = CallbackUrls.BuildAbsolute(
-                ctx ?? throw new InvalidOperationException("HttpContext unavailable"),
-                "/account/confirmemail",
-                new Dictionary<string, string?>
-                {
-                    ["userId"] = user.Id,
-                    ["code"] = encodedToken
-                });
-
-            var body = $"Confirme sua conta <a href=\"{HttpUtility.HtmlAttributeEncode(callbackUrl)}\">clicando aqui</a>.";
-            await EmailSender.SendEmailAsync(_model.Email, "Confirme seu e-mail — Sufficit Identity", body);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to send confirmation email to {Email}", _model.Email);
-        }
-
+        _confirmationMessageSent = result.ConfirmationMessageSent;
         _registered = true;
     }
 
     private sealed class RegisterInput
     {
-        // UserName is only collected when RequireUsername=true. When false,
-        // the page falls back to the email as the UserName.
+        // UserName is collected only when required by the runtime policy.
         [StringLength(50, ErrorMessage = "O usuário deve ter entre {2} e {1} caracteres.", MinimumLength = 3)]
         public string UserName { get; set; } = string.Empty;
 

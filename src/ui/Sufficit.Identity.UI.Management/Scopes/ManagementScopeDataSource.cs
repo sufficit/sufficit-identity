@@ -9,7 +9,7 @@ using Sufficit.Identity.UI.Management.Clients;
 namespace Sufficit.Identity.UI.Management.Scopes;
 
 /// <summary>
-/// Circuit-safe UI adapter over the canonical OpenIddict scope-management
+/// Circuit-safe UI adapter over the canonical scope-management
 /// service. The UI never talks to the scope store directly.
 /// </summary>
 public sealed class ManagementScopeDataSource(

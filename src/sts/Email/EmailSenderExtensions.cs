@@ -14,7 +14,7 @@ public static class EmailSenderExtensions
     ///
     /// Activates only when the <c>Sufficit:Exchange:RabbitMQ:HostName</c>
     /// configuration value is present. When absent, the caller should leave
-    /// the default IEmailSender registered by the UI layer (SmtpEmailSender
+    /// the default IEmailSender registered by the STS runtime (SmtpEmailSender
     /// or LoggingEmailSender).
     ///
     /// <para>
@@ -49,7 +49,7 @@ public static class EmailSenderExtensions
             configuration.GetSection(RabbitMqEmailOptions.SectionName));
         services.TryAddSingleton<IEmailMessagePublisher, RabbitMqEmailPublisher>();
 
-        // Replace any IEmailSender previously registered by the UI layer
+        // Replace the default IEmailSender registered by the STS runtime
         // (SmtpEmailSender / LoggingEmailSender) with the RabbitMQ queue.
         services.Replace(ServiceDescriptor.Transient<IEmailSender, RabbitMQEmailQueue>());
 

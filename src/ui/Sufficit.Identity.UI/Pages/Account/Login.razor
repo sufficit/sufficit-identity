@@ -1,7 +1,7 @@
 @page "/account/login"
 @rendermode @(RenderMode.InteractiveServer)
 @inject IInteractiveSignInService SignInService
-@inject RegisterConfiguration RegisterConfig
+@inject IAccountOnboardingService AccountOnboarding
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject ILogger<Login> Logger
@@ -86,7 +86,7 @@
             <DataAnnotationsValidator />
 
             <div class="form-group">
-                <label for="username">@( RegisterConfig.RequireUsername ? "E-mail ou usuário" : "E-mail" )</label>
+                <label for="username">@( _registrationPolicy.RequiresUserName ? "E-mail ou usuário" : "E-mail" )</label>
                 <InputText id="username" @bind-Value="Model.UserName" class="form-control"
                            autocomplete="username" />
                 <ValidationMessage For="@(() => Model.UserName)" />
@@ -110,8 +110,11 @@
         <div class="auth-links">
             <a href="/account/forgotpassword">Esqueceu a senha?</a>
             <br />
-            <a href="/account/register">Criar nova conta</a>
-            <br />
+            @if (_registrationPolicy.Enabled)
+            {
+                <a href="/account/register">Criar nova conta</a>
+                <br />
+            }
             <a href="/account/resendemailconfirmation">Reenviar confirmação de e-mail</a>
         </div>
     }
@@ -129,9 +132,13 @@
     [SupplyParameterFromQuery(Name = "returnUrl")]
     private string? _returnUrlQuery { get; set; }
 
+    [SupplyParameterFromQuery(Name = "error")]
+    private string? _externalError { get; set; }
+
     private string? _returnUrl;
     private string? _errorMessage;
     private IReadOnlyList<InteractiveSignInProvider> _externalProviders = [];
+    private AccountRegistrationPolicy _registrationPolicy = new(false, false);
     private ElementReference _passkeyForm;
     private bool _passkeySupported;
     private bool _passkeyBusy;
@@ -146,6 +153,26 @@
         Model.ReturnUrl = _returnUrl;
 
         _externalProviders = await SignInService.GetExternalProvidersAsync();
+        _registrationPolicy = await AccountOnboarding
+            .GetRegistrationPolicyAsync();
+        _errorMessage = _externalError switch
+        {
+            "locked_out" =>
+                "Conta bloqueada por muitas tentativas. Tente novamente mais tarde.",
+            "not_allowed" =>
+                "Login não permitido. Confirme seu e-mail ou contate o suporte.",
+            "no_email_from_provider" =>
+                "O provedor externo não forneceu um e-mail utilizável.",
+            "account_link_requires_signin" =>
+                "Essa conta já existe. Entre normalmente e vincule o provedor no gerenciamento da conta.",
+            "registration_disabled" =>
+                "A criação de novas contas por provedor externo está desativada.",
+            "create_failed" =>
+                "Não foi possível criar a conta usando o provedor externo.",
+            "external_callback_unavailable" =>
+                "A autenticação externa expirou ou foi cancelada.",
+            _ => _errorMessage,
+        };
 
         // Load branding theme logo
         var theme = await BrandingProvider.GetActiveAsync();

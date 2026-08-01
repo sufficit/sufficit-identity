@@ -70,13 +70,13 @@
         </dl>
 
         @* Real, static SSR HTML form (not a Blazor EditForm) that POSTs
-           straight to the STS's OpenIddict end-user-verification endpoint
+           straight to the authorization runtime's end-user-verification endpoint
            /connect/device — same app/origin, in-process. The POST must hit
            the exact configured verification URI (SetEndUserVerificationEndpointUris
-           "connect/device"); OpenIddict only binds the SignIn principal to the
+           "connect/device"); the protocol runtime binds the principal to the
            pending device_code from that URI, so a sub-path like
            /connect/device/verify would not work. This page never marks the
-           device approved itself; the STS owns that via IOpenIddictTokenManager.
+           device approved itself; the authorization runtime owns that state.
            CONTRACT: POST fields "user_code" (hidden) and "approved"
            ("true"/"false", selected by which button is clicked), protected by
            the standard ASP.NET Core antiforgery pair (cookie + the hidden field
@@ -128,7 +128,7 @@
             return; // Show the "enter code" form.
         }
 
-        // Normalize the code (uppercase, strip spaces/dashes — OpenIddict's
+        // Normalize the code (uppercase, strip spaces/dashes — the runtime's
         // default user_code format is an 8-char alphanumeric string).
         _userCode = raw.Trim().ToUpperInvariant().Replace("-", "").Replace(" ", "");
 

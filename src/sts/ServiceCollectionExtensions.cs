@@ -5,15 +5,18 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
 using OpenIddict.Server;
+using Sufficit.Identity.Core;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Core.Services;
+using Sufficit.Identity.STS.Email;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Sufficit.Identity.STS;
@@ -44,6 +47,20 @@ public static class ServiceCollectionExtensions
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
         services.AddSingleton(options.TwoFactor);
         services.AddSingleton(options.Passkeys);
+
+        var emailOptions = configuration
+            .GetSection("Sufficit:Identity:Email")
+            .Get<EmailOptions>() ?? new EmailOptions();
+        services.AddSingleton(emailOptions);
+        var smtpHost = configuration["Sufficit:Identity:Smtp:Host"];
+        if (string.IsNullOrWhiteSpace(smtpHost))
+        {
+            services.AddTransient<IEmailSender, LoggingEmailSender>();
+        }
+        else
+        {
+            services.AddTransient<IEmailSender, SmtpEmailSender>();
+        }
 
         // Read once, reused below both for the certificate fail-fast logic
         // and for the cookie SecurePolicy (#2): this reads the raw
@@ -595,6 +612,12 @@ public static class ServiceCollectionExtensions
             AspNetCoreIdentityAccountTwoFactorService>();
         services.AddScoped<IInteractiveSignInService,
             AspNetCoreIdentityInteractiveSignInService>();
+        services.AddScoped<IAccountOnboardingService,
+            AspNetCoreIdentityAccountOnboardingService>();
+        services.AddScoped<IAuthorizationConsentService,
+            OpenIddictAuthorizationConsentService>();
+        services.AddScoped<IExternalSignInService,
+            AspNetCoreIdentityExternalSignInService>();
         services.AddScoped<AspNetCoreIdentityPasskeyService>();
         services.AddScoped<IAccountPasskeyService>(services =>
             services.GetRequiredService<AspNetCoreIdentityPasskeyService>());

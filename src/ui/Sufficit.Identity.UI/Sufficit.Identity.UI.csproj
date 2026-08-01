@@ -18,23 +18,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- Needs the ASP.NET Core framework (Razor Components, Identity, SignInManager, Passkeys, TOTP) -->
+    <!-- ASP.NET Core presentation primitives (Razor Components and HTTP). -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
-    <!-- OpenIddict: read the pending AuthorizationRequest from the HttpContext -->
-    <PackageReference Include="OpenIddict.AspNetCore" />
-    <!-- ASP.NET Core Identity EF Core (UserManager/SignInManager stores) -->
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
     <!-- QR code generation for 2FA TOTP setup -->
     <PackageReference Include="QRCoder" />
   </ItemGroup>
 
   <ItemGroup>
     <!--
-      Current migration debt: the public UI still references Core and resolves
-      Identity/OpenIddict managers directly. The target architecture exposes
-      canonical application contracts shared with API controllers, without a
-      UI dependency on entities, DbContext or protocol/persistence managers.
-      This project does NOT reference Server (OpenIddict configuration) or STS (host).
+      The public UI consumes canonical application contracts from Core. Runtime
+      adapters own identity, protocol and persistence implementations.
     -->
     <ProjectReference Include="..\..\core\Sufficit.Identity.Core.csproj" />
   </ItemGroup>

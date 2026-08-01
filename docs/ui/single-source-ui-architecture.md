@@ -264,13 +264,6 @@ store não atravessam a fronteira da UI. O login não revela se o identificador
 informado existe e continua permitindo credenciais descobríveis quando o campo
 está vazio.
 
-Ainda existem violações a migrar:
-
-- cadastro, confirmação/reenvio de e-mail e recuperação de senha ainda injetam
-  `UserManager` e/ou `SignInManager`;
-- consentimento e o fluxo anônimo de login externo ainda recebem
-  gerenciadores do Identity/OpenIddict.
-
 Login por senha, descoberta de provedores externos, login 2FA, login por código
 de recuperação e a apresentação de logout foram migrados em 2026-08-01 para
 `IInteractiveSignInService`. O adaptador
@@ -279,8 +272,21 @@ fluxo, do `SignInManager`, da emissão do cookie e do estado temporário protegi
 entre senha e segundo fator. A porção de passkeys da página de login continua
 usando seus contratos e endpoints canônicos próprios.
 
-Esses caminhos são débitos de migração, não precedentes arquiteturais. Nenhuma
-nova tela deve repetir esse padrão.
+Cadastro, política de autorregistro, confirmação/reenvio de e-mail e recuperação
+de senha foram migrados em 2026-08-01 para `IAccountOnboardingService`. Tokens,
+callback público, entrega de e-mail e stores pertencem ao adaptador do runtime.
+O POST de redefinição preserva identificador e token opaco em campos ocultos;
+os links públicos continuam usando query string.
+
+Consentimento usa `IAuthorizationConsentService`, que projeta somente cliente,
+scopes e parâmetros de passagem. Login externo usa `IExternalSignInService`; o
+controller HTTP saiu da assembly de UI e o adaptador atual concentra cookies de
+correlação, criação/vínculo de conta e emissão da sessão local. A UI não possui
+pacotes dos motores atuais nem nomes de implementação em sua apresentação.
+
+Em 2026-08-01 a lista de exceções arquiteturais foi eliminada. As duas UIs são
+verificadas integralmente contra entidades de usuário, EF Core, gerenciadores de
+stores e implementação do protocolo.
 
 ## Ordem de migração
 
@@ -292,12 +298,15 @@ nova tela deve repetir esse padrão.
    (perfil, senha, dados pessoais e exclusão concluídos em 2026-07-30;
    aplicações conectadas, sessões, identidades externas autenticadas,
    autenticação em duas etapas e passkeys
-   concluídas em 2026-07-31).
+   concluídas em 2026-07-31; autenticação interativa, cadastro, confirmação e
+   recuperação concluídos em 2026-08-01).
 3. Remover das UIs referências a entidades mutáveis, stores e gerenciadores de
    persistência/protocolo. Permanecem permitidos contratos puros de aplicação,
-   como `IUserAvatarUrlResolver`, resolvidos pelo composition host.
+   como `IUserAvatarUrlResolver`, resolvidos pelo composition host — concluído
+   em 2026-08-01 para as dependências de identidade e protocolo.
 4. Adicionar testes arquiteturais que falhem quando uma UI ou controller
-   reimplementar validação ou acessar dependências proibidas.
+   reimplementar validação ou acessar dependências proibidas — concluído sem
+   allowlist legada em 2026-08-01.
 
 ## Critérios de aceite
 

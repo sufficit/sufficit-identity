@@ -242,7 +242,7 @@
             ? $"Filtradas pela conta {UserId}."
             : ClientId is not null
                 ? $"Filtradas pelo cliente {ClientId}."
-                : "Cada linha representa uma autorização persistida pelo OpenIddict.";
+                : "Cada linha representa uma autorização persistida pelo runtime de autorização.";
 
     private string ErrorTitle =>
         result?.Outcome is ManagementDataOutcome.StepUpRequired

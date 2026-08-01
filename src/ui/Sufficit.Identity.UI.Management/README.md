@@ -135,5 +135,4 @@ dotnet run --project src/server/Sufficit.Identity.Server.csproj
 
 ## Próximas entregas
 
-1. Migrar os débitos restantes da UI pública para contratos de aplicação.
-2. Expandir a matriz de interoperabilidade SCIM conforme integrações reais.
+1. Expandir a matriz de interoperabilidade SCIM conforme integrações reais.

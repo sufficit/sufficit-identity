@@ -1,6 +1,5 @@
 @page "/account/confirmemail"
-@inject UserManager<ApplicationUser> UserManager
-@inject ILogger<ConfirmEmail> Logger
+@inject IAccountOnboardingService AccountOnboarding
 
 <PageTitle>Confirmar e-mail — Sufficit Identity</PageTitle>
 
@@ -24,33 +23,19 @@
 
     protected override async Task OnInitializedAsync()
     {
-        if (string.IsNullOrEmpty(UserId) || string.IsNullOrEmpty(Token))
+        var result = await AccountOnboarding.ConfirmEmailAsync(
+            UserId,
+            Token);
+        _success = result.Status == AccountEmailConfirmationStatus.Succeeded;
+        _status = result.Status switch
         {
-            _status = "Link inválido.";
-            return;
-        }
-
-        var user = await UserManager.FindByIdAsync(UserId);
-        if (user is null)
-        {
-            _status = "Usuário não encontrado.";
-            return;
-        }
-
-        try
-        {
-            // Decode Base64Url token (encoded by the ForgotPassword/Register flow).
-            var token = CallbackUrlBuilder.DecodeToken(Token);
-            var result = await UserManager.ConfirmEmailAsync(user, token);
-            _success = result.Succeeded;
-            _status = _success
-                ? "E-mail confirmado com sucesso!"
-                : string.Join(" ", result.Errors.Select(e => e.Description));
-            Logger.LogInformation("Email confirmation for {UserId}: {Status}", UserId, _success ? "succeeded" : "failed");
-        }
-        catch (FormatException)
-        {
-            _status = "Token inválido (formato incorreto).";
-        }
+            AccountEmailConfirmationStatus.Succeeded =>
+                "E-mail confirmado com sucesso!",
+            AccountEmailConfirmationStatus.InvalidRequest =>
+                "Link inválido ou expirado.",
+            _ => string.Join(
+                " ",
+                result.Errors.Select(error => error.Description)),
+        };
     }
 }

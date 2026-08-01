@@ -9,7 +9,7 @@ namespace Sufficit.Identity.UI.Management.Clients;
 
 /// <summary>
 /// Circuit-safe adapter for the embedded UI. Each operation owns a short DI
-/// scope; presentation code never resolves OpenIddict or persistence services.
+/// scope; presentation code never resolves protocol or persistence services.
 /// </summary>
 public sealed class ManagementClientDataSource(
     IServiceScopeFactory scopeFactory,
