@@ -1,6 +1,6 @@
 # Repository architecture and consolidation record
 
-Status: **consolidated on 2026-08-01; validation and deployment tracked below**
+Status: **consolidated, validated and deployed on 2026-08-01**
 
 ## Executive decision
 
@@ -96,8 +96,15 @@ published from this monorepo without moving source back out.
 - Central package versions and build settings now come from the repository
   root.
 - Server references, tests, CI and Docker use only in-repository paths.
-- The former UI repository is retained as a rollback/history source and is
-  marked legacy only after the consolidated release is accepted.
+- CI run `30708521192` passed secret scanning, warnings-as-errors build,
+  canonical MariaDB migration validation, 212 tests and dependency audit.
+- Commit `6c1b5a967aff6865e938e0122dfbc08f4dc37c51` was deployed on
+  `castrum-apps` as release
+  `20260801T164057Z-6c1b5a9-monorepo`; health, readiness, OIDC discovery,
+  public UI, Management UI and both static-asset surfaces returned HTTP 200.
+- The former UI repository remains a rollback/history source. Commit
+  `5123fbabc3aa90d53492d3ec16cce11be8b44d6e` marks it legacy and links to the
+  canonical monorepo source without deleting its code or history.
 
 ## Functional state
 
@@ -133,9 +140,9 @@ Known work independent of the repository move:
 - [x] UI assemblies, routes and static asset identities remain unchanged;
 - [x] UI projects remain presentation adapters without persistence ownership;
 - [x] one commit can atomically change contracts, adapters and tests;
-- [ ] the consolidated CI passes on `main`;
-- [ ] the deployed runtime is verified as one healthy process and artifact;
-- [ ] the former UI repository is marked legacy with a canonical-source link.
+- [x] the consolidated CI passes on `main`;
+- [x] the deployed runtime is verified as one healthy process and artifact;
+- [x] the former UI repository is marked legacy with a canonical-source link.
 
 This checklist is updated when each operational gate actually completes.
 
