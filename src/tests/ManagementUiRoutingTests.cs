@@ -138,13 +138,20 @@ public sealed class ManagementUiRoutingTests
         Assert.Contains("Clientes registrados", html, StringComparison.Ordinal);
         Assert.Contains("test-client", html, StringComparison.Ordinal);
         Assert.Contains(
-            "src=\"/_content/Sufficit.Identity.UI/_framework/blazor.web.js\"",
+            "src=\"/_content/Sufficit.Identity.UI.Management/_framework/blazor.web.js\"",
             html,
             StringComparison.Ordinal);
         Assert.DoesNotContain(
             "src=\"/_framework/blazor.web.js\"",
             html,
             StringComparison.Ordinal);
+
+        using var script = await client.GetAsync(
+            "/_content/Sufficit.Identity.UI.Management/_framework/blazor.web.js");
+        using var stylesheet = await client.GetAsync(
+            "/_content/Sufficit.Identity.UI.Management/app.css");
+        Assert.Equal(HttpStatusCode.OK, script.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, stylesheet.StatusCode);
     }
 
     [Fact]

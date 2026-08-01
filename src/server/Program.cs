@@ -13,6 +13,7 @@ using Sufficit.Identity.Server;
 using Sufficit.Identity.Server.Management;
 using Sufficit.Identity.Scim;
 using Sufficit.Identity.STS;
+using Sufficit.Identity.UI.Abstractions.Hosting;
 using Sufficit.Identity.UI;
 using Sufficit.Identity.UI.Management;
 
@@ -40,6 +41,16 @@ var trustedProxies = builder.Configuration
 var identityOptions = builder.Configuration
     .GetSection("Sufficit:Identity")
     .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
+
+// ---- Optional presentation composition ----
+// Embedded is the compatibility default. Either surface can be set to None so
+// the runtime starts without registering or mapping that UI. Remote hosting is
+// intentionally not advertised until the versioned HTTP/BFF interaction
+// contract is implemented; see docs/plans/PLAN-PLUGGABLE-USER-INTERFACES.md.
+var uiHostingOptions = builder.Configuration
+    .GetSection(IdentityUiHostingOptions.SectionName)
+    .Get<IdentityUiHostingOptions>() ?? new IdentityUiHostingOptions();
+uiHostingOptions.Validate();
 
 builder.Services.Configure<ForwardedHeadersOptions>(o =>
 {
@@ -97,7 +108,10 @@ builder.Services.TryAddSingleton<IBrandingThemeProvider, BrandingThemeProvider>(
 builder.Services.TryAddSingleton<IUserAvatarUrlResolver, UserAvatarUrlResolver>();
 
 // ---- Sufficit Identity UI (Blazor Server: login/consent/logout/manage) ----
-builder.Services.AddSufficitIdentityUI(builder.Configuration);
+if (uiHostingOptions.Public.IsEmbedded)
+{
+    builder.Services.AddSufficitIdentityUI(builder.Configuration);
+}
 
 // ---- Sufficit email pipeline (RabbitMQ → Q-EMAIL) ----
 // Activates only when Sufficit:Exchange:RabbitMQ:HostName is configured.
@@ -116,7 +130,10 @@ if (mgmtEnabled)
         ServiceDescriptor.Scoped<
             IManagementEntitlementResolver,
             SufficitOperatorManagementEntitlementResolver>());
-    builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
+    if (uiHostingOptions.Management.IsEmbedded)
+    {
+        builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
+    }
 }
 
 // ---- Optional: SCIM 2.0 provisioning (RFC 7643/7644) ----
@@ -327,10 +344,16 @@ app.MapHealthChecks("/health/ready");
 if (mgmtEnabled)
 {
     app.UseSufficitIdentityManagementEndpoints(builder.Configuration);
-    app.UseSufficitIdentityManagementUI();
+    if (uiHostingOptions.Management.IsEmbedded)
+    {
+        app.UseSufficitIdentityManagementUI();
+    }
 }
 
 // ---- Sufficit Identity UI (Blazor Server endpoints + static assets) ----
-app.UseSufficitIdentityUI();
+if (uiHostingOptions.Public.IsEmbedded)
+{
+    app.UseSufficitIdentityUI();
+}
 
 app.Run();

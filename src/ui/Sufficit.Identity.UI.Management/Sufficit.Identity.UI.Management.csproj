@@ -29,6 +29,10 @@
                       LogicalName="Sufficit.Identity.UI.Management.Assets.inter-latin-500.woff2" />
     <EmbeddedResource Include="..\Sufficit.Identity.UI\wwwroot\fonts\inter-latin-600.woff2"
                       LogicalName="Sufficit.Identity.UI.Management.Assets.inter-latin-600.woff2" />
+    <EmbeddedResource Include="..\Sufficit.Identity.UI\wwwroot\_framework\blazor.web.js"
+                      LogicalName="Sufficit.Identity.UI.Management.Assets.blazor.web.js" />
+    <EmbeddedResource Include="wwwroot\app.css"
+                      LogicalName="Sufficit.Identity.UI.Management.Assets.app.css" />
   </ItemGroup>
 
 </Project>

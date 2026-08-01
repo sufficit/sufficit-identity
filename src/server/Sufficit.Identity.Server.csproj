@@ -25,6 +25,7 @@
     <ProjectReference Include="..\sts\Sufficit.Identity.STS.csproj" />
     <ProjectReference Include="..\management\Sufficit.Identity.Management.csproj" />
     <ProjectReference Include="..\scim\Sufficit.Identity.Scim.csproj" />
+    <ProjectReference Include="..\ui\Sufficit.Identity.UI.Abstractions\Sufficit.Identity.UI.Abstractions.csproj" />
     <ProjectReference Include="..\ui\Sufficit.Identity.UI\Sufficit.Identity.UI.csproj" />
     <ProjectReference Include="..\ui\Sufficit.Identity.UI.Management\Sufficit.Identity.UI.Management.csproj" />
   </ItemGroup>

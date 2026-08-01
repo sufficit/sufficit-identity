@@ -15,11 +15,12 @@ plan.
 
 ## Repository boundary
 
-The runtime, APIs and both embedded presentation projects live in the
-`sufficit-identity` monorepo. Neither UI project is a standalone application.
-Both are compiled into the same Identity host, share its session and are
-deployed in its single artifact, while remaining distinct assemblies. See the
-[repository architecture and consolidation record](../architecture/ARCHITECTURE-REPOSITORY.md).
+The runtime, APIs and both official presentation projects live in the
+`sufficit-identity` monorepo. Their current implementation is embedded: both
+are compiled into the same Identity host, share its session and are deployed in
+one artifact, while remaining distinct assemblies. Optional standalone hosts
+are planned but are not implemented by merely disabling an embedded surface.
+See the [repository architecture and consolidation record](../architecture/ARCHITECTURE-REPOSITORY.md).
 
 ## Projects
 
@@ -42,6 +43,32 @@ deployed in its single artifact, while remaining distinct assemblies. See the
   administrative modules, so the composition host can enable only the surfaces
   it publishes.
 - **MIT-0 licensed** — free for any use, no attribution required.
+
+## Hosting mode
+
+Both official surfaces are embedded by default. A deployment that only needs
+the runtime/API can omit either surface without changing code:
+
+```json
+{
+  "Sufficit": {
+    "Identity": {
+      "UI": {
+        "Public": { "Mode": "None" },
+        "Management": { "Mode": "None" }
+      }
+    }
+  }
+}
+```
+
+Supported values are currently `Embedded` and `None`. `None` does not provide
+remote login, consent or account pages; interactive browser flows require an
+embedded UI until the remote interaction protocol is delivered. An unsupported
+numeric value fails startup instead of silently changing topology.
+
+The architecture and remote-host delivery gates are defined in
+[`PLAN-PLUGGABLE-USER-INTERFACES.md`](../plans/PLAN-PLUGGABLE-USER-INTERFACES.md).
 
 ## How to inject into the STS host
 

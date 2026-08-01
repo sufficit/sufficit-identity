@@ -24,6 +24,7 @@ and is intentionally ignored by Git.
 ## Current source of truth
 
 - [Active roadmap](plans/PLAN-ROADMAP.md)
+- [Pluggable and remote user interfaces](plans/PLAN-PLUGGABLE-USER-INTERFACES.md)
 - [Repository and module architecture](architecture/ARCHITECTURE-REPOSITORY.md)
 - [Single-source UI boundary](architecture/ARCHITECTURE-SINGLE-SOURCE-UI.md)
 - [Management authorization boundary](architecture/ARCHITECTURE-MANAGEMENT-AUTHORIZATION.md)

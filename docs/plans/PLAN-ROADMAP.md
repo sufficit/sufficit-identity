@@ -86,12 +86,28 @@ Status: **continuous**
 - Re-run the independent evaluation prompt after a material protocol or
   production-readiness milestone; move surviving findings into this roadmap.
 
+### 6. Pluggable and remote user interfaces
+
+Status: **foundation in progress**
+
+- Make the identity runtime executable without either UI surface.
+- Preserve the current embedded deployment as the compatible default.
+- Extract UI-facing application contracts into implementation-neutral packages.
+- Add an optional BFF deployment for the Management UI before attempting a
+  remote public authentication surface.
+- Specify and threat-model an opaque interaction protocol before allowing the
+  public/account UI to run outside the runtime process.
+
+The phases and acceptance gates are maintained in
+[PLAN-PLUGGABLE-USER-INTERFACES.md](PLAN-PLUGGABLE-USER-INTERFACES.md).
+
 ## Explicit non-goals for the current phase
 
 - Do not replace OpenIddict merely to prove replaceability.
 - Do not move Sufficit business roles, directives, tenants or reseller rules
   into the generic identity provider.
-- Do not split the embedded UIs back into independently deployed applications.
+- Do not force the current embedded UIs into separate deployments. Remote UI
+  hosts are optional adapters and the compatible embedded mode remains supported.
 - Do not implement an optional RFC extension without an integration or threat
   model that defines its acceptance criteria.
 
