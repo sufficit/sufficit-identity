@@ -4,7 +4,7 @@ These files prepare the database contract only. They do not authorize a
 production deployment, canary, issuer change or frontend rollout.
 
 The reusable end-to-end migration guide is
-[`../MIGRATION-DUENDE-TO-OPENIDDICT-MARIADB.md`](../MIGRATION-DUENDE-TO-OPENIDDICT-MARIADB.md).
+[`../plans/PLAN-LEGACY-CUTOVER.md`](../plans/PLAN-LEGACY-CUTOVER.md).
 
 ## Supported paths
 

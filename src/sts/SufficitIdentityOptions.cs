@@ -433,16 +433,17 @@ public sealed class SignInPolicyOptions
     /// this does NOT introduce user enumeration.
     /// </summary>
     /// <remarks>
-    /// <b>Cross-repo dependency (external login).</b> Accounts created via an
-    /// external provider (Google/GitHub/Facebook) in the embedded public UI's
-    /// <c>ExternalLoginController</c> are only marked <c>EmailConfirmed=true</c>
+    /// <b>External-login dependency.</b> Accounts created via an external
+    /// provider (Google/GitHub/Facebook) by the runtime's
+    /// <c>AspNetCoreIdentityExternalSignInService</c> are only marked
+    /// <c>EmailConfirmed=true</c>
     /// when the provider asserts <c>email_verified</c>. The STS wires that
     /// <c>ClaimAction</c> for Google (<c>ServiceCollectionExtensions.
     /// AddExternalProviders</c>) but NOT yet for Facebook/GitHub. Flipping this
     /// to <c>true</c> in production therefore REQUIRES first ensuring every
     /// configured external provider emits (and the UI consumes) the
     /// <c>email_verified</c> claim — otherwise provider users get locked out.
-    /// See <c>docs/runbook-require-confirmed-email.md</c> for the production
+    /// See <c>docs/runbooks/RUNBOOK-CONFIRMED-EMAIL.md</c> for the production
     /// rollout steps, including the legacy-user migration query.
     /// </remarks>
     public bool RequireConfirmedEmail { get; init; } = true;

@@ -103,7 +103,7 @@
         "_RejectBreached": "OPT-IN hook for a breached-password validator (HIBP range API or local list). Default false — the flag surfaces the decision but NO validator is wired up by default. Flip to true only after implementing and validating the validator's latency/availability for this environment.",
         "RejectBreached": false
       },
-      "_SignIn": "Sign-in policy applied by SignInManager.CanSignInAsync, consulted by every grant in AuthorizationController (eval M3). RequireConfirmedEmail=true (default) blocks sign-in until the user proves email ownership, closing the 'register with someone else's email' hole. WARNING: external-login users (Google/GitHub/Facebook) are only EmailConfirmed when the provider asserts email_verified — see docs/runbook-require-confirmed-email.md BEFORE flipping this in production.",
+      "_SignIn": "Sign-in policy applied by SignInManager.CanSignInAsync, consulted by every grant in AuthorizationController (eval M3). RequireConfirmedEmail=true (default) blocks sign-in until the user proves email ownership, closing the 'register with someone else's email' hole. WARNING: external-login users (Google/GitHub/Facebook) are only EmailConfirmed when the provider asserts email_verified — see docs/runbooks/RUNBOOK-CONFIRMED-EMAIL.md BEFORE flipping this in production.",
       "SignIn": {
         "_RequireConfirmedEmail": "true (default, secure-by-default) requires a confirmed email to sign in. Every grant collapses the unconfirmed case into the same generic invalid_grant as a wrong password (no user enumeration).",
         "RequireConfirmedEmail": true

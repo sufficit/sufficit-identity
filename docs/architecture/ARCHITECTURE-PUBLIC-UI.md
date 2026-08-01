@@ -33,8 +33,9 @@ When the UI is hosted by the STS app itself (same origin), we eliminate:
 
 ## Why a separate UI project
 
-- **Independent source evolution** — o pacote de UI mantém fronteiras e ciclo
-  de versionamento próprios, mas é incorporado e publicado junto do host STS.
+- **Independent assembly boundary** — the UI keeps an explicit project and
+  assembly boundary inside the monorepo, while being incorporated and
+  published with the STS host.
 - **Team separation** — frontend-focused work can happen in parallel.
 - **Reusability** — an OAuth/OIDC provider can plug this in through versioned
   application contracts and the `AddSufficitIdentityUI()` /
@@ -71,7 +72,7 @@ behind the canonical contracts.
 ## How the STS host injects the UI
 
 ```csharp
-// sufficit-identity/src/sts/Program.cs
+// sufficit-identity/src/server/Program.cs
 builder.Services.AddSufficitIdentitySTS(builder.Configuration);
 builder.Services.AddSufficitIdentityUI();   // <-- Razor Components + services
 
@@ -109,9 +110,10 @@ app.UseSufficitIdentityUI();                // <-- MapRazorComponents + static a
 - [x] Same-origin (no CORS surface)
 - [x] Tokens never reach the browser
 - [x] Identity lockout enabled (`lockoutOnFailure: true` in `PasswordSignInAsync`)
-- [ ] Strict CSP (to be configured by the host: `default-src 'self'; script-src 'self'`)
-- [ ] Rate limiting (host responsibility)
-- [ ] HTTPS enforcement (host responsibility)
+- [x] CSP baseline emitted by the host in report-only mode
+- [ ] Strict CSP enforcement after production report calibration
+- [x] Rate limiting configured by the host
+- [x] HTTPS redirection and production secure-cookie enforcement
 
 ## Interactive sign-in boundary
 

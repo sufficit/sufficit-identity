@@ -1,41 +1,42 @@
-# Product
-
-## Register
-
-product
+# Sufficit Identity product definition
 
 ## Users
 
 Two distinct audiences share the same surface, with very different mental models:
 
-1. **End users (the people logging in).** Subscribers and account holders of the
-   Sufficit ecosystem (telephony/PABX, provisioning, billing). Their context when
-   reaching the Identity UI is almost always *interrupted*: they were trying to do
-   something in another product, got bounced to a login or consent screen, and want
-   to get back to their task as fast as possible. Their job-to-be-done is
+1. **End users (the people logging in).** People authenticating for a relying
+   application. In the Sufficit deployment these include subscribers and account
+   holders of telephony, provisioning and billing products, but the provider does
+   not encode those business domains. Their context when reaching the Identity UI
+   is usually *interrupted*: they were doing something in another product, were
+   redirected to login or consent, and want to return quickly. Their job-to-be-done is
    "authenticate and return." Trust signals matter — a login screen that looks
    unpolished or insecure makes them doubt the whole platform. They are not
    technical; many are small-business owners in Brazil, often on mobile, sometimes
    on poor connections.
 
-2. **Administrators (Sufficit staff and resellers).** Use the management surface to
-   create clients, manage scopes, inspect sessions, rotate secrets, provision users.
-   Their workflow is slower, more deliberate, table-driven. They need density,
-   clarity, and auditability — not marketing polish.
+2. **Provider operators.** People granted explicit provider-management
+   capabilities by the composition host. They create clients, manage scopes,
+   inspect sessions, rotate secrets and provision identities. Sufficit business
+   roles such as administrator, manager or reseller are not part of the generic
+   user model. Operator workflows are deliberate and audit-oriented; they need
+   density and clarity rather than marketing polish.
 
 ## Product Purpose
 
-Sufficit Identity is the OAuth 2.1 / OIDC identity provider for the entire Sufficit
-platform. This UI project replaces the legacy Skoruka-based STS frontend with a
-modern, secure, fast Blazor Server interface that talks to the new OpenIddict 7.6
-backend.
+Sufficit Identity is a generic OAuth/OIDC identity provider with first-class
+compatibility for the Sufficit platform. Its embedded UIs replace the legacy
+Skoruba-based frontend with secure, fast server-rendered surfaces. OpenIddict
+and ASP.NET Core Identity are the current runtime adapters, not permanent UI
+contracts.
 
 Success looks like:
 - A login page a user can complete in under 30 seconds on mobile data.
 - A consent screen that makes it *obvious* what a third-party client is asking for —
   no dark patterns, no buried defaults.
 - Passwordless (passkey/WebAuthn) as a first-class option, not a hidden feature.
-- A management surface that lets an admin ship a new OAuth client in minutes.
+- A management surface that lets an authorized operator ship a new OAuth client
+  in minutes.
 - Visual cohesion with the broader Sufficit brand so the identity screen never feels
   like a different company is "verifying" the user.
 
@@ -90,8 +91,9 @@ following are implicit anti-patterns this UI must avoid:
 
 ## Design Principles
 
-These are strategic principles derived from the brand intent. They are NOT visual
-rules (those live in DESIGN.md).
+These are strategic principles derived from the brand intent. They are not
+visual rules; those live in
+[`DESIGN-SYSTEM.md`](DESIGN-SYSTEM.md).
 
 1. **Practice what you preach.** This is an identity provider. If our own login page
    looks insecure, slow, or janky, no one will believe our security claims. The UI

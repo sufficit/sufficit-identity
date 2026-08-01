@@ -1,4 +1,4 @@
-# Product
+# Management UI product definition
 
 <!-- impeccable:product-schema 1 -->
 
@@ -103,7 +103,7 @@ auditoria em todo o fluxo.
   persistência própria e nunca são roles empresariais.
 - A fronteira entre o provedor e a autorização das aplicações
   estão definidos em
-  [`../../../docs/ui/management-authorization-architecture.md`](../../../docs/ui/management-authorization-architecture.md).
+  [`ARCHITECTURE-MANAGEMENT-AUTHORIZATION.md`](../architecture/ARCHITECTURE-MANAGEMENT-AUTHORIZATION.md).
 - A exigência de MFA para operações administrativas é uma política do
   deployment.
 
@@ -119,10 +119,10 @@ auditoria em todo o fluxo.
 
 ## Evidence on Hand
 
-- Contexto compartilhado do produto: `../../../docs/ui/PRODUCT.md`.
-- Sistema visual compartilhado: `../../../docs/ui/DESIGN.md`.
-- Contrato visual administrativo: `DESIGN.md`.
-- Investigação arquitetural e inventário atual da API: `README.md`.
+- Contexto compartilhado do produto: [`DESIGN-PRODUCT.md`](DESIGN-PRODUCT.md).
+- Sistema visual compartilhado: [`DESIGN-SYSTEM.md`](DESIGN-SYSTEM.md).
+- Contrato visual administrativo: [`DESIGN-MANAGEMENT-UI.md`](DESIGN-MANAGEMENT-UI.md).
+- Inventário do módulo: [`README.md`](../../src/ui/Sufficit.Identity.UI.Management/README.md).
 - Marca e fonte oficiais: `../Sufficit.Identity.UI/wwwroot/`.
 - Não existem métricas administrativas, clientes, usuários ou eventos reais
   disponíveis para material demonstrativo; futuras telas devem continuar

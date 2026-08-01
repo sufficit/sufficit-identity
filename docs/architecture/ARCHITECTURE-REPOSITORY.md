@@ -96,11 +96,11 @@ published from this monorepo without moving source back out.
 - Central package versions and build settings now come from the repository
   root.
 - Server references, tests, CI and Docker use only in-repository paths.
-- CI run `30708521192` passed secret scanning, warnings-as-errors build,
+- CI run `30717538379` passed secret scanning, warnings-as-errors build,
   canonical MariaDB migration validation, 227 tests and dependency audit.
-- Commit `6c1b5a967aff6865e938e0122dfbc08f4dc37c51` was deployed on
+- Commit `c0218c07a7bdc904bd85b08c55d106142ba14b69` was deployed on
   `castrum-apps` as release
-  `20260801T164057Z-6c1b5a9-monorepo`; health, readiness, OIDC discovery,
+  `20260801T204513Z-c0218c0-runtime-boundary`; health, readiness, OIDC discovery,
   public UI, Management UI and both static-asset surfaces returned HTTP 200.
 - The former UI repository remains a rollback/history source. Commit
   `5123fbabc3aa90d53492d3ec16cce11be8b44d6e` marks it legacy and links to the

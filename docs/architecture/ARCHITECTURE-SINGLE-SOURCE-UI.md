@@ -136,7 +136,7 @@ publicados pelos adaptadores HTTP.
 - Respostas distinguem `unauthenticated`, `denied`, `step-up-required`,
   `not-found`, conflito, validação e indisponibilidade.
 
-## Violações atuais conhecidas
+## Estado atual da implementação
 
 Os verticais administrativos de clientes, branding, contas, claims, scopes,
 sessões, autorizações e descoberta do runtime aplicam o padrão canônico.
@@ -231,7 +231,8 @@ atual e deixa explícita sua natureza substituível. O callback autenticado usa
 o mesmo serviço para vincular a identidade e a remoção falha fechado para
 identidades de outra conta. A última forma de entrada não pode ser removida
 sem que exista senha, passkey ou outra identidade vinculada. O fluxo anônimo
-de autenticação externa permanece separado e ainda é dívida de migração.
+permanece separado por responsabilidade, mas também usa o contrato neutro
+`IExternalSignInService` do runtime.
 
 A autenticação em duas etapas do gerenciamento de conta foi migrada em
 2026-07-31 para `IAccountTwoFactorService`. O runtime é a fonte autoritativa

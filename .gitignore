@@ -90,5 +90,7 @@ coverage*
 Log/
 [Bb]ackup*/
 
-# AI Evaluations, local only, sensivity informations
-docs/eval/
+# Dated AI evaluations are local-only because they can contain
+# environment-sensitive observations. The tracked prompt lives in
+# docs/evaluations/.
+docs/archive/evaluations/

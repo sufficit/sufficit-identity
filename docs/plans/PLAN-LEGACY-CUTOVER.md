@@ -1,4 +1,6 @@
-# Migrating Duende IdentityServer to OpenIddict on MariaDB
+# Legacy Duende-to-OpenIddict cutover plan
+
+Status: **implementation assets ready; operational cutover pending**
 
 ## Purpose
 
@@ -285,7 +287,7 @@ For each client, test:
 ### Versioned client and scope manifest
 
 The machine-readable example is
-[`docs/migration/examples/identity-manifest.v1.json`](migration/examples/identity-manifest.v1.json).
+[`docs/migration/examples/identity-manifest.v1.json`](../migration/examples/identity-manifest.v1.json).
 Its top-level contract is:
 
 ```json

@@ -1,10 +1,11 @@
-# DESIGN.md — Sufficit Identity UI
+# Sufficit Identity design system
 
 > Visual system of record. Every component, page, and variant must stay on-brand
 > with what is defined here. Where this file and a page disagree, this file wins.
 >
-> Built for: a Blazor Server static-SSR identity provider surface (login, consent,
-> device, register, manage). Companion to `PRODUCT.md`.
+> Built for: a Blazor Server static-SSR identity provider surface (login,
+> consent, device, register, manage). Companion to
+> [`DESIGN-PRODUCT.md`](DESIGN-PRODUCT.md).
 
 ## Source of truth
 
@@ -421,10 +422,9 @@ To prevent drift, these are deliberate exclusions:
 
 ---
 
-## Migration note (current CSS → this system)
+## Implementation status
 
-The existing `site.css` is structurally sound (right class names, right layout)
-but **off-brand**: it uses generic blue `#2563eb` throughout. The migration to this
-DESIGN.md is a token swap + adding the missing rules (`.btn-passkey`,
-`.passkey-list`, `.device-info`, `.badge-brand`, focus-ring consistency,
-`prefers-reduced-motion` block) — not a rewrite. The page markup needs no changes.
+The public `site.css` and Management `app.css` use the Sufficit red/charcoal
+tokens, visible focus styles and reduced-motion handling described here. This
+document remains the design contract; the accessibility checklist above still
+requires a recorded WCAG 2.2 AA audit before it can be marked complete.

@@ -1,6 +1,6 @@
 # Runbook — Ativar `RequireConfirmedEmail` em produção
 
-**Item:** 2.3 [M3] do `docs/eval/PLAN-2026-07-25-claude-fable-5.md`
+**Roadmap:** item 2 de `docs/plans/PLAN-ROADMAP.md`
 **Option:** `Sufficit:Identity:SignIn:RequireConfirmedEmail` (default `true`)
 
 ## Contexto
@@ -57,7 +57,7 @@ ORDER BY cnt DESC;
 - **Forçar reconfirmação** dos restantes: deixar `emailconfirmed=0` e garantir
   que a UI tem fluxo de reenvio de confirmação acessível no login.
 - Documentar a decisão (quantos confirmados em massa, quantos em reconfirmação)
-  e a data, neste runbook ou em `docs/activities/`.
+  e a data no registro operacional do ambiente.
 
 ### 3. Garantir ClaimActions de TODOS os provedores externos
 
@@ -65,8 +65,8 @@ O STS só registra o `ClaimAction` `email_verified` para **Google**
 (`src/sts/ServiceCollectionExtensions.cs`, `AddExternalProviders`).
 **Facebook e GitHub não o emitem hoje.** Antes de ativar a flag:
 
-- Em `src/ui/Sufficit.Identity.UI`, confirmar que `ExternalLoginController` lê
-  `email_verified` do `Principal` e seta
+- Em `src/sts/AspNetCoreIdentityExternalSignInService.cs`, confirmar que o
+  adaptador lê `email_verified` do `Principal` e seta
   `EmailConfirmed = emailVerified` apenas quando o provedor assevera `true`
   (já faz — verificar a versão compilada na solução única).
 - Para provedores que **não** asseveram `email_verified` (Facebook clássico,

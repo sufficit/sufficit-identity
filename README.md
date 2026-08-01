@@ -27,7 +27,9 @@ and account UI, and the administrative Management UI. Their source and full
 history are consolidated in this repository, while the projects remain
 separate assemblies with explicit dependency boundaries. The decision and
 migration record are documented in
-[`docs/REPOSITORY-ARCHITECTURE.md`](docs/REPOSITORY-ARCHITECTURE.md).
+[`docs/architecture/ARCHITECTURE-REPOSITORY.md`](docs/architecture/ARCHITECTURE-REPOSITORY.md).
+Use the [documentation index](docs/README.md) to find the active roadmap,
+runbooks, usage guides and historical evaluations.
 
 The solution has one executable composition host and these focused projects:
 

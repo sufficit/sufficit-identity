@@ -1,12 +1,17 @@
-# Sufficit Identity UI
+# Embedded Sufficit Identity UIs
 
-Blazor Server frontend for the [Sufficit Identity STS](https://github.com/sufficit/sufficit-identity)
-(OpenIddict). Provides the interactive OAuth/OIDC screens: login, consent, logout,
-device flow verification, and a full self-service "Manage" area.
+Blazor Server frontends for the
+[Sufficit Identity runtime](https://github.com/sufficit/sufficit-identity).
+They provide interactive OAuth/OIDC screens, account management and provider
+management. OpenIddict is the current protocol adapter behind neutral
+application contracts.
 
 ## Status
 
-🚧 **Early stage** — actively in development.
+**Integrated and deployed in the test environment.** The public/account and
+Management assemblies are part of the canonical server artifact. Production
+replacement of the legacy service remains governed by the separate cutover
+plan.
 
 ## Repository boundary
 
@@ -14,7 +19,7 @@ The runtime, APIs and both embedded presentation projects live in the
 `sufficit-identity` monorepo. Neither UI project is a standalone application.
 Both are compiled into the same Identity host, share its session and are
 deployed in its single artifact, while remaining distinct assemblies. See the
-[repository architecture and consolidation record](../REPOSITORY-ARCHITECTURE.md).
+[repository architecture and consolidation record](../architecture/ARCHITECTURE-REPOSITORY.md).
 
 ## Projects
 
@@ -31,11 +36,11 @@ deployed in its single artifact, while remaining distinct assemblies. See the
 - **Blazor Server**, hosted inside the STS app (same origin) for maximum security.
 - **Single application source of truth**: UIs and API controllers invoke the
   same versioned use cases; UIs do not query persistence or reimplement rules.
-- **Minimal coupling**: the target state removes UI references to Identity
-  Core, infrastructure implementations and host configuration.
+- **Enforced presentation boundary**: architecture tests reject UI references
+  to Identity stores, EF Core, protocol managers and host implementations.
 - **Injectable** via `Add*()` / `Use*()` extension pairs for the public and
-  administrative modules, so an OpenIddict-based host can compose the surfaces
-  it enables.
+  administrative modules, so the composition host can enable only the surfaces
+  it publishes.
 - **MIT-0 licensed** — free for any use, no attribution required.
 
 ## How to inject into the STS host
@@ -73,10 +78,11 @@ Project references in `src/server/Sufficit.Identity.Server.csproj`:
 Tokens and credentials never reach the browser: the auth cookie is issued
 server-side via `SignInAsync`, the cookie is `HttpOnly + SameSite=Lax`, and
 antiforgery is built-in. Hosting on the same origin as the STS removes every
-CORS / cross-origin cookie problem. See [`architecture.md`](architecture.md).
+CORS / cross-origin cookie problem. See
+[`ARCHITECTURE-PUBLIC-UI.md`](../architecture/ARCHITECTURE-PUBLIC-UI.md).
 
 The canonical UI/backend boundary is
-[`single-source-ui-architecture.md`](single-source-ui-architecture.md).
+[`ARCHITECTURE-SINGLE-SOURCE-UI.md`](../architecture/ARCHITECTURE-SINGLE-SOURCE-UI.md).
 
 ## License
 

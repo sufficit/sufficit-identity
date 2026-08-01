@@ -4,7 +4,7 @@
 
 The versioned source of truth for the Sufficit Identity nginx virtual host in
 the test environment is
-[`helpers/nginx-identity.conf`](../helpers/nginx-identity.conf). The installed
+[`helpers/nginx-identity.conf`](../../helpers/nginx-identity.conf). The installed
 copy is `/etc/nginx/sites-available/sufficit-identity-test`, enabled through
 the corresponding symlink under `/etc/nginx/sites-enabled`.
 

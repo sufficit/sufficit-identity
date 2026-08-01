@@ -17,7 +17,7 @@ namespace Sufficit.Identity.Tests;
 /// <summary>
 /// Smoke de grant end-to-end contra uma instância REAL de MariaDB 10.4.34,
 /// fechando o critério de aceite do item 1.1 [M6] de
-/// <c>docs/eval/PLAN-2026-07-25-claude-fable-5.md</c>: a matriz de CI já
+/// <c>docs/plans/PLAN-LEGACY-CUTOVER.md</c>: a matriz de CI já
 /// validava schema/migration contra MariaDB (<see cref="MariaDbMigrationIntegrationTests"/>
 /// e <see cref="DatabaseSchemaContractTests"/>), mas nenhum teste exercitava
 /// um grant OAuth efetivo no provider MySQL real — eles rodavam só em SQLite

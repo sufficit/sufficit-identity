@@ -128,10 +128,10 @@ dotnet run --project src/server/Sufficit.Identity.Server.csproj
 
 ## Documentos
 
-- [`PRODUCT.md`](PRODUCT.md)
-- [`DESIGN.md`](DESIGN.md)
-- [`../../../docs/ui/single-source-ui-architecture.md`](../../../docs/ui/single-source-ui-architecture.md)
-- [`../../../docs/ui/management-authorization-architecture.md`](../../../docs/ui/management-authorization-architecture.md)
+- [`DESIGN-MANAGEMENT-PRODUCT.md`](../../../docs/design/DESIGN-MANAGEMENT-PRODUCT.md)
+- [`DESIGN-MANAGEMENT-UI.md`](../../../docs/design/DESIGN-MANAGEMENT-UI.md)
+- [`../../../docs/architecture/ARCHITECTURE-SINGLE-SOURCE-UI.md`](../../../docs/architecture/ARCHITECTURE-SINGLE-SOURCE-UI.md)
+- [`../../../docs/architecture/ARCHITECTURE-MANAGEMENT-AUTHORIZATION.md`](../../../docs/architecture/ARCHITECTURE-MANAGEMENT-AUTHORIZATION.md)
 
 ## Próximas entregas
 
