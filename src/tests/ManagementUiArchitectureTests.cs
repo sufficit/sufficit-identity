@@ -22,10 +22,6 @@ public sealed class ManagementUiArchitectureTests
             "Controllers/ExternalLoginController.cs",
             "Pages/Account/ConfirmEmail.razor",
             "Pages/Account/ForgotPassword.razor",
-            "Pages/Account/Login.razor",
-            "Pages/Account/LoginWith2fa.razor",
-            "Pages/Account/LoginWithRecoveryCode.razor",
-            "Pages/Account/Logout.razor",
             "Pages/Account/Register.razor",
             "Pages/Account/ResendEmailConfirmation.razor",
             "Pages/Account/ResetPassword.razor",
@@ -275,6 +271,51 @@ public sealed class ManagementUiArchitectureTests
             adapter,
             StringComparison.Ordinal);
         Assert.DoesNotContain("QRCoder", adapter, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Interactive_sign_in_pages_use_only_the_canonical_contract()
+    {
+        var publicUi = ResolvePublicUiSource();
+        var accountPages = Path.Combine(publicUi, "Pages", "Account");
+        var login = File.ReadAllText(Path.Combine(accountPages, "Login.razor"));
+        var twoFactor = File.ReadAllText(Path.Combine(
+            accountPages,
+            "LoginWith2fa.razor"));
+        var recovery = File.ReadAllText(Path.Combine(
+            accountPages,
+            "LoginWithRecoveryCode.razor"));
+        var logout = File.ReadAllText(Path.Combine(accountPages, "Logout.razor"));
+        var pages = login + twoFactor + recovery + logout;
+
+        Assert.Contains("IInteractiveSignInService", login, StringComparison.Ordinal);
+        Assert.Contains("PasswordSignInCommand", login, StringComparison.Ordinal);
+        Assert.Contains("IInteractiveSignInService", twoFactor, StringComparison.Ordinal);
+        Assert.Contains("AuthenticatorSignInCommand", twoFactor, StringComparison.Ordinal);
+        Assert.Contains("IInteractiveSignInService", recovery, StringComparison.Ordinal);
+        Assert.Contains("RecoveryCodeSignInAsync", recovery, StringComparison.Ordinal);
+        Assert.DoesNotContain("AuthenticationScheme", login, StringComparison.Ordinal);
+        foreach (var forbidden in ForbiddenUiDependencies)
+        {
+            Assert.DoesNotContain(forbidden, pages, StringComparison.Ordinal);
+        }
+
+        var repository = ResolveIdentityRepository();
+        var contract = File.ReadAllText(Path.Combine(
+            repository,
+            "src",
+            "core",
+            "Services",
+            "InteractiveSignInService.cs"));
+        var adapter = File.ReadAllText(Path.Combine(
+            repository,
+            "src",
+            "sts",
+            "AspNetCoreIdentityInteractiveSignInService.cs"));
+        Assert.Contains("interface IInteractiveSignInService", contract, StringComparison.Ordinal);
+        Assert.DoesNotContain("Microsoft.AspNetCore.Identity", contract, StringComparison.Ordinal);
+        Assert.Contains(": IInteractiveSignInService", adapter, StringComparison.Ordinal);
+        Assert.Contains("SignInManager<ApplicationUser>", adapter, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -86,7 +86,7 @@ app.UseSufficitIdentityUI();                // <-- MapRazorComponents + static a
 
 | Route | Auth | Purpose |
 |---|---|---|
-| `/Account/Login` | anonymous | username/password form → `SignInAsync` → redirect to `ReturnUrl` |
+| `/Account/Login` | anonymous | username/password form → canonical interactive sign-in use case → redirect to `ReturnUrl` |
 | `/Consent` | authenticated | scope toggles → accept/deny → redirect to `/connect/authorize` |
 | `/Account/Logout` | optional | confirm → `SignOutAsync` → redirect to `post_logout_redirect_uri` |
 | `/Device/UserCode` | optional | device flow user_code capture → bind to user |
@@ -113,3 +113,18 @@ app.UseSufficitIdentityUI();                // <-- MapRazorComponents + static a
 - [ ] Strict CSP (to be configured by the host: `default-src 'self'; script-src 'self'`)
 - [ ] Rate limiting (host responsibility)
 - [ ] HTTPS enforcement (host responsibility)
+
+## Interactive sign-in boundary
+
+Password login, external-provider discovery, pending two-factor state,
+authenticator verification and recovery-code login use
+`IInteractiveSignInService`. The contract contains only immutable commands,
+providers and stable result states. The current
+`AspNetCoreIdentityInteractiveSignInService` adapter owns `SignInManager`,
+cookie issuance and the protected temporary two-factor ticket.
+
+The login pages therefore neither know nor expose ASP.NET Core Identity. The
+logout page only submits to the standard end-session endpoint; protocol
+validation and cookie termination remain responsibilities of the runtime
+controller. Replacing the current identity engine does not require changing
+these UI pages or their routes.

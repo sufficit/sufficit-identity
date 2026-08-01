@@ -266,11 +266,18 @@ está vazio.
 
 Ainda existem violações a migrar:
 
-- os fluxos públicos de login por senha, cadastro, confirmação de e-mail e
-  recuperação de senha ainda injetam `UserManager` e/ou `SignInManager`;
+- cadastro, confirmação/reenvio de e-mail e recuperação de senha ainda injetam
+  `UserManager` e/ou `SignInManager`;
 - consentimento e o fluxo anônimo de login externo ainda recebem
-  gerenciadores do Identity/OpenIddict. A porção de passkeys da página de
-  login já usa o contrato e os endpoints canônicos.
+  gerenciadores do Identity/OpenIddict.
+
+Login por senha, descoberta de provedores externos, login 2FA, login por código
+de recuperação e a apresentação de logout foram migrados em 2026-08-01 para
+`IInteractiveSignInService`. O adaptador
+`AspNetCoreIdentityInteractiveSignInService` é o único proprietário, nesse
+fluxo, do `SignInManager`, da emissão do cookie e do estado temporário protegido
+entre senha e segundo fator. A porção de passkeys da página de login continua
+usando seus contratos e endpoints canônicos próprios.
 
 Esses caminhos são débitos de migração, não precedentes arquiteturais. Nenhuma
 nova tela deve repetir esse padrão.

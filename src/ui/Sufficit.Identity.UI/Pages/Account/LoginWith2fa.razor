@@ -1,7 +1,6 @@
 @page "/account/loginwith2fa"
-@inject SignInManager<ApplicationUser> SignInManager
+@inject IInteractiveSignInService SignInService
 @inject NavigationManager Navigation
-@inject ILogger<LoginWith2fa> Logger
 
 <PageTitle>Verificação 2FA — Sufficit Identity</PageTitle>
 
@@ -60,10 +59,8 @@
         // Reject absolute/off-host returnUrl (authenticated open redirect).
         _returnUrl = LocalUrlValidator.EnsureLocal(ReturnUrl);
 
-        // Verify the user is in the 2FA auth flow (cookie Identity.TwoFactorUserId
-        // was set by SignInManager.PasswordSignInAsync when RequiresTwoFactor=true).
-        var user = await SignInManager.GetTwoFactorAuthenticationUserAsync();
-        if (user is null)
+        // The runtime owns and validates the protected pending-2FA state.
+        if (!await SignInService.HasPendingTwoFactorSignInAsync())
         {
             // No pending 2FA session — redirect to login.
             Navigation.NavigateTo("/account/login?returnUrl=" + Uri.EscapeDataString(_returnUrl), forceLoad: true);
@@ -72,21 +69,19 @@
 
     private async Task VerifyCodeAsync()
     {
-        // Strip spaces / dashes (users often type "123 456" or "123-456").
-        var authenticatorCode = _model.TwoFactorCode.Replace(" ", "").Replace("-", "");
+        var result = await SignInService.AuthenticatorSignInAsync(
+            new AuthenticatorSignInCommand(
+                _model.TwoFactorCode,
+                RememberMe,
+                _model.RememberMachine));
 
-        var result = await SignInManager.TwoFactorAuthenticatorSignInAsync(
-            authenticatorCode, RememberMe, _model.RememberMachine);
-
-        if (result.Succeeded)
+        if (result.Status == InteractiveSignInStatus.Succeeded)
         {
-            var user = await SignInManager.GetTwoFactorAuthenticationUserAsync();
-            Logger.LogInformation("User {User} logged in with 2FA.", user?.UserName);
             Navigation.NavigateTo(_returnUrl ?? "/", forceLoad: true);
             return;
         }
 
-        if (result.IsLockedOut)
+        if (result.Status == InteractiveSignInStatus.LockedOut)
         {
             _error = "Conta bloqueada por muitas tentativas. Tente novamente mais tarde.";
             return;

@@ -593,6 +593,8 @@ public static class ServiceCollectionExtensions
             AspNetCoreIdentityAccountExternalIdentityService>();
         services.AddScoped<IAccountTwoFactorService,
             AspNetCoreIdentityAccountTwoFactorService>();
+        services.AddScoped<IInteractiveSignInService,
+            AspNetCoreIdentityInteractiveSignInService>();
         services.AddScoped<AspNetCoreIdentityPasskeyService>();
         services.AddScoped<IAccountPasskeyService>(services =>
             services.GetRequiredService<AspNetCoreIdentityPasskeyService>());

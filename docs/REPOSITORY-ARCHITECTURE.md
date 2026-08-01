@@ -97,7 +97,7 @@ published from this monorepo without moving source back out.
   root.
 - Server references, tests, CI and Docker use only in-repository paths.
 - CI run `30708521192` passed secret scanning, warnings-as-errors build,
-  canonical MariaDB migration validation, 212 tests and dependency audit.
+  canonical MariaDB migration validation, 217 tests and dependency audit.
 - Commit `6c1b5a967aff6865e938e0122dfbc08f4dc37c51` was deployed on
   `castrum-apps` as release
   `20260801T164057Z-6c1b5a9-monorepo`; health, readiness, OIDC discovery,
@@ -166,7 +166,9 @@ presentation detail remains inside the corresponding RCL.
 After consolidation validation, migrate the remaining public authentication
 flows to neutral application contracts in this order:
 
-1. password login, login 2FA, recovery code and logout;
+1. password login, login 2FA, recovery code and logout — completed on
+   2026-08-01 through `IInteractiveSignInService`;
 2. registration, email confirmation/resend and password reset;
 3. consent and anonymous external login;
-4. architecture tests that reject new direct UI dependencies.
+4. continue tightening architecture tests as each legacy dependency is
+   removed.

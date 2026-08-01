@@ -1,9 +1,6 @@
 @page "/account/login"
 @rendermode @(RenderMode.InteractiveServer)
-@using Microsoft.AspNetCore.Authentication
-@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
-@using Microsoft.AspNetCore.Identity
-@inject SignInManager<ApplicationUser> SignInManager
+@inject IInteractiveSignInService SignInService
 @inject RegisterConfiguration RegisterConfig
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
@@ -134,7 +131,7 @@
 
     private string? _returnUrl;
     private string? _errorMessage;
-    private List<AuthenticationScheme> _externalProviders = new();
+    private IReadOnlyList<InteractiveSignInProvider> _externalProviders = [];
     private ElementReference _passkeyForm;
     private bool _passkeySupported;
     private bool _passkeyBusy;
@@ -148,8 +145,7 @@
         _returnUrl = LocalUrlValidator.EnsureLocal(_returnUrlQuery);
         Model.ReturnUrl = _returnUrl;
 
-        var schemes = await SignInManager.GetExternalAuthenticationSchemesAsync();
-        _externalProviders = schemes.ToList();
+        _externalProviders = await SignInService.GetExternalProvidersAsync();
 
         // Load branding theme logo
         var theme = await BrandingProvider.GetActiveAsync();
@@ -211,27 +207,27 @@
 
     private async Task HandleLoginAsync()
     {
-        var result = await SignInManager.PasswordSignInAsync(
-            Model.UserName, Model.Password, Model.RememberMe, lockoutOnFailure: true);
+        var result = await SignInService.PasswordSignInAsync(
+            new PasswordSignInCommand(
+                Model.UserName,
+                Model.Password,
+                Model.RememberMe));
 
-        if (result.Succeeded)
+        if (result.Status == InteractiveSignInStatus.Succeeded)
         {
-            Logger.LogInformation("User {User} logged in.", Model.UserName);
             Navigation.NavigateTo(_returnUrl ?? "/", forceLoad: true);
         }
-        else if (result.RequiresTwoFactor)
+        else if (result.Status == InteractiveSignInStatus.RequiresTwoFactor)
         {
-            // Redirect to 2FA verification page. SignInManager has already
-            // set the Identity.TwoFactorUserId cookie so GetTwoFactorAuthenticationUserAsync
-            // returns the user on the next request.
+            // The runtime adapter has created the protected pending-2FA state.
             var url = $"/account/loginwith2fa?returnUrl={Uri.EscapeDataString(_returnUrl ?? "/")}&rememberMe={Model.RememberMe}";
             Navigation.NavigateTo(url, forceLoad: true);
         }
-        else if (result.IsLockedOut)
+        else if (result.Status == InteractiveSignInStatus.LockedOut)
         {
             _errorMessage = "Conta bloqueada por muitas tentativas. Tente novamente mais tarde.";
         }
-        else if (result.IsNotAllowed)
+        else if (result.Status == InteractiveSignInStatus.NotAllowed)
         {
             _errorMessage = "Login não permitido. Confirme seu e-mail ou contate o suporte.";
         }

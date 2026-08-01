@@ -1,8 +1,4 @@
 @page "/account/logout"
-@inject SignInManager<ApplicationUser> SignInManager
-@inject NavigationManager Navigation
-@inject ILogger<Logout> Logger
-
 <PageTitle>Sair — Sufficit Identity</PageTitle>
 
 <div class="auth-card">
@@ -31,8 +27,8 @@
                 <br /><span class="muted">@_clientName solicitou o logout.</span>
             }
         </p>
-        @* POST goes to /connect/endsession, which runs the OpenIddict SignOut
-           handler and clears the auth cookie + OpenIddict session in one step.
+        @* POST goes to /connect/endsession, whose runtime protocol handler
+           validates the request and terminates the authenticated session.
            We forward the original endsession parameters back via hidden fields
            so the STS can apply post_logout_redirect_uri + state. *@
         <EditForm Method="post" Model="_empty" FormName="logout"
@@ -85,7 +81,7 @@
         try
         {
             // Try to extract client_id from the id_token_hint (no validation here —
-            // OpenIddict already validated it at the /connect/endsession endpoint
+            // The runtime already validated it at the end-session endpoint
             // before passing through).
             if (!string.IsNullOrEmpty(_idTokenHint))
             {

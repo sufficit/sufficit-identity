@@ -1,7 +1,6 @@
 @page "/account/loginwithrecoverycode"
-@inject SignInManager<ApplicationUser> SignInManager
+@inject IInteractiveSignInService SignInService
 @inject NavigationManager Navigation
-@inject ILogger<LoginWithRecoveryCode> Logger
 
 <PageTitle>Código de recuperação — Sufficit Identity</PageTitle>
 
@@ -52,8 +51,7 @@
         // Reject absolute/off-host returnUrl (authenticated open redirect).
         _returnUrl = LocalUrlValidator.EnsureLocal(ReturnUrl);
 
-        var user = await SignInManager.GetTwoFactorAuthenticationUserAsync();
-        if (user is null)
+        if (!await SignInService.HasPendingTwoFactorSignInAsync())
         {
             Navigation.NavigateTo("/account/login?returnUrl=" + Uri.EscapeDataString(_returnUrl), forceLoad: true);
         }
@@ -61,19 +59,16 @@
 
     private async Task VerifyCodeAsync()
     {
-        var code = _model.RecoveryCode.Replace(" ", string.Empty);
+        var result = await SignInService.RecoveryCodeSignInAsync(
+            _model.RecoveryCode);
 
-        var result = await SignInManager.TwoFactorRecoveryCodeSignInAsync(code);
-
-        if (result.Succeeded)
+        if (result.Status == InteractiveSignInStatus.Succeeded)
         {
-            var user = await SignInManager.GetTwoFactorAuthenticationUserAsync();
-            Logger.LogInformation("User {User} logged in with a recovery code.", user?.UserName);
             Navigation.NavigateTo(_returnUrl ?? "/", forceLoad: true);
             return;
         }
 
-        if (result.IsLockedOut)
+        if (result.Status == InteractiveSignInStatus.LockedOut)
         {
             _error = "Conta bloqueada por muitas tentativas.";
             return;
