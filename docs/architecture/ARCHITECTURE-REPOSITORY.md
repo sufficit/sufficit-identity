@@ -102,9 +102,10 @@ published from this monorepo without moving source back out.
   `castrum-apps` as release
   `20260801T204513Z-c0218c0-runtime-boundary`; health, readiness, OIDC discovery,
   public UI, Management UI and both static-asset surfaces returned HTTP 200.
-- The former UI repository remains a rollback/history source. Commit
+- The former UI repository remains a remote rollback/history source. Commit
   `5123fbabc3aa90d53492d3ec16cce11be8b44d6e` marks it legacy and links to the
-  canonical monorepo source without deleting its code or history.
+  canonical monorepo. Its clean local checkout was removed on 2026-08-01 after
+  confirming that both UI projects and imported history are present here.
 
 ## Functional state
 
