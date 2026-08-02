@@ -5,9 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
-using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
-using Sufficit.Identity.Management.Overview;
 using Sufficit.Identity.UI.Management.Audit;
 using Sufficit.Identity.UI.Management.Authorizations;
 using Sufficit.Identity.UI.Management.Branding;
@@ -107,17 +105,6 @@ public static class ServiceCollectionExtensions
         _ = options.GetPathBase();
         services.AddOptions<ManagementUiOptions>()
             .Bind(configurationRoot);
-        services.AddOptions<ManagementOptions>()
-            .Bind(configuration.GetSection("Sufficit:Identity:Management"));
-        services.TryAddScoped<IManagementAuthorizationEvaluator,
-            CapabilityManagementAuthorizationEvaluator>();
-        services.TryAddScoped<IManagementEntitlementResolver,
-            ScopeAndRoleManagementEntitlementResolver>();
-        services.TryAddScoped<IManagementAccessPolicyProvider,
-            ConfigurationManagementAccessPolicyProvider>();
-        services.TryAddScoped<IManagementOverviewService,
-            ManagementOverviewService>();
-
         services.AddAuthorization(authorization =>
         {
             authorization.AddPolicy(ManagementUiPolicies.Access, policy =>

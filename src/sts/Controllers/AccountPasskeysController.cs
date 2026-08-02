@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Sufficit.Identity.Core.Services;
+using Sufficit.Identity.Application.Accounts;
 
 namespace Sufficit.Identity.STS.Controllers;
 

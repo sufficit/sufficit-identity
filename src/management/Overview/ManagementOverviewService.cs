@@ -1,8 +1,12 @@
+#if !APPLICATION_CONTRACTS
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+#endif
 using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Overview;
+
+#if APPLICATION_CONTRACTS
 
 /// <summary>
 /// Canonical discovery boundary for the provider-management runtime.
@@ -43,6 +47,8 @@ public sealed record ManagementModuleDescriptor(
         IsAvailable
         && AccessOutcome is ManagementAuthorizationOutcome.Allowed;
 }
+
+#else
 
 public sealed class ManagementOverviewService(
     IManagementEntitlementResolver entitlements,
@@ -158,3 +164,4 @@ public sealed class ManagementOverviewService(
         bool IsAvailable = true,
         string? UnavailableReasonCode = null);
 }
+#endif

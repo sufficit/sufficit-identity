@@ -129,6 +129,10 @@ publicados pelos adaptadores HTTP.
 
 - Interfaces, comandos, consultas, resultados e DTOs canônicos são definidos
   uma vez na camada de aplicação.
+- Esses tipos são publicados por `Sufficit.Identity.Application.Abstractions`,
+  que não referencia Core, STS, Management, EF Core ou OpenIddict.
+- As UIs oficiais referenciam somente esse assembly neutro; o host de
+  composição registra explicitamente as implementações de runtime exigidas.
 - A API publica esses contratos em HTTP/OpenAPI sem reimplementar as regras.
 - Clientes remotos podem ser gerados a partir do OpenAPI.
 - DTOs estritamente visuais podem projetar um resultado, mas não redefinem

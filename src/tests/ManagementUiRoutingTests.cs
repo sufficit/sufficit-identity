@@ -8,13 +8,15 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Sufficit.Identity.Core.Branding;
+using Sufficit.Identity.Application.Branding;
+using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Branding;
 using Sufficit.Identity.Management.Claims;
 using Sufficit.Identity.Management.Clients;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Authorizations;
+using Sufficit.Identity.Management.Overview;
 using Sufficit.Identity.Management.Provisioning;
 using Sufficit.Identity.Management.Scopes;
 using Sufficit.Identity.Management.Sessions;
@@ -534,6 +536,17 @@ public sealed class ManagementUiRoutingTests
         builder.Services.AddSingleton<
             IUserAvatarUrlResolver,
             StubUserAvatarUrlResolver>();
+        builder.Services.AddOptions<ManagementOptions>()
+            .Bind(builder.Configuration.GetSection(
+                "Sufficit:Identity:Management"));
+        builder.Services.AddScoped<IManagementEntitlementResolver,
+            ScopeAndRoleManagementEntitlementResolver>();
+        builder.Services.AddScoped<IManagementAccessPolicyProvider,
+            ConfigurationManagementAccessPolicyProvider>();
+        builder.Services.AddScoped<IManagementAuthorizationEvaluator,
+            CapabilityManagementAuthorizationEvaluator>();
+        builder.Services.AddScoped<IManagementOverviewService,
+            ManagementOverviewService>();
         builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
 
         var app = builder.Build();

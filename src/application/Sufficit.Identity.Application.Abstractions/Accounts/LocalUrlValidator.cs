@@ -1,4 +1,4 @@
-namespace Sufficit.Identity.Core.Services;
+namespace Sufficit.Identity.Application.Accounts;
 
 /// <summary>
 /// Validates caller-supplied return URLs before navigation or HTTP redirects.

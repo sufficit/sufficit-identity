@@ -1,5 +1,5 @@
+using Sufficit.Identity.Application.Branding;
 using Sufficit.Identity.Core.Branding;
-using Sufficit.Identity.Core.Entities;
 using Xunit;
 
 namespace Sufficit.Identity.Tests;
@@ -10,13 +10,9 @@ public sealed class UserAvatarUrlResolverTests
     public async Task Active_theme_template_is_resolved_for_opaque_user_subject()
     {
         var provider = new StubBrandingThemeProvider(
-            new BrandingTheme
-            {
-                IsActive = true,
-                AvatarUrlTemplate =
-                    "https://endpoints.tests.local/contact/avatar"
-                    + "?contextid={userid}"
-            });
+            Theme(
+                "https://endpoints.tests.local/contact/avatar"
+                + "?contextid={userid}"));
         var resolver = new UserAvatarUrlResolver(provider);
 
         var result = await resolver.ResolveAsync("  user/one  ");
@@ -36,10 +32,7 @@ public sealed class UserAvatarUrlResolverTests
         string? userId)
     {
         var provider = new StubBrandingThemeProvider(
-            new BrandingTheme
-            {
-                AvatarUrlTemplate = "/avatar/{userid}"
-            });
+            Theme("/avatar/{userid}"));
         var resolver = new UserAvatarUrlResolver(provider);
 
         var result = await resolver.ResolveAsync(userId);
@@ -52,16 +45,29 @@ public sealed class UserAvatarUrlResolverTests
     public async Task Missing_active_template_returns_no_avatar()
     {
         var provider = new StubBrandingThemeProvider(
-            new BrandingTheme
-            {
-                AvatarUrlTemplate = " "
-            });
+            Theme(" "));
         var resolver = new UserAvatarUrlResolver(provider);
 
         var result = await resolver.ResolveAsync("user-1");
 
         Assert.Null(result);
     }
+
+    private static BrandingTheme Theme(string? avatarUrlTemplate) =>
+        new(
+            "Test",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            avatarUrlTemplate);
 
     private sealed class StubBrandingThemeProvider(
         BrandingTheme? theme) : IBrandingThemeProvider

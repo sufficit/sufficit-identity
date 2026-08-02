@@ -1,3 +1,4 @@
+#if !APPLICATION_CONTRACTS
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -5,9 +6,12 @@ using OpenIddict.Abstractions;
 using OpenIddict.EntityFrameworkCore.Models;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management.Audit;
+#endif
 using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Authorizations;
+
+#if APPLICATION_CONTRACTS
 
 /// <summary>
 /// Canonical application boundary for OpenID Connect/OAuth authorizations and
@@ -56,6 +60,8 @@ public sealed record ManagementAuthorizationSummary(
     IReadOnlyList<string> Scopes,
     int CredentialCount,
     bool IsActive);
+
+#else
 
 internal sealed class AuthorizationManagementService(
     AppDbContext database,
@@ -308,3 +314,4 @@ internal sealed class AuthorizationManagementService(
             : new DateTimeOffset(
                 DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
 }
+#endif

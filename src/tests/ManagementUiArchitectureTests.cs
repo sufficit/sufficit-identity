@@ -20,6 +20,48 @@ public sealed class ManagementUiArchitectureTests
     ];
 
     [Fact]
+    public void User_interfaces_reference_only_neutral_application_contracts()
+    {
+        var repository = ResolveIdentityRepository();
+        var projects = new[]
+        {
+            Path.Combine(
+                repository,
+                "src",
+                "ui",
+                "Sufficit.Identity.UI",
+                "Sufficit.Identity.UI.csproj"),
+            Path.Combine(
+                repository,
+                "src",
+                "ui",
+                "Sufficit.Identity.UI.Management",
+                "Sufficit.Identity.UI.Management.csproj"),
+        };
+
+        foreach (var path in projects)
+        {
+            var project = File.ReadAllText(path);
+            Assert.Contains(
+                "Sufficit.Identity.Application.Abstractions.csproj",
+                project,
+                StringComparison.Ordinal);
+            Assert.DoesNotContain(
+                "Sufficit.Identity.Core.csproj",
+                project,
+                StringComparison.Ordinal);
+            Assert.DoesNotContain(
+                "Sufficit.Identity.Management.csproj",
+                project,
+                StringComparison.Ordinal);
+            Assert.DoesNotContain(
+                "Sufficit.Identity.STS.csproj",
+                project,
+                StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void Management_ui_source_uses_only_application_contracts()
     {
         var sourceRoot = ResolveManagementUiSource();
@@ -308,8 +350,9 @@ public sealed class ManagementUiArchitectureTests
         var contract = File.ReadAllText(Path.Combine(
             repository,
             "src",
-            "core",
-            "Services",
+            "application",
+            "Sufficit.Identity.Application.Abstractions",
+            "Accounts",
             "InteractiveSignInService.cs"));
         var adapter = File.ReadAllText(Path.Combine(
             repository,

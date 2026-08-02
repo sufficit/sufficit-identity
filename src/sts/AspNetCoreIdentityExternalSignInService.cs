@@ -2,7 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Core.Entities;
-using Sufficit.Identity.Core.Services;
+using Sufficit.Identity.Application.Accounts;
 
 namespace Sufficit.Identity.STS;
 

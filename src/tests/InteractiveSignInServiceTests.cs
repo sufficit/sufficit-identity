@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Sufficit.Identity.Core.Entities;
-using Sufficit.Identity.Core.Services;
+using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 

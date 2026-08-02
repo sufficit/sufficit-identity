@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Sufficit.Identity.Application.Branding;
 using Sufficit.Identity.Core.Data;
-using Sufficit.Identity.Core.Entities;
+using BrandingThemeEntity = Sufficit.Identity.Core.Entities.BrandingTheme;
 
 namespace Sufficit.Identity.Core.Branding;
 
@@ -65,12 +66,13 @@ public sealed class BrandingThemeProvider : IBrandingThemeProvider
             // We catch and return null so the UI falls back to defaults.
             try
             {
-                result = await db.BrandingThemes
+                var entity = await db.BrandingThemes
                     .AsNoTracking()
                     .Where(theme => theme.IsActive)
                     .OrderByDescending(theme => theme.UpdatedAt)
                     .ThenByDescending(theme => theme.Id)
                     .FirstOrDefaultAsync(cancellationToken);
+                result = entity is null ? null : ToContract(entity);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -100,4 +102,20 @@ public sealed class BrandingThemeProvider : IBrandingThemeProvider
             _cached = default;
         }
     }
+
+    private static BrandingTheme ToContract(BrandingThemeEntity theme) =>
+        new(
+            theme.Name,
+            theme.LogoUrl,
+            theme.FaviconUrl,
+            theme.HeaderIconUrl,
+            theme.BackgroundImageUrl,
+            theme.BrandColor,
+            theme.BrandHoverColor,
+            theme.BrandSoftColor,
+            theme.ThemeColor,
+            theme.Title,
+            theme.BrandName,
+            theme.BrandSubtitle,
+            theme.AvatarUrlTemplate);
 }

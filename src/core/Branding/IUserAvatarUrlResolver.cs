@@ -1,16 +1,6 @@
-namespace Sufficit.Identity.Core.Branding;
+using Sufficit.Identity.Application.Branding;
 
-/// <summary>
-/// Canonical application service for resolving a user's avatar URL from the
-/// active branding theme. UI surfaces consume this contract instead of
-/// duplicating template substitution or reading branding persistence.
-/// </summary>
-public interface IUserAvatarUrlResolver
-{
-    Task<string?> ResolveAsync(
-        string? userId,
-        CancellationToken cancellationToken = default);
-}
+namespace Sufficit.Identity.Core.Branding;
 
 /// <summary>
 /// Resolves the active theme's avatar URL template for an opaque user subject.

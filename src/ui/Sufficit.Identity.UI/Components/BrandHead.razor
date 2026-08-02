@@ -6,7 +6,7 @@
 @code {
     [Inject] IBrandingThemeProvider BrandingProvider { get; set; } = null!;
 
-    private Sufficit.Identity.Core.Entities.BrandingTheme? _theme;
+    private BrandingTheme? _theme;
 
     protected override async Task OnInitializedAsync()
     {

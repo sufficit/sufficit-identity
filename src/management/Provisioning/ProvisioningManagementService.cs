@@ -1,10 +1,14 @@
+#if !APPLICATION_CONTRACTS
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management.Audit;
+#endif
 using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Provisioning;
+
+#if APPLICATION_CONTRACTS
 
 /// <summary>
 /// Canonical application boundary for declarative OpenIddict provisioning.
@@ -22,6 +26,8 @@ public interface IProvisioningManagementService
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 }
+
+#else
 
 internal sealed class ProvisioningManagementService(
     OpenIddictManifestProvisioner provisioner,
@@ -264,3 +270,4 @@ internal sealed class ProvisioningManagementService(
         }
     }
 }
+#endif

@@ -1,4 +1,4 @@
-namespace Sufficit.Identity.Core.Services;
+namespace Sufficit.Identity.Application.Accounts;
 
 public sealed record AuthorizationConsentParameter(
     string Name,

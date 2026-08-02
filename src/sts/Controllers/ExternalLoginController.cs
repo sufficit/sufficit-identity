@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
-using Sufficit.Identity.Core.Services;
+using Sufficit.Identity.Application.Accounts;
 
 namespace Sufficit.Identity.STS.Controllers;
 

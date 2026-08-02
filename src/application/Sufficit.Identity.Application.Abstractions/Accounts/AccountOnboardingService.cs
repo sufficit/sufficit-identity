@@ -1,4 +1,4 @@
-namespace Sufficit.Identity.Core.Services;
+namespace Sufficit.Identity.Application.Accounts;
 
 /// <summary>
 /// Runtime-owned public account policy projected to presentation clients.

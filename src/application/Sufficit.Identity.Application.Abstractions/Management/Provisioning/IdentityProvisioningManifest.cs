@@ -89,14 +89,6 @@ public interface IClientSecretResolver
     ValueTask<string> ResolveAsync(string reference, CancellationToken cancellationToken = default);
 }
 
-internal sealed class MissingClientSecretResolver : IClientSecretResolver
-{
-    public ValueTask<string> ResolveAsync(
-        string reference,
-        CancellationToken cancellationToken = default) =>
-        throw new ClientSecretResolverUnavailableException();
-}
-
 public sealed class ClientSecretResolverUnavailableException()
     : Exception(
         $"No {nameof(IClientSecretResolver)} is configured for this environment.");

@@ -75,6 +75,7 @@ The architecture and remote-host delivery gates are defined in
 ```csharp
 // In sufficit-identity/src/server/Program.cs:
 builder.Services.AddSufficitIdentitySTS(builder.Configuration);
+builder.Services.AddSufficitIdentityManagement(builder.Configuration);
 builder.Services.AddSufficitIdentityUI();   // <-- add this
 builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
 
@@ -90,6 +91,14 @@ Project references in `src/server/Sufficit.Identity.Server.csproj`:
 <ProjectReference Include="..\ui\Sufficit.Identity.UI\Sufficit.Identity.UI.csproj" />
 <ProjectReference Include="..\ui\Sufficit.Identity.UI.Management\Sufficit.Identity.UI.Management.csproj" />
 ```
+
+The host must register runtime implementations before adding a UI. The UI
+packages register only presentation policies, data sources, components and
+assets; they do not register EF/OpenIddict services or fallback business
+implementations. Both UI projects reference
+`Sufficit.Identity.Application.Abstractions`, so an alternative trusted host
+may supply compatible implementations without giving the UI direct access to
+persistence.
 
 ## Screens
 

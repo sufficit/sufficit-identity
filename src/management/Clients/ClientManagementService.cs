@@ -1,12 +1,16 @@
+#if !APPLICATION_CONTRACTS
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using OpenIddict.EntityFrameworkCore.Models;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management.Audit;
+#endif
 using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Clients;
+
+#if APPLICATION_CONTRACTS
 
 /// <summary>
 /// Canonical application boundary for OAuth/OIDC client administration.
@@ -65,6 +69,8 @@ public sealed record CreateManagementClientCommand(
     IReadOnlyList<string> GrantTypes,
     IReadOnlyList<string> Scopes,
     IReadOnlyList<string> RedirectUris);
+
+#else
 
 internal sealed class ClientManagementService(
     IOpenIddictApplicationManager applications,
@@ -695,3 +701,4 @@ internal sealed class ClientManagementService(
     private static string? NullIfWhiteSpace(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
+#endif

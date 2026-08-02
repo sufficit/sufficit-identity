@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\application\Sufficit.Identity.Application.Abstractions\Sufficit.Identity.Application.Abstractions.csproj" />
     <ProjectReference Include="..\core\Sufficit.Identity.Core.csproj" />
   </ItemGroup>
 

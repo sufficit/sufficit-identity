@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
-using Sufficit.Identity.Core.Services;
+using Sufficit.Identity.Application.Accounts;
 
 namespace Sufficit.Identity.STS;
 

@@ -22,10 +22,12 @@ project references, application contracts and architecture tests.
 
 ## Current monorepo layout
 
-There are eight `.csproj` files in one solution:
+There are ten `.csproj` files in one solution:
 
 | Product module | Source | Projects | Runtime |
 | --- | --- | --- | --- |
+| Neutral application contracts | `src/application/Sufficit.Identity.Application.Abstractions` | `Application.Abstractions` | Packable library with no project dependencies |
+| Neutral UI hosting contracts | `src/ui/Sufficit.Identity.UI.Abstractions` | `UI.Abstractions` | Packable library with no runtime or UI implementation dependency |
 | Identity runtime and APIs | `src/core`, `src/sts`, `src/management`, `src/scim`, `src/server`, `src/tests` | `Core`, `STS`, `Management`, `Scim`, `Server`, `Tests` | `Server` is the only executable |
 | Public and account UI | `src/ui/Sufficit.Identity.UI` | `Sufficit.Identity.UI` | RCL embedded in `Server` |
 | Administrative UI | `src/ui/Sufficit.Identity.UI.Management` | `Sufficit.Identity.UI.Management` | RCL embedded in `Server` under `/management` |
@@ -37,6 +39,8 @@ host; neither owns a port, process, database connection or deployment.
 
 ```text
 Sufficit.Identity.Server (only executable)
+├── Sufficit.Identity.Application.Abstractions
+├── Sufficit.Identity.UI.Abstractions
 ├── Sufficit.Identity.STS
 ├── Sufficit.Identity.Management      (application services + Management API)
 ├── Sufficit.Identity.Scim
@@ -56,9 +60,16 @@ The intended dependency direction is:
 
 ```text
 Public UI ─────────┐
-Management UI ─────┼──> application contracts/use cases ──> runtime adapters
-HTTP APIs ─────────┘
+Management UI ─────┼──> Application.Abstractions <── runtime adapters
+HTTP APIs ─────────┘                                 Identity/OpenIddict/EF
 ```
+
+Both UI project files reference only
+`Sufficit.Identity.Application.Abstractions` plus presentation-framework
+primitives. The abstraction project has no project-to-project references. The
+composition host selects and registers runtime implementations before it adds
+an embedded UI; a third-party UI receives no database or protocol-manager
+access merely by being installed.
 
 OpenIddict and ASP.NET Core Identity are current runtime adapters. New
 application-facing contracts must remain neutral enough to replace those
@@ -132,7 +143,7 @@ Known work independent of the repository move:
 ## Acceptance criteria
 
 - [x] a fresh clone restores, builds, tests and publishes;
-- [x] all eight projects are present in the single solution;
+- [x] all ten projects are present in the single solution;
 - [x] source references no sibling UI checkout;
 - [x] CI contains no reciprocal repository SHA pin;
 - [x] Docker uses one source context;
@@ -162,16 +173,13 @@ presentation detail remains inside the corresponding RCL.
 
 ## Next implementation work
 
-The public authentication contract migration is complete:
+The neutral application-contract extraction is complete. Public/account and
+Management contracts now compile in
+`Sufficit.Identity.Application.Abstractions`; both official UIs depend on that
+assembly instead of `Core`, `STS` or `Management`. Architecture tests enforce
+the dependency direction.
 
-1. password login, login 2FA, recovery code and logout — completed on
-   2026-08-01 through `IInteractiveSignInService`;
-2. registration, email confirmation/resend and password reset — completed on
-   2026-08-01 through `IAccountOnboardingService`;
-3. consent and anonymous external login — completed on 2026-08-01 through
-   `IAuthorizationConsentService` and `IExternalSignInService`;
-4. architecture tests now reject every direct Identity, EF Core or protocol
-   implementation dependency in either UI, without a legacy exception list.
-
-Further work is protocol interoperability, concrete SCIM integration demand and
-the separately controlled legacy cutover, not presentation-layer decoupling.
+The next pluggable-UI milestone is explicit embedded composition: versioned
+module descriptors, semantic endpoints and an official composition executable.
+Remote Management BFF and remote public interactions remain later phases; this
+work does not start the planned future replacement of OpenIddict.

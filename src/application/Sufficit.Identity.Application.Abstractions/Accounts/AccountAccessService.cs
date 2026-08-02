@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-namespace Sufficit.Identity.Core.Services;
+namespace Sufficit.Identity.Application.Accounts;
 
 /// <summary>
 /// Application authorized by the authenticated account. Multiple OpenIddict

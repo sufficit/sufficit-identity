@@ -1,12 +1,17 @@
+#if !APPLICATION_CONTRACTS
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Sufficit.Identity.Core.Branding;
+using Sufficit.Identity.Application.Branding;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Management.Audit;
+using BrandingThemeEntity = Sufficit.Identity.Core.Entities.BrandingTheme;
+#endif
 using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Branding;
+
+#if APPLICATION_CONTRACTS
 
 /// <summary>
 /// Canonical application boundary for identity branding administration.
@@ -82,6 +87,8 @@ public sealed record SaveManagementBrandingThemeCommand(
     string? BrandName,
     string? BrandSubtitle,
     string? AvatarUrlTemplate);
+
+#else
 
 internal sealed class BrandingManagementService(
     AppDbContext database,
@@ -162,7 +169,7 @@ internal sealed class BrandingManagementService(
             cancellationToken);
         var values = Validate(command);
         var now = DateTime.UtcNow;
-        var theme = new BrandingTheme
+        var theme = new BrandingThemeEntity
         {
             Name = values.Name,
             IsActive = false,
@@ -537,7 +544,7 @@ internal sealed class BrandingManagementService(
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static void Apply(
-        BrandingTheme theme,
+        BrandingThemeEntity theme,
         ValidatedBrandingTheme values)
     {
         theme.Name = values.Name;
@@ -555,7 +562,7 @@ internal sealed class BrandingManagementService(
         theme.AvatarUrlTemplate = values.AvatarUrlTemplate;
     }
 
-    private static ManagementBrandingTheme ToContract(BrandingTheme theme) =>
+    private static ManagementBrandingTheme ToContract(BrandingThemeEntity theme) =>
         new(
             theme.Id,
             theme.Name,
@@ -611,3 +618,4 @@ internal sealed class BrandingManagementService(
         string? BrandSubtitle,
         string? AvatarUrlTemplate);
 }
+#endif

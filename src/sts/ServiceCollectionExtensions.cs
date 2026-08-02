@@ -16,6 +16,7 @@ using Sufficit.Identity.Core;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Core.Services;
+using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.STS.Email;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 

@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenIddict.Validation.AspNetCore;
+using Sufficit.Identity.Application.Branding;
 using Sufficit.Identity.Core.Branding;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorizations;
@@ -179,25 +180,6 @@ public sealed class MfaHandler : AuthorizationHandler<MfaRequirement>
         }
         return Task.CompletedTask;
     }
-}
-
-/// <summary>Bindable options for the management API.</summary>
-public sealed class ManagementOptions
-{
-    public bool Enabled { get; init; } = false;
-    public string RoutePrefix { get; init; } = "api";
-    public bool RequireAuthorization { get; init; } = true;
-    public string RequiredScope { get; init; } = "skoruba_identity_admin_api";
-
-    public ManagementAuthorizationOptions Authorization { get; init; } = new();
-
-    /// <summary>
-    /// When <c>true</c>, the management policy additionally requires an <c>amr</c>
-    /// claim proving multi-factor authentication (item 5.2 [L3]). Default
-    /// <c>false</c>: flip only after the login UI emits <c>amr</c> for
-    /// MFA-completed sessions, otherwise every admin token is rejected.
-    /// </summary>
-    public bool RequireMfa { get; init; } = false;
 }
 
 /// <summary>Endpoint mapping helper (call from Program.cs after Build).</summary>

@@ -1,3 +1,4 @@
+#if !APPLICATION_CONTRACTS
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -6,12 +7,16 @@ using OpenIddict.Abstractions;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Core.Services;
+using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Management.Audit;
-using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Users;
 using OidcClaims = OpenIddict.Abstractions.OpenIddictConstants.Claims;
+#endif
+using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Claims;
+
+#if APPLICATION_CONTRACTS
 
 /// <summary>
 /// Canonical application boundary for custom claims assigned to identity
@@ -84,6 +89,8 @@ public sealed record CreateManagementClaimCommand(
 public sealed record UpdateManagementClaimCommand(
     string Type,
     string Value);
+
+#else
 
 internal sealed class ClaimManagementService(
     AppDbContext database,
@@ -758,3 +765,4 @@ internal sealed class ClaimManagementService(
         }
     }
 }
+#endif

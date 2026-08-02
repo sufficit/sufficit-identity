@@ -1,3 +1,4 @@
+#if !APPLICATION_CONTRACTS
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -6,11 +7,15 @@ using OpenIddict.EntityFrameworkCore.Models;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Core.Services;
+using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Management.Audit;
-using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Users;
+#endif
+using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Sessions;
+
+#if APPLICATION_CONTRACTS
 
 /// <summary>
 /// Canonical application boundary for provider-issued credentials. OpenIddict
@@ -69,6 +74,8 @@ public sealed record ManagementSessionSummary(
 public sealed record ManagementUserSessionRevocation(
     long RevokedTokens,
     long RevokedAuthorizations);
+
+#else
 
 internal sealed class SessionManagementService(
     AppDbContext database,
@@ -346,3 +353,4 @@ internal sealed class SessionManagementService(
             : new DateTimeOffset(
                 DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
 }
+#endif

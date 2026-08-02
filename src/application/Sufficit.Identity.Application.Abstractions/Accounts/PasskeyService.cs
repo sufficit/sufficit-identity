@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-namespace Sufficit.Identity.Core.Services;
+namespace Sufficit.Identity.Application.Accounts;
 
 /// <summary>
 /// Provider-neutral projection of a WebAuthn credential owned by an account.

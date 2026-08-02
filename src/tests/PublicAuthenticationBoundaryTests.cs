@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Sufficit.Identity.Core.Entities;
-using Sufficit.Identity.Core.Services;
+using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.STS.Controllers;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;

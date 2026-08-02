@@ -1,14 +1,18 @@
+#if !APPLICATION_CONTRACTS
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management.Audit;
-using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Provisioning;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using OAuthScopes = OpenIddict.Abstractions.OpenIddictConstants.Scopes;
+#endif
+using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Scopes;
+
+#if APPLICATION_CONTRACTS
 
 /// <summary>
 /// Canonical application boundary for custom OAuth scope definitions stored by
@@ -70,6 +74,8 @@ public sealed record UpdateManagementScopeCommand(
     string? DisplayName,
     string? Description,
     IReadOnlyList<string> Resources);
+
+#else
 
 internal sealed class ScopeManagementService(
     IOpenIddictScopeManager scopes,
@@ -657,3 +663,4 @@ internal sealed class ScopeManagementService(
         return resources;
     }
 }
+#endif

@@ -1,29 +1,8 @@
 using System.Diagnostics;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using OpenIddict.Abstractions;
 
 namespace Sufficit.Identity.Management.Provisioning;
-
-[JsonConverter(typeof(JsonStringEnumConverter<IdentityManifestChangeKind>))]
-public enum IdentityManifestChangeKind
-{
-    Create,
-    Update,
-    Unchanged,
-}
-
-public sealed record IdentityManifestChange(
-    string ResourceType,
-    string Identifier,
-    IdentityManifestChangeKind Kind);
-
-public sealed record IdentityProvisioningPlan(
-    IReadOnlyList<IdentityManifestChange> Changes)
-{
-    public bool HasChanges => Changes.Any(change =>
-        change.Kind is IdentityManifestChangeKind.Create or IdentityManifestChangeKind.Update);
-}
 
 /// <summary>
 /// Computes and optionally applies an additive OpenIddict provisioning plan.

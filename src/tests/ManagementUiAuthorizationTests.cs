@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.UI.Management;
 using Sufficit.Identity.UI.Management.Configuration;
@@ -75,6 +76,14 @@ public sealed class ManagementUiAuthorizationTests
             .Build();
         var collection = new ServiceCollection();
         collection.AddLogging();
+        collection.AddOptions<ManagementOptions>()
+            .Bind(configuration.GetSection("Sufficit:Identity:Management"));
+        collection.AddScoped<IManagementEntitlementResolver,
+            ScopeAndRoleManagementEntitlementResolver>();
+        collection.AddScoped<IManagementAccessPolicyProvider,
+            ConfigurationManagementAccessPolicyProvider>();
+        collection.AddScoped<IManagementAuthorizationEvaluator,
+            CapabilityManagementAuthorizationEvaluator>();
         collection.AddSufficitIdentityManagementUI(configuration);
         return collection.BuildServiceProvider();
     }

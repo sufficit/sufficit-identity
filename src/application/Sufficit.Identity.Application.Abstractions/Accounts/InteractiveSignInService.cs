@@ -1,4 +1,4 @@
-namespace Sufficit.Identity.Core.Services;
+namespace Sufficit.Identity.Application.Accounts;
 
 /// <summary>
 /// Provider-neutral projection of an external authentication option rendered

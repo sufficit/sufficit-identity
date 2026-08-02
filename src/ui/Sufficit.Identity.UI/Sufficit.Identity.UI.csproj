@@ -25,11 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!--
-      The public UI consumes canonical application contracts from Core. Runtime
-      adapters own identity, protocol and persistence implementations.
-    -->
-    <ProjectReference Include="..\..\core\Sufficit.Identity.Core.csproj" />
+    <ProjectReference Include="..\..\application\Sufficit.Identity.Application.Abstractions\Sufficit.Identity.Application.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

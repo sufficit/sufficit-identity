@@ -1,15 +1,20 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+#if !APPLICATION_CONTRACTS
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Core.Services;
+using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Management.Audit;
+#endif
 using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Users;
+
+#if APPLICATION_CONTRACTS
 
 /// <summary>
 /// Canonical application boundary for identity-account administration.
@@ -159,6 +164,8 @@ public sealed record ManagementUserDetail(
     {
     }
 }
+
+#else
 
 internal sealed class UserManagementService(
     AppDbContext database,
@@ -1299,3 +1306,4 @@ internal sealed class UserManagementService(
             cancellationToken);
 
 }
+#endif

@@ -28,6 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\application\Sufficit.Identity.Application.Abstractions\Sufficit.Identity.Application.Abstractions.csproj" />
     <!-- Composition host; transitively brings STS/core/management/UI. -->
     <ProjectReference Include="..\server\Sufficit.Identity.Server.csproj" />
     <ProjectReference Include="..\scim\Sufficit.Identity.Scim.csproj" />

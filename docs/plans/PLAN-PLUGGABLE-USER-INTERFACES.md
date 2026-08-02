@@ -1,6 +1,6 @@
 # Pluggable user interfaces plan
 
-Status: **active — foundation in progress**
+Status: **active — phases 0 and 1 complete; phase 2 is next**
 Last reviewed: **2026-08-01**
 
 ## Decision
@@ -227,11 +227,18 @@ operational model.
 
 ### Phase 1 — neutral application contracts
 
-- [ ] Create `Sufficit.Identity.Application.Abstractions`.
-- [ ] Move public/account contracts without changing their behavior.
-- [ ] Split Management contracts from OpenIddict/EF implementations.
-- [ ] Make both official UI projects depend only on abstractions and ASP.NET
+- [x] Create `Sufficit.Identity.Application.Abstractions`.
+- [x] Move public/account contracts without changing their behavior.
+- [x] Split Management contracts from OpenIddict/EF implementations.
+- [x] Make both official UI projects depend only on abstractions and ASP.NET
   presentation primitives.
+
+Phase 1 was completed on 2026-08-01. Both official UI projects reference only
+`Sufficit.Identity.Application.Abstractions`, and that contract project has no
+project-to-project dependencies. Runtime projects own all ASP.NET Identity,
+OpenIddict, EF Core and persistence implementations. A composition host must
+register an implementation for every contract required by the selected UI;
+the UI packages no longer install runtime implementations as a side effect.
 
 ### Phase 2 — explicit embedded composition
 

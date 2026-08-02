@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Sufficit.Identity.Application.Branding;
 using Sufficit.Identity.Core.Branding;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management;

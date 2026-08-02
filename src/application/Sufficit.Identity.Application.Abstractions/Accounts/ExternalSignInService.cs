@@ -1,6 +1,6 @@
 using System.Security.Claims;
 
-namespace Sufficit.Identity.Core.Services;
+namespace Sufficit.Identity.Application.Accounts;
 
 public sealed record ExternalSignInChallenge(
     string AuthenticationScheme,

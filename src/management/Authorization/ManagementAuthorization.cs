@@ -1,7 +1,11 @@
 using System.Security.Claims;
+#if !APPLICATION_CONTRACTS
 using Microsoft.Extensions.Options;
+#endif
 
 namespace Sufficit.Identity.Management.Authorization;
+
+#if APPLICATION_CONTRACTS
 
 public static class ManagementCapabilities
 {
@@ -94,13 +98,13 @@ public sealed record ManagementRequestContext(
     string CorrelationId)
 {
     public string OperatorSubject =>
-        Operator.FindFirstValue("sub")
-        ?? Operator.FindFirstValue(ClaimTypes.NameIdentifier)
+        Operator.FindFirst("sub")?.Value
+        ?? Operator.FindFirst(ClaimTypes.NameIdentifier)?.Value
         ?? "unknown";
 
     public string? OperatorDisplayName =>
         Operator.Identity?.Name
-        ?? Operator.FindFirstValue(ClaimTypes.Email);
+        ?? Operator.FindFirst(ClaimTypes.Email)?.Value;
 
     public string? AuthenticationMethods
     {
@@ -196,6 +200,38 @@ public sealed class ManagementAuthorizationOptions
     public string[] CapabilityClaimTypes { get; set; } =
         ["permission", "scope"];
 }
+
+public sealed class ManagementAccessException(
+    ManagementAuthorizationDecision decision) : Exception(decision.ReasonCode)
+{
+    public ManagementAuthorizationDecision Decision { get; } = decision;
+}
+
+public sealed class ManagementValidationException(
+    string reasonCode,
+    string message,
+    string? field = null) : Exception(message)
+{
+    public string ReasonCode { get; } = reasonCode;
+
+    public string? Field { get; } = field;
+}
+
+public sealed class ManagementConflictException(
+    string reasonCode,
+    string message) : Exception(message)
+{
+    public string ReasonCode { get; } = reasonCode;
+}
+
+public sealed class ManagementNotFoundException(
+    string reasonCode,
+    string message) : Exception(message)
+{
+    public string ReasonCode { get; } = reasonCode;
+}
+
+#else
 
 public sealed class ScopeAndRoleManagementEntitlementResolver(
     IOptions<ManagementOptions> options) : IManagementEntitlementResolver
@@ -371,32 +407,4 @@ public sealed class CapabilityManagementAuthorizationEvaluator
 
 }
 
-public sealed class ManagementAccessException(
-    ManagementAuthorizationDecision decision) : Exception(decision.ReasonCode)
-{
-    public ManagementAuthorizationDecision Decision { get; } = decision;
-}
-
-public sealed class ManagementValidationException(
-    string reasonCode,
-    string message,
-    string? field = null) : Exception(message)
-{
-    public string ReasonCode { get; } = reasonCode;
-
-    public string? Field { get; } = field;
-}
-
-public sealed class ManagementConflictException(
-    string reasonCode,
-    string message) : Exception(message)
-{
-    public string ReasonCode { get; } = reasonCode;
-}
-
-public sealed class ManagementNotFoundException(
-    string reasonCode,
-    string message) : Exception(message)
-{
-    public string ReasonCode { get; } = reasonCode;
-}
+#endif
