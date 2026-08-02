@@ -46,7 +46,12 @@ public sealed class ClientsController(IClientManagementService clients)
                 request.RequirePar,
                 request.GrantTypes,
                 request.Scopes,
-                request.RedirectUris),
+                request.RedirectUris,
+                request.PostLogoutRedirectUris,
+                request.FrontchannelLogoutUri,
+                request.FrontchannelLogoutSessionRequired,
+                request.BackchannelLogoutUri,
+                request.BackchannelLogoutSessionRequired),
             RequestContext(),
             cancellationToken);
 
@@ -97,4 +102,14 @@ public sealed class CreateClientRequest
     public List<string> Scopes { get; set; } = [];
 
     public List<string> RedirectUris { get; set; } = [];
+
+    public List<string> PostLogoutRedirectUris { get; set; } = [];
+
+    public string? FrontchannelLogoutUri { get; set; }
+
+    public bool FrontchannelLogoutSessionRequired { get; set; }
+
+    public string? BackchannelLogoutUri { get; set; }
+
+    public bool BackchannelLogoutSessionRequired { get; set; }
 }

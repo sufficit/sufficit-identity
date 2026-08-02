@@ -118,10 +118,15 @@
         "_Enabled": "true registers MTLS endpoint aliases and advertises mTLS support in discovery. Default false — enable only after the host is configured for client certificates.",
         "Enabled": false
       },
-      "_BackchannelLogout": "OIDC Back-Channel Logout 1.0 (item 3.2 [L1]). When enabled, the STS signs and POSTs a logout_token to every RP that registered a backchannel_logout_uri when the user signs out, terminating the RP's local session too. OpenIddict 7.6 only consumes logout_tokens — the STS hand-builds the JWT (LogoutTokenGenerator) and fans it out (BackchannelLogoutDistributor, direct HTTP with bounded retry; a queue-backed implementation can drop in later). Discovery advertises backchannel_logout_supported=true only when enabled. Opt-in (default false): only useful once RPs register a backchannel_logout_uri.",
+      "_BackchannelLogout": "OIDC Back-Channel Logout 1.0. The STS signs and POSTs a short-lived logout_token to every RP that registered a backchannel_logout_uri. Enabled by default; clients without metadata are skipped. The OP session sid is included when the RP requires session-specific logout.",
       "BackchannelLogout": {
-        "_Enabled": "true distributes a signed logout_token to RPs on sign-out and advertises the capability in discovery. Default false.",
-        "Enabled": false
+        "_Enabled": "true distributes a signed logout_token to RPs on sign-out and advertises the capability in discovery. Default true.",
+        "Enabled": true
+      },
+      "_FrontchannelLogout": "OIDC Front-Channel Logout 1.0. After local sign-out, the OP renders each registered frontchannel_logout_uri in a one-time iframe page. Enabled by default; iss and the OP session sid are included for session correlation.",
+      "FrontchannelLogout": {
+        "_Enabled": "true renders registered RP logout URIs and advertises front-channel support. Default true.",
+        "Enabled": true
       },
       "_Dpop": "DPoP (RFC 9449, item 3.1) — sender-constrains access tokens to a client-provided key, neutralizing token theft/replay without mTLS. OpenIddict 7.6 has NO DPoP support; the STS implements proof validation from scratch (DpopProofValidator, EC P-256/RSA, htm/htu binding, jti replay cache, optional nonce) and attaches cnf.jkt to tokens whose requests carried a valid proof. When Enabled but RequireForAllClients=false (default), DPoP is accepted-but-not-required (legacy bearer clients keep working). Flip RequireForAllClients only after every client sends DPoP proofs.",
       "Dpop": {

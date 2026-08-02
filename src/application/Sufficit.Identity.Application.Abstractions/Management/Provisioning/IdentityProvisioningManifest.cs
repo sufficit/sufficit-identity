@@ -49,6 +49,10 @@ public sealed class IdentityClientManifest
     public List<string> Scopes { get; init; } = [];
     public List<Uri> RedirectUris { get; init; } = [];
     public List<Uri> PostLogoutRedirectUris { get; init; } = [];
+    public Uri? FrontchannelLogoutUri { get; init; }
+    public bool FrontchannelLogoutSessionRequired { get; init; }
+    public Uri? BackchannelLogoutUri { get; init; }
+    public bool BackchannelLogoutSessionRequired { get; init; }
 }
 
 public static class ManifestClientTypes

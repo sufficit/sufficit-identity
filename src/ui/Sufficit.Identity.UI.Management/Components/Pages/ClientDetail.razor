@@ -116,6 +116,52 @@ else if (result?.IsSuccess is true && result.Value is not null)
             </section>
         </div>
 
+        <div class="detail-columns">
+            <section aria-labelledby="post-logout-heading">
+                <h2 id="post-logout-heading">Redirecionamento após logout</h2>
+                @if (client.PostLogoutRedirectUris.Count is 0)
+                {
+                    <p class="detail-empty">Nenhum destino pós-logout registrado.</p>
+                }
+                else
+                {
+                    <ul class="technical-list">
+                        @foreach (var uri in client.PostLogoutRedirectUris)
+                        {
+                            <li><code>@uri</code></li>
+                        }
+                    </ul>
+                }
+            </section>
+
+            <section aria-labelledby="federated-logout-heading">
+                <h2 id="federated-logout-heading">Logout federado</h2>
+                @if (client.FrontchannelLogoutUri is null && client.BackchannelLogoutUri is null)
+                {
+                    <p class="detail-empty">Nenhum endpoint de logout federado registrado.</p>
+                }
+                else
+                {
+                    <dl class="technical-list">
+                        @if (client.FrontchannelLogoutUri is not null)
+                        {
+                            <div>
+                                <dt>Front-channel</dt>
+                                <dd><code>@client.FrontchannelLogoutUri</code></dd>
+                            </div>
+                        }
+                        @if (client.BackchannelLogoutUri is not null)
+                        {
+                            <div>
+                                <dt>Back-channel</dt>
+                                <dd><code>@client.BackchannelLogoutUri</code></dd>
+                            </div>
+                        }
+                    </dl>
+                }
+            </section>
+        </div>
+
         @if (client.Requirements.Count > 0)
         {
             <section class="requirements-line" aria-labelledby="requirements-heading">

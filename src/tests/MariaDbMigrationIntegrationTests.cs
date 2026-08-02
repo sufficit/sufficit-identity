@@ -223,6 +223,33 @@ public sealed class MariaDbMigrationIntegrationTests
         await ExecuteScriptAsync(connection,
             MigrationFile("sql", "011-add-openiddict-to-legacy.sql"));
 
+        await ExecuteNonQueryAsync(connection, """
+            INSERT INTO `persistedgrants` (
+                `key`, `type`, `subjectid`, `clientid`, `creationtime`,
+                `expiration`, `data`, `consumedtime`, `description`,
+                `sessionid`, `id`
+            ) VALUES
+                (
+                    'LEGACY-REFERENCE-ID-001', 'reference_token',
+                    '11111111-1111-1111-1111-111111111111', 'test-client',
+                    '2026-01-02 03:04:05.000000', '2026-12-31 23:59:59.000000',
+                    '{"secret":"must-not-be-copied"}', NULL, 'test token',
+                    'legacy-session', 91001
+                ),
+                (
+                    'LEGACY-REFRESH-ID-IGNORED', 'refresh_token',
+                    '11111111-1111-1111-1111-111111111111', 'test-client',
+                    '2026-01-02 03:04:05.000000', NULL,
+                    '{"secret":"must-not-be-copied"}', NULL, NULL,
+                    'legacy-session', 91002
+                )
+            """);
+
+        await ExecuteScriptAsync(connection,
+            MigrationFile("sql", "012-preserve-legacy-reference-token-identifiers.sql"));
+        await ExecuteScriptAsync(connection,
+            MigrationFile("sql", "012-preserve-legacy-reference-token-identifiers.sql"));
+
         var sharedStructureAfter = await SharedStructureAsync(connection);
         Assert.Equal(sharedStructureBefore, sharedStructureAfter);
 
@@ -245,6 +272,49 @@ public sealed class MariaDbMigrationIntegrationTests
             FROM `{IdentityDatabaseSchema.MigrationsHistoryTable}`
             WHERE `MigrationId` = '{IdentityDatabaseSchema.InitialMigrationId}'
               AND `ProductVersion` = '10.0.10'
+            """));
+
+        Assert.Equal(1, await ScalarIntAsync(connection, """
+            SELECT COUNT(*)
+            FROM `tokens`
+            WHERE `id` = 'legacy-91001'
+              AND `reference_id` = 'LEGACY-REFERENCE-ID-001'
+              AND `subject` = '11111111-1111-1111-1111-111111111111'
+              AND `status` = 'revoked'
+              AND `type` = 'legacy_reference_token'
+              AND `payload` IS NULL
+              AND `redemption_date` IS NOT NULL
+              AND JSON_VALUE(`properties`, '$."sufficit:migration".requiresRegeneration') = 1
+            """));
+
+        Assert.Equal(0, await ScalarIntAsync(connection, """
+            SELECT COUNT(*)
+            FROM `tokens`
+            WHERE `reference_id` = 'LEGACY-REFRESH-ID-IGNORED'
+            """));
+
+        Assert.Equal(2, await ScalarIntAsync(connection, """
+            SELECT COUNT(*)
+            FROM `persistedgrants`
+            WHERE `id` IN (91001, 91002)
+              AND `data` = '{"secret":"must-not-be-copied"}'
+            """));
+
+        Assert.Equal(1, await ScalarIntAsync(connection, """
+            SELECT COUNT(*)
+            FROM `persistedgrants`
+            WHERE `id` = 91001
+              AND `type` = 'reference_token'
+              AND `consumedtime` IS NOT NULL
+              AND `description` = '[identity-upgrade] test token'
+            """));
+
+        Assert.Equal(1, await ScalarIntAsync(connection, """
+            SELECT COUNT(*)
+            FROM `persistedgrants`
+            WHERE `id` = 91002
+              AND `type` = 'refresh_token'
+              AND `consumedtime` IS NULL
             """));
     }
 

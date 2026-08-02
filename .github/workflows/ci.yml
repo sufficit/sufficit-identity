@@ -46,6 +46,13 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
+      # The EF Core 10 provider is a deliberately fixed internal build while
+      # upstream Pomelo support remains unreleased. A changed package must be
+      # reviewed and approved explicitly instead of silently entering restore.
+      - name: Verify approved Pomelo fork artifacts
+        working-directory: sufficit-identity/.nuget-feed
+        run: sha256sum --check SHA256SUMS
+
       - name: Restore
         working-directory: sufficit-identity
         run: dotnet restore Sufficit.Identity.sln

@@ -49,6 +49,10 @@ and is intentionally ignored by Git.
 - [Confirmed-email rollout](runbooks/RUNBOOK-CONFIRMED-EMAIL.md)
 - [Legacy cutover and rollback gates](plans/PLAN-LEGACY-CUTOVER.md)
 
+## Investigations
+
+- [Production-readiness assessment](investigations/INVESTIGATION-PRODUCTION-READINESS.md)
+
 ## Evaluations
 
 - [Evaluation prompt](evaluations/EVALUATION-PROMPT.md)

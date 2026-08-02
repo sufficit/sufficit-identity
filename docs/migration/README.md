@@ -45,8 +45,24 @@ tables.
 3. Run `sql/010-preflight-legacy.sql`.
 4. Abort if the preflight returns any row.
 5. Run `sql/011-add-openiddict-to-legacy.sql` only against the rehearsal copy.
-6. Run the schema contract tests and data reconciliation.
-7. Repeat from a fresh backup to prove the process is deterministic.
+6. Run `sql/012-preserve-legacy-reference-token-identifiers.sql` to create
+   revoked metadata-only tombstones for legacy API reference tokens.
+7. Run the schema contract tests and data reconciliation.
+8. Repeat from a fresh backup to prove the process is deterministic.
+
+For the database-only real-backup gate, copy the SQL directory and a protected
+logical backup to the database host, then run:
+
+```bash
+MARIADB_SOCKET=/path/to/mysql.sock \
+  ./rehearse-real-backup.sh /protected/path/identity.sql.gz 3
+```
+
+The script accepts only a local gzip backup with the expected 39-table legacy
+schema. It creates uniquely named `identity_rehearsal_*` databases, performs
+fresh restores, verifies shared-schema/data fingerprints and token-policy
+invariants, and drops every disposable database through an exit trap. It has
+no remote-host defaults, embedded password or production database target.
 
 Deployments already running the canonical model apply later additive steps in
 order: `050-add-branding-themes.sql`,
@@ -75,11 +91,24 @@ therefore an additive schema change in the same MariaDB database:
   OpenIddict;
 - `__sufficit_identity_migrations` records only the new model;
 - clients and scopes are reconciled from a versioned manifest; Duende grant
-  and token rows are not converted into OpenIddict rows.
+  rows are not converted into usable OpenIddict credentials;
+- only legacy `reference_token` identifiers are copied as revoked tombstones,
+  without payload, serialized grant data or session identifiers, so account
+  APIs can explain that regeneration is required;
+- the original reference-token rows are marked consumed and receive the stable
+  `[identity-upgrade]` description prefix during the same cutover, keeping
+  their identifiers visible to the temporary compatibility API while making
+  them unusable at the legacy issuer too.
 
-This schema operation does not by itself preserve browser sessions, refresh
-tokens or reference tokens. Their transition needs a separate compatibility
-or controlled reauthentication policy.
+Browser sessions, refresh tokens, authorization codes and usable reference
+tokens are deliberately not preserved. Users reauthenticate and regenerate
+API tokens. The tombstones exist only for identifier continuity and always
+introspect as inactive.
+
+The previous two-database `run-migration.sh` helper was removed. It targeted
+the superseded `identity2` copy architecture, embedded connection defaults and
+could recreate a database. The supported path is now exclusively the guarded,
+additive same-database procedure described above.
 
 ## Migration history
 

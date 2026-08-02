@@ -53,7 +53,33 @@ SELECT
     COALESCE((SELECT CONCAT('[', GROUP_CONCAT(CONCAT('"', REPLACE(p.`postlogoutredirecturi`, '"', '\\"'), '"')), ']') FROM `identity`.`clientpostlogoutredirecturis` p WHERE p.`clientid` = c.`id`), '[]'),
     COALESCE((SELECT CONCAT('[', GROUP_CONCAT(CONCAT('"', REPLACE(r.`redirecturi`, '"', '\\"'), '"')), ']') FROM `identity`.`clientredirecturis` r WHERE r.`clientid` = c.`id`), '[]'),
     CASE WHEN c.`requirepkce` = 1 THEN '["ft:pkce"]' ELSE '[]' END,
-    CONCAT('{"access_token_lifetime":"', c.`accesstokenlifetime`, '","id_token_lifetime":"', c.`identitytokenlifetime`, '","authorization_code_lifetime":"', c.`authorizationcodelifetime`, '","absolute_refresh_token_lifetime":"', c.`absoluterefreshtokenlifetime`, '","sliding_refresh_token_lifetime":"', c.`slidingrefreshtokenlifetime`, '"}')
+    JSON_MERGE_PATCH(
+        JSON_OBJECT(
+            'access_token_lifetime', CAST(c.`accesstokenlifetime` AS CHAR),
+            'id_token_lifetime', CAST(c.`identitytokenlifetime` AS CHAR),
+            'authorization_code_lifetime', CAST(c.`authorizationcodelifetime` AS CHAR),
+            'absolute_refresh_token_lifetime', CAST(c.`absoluterefreshtokenlifetime` AS CHAR),
+            'sliding_refresh_token_lifetime', CAST(c.`slidingrefreshtokenlifetime` AS CHAR)
+        ),
+        IF(
+            NULLIF(TRIM(c.`frontchannellogouturi`), '') IS NULL,
+            JSON_OBJECT(),
+            JSON_OBJECT(
+                'frontchannel_logout_uri', c.`frontchannellogouturi`,
+                'frontchannel_logout_session_required',
+                    IF(c.`frontchannellogoutsessionrequired` = 1, 'true', 'false')
+            )
+        ),
+        IF(
+            NULLIF(TRIM(c.`backchannellogouturi`), '') IS NULL,
+            JSON_OBJECT(),
+            JSON_OBJECT(
+                'backchannel_logout_uri', c.`backchannellogouturi`,
+                'backchannel_logout_session_required',
+                    IF(c.`backchannellogoutsessionrequired` = 1, 'true', 'false')
+            )
+        )
+    )
 FROM `identity`.`clients` c
 WHERE c.`enabled` = 1
 AND c.`clientid` IS NOT NULL AND c.`clientid` != ''

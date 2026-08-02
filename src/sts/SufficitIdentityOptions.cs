@@ -109,6 +109,12 @@ public sealed class SufficitIdentityOptions
     public BackchannelLogoutOptions BackchannelLogout { get; init; } = new();
 
     /// <summary>
+    /// OIDC Front-Channel Logout 1.0 — browser-mediated RP logout.
+    /// See <see cref="FrontchannelLogoutOptions"/>.
+    /// </summary>
+    public FrontchannelLogoutOptions FrontchannelLogout { get; init; } = new();
+
+    /// <summary>
     /// DPoP (RFC 9449) — sender-constrained access tokens. See
     /// <see cref="DpopOptions"/>.
     /// </summary>
@@ -521,11 +527,8 @@ public sealed class MtlsOptions
 /// enabled, so clients know the STS will notify them on logout.
 /// </summary>
 /// <remarks>
-/// <b>Opt-in (default <see cref="Enabled"/>=<c>false</c>).</b> Back-channel
-/// logout only does something useful once RPs register a
-/// <c>backchannel_logout_uri</c> on their client. Until then it is a no-op, so
-/// it is left off by default to avoid advertising a capability the deployment
-/// may not be consuming yet.
+/// The capability is enabled by default. It remains a no-op for clients that
+/// do not register a <c>backchannel_logout_uri</c>.
 /// </remarks>
 public sealed class BackchannelLogoutOptions
 {
@@ -533,9 +536,28 @@ public sealed class BackchannelLogoutOptions
     /// Master switch. When <c>true</c>, the STS distributes a
     /// <c>logout_token</c> to every RP with an active authorization on user
     /// sign-out, and advertises <c>backchannel_logout_supported=true</c> in
-    /// discovery. Default <c>false</c>.
+    /// discovery. Default <c>true</c>.
     /// </summary>
-    public bool Enabled { get; init; } = false;
+    public bool Enabled { get; init; } = true;
+}
+
+/// <summary>
+/// OIDC Front-Channel Logout 1.0 — renders each RP's registered
+/// <c>frontchannel_logout_uri</c> in an iframe after local sign-out.
+/// </summary>
+/// <remarks>
+/// The capability is enabled by default. The OP issues a cryptographically
+/// random <c>sid</c> in its session cookie and ID Tokens, allowing RPs to
+/// request session-specific logout.
+/// </remarks>
+public sealed class FrontchannelLogoutOptions
+{
+    /// <summary>
+    /// Master switch. When <c>true</c>, the OP prepares a one-time iframe page
+    /// for registered RP logout URIs and advertises front-channel support.
+    /// Default <c>true</c>.
+    /// </summary>
+    public bool Enabled { get; init; } = true;
 }
 
 /// <summary>

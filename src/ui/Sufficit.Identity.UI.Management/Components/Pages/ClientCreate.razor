@@ -152,6 +152,34 @@
         </div>
 
         <div class="field-group">
+            <label for="post-logout-redirect-uris">Post-logout redirect URIs</label>
+            <InputTextArea id="post-logout-redirect-uris"
+                           class="form-control form-control--textarea"
+                           @bind-Value="model.PostLogoutRedirectUris" />
+            <span class="field-hint">Destinos permitidos após o encerramento iniciado pela aplicação.</span>
+        </div>
+
+        <div class="form-grid form-grid--two">
+            <div class="field-group">
+                <label for="frontchannel-logout-uri">Front-channel logout URI <span class="label-optional">opcional</span></label>
+                <InputText id="frontchannel-logout-uri"
+                           class="form-control"
+                           @bind-Value="model.FrontchannelLogoutUri"
+                           autocomplete="off" />
+                <span class="field-hint">Deve ter a mesma origem de uma Redirect URI; será carregada em iframe.</span>
+            </div>
+
+            <div class="field-group">
+                <label for="backchannel-logout-uri">Back-channel logout URI <span class="label-optional">opcional</span></label>
+                <InputText id="backchannel-logout-uri"
+                           class="form-control"
+                           @bind-Value="model.BackchannelLogoutUri"
+                           autocomplete="off" />
+                <span class="field-hint">Recebe um logout_token assinado diretamente do serviço.</span>
+            </div>
+        </div>
+
+        <div class="field-group">
             <label for="scopes">Escopos</label>
             <InputText id="scopes"
                        class="form-control"
@@ -202,7 +230,12 @@
                 model.RequirePar,
                 GrantTypes(),
                 SplitValues(model.Scopes),
-                SplitLines(model.RedirectUris)));
+                SplitLines(model.RedirectUris),
+                SplitLines(model.PostLogoutRedirectUris),
+                FrontchannelLogoutUri: model.FrontchannelLogoutUri,
+                FrontchannelLogoutSessionRequired: false,
+                BackchannelLogoutUri: model.BackchannelLogoutUri,
+                BackchannelLogoutSessionRequired: false));
         submitting = false;
 
         if (submission.IsSuccess && submission.Value is not null)
@@ -263,6 +296,12 @@
         public bool RequirePar { get; set; }
 
         public string RedirectUris { get; set; } = string.Empty;
+
+        public string PostLogoutRedirectUris { get; set; } = string.Empty;
+
+        public string? FrontchannelLogoutUri { get; set; }
+
+        public string? BackchannelLogoutUri { get; set; }
 
         public string Scopes { get; set; } = "openid profile";
     }

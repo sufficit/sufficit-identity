@@ -180,6 +180,24 @@ public sealed class DatabaseSchemaContractTests
     }
 
     [Fact]
+    public void Legacy_client_migration_preserves_registered_logout_metadata()
+    {
+        var script = File.ReadAllText(MigrationFile(
+            "sql",
+            "030-migrate-openiddict-clients.sql"));
+
+        Assert.Contains("c.`frontchannellogouturi`", script, StringComparison.Ordinal);
+        Assert.Contains("'frontchannel_logout_uri'", script, StringComparison.Ordinal);
+        Assert.Contains("c.`frontchannellogoutsessionrequired`", script, StringComparison.Ordinal);
+        Assert.Contains("'frontchannel_logout_session_required'", script, StringComparison.Ordinal);
+        Assert.Contains("c.`backchannellogouturi`", script, StringComparison.Ordinal);
+        Assert.Contains("'backchannel_logout_uri'", script, StringComparison.Ordinal);
+        Assert.Contains("c.`backchannellogoutsessionrequired`", script, StringComparison.Ordinal);
+        Assert.Contains("'backchannel_logout_session_required'", script, StringComparison.Ordinal);
+        Assert.Contains("JSON_MERGE_PATCH", script, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Legacy_path_is_additive_and_preflight_is_read_only()
     {
         var fixture = File.ReadAllText(
@@ -230,6 +248,33 @@ public sealed class DatabaseSchemaContractTests
             StringComparison.Ordinal);
         Assert.DoesNotContain("CREATE TABLE IF NOT EXISTS", additive,
             StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Legacy_reference_token_transition_preserves_only_revoked_identifiers()
+    {
+        var transition = File.ReadAllText(
+            MigrationFile("sql", "012-preserve-legacy-reference-token-identifiers.sql"));
+
+        Assert.Contains("FROM `persistedgrants`", transition, StringComparison.Ordinal);
+        Assert.Contains("legacy.`type` = 'reference_token'", transition,
+            StringComparison.Ordinal);
+        Assert.Contains("'revoked'", transition, StringComparison.Ordinal);
+        Assert.Contains("'legacy_reference_token'", transition, StringComparison.Ordinal);
+        Assert.Contains("'requiresRegeneration', TRUE", transition,
+            StringComparison.Ordinal);
+        Assert.Contains("`payload` = NULL", transition, StringComparison.Ordinal);
+        Assert.DoesNotContain("legacy.`data`", transition, StringComparison.Ordinal);
+        Assert.DoesNotContain("legacy.`sessionid`", transition, StringComparison.Ordinal);
+        Assert.Contains("UPDATE `persistedgrants`", transition,
+            StringComparison.Ordinal);
+        Assert.Contains("`consumedtime` = COALESCE", transition,
+            StringComparison.Ordinal);
+        Assert.Contains("'[identity-upgrade] '", transition,
+            StringComparison.Ordinal);
+        Assert.DoesNotMatch(
+            new Regex(@"(?im)^\s*(DELETE|TRUNCATE|DROP|ALTER)\s+`?persistedgrants`?"),
+            transition);
     }
 
     private static AppDbContext CreateContext()

@@ -321,6 +321,7 @@ public sealed class OpenIddictManifestProvisioner
 
         descriptor.RedirectUris.UnionWith(manifest.RedirectUris);
         descriptor.PostLogoutRedirectUris.UnionWith(manifest.PostLogoutRedirectUris);
+        SetLogoutSettings(descriptor.Settings, manifest);
 
         if (manifest.RequirePkce)
         {
@@ -366,6 +367,8 @@ public sealed class OpenIddictManifestProvisioner
         target.Requirements.Clear();
         target.Requirements.UnionWith(source.Requirements);
 
+        CopyManagedLogoutSettings(target.Settings, source.Settings);
+
         CopyManifestProperties(target.Properties, source.Properties);
     }
 
@@ -392,7 +395,62 @@ public sealed class OpenIddictManifestProvisioner
             .ToHashSet(StringComparer.Ordinal)
             .SetEquals(desired.PostLogoutRedirectUris.Select(uri => uri.OriginalString)) &&
         current.Requirements.SetEquals(desired.Requirements) &&
+        ManagedLogoutSettingsEqual(current.Settings, desired.Settings) &&
         ManifestPropertiesEqual(current.Properties, desired.Properties);
+
+    private static readonly string[] ManagedLogoutSettingKeys =
+    [
+        "frontchannel_logout_uri",
+        "frontchannel_logout_session_required",
+        "backchannel_logout_uri",
+        "backchannel_logout_session_required",
+    ];
+
+    private static void SetLogoutSettings(
+        IDictionary<string, string> settings,
+        IdentityClientManifest manifest)
+    {
+        if (manifest.FrontchannelLogoutUri is not null)
+        {
+            settings["frontchannel_logout_uri"] =
+                manifest.FrontchannelLogoutUri.AbsoluteUri;
+            settings["frontchannel_logout_session_required"] =
+                manifest.FrontchannelLogoutSessionRequired ? "true" : "false";
+        }
+
+        if (manifest.BackchannelLogoutUri is not null)
+        {
+            settings["backchannel_logout_uri"] =
+                manifest.BackchannelLogoutUri.AbsoluteUri;
+            settings["backchannel_logout_session_required"] =
+                manifest.BackchannelLogoutSessionRequired ? "true" : "false";
+        }
+    }
+
+    private static void CopyManagedLogoutSettings(
+        IDictionary<string, string> target,
+        IDictionary<string, string> source)
+    {
+        foreach (var key in ManagedLogoutSettingKeys)
+        {
+            if (source.TryGetValue(key, out var value))
+            {
+                target[key] = value;
+            }
+            else
+            {
+                target.Remove(key);
+            }
+        }
+    }
+
+    private static bool ManagedLogoutSettingsEqual(
+        IDictionary<string, string> current,
+        IDictionary<string, string> desired) =>
+        ManagedLogoutSettingKeys.All(key =>
+            current.TryGetValue(key, out var currentValue) ==
+            desired.TryGetValue(key, out var desiredValue) &&
+            string.Equals(currentValue, desiredValue, StringComparison.Ordinal));
 
     private static bool ManifestPropertiesEqual(
         IDictionary<string, JsonElement> current,

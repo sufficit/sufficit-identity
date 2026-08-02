@@ -422,7 +422,7 @@ public sealed class ProductionCompatibilityTests
     }
 
     // ====================================================================
-    // /connect/check-session e backchannel-logout — probes (não implementados)
+    // /connect/check-session e antigo probe backchannel-logout
     // ====================================================================
 
     [Fact]
@@ -441,17 +441,17 @@ public sealed class ProductionCompatibilityTests
     }
 
     [Fact]
-    public async Task Backchannel_logout_endpoint_accepts_post_but_is_not_advertised_in_discovery()
+    public async Task Backchannel_logout_is_an_outbound_capability_not_an_unvalidated_inbound_endpoint()
     {
-        // Captura de produção (fixtures/probe-02): 1 POST para
-        // /connect/backchannel-logout. Endpoint existe como no-op ack stub
-        // (AuthorizationController.cs BackchannelLogout) mas NÃO é anunciado
-        // em discovery (B4 fix: backchannel_logout_supported=false).
+        // OIDC OP back-channel support means the OP POSTS logout_token to an
+        // RP's registered URI. It does not define an inbound OP endpoint. The
+        // old unauthenticated acknowledgement stub accepted arbitrary tokens
+        // and has deliberately been removed.
         var client = _factory.CreateClient();
 
         using var discoveryResponse = await client.GetAsync("/.well-known/openid-configuration");
         var doc = await discoveryResponse.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.False(doc.GetProperty("backchannel_logout_supported").GetBoolean());
+        Assert.True(doc.GetProperty("backchannel_logout_supported").GetBoolean());
 
         // Endpoint aceita POST (ack stub — sem validação real de logout_token
         // porque distribuição real não está implementada; não anunciado, então
@@ -462,8 +462,7 @@ public sealed class ProductionCompatibilityTests
         });
         using var response = await client.PostAsync("/connect/backchannel-logout", content);
 
-        // Ack stub retorna 200 mesmo com token inválido — não anunciado, baixo risco.
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     // ====================================================================

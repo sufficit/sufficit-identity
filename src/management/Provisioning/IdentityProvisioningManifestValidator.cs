@@ -207,10 +207,12 @@ public static partial class IdentityProvisioningManifestValidator
                 }
 
                 if ((client.RedirectUris?.Count ?? 0) > 0 ||
-                    (client.PostLogoutRedirectUris?.Count ?? 0) > 0)
+                    (client.PostLogoutRedirectUris?.Count ?? 0) > 0 ||
+                    client.FrontchannelLogoutUri is not null ||
+                    client.BackchannelLogoutUri is not null)
                 {
                     errors.Add(
-                        $"{path} cannot declare redirect URIs without authorization_code.");
+                        $"{path} cannot declare login/logout URIs without authorization_code.");
                 }
             }
 
@@ -271,6 +273,40 @@ public static partial class IdentityProvisioningManifestValidator
                 $"{path}.postLogoutRedirectUris",
                 client.ClientType,
                 errors);
+
+            ValidateLogoutUri(
+                client.FrontchannelLogoutUri,
+                $"{path}.frontchannelLogoutUri",
+                errors);
+            ValidateLogoutUri(
+                client.BackchannelLogoutUri,
+                $"{path}.backchannelLogoutUri",
+                errors);
+
+            if (client.FrontchannelLogoutSessionRequired &&
+                client.FrontchannelLogoutUri is null)
+            {
+                errors.Add(
+                    $"{path}.frontchannelLogoutUri is required when " +
+                    "frontchannelLogoutSessionRequired is true.");
+            }
+
+            if (client.BackchannelLogoutSessionRequired &&
+                client.BackchannelLogoutUri is null)
+            {
+                errors.Add(
+                    $"{path}.backchannelLogoutUri is required when " +
+                    "backchannelLogoutSessionRequired is true.");
+            }
+
+            if (client.FrontchannelLogoutUri is not null &&
+                !(client.RedirectUris ?? []).Any(redirect =>
+                    SameOrigin(redirect, client.FrontchannelLogoutUri)))
+            {
+                errors.Add(
+                    $"{path}.frontchannelLogoutUri must use the same scheme, " +
+                    "host and port as a redirect URI.");
+            }
         }
 
         return errors;
@@ -416,6 +452,46 @@ public static partial class IdentityProvisioningManifestValidator
             }
         }
     }
+
+    private static void ValidateLogoutUri(
+        Uri? uri,
+        string path,
+        ICollection<string> errors)
+    {
+        if (uri is null)
+        {
+            return;
+        }
+
+        if (!uri.IsAbsoluteUri)
+        {
+            errors.Add($"{path} must be an absolute URI.");
+            return;
+        }
+
+        if (uri.Fragment.Length > 0)
+        {
+            errors.Add($"{path} cannot contain a fragment.");
+        }
+
+        if (uri.UserInfo.Length > 0)
+        {
+            errors.Add($"{path} cannot contain user information.");
+        }
+
+        if (uri.Scheme != Uri.UriSchemeHttps &&
+            !(uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback))
+        {
+            errors.Add($"{path} must use HTTPS unless it is a loopback URI.");
+        }
+    }
+
+    private static bool SameOrigin(Uri left, Uri right) =>
+        left.IsAbsoluteUri &&
+        right.IsAbsoluteUri &&
+        string.Equals(left.Scheme, right.Scheme, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(left.Host, right.Host, StringComparison.OrdinalIgnoreCase) &&
+        left.Port == right.Port;
 
     [GeneratedRegex(@"^[a-z0-9][a-z0-9._/-]{2,199}$", RegexOptions.CultureInvariant)]
     private static partial Regex SecretReferencePattern();

@@ -36,7 +36,11 @@
       ],
       "postLogoutRedirectUris": [
         "https://client.example.invalid/signout-callback-oidc"
-      ]
+      ],
+      "frontchannelLogoutUri": "https://client.example.invalid/oidc/frontchannel-logout",
+      "frontchannelLogoutSessionRequired": false,
+      "backchannelLogoutUri": "https://client.example.invalid/oidc/backchannel-logout",
+      "backchannelLogoutSessionRequired": false
     },
     {
       "clientId": "example_worker",

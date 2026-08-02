@@ -209,6 +209,8 @@ for the additive legacy path.
 | `docs/migration/sql/001-create-empty-database.sql` | Build the canonical schema in an empty database |
 | `docs/migration/sql/010-preflight-legacy.sql` | Read-only compatibility gate for a legacy clone |
 | `docs/migration/sql/011-add-openiddict-to-legacy.sql` | Add only OpenIddict tables and isolated history |
+| `docs/migration/sql/012-preserve-legacy-reference-token-identifiers.sql` | Preserve legacy API token IDs as revoked metadata-only tombstones |
+| `docs/migration/sql/rehearse-real-backup.sh` | Repeat the guarded additive path against fresh disposable restores |
 | `docs/migration/fixtures/legacy-schema-mariadb-10.4.sql` | Schema-only disposable rehearsal fixture |
 | `docs/migration/examples/identity-manifest.v1.json` | Secret-free client/scope manifest example |
 | `src/tests/DatabaseSchemaContractTests.cs` | Enforce model, SQL and additive-contract invariants |
@@ -283,6 +285,26 @@ For each client, test:
 - API audience validation;
 - logout behavior;
 - error handling without redirect loops.
+
+### Verified migrated consumers
+
+The historical traffic fixture remains immutable evidence of the old clients;
+it must not be rewritten to look modern. The current consumer source was
+verified separately on 2026-08-02:
+
+| Historical client | Current client | Evidence | Target flow |
+|---|---|---|---|
+| `SufficitWebForms` | `sufficit_web` | `sufficit-web/src/appsettings.json.template`, security-check executable and migration runbook | confidential authorization code, PKCE S256, code redemption enabled |
+| `SufficitEndPointsSwaggerUI` | `sufficit_endpoints_swagger_ui` | `sufficit-endpoints/src/ConfigureSwaggerOptions.cs`, Swagger UI startup and `SwaggerOAuthConfigurationTests` | public authorization code, PKCE S256 |
+
+Both repository checks pass. Their configured authority still points to the
+legacy public issuer until the coordinated cutover; that is expected and must
+change only with the issuer switch. The old client IDs remain historical or
+rollback-only and must not be provisioned into the new environment.
+
+This verifies these two known implicit/hybrid consumers only. It does not close
+the all-clients inventory gate or prove that no other password, implicit or
+hybrid consumer remains.
 
 ### Versioned client and scope manifest
 
@@ -434,6 +456,19 @@ Before any migration window:
 9. destroy the rehearsal environment according to retention policy;
 10. repeat from a fresh backup to prove determinism.
 
+The checked-in `rehearse-real-backup.sh` automates the database-only portion
+of this phase. It accepts only a local gzip dump, creates uniquely named
+`identity_rehearsal_*` schemas, validates the 39-table legacy baseline, runs
+three fresh restores by default and always drops the disposable schemas. Each
+round proves:
+
+- shared Identity columns, indexes, foreign keys and row counts are unchanged;
+- refresh-token state is unchanged;
+- legacy reference-token IDs become revoked, payload-free tombstones;
+- the tombstone step remains idempotent on a second execution;
+- all four canonical migration-history entries and 50 total transition tables
+  are present after the additive scripts.
+
 Never publish the backup, SQL row dumps, password hashes, personal claims or
 raw tokens as CI artifacts.
 
@@ -467,6 +502,27 @@ format as Duende. Validate whether APIs expect:
 
 Test issuer, audience, algorithm, claims, clock skew and key rotation in every
 resource server.
+
+### Approved legacy credential policy
+
+The cutover requires controlled reauthentication. Browser sessions, refresh
+tokens, authorization codes, device codes and usable legacy reference tokens
+are not migrated.
+
+Legacy API reference-token identifiers are the only exception. Script
+`012-preserve-legacy-reference-token-identifiers.sql` copies their identifier,
+owner, client identifier and lifecycle timestamps into metadata-only
+OpenIddict tombstones with status `revoked` and type
+`legacy_reference_token`. It never copies the serialized grant, payload,
+session ID or a usable bearer value. Re-execution is idempotent. Account APIs
+may list these records so users understand that the token existed and must be
+regenerated; introspection must always report them inactive.
+
+During the compatibility window, the same script marks each source
+`reference_token` consumed and prefixes its description with
+`[identity-upgrade]`. This retains its identifier in the existing account API
+without leaving a usable credential behind. The Blazor consumer recognizes
+both this prefix and the future `legacy_reference_token` tombstone type.
 
 ### Cookies and Data Protection
 
@@ -578,13 +634,14 @@ Run secret scanning on:
 
 ### Database and provider
 
-- [ ] Supported MariaDB/EF/provider combination selected.
+- [x] Supported MariaDB/EF/provider combination selected.
 - [x] Shared table mapping is explicit.
 - [x] Migration history is isolated.
 - [x] Empty-database SQL is reproducible.
 - [x] Additive legacy SQL is fail-fast.
 - [x] Schema-only MariaDB rehearsal is automated.
-- [ ] Rehearsal against a disposable real backup is repeatably green.
+- [x] Database-only rehearsal against a disposable real backup is repeatably
+  green (three fresh restores on 2026-08-02; backup and schemas destroyed).
 
 ### Clients and protocol
 
@@ -596,19 +653,46 @@ Run secret scanning on:
 - [ ] PKCE S256 is enforced where applicable.
 - [ ] Redirect, logout and CORS allowlists are verified.
 - [ ] Token format is validated by every resource server.
-- [ ] Old refresh/reference-token policy is approved.
+- [x] Old refresh/reference-token policy is approved: users reauthenticate;
+  reference IDs remain only as revoked tombstones and refresh state is not
+  converted.
 
 ### Runtime and operations
 
 - [ ] Signing/encryption key distribution is tested.
 - [ ] JWKS overlap and rotation are tested.
-- [ ] Cookie/reauthentication policy is approved.
+- [x] Cookie/reauthentication policy is approved: existing browser sessions
+  and non-portable protocol credentials expire at cutover and users sign in
+  again.
 - [ ] Proxy and forwarded headers are verified end to end.
 - [ ] Management parity or temporary legacy administration is approved.
 - [ ] Backup, cutover and rollback rehearsals are complete.
 - [ ] No migration step depends on secrets embedded in source control.
 
 The migration remains **NO-GO** while any required gate is open.
+
+### Approved provider baseline
+
+The Sufficit engineering team approves the following fixed baseline for the
+initial production migration:
+
+- MariaDB `10.4.34`;
+- Entity Framework Core `10.0.10`;
+- `Pomelo.EntityFrameworkCore.MySql`
+  `10.0.0-preview.1.efcore.10.0.0`, built from upstream commit
+  `86bbaa2e992a8825f997c59e819d874e88cffecb`;
+- package SHA-256
+  `229be66cc2bdc434a6a90f6b48f20151cdb23601ecec070b07ea095ba0dbe691`.
+
+This is an internal support decision, not an assertion that the package is an
+upstream stable release. CI verifies the checked-in package and symbol package
+against `.nuget-feed/SHA256SUMS` before restore. Any change to the version,
+source commit or checksums requires a new explicit review. The team will leave
+this baseline when Pomelo publishes a compatible stable release and the full
+database contract and real-backup rehearsals pass against it.
+
+Provider approval closes only the provider-selection gate. It does not waive
+the repeatable real-backup rehearsal, rollback or protocol compatibility gates.
 
 ## Implementation log
 
@@ -640,6 +724,34 @@ Keep entries generic and evidence-based.
 - Added a generic `.invalid` example with no credential values.
 - Added tests for unsafe redirects, obsolete grants, unknown JSON fields,
   create/update/unchanged planning, no-delete behavior and secret lifecycle.
+
+### 2026-08-02
+
+- Approved the fixed Pomelo EF Core 10 fork as the internally supported
+  migration baseline.
+- Added a CI checksum gate for both checked-in NuGet artifacts.
+- Verified that `SufficitWebForms` was replaced by `sufficit_web` using
+  confidential authorization code with PKCE S256.
+- Verified that `SufficitEndPointsSwaggerUI` was replaced by
+  `sufficit_endpoints_swagger_ui` using Swagger authorization code with PKCE.
+- Implemented provider-neutral OIDC front-channel and back-channel logout,
+  including strict discovery metadata, registered client URIs, signed
+  `logout_token` delivery, a stable per-login `sid` claim and one-time iframe
+  fan-out.
+- Preserved legacy logout metadata in declarative provisioning and the legacy
+  client conversion asset.
+- Completed three fresh database-only rehearsals from a real logical backup;
+  shared Identity schema/data and refresh-token fingerprints stayed unchanged,
+  while eligible reference IDs became revoked payload-free tombstones.
+- Destroyed every rehearsal schema, dump and log after verification and
+  confirmed the source database remained unchanged.
+- Removed the obsolete two-database migration helper containing connection
+  defaults. Any credential that ever appeared in its Git history must be
+  treated as compromised and rotated before production.
+- Audited the live legacy issuer read-only. The two named consumers have
+  modern replacements, but additional active clients still require an owner,
+  an approved final state, PKCE/flow modernization or newly issued
+  credentials. Production cutover remains **NO-GO**.
 
 ## Primary references
 

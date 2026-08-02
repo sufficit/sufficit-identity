@@ -14,7 +14,7 @@ public sealed class DiscoveryTests
     public DiscoveryTests(SufficitIdentityTestFactory factory) => _factory = factory;
 
     [Fact]
-    public async Task Discovery_document_does_not_advertise_unimplemented_logout_capabilities()
+    public async Task Discovery_document_advertises_supported_logout_without_claiming_sid_support()
     {
         var client = _factory.CreateClient();
 
@@ -23,15 +23,13 @@ public sealed class DiscoveryTests
 
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
 
-        // #N3 fix: back/front-channel logout distribution is NOT implemented
-        // (AuthorizationController.BackchannelLogout/FrontchannelLogout are
-        // unadvertised no-op ack stubs; real RP fan-out is Onda B). Discovery
-        // must publish all four flags as explicit `false` so OIDC clients
-        // natively skip the flows instead of probing.
-        Assert.False(json.GetProperty("backchannel_logout_supported").GetBoolean());
-        Assert.False(json.GetProperty("backchannel_logout_session_supported").GetBoolean());
-        Assert.False(json.GetProperty("frontchannel_logout_supported").GetBoolean());
-        Assert.False(json.GetProperty("frontchannel_logout_session_supported").GetBoolean());
+        // Both provider-neutral dispatchers are active by default. The OP
+        // cookie and ID Tokens carry a stable opaque sid for session-specific
+        // RP logout.
+        Assert.True(json.GetProperty("backchannel_logout_supported").GetBoolean());
+        Assert.True(json.GetProperty("backchannel_logout_session_supported").GetBoolean());
+        Assert.True(json.GetProperty("frontchannel_logout_supported").GetBoolean());
+        Assert.True(json.GetProperty("frontchannel_logout_session_supported").GetBoolean());
 
         // OpenIddict's own base discovery handler (not Sufficit's customization)
         // always emits these two as honest `false` booleans — that's not a

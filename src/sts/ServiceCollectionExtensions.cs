@@ -46,6 +46,7 @@ public static class ServiceCollectionExtensions
         var options = configuration
             .GetSection(configurationSection)
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
+        services.AddSingleton(options);
         services.AddSingleton(options.TwoFactor);
         services.AddSingleton(options.Passkeys);
 
@@ -169,7 +170,9 @@ public static class ServiceCollectionExtensions
                 identity.SignIn.RequireConfirmedEmail = options.SignIn.RequireConfirmedEmail;
             })
             .AddEntityFrameworkStores<AppDbContext>()
+            .AddClaimsPrincipalFactory<OidcSessionClaimsPrincipalFactory>()
             .AddDefaultTokenProviders();
+        services.AddHttpContextAccessor();
         services.Configure<IdentityPasskeyOptions>(passkeys =>
         {
             if (!string.IsNullOrWhiteSpace(options.Passkeys.RelyingPartyId))
@@ -224,6 +227,7 @@ public static class ServiceCollectionExtensions
             o.Cookie.SecurePolicy = isDevelopmentEnvironment
                 ? CookieSecurePolicy.SameAsRequest
                 : CookieSecurePolicy.Always;
+
         });
         services.Configure<SecurityStampValidatorOptions>(options =>
         {
@@ -499,18 +503,11 @@ public static class ServiceCollectionExtensions
                 }
 
                 // -------------------------------------------------------------------
-                // Discovery customizations: explicitly advertise as `false` the
-                // logout capabilities OpenIddict does not expose as first-class
-                // metadata toggles AND that this STS does NOT implement
-                // end-to-end today (#N3 — see AuthorizationController.Backchannel
-                // Logout/FrontchannelLogout, which are unadvertised no-op ack
-                // stubs; real logout_token distribution to each RP's configured
-                // backchannel/frontchannel_logout_uri is tracked as Onda B).
-                // Publishing these as `false` (rather than omitting them) is the
-                // most explicit signal to OIDC clients — they natively skip
-                // logout distribution when the flag is false, and any
-                // opportunistic probing of discovery cannot mistake absence for
-                // "maybe supported". Every other previously-advertised flag
+                // Discovery customizations. Logout capabilities are advertised
+                // only when their provider-neutral dispatcher is enabled. The
+                // application cookie and ID Tokens carry the same opaque OIDC
+                // sid, so session-specific support follows each dispatcher
+                // flag. Every other previously-advertised flag
                 // (DPoP, JAR request object signing algorithms, request_uri/
                 // request parameter support, claims parameter,
                 // check_session_iframe, and a non-standard backchannel_logout_url
@@ -530,18 +527,15 @@ public static class ServiceCollectionExtensions
                         // flow instead of probing.
                         context.Metadata["backchannel_logout_supported"] =
                             JsonValue.Create(options.BackchannelLogout.Enabled);
-                        // session_supported=true means the logout_token carries
-                        // a sid; we always do when sid is available, so this
-                        // tracks Enabled.
                         context.Metadata["backchannel_logout_session_supported"] =
                             JsonValue.Create(options.BackchannelLogout.Enabled);
 
                         // Frontchannel logout (OIDC Front-Channel Logout 1.0):
-                        // NOT implemented — ack stub only. (Back-channel is the
-                        // more reliable mechanism; front-channel iframe-based
-                        // logout is deliberately left off.)
-                        context.Metadata["frontchannel_logout_supported"] = JsonValue.Create(false);
-                        context.Metadata["frontchannel_logout_session_supported"] = JsonValue.Create(false);
+                        // one-time iframe fan-out to registered RP logout URIs.
+                        context.Metadata["frontchannel_logout_supported"] =
+                            JsonValue.Create(options.FrontchannelLogout.Enabled);
+                        context.Metadata["frontchannel_logout_session_supported"] =
+                            JsonValue.Create(options.FrontchannelLogout.Enabled);
 
                         // mTLS sender-constrained access tokens (RFC 8705, item
                         // 3.4). Advertised ONLY when Mtls.Enabled — the host
@@ -641,11 +635,27 @@ public static class ServiceCollectionExtensions
                 : options.Issuer;
 
             services.AddSingleton(new Logout.LogoutTokenGenerator(logoutSigning, issuer));
-            services.AddHttpClient<Logout.IBackchannelLogoutDispatcher, Logout.BackchannelLogoutDistributor>();
+            services.AddHttpClient<Logout.IBackchannelLogoutDispatcher, Logout.BackchannelLogoutDistributor>()
+                .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(7));
         }
         else
         {
             services.AddSingleton<Logout.IBackchannelLogoutDispatcher, Logout.NullBackchannelLogoutDispatcher>();
+        }
+
+        // ---- OIDC Front-Channel Logout 1.0 ----
+        // RP URI lists are resolved from canonical application metadata before
+        // local sign-out and kept behind an opaque, one-time, two-minute cache
+        // key while OpenIddict completes the end-session response.
+        if (options.FrontchannelLogout.Enabled)
+        {
+            services.AddScoped<Logout.IFrontchannelLogoutDispatcher,
+                Logout.FrontchannelLogoutDispatcher>();
+        }
+        else
+        {
+            services.AddSingleton<Logout.IFrontchannelLogoutDispatcher,
+                Logout.NullFrontchannelLogoutDispatcher>();
         }
 
         // ---- DPoP (RFC 9449, item 3.1) ----

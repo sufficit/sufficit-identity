@@ -129,6 +129,18 @@ public sealed class ProvisioningManifestTests
         Assert.All(unchanged.Changes, change =>
             Assert.Equal(IdentityManifestChangeKind.Unchanged, change.Kind));
 
+        var application = await applications.FindByClientIdAsync(clientId)
+            ?? throw new InvalidOperationException("Provisioned client missing.");
+        var logoutSettings = await applications.GetSettingsAsync(application);
+        Assert.Equal(
+            $"https://{clientId}.example.invalid/oidc/frontchannel-logout",
+            logoutSettings["frontchannel_logout_uri"]);
+        Assert.Equal(
+            $"https://{clientId}.example.invalid/oidc/backchannel-logout",
+            logoutSettings["backchannel_logout_uri"]);
+        Assert.Equal("false", logoutSettings["frontchannel_logout_session_required"]);
+        Assert.Equal("false", logoutSettings["backchannel_logout_session_required"]);
+
         var updated = PublicClientManifest(
             scopeName,
             clientId,
@@ -311,6 +323,10 @@ public sealed class ProvisioningManifestTests
                         new Uri(
                             $"https://{clientId}.example.invalid/signout-callback-oidc"),
                     ],
+                    FrontchannelLogoutUri = new Uri(
+                        $"https://{clientId}.example.invalid/oidc/frontchannel-logout"),
+                    BackchannelLogoutUri = new Uri(
+                        $"https://{clientId}.example.invalid/oidc/backchannel-logout"),
                 },
             ],
         };

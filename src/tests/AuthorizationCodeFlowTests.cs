@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
@@ -63,7 +64,13 @@ public sealed class AuthorizationCodeFlowTests
         var accessToken = tokenBody.GetProperty("access_token").GetString();
         Assert.False(string.IsNullOrEmpty(accessToken));
         // "openid" was granted -> an id_token is expected on the token response.
-        Assert.False(string.IsNullOrEmpty(tokenBody.GetProperty("id_token").GetString()));
+        var idToken = tokenBody.GetProperty("id_token").GetString();
+        Assert.False(string.IsNullOrEmpty(idToken));
+        var sessionId = new JsonWebTokenHandler()
+            .ReadJsonWebToken(idToken)
+            .GetClaim("sid")
+            .Value;
+        Assert.False(string.IsNullOrWhiteSpace(sessionId));
         // "offline_access" was granted -> a refresh_token is expected too.
         Assert.False(string.IsNullOrEmpty(tokenBody.GetProperty("refresh_token").GetString()));
 

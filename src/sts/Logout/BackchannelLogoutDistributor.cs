@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Net.Http.Headers;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -16,9 +15,8 @@ namespace Sufficit.Identity.STS.Logout;
 /// <b>Fan-out strategy.</b> The plan called for a queued fan-out (RabbitMQ) with
 /// retry/audit. Implementing a full queue CONSUMER here (not just the publisher
 /// pattern <c>RabbitMqEmailPublisher</c> already uses) is a separate component.
-/// This first cut does direct HTTP POSTs with a bounded retry, fire-and-forget
-/// relative to the user's logout response (the RP-initiated logout redirect is
-/// NOT blocked on RP fan-out). The interface <see cref="IBackchannelLogoutDispatcher"/>
+/// This implementation performs direct HTTP POSTs with bounded retry and a
+/// caller-supplied timeout. The interface <see cref="IBackchannelLogoutDispatcher"/>
 /// is shaped so a queue-backed implementation can drop in later without
 /// touching the controller. Portable: depends only on OpenIddict's public
 /// manager interfaces (<c>IOpenIddictAuthorizationManager</c>/
@@ -29,10 +27,9 @@ public interface IBackchannelLogoutDispatcher
 {
     /// <summary>
     /// Distributes a back-channel logout to every RP with an active
-    /// authorization for <paramref name="subject"/>. Non-blocking: returns
-    /// once distribution has been SCHEDULED (each POST runs on a background
-    /// task with its own retry). Never throws — failures are logged and
-    /// swallowed so a misbehaving RP cannot break the user's logout.
+    /// authorization for <paramref name="subject"/>. Returns after every
+    /// delivery succeeds, fails, or the supplied cancellation token expires.
+    /// Per-RP failures are logged and swallowed.
     /// </summary>
     Task DistributeAsync(string subject, string? sessionId, CancellationToken cancellationToken);
 }
@@ -95,29 +92,33 @@ internal sealed class BackchannelLogoutDistributor : IBackchannelLogoutDispatche
             return;
         }
 
-        // Fan out to each distinct client. Fire-and-forget per RP: a slow/down
-        // RP must not delay the others or the user's logout redirect. The
-        // cancellation token from the request is intentionally NOT forwarded
-        // to the background tasks (the request that triggered the logout will
-        // have completed by the time these run).
-        foreach (var clientId in clientIds)
-        {
-            _ = Task.Run(() => DispatchToClientAsync(clientId, subject, sessionId), CancellationToken.None);
-        }
+        // Fan out in parallel but keep all work inside this request scope.
+        // This avoids using scoped OpenIddict managers after their service
+        // provider has been disposed (the previous fire-and-forget approach
+        // could lose every notification immediately after redirect).
+        await Task.WhenAll(clientIds.Select(clientId =>
+            DispatchToClientAsync(clientId, subject, sessionId, cancellationToken)));
     }
 
-    private async Task DispatchToClientAsync(string clientId, string subject, string? sessionId)
+    private async Task DispatchToClientAsync(
+        string clientId,
+        string subject,
+        string? sessionId,
+        CancellationToken cancellationToken)
     {
         try
         {
-            var application = await _applicationManager.FindByClientIdAsync(clientId);
+            var application = await _applicationManager.FindByClientIdAsync(
+                clientId, cancellationToken);
             if (application is null) return;
 
             // backchannel_logout_uri is per-client registration metadata (set on
             // the application via its settings JSON). OpenIddict stores extra
             // settings under GetSettingsAsync(); the well-known key is the same
             // one configured at client registration time.
-            var backchannelLogoutUri = await GetBackchannelLogoutUriAsync(application);
+            var settings = await _applicationManager.GetSettingsAsync(
+                application, cancellationToken);
+            var backchannelLogoutUri = GetBackchannelLogoutUri(settings);
             if (string.IsNullOrWhiteSpace(backchannelLogoutUri))
             {
                 // Not an error: most clients won't register a backchannel URI.
@@ -127,44 +128,70 @@ internal sealed class BackchannelLogoutDistributor : IBackchannelLogoutDispatche
                 return;
             }
 
-            // aud = the RP's origin (scheme + host [+ port]) so the RP can
-            // validate the token is addressed to it.
-            var audience = new Uri(backchannelLogoutUri, UriKind.Absolute).GetLeftPart(UriPartial.Authority);
-            var token = _tokenGenerator.Generate(subject, sessionId, audience);
+            var sessionRequired = settings.TryGetValue(
+                    "backchannel_logout_session_required", out var rawSessionRequired) &&
+                bool.TryParse(rawSessionRequired, out var parsedSessionRequired) &&
+                parsedSessionRequired;
+            if (sessionRequired && string.IsNullOrWhiteSpace(sessionId))
+            {
+                _logger.LogWarning(
+                    "Back-channel logout skipped for client {ClientId}: the RP requires sid, " +
+                    "but this OP session does not expose one.",
+                    clientId);
+                return;
+            }
 
-            await PostWithRetryAsync(backchannelLogoutUri!, token, clientId);
+            // OIDC Back-Channel Logout 1.0 defines aud exactly as it does for
+            // ID Tokens: the RP's client_id, never the HTTP origin of its
+            // backchannel_logout_uri.
+            var token = _tokenGenerator.Generate(subject, sessionId, clientId);
+
+            await PostWithRetryAsync(
+                backchannelLogoutUri!, token, clientId, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning(
+                "Back-channel logout to client {ClientId} exceeded the delivery deadline.",
+                clientId);
         }
         catch (Exception ex)
         {
             // Never let a single RP's failure surface — log and move on. The
             // user's logout already succeeded; a missed back-channel logout
             // means that RP's local session lives a bit longer (bounded by the
-            // RP's own session timeout), which is a graceful degradation, not a
-            // security boundary breach (the STS-side authorization is revoked
-            // by SignOut regardless).
+            // RP's own session timeout). The OP session has already ended, but
+            // this delivery outcome must remain observable because SignOut does
+            // not revoke a relying party's local browser session by itself.
             _logger.LogWarning(ex,
                 "Back-channel logout to client {ClientId} failed; the user's logout at the STS is unaffected.",
                 clientId);
         }
     }
 
-    private async Task<string?> GetBackchannelLogoutUriAsync(object application)
+    private static string? GetBackchannelLogoutUri(
+        System.Collections.Immutable.ImmutableDictionary<string, string> settings)
     {
         // OpenIddict exposes extra application properties via the JSON settings
         // dictionary (IOpenIddictApplicationManager.GetSettingsAsync). The
         // backchannel_logout_uri is a standard OIDC client registration metadata
         // field; reading it from settings keeps this portable across OpenIddict
         // versions (no reliance on a typed property on the application object).
-        var settings = await _applicationManager.GetSettingsAsync(application);
-        if (settings is null) return null;
-        if (settings.TryGetValue("backchannel_logout_uri", out var value) && !string.IsNullOrWhiteSpace(value))
+        if (settings.TryGetValue("backchannel_logout_uri", out var value) &&
+            Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+            uri.Fragment.Length == 0 &&
+            (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp))
         {
-            return value;
+            return uri.AbsoluteUri;
         }
         return null;
     }
 
-    private async Task PostWithRetryAsync(string uri, string token, string clientId)
+    private async Task PostWithRetryAsync(
+        string uri,
+        string token,
+        string clientId,
+        CancellationToken cancellationToken)
     {
         const int maxAttempts = 3;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
@@ -179,7 +206,7 @@ internal sealed class BackchannelLogoutDistributor : IBackchannelLogoutDispatche
                 // application/x-www-form-urlencoded with a single logout_token
                 // parameter. The RP validates signature, iss, aud, and the
                 // events member, then terminates the local session.
-                using var response = await _httpClient.PostAsync(uri, content, CancellationToken.None);
+                using var response = await _httpClient.PostAsync(uri, content, cancellationToken);
                 if (response.IsSuccessStatusCode)
                 {
                     _logger.LogInformation(
@@ -210,7 +237,10 @@ internal sealed class BackchannelLogoutDistributor : IBackchannelLogoutDispatche
 
             // Exponential backoff between attempts (bounded — this runs on a
             // background thread, not blocking the user).
-            await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), CancellationToken.None);
+            if (attempt < maxAttempts)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(250 * attempt), cancellationToken);
+            }
         }
     }
 }

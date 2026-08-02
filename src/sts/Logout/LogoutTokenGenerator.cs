@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 
@@ -65,8 +64,8 @@ public sealed class LogoutTokenGenerator
     /// to be present, though sub is strongly recommended).</param>
     /// <param name="sessionId">The <c>sid</c> (session identifier), when the STS
     /// tracks one. May be null.</param>
-    /// <param name="audience">The RP's <c>backchannel_logout_uri</c> origin, used
-    /// as the <c>aud</c> claim so the RP can validate the token is for it.</param>
+    /// <param name="audience">The RP's <c>client_id</c>, used as the
+    /// <c>aud</c> claim exactly as in an ID Token.</param>
     /// <remarks>
     /// Per OIDC Back-Channel Logout 1.0 §2.4, the token MUST contain:
     /// <c>iss</c>, <c>aud</c>, <c>iat</c>, <c>jti</c>, <c>events</c> (with the
@@ -77,47 +76,50 @@ public sealed class LogoutTokenGenerator
     public string Generate(string? subject, string? sessionId, string audience)
     {
         if (string.IsNullOrWhiteSpace(audience))
-            throw new ArgumentException("Audience (RP origin) is required.", nameof(audience));
+            throw new ArgumentException("Audience (RP client_id) is required.", nameof(audience));
         if (string.IsNullOrWhiteSpace(subject) && string.IsNullOrWhiteSpace(sessionId))
             throw new ArgumentException(
                 "At least one of subject (sub) or sessionId (sid) must be provided " +
                 "(OIDC Back-Channel Logout 1.0 §2.4).");
 
         var now = _timeProvider.GetUtcNow();
-        var claims = new List<Claim>
+        var claims = new Dictionary<string, object>
         {
-            new(JwtRegisteredClaimNames.Iss, _issuer),
-            new(JwtRegisteredClaimNames.Aud, audience),
-            new(JwtRegisteredClaimNames.Iat,
-                EpochTime.GetIntDate(now.DateTime).ToString(),
-                ClaimValueTypes.Integer64),
             // jti: unique per token so the RP can reject replays.
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
+            [JwtRegisteredClaimNames.Jti] = Guid.NewGuid().ToString("N"),
             // events: the single member that identifies this as a back-channel
             // logout token. RPs MUST verify this is present and non-empty.
-            // Serialized as JSON so the claim value is a JSON object, not a string.
-            new("events", System.Text.Json.JsonSerializer.Serialize(
-                new Dictionary<string, object>
-                {
-                    [BackchannelLogoutEventUri] = new { },
-                }), JsonClaimValueTypes.Json),
+            // Keep it as a nested dictionary so it is emitted as a JSON object,
+            // never as a JSON-looking string.
+            ["events"] = new Dictionary<string, object>
+            {
+                [BackchannelLogoutEventUri] = new Dictionary<string, object>(),
+            },
         };
 
         if (!string.IsNullOrWhiteSpace(subject))
-            claims.Add(new Claim(JwtRegisteredClaimNames.Sub, subject));
+        {
+            claims[JwtRegisteredClaimNames.Sub] = subject;
+        }
 
         if (!string.IsNullOrWhiteSpace(sessionId))
-            claims.Add(new Claim("sid", sessionId));
+        {
+            claims["sid"] = sessionId;
+        }
 
         var descriptor = new SecurityTokenDescriptor
         {
             Issuer = _issuer,
             Audience = audience,
             IssuedAt = now.DateTime,
+            // A short expiry bounds replay acceptance at RPs that retain jti
+            // only for the token lifetime. The spec allows exp and requires RPs
+            // to validate it when present.
+            Expires = now.AddMinutes(2).DateTime,
             SigningCredentials = _signingCredentials,
             // typ header: RPs MUST reject logout tokens whose typ != "logout+jwt".
             TokenType = LogoutTokenType,
-            Claims = claims.ToDictionary(c => c.Type, c => (object)c.Value),
+            Claims = claims,
         };
 
         return _tokenHandler.CreateToken(descriptor);

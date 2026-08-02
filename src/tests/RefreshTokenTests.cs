@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
@@ -51,6 +52,7 @@ public sealed class RefreshTokenTests
 
         var originalRefreshToken = initialBody.GetProperty("refresh_token").GetString();
         Assert.False(string.IsNullOrEmpty(originalRefreshToken));
+        var initialSessionId = SessionId(initialBody.GetProperty("id_token").GetString());
 
         var (refreshStatus, refreshBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
         {
@@ -61,6 +63,9 @@ public sealed class RefreshTokenTests
 
         Assert.Equal(HttpStatusCode.OK, refreshStatus);
         Assert.False(string.IsNullOrEmpty(refreshBody.GetProperty("access_token").GetString()));
+        Assert.Equal(
+            initialSessionId,
+            SessionId(refreshBody.GetProperty("id_token").GetString()));
 
         var rotatedRefreshToken = refreshBody.GetProperty("refresh_token").GetString();
         Assert.False(string.IsNullOrEmpty(rotatedRefreshToken));
@@ -70,6 +75,17 @@ public sealed class RefreshTokenTests
         // a brand-new, single-use refresh token on every redemption instead
         // of reissuing the same one.
         Assert.NotEqual(originalRefreshToken, rotatedRefreshToken);
+    }
+
+    private static string SessionId(string? idToken)
+    {
+        Assert.False(string.IsNullOrWhiteSpace(idToken));
+        var value = new JsonWebTokenHandler()
+            .ReadJsonWebToken(idToken)
+            .GetClaim("sid")
+            .Value;
+        Assert.False(string.IsNullOrWhiteSpace(value));
+        return value;
     }
 
     [Fact]

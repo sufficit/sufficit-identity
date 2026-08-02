@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Antiforgery;
@@ -28,6 +30,9 @@ namespace Sufficit.Identity.STS.Controllers;
 /// </summary>
 public class AuthorizationController : Controller
 {
+    private const string SessionIdClaimType =
+        OidcSessionClaimsPrincipalFactory.SessionIdClaimType;
+
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly IOpenIddictAuthorizationManager _authorizationManager;
     private readonly IOpenIddictScopeManager _scopeManager;
@@ -36,6 +41,7 @@ public class AuthorizationController : Controller
     private readonly TokenExchangeOptions _tokenExchangeOptions;
     private readonly IReadOnlyDictionary<string, string> _claimScopeMap;
     private readonly Logout.IBackchannelLogoutDispatcher _backchannelLogoutDispatcher;
+    private readonly Logout.IFrontchannelLogoutDispatcher _frontchannelLogoutDispatcher;
     private readonly Dpop.DpopProofValidator _dpopProofValidator;
     private readonly DpopOptions _dpopOptions;
     private readonly Dpop.IDpopNonceStore _dpopNonceStore;
@@ -50,6 +56,7 @@ public class AuthorizationController : Controller
         IConfiguration configuration,
         IAntiforgery antiforgery,
         Logout.IBackchannelLogoutDispatcher backchannelLogoutDispatcher,
+        Logout.IFrontchannelLogoutDispatcher frontchannelLogoutDispatcher,
         Dpop.DpopProofValidator dpopProofValidator,
         Dpop.IDpopNonceStore dpopNonceStore)
     {
@@ -71,6 +78,7 @@ public class AuthorizationController : Controller
         _claimScopeMap = claimScopeOptions.ClaimToScope;
         _antiforgery = antiforgery;
         _backchannelLogoutDispatcher = backchannelLogoutDispatcher;
+        _frontchannelLogoutDispatcher = frontchannelLogoutDispatcher;
         _dpopProofValidator = dpopProofValidator;
         _dpopNonceStore = dpopNonceStore;
         // DPoP options (item 3.1, RFC 9449).
@@ -814,24 +822,41 @@ public class AuthorizationController : Controller
         // we need it to enumerate the RPs whose sessions to terminate via
         // back-channel logout (item 3.2 [L1]). The distributor is a no-op when
         // BackchannelLogout is disabled, so this call is cheap in that case.
+        var sessionId = User.GetClaim(SessionIdClaimType);
         var userId = await _userManager.GetUserIdAsync(
             await _userManager.GetUserAsync(User) ?? throw new InvalidOperationException(
                 "The user details cannot be retrieved."));
 
+        // Resolve the RP front-channel targets while the subject/session is
+        // still available. Only a short-lived opaque context identifier is
+        // carried through the OpenIddict sign-out response; RP URLs never
+        // come from the browser query string.
+        string? frontchannelContext = null;
+        if (!string.IsNullOrEmpty(userId))
+        {
+            frontchannelContext = await _frontchannelLogoutDispatcher.PrepareAsync(
+                userId,
+                sessionId,
+                HttpContext.RequestAborted);
+        }
+
         await _signInManager.SignOutAsync();
 
-        // Distribute the back-channel logout to RPs. Fire-and-forget relative
-        // to the user's redirect: the distributor schedules per-RP POSTs on
-        // background tasks and returns immediately, so a slow/down RP cannot
-        // delay the logout response. No await needed for the user-facing path,
-        // but we DO await DistributeAsync itself (it only schedules; it does
-        // not wait for the POSTs). Wrapped so a distribution failure never
-        // breaks the local sign-out (the user IS already signed out here).
+        // Distribute the back-channel logout to RPs. Delivery is awaited with
+        // a strict upper bound so scoped OpenIddict managers are never used by
+        // abandoned fire-and-forget tasks after this request is disposed.
+        // A slow/down RP still cannot prevent the local sign-out.
         if (!string.IsNullOrEmpty(userId))
         {
             try
             {
-                await _backchannelLogoutDispatcher.DistributeAsync(userId, sessionId: null, HttpContext.RequestAborted);
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(
+                    HttpContext.RequestAborted);
+                timeout.CancelAfter(TimeSpan.FromSeconds(8));
+                await _backchannelLogoutDispatcher.DistributeAsync(
+                    userId,
+                    sessionId,
+                    timeout.Token);
             }
             catch (Exception)
             {
@@ -842,52 +867,74 @@ public class AuthorizationController : Controller
             }
         }
 
+        var redirectUri = frontchannelContext is null
+            ? "/"
+            : QueryHelpers.AddQueryString(
+                "/connect/frontchannel-logout",
+                "logout_context",
+                frontchannelContext);
+
         return SignOut(
             authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
-            properties: new AuthenticationProperties { RedirectUri = "/" });
+            properties: new AuthenticationProperties { RedirectUri = redirectUri });
     }
 
     // -----------------------------------------------------------------------
-    // /connect/backchannel-logout — OIDC Back-Channel Logout 1.0.
-    //
-    // UNADVERTISED no-op acknowledgement stub (#N3). Discovery currently
-    // publishes `backchannel_logout_supported=false` (see
-    // ServiceCollectionExtensions.HandleConfigurationRequestContext) because
-    // real distribution of logout_token to each RP's backchannel_logout_uri
-    // is NOT implemented — this endpoint exists only to acknowledge receipt
-    // if a federated RP ever posts one at it (server-to-server, not a
-    // browser-submitted form, hence no antiforgery). Implementing real
-    // distribution (queued fan-out to all registered RPs, with retry/audit)
-    // is tracked as Onda B follow-up — until then, leaving this as 200 OK
-    // is low-risk precisely because discovery says the feature is off.
-    // -----------------------------------------------------------------------
-    [HttpPost("~/connect/backchannel-logout")]
-    [IgnoreAntiforgeryToken]
-    public IActionResult BackchannelLogout()
-    {
-        // The OpenIddict validation handler already verified the logout_token
-        // signature and sub before reaching this action. We accept it and
-        // return 200 to acknowledge receipt.
-        return Ok(new { status = "ok" });
-    }
-
-    // -----------------------------------------------------------------------
-    // /connect/frontchannel-logout — OIDC Front-Channel Logout 1.0 landing.
-    //
-    // UNADVERTISED no-op landing page (#N3). Discovery publishes
-    // `frontchannel_logout_supported=false` because real frontchannel logout
-    // distribution (rendering iframes pointing at each RP's
-    // frontchannel_logout_uri during sign-out) is NOT implemented. This page
-    // only exists as the equivalent landing target if a federated RP ever
-    // frames it (iframe GET, not a form POST — no antiforgery needed).
+    // /connect/frontchannel-logout — one-time OP iframe fan-out page from
+    // OIDC Front-Channel Logout 1.0. This is an internal continuation target,
+    // not an RP-supplied URI and not an endpoint advertised in discovery.
     // -----------------------------------------------------------------------
     [HttpGet("~/connect/frontchannel-logout")]
-    [HttpPost("~/connect/frontchannel-logout")]
     [IgnoreAntiforgeryToken]
-    public IActionResult FrontchannelLogout() => Content(
-        @"<!DOCTYPE html><html><head><meta charset=""utf-8""><title>Frontchannel Logout</title></head>
-<body><script>window.close(); window.location.replace('/');</script></body></html>",
-        "text/html; charset=utf-8");
+    public async Task<IActionResult> FrontchannelLogout(
+        [FromQuery(Name = "logout_context")] string? contextId)
+    {
+        var logoutUris = contextId is null
+            ? []
+            : await _frontchannelLogoutDispatcher.ConsumeAsync(
+                contextId,
+                HttpContext.RequestAborted);
+
+        if (logoutUris.Count == 0)
+        {
+            return Redirect("/");
+        }
+
+        Response.Headers.CacheControl = "no-store";
+        Response.Headers.Pragma = "no-cache";
+
+        // The global STS CSP intentionally defaults to same-origin only. This
+        // narrowly-scoped page must frame the exact registered RP origins, so
+        // emit a stricter page-specific policy with only those origins.
+        var frameSources = logoutUris
+            .Select(value => new Uri(value, UriKind.Absolute).GetLeftPart(UriPartial.Authority))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        Response.Headers.ContentSecurityPolicy =
+            "default-src 'none'; frame-src " + string.Join(' ', frameSources) +
+            "; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
+
+        var html = new StringBuilder(
+            "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\">" +
+            "<meta name=\"referrer\" content=\"no-referrer\">" +
+            "<meta http-equiv=\"refresh\" content=\"3;url=/\">" +
+            "<title>Encerrando sessões conectadas</title></head><body>" +
+            "<h1>Encerrando sessões conectadas</h1>" +
+            "<p>Você será redirecionado em instantes.</p>");
+
+        for (var index = 0; index < logoutUris.Count; index++)
+        {
+            html.Append("<iframe hidden title=\"Logout da aplicação ")
+                .Append(index + 1)
+                .Append("\" src=\"")
+                .Append(HtmlEncoder.Default.Encode(logoutUris[index]))
+                .Append("\"></iframe>");
+        }
+
+        html.Append("<p><a href=\"/\">Continuar</a></p></body></html>");
+        return Content(html.ToString(), "text/html; charset=utf-8");
+    }
 
     // -----------------------------------------------------------------------
     // Helpers
@@ -916,6 +963,12 @@ public class AuthorizationController : Controller
                 .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
                 .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
                 .SetClaims(Claims.Role, [.. await _userManager.GetRolesAsync(user)]);
+
+        var sessionId = User.GetClaim(SessionIdClaimType);
+        if (!string.IsNullOrWhiteSpace(sessionId))
+        {
+            identity.SetClaim(SessionIdClaimType, sessionId);
+        }
 
         // Project persisted claims (AspNetUserClaims — e.g. `directive`, required by
         // downstream APIs for authorization) onto the token. Without this, the 5000+
@@ -1017,6 +1070,12 @@ public class AuthorizationController : Controller
                     yield return Destinations.AccessToken;
                     yield return Destinations.IdentityToken;
                 }
+                yield break;
+
+            case SessionIdClaimType:
+                // OIDC Front-/Back-Channel Logout session correlation. sid is
+                // an ID Token claim; it is not needed by resource servers.
+                yield return Destinations.IdentityToken;
                 yield break;
 
             case "AspNet.Identity.SecurityStamp":
