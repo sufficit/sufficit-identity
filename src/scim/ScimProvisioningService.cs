@@ -95,13 +95,15 @@ internal sealed partial class ScimProvisioningService(
     };
 
     [GeneratedRegex(
-        "^(?<attribute>id|userName|externalId|displayName)\\s+eq\\s+\"(?<value>(?:\\\\.|[^\"])*)\"$",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+        "^(?<attribute>id|userName|externalId|displayName)\\s+eq\\s+\"(?<value>(?:\\\\.|[^\"\\\\])*)\"$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+        matchTimeoutMilliseconds: 250)]
     private static partial Regex EqualityFilterRegex();
 
     [GeneratedRegex(
-        "^members\\s*\\[\\s*value\\s+eq\\s+\"(?<value>(?:\\\\.|[^\"])*)\"\\s*\\]$",
-        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
+        "^members\\s*\\[\\s*value\\s+eq\\s+\"(?<value>(?:\\\\.|[^\"\\\\])*)\"\\s*\\]$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+        matchTimeoutMilliseconds: 250)]
     private static partial Regex MemberPathFilterRegex();
 
     public async Task<ScimListResponse<ScimUserResource>> ListUsersAsync(

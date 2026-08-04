@@ -55,7 +55,7 @@ jobs:
 
       - name: Restore
         working-directory: sufficit-identity
-        run: dotnet restore Sufficit.Identity.sln
+        run: dotnet restore Sufficit.Identity.sln --locked-mode
 
       # The eval found `dotnet build -warnaserror` failing
       # (a CS8601 in the UI's ResetPassword.razor) with the repo's own

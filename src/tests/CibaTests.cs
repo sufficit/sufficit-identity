@@ -147,6 +147,10 @@ public sealed class CibaInitiationTests
         var jwt = handler.ReadJsonWebToken(accessToken!);
         Assert.Equal("at+jwt", jwt.Typ);
         Assert.Equal(subject, jwt.GetClaim("sub").Value);
+        Assert.False(jwt.TryGetClaim("email", out _));
+        Assert.False(jwt.TryGetClaim("name", out _));
+        Assert.False(jwt.TryGetClaim("preferred_username", out _));
+        Assert.False(jwt.TryGetClaim("role", out _));
 
         // One-shot: a second poll after issuance must NOT replay the token
         // (the store removed the auth_req_id on emission).
@@ -158,6 +162,49 @@ public sealed class CibaInitiationTests
             ["client_secret"] = "test-ciba-secret",
         });
         Assert.Equal(HttpStatusCode.BadRequest, replayStatus);
+    }
+
+    [Fact]
+    public async Task Poll_rejects_an_auth_req_id_issued_to_another_client()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(CibaEnabledWithShortInterval());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await EnsureCibaClientAsync(factory);
+        await EnsureCibaClientAsync(factory, "test-ciba-other", "test-ciba-other-secret");
+
+        var client = factory.CreateClient();
+        var authReqId = await InitiateAsync(client);
+
+        var (status, body) = await client.PostFormAsync("/connect/ciba/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "urn:openid:params:grant-type:ciba",
+            ["auth_req_id"] = authReqId,
+            ["client_id"] = "test-ciba-other",
+            ["client_secret"] = "test-ciba-other-secret",
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+        Assert.Equal("invalid_grant", body.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task Initiation_rejects_a_scope_not_permitted_to_the_client()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(CibaEnabled());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await EnsureCibaClientAsync(factory);
+
+        var client = factory.CreateClient();
+        var (status, body) = await client.PostFormAsync("/bc-authorize", new Dictionary<string, string>
+        {
+            ["scope"] = "roles",
+            ["client_id"] = "test-ciba",
+            ["client_secret"] = "test-ciba-secret",
+            ["login_hint"] = TestDataSeeder.DefaultUsername,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+        Assert.Equal("invalid_scope", body.GetProperty("error").GetString());
     }
 
     private static IReadOnlyDictionary<string, string?> CibaEnabled() => new Dictionary<string, string?>
@@ -172,16 +219,19 @@ public sealed class CibaInitiationTests
         ["Sufficit:Identity:Ciba:PollIntervalSeconds"] = "0",
     };
 
-    private static async Task EnsureCibaClientAsync(SufficitIdentityTestFactory factory)
+    private static async Task EnsureCibaClientAsync(
+        SufficitIdentityTestFactory factory,
+        string clientId = "test-ciba",
+        string clientSecret = "test-ciba-secret")
     {
         using var scope = factory.Services.CreateScope();
         var appManager = scope.ServiceProvider.GetRequiredService<OpenIddict.Abstractions.IOpenIddictApplicationManager>();
-        if (await appManager.FindByClientIdAsync("test-ciba") is null)
+        if (await appManager.FindByClientIdAsync(clientId) is null)
         {
             await appManager.CreateAsync(new OpenIddict.Abstractions.OpenIddictApplicationDescriptor
             {
-                ClientId = "test-ciba",
-                ClientSecret = "test-ciba-secret",
+                ClientId = clientId,
+                ClientSecret = clientSecret,
                 ClientType = OpenIddict.Abstractions.OpenIddictConstants.ClientTypes.Confidential,
                 Permissions =
                 {

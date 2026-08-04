@@ -20,10 +20,17 @@ ROOTDIR=/opt/${APPTITLE}
 CERT_SRC=/etc/letsencrypt/live/sufficit.com.br/certificate.pfx
 CERT_DST=${ROOTDIR}/certificate.pfx
 
-if [ -f "${CERT_SRC}" ]; then
+# Releases carry forward the exact signing certificate that matches the
+# configured Certificates:Password. Never replace it with the global TLS PFX:
+# that file may use a different password and is not necessarily the intended
+# OpenIddict signing key. CERT_SRC is only a bootstrap source for a release
+# that does not have a certificate yet.
+if [ -f "${CERT_DST}" ]; then
+    echo "[prestart] Existing application certificate preserved at ${CERT_DST}"
+elif [ -f "${CERT_SRC}" ]; then
     yes | cp -rf "${CERT_SRC}" "${CERT_DST}" 2>/dev/null || true
     echo "[prestart] Certificate copied from ${CERT_SRC}"
-elif [ ! -f "${CERT_DST}" ]; then
+else
     # Generate a self-signed cert for dev/test (no Let's Encrypt available).
     echo "[prestart] No PFX found — generating self-signed certificate"
     openssl req -x509 -newkey rsa:2048 \

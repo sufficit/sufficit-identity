@@ -108,6 +108,176 @@ public sealed class DpopTests
     }
 
     [Fact]
+    public async Task Password_grant_with_valid_proof_issues_a_sender_bound_token()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
+        {
+            ["Sufficit:Identity:Dpop:Enabled"] = "true",
+            ["Sufficit:Identity:Dpop:RequireForAllClients"] = "true",
+        });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        var client = factory.CreateClient();
+        var tokenUrl = new Uri(client.BaseAddress!, "connect/token").AbsoluteUri;
+        var (proof, _) = BuildDpopProof("POST", tokenUrl);
+        client.DefaultRequestHeaders.Add("DPoP", proof);
+
+        var (tokenStatus, tokenBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "password",
+            ["username"] = TestDataSeeder.DefaultUsername,
+            ["password"] = TestDataSeeder.DefaultPassword,
+            ["client_id"] = TestDataSeeder.PasswordClientId,
+            ["client_secret"] = TestDataSeeder.PasswordClientSecret,
+            ["scope"] = TestDataSeeder.ScopeName,
+        });
+
+        Assert.Equal(HttpStatusCode.OK, tokenStatus);
+        Assert.Equal("DPoP", tokenBody.GetProperty("token_type").GetString());
+        var accessToken = tokenBody.GetProperty("access_token").GetString();
+        Assert.False(string.IsNullOrEmpty(accessToken));
+
+        client.DefaultRequestHeaders.Remove("DPoP");
+        client.DefaultRequestHeaders.Authorization = IntrospectionTests.BasicAuthFor(
+            TestDataSeeder.IntrospectionClientId,
+            TestDataSeeder.IntrospectionClientSecret);
+        var (introspectionStatus, introspection) = await client.PostFormAsync(
+            "/connect/introspect",
+            new Dictionary<string, string> { ["token"] = accessToken! });
+
+        Assert.Equal(HttpStatusCode.OK, introspectionStatus);
+        Assert.True(introspection.GetProperty("active").GetBoolean());
+        var confirmation = introspection.GetProperty(
+            DpopProofValidator.ConfirmationClaimType);
+        Assert.False(string.IsNullOrWhiteSpace(
+            confirmation.GetProperty("jkt").GetString()));
+    }
+
+    [Fact]
+    public async Task Refresh_token_cannot_be_rebound_to_a_different_dpop_key()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
+        {
+            ["Sufficit:Identity:Dpop:Enabled"] = "true",
+            ["Sufficit:Identity:Dpop:RequireForAllClients"] = "true",
+        });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        const string clientId = "test-dpop-refresh";
+        const string clientSecret = "test-dpop-refresh-secret";
+        using (var scope = factory.Services.CreateScope())
+        {
+            var applications = scope.ServiceProvider.GetRequiredService<
+                OpenIddict.Abstractions.IOpenIddictApplicationManager>();
+            await applications.CreateAsync(new OpenIddict.Abstractions.OpenIddictApplicationDescriptor
+            {
+                ClientId = clientId,
+                ClientSecret = clientSecret,
+                ClientType = OpenIddict.Abstractions.OpenIddictConstants.ClientTypes.Confidential,
+                Permissions =
+                {
+                    OpenIddict.Abstractions.OpenIddictConstants.Permissions.Endpoints.Token,
+                    OpenIddict.Abstractions.OpenIddictConstants.Permissions.GrantTypes.Password,
+                    OpenIddict.Abstractions.OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+                    OpenIddict.Abstractions.OpenIddictConstants.Permissions.Prefixes.Scope +
+                        OpenIddict.Abstractions.OpenIddictConstants.Scopes.OfflineAccess,
+                    OpenIddict.Abstractions.OpenIddictConstants.Permissions.Prefixes.Scope +
+                        TestDataSeeder.ScopeName,
+                },
+            });
+        }
+
+        var client = factory.CreateClient();
+        var tokenUrl = new Uri(client.BaseAddress!, "connect/token").AbsoluteUri;
+        var (initialProof, _) = BuildDpopProof("POST", tokenUrl);
+        client.DefaultRequestHeaders.Add("DPoP", initialProof);
+        var (initialStatus, initialBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "password",
+            ["username"] = TestDataSeeder.DefaultUsername,
+            ["password"] = TestDataSeeder.DefaultPassword,
+            ["client_id"] = clientId,
+            ["client_secret"] = clientSecret,
+            ["scope"] = $"offline_access {TestDataSeeder.ScopeName}",
+        });
+
+        Assert.Equal(HttpStatusCode.OK, initialStatus);
+        var refreshToken = initialBody.GetProperty("refresh_token").GetString();
+        Assert.False(string.IsNullOrEmpty(refreshToken));
+
+        // A fresh proof also carries a fresh key, so it is valid in isolation
+        // but must not be allowed to rebind a stolen refresh token.
+        var (attackerProof, _) = BuildDpopProof("POST", tokenUrl);
+        client.DefaultRequestHeaders.Remove("DPoP");
+        client.DefaultRequestHeaders.Add("DPoP", attackerProof);
+        var (refreshStatus, refreshBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = refreshToken!,
+            ["client_id"] = clientId,
+            ["client_secret"] = clientSecret,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, refreshStatus);
+        Assert.Equal("invalid_grant", refreshBody.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task Userinfo_accepts_only_a_matching_access_token_bound_proof()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
+        {
+            ["Sufficit:Identity:Dpop:Enabled"] = "true",
+            ["Sufficit:Identity:Dpop:RequireForAllClients"] = "true",
+        });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        var client = factory.CreateClient();
+        var tokenUrl = new Uri(client.BaseAddress!, "connect/token").AbsoluteUri;
+        var (tokenProof, key) = BuildDpopProof("POST", tokenUrl);
+        client.DefaultRequestHeaders.Add("DPoP", tokenProof);
+        var (tokenStatus, tokenBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "password",
+            ["username"] = TestDataSeeder.DefaultUsername,
+            ["password"] = TestDataSeeder.DefaultPassword,
+            ["client_id"] = TestDataSeeder.PasswordClientId,
+            ["client_secret"] = TestDataSeeder.PasswordClientSecret,
+            ["scope"] = TestDataSeeder.ScopeName,
+        });
+        Assert.Equal(HttpStatusCode.OK, tokenStatus);
+        var accessToken = tokenBody.GetProperty("access_token").GetString()!;
+
+        var userInfoUrl = new Uri(client.BaseAddress!, "connect/userinfo").AbsoluteUri;
+        var (resourceProof, _) = BuildDpopProof(
+            "GET",
+            userInfoUrl,
+            accessToken: accessToken,
+            signingKey: key);
+        client.DefaultRequestHeaders.Remove("DPoP");
+        client.DefaultRequestHeaders.Add("DPoP", resourceProof);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("DPoP", accessToken);
+
+        using var response = await client.GetAsync("/connect/userinfo");
+        var responseBody = await response.Content.ReadAsStringAsync();
+        Assert.True(
+            response.StatusCode is HttpStatusCode.OK,
+            $"Expected UserInfo success, got {(int)response.StatusCode}: {responseBody}");
+        var userInfo = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.False(string.IsNullOrEmpty(userInfo.GetProperty("sub").GetString()));
+
+        var (attackerProof, _) = BuildDpopProof(
+            "GET",
+            userInfoUrl,
+            accessToken: accessToken);
+        client.DefaultRequestHeaders.Remove("DPoP");
+        client.DefaultRequestHeaders.Add("DPoP", attackerProof);
+        using var rejected = await client.GetAsync("/connect/userinfo");
+        Assert.Equal(HttpStatusCode.Unauthorized, rejected.StatusCode);
+    }
+
+    [Fact]
     public async Task RequireNonce_challenges_with_use_dpop_nonce_then_accepts_the_retry()
     {
         // RFC 9449 §8 nonce dance: with RequireNonce=true, a first request
@@ -214,10 +384,15 @@ public sealed class DpopTests
     /// derive the expected thumbprint if needed).
     /// </summary>
     private static (string Jwt, ECDsaSecurityKey Key) BuildDpopProof(
-        string method, string url, string? jti = null, string? nonce = null)
+        string method,
+        string url,
+        string? jti = null,
+        string? nonce = null,
+        string? accessToken = null,
+        ECDsaSecurityKey? signingKey = null)
     {
-        var ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-        var key = new ECDsaSecurityKey(ecdsa);
+        var key = signingKey ?? new ECDsaSecurityKey(
+            ECDsa.Create(ECCurve.NamedCurves.nistP256));
         var jwk = JsonWebKeyConverter.ConvertFromECDsaSecurityKey(key);
         // Strip the private part — DPoP jwk headers carry the PUBLIC key only.
         // (JsonWebKeyConverter includes d; remove it so the header is public.)
@@ -235,6 +410,11 @@ public sealed class DpopTests
         if (nonce is not null)
         {
             claims["nonce"] = nonce;
+        }
+        if (accessToken is not null)
+        {
+            claims["ath"] = Base64UrlEncoder.Encode(
+                SHA256.HashData(System.Text.Encoding.ASCII.GetBytes(accessToken)));
         }
 
         var descriptor = new SecurityTokenDescriptor

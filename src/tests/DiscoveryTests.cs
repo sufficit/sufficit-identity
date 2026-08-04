@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.DependencyInjection;
+using OpenIddict.Abstractions;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 
@@ -59,6 +62,63 @@ public sealed class DiscoveryTests
                 json.TryGetProperty(honestlyAbsentKey, out _),
                 $"Discovery document unexpectedly advertises '{honestlyAbsentKey}', which is not implemented.");
         }
+    }
+
+    [Fact]
+    public async Task Authorization_code_requires_pkce_globally_and_advertises_only_s256()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        var clientId = $"pkce-global-{Guid.NewGuid():N}";
+        const string redirectUri = "https://pkce.tests.local/callback";
+        using (var scope = factory.Services.CreateScope())
+        {
+            var applications = scope.ServiceProvider
+                .GetRequiredService<IOpenIddictApplicationManager>();
+            await applications.CreateAsync(new OpenIddictApplicationDescriptor
+            {
+                ClientId = clientId,
+                ClientSecret = "pkce-global-secret",
+                ClientType = OpenIddictConstants.ClientTypes.Confidential,
+                ConsentType = OpenIddictConstants.ConsentTypes.Implicit,
+                RedirectUris = { new Uri(redirectUri) },
+                Permissions =
+                {
+                    OpenIddictConstants.Permissions.Endpoints.Authorization,
+                    OpenIddictConstants.Permissions.Endpoints.Token,
+                    OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
+                    OpenIddictConstants.Permissions.ResponseTypes.Code,
+                },
+                // Deliberately no per-client PKCE requirement: the global
+                // server policy must still reject the request.
+            });
+        }
+
+        var client = factory.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+        using var authorization = await client.GetAsync(QueryHelpers.AddQueryString(
+            "/connect/authorize",
+            new Dictionary<string, string?>
+            {
+                ["response_type"] = "code",
+                ["client_id"] = clientId,
+                ["redirect_uri"] = redirectUri,
+            }));
+        Assert.Equal(HttpStatusCode.BadRequest, authorization.StatusCode);
+        var authorizationError = await authorization.Content.ReadAsStringAsync();
+        Assert.Contains("error:invalid_request", authorizationError, StringComparison.Ordinal);
+
+        var discovery = await client.GetFromJsonAsync<JsonElement>(
+            "/.well-known/openid-configuration");
+        var methods = discovery.GetProperty("code_challenge_methods_supported")
+            .EnumerateArray()
+            .Select(value => value.GetString())
+            .ToArray();
+        Assert.Equal("S256", Assert.Single(methods));
     }
 
     // ----------------------------------------------------------------------

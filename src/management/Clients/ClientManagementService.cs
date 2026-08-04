@@ -307,6 +307,8 @@ internal sealed class ClientManagementService(
 
             if (command.RequirePar)
             {
+                descriptor.Permissions.Add(
+                    OpenIddictConstants.Permissions.Endpoints.PushedAuthorization);
                 descriptor.Requirements.Add(
                     OpenIddictConstants.Requirements.Features.PushedAuthorizationRequests);
             }

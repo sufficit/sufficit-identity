@@ -120,6 +120,19 @@ public class CibaController : Controller
         }
 
         IReadOnlyCollection<string> scopes = scope.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var requestedScope in scopes)
+        {
+            if (!await _applicationManager.HasPermissionAsync(
+                    application,
+                    OpenIddictConstants.Permissions.Prefixes.Scope + requestedScope))
+            {
+                return BadRequest(new
+                {
+                    error = Errors.InvalidScope,
+                    error_description = $"The scope '{requestedScope}' is not allowed for this client."
+                });
+            }
+        }
 
         var pending = _pendingStore.Create(
             clientId,
@@ -276,6 +289,19 @@ public class CibaController : Controller
             return BadRequest(new { error = Errors.ExpiredToken, error_description = "The auth_req_id is unknown or expired." });
         }
 
+        // RFC 9126 §3.3: auth_req_id is issued to exactly one client. A
+        // different, otherwise valid client must never be able to redeem it.
+        // Use invalid_grant so the response does not disclose whether the
+        // identifier belongs to another client.
+        if (!string.Equals(pending.ClientId, clientId, StringComparison.Ordinal))
+        {
+            return BadRequest(new
+            {
+                error = Errors.InvalidGrant,
+                error_description = "The auth_req_id is invalid for this client."
+            });
+        }
+
         // Approved? Issue the token. Checked BEFORE slow_down so an approved
         // request that the client polls a touch early still completes.
         if (pending.ApprovedSubject is { } subject)
@@ -295,15 +321,25 @@ public class CibaController : Controller
             // is NOT an OpenIddict reference token (no introspection/revocation)
             // — documented limitation; deferred until a client needs it.
             var scopes = pending.Scopes.ToList();
-            var extraClaims = new List<System.Security.Claims.Claim>
+            var extraClaims = new List<System.Security.Claims.Claim>();
+            if (scopes.Contains(Scopes.Email, StringComparer.Ordinal))
             {
-                new(Claims.Email, (await _userManager.GetEmailAsync(user)) ?? string.Empty),
-                new(Claims.Name, (await _userManager.GetUserNameAsync(user)) ?? string.Empty),
-                new(Claims.PreferredUsername, (await _userManager.GetUserNameAsync(user)) ?? string.Empty),
-            };
-            foreach (var role in await _userManager.GetRolesAsync(user))
+                extraClaims.Add(new System.Security.Claims.Claim(
+                    Claims.Email,
+                    (await _userManager.GetEmailAsync(user)) ?? string.Empty));
+            }
+            if (scopes.Contains(Scopes.Profile, StringComparer.Ordinal))
             {
-                extraClaims.Add(new System.Security.Claims.Claim(Claims.Role, role));
+                var userName = (await _userManager.GetUserNameAsync(user)) ?? string.Empty;
+                extraClaims.Add(new System.Security.Claims.Claim(Claims.Name, userName));
+                extraClaims.Add(new System.Security.Claims.Claim(Claims.PreferredUsername, userName));
+            }
+            if (scopes.Contains(Scopes.Roles, StringComparer.Ordinal))
+            {
+                foreach (var role in await _userManager.GetRolesAsync(user))
+                {
+                    extraClaims.Add(new System.Security.Claims.Claim(Claims.Role, role));
+                }
             }
 
             var accessToken = _accessTokenGenerator.Generate(

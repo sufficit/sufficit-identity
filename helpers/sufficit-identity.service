@@ -25,6 +25,7 @@ KillSignal=SIGINT
 Environment=ASPNETCORE_ENVIRONMENT=Production
 Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
 Environment=DOTNET_ROOT=/usr/share/dotnet
+EnvironmentFile=-/etc/sufficit/identity/hardening.env
 
 RuntimeDirectory=sufficit-identity
 RuntimeDirectoryMode=0775

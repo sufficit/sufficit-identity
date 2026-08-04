@@ -56,6 +56,11 @@
         "_None": "Enables the 'none' grant/response type (implicit access_token without PKCE). Removed by OAuth 2.1. Default false — flip to true ONLY for legacy WebForms / old-SwaggerUI clients during migration.",
         "None": false
       },
+      "_Pkce": "OAuth 2.1 PKCE policy. The secure defaults require PKCE for every authorization-code client and accept only S256. Use the opt-outs only during a controlled legacy-client migration.",
+      "Pkce": {
+        "RequireForAllClients": true,
+        "AllowPlainCodeChallengeMethod": false
+      },
       "_TokenExchange": "Master switch for RFC 8693 token exchange. Default FALSE (secure-by-default). Production environments that have signed off a delegation policy must opt-in via Enabled=true AND configure a closed AllowedClientIds allowlist.",
       "TokenExchange": {
         "Enabled": false,
@@ -137,6 +142,25 @@
         "_RequireNonce": "true enforces the DPoP nonce dance (RFC 9449 §8): a proof without a valid nonce claim is rejected with HTTP 400 use_dpop_nonce + a DPoP-Nonce response header; the client retries carrying that nonce. RECOMMENDED by the RFC; default false (flip once clients implement the retry). Ignored when Enabled is false.",
         "RequireNonce": false
       },
+      "_Fapi2": "Opt-in enforcement boundary for the final FAPI 2.0 Security Profile. This does NOT assert certification. Only listed confidential clients are affected. DPoP mode requires Dpop.Enabled=true; mTLS mode requires Mtls.Enabled=true plus certificate validation at the TLS terminator. Profiled authorization flows require authenticated PAR, response_type=code, PKCE S256, redirect_uri, iss, short-lived codes/request_uri and sender-constrained tokens.",
+      "Fapi2": {
+        "Enabled": false,
+        "ClientIds": [],
+        "_SenderConstraint": "DPoP or Mtls. DPoP additionally binds dpop_jkt from PAR to the authorization code and token-endpoint proof.",
+        "SenderConstraint": "Dpop",
+        "AuthorizationCodeLifetimeSeconds": 60,
+        "PushedAuthorizationRequestLifetimeSeconds": 300
+      },
+      "_Jarm": "JWT Secured Authorization Response Mode. Independent of FAPI 2.0 and disabled by default. When enabled, supports query.jwt, fragment.jwt, form_post.jwt and jwt, signs the complete response with the STS signing key, and returns it as the single response parameter.",
+      "Jarm": {
+        "Enabled": false,
+        "LifetimeSeconds": 120
+      },
+      "_SharedSignals": "OpenID Shared Signals Framework 1.0 / CAEP transmitter. Disabled by default. When enabled, exposes /.well-known/ssf-configuration and pushes signed session-revoked SETs to statically provisioned HTTPS receivers during logout. The optional dynamic stream-management API is not implemented or advertised. Put Authorization values in environment variables/secrets.",
+      "SharedSignals": {
+        "Enabled": false,
+        "Receivers": []
+      },
       "_Ciba": "CIBA (Client-Initiated Backchannel Authentication, RFC 9126, item 3.5) — decoupled auth where the consumption device (kiosk/call-center/AI agent) is NOT the authentication device. OpenIddict 7.6 has NO CIBA support; the STS implements it from scratch: /bc-authorize initiation, an in-memory ICibaPendingRequestStore, /connect/ciba/complete (out-of-band approval), and /connect/ciba/token (poll). The access token is emitted by CibaAccessTokenGenerator (a hand-built JWT signed with the STS key, validatable against the STS JWKS) because OpenIddict forbids SignIn from the unregistered endpoint. LIMITATION: the CIBA JWT is NOT an OpenIddict reference token (no /connect/introspect or /connect/revocation); insert into IOpenIddictTokenManager when a client needs those.",
       "Ciba": {
         "_Enabled": "true registers the CIBA endpoints (initiation, completion, poll) and the pending-request store. Default false.",
@@ -159,7 +183,19 @@
           "_RequireInitialAccessToken": "true (default) requires a valid bearer initial access token in the Authorization header for /connect/register. Without it, anyone can register a client.",
           "RequireInitialAccessToken": true,
           "_InitialAccessToken": "The static initial access token accepted by /connect/register. Configure via User Secrets / env var — NEVER commit a real value. Empty = endpoint rejects all requests (even when Enabled).",
-          "InitialAccessToken": ""
+          "InitialAccessToken": "",
+          "_AllowedGrantTypes": "Grant types DCR callers may request. Defaults exclude client_credentials, password, device_code and token exchange. Add any privileged grant only after defining who can obtain an initial access token.",
+          "AllowedGrantTypes": [
+            "authorization_code",
+            "refresh_token"
+          ],
+          "_AllowedScopes": "Scopes DCR callers may request. Custom API and administrative scopes must be listed explicitly; never add a broad admin scope to this shared allowlist.",
+          "AllowedScopes": [
+            "openid",
+            "profile",
+            "email",
+            "offline_access"
+          ]
         }
       },
       "_Hsts": "HSTS policy applied outside Development.",

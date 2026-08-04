@@ -236,6 +236,11 @@ public sealed class ClientsControllerTests
             r => string.Equals(r.GetString(),
                 OpenIddictConstants.Requirements.Features.PushedAuthorizationRequests,
                 StringComparison.Ordinal));
+        var permissions = body.GetProperty("permissions");
+        Assert.Contains(permissions.EnumerateArray(),
+            permission => string.Equals(permission.GetString(),
+                OpenIddictConstants.Permissions.Endpoints.PushedAuthorization,
+                StringComparison.Ordinal));
     }
 
     [Fact]

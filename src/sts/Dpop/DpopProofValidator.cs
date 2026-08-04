@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
@@ -33,6 +34,12 @@ public sealed class DpopProofValidator
     /// <summary>The JWK thumbprint claim member under <c>cnf</c> (RFC 9449 §7.2).</summary>
     public const string JktClaimMember = "jkt";
 
+    /// <summary>
+    /// Internal handoff claim used until the OpenIddict token principals have
+    /// been prepared. It is never emitted in a token.
+    /// </summary>
+    internal const string BindingThumbprintClaimType = "sufficit_private_dpop_jkt";
+
     // jti replay cache: bounded by TTL so a proof cannot be reused after its
     // window. RFC 9449 §4.3 requires the RS/AS to ensure the same jti is not
     // used twice within the proof's validity window.
@@ -64,7 +71,8 @@ public sealed class DpopProofValidator
         string httpMethod,
         string httpUrl,
         string? expectedNonce,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? accessToken = null)
     {
         if (string.IsNullOrWhiteSpace(dpopHeader))
         {
@@ -178,6 +186,21 @@ public sealed class DpopProofValidator
         {
             _logger.LogWarning("DPoP proof has no iat claim.");
             return null;
+        }
+
+        // A proof presented to a protected resource MUST bind the exact access
+        // token through ath (RFC 9449 §4.2). Token-endpoint proofs don't carry
+        // ath, so this check is enabled only when the caller supplies a token.
+        if (accessToken is not null)
+        {
+            var expectedAth = Base64UrlEncoder.Encode(
+                SHA256.HashData(Encoding.ASCII.GetBytes(accessToken)));
+            if (!jwt.TryGetPayloadValue("ath", out string ath)
+                || !string.Equals(ath, expectedAth, StringComparison.Ordinal))
+            {
+                _logger.LogWarning("DPoP proof ath claim does not match the access token.");
+                return null;
+            }
         }
 
         // jti: unique proof identifier. RFC 9449 §4.3 requires the AS/RS to

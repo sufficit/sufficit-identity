@@ -46,9 +46,12 @@ public static class ServiceCollectionExtensions
         var options = configuration
             .GetSection(configurationSection)
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
+        ValidateAdvancedProtocolOptions(options);
         services.AddSingleton(options);
         services.AddSingleton(options.TwoFactor);
         services.AddSingleton(options.Passkeys);
+        services.AddSingleton(options.Fapi2);
+        services.AddSingleton(options.SharedSignals);
 
         var emailOptions = configuration
             .GetSection("Sufficit:Identity:Email")
@@ -72,6 +75,13 @@ public static class ServiceCollectionExtensions
         // already relied on further down.
         var isDevelopmentEnvironment =
             Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+        // Auxiliary protocol JWTs (logout_token, JARM, SSF/CAEP and CIBA)
+        // share one key for the lifetime of this service provider. In
+        // production this resolves the configured STS certificate. In
+        // Development it creates one ephemeral key that is also added to the
+        // OpenIddict server below, ensuring its public half appears in JWKS.
+        var auxiliarySigningCredentials = ResolveProtocolSigningCredentials(
+            options, isDevelopmentEnvironment);
 
         // ---- Database (MySQL/MariaDB via Pomelo.EntityFrameworkCore.MySql) ----
         // Sufficit fork of Pomelo (EF Core 10), built from upstream PR #2019.
@@ -390,11 +400,60 @@ public static class ServiceCollectionExtensions
                       .AllowRefreshTokenFlow()
                       .AllowTokenExchangeFlow();
 
+                if (options.Fapi2.Enabled)
+                {
+                    // These OpenIddict lifetimes are global. Tightening them
+                    // for all clients is backward compatible and avoids a
+                    // profiled client accidentally receiving a five-minute
+                    // authorization code or hour-long PAR request URI.
+                    server.SetAuthorizationCodeLifetime(TimeSpan.FromSeconds(
+                        options.Fapi2.AuthorizationCodeLifetimeSeconds));
+                    server.Configure(serverOptions =>
+                        serverOptions.RequestTokenLifetime = TimeSpan.FromSeconds(
+                            options.Fapi2.PushedAuthorizationRequestLifetimeSeconds));
+
+                    server.AddEventHandler(Fapi.ValidateFapiAuthorizationRequest.Descriptor);
+                    server.AddEventHandler(Fapi.ValidateFapiPushedAuthorizationRequest.Descriptor);
+                    server.AddEventHandler(Fapi.ValidateFapiTokenRequest.Descriptor);
+                }
+
+                if (options.Jarm.Enabled)
+                {
+                    server.Configure(serverOptions =>
+                    {
+                        serverOptions.ResponseModes.Add(Jarm.JarmAuthorizationResponseHandler.QueryJwt);
+                        serverOptions.ResponseModes.Add(Jarm.JarmAuthorizationResponseHandler.FragmentJwt);
+                        serverOptions.ResponseModes.Add(Jarm.JarmAuthorizationResponseHandler.FormPostJwt);
+                        serverOptions.ResponseModes.Add(Jarm.JarmAuthorizationResponseHandler.Jwt);
+                    });
+                    server.AddEventHandler(Jarm.JarmAuthorizationResponseHandler.Descriptor);
+                }
+
                 if (options.LegacyGrants.Password)
                     server.AllowPasswordFlow();
 
                 if (options.LegacyGrants.None)
                     server.AllowNoneFlow();
+
+                // OAuth 2.1 baseline: require PKCE for every authorization-code
+                // client and accept only S256. Both controls have explicit
+                // migration opt-outs for legacy confidential clients.
+                if (options.Pkce.RequireForAllClients)
+                    server.RequireProofKeyForCodeExchange();
+
+                if (!options.Pkce.AllowPlainCodeChallengeMethod)
+                {
+                    server.Configure(serverOptions =>
+                        serverOptions.CodeChallengeMethods.Remove(CodeChallengeMethods.Plain));
+                }
+
+                if (options.Dpop.Enabled)
+                {
+                    server.AddEventHandler(Dpop.AttachDpopConfirmation.Descriptor);
+                    server.AddEventHandler(Dpop.AttachDpopTokenType.Descriptor);
+                    server.AddEventHandler(Dpop.ExtractDpopUserInfoToken.Descriptor);
+                    server.AddEventHandler(Dpop.ValidateDpopAccessTokenProof.Descriptor);
+                }
 
                 // -------------------------------------------------------------------
                 // Token lifetimes (Sufficit:Identity:Tokens). Refresh rotation is
@@ -470,6 +529,11 @@ public static class ServiceCollectionExtensions
                 else if (isDevelopmentEnvironment)
                 {
                     server.AddDevelopmentSigningCertificate();
+                    // Publish the same ephemeral public key used to sign JARM,
+                    // SSF/CAEP, logout_token and CIBA JWTs. Without this extra
+                    // signing key those JWTs worked only in-process and could
+                    // not be verified through the advertised JWKS endpoint.
+                    server.AddSigningKey(auxiliarySigningCredentials.Key);
                 }
                 else
                 {
@@ -546,6 +610,12 @@ public static class ServiceCollectionExtensions
                         context.Metadata["tls_client_certificate_bound_access_tokens"] =
                             JsonValue.Create(options.Mtls.Enabled);
 
+                        // OpenIddict attaches `iss` to every redirectable
+                        // authorization response (RFC 9207). Publish the
+                        // matching capability bit explicitly for FAPI clients.
+                        context.Metadata["authorization_response_iss_parameter_supported"] =
+                            JsonValue.Create(true);
+
                         // DPoP (RFC 9449, item 3.1). Advertised ONLY when
                         // Dpop.Enabled: the STS validates DPoP proofs and
                         // sender-constrains tokens. The signing-algorithms list
@@ -560,6 +630,17 @@ public static class ServiceCollectionExtensions
                             context.Metadata["dpop_signing_alg_values_supported"] =
                                 System.Text.Json.JsonSerializer.SerializeToNode(
                                     new[] { "ES256", "RS256" });
+                        }
+
+                        if (options.Jarm.Enabled)
+                        {
+                            // JARM final section 4 defines this metadata value.
+                            // Encryption algorithms are intentionally omitted:
+                            // this implementation currently supports signed,
+                            // but not encrypted, authorization responses.
+                            context.Metadata["authorization_signing_alg_values_supported"] =
+                                System.Text.Json.JsonSerializer.SerializeToNode(
+                                    new[] { auxiliarySigningCredentials.Algorithm });
                         }
 
                         return default;
@@ -629,12 +710,12 @@ public static class ServiceCollectionExtensions
         // wired when Enabled, to avoid creating an HttpClient that is never used.
         if (options.BackchannelLogout.Enabled)
         {
-            var logoutSigning = ResolveLogoutSigningCredentials(options, isDevelopmentEnvironment);
             var issuer = string.IsNullOrWhiteSpace(options.Issuer)
                 ? "https://localhost/"
                 : options.Issuer;
 
-            services.AddSingleton(new Logout.LogoutTokenGenerator(logoutSigning, issuer));
+            services.AddSingleton(new Logout.LogoutTokenGenerator(
+                auxiliarySigningCredentials, issuer));
             services.AddHttpClient<Logout.IBackchannelLogoutDispatcher, Logout.BackchannelLogoutDistributor>()
                 .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(7));
         }
@@ -675,6 +756,32 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<Dpop.IDpopNonceStore>(_ =>
             new Dpop.InMemoryDpopNonceStore(timeProvider: TimeProvider.System));
 
+        if (options.Jarm.Enabled)
+        {
+            var issuer = string.IsNullOrWhiteSpace(options.Issuer)
+                ? "https://localhost/"
+                : options.Issuer;
+            services.AddSingleton(new Jarm.JarmResponseGenerator(
+                auxiliarySigningCredentials,
+                issuer,
+                TimeSpan.FromSeconds(options.Jarm.LifetimeSeconds)));
+        }
+
+        if (options.SharedSignals.Enabled)
+        {
+            services.AddSingleton(new SharedSignals.CaepEventGenerator(
+                auxiliarySigningCredentials, options.Issuer!));
+            services.AddHttpClient<SharedSignals.ISharedSignalsDispatcher,
+                    SharedSignals.SharedSignalsPushDispatcher>()
+                .ConfigureHttpClient(client =>
+                    client.Timeout = TimeSpan.FromSeconds(7));
+        }
+        else
+        {
+            services.AddSingleton<SharedSignals.ISharedSignalsDispatcher,
+                SharedSignals.NullSharedSignalsDispatcher>();
+        }
+
         // ---- CIBA (RFC 9126, item 3.5) ----
         // The pending-request store is registered unconditionally (cheap; it is
         // an in-memory ConcurrentDictionary). The CibaController and the CIBA
@@ -691,36 +798,104 @@ public static class ServiceCollectionExtensions
         // (null → OpenIddict default 60).
         if (options.Ciba.Enabled)
         {
-            var cibaSigning = ResolveLogoutSigningCredentials(options, isDevelopmentEnvironment);
             var issuer = string.IsNullOrWhiteSpace(options.Issuer)
                 ? "https://localhost/"
                 : options.Issuer;
             var accessTokenMinutes = options.Tokens.AccessTokenLifetimeMinutes ?? 60;
             services.AddSingleton(new Ciba.CibaAccessTokenGenerator(
-                cibaSigning, issuer, accessTokenMinutes));
+                auxiliarySigningCredentials, issuer, accessTokenMinutes));
         }
 
         return services;
     }
 
+    private static void ValidateAdvancedProtocolOptions(SufficitIdentityOptions options)
+    {
+        if (options.Fapi2.Enabled)
+        {
+            if (options.Fapi2.ClientIds.Count == 0)
+                throw new InvalidOperationException(
+                    "FAPI 2.0 is enabled but Sufficit:Identity:Fapi2:ClientIds is empty.");
+            if (options.Fapi2.AuthorizationCodeLifetimeSeconds is < 1 or > 60)
+                throw new InvalidOperationException(
+                    "FAPI 2.0 authorization-code lifetime must be between 1 and 60 seconds.");
+            if (options.Fapi2.PushedAuthorizationRequestLifetimeSeconds is < 1 or >= 600)
+                throw new InvalidOperationException(
+                    "FAPI 2.0 PAR request_uri lifetime must be between 1 and 599 seconds.");
+            if (options.Fapi2.SenderConstraint == Fapi2SenderConstraint.Dpop &&
+                !options.Dpop.Enabled)
+                throw new InvalidOperationException(
+                    "FAPI 2.0 SenderConstraint=DPoP requires Sufficit:Identity:Dpop:Enabled=true.");
+            if (options.Fapi2.SenderConstraint == Fapi2SenderConstraint.Mtls &&
+                !options.Mtls.Enabled)
+                throw new InvalidOperationException(
+                    "FAPI 2.0 SenderConstraint=mTLS requires Sufficit:Identity:Mtls:Enabled=true.");
+        }
+
+        if (options.Jarm.Enabled)
+        {
+            if (options.Jarm.LifetimeSeconds is < 1 or > 600)
+                throw new InvalidOperationException(
+                    "JARM response lifetime must be between 1 and 600 seconds.");
+            if (!Uri.TryCreate(options.Issuer, UriKind.Absolute, out _))
+                throw new InvalidOperationException(
+                    "JARM requires an explicit absolute Sufficit:Identity:Issuer.");
+        }
+
+        if (options.SharedSignals.Enabled)
+        {
+            if (!Uri.TryCreate(options.Issuer, UriKind.Absolute, out var issuer) ||
+                issuer.Scheme != Uri.UriSchemeHttps)
+                throw new InvalidOperationException(
+                    "SSF/CAEP requires an explicit HTTPS Sufficit:Identity:Issuer.");
+            if (issuer.AbsolutePath != "/")
+                throw new InvalidOperationException(
+                    "This SSF/CAEP transmitter currently requires an issuer without a path component.");
+
+            var duplicate = options.SharedSignals.Receivers
+                .Where(receiver => !string.IsNullOrWhiteSpace(receiver.Id))
+                .GroupBy(receiver => receiver.Id, StringComparer.Ordinal)
+                .FirstOrDefault(group => group.Count() > 1);
+            if (duplicate is not null)
+                throw new InvalidOperationException(
+                    $"SSF/CAEP receiver id '{duplicate.Key}' is duplicated.");
+
+            foreach (var receiver in options.SharedSignals.Receivers)
+            {
+                if (string.IsNullOrWhiteSpace(receiver.Id) ||
+                    string.IsNullOrWhiteSpace(receiver.Audience) ||
+                    !Uri.TryCreate(receiver.Endpoint, UriKind.Absolute, out var endpoint) ||
+                    endpoint.Scheme != Uri.UriSchemeHttps ||
+                    endpoint.Fragment.Length != 0)
+                    throw new InvalidOperationException(
+                        "Each SSF/CAEP receiver requires an id, audience and fragment-free HTTPS endpoint.");
+            }
+        }
+    }
+
     /// <summary>
-    /// Resolves the signing credentials used for back-channel <c>logout_token</c>
-    /// JWTs. Reuses the STS signing certificate when configured (so RPs
-    /// validate the logout_token against the same JWKS they already trust);
-    /// otherwise falls back to an ephemeral ECDSA P-256 key (Development/tests
-    /// only — production requires a real certificate, enforced separately by
-    /// the OpenIddict server startup).
+    /// Resolves the signing credentials used by auxiliary protocol JWTs.
+    /// Reuses the STS signing certificate when configured; otherwise falls
+    /// back to one ephemeral ECDSA P-256 key for Development/tests. The caller
+    /// also registers that development key with OpenIddict so it is published
+    /// by the normal JWKS endpoint.
     /// </summary>
-    private static Microsoft.IdentityModel.Tokens.SigningCredentials ResolveLogoutSigningCredentials(
+    private static Microsoft.IdentityModel.Tokens.SigningCredentials ResolveProtocolSigningCredentials(
         SufficitIdentityOptions options, bool isDevelopmentEnvironment)
     {
         if (!string.IsNullOrWhiteSpace(options.Certificates.SigningPath))
         {
             var certificate = X509CertificateLoader.LoadPkcs12FromFile(
                 options.Certificates.SigningPath, options.Certificates.SigningPassword);
+            var algorithm = certificate.GetECDsaPrivateKey() is not null
+                ? Microsoft.IdentityModel.Tokens.SecurityAlgorithms.EcdsaSha256
+                : certificate.GetRSAPrivateKey() is not null
+                    ? Microsoft.IdentityModel.Tokens.SecurityAlgorithms.RsaSha256
+                    : throw new InvalidOperationException(
+                        "The configured signing certificate must contain an RSA or ECDSA private key.");
             return new Microsoft.IdentityModel.Tokens.SigningCredentials(
                 new Microsoft.IdentityModel.Tokens.X509SecurityKey(certificate),
-                Microsoft.IdentityModel.Tokens.SecurityAlgorithms.RsaSha256);
+                algorithm);
         }
 
         if (isDevelopmentEnvironment)
@@ -730,12 +905,15 @@ public static class ServiceCollectionExtensions
             var ecdsa = System.Security.Cryptography.ECDsa.Create(
                 System.Security.Cryptography.ECCurve.NamedCurves.nistP256);
             return new Microsoft.IdentityModel.Tokens.SigningCredentials(
-                new Microsoft.IdentityModel.Tokens.ECDsaSecurityKey(ecdsa),
+                new Microsoft.IdentityModel.Tokens.ECDsaSecurityKey(ecdsa)
+                {
+                    KeyId = Guid.NewGuid().ToString("N"),
+                },
                 Microsoft.IdentityModel.Tokens.SecurityAlgorithms.EcdsaSha256);
         }
 
         throw new InvalidOperationException(
-            "Back-channel logout is enabled but no signing certificate is configured. " +
+            "No signing certificate is configured for protocol JWTs. " +
             "Production deployments require Sufficit:Identity:Certificates:SigningPath " +
             "(the logout_token is signed with the same key as access tokens).");
     }

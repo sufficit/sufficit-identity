@@ -95,6 +95,8 @@ public sealed class DcrTests
         {
             ["Sufficit:Identity:Mcp:Dcr:Enabled"] = "true",
             ["Sufficit:Identity:Mcp:Dcr:InitialAccessToken"] = "secret-init-token",
+            ["Sufficit:Identity:Mcp:Dcr:AllowedGrantTypes:0"] = "client_credentials",
+            ["Sufficit:Identity:Mcp:Dcr:AllowedScopes:0"] = "test.scope",
         });
         await ((IAsyncLifetime)factory).InitializeAsync();
         var client = factory.CreateClient();
@@ -151,5 +153,35 @@ public sealed class DcrTests
         };
         using var response = await client.PostAsJsonAsync("/connect/register", request);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Dcr_rejects_grants_and_scopes_outside_the_operator_allowlist()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
+        {
+            ["Sufficit:Identity:Mcp:Dcr:Enabled"] = "true",
+            ["Sufficit:Identity:Mcp:Dcr:InitialAccessToken"] = "secret-init-token",
+        });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "secret-init-token");
+
+        using var grantResponse = await client.PostAsJsonAsync("/connect/register", new DcrRequest
+        {
+            ClientId = $"dcr-grant-{Guid.NewGuid():N}",
+            ClientSecret = "dcr-secret",
+            GrantTypes = new() { "client_credentials" },
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, grantResponse.StatusCode);
+
+        using var scopeResponse = await client.PostAsJsonAsync("/connect/register", new DcrRequest
+        {
+            ClientId = $"dcr-scope-{Guid.NewGuid():N}",
+            GrantTypes = new() { "authorization_code" },
+            Scopes = new() { "skoruba_identity_admin_api" },
+            RedirectUris = new() { new Uri("https://client.example/callback") },
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, scopeResponse.StatusCode);
     }
 }

@@ -42,8 +42,10 @@ public class AuthorizationController : Controller
     private readonly IReadOnlyDictionary<string, string> _claimScopeMap;
     private readonly Logout.IBackchannelLogoutDispatcher _backchannelLogoutDispatcher;
     private readonly Logout.IFrontchannelLogoutDispatcher _frontchannelLogoutDispatcher;
+    private readonly SharedSignals.ISharedSignalsDispatcher _sharedSignalsDispatcher;
     private readonly Dpop.DpopProofValidator _dpopProofValidator;
     private readonly DpopOptions _dpopOptions;
+    private readonly Fapi2Options _fapi2Options;
     private readonly Dpop.IDpopNonceStore _dpopNonceStore;
     private readonly IAntiforgery _antiforgery;
 
@@ -57,6 +59,7 @@ public class AuthorizationController : Controller
         IAntiforgery antiforgery,
         Logout.IBackchannelLogoutDispatcher backchannelLogoutDispatcher,
         Logout.IFrontchannelLogoutDispatcher frontchannelLogoutDispatcher,
+        SharedSignals.ISharedSignalsDispatcher sharedSignalsDispatcher,
         Dpop.DpopProofValidator dpopProofValidator,
         Dpop.IDpopNonceStore dpopNonceStore)
     {
@@ -79,12 +82,14 @@ public class AuthorizationController : Controller
         _antiforgery = antiforgery;
         _backchannelLogoutDispatcher = backchannelLogoutDispatcher;
         _frontchannelLogoutDispatcher = frontchannelLogoutDispatcher;
+        _sharedSignalsDispatcher = sharedSignalsDispatcher;
         _dpopProofValidator = dpopProofValidator;
         _dpopNonceStore = dpopNonceStore;
         // DPoP options (item 3.1, RFC 9449).
         var rootOptions = configuration.GetSection("Sufficit:Identity")
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
         _dpopOptions = rootOptions.Dpop;
+        _fapi2Options = rootOptions.Fapi2;
     }
 
     // -----------------------------------------------------------------------
@@ -270,6 +275,18 @@ public class AuthorizationController : Controller
         identity.SetScopes(request.GetScopes());
         identity.SetResources(await ResolveResourcesAsync(identity, request));
 
+        // FAPI 2.0 + DPoP authorization-code binding (RFC 9449 §10.1):
+        // dpop_jkt was authenticated inside PAR by the client and restored by
+        // OpenIddict. Preserve it in the authorization-code principal so the
+        // token endpoint can require a proof made with the same key.
+        if (Fapi.Fapi2Policy.Applies(_fapi2Options, request.ClientId) &&
+            _fapi2Options.SenderConstraint == Fapi2SenderConstraint.Dpop)
+        {
+            identity.SetClaim(
+                Dpop.DpopProofValidator.BindingThumbprintClaimType,
+                (string?)request["dpop_jkt"]);
+        }
+
         var authorization = authorizations.LastOrDefault() ?? await _authorizationManager.CreateAsync(
             identity: identity,
             subject: await _userManager.GetUserIdAsync(user),
@@ -301,6 +318,10 @@ public class AuthorizationController : Controller
         // Branches that build the token identity attach the cnf claim via
         // ApplyDpopBinding below. OpenIddict 7.6 has no DPoP support, so this
         // lives in the controller (portable for a future move off OpenIddict).
+        var requiresFapiDpop =
+            Fapi.Fapi2Policy.Applies(_fapi2Options, request.ClientId) &&
+            _fapi2Options.SenderConstraint == Fapi2SenderConstraint.Dpop;
+
         if (_dpopOptions.Enabled)
         {
             // DPoP nonce dance (RFC 9449 §8). When RequireNonce is on, the AS
@@ -355,7 +376,8 @@ public class AuthorizationController : Controller
                     }));
             }
 
-            if (proof is null && _dpopOptions.RequireForAllClients)
+            if (proof is null &&
+                (_dpopOptions.RequireForAllClients || requiresFapiDpop))
             {
                 return Forbid(
                     authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
@@ -426,6 +448,19 @@ public class AuthorizationController : Controller
             nameType: Claims.Name,
             roleType: Claims.Role);
 
+        if ((request.IsAuthorizationCodeGrantType() || request.IsRefreshTokenGrantType()) &&
+            !HasMatchingDpopBinding(result.Principal!))
+        {
+            return Forbid(
+                authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                properties: new AuthenticationProperties(new Dictionary<string, string?>
+                {
+                    [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                    [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
+                        "The DPoP proof does not match the key bound to the authorization grant."
+                }));
+        }
+
         identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
                 .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
                 .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
@@ -438,6 +473,7 @@ public class AuthorizationController : Controller
         // already carried.
         await AddPersistedClaimsAsync(identity, user);
 
+        ApplyDpopBinding(identity);
         identity.SetDestinations(GetDestinations);
 
         return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
@@ -508,6 +544,7 @@ public class AuthorizationController : Controller
         var identity = await BuildIdentityAsync(user);
         identity.SetScopes(result.Principal.GetScopes());
         identity.SetResources(await ResolveResourcesAsync(identity, request));
+        ApplyDpopBinding(identity);
         identity.SetDestinations(GetDestinations);
 
         return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
@@ -546,12 +583,24 @@ public class AuthorizationController : Controller
     {
         if (HttpContext.Items["dpop.proof"] is not Dpop.DpopProof proof) return;
 
-        // cnf claim value per RFC 9449 §7.2: {"jkt":"<base64url-thumbprint>"}.
-        identity.SetClaim(Dpop.DpopProofValidator.ConfirmationClaimType,
-            System.Text.Json.JsonSerializer.SerializeToElement(new
-            {
-                jkt = proof.KeyThumbprint,
-            }));
+        // OpenIddict strips inherited cnf claims while preparing token
+        // principals. Carry the thumbprint in a non-emitted marker; the custom
+        // ProcessSignIn handler attaches cnf after that preparation stage.
+        identity.SetClaim(
+            Dpop.DpopProofValidator.BindingThumbprintClaimType,
+            proof.KeyThumbprint);
+    }
+
+    private bool HasMatchingDpopBinding(ClaimsPrincipal principal)
+    {
+        var boundThumbprint = principal.GetClaim(
+            Dpop.DpopProofValidator.BindingThumbprintClaimType);
+        if (string.IsNullOrEmpty(boundThumbprint)) return true;
+        if (HttpContext.Items["dpop.proof"] is not Dpop.DpopProof proof) return false;
+        return string.Equals(
+            boundThumbprint,
+            proof.KeyThumbprint,
+            StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -606,6 +655,7 @@ public class AuthorizationController : Controller
         var identity = await BuildIdentityAsync(user);
         identity.SetScopes(request.GetScopes());
         identity.SetResources(await ResolveResourcesAsync(identity, request));
+        ApplyDpopBinding(identity);
         identity.SetDestinations(GetDestinations);
 
         return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
@@ -712,6 +762,7 @@ public class AuthorizationController : Controller
             : new { sub = request.ClientId };
         identity.SetClaim(ActClaimType, JsonSerializer.SerializeToElement(actClaim));
 
+        ApplyDpopBinding(identity);
         identity.SetDestinations(GetDestinations);
 
         return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
@@ -864,6 +915,23 @@ public class AuthorizationController : Controller
                 // errors, but never let any exception here surface — local
                 // logout succeeded and that is what the user sees.
                 // (No logger field on this controller; the distributor logs.)
+            }
+
+            try
+            {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(
+                    HttpContext.RequestAborted);
+                timeout.CancelAfter(TimeSpan.FromSeconds(8));
+                await _sharedSignalsDispatcher.SessionRevokedAsync(
+                    userId,
+                    sessionId,
+                    timeout.Token);
+            }
+            catch (Exception)
+            {
+                // Shared Signals is an asynchronous security notification. A
+                // receiver outage must not undo the already-completed local
+                // logout; the dispatcher logs observable delivery failures.
             }
         }
 
@@ -1086,6 +1154,11 @@ public class AuthorizationController : Controller
                 // only — resource servers validate it; the id_token is for the
                 // client and must not carry the sender-binding thumbprint.
                 yield return Destinations.AccessToken;
+                yield break;
+
+            case Dpop.DpopProofValidator.BindingThumbprintClaimType:
+                // Internal handoff consumed by AttachDpopConfirmation after
+                // OpenIddict prepares the concrete token principals.
                 yield break;
 
             default:

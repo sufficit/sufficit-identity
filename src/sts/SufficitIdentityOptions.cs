@@ -37,6 +37,11 @@ public sealed class SufficitIdentityOptions
     public LegacyGrantsOptions LegacyGrants { get; init; } = new();
 
     /// <summary>
+    /// Proof Key for Code Exchange policy. See <see cref="PkceOptions"/>.
+    /// </summary>
+    public PkceOptions Pkce { get; init; } = new();
+
+    /// <summary>
     /// Rate limiting applied by the host to the token endpoint.
     /// See <see cref="RateLimitOptions"/>.
     /// </summary>
@@ -119,6 +124,24 @@ public sealed class SufficitIdentityOptions
     /// <see cref="DpopOptions"/>.
     /// </summary>
     public DpopOptions Dpop { get; init; } = new();
+
+    /// <summary>
+    /// Opt-in FAPI 2.0 Security Profile enforcement for an explicit client
+    /// allowlist. See <see cref="Fapi2Options"/>.
+    /// </summary>
+    public Fapi2Options Fapi2 { get; init; } = new();
+
+    /// <summary>
+    /// JWT Secured Authorization Response Mode (JARM). JARM is independent
+    /// from FAPI 2.0 and remains opt-in. See <see cref="JarmOptions"/>.
+    /// </summary>
+    public JarmOptions Jarm { get; init; } = new();
+
+    /// <summary>
+    /// OpenID Shared Signals Framework / CAEP transmitter settings. See
+    /// <see cref="SharedSignalsOptions"/>.
+    /// </summary>
+    public SharedSignalsOptions SharedSignals { get; init; } = new();
 
     /// <summary>
     /// CIBA (Client-Initiated Backchannel Authentication, RFC 9126) —
@@ -614,6 +637,103 @@ public sealed class DpopOptions
 }
 
 /// <summary>
+/// A deliberately opt-in FAPI 2.0 Security Profile boundary. Enabling this
+/// option does not by itself assert certification: it activates the protocol
+/// controls the STS can enforce and leaves conformance claims to the official
+/// OpenID Foundation test suite and deployment-level TLS evidence.
+/// </summary>
+public sealed class Fapi2Options
+{
+    /// <summary>Master switch. Default <c>false</c>.</summary>
+    public bool Enabled { get; init; } = false;
+
+    /// <summary>
+    /// Confidential client identifiers governed by the profile. Keeping an
+    /// explicit allowlist prevents a FAPI rollout from breaking legacy OAuth
+    /// clients sharing the same issuer.
+    /// </summary>
+    public HashSet<string> ClientIds { get; init; } = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Sender-constraining mechanism required for profiled clients. DPoP is
+    /// the default; mTLS requires the TLS terminator to validate certificates.
+    /// </summary>
+    public Fapi2SenderConstraint SenderConstraint { get; init; } =
+        Fapi2SenderConstraint.Dpop;
+
+    /// <summary>
+    /// Lifetime of authorization codes in seconds. FAPI 2.0 caps this at 60;
+    /// values outside 1..60 are rejected during startup.
+    /// </summary>
+    public int AuthorizationCodeLifetimeSeconds { get; init; } = 60;
+
+    /// <summary>
+    /// Lifetime of PAR request URIs in seconds. FAPI 2.0 requires a value
+    /// below 600; values outside 1..599 are rejected during startup.
+    /// </summary>
+    public int PushedAuthorizationRequestLifetimeSeconds { get; init; } = 300;
+}
+
+public enum Fapi2SenderConstraint
+{
+    Dpop,
+    Mtls,
+}
+
+/// <summary>
+/// JWT Secured Authorization Response Mode (JARM) configuration. The STS
+/// signs the complete authorization response and returns it in a single
+/// <c>response</c> parameter. This capability is independent of FAPI 2.0.
+/// </summary>
+public sealed class JarmOptions
+{
+    /// <summary>Master switch. Default <c>false</c>.</summary>
+    public bool Enabled { get; init; } = false;
+
+    /// <summary>
+    /// Signed response lifetime in seconds. Kept short to bound replay;
+    /// values outside 1..600 are rejected during startup.
+    /// </summary>
+    public int LifetimeSeconds { get; init; } = 120;
+}
+
+/// <summary>
+/// OpenID Shared Signals Framework 1.0 transmitter configuration. The first
+/// production slice supports discovery plus RFC 8935 push delivery of signed
+/// CAEP SETs to statically provisioned receivers. The optional dynamic stream
+/// management API is intentionally not advertised.
+/// </summary>
+public sealed class SharedSignalsOptions
+{
+    /// <summary>Master switch. Default <c>false</c>.</summary>
+    public bool Enabled { get; init; } = false;
+
+    /// <summary>
+    /// Statically provisioned push receivers. Secrets belong in environment
+    /// variables or an external secret store, never committed appsettings.
+    /// </summary>
+    public List<SharedSignalsReceiverOptions> Receivers { get; init; } = new();
+}
+
+public sealed class SharedSignalsReceiverOptions
+{
+    /// <summary>Stable operator-facing receiver identifier.</summary>
+    public string Id { get; init; } = string.Empty;
+
+    /// <summary>SET audience expected by this receiver.</summary>
+    public string Audience { get; init; } = string.Empty;
+
+    /// <summary>HTTPS RFC 8935 push endpoint.</summary>
+    public string Endpoint { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Optional value placed in the HTTP Authorization header, for example
+    /// <c>Bearer ...</c>. Configure from a secret source.
+    /// </summary>
+    public string? Authorization { get; init; }
+}
+
+/// <summary>
 /// CIBA (Client-Initiated Backchannel Authentication, RFC 9126 — item 3.5).
 /// Enables decoupled authentication: a client initiates auth on a consumption
 /// device (kiosk, call-center, AI agent) and the end user approves on a
@@ -729,6 +849,47 @@ public sealed class DcrOptions
     /// Empty = endpoint rejects all requests (even when Enabled).
     /// </summary>
     public string InitialAccessToken { get; init; } = "";
+
+    /// <summary>
+    /// Grant types that a dynamically registered client may request. Defaults
+    /// to the interactive OAuth 2.1 grants; privileged and legacy grants must
+    /// be enabled deliberately.
+    /// </summary>
+    public HashSet<string> AllowedGrantTypes { get; init; } = new(StringComparer.Ordinal)
+    {
+        OpenIddict.Abstractions.OpenIddictConstants.GrantTypes.AuthorizationCode,
+        OpenIddict.Abstractions.OpenIddictConstants.GrantTypes.RefreshToken,
+    };
+
+    /// <summary>
+    /// Scopes that a dynamically registered client may request. Custom API or
+    /// administrative scopes must be explicitly added by the operator.
+    /// </summary>
+    public HashSet<string> AllowedScopes { get; init; } = new(StringComparer.Ordinal)
+    {
+        OpenIddict.Abstractions.OpenIddictConstants.Scopes.OpenId,
+        OpenIddict.Abstractions.OpenIddictConstants.Scopes.Profile,
+        OpenIddict.Abstractions.OpenIddictConstants.Scopes.Email,
+        OpenIddict.Abstractions.OpenIddictConstants.Scopes.OfflineAccess,
+    };
+}
+
+/// <summary>
+/// OAuth 2.1-aligned PKCE policy for authorization-code clients.
+/// </summary>
+public sealed class PkceOptions
+{
+    /// <summary>
+    /// Require PKCE for every authorization-code request. Disable only during
+    /// a controlled migration of confidential legacy clients.
+    /// </summary>
+    public bool RequireForAllClients { get; init; } = true;
+
+    /// <summary>
+    /// Permit the legacy <c>plain</c> challenge method. Disabled by default;
+    /// clients must use <c>S256</c>.
+    /// </summary>
+    public bool AllowPlainCodeChallengeMethod { get; init; } = false;
 }
 
 /// <summary>

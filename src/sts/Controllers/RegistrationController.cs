@@ -118,15 +118,36 @@ public sealed class RegistrationController : ControllerBase
                 : OpenIddictConstants.ClientTypes.Confidential,
         };
 
-        // Normalize RFC 7591 grant-type names to OpenIddict permission
-        // constants. RFC 7591 §2 uses plain names (client_credentials,
-        // authorization_code, refresh_token, ...); OpenIddict stores them
-        // prefixed (gt:client_credentials). Map the known set; unknown grants
-        // pass through as-is so the OpenIddict permission check rejects them.
-        var grants = (request.GrantTypes ?? new List<string>()).Select(NormalizeGrantType).ToList();
+        var requestedGrants = request.GrantTypes ?? new List<string>();
+        var disallowedGrant = requestedGrants.FirstOrDefault(grant =>
+            !_options.AllowedGrantTypes.Contains(grant));
+        if (disallowedGrant is not null)
+        {
+            return BadRequest(new
+            {
+                error = "invalid_client_metadata",
+                error_description = $"grant_type '{disallowedGrant}' is not allowed for dynamic registration."
+            });
+        }
+
+        var requestedScopes = request.Scopes ?? new List<string>();
+        var disallowedScope = requestedScopes.FirstOrDefault(scope =>
+            !_options.AllowedScopes.Contains(scope));
+        if (disallowedScope is not null)
+        {
+            return BadRequest(new
+            {
+                error = "invalid_client_metadata",
+                error_description = $"scope '{disallowedScope}' is not allowed for dynamic registration."
+            });
+        }
+
+        // Normalize the validated RFC 7591 grant-type names to OpenIddict
+        // permission constants.
+        var grants = requestedGrants.Select(NormalizeGrantType).ToList();
         foreach (var grant in grants)
             descriptor.Permissions.Add(grant);
-        foreach (var scope in request.Scopes ?? new List<string>())
+        foreach (var scope in requestedScopes)
             descriptor.Permissions.Add(OpenIddictConstants.Permissions.Prefixes.Scope + scope);
         foreach (var redirect in request.RedirectUris)
             descriptor.RedirectUris.Add(redirect);
@@ -168,8 +189,8 @@ public sealed class RegistrationController : ControllerBase
     /// Maps an RFC 7591 grant-type name (plain: <c>client_credentials</c>,
     /// <c>authorization_code</c>, <c>refresh_token</c>, <c>password</c>,
     /// <c>urn:ietf:params:oauth:grant-type:token-exchange</c>) to the OpenIddict
-    /// permission constant (<c>gt:&lt;name&gt;</c>). Unknown values pass through
-    /// so OpenIddict's own permission check rejects them.
+    /// permission constant (<c>gt:&lt;name&gt;</c>). Input is allowlisted before
+    /// this method is called.
     /// </summary>
     private static string NormalizeGrantType(string grant)
     {

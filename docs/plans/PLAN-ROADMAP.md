@@ -1,7 +1,7 @@
 # Sufficit Identity roadmap
 
 Status: **active**
-Last consolidated: **2026-08-01**
+Last consolidated: **2026-08-03**
 
 This is the only active product roadmap in the repository. Completed session
 plans and dated evaluations are historical evidence, not parallel backlogs.
@@ -15,7 +15,7 @@ plans and dated evaluations are historical evidence, not parallel backlogs.
 - OAuth/OIDC, Management, SCIM, account-management and provisioning surfaces
   have integrated architecture, routing and protocol tests.
 - The Release pipeline builds with warnings as errors, applies the canonical
-  schema to MariaDB, executes 229 tests, scans secrets and audits dependencies.
+  schema to MariaDB, executes 260 tests, scans secrets and audits dependencies.
 - Commit `c0218c07a7bdc904bd85b08c55d106142ba14b69` is deployed and healthy in
   the `castrum-apps` test environment.
 
@@ -56,6 +56,24 @@ Status: **partially complete**
 
 Status: **incremental, demand-driven**
 
+- PAR is implemented at `/connect/par`; management-created clients with
+  `RequirePar=true` now receive both the endpoint permission and the per-client
+  requirement. Protocol tests cover issuance/expiry of `request_uri`, enforced
+  use at authorization, and the RFC 9207 `iss` response parameter.
+- FAPI 2.0 enforcement is implemented as an opt-in client allowlist. It checks
+  confidential-client/strong-auth boundaries, authenticated PAR, PKCE S256,
+  code-only responses, explicit redirect URI, short code/PAR lifetimes and
+  DPoP authorization-code binding or mTLS sender constraint. This is
+  **readiness**, not a certification claim: deployment TLS evidence and the
+  official conformance suite remain rollout gates.
+- JARM is independently opt-in and supports signed `query.jwt`, `fragment.jwt`,
+  `form_post.jwt` and `jwt` responses. It is not treated as a FAPI 2.0
+  prerequisite.
+- SSF/CAEP has an opt-in transmitter slice: final-1.0 discovery metadata,
+  signed explicitly typed `session-revoked` SETs and RFC 8935 push delivery to
+  statically provisioned receivers. The optional dynamic stream-management API
+  remains unimplemented and is not advertised; durable outbox/retry state is a
+  production rollout gate.
 - Complete and test remaining front-channel logout interoperability. Keep
   unsupported behavior unadvertised until it is real.
 - Use a durable dispatcher for back-channel logout before deployments require
