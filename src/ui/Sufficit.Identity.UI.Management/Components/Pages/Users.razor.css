@@ -22,6 +22,77 @@
     padding: 20px;
 }
 
+.users-investigation {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 20px;
+    padding: 16px 18px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+}
+
+.users-investigation--active {
+    border-color: var(--warning);
+    background: var(--warning-soft);
+}
+
+.users-investigation__summary {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 12px;
+}
+
+.users-investigation__icon {
+    display: inline-grid;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--warning-soft);
+    color: var(--warning);
+}
+
+.users-investigation--active .users-investigation__icon {
+    background: var(--surface);
+}
+
+.users-investigation h2 {
+    margin: 0 0 3px;
+    color: var(--ink-strong);
+    font-size: 13px;
+}
+
+.users-investigation p {
+    max-width: 68ch;
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 11px;
+    line-height: 1.5;
+}
+
+.users-investigation__count {
+    display: grid;
+    min-width: 72px;
+    text-align: right;
+}
+
+.users-investigation__count strong {
+    color: var(--warning);
+    font-size: 20px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+}
+
+.users-investigation__count span {
+    color: var(--ink-muted);
+    font-size: 10px;
+}
+
 .users-overview__heading {
     display: flex;
     align-items: flex-start;
@@ -392,6 +463,15 @@
 }
 
 @media (max-width: 960px) {
+    .users-investigation {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .users-investigation .button {
+        grid-column: 1 / -1;
+        justify-self: stretch;
+    }
+
     .users-filter-form {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -409,6 +489,30 @@
 
     .users-overview {
         padding: 16px;
+    }
+
+    .users-investigation {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 14px 10px;
+        padding: 16px;
+    }
+
+    .users-investigation__summary {
+        align-items: flex-start;
+    }
+
+    .users-investigation__icon {
+        width: 36px;
+        height: 36px;
+        flex-basis: 36px;
+    }
+
+    .users-investigation__count {
+        min-width: 52px;
+    }
+
+    .users-investigation .button {
+        min-height: 44px;
     }
 
     .users-overview__heading {

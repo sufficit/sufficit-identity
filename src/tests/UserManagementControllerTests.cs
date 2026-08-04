@@ -125,6 +125,59 @@ public sealed class UserManagementControllerTests
     }
 
     [Fact]
+    public async Task Stale_unverified_review_excludes_recent_confirmed_and_external_accounts()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var oldDate = DateTime.UtcNow.AddDays(-20);
+
+        await using (var setup = factory.Services.CreateAsyncScope())
+        {
+            var userManager = setup.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            var database = setup.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var matching = await TestDataSeeder.CreateUserAsync(
+                userManager, $"stale-match-{Guid.NewGuid():N}", "Valid!Passw0rd#42");
+            var external = await TestDataSeeder.CreateUserAsync(
+                userManager, $"stale-external-{Guid.NewGuid():N}", "Valid!Passw0rd#42");
+            var confirmed = await TestDataSeeder.CreateUserAsync(
+                userManager, $"stale-confirmed-{Guid.NewGuid():N}", "Valid!Passw0rd#42");
+            var recent = await TestDataSeeder.CreateUserAsync(
+                userManager, $"recent-unverified-{Guid.NewGuid():N}", "Valid!Passw0rd#42");
+
+            matching.CreatedAtUtc = oldDate;
+            matching.EmailConfirmed = false;
+            external.CreatedAtUtc = oldDate;
+            external.EmailConfirmed = false;
+            confirmed.CreatedAtUtc = oldDate;
+            confirmed.EmailConfirmed = true;
+            recent.CreatedAtUtc = DateTime.UtcNow.AddDays(-5);
+            recent.EmailConfirmed = false;
+            database.UpdateRange(matching, external, confirmed, recent);
+            await database.SaveChangesAsync();
+
+            var login = await userManager.AddLoginAsync(external,
+                new UserLoginInfo("Google", "stale-external-key", "Google"));
+            Assert.True(login.Succeeded);
+        }
+
+        var client = factory.CreateClient();
+        using var response = await client.GetAsync(
+            "/api/users?review=StaleUnverifiedWithoutExternal&sort=CreatedOldest");
+        var page = await response.Content.ReadFromJsonAsync<ManagementUserPage>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(page);
+        var match = Assert.Single(page.Items);
+        Assert.StartsWith("stale-match-", match.UserName, StringComparison.Ordinal);
+        Assert.False(match.EmailConfirmed);
+        Assert.False(match.HasExternalLogin);
+        Assert.True(match.CreatedAtUtc < DateTime.UtcNow.AddDays(-15));
+        Assert.Equal(1, page.Analytics?.StaleUnverifiedWithoutExternalTotal);
+    }
+
+    [Fact]
     public async Task Create_reset_and_lockout_manage_only_the_identity_account()
     {
         using var factory = new ManagementTestFactory();

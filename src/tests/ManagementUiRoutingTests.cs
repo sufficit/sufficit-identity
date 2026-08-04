@@ -286,6 +286,29 @@ public sealed class ManagementUiRoutingTests
     }
 
     [Fact]
+    public async Task Stale_unverified_investigation_is_deep_linkable()
+    {
+        await using var app = await CreateHostAsync();
+        using var client = app.GetTestClient();
+
+        await SignInAsync(client, "administrator");
+
+        using var response = await client.GetAsync(
+            "/management/users?review=StaleUnverifiedWithoutExternal&sort=CreatedOldest");
+        var html = WebUtility.HtmlDecode(
+            await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Cadastros pendentes há mais de 15 dias", html,
+            StringComparison.Ordinal);
+        Assert.Contains("Encerrar investigação", html, StringComparison.Ordinal);
+        Assert.Contains(
+            "Mais de 15 dias, sem confirmação de e-mail e sem login externo vinculado.",
+            html,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Provider_operator_can_render_global_user_flows()
     {
         await using var app = await CreateHostAsync();

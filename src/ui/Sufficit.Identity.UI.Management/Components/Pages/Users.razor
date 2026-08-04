@@ -109,6 +109,33 @@ else
             }
         </section>
 
+        <section class="users-investigation @(IsStaleUnverifiedReview ? "users-investigation--active" : null)"
+                 aria-labelledby="stale-unverified-heading">
+            <div class="users-investigation__summary">
+                <span class="users-investigation__icon" aria-hidden="true"><AppIcon Name="alert" Size="20" /></span>
+                <div>
+                    <h2 id="stale-unverified-heading">Cadastros pendentes há mais de 15 dias</h2>
+                    <p>E-mail não confirmado e nenhum login externo vinculado, como Google ou Facebook.</p>
+                </div>
+            </div>
+            <div class="users-investigation__count" aria-label="@StaleUnverifiedCountLabel">
+                <strong>@Analytics.StaleUnverifiedWithoutExternalTotal.ToString("N0", PtBr)</strong>
+                <span>@Pluralize(Analytics.StaleUnverifiedWithoutExternalTotal, "conta", "contas")</span>
+            </div>
+            @if (IsStaleUnverifiedReview)
+            {
+                <a class="button button--secondary" href="@BaseUri" aria-current="page">
+                    <AppIcon Name="x" Size="15" /> Encerrar investigação
+                </a>
+            }
+            else
+            {
+                <a class="button button--secondary" href="@RiskReviewUrl">
+                    Revisar contas <AppIcon Name="arrow-right" Size="15" />
+                </a>
+            }
+        </section>
+
         <details class="users-filter-panel" open>
             <summary>
                 <span><AppIcon Name="search" Size="18" /> Filtros e ordenação</span>
@@ -119,6 +146,7 @@ else
                     <span>Nome ou e-mail</span>
                     <div class="search-field"><AppIcon Name="search" Size="18" /><input type="search" autocomplete="off" placeholder="Buscar no diretório" @bind="search" @bind:event="oninput" /></div>
                 </label>
+                <label class="users-field users-field--review"><span>Investigação</span><select @bind="review"><option value="@ManagementUserReviewFilter.All">Diretório completo</option><option value="@ManagementUserReviewFilter.StaleUnverifiedWithoutExternal">Pendentes há mais de 15 dias</option></select></label>
                 <label class="users-field"><span>Estado</span><select @bind="state"><option value="@ManagementUserStateFilter.All">Todos</option><option value="@ManagementUserStateFilter.Active">Ativos</option><option value="@ManagementUserStateFilter.Locked">Bloqueados</option></select></label>
                 <label class="users-field"><span>E-mail</span><select @bind="emailConfirmed"><option value="@ManagementUserBooleanFilter.All">Todos</option><option value="@ManagementUserBooleanFilter.Enabled">Confirmado</option><option value="@ManagementUserBooleanFilter.Disabled">Não confirmado</option></select></label>
                 <label class="users-field"><span>MFA</span><select @bind="mfa"><option value="@ManagementUserBooleanFilter.All">Todos</option><option value="@ManagementUserBooleanFilter.Enabled">Ativo</option><option value="@ManagementUserBooleanFilter.Disabled">Inativo</option></select></label>
@@ -149,7 +177,7 @@ else
                 }
                 else if (Page.Items.Count is 0)
                 {
-                    <EmptyState Icon="users" Title="Nenhum usuário neste recorte" Description="Altere os filtros ou limpe o dia selecionado para ampliar a busca."><Actions><button class="button button--secondary" type="button" @onclick="ClearFilters">Limpar filtros</button></Actions></EmptyState>
+                    <EmptyState Icon="users" Title="@EmptyStateTitle" Description="@EmptyStateDescription"><Actions><button class="button button--secondary" type="button" @onclick="ClearFilters">Voltar ao diretório</button></Actions></EmptyState>
                 }
                 else
                 {
@@ -159,7 +187,7 @@ else
                                 <th scope="col"><a href="@UrlFor(sort: ToggleNameSort, page: 1)" aria-label="Ordenar por nome">Usuário @SortMark(ManagementUserSort.NameAscending, ManagementUserSort.NameDescending)</a></th>
                                 <th scope="col">E-mail</th>
                                 <th scope="col"><a href="@UrlFor(sort: ToggleCreatedSort, page: 1)" aria-label="Ordenar por data de cadastro">Cadastro @SortMark(ManagementUserSort.CreatedNewest, ManagementUserSort.CreatedOldest)</a></th>
-                                <th scope="col">MFA</th><th scope="col">Estado</th><th scope="col"><span class="visually-hidden">Ações</span></th>
+                                <th scope="col">Acesso externo</th><th scope="col">MFA</th><th scope="col">Estado</th><th scope="col"><span class="visually-hidden">Ações</span></th>
                             </tr></thead>
                             <tbody>
                             @foreach (var user in Page.Items)
@@ -168,6 +196,7 @@ else
                                     <td data-label="Usuário"><a class="client-name client-link" href="@UserHref(user.Id)">@DisplayUserName(user)</a></td>
                                     <td data-label="E-mail"><span class="user-email"><span>@DisplayEmail(user)</span>@if (user.EmailConfirmed){<span class="verified-mark" title="E-mail confirmado" aria-label="E-mail confirmado"><AppIcon Name="check" Size="13" /></span>}</span></td>
                                     <td data-label="Cadastro"><time datetime="@user.CreatedAtUtc.ToString("O")"><strong>@user.CreatedAtUtc.ToString("dd/MM/yyyy", PtBr)</strong><span>@user.CreatedAtUtc.ToString("HH:mm", PtBr) UTC</span></time></td>
+                                    <td data-label="Acesso externo"><StatusBadge Tone="@(user.HasExternalLogin ? "info" : "warning")">@(user.HasExternalLogin ? "Vinculado" : "Ausente")</StatusBadge></td>
                                     <td data-label="MFA"><StatusBadge Tone="@(user.TwoFactorEnabled ? "success" : "neutral")">@(user.TwoFactorEnabled ? "Ativo" : "Inativo")</StatusBadge></td>
                                     <td data-label="Estado"><span class="registration-state"><span class="status-dot @(user.IsLockedOut ? "status-dot--danger" : "status-dot--success")" aria-hidden="true"></span>@(user.IsLockedOut ? "Bloqueado" : "Ativo")</span></td>
                                     <td data-label="Ações"><a class="row-action" href="@UserHref(user.Id)" aria-label="@($"Abrir detalhes de {DisplayUserName(user)}")">Detalhes<AppIcon Name="arrow-right" Size="15" /></a></td>
@@ -205,6 +234,7 @@ else
     [SupplyParameterFromQuery(Name = "email")] public string? QueryEmailValue { get; set; }
     [SupplyParameterFromQuery(Name = "mfa")] public string? QueryMfaValue { get; set; }
     [SupplyParameterFromQuery(Name = "sort")] public string? QuerySortValue { get; set; }
+    [SupplyParameterFromQuery(Name = "review")] public string? QueryReviewValue { get; set; }
     [SupplyParameterFromQuery(Name = "range")] public int QueryAnalyticsDays { get; set; } = 30;
 
     private ManagementDataResult<ManagementUserAccess>? accessResult;
@@ -218,6 +248,7 @@ else
     private ManagementUserBooleanFilter emailConfirmed;
     private ManagementUserBooleanFilter mfa;
     private ManagementUserSort sort = ManagementUserSort.CreatedNewest;
+    private ManagementUserReviewFilter review;
     private int analyticsDays = 30;
     private string? loadedFingerprint;
     private const int PageSize = 25;
@@ -231,6 +262,8 @@ else
     private ManagementUserBooleanFilter QueryEmail => ParseEnum(QueryEmailValue, ManagementUserBooleanFilter.All);
     private ManagementUserBooleanFilter QueryMfa => ParseEnum(QueryMfaValue, ManagementUserBooleanFilter.All);
     private ManagementUserSort QuerySort => ParseEnum(QuerySortValue, ManagementUserSort.CreatedNewest);
+    private ManagementUserReviewFilter QueryReview => ParseEnum(QueryReviewValue, ManagementUserReviewFilter.All);
+    private bool IsStaleUnverifiedReview => QueryReview is ManagementUserReviewFilter.StaleUnverifiedWithoutExternal;
     private int TotalPages => Math.Max(1, (int)Math.Ceiling(Page.TotalCount / (double)Page.PageSize));
     private int AnomalyCount => Analytics.Days.Count(day => day.IsAnomaly);
     private int ChartMax => Math.Max(1, Analytics.Days.Count > 0 ? Analytics.Days.Max(day => day.Count) : 1);
@@ -239,14 +272,17 @@ else
     private string AccessErrorTitle => accessResult?.Outcome is ManagementDataOutcome.StepUpRequired ? "Autenticação adicional necessária" : "Acesso ao diretório não autorizado";
     private string UsersErrorTitle => usersResult?.Outcome is ManagementDataOutcome.StepUpRequired ? "MFA exigido para esta operação" : usersResult?.Outcome is ManagementDataOutcome.Forbidden ? "Acesso ao diretório negado" : "Não foi possível consultar os usuários";
     private string AnalyticsRangeLabel => $"Últimos {analyticsDays} dias";
-    private string ResultContextLabel => SelectedDay is { } day ? $"Cadastros de {day:dd/MM/yyyy}" : "Use filtros combinados para reduzir o conjunto investigado.";
+    private string ResultContextLabel => IsStaleUnverifiedReview ? "Mais de 15 dias, sem confirmação de e-mail e sem login externo vinculado." : SelectedDay is { } day ? $"Cadastros de {day:dd/MM/yyyy}" : "Use filtros combinados para reduzir o conjunto investigado.";
     private string ResultCountLabel => usersLoading ? "Atualizando…" : $"{Page.TotalCount:N0} {Pluralize(Page.TotalCount, "conta", "contas")}";
     private string PaginationLabel => Page.TotalCount == 0 ? "Nenhum resultado" : $"Exibindo {(Page.Page - 1) * Page.PageSize + 1:N0}–{Math.Min(Page.Page * Page.PageSize, Page.TotalCount):N0} de {Page.TotalCount:N0}";
-    private string ActiveFilterLabel { get { var count = 0; if (!string.IsNullOrWhiteSpace(QuerySearch)) count++; if (QueryFrom is not null || QueryTo is not null) count++; if (QueryDay is not null) count++; if (QueryState != ManagementUserStateFilter.All) count++; if (QueryEmail != ManagementUserBooleanFilter.All) count++; if (QueryMfa != ManagementUserBooleanFilter.All) count++; return count == 0 ? "Sem filtros" : $"{count} {Pluralize(count, "filtro ativo", "filtros ativos")}"; } }
+    private string ActiveFilterLabel { get { var count = 0; if (!string.IsNullOrWhiteSpace(QuerySearch)) count++; if (QueryFrom is not null || QueryTo is not null) count++; if (QueryDay is not null) count++; if (QueryState != ManagementUserStateFilter.All) count++; if (QueryEmail != ManagementUserBooleanFilter.All) count++; if (QueryMfa != ManagementUserBooleanFilter.All) count++; if (QueryReview != ManagementUserReviewFilter.All) count++; return count == 0 ? "Sem filtros" : $"{count} {Pluralize(count, "filtro ativo", "filtros ativos")}"; } }
+    private string StaleUnverifiedCountLabel => $"{Analytics.StaleUnverifiedWithoutExternalTotal:N0} {Pluralize(Analytics.StaleUnverifiedWithoutExternalTotal, "conta pendente", "contas pendentes")}";
+    private string EmptyStateTitle => IsStaleUnverifiedReview ? "Nenhuma conta pendente neste critério" : "Nenhum usuário neste recorte";
+    private string EmptyStateDescription => IsStaleUnverifiedReview ? "Não há cadastros com mais de 15 dias, e-mail não confirmado e sem login externo vinculado." : "Altere os filtros ou limpe o dia selecionado para ampliar a busca.";
 
     protected override async Task OnParametersSetAsync()
     {
-        var fingerprint = $"{QuerySearch}|{QueryPage}|{QueryFrom}|{QueryTo}|{QueryDay}|{QueryState}|{QueryEmail}|{QueryMfa}|{QuerySort}|{QueryAnalyticsDays}";
+        var fingerprint = $"{QuerySearch}|{QueryPage}|{QueryFrom}|{QueryTo}|{QueryDay}|{QueryState}|{QueryEmail}|{QueryMfa}|{QuerySort}|{QueryAnalyticsDays}|{QueryReview}";
         if (fingerprint == loadedFingerprint) return;
         loadedFingerprint = fingerprint;
         SyncDraftsFromQuery();
@@ -264,11 +300,11 @@ else
     private async Task LoadUsersAsync()
     {
         usersLoading = true;
-        usersResult = await UserData.SearchAsync(new ManagementUserSearch(QuerySearch, Math.Max(1, QueryPage), PageSize, QueryFrom, QueryTo, QueryDay, QueryState, QueryEmail, QueryMfa, QuerySort, NormalizeRange(QueryAnalyticsDays)));
+        usersResult = await UserData.SearchAsync(new ManagementUserSearch(QuerySearch, Math.Max(1, QueryPage), PageSize, QueryFrom, QueryTo, QueryDay, QueryState, QueryEmail, QueryMfa, QuerySort, NormalizeRange(QueryAnalyticsDays), QueryReview));
         usersLoading = false;
     }
 
-    private void SyncDraftsFromQuery() { search = QuerySearch ?? string.Empty; registeredFrom = QueryFrom; registeredTo = QueryTo; state = QueryState; emailConfirmed = QueryEmail; mfa = QueryMfa; sort = QuerySort; analyticsDays = NormalizeRange(QueryAnalyticsDays); }
+    private void SyncDraftsFromQuery() { search = QuerySearch ?? string.Empty; registeredFrom = QueryFrom; registeredTo = QueryTo; state = QueryState; emailConfirmed = QueryEmail; mfa = QueryMfa; sort = QuerySort; analyticsDays = NormalizeRange(QueryAnalyticsDays); review = QueryReview; }
     private void ApplyFilters() => Navigation.NavigateTo(UrlFor(page: 1, useDrafts: true, day: null, clearDay: true));
     private void ClearFilters() => Navigation.NavigateTo(BaseUri);
     private void SelectDay(DateOnly day) => Navigation.NavigateTo(UrlFor(day: SelectedDay == day ? null : day, clearDay: SelectedDay == day, page: 1));
@@ -283,12 +319,14 @@ else
             ["day"] = clearDay ? null : day ?? QueryDay,
             ["state"] = EnumOrNull(useDrafts ? state : QueryState), ["email"] = EnumOrNull(useDrafts ? emailConfirmed : QueryEmail), ["mfa"] = EnumOrNull(useDrafts ? mfa : QueryMfa),
             ["sort"] = selectedSort is ManagementUserSort.CreatedNewest ? null : selectedSort.ToString(),
+            ["review"] = EnumOrNull(useDrafts ? review : QueryReview),
             ["range"] = NormalizeRange(useDrafts ? analyticsDays : QueryAnalyticsDays) == 30 ? null : NormalizeRange(useDrafts ? analyticsDays : QueryAnalyticsDays),
         };
         return Navigation.GetUriWithQueryParameters(BaseUri, values);
     }
 
     private string BaseUri => Navigation.Uri.Split('?', '#')[0];
+    private string RiskReviewUrl => Navigation.GetUriWithQueryParameters(BaseUri, new Dictionary<string, object?> { ["review"] = ManagementUserReviewFilter.StaleUnverifiedWithoutExternal.ToString(), ["sort"] = ManagementUserSort.CreatedOldest.ToString() });
     private static object? EnumOrNull<T>(T value) where T : struct, Enum => Convert.ToInt32(value) == 0 ? null : value.ToString();
     private static T ParseEnum<T>(string? value, T fallback) where T : struct, Enum => Enum.TryParse<T>(value, true, out var parsed) && Enum.IsDefined(parsed) ? parsed : fallback;
     private static string? NullIfEmpty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

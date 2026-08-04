@@ -96,7 +96,8 @@ public sealed record ManagementUserSearch(
     ManagementUserBooleanFilter EmailConfirmed = ManagementUserBooleanFilter.All,
     ManagementUserBooleanFilter Mfa = ManagementUserBooleanFilter.All,
     ManagementUserSort Sort = ManagementUserSort.CreatedNewest,
-    int AnalyticsDays = 30);
+    int AnalyticsDays = 30,
+    ManagementUserReviewFilter Review = ManagementUserReviewFilter.All);
 
 public enum ManagementUserStateFilter
 {
@@ -122,6 +123,12 @@ public enum ManagementUserSort
     EmailDescending,
 }
 
+public enum ManagementUserReviewFilter
+{
+    All,
+    StaleUnverifiedWithoutExternal,
+}
+
 public sealed record ManagementUserPage(
     IReadOnlyList<ManagementUserSummary> Items,
     int Page,
@@ -135,7 +142,8 @@ public sealed record ManagementUserAnalytics(
     int RegisteredToday,
     decimal TypicalRegistrationsPerDay,
     int AnomalyThreshold,
-    IReadOnlyList<ManagementUserRegistrationDay> Days);
+    IReadOnlyList<ManagementUserRegistrationDay> Days,
+    int StaleUnverifiedWithoutExternalTotal = 0);
 
 public sealed record ManagementUserRegistrationDay(
     DateOnly Date,
@@ -149,7 +157,8 @@ public sealed record ManagementUserSummary(
     bool EmailConfirmed,
     bool TwoFactorEnabled,
     bool IsLockedOut,
-    DateTime CreatedAtUtc = default);
+    DateTime CreatedAtUtc = default,
+    bool HasExternalLogin = false);
 
 public sealed record ManagementUserActions(
     bool CanResetPassword,
@@ -298,6 +307,23 @@ internal sealed class UserManagementService(
             _ => users,
         };
 
+        var staleUnverifiedCutoff = DateTime.UtcNow.AddDays(-15);
+        var staleUnverifiedWithoutExternal = database.Users
+            .Where(user =>
+                !user.EmailConfirmed
+                && user.CreatedAtUtc < staleUnverifiedCutoff
+                && !database.UserLogins.Any(login => login.UserId == user.Id));
+        var staleUnverifiedWithoutExternalTotal = await
+            staleUnverifiedWithoutExternal.CountAsync(cancellationToken);
+
+        if (query.Review is ManagementUserReviewFilter.StaleUnverifiedWithoutExternal)
+        {
+            users = users.Where(user =>
+                !user.EmailConfirmed
+                && user.CreatedAtUtc < staleUnverifiedCutoff
+                && !database.UserLogins.Any(login => login.UserId == user.Id));
+        }
+
         var analyticsDays = Math.Clamp(query.AnalyticsDays, 7, 120);
         var today = DateTime.UtcNow.Date;
         var analyticsStart = today.AddDays(-(analyticsDays - 1));
@@ -376,6 +402,8 @@ internal sealed class UserManagementService(
                 user.EmailConfirmed,
                 user.TwoFactorEnabled,
                 user.CreatedAtUtc,
+                HasExternalLogin = database.UserLogins.Any(login =>
+                    login.UserId == user.Id),
                 IsLockedOut = user.LockoutEnd != null
                     && user.LockoutEnd > now
             })
@@ -388,7 +416,8 @@ internal sealed class UserManagementService(
                 user.EmailConfirmed,
                 user.TwoFactorEnabled,
                 user.IsLockedOut,
-                user.CreatedAtUtc))
+                user.CreatedAtUtc,
+                user.HasExternalLogin))
             .ToArray();
 
         await WriteAuditAsync(
@@ -411,7 +440,8 @@ internal sealed class UserManagementService(
                 registeredToday,
                 median,
                 anomalyThreshold,
-                days));
+                days,
+                staleUnverifiedWithoutExternalTotal));
     }
 
     private static decimal Median(IReadOnlyList<int> values)
