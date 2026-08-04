@@ -108,12 +108,16 @@ commands intentionally: before a second Identity replica or production CIBA,
 replace the process-local stores with an atomic shared implementation such as
 Redis, then add a separately reviewed enablement step.
 
-The Nginx virtual host applies a general per-IP zone plus stricter zones for
-interactive authentication, protocol/token endpoints and CSP reports. These
-are edge controls; account lockout and the application token limiter remain
-active as defense in depth. The configuration deliberately avoids conditional
-`map` keys because the nginx version on `castrum-apps` proved unstable while
-rebuilding a large variables hash. Because `limit_req_zone` is an
-`http`-context directive, install the complete virtual-host file under
-`sites-available` as documented above rather than copying only its `server`
-block.
+The Nginx virtual host selects per-IP limits by location: strict zones protect
+interactive authentication, protocol/token endpoints and CSP reports; ordinary
+application requests use the general zone; versioned `/_content/` and
+`/_framework/` assets use a separate high-volume zone sized for the browser's
+parallel first-render burst. Never move the general limit back to `server`
+scope, where it would be inherited by CSS, fonts and Blazor scripts and could
+leave the management UI unstyled. These are edge controls; account lockout and
+the application token limiter remain active as defense in depth. The
+configuration deliberately avoids conditional `map` keys because the nginx
+version on `castrum-apps` proved unstable while rebuilding a large variables
+hash. Because `limit_req_zone` is an `http`-context directive, install the
+complete virtual-host file under `sites-available` as documented above rather
+than copying only its `server` block.

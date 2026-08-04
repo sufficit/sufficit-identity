@@ -44,6 +44,10 @@ public sealed class CspHeaderTests
         // The default policy (CspOptions.Policy) must be emitted verbatim.
         Assert.Contains("default-src 'self'", csp, StringComparison.Ordinal);
         Assert.Contains("script-src 'self'", csp, StringComparison.Ordinal);
+        Assert.Contains(
+            "img-src 'self' data: https://endpoints.sufficit.com.br",
+            csp,
+            StringComparison.Ordinal);
         Assert.Contains("connect-src 'self' wss: ws:", csp, StringComparison.Ordinal);
         // frame-ancestors 'none' reinforces X-Frame-Options: DENY (eval M1
         // acceptance criterion).

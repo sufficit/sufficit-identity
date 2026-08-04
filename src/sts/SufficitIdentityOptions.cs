@@ -377,14 +377,16 @@ public sealed class CspOptions
     /// same-origin with the STS: <c>connect-src</c> allows the SignalR WebSocket
     /// circuit; <c>style-src</c> allows <c>'unsafe-inline'</c> (Blazor/Bootstrap
     /// commonly require it — the calibration step should aim to remove it via
-    /// nonces/hashes); <c>frame-ancestors 'none'</c> reinforces
+    /// nonces/hashes); <c>img-src</c> admits the same-origin UI and the
+    /// Sufficit avatar endpoint used by authenticated shells;
+    /// <c>frame-ancestors 'none'</c> reinforces
     /// <c>X-Frame-Options: DENY</c>. Adjust per environment as needed.
     /// </summary>
     public string Policy { get; init; } =
         "default-src 'self'; " +
         "script-src 'self'; " +
         "style-src 'self' 'unsafe-inline'; " +
-        "img-src 'self' data:; " +
+        "img-src 'self' data: https://endpoints.sufficit.com.br; " +
         "connect-src 'self' wss: ws:; " +
         "frame-ancestors 'none'; " +
         "base-uri 'self'; " +

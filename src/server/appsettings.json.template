@@ -211,7 +211,7 @@
         "_ReportOnly": "true = emit Content-Security-Policy-Report-Only (violations reported, NOT blocked — safe default). false = emit Content-Security-Policy (enforce). Flip to false ONLY after calibrating Policy against the real UI.",
         "ReportOnly": true,
         "_Policy": "CSP directive string. Default tuned for a same-origin Blazor Server UI: connect-src allows the SignalR WebSocket; style-src allows 'unsafe-inline' (Blazor/Bootstrap commonly need it — calibrate to remove); frame-ancestors 'none' reinforces X-Frame-Options: DENY.",
-        "Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' wss: ws:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+        "Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://endpoints.sufficit.com.br; connect-src 'self' wss: ws:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
         "_ReportUri": "Optional violation-report collector endpoint appended as 'report-uri <value>'. Empty = no report-uri directive.",
         "ReportUri": ""
       },
