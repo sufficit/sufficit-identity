@@ -143,6 +143,10 @@ public sealed class ManagementUiRoutingTests
             "src=\"/_content/Sufficit.Identity.UI.Management/_framework/blazor.web.js\"",
             html,
             StringComparison.Ordinal);
+        Assert.Contains(
+            "href=\"/_content/Sufficit.Identity.UI.Management/users.css\"",
+            html,
+            StringComparison.Ordinal);
         Assert.DoesNotContain(
             "src=\"/_framework/blazor.web.js\"",
             html,
@@ -152,8 +156,15 @@ public sealed class ManagementUiRoutingTests
             "/_content/Sufficit.Identity.UI.Management/_framework/blazor.web.js");
         using var stylesheet = await client.GetAsync(
             "/_content/Sufficit.Identity.UI.Management/app.css");
+        using var usersStylesheet = await client.GetAsync(
+            "/_content/Sufficit.Identity.UI.Management/users.css");
         Assert.Equal(HttpStatusCode.OK, script.StatusCode);
         Assert.Equal(HttpStatusCode.OK, stylesheet.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, usersStylesheet.StatusCode);
+        Assert.Contains(
+            ".users-dashboard",
+            await usersStylesheet.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
     }
 
     [Fact]

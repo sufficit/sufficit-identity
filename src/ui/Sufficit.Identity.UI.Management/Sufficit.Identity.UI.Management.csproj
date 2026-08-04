@@ -33,6 +33,8 @@
                       LogicalName="Sufficit.Identity.UI.Management.Assets.blazor.web.js" />
     <EmbeddedResource Include="wwwroot\app.css"
                       LogicalName="Sufficit.Identity.UI.Management.Assets.app.css" />
+    <EmbeddedResource Include="wwwroot\users.css"
+                      LogicalName="Sufficit.Identity.UI.Management.Assets.users.css" />
   </ItemGroup>
 
 </Project>

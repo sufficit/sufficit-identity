@@ -259,6 +259,11 @@ public static class ServiceCollectionExtensions
             "/_content/Sufficit.Identity.UI.Management/app.css",
             "Sufficit.Identity.UI.Management.Assets.app.css",
             "text/css; charset=utf-8");
+        MapEmbeddedAsset(
+            app,
+            "/_content/Sufficit.Identity.UI.Management/users.css",
+            "Sufficit.Identity.UI.Management.Assets.users.css",
+            "text/css; charset=utf-8");
 
         // A route-group prefix becomes part of the SSR RouteData template,
         // while the component Router knows the pages as "/" and "/clients".
