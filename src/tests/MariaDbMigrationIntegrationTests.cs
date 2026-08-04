@@ -64,6 +64,7 @@ public sealed class MariaDbMigrationIntegrationTests
                 IdentityDatabaseSchema.BrandingThemesMigrationId,
                 IdentityDatabaseSchema.ManagementAuditMigrationId,
                 IdentityDatabaseSchema.ScimProvisioningMigrationId,
+                IdentityDatabaseSchema.UserCreatedAtMigrationId,
             ],
             await context.Database.GetAppliedMigrationsAsync());
 
@@ -76,14 +77,15 @@ public sealed class MariaDbMigrationIntegrationTests
             WHERE table_schema = DATABASE()
             """));
 
-        Assert.Equal(4, await ScalarIntAsync(connection, $"""
+        Assert.Equal(5, await ScalarIntAsync(connection, $"""
             SELECT COUNT(*)
             FROM `{IdentityDatabaseSchema.MigrationsHistoryTable}`
             WHERE `MigrationId` IN (
                 '{IdentityDatabaseSchema.InitialMigrationId}',
                 '{IdentityDatabaseSchema.BrandingThemesMigrationId}',
                 '{IdentityDatabaseSchema.ManagementAuditMigrationId}',
-                '{IdentityDatabaseSchema.ScimProvisioningMigrationId}'
+                '{IdentityDatabaseSchema.ScimProvisioningMigrationId}',
+                '{IdentityDatabaseSchema.UserCreatedAtMigrationId}'
               )
             """));
 
@@ -133,6 +135,15 @@ public sealed class MariaDbMigrationIntegrationTests
               AND table_name = 'scimgroupusermembers'
               AND index_name = 'IX_scimgroupusermembers_userid'
               AND column_name = 'userid'
+            """));
+
+        Assert.Equal(1, await ScalarIntAsync(connection, """
+            SELECT COUNT(*)
+            FROM information_schema.statistics
+            WHERE table_schema = DATABASE()
+              AND table_name = 'users'
+              AND index_name = 'IX_users_createdatutc'
+              AND column_name = 'createdatutc'
             """));
     }
 
