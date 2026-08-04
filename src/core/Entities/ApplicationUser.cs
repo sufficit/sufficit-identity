@@ -16,6 +16,13 @@ namespace Sufficit.Identity.Core.Entities;
 public sealed class ApplicationUser : IdentityUser
 {
     /// <summary>
+    /// Immutable account creation instant in UTC. Unlike <see cref="Timestamp"/>,
+    /// this value never changes when the profile, credentials or lockout state
+    /// are updated and can therefore support registration analytics.
+    /// </summary>
+    public DateTime CreatedAtUtc { get; set; }
+
+    /// <summary>
     /// Row creation/update timestamp populated by MySQL
     /// (<c>DEFAULT (UTC_TIMESTAMP())</c>). Not used by Identity itself but kept
     /// for compatibility with the legacy schema and audit/debug tooling.

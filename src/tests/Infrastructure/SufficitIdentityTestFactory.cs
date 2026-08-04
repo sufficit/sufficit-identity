@@ -103,6 +103,8 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
         // connection so inserts that rely on the DB-generated default (i.e. every
         // UserManager.CreateAsync call) succeed unmodified.
         _connection.CreateFunction("UTC_TIMESTAMP", () => DateTime.UtcNow);
+        _connection.CreateFunction<int, DateTime>(
+            "UTC_TIMESTAMP", _ => DateTime.UtcNow);
     }
 
     // Bypasses WebApplicationFactory's default reflection-based discovery of a

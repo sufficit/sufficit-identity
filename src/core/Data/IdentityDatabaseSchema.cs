@@ -10,6 +10,7 @@ public static class IdentityDatabaseSchema
     public const string BrandingThemesMigrationId = "20260729025623_AddBrandingThemes";
     public const string ManagementAuditMigrationId = "20260729221512_AddManagementAuditEvents";
     public const string ScimProvisioningMigrationId = "20260730220100_AddScimProvisioning";
+    public const string UserCreatedAtMigrationId = "20260804020337_AddUserCreatedAtUtc";
 
     /// <summary>
     /// Migration history owned by the new Sufficit Identity model.

@@ -321,3 +321,17 @@ VALUES ('20260730220100_AddScimProvisioning', '10.0.10');
 
 COMMIT;
 
+START TRANSACTION;
+ALTER TABLE `users` ADD `createdatutc` datetime(6) NULL;
+
+UPDATE `users` SET `createdatutc` = `timestamp` WHERE `createdatutc` IS NULL;
+
+ALTER TABLE `users` MODIFY COLUMN `createdatutc` datetime(6) NOT NULL DEFAULT (UTC_TIMESTAMP(6));
+
+CREATE INDEX `IX_users_createdatutc` ON `users` (`createdatutc`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260804020337_AddUserCreatedAtUtc', '10.0.10');
+
+COMMIT;
+

@@ -56,10 +56,12 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
     {
         _bypassAuthz = bypassAuthz;
         _connection.Open();
-        // Same UTC_TIMESTAMP shim as SufficitIdentityTestFactory: AppDbContext
-        // maps ApplicationUser.Timestamp with HasDefaultValueSql("(UTC_TIMESTAMP())"),
-        // a MySQL-only function absent from SQLite.
+        // Same UTC_TIMESTAMP shim as SufficitIdentityTestFactory: the legacy
+        // Timestamp default uses UTC_TIMESTAMP(), while CreatedAtUtc uses the
+        // microsecond-precision UTC_TIMESTAMP(6) form in MariaDB.
         _connection.CreateFunction("UTC_TIMESTAMP", () => DateTime.UtcNow);
+        _connection.CreateFunction<int, DateTime>(
+            "UTC_TIMESTAMP", _ => DateTime.UtcNow);
     }
 
     static ManagementTestFactory()

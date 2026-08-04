@@ -70,6 +70,10 @@ public sealed class DatabaseSchemaContractTests
         AssertProperty(dataProtection, "FriendlyName", "friendlyname", "longtext", null, nullable: true);
         AssertProperty(dataProtection, "Xml", "xml", "longtext", null, nullable: true);
 
+        var user = RequiredEntity<ApplicationUser>(model);
+        AssertProperty(user, "CreatedAtUtc", "createdatutc", "datetime(6)", null, nullable: false);
+        AssertIndex(user, "IX_users_createdatutc", unique: false, "CreatedAtUtc");
+
         var audit = RequiredEntity<ManagementAuditEvent>(model);
         Assert.Equal("managementauditevents", audit.GetTableName());
         AssertProperty(audit, "Id", "id", "bigint", null, nullable: false);
@@ -154,6 +158,7 @@ public sealed class DatabaseSchemaContractTests
             IdentityDatabaseSchema.BrandingThemesMigrationId,
             IdentityDatabaseSchema.ManagementAuditMigrationId,
             IdentityDatabaseSchema.ScimProvisioningMigrationId,
+            IdentityDatabaseSchema.UserCreatedAtMigrationId,
         ], context.Database.GetMigrations());
 
         var history = context.GetService<IHistoryRepository>().GetCreateScript();

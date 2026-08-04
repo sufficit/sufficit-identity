@@ -26,9 +26,19 @@ public sealed class UsersController(IUserManagementService users)
         [FromQuery] string? search,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 25,
+        [FromQuery] DateOnly? registeredFrom = null,
+        [FromQuery] DateOnly? registeredTo = null,
+        [FromQuery] DateOnly? registeredOn = null,
+        [FromQuery] ManagementUserStateFilter state = ManagementUserStateFilter.All,
+        [FromQuery] ManagementUserBooleanFilter emailConfirmed = ManagementUserBooleanFilter.All,
+        [FromQuery] ManagementUserBooleanFilter mfa = ManagementUserBooleanFilter.All,
+        [FromQuery] ManagementUserSort sort = ManagementUserSort.CreatedNewest,
+        [FromQuery] int analyticsDays = 30,
         CancellationToken cancellationToken = default) =>
         Ok(await users.SearchAsync(
-            new ManagementUserSearch(search, page, pageSize),
+            new ManagementUserSearch(
+                search, page, pageSize, registeredFrom, registeredTo,
+                registeredOn, state, emailConfirmed, mfa, sort, analyticsDays),
             RequestContext(),
             cancellationToken));
 

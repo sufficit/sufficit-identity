@@ -1,11 +1,13 @@
 @page "/users"
 @attribute [StreamRendering]
+@using System.Globalization
 @inject ManagementUserDataSource UserData
+@inject NavigationManager Navigation
 
 <PageTitle>Usuários | Sufficit Identity</PageTitle>
 
 <PageHeader Title="Usuários"
-            Description="Consulte as contas do provedor e seus estados de autenticação.">
+            Description="Investigue cadastros, encontre picos fora do padrão e navegue pelo diretório com filtros compartilháveis.">
     <Actions>
         @if (accessResult?.IsSuccess is true && Access.CanCreate)
         {
@@ -22,339 +24,280 @@
 {
     <section class="inline-notice inline-notice--success" role="status">
         <AppIcon Name="check" Size="19" />
-        <div>
-            <strong>Conta excluída</strong>
-            <span>As credenciais foram removidas e as sessões, os tokens e as autorizações anteriores foram revogados.</span>
-        </div>
+        <div><strong>Conta excluída</strong><span>Credenciais, sessões, tokens e autorizações anteriores foram revogados.</span></div>
     </section>
 }
 
-<section class="contract-strip contract-strip--info">
-    <AppIcon Name="shield" Size="20" />
-    <div>
-        <strong>Contas do provedor de identidade</strong>
-        <span>Esta tela administra autenticação, perfil e credenciais. Autoridades empresariais permanecem nas aplicações que as definem.</span>
-    </div>
-    <StatusBadge Tone="info">Auditado</StatusBadge>
-</section>
-
 @if (accessLoading)
 {
-    <section class="table-panel" aria-busy="true">
-        <div class="table-skeleton" aria-label="Carregando autoridade">
-            @for (var index = 0; index < 4; index++)
-            {
-                <span></span>
-            }
-        </div>
+    <section class="users-dashboard users-dashboard--loading" aria-busy="true">
+        <div class="table-skeleton" aria-label="Carregando dashboard"><span></span><span></span><span></span><span></span></div>
     </section>
 }
 else if (accessResult?.IsSuccess is false)
 {
     <section class="panel">
-        <EmptyState Icon="shield"
-                    Title="@AccessErrorTitle"
-                    Description="@accessResult.ErrorMessage">
-            <Actions>
-                <button class="button button--secondary"
-                        type="button"
-                        @onclick="LoadAsync">
-                    Tentar novamente
-                </button>
-            </Actions>
+        <EmptyState Icon="shield" Title="@AccessErrorTitle" Description="@accessResult.ErrorMessage">
+            <Actions><button class="button button--secondary" type="button" @onclick="LoadAccessAsync">Tentar novamente</button></Actions>
         </EmptyState>
     </section>
 }
 else
 {
-    <section class="table-panel"
-             aria-labelledby="users-list-heading"
-             aria-busy="@usersLoading">
-        <div class="data-toolbar data-toolbar--users">
-            <div>
-                <h2 id="users-list-heading">Diretório de identidades</h2>
-                <p>@ToolbarDescription</p>
-            </div>
-            <div class="data-toolbar__actions user-filters">
-                <form class="user-search"
-                      @onsubmit="SearchAsync"
-                      @onsubmit:preventDefault>
-                    <label class="search-field">
-                        <span class="visually-hidden">Pesquisar usuários</span>
-                        <AppIcon Name="search" Size="18" />
-                        <input type="search"
-                               placeholder="Nome ou e-mail"
-                               autocomplete="off"
-                               @bind="search"
-                               @bind:event="oninput" />
-                    </label>
-                    <button class="button button--secondary"
-                            type="submit"
-                            disabled="@usersLoading">
-                        Pesquisar
-                    </button>
-                </form>
-            </div>
-        </div>
-
-        <div class="client-results" aria-live="polite">
-            @if (usersLoading)
-            {
-                <div class="table-skeleton" aria-label="Carregando usuários">
-                    @for (var index = 0; index < 5; index++)
-                    {
-                        <span></span>
-                    }
+    <main class="users-dashboard" aria-busy="@usersLoading">
+        <section class="users-overview" aria-labelledby="registration-overview-heading">
+            <div class="users-overview__heading">
+                <div>
+                    <h2 id="registration-overview-heading">Cadastros por dia</h2>
+                    <p>@AnalyticsRangeLabel · datas em UTC</p>
                 </div>
-            }
-            else if (usersResult?.IsSuccess is false)
+                @if (SelectedDay is not null)
+                {
+                    <a class="filter-chip" href="@UrlFor(day: null, clearDay: true, page: 1)">
+                        @SelectedDay.Value.ToString("dd/MM/yyyy", PtBr)
+                        <AppIcon Name="x" Size="14" />
+                    </a>
+                }
+            </div>
+
+            <dl class="users-insight-strip">
+                <div><dt>Diretório</dt><dd>@Analytics.DirectoryTotal.ToString("N0", PtBr)</dd></div>
+                <div><dt>Hoje</dt><dd>@Analytics.RegisteredToday.ToString("N0", PtBr)</dd></div>
+                <div><dt>Dia típico</dt><dd>@Analytics.TypicalRegistrationsPerDay.ToString("0.#", PtBr)</dd></div>
+                <div class="@(AnomalyCount > 0 ? "users-insight--alert" : null)">
+                    <dt>Fora do padrão</dt><dd>@AnomalyCount</dd>
+                </div>
+            </dl>
+
+            @if (usersLoading && usersResult is null)
             {
-                <EmptyState Icon="alert"
-                            Title="@UsersErrorTitle"
-                            Description="@usersResult.ErrorMessage">
-                    <Actions>
-                        <button class="button button--secondary"
-                                type="button"
-                                @onclick="LoadUsersAsync">
-                            Tentar novamente
-                        </button>
-                    </Actions>
-                </EmptyState>
+                <div class="registration-chart registration-chart--loading" aria-label="Carregando histórico"></div>
             }
-            else if (Page.Items.Count is 0)
+            else if (Analytics.Days.Count is 0)
             {
-                <EmptyState Icon="users"
-                            Title="Nenhum usuário encontrado"
-                            Description="@EmptyDescription">
-                    <Actions>
-                        @if (!string.IsNullOrWhiteSpace(search))
-                        {
-                            <button class="button button--secondary"
-                                    type="button"
-                                    @onclick="ClearSearchAsync">
-                                Limpar pesquisa
-                            </button>
-                        }
-                    </Actions>
-                </EmptyState>
+                <div class="registration-chart__empty">Ainda não há histórico suficiente para o período.</div>
             }
             else
             {
-                <div class="table-scroll">
-                    <table class="data-table data-table--users">
-                        <thead>
-                            <tr>
-                                <th scope="col">Usuário</th>
+                <div class="registration-chart" role="group" aria-label="Gráfico de cadastros diários. Selecione um dia para filtrar a lista.">
+                    <div class="registration-chart__scale" aria-hidden="true">
+                        <span>@ChartMax</span><span>@Math.Ceiling(ChartMax / 2d)</span><span>0</span>
+                    </div>
+                    <div class="registration-chart__viewport" tabindex="0">
+                        <div class="registration-chart__plot">
+                            @foreach (var day in Analytics.Days)
+                            {
+                                <button type="button"
+                                        class="registration-bar @(day.IsAnomaly ? "registration-bar--anomaly" : null) @(SelectedDay == day.Date ? "registration-bar--selected" : null)"
+                                        title="@DayAriaLabel(day)"
+                                        aria-label="@DayAriaLabel(day)"
+                                        aria-pressed="@(SelectedDay == day.Date)"
+                                        @onclick="() => SelectDay(day.Date)">
+                                    <span class="registration-bar__value">@(day.Count > 0 ? day.Count : null)</span>
+                                    <span class="registration-bar__column" style="--registration-height: @BarHeight(day.Count)%"></span>
+                                    <span class="registration-bar__date">@day.Date.ToString("dd/MM", PtBr)</span>
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-legend" aria-label="Legenda do gráfico">
+                    <span><i class="chart-legend__mark"></i>Cadastros</span>
+                    <span><i class="chart-legend__mark chart-legend__mark--alert"></i>Acima de @Analytics.AnomalyThreshold no dia</span>
+                    <span class="chart-legend__hint">Toque em uma coluna para abrir aquele dia</span>
+                </div>
+            }
+        </section>
+
+        <details class="users-filter-panel" open>
+            <summary>
+                <span><AppIcon Name="search" Size="18" /> Filtros e ordenação</span>
+                <span class="users-filter-count">@ActiveFilterLabel</span>
+            </summary>
+            <form class="users-filter-form" @onsubmit="ApplyFilters" @onsubmit:preventDefault>
+                <label class="users-field users-field--search">
+                    <span>Nome ou e-mail</span>
+                    <div class="search-field"><AppIcon Name="search" Size="18" /><input type="search" autocomplete="off" placeholder="Buscar no diretório" @bind="search" @bind:event="oninput" /></div>
+                </label>
+                <label class="users-field"><span>Estado</span><select @bind="state"><option value="@ManagementUserStateFilter.All">Todos</option><option value="@ManagementUserStateFilter.Active">Ativos</option><option value="@ManagementUserStateFilter.Locked">Bloqueados</option></select></label>
+                <label class="users-field"><span>E-mail</span><select @bind="emailConfirmed"><option value="@ManagementUserBooleanFilter.All">Todos</option><option value="@ManagementUserBooleanFilter.Enabled">Confirmado</option><option value="@ManagementUserBooleanFilter.Disabled">Não confirmado</option></select></label>
+                <label class="users-field"><span>MFA</span><select @bind="mfa"><option value="@ManagementUserBooleanFilter.All">Todos</option><option value="@ManagementUserBooleanFilter.Enabled">Ativo</option><option value="@ManagementUserBooleanFilter.Disabled">Inativo</option></select></label>
+                <label class="users-field"><span>Cadastro inicial</span><input type="date" @bind="registeredFrom" /></label>
+                <label class="users-field"><span>Cadastro final</span><input type="date" @bind="registeredTo" /></label>
+                <label class="users-field"><span>Ordenar por</span><select @bind="sort"><option value="@ManagementUserSort.CreatedNewest">Cadastro mais recente</option><option value="@ManagementUserSort.CreatedOldest">Cadastro mais antigo</option><option value="@ManagementUserSort.NameAscending">Nome A–Z</option><option value="@ManagementUserSort.NameDescending">Nome Z–A</option><option value="@ManagementUserSort.EmailAscending">E-mail A–Z</option><option value="@ManagementUserSort.EmailDescending">E-mail Z–A</option></select></label>
+                <label class="users-field"><span>Histórico do gráfico</span><select @bind="analyticsDays"><option value="14">14 dias</option><option value="30">30 dias</option><option value="60">60 dias</option><option value="90">90 dias</option></select></label>
+                <div class="users-filter-actions">
+                    <button class="button button--primary" type="submit" disabled="@usersLoading">@(usersLoading ? "Aplicando…" : "Aplicar filtros")</button>
+                    <button class="button button--secondary" type="button" @onclick="ClearFilters" disabled="@usersLoading">Limpar</button>
+                </div>
+            </form>
+        </details>
+
+        <section class="table-panel users-results" aria-labelledby="users-list-heading">
+            <div class="data-toolbar users-results__header">
+                <div><h2 id="users-list-heading">Contas encontradas</h2><p>@ResultContextLabel</p></div>
+                <span class="users-result-total" aria-live="polite">@ResultCountLabel</span>
+            </div>
+            <div class="client-results" aria-live="polite">
+                @if (usersLoading)
+                {
+                    <div class="table-skeleton" aria-label="Carregando usuários"><span></span><span></span><span></span><span></span><span></span></div>
+                }
+                else if (usersResult?.IsSuccess is false)
+                {
+                    <EmptyState Icon="alert" Title="@UsersErrorTitle" Description="@usersResult.ErrorMessage"><Actions><button class="button button--secondary" type="button" @onclick="LoadUsersAsync">Tentar novamente</button></Actions></EmptyState>
+                }
+                else if (Page.Items.Count is 0)
+                {
+                    <EmptyState Icon="users" Title="Nenhum usuário neste recorte" Description="Altere os filtros ou limpe o dia selecionado para ampliar a busca."><Actions><button class="button button--secondary" type="button" @onclick="ClearFilters">Limpar filtros</button></Actions></EmptyState>
+                }
+                else
+                {
+                    <div class="table-scroll">
+                        <table class="data-table data-table--users users-table">
+                            <thead><tr>
+                                <th scope="col"><a href="@UrlFor(sort: ToggleNameSort, page: 1)" aria-label="Ordenar por nome">Usuário @SortMark(ManagementUserSort.NameAscending, ManagementUserSort.NameDescending)</a></th>
                                 <th scope="col">E-mail</th>
-                                <th scope="col">MFA</th>
-                                <th scope="col">Estado</th>
-                                <th scope="col"><span class="visually-hidden">Ações</span></th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                                <th scope="col"><a href="@UrlFor(sort: ToggleCreatedSort, page: 1)" aria-label="Ordenar por data de cadastro">Cadastro @SortMark(ManagementUserSort.CreatedNewest, ManagementUserSort.CreatedOldest)</a></th>
+                                <th scope="col">MFA</th><th scope="col">Estado</th><th scope="col"><span class="visually-hidden">Ações</span></th>
+                            </tr></thead>
+                            <tbody>
                             @foreach (var user in Page.Items)
                             {
                                 <tr>
-                                    <td data-label="Usuário">
-                                        <a class="client-name client-link"
-                                           href="@UserHref(user.Id)">
-                                            @DisplayUserName(user)
-                                        </a>
-                                    </td>
-                                    <td data-label="E-mail">
-                                        <span class="user-email">
-                                            <span>@DisplayEmail(user)</span>
-                                            @if (user.EmailConfirmed)
-                                            {
-                                                <span class="verified-mark"
-                                                      title="E-mail confirmado"
-                                                      aria-label="E-mail confirmado">
-                                                    <AppIcon Name="check" Size="13" />
-                                                </span>
-                                            }
-                                        </span>
-                                    </td>
-                                    <td data-label="MFA">
-                                        <StatusBadge Tone="@(user.TwoFactorEnabled ? "success" : "neutral")">
-                                            @(user.TwoFactorEnabled ? "Ativo" : "Inativo")
-                                        </StatusBadge>
-                                    </td>
-                                    <td data-label="Estado">
-                                        <span class="registration-state">
-                                            <span class="status-dot @(user.IsLockedOut ? "status-dot--danger" : "status-dot--success")"
-                                                  aria-hidden="true"></span>
-                                            @(user.IsLockedOut ? "Bloqueado" : "Ativo")
-                                        </span>
-                                    </td>
-                                    <td data-label="Ações">
-                                        <a class="row-action"
-                                           href="@UserHref(user.Id)"
-                                           aria-label="@($"Abrir detalhes de {DisplayUserName(user)}")">
-                                            Detalhes
-                                            <AppIcon Name="arrow-right" Size="15" />
-                                        </a>
-                                    </td>
+                                    <td data-label="Usuário"><a class="client-name client-link" href="@UserHref(user.Id)">@DisplayUserName(user)</a></td>
+                                    <td data-label="E-mail"><span class="user-email"><span>@DisplayEmail(user)</span>@if (user.EmailConfirmed){<span class="verified-mark" title="E-mail confirmado" aria-label="E-mail confirmado"><AppIcon Name="check" Size="13" /></span>}</span></td>
+                                    <td data-label="Cadastro"><time datetime="@user.CreatedAtUtc.ToString("O")"><strong>@user.CreatedAtUtc.ToString("dd/MM/yyyy", PtBr)</strong><span>@user.CreatedAtUtc.ToString("HH:mm", PtBr) UTC</span></time></td>
+                                    <td data-label="MFA"><StatusBadge Tone="@(user.TwoFactorEnabled ? "success" : "neutral")">@(user.TwoFactorEnabled ? "Ativo" : "Inativo")</StatusBadge></td>
+                                    <td data-label="Estado"><span class="registration-state"><span class="status-dot @(user.IsLockedOut ? "status-dot--danger" : "status-dot--success")" aria-hidden="true"></span>@(user.IsLockedOut ? "Bloqueado" : "Ativo")</span></td>
+                                    <td data-label="Ações"><a class="row-action" href="@UserHref(user.Id)" aria-label="@($"Abrir detalhes de {DisplayUserName(user)}")">Detalhes<AppIcon Name="arrow-right" Size="15" /></a></td>
                                 </tr>
                             }
-                        </tbody>
-                    </table>
-                </div>
-            }
-        </div>
-
-        <footer class="table-footer table-footer--paginated">
-            <span aria-live="polite">@ResultCountLabel</span>
-            @if (TotalPages > 1)
-            {
-                <nav class="pagination" aria-label="Paginação de usuários">
-                    <button class="button button--secondary button--compact"
-                            type="button"
-                            disabled="@(usersLoading || Page.Page <= 1)"
-                            @onclick="PreviousPageAsync">
-                        Anterior
-                    </button>
-                    <span>Página @Page.Page de @TotalPages</span>
-                    <button class="button button--secondary button--compact"
-                            type="button"
-                            disabled="@(usersLoading || Page.Page >= TotalPages)"
-                            @onclick="NextPageAsync">
-                        Próxima
-                    </button>
-                </nav>
-            }
-        </footer>
-    </section>
-
-    <section class="client-guardrails" aria-labelledby="user-safety-heading">
-        <div>
-            <h2 id="user-safety-heading">Fronteira desta administração</h2>
-            <p>Operações alteram somente a conta no provedor; cargos, permissões e vínculos empresariais não são interpretados aqui.</p>
-        </div>
-        <ul>
-            <li><AppIcon Name="shield" Size="18" /> Capabilities do operador são avaliadas no serviço</li>
-            <li><AppIcon Name="audit" Size="18" /> Leituras e mutações geram eventos de auditoria</li>
-            <li><AppIcon Name="lock" Size="18" /> Senhas, hashes, tokens e claims não são expostos</li>
-        </ul>
-    </section>
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+            <footer class="table-footer table-footer--paginated">
+                <span>@PaginationLabel</span>
+                @if (TotalPages > 1)
+                {
+                    <nav class="pagination" aria-label="Paginação de usuários">
+                        <a class="button button--secondary button--compact" aria-disabled="@(Page.Page <= 1)" href="@(Page.Page > 1 ? UrlFor(page: Page.Page - 1) : null)">Anterior</a>
+                        <span>Página @Page.Page de @TotalPages</span>
+                        <a class="button button--secondary button--compact" aria-disabled="@(Page.Page >= TotalPages)" href="@(Page.Page < TotalPages ? UrlFor(page: Page.Page + 1) : null)">Próxima</a>
+                    </nav>
+                }
+            </footer>
+        </section>
+    </main>
 }
 
 @code {
-    [SupplyParameterFromQuery(Name = "deleted")]
-    public int DeletedFlag { get; set; }
+    private static readonly CultureInfo PtBr = CultureInfo.GetCultureInfo("pt-BR");
+    [SupplyParameterFromQuery(Name = "deleted")] public int DeletedFlag { get; set; }
+    [SupplyParameterFromQuery(Name = "q")] public string? QuerySearch { get; set; }
+    [SupplyParameterFromQuery(Name = "page")] public int QueryPage { get; set; } = 1;
+    [SupplyParameterFromQuery(Name = "from")] public DateOnly? QueryFrom { get; set; }
+    [SupplyParameterFromQuery(Name = "to")] public DateOnly? QueryTo { get; set; }
+    [SupplyParameterFromQuery(Name = "day")] public DateOnly? QueryDay { get; set; }
+    [SupplyParameterFromQuery(Name = "state")] public string? QueryStateValue { get; set; }
+    [SupplyParameterFromQuery(Name = "email")] public string? QueryEmailValue { get; set; }
+    [SupplyParameterFromQuery(Name = "mfa")] public string? QueryMfaValue { get; set; }
+    [SupplyParameterFromQuery(Name = "sort")] public string? QuerySortValue { get; set; }
+    [SupplyParameterFromQuery(Name = "range")] public int QueryAnalyticsDays { get; set; } = 30;
 
     private ManagementDataResult<ManagementUserAccess>? accessResult;
     private ManagementDataResult<ManagementUserPage>? usersResult;
     private bool accessLoading = true;
     private bool usersLoading;
     private string search = string.Empty;
-    private int currentPage = 1;
+    private DateOnly? registeredFrom;
+    private DateOnly? registeredTo;
+    private ManagementUserStateFilter state;
+    private ManagementUserBooleanFilter emailConfirmed;
+    private ManagementUserBooleanFilter mfa;
+    private ManagementUserSort sort = ManagementUserSort.CreatedNewest;
+    private int analyticsDays = 30;
+    private string? loadedFingerprint;
     private const int PageSize = 25;
 
     private bool Deleted => DeletedFlag is 1;
+    private DateOnly? SelectedDay => QueryDay;
+    private ManagementUserAccess Access => accessResult?.Value ?? new(false, false);
+    private ManagementUserPage Page => usersResult?.Value ?? new([], 1, PageSize, 0);
+    private ManagementUserAnalytics Analytics => Page.Analytics ?? new(0, 0, 0, 0, 3, []);
+    private ManagementUserStateFilter QueryState => ParseEnum(QueryStateValue, ManagementUserStateFilter.All);
+    private ManagementUserBooleanFilter QueryEmail => ParseEnum(QueryEmailValue, ManagementUserBooleanFilter.All);
+    private ManagementUserBooleanFilter QueryMfa => ParseEnum(QueryMfaValue, ManagementUserBooleanFilter.All);
+    private ManagementUserSort QuerySort => ParseEnum(QuerySortValue, ManagementUserSort.CreatedNewest);
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(Page.TotalCount / (double)Page.PageSize));
+    private int AnomalyCount => Analytics.Days.Count(day => day.IsAnomaly);
+    private int ChartMax => Math.Max(1, Analytics.Days.Count > 0 ? Analytics.Days.Max(day => day.Count) : 1);
+    private ManagementUserSort ToggleCreatedSort => QuerySort == ManagementUserSort.CreatedNewest ? ManagementUserSort.CreatedOldest : ManagementUserSort.CreatedNewest;
+    private ManagementUserSort ToggleNameSort => QuerySort == ManagementUserSort.NameAscending ? ManagementUserSort.NameDescending : ManagementUserSort.NameAscending;
+    private string AccessErrorTitle => accessResult?.Outcome is ManagementDataOutcome.StepUpRequired ? "Autenticação adicional necessária" : "Acesso ao diretório não autorizado";
+    private string UsersErrorTitle => usersResult?.Outcome is ManagementDataOutcome.StepUpRequired ? "MFA exigido para esta operação" : usersResult?.Outcome is ManagementDataOutcome.Forbidden ? "Acesso ao diretório negado" : "Não foi possível consultar os usuários";
+    private string AnalyticsRangeLabel => $"Últimos {analyticsDays} dias";
+    private string ResultContextLabel => SelectedDay is { } day ? $"Cadastros de {day:dd/MM/yyyy}" : "Use filtros combinados para reduzir o conjunto investigado.";
+    private string ResultCountLabel => usersLoading ? "Atualizando…" : $"{Page.TotalCount:N0} {Pluralize(Page.TotalCount, "conta", "contas")}";
+    private string PaginationLabel => Page.TotalCount == 0 ? "Nenhum resultado" : $"Exibindo {(Page.Page - 1) * Page.PageSize + 1:N0}–{Math.Min(Page.Page * Page.PageSize, Page.TotalCount):N0} de {Page.TotalCount:N0}";
+    private string ActiveFilterLabel { get { var count = 0; if (!string.IsNullOrWhiteSpace(QuerySearch)) count++; if (QueryFrom is not null || QueryTo is not null) count++; if (QueryDay is not null) count++; if (QueryState != ManagementUserStateFilter.All) count++; if (QueryEmail != ManagementUserBooleanFilter.All) count++; if (QueryMfa != ManagementUserBooleanFilter.All) count++; return count == 0 ? "Sem filtros" : $"{count} {Pluralize(count, "filtro ativo", "filtros ativos")}"; } }
 
-    private ManagementUserAccess Access =>
-        accessResult?.Value ?? new(false, false);
+    protected override async Task OnParametersSetAsync()
+    {
+        var fingerprint = $"{QuerySearch}|{QueryPage}|{QueryFrom}|{QueryTo}|{QueryDay}|{QueryState}|{QueryEmail}|{QueryMfa}|{QuerySort}|{QueryAnalyticsDays}";
+        if (fingerprint == loadedFingerprint) return;
+        loadedFingerprint = fingerprint;
+        SyncDraftsFromQuery();
+        if (accessResult is null) await LoadAccessAsync(); else if (accessResult.IsSuccess) await LoadUsersAsync();
+    }
 
-    private ManagementUserPage Page =>
-        usersResult?.Value ?? new([], 1, PageSize, 0);
-
-    private int TotalPages =>
-        Math.Max(1, (int)Math.Ceiling(Page.TotalCount / (double)Page.PageSize));
-
-    private string AccessErrorTitle =>
-        accessResult?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? "Autenticação adicional necessária"
-            : "Acesso ao diretório não autorizado";
-
-    private string UsersErrorTitle =>
-        usersResult?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? "MFA exigido para esta operação"
-            : usersResult?.Outcome is ManagementDataOutcome.Forbidden
-                ? "Acesso ao diretório negado"
-                : "Não foi possível consultar os usuários";
-
-    private string ToolbarDescription =>
-        usersLoading
-            ? "Consultando o diretório autorizado…"
-            : "Contas reconhecidas por este provedor de identidade.";
-
-    private string EmptyDescription =>
-        string.IsNullOrWhiteSpace(search)
-            ? "O serviço respondeu sem identidades cadastradas."
-            : "Revise o nome ou e-mail informado e tente novamente.";
-
-    private string ResultCountLabel =>
-        usersLoading
-            ? "Carregando usuários"
-            : usersResult?.IsSuccess is true
-                ? $"{Page.TotalCount} {Pluralize(Page.TotalCount, "usuário", "usuários")}"
-                : "Nenhum resultado carregado";
-
-    protected override async Task OnInitializedAsync() => await LoadAsync();
-
-    private async Task LoadAsync()
+    private async Task LoadAccessAsync()
     {
         accessLoading = true;
-        usersResult = null;
         accessResult = await UserData.GetAccessAsync();
         accessLoading = false;
-
-        if (accessResult.IsSuccess)
-        {
-            await LoadUsersAsync();
-        }
+        if (accessResult.IsSuccess) await LoadUsersAsync();
     }
 
     private async Task LoadUsersAsync()
     {
         usersLoading = true;
-        usersResult = await UserData.SearchAsync(
-            new ManagementUserSearch(
-                search,
-                currentPage,
-                PageSize));
+        usersResult = await UserData.SearchAsync(new ManagementUserSearch(QuerySearch, Math.Max(1, QueryPage), PageSize, QueryFrom, QueryTo, QueryDay, QueryState, QueryEmail, QueryMfa, QuerySort, NormalizeRange(QueryAnalyticsDays)));
         usersLoading = false;
     }
 
-    private async Task SearchAsync()
+    private void SyncDraftsFromQuery() { search = QuerySearch ?? string.Empty; registeredFrom = QueryFrom; registeredTo = QueryTo; state = QueryState; emailConfirmed = QueryEmail; mfa = QueryMfa; sort = QuerySort; analyticsDays = NormalizeRange(QueryAnalyticsDays); }
+    private void ApplyFilters() => Navigation.NavigateTo(UrlFor(page: 1, useDrafts: true, day: null, clearDay: true));
+    private void ClearFilters() => Navigation.NavigateTo(BaseUri);
+    private void SelectDay(DateOnly day) => Navigation.NavigateTo(UrlFor(day: SelectedDay == day ? null : day, clearDay: SelectedDay == day, page: 1));
+
+    private string UrlFor(int? page = null, DateOnly? day = null, bool clearDay = false, ManagementUserSort? sort = null, bool useDrafts = false)
     {
-        currentPage = 1;
-        await LoadUsersAsync();
+        var selectedSort = sort ?? (useDrafts ? this.sort : QuerySort);
+        var values = new Dictionary<string, object?>
+        {
+            ["q"] = NullIfEmpty(useDrafts ? search : QuerySearch), ["page"] = (page ?? Math.Max(1, QueryPage)) > 1 ? page ?? QueryPage : null,
+            ["from"] = useDrafts ? registeredFrom : QueryFrom, ["to"] = useDrafts ? registeredTo : QueryTo,
+            ["day"] = clearDay ? null : day ?? QueryDay,
+            ["state"] = EnumOrNull(useDrafts ? state : QueryState), ["email"] = EnumOrNull(useDrafts ? emailConfirmed : QueryEmail), ["mfa"] = EnumOrNull(useDrafts ? mfa : QueryMfa),
+            ["sort"] = selectedSort is ManagementUserSort.CreatedNewest ? null : selectedSort.ToString(),
+            ["range"] = NormalizeRange(useDrafts ? analyticsDays : QueryAnalyticsDays) == 30 ? null : NormalizeRange(useDrafts ? analyticsDays : QueryAnalyticsDays),
+        };
+        return Navigation.GetUriWithQueryParameters(BaseUri, values);
     }
 
-    private async Task ClearSearchAsync()
-    {
-        search = string.Empty;
-        currentPage = 1;
-        await LoadUsersAsync();
-    }
-
-    private async Task PreviousPageAsync()
-    {
-        currentPage = Math.Max(1, currentPage - 1);
-        await LoadUsersAsync();
-    }
-
-    private async Task NextPageAsync()
-    {
-        currentPage = Math.Min(TotalPages, currentPage + 1);
-        await LoadUsersAsync();
-    }
-
-    private static string UserHref(string id) =>
-        $"users/{Uri.EscapeDataString(id)}";
-
-    private static string DisplayUserName(ManagementUserSummary user) =>
-        string.IsNullOrWhiteSpace(user.UserName)
-            ? user.Email ?? user.Id
-            : user.UserName;
-
-    private static string DisplayEmail(ManagementUserSummary user) =>
-        string.IsNullOrWhiteSpace(user.Email) ? "Não informado" : user.Email;
-
-    private static string Pluralize(
-        int count,
-        string singular,
-        string plural) =>
-        count is 1 ? singular : plural;
+    private string BaseUri => Navigation.Uri.Split('?', '#')[0];
+    private static object? EnumOrNull<T>(T value) where T : struct, Enum => Convert.ToInt32(value) == 0 ? null : value.ToString();
+    private static T ParseEnum<T>(string? value, T fallback) where T : struct, Enum => Enum.TryParse<T>(value, true, out var parsed) && Enum.IsDefined(parsed) ? parsed : fallback;
+    private static string? NullIfEmpty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static int NormalizeRange(int value) => value is 14 or 30 or 60 or 90 ? value : 30;
+    private decimal BarHeight(int count) => Math.Max(count > 0 ? 8m : 2m, count * 100m / ChartMax);
+    private static string UserHref(string id) => $"users/{Uri.EscapeDataString(id)}";
+    private static string DisplayUserName(ManagementUserSummary user) => string.IsNullOrWhiteSpace(user.UserName) ? user.Email ?? user.Id : user.UserName;
+    private static string DisplayEmail(ManagementUserSummary user) => string.IsNullOrWhiteSpace(user.Email) ? "Não informado" : user.Email;
+    private static string Pluralize(int count, string singular, string plural) => count is 1 ? singular : plural;
+    private string SortMark(ManagementUserSort ascending, ManagementUserSort descending) => QuerySort == ascending ? "↑" : QuerySort == descending ? "↓" : "↕";
+    private string DayAriaLabel(ManagementUserRegistrationDay day) => $"{day.Date.ToString("dd 'de' MMMM", PtBr)}: {day.Count} {Pluralize(day.Count, "cadastro", "cadastros")}{(day.IsAnomaly ? ", acima do padrão" : string.Empty)}";
 }

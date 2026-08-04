@@ -272,7 +272,8 @@ public sealed class ManagementUiRoutingTests
             await response.Content.ReadAsStringAsync());
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("Diretório de identidades", html, StringComparison.Ordinal);
+        Assert.Contains("Cadastros por dia", html, StringComparison.Ordinal);
+        Assert.Contains("Filtros e ordenação", html, StringComparison.Ordinal);
         Assert.Contains("alice@tests.local", html, StringComparison.Ordinal);
         Assert.Contains("Diretório global", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Manager", html, StringComparison.Ordinal);

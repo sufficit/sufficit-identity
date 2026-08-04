@@ -38,6 +38,7 @@ public sealed class UserManagementControllerTests
         Assert.NotNull(page);
         var summary = Assert.Single(page.Items);
         Assert.Equal(TestDataSeeder.DefaultUsername, summary.UserName);
+        Assert.NotEqual(default, summary.CreatedAtUtc);
 
         using var detailResponse = await client.GetAsync(
             $"/api/users/{summary.Id}");
@@ -76,6 +77,51 @@ public sealed class UserManagementControllerTests
                 && entry.ResourceId == summary.Id)
             .ToArrayAsync();
         Assert.Contains(events, entry => entry.ReasonCode == "user_read");
+    }
+
+    [Fact]
+    public async Task Registration_dashboard_filters_sorts_and_marks_daily_spikes()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var spikeDay = DateTime.UtcNow.Date.AddDays(-3);
+
+        await using (var setup = factory.Services.CreateAsyncScope())
+        {
+            var userManager = setup.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            var database = setup.ServiceProvider.GetRequiredService<AppDbContext>();
+            for (var index = 0; index < 4; index++)
+            {
+                var user = await TestDataSeeder.CreateUserAsync(
+                    userManager,
+                    $"spike-{index}-{Guid.NewGuid():N}",
+                    "Valid!Passw0rd#42");
+                user.CreatedAtUtc = spikeDay.AddHours(index);
+                database.Update(user);
+            }
+            await database.SaveChangesAsync();
+        }
+
+        var client = factory.CreateClient();
+        var day = DateOnly.FromDateTime(spikeDay).ToString("yyyy-MM-dd");
+        using var response = await client.GetAsync(
+            $"/api/users?registeredOn={day}&sort=CreatedOldest&analyticsDays=14");
+        var page = await response.Content.ReadFromJsonAsync<ManagementUserPage>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(page);
+        Assert.Equal(4, page.TotalCount);
+        Assert.Equal(4, page.Items.Count);
+        Assert.Equal(
+            page.Items.OrderBy(user => user.CreatedAtUtc).Select(user => user.Id),
+            page.Items.Select(user => user.Id));
+        Assert.NotNull(page.Analytics);
+        var spike = Assert.Single(page.Analytics.Days, item =>
+            item.Date == DateOnly.FromDateTime(spikeDay));
+        Assert.Equal(4, spike.Count);
+        Assert.True(spike.IsAnomaly);
+        Assert.Equal(3, page.Analytics.AnomalyThreshold);
     }
 
     [Fact]

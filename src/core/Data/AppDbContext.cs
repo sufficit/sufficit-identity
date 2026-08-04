@@ -409,6 +409,13 @@ public sealed class AppDbContext
              // treating this as a literal/default keyword.
              .HasDefaultValueSql("(UTC_TIMESTAMP())")
              .ValueGeneratedOnAddOrUpdate();
+            b.Property(u => u.CreatedAtUtc)
+             .HasColumnName("createdatutc")
+             .HasColumnType("datetime(6)")
+             .HasDefaultValueSql("(UTC_TIMESTAMP(6))")
+             .ValueGeneratedOnAdd();
+            b.HasIndex(u => u.CreatedAtUtc)
+             .HasDatabaseName("IX_users_createdatutc");
             b.Property(u => u.LockoutEnd).HasColumnType("datetime(6)");
         });
 

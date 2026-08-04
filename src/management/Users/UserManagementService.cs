@@ -88,13 +88,59 @@ public sealed record SetManagementUserLockoutCommand(
 public sealed record ManagementUserSearch(
     string? Search = null,
     int Page = 1,
-    int PageSize = 25);
+    int PageSize = 25,
+    DateOnly? RegisteredFrom = null,
+    DateOnly? RegisteredTo = null,
+    DateOnly? RegisteredOn = null,
+    ManagementUserStateFilter State = ManagementUserStateFilter.All,
+    ManagementUserBooleanFilter EmailConfirmed = ManagementUserBooleanFilter.All,
+    ManagementUserBooleanFilter Mfa = ManagementUserBooleanFilter.All,
+    ManagementUserSort Sort = ManagementUserSort.CreatedNewest,
+    int AnalyticsDays = 30);
+
+public enum ManagementUserStateFilter
+{
+    All,
+    Active,
+    Locked,
+}
+
+public enum ManagementUserBooleanFilter
+{
+    All,
+    Enabled,
+    Disabled,
+}
+
+public enum ManagementUserSort
+{
+    CreatedNewest,
+    CreatedOldest,
+    NameAscending,
+    NameDescending,
+    EmailAscending,
+    EmailDescending,
+}
 
 public sealed record ManagementUserPage(
     IReadOnlyList<ManagementUserSummary> Items,
     int Page,
     int PageSize,
-    int TotalCount);
+    int TotalCount,
+    ManagementUserAnalytics? Analytics = null);
+
+public sealed record ManagementUserAnalytics(
+    int DirectoryTotal,
+    int MatchingTotal,
+    int RegisteredToday,
+    decimal TypicalRegistrationsPerDay,
+    int AnomalyThreshold,
+    IReadOnlyList<ManagementUserRegistrationDay> Days);
+
+public sealed record ManagementUserRegistrationDay(
+    DateOnly Date,
+    int Count,
+    bool IsAnomaly);
 
 public sealed record ManagementUserSummary(
     string Id,
@@ -102,7 +148,8 @@ public sealed record ManagementUserSummary(
     string? Email,
     bool EmailConfirmed,
     bool TwoFactorEnabled,
-    bool IsLockedOut);
+    bool IsLockedOut,
+    DateTime CreatedAtUtc = default);
 
 public sealed record ManagementUserActions(
     bool CanResetPassword,
@@ -220,6 +267,7 @@ internal sealed class UserManagementService(
             cancellationToken);
 
         var users = database.Users.AsNoTracking();
+        var now = DateTimeOffset.UtcNow;
 
         var search = query.Search?.Trim();
         if (!string.IsNullOrWhiteSpace(search))
@@ -229,11 +277,95 @@ internal sealed class UserManagementService(
                 || user.Email != null && user.Email.Contains(search));
         }
 
+        users = query.State switch
+        {
+            ManagementUserStateFilter.Active => users.Where(user =>
+                user.LockoutEnd == null || user.LockoutEnd <= now),
+            ManagementUserStateFilter.Locked => users.Where(user =>
+                user.LockoutEnd != null && user.LockoutEnd > now),
+            _ => users,
+        };
+        users = query.EmailConfirmed switch
+        {
+            ManagementUserBooleanFilter.Enabled => users.Where(user => user.EmailConfirmed),
+            ManagementUserBooleanFilter.Disabled => users.Where(user => !user.EmailConfirmed),
+            _ => users,
+        };
+        users = query.Mfa switch
+        {
+            ManagementUserBooleanFilter.Enabled => users.Where(user => user.TwoFactorEnabled),
+            ManagementUserBooleanFilter.Disabled => users.Where(user => !user.TwoFactorEnabled),
+            _ => users,
+        };
+
+        var analyticsDays = Math.Clamp(query.AnalyticsDays, 7, 120);
+        var today = DateTime.UtcNow.Date;
+        var analyticsStart = today.AddDays(-(analyticsDays - 1));
+        var analyticsEnd = today.AddDays(1);
+        var dailyRows = await users
+            .Where(user => user.CreatedAtUtc >= analyticsStart &&
+                user.CreatedAtUtc < analyticsEnd)
+            .GroupBy(user => user.CreatedAtUtc.Date)
+            .Select(group => new { Date = group.Key, Count = group.Count() })
+            .ToArrayAsync(cancellationToken);
+        var dailyCounts = dailyRows.ToDictionary(row => row.Date, row => row.Count);
+        var counts = Enumerable.Range(0, analyticsDays)
+            .Select(offset => dailyCounts.GetValueOrDefault(analyticsStart.AddDays(offset)))
+            .ToArray();
+        var median = Median(counts);
+        var deviations = counts.Select(value => Math.Abs(value - median)).ToArray();
+        var mad = Median(deviations);
+        var anomalyThreshold = Math.Max(3,
+            (int)Math.Ceiling(median + 3m * Math.Max(1m, 1.4826m * mad)));
+        var days = Enumerable.Range(0, analyticsDays)
+            .Select(offset =>
+            {
+                var date = analyticsStart.AddDays(offset);
+                var count = dailyCounts.GetValueOrDefault(date);
+                return new ManagementUserRegistrationDay(
+                    DateOnly.FromDateTime(date), count, count > anomalyThreshold);
+            })
+            .ToArray();
+
+        var registeredToday = dailyCounts.GetValueOrDefault(today);
+        var directoryTotal = await database.Users.CountAsync(cancellationToken);
+
+        if (query.RegisteredOn is { } registeredOn)
+        {
+            var start = registeredOn.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            users = users.Where(user => user.CreatedAtUtc >= start &&
+                user.CreatedAtUtc < start.AddDays(1));
+        }
+        else
+        {
+            if (query.RegisteredFrom is { } from)
+            {
+                var start = from.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+                users = users.Where(user => user.CreatedAtUtc >= start);
+            }
+            if (query.RegisteredTo is { } to)
+            {
+                var end = to.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc).AddDays(1);
+                users = users.Where(user => user.CreatedAtUtc < end);
+            }
+        }
+
         var totalCount = await users.CountAsync(cancellationToken);
-        var now = DateTimeOffset.UtcNow;
-        var pageRows = await users
-            .OrderBy(user => user.UserName ?? user.Email ?? user.Id)
-            .ThenBy(user => user.Id)
+        var orderedUsers = query.Sort switch
+        {
+            ManagementUserSort.CreatedOldest => users
+                .OrderBy(user => user.CreatedAtUtc).ThenBy(user => user.Id),
+            ManagementUserSort.NameAscending => users
+                .OrderBy(user => user.UserName ?? user.Email ?? user.Id).ThenBy(user => user.Id),
+            ManagementUserSort.NameDescending => users
+                .OrderByDescending(user => user.UserName ?? user.Email ?? user.Id).ThenBy(user => user.Id),
+            ManagementUserSort.EmailAscending => users
+                .OrderBy(user => user.Email ?? user.UserName ?? user.Id).ThenBy(user => user.Id),
+            ManagementUserSort.EmailDescending => users
+                .OrderByDescending(user => user.Email ?? user.UserName ?? user.Id).ThenBy(user => user.Id),
+            _ => users.OrderByDescending(user => user.CreatedAtUtc).ThenBy(user => user.Id),
+        };
+        var pageRows = await orderedUsers
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(user => new
@@ -243,6 +375,7 @@ internal sealed class UserManagementService(
                 user.Email,
                 user.EmailConfirmed,
                 user.TwoFactorEnabled,
+                user.CreatedAtUtc,
                 IsLockedOut = user.LockoutEnd != null
                     && user.LockoutEnd > now
             })
@@ -254,7 +387,8 @@ internal sealed class UserManagementService(
                 user.Email,
                 user.EmailConfirmed,
                 user.TwoFactorEnabled,
-                user.IsLockedOut))
+                user.IsLockedOut,
+                user.CreatedAtUtc))
             .ToArray();
 
         await WriteAuditAsync(
@@ -270,7 +404,34 @@ internal sealed class UserManagementService(
             items,
             page,
             pageSize,
-            totalCount);
+            totalCount,
+            new ManagementUserAnalytics(
+                directoryTotal,
+                totalCount,
+                registeredToday,
+                median,
+                anomalyThreshold,
+                days));
+    }
+
+    private static decimal Median(IReadOnlyList<int> values)
+    {
+        if (values.Count == 0) return 0;
+        var ordered = values.OrderBy(value => value).ToArray();
+        var middle = ordered.Length / 2;
+        return ordered.Length % 2 == 0
+            ? (ordered[middle - 1] + ordered[middle]) / 2m
+            : ordered[middle];
+    }
+
+    private static decimal Median(IReadOnlyList<decimal> values)
+    {
+        if (values.Count == 0) return 0;
+        var ordered = values.OrderBy(value => value).ToArray();
+        var middle = ordered.Length / 2;
+        return ordered.Length % 2 == 0
+            ? (ordered[middle - 1] + ordered[middle]) / 2m
+            : ordered[middle];
     }
 
     public async Task<ManagementUserDetail> GetAsync(
