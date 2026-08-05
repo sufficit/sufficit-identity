@@ -1,0 +1,55 @@
+@page "/account/resendemailconfirmation"
+@inject IAccountOnboardingService AccountOnboarding
+
+<PageTitle>Reenviar confirmação — Sufficit Identity</PageTitle>
+
+<div class="auth-card">
+    <h1>Reenviar confirmação de e-mail</h1>
+
+    @if (_sent)
+    {
+        <div class="alert alert-success" role="alert">
+            Se o e-mail existir, um novo link de confirmação foi enviado.
+        </div>
+        <a href="/account/login" class="btn btn-primary">Voltar ao login</a>
+    }
+    else
+    {
+        <EditForm Model="_model" Method="post" OnValidSubmit="ResendAsync" FormName="resend-confirm">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label for="email">E-mail</label>
+                <InputText id="email" @bind-Value="_model.Email" class="form-control"
+                           autocomplete="email" autofocus />
+                <ValidationMessage For="@(() => _model.Email)" />
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Reenviar</button>
+        </EditForm>
+    }
+</div>
+
+@code {
+    private EmailInput? _boundModel;
+    [SupplyParameterFromForm(FormName = "resend-confirm")]
+    private EmailInput _model
+    {
+        get => _boundModel ??= new();
+        set => _boundModel = value;
+    }
+    private bool _sent;
+
+    private async Task ResendAsync()
+    {
+        var result = await AccountOnboarding
+            .RequestEmailConfirmationAsync(_model.Email);
+        _sent = result.Accepted;
+    }
+
+    private sealed class EmailInput
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = string.Empty;
+    }
+}

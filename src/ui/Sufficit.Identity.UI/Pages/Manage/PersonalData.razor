@@ -1,0 +1,52 @@
+@page "/manage/personaldata"
+@attribute [Authorize]
+@inject IAccountSelfService AccountSelfService
+@inject IJSRuntime JS
+
+<PageTitle>Meus dados (LGPD) — Sufficit Identity</PageTitle>
+
+<div class="auth-card">
+    <ManageBackLink />
+    <h1>Meus dados (LGPD)</h1>
+    <p class="info">Baixe ou exclua seus dados pessoais conforme a Lei Geral de Proteção de Dados.</p>
+
+    @if (_error is not null) { <div class="alert alert-error">@_error</div> }
+
+    <div class="btn-group">
+        <EditForm Method="post" Model="_empty" OnValidSubmit="DownloadAsync" FormName="download-data">
+            <button type="submit" class="btn btn-primary">Baixar meus dados (JSON)</button>
+        </EditForm>
+        <a href="/manage/deleteaccount" class="btn btn-danger">Excluir minha conta</a>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? _authTask { get; set; }
+
+    private string? _error;
+    private readonly object _empty = new();
+
+    private async Task DownloadAsync()
+    {
+        var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+        if (principal is null)
+        {
+            _error = "Sua sessão expirou. Entre novamente.";
+            return;
+        }
+
+        var export = await AccountSelfService.ExportPersonalDataAsync(principal);
+        if (export is null)
+        {
+            _error = "Não foi possível carregar os dados da conta.";
+            return;
+        }
+
+        _error = null;
+        await JS.InvokeVoidAsync(
+            "sufficitIdentityDownloadFile",
+            export.FileName,
+            Convert.ToBase64String(export.Content),
+            export.ContentType);
+    }
+}

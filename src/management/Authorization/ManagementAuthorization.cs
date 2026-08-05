@@ -1,0 +1,459 @@
+using System.Security.Claims;
+#if !APPLICATION_CONTRACTS
+using Microsoft.Extensions.Options;
+#endif
+
+namespace Sufficit.Identity.Management.Authorization;
+
+#if APPLICATION_CONTRACTS
+
+public static class ManagementCapabilities
+{
+    public const string ClientsRead = "identity.clients.read";
+    public const string ClientsCreate = "identity.clients.create";
+    public const string ClientsDelete = "identity.clients.delete";
+    public const string BrandingRead = "identity.branding.read";
+    public const string BrandingManage = "identity.branding.manage";
+    public const string UsersRead = "identity.users.read";
+    public const string UsersCreate = "identity.users.create";
+    public const string UsersUpdate = "identity.users.update";
+    public const string UsersDisable = "identity.users.disable";
+    public const string UsersDelete = "identity.users.delete";
+    public const string UsersResetPassword = "identity.users.reset-password";
+    public const string ClaimsRead = "identity.claims.read";
+    public const string ClaimsCreate = "identity.claims.create";
+    public const string ClaimsUpdate = "identity.claims.update";
+    public const string ClaimsDelete = "identity.claims.delete";
+    public const string ScopesRead = "identity.scopes.read";
+    public const string ScopesCreate = "identity.scopes.create";
+    public const string ScopesUpdate = "identity.scopes.update";
+    public const string ScopesDelete = "identity.scopes.delete";
+    public const string SessionsRead = "identity.sessions.read";
+    public const string SessionsRevoke = "identity.sessions.revoke";
+    public const string AuthorizationsRead = "identity.authorizations.read";
+    public const string AuthorizationsRevoke =
+        "identity.authorizations.revoke";
+    public const string AuditRead = "identity.audit.read";
+    public const string ProvisioningPreview =
+        "identity.provisioning.preview";
+    public const string ProvisioningApply =
+        "identity.provisioning.apply";
+
+    public static IReadOnlySet<string> All { get; } =
+        new HashSet<string>(
+            [
+                ClientsRead,
+                ClientsCreate,
+                ClientsDelete,
+                BrandingRead,
+                BrandingManage,
+                UsersRead,
+                UsersCreate,
+                UsersUpdate,
+                UsersDisable,
+                UsersDelete,
+                UsersResetPassword,
+                ClaimsRead,
+                ClaimsCreate,
+                ClaimsUpdate,
+                ClaimsDelete,
+                ScopesRead,
+                ScopesCreate,
+                ScopesUpdate,
+                ScopesDelete,
+                SessionsRead,
+                SessionsRevoke,
+                AuthorizationsRead,
+                AuthorizationsRevoke,
+                AuditRead,
+                ProvisioningPreview,
+                ProvisioningApply
+            ],
+            StringComparer.Ordinal);
+}
+
+public static class ManagementResourceTypes
+{
+    public const string Client = "client";
+    public const string ClientCollection = "client-collection";
+    public const string BrandingTheme = "branding-theme";
+    public const string BrandingCollection = "branding-collection";
+    public const string User = "user";
+    public const string UserCollection = "user-collection";
+    public const string Claim = "claim";
+    public const string ClaimCollection = "claim-collection";
+    public const string Scope = "scope";
+    public const string ScopeCollection = "scope-collection";
+    public const string Session = "session";
+    public const string SessionCollection = "session-collection";
+    public const string Authorization = "authorization";
+    public const string AuthorizationCollection = "authorization-collection";
+    public const string Audit = "audit";
+    public const string Overview = "overview";
+    public const string Provisioning = "provisioning";
+}
+
+public sealed record ManagementRequestContext(
+    ClaimsPrincipal Operator,
+    string CorrelationId)
+{
+    public string OperatorSubject =>
+        Operator.FindFirst("sub")?.Value
+        ?? Operator.FindFirst(ClaimTypes.NameIdentifier)?.Value
+        ?? "unknown";
+
+    public string? OperatorDisplayName =>
+        Operator.Identity?.Name
+        ?? Operator.FindFirst(ClaimTypes.Email)?.Value;
+
+    public string? AuthenticationMethods
+    {
+        get
+        {
+            var values = Operator.FindAll("amr")
+                .SelectMany(claim => claim.Value.Split(
+                    ' ',
+                    StringSplitOptions.RemoveEmptyEntries))
+                .Distinct(StringComparer.Ordinal)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+
+            return values.Length is 0 ? null : string.Join(' ', values);
+        }
+    }
+}
+
+public sealed record ManagementResource(
+    string Type,
+    string? Id = null,
+    string? ContextId = null);
+
+public enum ManagementAuthorizationOutcome
+{
+    Allowed,
+    Denied,
+    StepUpRequired
+}
+
+public sealed record ManagementAuthorizationDecision(
+    ManagementAuthorizationOutcome Outcome,
+    string ReasonCode)
+{
+    public bool IsAllowed => Outcome is ManagementAuthorizationOutcome.Allowed;
+
+    public static ManagementAuthorizationDecision Allowed() =>
+        new(ManagementAuthorizationOutcome.Allowed, "allowed");
+
+    public static ManagementAuthorizationDecision Denied(string reasonCode) =>
+        new(ManagementAuthorizationOutcome.Denied, reasonCode);
+
+    public static ManagementAuthorizationDecision StepUpRequired(string reasonCode) =>
+        new(ManagementAuthorizationOutcome.StepUpRequired, reasonCode);
+}
+
+public interface IManagementAuthorizationEvaluator
+{
+    ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+        ClaimsPrincipal principal,
+        string capability,
+        ManagementResource resource,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed record ManagementEntitlements(
+    IReadOnlySet<string> Capabilities)
+{
+    public bool Contains(string capability) =>
+        Capabilities.Contains(capability);
+}
+
+public interface IManagementEntitlementResolver
+{
+    ValueTask<ManagementEntitlements> ResolveAsync(
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed record ManagementAccessPolicy(bool RequireMfa);
+
+public interface IManagementAccessPolicyProvider
+{
+    ValueTask<ManagementAccessPolicy> GetAsync(
+        ManagementResource resource,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed class ManagementAuthorizationOptions
+{
+    /// <summary>
+    /// Deployment-specific roles that receive every management capability
+    /// (full administrator). <b>Use sparingly.</b> Every principal in any of
+    /// these roles bypasses per-capability checks and gets all 27 capabilities.
+    /// Default is empty (no god-mode) — set explicitly to grant blanket access.
+    /// </summary>
+    public string[] FullAdministratorRoles { get; set; } = [];
+
+    /// <summary>
+    /// Maps a role name to the set of capabilities it grants. This is the
+    /// granular alternative to <see cref="FullAdministratorRoles"/>: a role
+    /// like <c>identity-user-manager</c> can map to
+    /// <c>[identity.users.read, identity.users.create, identity.users.update]</c>
+    /// without granting client/scope/provisioning capabilities. Default is
+    /// empty — configure per environment.
+    /// </summary>
+    public Dictionary<string, string[]> RoleCapabilities { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Claim types that carry exact management capability names (e.g.
+    /// <c>identity.users.read</c>). <b>Must NOT include <c>"scope"</c></b>:
+    /// the OAuth <c>scope</c> claim carries OAuth scope values (like
+    /// <c>skoruba_identity_admin_api</c>), which are a different namespace from
+    /// management capabilities. Mixing the two would let an OAuth scope
+    /// accidentally grant a management capability.
+    /// </summary>
+    public string[] CapabilityClaimTypes { get; set; } =
+        ["permission"];
+}
+
+public sealed class ManagementAccessException(
+    ManagementAuthorizationDecision decision) : Exception(decision.ReasonCode)
+{
+    public ManagementAuthorizationDecision Decision { get; } = decision;
+}
+
+public sealed class ManagementValidationException(
+    string reasonCode,
+    string message,
+    string? field = null) : Exception(message)
+{
+    public string ReasonCode { get; } = reasonCode;
+
+    public string? Field { get; } = field;
+}
+
+public sealed class ManagementConflictException(
+    string reasonCode,
+    string message) : Exception(message)
+{
+    public string ReasonCode { get; } = reasonCode;
+}
+
+public sealed class ManagementNotFoundException(
+    string reasonCode,
+    string message) : Exception(message)
+{
+    public string ReasonCode { get; } = reasonCode;
+}
+
+#else
+
+public sealed class ScopeAndRoleManagementEntitlementResolver(
+    IOptions<ManagementOptions> options) : IManagementEntitlementResolver
+{
+    public ValueTask<ManagementEntitlements> ResolveAsync(
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (principal.Identity?.IsAuthenticated is not true)
+        {
+            return ValueTask.FromResult(Empty());
+        }
+
+        var authorization = options.Value.Authorization;
+        var capabilities = new HashSet<string>(StringComparer.Ordinal);
+
+        // --- Capabilities from dedicated claim types (NOT "scope") ---
+        // The OAuth scope claim carries scope values (e.g.
+        // skoruba_identity_admin_api), a different namespace. Mixing them
+        // would let an OAuth scope accidentally grant a management capability.
+        var claimTypes = NormalizeValues(
+            authorization.CapabilityClaimTypes,
+            ["permission"]);
+
+        // Defensive: never accept "scope" as a capability claim type, even if
+        // an operator configures it — the two namespaces MUST stay separate.
+        if (claimTypes.Contains("scope"))
+        {
+            claimTypes = claimTypes
+                .Where(t => !string.Equals(t, "scope", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+        }
+
+        foreach (var capability in principal.Claims
+            .Where(claim => claimTypes.Contains(
+                claim.Type,
+                StringComparer.OrdinalIgnoreCase))
+            .SelectMany(claim => claim.Value.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries)))
+        {
+            if (ManagementCapabilities.All.Contains(capability))
+            {
+                capabilities.Add(capability);
+            }
+        }
+
+        // --- Capabilities from role-to-capability mapping ---
+        // Granular: a role maps to a specific subset of capabilities.
+        if (authorization.RoleCapabilities.Count > 0)
+        {
+            foreach (var (role, mapped) in authorization.RoleCapabilities)
+            {
+                if (principal.IsInRole(role))
+                {
+                    foreach (var cap in mapped)
+                    {
+                        if (ManagementCapabilities.All.Contains(cap))
+                        {
+                            capabilities.Add(cap);
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Full administrator roles (god-mode) ---
+        // Opt-in only: default is empty. Every principal in any of these roles
+        // receives all 27 capabilities. Use sparingly for break-glass access.
+        var adminRoles = authorization.FullAdministratorRoles;
+        if (adminRoles.Length > 0 && adminRoles.Any(principal.IsInRole))
+        {
+            capabilities.UnionWith(ManagementCapabilities.All);
+        }
+
+        return ValueTask.FromResult(
+            new ManagementEntitlements(capabilities));
+    }
+
+    private static ManagementEntitlements Empty() =>
+        new(new HashSet<string>(StringComparer.Ordinal));
+
+    internal static string[] NormalizeValues(
+        string[]? values,
+        string[] fallback)
+    {
+        var normalized = (values ?? [])
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return normalized.Length is 0 ? fallback : normalized;
+    }
+}
+
+public sealed class ConfigurationManagementAccessPolicyProvider(
+    IOptions<ManagementOptions> options) : IManagementAccessPolicyProvider
+{
+    public ValueTask<ManagementAccessPolicy> GetAsync(
+        ManagementResource resource,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return ValueTask.FromResult(
+            new ManagementAccessPolicy(options.Value.RequireMfa));
+    }
+}
+
+public sealed class CapabilityManagementAuthorizationEvaluator
+    : IManagementAuthorizationEvaluator
+{
+    private readonly IManagementEntitlementResolver entitlements;
+    private readonly IManagementAccessPolicyProvider accessPolicies;
+
+    private static readonly HashSet<string> MfaMethods =
+        new(StringComparer.Ordinal)
+        {
+            "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina"
+        };
+
+    public CapabilityManagementAuthorizationEvaluator(
+        IManagementEntitlementResolver entitlements,
+        IManagementAccessPolicyProvider accessPolicies)
+    {
+        this.entitlements = entitlements;
+        this.accessPolicies = accessPolicies;
+    }
+
+    // Source-compatible fallback for an embedded UI compiled against the preceding
+    // contract commit. New hosts register both replaceable dependencies; an
+    // older composition surface still receives the same fail-closed defaults.
+    public CapabilityManagementAuthorizationEvaluator(
+        IOptions<ManagementOptions> options,
+        IManagementEntitlementResolver? entitlements = null,
+        IManagementAccessPolicyProvider? accessPolicies = null)
+    {
+        this.entitlements = entitlements
+            ?? new ScopeAndRoleManagementEntitlementResolver(options);
+        this.accessPolicies = accessPolicies
+            ?? new ConfigurationManagementAccessPolicyProvider(options);
+    }
+
+    public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+        ClaimsPrincipal principal,
+        string capability,
+        ManagementResource resource,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (principal.Identity?.IsAuthenticated is not true)
+        {
+            return ValueTask.FromResult(
+                ManagementAuthorizationDecision.Denied("operator_not_authenticated"));
+        }
+
+        if (!ManagementCapabilities.All.Contains(capability))
+        {
+            return ValueTask.FromResult(
+                ManagementAuthorizationDecision.Denied("capability_not_granted"));
+        }
+
+        return EvaluateKnownCapabilityAsync(
+            principal,
+            capability,
+            resource,
+            cancellationToken);
+    }
+
+    private async ValueTask<ManagementAuthorizationDecision>
+        EvaluateKnownCapabilityAsync(
+            ClaimsPrincipal principal,
+            string capability,
+            ManagementResource resource,
+            CancellationToken cancellationToken)
+    {
+        var grants = await entitlements.ResolveAsync(
+            principal,
+            cancellationToken);
+        if (!grants.Contains(capability))
+        {
+            return ManagementAuthorizationDecision.Denied(
+                "capability_not_granted");
+        }
+
+        var policy = await accessPolicies.GetAsync(
+            resource,
+            cancellationToken);
+        if (policy.RequireMfa && !HasMfaEvidence(principal))
+        {
+            return ManagementAuthorizationDecision.StepUpRequired(
+                "mfa_required");
+        }
+
+        return ManagementAuthorizationDecision.Allowed();
+    }
+
+    private static bool HasMfaEvidence(ClaimsPrincipal principal) =>
+        principal.FindAll("amr")
+            .SelectMany(claim => claim.Value.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries))
+            .Any(MfaMethods.Contains);
+
+}
+
+#endif

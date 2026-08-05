@@ -1,0 +1,389 @@
+@page "/clients/{Id}"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageClients)]
+@inject ManagementClientDataSource ClientData
+@inject NavigationManager Navigation
+
+<PageTitle>@PageTitleText</PageTitle>
+
+<PageHeader Title="@HeaderTitle"
+            Description="Configuração registrada no serviço de identidade. Segredos nunca são retornados.">
+    <Actions>
+        <a class="button button--secondary" href="clients">
+            <AppIcon Name="arrow-left" Size="17" />
+            Voltar para clientes
+        </a>
+        @if (result?.Value is { } selectedClient)
+        {
+            <AuthorizeView Policy="@ManagementUiPolicies.ManageSessions">
+                <Authorized>
+                    <a class="button button--secondary"
+                       href="@SessionsHref(selectedClient.ClientId)">
+                        <AppIcon Name="clock" Size="17" />
+                        Sessões
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+            <AuthorizeView Policy="@ManagementUiPolicies.ManageAuthorizations">
+                <Authorized>
+                    <a class="button button--secondary"
+                       href="@AuthorizationsHref(selectedClient.ClientId)">
+                        <AppIcon Name="shield" Size="17" />
+                        Autorizações
+                    </a>
+                </Authorized>
+            </AuthorizeView>
+        }
+    </Actions>
+</PageHeader>
+
+@if (Created)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Cliente criado</strong>
+            <span>O registro foi persistido com padrões seguros e o evento está disponível na auditoria.</span>
+        </div>
+    </section>
+}
+
+@if (loading)
+{
+    <section class="detail-shell" aria-busy="true" aria-label="Carregando detalhes do cliente">
+        <div class="detail-skeleton"></div>
+        <div class="detail-skeleton detail-skeleton--short"></div>
+    </section>
+}
+else if (result?.IsSuccess is true && result.Value is not null)
+{
+    var client = result.Value;
+
+    <section class="detail-shell">
+        <div class="detail-summary">
+            <div>
+                <span class="detail-label">Client ID</span>
+                <code class="detail-value detail-value--code">@client.ClientId</code>
+            </div>
+            <div>
+                <span class="detail-label">Tipo</span>
+                <StatusBadge Tone="@ClientTypeTone(client.Type)">
+                    @ClientTypeLabel(client.Type)
+                </StatusBadge>
+            </div>
+            <div>
+                <span class="detail-label">Consentimento</span>
+                <strong class="detail-value">@ConsentTypeLabel(client.ConsentType)</strong>
+            </div>
+            <div>
+                <span class="detail-label">Identificador interno</span>
+                <code class="detail-value detail-value--code">@client.Id</code>
+            </div>
+        </div>
+
+        <div class="detail-columns">
+            <section aria-labelledby="redirect-heading">
+                <h2 id="redirect-heading">Redirect URIs</h2>
+                @if (client.RedirectUris.Count is 0)
+                {
+                    <p class="detail-empty">Nenhuma URI de redirecionamento registrada.</p>
+                }
+                else
+                {
+                    <ul class="technical-list">
+                        @foreach (var uri in client.RedirectUris)
+                        {
+                            <li><code>@uri</code></li>
+                        }
+                    </ul>
+                }
+            </section>
+
+            <section aria-labelledby="permission-heading">
+                <h2 id="permission-heading">Permissões</h2>
+                @if (client.Permissions.Count is 0)
+                {
+                    <p class="detail-empty">Nenhuma permissão registrada.</p>
+                }
+                else
+                {
+                    <ul class="technical-list technical-list--tokens">
+                        @foreach (var permission in client.Permissions)
+                        {
+                            <li><code>@PermissionLabel(permission)</code></li>
+                        }
+                    </ul>
+                }
+            </section>
+        </div>
+
+        <div class="detail-columns">
+            <section aria-labelledby="post-logout-heading">
+                <h2 id="post-logout-heading">Redirecionamento após logout</h2>
+                @if (client.PostLogoutRedirectUris.Count is 0)
+                {
+                    <p class="detail-empty">Nenhum destino pós-logout registrado.</p>
+                }
+                else
+                {
+                    <ul class="technical-list">
+                        @foreach (var uri in client.PostLogoutRedirectUris)
+                        {
+                            <li><code>@uri</code></li>
+                        }
+                    </ul>
+                }
+            </section>
+
+            <section aria-labelledby="federated-logout-heading">
+                <h2 id="federated-logout-heading">Logout federado</h2>
+                @if (client.FrontchannelLogoutUri is null && client.BackchannelLogoutUri is null)
+                {
+                    <p class="detail-empty">Nenhum endpoint de logout federado registrado.</p>
+                }
+                else
+                {
+                    <dl class="technical-list">
+                        @if (client.FrontchannelLogoutUri is not null)
+                        {
+                            <div>
+                                <dt>Front-channel</dt>
+                                <dd><code>@client.FrontchannelLogoutUri</code></dd>
+                            </div>
+                        }
+                        @if (client.BackchannelLogoutUri is not null)
+                        {
+                            <div>
+                                <dt>Back-channel</dt>
+                                <dd><code>@client.BackchannelLogoutUri</code></dd>
+                            </div>
+                        }
+                    </dl>
+                }
+            </section>
+        </div>
+
+        @if (client.Requirements.Count > 0)
+        {
+            <section class="requirements-line" aria-labelledby="requirements-heading">
+                <div>
+                    <h2 id="requirements-heading">Requisitos de segurança</h2>
+                    <p>Controles adicionais aplicados pelo servidor durante a autorização.</p>
+                </div>
+                <div class="token-row">
+                    @foreach (var requirement in client.Requirements)
+                    {
+                        <StatusBadge Tone="info">@RequirementLabel(requirement)</StatusBadge>
+                    }
+                </div>
+            </section>
+        }
+    </section>
+
+    <section class="danger-zone" aria-labelledby="delete-client-heading">
+        <div>
+            <h2 id="delete-client-heading">Excluir cliente</h2>
+            <p>
+                A exclusão interrompe novos fluxos OAuth deste cliente e é registrada
+                de forma permanente na auditoria administrativa.
+            </p>
+        </div>
+
+        @if (!confirmingDelete)
+        {
+            <button class="button button--danger"
+                    type="button"
+                    @onclick="BeginDelete">
+                <AppIcon Name="trash" Size="17" />
+                Excluir cliente
+            </button>
+        }
+        else
+        {
+            <div class="delete-confirmation">
+                <label for="delete-confirmation">
+                    Digite <code>@client.ClientId</code> para confirmar
+                </label>
+                <input id="delete-confirmation"
+                       class="form-control"
+                       autocomplete="off"
+                       @bind="deleteConfirmation"
+                       @bind:event="oninput" />
+                @if (deleteResult?.IsSuccess is false)
+                {
+                    <p class="validation-message" role="alert">@deleteResult.ErrorMessage</p>
+                }
+                <div class="delete-confirmation__actions">
+                    <button class="button button--secondary"
+                            type="button"
+                            disabled="@deleting"
+                            @onclick="CancelDelete">
+                        Cancelar
+                    </button>
+                    <button class="button button--danger"
+                            type="button"
+                            disabled="@(!CanDelete)"
+                            @onclick="DeleteAsync">
+                        @if (deleting)
+                        {
+                            <span class="button-spinner" aria-hidden="true"></span>
+                            <span>Excluindo…</span>
+                        }
+                        else
+                        {
+                            <AppIcon Name="trash" Size="17" />
+                            <span>Confirmar exclusão</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        }
+    </section>
+}
+else
+{
+    <EmptyState Icon="alert"
+                Title="@ErrorTitle"
+                Description="@ErrorDescription">
+        <Actions>
+            <a class="button button--secondary" href="clients">Voltar para clientes</a>
+            @if (result?.Outcome is ManagementDataOutcome.Unavailable)
+            {
+                <button class="button button--primary"
+                        type="button"
+                        @onclick="LoadAsync">
+                    Tentar novamente
+                </button>
+            }
+        </Actions>
+    </EmptyState>
+}
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    [SupplyParameterFromQuery(Name = "created")]
+    public int CreatedFlag { get; set; }
+
+    private ManagementDataResult<ManagementClientDetail>? result;
+    private ManagementDataResult<bool>? deleteResult;
+    private bool loading = true;
+    private bool confirmingDelete;
+    private bool deleting;
+    private string deleteConfirmation = string.Empty;
+
+    private bool Created => CreatedFlag is 1;
+
+    private string HeaderTitle =>
+        result?.Value?.DisplayName
+        ?? result?.Value?.ClientId
+        ?? "Detalhes do cliente";
+
+    private string PageTitleText =>
+        $"{HeaderTitle} | Sufficit Identity";
+
+    private static string SessionsHref(string clientId) =>
+        $"sessions?client={Uri.EscapeDataString(clientId)}";
+
+    private static string AuthorizationsHref(string clientId) =>
+        $"authorizations?client={Uri.EscapeDataString(clientId)}";
+
+    private bool CanDelete =>
+        !deleting
+        && result?.Value is not null
+        && string.Equals(
+            deleteConfirmation,
+            result.Value.ClientId,
+            StringComparison.Ordinal);
+
+    private string ErrorTitle =>
+        result?.Outcome is ManagementDataOutcome.NotFound
+            ? "Cliente não encontrado"
+            : "Não foi possível abrir o cliente";
+
+    private string ErrorDescription =>
+        result?.ErrorMessage
+        ?? "O serviço de identidade não conseguiu ler esse registro. Tente novamente.";
+
+    protected override async Task OnParametersSetAsync() =>
+        await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        result = await ClientData.GetClientAsync(Id);
+        loading = false;
+    }
+
+    private void BeginDelete()
+    {
+        confirmingDelete = true;
+        deleteConfirmation = string.Empty;
+        deleteResult = null;
+    }
+
+    private void CancelDelete()
+    {
+        confirmingDelete = false;
+        deleteConfirmation = string.Empty;
+        deleteResult = null;
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (!CanDelete || result?.Value is null)
+        {
+            return;
+        }
+
+        deleting = true;
+        deleteResult = await ClientData.DeleteClientAsync(result.Value.ClientId);
+        deleting = false;
+
+        if (deleteResult.IsSuccess)
+        {
+            Navigation.NavigateTo(
+                $"clients?deleted={Uri.EscapeDataString(result.Value.ClientId)}");
+        }
+    }
+
+    private static string ClientTypeLabel(string? type) =>
+        type?.ToLowerInvariant() switch
+        {
+            "public" => "Público",
+            "confidential" => "Confidencial",
+            null or "" => "Não informado",
+            _ => type
+        };
+
+    private static string ClientTypeTone(string? type) =>
+        string.Equals(type, "confidential", StringComparison.OrdinalIgnoreCase)
+            ? "info"
+            : "neutral";
+
+    private static string ConsentTypeLabel(string? consentType) =>
+        consentType?.ToLowerInvariant() switch
+        {
+            "explicit" => "Explícito",
+            "implicit" => "Implícito",
+            "external" => "Externo",
+            "systematic" => "Sistemático",
+            null or "" => "Não informado",
+            _ => consentType
+        };
+
+    private static string PermissionLabel(string permission) =>
+        permission
+            .Replace("gt:", "grant: ", StringComparison.Ordinal)
+            .Replace("scp:", "scope: ", StringComparison.Ordinal)
+            .Replace("ept:", "endpoint: ", StringComparison.Ordinal)
+            .Replace("rst:", "response: ", StringComparison.Ordinal);
+
+    private static string RequirementLabel(string requirement) =>
+        requirement switch
+        {
+            "ft:pkce" => "PKCE obrigatório",
+            "ft:par" => "PAR obrigatório",
+            _ => requirement
+        };
+}

@@ -1,0 +1,306 @@
+{
+  "_": "Copy this file to appsettings.json and fill in the real values, OR use User Secrets (dotnet user-secrets) / environment variables. NEVER commit real appsettings.json — it is gitignored.",
+  "ConnectionStrings": {
+    "DefaultConnection": "server=YOUR_MYSQL_HOST;port=3306;database=identity;user=YOUR_USER;password=YOUR_PASSWORD;keepalive=30;ConnectionIdleTimeout=180;ConnectionReset=false;Maximum Pool Size=150;Connection Lifetime=180"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "Microsoft.EntityFrameworkCore": "Warning"
+    }
+  },
+  "_AllowedHosts": "Kestrel's Host-header allowlist, semicolon-separated (e.g. \"your-identity-host;www.your-identity-host\"). '*' accepts ANY Host header — combined with a reverse proxy that forwards the client's original Host unchecked, this enables host-header poisoning (spoofed password-reset links, cache-poisoning). Set this to the real production host(s); it does not need to match Issuer's scheme, only its host.",
+  "AllowedHosts": "your-identity-host",
+  "Sufficit": {
+    "Identity": {
+      "Issuer": "https://your-identity-host/",
+      "ConnectionStringName": "DefaultConnection",
+      "_TrustedProxies": "Array of CIDR strings for reverse-proxy networks allowed to set X-Forwarded-* headers. Leaving this UNSET (not listed) trusts only loopback (ASP.NET Core default). The example values below reflect the Sufficit production topology (verified 2026-07-21 from nginx access logs on eveo-apps/apoint-apps/castrum-apps): 203.0.113.10 (eveo-cloud Proxmox gateway), 203.0.113.11 (apoint-cloud gateway), plus the internal sufflocal/healthcheck networks 10.0.0.0/8 and the AWS Route53 health-checker range 198.51.100.0/24. If TrustedProxies is empty in production, the rate limiter partitions by the proxy's IP (one shared bucket for the whole deployment — self-inflicted 429s) and X-Forwarded-Proto is dropped (Request.Scheme stays http, defeating the cookie Secure policy). Adjust per environment in appsettings.<env>.json.",
+      "TrustedProxies": [
+        "203.0.113.10/32",
+        "203.0.113.11/32",
+        "10.0.0.0/8",
+        "198.51.100.0/24"
+      ],
+      "Management": {
+        "Enabled": false,
+        "RoutePrefix": "api",
+        "RequireAuthorization": true,
+        "RequiredScope": "skoruba_identity_admin_api",
+        "_RequireMfa": "true requires the access token to carry an amr claim proving multi-factor auth (item 5.2 [L3]) for the management endpoints. Default true; explicitly set false only for an isolated migration environment.",
+        "RequireMfa": true
+      },
+      "_Scim": "Optional SCIM 2.0 provisioning endpoint at /scim/v2. Groups are opaque provisioning groups and are never interpreted as ASP.NET Identity roles or Sufficit business authorities.",
+      "Scim": {
+        "Enabled": false,
+        "RequireAuthorization": true,
+        "RequiredScope": "scim",
+        "MaxResults": 100
+      },
+      "_Certificates": "Required in production. PFX files (X509Certificate2) used to sign and encrypt tokens. Leave empty only in Development, where ephemeral dev certificates are used automatically; any other environment fails to start without these.",
+      "Certificates": {
+        "_SigningPath": "Path to the PFX file used to sign tokens.",
+        "SigningPath": "",
+        "_SigningPassword": "Password protecting the signing PFX file.",
+        "SigningPassword": "",
+        "_EncryptionPath": "Path to the PFX file used to encrypt tokens.",
+        "EncryptionPath": "",
+        "_EncryptionPassword": "Password protecting the encryption PFX file.",
+        "EncryptionPassword": ""
+      },
+      "_LegacyGrants": "Feature flags for OAuth 2.0 grant types removed by OAuth 2.1 (Resource Owner Password Credentials and the 'none' grant). Both default to FALSE (secure-by-default since EVALUATION-2026-07-21 §5 P0 #8). Opt-in per environment ONLY if a legacy client still requires these — and pair with telemetry + a removal date (Onda E).",
+      "LegacyGrants": {
+        "_Password": "Enables grant_type=password. Removed by OAuth 2.1. Default false — flip to true ONLY in environments where a legacy client still needs it (e.g. during migration).",
+        "Password": false,
+        "_None": "Enables the 'none' grant/response type (implicit access_token without PKCE). Removed by OAuth 2.1. Default false — flip to true ONLY for legacy WebForms / old-SwaggerUI clients during migration.",
+        "None": false
+      },
+      "_Pkce": "OAuth 2.1 PKCE policy. The secure defaults require PKCE for every authorization-code client and accept only S256. Use the opt-outs only during a controlled legacy-client migration.",
+      "Pkce": {
+        "RequireForAllClients": true,
+        "AllowPlainCodeChallengeMethod": false
+      },
+      "_Par": "Pushed Authorization Request (PAR, RFC 9126) policy. The PAR endpoint (connect/par) is always registered; these options control whether PAR is *required* of all clients (defense in depth) and the request_uri lifetime for non-FAPI clients. Per-client PAR requirement is also available via OpenIddict's Requirements.Features.PushedAuthorizationRequests flag on the application.",
+      "Par": {
+        "_RequireForAllClients": "true requires every authorization request to use a pushed request_uri (no direct /connect/authorize with query params). Default false to preserve backward compatibility; flip to true once every client has been migrated to push its authorization request.",
+        "RequireForAllClients": false,
+        "_RequestUriLifetimeSeconds": "Lifetime of a pushed request_uri for non-FAPI clients, in seconds. Null (default) = OpenIddict built-in default (60s). Values must be 1..599. FAPI 2.0 clients are governed separately by Fapi2.PushedAuthorizationRequestLifetimeSeconds.",
+        "RequestUriLifetimeSeconds": null
+      },
+      "_Jar": "JWT-Secured Authorization Requests (JAR, RFC 9101). When enabled, the STS accepts signed request parameters at the authorization and PAR endpoints, validates the signature against the client's registered JWKS, and merges the signed claims. Independent of FAPI 2.0 but required for the FAPI 2.0 profile. Clients must register jwks or jwks_uri for request-object signing.",
+      "Jar": {
+        "_Enabled": "true accepts signed request objects at /connect/authorize and /connect/par. Default false.",
+        "Enabled": false,
+        "_AllowedSigningAlgorithms": "Accepted request-object signing algorithms. Defaults to the FAPI 2.0 baseline.",
+        "AllowedSigningAlgorithms": ["PS256", "ES256"],
+        "_MaxLifetimeSeconds": "Maximum request-object lifetime in seconds. Default 120 (2 minutes).",
+        "MaxLifetimeSeconds": 120
+      },
+      "_TokenExchange": "Master switch for RFC 8693 token exchange. Default FALSE (secure-by-default). Production environments that have signed off a delegation policy must opt-in via Enabled=true AND configure a closed AllowedClientIds allowlist.",
+      "TokenExchange": {
+        "Enabled": false,
+        "AllowedClientIds": []
+      },
+      "_RateLimit": "Fixed-window rate limit applied to POST /connect/token, per client IP, no queueing. Complements (never replaces) account lockout. Disable only if an upstream gateway already throttles the token endpoint.",
+      "RateLimit": {
+        "Enabled": true,
+        "_PermitLimit": "Requests allowed per window, per client IP.",
+        "PermitLimit": 30,
+        "_WindowSeconds": "Window length in seconds; also sent as Retry-After on 429.",
+        "WindowSeconds": 60,
+        "_FailOnUntrustedProxy": "true (item 5.1 [L4]) makes startup FAIL when TrustedProxies is empty outside Development, instead of only logging a warning. Without trusted proxies, the rate limiter shares ONE bucket for all traffic (the proxy's IP) → self-inflicted 429s. Default false (warning); flip to true in production so a missing TrustedProxies cannot silently turn the rate limiter into a self-DoS.",
+        "FailOnUntrustedProxy": false
+      },
+      "_Tokens": "Token lifetimes. Null access/identity values use the OpenIddict defaults (60 and 20 minutes). Refresh token rotation is always on; only lifetimes are configurable.",
+      "Tokens": {
+        "AccessTokenLifetimeMinutes": null,
+        "IdentityTokenLifetimeMinutes": null,
+        "RefreshTokenLifetimeDays": 14,
+        "_UseReferenceAccessTokens": "P0 #5 / eval #B2 — MIGRATION-CONTRACT DECISION, not a mechanical toggle. true (default, current/legacy behavior) = opaque reference access tokens validated only via /connect/introspect. false = self-contained JWT access tokens validated locally by any resource server holding the signing public key. This applies to ALL clients at once (OpenIddict has no per-client token-format switch) — but the legacy inventory (docs/migration/PLAN.md) shows only ONE of the 26 legacy clients (sufficit-endpoints) actually used reference tokens; the rest expect a JWT they validate locally. Do NOT flip to false without first confirming every resource server can handle the new format (JWT: faster, no introspection dependency, but un-revocable before expiry; reference: instantly revocable, opaque, but every validation is a network round-trip here).",
+        "UseReferenceAccessTokens": true
+      },
+      "_Lockout": "Account lockout enforced on password verification (interactive login and grant_type=password).",
+      "Lockout": {
+        "_MaxFailedAttempts": "Consecutive failures before the account locks.",
+        "MaxFailedAttempts": 5,
+        "_DurationMinutes": "How long the account stays locked.",
+        "DurationMinutes": 5
+      },
+      "_Password": "Password complexity policy applied on user creation and password change/reset (eval M2). Defaults raise the bar above ASP.NET Core defaults (RequiredLength=6) toward the 2026 baseline (NIST 800-63B favors length; minimum 8, default here is 12). Existing users are NOT forced to change their password on login — Identity applies these rules only at creation/change time.",
+      "Password": {
+        "_RequiredLength": "Minimum password length. Default 12 (NIST 800-63B floor is 8).",
+        "RequiredLength": 12,
+        "_RequireDigit": "Require at least one digit. Default true.",
+        "RequireDigit": true,
+        "_RequireLowercase": "Require at least one lowercase letter. Default true.",
+        "RequireLowercase": true,
+        "_RequireUppercase": "Require at least one uppercase letter. Default true.",
+        "RequireUppercase": true,
+        "_RequireNonAlphanumeric": "Require at least one non-alphanumeric character. Default true.",
+        "RequireNonAlphanumeric": true,
+        "_RequiredUniqueChars": "Minimum number of distinct characters. Default 4.",
+        "RequiredUniqueChars": 4,
+        "_RejectBreached": "OPT-IN hook for a breached-password validator (HIBP range API or local list). Default false — the flag surfaces the decision but NO validator is wired up by default. Flip to true only after implementing and validating the validator's latency/availability for this environment.",
+        "RejectBreached": false
+      },
+      "_SignIn": "Sign-in policy applied by SignInManager.CanSignInAsync, consulted by every grant in AuthorizationController (eval M3). RequireConfirmedEmail=true (default) blocks sign-in until the user proves email ownership, closing the 'register with someone else's email' hole. WARNING: external-login users (Google/GitHub/Facebook) are only EmailConfirmed when the provider asserts email_verified — see docs/runbooks/RUNBOOK-CONFIRMED-EMAIL.md BEFORE flipping this in production.",
+      "SignIn": {
+        "_RequireConfirmedEmail": "true (default, secure-by-default) requires a confirmed email to sign in. Every grant collapses the unconfirmed case into the same generic invalid_grant as a wrong password (no user enumeration).",
+        "RequireConfirmedEmail": true
+      },
+      "_ClaimScopeMap": "Config-driven claim-type → required-scope allowlist for application-specific claims. A mapped claim reaches access and identity tokens ONLY if the subject was granted the mapped scope; unmapped claims retain the legacy access-token behavior. The map ships EMPTY by default. Mapped claim names and scopes are registered automatically, so the generic STS does not need to know their domain meaning. Roll out one resource server at a time: first confirm it requests the mapped scope, THEN add the entry.",
+      "ClaimScopeMap": {
+        "_ClaimToScope": "Object mapping an application claim type → scope name. Empty object = no gating (retrocompatible).",
+        "ClaimToScope": {}
+      },
+      "_Mtls": "Mutual TLS (mTLS) client authentication and sender-constrained access tokens (RFC 8705, item 3.4). Opt-in (default false): enabling registers the MTLS-aliased endpoint paths (e.g. /connect/token/mtls) and advertises tls_client_certificate_bound_access_tokens=true in discovery. mTLS requires the HOST (Kestrel/nginx) to request and validate client certificates at the TLS handshake — that is DEPLOYMENT configuration (see Program.cs comments), not something this flag alone does. private_key_jwt (RFC 7523) is enabled by OpenIddict unconditionally and is the OTHER strong client-auth method (not gated here). Together with PAR (item 3.3) and DPoP (item 3.1), these are the FAPI 2.0 prerequisites.",
+      "Mtls": {
+        "_Enabled": "true registers MTLS endpoint aliases and advertises mTLS support in discovery. Default false — enable only after the host is configured for client certificates.",
+        "Enabled": false
+      },
+      "_BackchannelLogout": "OIDC Back-Channel Logout 1.0. The STS signs and POSTs a short-lived logout_token to every RP that registered a backchannel_logout_uri. Enabled by default; clients without metadata are skipped. The OP session sid is included when the RP requires session-specific logout.",
+      "BackchannelLogout": {
+        "_Enabled": "true distributes a signed logout_token to RPs on sign-out and advertises the capability in discovery. Default true.",
+        "Enabled": true
+      },
+      "_FrontchannelLogout": "OIDC Front-Channel Logout 1.0. After local sign-out, the OP renders each registered frontchannel_logout_uri in a one-time iframe page. Enabled by default; iss and the OP session sid are included for session correlation.",
+      "FrontchannelLogout": {
+        "_Enabled": "true renders registered RP logout URIs and advertises front-channel support. Default true.",
+        "Enabled": true
+      },
+      "_Dpop": "DPoP (RFC 9449, item 3.1) — sender-constrains access tokens to a client-provided key, neutralizing token theft/replay without mTLS. OpenIddict 7.6 has NO DPoP support; the STS implements proof validation from scratch (DpopProofValidator, EC P-256/RSA, htm/htu binding, jti replay cache, optional nonce) and attaches cnf.jkt to tokens whose requests carried a valid proof. When Enabled but RequireForAllClients=false (default), DPoP is accepted-but-not-required (legacy bearer clients keep working). Flip RequireForAllClients only after every client sends DPoP proofs.",
+      "Dpop": {
+        "_Enabled": "true validates the DPoP header on token requests and sender-constrains tokens whose requests carried a valid proof. Default false.",
+        "Enabled": false,
+        "_RequireForAllClients": "true REJECTS token requests without a valid DPoP proof (bearer tokens no longer issued). Default false (accept-but-don't-require) for gradual rollout.",
+        "RequireForAllClients": false,
+        "_RequireNonce": "true enforces the DPoP nonce dance (RFC 9449 §8): a proof without a valid nonce claim is rejected with HTTP 400 use_dpop_nonce + a DPoP-Nonce response header; the client retries carrying that nonce. RECOMMENDED by the RFC; default false (flip once clients implement the retry). Ignored when Enabled is false.",
+        "RequireNonce": false
+      },
+      "_Fapi2": "Opt-in enforcement boundary for the final FAPI 2.0 Security Profile. This does NOT assert certification. Only listed confidential clients are affected. DPoP mode requires Dpop.Enabled=true; mTLS mode requires Mtls.Enabled=true plus certificate validation at the TLS terminator. Profiled authorization flows require authenticated PAR, response_type=code, PKCE S256, redirect_uri, iss, short-lived codes/request_uri and sender-constrained tokens.",
+      "Fapi2": {
+        "Enabled": false,
+        "ClientIds": [],
+        "_SenderConstraint": "DPoP or Mtls. DPoP additionally binds dpop_jkt from PAR to the authorization code and token-endpoint proof.",
+        "SenderConstraint": "Dpop",
+        "AuthorizationCodeLifetimeSeconds": 60,
+        "PushedAuthorizationRequestLifetimeSeconds": 300
+      },
+      "_Jarm": "JWT Secured Authorization Response Mode. Independent of FAPI 2.0 and disabled by default. When enabled, supports query.jwt, fragment.jwt, form_post.jwt and jwt, signs the complete response with the STS signing key, and returns it as the single response parameter. When Encryption.Enabled is true and a PFX is configured, responses are signed-then-encrypted (JWE) — the shape required by the FAPI 2.0 Advancing Profile for sensitive responses.",
+      "Jarm": {
+        "Enabled": false,
+        "LifetimeSeconds": 120,
+        "Encryption": {
+          "_Enabled": "true produces signed-then-encrypted (JWE) JARM responses. Default false (signed-only). Requires Path + Password pointing to an RSA PFX whose public key encrypts the response.",
+          "Enabled": false,
+          "Path": "",
+          "Password": "",
+          "_KeyManagementAlgorithm": "JWE alg (key management). Default RSA-OAEP.",
+          "KeyManagementAlgorithm": "RSA-OAEP",
+          "_ContentEncryptionAlgorithm": "JWE enc (content encryption). Default A256CBC-HS512 (compatible with RSA key transport in Microsoft IdentityModel).",
+          "ContentEncryptionAlgorithm": "A256CBC-HS512"
+        }
+      },
+      "_SharedSignals": "OpenID Shared Signals Framework 1.0 / CAEP transmitter. Disabled by default. When enabled, exposes /.well-known/ssf-configuration, emits CAEP events (session-revoked, credential-change, device-change, assurance-level-change) on credential/session changes, and pushes signed SETs to receivers. Statically provisioned receivers get push delivery (RFC 8935); when StreamManagementEnabled is true, the dynamic stream API (RFC 8933) and poll delivery (RFC 8934) are also exposed. Put Authorization values in environment variables/secrets.",
+      "SharedSignals": {
+        "Enabled": false,
+        "Receivers": [],
+        "_StreamManagementEnabled": "true exposes the RFC 8933 stream-management REST API (/ssf/streams CRUD + verify) and the RFC 8934 poll endpoint (/ssf/events). Both require the ssf_transmitter scope. Default false — the REST surface is administrative and should be enabled deliberately.",
+        "StreamManagementEnabled": false,
+        "_RequiredScope": "OAuth scope required to call the stream-management and poll endpoints. Default ssf_transmitter. The scope must exist as an OpenIddict scope (create it via the management API or provisioning manifest).",
+        "RequiredScope": "ssf_transmitter"
+      },
+      "_Ciba": "CIBA (Client-Initiated Backchannel Authentication, RFC 9126, item 3.5) — decoupled auth where the consumption device (kiosk/call-center/AI agent) is NOT the authentication device. OpenIddict 7.6 has NO CIBA support; the STS implements it from scratch: /bc-authorize initiation, an in-memory ICibaPendingRequestStore, /connect/ciba/complete (out-of-band approval), and /connect/ciba/token (poll). The access token is emitted by CibaAccessTokenGenerator (a hand-built JWT signed with the STS key, validatable against the STS JWKS) because OpenIddict forbids SignIn from the unregistered endpoint. LIMITATION: the CIBA JWT is NOT an OpenIddict reference token (no /connect/introspect or /connect/revocation); insert into IOpenIddictTokenManager when a client needs those.",
+      "Ciba": {
+        "_Enabled": "true registers the CIBA endpoints (initiation, completion, poll) and the pending-request store. Default false.",
+        "Enabled": false,
+        "_ExpiresInSeconds": "How long an unapproved auth_req_id stays valid (RFC 9126 §2.2 expires_in). Default 600 (10 min).",
+        "ExpiresInSeconds": 600,
+        "_PollIntervalSeconds": "Minimum seconds the client MUST wait between polls (RFC 9126 §2.2 interval). Faster polls get slow_down. Default 5.",
+        "PollIntervalSeconds": 5
+      },
+      "_Mcp": "MCP (Model Context Protocol) / agent-AI resource-server configuration (Onda 4). Configures the STS to serve as the authorization server for MCP servers and other agent resource servers. Static resource validation remains active when only RFC 9728 metadata is enabled; it is disabled only when Mcp.Resources explicitly lists dynamic resource URIs, and those URIs still require per-client oi_rprm permissions.",
+      "Mcp": {
+        "_Resources": "Array of resource/audience URIs the STS recognizes as valid `resource` indicator targets (RFC 8707, item 4.2). Each typically points to an MCP server (e.g. https://mcp.example.com). A client must ALSO be granted the matching oi_rprm permission (Permissions.Prefixes.Resource + uri) to request one. The STS disables OpenIddict's static resource validation (trusting per-client oi_rprm) so dynamic MCP resources work without listing them all up front.",
+        "Resources": [],
+        "_ProtectedResourceMetadataEnabled": "true (default) exposes /.well-known/oauth-protected-resource (RFC 9728) pointing resource servers (MCP) to this STS as their authorization server. Disable only if the STS is never an MCP/agent AS.",
+        "ProtectedResourceMetadataEnabled": true,
+        "_Dcr": "Dynamic Client Registration (RFC 7591, item 4.3) — opt-in. When enabled, exposes /connect/register for clients (incl. MCP clients) to self-register. Gated: requires an initial access token by default. HIGH-RISK open-registration surface — enable deliberately.",
+        "Dcr": {
+          "_Enabled": "true exposes /connect/register. Default false (secure-by-default).",
+          "Enabled": false,
+          "_RequireInitialAccessToken": "true (default) requires a valid bearer initial access token in the Authorization header for /connect/register. Without it, anyone can register a client.",
+          "RequireInitialAccessToken": true,
+          "_InitialAccessToken": "The static initial access token accepted by /connect/register. Configure via User Secrets / env var — NEVER commit a real value. Empty = endpoint rejects all requests (even when Enabled).",
+          "InitialAccessToken": "",
+          "_AllowedGrantTypes": "Grant types DCR callers may request. Defaults exclude client_credentials, password, device_code and token exchange. Add any privileged grant only after defining who can obtain an initial access token.",
+          "AllowedGrantTypes": [
+            "authorization_code",
+            "refresh_token"
+          ],
+          "_AllowedScopes": "Scopes DCR callers may request. Custom API and administrative scopes must be listed explicitly; never add a broad admin scope to this shared allowlist.",
+          "AllowedScopes": [
+            "openid",
+            "profile",
+            "email",
+            "offline_access"
+          ]
+        }
+      },
+      "_Hsts": "HSTS policy applied outside Development.",
+      "Hsts": {
+        "MaxAgeDays": 365,
+        "IncludeSubDomains": true,
+        "Preload": true
+      },
+      "_Cors": "Opt-in exact-origin CORS for browser clients hosted separately from this STS. Never use '*' with authenticated APIs.",
+      "Cors": {
+        "Enabled": false,
+        "AllowedOrigins": [],
+        "AllowCredentials": false
+      },
+      "_Csp": "Content Security Policy baseline for the STS HTML pages (login/consent/device/logout served by the embedded public UI). XSS on those pages is the highest-impact client-side risk in an IdP (forged consent / stolen session), and CSP is the missing containment layer (eval M1). Ships in Report-Only mode by default so a misconfigured policy CANNOT break the UI — flip ReportOnly to false only after calibrating against the real UI pages (exercise login/consent/device/logout, collect violation reports, tighten directives — ideally removing 'unsafe-inline' from style-src via nonces/hashes).",
+      "Csp": {
+        "_Enabled": "Master switch. Disable only if an upstream gateway already injects a CSP.",
+        "Enabled": true,
+        "_ReportOnly": "true = emit Content-Security-Policy-Report-Only (violations reported, NOT blocked — safe default). false = emit Content-Security-Policy (enforce). Flip to false ONLY after calibrating Policy against the real UI.",
+        "ReportOnly": true,
+        "_Policy": "CSP directive string. Default tuned for a same-origin Blazor Server UI: connect-src allows the SignalR WebSocket; style-src allows 'unsafe-inline' (Blazor/Bootstrap commonly need it — calibrate to remove); frame-ancestors 'none' reinforces X-Frame-Options: DENY.",
+        "Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://api.example.com; connect-src 'self' wss: ws:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+        "_ReportUri": "Optional violation-report collector endpoint appended as 'report-uri <value>'. Empty = no report-uri directive.",
+        "ReportUri": ""
+      },
+      "Register": {
+        "_Enabled": "false disables /account/register entirely (login-only STS).",
+        "Enabled": true,
+        "_RequireUsername": "true shows a separate username field in Register and 'E-mail ou usuario' in Login. false (Sufficit default) uses email as the username.",
+        "RequireUsername": false
+      },
+      "_Smtp": "Optional fallback IEmailSender used when Sufficit:Exchange:RabbitMQ is NOT configured. When Host is set, the UI uses SmtpEmailSender; otherwise falls back to a logging-only sender visible in the STS console.",
+      "Smtp": {
+        "Host": "",
+        "Port": 587,
+        "Login": "",
+        "Password": "",
+        "EnableSsl": true,
+        "From": "no-reply@your-domain.com",
+        "FromName": "Sufficit Identity"
+      },
+      "_PublicUrl": "Optional. Used to build absolute URLs in emails (e.g. https://identity.example.com). If empty, the request scheme/host is used.",
+      "PublicUrl": "",
+      "Email": {
+        "_TestEmailAddress": "When non-empty, ALL outgoing emails are redirected to this address (dev/staging safety net). Leave empty in production.",
+        "TestEmailAddress": ""
+      },
+      "ExternalProviders": {
+        "Google": {
+          "Enabled": false,
+          "ClientId": "",
+          "ClientSecret": ""
+        },
+        "Facebook": {
+          "Enabled": false,
+          "ClientId": "",
+          "ClientSecret": "",
+          "_ConfigurationId": "Optional. Set only for Facebook Login for Business (Business apps). Leave empty for classic OAuth."
+        },
+        "GitHub": {
+          "Enabled": false,
+          "ClientId": "",
+          "ClientSecret": ""
+        }
+      }
+    },
+    "Exchange": {
+      "_RabbitMQ": "Sufficit production email pipeline. When HostName is set, the STS replaces the default IEmailSender with RabbitMQEmailQueue (publishes to Q-EMAIL queue). Move credentials to User Secrets or env vars in real environments.",
+      "RabbitMQ": {
+        "Persistent": true,
+        "HostName": "",
+        "UserName": "",
+        "Password": "",
+        "Heartbeat": null
+      }
+    }
+  }
+}

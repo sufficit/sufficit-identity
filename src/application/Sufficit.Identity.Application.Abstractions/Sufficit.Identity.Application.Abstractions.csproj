@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Sufficit.Identity.Application</RootNamespace>
+    <AssemblyName>Sufficit.Identity.Application.Abstractions</AssemblyName>
+    <Description>Sufficit Identity — implementation-neutral application contracts.</Description>
+    <IsPackable>true</IsPackable>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <DefineConstants>$(DefineConstants);APPLICATION_CONTRACTS</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\management\Audit\ManagementAuditService.cs"
+             Link="Management\Audit\ManagementAuditContracts.cs" />
+    <Compile Include="..\..\management\Authorization\ManagementAuthorization.cs"
+             Link="Management\Authorization\ManagementAuthorizationContracts.cs" />
+    <Compile Include="..\..\management\Authorizations\AuthorizationManagementService.cs"
+             Link="Management\Authorizations\AuthorizationManagementContracts.cs" />
+    <Compile Include="..\..\management\Branding\BrandingManagementService.cs"
+             Link="Management\Branding\BrandingManagementContracts.cs" />
+    <Compile Include="..\..\management\Claims\ClaimManagementService.cs"
+             Link="Management\Claims\ClaimManagementContracts.cs" />
+    <Compile Include="..\..\management\Clients\ClientManagementService.cs"
+             Link="Management\Clients\ClientManagementContracts.cs" />
+    <Compile Include="..\..\management\Overview\ManagementOverviewService.cs"
+             Link="Management\Overview\ManagementOverviewContracts.cs" />
+    <Compile Include="..\..\management\Provisioning\ProvisioningManagementService.cs"
+             Link="Management\Provisioning\ProvisioningManagementContracts.cs" />
+    <Compile Include="..\..\management\Scopes\ScopeManagementService.cs"
+             Link="Management\Scopes\ScopeManagementContracts.cs" />
+    <Compile Include="..\..\management\Sessions\SessionManagementService.cs"
+             Link="Management\Sessions\SessionManagementContracts.cs" />
+    <Compile Include="..\..\management\Users\UserManagementService.cs"
+             Link="Management\Users\UserManagementContracts.cs" />
+  </ItemGroup>
+
+</Project>

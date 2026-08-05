@@ -1,0 +1,214 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      mariadb:
+        # Match the configured MariaDB compatibility baseline. This is an
+        # ephemeral CI database; no local or remote database is created.
+        image: mariadb:10.4.34
+        env:
+          MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "1"
+          MARIADB_DATABASE: identity_contract
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping --silent"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+    env:
+      # Ephemeral CI-only database. No MariaDB service is required on
+      # developer machines, and no remote connection is ever used here.
+      SUFFICIT_IDENTITY_MARIADB_CONNECTION: >-
+        server=127.0.0.1;port=3306;database=identity_contract;user=root;SslMode=Disabled
+      # Destructive operations are restricted by the integration test to this
+      # loopback CI service and the fixed identity_legacy_rehearsal database.
+      SUFFICIT_IDENTITY_ALLOW_EPHEMERAL_DATABASE_REHEARSAL: "true"
+
+    steps:
+      - name: Checkout sufficit-identity
+        uses: actions/checkout@v5
+        with:
+          path: sufficit-identity
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      # The EF Core 10 provider is a deliberately fixed internal build while
+      # upstream Pomelo support remains unreleased. A changed package must be
+      # reviewed and approved explicitly instead of silently entering restore.
+      - name: Verify approved Pomelo fork artifacts
+        working-directory: sufficit-identity/.nuget-feed
+        run: sha256sum --check SHA256SUMS
+
+      - name: Restore
+        working-directory: sufficit-identity
+        run: dotnet restore Sufficit.Identity.sln --locked-mode
+
+      # The eval found `dotnet build -warnaserror` failing
+      # (a CS8601 in the UI's ResetPassword.razor) with the repo's own
+      # TreatWarningsAsErrors=false silently hiding it. Keep this flag on so
+      # any regression in the unified solution, including either UI, fails CI.
+      - name: Build (warnings treated as errors)
+        working-directory: sufficit-identity
+        run: dotnet build Sufficit.Identity.sln --configuration Release --no-restore -warnaserror
+
+      # Oracle's EF Core 10 migration lock implementation casts MariaDB
+      # GET_LOCK() NULL to Int64 and fails before executing any DDL. Apply the
+      # checked-in canonical SQL with MariaDB's own client instead. The schema
+      # contract test independently regenerates this SQL from the EF migration
+      # and requires an exact match, so this does not create a second source of
+      # truth or hide provider-generated drift.
+      - name: Apply canonical SQL to ephemeral MariaDB 10.4.34
+        working-directory: sufficit-identity
+        run: |
+          set -euo pipefail
+          mapfile -t mariadb_containers < <(
+            docker ps \
+              --filter "ancestor=mariadb:10.4.34" \
+              --format "{{.ID}}"
+          )
+          if [[ "${#mariadb_containers[@]}" -ne 1 ]]; then
+            echo "::error::Expected exactly one MariaDB 10.4.34 service container."
+            exit 1
+          fi
+          docker exec -i "${mariadb_containers[0]}" \
+            mysql --user=root identity_contract \
+            < docs/migration/sql/001-create-empty-database.sql
+
+      - name: Test
+        working-directory: sufficit-identity
+        run: dotnet test Sufficit.Identity.sln --configuration Release --no-build
+
+      # Exercise the real composition executable without either presentation
+      # assembly registered or mapped. This is intentionally stronger than the
+      # module-level test host: it proves the API/STS process remains viable
+      # when UI deployment is delegated to another service.
+      - name: Smoke API-only hosting mode
+        working-directory: sufficit-identity
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ASPNETCORE_URLS: http://127.0.0.1:5088
+          ConnectionStrings__DefaultConnection: >-
+            server=127.0.0.1;port=3306;database=identity_contract;user=root;SslMode=Disabled
+          Sufficit__Identity__Issuer: http://127.0.0.1:5088
+          Sufficit__Identity__UI__Public__Mode: None
+          Sufficit__Identity__UI__Management__Mode: None
+          Sufficit__Identity__Management__Enabled: "true"
+        run: |
+          set -euo pipefail
+          smoke_log="${RUNNER_TEMP}/sufficit-identity-api-only.log"
+          dotnet src/server/bin/Release/net10.0/Sufficit.Identity.Server.dll \
+            >"${smoke_log}" 2>&1 &
+          smoke_pid=$!
+
+          cleanup() {
+            if kill -0 "${smoke_pid}" 2>/dev/null; then
+              kill "${smoke_pid}"
+              wait "${smoke_pid}" || true
+            fi
+          }
+          trap cleanup EXIT
+
+          ready=false
+          for _ in {1..30}; do
+            if curl --fail --silent \
+              http://127.0.0.1:5088/health/ready >/dev/null; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "${smoke_pid}" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          if [[ "${ready}" != "true" ]]; then
+            echo "::error::API-only composition host did not become ready."
+            sed -n '1,240p' "${smoke_log}"
+            exit 1
+          fi
+
+          curl --fail --silent \
+            http://127.0.0.1:5088/.well-known/openid-configuration \
+            >/dev/null
+
+          public_status=$(curl --silent --output /dev/null \
+            --write-out '%{http_code}' \
+            http://127.0.0.1:5088/account/login)
+          management_status=$(curl --silent --output /dev/null \
+            --write-out '%{http_code}' \
+            http://127.0.0.1:5088/management/)
+
+          if [[ "${public_status}" != "404" || "${management_status}" != "404" ]]; then
+            echo "::error::Disabled UI surfaces must remain unmapped; public=${public_status}, management=${management_status}."
+            exit 1
+          fi
+
+      # P0 #11 hardening: fail the build on any known-vulnerable package
+      # (direct or transitive) at High/Critical severity — e.g. the
+      # SQLitePCLRaw.lib.e_sqlite3 GHSA-2m69-gcr7-jv3q advisory this same
+      # pass bumped src/tests off of (Directory.Packages.props). Advisory
+      # data comes from NuGet's vulnerability feed, so this needs network
+      # access (available on GitHub-hosted runners).
+      - name: Dependency vulnerability audit
+        working-directory: sufficit-identity
+        run: |
+          set -o pipefail
+          dotnet list Sufficit.Identity.sln package --vulnerable --include-transitive 2>&1 | tee vulnerability-report.txt
+          if grep -Eq '[[:space:]](High|Critical)[[:space:]]' vulnerability-report.txt; then
+            echo "::error::High or Critical severity vulnerable package(s) found — see the report above and Directory.Packages.props."
+            exit 1
+          fi
+          echo "No High/Critical severity advisories found."
+
+  secret-scan:
+    name: Secret scanning (gitleaks)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          # Full history: gitleaks also scans past commits, not just the
+          # working tree — catches a secret that was committed and later
+          # deleted (still readable from history), which is exactly the
+          # class of incident docs/EVALUATION-2026-07-20.md §2 (C4) flagged
+          # (MySQL/RabbitMQ/introspection secrets in the repo).
+          fetch-depth: 0
+
+      # Installs the OSS gitleaks CLI binary directly (MIT-licensed, from
+      # the project's own GitHub releases) rather than a marketplace Action
+      # wrapper — some gitleaks Actions require a paid license for
+      # organization-owned private repositories; the CLI itself does not.
+      - name: Install gitleaks
+        run: |
+          set -euo pipefail
+          GITLEAKS_VERSION="8.30.1"
+          curl -sSL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          tar -xzf gitleaks.tar.gz gitleaks
+          sudo mv gitleaks /usr/local/bin/gitleaks
+          gitleaks version
+
+      - name: Run gitleaks (fails on any finding)
+        # Uses the repo's .gitleaks.toml which EXTENDS the default ruleset
+        # with Sufficit-specific patterns that the default generic-api-key
+        # rule empirically does NOT catch (EVALUATION-fable-2026-07-21 §VI):
+        # bare UUID secrets in prose, MySQL connection passwords, RabbitMQ
+        # password blocks, OAuth ClientSecret values, and jump-host topology.
+        # --config explicitly points at the repo file so a stray gitleaks
+        # default elsewhere doesn't silently weaken the scan.
+        run: gitleaks detect --source . --config .gitleaks.toml --redact --verbose --exit-code 1

@@ -1,0 +1,78 @@
+@page "/manage"
+@attribute [Authorize]
+@inject IAccountSelfService AccountSelfService
+@inject IUserAvatarUrlResolver AvatarUrlResolver
+
+<PageTitle>Minha conta — Sufficit Identity</PageTitle>
+
+<div class="auth-card manage-grid">
+    <h1>Minha conta</h1>
+
+    <div class="profile-card">
+        @if (!string.IsNullOrEmpty(_avatarUrl) && !_avatarLoadFailed)
+        {
+            <img src="@_avatarUrl"
+                 class="profile-avatar"
+                 alt=""
+                 decoding="async"
+                 referrerpolicy="no-referrer"
+                 @onerror="HandleAvatarError" />
+        }
+        else
+        {
+            <div class="profile-avatar">@AvatarFallback</div>
+        }
+        <div>
+            <h2>@_profile?.UserName</h2>
+            <p class="muted">@_profile?.Email</p>
+            @if (_emailConfirmed)
+            {
+                <span class="badge badge-success">E-mail confirmado</span>
+            }
+            else
+            {
+                <span class="badge badge-warning">E-mail não confirmado</span>
+            }
+        </div>
+    </div>
+
+    <nav class="manage-nav">
+        <a href="/manage/changepassword" class="manage-link">Alterar senha</a>
+        <a href="/manage/twofactor" class="manage-link">Autenticação em 2 etapas</a>
+        <a href="/manage/passkeys" class="manage-link">Passkeys (WebAuthn)</a>
+        <a href="/manage/externallogins" class="manage-link">Logins externos</a>
+        <a href="/manage/grants" class="manage-link">Aplicações conectadas</a>
+        <a href="/manage/sessions" class="manage-link">Sessões ativas</a>
+        <a href="/manage/personaldata" class="manage-link">Meus dados (LGPD)</a>
+    </nav>
+</div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? _authTask { get; set; }
+    private AccountSelfServiceProfile? _profile;
+    private bool _emailConfirmed;
+    private bool _avatarLoadFailed;
+    private string? _avatarUrl;
+    private string AvatarFallback =>
+        string.IsNullOrWhiteSpace(_profile?.UserName)
+            ? "ID"
+            : _profile.UserName.Trim()[..1].ToUpperInvariant();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+        if (principal is null) return;
+
+        _profile = await AccountSelfService.GetProfileAsync(principal);
+        if (_profile is not null)
+        {
+            _emailConfirmed = _profile.EmailConfirmed;
+            _avatarUrl = await AvatarUrlResolver.ResolveAsync(_profile.UserId);
+        }
+    }
+
+    private void HandleAvatarError()
+    {
+        _avatarLoadFailed = true;
+    }
+}

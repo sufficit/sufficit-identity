@@ -1,0 +1,18 @@
+<span class="status-badge status-badge--@Tone">
+    @if (!string.IsNullOrWhiteSpace(Icon))
+    {
+        <AppIcon Name="@Icon" Size="14" />
+    }
+    @ChildContent
+</span>
+
+@code {
+    [Parameter]
+    public string Tone { get; set; } = "neutral";
+
+    [Parameter]
+    public string? Icon { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

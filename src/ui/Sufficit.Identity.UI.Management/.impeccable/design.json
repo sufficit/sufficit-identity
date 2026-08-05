@@ -1,0 +1,329 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-29T15:48:33-03:00",
+  "title": "Design System: Sufficit Identity — Administração",
+  "extensions": {
+    "colorMeta": {
+      "brand": {
+        "role": "primary",
+        "displayName": "Vermelho Sufficit",
+        "canonical": "#cc0000",
+        "tonalRamp": ["#3d0000", "#660000", "#8f0000", "#b80000", "#cc0000", "#df4747", "#f1a3a3", "#fbe9e9"]
+      },
+      "brand-hover": {
+        "role": "primary",
+        "displayName": "Vermelho Sufficit Profundo",
+        "canonical": "#a30000",
+        "tonalRamp": ["#310000", "#520000", "#720000", "#920000", "#a30000", "#c14c4c", "#dfa3a3", "#f5e6e6"]
+      },
+      "brand-press": {
+        "role": "primary",
+        "displayName": "Vermelho Sufficit Pressionado",
+        "canonical": "#7a0000",
+        "tonalRamp": ["#250000", "#3d0000", "#560000", "#6e0000", "#7a0000", "#a24c4c", "#c9a3a3", "#f0e6e6"]
+      },
+      "brand-soft": {
+        "role": "primary",
+        "displayName": "Vermelho de Marca Suave",
+        "canonical": "#fbe9e9",
+        "tonalRamp": ["#3d1111", "#6a2d2d", "#9c5656", "#c98484", "#e5b2b2", "#f1cece", "#f7dddd", "#fbe9e9"]
+      },
+      "brand-ring": {
+        "role": "primary",
+        "displayName": "Anel de Foco da Marca",
+        "canonical": "rgba(204, 0, 0, 0.24)",
+        "tonalRamp": ["rgba(204,0,0,.92)", "rgba(204,0,0,.78)", "rgba(204,0,0,.64)", "rgba(204,0,0,.50)", "rgba(204,0,0,.36)", "rgba(204,0,0,.24)", "rgba(204,0,0,.14)", "rgba(204,0,0,.07)"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Tinta Operacional",
+        "canonical": "#343132",
+        "tonalRamp": ["#1f1d1e", "#343132", "#4f4b4c", "#6c6768", "#8d8889", "#afacad", "#d2d0d1", "#f1f0f0"]
+      },
+      "ink-strong": {
+        "role": "neutral",
+        "displayName": "Tinta Forte",
+        "canonical": "#1f1d1e",
+        "tonalRamp": ["#131112", "#1f1d1e", "#3d393a", "#5b5657", "#7c7778", "#a09b9c", "#c7c4c5", "#eeeded"]
+      },
+      "ink-muted": {
+        "role": "neutral",
+        "displayName": "Tinta Silenciosa",
+        "canonical": "#626064",
+        "tonalRamp": ["#242225", "#403e41", "#626064", "#807e82", "#9e9ca0", "#bcbbbe", "#dad9db", "#f2f1f2"]
+      },
+      "ink-subtle": {
+        "role": "neutral",
+        "displayName": "Tinta Sutil",
+        "canonical": "#858287",
+        "tonalRamp": ["#2b292c", "#4a474b", "#68656a", "#858287", "#a19fa3", "#bdbbc0", "#d9d8db", "#f2f2f3"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Papel Branco",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#262526", "#474647", "#686768", "#898889", "#aaa9aa", "#cbcaca", "#e7e6e7", "#ffffff"]
+      },
+      "surface-page": {
+        "role": "neutral",
+        "displayName": "Papel de Trabalho",
+        "canonical": "#f6f6f7",
+        "tonalRamp": ["#252526", "#464647", "#676768", "#89898a", "#ababac", "#cdcdce", "#e5e5e6", "#f6f6f7"]
+      },
+      "surface-sunken": {
+        "role": "neutral",
+        "displayName": "Papel Rebaixado",
+        "canonical": "#efeeef",
+        "tonalRamp": ["#252324", "#464445", "#676566", "#888687", "#aaa8a9", "#cbc9ca", "#dedcdd", "#efeeef"]
+      },
+      "surface-sidebar": {
+        "role": "neutral",
+        "displayName": "Carvão de Navegação",
+        "canonical": "#242223",
+        "tonalRamp": ["#171516", "#242223", "#403d3e", "#5e5a5b", "#7f7a7b", "#a19c9d", "#c6c3c4", "#ecebeb"]
+      },
+      "surface-sidebar-hover": {
+        "role": "neutral",
+        "displayName": "Carvão Elevado",
+        "canonical": "#343132",
+        "tonalRamp": ["#1f1d1e", "#343132", "#4f4b4c", "#6c6768", "#8d8889", "#afacad", "#d2d0d1", "#f1f0f0"]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Divisor de Precisão",
+        "canonical": "#e2e1e3",
+        "tonalRamp": ["#252426", "#454446", "#666567", "#878688", "#a9a8aa", "#cac9cb", "#dbdadd", "#e2e1e3"]
+      },
+      "line-strong": {
+        "role": "neutral",
+        "displayName": "Divisor Forte",
+        "canonical": "#cfced1",
+        "tonalRamp": ["#242326", "#444346", "#646367", "#858488", "#a6a5a9", "#c1c0c4", "#cfced1", "#eeedf0"]
+      },
+      "success": {
+        "role": "tertiary",
+        "displayName": "Verde de Confirmação",
+        "canonical": "#157f3f",
+        "tonalRamp": ["#092a17", "#0d4827", "#116637", "#157f3f", "#3c9d61", "#72bd8b", "#b4dfc2", "#effaf2"]
+      },
+      "success-soft": {
+        "role": "tertiary",
+        "displayName": "Verde de Confirmação Suave",
+        "canonical": "#effaf2",
+        "tonalRamp": ["#12351d", "#2e5a3a", "#558064", "#82a88e", "#add0b7", "#cce6d3", "#def1e3", "#effaf2"]
+      },
+      "warning": {
+        "role": "tertiary",
+        "displayName": "Âmbar de Pendência",
+        "canonical": "#92540a",
+        "tonalRamp": ["#321b03", "#563005", "#7a4608", "#92540a", "#b8792e", "#d4a268", "#ebcca4", "#fff8eb"]
+      },
+      "warning-soft": {
+        "role": "tertiary",
+        "displayName": "Âmbar de Pendência Suave",
+        "canonical": "#fff8eb",
+        "tonalRamp": ["#3a2d16", "#644f2b", "#8d7345", "#b59a69", "#d7be91", "#ead6b4", "#f5e7cf", "#fff8eb"]
+      },
+      "danger": {
+        "role": "tertiary",
+        "displayName": "Vermelho de Perigo",
+        "canonical": "#b42318",
+        "tonalRamp": ["#390b08", "#62130d", "#8b1b13", "#b42318", "#cb554d", "#df8a84", "#efbfbc", "#fef3f2"]
+      },
+      "danger-soft": {
+        "role": "tertiary",
+        "displayName": "Vermelho de Perigo Suave",
+        "canonical": "#fef3f2",
+        "tonalRamp": ["#3a1b19", "#653735", "#905b57", "#b7837f", "#d5aaa7", "#e9cecc", "#f5e2e0", "#fef3f2"]
+      },
+      "info": {
+        "role": "secondary",
+        "displayName": "Azul de Contrato",
+        "canonical": "#175cd3",
+        "tonalRamp": ["#071c42", "#0c326f", "#11489f", "#175cd3", "#477edf", "#7da4ea", "#b6caf4", "#eff4ff"]
+      },
+      "info-soft": {
+        "role": "secondary",
+        "displayName": "Azul de Contrato Suave",
+        "canonical": "#eff4ff",
+        "tonalRamp": ["#16233e", "#30446b", "#536895", "#7d8fbc", "#a7b6dc", "#cad5ed", "#dfe7f7", "#eff4ff"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Título de Página",
+        "purpose": "O único h1 da rota, firme e compacto."
+      },
+      "title": {
+        "displayName": "Título Operacional",
+        "purpose": "Seções, painéis e instrumentos de dados."
+      },
+      "body": {
+        "displayName": "Corpo de Operação",
+        "purpose": "Instruções e descrições curtas, limitadas a uma medida legível."
+      },
+      "label": {
+        "displayName": "Label Compacta",
+        "purpose": "Metadados e cabeçalhos de tabela em superfícies densas."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-ambient",
+        "value": "0 1px 2px rgba(34, 32, 33, 0.05)",
+        "purpose": "Separação quase plana dos painéis sobre o papel de trabalho."
+      },
+      {
+        "name": "float-structural",
+        "value": "0 14px 34px rgba(34, 32, 33, 0.16)",
+        "purpose": "Drawer, skip-link e avisos que realmente sobrepõem outro plano."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.2, 0, 0, 1)",
+        "purpose": "Feedback de hover, foco e mudanças de estado."
+      },
+      {
+        "name": "duration-standard",
+        "value": "180ms",
+        "purpose": "Ritmo comum das microinterações."
+      },
+      {
+        "name": "drawer-duration",
+        "value": "220ms",
+        "purpose": "Entrada e saída espacial da navegação mobile."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact-desktop",
+        "value": "1199px"
+      },
+      {
+        "name": "mobile",
+        "value": "767px"
+      },
+      {
+        "name": "small-mobile",
+        "value": "420px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "A única ação primária de uma tela operacional.",
+      "html": "<button class=\"ds-button-primary\">Salvar alteração</button>",
+      "css": ".ds-button-primary { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 9px 16px; border: 1px solid transparent; border-radius: var(--radius, 8px); background: var(--brand, #cc0000); color: #fff; font-family: var(--font-sans, sans-serif); font-size: 13px; font-weight: 600; cursor: pointer; transition: background-color 180ms cubic-bezier(.2,0,0,1), box-shadow 180ms cubic-bezier(.2,0,0,1); } .ds-button-primary:hover { background: var(--brand-hover, #a30000); } .ds-button-primary:active { background: var(--brand-press, #7a0000); } .ds-button-primary:focus-visible { outline: 3px solid var(--brand-ring, rgba(204,0,0,.24)); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Ação recuperável ou subordinada sem competir com a tarefa principal.",
+      "html": "<button class=\"ds-button-secondary\">Tentar novamente</button>",
+      "css": ".ds-button-secondary { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 9px 16px; border: 1px solid var(--line-strong, #cfced1); border-radius: var(--radius, 8px); background: var(--surface, #fff); color: var(--ink, #343132); font-family: var(--font-sans, sans-serif); font-size: 13px; font-weight: 600; cursor: pointer; transition: background-color 180ms cubic-bezier(.2,0,0,1), border-color 180ms cubic-bezier(.2,0,0,1); } .ds-button-secondary:hover { border-color: var(--ink-subtle, #858287); background: var(--surface-sunken, #efeeef); } .ds-button-secondary:focus-visible { outline: 3px solid var(--brand-ring, rgba(204,0,0,.24)); outline-offset: 2px; }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "refersTo": "search-field",
+      "description": "Pesquisa local compacta para instrumentos de dados.",
+      "html": "<label class=\"ds-search\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-4-4\"/></svg><span class=\"ds-sr-only\">Pesquisar clientes</span><input type=\"search\" placeholder=\"Pesquisar por client_id ou nome\"></label>",
+      "css": ".ds-search { min-height: 44px; width: 320px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid var(--line-strong, #cfced1); border-radius: var(--radius, 8px); background: var(--surface, #fff); color: var(--ink-subtle, #858287); } .ds-search:focus-within { border-color: var(--brand, #cc0000); box-shadow: 0 0 0 3px var(--brand-ring, rgba(204,0,0,.24)); } .ds-search svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; } .ds-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--ink, #343132); font: 12px var(--font-sans, sans-serif); } .ds-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }"
+    },
+    {
+      "name": "Information Status",
+      "kind": "chip",
+      "refersTo": "status-info",
+      "description": "Estado informativo nomeado, compacto e não destrutivo.",
+      "html": "<span class=\"ds-status-info\">Contrato disponível</span>",
+      "css": ".ds-status-info { min-height: 24px; display: inline-flex; align-items: center; padding: 3px 8px; border: 1px solid rgba(23,92,211,.14); border-radius: 9999px; background: var(--info-soft, #eff4ff); color: var(--info, #175cd3); font-family: var(--font-sans, sans-serif); font-size: 10px; font-weight: 650; line-height: 1.2; } .ds-status-info:focus-visible { outline: 3px solid var(--brand-ring, rgba(204,0,0,.24)); outline-offset: 2px; }"
+    },
+    {
+      "name": "Operational Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Contêiner integrado para toolbar, dados, estados e rodapé.",
+      "html": "<section class=\"ds-panel\"><header>Clientes registrados</header><div>Dados operacionais</div><footer>0 registros</footer></section>",
+      "css": ".ds-panel { overflow: hidden; border: 1px solid var(--line, #e2e1e3); border-radius: var(--radius-lg, 12px); background: var(--surface, #fff); color: var(--ink, #343132); box-shadow: 0 1px 2px rgba(34,32,33,.05); font-family: var(--font-sans, sans-serif); } .ds-panel header { padding: 16px 20px; border-bottom: 1px solid var(--line, #e2e1e3); color: var(--ink-strong, #1f1d1e); font-weight: 600; } .ds-panel > div { min-height: 96px; padding: 20px; } .ds-panel footer { padding: 10px 16px; border-top: 1px solid var(--line, #e2e1e3); color: var(--ink-subtle, #858287); font-size: 10px; }"
+    },
+    {
+      "name": "Active Navigation Item",
+      "kind": "nav",
+      "description": "Rota ativa da navegação carvão, com ícone, texto e indicador espacial.",
+      "html": "<a class=\"ds-nav-active\" href=\"#\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"7.5\" cy=\"15.5\" r=\"4.5\"/><path d=\"m10.7 12.3 8-8M15 8l2 2M17.5 5.5l2 2\"/></svg><span>Clientes</span></a>",
+      "css": ".ds-nav-active { position: relative; min-height: 44px; display: flex; align-items: center; gap: 12px; padding: 8px 11px; border-radius: var(--radius, 8px); background: rgba(204,0,0,.18); color: #fff; font: 500 13px var(--font-sans, sans-serif); text-decoration: none; } .ds-nav-active::before { position: absolute; inset: 10px auto 10px -12px; width: 3px; border-radius: 0 9999px 9999px 0; background: #ef4444; content: \"\"; } .ds-nav-active svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; } .ds-nav-active:hover { background: var(--surface-sidebar-hover, #343132); } .ds-nav-active:focus-visible { outline: 3px solid var(--brand-ring, rgba(204,0,0,.24)); outline-offset: 2px; }"
+    },
+    {
+      "name": "Diagnostic Empty State",
+      "kind": "custom",
+      "description": "Diagnóstico honesto com uma única ação de recuperação.",
+      "html": "<section class=\"ds-empty\"><span class=\"ds-empty-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z\"/></svg></span><h3>Configure o endpoint da Management API</h3><p>Defina uma URL HTTPS para começar a operar com dados reais.</p><button>Abrir configurações</button></section>",
+      "css": ".ds-empty { display: grid; max-width: 540px; justify-items: center; padding: 40px 24px; color: var(--ink, #343132); font-family: var(--font-sans, sans-serif); text-align: center; } .ds-empty-icon { width: 48px; height: 48px; display: grid; place-items: center; margin-bottom: 14px; border-radius: 50%; background: var(--surface-sunken, #efeeef); color: var(--ink-muted, #626064); } .ds-empty-icon svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.9; } .ds-empty h3 { margin: 0 0 5px; color: var(--ink-strong, #1f1d1e); font-size: 14px; } .ds-empty p { max-width: 58ch; margin: 0 0 18px; color: var(--ink-subtle, #858287); font-size: 11px; } .ds-empty button { min-height: 44px; padding: 9px 16px; border: 1px solid var(--line-strong, #cfced1); border-radius: var(--radius, 8px); background: var(--surface, #fff); color: var(--ink, #343132); font-weight: 600; } .ds-empty button:hover { background: var(--surface-sunken, #efeeef); } .ds-empty button:focus-visible { outline: 3px solid var(--brand-ring, rgba(204,0,0,.24)); outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Instrumento Operacional de Identidade",
+    "overview": "A Administração amplia a identidade pública da Sufficit com uma composição de console: profissional, segura e direta. O vermelho identifica marca, ação primária e pontos de atenção; a maior parte da tela permanece neutra para que contratos, estados e consequências possam ser lidos sem ruído.\n\nA densidade é moderada e deliberada. Tabelas compactas, navegação persistente e mensagens diagnósticas tratam o painel como ferramenta de operação, não como uma coleção decorativa de indicadores. Hierarquia vem de tipografia, contraste, ritmo e agrupamento; cor nunca substitui texto ou estrutura.",
+    "keyCharacteristics": [
+      "marca vermelha rara sobre superfícies claras e carvão;",
+      "tipografia Inter compacta, com títulos semibold e dados técnicos monoespaçados;",
+      "painéis brancos delimitados por borda fina e elevação quase plana;",
+      "estados explícitos, acionáveis e nunca dependentes somente de cor;",
+      "desktop denso que se transforma em registros rotulados no mobile."
+    ],
+    "rules": [
+      {
+        "name": "Regra do Vermelho Raro",
+        "body": "O vermelho é reservado à marca, ação primária, foco e pequenas ênfases; não cobre grandes superfícies nem texto corrido.",
+        "section": "colors"
+      },
+      {
+        "name": "Regra do Estado Legível",
+        "body": "Toda cor semântica aparece junto de texto, ícone ou estrutura que nomeia o estado.",
+        "section": "colors"
+      },
+      {
+        "name": "Regra da Escala Curta",
+        "body": "Não introduza títulos gigantes: o painel prioriza varredura, contexto e comparação, não heroísmo editorial.",
+        "section": "typography"
+      },
+      {
+        "name": "Regra da Transformação de Dados",
+        "body": "No mobile, dados tabulares essenciais mudam de composição; não se limita a reduzir a tabela desktop.",
+        "section": "layout"
+      },
+      {
+        "name": "Regra do Plano por Padrão",
+        "body": "Bordas e contraste tonal estruturam a tela; sombras fortes só aparecem quando existe sobreposição real.",
+        "section": "elevation"
+      },
+      {
+        "name": "Regra das Curvas Funcionais",
+        "body": "O raio comunica a categoria do objeto: controle, painel ou estado compacto; ele não é aplicado como decoração indiscriminada.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do mantenha um único h1, descrição curta e no máximo uma ação primária no cabeçalho.",
+      "Do reserve alvos de interação de pelo menos 44 × 44px e foco visível de 3px.",
+      "Do mostre loading, vazio, erro, autenticação, autorização e indisponibilidade como estados distintos e recuperáveis.",
+      "Do transforme tabelas essenciais em registros rotulados abaixo de 768px.",
+      "Do use dados reais do contrato e mantenha segredos fora da interface.",
+      "Do respeite prefers-reduced-motion removendo animações não essenciais."
+    ],
+    "donts": [
+      "Don't invente KPIs, clientes, usuários ou estados para preencher a tela.",
+      "Don't use vermelho em grandes áreas, texto corrido ou como substituto de hierarquia.",
+      "Don't esconda indisponibilidade, autoridade ou consequência atrás de ações apenas por ícone.",
+      "Don't introduza glassmorphism, gradientes decorativos, sombras profundas ou dark mode parcial.",
+      "Don't force tabelas essenciais a ultrapassar o viewport mobile.",
+      "Don't exponha tokens, segredos, exceções ou identificadores completos em logs e mensagens transitórias."
+    ]
+  }
+}
