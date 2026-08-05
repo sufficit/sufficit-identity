@@ -1,0 +1,134 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using OpenIddict.Abstractions;
+using Sufficit.Identity.Core.Data;
+using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Management.Provisioning;
+using Sufficit.Identity.Tests.Infrastructure;
+using Xunit;
+
+namespace Sufficit.Identity.Tests;
+
+public sealed class ProvisioningControllerTests
+{
+    [Fact]
+    public async Task Preview_uses_the_canonical_service_and_persists_audit()
+    {
+        await using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/provisioning/manifest/preview",
+            EmptyManifest());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var plan = await response.Content
+            .ReadFromJsonAsync<IdentityProvisioningPlan>();
+        Assert.NotNull(plan);
+        Assert.Empty(plan.Changes);
+
+        using var scope = factory.Services.CreateScope();
+        var database = scope.ServiceProvider
+            .GetRequiredService<AppDbContext>();
+        Assert.Contains(
+            await database.ManagementAuditEvents
+                .AsNoTracking()
+                .ToArrayAsync(),
+            entry =>
+                entry.Capability ==
+                    ManagementCapabilities.ProvisioningPreview
+                && entry.OperationOutcome == "succeeded"
+                && entry.ReasonCode ==
+                    "provisioning_manifest_current");
+    }
+
+    [Fact]
+    public async Task Apply_is_transactional_and_persists_audit()
+    {
+        await using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient();
+        var scopeName = $"provisioned_{Guid.NewGuid():N}";
+        var manifest = EmptyManifest();
+        manifest.Scopes =
+        [
+            new
+            {
+                name = scopeName,
+                displayName = "Provisioned scope",
+                resources = new[] { "test-api" }
+            }
+        ];
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/provisioning/manifest/apply",
+            manifest);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var plan = await response.Content
+            .ReadFromJsonAsync<IdentityProvisioningPlan>();
+        Assert.NotNull(plan);
+        Assert.Contains(
+            plan.Changes,
+            change =>
+                change.Identifier == scopeName
+                && change.Kind == IdentityManifestChangeKind.Create);
+
+        using var scope = factory.Services.CreateScope();
+        var database = scope.ServiceProvider
+            .GetRequiredService<AppDbContext>();
+        var scopes = scope.ServiceProvider
+            .GetRequiredService<IOpenIddictScopeManager>();
+        Assert.NotNull(await scopes.FindByNameAsync(scopeName));
+        Assert.Contains(
+            await database.ManagementAuditEvents
+                .AsNoTracking()
+                .ToArrayAsync(),
+            entry =>
+                entry.Capability ==
+                    ManagementCapabilities.ProvisioningApply
+                && entry.OperationOutcome == "succeeded"
+                && entry.ReasonCode ==
+                    "provisioning_manifest_applied");
+    }
+
+    [Fact]
+    public async Task Invalid_manifest_returns_structured_errors()
+    {
+        await using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient();
+        var invalid = EmptyManifest();
+        invalid.SchemaVersion = 99;
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/provisioning/manifest/preview",
+            invalid);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(
+            "provisioning_manifest_invalid",
+            problem.GetProperty("reasonCode").GetString());
+        Assert.NotEmpty(problem.GetProperty("errors").EnumerateArray());
+    }
+
+    private static MutableManifestRequest EmptyManifest() =>
+        new()
+        {
+            SchemaVersion = IdentityProvisioningManifest.CurrentSchemaVersion
+        };
+
+    private sealed class MutableManifestRequest
+    {
+        public int SchemaVersion { get; set; }
+
+        public object[] Scopes { get; set; } = [];
+
+        public object[] Clients { get; set; } = [];
+    }
+}

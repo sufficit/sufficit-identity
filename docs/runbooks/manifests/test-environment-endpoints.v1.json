@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "scopes": [
+    {
+      "name": "directives",
+      "displayName": "Diretivas de acesso do usuário",
+      "description": "Contêm as autorizações individuais de ações internas do sistema.",
+      "resources": [
+        "https://api.example.com/mcp",
+        "SufficitEndpointsIntrospection"
+      ]
+    }
+  ],
+  "clients": []
+}

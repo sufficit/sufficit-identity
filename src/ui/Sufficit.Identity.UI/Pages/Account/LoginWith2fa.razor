@@ -1,0 +1,101 @@
+@page "/account/loginwith2fa"
+@inject IInteractiveSignInService SignInService
+@inject NavigationManager Navigation
+
+<PageTitle>Verificação 2FA — Sufficit Identity</PageTitle>
+
+<div class="auth-card">
+    <h1>Autenticação em duas etapas</h1>
+    <p class="info">Digite o código de 6 dígitos do seu app autenticador.</p>
+
+    @if (_error is not null)
+    {
+        <div class="alert alert-error" role="alert">@_error</div>
+    }
+
+    <EditForm Model="_model" Method="post" OnValidSubmit="VerifyCodeAsync" FormName="login-2fa">
+        <DataAnnotationsValidator />
+
+        <div class="form-group">
+            <label for="code">Código de verificação</label>
+            <InputText id="code" @bind-Value="_model.TwoFactorCode" class="form-control"
+                       placeholder="123456" autocomplete="one-time-code" autofocus />
+            <ValidationMessage For="@(() => _model.TwoFactorCode)" />
+        </div>
+
+        <div class="form-check">
+            <InputCheckbox id="rememberMachine" @bind-Value="_model.RememberMachine" />
+            <label for="rememberMachine">Lembrar este dispositivo (30 dias)</label>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Verificar</button>
+    </EditForm>
+
+    <div class="auth-links">
+        <a href="/account/loginwithrecoverycode?returnUrl=@Uri.EscapeDataString(_returnUrl ?? "/")">
+            Usar código de recuperação
+        </a>
+        <br />
+        <a href="/account/logout">Cancelar</a>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+    [SupplyParameterFromQuery] private bool RememberMe { get; set; }
+
+    private TwoFactorInput? _boundModel;
+    [SupplyParameterFromForm(FormName = "login-2fa")]
+    private TwoFactorInput _model
+    {
+        get => _boundModel ??= new();
+        set => _boundModel = value;
+    }
+    private string? _returnUrl;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Reject absolute/off-host returnUrl (authenticated open redirect).
+        _returnUrl = LocalUrlValidator.EnsureLocal(ReturnUrl);
+
+        // The runtime owns and validates the protected pending-2FA state.
+        if (!await SignInService.HasPendingTwoFactorSignInAsync())
+        {
+            // No pending 2FA session — redirect to login.
+            Navigation.NavigateTo("/account/login?returnUrl=" + Uri.EscapeDataString(_returnUrl), forceLoad: true);
+        }
+    }
+
+    private async Task VerifyCodeAsync()
+    {
+        var result = await SignInService.AuthenticatorSignInAsync(
+            new AuthenticatorSignInCommand(
+                _model.TwoFactorCode,
+                RememberMe,
+                _model.RememberMachine));
+
+        if (result.Status == InteractiveSignInStatus.Succeeded)
+        {
+            Navigation.NavigateTo(_returnUrl ?? "/", forceLoad: true);
+            return;
+        }
+
+        if (result.Status == InteractiveSignInStatus.LockedOut)
+        {
+            _error = "Conta bloqueada por muitas tentativas. Tente novamente mais tarde.";
+            return;
+        }
+
+        _error = "Código inválido. Tente novamente.";
+    }
+
+    private sealed class TwoFactorInput
+    {
+        [Required(ErrorMessage = "O código é obrigatório.")]
+        [StringLength(7, ErrorMessage = "O código deve ter 6 dígitos.", MinimumLength = 6)]
+        public string TwoFactorCode { get; set; } = string.Empty;
+
+        public bool RememberMachine { get; set; }
+    }
+}

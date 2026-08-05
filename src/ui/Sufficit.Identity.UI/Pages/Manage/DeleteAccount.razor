@@ -1,0 +1,102 @@
+@page "/manage/deleteaccount"
+@attribute [Authorize]
+@inject IAccountSelfService AccountSelfService
+
+<PageTitle>Excluir conta — Sufficit Identity</PageTitle>
+
+<div class="auth-card">
+    <ManageBackLink />
+    <h1>Excluir minha conta</h1>
+
+    <div class="alert alert-error" role="alert">
+        <strong>Atenção!</strong> Esta ação é <strong>permanente e irreversível</strong>.
+        Todos os seus dados (perfil, logins externos vinculados, configurações de 2FA)
+        serão removidos.
+    </div>
+
+    @if (_deleted)
+    {
+        <div class="alert alert-success">Conta excluída com sucesso.</div>
+        <a href="/" class="btn btn-primary">Voltar ao início</a>
+    }
+    else
+    {
+        @if (_error is not null)
+        {
+            <div class="alert alert-error">@_error</div>
+        }
+
+        <p class="info">Para confirmar, digite seu e-mail:</p>
+
+        <EditForm Model="_model" Method="post" OnValidSubmit="DeleteAsync" FormName="delete-account">
+            <DataAnnotationsValidator />
+
+            <div class="form-group">
+                <label for="email">E-mail</label>
+                <InputText id="email" @bind-Value="_model.Email" class="form-control"
+                           autocomplete="email" autofocus />
+                <ValidationMessage For="@(() => _model.Email)" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Senha atual</label>
+                <InputText id="password" type="password" @bind-Value="_model.Password" class="form-control"
+                           autocomplete="current-password" />
+                <ValidationMessage For="@(() => _model.Password)" />
+            </div>
+
+            <button type="submit" class="btn btn-danger">Excluir minha conta permanentemente</button>
+            <a href="/manage/personaldata" class="btn btn-secondary">Cancelar</a>
+        </EditForm>
+    }
+</div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? _authTask { get; set; }
+
+    private DeleteInput? _boundModel;
+    [SupplyParameterFromForm(FormName = "delete-account")]
+    private DeleteInput _model
+    {
+        get => _boundModel ??= new();
+        set => _boundModel = value;
+    }
+    private string? _error;
+    private bool _deleted;
+
+    private async Task DeleteAsync()
+    {
+        var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+        if (principal is null)
+        {
+            _error = "Sua sessão expirou. Entre novamente.";
+            return;
+        }
+
+        var result = await AccountSelfService.DeleteAccountAsync(
+            principal,
+            new AccountDeletionRequest(
+                _model.Email,
+                _model.Password));
+        if (result.Succeeded)
+        {
+            _deleted = true;
+            _error = null;
+            return;
+        }
+
+        _error = string.Join(
+            " ",
+            result.Errors.Select(error => error.Description));
+    }
+
+    private sealed class DeleteInput
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        [DataType(System.ComponentModel.DataAnnotations.DataType.Password)]
+        public string Password { get; set; } = string.Empty;
+    }
+}

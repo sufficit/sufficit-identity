@@ -1,0 +1,79 @@
+<Project>
+
+  <!--
+    Central package versions. OpenIddict is consumed as a NuGet dependency
+    (Apache 2.0). The Sufficit.Identity.* code itself is MIT-0.
+  -->
+  <ItemGroup>
+    <!-- OpenIddict (Apache 2.0) -->
+    <PackageVersion Include="OpenIddict.AspNetCore" Version="7.6.0" />
+    <PackageVersion Include="OpenIddict.EntityFrameworkCore" Version="7.6.0" />
+
+    <!-- External login providers -->
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Facebook" Version="10.0.10" />
+    <PackageVersion Include="AspNet.Security.OAuth.GitHub" Version="10.0.0" />
+
+    <!-- ASP.NET Core Identity -->
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
+
+    <!-- Public Identity UI -->
+    <PackageVersion Include="QRCoder" Version="1.6.0" />
+
+    <!-- ASP.NET Core Data Protection key-ring persistence (P0 #B4) -->
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.10" />
+
+    <!-- EF Core + MariaDB provider.
+         FORK POMELO (2026-07-26): migrated off Oracle MySql.EntityFrameworkCore
+         (which has a confirmed production-blocking bug — OpenIddict's
+         FindByNamesAsync `IN (@p)` query fails to translate, breaking ALL
+         grants against MariaDB; see docs/NOTICE-mysql-license.md "Atualização
+         2026-07-26"). Now using a Sufficit fork of Pomelo.EntityFrameworkCore.MySql
+         (MIT, MariaDB 1st-class support) built from the upstream PR #2019
+         branch (upgrade/10.0.0, EF Core 10). The package lives in the local
+         .nuget-feed folder (see nuget.config). TEMPORARY: when Pomelo ships EF
+         Core 10 stable (issue #2007), drop the fork and the folder feed. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10" />
+    <PackageVersion Include="Pomelo.EntityFrameworkCore.MySql" Version="10.0.0-preview.1.efcore.10.0.0" />
+
+    <!-- Health checks -->
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.10" />
+
+    <!-- Logging / config -->
+    <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
+
+    <!-- Direct Q-EMAIL publisher. Kept local to Identity so the STS does not
+         pull the full Sufficit.Communication/EFData/Pomelo graph into EF10. -->
+    <PackageVersion Include="RabbitMQ.Client" Version="7.2.1" />
+
+    <!-- API docs -->
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+
+    <!-- Test project (src/tests) -->
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageVersion Include="xunit" Version="2.9.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
+
+    <!-- Pin for a TRANSITIVE dependency: Microsoft.EntityFrameworkCore.Sqlite
+         historically floated SQLitePCLRaw.bundle_e_sqlite3 to "2.1.10" (NuGet's
+         version syntax for ">= 2.1.10", not an exact pin), which resolved to
+         the vulnerable 2.1.10 release — GHSA-2m69-gcr7-jv3q / CVE-2025-6965
+         (High, CVSS 9.8): SQLitePCLRaw.lib.e_sqlite3 <= 2.1.11 bundles a
+         SQLite build affected by a memory-corruption bug in aggregate-term
+         handling. 2.1.12 (released 2026-07-09) is the first release in the
+         2.1.x line NOT listed in the advisory's vulnerable range — used here
+         rather than jumping to the 3.x line (which restarted versioning to
+         track the bundled SQLite version directly) to keep this a minimal,
+         same-line patch bump.
+         NOTE: deliberately NOT using CentralPackageTransitivePinningEnabled.
+         Instead, src/tests/Sufficit.Identity.Tests.csproj adds a direct
+         (version-less, CPM-controlled) <PackageReference> for
+         SQLitePCLRaw.bundle_e_sqlite3 so ONLY that project's resolution is
+         forced onto this version — see the comment there. -->
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+  </ItemGroup>
+
+</Project>

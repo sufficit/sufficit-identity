@@ -1,0 +1,205 @@
+@inherits LayoutComponentBase
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IUserAvatarUrlResolver AvatarUrlResolver
+@inject ManagementOverviewDataSource OverviewData
+@inject ILogger<MainLayout> Logger
+
+<CascadingValue Name="ManagementOverview" Value="overviewResult">
+<div class="app-shell @(navigationOpen ? "app-shell--nav-open" : null)">
+    <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
+
+    <button class="sidebar-scrim"
+            type="button"
+            aria-label="Fechar navegação"
+            @onclick="CloseNavigationAsync"></button>
+
+    <aside class="app-sidebar"
+           id="management-navigation"
+           @onkeydown="HandleNavigationKeyDown">
+        <div class="sidebar-mobile-header">
+            <span>Navegação</span>
+            <button class="icon-button"
+                    type="button"
+                    aria-label="Fechar navegação"
+                    @ref="closeNavigationButton"
+                    @onclick="CloseNavigationAsync">
+                <AppIcon Name="x" />
+            </button>
+        </div>
+        <div class="sidebar-content" @onclick="CloseNavigationAsync">
+            <NavMenu Overview="@overviewResult" />
+        </div>
+    </aside>
+
+    <div class="app-workspace">
+        <header class="app-topbar">
+            <div class="topbar-leading">
+                <button class="icon-button topbar-menu"
+                        type="button"
+                        aria-label="Abrir navegação"
+                        aria-controls="management-navigation"
+                        aria-expanded="@(navigationOpen ? "true" : "false")"
+                        @ref="openNavigationButton"
+                        @onclick="OpenNavigationAsync">
+                    <AppIcon Name="menu" />
+                </button>
+                <div class="topbar-context">
+                    <span>Ambiente</span>
+                    <strong>@EnvironmentLabel</strong>
+                </div>
+            </div>
+
+            <div class="topbar-actions">
+                <StatusBadge Tone="@RuntimeStatusTone" Icon="@RuntimeStatusIcon">
+                    <span class="topbar-status-full">@RuntimeStatusLabel</span>
+                    <span class="topbar-status-short">@RuntimeStatusShortLabel</span>
+                </StatusBadge>
+                <AuthorizeView>
+                    <Authorized Context="authentication">
+                        <div class="operator-placeholder" aria-label="Operador autenticado">
+                            <span class="operator-placeholder__avatar">
+                                @if (!avatarLoadFailed
+                                    && !string.IsNullOrWhiteSpace(avatarUrl))
+                                {
+                                    <img src="@avatarUrl"
+                                         alt=""
+                                         decoding="async"
+                                         referrerpolicy="no-referrer"
+                                         @onerror="HandleAvatarError" />
+                                }
+                                else
+                                {
+                                    @OperatorInitial(authentication.User.Identity?.Name)
+                                }
+                            </span>
+                            <div>
+                                <strong>@OperatorName(authentication.User.Identity?.Name)</strong>
+                                <span>Sessão do Identity</span>
+                            </div>
+                        </div>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
+        </header>
+
+        <main id="main-content" class="app-main" tabindex="-1">
+            <div class="page-container">
+                @Body
+            </div>
+        </main>
+    </div>
+</div>
+</CascadingValue>
+
+@code {
+    private bool navigationOpen;
+    private bool avatarLoadFailed;
+    private string? avatarUrl;
+    private ManagementDataResult<ManagementOverview>? overviewResult;
+    private ElementReference openNavigationButton;
+    private ElementReference closeNavigationButton;
+
+    private string EnvironmentLabel =>
+        overviewResult?.Value?.EnvironmentName ?? "Indisponível";
+
+    private string RuntimeStatusTone =>
+        overviewResult?.IsSuccess is not true
+            ? "danger"
+            : overviewResult.Value?.Operator is
+                { RequiresMfa: true, MeetsMfaRequirement: false }
+                ? "warning"
+                : "success";
+
+    private string RuntimeStatusIcon =>
+        overviewResult?.IsSuccess is true
+            ? overviewResult.Value?.Operator is
+                { RequiresMfa: true, MeetsMfaRequirement: false }
+                ? "lock"
+                : "check"
+            : "alert";
+
+    private string RuntimeStatusLabel =>
+        overviewResult?.IsSuccess is not true
+            ? "Estado do runtime indisponível"
+            : overviewResult.Value?.Operator is
+                { RequiresMfa: true, MeetsMfaRequirement: false }
+                ? "Autenticação multifator necessária"
+                : "Política administrativa verificada";
+
+    private string RuntimeStatusShortLabel =>
+        overviewResult?.IsSuccess is not true
+            ? "Indisponível"
+            : overviewResult.Value?.Operator is
+                { RequiresMfa: true, MeetsMfaRequirement: false }
+                ? "MFA necessária"
+                : "Verificado";
+
+    private static string OperatorName(string? name) =>
+        string.IsNullOrWhiteSpace(name) ? "Operador autenticado" : name;
+
+    private static string OperatorInitial(string? name) =>
+        string.IsNullOrWhiteSpace(name)
+            ? "ID"
+            : name.Trim()[..1].ToUpperInvariant();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var overviewTask = OverviewData.GetAsync();
+        var avatarTask = LoadAvatarAsync();
+        await Task.WhenAll(overviewTask, avatarTask);
+        overviewResult = await overviewTask;
+    }
+
+    private async Task LoadAvatarAsync()
+    {
+        try
+        {
+            var authentication =
+                await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var subject = authentication.User.FindFirst("sub")?.Value
+                ?? authentication.User.FindFirst(
+                    System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            avatarUrl = await AvatarUrlResolver.ResolveAsync(subject);
+        }
+        catch (Exception exception)
+            when (exception is not OperationCanceledException)
+        {
+            Logger.LogWarning(
+                exception,
+                "Unable to resolve the authenticated operator avatar.");
+            avatarUrl = null;
+        }
+    }
+
+    private void HandleAvatarError()
+    {
+        avatarLoadFailed = true;
+    }
+
+    private async Task HandleNavigationKeyDown(KeyboardEventArgs args)
+    {
+        if (string.Equals(args.Key, "Escape", StringComparison.Ordinal))
+        {
+            await CloseNavigationAsync();
+        }
+    }
+
+    private async Task OpenNavigationAsync()
+    {
+        navigationOpen = true;
+        await InvokeAsync(StateHasChanged);
+        await closeNavigationButton.FocusAsync(preventScroll: true);
+    }
+
+    private async Task CloseNavigationAsync()
+    {
+        if (!navigationOpen)
+        {
+            return;
+        }
+
+        navigationOpen = false;
+        await InvokeAsync(StateHasChanged);
+        await openNavigationButton.FocusAsync(preventScroll: true);
+    }
+}

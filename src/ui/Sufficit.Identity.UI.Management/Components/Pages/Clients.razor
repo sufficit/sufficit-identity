@@ -1,0 +1,264 @@
+@page "/clients"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageClients)]
+@attribute [StreamRendering]
+@inject ManagementClientDataSource ClientData
+@inject NavigationManager Navigation
+
+<PageTitle>Clientes OAuth | Sufficit Identity</PageTitle>
+
+<PageHeader Title="Clientes"
+            Description="Consulte as aplicações OAuth e OIDC registradas no serviço de identidade.">
+    <Actions>
+        <a class="button button--primary" href="clients/new">
+            <AppIcon Name="plus" Size="17" />
+            Novo cliente
+        </a>
+    </Actions>
+</PageHeader>
+
+@if (!string.IsNullOrWhiteSpace(DeletedClientId))
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Cliente excluído</strong>
+            <span>O registro <code>@DeletedClientId</code> foi removido e a operação foi auditada.</span>
+        </div>
+    </section>
+}
+
+<section class="contract-strip contract-strip--info" id="clients-integration-note">
+    <AppIcon Name="code" Size="20" />
+    <div>
+        <strong>Fluxo incorporado sobre a mesma fonte de verdade</strong>
+        <span>Listagem, detalhe, criação e exclusão usam os mesmos casos de uso e a mesma auditoria da API.</span>
+    </div>
+    <StatusBadge Tone="info">Capability</StatusBadge>
+</section>
+
+<section class="table-panel" aria-labelledby="clients-list-heading" aria-busy="@loading">
+    <div class="data-toolbar">
+        <div>
+            <h2 id="clients-list-heading">Clientes registrados</h2>
+            <p>@ToolbarDescription</p>
+        </div>
+        <div class="data-toolbar__actions">
+            @if (CanFilter)
+            {
+                <label class="search-field">
+                    <span class="visually-hidden">Pesquisar clientes</span>
+                    <AppIcon Name="search" Size="18" />
+                    <input type="search"
+                           placeholder="Pesquisar por client_id ou nome"
+                           autocomplete="off"
+                           @bind="search"
+                           @bind:event="oninput" />
+                </label>
+            }
+        </div>
+    </div>
+
+    <div class="client-results" aria-live="polite">
+        @if (loading)
+        {
+            <div class="table-skeleton" aria-label="Carregando clientes">
+                @for (var index = 0; index < 4; index++)
+                {
+                    <span></span>
+                }
+            </div>
+        }
+        else if (result?.IsSuccess is true)
+        {
+            @if (FilteredClients.Count is 0)
+            {
+                @if (string.IsNullOrWhiteSpace(search))
+                {
+                    <EmptyState Icon="database"
+                                Title="@EmptyTitle"
+                                Description="@EmptyDescription" />
+                }
+                else
+                {
+                    <EmptyState Icon="search"
+                                Title="@EmptyTitle"
+                                Description="@EmptyDescription">
+                        <Actions>
+                            <button class="button button--secondary"
+                                    type="button"
+                                    @onclick="ClearSearch">
+                                Limpar pesquisa
+                            </button>
+                        </Actions>
+                    </EmptyState>
+                }
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="data-table data-table--clients">
+                        <thead>
+                            <tr>
+                                <th scope="col">Aplicação</th>
+                                <th scope="col">Client ID</th>
+                                <th scope="col">Tipo</th>
+                                <th scope="col">Estado</th>
+                                <th scope="col"><span class="visually-hidden">Ações</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var client in FilteredClients)
+                            {
+                                <tr>
+                                    <td data-label="Aplicação">
+                                        <a class="client-name client-link"
+                                           href="@ClientHref(client.Id)">
+                                            @DisplayName(client)
+                                        </a>
+                                    </td>
+                                    <td data-label="Client ID">
+                                        <code class="client-id">@client.ClientId</code>
+                                    </td>
+                                    <td data-label="Tipo">
+                                        <StatusBadge Tone="@ClientTypeTone(client.Type)">
+                                            @ClientTypeLabel(client.Type)
+                                        </StatusBadge>
+                                    </td>
+                                    <td data-label="Estado">
+                                        <span class="registration-state">
+                                            <span class="status-dot status-dot--success" aria-hidden="true"></span>
+                                            Registrado
+                                        </span>
+                                    </td>
+                                    <td data-label="Ações">
+                                        <a class="row-action"
+                                           href="@ClientHref(client.Id)"
+                                           aria-label="@($"Abrir detalhes de {client.ClientId}")">
+                                            Detalhes
+                                            <AppIcon Name="arrow-right" Size="15" />
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        }
+        else
+        {
+            <EmptyState Icon="database"
+                        Title="Não foi possível consultar os clientes"
+                        Description="O serviço de identidade não conseguiu ler os registros agora. Verifique o banco e tente novamente.">
+                <Actions>
+                    <button class="button button--secondary"
+                            type="button"
+                            @onclick="LoadClientsAsync">
+                        Tentar novamente
+                    </button>
+                </Actions>
+            </EmptyState>
+        }
+    </div>
+
+    <footer class="table-footer">
+        <span aria-live="polite" aria-atomic="true">@ResultCountLabel</span>
+        <span>Serviço de aplicação incorporado</span>
+    </footer>
+</section>
+
+<section class="client-guardrails" aria-labelledby="client-safety-heading">
+    <div>
+        <h2 id="client-safety-heading">Limites desta entrega</h2>
+        <p>A camada de aplicação autoriza e audita cada mutação antes de devolver o resultado à interface.</p>
+    </div>
+    <ul>
+        <li><AppIcon Name="shield" Size="18" /> Operações exigem capabilities específicas do provedor</li>
+        <li><AppIcon Name="lock" Size="18" /> Segredos nunca aparecem na listagem</li>
+        <li><AppIcon Name="audit" Size="18" /> Criação e exclusão geram eventos persistentes</li>
+    </ul>
+</section>
+
+@code {
+    private ManagementDataResult<IReadOnlyList<ManagementClientSummary>>? result;
+    private bool loading = true;
+    private string search = string.Empty;
+
+    [SupplyParameterFromQuery(Name = "deleted")]
+    public string? DeletedClientId { get; set; }
+
+    private IReadOnlyList<ManagementClientSummary> AllClients =>
+        result?.Value ?? [];
+
+    private IReadOnlyList<ManagementClientSummary> FilteredClients =>
+        string.IsNullOrWhiteSpace(search)
+            ? AllClients
+            : AllClients
+                .Where(client =>
+                    client.ClientId.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    || (client.DisplayName?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false))
+                .ToArray();
+
+    private bool CanFilter => result?.IsSuccess is true && AllClients.Count > 0;
+
+    private string ToolbarDescription =>
+        loading
+            ? "Consultando o registro de aplicações…"
+            : result?.IsSuccess is true
+                ? "Dados recebidos diretamente do serviço de aplicação."
+                : "A consulta falhou antes de retornar registros.";
+
+    private string ResultCountLabel =>
+        loading
+            ? "Carregando registros"
+            : result?.IsSuccess is true
+                ? $"{FilteredClients.Count} de {AllClients.Count} {Pluralize(AllClients.Count, "registro", "registros")}"
+                : "Nenhum registro carregado";
+
+    private string EmptyTitle =>
+        string.IsNullOrWhiteSpace(search)
+            ? "Nenhum cliente registrado"
+            : "Nenhum cliente corresponde à pesquisa";
+
+    private string EmptyDescription =>
+        string.IsNullOrWhiteSpace(search)
+            ? "O serviço respondeu com uma coleção vazia. Crie o primeiro cliente para começar."
+            : "Revise o client_id ou o nome informado e tente novamente.";
+
+    protected override async Task OnInitializedAsync() =>
+        await LoadClientsAsync();
+
+    private async Task LoadClientsAsync()
+    {
+        loading = true;
+        result = await ClientData.GetClientsAsync();
+        loading = false;
+    }
+
+    private void ClearSearch() => search = string.Empty;
+
+    private static string ClientHref(string id) =>
+        $"clients/{Uri.EscapeDataString(id)}";
+
+    private static string DisplayName(ManagementClientSummary client) =>
+        string.IsNullOrWhiteSpace(client.DisplayName)
+            ? "Sem nome de exibição"
+            : client.DisplayName;
+
+    private static string ClientTypeLabel(string? type) =>
+        type?.ToLowerInvariant() switch
+        {
+            "public" => "Público",
+            "confidential" => "Confidencial",
+            null or "" => "Não informado",
+            _ => type
+        };
+
+    private static string ClientTypeTone(string? type) =>
+        string.Equals(type, "confidential", StringComparison.OrdinalIgnoreCase)
+            ? "info"
+            : "neutral";
+
+    private static string Pluralize(int count, string singular, string plural) =>
+        count is 1 ? singular : plural;
+}

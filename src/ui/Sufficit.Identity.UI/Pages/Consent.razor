@@ -1,0 +1,100 @@
+@page "/consent"
+@inject IAuthorizationConsentService ConsentService
+@inject ScopeViewModelProvider ScopeProvider
+
+<PageTitle>Autorização — Sufficit Identity</PageTitle>
+
+@if (_clientId is null)
+{
+    <div class="auth-card">
+        <h1>Solicitação inválida</h1>
+        <p class="info">Não há solicitação de autorização pendente.</p>
+        <a href="/" class="btn btn-primary">Voltar</a>
+    </div>
+}
+else
+{
+    <div class="auth-card">
+        <h1>Autorizar aplicação</h1>
+        <p class="info">
+            <strong>@_clientName</strong> está solicitando acesso à sua conta.
+        </p>
+
+        @* Real, static SSR HTML form — deliberately NOT a Blazor <EditForm>.
+           The decision must be POSTed straight to the STS's own
+           /connect/authorize endpoint (same app/origin: the UI is hosted
+           in-process inside the STS) so the runtime authorization controller
+           re-parses the complete original authorization request and either
+           issues the code (Approve) or returns access_denied (Deny). A
+           Blazor EditForm would intercept the submit and route it back
+           through this component instead of letting the browser POST to a
+           different endpoint.
+
+           CONTRACT (documented for the STS agent to align field names with —
+           see EVALUATION-2026-07-20.md #B3 / P0 task 5):
+             - method=POST to /connect/authorize
+             - every original request parameter EXCEPT "scope" is echoed back
+               verbatim as a hidden field (client_id, redirect_uri,
+               response_type, state, nonce, code_challenge,
+               code_challenge_method, prompt, resource, ... — whatever
+               the protocol client sent)
+             - "scope" is resubmitted as one or more checkboxes, all named
+               "scope" (multi-value form field) — only the checked ones are
+               present in the POST body
+             - the button clicked selects the decision via a shared field
+               name="consent_decision" value="allow" to approve or "deny"
+               to deny — matches what the STS AuthorizationController reads
+               back off the POST body *@
+        <form method="post" action="/connect/authorize">
+            <AntiforgeryToken />
+            @foreach (var (key, value) in _passthroughParams)
+            {
+                <input type="hidden" name="@key" value="@value" />
+            }
+
+            <fieldset class="scope-list">
+                <legend>Permissões solicitadas:</legend>
+                @foreach (var scope in _scopes)
+                {
+                    <label class="scope-item">
+                        <input type="checkbox" name="scope" value="@scope.Name" checked="checked" />
+                        <span class="scope-name">@scope.DisplayName</span>
+                        <span class="scope-desc">@scope.Description</span>
+                    </label>
+                }
+            </fieldset>
+
+            <div class="btn-group">
+                <button type="submit" name="consent_decision" value="allow" class="btn btn-primary">
+                    Autorizar
+                </button>
+                <button type="submit" name="consent_decision" value="deny" class="btn btn-secondary">
+                    Negar
+                </button>
+            </div>
+        </form>
+    </div>
+}
+
+@code {
+    private string? _clientId;
+    private string? _clientName;
+    private IReadOnlyList<ScopeViewModel> _scopes = Array.Empty<ScopeViewModel>();
+    private List<(string Key, string Value)> _passthroughParams = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var context = await ConsentService.GetCurrentAsync();
+        if (!context.IsValid)
+            return;
+
+        _clientId = context.ClientId;
+        _clientName = context.ClientDisplayName;
+        _scopes = ScopeProvider.Build(context.RequestedScopes);
+        _passthroughParams = context.PassthroughParameters
+            .Select(parameter => (
+                Key: parameter.Name,
+                Value: parameter.Value))
+            .ToList();
+    }
+}

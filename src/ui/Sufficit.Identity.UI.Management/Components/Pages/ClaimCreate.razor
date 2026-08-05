@@ -1,0 +1,210 @@
+@page "/claims/new"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageClaims)]
+@inject ManagementClaimDataSource ClaimData
+@inject ManagementUserDataSource UserData
+@inject NavigationManager Navigation
+
+<PageTitle>Atribuir claim | Sufficit Identity</PageTitle>
+
+<PageHeader Title="Atribuir claim"
+            Description="@HeaderDescription">
+    <Actions>
+        <a class="button button--secondary" href="@BackHref">
+            <AppIcon Name="arrow-left" Size="17" />
+            Voltar para claims
+        </a>
+    </Actions>
+</PageHeader>
+
+@if (!HasUserContext)
+{
+    <EmptyState Icon="users"
+                Title="Selecione um usuário"
+                Description="Abra uma conta no diretório de identidades antes de atribuir uma claim.">
+        <Actions>
+            <a class="button button--primary" href="users">Abrir diretório de usuários</a>
+        </Actions>
+    </EmptyState>
+}
+else
+{
+    <section class="contract-strip contract-strip--warning">
+        <AppIcon Name="refresh" Size="20" />
+        <div>
+            <strong>Alteração efetiva na próxima emissão</strong>
+            <span>A atribuição atualiza o selo de segurança e revoga tokens ativos da conta.</span>
+        </div>
+        <StatusBadge Tone="warning">Impacta credenciais</StatusBadge>
+    </section>
+
+    @if (submission?.IsSuccess is false)
+    {
+        <section class="inline-notice inline-notice--danger" role="alert">
+            <AppIcon Name="alert" Size="19" />
+            <div>
+                <strong>Não foi possível atribuir a claim</strong>
+                <span>@submission.ErrorMessage</span>
+            </div>
+        </section>
+    }
+
+    <EditForm Model="model"
+              OnValidSubmit="CreateAsync"
+              FormName="create-user-claim"
+              class="management-form">
+        <DataAnnotationsValidator />
+
+        <section class="form-section" aria-labelledby="claim-account-heading">
+            <div class="form-section__heading">
+                <h2 id="claim-account-heading">Conta</h2>
+                <p>A claim será vinculada somente a esta identidade.</p>
+            </div>
+            <dl class="property-list">
+                <div>
+                    <dt>Usuário</dt>
+                    <dd>@AccountLabel</dd>
+                </div>
+                <div>
+                    <dt>E-mail</dt>
+                    <dd>@(userResult?.Value?.Email ?? "Não informado")</dd>
+                </div>
+                <div>
+                    <dt>Identificador</dt>
+                    <dd><code class="client-id">@UserId</code></dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="form-section" aria-labelledby="claim-value-heading">
+            <div class="form-section__heading">
+                <h2 id="claim-value-heading">Atributo</h2>
+                <p>Use nomes interoperáveis quando existirem. Claims de protocolo e perfil básico são protegidas.</p>
+            </div>
+
+            <div class="field-group">
+                <label for="claim-type">Tipo da claim</label>
+                <InputText id="claim-type"
+                           class="form-control"
+                           list="claim-type-suggestions"
+                           autocomplete="off"
+                           @bind-Value="model.Type" />
+                <datalist id="claim-type-suggestions">
+                    @foreach (var type in SuggestedTypes)
+                    {
+                        <option value="@type"></option>
+                    }
+                </datalist>
+                <ValidationMessage For="() => model.Type" />
+                <span class="field-hint">Exemplo: <code>locale</code>, <code>zoneinfo</code> ou um nome com namespace próprio.</span>
+            </div>
+
+            <div class="field-group">
+                <label for="claim-value">Valor</label>
+                <InputTextArea id="claim-value"
+                               class="form-control form-control--textarea"
+                               @bind-Value="model.Value" />
+                <ValidationMessage For="() => model.Value" />
+                <span class="field-hint">O valor não será copiado para o evento de auditoria.</span>
+            </div>
+        </section>
+
+        <footer class="form-actions">
+            <a class="button button--secondary" href="@BackHref">Cancelar</a>
+            <button class="button button--primary" type="submit"
+                    disabled="@(submitting || userResult?.IsSuccess is not true)">
+                @if (submitting)
+                {
+                    <span class="button-spinner" aria-hidden="true"></span>
+                    <span>Atribuindo…</span>
+                }
+                else
+                {
+                    <AppIcon Name="plus" Size="17" />
+                    <span>Atribuir claim</span>
+                }
+            </button>
+        </footer>
+    </EditForm>
+}
+
+@code {
+    [SupplyParameterFromQuery(Name = "user")]
+    public string? UserId { get; set; }
+
+    private readonly ClaimCreateModel model = new();
+    private ManagementDataResult<ManagementClaimMetadata>? metadataResult;
+    private ManagementDataResult<ManagementUserDetail>? userResult;
+    private ManagementDataResult<ManagementClaimAssignment>? submission;
+    private bool submitting;
+
+    private bool HasUserContext =>
+        !string.IsNullOrWhiteSpace(UserId);
+
+    private IReadOnlyList<string> SuggestedTypes =>
+        metadataResult?.Value?.SuggestedTypes ?? [];
+
+    private string AccountLabel =>
+        userResult?.Value is { } user
+            ? user.UserName ?? user.Email ?? user.Id
+            : "Carregando conta…";
+
+    private string HeaderDescription =>
+        HasUserContext
+            ? $"Associe um atributo adicional a {AccountLabel} sem incorporar regras da aplicação."
+            : "Selecione uma conta antes de atribuir um atributo adicional.";
+
+    private string BackHref =>
+        HasUserContext
+            ? $"claims?user={Uri.EscapeDataString(UserId!)}"
+            : "users";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        metadataResult = null;
+        userResult = null;
+        submission = null;
+
+        if (!HasUserContext)
+        {
+            return;
+        }
+
+        var metadataTask = ClaimData.GetMetadataAsync();
+        var userTask = UserData.GetAsync(UserId!);
+        await Task.WhenAll(metadataTask, userTask);
+        metadataResult = await metadataTask;
+        userResult = await userTask;
+    }
+
+    private async Task CreateAsync()
+    {
+        if (!HasUserContext || submitting)
+        {
+            return;
+        }
+
+        submitting = true;
+        submission = await ClaimData.CreateAsync(
+            new CreateManagementClaimCommand(
+                UserId!,
+                model.Type,
+                model.Value));
+        submitting = false;
+
+        if (submission.IsSuccess)
+        {
+            Navigation.NavigateTo($"{BackHref}&created=1");
+        }
+    }
+
+    private sealed class ClaimCreateModel
+    {
+        [Required(ErrorMessage = "Informe o tipo da claim.")]
+        [StringLength(256, ErrorMessage = "Use no máximo 256 caracteres.")]
+        public string Type { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Informe o valor da claim.")]
+        [StringLength(4096, ErrorMessage = "Use no máximo 4096 caracteres.")]
+        public string Value { get; set; } = string.Empty;
+    }
+}

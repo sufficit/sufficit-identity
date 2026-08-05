@@ -1,0 +1,26 @@
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
+            <NotAuthorized>
+                <LayoutView Layout="typeof(MainLayout)">
+                    <section class="panel" aria-labelledby="management-access-denied">
+                        <h1 id="management-access-denied">Acesso não autorizado</h1>
+                        <p>
+                            Sua sessão está ativa, mas não possui a autoridade
+                            necessária para esta área administrativa.
+                        </p>
+                        <a class="button button--secondary" href="/account/manage">
+                            Abrir minha conta
+                        </a>
+                    </section>
+                </LayoutView>
+            </NotAuthorized>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(MainLayout)">
+            <NotFoundPage />
+        </LayoutView>
+    </NotFound>
+</Router>

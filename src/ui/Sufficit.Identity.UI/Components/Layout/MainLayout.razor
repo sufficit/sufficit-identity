@@ -1,0 +1,44 @@
+@inject IBrandingThemeProvider BrandingProvider
+@inherits LayoutComponentBase
+
+@code {
+    protected BrandingTheme? _theme;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _theme = await BrandingProvider.GetActiveAsync();
+    }
+}
+
+<div class="page">
+    <header class="topbar">
+        <div class="topbar-brand">
+            <a href="/">
+                <img src="@(_theme?.HeaderIconUrl ?? "_content/Sufficit.Identity.UI/img/header-icon.png")" class="brand-mark" alt="" />
+                <span class="brand-wordmark">
+                    <span class="brand-name">@(_theme?.BrandName ?? "Sufficit")</span>
+                    <span class="brand-sub">@(_theme?.BrandSubtitle ?? "Identity")</span>
+                </span>
+            </a>
+        </div>
+        <nav class="topbar-nav">
+            <AuthorizeView>
+                <Authorized>
+                    <a href="/account/logout" class="nav-link">Sair</a>
+                </Authorized>
+            </AuthorizeView>
+        </nav>
+    </header>
+
+    <main class="content">
+        @Body
+    </main>
+
+    <footer class="footer">
+        <span>&copy; @DateTime.UtcNow.Year Sufficit</span>
+        <span class="footer-links">
+            <a href="/.well-known/openid-configuration">Discovery</a> ·
+            <a href="/swagger">API Swagger</a>
+        </span>
+    </footer>
+</div>

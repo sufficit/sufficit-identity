@@ -1,0 +1,369 @@
+@page "/provisioning"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageProvisioning)]
+@inject ManagementProvisioningDataSource ProvisioningData
+
+<PageTitle>Provisionamento | Sufficit Identity</PageTitle>
+
+<PageHeader Title="Provisionamento"
+            Description="Revise e aplique manifestos aditivos de clientes e scopes usando o mesmo caso de uso da API." />
+
+<section class="contract-strip contract-strip--success">
+    <AppIcon Name="shield" Size="20" />
+    <div>
+        <strong>Operação centralizada e auditável</strong>
+        <span>Preview e aplicação passam pela autorização do Management; nenhum segredo é recebido em texto puro.</span>
+    </div>
+    <StatusBadge Tone="success">Ativo</StatusBadge>
+</section>
+
+<ol class="workflow-steps" aria-label="Etapas do provisionamento">
+    <li class="@StepClass(1)">
+        <span>1</span>
+        <div><strong>Manifesto</strong><small>Definir intenção</small></div>
+    </li>
+    <li class="workflow-connector" aria-hidden="true"></li>
+    <li class="@StepClass(2)">
+        <span>2</span>
+        <div><strong>Preview</strong><small>Revisar mudanças</small></div>
+    </li>
+    <li class="workflow-connector" aria-hidden="true"></li>
+    <li class="@StepClass(3)">
+        <span>3</span>
+        <div><strong>Aplicar</strong><small>Confirmar operação</small></div>
+    </li>
+</ol>
+
+@if (OperationResult?.IsSuccess is false)
+{
+    <section class="inline-notice inline-notice--danger" role="alert">
+        <AppIcon Name="alert" Size="19" />
+        <div>
+            <strong>@ErrorTitle</strong>
+            <span>@OperationResult.ErrorMessage</span>
+            @if (ErrorDetails.Count > 0)
+            {
+                <ul class="provisioning-errors">
+                    @foreach (var error in ErrorDetails)
+                    {
+                        <li>@error</li>
+                    }
+                </ul>
+            }
+        </div>
+    </section>
+}
+else if (applyResult?.IsSuccess is true)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div>
+            <strong>Manifesto aplicado</strong>
+            <span>A operação foi concluída de forma transacional e registrada na auditoria.</span>
+        </div>
+    </section>
+}
+
+<div class="provisioning-grid">
+    <section class="manifest-panel" aria-labelledby="manifest-heading">
+        <div class="panel-header">
+            <div>
+                <h2 id="manifest-heading">Manifesto JSON</h2>
+                <p>Edite ou cole o contrato declarativo completo antes de gerar o preview.</p>
+            </div>
+            <StatusBadge Tone="neutral">Schema v1</StatusBadge>
+        </div>
+        <label class="manifest-editor">
+            <span class="visually-hidden">Conteúdo do manifesto JSON</span>
+            <textarea spellcheck="false"
+                      autocomplete="off"
+                      maxlength="@ManagementProvisioningDataSource.MaxManifestLength"
+                      aria-describedby="manifest-guidance manifest-count"
+                      @bind="ManifestJson"
+                      @bind:event="oninput"></textarea>
+        </label>
+        <footer class="manifest-actions">
+            <div>
+                <span id="manifest-guidance">Use somente referências externas para segredos.</span>
+                <span id="manifest-count">@ManifestJson.Length.ToString("N0") de @ManagementProvisioningDataSource.MaxManifestLength.ToString("N0") caracteres</span>
+            </div>
+            <button class="button button--primary"
+                    type="button"
+                    disabled="@IsBusy"
+                    @onclick="PreviewAsync">
+                @if (previewing)
+                {
+                    <span class="button-spinner" aria-hidden="true"></span>
+                    <span>Validando</span>
+                }
+                else
+                {
+                    <AppIcon Name="search" Size="17" />
+                    <span>Gerar preview</span>
+                }
+            </button>
+        </footer>
+    </section>
+
+    <aside class="safety-panel" aria-labelledby="safety-heading">
+        <span class="safety-panel__icon"><AppIcon Name="shield" Size="24" /></span>
+        <h2 id="safety-heading">Garantias do fluxo</h2>
+        <ul class="plain-check-list">
+            <li><AppIcon Name="check" Size="16" /> Preview não altera o banco</li>
+            <li><AppIcon Name="check" Size="16" /> Objetos omitidos não são excluídos</li>
+            <li><AppIcon Name="check" Size="16" /> Segredos usam referência externa</li>
+            <li><AppIcon Name="check" Size="16" /> Apply e auditoria usam a mesma transação</li>
+        </ul>
+        <a href="audit">Consultar trilha de auditoria <AppIcon Name="arrow-right" Size="15" /></a>
+    </aside>
+</div>
+
+@if (Plan is not null)
+{
+    <section class="provisioning-plan" aria-labelledby="plan-heading">
+        <div class="data-toolbar">
+            <div>
+                <h2 id="plan-heading">@(applyResult?.IsSuccess is true ? "Mudanças aplicadas" : "Preview do manifesto")</h2>
+                <p>@PlanSummary</p>
+            </div>
+            <div class="provisioning-plan__counts" aria-label="Resumo das mudanças">
+                <span><strong>@ChangeCount(IdentityManifestChangeKind.Create)</strong> criar</span>
+                <span><strong>@ChangeCount(IdentityManifestChangeKind.Update)</strong> atualizar</span>
+                <span><strong>@ChangeCount(IdentityManifestChangeKind.Unchanged)</strong> sem mudança</span>
+            </div>
+        </div>
+
+        @if (Plan.Changes.Count is 0)
+        {
+            <EmptyState Icon="workflow"
+                        Title="Manifesto vazio"
+                        Description="Nenhum cliente ou scope foi declarado. Nada será alterado." />
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data-table data-table--provisioning">
+                    <thead>
+                        <tr>
+                            <th scope="col">Recurso</th>
+                            <th scope="col">Identificador</th>
+                            <th scope="col">Resultado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var change in Plan.Changes)
+                        {
+                            <tr>
+                                <td data-label="Recurso">@ResourceLabel(change.ResourceType)</td>
+                                <td data-label="Identificador"><code>@change.Identifier</code></td>
+                                <td data-label="Resultado">
+                                    <StatusBadge Tone="@ChangeTone(change.Kind)">
+                                        @ChangeLabel(change.Kind)
+                                    </StatusBadge>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        @if (applyResult?.IsSuccess is not true)
+        {
+            <footer class="provisioning-apply">
+                @if (Plan.HasChanges)
+                {
+                    <label class="provisioning-confirmation">
+                        <input type="checkbox"
+                               disabled="@IsBusy"
+                               @bind="confirmed" />
+                        <span>
+                            <strong>Confirmo a aplicação deste preview</strong>
+                            <small>Somente os itens marcados como criar ou atualizar serão modificados.</small>
+                        </span>
+                    </label>
+                    <button class="button button--danger"
+                            type="button"
+                            disabled="@(!CanApply)"
+                            @onclick="ApplyAsync">
+                        @if (applying)
+                        {
+                            <span class="button-spinner" aria-hidden="true"></span>
+                            <span>Aplicando</span>
+                        }
+                        else
+                        {
+                            <AppIcon Name="workflow" Size="17" />
+                            <span>Aplicar manifesto</span>
+                        }
+                    </button>
+                }
+                else
+                {
+                    <span class="provisioning-current">
+                        <AppIcon Name="check" Size="18" />
+                        O ambiente já corresponde ao manifesto.
+                    </span>
+                }
+            </footer>
+        }
+    </section>
+}
+
+@code {
+    private const string InitialManifest =
+        """
+        {
+          "schemaVersion": 1,
+          "scopes": [],
+          "clients": []
+        }
+        """;
+
+    private string manifestJson = InitialManifest;
+    private string? previewedManifest;
+    private ManagementDataResult<IdentityProvisioningPlan>? previewResult;
+    private ManagementDataResult<IdentityProvisioningPlan>? applyResult;
+    private bool previewing;
+    private bool applying;
+    private bool confirmed;
+
+    private string ManifestJson
+    {
+        get => manifestJson;
+        set
+        {
+            if (string.Equals(manifestJson, value, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            manifestJson = value;
+            previewedManifest = null;
+            previewResult = null;
+            applyResult = null;
+            confirmed = false;
+        }
+    }
+
+    private bool IsBusy => previewing || applying;
+
+    private bool HasFreshPreview =>
+        previewResult?.IsSuccess is true
+        && string.Equals(
+            previewedManifest,
+            manifestJson,
+            StringComparison.Ordinal);
+
+    private bool CanApply =>
+        !IsBusy
+        && confirmed
+        && HasFreshPreview
+        && previewResult?.Value?.HasChanges is true;
+
+    private int CurrentStep =>
+        applyResult?.IsSuccess is true
+            ? 3
+            : HasFreshPreview
+                ? 2
+                : 1;
+
+    private ManagementDataResult<IdentityProvisioningPlan>? OperationResult =>
+        applyResult?.IsSuccess is false
+            ? applyResult
+            : previewResult?.IsSuccess is false
+                ? previewResult
+                : null;
+
+    private IdentityProvisioningPlan? Plan =>
+        applyResult?.IsSuccess is true
+            ? applyResult.Value
+            : HasFreshPreview
+                ? previewResult?.Value
+                : null;
+
+    private IReadOnlyList<string> ErrorDetails =>
+        OperationResult?.ErrorDetails ?? [];
+
+    private string ErrorTitle =>
+        OperationResult?.Outcome switch
+        {
+            ManagementDataOutcome.Invalid => "Revise o manifesto",
+            ManagementDataOutcome.Forbidden => "Acesso ao provisionamento negado",
+            ManagementDataOutcome.StepUpRequired => "MFA exigido",
+            ManagementDataOutcome.Conflict => "O ambiente não está pronto para aplicar",
+            _ => "Não foi possível concluir a operação"
+        };
+
+    private string PlanSummary =>
+        Plan?.HasChanges is true
+            ? $"{Plan.Changes.Count(change => change.Kind is not IdentityManifestChangeKind.Unchanged)} mudança(s) efetiva(s) encontrada(s)."
+            : "Nenhuma mudança efetiva foi encontrada.";
+
+    private async Task PreviewAsync()
+    {
+        previewing = true;
+        confirmed = false;
+        applyResult = null;
+        previewResult = await ProvisioningData.PreviewAsync(manifestJson);
+        previewedManifest = previewResult.IsSuccess
+            ? manifestJson
+            : null;
+        previewing = false;
+    }
+
+    private async Task ApplyAsync()
+    {
+        if (!CanApply)
+        {
+            return;
+        }
+
+        applying = true;
+        applyResult = await ProvisioningData.ApplyAsync(manifestJson);
+        confirmed = false;
+        applying = false;
+    }
+
+    private string StepClass(int step)
+    {
+        var classes = "workflow-step";
+        if (step == CurrentStep)
+        {
+            classes += " workflow-step--current";
+        }
+        else if (step < CurrentStep)
+        {
+            classes += " workflow-step--complete";
+        }
+
+        return classes;
+    }
+
+    private int ChangeCount(IdentityManifestChangeKind kind) =>
+        Plan?.Changes.Count(change => change.Kind == kind) ?? 0;
+
+    private static string ResourceLabel(string resourceType) =>
+        resourceType switch
+        {
+            "client" => "Cliente",
+            "scope" => "Scope",
+            _ => resourceType
+        };
+
+    private static string ChangeLabel(IdentityManifestChangeKind kind) =>
+        kind switch
+        {
+            IdentityManifestChangeKind.Create => "Criar",
+            IdentityManifestChangeKind.Update => "Atualizar",
+            IdentityManifestChangeKind.Unchanged => "Sem mudança",
+            _ => kind.ToString()
+        };
+
+    private static string ChangeTone(IdentityManifestChangeKind kind) =>
+        kind switch
+        {
+            IdentityManifestChangeKind.Create => "success",
+            IdentityManifestChangeKind.Update => "warning",
+            _ => "neutral"
+        };
+}

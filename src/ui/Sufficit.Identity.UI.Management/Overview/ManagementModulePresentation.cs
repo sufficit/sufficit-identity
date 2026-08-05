@@ -1,0 +1,113 @@
+namespace Sufficit.Identity.UI.Management.Overview;
+
+/// <summary>
+/// Presentation-only copy and routing for module keys discovered from the
+/// canonical runtime contract. Availability and authorization never originate
+/// from this catalog.
+/// </summary>
+public sealed record ManagementModulePresentation(
+    string Key,
+    string Section,
+    int SectionOrder,
+    int Order,
+    string Title,
+    string Description,
+    string Href,
+    string Icon,
+    bool ShowInNavigation = true);
+
+public static class ManagementModulePresentations
+{
+    public static IReadOnlyList<ManagementModulePresentation> All { get; } =
+    [
+        new(
+            "users",
+            "Identidade",
+            10,
+            10,
+            "Usuários",
+            "Contas, perfil, credenciais e estado de acesso",
+            "users",
+            "users"),
+        new(
+            "claims",
+            "Identidade",
+            10,
+            20,
+            "Claims de usuários",
+            "Atributos personalizados vinculados a cada identidade",
+            "users",
+            "shield",
+            ShowInNavigation: false),
+        new(
+            "clients",
+            "OAuth & OIDC",
+            20,
+            10,
+            "Clientes",
+            "Aplicações, redirects e fluxos autorizados",
+            "clients",
+            "key"),
+        new(
+            "scopes",
+            "OAuth & OIDC",
+            20,
+            20,
+            "Scopes",
+            "Recursos e permissões delegadas do protocolo",
+            "scopes",
+            "scope"),
+        new(
+            "authorizations",
+            "OAuth & OIDC",
+            20,
+            30,
+            "Autorizações",
+            "Grants e consentimentos persistidos",
+            "authorizations",
+            "shield"),
+        new(
+            "branding",
+            "Experiência",
+            30,
+            10,
+            "Branding",
+            "Temas aplicados às superfícies públicas",
+            "branding",
+            "palette"),
+        new(
+            "sessions",
+            "Operações",
+            40,
+            10,
+            "Sessões",
+            "Credenciais ativas e revogação segura",
+            "sessions",
+            "clock"),
+        new(
+            "provisioning",
+            "Operações",
+            40,
+            20,
+            "Provisionamento",
+            "Manifestos declarativos de clientes e scopes",
+            "provisioning",
+            "workflow"),
+        new(
+            "audit",
+            "Operações",
+            40,
+            30,
+            "Auditoria",
+            "Decisões e mutações administrativas persistidas",
+            "audit",
+            "audit")
+    ];
+
+    public static ManagementModulePresentation? Find(string key) =>
+        All.FirstOrDefault(
+            item => string.Equals(
+                item.Key,
+                key,
+                StringComparison.Ordinal));
+}

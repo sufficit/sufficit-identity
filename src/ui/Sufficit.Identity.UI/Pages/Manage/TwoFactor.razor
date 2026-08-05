@@ -1,0 +1,352 @@
+@page "/manage/twofactor"
+@rendermode @(RenderMode.InteractiveServer)
+@attribute [Authorize]
+@inject IAccountTwoFactorService TwoFactorService
+@inject IJSRuntime JS
+@inject ILogger<TwoFactor> Logger
+
+<PageTitle>Autenticação em duas etapas — Sufficit Identity</PageTitle>
+
+<div class="auth-card">
+    <ManageBackLink />
+    <h1>Autenticação em duas etapas</h1>
+    <p class="info">Use um aplicativo autenticador para proteger sua conta com um segundo fator.</p>
+
+    <div aria-live="polite">
+        @if (_error is not null)
+        {
+            <div class="alert alert-error" role="alert">@_error</div>
+        }
+        @if (_success is not null)
+        {
+            <div class="alert alert-success" role="status">@_success</div>
+        }
+    </div>
+
+    @if (_loading)
+    {
+        <p class="muted">Carregando configuração de segurança…</p>
+    }
+    else if (_loadFailed)
+    {
+        <button type="button" class="btn btn-secondary" @onclick="LoadAsync">
+            Tentar novamente
+        </button>
+    }
+    else if (_overview?.IsEnabled == true)
+    {
+        <div class="alert alert-success">
+            A autenticação em duas etapas está <strong>ativada</strong>.
+        </div>
+
+        @if (_recoveryCodes.Count > 0)
+        {
+            <div class="alert alert-warning" role="alert">
+                Guarde estes códigos em um local seguro. Eles não serão exibidos novamente.
+            </div>
+            <div class="recovery-codes" aria-label="Códigos de recuperação">
+                @foreach (var recoveryCode in _recoveryCodes)
+                {
+                    <code class="recovery-code">@recoveryCode</code>
+                }
+            </div>
+            <p class="muted">Cada código funciona uma única vez.</p>
+            <div class="btn-group">
+                <button type="button"
+                        class="btn btn-secondary"
+                        disabled="@_busy"
+                        @onclick="CopyRecoveryCodesAsync">
+                    Copiar códigos
+                </button>
+                <button type="button"
+                        class="btn btn-primary"
+                        disabled="@_busy"
+                        @onclick="DismissRecoveryCodes">
+                    Já guardei os códigos
+                </button>
+            </div>
+        }
+        else
+        {
+            <p class="muted">@RecoveryCodeSummary</p>
+            <div class="btn-group two-factor-actions">
+                <button type="button"
+                        class="btn btn-secondary"
+                        disabled="@_busy"
+                        @onclick="ResetAuthenticatorAsync">
+                    Reconfigurar autenticador
+                </button>
+                <button type="button"
+                        class="btn btn-secondary"
+                        disabled="@_busy"
+                        @onclick="GenerateRecoveryCodesAsync">
+                    Gerar novos códigos
+                </button>
+                <button type="button"
+                        class="btn btn-danger"
+                        disabled="@_busy"
+                        @onclick="DisableAsync">
+                    Desativar duas etapas
+                </button>
+            </div>
+        }
+    }
+    else if (_overview?.AuthenticatorSetup is { } setup)
+    {
+        <p class="info">
+            Leia o QR code no aplicativo autenticador e confirme com o código atual.
+        </p>
+        <div class="qr-container">
+            <img src="@_qrCode"
+                 alt="QR code para configurar a autenticação em duas etapas" />
+        </div>
+        <p class="muted">Se não puder ler o QR code, digite esta chave:</p>
+        <code class="manual-key">@setup.ManualKey</code>
+
+        <EditForm Model="Verify" Method="post" OnValidSubmit="EnableAsync" FormName="verify-2fa">
+            <DataAnnotationsValidator />
+            <div class="form-group">
+                <label for="code">Código de verificação</label>
+                <InputText id="code"
+                           @bind-Value="Verify.Code"
+                           class="form-control"
+                           inputmode="numeric"
+                           maxlength="16"
+                           placeholder="123456"
+                           autocomplete="one-time-code"
+                           autofocus />
+                <ValidationMessage For="@(() => Verify.Code)" />
+            </div>
+            <button type="submit"
+                    class="btn btn-primary btn-block"
+                    disabled="@_busy">
+                @(_busy ? "Confirmando…" : "Ativar duas etapas")
+            </button>
+        </EditForm>
+    }
+    else
+    {
+        <button type="button"
+                class="btn btn-primary btn-block"
+                disabled="@_busy"
+                @onclick="BeginSetupAsync">
+            @(_busy ? "Preparando…" : "Configurar aplicativo autenticador")
+        </button>
+    }
+</div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? _authTask { get; set; }
+
+    private AccountTwoFactorOverview? _overview;
+    private IReadOnlyList<string> _recoveryCodes = [];
+    private bool _loading = true;
+    private bool _loadFailed;
+    private bool _busy;
+    private string? _qrCode;
+    private string? _error;
+    private string? _success;
+
+    private VerifyInput? _boundVerify;
+    [SupplyParameterFromForm(FormName = "verify-2fa")]
+    private VerifyInput Verify
+    {
+        get => _boundVerify ??= new();
+        set => _boundVerify = value;
+    }
+
+    private string RecoveryCodeSummary => _overview?.RecoveryCodesRemaining switch
+    {
+        0 => "Você não possui códigos de recuperação disponíveis.",
+        1 => "Você possui 1 código de recuperação disponível.",
+        var count => $"Você possui {count} códigos de recuperação disponíveis.",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _loadFailed = false;
+        _error = null;
+        try
+        {
+            var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+            if (principal is null)
+            {
+                _error = "Sua sessão expirou. Entre novamente.";
+                _loadFailed = true;
+                return;
+            }
+
+            var overview = await TwoFactorService.GetOverviewAsync(principal);
+            if (overview is null)
+            {
+                _error = "Sua sessão expirou. Entre novamente.";
+                _loadFailed = true;
+                return;
+            }
+
+            ApplyState(overview);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Two-factor settings could not be loaded.");
+            _error = "Não foi possível carregar a configuração de duas etapas.";
+            _loadFailed = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task BeginSetupAsync() =>
+        await ExecuteAsync(
+            principal => TwoFactorService.BeginSetupAsync(principal),
+            "Leia o QR code e confirme com o código atual do aplicativo.");
+
+    private async Task EnableAsync()
+    {
+        await ExecuteAsync(
+            principal => TwoFactorService.EnableAsync(principal, Verify.Code),
+            "Autenticação em duas etapas ativada. Guarde os códigos de recuperação.");
+        if (_error is null)
+        {
+            Verify.Code = string.Empty;
+        }
+    }
+
+    private async Task GenerateRecoveryCodesAsync()
+    {
+        var confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            "Gerar novos códigos e invalidar todos os códigos de recuperação anteriores?");
+        if (confirmed)
+        {
+            await ExecuteAsync(
+                principal => TwoFactorService.GenerateRecoveryCodesAsync(principal),
+                "Novos códigos gerados. Os códigos anteriores foram invalidados.");
+        }
+    }
+
+    private async Task ResetAuthenticatorAsync()
+    {
+        var confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            "Reconfigurar o autenticador? A chave atual deixará de funcionar e duas etapas será desativada até a nova confirmação.");
+        if (confirmed)
+        {
+            await ExecuteAsync(
+                principal => TwoFactorService.ResetAuthenticatorAsync(principal),
+                "Chave reconfigurada. Leia o novo QR code e confirme para reativar duas etapas.");
+        }
+    }
+
+    private async Task DisableAsync()
+    {
+        var confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            "Desativar a autenticação em duas etapas desta conta?");
+        if (confirmed)
+        {
+            await ExecuteAsync(
+                principal => TwoFactorService.DisableAsync(principal),
+                "Autenticação em duas etapas desativada.");
+        }
+    }
+
+    private async Task ExecuteAsync(
+        Func<System.Security.Claims.ClaimsPrincipal, Task<AccountTwoFactorResult>> operation,
+        string successMessage)
+    {
+        _busy = true;
+        _error = null;
+        _success = null;
+        try
+        {
+            var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+            if (principal is null)
+            {
+                _error = "Sua sessão expirou. Entre novamente.";
+                return;
+            }
+
+            var result = await operation(principal);
+            if (result.State is not null)
+            {
+                ApplyState(result.State);
+            }
+            if (!result.Succeeded)
+            {
+                _error = string.Join(
+                    " ",
+                    result.Errors.Select(error => error.Description));
+                return;
+            }
+
+            _recoveryCodes = result.RecoveryCodes;
+            _success = successMessage;
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Two-factor account operation failed.");
+            _error = "Não foi possível concluir a alteração de duas etapas. Tente novamente.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void ApplyState(AccountTwoFactorOverview state)
+    {
+        _overview = state;
+        _qrCode = state.AuthenticatorSetup is null
+            ? null
+            : BuildQrCode(state.AuthenticatorSetup.AuthenticatorUri);
+    }
+
+    private async Task CopyRecoveryCodesAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "navigator.clipboard.writeText",
+                string.Join(Environment.NewLine, _recoveryCodes));
+            _success = "Códigos copiados para a área de transferência.";
+        }
+        catch (JSException exception)
+        {
+            Logger.LogWarning(exception, "Recovery codes could not be copied.");
+            _error = "O navegador não permitiu copiar os códigos. Selecione e copie manualmente.";
+        }
+    }
+
+    private void DismissRecoveryCodes()
+    {
+        _recoveryCodes = [];
+        _success = "Códigos de recuperação confirmados.";
+    }
+
+    private static string BuildQrCode(string authenticatorUri)
+    {
+        using var qrGenerator = new QRCoder.QRCodeGenerator();
+        using var qrData = qrGenerator.CreateQrCode(
+            authenticatorUri,
+            QRCoder.QRCodeGenerator.ECCLevel.Q);
+        var pngQrCode = new QRCoder.PngByteQRCode(qrData);
+        var pngBytes = pngQrCode.GetGraphic(20);
+        return $"data:image/png;base64,{Convert.ToBase64String(pngBytes)}";
+    }
+
+    private sealed class VerifyInput
+    {
+        [Required(ErrorMessage = "O código é obrigatório.")]
+        [StringLength(16, ErrorMessage = "O código informado é muito longo.")]
+        public string Code { get; set; } = string.Empty;
+    }
+}

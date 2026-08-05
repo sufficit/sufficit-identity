@@ -1,0 +1,34 @@
+[Unit]
+Description=.NET Sufficit Identity Service (OpenIddict)
+After=network-online.target
+Requires=network-online.target
+
+[Service]
+ExecStartPre=+-/bin/bash /opt/sufficit-identity/helpers/prestart.sh
+ExecStart=/usr/share/dotnet/dotnet Sufficit.Identity.Server.dll
+WorkingDirectory=/opt/sufficit-identity/
+User=dotnetuser
+Group=www-data
+PrivateTmp=true
+UMask=0006
+
+SyslogIdentifier=[sufficit][identity]
+StandardOutput=journal
+StandardError=journal
+
+Restart=on-failure
+TimeoutStartSec=30
+TimeoutStopSec=5
+RestartSec=10
+
+KillSignal=SIGINT
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+Environment=DOTNET_ROOT=/usr/share/dotnet
+EnvironmentFile=-/etc/sufficit/identity/hardening.env
+
+RuntimeDirectory=sufficit-identity
+RuntimeDirectoryMode=0775
+
+[Install]
+WantedBy=multi-user.target

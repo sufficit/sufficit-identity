@@ -1,0 +1,177 @@
+using System.Diagnostics;
+using System.Text.Json;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Management.Provisioning;
+using Sufficit.Identity.UI.Management.Clients;
+
+namespace Sufficit.Identity.UI.Management.Provisioning;
+
+/// <summary>
+/// Circuit-safe UI adapter over the canonical provisioning use case.
+/// JSON parsing is a presentation concern; validation and persistence remain
+/// in the shared application service.
+/// </summary>
+public sealed class ManagementProvisioningDataSource(
+    IServiceScopeFactory scopeFactory,
+    AuthenticationStateProvider authenticationStateProvider,
+    ILogger<ManagementProvisioningDataSource> logger)
+{
+    public const int MaxManifestLength = 262_144;
+
+    private static readonly JsonSerializerOptions JsonOptions =
+        new(JsonSerializerDefaults.Web);
+
+    public Task<ManagementDataResult<IdentityProvisioningPlan>> PreviewAsync(
+        string manifestJson,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            manifestJson,
+            (service, manifest, context) => service.PreviewAsync(
+                manifest,
+                context,
+                cancellationToken),
+            "Provisioning preview",
+            cancellationToken);
+
+    public Task<ManagementDataResult<IdentityProvisioningPlan>> ApplyAsync(
+        string manifestJson,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            manifestJson,
+            (service, manifest, context) => service.ApplyAsync(
+                manifest,
+                context,
+                cancellationToken),
+            "Provisioning apply",
+            cancellationToken);
+
+    private async Task<ManagementDataResult<IdentityProvisioningPlan>>
+        ExecuteAsync(
+            string manifestJson,
+            Func<
+                IProvisioningManagementService,
+                IdentityProvisioningManifest,
+                ManagementRequestContext,
+                Task<IdentityProvisioningPlan>> operation,
+            string operationName,
+            CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(manifestJson))
+        {
+            return Invalid(
+                "Informe o manifesto JSON.",
+                "O documento não pode ficar vazio.");
+        }
+
+        if (manifestJson.Length > MaxManifestLength)
+        {
+            return Invalid(
+                "O manifesto excede o limite permitido.",
+                $"Use no máximo {MaxManifestLength:N0} caracteres.");
+        }
+
+        IdentityProvisioningManifest? manifest;
+        try
+        {
+            manifest = JsonSerializer.Deserialize<IdentityProvisioningManifest>(
+                manifestJson,
+                JsonOptions);
+        }
+        catch (JsonException exception)
+        {
+            return Invalid(
+                "O JSON não pôde ser interpretado.",
+                JsonError(exception));
+        }
+
+        if (manifest is null)
+        {
+            return Invalid(
+                "Informe um objeto JSON válido.",
+                "O valor JSON null não representa um manifesto.");
+        }
+
+        try
+        {
+            var authentication =
+                await authenticationStateProvider.GetAuthenticationStateAsync();
+            var context = new ManagementRequestContext(
+                authentication.User,
+                Activity.Current?.Id
+                    ?? $"management-ui-{Guid.NewGuid():N}");
+
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var service = scope.ServiceProvider
+                .GetRequiredService<IProvisioningManagementService>();
+            return ManagementDataResult<IdentityProvisioningPlan>.Success(
+                await operation(service, manifest, context));
+        }
+        catch (IdentityProvisioningManifestException exception)
+        {
+            return ManagementDataResult<IdentityProvisioningPlan>.Failure(
+                ManagementDataOutcome.Invalid,
+                "O manifesto não passou pela validação de segurança.",
+                errorDetails: exception.Errors);
+        }
+        catch (ManagementConflictException exception)
+        {
+            return ManagementDataResult<IdentityProvisioningPlan>.Failure(
+                ManagementDataOutcome.Conflict,
+                exception.Message);
+        }
+        catch (ManagementAccessException exception)
+        {
+            var outcome = exception.Decision.Outcome is
+                ManagementAuthorizationOutcome.StepUpRequired
+                    ? ManagementDataOutcome.StepUpRequired
+                    : ManagementDataOutcome.Forbidden;
+            return ManagementDataResult<IdentityProvisioningPlan>.Failure(
+                outcome,
+                outcome is ManagementDataOutcome.StepUpRequired
+                    ? "Conclua a autenticação multifator para continuar."
+                    : "Sua conta não possui a capability necessária.");
+        }
+        catch (OperationCanceledException)
+            when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("{OperationName} timed out.", operationName);
+            return ManagementDataResult<IdentityProvisioningPlan>.Failure(
+                ManagementDataOutcome.Unavailable,
+                "O serviço demorou mais que o esperado. Tente novamente.");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(
+                exception,
+                "{OperationName} failed in the embedded management module.",
+                operationName);
+            return ManagementDataResult<IdentityProvisioningPlan>.Failure(
+                ManagementDataOutcome.Unavailable,
+                "O serviço de identidade não conseguiu concluir a operação.");
+        }
+    }
+
+    private static ManagementDataResult<IdentityProvisioningPlan> Invalid(
+        string message,
+        string detail) =>
+        ManagementDataResult<IdentityProvisioningPlan>.Failure(
+            ManagementDataOutcome.Invalid,
+            message,
+            errorDetails: [detail]);
+
+    private static string JsonError(JsonException exception)
+    {
+        var location = exception.LineNumber is null
+            ? null
+            : $"Linha {exception.LineNumber + 1}, coluna {(exception.BytePositionInLine ?? 0) + 1}.";
+        return location
+            ?? "Revise a sintaxe e os nomes das propriedades.";
+    }
+}

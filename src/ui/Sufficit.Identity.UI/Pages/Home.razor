@@ -1,0 +1,19 @@
+@page "/"
+@inject NavigationManager Navigation
+@inject IBrandingThemeProvider BrandingProvider
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? _authTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Warm the branding cache on first hit (cheap, singleton).
+        await BrandingProvider.GetActiveAsync();
+
+        // Redirect before the page renders — no blank flash.
+        var auth = _authTask is not null ? await _authTask : null;
+        var isAuth = auth?.User?.Identity?.IsAuthenticated ?? false;
+        Navigation.NavigateTo(isAuth ? "/manage" : "/account/login", forceLoad: true);
+    }
+}

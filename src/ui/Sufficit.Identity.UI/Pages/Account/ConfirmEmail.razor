@@ -1,0 +1,41 @@
+@page "/account/confirmemail"
+@inject IAccountOnboardingService AccountOnboarding
+
+<PageTitle>Confirmar e-mail — Sufficit Identity</PageTitle>
+
+<div class="auth-card">
+    <h1>Confirmação de e-mail</h1>
+
+    @if (_status is not null)
+    {
+        <div class="@(_success ? "alert alert-success" : "alert alert-error")">@_status</div>
+    }
+
+    <a href="/account/login" class="btn btn-primary">Voltar ao login</a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] private string? UserId { get; set; }
+    [SupplyParameterFromQuery(Name = "code")] private string? Token { get; set; }
+
+    private string? _status;
+    private bool _success;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await AccountOnboarding.ConfirmEmailAsync(
+            UserId,
+            Token);
+        _success = result.Status == AccountEmailConfirmationStatus.Succeeded;
+        _status = result.Status switch
+        {
+            AccountEmailConfirmationStatus.Succeeded =>
+                "E-mail confirmado com sucesso!",
+            AccountEmailConfirmationStatus.InvalidRequest =>
+                "Link inválido ou expirado.",
+            _ => string.Join(
+                " ",
+                result.Errors.Select(error => error.Description)),
+        };
+    }
+}

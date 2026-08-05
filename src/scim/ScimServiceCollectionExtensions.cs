@@ -1,0 +1,78 @@
+using System.Reflection;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenIddict.Validation.AspNetCore;
+
+namespace Sufficit.Identity.Scim;
+
+public static class ScimServiceCollectionExtensions
+{
+    public const string PolicyName = "sufficit-identity-scim";
+
+    public static IServiceCollection AddSufficitIdentityScim(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        string configurationSection = "Sufficit:Identity:Scim")
+    {
+        var section = configuration.GetSection(configurationSection);
+        var options = section.Get<ScimOptions>() ?? new ScimOptions();
+        services.AddOptions<ScimOptions>().Bind(section);
+        services.AddControllers()
+            .PartManager.ApplicationParts.Add(
+                new AssemblyPart(Assembly.GetExecutingAssembly()));
+        services.TryAddScoped<IScimProvisioningService,
+            ScimProvisioningService>();
+        services.TryAddScoped<ScimExceptionFilter>();
+        services.TryAddScoped<ScimAuthorizationAuditFilter>();
+
+        services.AddAuthorization(builder =>
+        {
+            builder.AddPolicy(PolicyName, policy =>
+            {
+                policy.AuthenticationSchemes.Add(
+                    OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+                policy.RequireAuthenticatedUser();
+                // RequireAuthorization only controls the scope check for
+                // trusted migration scenarios. Authentication must remain
+                // mandatory so disabling the scope requirement can never make
+                // SCIM CRUD (including password/delete) anonymous.
+                if (options.RequireAuthorization)
+                {
+                    policy.Requirements.Add(
+                        new ScimScopeRequirement(options.RequiredScope));
+                }
+            });
+        });
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<
+                IAuthorizationHandler,
+                ScimScopeHandler>());
+
+        return services;
+    }
+}
+
+public sealed record ScimScopeRequirement(string Scope)
+    : IAuthorizationRequirement;
+
+public sealed class ScimScopeHandler
+    : AuthorizationHandler<ScimScopeRequirement>
+{
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        ScimScopeRequirement requirement)
+    {
+        var scopes = context.User.FindAll("scope")
+            .SelectMany(claim => claim.Value.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries));
+        if (scopes.Contains(requirement.Scope, StringComparer.Ordinal))
+        {
+            context.Succeed(requirement);
+        }
+        return Task.CompletedTask;
+    }
+}

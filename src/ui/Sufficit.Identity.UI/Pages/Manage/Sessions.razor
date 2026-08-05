@@ -1,0 +1,224 @@
+@page "/manage/sessions"
+@rendermode @(RenderMode.InteractiveServer)
+@attribute [Authorize]
+@inject IAccountAccessService AccountAccessService
+@inject IJSRuntime JS
+@inject ILogger<Sessions> Logger
+
+<PageTitle>Sessões ativas — Sufficit Identity</PageTitle>
+
+<div class="auth-card">
+    <ManageBackLink />
+    <h1>Sessões ativas</h1>
+    <p class="info">Credenciais OAuth/OIDC ativas emitidas para sua conta.</p>
+
+    <div aria-live="polite">
+        @if (_success is not null)
+        {
+            <div class="alert alert-success">@_success</div>
+        }
+        @if (_error is not null)
+        {
+            <div class="alert alert-error">@_error</div>
+        }
+    </div>
+
+    @if (_loading)
+    {
+        <p class="muted">Carregando sessões…</p>
+    }
+    else if (_sessions.Count == 0)
+    {
+        <p class="muted">Nenhuma sessão ativa encontrada.</p>
+    }
+    else
+    {
+        <ul class="session-list">
+            @foreach (var session in _sessions)
+            {
+                <li class="session-item">
+                    <div class="access-item-body">
+                        <strong class="access-item-title">@session.DisplayName</strong>
+                        @if (!string.IsNullOrWhiteSpace(session.ClientId))
+                        {
+                            <span class="access-client-id">@session.ClientId</span>
+                        }
+                        <dl class="access-metadata">
+                            <div>
+                                <dt>Credencial</dt>
+                                <dd>@FormatTokenType(session.Type)</dd>
+                            </div>
+                            <div>
+                                <dt>Emitida</dt>
+                                <dd>@FormatDate(session.CreatedAt)</dd>
+                            </div>
+                            <div>
+                                <dt>Expira</dt>
+                                <dd>@FormatDate(session.ExpiresAt, "Sem expiração informada")</dd>
+                            </div>
+                        </dl>
+                    </div>
+                    <button type="button"
+                            class="btn btn-danger btn-sm access-item-action"
+                            disabled="@IsBusy"
+                            @onclick="() => RevokeAsync(session)">
+                        @(_busySessionId == session.Id ? "Revogando…" : "Revogar")
+                    </button>
+                </li>
+            }
+        </ul>
+
+        <div class="session-revoke-all">
+            <p class="muted">
+                Encerra todas as credenciais e autorizações da conta, inclusive em outros dispositivos.
+            </p>
+            <button type="button"
+                    class="btn btn-danger"
+                    disabled="@IsBusy"
+                    @onclick="RevokeAllAsync">
+                @(_revokingAll ? "Encerrando…" : "Encerrar todas as sessões e acessos")
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState>? _authTask { get; set; }
+
+    private IReadOnlyList<AccountSessionCredential> _sessions = [];
+    private bool _loading = true;
+    private bool _revokingAll;
+    private string? _busySessionId;
+    private string? _success;
+    private string? _error;
+    private bool IsBusy => _revokingAll || _busySessionId is not null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+            if (principal is null)
+            {
+                _error = "Sua sessão expirou. Entre novamente.";
+                return;
+            }
+
+            _sessions = await AccountAccessService.GetSessionsAsync(principal);
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "Active sessions could not be loaded.");
+            _error = "Não foi possível carregar as sessões ativas. Tente novamente.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RevokeAsync(AccountSessionCredential session)
+    {
+        _busySessionId = session.Id;
+        _success = null;
+        _error = null;
+        try
+        {
+            var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+            if (principal is null)
+            {
+                _error = "Sua sessão expirou. Entre novamente.";
+                return;
+            }
+
+            var result = await AccountAccessService.RevokeSessionAsync(
+                principal,
+                session.Id);
+            if (!result.Succeeded)
+            {
+                _error = string.Join(
+                    " ",
+                    result.Errors.Select(error => error.Description));
+                return;
+            }
+
+            _sessions = _sessions
+                .Where(item => item.Id != session.Id)
+                .ToArray();
+            _success = "A sessão selecionada foi encerrada.";
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(
+                exception,
+                "Session credential {SessionId} could not be revoked.",
+                session.Id);
+            _error = "Não foi possível encerrar a sessão. Tente novamente.";
+        }
+        finally
+        {
+            _busySessionId = null;
+        }
+    }
+
+    private async Task RevokeAllAsync()
+    {
+        var confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            "Encerrar todas as sessões e revogar todos os acessos da sua conta?");
+        if (!confirmed)
+        {
+            return;
+        }
+
+        _revokingAll = true;
+        _success = null;
+        _error = null;
+        try
+        {
+            var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+            if (principal is null)
+            {
+                _error = "Sua sessão expirou. Entre novamente.";
+                return;
+            }
+
+            var result = await AccountAccessService.RevokeAllSessionsAsync(principal);
+            if (!result.Succeeded)
+            {
+                _error = string.Join(
+                    " ",
+                    result.Errors.Select(error => error.Description));
+                return;
+            }
+
+            _sessions = [];
+            _success = "Todas as sessões e autorizações foram encerradas. Entre novamente quando necessário.";
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(exception, "All account sessions could not be revoked.");
+            _error = "Não foi possível encerrar todas as sessões. Tente novamente.";
+        }
+        finally
+        {
+            _revokingAll = false;
+        }
+    }
+
+    private static string FormatTokenType(string type) => type switch
+    {
+        "access_token" => "Token de acesso",
+        "refresh_token" => "Token de atualização",
+        "identity_token" => "Token de identidade",
+        "authorization_code" => "Código de autorização",
+        "device_code" => "Código de dispositivo",
+        "user_code" => "Código de usuário",
+        _ => type,
+    };
+
+    private static string FormatDate(
+        DateTimeOffset? value,
+        string fallback = "Não informada") =>
+        value?.UtcDateTime.ToString("dd/MM/yyyy HH:mm 'UTC'") ?? fallback;
+}

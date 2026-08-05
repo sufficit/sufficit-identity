@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Sufficit.Identity.Scim</RootNamespace>
+    <AssemblyName>Sufficit.Identity.Scim</AssemblyName>
+    <Description>Sufficit Identity — optional RFC 7643/7644 SCIM provisioning module.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenIddict.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\core\Sufficit.Identity.Core.csproj" />
+  </ItemGroup>
+
+</Project>

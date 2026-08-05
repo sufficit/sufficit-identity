@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Sufficit.Identity.UI.Abstractions</RootNamespace>
+    <AssemblyName>Sufficit.Identity.UI.Abstractions</AssemblyName>
+    <Description>Sufficit Identity — implementation-neutral UI hosting contracts.</Description>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+</Project>
