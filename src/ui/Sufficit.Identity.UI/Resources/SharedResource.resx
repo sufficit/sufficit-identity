@@ -273,5 +273,48 @@
   <data name="Common.Back" xml:space="preserve"><value>Voltar</value></data>
   <data name="Common.Confirm" xml:space="preserve"><value>Confirmar</value></data>
   <data name="Common.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Common.BackHome" xml:space="preserve"><value>Voltar ao início</value></data>
+  <data name="Common.TryAgain" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Logout.Continue" xml:space="preserve"><value>Continuar</value></data>
+  <data name="TwoFactor.Submit" xml:space="preserve"><value>Verificar</value></data>
+  <data name="Register.ConfirmationSentPrefix" xml:space="preserve"><value>Enviamos um e-mail de confirmação para</value></data>
+  <data name="Register.ConfirmationSentSuffix" xml:space="preserve"><value>Clique no link do e-mail para ativar sua conta.</value></data>
+  <data name="Register.ConfirmationFailed" xml:space="preserve"><value>Não foi possível entregar a confirmação agora. Use a opção de reenviar confirmação.</value></data>
+  <data name="RecoveryCode.CodeLabel" xml:space="preserve"><value>Código de recuperação</value></data>
+  <data name="RecoveryCode.BackToAuthenticator" xml:space="preserve"><value>Voltar para código do app autenticador</value></data>
+  <data name="ResendEmail.Success" xml:space="preserve"><value>Se o e-mail existir, um novo link de confirmação foi enviado.</value></data>
+  <data name="ResendEmail.Email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="ResetPassword.RequestNewLink" xml:space="preserve"><value>Solicitar novo link</value></data>
+  <data name="Device.PageTitle" xml:space="preserve"><value>Confirmar acesso — Sufficit Identity</value></data>
+  <data name="Device.ApprovedTitle" xml:space="preserve"><value>Acesso autorizado</value></data>
+  <data name="Device.DeniedTitle" xml:space="preserve"><value>Acesso negado</value></data>
+  <data name="Device.CloseTab" xml:space="preserve"><value>Fechar esta aba</value></data>
+  <data name="Device.CloseFallback" xml:space="preserve"><value>O navegador não permitiu fechar esta aba automaticamente. Você pode fechá-la pelo controle de abas e voltar ao dispositivo que iniciou o acesso.</value></data>
+  <data name="Device.CloseNoScript" xml:space="preserve"><value>Você pode fechar esta aba e voltar ao dispositivo que iniciou o acesso.</value></data>
+  <data name="Device.CodeHint" xml:space="preserve"><value>O código identifica esta solicitação e expira em poucos minutos.</value></data>
+  <data name="Device.ConfirmationFailed" xml:space="preserve"><value>Não foi possível confirmar</value></data>
+  <data name="Device.ConfirmTitle" xml:space="preserve"><value>Confirmar acesso</value></data>
+  <data name="Device.Requester" xml:space="preserve"><value>Solicitante</value></data>
+  <data name="Device.CodeConfirmed" xml:space="preserve"><value>Código confirmado</value></data>
+  <data name="Device.NoAdditionalScopes" xml:space="preserve"><value>Nenhuma permissão adicional foi solicitada.</value></data>
+  <data name="Device.ValidityLabel" xml:space="preserve"><value>Validade do acesso</value></data>
+  <data name="Device.SafetyNote" xml:space="preserve"><value>Autorize somente se você iniciou esta solicitação. A aplicação nunca verá sua senha.</value></data>
+  <data name="DeleteAccount.DataWarning" xml:space="preserve"><value>Todos os seus dados (perfil, logins externos vinculados, configurações de 2FA) serão removidos.</value></data>
+  <data name="DeleteAccount.Email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="DeleteAccount.CurrentPassword" xml:space="preserve"><value>Senha atual</value></data>
+  <data name="ManagePasskeys.Loading" xml:space="preserve"><value>Carregando passkeys...</value></data>
+  <data name="ManagePasskeys.LoadError" xml:space="preserve"><value>Não foi possível carregar suas passkeys.</value></data>
+  <data name="ManagePasskeys.RenameHint" xml:space="preserve"><value>Deixe em branco para remover o nome. A credencial continuará funcionando normalmente.</value></data>
+  <data name="ManagePasskeys.Saving" xml:space="preserve"><value>Salvando...</value></data>
+  <data name="ManagePasskeys.SaveName" xml:space="preserve"><value>Salvar nome</value></data>
+  <data name="ManagePasskeys.Unsupported" xml:space="preserve"><value>Este navegador não oferece suporte a passkeys neste dispositivo. Tente um navegador moderno com Windows Hello, Touch ID, Face ID ou uma chave de segurança USB/NFC.</value></data>
+  <data name="ManagePasskeys.LimitReached" xml:space="preserve"><value>Esta conta atingiu o limite de {0} passkeys. Remova uma passkey antes de registrar outra.</value></data>
+  <data name="ManagePasskeys.DeviceNameHint" xml:space="preserve"><value>Use um nome que ajude a reconhecer o dispositivo.</value></data>
+  <data name="ManagePasskeys.WaitingDevice" xml:space="preserve"><value>Aguardando o dispositivo...</value></data>
+  <data name="ManagePasskeys.Register" xml:space="preserve"><value>Registrar passkey</value></data>
+  <data name="Sessions.Loading" xml:space="preserve"><value>Carregando sessões…</value></data>
+  <data name="Sessions.RevokeAllDescription" xml:space="preserve"><value>Encerra todas as credenciais e autorizações da conta, inclusive em outros dispositivos.</value></data>
+  <data name="ManageTwoFactor.Description" xml:space="preserve"><value>Use um aplicativo autenticador para proteger sua conta com um segundo fator.</value></data>
+  <data name="ManageTwoFactor.QrAlt" xml:space="preserve"><value>QR code para configurar a autenticação em duas etapas</value></data>
   <data name="Culture.Selector" xml:space="preserve"><value>Idioma</value></data>
 </root>

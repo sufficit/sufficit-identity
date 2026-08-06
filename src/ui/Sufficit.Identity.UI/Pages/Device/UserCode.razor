@@ -6,7 +6,7 @@
 @inject ScopeViewModelProvider ScopeProvider
 @inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Confirmar acesso — Sufficit Identity</PageTitle>
+<PageTitle>@L["Device.PageTitle"]</PageTitle>
 
 <div class="auth-card device-authorization-card">
     @if (_resultApproved is not null)
@@ -15,7 +15,7 @@
         {
             <div class="device-result" role="status" data-device-flow-result>
                 <span class="device-result__icon" aria-hidden="true">✓</span>
-                <h1>Acesso autorizado</h1>
+                <h1>@L["Device.ApprovedTitle"]</h1>
                 <p>@L["Device.Approved"]</p>
             </div>
         }
@@ -23,19 +23,19 @@
         {
             <div class="device-result" role="status" data-device-flow-result>
                 <span class="device-result__icon device-result__icon--denied" aria-hidden="true">×</span>
-                <h1>Acesso negado</h1>
+                <h1>@L["Device.DeniedTitle"]</h1>
                 <p>@L["Device.Denied"]</p>
             </div>
         }
         <button type="button" class="btn btn-primary btn-block" data-device-flow-close hidden>
-            Fechar esta aba
+            @L["Device.CloseTab"]
         </button>
         <p class="device-close-fallback" data-device-close-fallback hidden role="status" aria-live="polite">
-            O navegador não permitiu fechar esta aba automaticamente. Você pode fechá-la pelo controle de abas e voltar ao dispositivo que iniciou o acesso.
+            @L["Device.CloseFallback"]
         </p>
         <noscript>
             <p class="device-close-fallback">
-                Você pode fechar esta aba e voltar ao dispositivo que iniciou o acesso.
+                @L["Device.CloseNoScript"]
             </p>
         </noscript>
     }
@@ -52,7 +52,7 @@
                 <input id="usercode" name="user_code" class="form-control device-code"
                        inputmode="numeric" placeholder="@L["Device.CodePlaceholder"]"
                        autocomplete="one-time-code" autofocus />
-                <span class="field-hint">O código identifica esta solicitação e expira em poucos minutos.</span>
+                <span class="field-hint">@L["Device.CodeHint"]</span>
             </div>
 
             <button type="submit" class="btn btn-primary btn-block">@L["Device.Continue"]</button>
@@ -60,14 +60,14 @@
     }
     else if (_error is not null)
     {
-        <h1>Não foi possível confirmar</h1>
+        <h1>@L["Device.ConfirmationFailed"]</h1>
         <div class="alert alert-error" role="alert">@_error</div>
         <a class="btn btn-secondary btn-block" href="/device/usercode">@L["Device.TryAgain"]</a>
     }
     else
     {
         <header class="device-authorization-header">
-            <h1>Confirmar acesso</h1>
+            <h1>@L["Device.ConfirmTitle"]</h1>
             <p>
                 @L["Device.RequestingAccess"]
             </p>
@@ -79,11 +79,11 @@
                 <strong>@_clientName</strong>
                 <code>@_clientId</code>
             </span>
-            <span class="badge badge-outline">Solicitante</span>
+            <span class="badge badge-outline">@L["Device.Requester"]</span>
         </div>
 
         <div class="device-code-confirmation">
-            <span>Código confirmado</span>
+            <span>@L["Device.CodeConfirmed"]</span>
             <strong>@_displayCode</strong>
         </div>
 
@@ -91,7 +91,7 @@
             <h2 id="device-permissions-title">@L["Device.RequestedScopes"]</h2>
             @if (_scopes.Count == 0)
             {
-                <p class="device-permissions__empty">Nenhuma permissão adicional foi solicitada.</p>
+                <p class="device-permissions__empty">@L["Device.NoAdditionalScopes"]</p>
             }
             else
             {
@@ -110,7 +110,7 @@
             }
         </section>
 
-        <dl class="device-validity" aria-label="Validade do acesso">
+        <dl class="device-validity" aria-label="@L["Device.ValidityLabel"]">
             <div class="device-validity__row">
                 <dt>Validade do token</dt>
                 <dd>
@@ -141,7 +141,7 @@
         </dl>
 
         <p class="device-safety-note">
-            Autorize somente se você iniciou esta solicitação. A aplicação nunca verá sua senha.
+            @L["Device.SafetyNote"]
         </p>
 
         <form method="post" action="/connect/device">

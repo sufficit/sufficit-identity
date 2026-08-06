@@ -34,7 +34,7 @@
 
     @if (_loading)
     {
-        <p class="muted">Carregando sessões…</p>
+        <p class="muted">@L["Sessions.Loading"]</p>
     }
     else if (_sessions.Count == 0)
     {
@@ -90,7 +90,7 @@
 
         <div class="session-revoke-all">
             <p class="muted">
-                Encerra todas as credenciais e autorizações da conta, inclusive em outros dispositivos.
+                @L["Sessions.RevokeAllDescription"]
             </p>
             <button type="button"
                     class="btn btn-danger"
