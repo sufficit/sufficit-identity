@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using Sufficit.Identity.UI.Abstractions.Hosting;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.UI.Management.Audit;
 using Sufficit.Identity.UI.Management.Authorizations;
@@ -96,6 +97,13 @@ public static class ServiceCollectionExtensions
         IConfiguration configuration,
         string configurationSection = ManagementUiOptions.SectionName)
     {
+        // Phase 2: carry the module descriptor through DI for startup validation.
+        services.TryAddSingleton<UiModuleRegistry>();
+        services.TryAddSingleton<IUiModuleRegistry>(sp => sp.GetRequiredService<UiModuleRegistry>());
+        services.AddSingleton(_ => new UiModuleDescriptor(
+            "sufficit-identity-management-ui", UiSurface.Management,
+            new Version(0, 4, 0), new Version(0, 4, 0)));
+
         var configurationRoot = configuration.GetSection(configurationSection);
         var options = configurationRoot.Get<ManagementUiOptions>()
             ?? new ManagementUiOptions();

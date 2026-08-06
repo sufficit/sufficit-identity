@@ -263,6 +263,53 @@ if (rateLimit.Enabled)
 
 var app = builder.Build();
 
+// ---- Validate UI module composition (Phase 2) ----
+// Catches: duplicate modules, incompatible versions, surface requested
+// without a module, management UI without management API. All fail-fast
+// with a clear message instead of silent no-ops or runtime 404s.
+{
+    var hostVersion = typeof(Program).Assembly.GetName().Version ?? new Version(0, 4, 0);
+    var registry = app.Services.GetService<UiModuleRegistry>();
+    if (registry is not null)
+    {
+        // Collect all UiModuleDescriptor singletons registered by the UI modules.
+        foreach (var descriptor in app.Services.GetServices<UiModuleDescriptor>())
+        {
+            registry.Register(descriptor);
+        }
+
+        // Validate: incompatible versions.
+        foreach (var module in registry.Modules)
+        {
+            if (module.MinHostVersion > hostVersion)
+            {
+                throw new UiCompositionException(
+                    $"UI module '{module.Id}' v{module.Version} requires host >= " +
+                    $"v{module.MinHostVersion}, but the host is v{hostVersion}.");
+            }
+        }
+
+        // Validate: surface requested but no module registered for it.
+        if (uiHostingOptions.Public.IsEmbedded && !registry.HasSurface(UiSurface.Public))
+        {
+            throw new UiCompositionException(
+                "Public UI surface is Embedded but no public UI module was registered.");
+        }
+
+        if (uiHostingOptions.Management.IsEmbedded && !registry.HasSurface(UiSurface.Management))
+        {
+            if (!mgmtEnabled)
+            {
+                throw new UiCompositionException(
+                    "Management UI surface is Embedded but the management API " +
+                    "(Sufficit:Identity:Management:Enabled) is disabled.");
+            }
+            throw new UiCompositionException(
+                "Management UI surface is Embedded but no management UI module was registered.");
+        }
+    }
+}
+
 if (trustedProxies.Length == 0 && !app.Environment.IsDevelopment())
 {
     var message =

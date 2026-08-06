@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\application\Sufficit.Identity.Application.Abstractions\Sufficit.Identity.Application.Abstractions.csproj" />
+    <ProjectReference Include="..\Sufficit.Identity.UI.Abstractions\Sufficit.Identity.UI.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
