@@ -4,7 +4,9 @@ public sealed record DeviceAuthorizationContext(
     bool IsValid,
     string? ClientId,
     string? ClientDisplayName,
-    IReadOnlyList<string> RequestedScopes);
+    IReadOnlyList<string> RequestedScopes,
+    TimeSpan? AccessTokenLifetime,
+    bool AllowsRefreshAccess);
 
 /// <summary>
 /// Projects the validated, short-lived device authorization transaction into

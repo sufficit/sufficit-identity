@@ -1,9 +1,12 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
+using OpenIddict.Server;
 using Sufficit.Identity.Application.Accounts;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -25,19 +28,22 @@ public sealed class OpenIddictDeviceAuthorizationContextService :
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IOpenIddictTokenManager _tokenManager;
     private readonly IOpenIddictApplicationManager _applicationManager;
+    private readonly IOptionsMonitor<OpenIddictServerOptions> _serverOptions;
     private readonly ITimeLimitedDataProtector _protector;
 
     public OpenIddictDeviceAuthorizationContextService(
         IHttpContextAccessor httpContextAccessor,
         IOpenIddictTokenManager tokenManager,
         IOpenIddictApplicationManager applicationManager,
+        IOptionsMonitor<OpenIddictServerOptions> serverOptions,
         IDataProtectionProvider dataProtectionProvider)
     {
         _httpContextAccessor = httpContextAccessor;
         _tokenManager = tokenManager;
         _applicationManager = applicationManager;
+        _serverOptions = serverOptions;
         _protector = dataProtectionProvider
-            .CreateProtector("Sufficit.Identity.DeviceAuthorizationContext.v1")
+            .CreateProtector("Sufficit.Identity.DeviceAuthorizationContext.v2")
             .ToTimeLimitedDataProtector();
     }
 
@@ -97,12 +103,19 @@ public sealed class OpenIddictDeviceAuthorizationContextService :
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ToArray();
+        var accessTokenLifetime = authorizationPrincipal.GetAccessTokenLifetime()
+            ?? await GetApplicationAccessTokenLifetimeAsync(
+                application,
+                cancellationToken)
+            ?? _serverOptions.CurrentValue.AccessTokenLifetime;
 
         var payload = JsonSerializer.Serialize(new DeviceAuthorizationTicket(
             normalized,
             clientId,
             displayName,
-            scopes));
+            scopes,
+            accessTokenLifetime?.Ticks,
+            scopes.Contains(Scopes.OfflineAccess, StringComparer.Ordinal)));
         return _protector.Protect(payload, TicketLifetime);
     }
 
@@ -150,7 +163,11 @@ public sealed class OpenIddictDeviceAuthorizationContextService :
                 true,
                 ticket.ClientId,
                 ticket.ClientDisplayName,
-                ticket.RequestedScopes ?? []));
+                ticket.RequestedScopes ?? [],
+                ticket.AccessTokenLifetimeTicks is { } ticks
+                    ? TimeSpan.FromTicks(ticks)
+                    : null,
+                ticket.AllowsRefreshAccess));
         }
         catch (Exception exception) when (exception is CryptographicException
             or JsonException)
@@ -160,7 +177,25 @@ public sealed class OpenIddictDeviceAuthorizationContextService :
     }
 
     private static DeviceAuthorizationContext Invalid() =>
-        new(false, null, null, []);
+        new(false, null, null, [], null, false);
+
+    private async Task<TimeSpan?> GetApplicationAccessTokenLifetimeAsync(
+        object application,
+        CancellationToken cancellationToken)
+    {
+        var settings = await _applicationManager.GetSettingsAsync(
+            application,
+            cancellationToken);
+        return settings.TryGetValue(
+                Settings.TokenLifetimes.AccessToken,
+                out var value)
+            && TimeSpan.TryParse(
+                value,
+                CultureInfo.InvariantCulture,
+                out var lifetime)
+                ? lifetime
+                : null;
+    }
 
     private static string NormalizeUserCode(string code) =>
         code.Trim().ToUpperInvariant().Replace("-", string.Empty)
@@ -170,5 +205,7 @@ public sealed class OpenIddictDeviceAuthorizationContextService :
         string UserCode,
         string ClientId,
         string ClientDisplayName,
-        string[] RequestedScopes);
+        string[] RequestedScopes,
+        long? AccessTokenLifetimeTicks,
+        bool AllowsRefreshAccess);
 }

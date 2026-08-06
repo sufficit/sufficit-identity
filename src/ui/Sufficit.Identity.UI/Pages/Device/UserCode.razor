@@ -1,6 +1,7 @@
 @page "/device/usercode"
 @page "/device"
 @attribute [Authorize]
+@using System.Globalization
 @inject IDeviceAuthorizationContextService DeviceContextService
 @inject ScopeViewModelProvider ScopeProvider
 
@@ -98,6 +99,36 @@
             }
         </section>
 
+        <dl class="device-validity" aria-label="Validade do acesso">
+            <div class="device-validity__row">
+                <dt>Validade do token</dt>
+                <dd>
+                    @if (_estimatedAccessTokenExpiresAt is { } expiresAt)
+                    {
+                        <strong>
+                            Até <time datetime="@expiresAt.ToString("O", CultureInfo.InvariantCulture)">@FormatExpiration(expiresAt)</time>
+                        </strong>
+                        <span>@FormatLifetime(_accessTokenLifetime!.Value) após a emissão.</span>
+                    }
+                    else
+                    {
+                        <strong>Prazo indeterminado</strong>
+                        <span>Este token não tem uma expiração configurada.</span>
+                    }
+                </dd>
+            </div>
+            @if (_allowsRefreshAccess)
+            {
+                <div class="device-validity__row">
+                    <dt>Renovação</dt>
+                    <dd>
+                        <strong>Acesso contínuo solicitado</strong>
+                        <span>A aplicação poderá renovar o token até você revogar esta autorização.</span>
+                    </dd>
+                </div>
+            }
+        </dl>
+
         <p class="device-safety-note">
             Autorize somente se você iniciou esta solicitação. A aplicação nunca verá sua senha.
         </p>
@@ -128,6 +159,9 @@
     private string? _clientId;
     private string? _clientName;
     private IReadOnlyList<ScopeViewModel> _scopes = Array.Empty<ScopeViewModel>();
+    private TimeSpan? _accessTokenLifetime;
+    private DateTimeOffset? _estimatedAccessTokenExpiresAt;
+    private bool _allowsRefreshAccess;
     private string? _error;
     private bool? _resultApproved;
 
@@ -162,6 +196,11 @@
         _clientId = context.ClientId;
         _clientName = context.ClientDisplayName ?? context.ClientId;
         _scopes = ScopeProvider.Build(context.RequestedScopes);
+        _accessTokenLifetime = context.AccessTokenLifetime;
+        _estimatedAccessTokenExpiresAt = context.AccessTokenLifetime is { } lifetime
+            ? DateTimeOffset.UtcNow.Add(lifetime)
+            : null;
+        _allowsRefreshAccess = context.AllowsRefreshAccess;
     }
 
     private static string NormalizeCode(string code) =>
@@ -179,5 +218,28 @@
             .Select(index => code.Substring(
                 index * 4,
                 Math.Min(4, code.Length - index * 4))));
+    }
+
+    private static string FormatExpiration(DateTimeOffset value) =>
+        value.UtcDateTime.ToString(
+            "dd/MM/yyyy 'às' HH:mm 'UTC'",
+            CultureInfo.GetCultureInfo("pt-BR"));
+
+    private static string FormatLifetime(TimeSpan value)
+    {
+        if (value.TotalDays >= 1 && value.TotalDays == Math.Truncate(value.TotalDays))
+        {
+            var days = (int)value.TotalDays;
+            return days == 1 ? "1 dia" : $"{days} dias";
+        }
+
+        if (value.TotalHours >= 1 && value.TotalHours == Math.Truncate(value.TotalHours))
+        {
+            var hours = (int)value.TotalHours;
+            return hours == 1 ? "1 hora" : $"{hours} horas";
+        }
+
+        var minutes = Math.Max(1, (int)Math.Round(value.TotalMinutes));
+        return minutes == 1 ? "1 minuto" : $"{minutes} minutos";
     }
 }

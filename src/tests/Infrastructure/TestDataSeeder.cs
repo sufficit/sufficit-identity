@@ -197,7 +197,7 @@ public static class TestDataSeeder
         });
 
         // (f) confidential device-authorization-grant caller (RFC 8628).
-        await CreateApplicationIfMissingAsync(appManager, new OpenIddictApplicationDescriptor
+        var deviceApplication = new OpenIddictApplicationDescriptor
         {
             ClientId = DeviceClientId,
             ClientSecret = DeviceClientSecret,
@@ -215,7 +215,9 @@ public static class TestDataSeeder
                 Permissions.Prefixes.Scope + Scopes.OfflineAccess,
                 Permissions.Prefixes.Scope + ScopeName,
             },
-        });
+        };
+        deviceApplication.SetAccessTokenLifetime(TimeSpan.FromMinutes(45));
+        await CreateApplicationIfMissingAsync(appManager, deviceApplication);
 
         // (g) token-exchange caller with the OpenIddict-level permission but
         // deliberately excluded from the Sufficit-level allowlist configured

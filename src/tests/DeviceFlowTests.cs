@@ -160,6 +160,8 @@ public sealed class DeviceFlowTests
         Assert.Contains("profile", context.RequestedScopes);
         Assert.Contains("email", context.RequestedScopes);
         Assert.Contains("offline_access", context.RequestedScopes);
+        Assert.Equal(TimeSpan.FromMinutes(45), context.AccessTokenLifetime);
+        Assert.True(context.AllowsRefreshAccess);
     }
 
     [Fact]
@@ -223,6 +225,7 @@ public sealed class DeviceFlowTests
         Assert.False(string.IsNullOrEmpty(accessToken));
         Assert.False(string.IsNullOrEmpty(pollBody.GetProperty("refresh_token").GetString()));
         Assert.False(string.IsNullOrEmpty(pollBody.GetProperty("id_token").GetString()));
+        Assert.InRange(pollBody.GetProperty("expires_in").GetInt32(), 2_690, 2_700);
 
         var grantedScopes = pollBody.GetProperty("scope").GetString()!
             .Split(' ', StringSplitOptions.RemoveEmptyEntries);
