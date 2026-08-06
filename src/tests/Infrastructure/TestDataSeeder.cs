@@ -202,11 +202,17 @@ public static class TestDataSeeder
             ClientId = DeviceClientId,
             ClientSecret = DeviceClientSecret,
             ClientType = ClientTypes.Confidential,
+            DisplayName = "Test Device Client",
             Permissions =
             {
                 Permissions.Endpoints.DeviceAuthorization,
                 Permissions.Endpoints.Token,
                 Permissions.GrantTypes.DeviceCode,
+                Permissions.GrantTypes.RefreshToken,
+                Permissions.Prefixes.Scope + Scopes.OpenId,
+                Permissions.Prefixes.Scope + Scopes.Profile,
+                Permissions.Prefixes.Scope + Scopes.Email,
+                Permissions.Prefixes.Scope + Scopes.OfflineAccess,
                 Permissions.Prefixes.Scope + ScopeName,
             },
         });

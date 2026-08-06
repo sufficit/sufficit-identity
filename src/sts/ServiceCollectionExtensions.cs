@@ -840,6 +840,9 @@ public static class ServiceCollectionExtensions
             AspNetCoreIdentityAccountOnboardingService>();
         services.AddScoped<IAuthorizationConsentService,
             OpenIddictAuthorizationConsentService>();
+        services.AddScoped<OpenIddictDeviceAuthorizationContextService>();
+        services.AddScoped<IDeviceAuthorizationContextService>(provider =>
+            provider.GetRequiredService<OpenIddictDeviceAuthorizationContextService>());
         services.AddScoped<IExternalSignInService,
             AspNetCoreIdentityExternalSignInService>();
         services.AddScoped<AspNetCoreIdentityPasskeyService>();

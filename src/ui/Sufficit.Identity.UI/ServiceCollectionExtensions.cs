@@ -31,12 +31,6 @@ public static class ServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.AddScoped<ScopeViewModelProvider>();
 
-        // Plain HttpClientFactory: used by the device-flow UserCode page to call
-        // the STS's own /connect/device/info endpoint (same app/process, but the
-        // contract is deliberately an HTTP round trip owned by the STS controller
-        // rather than direct protocol-store access from the UI).
-        services.AddHttpClient();
-
         services.AddRazorComponents()
                 .AddInteractiveServerComponents();
 
