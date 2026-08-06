@@ -353,9 +353,20 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
     private static IReadOnlyList<AccountLifecycleError> MapErrors(
         IEnumerable<IdentityError> errors) =>
         errors
-            .Select(error => new AccountLifecycleError(
-                error.Code,
-                error.Description))
+            .Select(error =>
+            {
+                // Finding #17 (anti-enumeration): collapse duplicate-username/
+                // duplicate-email errors into a generic message so the
+                // registration form does not reveal whether a specific
+                // username or email is already taken.
+                var description = error.Code switch
+                {
+                    "DuplicateUserName" => "Não foi possível criar a conta. Verifique os dados informados.",
+                    "DuplicateEmail" => "Não foi possível criar a conta. Verifique os dados informados.",
+                    _ => error.Description,
+                };
+                return new AccountLifecycleError(error.Code, description);
+            })
             .ToArray();
 
     private static string EncodeToken(string token) =>

@@ -44,7 +44,7 @@ public sealed class IntrospectionTests
             // client, which is what makes it a trusted audience allowed to see
             // non-standard claims (e.g. `directive`) in the introspection
             // response below.
-            ["scope"] = TestDataSeeder.ScopeName,
+            ["scope"] = TestDataSeeder.ScopeName + " directives",
         });
         Assert.Equal(HttpStatusCode.OK, tokenStatus);
 

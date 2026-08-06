@@ -269,6 +269,22 @@ internal sealed class ClientManagementService(
             };
 
             var grantTypes = NormalizeGrantTypes(command.GrantTypes);
+
+            // Finding #8: reject insecure grant types (password, implicit) that
+            // OAuth 2.1 removes. The provisioning path already enforces this;
+            // the management API must not be a weaker parallel path.
+            var insecureGrants = grantTypes.Where(g =>
+                g == OpenIddictConstants.Permissions.GrantTypes.Password
+                || g == OpenIddictConstants.Permissions.GrantTypes.Implicit);
+            if (insecureGrants.Any())
+            {
+                throw new ManagementValidationException(
+                    "insecure_grant_type",
+                    "Password and implicit grant types are removed by OAuth 2.1 and " +
+                    "cannot be assigned to new clients.",
+                    "grantTypes");
+            }
+
             foreach (var grantType in grantTypes)
             {
                 descriptor.Permissions.Add(grantType);

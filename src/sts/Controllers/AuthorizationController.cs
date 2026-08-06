@@ -501,7 +501,27 @@ public class AuthorizationController : Controller
         // were set on the code principal above. Either way, the identity now
         // reflects current user state.
 
-        ApplyDpopBinding(identity);
+        // Finding #15: for refresh-token grants, preserve the original DPoP
+        // binding from the grant principal so the token cannot be re-bound to
+        // a different key on refresh. ApplyDpopBinding reads from
+        // HttpContext.Items["dpop.proof"] (the current request's proof), which
+        // is correct for initial issuance but would overwrite the original
+        // binding on refresh if the client presents a different key.
+        if (request.IsRefreshTokenGrantType())
+        {
+            var originalBinding = result.Principal!.GetClaim(
+                Dpop.DpopProofValidator.BindingThumbprintClaimType);
+            if (!string.IsNullOrWhiteSpace(originalBinding))
+            {
+                identity.SetClaim(
+                    Dpop.DpopProofValidator.BindingThumbprintClaimType,
+                    originalBinding);
+            }
+        }
+        else
+        {
+            ApplyDpopBinding(identity);
+        }
         identity.SetDestinations(GetDestinations);
 
         return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
