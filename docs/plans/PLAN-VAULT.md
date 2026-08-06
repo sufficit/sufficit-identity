@@ -93,6 +93,61 @@ Bitwarden, age, sops, and the cloud KMS envelope model, while keeping the
 
 ## 3. Design — what we borrow and what we skip
 
+### 3.0 Certificates: who is who (TLS vs signing vs DP)
+
+A common confusion is treating "the cert" as one thing. sufficit-identity deals
+with **three distinct certificates**, only one of which has anything to do with
+Let's Encrypt. The vault touches the second one, never the first.
+
+| Cert | Purpose | Who issues it | Validity | Where it lives | Renewal |
+|------|---------|---------------|----------|----------------|---------|
+| **TLS** | Encrypt browser↔server traffic (HTTPS) | **Let's Encrypt** (or a paid CA), via HTTP-01/DNS-01 challenge | 90 days (Let's Encrypt) | nginx PEM files: `cert.pem` / `key.pem` (`deploy/nginx.conf:34-35`) | `certbot renew && nginx -s reload` — **the .NET app never sees it** |
+| **Token signing** | Sign OAuth/OIDC JWTs (id_token, access_token, logout_token, JARM) | **Self-signed by you**, once | Years (3-10) | PFX on disk: `Certificates.SigningPath` (`ServiceCollectionExtensions.cs:600`) | Deliberate overlap rotation (see below) — rare |
+| **DP key protection** | Encrypt the Data Protection keyring XML at rest | **Reuses the signing PFX** | Same as signing | Same PFX (`ServiceCollectionExtensions.cs:175`) | Same as signing |
+
+**Why Let's Encrypt cannot and should not issue the signing cert:**
+- The signing cert is **not validated by any public CA**. Its public key is
+  published at `/.well-known/jwks.json`; clients trust it because they point at
+  *your* issuer URL, not because a CA vouched for it. A CA-issued cert would add
+  zero trust and cost a TLS-challenge slot it was never designed for.
+- Let's Encrypt issues **domain-validated TLS certs only**, 90-day, for servers
+  that terminate TLS. A JWT signing cert has no domain — it is just a container
+  for a crypto keypair.
+
+**What actually happens during a Let's Encrypt renewal:**
+```
+certbot renew                    # swaps cert.pem + key.pem on disk
+nginx -s reload                  # nginx re-reads, no connection drop
+[STS .NET runs untouched]        # receives plain HTTP on :8080 as always
+[Signing PFX untouched]          # keeps signing JWTs with the same key
+[DP keyring untouched]           # still protected by the same signing PFX
+```
+TLS terminates at the reverse proxy **before** reaching the STS. The STS always
+sees plain HTTP internally (per `docker-compose.yml`, port 8080). The 365-day
+self-signed cert in `deploy/gen-cert.sh` is **dev-local only**; production puts a
+real cert on the proxy and the STS is none the wiser.
+
+**When the signing PFX does need rotation** (rare — suspected compromise or a
+multi-year security policy): use **overlap**, not cold-swap:
+1. Generate a new self-signed PFX (RSA or ECDSA P-256).
+2. Register **both** with OpenIddict — `AddSigningCertificate(new)` +
+   `AddSigningCertificate(old)`.
+3. JWKS publishes both public keys.
+4. New tokens sign with the new key; existing unexpired tokens still validate
+   against the old key.
+5. Wait out the max token TTL (access ~15 min, refresh configurable, ID ~5 min).
+6. Remove the old key.
+
+Zero downtime. Independent of the 90-day Let's Encrypt cycle.
+
+**Where the vault fits in this picture:** the vault's optional `CertificateKeySource`
+KEK backend (§4.5) uses the **signing PFX** (cert #2), never the TLS cert. If you
+rotate the signing PFX via the overlap flow above, re-wrap the vault DEK under the
+new PFX — a cheap operation (one call per DEK, no secret re-encryption, the sops
+`updatekeys` pattern from §2.3). The vault's **default** KEK is the DP keyring
+(cert #3's protection, indirectly), which has its own lifecycle independent of
+both certs.
+
 ### 3.1 The convergent idea (all four converge on this)
 
 ```
@@ -239,11 +294,14 @@ KEK (from IVaultKeySource — DP keyring by default)
 | Backend | Use when | KEK source |
 |---------|----------|------------|
 | **DP keyring** (default) | Dev, single-host prod | ASP.NET Core Data Protection (already configured at `ServiceCollectionExtensions.cs:164`) |
-| **Signing certificate** | Prod with PFX on disk | RSA-OAEP wrap with the existing signing cert |
+| **Signing certificate** | Prod with PFX on disk | RSA-OAEP wrap with the existing **signing** PFX (cert #2 in §3.0 — *not* the TLS cert) |
 | **External KMS** (stub in v1) | Cloud prod | AWS KMS `GenerateDataKey` / Azure KV `WrapKey` / Vault Transit — implements `IVaultKeySource`, configured by `VaultOptions.KeySource = "aws-kms"` etc. |
 
 The default (DP keyring) keeps **zero new dependencies**. The cert backend
-reuses the PFX that prod already loads. The external-KMS backend is a thin
+reuses the **signing** PFX that prod already loads (cert #2, §3.0 — has nothing to
+do with the 90-day TLS/Let's Encrypt cert, which lives on the proxy). If the
+signing PFX is rotated (rare, §3.0 overlap flow), re-wrap the vault DEK under the
+new PFX — cheap, no secret re-encryption. The external-KMS backend is a thin
 `IVaultKeySource` impl documented in the runbook but not wired by default.
 
 ## 5. Integration into sufficit-identity (consumers)
