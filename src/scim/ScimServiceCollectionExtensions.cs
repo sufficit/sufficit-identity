@@ -43,6 +43,15 @@ public static class ScimServiceCollectionExtensions
                 {
                     policy.Requirements.Add(
                         new ScimScopeRequirement(options.RequiredScope));
+                    // M4 fix (eval M4): restrict SCIM to an explicit allow-list
+                    // of trusted provisioning clients. SCIM is full-directory-
+                    // trust (any allowed client can enumerate/reset/delete ANY
+                    // user), so access must be deliberate. The requirement
+                    // always fires; when AllowedClientIds is empty (the default)
+                    // the handler fails closed — SCIM stays inaccessible until an
+                    // operator lists at least one trusted client_id.
+                    policy.Requirements.Add(
+                        new ScimClientRequirement(options.AllowedClientIds));
                 }
                 // M2 fix (eval M2): opt-in MFA for the full SCIM surface. SCIM
                 // can reset any user's password and delete any account, so when
@@ -59,6 +68,10 @@ public static class ScimServiceCollectionExtensions
             ServiceDescriptor.Singleton<
                 IAuthorizationHandler,
                 ScimScopeHandler>());
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<
+                IAuthorizationHandler,
+                ScimClientHandler>());
         if (options.RequireMfa)
         {
             services.TryAddEnumerable(
@@ -122,6 +135,46 @@ public sealed class ScimMfaHandler : AuthorizationHandler<ScimMfaRequirement>
     {
         var amrValues = context.User.FindAll(AmrClaimType).Select(c => c.Value);
         if (amrValues.Any(v => MfaValues.Contains(v)))
+        {
+            context.Succeed(requirement);
+        }
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// Policy requirement restricting SCIM to an explicit allow-list of OAuth
+/// client_id values (M4, eval). SCIM operates with full-directory-trust, so
+/// only deliberately-listed provisioning clients may call it.
+/// <see cref="AllowedClientIds"/> empty (the default) fails closed.
+/// </summary>
+public sealed record ScimClientRequirement(string[] AllowedClientIds)
+    : IAuthorizationRequirement;
+
+/// <summary>
+/// Validates <see cref="ScimClientRequirement"/>: the principal's
+/// <c>client_id</c>/<c>azp</c> claim must appear in the allow-list. Succeeds
+/// only then; when the allow-list is empty, the requirement is never satisfied
+/// (SCIM stays inaccessible until an operator lists a trusted client).
+/// </summary>
+public sealed class ScimClientHandler : AuthorizationHandler<ScimClientRequirement>
+{
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        ScimClientRequirement requirement)
+    {
+        if (requirement.AllowedClientIds.Length == 0)
+        {
+            // Fail closed: no client is trusted until the operator configures
+            // at least one. Leave the requirement unsatisfied → policy denies.
+            return Task.CompletedTask;
+        }
+
+        var clientId = context.User.FindFirst("client_id")?.Value
+            ?? context.User.FindFirst("azp")?.Value;
+        if (clientId is not null
+            && requirement.AllowedClientIds.Contains(
+                clientId, StringComparer.Ordinal))
         {
             context.Succeed(requirement);
         }

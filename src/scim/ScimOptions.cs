@@ -21,5 +21,16 @@ public sealed class ScimOptions
     /// </summary>
     public bool RequireMfa { get; init; } = false;
 
+    /// <summary>
+    /// Allow-list of OAuth <c>client_id</c> values permitted to call the SCIM
+    /// endpoints. SCIM operates with <b>full-directory-trust</b>: any client in
+    /// this list can enumerate every user, read PII, reset any password and
+    /// delete any account. <b>Default is empty (fail-closed)</b> — SCIM is
+    /// inaccessible until at least one trusted provisioning client is listed.
+    /// Add only dedicated, narrowly-scoped provisioning clients here; never a
+    /// general-purpose application client.
+    /// </summary>
+    public string[] AllowedClientIds { get; init; } = [];
+
     public int MaxResults { get; init; } = 100;
 }
