@@ -2,6 +2,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
@@ -11,6 +12,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using OpenIddict.Server;
 using OpenIddict.Validation.AspNetCore;
@@ -1142,6 +1144,7 @@ public static class ServiceCollectionExtensions
         {
             builder.AddGoogle(options =>
             {
+                ConfigureExternalProvider(options);
                 options.ClientId = google["ClientId"]!;
                 options.ClientSecret = google["ClientSecret"]!;
                 // Use the ASP.NET Core default (/signin-google) to match the
@@ -1161,6 +1164,7 @@ public static class ServiceCollectionExtensions
         {
             builder.AddGitHub(options =>
             {
+                ConfigureExternalProvider(options);
                 options.ClientId = github["ClientId"]!;
                 options.ClientSecret = github["ClientSecret"]!;
                 options.Scope.Add("user:email");
@@ -1183,6 +1187,7 @@ public static class ServiceCollectionExtensions
         {
             builder.AddFacebook(options =>
             {
+                ConfigureExternalProvider(options);
                 options.ClientId = facebook["ClientId"]!;
                 options.ClientSecret = facebook["ClientSecret"]!;
 
@@ -1282,5 +1287,81 @@ public static class ServiceCollectionExtensions
                 }
             });
         }
+    }
+
+    /// <summary>
+    /// Applies the common browser contract for all remote OAuth handlers.
+    ///
+    /// The correlation ticket is created before the browser leaves Identity
+    /// and is consumed by the provider callback.  Keeping it explicitly
+    /// HTTPS-only and <c>SameSite=None</c> makes the contract deterministic
+    /// behind the nginx TLS terminator (and for providers that use a
+    /// cross-site callback).  A failed/expired ticket must not become a 500:
+    /// the default handler leaves the caller in an OIDC retry loop.  Redirect
+    /// to the login page with the original local return URL so the user can
+    /// start a fresh challenge instead.
+    /// </summary>
+    private static void ConfigureExternalProvider(OAuthOptions options)
+    {
+        options.CorrelationCookie.SameSite = SameSiteMode.None;
+        options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.CorrelationCookie.HttpOnly = true;
+
+        options.Events.OnRemoteFailure = context =>
+        {
+            var logger = context.HttpContext.RequestServices
+                .GetRequiredService<ILoggerFactory>()
+                .CreateLogger("Sufficit.Identity.ExternalAuthentication");
+            var isCorrelationFailure = context.Failure?.Message?.Contains(
+                "Correlation failed",
+                StringComparison.OrdinalIgnoreCase) == true;
+
+            logger.LogWarning(
+                context.Failure,
+                "External authentication failed for {Scheme} at {Path}. "
+                    + "CorrelationFailure={CorrelationFailure}; returning to login.",
+                context.Scheme.Name,
+                context.HttpContext.Request.Path,
+                isCorrelationFailure);
+
+            var returnUrl = ExtractLocalReturnUrl(
+                context.Properties?.RedirectUri);
+            var error = isCorrelationFailure
+                ? "external_correlation_failed"
+                : "external_callback_unavailable";
+            var location = QueryHelpers.AddQueryString(
+                "/account/login",
+                new Dictionary<string, string?>
+                {
+                    ["error"] = error,
+                    ["returnUrl"] = returnUrl,
+                });
+
+            context.HandleResponse();
+            context.Response.Redirect(location);
+            return Task.CompletedTask;
+        };
+    }
+
+    private static string ExtractLocalReturnUrl(string? redirectUri)
+    {
+        if (string.IsNullOrWhiteSpace(redirectUri)
+            || !redirectUri.StartsWith("/", StringComparison.Ordinal)
+            || redirectUri.StartsWith("//", StringComparison.Ordinal))
+        {
+            return "/";
+        }
+
+        var queryStart = redirectUri.IndexOf('?');
+        if (queryStart < 0 || queryStart == redirectUri.Length - 1)
+        {
+            return "/";
+        }
+
+        var query = QueryHelpers.ParseQuery(redirectUri[(queryStart + 1)..]);
+        var returnUrl = query.TryGetValue("returnUrl", out var value)
+            ? value.ToString()
+            : null;
+        return LocalUrlValidator.EnsureLocal(returnUrl);
     }
 }
