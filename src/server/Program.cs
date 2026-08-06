@@ -274,6 +274,35 @@ if (trustedProxies.Length == 0 && !app.Environment.IsDevelopment())
     app.Logger.LogWarning(message);
 }
 
+// ---- Distributed-cache guard for multi-replica deployments ----
+// Several security-critical stores (DPoP replay cache + nonce store, CIBA
+// pending requests, front-channel logout context, passkey ceremony tickets)
+// depend on IDistributedCache. The default registration is
+// AddDistributedMemoryCache (single-node, in-process) — correct for one
+// replica, but in a multi-replica deployment each replica has its own isolated
+// cache, so DPoP replay detection, CIBA cross-replica polling and nonce
+// challenges silently break. When RequireShared is on and the registered
+// IDistributedCache is the in-memory fallback, fail fast (or warn) so the gap
+// is visible instead of a silent security degradation.
+if (identityOptions.DistributedCache.RequireShared && !app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var cache = scope.ServiceProvider.GetService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
+    var isMemoryFallback = cache?.GetType().Name is "MemoryDistributedCache";
+    if (isMemoryFallback)
+    {
+        var message =
+            "Sufficit:Identity:DistributedCache:RequireShared is true, but the registered " +
+            "IDistributedCache is the in-memory fallback (AddDistributedMemoryCache), which is NOT " +
+            "shared across replicas. DPoP replay protection, CIBA cross-replica polling, DPoP nonce " +
+            "challenges and front-channel logout context would silently break with >1 replica. " +
+            "Register a real shared cache (e.g. Redis via AddStackExchangeRedisCache) before scaling out, " +
+            "or set Sufficit:Identity:DistributedCache:RequireShared=false if this is genuinely a single-replica deployment.";
+
+        throw new InvalidOperationException(message);
+    }
+}
+
 // ---- mTLS (mutual TLS, RFC 8705) host configuration reminder ----
 // When Sufficit:Identity:Mtls:Enabled is true, the STS registers the MTLS-
 // aliased endpoint paths and advertises tls_client_certificate_bound_access_tokens

@@ -103,6 +103,11 @@
         "_FailOnUntrustedProxy": "true (item 5.1 [L4]) makes startup FAIL when TrustedProxies is empty outside Development, instead of only logging a warning. Without trusted proxies, the rate limiter shares ONE bucket for all traffic (the proxy's IP) → self-inflicted 429s. Default false (warning); flip to true in production so a missing TrustedProxies cannot silently turn the rate limiter into a self-DoS.",
         "FailOnUntrustedProxy": false
       },
+      "_DistributedCache": "Multi-replica distributed-cache guard. Several security-critical stores (DPoP replay/nonce, CIBA pending requests, front-channel logout, passkey tickets) depend on IDistributedCache. The default AddDistributedMemoryCache is single-node — correct for one replica, but with >1 replica each replica has its own isolated cache and DPoP replay protection / CIBA cross-replica / nonce challenges silently break. Set RequireShared=true before scaling out so the STS fails fast if the cache is the in-memory fallback (i.e. a shared cache like Redis is missing).",
+      "DistributedCache": {
+        "_RequireShared": "true makes startup FAIL outside Development if the registered IDistributedCache is the in-memory fallback (MemoryDistributedCache), because that backend is not shared across replicas. Default false (no check) — flip to true before deploying more than one replica.",
+        "RequireShared": false
+      },
       "_Tokens": "Token lifetimes. Null access/identity values use the OpenIddict defaults (60 and 20 minutes). Refresh token rotation is always on; only lifetimes are configurable.",
       "Tokens": {
         "AccessTokenLifetimeMinutes": null,
