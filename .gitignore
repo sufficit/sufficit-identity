@@ -96,4 +96,4 @@ Log/
 docs/archive/evaluations/
 
 # Local deployment data
-**/.deploy/
+deploy/local/
