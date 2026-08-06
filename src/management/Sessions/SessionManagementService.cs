@@ -195,15 +195,7 @@ internal sealed class SessionManagementService(
                     StringComparison.Ordinal)))
             .ToArray();
 
-        database.ManagementAuditEvents.Add(
-            ManagementAuditEventFactory.Create(
-                context,
-                ManagementCapabilities.SessionsRead,
-                resource,
-                decision,
-                "succeeded",
-                "sessions_listed"));
-        await database.SaveChangesAsync(cancellationToken);
+        // L3 fix (eval): no audit row on read paths.
 
         return new ManagementSessionPage(
             items,

@@ -243,15 +243,7 @@ internal sealed class ClaimManagementService(
                 claim.ClaimValue ?? string.Empty))
             .ToArrayAsync(cancellationToken);
 
-        database.ManagementAuditEvents.Add(
-            ManagementAuditEventFactory.Create(
-                context,
-                ManagementCapabilities.ClaimsRead,
-                resource,
-                decision,
-                "succeeded",
-                "claims_listed"));
-        await database.SaveChangesAsync(cancellationToken);
+        // L3 fix (eval): no audit row on read paths.
 
         return new ManagementClaimPage(
             items,
@@ -282,15 +274,7 @@ internal sealed class ClaimManagementService(
                 "A claim atribuída não foi encontrada.");
         }
 
-        database.ManagementAuditEvents.Add(
-            ManagementAuditEventFactory.Create(
-                context,
-                ManagementCapabilities.ClaimsRead,
-                resource,
-                decision,
-                "succeeded",
-                "claim_read"));
-        await database.SaveChangesAsync(cancellationToken);
+        // L3 fix (eval): no audit row on read paths.
         return claim;
     }
 

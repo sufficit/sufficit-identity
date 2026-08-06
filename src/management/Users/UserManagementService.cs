@@ -428,14 +428,9 @@ internal sealed class UserManagementService(
                 user.HasExternalLogin))
             .ToArray();
 
-        await WriteAuditAsync(
-            context,
-            ManagementCapabilities.UsersRead,
-            resource,
-            decision,
-            "succeeded",
-            "users_listed",
-            cancellationToken);
+        // L3 fix (eval): no per-page audit row on read/list paths — the
+        // transport access log already records who queried what. Audit stays
+        // focused on state-changing operations (write/delete/update/reset).
 
         return new ManagementUserPage(
             items,
