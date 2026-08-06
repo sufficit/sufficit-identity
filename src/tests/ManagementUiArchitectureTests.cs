@@ -335,7 +335,11 @@ public sealed class ManagementUiArchitectureTests
         var pages = login + twoFactor + recovery + logout;
 
         Assert.Contains("IInteractiveSignInService", login, StringComparison.Ordinal);
-        Assert.Contains("PasswordSignInCommand", login, StringComparison.Ordinal);
+        Assert.Contains(
+            "action=\"/account/login/password\"",
+            login,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("HandleLoginAsync", login, StringComparison.Ordinal);
         Assert.Contains(
             "[SupplyParameterFromQuery(Name = \"ReturnUrl\")]",
             login,
@@ -357,6 +361,25 @@ public sealed class ManagementUiArchitectureTests
         }
 
         var repository = ResolveIdentityRepository();
+        var passwordLoginController = File.ReadAllText(Path.Combine(
+            repository,
+            "src",
+            "sts",
+            "Controllers",
+            "PasswordLoginController.cs"));
+        Assert.Contains(
+            "IInteractiveSignInService",
+            passwordLoginController,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "PasswordSignInCommand",
+            passwordLoginController,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "ValidateRequestAsync",
+            passwordLoginController,
+            StringComparison.Ordinal);
+
         var contract = File.ReadAllText(Path.Combine(
             repository,
             "src",
