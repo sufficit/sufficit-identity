@@ -550,12 +550,21 @@ public sealed class ClaimScopeMapOptions
 {
     /// <summary>
     /// Map of claim type → scope name. When a token is being built, a claim
-    /// whose type matches a key here is included in the access and identity
-    /// tokens ONLY if the subject's granted scopes contain the mapped value.
-    /// Mapped keys and values are also advertised as custom claims/scopes.
-    /// Default empty (retrocompatible — no behavior change).
+    /// whose type matches a key here is included in the access token ONLY if
+    /// the subject's granted scopes contain the mapped value. Mapped keys and
+    /// values are also advertised as custom claims/scopes in discovery.
     /// </summary>
-    public Dictionary<string, string> ClaimToScope { get; init; } = new(StringComparer.Ordinal);
+    /// <remarks>
+    /// <b>Default (finding #4 fix).</b> The Sufficit authorization directive
+    /// claim (<c>directive</c>) is gated behind the <c>directives</c> scope so
+    /// a client requesting only <c>openid</c> does not receive the user's full
+    /// authorization directive set. An operator can add more entries or clear
+    /// this map to revert to the pre-fix behavior (all claims to all tokens).
+    /// </remarks>
+    public Dictionary<string, string> ClaimToScope { get; init; } = new(StringComparer.Ordinal)
+    {
+        ["directive"] = "directives",
+    };
 }
 
 /// <summary>

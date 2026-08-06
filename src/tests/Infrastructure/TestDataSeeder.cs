@@ -126,6 +126,7 @@ public static class TestDataSeeder
                 Permissions.GrantTypes.Password,
                 Permissions.Prefixes.Scope + ScopeName,
                 Permissions.Prefixes.Scope + Scopes.Roles,
+                Permissions.Prefixes.Scope + "directives",
             },
         });
 
