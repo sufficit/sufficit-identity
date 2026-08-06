@@ -34,7 +34,11 @@ public sealed class PersonalTokensController : ControllerBase
     private const string LegacyReferenceTokenType = "legacy_reference_token";
     private static readonly TimeSpan DefaultLifetime = TimeSpan.FromDays(30);
     private static readonly TimeSpan MaximumUserLifetime = TimeSpan.FromDays(365);
-    private static readonly TimeSpan MaximumLifetime = TimeSpan.FromDays(3650);
+    // L1 fix (eval): was 3650 days (10 years) — far too long for a reference
+    // token. Capped at 1 year to match MaximumUserLifetime; an admin who needs
+    // longer can rotate. Long-lived credentials are revocable, but a shorter
+    // ceiling bounds the blast radius of a stolen token.
+    private static readonly TimeSpan MaximumLifetime = TimeSpan.FromDays(365);
 
     private static readonly HashSet<string> ProtocolClaims = new(StringComparer.Ordinal)
     {

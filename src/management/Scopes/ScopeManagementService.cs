@@ -155,15 +155,7 @@ internal sealed class ScopeManagementService(
                     OpenIddictManifestProvisioner.SchemaVersionProperty)));
         }
 
-        database.ManagementAuditEvents.Add(
-            ManagementAuditEventFactory.Create(
-                context,
-                ManagementCapabilities.ScopesRead,
-                resource,
-                decision,
-                "succeeded",
-                "scopes_listed"));
-        await database.SaveChangesAsync(cancellationToken);
+        // L3 fix (eval): no audit row on read paths.
 
         return result
             .OrderBy(scope => scope.DisplayName ?? scope.Name,

@@ -183,15 +183,7 @@ internal sealed class AuthorizationManagementService(
                     StringComparison.Ordinal)))
             .ToArray();
 
-        database.ManagementAuditEvents.Add(
-            ManagementAuditEventFactory.Create(
-                context,
-                ManagementCapabilities.AuthorizationsRead,
-                resource,
-                decision,
-                "succeeded",
-                "authorizations_listed"));
-        await database.SaveChangesAsync(cancellationToken);
+        // L3 fix (eval): no audit row on read paths.
 
         return new ManagementAuthorizationPage(
             items,
