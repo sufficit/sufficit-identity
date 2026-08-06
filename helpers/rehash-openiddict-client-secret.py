@@ -78,14 +78,13 @@ def run_db(defaults_file: str, database: str, sql: str) -> str:
         "--skip-column-names",
         "--raw",
     ]
-    try:
-        result = subprocess.run(
-            command,
-            input=sql,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+    result = subprocess.run(
+        command,
+        input=sql,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
     if result.returncode != 0:
         detail = result.stderr.strip() or "database command failed"
         fail(detail)
