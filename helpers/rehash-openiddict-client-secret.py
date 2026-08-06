@@ -16,10 +16,12 @@ import hashlib
 import hmac
 import os
 import re
+import shutil
 import struct
 import subprocess
 import sys
 from pathlib import Path
+from typing import NoReturn
 
 
 OPENIDDICT_VERSION = 1
@@ -31,7 +33,7 @@ IDENTIFIER = re.compile(r"^[A-Za-z0-9_.:-]+$")
 DATABASE = re.compile(r"^[A-Za-z0-9_]+$")
 
 
-def fail(message: str) -> "NoReturn":
+def fail(message: str) -> NoReturn:
     print(f"error: {message}", file=sys.stderr)
     raise SystemExit(2)
 
@@ -65,8 +67,11 @@ def read_secret(path: Path) -> str:
 
 
 def run_db(defaults_file: str, database: str, sql: str) -> str:
+    client = shutil.which("mariadb") or shutil.which("mysql")
+    if client is None:
+        fail("mariadb/mysql client was not found")
     command = [
-        "mariadb",
+        client,
         f"--defaults-extra-file={defaults_file}",
         f"--database={database}",
         "--batch",
@@ -81,8 +86,6 @@ def run_db(defaults_file: str, database: str, sql: str) -> str:
             capture_output=True,
             check=False,
         )
-    except FileNotFoundError:
-        fail("mariadb client was not found")
     if result.returncode != 0:
         detail = result.stderr.strip() or "database command failed"
         fail(detail)
