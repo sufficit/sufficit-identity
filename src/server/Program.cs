@@ -20,6 +20,12 @@ using Sufficit.Identity.UI.Management;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// WebApplication.CreateBuilder already loads appsettings.json followed by
+// appsettings.{Environment}.json. Add the machine-specific file after those
+// standard sources so each Sufficit server can override only its local values
+// (for example, the database endpoint) using a lowercase hostname filename.
+builder.Configuration.AddMachineSpecificJsonFile();
+
 // ---- Forwarded headers (behind reverse proxy) ----
 // Allows the STS to honor X-Forwarded-Proto / X-Forwarded-Host so that
 // redirects, discovery document URLs and OpenIddict issuer match the
