@@ -1167,6 +1167,40 @@ img.profile-avatar { background: var(--surface-sunken); }
     color: var(--ink-muted);
     font-size: 0.875rem;
 }
+.device-validity {
+    display: grid;
+    gap: var(--space-3);
+    margin: var(--space-6) 0 0;
+    padding: var(--space-4) 0 0;
+    border-top: 1px solid var(--line);
+}
+.device-validity__row {
+    display: grid;
+    grid-template-columns: minmax(118px, 0.36fr) minmax(0, 1fr);
+    gap: var(--space-4);
+}
+.device-validity dt {
+    color: var(--ink-muted);
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+.device-validity dd {
+    display: flex;
+    min-width: 0;
+    margin: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+.device-validity dd strong {
+    color: var(--ink);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+.device-validity dd span {
+    color: var(--ink-muted);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+}
 .device-safety-note {
     margin: var(--space-6) 0;
     padding: var(--space-3) var(--space-4);
@@ -1198,6 +1232,13 @@ img.profile-avatar { background: var(--surface-sunken); }
     margin: 0 0 var(--space-6);
     color: var(--ink-muted);
     font-size: 0.9375rem;
+}
+
+@media (max-width: 520px) {
+    .device-validity__row {
+        grid-template-columns: 1fr;
+        gap: var(--space-1);
+    }
 }
 
 /* --- Validation messages -------------------------------------------------- */
