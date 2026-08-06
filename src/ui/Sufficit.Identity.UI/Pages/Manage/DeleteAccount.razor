@@ -1,22 +1,23 @@
 @page "/manage/deleteaccount"
 @attribute [Authorize]
 @inject IAccountSelfService AccountSelfService
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Excluir conta — Sufficit Identity</PageTitle>
+<PageTitle>@L["DeleteAccount.Title"]</PageTitle>
 
 <div class="auth-card">
     <ManageBackLink />
-    <h1>Excluir minha conta</h1>
+    <h1>@L["DeleteAccount.Title"]</h1>
 
     <div class="alert alert-error" role="alert">
-        <strong>Atenção!</strong> Esta ação é <strong>permanente e irreversível</strong>.
+        <strong>@L["DeleteAccount.Warning"]</strong>
         Todos os seus dados (perfil, logins externos vinculados, configurações de 2FA)
         serão removidos.
     </div>
 
     @if (_deleted)
     {
-        <div class="alert alert-success">Conta excluída com sucesso.</div>
+        <div class="alert alert-success">@L["DeleteAccount.Success"]</div>
         <a href="/" class="btn btn-primary">Voltar ao início</a>
     }
     else
@@ -26,7 +27,7 @@
             <div class="alert alert-error">@_error</div>
         }
 
-        <p class="info">Para confirmar, digite seu e-mail:</p>
+        <p class="info">@L["DeleteAccount.ConfirmEmail"]</p>
 
         <EditForm Model="_model" Method="post" OnValidSubmit="DeleteAsync" FormName="delete-account">
             <DataAnnotationsValidator />
@@ -45,7 +46,7 @@
                 <ValidationMessage For="@(() => _model.Password)" />
             </div>
 
-            <button type="submit" class="btn btn-danger">Excluir minha conta permanentemente</button>
+            <button type="submit" class="btn btn-danger">@L["DeleteAccount.Submit"]</button>
             <a href="/manage/personaldata" class="btn btn-secondary">Cancelar</a>
         </EditForm>
     }
@@ -69,7 +70,7 @@
         var principal = await _authTask.GetAuthenticatedPrincipalAsync();
         if (principal is null)
         {
-            _error = "Sua sessão expirou. Entre novamente.";
+            _error = L["ChangePassword.SessionExpired"];
             return;
         }
 

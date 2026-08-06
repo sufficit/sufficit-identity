@@ -4,12 +4,13 @@
 @inject IAccountTwoFactorService TwoFactorService
 @inject IJSRuntime JS
 @inject ILogger<TwoFactor> Logger
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Autenticação em duas etapas — Sufficit Identity</PageTitle>
+<PageTitle>@L["ManageTwoFactor.Title"]</PageTitle>
 
 <div class="auth-card">
     <ManageBackLink />
-    <h1>Autenticação em duas etapas</h1>
+    <h1>@L["ManageTwoFactor.Title"]</h1>
     <p class="info">Use um aplicativo autenticador para proteger sua conta com um segundo fator.</p>
 
     <div aria-live="polite">
@@ -36,7 +37,7 @@
     else if (_overview?.IsEnabled == true)
     {
         <div class="alert alert-success">
-            A autenticação em duas etapas está <strong>ativada</strong>.
+            @L["ManageTwoFactor.Enabled"]
         </div>
 
         @if (_recoveryCodes.Count > 0)
@@ -44,13 +45,13 @@
             <div class="alert alert-warning" role="alert">
                 Guarde estes códigos em um local seguro. Eles não serão exibidos novamente.
             </div>
-            <div class="recovery-codes" aria-label="Códigos de recuperação">
+            <div class="recovery-codes" aria-label="@L["ManageTwoFactor.RecoveryCodes"]">
                 @foreach (var recoveryCode in _recoveryCodes)
                 {
                     <code class="recovery-code">@recoveryCode</code>
                 }
             </div>
-            <p class="muted">Cada código funciona uma única vez.</p>
+            <p class="muted">@L["ManageTwoFactor.EachCodeOnce"]</p>
             <div class="btn-group">
                 <button type="button"
                         class="btn btn-secondary"
@@ -177,7 +178,7 @@
             var principal = await _authTask.GetAuthenticatedPrincipalAsync();
             if (principal is null)
             {
-                _error = "Sua sessão expirou. Entre novamente.";
+                _error = L["ChangePassword.SessionExpired"];
                 _loadFailed = true;
                 return;
             }
@@ -185,7 +186,7 @@
             var overview = await TwoFactorService.GetOverviewAsync(principal);
             if (overview is null)
             {
-                _error = "Sua sessão expirou. Entre novamente.";
+                _error = L["ChangePassword.SessionExpired"];
                 _loadFailed = true;
                 return;
             }
@@ -271,7 +272,7 @@
             var principal = await _authTask.GetAuthenticatedPrincipalAsync();
             if (principal is null)
             {
-                _error = "Sua sessão expirou. Entre novamente.";
+                _error = L["ChangePassword.SessionExpired"];
                 return;
             }
 

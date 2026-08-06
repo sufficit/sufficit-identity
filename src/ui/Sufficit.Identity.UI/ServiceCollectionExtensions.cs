@@ -31,6 +31,9 @@ public static class ServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.AddScoped<ScopeViewModelProvider>();
 
+        // i18n: IStringLocalizer<SharedResource> (resx-backed, pt-BR default).
+        services.AddLocalization();
+
         services.AddRazorComponents()
                 .AddInteractiveServerComponents();
 

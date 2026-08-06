@@ -1,23 +1,24 @@
 @page "/consent"
 @inject IAuthorizationConsentService ConsentService
 @inject ScopeViewModelProvider ScopeProvider
+@inject IStringLocalizer<SharedResource> L
 
 <PageTitle>Autorização — Sufficit Identity</PageTitle>
 
 @if (_clientId is null)
 {
     <div class="auth-card">
-        <h1>Solicitação inválida</h1>
-        <p class="info">Não há solicitação de autorização pendente.</p>
-        <a href="/" class="btn btn-primary">Voltar</a>
+        <h1>@L["Consent.InvalidRequest"]</h1>
+        <p class="info">@L["Consent.NoPendingRequest"]</p>
+        <a href="/" class="btn btn-primary">@L["Common.Back"]</a>
     </div>
 }
 else
 {
     <div class="auth-card">
-        <h1>Autorizar aplicação</h1>
+        <h1>@L["Consent.Title"]</h1>
         <p class="info">
-            <strong>@_clientName</strong> está solicitando acesso à sua conta.
+            @L["Consent.RequestingAccess", _clientName ?? string.Empty]
         </p>
 
         @* Real, static SSR HTML form — deliberately NOT a Blazor <EditForm>.
@@ -53,7 +54,7 @@ else
             }
 
             <fieldset class="scope-list">
-                <legend>Permissões solicitadas:</legend>
+                <legend>@L["Consent.RequestedScopes"]</legend>
                 @foreach (var scope in _scopes)
                 {
                     <label class="scope-item">
@@ -66,10 +67,10 @@ else
 
             <div class="btn-group">
                 <button type="submit" name="consent_decision" value="allow" class="btn btn-primary">
-                    Autorizar
+                    @L["Consent.Authorize"]
                 </button>
                 <button type="submit" name="consent_decision" value="deny" class="btn btn-secondary">
-                    Negar
+                    @L["Consent.Deny"]
                 </button>
             </div>
         </form>

@@ -2,11 +2,12 @@
 @attribute [Authorize]
 @inject IAccountSelfService AccountSelfService
 @inject IUserAvatarUrlResolver AvatarUrlResolver
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Minha conta — Sufficit Identity</PageTitle>
+<PageTitle>@L["Manage.Title"]</PageTitle>
 
 <div class="auth-card manage-grid">
-    <h1>Minha conta</h1>
+    <h1>@L["Manage.Title"]</h1>
 
     <div class="profile-card">
         @if (!string.IsNullOrEmpty(_avatarUrl) && !_avatarLoadFailed)
@@ -27,23 +28,23 @@
             <p class="muted">@_profile?.Email</p>
             @if (_emailConfirmed)
             {
-                <span class="badge badge-success">E-mail confirmado</span>
+                <span class="badge badge-success">@L["Manage.EmailConfirmed"]</span>
             }
             else
             {
-                <span class="badge badge-warning">E-mail não confirmado</span>
+                <span class="badge badge-warning">@L["Manage.EmailNotConfirmed"]</span>
             }
         </div>
     </div>
 
     <nav class="manage-nav">
-        <a href="/manage/changepassword" class="manage-link">Alterar senha</a>
-        <a href="/manage/twofactor" class="manage-link">Autenticação em 2 etapas</a>
-        <a href="/manage/passkeys" class="manage-link">Passkeys (WebAuthn)</a>
-        <a href="/manage/externallogins" class="manage-link">Logins externos</a>
-        <a href="/manage/grants" class="manage-link">Aplicações conectadas</a>
-        <a href="/manage/sessions" class="manage-link">Sessões ativas</a>
-        <a href="/manage/personaldata" class="manage-link">Meus dados (LGPD)</a>
+        <a href="/manage/changepassword" class="manage-link">@L["Manage.ChangePassword"]</a>
+        <a href="/manage/twofactor" class="manage-link">@L["Manage.TwoFactor"]</a>
+        <a href="/manage/passkeys" class="manage-link">@L["Manage.Passkeys"]</a>
+        <a href="/manage/externallogins" class="manage-link">@L["Manage.ExternalLogins"]</a>
+        <a href="/manage/grants" class="manage-link">@L["Manage.ConnectedApps"]</a>
+        <a href="/manage/sessions" class="manage-link">@L["Manage.ActiveSessions"]</a>
+        <a href="/manage/personaldata" class="manage-link">@L["Manage.PersonalData"]</a>
     </nav>
 </div>
 

@@ -218,6 +218,8 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<ManagementProvisioningDataSource>();
 
         services.AddCascadingAuthenticationState();
+        // i18n: IStringLocalizer for Management UI strings.
+        services.AddLocalization();
         services.AddRazorComponents()
             .AddInteractiveServerComponents();
         services.AddAntiforgery();

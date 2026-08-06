@@ -4,15 +4,16 @@
 @inject IAccountAccessService AccountAccessService
 @inject IJSRuntime JS
 @inject ILogger<Grants> Logger
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Aplicações conectadas — Sufficit Identity</PageTitle>
+<PageTitle>@L["Grants.Title"]</PageTitle>
 
 <div class="auth-card manage-grants">
     <ManageBackLink />
     <header class="manage-grants__header">
         <div>
-            <h1>Aplicações conectadas</h1>
-            <p class="info">Aplicações que receberam autorização para acessar sua conta.</p>
+            <h1>@L["Grants.Title"]</h1>
+            <p class="info">@L["Grants.Description"]</p>
         </div>
         @if (!_loading && _applications.Count > 0)
         {
@@ -53,11 +54,11 @@
                         }
                         <dl class="access-metadata">
                             <div>
-                                <dt>Escopos</dt>
+                                <dt>@L["Grants.Scopes"]</dt>
                                 <dd>
                                     @if (application.Scopes.Count is 0)
                                     {
-                                        <span class="scope-empty">Nenhum escopo informado</span>
+                                        <span class="scope-empty">@L["Grants.NoScopes"]</span>
                                     }
                                     else
                                     {
@@ -71,11 +72,11 @@
                                 </dd>
                             </div>
                             <div>
-                                <dt>Última autorização</dt>
+                                <dt>@L["Grants.LastAuth"]</dt>
                                 <dd>@FormatDate(application.AuthorizedAt)</dd>
                             </div>
                             <div>
-                                <dt>Credenciais ativas</dt>
+                                <dt>@L["Grants.ActiveCredentials"]</dt>
                                 <dd>@application.ActiveCredentialCount</dd>
                             </div>
                         </dl>
@@ -112,7 +113,7 @@
             var principal = await _authTask.GetAuthenticatedPrincipalAsync();
             if (principal is null)
             {
-                _error = "Sua sessão expirou. Entre novamente.";
+                _error = L["ChangePassword.SessionExpired"];
                 return;
             }
 
@@ -148,7 +149,7 @@
             var principal = await _authTask.GetAuthenticatedPrincipalAsync();
             if (principal is null)
             {
-                _error = "Sua sessão expirou. Entre novamente.";
+                _error = L["ChangePassword.SessionExpired"];
                 return;
             }
 

@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data" msdata:Ordinal="1" />
+          <xsd:element name="resheader" msdata:Ordinal="2" />
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="data">
+      <xsd:complexType>
+        <xsd:sequence>
+          <xsd:element name="value" type="xsd:string" minOccurs="0" />
+          <xsd:element name="comment" type="xsd:string" minOccurs="0" />
+        </xsd:sequence>
+        <xsd:attribute name="name" type="xsd:string" use="required" />
+        <xsd:attribute name="type" type="xsd:string" />
+        <xsd:attribute name="mimetype" type="xsd:string" />
+        <xsd:attribute ref="xml:space" />
+      </xsd:complexType>
+    </xsd:element>
+    <xsd:element name="resheader">
+      <xsd:complexType>
+        <xsd:sequence>
+          <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+        </xsd:sequence>
+        <xsd:attribute name="name" type="xsd:string" use="required" />
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- ===== Shared / Layout ===== -->
+  <data name="Layout.Logout" xml:space="preserve"><value>Sair</value></data>
+  <data name="Layout.MyAccount" xml:space="preserve"><value>Minha conta</value></data>
+  <data name="Layout.BrandFallback" xml:space="preserve"><value>Sufficit Identity</value></data>
+
+  <!-- ===== Login ===== -->
+  <data name="Login.Title" xml:space="preserve"><value>Entrar — Sufficit Identity</value></data>
+  <data name="Login.Requires2FA" xml:space="preserve"><value>Sua conta exige autenticação em duas etapas.</value></data>
+  <data name="Login.Continue2FA" xml:space="preserve"><value>Continuar para verificação 2FA</value></data>
+  <data name="Login.SignInWith" xml:space="preserve"><value>Entrar com {0}</value></data>
+  <data name="Login.SignInWithPasskey" xml:space="preserve"><value>Entrar com passkey</value></data>
+  <data name="Login.PasskeyVerifying" xml:space="preserve"><value>Verificando...</value></data>
+  <data name="Login.OrEmailPassword" xml:space="preserve"><value>ou com e-mail e senha</value></data>
+  <data name="Login.EmailOrUsername" xml:space="preserve"><value>E-mail ou usuário</value></data>
+  <data name="Login.Email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="Login.Password" xml:space="preserve"><value>Senha</value></data>
+  <data name="Login.RememberMe" xml:space="preserve"><value>Manter conectado</value></data>
+  <data name="Login.Submit" xml:space="preserve"><value>Entrar</value></data>
+  <data name="Login.ForgotPassword" xml:space="preserve"><value>Esqueceu a senha?</value></data>
+  <data name="Login.CreateAccount" xml:space="preserve"><value>Criar nova conta</value></data>
+  <data name="Login.ResendConfirmation" xml:space="preserve"><value>Reenviar confirmação de e-mail</value></data>
+  <data name="Login.Error.LockedOut" xml:space="preserve"><value>Conta bloqueada por muitas tentativas. Tente novamente mais tarde.</value></data>
+  <data name="Login.Error.NotAllowed" xml:space="preserve"><value>Login não permitido. Confirme seu e-mail ou contate o suporte.</value></data>
+  <data name="Login.Error.NoEmailFromProvider" xml:space="preserve"><value>O provedor externo não forneceu um e-mail utilizável.</value></data>
+  <data name="Login.Error.AccountLinkRequiresSignIn" xml:space="preserve"><value>Essa conta já existe. Entre normalmente e vincule o provedor no gerenciamento da conta.</value></data>
+  <data name="Login.Error.RegistrationDisabled" xml:space="preserve"><value>A criação de novas contas por provedor externo está desativada.</value></data>
+  <data name="Login.Error.CreateFailed" xml:space="preserve"><value>Não foi possível criar a conta usando o provedor externo.</value></data>
+  <data name="Login.Error.ExternalCallbackUnavailable" xml:space="preserve"><value>A autenticação externa expirou ou foi cancelada.</value></data>
+  <data name="Login.Error.ExternalCorrelationFailed" xml:space="preserve"><value>A sessão do login externo expirou ou o navegador bloqueou o cookie de segurança. Inicie o login novamente.</value></data>
+  <data name="Login.Error.InvalidCredentials" xml:space="preserve"><value>Usuário ou senha inválidos.</value></data>
+  <data name="Login.Error.RequestExpired" xml:space="preserve"><value>A página de login expirou. Recarregue-a e tente novamente.</value></data>
+  <data name="Login.Error.PasskeyFailed" xml:space="preserve"><value>Não foi possível autenticar com a passkey.</value></data>
+  <data name="Login.Error.PasskeyGeneric" xml:space="preserve"><value>Falha ao autenticar com passkey.</value></data>
+  <data name="Login.Error.PasskeyRetry" xml:space="preserve"><value>Não foi possível concluir a autenticação. Recarregue a página e tente novamente.</value></data>
+  <data name="Login.Validation.UserNameRequired" xml:space="preserve"><value>Informe o e-mail ou usuário.</value></data>
+  <data name="Login.Validation.PasswordRequired" xml:space="preserve"><value>Informe a senha.</value></data>
+
+  <!-- ===== Register ===== -->
+  <data name="Register.Title" xml:space="preserve"><value>Criar conta</value></data>
+  <data name="Register.Subtitle" xml:space="preserve"><value>Crie sua conta em poucos segundos</value></data>
+  <data name="Register.Disabled" xml:space="preserve"><value>Cadastro de novas contas está desativado.</value></data>
+  <data name="Register.Success" xml:space="preserve"><value>Conta criada! Verifique seu e-mail para confirmar.</value></data>
+  <data name="Register.SuccessConfirmed" xml:space="preserve"><value>Conta criada e confirmada! Você já pode entrar.</value></data>
+  <data name="Register.UserName" xml:space="preserve"><value>Usuário</value></data>
+  <data name="Register.Email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="Register.Password" xml:space="preserve"><value>Senha</value></data>
+  <data name="Register.ConfirmPassword" xml:space="preserve"><value>Confirmar senha</value></data>
+  <data name="Register.Submit" xml:space="preserve"><value>Criar conta</value></data>
+  <data name="Register.HasAccount" xml:space="preserve"><value>Já tem conta? Entrar</value></data>
+
+  <!-- ===== Forgot Password ===== -->
+  <data name="ForgotPassword.Title" xml:space="preserve"><value>Esqueceu a senha?</value></data>
+  <data name="ForgotPassword.Info" xml:space="preserve"><value>Se o e-mail existir, você receberá instruções para redefinir a senha.</value></data>
+  <data name="ForgotPassword.Email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="ForgotPassword.Submit" xml:space="preserve"><value>Enviar link de redefinição</value></data>
+  <data name="ForgotPassword.BackToLogin" xml:space="preserve"><value>Voltar ao login</value></data>
+
+  <!-- ===== Reset Password ===== -->
+  <data name="ResetPassword.Title" xml:space="preserve"><value>Redefinir senha</value></data>
+  <data name="ResetPassword.InvalidLink" xml:space="preserve"><value>Link de redefinição inválido ou expirado.</value></data>
+  <data name="ResetPassword.Success" xml:space="preserve"><value>Senha redefinida com sucesso.</value></data>
+  <data name="ResetPassword.Account" xml:space="preserve"><value>Conta</value></data>
+  <data name="ResetPassword.NewPassword" xml:space="preserve"><value>Nova senha</value></data>
+  <data name="ResetPassword.ConfirmPassword" xml:space="preserve"><value>Confirmar senha</value></data>
+  <data name="ResetPassword.Submit" xml:space="preserve"><value>Redefinir</value></data>
+
+  <!-- ===== Confirm Email ===== -->
+  <data name="ConfirmEmail.Title" xml:space="preserve"><value>Confirmação de e-mail</value></data>
+  <data name="ConfirmEmail.Success" xml:space="preserve"><value>E-mail confirmado com sucesso!</value></data>
+  <data name="ConfirmEmail.InvalidLink" xml:space="preserve"><value>Link inválido ou expirado.</value></data>
+
+  <!-- ===== 2FA ===== -->
+  <data name="TwoFactor.Title" xml:space="preserve"><value>Autenticação em duas etapas</value></data>
+  <data name="TwoFactor.EnterCode" xml:space="preserve"><value>Digite o código de 6 dígitos do seu app autenticador.</value></data>
+  <data name="TwoFactor.VerificationCode" xml:space="preserve"><value>Código de verificação</value></data>
+  <data name="TwoFactor.RememberDevice" xml:space="preserve"><value>Lembrar este dispositivo (30 dias)</value></data>
+  <data name="TwoFactor.UseRecoveryCode" xml:space="preserve"><value>Usar código de recuperação</value></data>
+  <data name="TwoFactor.Error.InvalidCode" xml:space="preserve"><value>Código inválido. Tente novamente.</value></data>
+  <data name="TwoFactor.Error.LockedOut" xml:space="preserve"><value>Conta bloqueada por muitas tentativas. Tente novamente mais tarde.</value></data>
+  <data name="RecoveryCode.Title" xml:space="preserve"><value>Código de recuperação</value></data>
+  <data name="RecoveryCode.EnterCode" xml:space="preserve"><value>Digite um código de recuperação.</value></data>
+
+  <!-- ===== Logout ===== -->
+  <data name="Logout.Title" xml:space="preserve"><value>Sair da conta</value></data>
+  <data name="Logout.SignedOut" xml:space="preserve"><value>Você foi desconectado.</value></data>
+  <data name="Logout.ReturningTo" xml:space="preserve"><value>Retornando para {0}…</value></data>
+  <data name="Logout.ConfirmTitle" xml:space="preserve"><value>Deseja realmente sair?</value></data>
+  <data name="Logout.ClientRequested" xml:space="preserve"><value>{0} solicitou o logout.</value></data>
+  <data name="Logout.Confirm" xml:space="preserve"><value>Sim, sair</value></data>
+  <data name="Logout.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Logout.SigningOut" xml:space="preserve"><value>Saindo…</value></data>
+  <data name="Logout.FallbackApp" xml:space="preserve"><value>uma aplicação</value></data>
+
+  <!-- ===== Access Denied ===== -->
+  <data name="AccessDenied.Title" xml:space="preserve"><value>Acesso negado</value></data>
+  <data name="AccessDenied.Message" xml:space="preserve"><value>Você não tem permissão para acessar este recurso.</value></data>
+  <data name="AccessDenied.Back" xml:space="preserve"><value>Voltar ao início</value></data>
+
+  <!-- ===== Resend Email ===== -->
+  <data name="ResendEmail.Title" xml:space="preserve"><value>Reenviar confirmação de e-mail</value></data>
+  <data name="ResendEmail.Submit" xml:space="preserve"><value>Reenviar</value></data>
+
+  <!-- ===== Consent ===== -->
+  <data name="Consent.InvalidRequest" xml:space="preserve"><value>Solicitação inválida</value></data>
+  <data name="Consent.NoPendingRequest" xml:space="preserve"><value>Não há solicitação de autorização pendente.</value></data>
+  <data name="Consent.Title" xml:space="preserve"><value>Autorizar aplicação</value></data>
+  <data name="Consent.RequestingAccess" xml:space="preserve"><value>{0} está solicitando acesso à sua conta.</value></data>
+  <data name="Consent.RequestedScopes" xml:space="preserve"><value>Permissões solicitadas:</value></data>
+  <data name="Consent.Authorize" xml:space="preserve"><value>Autorizar</value></data>
+  <data name="Consent.Deny" xml:space="preserve"><value>Negar</value></data>
+
+  <!-- ===== Device ===== -->
+  <data name="Device.Activate" xml:space="preserve"><value>Ativar dispositivo</value></data>
+  <data name="Device.EnterCode" xml:space="preserve"><value>Digite o código exibido no dispositivo que você quer autorizar.</value></data>
+  <data name="Device.CodeLabel" xml:space="preserve"><value>Código do dispositivo</value></data>
+  <data name="Device.CodePlaceholder" xml:space="preserve"><value>ABCD-EFGH</value></data>
+  <data name="Device.Continue" xml:space="preserve"><value>Continuar</value></data>
+  <data name="Device.RequestingAccess" xml:space="preserve"><value>O dispositivo abaixo está solicitando acesso à sua conta:</value></data>
+  <data name="Device.Application" xml:space="preserve"><value>Aplicação</value></data>
+  <data name="Device.RequestedScopes" xml:space="preserve"><value>Permissões solicitadas</value></data>
+  <data name="Device.Authorize" xml:space="preserve"><value>Autorizar dispositivo</value></data>
+  <data name="Device.Deny" xml:space="preserve"><value>Negar</value></data>
+  <data name="Device.Approved" xml:space="preserve"><value>Dispositivo autorizado! Você já pode voltar ao seu dispositivo — ele continuará conectado automaticamente.</value></data>
+  <data name="Device.Denied" xml:space="preserve"><value>Autorização negada para o dispositivo.</value></data>
+  <data name="Device.InvalidCode" xml:space="preserve"><value>Código inválido ou expirado.</value></data>
+  <data name="Device.TryAgain" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Device.Done" xml:space="preserve"><value>Concluir</value></data>
+
+  <!-- ===== Manage: Index ===== -->
+  <data name="Manage.Title" xml:space="preserve"><value>Minha conta</value></data>
+  <data name="Manage.EmailConfirmed" xml:space="preserve"><value>E-mail confirmado</value></data>
+  <data name="Manage.EmailNotConfirmed" xml:space="preserve"><value>E-mail não confirmado</value></data>
+  <data name="Manage.ChangePassword" xml:space="preserve"><value>Alterar senha</value></data>
+  <data name="Manage.TwoFactor" xml:space="preserve"><value>Autenticação em 2 etapas</value></data>
+  <data name="Manage.Passkeys" xml:space="preserve"><value>Passkeys (WebAuthn)</value></data>
+  <data name="Manage.ExternalLogins" xml:space="preserve"><value>Logins externos</value></data>
+  <data name="Manage.ConnectedApps" xml:space="preserve"><value>Aplicações conectadas</value></data>
+  <data name="Manage.ActiveSessions" xml:space="preserve"><value>Sessões ativas</value></data>
+  <data name="Manage.PersonalData" xml:space="preserve"><value>Meus dados (LGPD)</value></data>
+
+  <!-- ===== Manage: Change Password ===== -->
+  <data name="ChangePassword.Title" xml:space="preserve"><value>Alterar senha</value></data>
+  <data name="ChangePassword.Success" xml:space="preserve"><value>Senha alterada com sucesso.</value></data>
+  <data name="ChangePassword.Current" xml:space="preserve"><value>Senha atual</value></data>
+  <data name="ChangePassword.New" xml:space="preserve"><value>Nova senha</value></data>
+  <data name="ChangePassword.Confirm" xml:space="preserve"><value>Confirmar nova senha</value></data>
+  <data name="ChangePassword.SessionExpired" xml:space="preserve"><value>Sua sessão expirou. Entre novamente.</value></data>
+
+  <!-- ===== Manage: Delete Account ===== -->
+  <data name="DeleteAccount.Title" xml:space="preserve"><value>Excluir minha conta</value></data>
+  <data name="DeleteAccount.Warning" xml:space="preserve"><value>Atenção! Esta ação é permanente e irreversível</value></data>
+  <data name="DeleteAccount.Success" xml:space="preserve"><value>Conta excluída com sucesso.</value></data>
+  <data name="DeleteAccount.ConfirmEmail" xml:space="preserve"><value>Para confirmar, digite seu e-mail:</value></data>
+  <data name="DeleteAccount.Submit" xml:space="preserve"><value>Excluir minha conta permanentemente</value></data>
+
+  <!-- ===== Manage: External Logins ===== -->
+  <data name="ExternalLogins.Title" xml:space="preserve"><value>Identidades externas</value></data>
+  <data name="ExternalLogins.Description" xml:space="preserve"><value>Gerencie as contas de outros provedores vinculadas a esta conta.</value></data>
+  <data name="ExternalLogins.Linked" xml:space="preserve"><value>Vinculadas</value></data>
+  <data name="ExternalLogins.Available" xml:space="preserve"><value>Disponíveis</value></data>
+  <data name="ExternalLogins.None" xml:space="preserve"><value>Nenhuma identidade externa vinculada.</value></data>
+
+  <!-- ===== Manage: Grants ===== -->
+  <data name="Grants.Title" xml:space="preserve"><value>Aplicações conectadas</value></data>
+  <data name="Grants.Description" xml:space="preserve"><value>Aplicações que receberam autorização para acessar sua conta.</value></data>
+  <data name="Grants.Scopes" xml:space="preserve"><value>Escopos</value></data>
+  <data name="Grants.NoScopes" xml:space="preserve"><value>Nenhum escopo informado</value></data>
+  <data name="Grants.LastAuth" xml:space="preserve"><value>Última autorização</value></data>
+  <data name="Grants.ActiveCredentials" xml:space="preserve"><value>Credenciais ativas</value></data>
+
+  <!-- ===== Manage: Passkeys ===== -->
+  <data name="ManagePasskeys.Title" xml:space="preserve"><value>Passkeys (WebAuthn)</value></data>
+  <data name="ManagePasskeys.Description" xml:space="preserve"><value>Use biometria ou chave de segurança para entrar sem senha.</value></data>
+  <data name="ManagePasskeys.YourPasskeys" xml:space="preserve"><value>Suas passkeys</value></data>
+  <data name="ManagePasskeys.Name" xml:space="preserve"><value>Nome da passkey</value></data>
+  <data name="ManagePasskeys.Unnamed" xml:space="preserve"><value>Passkey sem nome</value></data>
+  <data name="ManagePasskeys.CreatedAt" xml:space="preserve"><value>Criada em {0}</value></data>
+  <data name="ManagePasskeys.Synced" xml:space="preserve"><value>Sincronizada</value></data>
+  <data name="ManagePasskeys.None" xml:space="preserve"><value>Nenhuma passkey cadastrada.</value></data>
+  <data name="ManagePasskeys.Add" xml:space="preserve"><value>Adicionar passkey</value></data>
+  <data name="ManagePasskeys.NameOptional" xml:space="preserve"><value>Nome (opcional)</value></data>
+  <data name="ManagePasskeys.NamePlaceholder" xml:space="preserve"><value>Ex.: notebook pessoal</value></data>
+
+  <!-- ===== Manage: Personal Data ===== -->
+  <data name="PersonalData.Title" xml:space="preserve"><value>Meus dados (LGPD)</value></data>
+  <data name="PersonalData.Description" xml:space="preserve"><value>Baixe ou exclua seus dados pessoais conforme a Lei Geral de Proteção de Dados.</value></data>
+  <data name="PersonalData.Download" xml:space="preserve"><value>Baixar meus dados (JSON)</value></data>
+  <data name="PersonalData.DeleteAccount" xml:space="preserve"><value>Excluir minha conta</value></data>
+
+  <!-- ===== Manage: Sessions ===== -->
+  <data name="Sessions.Title" xml:space="preserve"><value>Sessões ativas</value></data>
+  <data name="Sessions.Description" xml:space="preserve"><value>Aplicativos e dispositivos com credenciais ativas vinculadas à sua conta.</value></data>
+  <data name="Sessions.None" xml:space="preserve"><value>Nenhuma sessão ativa encontrada.</value></data>
+  <data name="Sessions.RevokeAll" xml:space="preserve"><value>Encerrar todas as sessões e acessos</value></data>
+  <data name="Sessions.RefreshToken" xml:space="preserve"><value>Token de atualização</value></data>
+  <data name="Sessions.AuthCode" xml:space="preserve"><value>Código de autorização</value></data>
+  <data name="Sessions.DeviceCode" xml:space="preserve"><value>Código de dispositivo</value></data>
+  <data name="Sessions.UserCode" xml:space="preserve"><value>Código de usuário</value></data>
+
+  <!-- ===== Manage: Two Factor ===== -->
+  <data name="ManageTwoFactor.Title" xml:space="preserve"><value>Autenticação em duas etapas</value></data>
+  <data name="ManageTwoFactor.Enabled" xml:space="preserve"><value>2FA ativada</value></data>
+  <data name="ManageTwoFactor.Disabled" xml:space="preserve"><value>2FA desativada</value></data>
+  <data name="ManageTwoFactor.RecoveryCodes" xml:space="preserve"><value>Códigos de recuperação</value></data>
+  <data name="ManageTwoFactor.EachCodeOnce" xml:space="preserve"><value>Cada código funciona uma única vez.</value></data>
+
+  <!-- ===== Scope display names (consent screen) ===== -->
+  <data name="Scope.openid.Name" xml:space="preserve"><value>Seu identificador</value></data>
+  <data name="Scope.openid.Description" xml:space="preserve"><value>Acessa seu identificador único (sub).</value></data>
+  <data name="Scope.profile.Name" xml:space="preserve"><value>Perfil</value></data>
+  <data name="Scope.profile.Description" xml:space="preserve"><value>Acessa seu nome, nome de usuário e foto.</value></data>
+  <data name="Scope.email.Name" xml:space="preserve"><value>E-mail</value></data>
+  <data name="Scope.email.Description" xml:space="preserve"><value>Acessa seu endereço de e-mail.</value></data>
+  <data name="Scope.roles.Name" xml:space="preserve"><value>Funções</value></data>
+  <data name="Scope.roles.Description" xml:space="preserve"><value>Acessa suas funções (roles) atribuídas.</value></data>
+  <data name="Scope.address.Name" xml:space="preserve"><value>Endereço</value></data>
+  <data name="Scope.phone.Name" xml:space="preserve"><value>Telefone</value></data>
+  <data name="Scope.offline_access.Name" xml:space="preserve"><value>Acesso offline</value></data>
+  <data name="Scope.offline_access.Description" xml:space="preserve"><value>Permite manter o acesso quando você não está usando o app.</value></data>
+
+  <!-- ===== Front-channel logout page ===== -->
+  <data name="FrontchannelLogout.Title" xml:space="preserve"><value>Encerrando sessões conectadas</value></data>
+  <data name="FrontchannelLogout.Body" xml:space="preserve"><value>Você será redirecionado em instantes.</value></data>
+  <data name="FrontchannelLogout.IframeTitle" xml:space="preserve"><value>Logout da aplicação {0}</value></data>
+  <data name="FrontchannelLogout.Continue" xml:space="preserve"><value>Continuar</value></data>
+
+  <!-- ===== Email subjects/bodies ===== -->
+  <data name="Email.ResetPassword.Subject" xml:space="preserve"><value>Redefinir senha — Sufficit Identity</value></data>
+  <data name="Email.ResetPassword.Body" xml:space="preserve"><value>Redefina sua senha &lt;a href="{0}"&gt;clicando aqui&lt;/a&gt;.</value></data>
+  <data name="Email.ConfirmEmail.Subject" xml:space="preserve"><value>Confirme seu e-mail — Sufficit Identity</value></data>
+  <data name="Email.ConfirmEmail.Body" xml:space="preserve"><value>Confirme sua conta &lt;a href="{0}"&gt;clicando aqui&lt;/a&gt;.</value></data>
+
+  <!-- ===== Common ===== -->
+  <data name="Common.BackToLogin" xml:space="preserve"><value>Voltar ao login</value></data>
+  <data name="Common.Back" xml:space="preserve"><value>Voltar</value></data>
+  <data name="Common.Confirm" xml:space="preserve"><value>Confirmar</value></data>
+  <data name="Common.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Culture.Selector" xml:space="preserve"><value>Idioma</value></data>
+</root>

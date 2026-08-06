@@ -1,8 +1,9 @@
 @page "/account/accessdenied"
-<PageTitle>Acesso negado — Sufficit Identity</PageTitle>
+@inject IStringLocalizer<SharedResource> L
+<PageTitle>@L["AccessDenied.Title"]</PageTitle>
 
 <div class="auth-card">
-    <h1>Acesso negado</h1>
-    <p class="info">Você não tem permissão para acessar este recurso.</p>
-    <a href="/" class="btn btn-primary">Voltar ao início</a>
+    <h1>@L["AccessDenied.Title"]</h1>
+    <p class="info">@L["AccessDenied.Message"]</p>
+    <a href="/" class="btn btn-primary">@L["AccessDenied.Back"]</a>
 </div>

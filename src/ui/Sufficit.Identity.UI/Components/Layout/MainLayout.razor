@@ -1,4 +1,5 @@
 @inject IBrandingThemeProvider BrandingProvider
+@inject IStringLocalizer<SharedResource> L
 @inherits LayoutComponentBase
 
 @code {
@@ -22,9 +23,10 @@
             </a>
         </div>
         <nav class="topbar-nav">
+            <CultureSelector />
             <AuthorizeView>
                 <Authorized>
-                    <a href="/account/logout" class="nav-link">Sair</a>
+                    <a href="/account/logout" class="nav-link">@L["Layout.Logout"]</a>
                 </Authorized>
             </AuthorizeView>
         </nav>
