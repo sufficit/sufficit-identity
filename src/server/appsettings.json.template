@@ -45,6 +45,8 @@
         "RequiredScope": "scim",
         "_RequireMfa": "true requires every SCIM request to carry an amr claim proving MFA (RFC 8176), mirroring the management API. Default false — SCIM is typically driven by machine-to-machine provisioning (client_credentials), which cannot do MFA. Enable only when SCIM is exposed to delegated (human) flows; otherwise restrict the scim scope to a single dedicated provisioning client.",
         "RequireMfa": false,
+        "_AllowedClientIds": "Allow-list of OAuth client_id values permitted to call SCIM (M4, eval). SCIM is FULL-DIRECTORY-TRUST: any allowed client can enumerate every user, read PII, reset any password and delete any account. Default empty = FAIL-CLOSED (SCIM stays inaccessible until at least one trusted provisioning client is listed). Add only dedicated, narrowly-scoped provisioning clients; never a general-purpose application client.",
+        "AllowedClientIds": [],
         "MaxResults": 100
       },
       "_Certificates": "Required in production. PFX files (X509Certificate2) used to sign and encrypt tokens. Leave empty only in Development, where ephemeral dev certificates are used automatically; any other environment fails to start without these.",
