@@ -33,6 +33,16 @@ public sealed class LowercasePathMiddleware
     {
         var path = context.Request.Path.Value;
 
+        // Finding #5 (open redirect): reject protocol-relative paths like
+        // //evil.host/Login BEFORE any other processing. This guard must run
+        // before NeedsLowercasing because an all-lowercase // path would
+        // otherwise bypass the redirect logic and pass through to routing.
+        if (!string.IsNullOrEmpty(path) && path.StartsWith("//", StringComparison.Ordinal))
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
+
         // No path or already lowercase → nothing to do.
         if (string.IsNullOrEmpty(path) || path == "/" || !NeedsLowercasing(path))
         {
@@ -49,15 +59,6 @@ public sealed class LowercasePathMiddleware
         }
 
         var lower = path.ToLowerInvariant();
-
-        // Finding #5 (open redirect): reject protocol-relative paths like
-        // //evil.host/Login which a browser resolves as https://evil.host/login.
-        // The lowercase middleware must never redirect off-origin.
-        if (lower.StartsWith("//", StringComparison.Ordinal))
-        {
-            context.Response.StatusCode = StatusCodes.Status400BadRequest;
-            return;
-        }
 
         // Rebuild the URL preserving the original query string untouched.
         // Request.QueryString already contains the leading '?' (or is empty).
