@@ -57,6 +57,44 @@ default and copies only identifiers and presentation metadata into revoked
 and never changes the source database. Take a protected target backup before
 running it with `--apply`.
 
+### Post-cutover drift audit
+
+When both databases remain writable during a staged rollout, run
+`sql/090-audit-post-cutover-drift.sql` before retiring the legacy issuer. The
+script opens a read-only consistent snapshot and compares the retained
+`identity_legacy` database with the current `identity` database and the
+immutable `users_backup_20260804_020900` cutover snapshot. Verify the database
+names and cutover timestamp in the script before reusing it in another
+environment.
+
+The report distinguishes missing users from conflicting users, classifies
+password and security-stamp changes three ways against the snapshot, checks
+claims/logins/roles/user tokens, identifies client registrations requiring the
+Duende-to-OpenIddict mapper and proves whether every eligible legacy reference
+token has a revoked metadata tombstone. It never prints password hashes, token
+values, grant payloads, e-mail addresses, phone numbers or client secrets.
+
+Reconciliation after this audit must be additive and guarded by the cutover
+snapshot:
+
+- insert a legacy user only while its id, normalized e-mail and normalized user
+  name remain absent from the current database;
+- update a credential or security stamp only when the legacy value changed
+  from the snapshot and the current value still equals the snapshot;
+- insert missing claims and external logins by their semantic keys, without
+  deleting current-only rows;
+- keep current-only users, claims, tokens and protocol state untouched;
+- run client registrations through the Duende-to-OpenIddict mapper and
+  rehydrate confidential secrets from the protected raw secret;
+- never copy usable authorization codes, refresh tokens, reference-token
+  payloads, consents or server-side sessions between issuers. Preserve only
+  revoked reference-token metadata tombstones.
+
+```bash
+mariadb --defaults-extra-file=/protected/mariadb.cnf \
+  < docs/migration/sql/090-audit-post-cutover-drift.sql
+```
+
 For the database-only real-backup gate, copy the SQL directory and a protected
 logical backup to the database host, then run:
 
