@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 
@@ -14,11 +15,6 @@ public sealed class HealthTests
     [Fact]
     public async Task Health_liveness_endpoint_returns_200_healthy()
     {
-        // Rate limiting (30 req/min on POST /connect/token) is intentionally
-        // NOT exercised here or anywhere else in this suite: driving the
-        // fixed window to its limit would slow the whole run for a behavior
-        // that's already a straightforward, already-reviewed configuration
-        // (see Program.cs) rather than STS business logic.
         var client = _factory.CreateClient();
 
         var response = await client.GetAsync("/health");
@@ -26,5 +22,31 @@ public sealed class HealthTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("Healthy", body);
+    }
+
+    [Fact]
+    public async Task Health_liveness_endpoint_responds_to_head_for_haproxy()
+    {
+        // HAProxy uses "HEAD /health" for backend health checks. ASP.NET Core's
+        // MapHealthChecks registers both GET and HEAD, so this must return 200
+        // with an empty body (HEAD never has a body).
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(
+            new HttpRequestMessage(HttpMethod.Head, "/health"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(0, response.Content.Headers.ContentLength ?? 0);
+    }
+
+    [Fact]
+    public async Task Health_ready_endpoint_responds_to_head_for_haproxy()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.SendAsync(
+            new HttpRequestMessage(HttpMethod.Head, "/health/ready"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 }
