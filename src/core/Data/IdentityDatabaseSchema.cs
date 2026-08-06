@@ -13,7 +13,7 @@ public static class IdentityDatabaseSchema
     public const string UserCreatedAtMigrationId = "20260804020337_AddUserCreatedAtUtc";
     public const string SsfStreamsMigrationId = "20260805202819_AddSsfStreams";
     public const string OidcUserSessionsMigrationId = "20260806131249_AddOidcUserSessions";
-    public const string VaultKeysMigrationId = "20260806162913_AddVaultKeys";
+    public const string VaultKeysMigrationId = "20260806162913_AddVaultKeys"; // gitleaks:allow
 
     /// <summary>
     /// Migration history owned by the new Sufficit Identity model.
