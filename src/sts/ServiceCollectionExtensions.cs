@@ -153,29 +153,26 @@ public static class ServiceCollectionExtensions
         //
         // L8 hardening: encrypt DP keys at rest with the signing certificate
         // when one is configured. In Development (no cert) keys stay
-        // unencrypted (harmless — ephemeral). The try/catch honors the
-        // "must not block boot" contract: if the cert can't be used for DP
-        // (wrong key type, expired, permission issue), keys fall back to
-        // unencrypted rather than crashing the process.
+        // unencrypted (harmless — ephemeral).
+        //
+        // Finding #12 (fail-open): the original code silently fell back to
+        // plaintext keys if the cert couldn't be used, which is a security
+        // downgrade. In production (cert configured), a DP-key encryption
+        // failure is now FATAL — the process refuses to start rather than
+        // silently storing keys in plaintext. In Development, no cert is
+        // configured so this block is skipped entirely.
         var dpBuilder = services.AddDataProtection()
             .SetApplicationName("Sufficit.Identity")
             .PersistKeysToDbContext<AppDbContext>();
 
         if (!string.IsNullOrWhiteSpace(options.Certificates.SigningPath))
         {
-            try
-            {
-                var dpCert = X509CertificateLoader.LoadPkcs12FromFile(
-                    options.Certificates.SigningPath,
-                    options.Certificates.SigningPassword);
-                dpBuilder.ProtectKeysWithCertificate(dpCert);
-            }
-            catch (Exception)
-            {
-                // Best-effort: if the cert can't protect DP keys, fall back to
-                // unencrypted-at-rest (the same posture as before this change).
-                // The ASP.NET Core runtime will log its own warning about it.
-            }
+            var dpCert = X509CertificateLoader.LoadPkcs12FromFile(
+                options.Certificates.SigningPath,
+                options.Certificates.SigningPassword);
+            // If ProtectKeysWithCertificate throws (wrong key type, etc.), let
+            // it propagate — fail-closed is the correct posture for production.
+            dpBuilder.ProtectKeysWithCertificate(dpCert);
         }
 
         // ---- ASP.NET Core Identity ----

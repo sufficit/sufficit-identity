@@ -172,15 +172,30 @@ if (!builder.Environment.IsDevelopment())
     });
 }
 
-// ---- Rate limiting: protect /connect/token against brute force ----
-// Global limiter that only restricts POST /connect/token (fixed window per
-// client IP, no queueing); every other endpoint is unrestricted. Pairs with
-// the password-grant lockout enforced by the authorization controller.
-// Tunables come from Sufficit:Identity:RateLimit (Enabled/PermitLimit/
-// WindowSeconds).
-const string TokenEndpointPath = "/connect/token";
+// ---- Rate limiting: protect token endpoint + interactive login surface ----
+// Finding #3: the original limiter covered only POST /connect/token. The
+// interactive login surface (POST /account/login, forgot-password, register)
+// was unthrottled — per-account lockout doesn't stop cross-account password
+// spraying. This limiter covers all credential-validation endpoints with
+// a per-IP fixed window. Tunables come from Sufficit:Identity:RateLimit.
 var rateLimit = identityOptions.RateLimit;
 var tokenEndpointWindow = TimeSpan.FromSeconds(rateLimit.WindowSeconds);
+
+// Interactive credential-validation endpoints (login, forgot-password,
+// register, reset-password, external-login callback). These accept POST
+// with user-supplied credentials and must be rate-limited per IP.
+static bool IsCredentialEndpoint(PathString path, string method)
+{
+    if (!HttpMethods.IsPost(method)) return false;
+    var p = path.Value ?? "";
+    return p.Equals("/connect/token", StringComparison.OrdinalIgnoreCase)
+        || p.StartsWith("/account/login", StringComparison.OrdinalIgnoreCase)
+        || p.StartsWith("/account/forgotpassword", StringComparison.OrdinalIgnoreCase)
+        || p.StartsWith("/account/resetpassword", StringComparison.OrdinalIgnoreCase)
+        || p.StartsWith("/account/register", StringComparison.OrdinalIgnoreCase)
+        || p.StartsWith("/account/externallogincallback", StringComparison.OrdinalIgnoreCase)
+        || p.StartsWith("/account/passkeys", StringComparison.OrdinalIgnoreCase);
+}
 
 if (rateLimit.Enabled)
 {
@@ -196,10 +211,7 @@ if (rateLimit.Enabled)
 
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
         {
-            var isTokenEndpoint = HttpMethods.IsPost(httpContext.Request.Method)
-                && httpContext.Request.Path.Equals(TokenEndpointPath, StringComparison.OrdinalIgnoreCase);
-
-            if (!isTokenEndpoint)
+            if (!IsCredentialEndpoint(httpContext.Request.Path, httpContext.Request.Method))
             {
                 return RateLimitPartition.GetNoLimiter("unrestricted");
             }
