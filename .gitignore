@@ -42,6 +42,10 @@ artifacts/
 **/[Pp]ackages/*
 !**/[Pp]ackages/build/
 
+# Sufficit Pomelo fork folder feed — must be tracked (CI verifies SHA256)
+!.nuget-feed/*.nupkg
+!.nuget-feed/*.snupkg
+
 # JetBrains Rider
 .idea/
 *.sln.iml
