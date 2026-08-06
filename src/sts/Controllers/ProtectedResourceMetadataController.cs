@@ -68,7 +68,7 @@ public sealed class ProtectedResourceMetadataController : ControllerBase
             scopes_supported = new[]
             {
                 "openid", "profile", "email", "roles",
-                "skoruba_identity_admin_api",
+                "identity.management",
                 "sufficit_ai_openai_bridge"
             }.Concat(applicationScopes).Distinct(StringComparer.Ordinal).ToArray(),
             // Introspection is the protected resource this host exposes for RSs.

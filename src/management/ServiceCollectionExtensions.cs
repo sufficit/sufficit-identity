@@ -35,7 +35,7 @@ namespace Sufficit.Identity.Management;
 ///     whether to call this method. Provided for documentation/discovery.
 ///   - RoutePrefix: string (default "api")
 ///   - RequireAuthorization: bool (default true)
-///   - RequiredScope: string (default "skoruba_identity_admin_api")
+///   - RequiredScope: string (default "identity.management")
 /// </summary>
 public static class ServiceCollectionExtensions
 {

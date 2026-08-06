@@ -235,7 +235,7 @@ public sealed class ManagementAuthorizationOptions
     /// Claim types that carry exact management capability names (e.g.
     /// <c>identity.users.read</c>). <b>Must NOT include <c>"scope"</c></b>:
     /// the OAuth <c>scope</c> claim carries OAuth scope values (like
-    /// <c>skoruba_identity_admin_api</c>), which are a different namespace from
+    /// <c>identity.management</c>), which are a different namespace from
     /// management capabilities. Mixing the two would let an OAuth scope
     /// accidentally grant a management capability.
     /// </summary>
@@ -294,7 +294,7 @@ public sealed class ScopeAndRoleManagementEntitlementResolver(
 
         // --- Capabilities from dedicated claim types (NOT "scope") ---
         // The OAuth scope claim carries scope values (e.g.
-        // skoruba_identity_admin_api), a different namespace. Mixing them
+        // identity.management), a different namespace. Mixing them
         // would let an OAuth scope accidentally grant a management capability.
         var claimTypes = NormalizeValues(
             authorization.CapabilityClaimTypes,

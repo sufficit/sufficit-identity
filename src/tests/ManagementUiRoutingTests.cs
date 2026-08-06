@@ -111,7 +111,7 @@ public sealed class ManagementUiRoutingTests
             settingsHtml,
             StringComparison.Ordinal);
         Assert.Contains(
-            "skoruba_identity_admin_api",
+            "identity.management",
             settingsHtml,
             StringComparison.Ordinal);
         Assert.Contains(

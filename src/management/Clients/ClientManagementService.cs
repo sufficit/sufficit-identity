@@ -296,7 +296,7 @@ internal sealed class ClientManagementService(
             // H2/M3 fix (eval): reject API-protection scopes (management, SCIM,
             // custom privileged APIs) at the client-create boundary. Without
             // this, an operator with identity.clients.create could mint a
-            // client_credentials client carrying skoruba_identity_admin_api and
+            // client_credentials client carrying identity.management and
             // defeat the transport policy. Reserved scopes are provisioned via
             // bootstrap, not the runtime CRUD path.
             var reserved = managementOptions.Value.ReservedApiScopes;
