@@ -35,38 +35,60 @@ window.sufficitIdentityDownloadFile = function (fileName, base64, mimeType) {
  * blocked, the terminal page remains visible and explains the manual action.
  */
 (function () {
-    function revealCloseFallback(result) {
+    function canCloseDeviceFlowTab() {
+        // Chromium allows script closing for auxiliary windows and, depending
+        // on how they were created, tabs with a single history entry. Calling
+        // window.close() outside those cases only emits a console warning and
+        // cannot be unlocked by a later user click.
+        var hasLiveOpener = Boolean(window.opener && !window.opener.closed);
+        return hasLiveOpener || window.history.length <= 1;
+    }
+
+    function showManualCompletion(result) {
         var fallback = document.querySelector('[data-device-close-fallback]');
         if (fallback) fallback.hidden = false;
 
         var button = document.querySelector('[data-device-flow-close]');
-        if (button) button.textContent = 'Tentar fechar novamente';
+        if (button) button.hidden = true;
 
         if (result) result.removeAttribute('aria-busy');
     }
 
     function closeDeviceFlowTab(result) {
+        if (!canCloseDeviceFlowTab()) {
+            showManualCompletion(result);
+            return;
+        }
+
         if (result) result.setAttribute('aria-busy', 'true');
         window.close();
 
         // If execution continues, the browser kept the tab open. Delay the
         // fallback just enough to avoid flashing it during a successful close.
         window.setTimeout(function () {
-            revealCloseFallback(result);
+            showManualCompletion(result);
         }, 250);
     }
 
     var result = document.querySelector('[data-device-flow-result]');
     if (!result) return;
 
-    document.addEventListener('click', function (event) {
-        var button = event.target.closest('[data-device-flow-close]');
-        if (!button) return;
-        closeDeviceFlowTab(result);
-    });
+    var closeButton = document.querySelector('[data-device-flow-close]');
+    if (!canCloseDeviceFlowTab()) {
+        showManualCompletion(result);
+        return;
+    }
+
+    if (closeButton) {
+        closeButton.hidden = false;
+        closeButton.addEventListener('click', function () {
+            closeDeviceFlowTab(result);
+        });
+    }
 
     // Device verification is terminal in this browser. Attempt to close the
-    // tab automatically, but never navigate to the Identity home page.
+    // tab automatically only when browser rules are expected to allow it;
+    // never navigate to the Identity home page.
     window.setTimeout(function () {
         closeDeviceFlowTab(result);
     }, 400);
