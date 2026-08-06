@@ -102,4 +102,5 @@ paths = [
   '''package-lock\.json''',
   '''yarn\.lock''',
   '''Directory\.Packages\.props''',  # version pins, no secrets
+  '''src/core/Data/IdentityDatabaseSchema\.cs''',  # migration IDs matched generic-api-key (false positive)
 ]
