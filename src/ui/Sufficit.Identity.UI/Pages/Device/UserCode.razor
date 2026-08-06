@@ -12,21 +12,31 @@
     {
         @if (_resultApproved == true)
         {
-            <div class="device-result" role="status">
+            <div class="device-result" role="status" data-device-flow-result>
                 <span class="device-result__icon" aria-hidden="true">✓</span>
                 <h1>Acesso autorizado</h1>
-                <p>O dispositivo já pode concluir a autenticação. Você pode voltar à aplicação que iniciou o acesso.</p>
+                <p>O dispositivo que iniciou a solicitação já pode concluir a autenticação. Esta página não precisa redirecionar você.</p>
             </div>
         }
         else
         {
-            <div class="device-result" role="status">
+            <div class="device-result" role="status" data-device-flow-result>
                 <span class="device-result__icon device-result__icon--denied" aria-hidden="true">×</span>
                 <h1>Acesso negado</h1>
                 <p>Nenhum acesso foi concedido. Se você não reconhece a solicitação, não precisa fazer mais nada.</p>
             </div>
         }
-        <a href="/" class="btn btn-primary btn-block">Concluir</a>
+        <button type="button" class="btn btn-primary btn-block" data-device-flow-close>
+            Fechar esta aba
+        </button>
+        <p class="device-close-fallback" data-device-close-fallback hidden role="status">
+            O navegador não permitiu fechar esta aba automaticamente. Você pode fechá-la pelo controle de abas e voltar ao dispositivo que iniciou o acesso.
+        </p>
+        <noscript>
+            <p class="device-close-fallback">
+                Você pode fechar esta aba e voltar ao dispositivo que iniciou o acesso.
+            </p>
+        </noscript>
     }
     else if (string.IsNullOrEmpty(_userCode))
     {
