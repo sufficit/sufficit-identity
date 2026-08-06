@@ -752,6 +752,30 @@ public class AuthorizationController : Controller
                 }));
         }
 
+        // Finding #1 (confused-deputy, RFC 8707): when AllowedClientIds is
+        // configured (non-empty), the operator has defined a closed set of
+        // clients authorized to exchange tokens. The subject_token's `azp`
+        // must match one of those authorized clients — preventing a client
+        // outside the allowlist from presenting a token it captured elsewhere.
+        // When AllowedClientIds is empty (back-compat default), the OpenIddict
+        // grant permission alone gates exchange (the original pre-finding posture).
+        if (_tokenExchangeOptions.AllowedClientIds.Count > 0)
+        {
+            var subjectTokenAzp = result.Principal.GetClaim("azp")
+                ?? result.Principal.GetClaim("client_id");
+            if (!string.IsNullOrWhiteSpace(subjectTokenAzp)
+                && !_tokenExchangeOptions.AllowedClientIds.Contains(subjectTokenAzp))
+            {
+                return Forbid(
+                    authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
+                            "The subject_token was issued to a client not in the TokenExchange allowlist."
+                    }));
+            }
+        }
         // NOTE (#4c): BuildIdentityAsync stages the subject's FULL role/claim
         // breadth onto this in-memory identity — the actual narrowing to
         // "only claims appropriate to the requested scopes" happens below via
