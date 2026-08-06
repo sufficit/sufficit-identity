@@ -148,6 +148,38 @@ public sealed class VaultTests
         Assert.Equal(2, versions.Count);
     }
 
+    // ---- VaultBackedClientSecretResolver (M1 fix) ----
+
+    [Fact]
+    public async Task Client_secret_resolver_round_trips_with_pass_through()
+    {
+        IKeyVault vault = new PassThroughKeyVault();
+        var resolver = new VaultBackedClientSecretResolver(vault);
+
+        // With pass-through, the reference is the plaintext secret itself
+        // (dev/migration convenience). Resolve returns it unchanged.
+        const string secret = "my-confidential-client-secret";
+        var resolved = await resolver.ResolveAsync(secret);
+
+        Assert.Equal(secret, resolved);
+    }
+
+    [Fact]
+    public async Task Client_secret_resolver_round_trips_with_real_vault()
+    {
+        var (vault, _) = CreateRealVault();
+        var resolver = new VaultBackedClientSecretResolver(vault);
+
+        // Store a secret, then resolve the reference back to the plaintext.
+        const string plaintext = "super-secret-client-credential";
+        var reference = await resolver.StoreAsync(plaintext);
+        var resolved = await resolver.ResolveAsync(reference);
+
+        Assert.Equal(plaintext, resolved);
+        // The reference must not contain the plaintext.
+        Assert.DoesNotContain(plaintext, reference);
+    }
+
     // ---- Helpers ----
 
     private static (IKeyVault vault, IDbContextFactory<AppDbContext> dbFactory) CreateRealVault()

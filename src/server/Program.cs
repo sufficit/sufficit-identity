@@ -131,6 +131,15 @@ if (mgmtEnabled)
         ServiceDescriptor.Scoped<
             IManagementEntitlementResolver,
             SufficitOperatorManagementEntitlementResolver>());
+    // M1 fix (eval): replace the MissingClientSecretResolver stub with a
+    // vault-backed resolver so provisioning of confidential clients works.
+    // The vault is already registered by AddSufficitIdentitySTS above; the
+    // resolver consumes IKeyVault (pass-through by default, real crypto when
+    // Sufficit:Vault:Enabled=true).
+    builder.Services.Replace(
+        ServiceDescriptor.Singleton<
+            Sufficit.Identity.Management.Provisioning.IClientSecretResolver,
+            Sufficit.Identity.Vault.VaultBackedClientSecretResolver>());
     if (uiHostingOptions.Management.IsEmbedded)
     {
         builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
