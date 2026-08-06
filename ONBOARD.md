@@ -114,7 +114,20 @@ Before deploying to production:
 - [ ] **CSP** — calibrate `Csp.ReportOnly` against the real UI, then flip to `false` (enforce)
 - [ ] **Docker** — the included Dockerfile builds a non-root, digest-pinned image. Mount secrets via env vars or files.
 
-## 6. Docker
+## 6. Docker Compose (recommended for local dev)
+
+The included `docker-compose.yml` runs the full stack: MariaDB + STS + nginx (TLS reverse proxy).
+
+```sh
+docker compose up --build
+```
+
+- **STS direct:** http://localhost:8080 (plain HTTP, bypasses nginx — for debugging)
+- **STS via proxy:** https://localhost:5001 (self-signed TLS, realistic topology)
+
+The nginx proxy generates a self-signed cert on first boot. The database is initialized from the checked-in schema SQL. Management API and SCIM are enabled by default in the compose config.
+
+## 7. Docker (standalone)
 
 ```sh
 docker build -t sufficit-identity .

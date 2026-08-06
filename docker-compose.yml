@@ -1,0 +1,90 @@
+# Sufficit Identity — local development + testing stack
+#
+# Quick start:
+#   1. Generate dev certs:   dotnet dev-certs https -ep certs/dev.pfx -p devcert
+#   2. docker compose up --build
+#   3. STS is live at https://localhost:5001 (nginx) or http://localhost:8080 (direct)
+#
+# The stack runs: MariaDB 10.4 + the STS container (built from the Dockerfile)
+# + nginx reverse proxy with self-signed TLS for a realistic topology.
+# No real secrets are used — everything is local dev configuration.
+
+services:
+
+  # ---- Database ----
+  db:
+    image: mariadb:10.4.34
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpw
+      MARIADB_DATABASE: identity
+      MARIADB_USER: identity
+      MARIADB_PASSWORD: identity
+    ports:
+      - "3306:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+      # Apply the canonical schema on first boot (checked-in SQL).
+      - ./docs/migration/sql/001-create-empty-database.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "--silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # ---- STS (the app) ----
+  sts:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      # Database
+      ConnectionStrings__DefaultConnection: "server=db;port=3306;database=identity;user=identity;password=identity;SslMode=Disabled"
+      # Issuer — must match the public URL the proxy serves
+      Sufficit__Identity__Issuer: "https://localhost:5001/"
+      # Dev certs (ephemeral — Development auto-generates if these are empty)
+      Sufficit__Identity__Certificates__SigningPath: ""
+      Sufficit__Identity__Certificates__EncryptionPath: ""
+      # Trusted proxy (nginx in this stack)
+      Sufficit__Identity__TrustedProxies__0: "172.16.0.0/12"
+      Sufficit__Identity__RateLimit__FailOnUntrustedProxy: "false"
+      # Enable management API + SCIM for local testing
+      Sufficit__Identity__Management__Enabled: "true"
+      # Email — fallback to console logging (no SMTP/RabbitMQ in this stack)
+      Sufficit__Identity__Smtp__Host: ""
+    ports:
+      - "8080:8080"  # Direct (plain HTTP, bypasses nginx — for debugging)
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
+  # ---- Reverse proxy (nginx with TLS) ----
+  # Provides a realistic topology: nginx terminates TLS, forwards to the STS
+  # container, sets X-Forwarded-* headers. Uses a self-signed cert generated
+  # on first run. This is the configuration the STS is designed for (TrustedProxies,
+  # forwarded headers, rate limiting by real client IP).
+  proxy:
+    image: nginx:alpine
+    depends_on:
+      sts:
+        condition: service_healthy
+    ports:
+      - "5001:443"   # HTTPS (self-signed)
+      - "5000:80"    # HTTP (redirects to HTTPS)
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/gen-cert.sh:/etc/nginx/certs/gen-cert.sh:ro
+      - cert-data:/etc/nginx/certs
+    entrypoint: ["/bin/sh", "/etc/nginx/certs/gen-cert.sh"]
+    # gen-cert.sh generates a self-signed cert on first run, then starts nginx.
+
+volumes:
+  db-data:
+  cert-data:
