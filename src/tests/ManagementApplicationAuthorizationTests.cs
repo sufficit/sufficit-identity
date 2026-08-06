@@ -144,7 +144,8 @@ public sealed class ManagementApplicationAuthorizationTests
             new ConfigurationManagementAccessPolicyProvider(options);
         var evaluator = new CapabilityManagementAuthorizationEvaluator(
             resolver,
-            accessPolicies);
+            accessPolicies,
+            new DefaultManagementObjectAccessPolicy());
         var service = new ManagementOverviewService(
             resolver,
             accessPolicies,
@@ -181,9 +182,96 @@ public sealed class ManagementApplicationAuthorizationTests
             provisioning.ReasonCode);
     }
 
+    // ---- H3: object-level authorization boundary (IManagementObjectAccessPolicy) ----
+
+    [Fact]
+    public async Task Object_access_policy_default_is_permissive()
+    {
+        // With the shipped default policy, a capable operator is allowed against
+        // any resource (regression: the new boundary must not change behavior
+        // until a deployment opts into a non-permissive impl).
+        var evaluator = CreateEvaluator(adminRoles: ["identity-administrator"]);
+        var principal = PrincipalWithRole("identity-administrator");
+
+        var decision = await evaluator.EvaluateAsync(
+            principal,
+            ManagementCapabilities.UsersRead,
+            new ManagementResource(ManagementResourceTypes.User, "user-123"));
+
+        Assert.Equal(ManagementAuthorizationOutcome.Allowed, decision.Outcome);
+    }
+
+    [Fact]
+    public async Task Object_access_policy_denial_takes_precedence_after_capability_and_mfa()
+    {
+        // A non-permissive object policy returning Denied is surfaced unchanged
+        // by the evaluator, with the policy's own ReasonCode — proving the
+        // boundary is consulted and respected (the foundation for BOLA/tenant
+        // scoping). Capability + MFA still pass; only the object check denies.
+        var evaluator = CreateEvaluator(
+            adminRoles: ["identity-administrator"],
+            objectAccess: new DenyingObjectAccessPolicy("object_not_accessible"));
+        var principal = PrincipalWithRole("identity-administrator");
+
+        var decision = await evaluator.EvaluateAsync(
+            principal,
+            ManagementCapabilities.UsersDelete,
+            new ManagementResource(ManagementResourceTypes.User, "other-tenant-user"));
+
+        Assert.Equal(ManagementAuthorizationOutcome.Denied, decision.Outcome);
+        Assert.Equal("object_not_accessible", decision.ReasonCode);
+    }
+
+    [Fact]
+    public async Task Object_access_policy_runs_only_after_capability_passes()
+    {
+        // Capability denial short-circuits before the object policy is ever
+        // consulted: an operator without the capability gets
+        // capability_not_granted even when the object policy would allow.
+        // (Uses an object policy that throws if called, to prove it was skipped.)
+        var evaluator = CreateEvaluator(
+            adminRoles: ["identity-administrator"],
+            objectAccess: new ThrowingObjectAccessPolicy());
+        // principal has NO admin role and NO capability claim → capability check fails.
+        var principal = PrincipalWithRole("no-capabilities");
+
+        var decision = await evaluator.EvaluateAsync(
+            principal,
+            ManagementCapabilities.UsersDelete,
+            new ManagementResource(ManagementResourceTypes.User, "user-1"));
+
+        Assert.Equal(ManagementAuthorizationOutcome.Denied, decision.Outcome);
+        Assert.Equal("capability_not_granted", decision.ReasonCode);
+    }
+
+    /// <summary>Stub object policy that denies every resource with a fixed reason.</summary>
+    private sealed class DenyingObjectAccessPolicy(string reason)
+        : IManagementObjectAccessPolicy
+    {
+        public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+            ClaimsPrincipal principal,
+            string capability,
+            ManagementResource resource,
+            CancellationToken cancellationToken = default)
+            => ValueTask.FromResult(ManagementAuthorizationDecision.Denied(reason));
+    }
+
+    /// <summary>Stub object policy that throws if ever called (proves short-circuit).</summary>
+    private sealed class ThrowingObjectAccessPolicy : IManagementObjectAccessPolicy
+    {
+        public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+            ClaimsPrincipal principal,
+            string capability,
+            ManagementResource resource,
+            CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException(
+                "Object access policy must not be consulted when capability is denied.");
+    }
+
     private static CapabilityManagementAuthorizationEvaluator CreateEvaluator(
         bool requireMfa = false,
-        string[]? adminRoles = null)
+        string[]? adminRoles = null,
+        IManagementObjectAccessPolicy? objectAccess = null)
     {
         var options = Options.Create(new ManagementOptions
         {
@@ -196,7 +284,8 @@ public sealed class ManagementApplicationAuthorizationTests
         });
         return new CapabilityManagementAuthorizationEvaluator(
             new ScopeAndRoleManagementEntitlementResolver(options),
-            new ConfigurationManagementAccessPolicyProvider(options));
+            new ConfigurationManagementAccessPolicyProvider(options),
+            objectAccess ?? new DefaultManagementObjectAccessPolicy());
     }
 
     private static ClaimsPrincipal PrincipalWithRole(

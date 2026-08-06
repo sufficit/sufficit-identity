@@ -183,6 +183,34 @@ public interface IManagementAccessPolicyProvider
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Object-level authorization boundary (BOLA / tenant scoping). Consulted by
+/// the authorization evaluator AFTER the capability check and the MFA step-up
+/// check pass, to decide whether the operator may exercise <paramref name="capability"/>
+/// against this specific <paramref name="resource"/>. This is the seam that
+/// turns <see cref="ManagementResource"/> (Type/Id/ContextId) from dead audit
+/// metadata into a real access decision — enabling per-object or per-tenant
+/// authorization ("can this operator delete *this* user / manage *this*
+/// client") once a deployment ships a non-permissive implementation.
+/// </summary>
+/// <remarks>
+/// The default implementation (<c>DefaultManagementObjectAccessPolicy</c>)
+/// returns <see cref="ManagementAuthorizationDecision.Allowed"/> for every
+/// resource, preserving the single-operator/trust-everything posture the STS
+/// ships with. A deployment that needs object/tenant boundaries replaces it
+/// via <c>services.Replace&lt;IManagementObjectAccessPolicy, ...&gt;()</c>,
+/// exactly as it can replace <see cref="IManagementEntitlementResolver"/>.
+/// The decision type is reused so the evaluator needs no translation.
+/// </remarks>
+public interface IManagementObjectAccessPolicy
+{
+    ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+        ClaimsPrincipal principal,
+        string capability,
+        ManagementResource resource,
+        CancellationToken cancellationToken = default);
+}
+
 public sealed class ManagementAuthorizationOptions
 {
     /// <summary>
@@ -358,11 +386,34 @@ public sealed class ConfigurationManagementAccessPolicyProvider(
     }
 }
 
+/// <summary>
+/// Permissive default <see cref="IManagementObjectAccessPolicy"/>: allows every
+/// resource. This preserves the single-operator/trust-everything posture the
+/// STS ships with (every operator with the capability may act on any object of
+/// that type). A deployment that needs object-level or tenant boundaries
+/// replaces this via
+/// <c>services.Replace&lt;IManagementObjectAccessPolicy, ...&gt;()</c>.
+/// </summary>
+public sealed class DefaultManagementObjectAccessPolicy
+    : IManagementObjectAccessPolicy
+{
+    public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+        ClaimsPrincipal principal,
+        string capability,
+        ManagementResource resource,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return ValueTask.FromResult(ManagementAuthorizationDecision.Allowed());
+    }
+}
+
 public sealed class CapabilityManagementAuthorizationEvaluator
     : IManagementAuthorizationEvaluator
 {
     private readonly IManagementEntitlementResolver entitlements;
     private readonly IManagementAccessPolicyProvider accessPolicies;
+    private readonly IManagementObjectAccessPolicy objectAccess;
 
     private static readonly HashSet<string> MfaMethods =
         new(StringComparer.Ordinal)
@@ -372,24 +423,29 @@ public sealed class CapabilityManagementAuthorizationEvaluator
 
     public CapabilityManagementAuthorizationEvaluator(
         IManagementEntitlementResolver entitlements,
-        IManagementAccessPolicyProvider accessPolicies)
+        IManagementAccessPolicyProvider accessPolicies,
+        IManagementObjectAccessPolicy objectAccess)
     {
         this.entitlements = entitlements;
         this.accessPolicies = accessPolicies;
+        this.objectAccess = objectAccess;
     }
 
     // Source-compatible fallback for an embedded UI compiled against the preceding
-    // contract commit. New hosts register both replaceable dependencies; an
+    // contract commit. New hosts register all replaceable dependencies; an
     // older composition surface still receives the same fail-closed defaults.
     public CapabilityManagementAuthorizationEvaluator(
         IOptions<ManagementOptions> options,
         IManagementEntitlementResolver? entitlements = null,
-        IManagementAccessPolicyProvider? accessPolicies = null)
+        IManagementAccessPolicyProvider? accessPolicies = null,
+        IManagementObjectAccessPolicy? objectAccess = null)
     {
         this.entitlements = entitlements
             ?? new ScopeAndRoleManagementEntitlementResolver(options);
         this.accessPolicies = accessPolicies
             ?? new ConfigurationManagementAccessPolicyProvider(options);
+        this.objectAccess = objectAccess
+            ?? new DefaultManagementObjectAccessPolicy();
     }
 
     public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
@@ -442,6 +498,20 @@ public sealed class CapabilityManagementAuthorizationEvaluator
         {
             return ManagementAuthorizationDecision.StepUpRequired(
                 "mfa_required");
+        }
+
+        // H3 (eval): object-level authorization boundary. Consulted LAST
+        // (after capability + MFA) because it may need a DB lookup to resolve
+        // resource ownership, while the preceding checks are principal-scoped
+        // and cheap. The default policy is permissive; a deployment replaces
+        // it to enforce tenant/object scoping. A non-allowed decision carries
+        // its own ReasonCode and is surfaced unchanged (audited + 403 by the
+        // shared DemandAsync machinery in each service).
+        var objectDecision = await objectAccess.EvaluateAsync(
+            principal, capability, resource, cancellationToken);
+        if (!objectDecision.IsAllowed)
+        {
+            return objectDecision;
         }
 
         return ManagementAuthorizationDecision.Allowed();

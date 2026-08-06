@@ -71,6 +71,12 @@ public static class ServiceCollectionExtensions
             ScopeAndRoleManagementEntitlementResolver>();
         services.TryAddScoped<IManagementAccessPolicyProvider,
             ConfigurationManagementAccessPolicyProvider>();
+        // H3 (eval): object-level authorization boundary. Permissive default
+        // preserves the trust-everything posture; a deployment replaces it via
+        // services.Replace<IManagementObjectAccessPolicy, ...>() to enforce
+        // tenant/object scoping (mirrors how the host replaces the resolver).
+        services.TryAddScoped<IManagementObjectAccessPolicy,
+            DefaultManagementObjectAccessPolicy>();
         services.TryAddScoped<IManagementAuthorizationEvaluator,
             CapabilityManagementAuthorizationEvaluator>();
         services.TryAddScoped<IManagementAuditService, ManagementAuditService>();
