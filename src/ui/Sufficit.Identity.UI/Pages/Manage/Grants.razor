@@ -7,10 +7,18 @@
 
 <PageTitle>Aplicações conectadas — Sufficit Identity</PageTitle>
 
-<div class="auth-card">
+<div class="auth-card manage-grants">
     <ManageBackLink />
-    <h1>Aplicações conectadas</h1>
-    <p class="info">Aplicações que receberam autorização para acessar sua conta.</p>
+    <header class="manage-grants__header">
+        <div>
+            <h1>Aplicações conectadas</h1>
+            <p class="info">Aplicações que receberam autorização para acessar sua conta.</p>
+        </div>
+        @if (!_loading && _applications.Count > 0)
+        {
+            <span class="badge badge-outline">@_applications.Count conexão(ões)</span>
+        }
+    </header>
 
     <div aria-live="polite">
         @if (_success is not null)
@@ -46,7 +54,21 @@
                         <dl class="access-metadata">
                             <div>
                                 <dt>Escopos</dt>
-                                <dd>@FormatScopes(application.Scopes)</dd>
+                                <dd>
+                                    @if (application.Scopes.Count is 0)
+                                    {
+                                        <span class="scope-empty">Nenhum escopo informado</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="scope-list-inline" aria-label="Escopos autorizados">
+                                            @foreach (var scope in application.Scopes)
+                                            {
+                                                <code class="scope-chip">@scope</code>
+                                            }
+                                        </span>
+                                    }
+                                </dd>
                             </div>
                             <div>
                                 <dt>Última autorização</dt>
@@ -60,6 +82,7 @@
                     </div>
                     <button type="button"
                             class="btn btn-danger btn-sm access-item-action"
+                            aria-label="Revogar acesso de @application.DisplayName"
                             disabled="@IsBusy"
                             @onclick="() => RevokeAsync(application)">
                         @(_busyApplicationId == application.ApplicationId
@@ -159,11 +182,6 @@
             _busyApplicationId = null;
         }
     }
-
-    private static string FormatScopes(IReadOnlyList<string> scopes) =>
-        scopes.Count == 0
-            ? "Nenhum escopo informado"
-            : string.Join(", ", scopes);
 
     private static string FormatDate(DateTimeOffset? value) =>
         value?.UtcDateTime.ToString("dd/MM/yyyy HH:mm 'UTC'") ?? "Não informada";

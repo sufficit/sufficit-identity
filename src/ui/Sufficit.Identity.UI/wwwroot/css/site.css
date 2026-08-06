@@ -825,8 +825,30 @@ img.profile-avatar { background: var(--surface-sunken); }
 }
 
 /* Grants */
-.grant-item {
+.manage-grants {
+    max-width: 760px;
+}
+
+.manage-grants__header {
     display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-5);
+}
+
+.manage-grants__header .info {
+    max-width: 48ch;
+    margin-bottom: 0;
+}
+
+.manage-grants__header .badge {
+    flex: 0 0 auto;
+    margin-top: 2px;
+}
+
+.grant-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     justify-content: space-between;
     align-items: flex-start;
     gap: var(--space-4);
@@ -871,7 +893,8 @@ img.profile-avatar { background: var(--surface-sunken); }
 }
 .access-metadata div {
     display: grid;
-    grid-template-columns: minmax(7.5rem, auto) minmax(0, 1fr);
+    grid-template-columns: minmax(8rem, auto) minmax(0, 1fr);
+    align-items: start;
     gap: var(--space-2);
 }
 .access-metadata dt,
@@ -885,10 +908,36 @@ img.profile-avatar { background: var(--surface-sunken); }
     font-weight: 600;
 }
 .access-metadata dd {
+    min-width: 0;
     color: var(--ink);
     overflow-wrap: anywhere;
 }
+.scope-list-inline {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.scope-chip {
+    max-width: 100%;
+    padding: 3px 7px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.scope-empty {
+    color: var(--ink-muted);
+}
+
 .access-item-action {
+    min-height: 44px;
     flex-shrink: 0;
 }
 .session-revoke-all {
@@ -1041,6 +1090,33 @@ img.profile-avatar { background: var(--surface-sunken); }
         align-items: stretch;
         flex-direction: column;
     }
+
+    .manage-grants {
+        padding: var(--space-6) max(var(--space-4), env(safe-area-inset-right))
+            var(--space-8) max(var(--space-4), env(safe-area-inset-left));
+    }
+
+    .manage-grants__header {
+        align-items: stretch;
+        flex-direction: column;
+        gap: var(--space-3);
+    }
+
+    .manage-grants__header .badge {
+        align-self: flex-start;
+        margin-top: 0;
+    }
+
+    .manage-grants .grant-list {
+        margin-top: var(--space-5);
+    }
+
+    .grant-item {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--space-4);
+        padding: var(--space-4);
+    }
+
     .passkey-item .btn { align-self: flex-start; }
     .passkey-item-actions,
     .passkey-inline-actions {
@@ -1048,11 +1124,12 @@ img.profile-avatar { background: var(--surface-sunken); }
         flex-wrap: wrap;
     }
     .access-item-action {
-        align-self: flex-start;
+        align-self: stretch;
+        width: 100%;
     }
     .access-metadata div {
         grid-template-columns: 1fr;
-        gap: 0;
+        gap: var(--space-1);
     }
     .external-list li {
         align-items: flex-start;
