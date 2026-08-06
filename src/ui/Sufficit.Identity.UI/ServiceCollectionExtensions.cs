@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Sufficit.Identity.UI.Abstractions.Hosting;
 using Sufficit.Identity.UI.Services;
 
 namespace Sufficit.Identity.UI;
@@ -9,26 +11,23 @@ namespace Sufficit.Identity.UI;
 /// <summary>
 /// DI and pipeline extensions to inject the Sufficit Identity UI (Blazor Server)
 /// into an authorization-server host.
-///
-/// Usage in the STS Program.cs:
-/// <code>
-/// builder.Services.AddSufficitIdentityUI();
-/// ...
-/// app.UseSufficitIdentityUI();
-/// </code>
 /// </summary>
 public static class ServiceCollectionExtensions
 {
     /// <summary>
     /// Registers the Blazor Server components and supporting services for the
     /// Identity UI (login, consent, logout, device flow, manage area).
-    /// Must be called after the host's authentication and authorization
-    /// runtime services are registered.
     /// </summary>
     public static IServiceCollection AddSufficitIdentityUI(
         this IServiceCollection services,
         IConfiguration? configuration = null)
     {
+        // Phase 2: carry the module descriptor through DI for startup validation.
+        services.TryAddSingleton<UiModuleRegistry>();
+        services.TryAddSingleton<IUiModuleRegistry>(sp => sp.GetRequiredService<UiModuleRegistry>());
+        services.AddSingleton(_ => new UiModuleDescriptor(
+            "sufficit-identity-ui", UiSurface.Public, new Version(0, 4, 0), new Version(0, 4, 0)));
+
         services.AddHttpContextAccessor();
         services.AddScoped<ScopeViewModelProvider>();
 
