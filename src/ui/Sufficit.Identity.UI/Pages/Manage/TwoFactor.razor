@@ -11,7 +11,7 @@
 <div class="auth-card">
     <ManageBackLink />
     <h1>@L["ManageTwoFactor.Title"]</h1>
-    <p class="info">Use um aplicativo autenticador para proteger sua conta com um segundo fator.</p>
+    <p class="info">@L["ManageTwoFactor.Description"]</p>
 
     <div aria-live="polite">
         @if (_error is not null)
@@ -99,7 +99,7 @@
         </p>
         <div class="qr-container">
             <img src="@_qrCode"
-                 alt="QR code para configurar a autenticação em duas etapas" />
+                 alt="@(L["ManageTwoFactor.QrAlt"])" />
         </div>
         <p class="muted">Se não puder ler o QR code, digite esta chave:</p>
         <code class="manual-key">@setup.ManualKey</code>

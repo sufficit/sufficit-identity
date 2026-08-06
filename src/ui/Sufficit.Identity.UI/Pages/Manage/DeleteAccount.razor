@@ -11,14 +11,13 @@
 
     <div class="alert alert-error" role="alert">
         <strong>@L["DeleteAccount.Warning"]</strong>
-        Todos os seus dados (perfil, logins externos vinculados, configurações de 2FA)
-        serão removidos.
+        @L["DeleteAccount.DataWarning"]
     </div>
 
     @if (_deleted)
     {
         <div class="alert alert-success">@L["DeleteAccount.Success"]</div>
-        <a href="/" class="btn btn-primary">Voltar ao início</a>
+        <a href="/" class="btn btn-primary">@L["Common.BackHome"]</a>
     }
     else
     {
@@ -33,21 +32,21 @@
             <DataAnnotationsValidator />
 
             <div class="form-group">
-                <label for="email">E-mail</label>
+                <label for="email">@L["DeleteAccount.Email"]</label>
                 <InputText id="email" @bind-Value="_model.Email" class="form-control"
                            autocomplete="email" autofocus />
                 <ValidationMessage For="@(() => _model.Email)" />
             </div>
 
             <div class="form-group">
-                <label for="password">Senha atual</label>
+                <label for="password">@L["DeleteAccount.CurrentPassword"]</label>
                 <InputText id="password" type="password" @bind-Value="_model.Password" class="form-control"
                            autocomplete="current-password" />
                 <ValidationMessage For="@(() => _model.Password)" />
             </div>
 
             <button type="submit" class="btn btn-danger">@L["DeleteAccount.Submit"]</button>
-            <a href="/manage/personaldata" class="btn btn-secondary">Cancelar</a>
+            <a href="/manage/personaldata" class="btn btn-secondary">@L["Common.Cancel"]</a>
         </EditForm>
     }
 </div>

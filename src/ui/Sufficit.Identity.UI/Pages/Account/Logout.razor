@@ -12,11 +12,11 @@
         {
             <p class="info">@L["Logout.ReturningTo", _clientName ?? string.Empty]</p>
             <script src="_content/Sufficit.Identity.UI/js/redirect.js" data-url="@_postLogoutRedirect"></script>
-            <p><a href="@_postLogoutRedirect" class="btn btn-primary">Continuar</a></p>
+            <p><a href="@_postLogoutRedirect" class="btn btn-primary">@L["Logout.Continue"]</a></p>
         }
         else
         {
-            <a href="/" class="btn btn-primary">Voltar ao início</a>
+            <a href="/" class="btn btn-primary">@L["Common.BackHome"]</a>
         }
     }
     else if (_showConfirm)

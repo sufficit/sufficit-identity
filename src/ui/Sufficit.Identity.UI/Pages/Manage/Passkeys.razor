@@ -26,14 +26,14 @@
     <h3>@L["ManagePasskeys.YourPasskeys"]</h3>
     @if (_loading)
     {
-        <p class="muted" role="status">Carregando passkeys...</p>
+        <p class="muted" role="status">@L["ManagePasskeys.Loading"]</p>
     }
     else if (_loadFailed)
     {
         <div class="alert alert-error" role="alert">
-            Não foi possível carregar suas passkeys.
+            @L["ManagePasskeys.LoadError"]
             <button type="button" class="btn btn-secondary btn-sm" @onclick="LoadPasskeysAsync">
-                Tentar novamente
+                @L["Common.TryAgain"]
             </button>
         </div>
     }
@@ -52,15 +52,15 @@
                                    @onkeydown="@(args => HandleRenameKeyDownAsync(args, passkey.CredentialId))"
                                    class="form-control" maxlength="@_overview.MaximumNameLength"
                                    autocomplete="off" disabled="@_busy" />
-                            <span class="field-hint">Deixe em branco para remover o nome. A credencial continuará funcionando normalmente.</span>
+                            <span class="field-hint">@L["ManagePasskeys.RenameHint"]</span>
                             <div class="passkey-inline-actions">
                                 <button type="button" class="btn btn-primary btn-sm" disabled="@_busy"
                                         @onclick="@(async () => await SavePasskeyNameAsync(passkey.CredentialId))">
-                                    @(_busy ? "Salvando..." : "Salvar nome")
+                                    @(_busy ? L["ManagePasskeys.Saving"] : L["ManagePasskeys.SaveName"])
                                 </button>
                                 <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
                                         @onclick="CancelRenaming">
-                                    Cancelar
+                                    @L["Common.Cancel"]
                                 </button>
                             </div>
                         </div>
@@ -105,14 +105,13 @@
         @if (!_supported)
         {
             <div class="alert alert-info" role="status">
-                Este navegador não oferece suporte a passkeys neste dispositivo. Tente um navegador moderno
-                com Windows Hello, Touch ID, Face ID ou uma chave de segurança USB/NFC.
+                @L["ManagePasskeys.Unsupported"]
             </div>
         }
         else if (!_overview.CanRegister)
         {
             <div class="alert alert-info" role="status">
-                Esta conta atingiu o limite de @_overview.MaximumCredentials passkeys. Remova uma passkey antes de registrar outra.
+                @L["ManagePasskeys.LimitReached", _overview.MaximumCredentials]
             </div>
         }
         else
@@ -124,10 +123,10 @@
                     <input id="passkey-name" name="name" @bind="_passkeyName" class="form-control"
                            maxlength="@_overview.MaximumNameLength" autocomplete="off"
                            placeholder="@L["ManagePasskeys.NamePlaceholder"]" disabled="@_busy" />
-                    <span class="field-hint">Use um nome que ajude a reconhecer o dispositivo.</span>
+                    <span class="field-hint">@L["ManagePasskeys.DeviceNameHint"]</span>
                 </div>
                 <button type="button" class="btn btn-primary" disabled="@_busy" @onclick="RegisterPasskeyAsync">
-                    @(_busy ? "Aguardando o dispositivo..." : "Registrar passkey")
+                    @(_busy ? L["ManagePasskeys.WaitingDevice"] : L["ManagePasskeys.Register"])
                 </button>
             </form>
         }

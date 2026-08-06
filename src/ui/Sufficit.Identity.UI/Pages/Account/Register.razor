@@ -30,12 +30,12 @@ else
                 @L["Register.Success"]
                 @if (_confirmationMessageSent)
                 {
-                    <text> Enviamos um e-mail de confirmação para <strong>@_model.Email</strong>.
-                    Clique no link do e-mail para ativar sua conta.</text>
+                    <text> @L["Register.ConfirmationSentPrefix"] <strong>@_model.Email</strong>.
+                    @L["Register.ConfirmationSentSuffix"]</text>
                 }
                 else
                 {
-                    <text> Não foi possível entregar a confirmação agora. Use a opção de reenviar confirmação.</text>
+                    <text> @L["Register.ConfirmationFailed"]</text>
                 }
             </div>
             <a href="/account/login" class="btn btn-primary">@L["Common.BackToLogin"]</a>

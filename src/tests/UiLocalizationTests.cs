@@ -1,4 +1,7 @@
+using System.Globalization;
+using System.Resources;
 using System.Text.RegularExpressions;
+using Sufficit.Identity.UI.Resources;
 using Xunit;
 
 namespace Sufficit.Identity.Tests;
@@ -16,6 +19,21 @@ namespace Sufficit.Identity.Tests;
 /// </remarks>
 public sealed class UiLocalizationTests
 {
+    [Theory]
+    [InlineData("pt-BR", "Entrar")]
+    [InlineData("en-US", "Sign in")]
+    public void Shared_resource_marker_resolves_embedded_login_translations(
+        string cultureName,
+        string expected)
+    {
+        var resources = new ResourceManager(typeof(SharedResource));
+        var translated = resources.GetString(
+            "Login.Submit",
+            CultureInfo.GetCultureInfo(cultureName));
+
+        Assert.Equal(expected, translated);
+    }
+
     /// <summary>
     /// High-signal Portuguese words that indicate a hardcoded string in visible
     /// HTML markup (titles, labels, buttons). These are checked only in markup

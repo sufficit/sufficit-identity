@@ -18,18 +18,18 @@
         <DataAnnotationsValidator />
 
         <div class="form-group">
-            <label for="code">Código de recuperação</label>
+            <label for="code">@L["RecoveryCode.CodeLabel"]</label>
             <InputText id="code" @bind-Value="_model.RecoveryCode" class="form-control"
                        placeholder="abc-defg" autocomplete="one-time-code" autofocus />
             <ValidationMessage For="@(() => _model.RecoveryCode)" />
         </div>
 
-        <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+        <button type="submit" class="btn btn-primary btn-block">@L["Login.Submit"]</button>
     </EditForm>
 
     <div class="auth-links">
         <a href="/account/loginwith2fa?returnUrl=@Uri.EscapeDataString(_returnUrl ?? "/")">
-            Voltar para código do app autenticador
+            @L["RecoveryCode.BackToAuthenticator"]
         </a>
     </div>
 </div>
