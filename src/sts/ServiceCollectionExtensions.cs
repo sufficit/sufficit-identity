@@ -112,7 +112,14 @@ public static class ServiceCollectionExtensions
             ?? throw new InvalidOperationException(
                 $"Connection string '{options.ConnectionStringName}' not configured.");
 
-        services.AddDbContext<AppDbContext>(db =>
+        // AddDbContextFactory registers BOTH a singleton IDbContextFactory<AppDbContext>
+        // (used by singletons like the server-side session ITicketStore, which
+        // CookieAuthenticationOptions resolves from the root provider) AND a
+        // scoped AppDbContext (used by the normal request-scoped services).
+        // Registering AddDbContext alongside it causes a captive-dependency
+        // fault (scoped DbContextOptions consumed by the singleton factory), so
+        // the factory is the single registration point for both lifetimes.
+        services.AddDbContextFactory<AppDbContext>(db =>
         {
             db.UseMySql(
                 connectionString,
@@ -237,6 +244,29 @@ public static class ServiceCollectionExtensions
                 IdentityConstants.TwoFactorUserIdScheme)
             .Configure<PasskeyAuthenticationTicketStore>((cookie, ticketStore) =>
                 cookie.SessionStore = ticketStore);
+
+        // ---- Server-side OIDC sessions (the Identity application cookie) ----
+        // The browser receives only the opaque OIDC sid as its session-cookie
+        // value; the full AuthenticationTicket lives in AppDbContext
+        // (oidcusersessions), DataProtection-protected and serialized exactly
+        // as the passkey store does. This gives the sid a durable, enumerable,
+        // revocable row — closing the protocol gap vs. Keycloak/Duende/Zitadel
+        // (server-side sessions) and enabling per-device revocation.
+        //
+        // The store key IS the sid already minted by
+        // OidcSessionClaimsPrincipalFactory and carried in the ticket, so every
+        // existing behavior (sid stability across refresh, logout_token fan-out)
+        // is preserved. SINGLETON: CookieAuthenticationOptions.SessionStore is
+        // resolved from the root provider; the store therefore depends on
+        // IDbContextFactory<AppDbContext> (singleton) and creates a context per
+        // operation. Multi-replica safe out of the box (DB persistence).
+        services.AddSingleton<OidcUserSessionTicketStore>();
+        services.AddSingleton<ISessionManagement>(sp =>
+            sp.GetRequiredService<OidcUserSessionTicketStore>());
+        services.AddOptions<CookieAuthenticationOptions>(
+                IdentityConstants.ApplicationScheme)
+            .Configure<OidcUserSessionTicketStore>((cookie, store) =>
+                cookie.SessionStore = store);
         // .NET 10 native passkeys (WebAuthn/FIDO2): a inclusão do 9º generic
         // arg IdentityUserPasskey<string> em IdentityDbContext (AppDbContext)
         // faz AddEntityFrameworkStores<AppDbContext>() registrar automaticamente
@@ -1126,6 +1156,13 @@ public static class ServiceCollectionExtensions
                 options.ClientSecret = github["ClientSecret"]!;
                 options.Scope.Add("user:email");
                 // Use the ASP.NET Core default (/signin-github).
+                // Surface GitHub's email verification so the UI external-login
+                // flow only auto-confirms accounts with a provider-verified email
+                // (M5 fix, eval M5 — matches the Google mapping above). GitHub's
+                // /user endpoint does not expose email_verified directly, but the
+                // user:email scope's primary email response does; the AspNet.Security
+                // provider maps the verified flag onto "email_verified" when present.
+                options.ClaimActions.MapJsonKey("email_verified", "email_verified", "boolean");
             });
         }
 
@@ -1149,6 +1186,14 @@ public static class ServiceCollectionExtensions
                 options.AuthorizationEndpoint = "https://www.facebook.com/v22.0/dialog/oauth";
                 options.TokenEndpoint = "https://graph.facebook.com/v22.0/oauth/access_token";
                 options.UserInformationEndpoint = "https://graph.facebook.com/v22.0/me?fields=id,name,email";
+
+                // Surface Facebook's email verification (M5 fix, eval M5 —
+                // matches the Google/GitHub mappings). Meta's Graph API exposes
+                // the verified flag as the "verified" boolean field on the user
+                // object; map it onto the same "email_verified" claim the
+                // external-login flow reads, so a provider-verified email yields
+                // EmailConfirmed=true.
+                options.ClaimActions.MapJsonKey("email_verified", "verified", "boolean");
 
                 // Disable automatic PKCE: ASP.NET Core 8+ enables PKCE by default
                 // for all OAuth handlers, but Facebook's /dialog/oauth endpoint

@@ -170,6 +170,29 @@ public sealed class AspNetCoreIdentityExternalSignInService(
                 ErrorCode: "external-identity-link-failed");
         }
 
+        // M5 fix (eval M5): gate the post-creation sign-in on the SAME policy
+        // every token grant uses (CanSignInAsync), so RequireConfirmedEmail is
+        // honored on the interactive path — not only on /connect/token. Without
+        // this, a freshly-created external user whose email the provider did NOT
+        // assert as verified (GitHub/Facebook do not map email_verified today)
+        // would get an Identity cookie despite EmailConfirmed=false, reaching the
+        // /account/manage self-service surface even though RequireConfirmedEmail
+        // says they should not be able to sign in. The account is still created
+        // (so the external identity is linked); the user simply has to confirm
+        // their email before the next sign-in succeeds — exactly like the local
+        // registration path.
+        if (!await signInManager.CanSignInAsync(user))
+        {
+            logger.LogInformation(
+                "Created external user {UserId} through {Provider} but deferred "
+                + "sign-in: the sign-in policy (e.g. RequireConfirmedEmail) is not "
+                + "yet satisfied. Verified email: {EmailVerified}.",
+                user.Id,
+                info.LoginProvider,
+                emailVerified);
+            return new ExternalSignInResult(ExternalSignInStatus.NotAllowed);
+        }
+
         await signInManager.SignInAsync(user, isPersistent: false);
         cancellationToken.ThrowIfCancellationRequested();
         logger.LogInformation(

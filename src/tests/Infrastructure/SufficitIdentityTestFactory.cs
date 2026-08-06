@@ -292,7 +292,11 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
             services.Remove(descriptor);
         }
 
-        services.AddDbContext<AppDbContext>(db =>
+        // AddDbContextFactory registers both the singleton factory (for the
+        // session ITicketStore) and a scoped AppDbContext. Using AddDbContext
+        // alongside it causes a captive-dependency fault; the factory is the
+        // single registration point. See AddSufficitIdentitySTS for rationale.
+        services.AddDbContextFactory<AppDbContext>(db =>
         {
             db.UseSqlite(connection);
             db.UseOpenIddict();

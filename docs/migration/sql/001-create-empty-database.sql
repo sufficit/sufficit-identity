@@ -376,3 +376,28 @@ VALUES ('20260805202819_AddSsfStreams', '10.0.10');
 
 COMMIT;
 
+START TRANSACTION;
+CREATE TABLE `oidcusersessions` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `sessionid` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
+    `subject` varchar(400) CHARACTER SET utf8mb4 NOT NULL,
+    `remoteipaddress` varchar(64) CHARACTER SET utf8mb4 NULL,
+    `useragent` varchar(512) CHARACTER SET utf8mb4 NULL,
+    `createdatutc` datetime(6) NOT NULL,
+    `lastactivityutc` datetime(6) NOT NULL,
+    `expiresutc` datetime(6) NULL,
+    `protectedticket` longblob NOT NULL,
+    CONSTRAINT `PK_oidcusersessions` PRIMARY KEY (`id`)
+) CHARACTER SET=utf8mb4;
+
+CREATE UNIQUE INDEX `AK_oidcusersessions_sessionid` ON `oidcusersessions` (`sessionid`);
+
+CREATE INDEX `IX_oidcusersessions_expiresutc` ON `oidcusersessions` (`expiresutc`);
+
+CREATE INDEX `IX_oidcusersessions_subject` ON `oidcusersessions` (`subject`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260806131249_AddOidcUserSessions', '10.0.10');
+
+COMMIT;
+

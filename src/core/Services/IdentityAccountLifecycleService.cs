@@ -1,12 +1,14 @@
 using Microsoft.AspNetCore.Identity;
 using OpenIddict.Abstractions;
+using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Core.Entities;
 
 namespace Sufficit.Identity.Core.Services;
 
 public sealed record IdentityUserSessionRevocation(
     long RevokedTokens,
-    long RevokedAuthorizations);
+    long RevokedAuthorizations,
+    long RevokedBrowserSessions);
 
 public interface IIdentityUserSessionRevoker
 {
@@ -21,7 +23,8 @@ public interface IIdentityUserSessionRevoker
 
 public sealed class OpenIddictIdentityUserSessionRevoker(
     IOpenIddictTokenManager tokens,
-    IOpenIddictAuthorizationManager authorizations)
+    IOpenIddictAuthorizationManager authorizations,
+    ISessionManagement browserSessions)
     : IIdentityUserSessionRevoker
 {
     public async Task<long> RevokeTokensAsync(
@@ -43,10 +46,20 @@ public sealed class OpenIddictIdentityUserSessionRevoker(
         var revokedAuthorizations =
             await authorizations.RevokeBySubjectAsync(
                 subject,
-                cancellationToken);
+            cancellationToken);
+        // Also drop the server-side browser-session rows so every device the
+        // subject is signed in on is terminated, not just the OAuth
+        // credentials. Callers that bump the security stamp invalidate the
+        // cookies; this keeps the session table consistent and lets the
+        // per-device enumeration reflect reality.
+        var revokedBrowserSessions = await browserSessions.RevokeAllBySubjectAsync(
+            subject,
+            exceptSessionId: null,
+            cancellationToken);
         return new IdentityUserSessionRevocation(
             revokedTokens,
-            revokedAuthorizations);
+            revokedAuthorizations,
+            revokedBrowserSessions);
     }
 }
 
