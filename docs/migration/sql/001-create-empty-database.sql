@@ -401,3 +401,24 @@ VALUES ('20260806131249_AddOidcUserSessions', '10.0.10');
 
 COMMIT;
 
+START TRANSACTION;
+ALTER TABLE `ssfstreams` MODIFY COLUMN `authorization` longtext CHARACTER SET utf8mb4 NULL;
+
+CREATE TABLE `vaultkeys` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `keyname` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
+    `keyversion` int NOT NULL,
+    `purpose` varchar(16) CHARACTER SET utf8mb4 NOT NULL,
+    `wrappedkey` longblob NOT NULL,
+    `createdatutc` datetime(6) NOT NULL,
+    `retiredatutc` datetime(6) NULL,
+    CONSTRAINT `PK_vaultkeys` PRIMARY KEY (`id`)
+) CHARACTER SET=utf8mb4;
+
+CREATE UNIQUE INDEX `AK_vaultkeys_keyname_keyversion` ON `vaultkeys` (`keyname`, `keyversion`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260806162913_AddVaultKeys', '10.0.10');
+
+COMMIT;
+

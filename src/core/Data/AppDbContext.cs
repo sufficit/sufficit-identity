@@ -76,6 +76,13 @@ public sealed class AppDbContext
     public DbSet<Entities.OidcUserSession> OidcUserSessions =>
         Set<Entities.OidcUserSession>();
 
+    /// <summary>
+    /// Wrapped vault keys (DEKs / item keys) for the internal secret vault.
+    /// Key material is never stored unwrapped (the KEK unwraps at runtime).
+    /// </summary>
+    public DbSet<Entities.VaultKey> VaultKeys =>
+        Set<Entities.VaultKey>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -89,6 +96,7 @@ public sealed class AppDbContext
         MapScimTables(builder);
         MapSsfStreams(builder);
         MapOidcUserSessions(builder);
+        MapVaultKeys(builder);
     }
 
     private static void MapSsfStreams(ModelBuilder builder)
@@ -109,8 +117,12 @@ public sealed class AppDbContext
                 .IsRequired();
             b.Property(x => x.Endpoint)
                 .HasMaxLength(IdentityDatabaseSchema.SsfEndpointLength);
+            // Authorization stores envelope-encrypted ciphertext (self-describing,
+            // AES-256-GCM) when the vault is enabled — longer than the plaintext
+            // bearer token. longtext accommodates any token size without a column
+            // ceiling that ciphertext could exceed.
             b.Property(x => x.Authorization)
-                .HasMaxLength(IdentityDatabaseSchema.SsfEndpointLength);
+                .HasColumnType("longtext");
             b.Property(x => x.Status)
                 .HasMaxLength(IdentityDatabaseSchema.SsfStatusLength)
                 .IsRequired();
@@ -229,6 +241,44 @@ public sealed class AppDbContext
                 ("LastActivityUtc", "lastactivityutc"),
                 ("ExpiresUtc", "expiresutc"),
                 ("ProtectedTicket", "protectedticket"),
+            ]);
+        });
+    }
+
+    /// <summary>
+    /// Maps the vault keys table (wrapped DEKs / item keys). Naming follows
+    /// the lowercase-no-prefix convention.
+    /// </summary>
+    private static void MapVaultKeys(ModelBuilder builder)
+    {
+        builder.Entity<Entities.VaultKey>(b =>
+        {
+            b.ToTable("vaultkeys");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).ValueGeneratedOnAdd();
+            b.Property(x => x.KeyName)
+                .HasMaxLength(IdentityDatabaseSchema.VaultKeyNameLength)
+                .IsRequired();
+            b.Property(x => x.KeyVersion).IsRequired();
+            b.Property(x => x.Purpose)
+                .HasMaxLength(IdentityDatabaseSchema.VaultPurposeLength)
+                .IsRequired();
+            b.Property(x => x.WrappedKey).HasColumnType("longblob").IsRequired();
+            b.Property(x => x.CreatedAtUtc).HasColumnType("datetime(6)").IsRequired();
+            b.Property(x => x.RetiredAtUtc).HasColumnType("datetime(6)");
+
+            b.HasIndex(x => new { x.KeyName, x.KeyVersion })
+                .IsUnique()
+                .HasDatabaseName("AK_vaultkeys_keyname_keyversion");
+
+            SnakeCaseColumns(b, [
+                ("Id", "id"),
+                ("KeyName", "keyname"),
+                ("KeyVersion", "keyversion"),
+                ("Purpose", "purpose"),
+                ("WrappedKey", "wrappedkey"),
+                ("CreatedAtUtc", "createdatutc"),
+                ("RetiredAtUtc", "retiredatutc"),
             ]);
         });
     }

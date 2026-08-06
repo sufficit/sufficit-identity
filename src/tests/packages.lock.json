@@ -1084,22 +1084,22 @@
           "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "[10.0.10, )",
           "OpenIddict.EntityFrameworkCore": "[7.6.0, )",
           "Pomelo.EntityFrameworkCore.MySql": "[10.0.0-preview.1.efcore.10.0.0, )",
-          "Sufficit.Identity.Application.Abstractions": "[0.2.0-alpha, )"
+          "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )"
         }
       },
       "sufficit.identity.management": {
         "type": "Project",
         "dependencies": {
           "OpenIddict.AspNetCore": "[7.6.0, )",
-          "Sufficit.Identity.Application.Abstractions": "[0.2.0-alpha, )",
-          "Sufficit.Identity.Core": "[0.2.0-alpha, )"
+          "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
+          "Sufficit.Identity.Core": "[0.4.0-alpha, )"
         }
       },
       "sufficit.identity.scim": {
         "type": "Project",
         "dependencies": {
           "OpenIddict.AspNetCore": "[7.6.0, )",
-          "Sufficit.Identity.Core": "[0.2.0-alpha, )"
+          "Sufficit.Identity.Core": "[0.4.0-alpha, )"
         }
       },
       "sufficit.identity.server": {
@@ -1108,14 +1108,14 @@
           "Microsoft.EntityFrameworkCore": "[10.0.10, )",
           "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": "[10.0.10, )",
           "Serilog.AspNetCore": "[10.0.0, )",
-          "Sufficit.Identity.Application.Abstractions": "[0.2.0-alpha, )",
-          "Sufficit.Identity.Core": "[0.2.0-alpha, )",
-          "Sufficit.Identity.Management": "[0.2.0-alpha, )",
-          "Sufficit.Identity.STS": "[0.2.0-alpha, )",
-          "Sufficit.Identity.Scim": "[0.2.0-alpha, )",
-          "Sufficit.Identity.UI": "[0.2.0-alpha, )",
-          "Sufficit.Identity.UI.Abstractions": "[0.2.0-alpha, )",
-          "Sufficit.Identity.UI.Management": "[0.2.0-alpha, )",
+          "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
+          "Sufficit.Identity.Core": "[0.4.0-alpha, )",
+          "Sufficit.Identity.Management": "[0.4.0-alpha, )",
+          "Sufficit.Identity.STS": "[0.4.0-alpha, )",
+          "Sufficit.Identity.Scim": "[0.4.0-alpha, )",
+          "Sufficit.Identity.UI": "[0.4.0-alpha, )",
+          "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
+          "Sufficit.Identity.UI.Management": "[0.4.0-alpha, )",
           "Swashbuckle.AspNetCore": "[7.2.0, )"
         }
       },
@@ -1130,15 +1130,16 @@
           "OpenIddict.AspNetCore": "[7.6.0, )",
           "OpenIddict.EntityFrameworkCore": "[7.6.0, )",
           "RabbitMQ.Client": "[7.2.1, )",
-          "Sufficit.Identity.Application.Abstractions": "[0.2.0-alpha, )",
-          "Sufficit.Identity.Core": "[0.2.0-alpha, )"
+          "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
+          "Sufficit.Identity.Core": "[0.4.0-alpha, )",
+          "Sufficit.Identity.Vault": "[0.4.0-alpha, )"
         }
       },
       "sufficit.identity.ui": {
         "type": "Project",
         "dependencies": {
           "QRCoder": "[1.6.0, )",
-          "Sufficit.Identity.Application.Abstractions": "[0.2.0-alpha, )"
+          "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )"
         }
       },
       "sufficit.identity.ui.abstractions": {
@@ -1147,7 +1148,14 @@
       "sufficit.identity.ui.management": {
         "type": "Project",
         "dependencies": {
-          "Sufficit.Identity.Application.Abstractions": "[0.2.0-alpha, )"
+          "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )"
+        }
+      },
+      "sufficit.identity.vault": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "[10.0.10, )",
+          "Sufficit.Identity.Core": "[0.4.0-alpha, )"
         }
       },
       "AspNet.Security.OAuth.GitHub": {

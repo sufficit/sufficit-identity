@@ -13,6 +13,7 @@ public static class IdentityDatabaseSchema
     public const string UserCreatedAtMigrationId = "20260804020337_AddUserCreatedAtUtc";
     public const string SsfStreamsMigrationId = "20260805202819_AddSsfStreams";
     public const string OidcUserSessionsMigrationId = "20260806131249_AddOidcUserSessions";
+    public const string VaultKeysMigrationId = "20260806162913_AddVaultKeys";
 
     /// <summary>
     /// Migration history owned by the new Sufficit Identity model.
@@ -68,4 +69,8 @@ public static class IdentityDatabaseSchema
     public const int OidcSessionIdLength = 64;          // the sid (32 random bytes base64url)
     public const int OidcSessionUserAgentLength = 512;
     public const int OidcSessionRemoteIpLength = 64;
+
+    // Vault keys (internal secret vault — wrapped DEKs / item keys)
+    public const int VaultKeyNameLength = 64;
+    public const int VaultPurposeLength = 16;           // symmetric | signing
 }

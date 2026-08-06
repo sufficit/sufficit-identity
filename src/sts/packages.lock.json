@@ -579,7 +579,14 @@
           "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "[10.0.10, )",
           "OpenIddict.EntityFrameworkCore": "[7.6.0, )",
           "Pomelo.EntityFrameworkCore.MySql": "[10.0.0-preview.1.efcore.10.0.0, )",
-          "Sufficit.Identity.Application.Abstractions": "[0.3.0-alpha, )"
+          "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )"
+        }
+      },
+      "sufficit.identity.vault": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore": "[10.0.10, )",
+          "Sufficit.Identity.Core": "[0.4.0-alpha, )"
         }
       },
       "Microsoft.EntityFrameworkCore": {
