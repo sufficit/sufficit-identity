@@ -179,7 +179,7 @@ public sealed class DcrTests
         {
             ClientId = $"dcr-scope-{Guid.NewGuid():N}",
             GrantTypes = new() { "authorization_code" },
-            Scopes = new() { "skoruba_identity_admin_api" },
+            Scopes = new() { "identity.management" },
             RedirectUris = new() { new Uri("https://client.example/callback") },
         });
         Assert.Equal(HttpStatusCode.BadRequest, scopeResponse.StatusCode);

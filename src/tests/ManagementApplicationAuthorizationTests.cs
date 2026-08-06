@@ -39,7 +39,7 @@ public sealed class ManagementApplicationAuthorizationTests
         var principal = PrincipalWithClaims(
             new Claim(
                 "scope",
-                $"{ManagementCapabilities.UsersRead} skoruba_identity_admin_api"));
+                $"{ManagementCapabilities.UsersRead} identity.management"));
 
         var denied = await evaluator.EvaluateAsync(
             principal,

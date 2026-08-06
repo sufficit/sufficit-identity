@@ -595,7 +595,7 @@ internal sealed class ScopeManagementService(
         }
         // H2/M3 fix (eval): API-protection scopes (management, SCIM, custom
         // privileged APIs) must never be created via the runtime CRUD path —
-        // doing so would let an operator mint e.g. skoruba_identity_admin_api
+        // doing so would let an operator mint e.g. identity.management
         // as a custom scope and bind it to a client they control, escalating
         // past the transport policy. Declare reserved scopes via
         // bootstrap/provisioning instead.

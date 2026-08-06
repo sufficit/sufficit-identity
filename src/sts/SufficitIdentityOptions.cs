@@ -1210,14 +1210,15 @@ public sealed class ManagementOptions
 
     /// <summary>
     /// If true, the management endpoints require an access token carrying the
-    /// <c>sufficit_identity_admin_api</c> scope (or another configured scope).
+    /// <c>identity.management</c> scope (or another configured scope).
     /// </summary>
     public bool RequireAuthorization { get; init; } = true;
 
     /// <summary>
-    /// Required authorization policy/scope. Defaults to the legacy
-    /// <c>skoruba_identity_admin_api</c> scope name to remain compatible with
-    /// existing admin clients during migration.
+    /// Required authorization policy/scope. Defaults to
+    /// <c>identity.management</c>. Operators migrating from the legacy
+    /// Skoruba deployment may keep the old <c>skoruba_identity_admin_api</c>
+    /// scope name here until clients are re-registered.
     /// </summary>
-    public string RequiredScope { get; init; } = "skoruba_identity_admin_api";
+    public string RequiredScope { get; init; } = "identity.management";
 }

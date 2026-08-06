@@ -12,7 +12,7 @@ public sealed class ManagementOptions
     public bool RequireAuthorization { get; init; } = true;
 
     public string RequiredScope { get; init; } =
-        "skoruba_identity_admin_api";
+        "identity.management";
 
     public ManagementAuthorizationOptions Authorization { get; init; } = new();
 
@@ -30,11 +30,11 @@ public sealed class ManagementOptions
     /// operator mint one through the regular CRUD path is a privilege-
     /// escalation vector (H2/M3, eval): an operator with only
     /// <c>identity.scopes.create</c> could otherwise define
-    /// <c>skoruba_identity_admin_api</c> as a custom scope and bind it to a
-    /// client they control. Defaults cover the management + SCIM required
-    /// scopes; add any custom privileged API scope here. These can still be
-    /// declared via bootstrap/provisioning.
+    /// <c>identity.management</c> as a custom scope and bind it to a client
+    /// they control. Defaults cover the management + SCIM required scopes; add
+    /// any custom privileged API scope here. These can still be declared via
+    /// bootstrap/provisioning.
     /// </summary>
     public string[] ReservedApiScopes { get; init; } =
-        ["skoruba_identity_admin_api", "scim"];
+        ["identity.management", "scim"];
 }

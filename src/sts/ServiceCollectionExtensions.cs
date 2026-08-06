@@ -423,7 +423,7 @@ public static class ServiceCollectionExtensions
                     Scopes.Roles,
                     Scopes.OfflineAccess,
                     Scopes.Address,
-                    "skoruba_identity_admin_api",
+                    "identity.management",
                     "sufficit_ai_openai_bridge",
                     .. applicationScopes]);
 
