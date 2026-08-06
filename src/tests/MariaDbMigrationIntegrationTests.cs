@@ -80,7 +80,7 @@ public sealed class MariaDbMigrationIntegrationTests
             WHERE table_schema = DATABASE()
             """));
 
-        Assert.Equal(6, await ScalarIntAsync(connection, $"""
+        Assert.Equal(8, await ScalarIntAsync(connection, $"""
             SELECT COUNT(*)
             FROM `{IdentityDatabaseSchema.MigrationsHistoryTable}`
             WHERE `MigrationId` IN (
@@ -223,7 +223,7 @@ public sealed class MariaDbMigrationIntegrationTests
         await ExecuteScriptAsync(connection,
             MigrationFile("fixtures", "legacy-schema-mariadb-10.4.sql"));
 
-        Assert.Equal(41, await ScalarIntAsync(connection, """
+        Assert.Equal(39, await ScalarIntAsync(connection, """
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
@@ -270,7 +270,7 @@ public sealed class MariaDbMigrationIntegrationTests
         var sharedStructureAfter = await SharedStructureAsync(connection);
         Assert.Equal(sharedStructureBefore, sharedStructureAfter);
 
-        Assert.Equal(46, await ScalarIntAsync(connection, """
+        Assert.Equal(44, await ScalarIntAsync(connection, """
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
