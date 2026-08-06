@@ -859,15 +859,74 @@ img.profile-avatar { background: var(--surface-sunken); }
 }
 
 /* Sessions */
-.session-item {
+.manage-sessions {
+    max-width: 760px;
+}
+
+.manage-sessions__header {
     display: flex;
-    justify-content: space-between;
     align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-5);
+}
+
+.manage-sessions__header .info {
+    max-width: 48ch;
+    margin-bottom: 0;
+}
+
+.manage-sessions__header .badge {
+    flex: 0 0 auto;
+    margin-top: 2px;
+}
+
+.session-groups {
+    list-style: none;
+    padding: 0;
+    margin: var(--space-6) 0;
+}
+
+.session-group {
+    padding: var(--space-5) 0;
+    border-top: 1px solid var(--line);
+}
+
+.session-group:first-child {
+    padding-top: 0;
+    border-top: 0;
+}
+
+.session-group__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
     gap: var(--space-4);
-    padding: var(--space-4);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    margin-bottom: var(--space-2);
+}
+
+.session-group__title {
+    display: block;
+    color: var(--ink-strong);
+    font-size: 0.9375rem;
+}
+
+.session-credential-list {
+    list-style: none;
+    padding: 0;
+    margin: var(--space-3) 0 0;
+}
+
+.session-credential {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: var(--space-4);
+    padding: var(--space-3) 0 0;
+    margin-top: var(--space-3);
+    border-top: 1px solid var(--line);
+}
+
+.session-credential .access-metadata {
+    margin-top: 0;
 }
 .access-item-body {
     flex: 1;
@@ -1086,7 +1145,8 @@ img.profile-avatar { background: var(--surface-sunken); }
         flex-direction: column;
     }
 
-    .manage-grants {
+    .manage-grants,
+    .manage-sessions {
         padding: var(--space-6) max(var(--space-4), env(safe-area-inset-right))
             var(--space-8) max(var(--space-4), env(safe-area-inset-left));
     }
@@ -1102,14 +1162,31 @@ img.profile-avatar { background: var(--surface-sunken); }
         margin-top: 0;
     }
 
+    .manage-sessions__header {
+        align-items: stretch;
+        flex-direction: column;
+        gap: var(--space-3);
+    }
+
+    .manage-sessions__header .badge {
+        align-self: flex-start;
+        margin-top: 0;
+    }
+
     .manage-grants .grant-list {
         margin-top: var(--space-5);
     }
 
-    .grant-item {
+    .grant-item,
+    .session-credential {
         grid-template-columns: minmax(0, 1fr);
         gap: var(--space-4);
         padding: var(--space-4);
+    }
+
+    .session-credential {
+        padding-right: 0;
+        padding-left: 0;
     }
 
     .passkey-item .btn { align-self: flex-start; }

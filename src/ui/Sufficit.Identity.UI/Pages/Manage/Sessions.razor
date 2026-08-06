@@ -7,10 +7,18 @@
 
 <PageTitle>Sessões ativas — Sufficit Identity</PageTitle>
 
-<div class="auth-card">
+<div class="auth-card manage-sessions">
     <ManageBackLink />
-    <h1>Sessões ativas</h1>
-    <p class="info">Credenciais OAuth/OIDC ativas emitidas para sua conta.</p>
+    <header class="manage-sessions__header">
+        <div>
+            <h1>Sessões ativas</h1>
+            <p class="info">Aplicativos e dispositivos com credenciais ativas para sua conta.</p>
+        </div>
+        @if (!_loading && _sessions.Count > 0)
+        {
+            <span class="badge badge-outline">@_sessions.Count credencial(ões)</span>
+        }
+    </header>
 
     <div aria-live="polite">
         @if (_success is not null)
@@ -33,37 +41,48 @@
     }
     else
     {
-        <ul class="session-list">
-            @foreach (var session in _sessions)
+        <ul class="session-groups">
+            @foreach (var group in SessionGroups)
             {
-                <li class="session-item">
-                    <div class="access-item-body">
-                        <strong class="access-item-title">@session.DisplayName</strong>
-                        @if (!string.IsNullOrWhiteSpace(session.ClientId))
+                <li class="session-group">
+                    <header class="session-group__header">
+                        <div>
+                            <strong class="session-group__title">@group.DisplayName</strong>
+                            @if (!string.IsNullOrWhiteSpace(group.ClientId))
+                            {
+                                <span class="access-client-id">@group.ClientId</span>
+                            }
+                        </div>
+                        <span class="badge">@group.Sessions.Count credencial(ões)</span>
+                    </header>
+                    <ul class="session-credential-list">
+                        @foreach (var session in group.Sessions)
                         {
-                            <span class="access-client-id">@session.ClientId</span>
+                            <li class="session-credential">
+                                <dl class="access-metadata">
+                                    <div>
+                                        <dt>Tipo</dt>
+                                        <dd>@FormatTokenType(session.Type)</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Emitida</dt>
+                                        <dd>@FormatDate(session.CreatedAt)</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Expira</dt>
+                                        <dd>@FormatDate(session.ExpiresAt, "Sem expiração informada")</dd>
+                                    </div>
+                                </dl>
+                                <button type="button"
+                                        class="btn btn-danger btn-sm access-item-action"
+                                        aria-label="Revogar credencial de @group.DisplayName"
+                                        disabled="@IsBusy"
+                                        @onclick="() => RevokeAsync(session)">
+                                    @(_busySessionId == session.Id ? "Revogando…" : "Revogar credencial")
+                                </button>
+                            </li>
                         }
-                        <dl class="access-metadata">
-                            <div>
-                                <dt>Credencial</dt>
-                                <dd>@FormatTokenType(session.Type)</dd>
-                            </div>
-                            <div>
-                                <dt>Emitida</dt>
-                                <dd>@FormatDate(session.CreatedAt)</dd>
-                            </div>
-                            <div>
-                                <dt>Expira</dt>
-                                <dd>@FormatDate(session.ExpiresAt, "Sem expiração informada")</dd>
-                            </div>
-                        </dl>
-                    </div>
-                    <button type="button"
-                            class="btn btn-danger btn-sm access-item-action"
-                            disabled="@IsBusy"
-                            @onclick="() => RevokeAsync(session)">
-                        @(_busySessionId == session.Id ? "Revogando…" : "Revogar")
-                    </button>
+                    </ul>
                 </li>
             }
         </ul>
@@ -92,6 +111,14 @@
     private string? _success;
     private string? _error;
     private bool IsBusy => _revokingAll || _busySessionId is not null;
+
+    private IReadOnlyList<SessionGroup> SessionGroups => _sessions
+        .GroupBy(session => new { session.ClientId, session.DisplayName })
+        .Select(group => new SessionGroup(
+            group.Key.ClientId,
+            group.Key.DisplayName,
+            group.ToArray()))
+        .ToArray();
 
     protected override async Task OnInitializedAsync()
     {
@@ -206,19 +233,31 @@
         }
     }
 
-    private static string FormatTokenType(string type) => type switch
+    private static string FormatTokenType(string type)
     {
-        "access_token" => "Token de acesso",
-        "refresh_token" => "Token de atualização",
-        "identity_token" => "Token de identidade",
-        "authorization_code" => "Código de autorização",
-        "device_code" => "Código de dispositivo",
-        "user_code" => "Código de usuário",
-        _ => type,
-    };
+        var value = type
+            .Split(':', StringSplitOptions.RemoveEmptyEntries)
+            .LastOrDefault() ?? type;
+
+        return value switch
+        {
+            "access_token" => "Token de acesso",
+            "refresh_token" => "Token de atualização",
+            "identity_token" => "Token de identidade",
+            "authorization_code" => "Código de autorização",
+            "device_code" => "Código de dispositivo",
+            "user_code" => "Código de usuário",
+            _ => value,
+        };
+    }
 
     private static string FormatDate(
         DateTimeOffset? value,
         string fallback = "Não informada") =>
         value?.UtcDateTime.ToString("dd/MM/yyyy HH:mm 'UTC'") ?? fallback;
+
+    private sealed record SessionGroup(
+        string? ClientId,
+        string DisplayName,
+        IReadOnlyList<AccountSessionCredential> Sessions);
 }
