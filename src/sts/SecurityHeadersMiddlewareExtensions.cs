@@ -27,7 +27,7 @@ public static class SecurityHeadersMiddlewareExtensions
         "display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), " +
         "gyroscope=(), keyboard-map=(), magnetometer=(), microphone=(), " +
         "midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), " +
-        "screen-wake-lock=(), sync-xhr=(), usb=(), web-share=(), xr-spatial-tracking=()";
+        "screen-wake-lock=(), sync-xhr=(), usb=(), xr-spatial-tracking=()";
 
     /// <summary>
     /// Emits <c>X-Content-Type-Options: nosniff</c>,
