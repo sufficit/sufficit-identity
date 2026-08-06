@@ -36,30 +36,23 @@ namespace Sufficit.Identity.STS.Controllers;
 ///    (src/sts/ServiceCollectionExtensions.cs, out of this file's
 ///    ownership) with EnableEndUserVerificationEndpointPassthrough() already
 ///    on — it is not a path this controller invented, and it cannot be
-///    renamed from here. This action does nothing but redirect the browser
-///    to the UI's human-facing page at `/device` (forwarding the code as
-///    `?code=XXXX-XXXX` when one was present), purely for display.
+///    renamed from here. After cookie authentication, this action projects
+///    the validated OpenIddict principal into an encrypted, short-lived
+///    presentation ticket and redirects to the UI's `/device` page. The
+///    ticket is what lets that page show the real client and requested scopes
+///    without trusting client-controlled query parameters.
 ///
 /// 2. GET /connect/device/info?user_code=XXXX-XXXX
-///    Ordinary JSON endpoint (NOT an OpenIddict-recognized path — a plain
-///    read-only lookup, anonymous, no state change) the UI calls to render
-///    "what's being authorized" before showing the approve/deny buttons:
-///      200 {"valid":true,"clientId":"...","clientName":"..."}
+///    Backward-compatible JSON endpoint (NOT an OpenIddict-recognized path —
+///    a plain read-only lookup, anonymous, no state change):
+///      200 {"valid":true}
 ///      200 {"valid":false}
-///    NOTE: scopes are deliberately NOT included. OpenIddict does not expose
-///    a persisted token's decrypted principal/scopes through the public
-///    IOpenIddictTokenManager API — only Payload (an opaque encrypted
-///    string) is stored; OpenIddictTokenDescriptor.Principal is explicitly
-///    documented as "not stored by the default token stores". Surfacing
-///    scopes here would need a custom OpenIddict event handler stashing them
-///    as token Properties at /connect/deviceauthorization time — that lives
-///    in src/sts/ServiceCollectionExtensions.cs, out of this file's
-///    scope. Flagged as follow-up, not implemented here. This lookup is
-///    also best-effort: any unexpected exception degrades to
+///    Client metadata and scopes are deliberately NOT returned here: the
+///    smaller human-readable code space can be probed anonymously. The UI
+///    obtains those details only from the protected ticket created by action
+///    1 after login. This lookup is best-effort: exceptions degrade to
 ///    <c>valid:false</c> rather than a 500, since it is a display
-///    convenience only — never load-bearing for the actual grant (that
-///    happens entirely through action 3 below plus OpenIddict's own request
-///    validation).
+///    convenience only and never load-bearing for the actual grant.
 ///
 /// 3. POST ~/connect/device
 ///    THE SAME real OpenIddict endpoint as (1) — deliberately NOT a
@@ -98,9 +91,10 @@ namespace Sufficit.Identity.STS.Controllers;
 ///    requires a genuine HTTP response on the actual request that hit this
 ///    controller action; a Blazor interactive event handler never gets one.
 ///
-///    On approved=true: SignIn (OpenIddict's own response for this
-///    endpoint) — have the UI redirect the browser afterwards to a static
-///    "device authorized, you can close this tab" page.
+///    On approved=true: SignIn with the subject plus the scopes/resources
+///    restored from OpenIddict's validated pending principal. Reading scopes
+///    from the verification request would silently drop them because that
+///    request only carries user_code.
 ///    On approved=false: Forbid(access_denied) — OpenIddict's own
 ///    RejectDeviceCodeEntry/RejectUserCodeEntry handlers mark the
 ///    corresponding device_code token Rejected as a result, so the polling
@@ -115,33 +109,80 @@ public class DeviceController : Controller
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAntiforgery _antiforgery;
+    private readonly OpenIddictDeviceAuthorizationContextService _deviceContextService;
 
     public DeviceController(
         IOpenIddictTokenManager tokenManager,
         IOpenIddictApplicationManager applicationManager,
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
-        IAntiforgery antiforgery)
+        IAntiforgery antiforgery,
+        OpenIddictDeviceAuthorizationContextService deviceContextService)
     {
         _tokenManager = tokenManager;
         _applicationManager = applicationManager;
         _signInManager = signInManager;
         _userManager = userManager;
         _antiforgery = antiforgery;
+        _deviceContextService = deviceContextService;
     }
 
     // -----------------------------------------------------------------------
     // ~/connect/device (GET) — see contract item 1 above.
     // -----------------------------------------------------------------------
     [HttpGet("~/connect/device")]
-    public IActionResult Device()
+    public async Task<IActionResult> Device()
     {
         var request = HttpContext.GetOpenIddictServerRequest() ??
             throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
 
-        var target = string.IsNullOrEmpty(request.UserCode)
-            ? "/device"
-            : QueryHelpers.AddQueryString("/device", "code", request.UserCode);
+        if (string.IsNullOrWhiteSpace(request.UserCode))
+        {
+            return Redirect("/device/usercode");
+        }
+
+        // Do not disclose the client or scopes to an anonymous caller that is
+        // probing the smaller human-readable user-code space. Authentication
+        // happens at the real protocol endpoint so only the signed-in account
+        // receives the encrypted presentation ticket.
+        var session = await HttpContext.AuthenticateAsync();
+        if (session is not { Succeeded: true })
+        {
+            return Challenge(new AuthenticationProperties
+            {
+                RedirectUri = Request.PathBase + Request.Path + Request.QueryString
+            });
+        }
+
+        var authorization = await HttpContext.AuthenticateAsync(
+            OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        if (authorization is not { Succeeded: true, Principal: not null })
+        {
+            return BadRequest(new
+            {
+                error = Errors.InvalidRequest,
+                error_description = "The pending device authorization request cannot be retrieved."
+            });
+        }
+
+        var ticket = await _deviceContextService.CreateTicketAsync(
+            request.UserCode,
+            authorization.Principal,
+            HttpContext.RequestAborted);
+        if (ticket is null)
+        {
+            return BadRequest(new
+            {
+                error = Errors.InvalidRequest,
+                error_description = "The device authorization request is invalid or expired."
+            });
+        }
+
+        var target = QueryHelpers.AddQueryString("/device", new Dictionary<string, string?>
+        {
+            ["code"] = request.UserCode,
+            [OpenIddictDeviceAuthorizationContextService.TicketParameterName] = ticket,
+        });
 
         return Redirect(target);
     }
@@ -221,6 +262,22 @@ public class DeviceController : Controller
             return BadRequest(new { error = "invalid_request", error_description = ex.Message });
         }
 
+        // The OpenIddict authentication result is the validated pending
+        // device transaction. It carries the scopes/resources originally
+        // requested at /connect/deviceauthorization. The verification request
+        // itself only contains user_code, so request.GetScopes() is empty here
+        // and must never be used as the grant source.
+        var authorization = await HttpContext.AuthenticateAsync(
+            OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        if (authorization is not { Succeeded: true, Principal: not null })
+        {
+            return BadRequest(new
+            {
+                error = Errors.InvalidRequest,
+                error_description = "The pending device authorization request cannot be retrieved."
+            });
+        }
+
         var result = await HttpContext.AuthenticateAsync();
         if (result is not { Succeeded: true })
         {
@@ -242,7 +299,10 @@ public class DeviceController : Controller
                     [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.AccessDenied,
                     [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
                         "The end user refused to authorize the device."
-                }));
+                })
+                {
+                    RedirectUri = "/device?result=denied"
+                });
         }
 
         var user = await _userManager.GetUserAsync(result.Principal) ??
@@ -274,9 +334,16 @@ public class DeviceController : Controller
             roleType: Claims.Role);
 
         identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user));
-        identity.SetScopes(request.GetScopes());
+        identity.SetScopes(authorization.Principal.GetScopes());
+        identity.SetResources(authorization.Principal.GetResources());
 
-        return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        return SignIn(
+            new ClaimsPrincipal(identity),
+            new AuthenticationProperties
+            {
+                RedirectUri = "/device?result=approved"
+            },
+            OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 
     private static string NormalizeUserCode(string code) =>

@@ -1,8 +1,10 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
@@ -36,7 +38,7 @@ public sealed class DeviceFlowTests
         {
             ["client_id"] = TestDataSeeder.DeviceClientId,
             ["client_secret"] = TestDataSeeder.DeviceClientSecret,
-            ["scope"] = TestDataSeeder.ScopeName,
+            ["scope"] = $"openid profile email offline_access {TestDataSeeder.ScopeName}",
         });
 
         Assert.Equal(HttpStatusCode.OK, authStatus);
@@ -55,6 +57,12 @@ public sealed class DeviceFlowTests
 
         Assert.Equal(HttpStatusCode.BadRequest, pollStatus);
         Assert.Equal("authorization_pending", pollBody.GetProperty("error").GetString());
+
+        using var manualVerification = await client.GetAsync("/connect/device");
+        Assert.Equal(HttpStatusCode.Redirect, manualVerification.StatusCode);
+        Assert.Equal(
+            "/device/usercode",
+            manualVerification.Headers.Location?.OriginalString);
     }
 
     [Fact]
@@ -66,7 +74,7 @@ public sealed class DeviceFlowTests
         {
             ["client_id"] = TestDataSeeder.DeviceClientId,
             ["client_secret"] = TestDataSeeder.DeviceClientSecret,
-            ["scope"] = TestDataSeeder.ScopeName,
+            ["scope"] = $"openid profile email offline_access {TestDataSeeder.ScopeName}",
         });
 
         Assert.Equal(HttpStatusCode.OK, authStatus);
@@ -97,6 +105,64 @@ public sealed class DeviceFlowTests
     }
 
     [Fact]
+    public async Task Device_confirmation_requires_login_and_describes_the_client_and_requested_scopes()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+
+        var (authStatus, authBody) = await client.PostFormAsync(
+            "/connect/deviceauthorization",
+            new Dictionary<string, string>
+            {
+                ["client_id"] = TestDataSeeder.DeviceClientId,
+                ["client_secret"] = TestDataSeeder.DeviceClientSecret,
+                ["scope"] = "openid profile email offline_access",
+            });
+        Assert.Equal(HttpStatusCode.OK, authStatus);
+        var userCode = authBody.GetProperty("user_code").GetString()!;
+        var verificationPath = $"/connect/device?user_code={Uri.EscapeDataString(userCode)}";
+
+        using var anonymousResponse = await client.GetAsync(verificationPath);
+        Assert.Equal(HttpStatusCode.Redirect, anonymousResponse.StatusCode);
+        Assert.Contains(
+            "/account/login?ReturnUrl=",
+            anonymousResponse.Headers.Location?.OriginalString,
+            StringComparison.Ordinal);
+
+        await TestOnlyEndpoints.SignInAsync(client, TestDataSeeder.DefaultUsername);
+        using var verificationResponse = await client.GetAsync(verificationPath);
+
+        Assert.Equal(HttpStatusCode.Redirect, verificationResponse.StatusCode);
+        var confirmationPath = verificationResponse.Headers.Location?.OriginalString;
+        Assert.NotNull(confirmationPath);
+        Assert.StartsWith("/device?", confirmationPath);
+        Assert.Contains("device_context=", confirmationPath);
+
+        using var scope = _factory.Services.CreateScope();
+        var accessor = scope.ServiceProvider.GetRequiredService<IHttpContextAccessor>();
+        accessor.HttpContext = new DefaultHttpContext
+        {
+            RequestServices = scope.ServiceProvider,
+        };
+        accessor.HttpContext.Request.QueryString =
+            new QueryString(new Uri("http://localhost" + confirmationPath).Query);
+
+        var contextService = scope.ServiceProvider
+            .GetRequiredService<IDeviceAuthorizationContextService>();
+        var context = await contextService.GetCurrentAsync();
+
+        Assert.True(context.IsValid);
+        Assert.Equal(TestDataSeeder.DeviceClientId, context.ClientId);
+        Assert.Equal("Test Device Client", context.ClientDisplayName);
+        Assert.Contains("openid", context.RequestedScopes);
+        Assert.Contains("profile", context.RequestedScopes);
+        Assert.Contains("email", context.RequestedScopes);
+        Assert.Contains("offline_access", context.RequestedScopes);
+    }
+
+    [Fact]
     public async Task Approving_the_device_code_lets_the_polling_client_redeem_an_access_token()
     {
         var username = $"device-{Guid.NewGuid():N}";
@@ -120,7 +186,7 @@ public sealed class DeviceFlowTests
         {
             ["client_id"] = TestDataSeeder.DeviceClientId,
             ["client_secret"] = TestDataSeeder.DeviceClientSecret,
-            ["scope"] = TestDataSeeder.ScopeName,
+            ["scope"] = $"openid profile email offline_access {TestDataSeeder.ScopeName}",
         });
         Assert.Equal(HttpStatusCode.OK, authStatus);
         var deviceCode = authBody.GetProperty("device_code").GetString()!;
@@ -138,10 +204,10 @@ public sealed class DeviceFlowTests
                 ["__RequestVerificationToken"] = antiforgeryToken,
             }));
 
-        var approveBody = await approveResponse.Content.ReadAsStringAsync();
-        Assert.True(
-            (int)approveResponse.StatusCode is >= 200 and < 300,
-            $"Device approval POST failed: {(int)approveResponse.StatusCode} {approveResponse.StatusCode} - {approveBody}");
+        Assert.Equal(HttpStatusCode.Redirect, approveResponse.StatusCode);
+        Assert.Equal(
+            "/device?result=approved",
+            approveResponse.Headers.Location?.OriginalString);
 
         // --- Device side: poll again, now expecting a token. ---
         var (pollStatus, pollBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
@@ -153,7 +219,25 @@ public sealed class DeviceFlowTests
         });
 
         Assert.Equal(HttpStatusCode.OK, pollStatus);
-        Assert.False(string.IsNullOrEmpty(pollBody.GetProperty("access_token").GetString()));
+        var accessToken = pollBody.GetProperty("access_token").GetString();
+        Assert.False(string.IsNullOrEmpty(accessToken));
+        Assert.False(string.IsNullOrEmpty(pollBody.GetProperty("refresh_token").GetString()));
+        Assert.False(string.IsNullOrEmpty(pollBody.GetProperty("id_token").GetString()));
+
+        var grantedScopes = pollBody.GetProperty("scope").GetString()!
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Contains("openid", grantedScopes);
+        Assert.Contains("profile", grantedScopes);
+        Assert.Contains("email", grantedScopes);
+        Assert.Contains("offline_access", grantedScopes);
+        Assert.Contains(TestDataSeeder.ScopeName, grantedScopes);
+
+        using var userInfoRequest = new HttpRequestMessage(HttpMethod.Get, "/connect/userinfo");
+        userInfoRequest.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+        using var userInfoResponse = await client.SendAsync(userInfoRequest);
+
+        Assert.Equal(HttpStatusCode.OK, userInfoResponse.StatusCode);
     }
 
     [Fact]
@@ -192,8 +276,10 @@ public sealed class DeviceFlowTests
                 ["__RequestVerificationToken"] = antiforgeryToken,
             }));
 
-        // DeviceController.Verify's own Forbid(AccessDenied) response.
-        Assert.False(denyResponse.IsSuccessStatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, denyResponse.StatusCode);
+        Assert.Equal(
+            "/device?result=denied",
+            denyResponse.Headers.Location?.OriginalString);
 
         var (pollStatus, pollBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
         {
