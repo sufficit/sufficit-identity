@@ -91,6 +91,10 @@ public sealed class ScopesControllerTests
     [InlineData("offline_access")]
     [InlineData("bad scope")]
     [InlineData("bad\"scope")]
+    // H2/M3: API-protection scopes are reserved and must be rejected at the
+    // runtime CRUD boundary (declare them via bootstrap/provisioning instead).
+    [InlineData("skoruba_identity_admin_api")]
+    [InlineData("scim")]
     public async Task Create_rejects_protocol_or_invalid_scope_names(
         string name)
     {

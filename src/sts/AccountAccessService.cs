@@ -278,10 +278,11 @@ public sealed class AccountAccessService(
             user.Id,
             cancellationToken);
         logger.LogInformation(
-            "User {UserId} invalidated all account access; {TokenCount} credentials and {AuthorizationCount} authorizations were revoked.",
+            "User {UserId} invalidated all account access; {TokenCount} credentials, {AuthorizationCount} authorizations and {SessionCount} browser sessions were revoked.",
             user.Id,
             revoked.RevokedTokens,
-            revoked.RevokedAuthorizations);
+            revoked.RevokedAuthorizations,
+            revoked.RevokedBrowserSessions);
         return AccountSelfServiceResult.Success;
     }
 

@@ -87,6 +87,7 @@ internal sealed class ClientManagementService(
         applicationCache,
     AppDbContext database,
     IManagementAuthorizationEvaluator authorization,
+    Microsoft.Extensions.Options.IOptions<ManagementOptions> managementOptions,
     ILogger<ClientManagementService> logger) : IClientManagementService
 {
     public async Task<IReadOnlyList<ManagementClientSummary>> ListAsync(
@@ -291,7 +292,34 @@ internal sealed class ClientManagementService(
             }
             AddDerivedProtocolPermissions(descriptor, grantTypes);
 
-            foreach (var scope in NormalizeScopes(command.Scopes))
+            var normalizedScopes = NormalizeScopes(command.Scopes);
+            // H2/M3 fix (eval): reject API-protection scopes (management, SCIM,
+            // custom privileged APIs) at the client-create boundary. Without
+            // this, an operator with identity.clients.create could mint a
+            // client_credentials client carrying skoruba_identity_admin_api and
+            // defeat the transport policy. Reserved scopes are provisioned via
+            // bootstrap, not the runtime CRUD path.
+            var reserved = managementOptions.Value.ReservedApiScopes;
+            if (reserved.Length > 0)
+            {
+                var requestedScopeNames = normalizedScopes
+                    .Select(s => s.StartsWith(
+                        OpenIddictConstants.Permissions.Prefixes.Scope,
+                        StringComparison.Ordinal)
+                        ? s[OpenIddictConstants.Permissions.Prefixes.Scope.Length..]
+                        : s);
+                var forbidden = requestedScopeNames
+                    .FirstOrDefault(s => reserved.Contains(s, StringComparer.Ordinal));
+                if (forbidden is not null)
+                {
+                    throw new ManagementValidationException(
+                        "scope_reserved",
+                        $"O scope '{forbidden}' protege uma superfície administrativa e não pode ser atribuído a um cliente pela API de gerenciamento.",
+                        "scopes");
+                }
+            }
+
+            foreach (var scope in normalizedScopes)
             {
                 descriptor.Permissions.Add(scope);
             }

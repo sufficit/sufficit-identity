@@ -1,3 +1,4 @@
+using System.Net;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Sufficit.Identity.Management;
@@ -114,3 +115,4 @@ public sealed class OperationalOptionsTests
         Assert.True(options.RequireMfa);
     }
 }
+

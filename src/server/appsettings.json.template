@@ -16,6 +16,13 @@
     "Identity": {
       "Issuer": "https://your-identity-host/",
       "ConnectionStringName": "DefaultConnection",
+      "_Database": "Schema provisioning policy. In Development the host ALWAYS applies pending EF Core migrations on startup (MigrateAsync). In production it does so ONLY when Database:AutoMigrate=true (default false — conservative for the legacy shared Duende/Skoruba database, which predates the EF model). When AutoMigrate is false in production, provision schema from the checked-in canonical SQL (docs/migration/sql/*) before each deploy. CRITICAL: when enabling AutoMigrate, ALWAYS set AllowedDatabaseNames to the concrete database name(s) the migrator may touch — if the connection string points elsewhere (e.g. the production database by a config typo), the process refuses to start rather than migrate the wrong database. Empty AllowedDatabaseNames disables the guard (Development only).",
+      "Database": {
+        "_AutoMigrate": "true applies pending EF migrations on startup outside Development. Default false — flip only after confirming the schema is aligned and AllowedDatabaseNames is set.",
+        "AutoMigrate": false,
+        "_AllowedDatabaseNames": "Allow-list of database names the automatic migrator may touch (parsed from the connection string). When non-empty, a mismatch fails startup fast. Recommended in production. Empty = no guard (Development only).",
+        "AllowedDatabaseNames": []
+      },
       "_TrustedProxies": "Array of CIDR strings for reverse-proxy networks allowed to set X-Forwarded-* headers. Leaving this UNSET (not listed) trusts only loopback (ASP.NET Core default). The example values below reflect the Sufficit production topology (verified 2026-07-21 from nginx access logs on eveo-apps/apoint-apps/castrum-apps): 203.0.113.10 (eveo-cloud Proxmox gateway), 203.0.113.11 (apoint-cloud gateway), plus the internal sufflocal/healthcheck networks 10.0.0.0/8 and the AWS Route53 health-checker range 198.51.100.0/24. If TrustedProxies is empty in production, the rate limiter partitions by the proxy's IP (one shared bucket for the whole deployment — self-inflicted 429s) and X-Forwarded-Proto is dropped (Request.Scheme stays http, defeating the cookie Secure policy). Adjust per environment in appsettings.<env>.json.",
       "TrustedProxies": [
         "203.0.113.10/32",
@@ -36,6 +43,8 @@
         "Enabled": false,
         "RequireAuthorization": true,
         "RequiredScope": "scim",
+        "_RequireMfa": "true requires every SCIM request to carry an amr claim proving MFA (RFC 8176), mirroring the management API. Default false — SCIM is typically driven by machine-to-machine provisioning (client_credentials), which cannot do MFA. Enable only when SCIM is exposed to delegated (human) flows; otherwise restrict the scim scope to a single dedicated provisioning client.",
+        "RequireMfa": false,
         "MaxResults": 100
       },
       "_Certificates": "Required in production. PFX files (X509Certificate2) used to sign and encrypt tokens. Leave empty only in Development, where ephemeral dev certificates are used automatically; any other environment fails to start without these.",
@@ -129,6 +138,7 @@
         "_RequireConfirmedEmail": "true (default, secure-by-default) requires a confirmed email to sign in. Every grant collapses the unconfirmed case into the same generic invalid_grant as a wrong password (no user enumeration).",
         "RequireConfirmedEmail": true
       },
+      "_ServerSideSessions": "The ASP.NET Core Identity application cookie is SERVER-SIDE: the browser holds only the opaque OIDC `sid` as its cookie value, while the full AuthenticationTicket lives in the `oidcusersessions` table (DataProtection-protected). This enables per-device session enumeration (ISessionManagement.ListBySubjectAsync) and per-session revocation (ISessionManagement.RevokeAsync by sid), closing the protocol gap vs. Keycloak/Duende/Zitadel. The session store is DB-backed and therefore shared across replicas out of the box — no extra Redis dependency (unlike the DPoP/CIBA/nonce stores). Global revocation (RevokeAllSessionsAsync / management revoke-all / user disable/delete) bumps the security stamp AND drops every session row, so both the cookies and the session table reflect reality. Production schema must add the `oidcusersessions` table before deploying — see docs/migration/sql/080-add-oidc-user-sessions.sql (existing databases) or 001-create-empty-database.sql (fresh).",
       "_ClaimScopeMap": "Config-driven claim-type → required-scope allowlist for application-specific claims. A mapped claim reaches access and identity tokens ONLY if the subject was granted the mapped scope; unmapped claims retain the legacy access-token behavior. The map ships EMPTY by default. Mapped claim names and scopes are registered automatically, so the generic STS does not need to know their domain meaning. Roll out one resource server at a time: first confirm it requests the mapped scope, THEN add the entry.",
       "ClaimScopeMap": {
         "_ClaimToScope": "Object mapping an application claim type → scope name. Empty object = no gating (retrocompatible).",

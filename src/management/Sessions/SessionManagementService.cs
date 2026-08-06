@@ -73,7 +73,8 @@ public sealed record ManagementSessionSummary(
 
 public sealed record ManagementUserSessionRevocation(
     long RevokedTokens,
-    long RevokedAuthorizations);
+    long RevokedAuthorizations,
+    long RevokedBrowserSessions);
 
 #else
 
@@ -301,14 +302,16 @@ internal sealed class SessionManagementService(
                 "user_sessions_revoked"));
         await database.SaveChangesAsync(cancellationToken);
         logger.LogInformation(
-            "Invalidated account sessions for {UserId}; revoked {TokenCount} credentials and {AuthorizationCount} authorizations. CorrelationId={CorrelationId}",
+            "Invalidated account sessions for {UserId}; revoked {TokenCount} credentials, {AuthorizationCount} authorizations and {SessionCount} browser sessions. CorrelationId={CorrelationId}",
             userId,
             result.RevokedTokens,
             result.RevokedAuthorizations,
+            result.RevokedBrowserSessions,
             context.CorrelationId);
         return new ManagementUserSessionRevocation(
             result.RevokedTokens,
-            result.RevokedAuthorizations);
+            result.RevokedAuthorizations,
+            result.RevokedBrowserSessions);
     }
 
     private async Task<ManagementAuthorizationDecision> DemandAsync(

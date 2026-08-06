@@ -188,8 +188,31 @@ static bool IsCredentialEndpoint(PathString path, string method)
 {
     if (!HttpMethods.IsPost(method)) return false;
     var p = path.Value ?? "";
-    return p.Equals("/connect/token", StringComparison.OrdinalIgnoreCase)
-        || p.StartsWith("/account/login", StringComparison.OrdinalIgnoreCase)
+
+    // Every POST under /connect/* is a protocol endpoint that either validates
+    // client credentials, mints tokens, or mutates client/session state:
+    //   /connect/token, /connect/authorize (consent POST), /connect/endsession,
+    //   /connect/introspect, /connect/revocation, /connect/par,
+    //   /connect/deviceauthorization, /connect/device (verify POST),
+    //   /connect/ciba/complete, /connect/ciba/token, /connect/register (DCR).
+    // Covering the whole prefix (rather than an explicit list) means a new
+    // /connect/* endpoint can never be silently left unthrottled — the same
+    // class of bug that bit when the original limiter covered only
+    // /connect/token. GETs (discovery, userinfo, authorize challenge) are not
+    // credential-validation surfaces and stay unrestricted.
+    if (p.StartsWith("/connect/", StringComparison.OrdinalIgnoreCase))
+    {
+        return true;
+    }
+
+    // CIBA initiation lives outside the /connect/ prefix (RFC 9126 §2.2).
+    if (p.StartsWith("/bc-authorize", StringComparison.OrdinalIgnoreCase))
+    {
+        return true;
+    }
+
+    // Interactive credential-validation endpoints.
+    return p.StartsWith("/account/login", StringComparison.OrdinalIgnoreCase)
         || p.StartsWith("/account/forgotpassword", StringComparison.OrdinalIgnoreCase)
         || p.StartsWith("/account/resetpassword", StringComparison.OrdinalIgnoreCase)
         || p.StartsWith("/account/register", StringComparison.OrdinalIgnoreCase)
@@ -336,12 +359,70 @@ app.UseRouting();
 // requests receive the policy headers without requiring a bearer token.
 app.UseSufficitCors(identityOptions.Cors);
 
-// ---- Ensure database schema exists (dev/test only). ----
-if (app.Environment.IsDevelopment())
+// ---- Database schema provisioning (migrations). ----
+// Dev/test ALWAYS applies pending EF migrations (exercises the Up/Down paths
+// for real, unlike EnsureCreated which ignores migrations). Production applies
+// them ONLY when Sufficit:Identity:Database:AutoMigrate=true, AND only if the
+// connection string's database name is in AllowedDatabaseNames (a guard against
+// pointing the migrator at the wrong/production database by accident). When
+// AutoMigrate is false in production, schema stays provisioned from the
+// checked-in canonical SQL (docs/migration/sql/*) — the conservative posture
+// for the legacy shared Duende/Skoruba database.
+var shouldAutoMigrate = app.Environment.IsDevelopment() || identityOptions.Database.AutoMigrate;
+if (shouldAutoMigrate)
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.EnsureCreatedAsync();
+
+    if (identityOptions.Database.AllowedDatabaseNames.Length > 0)
+    {
+        var configured = builder.Configuration.GetConnectionString(identityOptions.ConnectionStringName);
+        var actualName = ParseDatabaseName(configured);
+        if (actualName is null || !identityOptions.Database.AllowedDatabaseNames.Contains(
+                actualName, StringComparer.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Automatic database migration is enabled, but the connection string's database " +
+                $"'{actualName ?? "<unparsed>"}' is not in " +
+                $"Sufficit:Identity:Database:AllowedDatabaseNames " +
+                $"([{string.Join(", ", identityOptions.Database.AllowedDatabaseNames)}]). " +
+                "This guard prevents migrating the wrong database. Either add the database name to the " +
+                "allow-list, or disable Sufficit:Identity:Database:AutoMigrate and provision schema " +
+                "from docs/migration/sql/* instead.");
+        }
+    }
+
+    await db.Database.MigrateAsync();
+    app.Logger.LogInformation(
+        "Applied pending database migrations (environment: {Environment}, autoMigrate: {AutoMigrate}).",
+        app.Environment.EnvironmentName, identityOptions.Database.AutoMigrate);
+}
+
+// Parse the MySQL/MariaDB database name out of a connection string for the
+// allowed-database guard above. Returns null when it cannot be parsed. Hand-
+// rolled (no DbConnectionStringBuilder) so the host needs no extra package
+// reference; MySQL/MariaDB connection strings are semicolon-separated
+// key=value pairs where the database is the "database"/"db" key.
+static string? ParseDatabaseName(string? connectionString)
+{
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        return null;
+    }
+    foreach (var part in connectionString.Split(';'))
+    {
+        var kv = part.Split(new[] { '=' }, 2, StringSplitOptions.TrimEntries);
+        if (kv.Length != 2)
+        {
+            continue;
+        }
+        if (string.Equals(kv[0], "database", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(kv[0], "db", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.IsNullOrWhiteSpace(kv[1]) ? null : kv[1];
+        }
+    }
+    return null;
 }
 
 // ---- Swagger (#5) ----

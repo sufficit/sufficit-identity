@@ -12,6 +12,7 @@ public static class IdentityDatabaseSchema
     public const string ScimProvisioningMigrationId = "20260730220100_AddScimProvisioning";
     public const string UserCreatedAtMigrationId = "20260804020337_AddUserCreatedAtUtc";
     public const string SsfStreamsMigrationId = "20260805202819_AddSsfStreams";
+    public const string OidcUserSessionsMigrationId = "20260806131249_AddOidcUserSessions";
 
     /// <summary>
     /// Migration history owned by the new Sufficit Identity model.
@@ -62,4 +63,9 @@ public static class IdentityDatabaseSchema
     public const int SsfEventsRequestedLength = 1024; // events JSON array
     public const int SsfDescriptionLength = 256;
     public const int SsfJtiLength = 64;               // SET jti (poll queue)
+
+    // OIDC server-side sessions (browser SSO sessions for the Identity cookie)
+    public const int OidcSessionIdLength = 64;          // the sid (32 random bytes base64url)
+    public const int OidcSessionUserAgentLength = 512;
+    public const int OidcSessionRemoteIpLength = 64;
 }

@@ -82,8 +82,11 @@ internal sealed class ScopeManagementService(
     IOpenIddictApplicationManager applications,
     AppDbContext database,
     IManagementAuthorizationEvaluator authorization,
+    Microsoft.Extensions.Options.IOptions<ManagementOptions> managementOptions,
     ILogger<ScopeManagementService> logger) : IScopeManagementService
 {
+    private string[] ReservedApiScopes => managementOptions.Value.ReservedApiScopes;
+
     private const int DisplayNameMaxLength = 200;
     private const int DescriptionMaxLength = 1000;
     private const int ResourceMaxLength = 512;
@@ -556,7 +559,7 @@ internal sealed class ScopeManagementService(
         return decision;
     }
 
-    private static string ValidateName(string? value)
+    private string ValidateName(string? value)
     {
         var name = value?.Trim();
         if (string.IsNullOrWhiteSpace(name))
@@ -588,6 +591,19 @@ internal sealed class ScopeManagementService(
             throw new ManagementValidationException(
                 "scope_name_reserved",
                 "Esse scope é definido pelo protocolo e não deve ser cadastrado como scope customizado.",
+                "name");
+        }
+        // H2/M3 fix (eval): API-protection scopes (management, SCIM, custom
+        // privileged APIs) must never be created via the runtime CRUD path —
+        // doing so would let an operator mint e.g. skoruba_identity_admin_api
+        // as a custom scope and bind it to a client they control, escalating
+        // past the transport policy. Declare reserved scopes via
+        // bootstrap/provisioning instead.
+        if (ReservedApiScopes.Contains(name, StringComparer.Ordinal))
+        {
+            throw new ManagementValidationException(
+                "scope_name_reserved",
+                "Esse scope protege uma superfície administrativa e não pode ser criado pela API de gerenciamento. Declare-o via bootstrap/provisioning.",
                 "name");
         }
 
