@@ -30,3 +30,6 @@ docs/
 
 # --- Test project (not part of the published STS) ---
 src/tests/
+
+# Local deployment data
+deploy/local/
