@@ -4,13 +4,14 @@
 @inject IAccountExternalIdentityService ExternalIdentityService
 @inject IJSRuntime JS
 @inject ILogger<ExternalLogins> Logger
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Identidades externas — Sufficit Identity</PageTitle>
+<PageTitle>@L["ExternalLogins.Title"]</PageTitle>
 
 <div class="auth-card">
     <ManageBackLink />
-    <h1>Identidades externas</h1>
-    <p class="info">Gerencie as contas de outros provedores usadas para entrar.</p>
+    <h1>@L["ExternalLogins.Title"]</h1>
+    <p class="info">@L["ExternalLogins.Description"]</p>
 
     <div aria-live="polite">
         @if (_error is not null)
@@ -36,7 +37,7 @@
     else
     {
         <section class="external-section" aria-labelledby="linked-identities-title">
-            <h3 id="linked-identities-title">Vinculadas</h3>
+            <h3 id="linked-identities-title">@L["ExternalLogins.Linked"]</h3>
             @if (_overview.LinkedIdentities.Count > 0)
             {
                 <ul class="external-list">
@@ -69,14 +70,14 @@
             }
             else
             {
-                <p class="muted">Nenhuma identidade externa vinculada.</p>
+                <p class="muted">@L["ExternalLogins.None"]</p>
             }
         </section>
 
         @if (_overview.AvailableProviders.Count > 0)
         {
             <section class="external-section" aria-labelledby="available-identities-title">
-                <h3 id="available-identities-title">Disponíveis</h3>
+                <h3 id="available-identities-title">@L["ExternalLogins.Available"]</h3>
                 <div class="external-providers">
                     @foreach (var provider in _overview.AvailableProviders)
                     {
@@ -127,7 +128,7 @@
             var principal = await _authTask.GetAuthenticatedPrincipalAsync();
             if (principal is null)
             {
-                _error = "Sua sessão expirou. Entre novamente.";
+                _error = L["ChangePassword.SessionExpired"];
                 _loadFailed = true;
                 return;
             }
@@ -135,7 +136,7 @@
             var overview = await ExternalIdentityService.GetOverviewAsync(principal);
             if (overview is null)
             {
-                _error = "Sua sessão expirou. Entre novamente.";
+                _error = L["ChangePassword.SessionExpired"];
                 _loadFailed = true;
                 return;
             }
@@ -172,7 +173,7 @@
             var principal = await _authTask.GetAuthenticatedPrincipalAsync();
             if (principal is null)
             {
-                _error = "Sua sessão expirou. Entre novamente.";
+                _error = L["ChangePassword.SessionExpired"];
                 return;
             }
 

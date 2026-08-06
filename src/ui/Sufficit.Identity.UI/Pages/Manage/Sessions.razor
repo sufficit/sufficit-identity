@@ -4,15 +4,16 @@
 @inject IAccountAccessService AccountAccessService
 @inject IJSRuntime JS
 @inject ILogger<Sessions> Logger
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Sessões ativas — Sufficit Identity</PageTitle>
+<PageTitle>@L["Sessions.Title"]</PageTitle>
 
 <div class="auth-card manage-sessions">
     <ManageBackLink />
     <header class="manage-sessions__header">
         <div>
-            <h1>Sessões ativas</h1>
-            <p class="info">Aplicativos e dispositivos com credenciais ativas para sua conta.</p>
+            <h1>@L["Sessions.Title"]</h1>
+            <p class="info">@L["Sessions.Description"]</p>
         </div>
         @if (!_loading && _sessions.Count > 0)
         {
@@ -37,7 +38,7 @@
     }
     else if (_sessions.Count == 0)
     {
-        <p class="muted">Nenhuma sessão ativa encontrada.</p>
+        <p class="muted">@L["Sessions.None"]</p>
     }
     else
     {
@@ -95,7 +96,7 @@
                     class="btn btn-danger"
                     disabled="@IsBusy"
                     @onclick="RevokeAllAsync">
-                @(_revokingAll ? "Encerrando…" : "Encerrar todas as sessões e acessos")
+                @(_revokingAll ? "Encerrando…" : @L["Sessions.RevokeAll"])
             </button>
         </div>
     }
@@ -127,7 +128,7 @@
             var principal = await _authTask.GetAuthenticatedPrincipalAsync();
             if (principal is null)
             {
-                _error = "Sua sessão expirou. Entre novamente.";
+                _error = L["ChangePassword.SessionExpired"];
                 return;
             }
 
@@ -154,7 +155,7 @@
             var principal = await _authTask.GetAuthenticatedPrincipalAsync();
             if (principal is null)
             {
-                _error = "Sua sessão expirou. Entre novamente.";
+                _error = L["ChangePassword.SessionExpired"];
                 return;
             }
 
@@ -206,7 +207,7 @@
             var principal = await _authTask.GetAuthenticatedPrincipalAsync();
             if (principal is null)
             {
-                _error = "Sua sessão expirou. Entre novamente.";
+                _error = L["ChangePassword.SessionExpired"];
                 return;
             }
 
@@ -233,7 +234,7 @@
         }
     }
 
-    private static string FormatTokenType(string type)
+    private string FormatTokenType(string type)
     {
         var value = type
             .Split(':', StringSplitOptions.RemoveEmptyEntries)
@@ -242,11 +243,11 @@
         return value switch
         {
             "access_token" => "Token de acesso",
-            "refresh_token" => "Token de atualização",
+            "refresh_token" => L["Sessions.RefreshToken"],
             "identity_token" => "Token de identidade",
-            "authorization_code" => "Código de autorização",
-            "device_code" => "Código de dispositivo",
-            "user_code" => "Código de usuário",
+            "authorization_code" => L["Sessions.AuthCode"],
+            "device_code" => L["Sessions.DeviceCode"],
+            "user_code" => L["Sessions.UserCode"],
             _ => value,
         };
     }

@@ -4,6 +4,7 @@
 @using System.Globalization
 @inject IDeviceAuthorizationContextService DeviceContextService
 @inject ScopeViewModelProvider ScopeProvider
+@inject IStringLocalizer<SharedResource> L
 
 <PageTitle>Confirmar acesso — Sufficit Identity</PageTitle>
 
@@ -15,7 +16,7 @@
             <div class="device-result" role="status" data-device-flow-result>
                 <span class="device-result__icon" aria-hidden="true">✓</span>
                 <h1>Acesso autorizado</h1>
-                <p>O dispositivo que iniciou a solicitação já pode concluir a autenticação. Esta página não precisa redirecionar você.</p>
+                <p>@L["Device.Approved"]</p>
             </div>
         }
         else
@@ -23,7 +24,7 @@
             <div class="device-result" role="status" data-device-flow-result>
                 <span class="device-result__icon device-result__icon--denied" aria-hidden="true">×</span>
                 <h1>Acesso negado</h1>
-                <p>Nenhum acesso foi concedido. Se você não reconhece a solicitação, não precisa fazer mais nada.</p>
+                <p>@L["Device.Denied"]</p>
             </div>
         }
         <button type="button" class="btn btn-primary btn-block" data-device-flow-close>
@@ -40,39 +41,39 @@
     }
     else if (string.IsNullOrEmpty(_userCode))
     {
-        <h1>Ativar dispositivo</h1>
+        <h1>@L["Device.Activate"]</h1>
         <p class="auth-card-subtitle">
-            Digite o código exibido na aplicação que você quer conectar.
+            @L["Device.EnterCode"]
         </p>
 
         <form method="get" action="/connect/device">
             <div class="form-group">
-                <label for="usercode">Código do dispositivo</label>
+                <label for="usercode">@L["Device.CodeLabel"]</label>
                 <input id="usercode" name="user_code" class="form-control device-code"
-                       inputmode="numeric" placeholder="0000-0000-0000"
+                       inputmode="numeric" placeholder="@L["Device.CodePlaceholder"]"
                        autocomplete="one-time-code" autofocus />
                 <span class="field-hint">O código identifica esta solicitação e expira em poucos minutos.</span>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-block">Continuar</button>
+            <button type="submit" class="btn btn-primary btn-block">@L["Device.Continue"]</button>
         </form>
     }
     else if (_error is not null)
     {
         <h1>Não foi possível confirmar</h1>
         <div class="alert alert-error" role="alert">@_error</div>
-        <a class="btn btn-secondary btn-block" href="/device/usercode">Digitar outro código</a>
+        <a class="btn btn-secondary btn-block" href="/device/usercode">@L["Device.TryAgain"]</a>
     }
     else
     {
         <header class="device-authorization-header">
             <h1>Confirmar acesso</h1>
             <p>
-                <strong>@_clientName</strong> quer usar sua conta Sufficit neste dispositivo.
+                @L["Device.RequestingAccess"]
             </p>
         </header>
 
-        <div class="device-client" aria-label="Aplicação solicitante">
+        <div class="device-client" aria-label="@L["Device.Application"]">
             <span class="device-client__mark" aria-hidden="true">@ClientInitial</span>
             <span class="device-client__identity">
                 <strong>@_clientName</strong>
@@ -87,7 +88,7 @@
         </div>
 
         <section class="device-permissions" aria-labelledby="device-permissions-title">
-            <h2 id="device-permissions-title">O que esta aplicação poderá fazer</h2>
+            <h2 id="device-permissions-title">@L["Device.RequestedScopes"]</h2>
             @if (_scopes.Count == 0)
             {
                 <p class="device-permissions__empty">Nenhuma permissão adicional foi solicitada.</p>
@@ -149,10 +150,10 @@
 
             <div class="btn-group device-authorization-actions">
                 <button type="submit" name="approved" value="true" class="btn btn-primary btn-block">
-                    Autorizar acesso
+                    @L["Device.Authorize"]
                 </button>
                 <button type="submit" name="approved" value="false" class="btn btn-secondary btn-block">
-                    Negar
+                    @L["Device.Deny"]
                 </button>
             </div>
         </form>
@@ -199,7 +200,7 @@
         var context = await DeviceContextService.GetCurrentAsync();
         if (!context.IsValid)
         {
-            _error = "Esta solicitação é inválida ou expirou. Abra novamente o link exibido pela aplicação.";
+            _error = L["Device.InvalidCode"];
             return;
         }
 

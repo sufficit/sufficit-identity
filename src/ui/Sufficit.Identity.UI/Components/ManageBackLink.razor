@@ -1,5 +1,6 @@
 @* Reusable "back to manage" link for all /manage/* sub-pages *@
+@inject IStringLocalizer<SharedResource> L
 <a href="/manage" class="manage-back">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-    <span>Minha conta</span>
+    <span>@L["Layout.MyAccount"]</span>
 </a>

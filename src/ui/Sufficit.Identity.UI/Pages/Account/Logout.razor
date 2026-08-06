@@ -1,15 +1,16 @@
 @page "/account/logout"
-<PageTitle>Sair — Sufficit Identity</PageTitle>
+@inject IStringLocalizer<SharedResource> L
+<PageTitle>@L["Logout.Title"]</PageTitle>
 
 <div class="auth-card">
-    <h1>Sair da conta</h1>
+    <h1>@L["Logout.Title"]</h1>
 
     @if (_signedOut)
     {
-        <p class="info">Você foi desconectado.</p>
+        <p class="info">@L["Logout.SignedOut"]</p>
         @if (_postLogoutRedirect is not null)
         {
-            <p class="info">Retornando para <strong>@_clientName</strong>…</p>
+            <p class="info">@L["Logout.ReturningTo", _clientName ?? string.Empty]</p>
             <script src="_content/Sufficit.Identity.UI/js/redirect.js" data-url="@_postLogoutRedirect"></script>
             <p><a href="@_postLogoutRedirect" class="btn btn-primary">Continuar</a></p>
         }
@@ -21,10 +22,10 @@
     else if (_showConfirm)
     {
         <p class="info">
-            Deseja realmente sair?
+            @L["Logout.ConfirmTitle"]
             @if (_clientName is not null)
             {
-                <br /><span class="muted">@_clientName solicitou o logout.</span>
+                <br /><span class="muted">@L["Logout.ClientRequested", _clientName]</span>
             }
         </p>
         @* POST goes to /connect/endsession, whose runtime protocol handler
@@ -46,14 +47,14 @@
                 <input type="hidden" name="state" value="@_state" />
             }
             <div class="btn-group">
-                <button type="submit" class="btn btn-primary">Sim, sair</button>
-                <a href="/" class="btn btn-secondary">Cancelar</a>
+                <button type="submit" class="btn btn-primary">@L["Logout.Confirm"]</button>
+                <a href="/" class="btn btn-secondary">@L["Logout.Cancel"]</a>
             </div>
         </EditForm>
     }
     else
     {
-        <p class="info">Saindo…</p>
+        <p class="info">@L["Logout.SigningOut"]</p>
     }
 </div>
 
@@ -85,7 +86,7 @@
             // before passing through).
             if (!string.IsNullOrEmpty(_idTokenHint))
             {
-                _clientName = ExtractClientIdFromJwt(_idTokenHint) ?? "uma aplicação";
+                _clientName = ExtractClientIdFromJwt(_idTokenHint) ?? L["Logout.FallbackApp"];
             }
 
             // Build the final redirect URL with state

@@ -1,12 +1,13 @@
 @page "/account/loginwith2fa"
 @inject IInteractiveSignInService SignInService
 @inject NavigationManager Navigation
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Verificação 2FA — Sufficit Identity</PageTitle>
+<PageTitle>@L["TwoFactor.Title"]</PageTitle>
 
 <div class="auth-card">
-    <h1>Autenticação em duas etapas</h1>
-    <p class="info">Digite o código de 6 dígitos do seu app autenticador.</p>
+    <h1>@L["TwoFactor.Title"]</h1>
+    <p class="info">@L["TwoFactor.EnterCode"]</p>
 
     @if (_error is not null)
     {
@@ -17,7 +18,7 @@
         <DataAnnotationsValidator />
 
         <div class="form-group">
-            <label for="code">Código de verificação</label>
+            <label for="code">@L["TwoFactor.VerificationCode"]</label>
             <InputText id="code" @bind-Value="_model.TwoFactorCode" class="form-control"
                        placeholder="123456" autocomplete="one-time-code" autofocus />
             <ValidationMessage For="@(() => _model.TwoFactorCode)" />
@@ -25,7 +26,7 @@
 
         <div class="form-check">
             <InputCheckbox id="rememberMachine" @bind-Value="_model.RememberMachine" />
-            <label for="rememberMachine">Lembrar este dispositivo (30 dias)</label>
+            <label for="rememberMachine">@L["TwoFactor.RememberDevice"]</label>
         </div>
 
         <button type="submit" class="btn btn-primary btn-block">Verificar</button>
@@ -33,7 +34,7 @@
 
     <div class="auth-links">
         <a href="/account/loginwithrecoverycode?returnUrl=@Uri.EscapeDataString(_returnUrl ?? "/")">
-            Usar código de recuperação
+            @L["TwoFactor.UseRecoveryCode"]
         </a>
         <br />
         <a href="/account/logout">Cancelar</a>
@@ -83,11 +84,11 @@
 
         if (result.Status == InteractiveSignInStatus.LockedOut)
         {
-            _error = "Conta bloqueada por muitas tentativas. Tente novamente mais tarde.";
+            _error = L["TwoFactor.Error.LockedOut"];
             return;
         }
 
-        _error = "Código inválido. Tente novamente.";
+        _error = L["TwoFactor.Error.InvalidCode"];
     }
 
     private sealed class TwoFactorInput

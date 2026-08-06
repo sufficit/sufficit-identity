@@ -1,0 +1,45 @@
+@using System.Globalization
+@using Microsoft.AspNetCore.Http
+@using Microsoft.AspNetCore.Localization
+@inject NavigationManager Nav
+@inject IHttpContextAccessor HttpContextAccessor
+
+@if (_cultures.Length > 1)
+{
+    <div class="culture-selector">
+        <select @onchange="ChangeCulture" value="@_currentCulture">
+            @foreach (var culture in _cultures)
+            {
+                <option value="@culture.Name">@culture.NativeName</option>
+            }
+        </select>
+    </div>
+}
+
+@code {
+    private static readonly CultureInfo[] _cultures = new[]
+    {
+        new CultureInfo("pt-BR"),
+        new CultureInfo("en-US"),
+    };
+
+    private CultureInfo _currentCulture = CultureInfo.CurrentUICulture;
+
+    private async Task ChangeCulture(ChangeEventArgs e)
+    {
+        var culture = e.Value?.ToString() ?? "pt-BR";
+        var cultureCookie = $"c={culture}|uic={culture}";
+
+        var httpContext = HttpContextAccessor.HttpContext;
+        if (httpContext is not null)
+        {
+            httpContext.Response.Cookies.Append(
+                CookieRequestCultureProvider.DefaultCookieName,
+                cultureCookie,
+                new CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1), IsEssential = true });
+        }
+
+        // Force reload so the new culture takes effect across the Blazor circuit.
+        Nav.NavigateTo(Nav.Uri, forceLoad: true);
+    }
+}

@@ -1,12 +1,13 @@
 @page "/account/loginwithrecoverycode"
 @inject IInteractiveSignInService SignInService
 @inject NavigationManager Navigation
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Código de recuperação — Sufficit Identity</PageTitle>
+<PageTitle>@L["RecoveryCode.Title"]</PageTitle>
 
 <div class="auth-card">
-    <h1>Código de recuperação</h1>
-    <p class="info">Digite um dos seus códigos de recuperação.</p>
+    <h1>@L["RecoveryCode.Title"]</h1>
+    <p class="info">@L["RecoveryCode.EnterCode"]</p>
 
     @if (_error is not null)
     {

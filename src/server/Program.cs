@@ -427,6 +427,13 @@ if (!app.Environment.IsDevelopment())
 // calibrating against the real UI pages. ----
 app.UseSufficitSecurityHeaders(identityOptions);
 
+// ---- i18n: request localization (cookie-based, Blazor Server safe) ----
+var supportedCultures = new[] { "pt-BR", "en-US" };
+app.UseRequestLocalization(new RequestLocalizationOptions()
+    .SetDefaultCulture("pt-BR")
+    .AddSupportedCultures(supportedCultures)
+    .AddSupportedUICultures(supportedCultures));
+
 // ---- Canonicalize URL paths to lowercase (308 redirect) ----
 // Must run before any endpoint matching, so that /Account/Login,
 // /ACCOUNT/LOGIn, /CONNECT/Authorize etc. all converge to the lowercase

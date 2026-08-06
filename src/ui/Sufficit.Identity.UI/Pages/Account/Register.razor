@@ -1,17 +1,18 @@
 @page "/account/register"
 @inject IAccountOnboardingService AccountOnboarding
 @inject IBrandingThemeProvider BrandingProvider
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Criar conta — Sufficit Identity</PageTitle>
+<PageTitle>@L["Register.Title"]</PageTitle>
 
 @if (!_registrationPolicy.Enabled)
 {
     <div class="auth-card">
-        <h1>Criar conta</h1>
+        <h1>@L["Register.Title"]</h1>
         <div class="alert alert-error" role="alert">
-            Cadastro de novas contas está desativado.
+            @L["Register.Disabled"]
         </div>
-        <a href="/account/login" class="btn btn-primary">Voltar ao login</a>
+        <a href="/account/login" class="btn btn-primary">@L["Common.BackToLogin"]</a>
     </div>
 }
 else
@@ -20,13 +21,13 @@ else
         <div class="auth-brand">
             <img src="@_logoUrl" alt="Sufficit Identity" height="44" />
         </div>
-        <h1>Criar conta</h1>
-        <p class="auth-card-subtitle">Crie sua conta em poucos segundos</p>
+        <h1>@L["Register.Title"]</h1>
+        <p class="auth-card-subtitle">@L["Register.Subtitle"]</p>
 
         @if (_registered)
         {
             <div class="alert alert-success" role="alert">
-                Conta criada!
+                @L["Register.Success"]
                 @if (_confirmationMessageSent)
                 {
                     <text> Enviamos um e-mail de confirmação para <strong>@_model.Email</strong>.
@@ -37,7 +38,7 @@ else
                     <text> Não foi possível entregar a confirmação agora. Use a opção de reenviar confirmação.</text>
                 }
             </div>
-            <a href="/account/login" class="btn btn-primary">Voltar ao login</a>
+            <a href="/account/login" class="btn btn-primary">@L["Common.BackToLogin"]</a>
         }
         else
         {
@@ -52,7 +53,7 @@ else
                 @if (_registrationPolicy.RequiresUserName)
                 {
                     <div class="form-group">
-                        <label for="username">Usuário</label>
+                        <label for="username">@L["Register.UserName"]</label>
                         <InputText id="username" @bind-Value="_model.UserName" class="form-control"
                                    autocomplete="username" autofocus />
                         <ValidationMessage For="@(() => _model.UserName)" />
@@ -60,7 +61,7 @@ else
                 }
 
                 <div class="form-group">
-                    <label for="email">E-mail</label>
+                    <label for="email">@L["Register.Email"]</label>
                     <InputText id="email" @bind-Value="_model.Email" class="form-control"
                                autocomplete="email"
                                autofocus="@( !_registrationPolicy.RequiresUserName )" />
@@ -68,24 +69,24 @@ else
                 </div>
 
                 <div class="form-group">
-                    <label for="password">Senha</label>
+                    <label for="password">@L["Register.Password"]</label>
                     <InputText id="password" type="password" @bind-Value="_model.Password" class="form-control"
                                autocomplete="new-password" />
                     <ValidationMessage For="@(() => _model.Password)" />
                 </div>
 
                 <div class="form-group">
-                    <label for="confirm">Confirmar senha</label>
+                    <label for="confirm">@L["Register.ConfirmPassword"]</label>
                     <InputText id="confirm" type="password" @bind-Value="_model.ConfirmPassword" class="form-control"
                                autocomplete="new-password" />
                     <ValidationMessage For="@(() => _model.ConfirmPassword)" />
                 </div>
 
-                <button type="submit" class="btn btn-primary btn-block">Criar conta</button>
+                <button type="submit" class="btn btn-primary btn-block">@L["Register.Submit"]</button>
             </EditForm>
 
             <div class="auth-links">
-                <a href="/account/login">Já tem conta? Entrar</a>
+                <a href="/account/login">@L["Register.HasAccount"]</a>
             </div>
         }
     </div>

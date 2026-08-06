@@ -1,17 +1,18 @@
 @page "/account/confirmemail"
 @inject IAccountOnboardingService AccountOnboarding
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Confirmar e-mail — Sufficit Identity</PageTitle>
+<PageTitle>@L["ConfirmEmail.Title"]</PageTitle>
 
 <div class="auth-card">
-    <h1>Confirmação de e-mail</h1>
+    <h1>@L["ConfirmEmail.Title"]</h1>
 
     @if (_status is not null)
     {
         <div class="@(_success ? "alert alert-success" : "alert alert-error")">@_status</div>
     }
 
-    <a href="/account/login" class="btn btn-primary">Voltar ao login</a>
+    <a href="/account/login" class="btn btn-primary">@L["Common.BackToLogin"]</a>
 </div>
 
 @code {
@@ -30,9 +31,9 @@
         _status = result.Status switch
         {
             AccountEmailConfirmationStatus.Succeeded =>
-                "E-mail confirmado com sucesso!",
+                L["ConfirmEmail.Success"],
             AccountEmailConfirmationStatus.InvalidRequest =>
-                "Link inválido ou expirado.",
+                L["ConfirmEmail.InvalidLink"],
             _ => string.Join(
                 " ",
                 result.Errors.Select(error => error.Description)),

@@ -2,21 +2,22 @@
 @attribute [Authorize]
 @inject IAccountSelfService AccountSelfService
 @inject IJSRuntime JS
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Meus dados (LGPD) — Sufficit Identity</PageTitle>
+<PageTitle>@L["PersonalData.Title"]</PageTitle>
 
 <div class="auth-card">
     <ManageBackLink />
-    <h1>Meus dados (LGPD)</h1>
-    <p class="info">Baixe ou exclua seus dados pessoais conforme a Lei Geral de Proteção de Dados.</p>
+    <h1>@L["PersonalData.Title"]</h1>
+    <p class="info">@L["PersonalData.Description"]</p>
 
     @if (_error is not null) { <div class="alert alert-error">@_error</div> }
 
     <div class="btn-group">
         <EditForm Method="post" Model="_empty" OnValidSubmit="DownloadAsync" FormName="download-data">
-            <button type="submit" class="btn btn-primary">Baixar meus dados (JSON)</button>
+            <button type="submit" class="btn btn-primary">@L["PersonalData.Download"]</button>
         </EditForm>
-        <a href="/manage/deleteaccount" class="btn btn-danger">Excluir minha conta</a>
+        <a href="/manage/deleteaccount" class="btn btn-danger">@L["PersonalData.DeleteAccount"]</a>
     </div>
 </div>
 
@@ -31,7 +32,7 @@
         var principal = await _authTask.GetAuthenticatedPrincipalAsync();
         if (principal is null)
         {
-            _error = "Sua sessão expirou. Entre novamente.";
+            _error = L["ChangePassword.SessionExpired"];
             return;
         }
 

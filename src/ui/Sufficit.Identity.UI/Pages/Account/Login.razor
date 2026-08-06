@@ -9,8 +9,9 @@
 @inject IJSRuntime JS
 @inject ILogger<Login> Logger
 @inject IBrandingThemeProvider BrandingProvider
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Entrar — Sufficit Identity</PageTitle>
+<PageTitle>@L["Login.Title"]</PageTitle>
 
 <div class="auth-card">
     <div class="auth-brand">
@@ -25,9 +26,9 @@
     @if (_errorMessage is not null && _errorMessage.Contains("duas etapas"))
     {
         // Handled via redirect in OnValidSubmit; show fallback link in case redirect fails.
-        <p class="info">Sua conta exige autenticação em duas etapas.</p>
+        <p class="info">@L["Login.Requires2FA"]</p>
         <a href="/account/loginwith2fa?returnUrl=@Uri.EscapeDataString(_returnUrl ?? "/")" class="btn btn-primary">
-            Continuar para verificação 2FA
+            @L["Login.Continue2FA"]
         </a>
     }
     else
@@ -62,7 +63,7 @@
                         {
                             <svg class="provider-icon" width="18" height="18" viewBox="0 0 24 24"><path fill="#fff" d="M24 12.07C24 5.41 18.63 0 12 0S0 5.41 0 12.07c0 6.02 4.39 11.01 10.13 11.93v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.79-4.69 4.53-4.69 1.31 0 2.68.24 2.68.24v2.97h-1.51c-1.49 0-1.96.93-1.96 1.89v2.25h3.33l-.53 3.49h-2.8v8.44C19.61 23.08 24 18.09 24 12.07z"/></svg>
                         }
-                        <span>Entrar com @scheme.DisplayName</span>
+                        <span>@L["Login.SignInWith", scheme.DisplayName]</span>
                     </a>
                 }
             }
@@ -73,7 +74,7 @@
                     <AntiforgeryToken />
                     <button type="button" class="btn btn-passkey btn-block" disabled="@_passkeyBusy" @onclick="PasskeySignInAsync">
                         <svg class="provider-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
-                        <span>@(_passkeyBusy ? "Verificando..." : "Entrar com passkey")</span>
+                        <span>@(_passkeyBusy ? L["Login.PasskeyVerifying"] : L["Login.SignInWithPasskey"])</span>
                     </button>
                 </form>
             }
@@ -81,7 +82,7 @@
 
         @if (_externalProviders.Any() || _passkeySupported)
         {
-            <p class="separator"><span>ou com e-mail e senha</span></p>
+            <p class="separator"><span>@L["Login.OrEmailPassword"]</span></p>
         }
 
         // Password sign-in must be a full HTTP POST. ASP.NET Core Identity
@@ -92,34 +93,34 @@
             <input type="hidden" name="ReturnUrl" value="@(_returnUrl ?? "/")" />
 
             <div class="form-group">
-                <label for="username">@( _registrationPolicy.RequiresUserName ? "E-mail ou usuário" : "E-mail" )</label>
+                <label for="username">@( _registrationPolicy.RequiresUserName ? L["Login.EmailOrUsername"] : L["Login.Email"] )</label>
                 <input id="username" name="UserName" @bind="Model.UserName" class="form-control"
                        autocomplete="username" required />
             </div>
 
             <div class="form-group">
-                <label for="password">Senha</label>
+                <label for="password">@L["Login.Password"]</label>
                 <input id="password" name="Password" type="password" class="form-control"
                        autocomplete="current-password" required />
             </div>
 
             <div class="form-check">
                 <input id="rememberMe" name="RememberMe" type="checkbox" value="true" />
-                <label for="rememberMe">Manter conectado</label>
+                <label for="rememberMe">@L["Login.RememberMe"]</label>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+            <button type="submit" class="btn btn-primary btn-block">@L["Login.Submit"]</button>
         </form>
 
         <div class="auth-links">
-            <a href="/account/forgotpassword">Esqueceu a senha?</a>
+            <a href="/account/forgotpassword">@L["Login.ForgotPassword"]</a>
             <br />
             @if (_registrationPolicy.Enabled)
             {
-                <a href="/account/register">Criar nova conta</a>
+                <a href="/account/register">@L["Login.CreateAccount"]</a>
                 <br />
             }
-            <a href="/account/resendemailconfirmation">Reenviar confirmação de e-mail</a>
+            <a href="/account/resendemailconfirmation">@L["Login.ResendConfirmation"]</a>
         </div>
     }
 </div>
@@ -185,25 +186,25 @@
         _errorMessage = _externalError switch
         {
             "locked_out" =>
-                "Conta bloqueada por muitas tentativas. Tente novamente mais tarde.",
+                L["Login.Error.LockedOut"],
             "not_allowed" =>
-                "Login não permitido. Confirme seu e-mail ou contate o suporte.",
+                L["Login.Error.NotAllowed"],
             "no_email_from_provider" =>
-                "O provedor externo não forneceu um e-mail utilizável.",
+                L["Login.Error.NoEmailFromProvider"],
             "account_link_requires_signin" =>
-                "Essa conta já existe. Entre normalmente e vincule o provedor no gerenciamento da conta.",
+                L["Login.Error.AccountLinkRequiresSignIn"],
             "registration_disabled" =>
-                "A criação de novas contas por provedor externo está desativada.",
+                L["Login.Error.RegistrationDisabled"],
             "create_failed" =>
-                "Não foi possível criar a conta usando o provedor externo.",
+                L["Login.Error.CreateFailed"],
             "external_callback_unavailable" =>
-                "A autenticação externa expirou ou foi cancelada.",
+                L["Login.Error.ExternalCallbackUnavailable"],
             "external_correlation_failed" =>
-                "A sessão do login externo expirou ou o navegador bloqueou o cookie de segurança. Inicie o login novamente.",
+                L["Login.Error.ExternalCorrelationFailed"],
             "invalid_credentials" =>
-                "Usuário ou senha inválidos.",
+                L["Login.Error.InvalidCredentials"],
             "request_expired" =>
-                "A página de login expirou. Recarregue-a e tente novamente.",
+                L["Login.Error.RequestExpired"],
             _ => _errorMessage,
         };
 
@@ -245,19 +246,19 @@
             else
             {
                 _errorMessage = result.Errors.Count == 0
-                    ? "Não foi possível autenticar com a passkey."
+                    ? L["Login.Error.PasskeyFailed"]
                     : string.Join(" ", result.Errors.Select(error => error.Description));
             }
         }
         catch (JSException exception)
         {
             Logger.LogWarning(exception, "Passkey sign-in interaction failed.");
-            _errorMessage = "Não foi possível concluir a autenticação. Recarregue a página e tente novamente.";
+            _errorMessage = L["Login.Error.PasskeyRetry"];
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Erro no login por passkey");
-            _errorMessage = "Falha ao autenticar com passkey.";
+            _errorMessage = L["Login.Error.PasskeyGeneric"];
         }
         finally
         {

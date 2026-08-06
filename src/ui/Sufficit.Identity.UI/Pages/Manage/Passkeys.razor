@@ -5,13 +5,14 @@
 @inject IAccountPasskeyService PasskeyService
 @inject IJSRuntime JS
 @inject ILogger<Passkeys> Logger
+@inject IStringLocalizer<SharedResource> L
 
-<PageTitle>Passkeys — Sufficit Identity</PageTitle>
+<PageTitle>@L["ManagePasskeys.Title"]</PageTitle>
 
 <div class="auth-card">
     <ManageBackLink />
-    <h1>Passkeys (WebAuthn)</h1>
-    <p class="info">Use biometria, o bloqueio do dispositivo ou uma chave de segurança para entrar sem senha.</p>
+    <h1>@L["ManagePasskeys.Title"]</h1>
+    <p class="info">@L["ManagePasskeys.Description"]</p>
 
     @if (_error is not null)
     {
@@ -22,7 +23,7 @@
         <div class="alert alert-success" role="status" aria-live="polite">@_success</div>
     }
 
-    <h3>Suas passkeys</h3>
+    <h3>@L["ManagePasskeys.YourPasskeys"]</h3>
     @if (_loading)
     {
         <p class="muted" role="status">Carregando passkeys...</p>
@@ -45,7 +46,7 @@
                     @if (_editingCredentialId == passkey.CredentialId)
                     {
                         <div class="form-group passkey-inline-editor">
-                            <label for="passkey-edit-name">Nome da passkey</label>
+                            <label for="passkey-edit-name">@L["ManagePasskeys.Name"]</label>
                             <input id="passkey-edit-name" @ref="_renameInput"
                                    @bind="_editingPasskeyName" @bind:event="oninput"
                                    @onkeydown="@(args => HandleRenameKeyDownAsync(args, passkey.CredentialId))"
@@ -67,11 +68,11 @@
                     else
                     {
                         <div class="passkey-item-info">
-                            <span class="passkey-name">@(passkey.Name ?? "Passkey sem nome")</span>
-                            <span class="passkey-meta">Criada em @passkey.CreatedAt.LocalDateTime.ToString("dd/MM/yyyy HH:mm")</span>
+                            <span class="passkey-name">@(passkey.Name ?? L["ManagePasskeys.Unnamed"])</span>
+                            <span class="passkey-meta">@L["ManagePasskeys.CreatedAt", passkey.CreatedAt.LocalDateTime.ToString("dd/MM/yyyy HH:mm")]</span>
                             @if (passkey.IsBackedUp)
                             {
-                                <span class="badge badge-success">Sincronizada</span>
+                                <span class="badge badge-success">@L["ManagePasskeys.Synced"]</span>
                             }
                         </div>
                         <div class="passkey-item-actions">
@@ -93,13 +94,13 @@
     }
     else
     {
-        <p class="muted">Nenhuma passkey cadastrada. Registre uma para entrar sem digitar sua senha.</p>
+        <p class="muted">@L["ManagePasskeys.None"]</p>
     }
 
     @if (!_loading && !_loadFailed && _overview is not null)
     {
         <hr />
-        <h3>Adicionar passkey</h3>
+        <h3>@L["ManagePasskeys.Add"]</h3>
 
         @if (!_supported)
         {
@@ -119,10 +120,10 @@
             <form @ref="_registrationForm">
                 <AntiforgeryToken />
                 <div class="form-group">
-                    <label for="passkey-name">Nome (opcional)</label>
+                    <label for="passkey-name">@L["ManagePasskeys.NameOptional"]</label>
                     <input id="passkey-name" name="name" @bind="_passkeyName" class="form-control"
                            maxlength="@_overview.MaximumNameLength" autocomplete="off"
-                           placeholder="Ex.: notebook pessoal" disabled="@_busy" />
+                           placeholder="@L["ManagePasskeys.NamePlaceholder"]" disabled="@_busy" />
                     <span class="field-hint">Use um nome que ajude a reconhecer o dispositivo.</span>
                 </div>
                 <button type="button" class="btn btn-primary" disabled="@_busy" @onclick="RegisterPasskeyAsync">
