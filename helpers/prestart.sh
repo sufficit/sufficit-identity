@@ -10,6 +10,11 @@ set -e
 
 APPTITLE=sufficit-identity
 ROOTDIR=/opt/${APPTITLE}
+# Releases are selected through the /opt/sufficit-identity symlink. Resolve it
+# before creating or fixing files so a first-start certificate is owned by the
+# service account in the release directory, not by root in an unreachable
+# target path.
+RELEASEDIR=$(readlink -f "${ROOTDIR}")
 
 # ---- Certificate ----
 # Copy the global Let's Encrypt PFX into the app directory so the STS can sign
@@ -18,7 +23,7 @@ ROOTDIR=/opt/${APPTITLE}
 # When no PFX is available (fresh install, test environment), a self-signed
 # certificate is generated on the fly so the service starts.
 CERT_SRC=/etc/letsencrypt/live/example.com/certificate.pfx
-CERT_DST=${ROOTDIR}/certificate.pfx
+CERT_DST=${RELEASEDIR}/certificate.pfx
 
 # Releases carry forward the exact signing certificate that matches the
 # configured Certificates:Password. Never replace it with the global TLS PFX:
@@ -50,7 +55,7 @@ fi
 # ---- Permissions ----
 # The app runs as dotnetuser with group www-data (so nginx can read the Unix
 # socket created by Kestrel at /run/sufficit-identity/identity.sock).
-chown -R dotnetuser:www-data "${ROOTDIR}"
-chmod 755 "${ROOTDIR}"/helpers/*.sh 2>/dev/null || true
+chown -R dotnetuser:www-data "${RELEASEDIR}"
+chmod 755 "${RELEASEDIR}"/helpers/*.sh 2>/dev/null || true
 
 echo "[prestart] Done"
