@@ -936,6 +936,33 @@ public sealed class ManagementUiArchitectureTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Device_completion_is_terminal_and_falls_back_when_the_tab_cannot_close()
+    {
+        var publicUi = ResolvePublicUiSource();
+        var page = File.ReadAllText(Path.Combine(
+            publicUi,
+            "Pages",
+            "Device",
+            "UserCode.razor"));
+        var script = File.ReadAllText(Path.Combine(
+            publicUi,
+            "wwwroot",
+            "js",
+            "identity.js"));
+
+        Assert.DoesNotContain("<a href=\"/\"", page, StringComparison.Ordinal);
+        Assert.Contains("data-device-flow-result", page, StringComparison.Ordinal);
+        Assert.Contains("data-device-flow-close", page, StringComparison.Ordinal);
+        Assert.Contains("data-device-close-fallback", page, StringComparison.Ordinal);
+        Assert.Contains("window.close();", script, StringComparison.Ordinal);
+        Assert.Contains("fallback.hidden = false", script, StringComparison.Ordinal);
+        Assert.Contains(
+            "never navigate to the Identity home page",
+            script,
+            StringComparison.Ordinal);
+    }
+
     private static string ResolveManagementUiSource()
     {
         var repositoryRoot = ResolveIdentityRepository();

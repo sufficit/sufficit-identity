@@ -30,6 +30,49 @@ window.sufficitIdentityDownloadFile = function (fileName, base64, mimeType) {
 };
 
 /**
+ * Ends the browser side of an RFC 8628 device flow. Browsers only allow
+ * window.close() for tabs they consider script-opened; when closing is
+ * blocked, the terminal page remains visible and explains the manual action.
+ */
+(function () {
+    function revealCloseFallback(result) {
+        var fallback = document.querySelector('[data-device-close-fallback]');
+        if (fallback) fallback.hidden = false;
+
+        var button = document.querySelector('[data-device-flow-close]');
+        if (button) button.textContent = 'Tentar fechar novamente';
+
+        if (result) result.removeAttribute('aria-busy');
+    }
+
+    function closeDeviceFlowTab(result) {
+        if (result) result.setAttribute('aria-busy', 'true');
+        window.close();
+
+        // If execution continues, the browser kept the tab open. Delay the
+        // fallback just enough to avoid flashing it during a successful close.
+        window.setTimeout(function () {
+            revealCloseFallback(result);
+        }, 250);
+    }
+
+    var result = document.querySelector('[data-device-flow-result]');
+    if (!result) return;
+
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest('[data-device-flow-close]');
+        if (!button) return;
+        closeDeviceFlowTab(result);
+    });
+
+    // Device verification is terminal in this browser. Attempt to close the
+    // tab automatically, but never navigate to the Identity home page.
+    window.setTimeout(function () {
+        closeDeviceFlowTab(result);
+    }, 400);
+})();
+
+/**
  * External-login redirect overlay.
  * Shows a full-page "connecting…" overlay when the user clicks an
  * external-login link (Google/Facebook). Pages are statically rendered
