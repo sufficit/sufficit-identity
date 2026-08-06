@@ -21,6 +21,7 @@ using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.STS.Email;
+using Sufficit.Identity.Vault;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Sufficit.Identity.STS;
@@ -181,6 +182,14 @@ public static class ServiceCollectionExtensions
             // it propagate — fail-closed is the correct posture for production.
             dpBuilder.ProtectKeysWithCertificate(dpCert);
         }
+
+        // ---- Internal secret vault (envelope encryption, Transit-style) ----
+        // When Sufficit:Vault:Enabled is false (default), IKeyVault resolves to
+        // PassThroughKeyVault (round-trip without crypto). When true, the real
+        // KeyVault wraps DEKs via the Data Protection key ring above (zero new
+        // deps). Consumers (SsfStreamStore, future) inject IKeyVault and get
+        // the right impl transparently.
+        services.AddSufficitVault(configuration);
 
         // ---- ASP.NET Core Identity ----
         services.AddIdentity<ApplicationUser, ApplicationRole>(identity =>

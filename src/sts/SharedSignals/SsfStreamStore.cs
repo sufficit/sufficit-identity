@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.Vault;
 
 namespace Sufficit.Identity.STS.SharedSignals;
 
@@ -67,11 +68,49 @@ internal sealed class SsfStreamStore : ISsfStreamStore
 
     private readonly AppDbContext _database;
     private readonly TimeProvider _timeProvider;
+    private readonly IKeyVault _keyVault;
 
-    public SsfStreamStore(AppDbContext database, TimeProvider? timeProvider = null)
+    public SsfStreamStore(
+        AppDbContext database,
+        IKeyVault keyVault,
+        TimeProvider? timeProvider = null)
     {
         _database = database;
+        _keyVault = keyVault;
         _timeProvider = timeProvider ?? TimeProvider.System;
+    }
+
+    private const string AuthorizationKeyName = "ssf-stream-authz";
+
+    /// <summary>
+    /// Encrypts the SSF push-delivery bearer token before it is persisted.
+    /// When the vault is disabled (PassThroughKeyVault), this is a no-op
+    /// marker-prefix round-trip. When enabled, the token is envelope-encrypted
+    /// (AES-256-GCM) with AAD bound to the stream id.
+    /// </summary>
+    private async Task<string?> EncryptAuthorizationAsync(
+        string? authorization, string streamId, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(authorization)) return null;
+        return await _keyVault.EncryptAsync(
+            AuthorizationKeyName,
+            authorization,
+            new Dictionary<string, string> { ["stream_id"] = streamId },
+            ct);
+    }
+
+    /// <summary>
+    /// Decrypts the stored ciphertext back to the plaintext bearer token.
+    /// PassThrough strips the marker; real vault decrypts + verifies AAD.
+    /// </summary>
+    private async Task<string?> DecryptAuthorizationAsync(
+        string? stored, string streamId, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(stored)) return null;
+        return await _keyVault.DecryptStringAsync(
+            stored,
+            new Dictionary<string, string> { ["stream_id"] = streamId },
+            ct);
     }
 
     public async Task<SsfStream> CreateAsync(
@@ -110,7 +149,7 @@ internal sealed class SsfStreamStore : ISsfStreamStore
             Audience = audience,
             DeliveryMethod = deliveryMethod,
             Endpoint = endpoint,
-            Authorization = authorization,
+            Authorization = await EncryptAuthorizationAsync(authorization, streamId, cancellationToken),
             Status = "enabled",
             VerificationState = "pending",
             SubjectScope = string.IsNullOrWhiteSpace(subjectScope) ? "ALL" : subjectScope,
@@ -122,36 +161,71 @@ internal sealed class SsfStreamStore : ISsfStreamStore
 
         _database.SsfStreams.Add(stream);
         await _database.SaveChangesAsync(cancellationToken);
+        // Return the decrypted Authorization so the caller sees plaintext,
+        // not ciphertext (the stored row has the encrypted form).
+        stream.Authorization = await DecryptAuthorizationAsync(stream.Authorization, streamId, cancellationToken);
         return stream;
     }
 
     public async Task<SsfStream?> GetByStreamIdAsync(
         string streamId,
-        CancellationToken cancellationToken) =>
-        await _database.SsfStreams
+        CancellationToken cancellationToken)
+    {
+        var stream = await _database.SsfStreams
             .AsNoTracking()
             .FirstOrDefaultAsync(s => s.StreamId == streamId, cancellationToken);
+        if (stream is null) return null;
+        stream.Authorization = await DecryptAuthorizationAsync(stream.Authorization, stream.StreamId, cancellationToken);
+        return stream;
+    }
 
     public async Task<IReadOnlyList<SsfStream>> ListEnabledAsync(
-        CancellationToken cancellationToken) =>
-        await _database.SsfStreams
+        CancellationToken cancellationToken)
+    {
+        var streams = await _database.SsfStreams
             .AsNoTracking()
             .Where(s => s.Status == "enabled")
             .ToArrayAsync(cancellationToken);
+        await DecryptAuthorizationsAsync(streams, cancellationToken);
+        return streams;
+    }
 
     public async Task<IReadOnlyList<SsfStream>> ListEnabledPushAsync(
-        CancellationToken cancellationToken) =>
-        await _database.SsfStreams
+        CancellationToken cancellationToken)
+    {
+        var streams = await _database.SsfStreams
             .AsNoTracking()
             .Where(s => s.Status == "enabled" && s.DeliveryMethod == PushDeliveryMethod)
             .ToArrayAsync(cancellationToken);
+        await DecryptAuthorizationsAsync(streams, cancellationToken);
+        return streams;
+    }
 
     public async Task<IReadOnlyList<SsfStream>> ListEnabledPollAsync(
-        CancellationToken cancellationToken) =>
-        await _database.SsfStreams
+        CancellationToken cancellationToken)
+    {
+        var streams = await _database.SsfStreams
             .AsNoTracking()
             .Where(s => s.Status == "enabled" && s.DeliveryMethod == PollDeliveryMethod)
             .ToArrayAsync(cancellationToken);
+        await DecryptAuthorizationsAsync(streams, cancellationToken);
+        return streams;
+    }
+
+    /// <summary>
+    /// Decrypts Authorization on a batch of streams (best-effort: a decrypt
+    /// failure on one stream logs and leaves the ciphertext, so one bad row
+    /// doesn't break the whole list).
+    /// </summary>
+    private async Task DecryptAuthorizationsAsync(
+        SsfStream[] streams, CancellationToken cancellationToken)
+    {
+        foreach (var stream in streams)
+        {
+            stream.Authorization = await DecryptAuthorizationAsync(
+                stream.Authorization, stream.StreamId, cancellationToken);
+        }
+    }
 
     public async Task MarkVerifiedAsync(string streamId, CancellationToken cancellationToken)
     {
