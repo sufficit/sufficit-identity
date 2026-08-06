@@ -33,6 +33,16 @@
           "OpenIddict.EntityFrameworkCore.Models": "7.6.0"
         }
       },
+      "Pomelo.EntityFrameworkCore.MySql": {
+        "type": "Direct",
+        "requested": "[10.0.0, )",
+        "resolved": "10.0.0",
+        "contentHash": "PF6vbTdq9nKZ8cLKEs5zfxTXY7uwuJNFrUfbu/peVs79e0gpBtBmttO08PHK9CP3bSWkxkYWU2NmoQp+OCHPUQ==",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore.Relational": "[10.0.0, 10.0.999]",
+          "MySqlConnector": "2.5.0"
+        }
+      },
       "Microsoft.AspNetCore.Cryptography.Internal": {
         "type": "Transitive",
         "resolved": "10.0.10",
@@ -323,13 +333,6 @@
         "contentHash": "Mz6Y+s+uMQKj1H2BUF0OhlmaOQkLgSG34/IrUaBDirYBQ6bgwcFvO/XtXWcoDlBLFoFB0uKqDNhybHOd+fQK1A==",
         "dependencies": {
           "System.Security.Cryptography.Pkcs": "10.0.10"
-        }
-      },
-      "Pomelo.EntityFrameworkCore.MySql": {
-        "type": "Project",
-        "dependencies": {
-          "Microsoft.EntityFrameworkCore.Relational": "[10.0.0, 10.0.999]",
-          "MySqlConnector": "[2.5.0, )"
         }
       },
       "sufficit.identity.application.abstractions": {

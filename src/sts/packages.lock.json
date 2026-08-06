@@ -569,13 +569,6 @@
           "System.Composition.Runtime": "9.0.0"
         }
       },
-      "Pomelo.EntityFrameworkCore.MySql": {
-        "type": "Project",
-        "dependencies": {
-          "Microsoft.EntityFrameworkCore.Relational": "[10.0.0, 10.0.999]",
-          "MySqlConnector": "[2.5.0, )"
-        }
-      },
       "sufficit.identity.application.abstractions": {
         "type": "Project"
       },
@@ -585,7 +578,7 @@
           "Microsoft.AspNetCore.DataProtection.EntityFrameworkCore": "[10.0.10, )",
           "Microsoft.AspNetCore.Identity.EntityFrameworkCore": "[10.0.10, )",
           "OpenIddict.EntityFrameworkCore": "[7.6.0, )",
-          "Pomelo.EntityFrameworkCore.MySql": "[10.0.0-preview.1.efcore.10.0.0, )",
+          "Pomelo.EntityFrameworkCore.MySql": "[10.0.0, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )"
         }
       },
@@ -605,6 +598,16 @@
         "dependencies": {
           "Microsoft.EntityFrameworkCore.Abstractions": "10.0.10",
           "Microsoft.EntityFrameworkCore.Analyzers": "10.0.10"
+        }
+      },
+      "Pomelo.EntityFrameworkCore.MySql": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.0, )",
+        "resolved": "10.0.0",
+        "contentHash": "PF6vbTdq9nKZ8cLKEs5zfxTXY7uwuJNFrUfbu/peVs79e0gpBtBmttO08PHK9CP3bSWkxkYWU2NmoQp+OCHPUQ==",
+        "dependencies": {
+          "Microsoft.EntityFrameworkCore.Relational": "[10.0.0, 10.0.999]",
+          "MySqlConnector": "2.5.0"
         }
       }
     }
