@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -54,6 +55,45 @@ public sealed class DeviceFlowTests
 
         Assert.Equal(HttpStatusCode.BadRequest, pollStatus);
         Assert.Equal("authorization_pending", pollBody.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task Device_info_recognizes_an_issued_user_code_and_rejects_an_unknown_code()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+
+        var (authStatus, authBody) = await client.PostFormAsync("/connect/deviceauthorization", new Dictionary<string, string>
+        {
+            ["client_id"] = TestDataSeeder.DeviceClientId,
+            ["client_secret"] = TestDataSeeder.DeviceClientSecret,
+            ["scope"] = TestDataSeeder.ScopeName,
+        });
+
+        Assert.Equal(HttpStatusCode.OK, authStatus);
+        var userCode = authBody.GetProperty("user_code").GetString();
+        Assert.False(string.IsNullOrEmpty(userCode));
+
+        using var issuedResponse = await client.GetAsync(
+            $"/connect/device/info?user_code={Uri.EscapeDataString(userCode!)}");
+        using var issuedBody = JsonDocument.Parse(await issuedResponse.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, issuedResponse.StatusCode);
+        Assert.True(issuedBody.RootElement.GetProperty("valid").GetBoolean());
+
+        var normalized = userCode!.Replace("-", string.Empty, StringComparison.Ordinal);
+        using var normalizedResponse = await client.GetAsync(
+            $"/connect/device/info?user_code={Uri.EscapeDataString(normalized)}");
+        using var normalizedBody = JsonDocument.Parse(await normalizedResponse.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, normalizedResponse.StatusCode);
+        Assert.True(normalizedBody.RootElement.GetProperty("valid").GetBoolean());
+
+        using var unknownResponse = await client.GetAsync(
+            "/connect/device/info?user_code=ZZZZ-ZZZZ-ZZZZ");
+        using var unknownBody = JsonDocument.Parse(await unknownResponse.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, unknownResponse.StatusCode);
+        Assert.False(unknownBody.RootElement.GetProperty("valid").GetBoolean());
     }
 
     [Fact]
