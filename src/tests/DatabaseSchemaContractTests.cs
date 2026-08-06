@@ -203,6 +203,16 @@ public sealed class DatabaseSchemaContractTests
         Assert.Contains("c.`backchannellogoutsessionrequired`", script, StringComparison.Ordinal);
         Assert.Contains("'backchannel_logout_session_required'", script, StringComparison.Ordinal);
         Assert.Contains("JSON_MERGE_PATCH", script, StringComparison.Ordinal);
+
+        // Duende stores Base64(SHA-256), while OpenIddict hashes client
+        // secrets with its versioned PBKDF2 format. Copying the legacy value
+        // makes every confidential client fail with invalid_client.
+        Assert.Contains("Os segredos devem ser reidratados", script,
+            StringComparison.Ordinal);
+        Assert.Contains("helpers/rehash-openiddict-client-secret.py", script,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("SELECT `value` FROM `identity`.`clientsecrets`",
+            script, StringComparison.Ordinal);
     }
 
     [Fact]

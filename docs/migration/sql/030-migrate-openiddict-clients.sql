@@ -2,6 +2,13 @@
 -- 030-migrate-openiddict-clients.sql
 -- Converte clients/scope do banco legado (identity / Duende) para o
 -- formato OpenIddict (identity2).
+--
+-- IMPORTANTE: clientsecrets.value do Duende não pode ser copiado para
+-- applications.client_secret. O Duende guarda Base64(SHA-256), enquanto o
+-- OpenIddict 7 valida o formato PBKDF2 versionado (salt + derivação). O valor
+-- legado faria todos os clientes confidenciais falharem com invalid_client.
+-- Os segredos devem ser reidratados com o helper
+-- helpers/rehash-openiddict-client-secret.py, usando o segredo bruto protegido.
 -- ============================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -45,7 +52,7 @@ INSERT INTO `identity2`.`applications` (
 )
 SELECT
     REPLACE(UUID(),'-',''), 'web', c.`clientid`,
-    (SELECT `value` FROM `identity`.`clientsecrets` cs WHERE cs.`clientid` = c.`id` AND cs.`type` = 'SharedSecret' ORDER BY cs.`id` LIMIT 1),
+    NULL,
     CASE WHEN c.`requireclientsecret` = 1 THEN 'confidential' ELSE 'public' END,
     REPLACE(UUID(),'-',''),
     CASE WHEN c.`requireconsent` = 1 THEN 'explicit' ELSE 'implicit' END,
