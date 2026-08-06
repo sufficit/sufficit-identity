@@ -59,6 +59,12 @@ public sealed class SufficitIdentityOptions
     public RateLimitOptions RateLimit { get; init; } = new();
 
     /// <summary>
+    /// Distributed-cache policy for multi-replica deployments. See
+    /// <see cref="DistributedCacheOptions"/>.
+    /// </summary>
+    public DistributedCacheOptions DistributedCache { get; init; } = new();
+
+    /// <summary>
     /// Token lifetimes. See <see cref="TokenLifetimeOptions"/>.
     /// </summary>
     public TokenLifetimeOptions Tokens { get; init; } = new();
@@ -312,6 +318,32 @@ public sealed class RateLimitOptions
     /// the rate limiter into a self-DoS (item 5.1 [L4]).
     /// </summary>
     public bool FailOnUntrustedProxy { get; init; } = false;
+}
+
+/// <summary>
+/// Distributed-cache policy for multi-replica deployments. Several security-
+/// critical stores (DPoP replay cache + nonce store, CIBA pending requests,
+/// front-channel logout context, passkey ceremony tickets) depend on
+/// <c>IDistributedCache</c>. The default registration is
+/// <c>AddDistributedMemoryCache</c> (single-node, in-process) — correct for a
+/// single replica, but in a multi-replica deployment each replica has its own
+/// isolated cache, so DPoP replay detection, CIBA cross-replica polling and
+/// nonce challenges silently break. This option lets an operator make the
+/// requirement explicit so the process fails fast instead of running with a
+/// degraded security posture.
+/// </summary>
+public sealed class DistributedCacheOptions
+{
+    /// <summary>
+    /// When <c>true</c> outside Development, the STS fails to start if the
+    /// registered <c>IDistributedCache</c> is the in-memory fallback
+    /// (<c>MemoryDistributedCache</c>), because that backend is not shared
+    /// across replicas. Default <c>false</c> (warning only) — flip to
+    /// <c>true</c> before deploying more than one replica so a missing Redis
+    /// (or other shared cache) cannot silently disable DPoP replay protection
+    /// and CIBA cross-replica flows.
+    /// </summary>
+    public bool RequireShared { get; init; } = false;
 }
 
 /// <summary>
