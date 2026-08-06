@@ -167,17 +167,12 @@ public class DeviceController : Controller
                 return Ok(new { valid = false });
             }
 
-            // Defense-in-depth type check: OpenIddict.Abstractions'
-            // TokenTypeHints only publicly exposes AccessToken/RefreshToken
-            // (verified against 7.6.0) — there is no public constant for the
-            // device-flow user_code token type. Parameters.UserCode ("user_code")
-            // is reused here on the assumption OpenIddict tags the token
-            // entity's Type with the same string as the request parameter; if
-            // that assumption is ever wrong for some token layout, this just
-            // makes the lookup slightly more likely to fall through to
-            // `valid:false` below — never a correctness/security issue for the
-            // actual grant, which does not depend on this endpoint at all.
-            if (!await _tokenManager.HasTypeAsync(token, Parameters.UserCode))
+            // OpenIddict stores user-code entries under its private canonical
+            // token-type identifier, not under the short request parameter
+            // name ("user_code"). Comparing against Parameters.UserCode made
+            // every freshly issued code look invalid even though the reference
+            // lookup and status check above had succeeded.
+            if (!await _tokenManager.HasTypeAsync(token, TokenTypeIdentifiers.Private.UserCode))
             {
                 return Ok(new { valid = false });
             }
