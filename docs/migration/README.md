@@ -80,6 +80,28 @@ order: `050-add-branding-themes.sql`,
 `CREATE TABLE IF NOT EXISTS`: encountering an existing protocol table is drift
 and must stop the rehearsal.
 
+### Segredos de clientes confidenciais
+
+O script de reconciliação não copia `clientsecrets.value` para
+`applications.client_secret`: o valor legado é apenas `Base64(SHA-256)` e não
+é aceito pelo OpenIddict 7, que usa PBKDF2 com salt. Para reidratar um cliente,
+grave o segredo bruto em um arquivo protegido e execute o helper em modo de
+simulação primeiro:
+
+```bash
+chmod 600 /protected/sufficit_web.secret
+helpers/rehash-openiddict-client-secret.py \
+  --defaults-extra-file /protected/mariadb.cnf \
+  --database identity2 \
+  --client-id sufficit_web \
+  --secret-file /protected/sufficit_web.secret
+```
+
+Depois de validar a prévia, acrescente `--apply`. O helper só atualiza um
+cliente confidencial cujo valor atual esteja ausente ou seja exatamente o hash
+legado correspondente ao arquivo; ele recusa sobrescrever um segredo
+desconhecido e nunca imprime o segredo ou o hash resultante.
+
 The checked-in fixture represents a legacy Duende/Skoruba schema on MariaDB
 10.4.34. It has 39 table definitions, but no rows, credentials, views,
 routines or data-dependent `AUTO_INCREMENT` counters. Because table
