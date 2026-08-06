@@ -449,10 +449,39 @@ public class AuthorizationController : Controller
                 }));
         }
 
-        var identity = new ClaimsIdentity(result.Principal!.Claims,
-            authenticationType: TokenValidationParameters.DefaultAuthenticationType,
-            nameType: Claims.Name,
-            roleType: Claims.Role);
+        // For refresh-token grants, build a fresh identity from current user
+        // state instead of inheriting claims from the old token principal.
+        // Finding #9: the old code replayed claims from the previous token,
+        // so a revoked `directive` claim survived until the refresh token
+        // expired (up to 14 days). Building fresh ensures deleted claims are
+        // purged on every refresh.
+        ClaimsIdentity identity;
+        if (request.IsRefreshTokenGrantType())
+        {
+            identity = await BuildIdentityAsync(user);
+
+            // Preserve the session id from the grant principal — BuildIdentityAsync
+            // reads it from the HTTP context User (the cookie), which is absent in
+            // a machine-to-machine token refresh. The grant principal carries the
+            // original sid from the authorization-code sign-in.
+            var grantSid = result.Principal!.GetClaim(SessionIdClaimType);
+            if (!string.IsNullOrWhiteSpace(grantSid))
+            {
+                identity.SetClaim(SessionIdClaimType, grantSid);
+            }
+        }
+        else
+        {
+            // Authorization-code grant: inherit from the code principal (which
+            // was just built moments ago at /connect/authorize).
+            identity = new ClaimsIdentity(result.Principal!.Claims,
+                authenticationType: TokenValidationParameters.DefaultAuthenticationType,
+                nameType: Claims.Name,
+                roleType: Claims.Role);
+
+            // Re-sync persisted claims for the auth-code path too.
+            await AddPersistedClaimsAsync(identity, user);
+        }
 
         if ((request.IsAuthorizationCodeGrantType() || request.IsRefreshTokenGrantType()) &&
             !HasMatchingDpopBinding(result.Principal!))
@@ -467,17 +496,10 @@ public class AuthorizationController : Controller
                 }));
         }
 
-        identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
-                .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
-                .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
-                .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
-                .SetClaims(Claims.Role, [.. await _userManager.GetRolesAsync(user)]);
-
-        // Re-sync persisted claims (e.g. `directive`) so a refreshed token picks up
-        // anything added in AspNetUserClaims since the original authorization_code
-        // sign-in, instead of only replaying whatever the old token principal
-        // already carried.
-        await AddPersistedClaimsAsync(identity, user);
+        // For refresh grants, scope/DPoP/session are carried from the grant
+        // principal (OpenIddict restores them). For auth-code grants, they
+        // were set on the code principal above. Either way, the identity now
+        // reflects current user state.
 
         ApplyDpopBinding(identity);
         identity.SetDestinations(GetDestinations);

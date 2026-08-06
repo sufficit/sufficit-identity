@@ -50,6 +50,15 @@ public sealed class LowercasePathMiddleware
 
         var lower = path.ToLowerInvariant();
 
+        // Finding #5 (open redirect): reject protocol-relative paths like
+        // //evil.host/Login which a browser resolves as https://evil.host/login.
+        // The lowercase middleware must never redirect off-origin.
+        if (lower.StartsWith("//", StringComparison.Ordinal))
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
+
         // Rebuild the URL preserving the original query string untouched.
         // Request.QueryString already contains the leading '?' (or is empty).
         var location = lower + context.Request.QueryString.Value;

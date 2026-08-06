@@ -128,6 +128,14 @@ internal sealed class ClaimManagementService(
             "at_hash",
             "c_hash",
             "sid",
+            "aal",
+            // Prevent claims→super-admin escalation (finding #2): the capability
+            // resolver reads capabilities from "permission" claims. If an
+            // operator with only claims.create writes a "permission" claim to
+            // themselves, they gain arbitrary management capabilities. Blocking
+            // these claim types prevents the separation-of-duties break.
+            "permission",
+            "scope",
             ClaimTypes.NameIdentifier,
             ClaimTypes.Name,
             ClaimTypes.Email,
