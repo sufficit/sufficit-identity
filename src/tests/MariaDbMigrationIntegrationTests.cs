@@ -66,13 +66,15 @@ public sealed class MariaDbMigrationIntegrationTests
                 IdentityDatabaseSchema.ScimProvisioningMigrationId,
                 IdentityDatabaseSchema.UserCreatedAtMigrationId,
                 IdentityDatabaseSchema.SsfStreamsMigrationId,
+                IdentityDatabaseSchema.OidcUserSessionsMigrationId,
+                IdentityDatabaseSchema.VaultKeysMigrationId,
             ],
             await context.Database.GetAppliedMigrationsAsync());
 
         await using var connection = context.Database.GetDbConnection();
         await connection.OpenAsync();
 
-        Assert.Equal(22, await ScalarIntAsync(connection, """
+        Assert.Equal(24, await ScalarIntAsync(connection, """
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
@@ -87,7 +89,9 @@ public sealed class MariaDbMigrationIntegrationTests
                 '{IdentityDatabaseSchema.ManagementAuditMigrationId}',
                 '{IdentityDatabaseSchema.ScimProvisioningMigrationId}',
                 '{IdentityDatabaseSchema.UserCreatedAtMigrationId}',
-                '{IdentityDatabaseSchema.SsfStreamsMigrationId}'
+                '{IdentityDatabaseSchema.SsfStreamsMigrationId}',
+                '{IdentityDatabaseSchema.OidcUserSessionsMigrationId}',
+                '{IdentityDatabaseSchema.VaultKeysMigrationId}'
               )
             """));
 
@@ -219,7 +223,7 @@ public sealed class MariaDbMigrationIntegrationTests
         await ExecuteScriptAsync(connection,
             MigrationFile("fixtures", "legacy-schema-mariadb-10.4.sql"));
 
-        Assert.Equal(39, await ScalarIntAsync(connection, """
+        Assert.Equal(41, await ScalarIntAsync(connection, """
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
@@ -266,7 +270,7 @@ public sealed class MariaDbMigrationIntegrationTests
         var sharedStructureAfter = await SharedStructureAsync(connection);
         Assert.Equal(sharedStructureBefore, sharedStructureAfter);
 
-        Assert.Equal(44, await ScalarIntAsync(connection, """
+        Assert.Equal(46, await ScalarIntAsync(connection, """
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
