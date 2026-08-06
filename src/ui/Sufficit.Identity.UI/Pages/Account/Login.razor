@@ -84,31 +84,32 @@
             <p class="separator"><span>ou com e-mail e senha</span></p>
         }
 
-        // ---- Email/password form SECOND ----
-        <EditForm Model="Model" Method="post" OnValidSubmit="HandleLoginAsync" FormName="login">
-            <DataAnnotationsValidator />
+        // Password sign-in must be a full HTTP POST. ASP.NET Core Identity
+        // cannot emit its Set-Cookie header from this page's Blazor circuit
+        // after the initial HTTP response has already started.
+        <form method="post" action="/account/login/password" data-enhance="false">
+            <AntiforgeryToken />
+            <input type="hidden" name="ReturnUrl" value="@(_returnUrl ?? "/")" />
 
             <div class="form-group">
                 <label for="username">@( _registrationPolicy.RequiresUserName ? "E-mail ou usuário" : "E-mail" )</label>
-                <InputText id="username" @bind-Value="Model.UserName" class="form-control"
-                           autocomplete="username" />
-                <ValidationMessage For="@(() => Model.UserName)" />
+                <input id="username" name="UserName" @bind="Model.UserName" class="form-control"
+                       autocomplete="username" required />
             </div>
 
             <div class="form-group">
                 <label for="password">Senha</label>
-                <InputText id="password" type="password" @bind-Value="Model.Password" class="form-control"
-                           autocomplete="current-password" />
-                <ValidationMessage For="@(() => Model.Password)" />
+                <input id="password" name="Password" type="password" class="form-control"
+                       autocomplete="current-password" required />
             </div>
 
             <div class="form-check">
-                <InputCheckbox id="rememberMe" @bind-Value="Model.RememberMe" />
+                <input id="rememberMe" name="RememberMe" type="checkbox" value="true" />
                 <label for="rememberMe">Manter conectado</label>
             </div>
 
             <button type="submit" class="btn btn-primary btn-block">Entrar</button>
-        </EditForm>
+        </form>
 
         <div class="auth-links">
             <a href="/account/forgotpassword">Esqueceu a senha?</a>
@@ -199,6 +200,10 @@
                 "A autenticação externa expirou ou foi cancelada.",
             "external_correlation_failed" =>
                 "A sessão do login externo expirou ou o navegador bloqueou o cookie de segurança. Inicie o login novamente.",
+            "invalid_credentials" =>
+                "Usuário ou senha inválidos.",
+            "request_expired" =>
+                "A página de login expirou. Recarregue-a e tente novamente.",
             _ => _errorMessage,
         };
 
@@ -260,35 +265,4 @@
         }
     }
 
-    private async Task HandleLoginAsync()
-    {
-        var result = await SignInService.PasswordSignInAsync(
-            new PasswordSignInCommand(
-                Model.UserName,
-                Model.Password,
-                Model.RememberMe));
-
-        if (result.Status == InteractiveSignInStatus.Succeeded)
-        {
-            Navigation.NavigateTo(_returnUrl ?? "/", forceLoad: true);
-        }
-        else if (result.Status == InteractiveSignInStatus.RequiresTwoFactor)
-        {
-            // The runtime adapter has created the protected pending-2FA state.
-            var url = $"/account/loginwith2fa?returnUrl={Uri.EscapeDataString(_returnUrl ?? "/")}&rememberMe={Model.RememberMe}";
-            Navigation.NavigateTo(url, forceLoad: true);
-        }
-        else if (result.Status == InteractiveSignInStatus.LockedOut)
-        {
-            _errorMessage = "Conta bloqueada por muitas tentativas. Tente novamente mais tarde.";
-        }
-        else if (result.Status == InteractiveSignInStatus.NotAllowed)
-        {
-            _errorMessage = "Login não permitido. Confirme seu e-mail ou contate o suporte.";
-        }
-        else
-        {
-            _errorMessage = "Usuário ou senha inválidos.";
-        }
-    }
 }
