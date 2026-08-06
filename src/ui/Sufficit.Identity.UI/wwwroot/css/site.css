@@ -1071,19 +1071,14 @@ img.profile-avatar { background: var(--surface-sunken); }
     .topbar { padding: 0 var(--space-4); height: 56px; }
     .topbar-brand .brand-sub { display: none; }
     .btn-group { flex-direction: column; }
-    .manage-nav {
-        flex-direction: row;
-        overflow-x: auto;
-        flex-wrap: nowrap;
-        padding-bottom: var(--space-2);
-        -webkit-overflow-scrolling: touch;
-    }
+    /* Keep manage-nav vertically stacked on mobile (the default column
+       layout from line ~724). A previous version forced it into a
+       horizontally scrollable row, which made the menu items appear
+       side-by-side on phones. */
     .manage-link {
-        white-space: nowrap;
-        padding: var(--space-2) var(--space-4);
-        font-size: 0.875rem;
+        padding: var(--space-3) var(--space-4);
+        font-size: 0.9375rem;
     }
-    .manage-link::after { display: none; }
     .grant-item,
     .session-item,
     .passkey-item {
