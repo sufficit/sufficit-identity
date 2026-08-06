@@ -37,6 +37,7 @@ public class CibaController : Controller
     public const string CibaGrantType = "urn:openid:params:grant-type:ciba";
 
     private readonly IOpenIddictApplicationManager _applicationManager;
+    private readonly IOpenIddictTokenManager _tokenManager;
     private readonly Ciba.ICibaPendingRequestStore _pendingStore;
     private readonly Ciba.CibaAccessTokenGenerator _accessTokenGenerator;
     private readonly SignInManager<ApplicationUser> _signInManager;
@@ -46,6 +47,7 @@ public class CibaController : Controller
 
     public CibaController(
         IOpenIddictApplicationManager applicationManager,
+        IOpenIddictTokenManager tokenManager,
         Ciba.ICibaPendingRequestStore pendingStore,
         Ciba.CibaAccessTokenGenerator accessTokenGenerator,
         SignInManager<ApplicationUser> signInManager,
@@ -54,6 +56,7 @@ public class CibaController : Controller
         IAntiforgery antiforgery)
     {
         _applicationManager = applicationManager;
+        _tokenManager = tokenManager;
         _pendingStore = pendingStore;
         _accessTokenGenerator = accessTokenGenerator;
         _signInManager = signInManager;
@@ -361,6 +364,30 @@ public class CibaController : Controller
                 scopes: scopes,
                 clientId: consumed.ClientId,
                 extraClaims: extraClaims);
+
+            // Finding #16 fix: register the CIBA access token in OpenIddict's
+            // token store so it is revocable (/connect/revocation) and
+            // introspectable (/connect/introspect). Without this, the hand-built
+            // JWT is invisible to OpenIddict's token lifecycle. The reference_id
+            // is the JWT's jti so /connect/revocation can find it.
+            var cibaJti = new Microsoft.IdentityModel.JsonWebTokens.JsonWebToken(accessToken)
+                .TryGetPayloadValue("jti", out string jti) ? jti : Guid.NewGuid().ToString("N");
+
+            var application = await _applicationManager.FindByClientIdAsync(
+                consumed.ClientId);
+            await _tokenManager.CreateAsync(new OpenIddictTokenDescriptor
+            {
+                ReferenceId = cibaJti,
+                Subject = subject,
+                Status = Statuses.Valid,
+                Type = "CIBA-access-token",
+                CreationDate = DateTimeOffset.UtcNow,
+                ExpirationDate = DateTimeOffset.UtcNow.AddHours(1),
+                Payload = accessToken,
+                ApplicationId = application is not null
+                    ? await _applicationManager.GetIdAsync(application)
+                    : null,
+            });
 
             // RFC 9126 §3.2 / RFC 6749 §5.1 successful token response.
             Response.Headers.CacheControl = "no-store";
