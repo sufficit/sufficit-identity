@@ -32,7 +32,7 @@
          remover o fork + folder feed e usar a versão oficial. -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10" />
-    <PackageVersion Include="Pomelo.EntityFrameworkCore.MySql" Version="10.0.0-preview.1.efcore.10.0.0" />
+    <PackageVersion Include="Pomelo.EntityFrameworkCore.MySql" Version="10.0.0" />
 
     <!-- Health checks -->
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.10" />
