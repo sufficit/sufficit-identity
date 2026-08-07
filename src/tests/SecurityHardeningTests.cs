@@ -23,6 +23,42 @@ namespace Sufficit.Identity.Tests;
 /// </summary>
 public sealed class SecurityHardeningTests
 {
+    [Theory]
+    [InlineData("127.0.0.1")]
+    [InlineData("10.0.0.5")]
+    [InlineData("169.254.169.254")]
+    [InlineData("192.168.1.20")]
+    [InlineData("::1")]
+    [InlineData("fd00::1")]
+    public void Outbound_http_blocks_non_public_addresses(string address)
+    {
+        Assert.True(SafeHttpHandlerFactory.IsBlockedAddress(IPAddress.Parse(address)));
+    }
+
+    [Fact]
+    public void Outbound_http_private_host_allowlist_supports_exact_and_wildcard_names()
+    {
+        string[] configured = ["metrics.internal", "*.svc.cluster.local"];
+
+        Assert.True(SafeHttpHandlerFactory.HostMatches(configured, "metrics.internal"));
+        Assert.True(SafeHttpHandlerFactory.HostMatches(configured, "vm.svc.cluster.local"));
+        Assert.False(SafeHttpHandlerFactory.HostMatches(configured, "svc.cluster.local"));
+        Assert.False(SafeHttpHandlerFactory.HostMatches(configured, "metrics.internal.example"));
+    }
+
+    [Fact]
+    public async Task Outbound_http_rejects_clear_text_before_connecting()
+    {
+        var services = new ServiceCollection();
+        services.AddSafeHttpClient("safe", new OutboundHttpSecurityOptions());
+        await using var provider = services.BuildServiceProvider();
+        var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient("safe");
+
+        var exception = await Assert.ThrowsAsync<HttpRequestException>(
+            () => client.GetAsync("http://example.com/path"));
+        Assert.Contains("not allowlisted", exception.Message, StringComparison.Ordinal);
+    }
+
     // ---- BreachedPasswordValidator ----
 
     [Fact]

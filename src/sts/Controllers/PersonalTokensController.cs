@@ -71,6 +71,7 @@ public sealed class PersonalTokensController : ControllerBase
     private readonly AppDbContext _database;
     private readonly SufficitIdentityOptions _options;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IApplicationClaimDestinationPolicy _applicationClaimPolicy;
 
     public PersonalTokensController(
         IOpenIddictScopeManager scopeManager,
@@ -79,7 +80,8 @@ public sealed class PersonalTokensController : ControllerBase
         IOpenIddictTokenManager tokenManager,
         AppDbContext database,
         SufficitIdentityOptions options,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        IApplicationClaimDestinationPolicy applicationClaimPolicy)
     {
         _scopeManager = scopeManager;
         _dispatcher = dispatcher;
@@ -88,6 +90,7 @@ public sealed class PersonalTokensController : ControllerBase
         _database = database;
         _options = options;
         _userManager = userManager;
+        _applicationClaimPolicy = applicationClaimPolicy;
     }
 
     [HttpGet]
@@ -258,12 +261,29 @@ public sealed class PersonalTokensController : ControllerBase
         identity.SetExpirationDate(expiration);
         // Preserve any application-specific claim scopes configured by the
         // host without baking a domain vocabulary into the generic STS.
-        var applicationScopes = _options.ClaimScopeMap.ClaimToScope
+        var allowedApplicationScopes = _options.ClaimScopeMap.ClaimToScope
             .Values
             .Where(scope => !string.IsNullOrWhiteSpace(scope))
             .Append(Scopes.Roles)
+            .Append(Scopes.Profile)
+            .Append(Scopes.Email)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+        var requestedApplicationScopes = request.Scopes?
+            .Where(scope => !string.IsNullOrWhiteSpace(scope))
+            .Select(scope => scope.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (requestedApplicationScopes?.Any(scope =>
+                !allowedApplicationScopes.Contains(scope, StringComparer.Ordinal)) == true)
+        {
+            return BadRequest(new
+            {
+                error = "invalid_scope",
+                error_description = "A requested personal-token scope is not allowed by the issuance policy.",
+            });
+        }
+        var applicationScopes = requestedApplicationScopes ?? allowedApplicationScopes;
         identity.SetScopes(applicationScopes);
         var resources = await ToListAsync(
             _scopeManager.ListResourcesAsync(identity.GetScopes(), cancellationToken),
@@ -622,6 +642,20 @@ public sealed class PersonalTokensController : ControllerBase
 
     private IEnumerable<string> GetPersonalTokenDestinations(Claim claim)
     {
+        if (claim.Type is Claims.Name or Claims.PreferredUsername)
+        {
+            if (claim.Subject!.HasScope(Scopes.Profile))
+                yield return Destinations.AccessToken;
+            yield break;
+        }
+
+        if (claim.Type == Claims.Email)
+        {
+            if (claim.Subject!.HasScope(Scopes.Email))
+                yield return Destinations.AccessToken;
+            yield break;
+        }
+
         if (claim.Type == Claims.Role)
         {
             if (claim.Subject!.HasScope(Scopes.Roles))
@@ -632,22 +666,9 @@ public sealed class PersonalTokensController : ControllerBase
             yield break;
         }
 
-        if (_options.ClaimScopeMap.ClaimToScope.TryGetValue(
-                claim.Type,
-                out var requiredScope))
-        {
-            if (claim.Subject!.HasScope(requiredScope))
-            {
-                yield return Destinations.AccessToken;
-            }
-
-            yield break;
-        }
-
-        // Personal tokens are access tokens only. Persisted, host-specific
-        // claims that are not scope-gated retain the generic STS behavior and
-        // are available to resource servers, never to an identity token.
-        yield return Destinations.AccessToken;
+        foreach (var destination in _applicationClaimPolicy.GetDestinations(
+            claim, includeIdentityToken: false))
+            yield return destination;
     }
 
     private static IEnumerable<string> ParseClaimValues(string value)
@@ -741,7 +762,8 @@ public sealed class PersonalTokensController : ControllerBase
 public sealed record CreatePersonalTokenRequest(
     string? Description,
     DateTimeOffset? Expiration,
-    string? ReplacesTokenId = null);
+    string? ReplacesTokenId = null,
+    IReadOnlyCollection<string>? Scopes = null);
 
 public sealed record UpdatePersonalTokenRequest(
     bool UpdateDescription,

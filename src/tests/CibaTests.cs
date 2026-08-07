@@ -162,6 +162,34 @@ public sealed class CibaInitiationTests
             ["client_secret"] = "test-ciba-secret",
         });
         Assert.Equal(HttpStatusCode.BadRequest, replayStatus);
+
+        client.DefaultRequestHeaders.Authorization = IntrospectionTests.BasicAuthFor(
+            TestDataSeeder.IntrospectionClientId,
+            TestDataSeeder.IntrospectionClientSecret);
+        var (_, active) = await client.PostFormAsync(
+            "/connect/introspect",
+            new Dictionary<string, string> { ["token"] = accessToken! });
+        Assert.True(active.GetProperty("active").GetBoolean());
+
+        client.DefaultRequestHeaders.Authorization = null;
+        var (revocationStatus, _) = await client.PostFormAsync(
+            "/connect/revocation",
+            new Dictionary<string, string>
+            {
+                ["token"] = accessToken!,
+                ["token_type_hint"] = "access_token",
+                ["client_id"] = "test-ciba",
+                ["client_secret"] = "test-ciba-secret",
+            });
+        Assert.Equal(HttpStatusCode.OK, revocationStatus);
+
+        client.DefaultRequestHeaders.Authorization = IntrospectionTests.BasicAuthFor(
+            TestDataSeeder.IntrospectionClientId,
+            TestDataSeeder.IntrospectionClientSecret);
+        var (_, inactive) = await client.PostFormAsync(
+            "/connect/introspect",
+            new Dictionary<string, string> { ["token"] = accessToken! });
+        Assert.False(inactive.GetProperty("active").GetBoolean());
     }
 
     [Fact]
@@ -236,6 +264,7 @@ public sealed class CibaInitiationTests
                 Permissions =
                 {
                     OpenIddict.Abstractions.OpenIddictConstants.Permissions.Endpoints.Token,
+                    OpenIddict.Abstractions.OpenIddictConstants.Permissions.Endpoints.Revocation,
                     OpenIddict.Abstractions.OpenIddictConstants.Permissions.Prefixes.Scope + TestDataSeeder.ScopeName,
                 },
             });

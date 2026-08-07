@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using Sufficit.Identity.Application.Security;
+using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.STS;
 using Sufficit.Identity.STS.SharedSignals;
 using Sufficit.Identity.Tests.Infrastructure;
@@ -436,6 +437,7 @@ public sealed class SharedSignalsTests
             var store = scope.ServiceProvider.GetRequiredService<ISsfStreamStore>();
 
             var stream = await store.CreateAsync(
+                ownerClientId: "receiver-client",
                 audience: "https://receiver.tests.local/events",
                 deliveryMethod: SsfStreamStore.PollDeliveryMethod,
                 endpoint: null,
@@ -443,6 +445,8 @@ public sealed class SharedSignalsTests
                 subjectScope: "ALL",
                 eventsRequested: [CaepEventGenerator.SessionRevokedEventType],
                 description: "test-poll",
+                verificationChallenge: "test-verification-state",
+                verificationExpiresAtUtc: DateTime.UtcNow.AddHours(1),
                 CancellationToken.None);
 
             Assert.Equal("enabled", stream.Status);
@@ -461,7 +465,8 @@ public sealed class SharedSignalsTests
             var (empty, _) = await store.PullAndConsumeAsync(stream.StreamId, 10, CancellationToken.None);
             Assert.Empty(empty);
 
-            await store.DisableAsync(stream.StreamId, CancellationToken.None);
+            await store.DisableForOwnerAsync(
+                "receiver-client", stream.StreamId, CancellationToken.None);
             var after = await store.GetByStreamIdAsync(stream.StreamId, CancellationToken.None);
             Assert.Equal("disabled", after!.Status);
         }
@@ -512,6 +517,7 @@ public sealed class SharedSignalsTests
                 .GetRequiredService<ISharedSignalsDispatcher>();
 
             var stream = await store.CreateAsync(
+                ownerClientId: "receiver-client",
                 audience: "https://receiver.tests.local/events",
                 deliveryMethod: SsfStreamStore.PollDeliveryMethod,
                 endpoint: null,
@@ -519,7 +525,17 @@ public sealed class SharedSignalsTests
                 subjectScope: "ALL",
                 eventsRequested: [],
                 description: null,
+                verificationChallenge: "test-verification-state",
+                verificationExpiresAtUtc: DateTime.UtcNow.AddHours(1),
                 CancellationToken.None);
+
+            Assert.Equal(
+                SsfVerificationResult.Verified,
+                await store.VerifyAsync(
+                    "receiver-client",
+                    stream.StreamId,
+                    "test-verification-state",
+                    CancellationToken.None));
 
             // Dispatching a session-revoked should enqueue into the poll queue
             // (no push endpoint), not throw.
@@ -534,6 +550,109 @@ public sealed class SharedSignalsTests
             var (empty, _) = await store.PullAndConsumeAsync(
                 stream.StreamId, 10, CancellationToken.None);
             Assert.Empty(empty);
+        }
+    }
+
+    [Fact]
+    public async Task Stream_store_enforces_owner_and_verification_challenge()
+    {
+        var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:SharedSignals:Enabled"] = "true",
+            });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using (factory)
+        {
+            await using var scope = factory.Services.CreateAsyncScope();
+            var store = scope.ServiceProvider.GetRequiredService<ISsfStreamStore>();
+            var stream = await store.CreateAsync(
+                ownerClientId: "owner-a",
+                audience: "receiver-a",
+                deliveryMethod: SsfStreamStore.PollDeliveryMethod,
+                endpoint: null,
+                authorization: null,
+                subjectScope: "ALL",
+                eventsRequested: [],
+                description: null,
+                verificationChallenge: "correct-state",
+                verificationExpiresAtUtc: DateTime.UtcNow.AddHours(1),
+                CancellationToken.None);
+
+            Assert.NotNull(await store.GetByStreamIdForOwnerAsync(
+                "owner-a", stream.StreamId, CancellationToken.None));
+            Assert.Null(await store.GetByStreamIdForOwnerAsync(
+                "owner-b", stream.StreamId, CancellationToken.None));
+            Assert.Empty(await store.ListEnabledPollAsync(CancellationToken.None));
+
+            Assert.Equal(
+                SsfVerificationResult.InvalidChallenge,
+                await store.VerifyAsync(
+                    "owner-a", stream.StreamId, "wrong-state", CancellationToken.None));
+            Assert.Equal(
+                SsfVerificationResult.NotFound,
+                await store.VerifyAsync(
+                    "owner-b", stream.StreamId, "correct-state", CancellationToken.None));
+            Assert.Equal(
+                SsfVerificationResult.Verified,
+                await store.VerifyAsync(
+                    "owner-a", stream.StreamId, "correct-state", CancellationToken.None));
+            Assert.Single(await store.ListEnabledPollAsync(CancellationToken.None));
+        }
+    }
+
+    [Fact]
+    public async Task Dispatcher_applies_subject_and_event_filters_to_dynamic_streams()
+    {
+        var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:SharedSignals:Enabled"] = "true",
+            });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using (factory)
+        {
+            await using var scope = factory.Services.CreateAsyncScope();
+            var store = scope.ServiceProvider.GetRequiredService<ISsfStreamStore>();
+            var dispatcher = scope.ServiceProvider.GetRequiredService<ISharedSignalsDispatcher>();
+
+            async Task<SsfStream> CreateVerifiedAsync(
+                string owner, string subject, string eventType)
+            {
+                var stream = await store.CreateAsync(
+                    ownerClientId: owner,
+                    audience: owner,
+                    deliveryMethod: SsfStreamStore.PollDeliveryMethod,
+                    endpoint: null,
+                    authorization: null,
+                    subjectScope: subject,
+                    eventsRequested: [eventType],
+                    description: null,
+                    verificationChallenge: "state-" + owner,
+                    verificationExpiresAtUtc: DateTime.UtcNow.AddHours(1),
+                    CancellationToken.None);
+                Assert.Equal(
+                    SsfVerificationResult.Verified,
+                    await store.VerifyAsync(
+                        owner, stream.StreamId, "state-" + owner, CancellationToken.None));
+                return stream;
+            }
+
+            var matching = await CreateVerifiedAsync(
+                "matching", "[\"user-1\"]", CaepEventGenerator.SessionRevokedEventType);
+            var wrongSubject = await CreateVerifiedAsync(
+                "wrong-subject", "[\"user-2\"]", CaepEventGenerator.SessionRevokedEventType);
+            var wrongEvent = await CreateVerifiedAsync(
+                "wrong-event", "[\"user-1\"]", CaepEventGenerator.CredentialChangeEventType);
+
+            await dispatcher.SessionRevokedAsync("user-1", null, CancellationToken.None);
+
+            Assert.Single((await store.PullAndConsumeAsync(
+                matching.StreamId, 10, CancellationToken.None)).Payloads);
+            Assert.Empty((await store.PullAndConsumeAsync(
+                wrongSubject.StreamId, 10, CancellationToken.None)).Payloads);
+            Assert.Empty((await store.PullAndConsumeAsync(
+                wrongEvent.StreamId, 10, CancellationToken.None)).Payloads);
         }
     }
 

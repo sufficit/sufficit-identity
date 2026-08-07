@@ -3,8 +3,9 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using OpenIddict.Abstractions;
 using OpenIddict.Validation.AspNetCore;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.STS.SharedSignals;
@@ -53,20 +54,17 @@ public sealed class SsfStreamsController : ControllerBase
     private readonly CaepEventGenerator _generator;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<SsfStreamsController> _logger;
-    private readonly SufficitIdentityOptions _options;
 
     public SsfStreamsController(
         ISsfStreamStore store,
         CaepEventGenerator generator,
         IHttpClientFactory httpClientFactory,
-        ILogger<SsfStreamsController> logger,
-        IOptions<SufficitIdentityOptions> options)
+        ILogger<SsfStreamsController> logger)
     {
         _store = store;
         _generator = generator;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
-        _options = options.Value;
     }
 
     public sealed class CreateStreamRequest
@@ -93,17 +91,29 @@ public sealed class SsfStreamsController : ControllerBase
         public string? Description { get; init; }
     }
 
+    public sealed class VerifyStreamRequest
+    {
+        public string? State { get; init; }
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create(
         [FromBody] CreateStreamRequest request,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        var ownerClientId = ResolveOwnerClientId();
+        if (ownerClientId is null) return Forbid();
+
+        var state = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(
+            System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+        var verificationExpiresAtUtc = DateTime.UtcNow.AddHours(24);
 
         SsfStream stream;
         try
         {
             stream = await _store.CreateAsync(
+                ownerClientId,
                 request.Audience,
                 request.Delivery,
                 request.Endpoint,
@@ -111,6 +121,8 @@ public sealed class SsfStreamsController : ControllerBase
                 request.Subject ?? "ALL",
                 request.EventsRequested ?? [],
                 request.Description,
+                state,
+                verificationExpiresAtUtc,
                 cancellationToken);
         }
         catch (ArgumentException ex)
@@ -120,7 +132,7 @@ public sealed class SsfStreamsController : ControllerBase
 
         // RFC 8933 §6: emit a verification SET so the receiver can confirm it
         // decodes SETs from this transmitter before the stream goes live.
-        await EmitVerificationAsync(stream, cancellationToken);
+        await EmitVerificationAsync(stream, state, cancellationToken);
 
         return CreatedAtAction(
             actionName: nameof(Get),
@@ -131,14 +143,20 @@ public sealed class SsfStreamsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> List(CancellationToken cancellationToken)
     {
-        var streams = await _store.ListEnabledAsync(cancellationToken);
+        var ownerClientId = ResolveOwnerClientId();
+        if (ownerClientId is null) return Forbid();
+        var streams = await _store.ListEnabledForOwnerAsync(
+            ownerClientId, cancellationToken);
         return Ok(streams.Select(ToResponse).ToArray());
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> Get(string id, CancellationToken cancellationToken)
     {
-        var stream = await _store.GetByStreamIdAsync(id, cancellationToken);
+        var ownerClientId = ResolveOwnerClientId();
+        if (ownerClientId is null) return Forbid();
+        var stream = await _store.GetByStreamIdForOwnerAsync(
+            ownerClientId, id, cancellationToken);
         return stream is null
             ? NotFound(new { error = "stream_not_found" })
             : Ok(ToResponse(stream));
@@ -147,21 +165,41 @@ public sealed class SsfStreamsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
-        await _store.DisableAsync(id, cancellationToken);
+        var ownerClientId = ResolveOwnerClientId();
+        if (ownerClientId is null) return Forbid();
+        await _store.DisableForOwnerAsync(ownerClientId, id, cancellationToken);
         return NoContent();
     }
 
     [HttpPost("{id}/verify")]
-    public async Task<IActionResult> Verify(string id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Verify(
+        string id,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] VerifyStreamRequest? request,
+        CancellationToken cancellationToken)
     {
-        var stream = await _store.GetByStreamIdAsync(id, cancellationToken);
-        if (stream is null)
-        {
-            return NotFound(new { error = "stream_not_found" });
-        }
+        var ownerClientId = ResolveOwnerClientId();
+        if (ownerClientId is null) return Forbid();
 
-        await _store.MarkVerifiedAsync(id, cancellationToken);
-        return Ok(new { stream_id = id, status = "verified" });
+        var result = await _store.VerifyAsync(
+            ownerClientId, id, request?.State, cancellationToken);
+        return result switch
+        {
+            SsfVerificationResult.Verified =>
+                Ok(new { stream_id = id, status = "verified" }),
+            SsfVerificationResult.NotFound =>
+                NotFound(new { error = "stream_not_found" }),
+            SsfVerificationResult.Expired =>
+                Conflict(new
+                {
+                    error = "verification_expired",
+                    error_description = "The verification state has expired; recreate the stream to issue a new challenge.",
+                }),
+            _ => BadRequest(new
+            {
+                error = "invalid_verification_state",
+                error_description = "The verification state does not match the state sent in the verification SET.",
+            }),
+        };
     }
 
     private object ToResponse(SsfStream stream) => new
@@ -187,11 +225,12 @@ public sealed class SsfStreamsController : ControllerBase
     /// Failures are logged but never fail the create response — the receiver
     /// can call <c>/verify</c> explicitly later.
     /// </summary>
-    private async Task EmitVerificationAsync(SsfStream stream, CancellationToken cancellationToken)
+    private async Task EmitVerificationAsync(
+        SsfStream stream,
+        string state,
+        CancellationToken cancellationToken)
     {
-        var state = System.Security.Cryptography.RandomNumberGenerator.GetBytes(16);
-        var stateB64 = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(state);
-        var set = _generator.GenerateVerification(stream.Audience, stateB64);
+        var set = _generator.GenerateVerification(stream.Audience, state);
 
         try
         {
@@ -249,4 +288,10 @@ public sealed class SsfStreamsController : ControllerBase
         if (string.IsNullOrWhiteSpace(value) || value == "ALL") return "ALL";
         return value;
     }
+
+    private string? ResolveOwnerClientId() =>
+        User.FindFirst(OpenIddictConstants.Claims.ClientId)?.Value
+        ?? User.FindFirst(OpenIddictConstants.Claims.AuthorizedParty)?.Value
+        ?? User.FindFirst(OpenIddictConstants.Claims.Private.Presenter)?.Value
+        ?? User.FindFirst("azp")?.Value;
 }
