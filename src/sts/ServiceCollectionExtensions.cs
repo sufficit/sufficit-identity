@@ -12,12 +12,15 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using MySqlConnector;
 using OpenIddict.Abstractions;
 using OpenIddict.Server;
 using OpenIddict.Validation.AspNetCore;
+using Sufficit.Identity.Application.Branding;
 using Sufficit.Identity.Core;
+using Sufficit.Identity.Core.Branding;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Core.Services;
@@ -53,6 +56,14 @@ public static class ServiceCollectionExtensions
         // relying on entry-assembly discovery.
         services.AddControllers()
             .AddApplicationPart(typeof(Controllers.AuthorizationController).Assembly);
+
+        // AuthorizationController exposes the standard OIDC `picture` claim
+        // from the active branding theme. Keep these dependencies inside the
+        // STS module so composition hosts that use AddSufficitIdentitySTS()
+        // directly can activate every controller. UI/management hosts may
+        // still replace either service before this registration.
+        services.TryAddSingleton<IBrandingThemeProvider, BrandingThemeProvider>();
+        services.TryAddSingleton<IUserAvatarUrlResolver, UserAvatarUrlResolver>();
 
         var options = configuration
             .GetSection(configurationSection)
