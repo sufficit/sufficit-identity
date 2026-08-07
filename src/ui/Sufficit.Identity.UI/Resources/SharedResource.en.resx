@@ -56,6 +56,11 @@
   <data name="Login.Password" xml:space="preserve"><value>Password</value></data>
   <data name="Login.RememberMe" xml:space="preserve"><value>Keep me signed in</value></data>
   <data name="Login.Submit" xml:space="preserve"><value>Sign in</value></data>
+  <data name="Login.SessionActive.Title" xml:space="preserve"><value>You are already signed in</value></data>
+  <data name="Login.SessionActive.Description" xml:space="preserve"><value>Your Sufficit Identity session is still active. Continue to the application without entering your credentials again.</value></data>
+  <data name="Login.SessionActive.ExternalCorrelationFailed" xml:space="preserve"><value>The external provider sign-in was not completed, but your current session remains authenticated.</value></data>
+  <data name="Login.SessionActive.Continue" xml:space="preserve"><value>Continue with this account</value></data>
+  <data name="Login.SessionActive.UseAnotherAccount" xml:space="preserve"><value>Use another account</value></data>
   <data name="Login.ForgotPassword" xml:space="preserve"><value>Forgot your password?</value></data>
   <data name="Login.CreateAccount" xml:space="preserve"><value>Create new account</value></data>
   <data name="Login.ResendConfirmation" xml:space="preserve"><value>Resend email confirmation</value></data>

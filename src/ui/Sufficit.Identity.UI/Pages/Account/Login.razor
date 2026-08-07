@@ -18,21 +18,44 @@
         <img src="@_logoUrl" alt="Sufficit Identity" height="44" />
     </div>
 
-    @if (_errorMessage is not null)
-    {
-        <div class="alert alert-error" role="alert">@_errorMessage</div>
-    }
+    <AuthorizeView>
+        <Authorized>
+            @if (IsExternalCorrelationFailure)
+            {
+                <div class="alert alert-warning" role="status">
+                    @L["Login.SessionActive.ExternalCorrelationFailed"]
+                </div>
+            }
 
-    @if (_errorMessage is not null && _errorMessage.Contains("duas etapas"))
-    {
-        // Handled via redirect in OnValidSubmit; show fallback link in case redirect fails.
-        <p class="info">@L["Login.Requires2FA"]</p>
-        <a href="/account/loginwith2fa?returnUrl=@Uri.EscapeDataString(_returnUrl ?? "/")" class="btn btn-primary">
-            @L["Login.Continue2FA"]
-        </a>
-    }
-    else
-    {
+            <section aria-labelledby="active-session-title">
+                <h1 id="active-session-title">@L["Login.SessionActive.Title"]</h1>
+                <p class="auth-card-subtitle">@L["Login.SessionActive.Description"]</p>
+                <a href="@(_returnUrl ?? "/")"
+                   class="btn btn-primary btn-block"
+                   data-enhance-nav="false">
+                    @L["Login.SessionActive.Continue"]
+                </a>
+                <div class="auth-links">
+                    <a href="/account/logout">@L["Login.SessionActive.UseAnotherAccount"]</a>
+                </div>
+            </section>
+        </Authorized>
+        <NotAuthorized>
+            @if (_errorMessage is not null)
+            {
+                <div class="alert alert-error" role="alert">@_errorMessage</div>
+            }
+
+            @if (_errorMessage is not null && _errorMessage.Contains("duas etapas"))
+            {
+                // Handled via redirect in OnValidSubmit; show fallback link in case redirect fails.
+                <p class="info">@L["Login.Requires2FA"]</p>
+                <a href="/account/loginwith2fa?returnUrl=@Uri.EscapeDataString(_returnUrl ?? "/")" class="btn btn-primary">
+                    @L["Login.Continue2FA"]
+                </a>
+            }
+            else
+            {
         // ---- External logins FIRST (Google, Facebook, passkey) ----
         <div class="external-logins">
             @if (_externalProviders.Any())
@@ -112,17 +135,19 @@
             <button type="submit" class="btn btn-primary btn-block">@L["Login.Submit"]</button>
         </form>
 
-        <div class="auth-links">
-            <a href="/account/forgotpassword">@L["Login.ForgotPassword"]</a>
-            <br />
-            @if (_registrationPolicy.Enabled)
-            {
-                <a href="/account/register">@L["Login.CreateAccount"]</a>
-                <br />
+                <div class="auth-links">
+                    <a href="/account/forgotpassword">@L["Login.ForgotPassword"]</a>
+                    <br />
+                    @if (_registrationPolicy.Enabled)
+                    {
+                        <a href="/account/register">@L["Login.CreateAccount"]</a>
+                        <br />
+                    }
+                    <a href="/account/resendemailconfirmation">@L["Login.ResendConfirmation"]</a>
+                </div>
             }
-            <a href="/account/resendemailconfirmation">@L["Login.ResendConfirmation"]</a>
-        </div>
-    }
+        </NotAuthorized>
+    </AuthorizeView>
 </div>
 
 @code {
@@ -155,6 +180,11 @@
     private bool _passkeySupported;
     private bool _passkeyBusy;
     private string _logoUrl = "_content/Sufficit.Identity.UI/img/logo-full.png";
+    private bool IsExternalCorrelationFailure =>
+        string.Equals(
+            _externalError,
+            "external_correlation_failed",
+            StringComparison.Ordinal);
 
     protected override async Task OnInitializedAsync()
     {
