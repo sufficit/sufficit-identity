@@ -308,6 +308,26 @@ public sealed class ManagementUiRoutingTests
         Assert.Contains("Filtros e ordenação", html, StringComparison.Ordinal);
         Assert.Contains("alice@tests.local", html, StringComparison.Ordinal);
         Assert.Contains("Diretório global", html, StringComparison.Ordinal);
+        Assert.Contains(
+            "--registration-height: 66.667%",
+            html,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "--registration-height: 77.778%",
+            html,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "--registration-height: 100%",
+            html,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "--registration-height: 72.222%",
+            html,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "--registration-height: 66,667%",
+            html,
+            StringComparison.Ordinal);
         Assert.DoesNotContain("Manager", html, StringComparison.Ordinal);
         Assert.DoesNotContain("Contexto", html, StringComparison.Ordinal);
         Assert.Contains(
@@ -1118,7 +1138,20 @@ public sealed class ManagementUiRoutingTests
                 [Summary],
                 1,
                 25,
-                1));
+                1,
+                new ManagementUserAnalytics(
+                    DirectoryTotal: 2_525,
+                    MatchingTotal: 1,
+                    RegisteredToday: 3,
+                    TypicalRegistrationsPerDay: 2,
+                    AnomalyThreshold: 11,
+                    Days:
+                    [
+                        new(new DateOnly(2026, 8, 3), 12, IsAnomaly: true),
+                        new(new DateOnly(2026, 8, 4), 14, IsAnomaly: true),
+                        new(new DateOnly(2026, 8, 5), 18, IsAnomaly: true),
+                        new(new DateOnly(2026, 8, 6), 13, IsAnomaly: true)
+                    ])));
 
         public Task<ManagementUserDetail> GetAsync(
             string id,
