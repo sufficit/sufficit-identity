@@ -75,13 +75,25 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(options.TwoFactor);
         services.AddSingleton(options.Passkeys);
         services.AddSingleton(options.CredentialMutations);
+        services.AddSingleton(options.PersonalTokens);
         services.AddSingleton(options.Fapi2);
+        services.AddSingleton(options.Mtls);
         services.AddSingleton(options.Jar);
+        services.AddSingleton(options.Ciba);
         services.AddSingleton(options.SharedSignals);
         services.AddSingleton(options.OutboundHttp);
         services.AddSingleton<IPublicOriginResolver, PublicOriginResolver>();
-        services.AddSingleton<IApplicationClaimDestinationPolicy>(
-            new ApplicationClaimDestinationPolicy(options.ClaimScopeMap));
+        services.AddSingleton<IApplicationClaimDestinationPolicy>(provider =>
+            new ApplicationClaimDestinationPolicy(
+                options.ClaimScopeMap,
+                provider.GetRequiredService<ILogger<ApplicationClaimDestinationPolicy>>()));
+        services.AddSingleton<ITokenIssuancePolicyKernel, TokenIssuancePolicyKernel>();
+        services.AddSingleton<IPersonalTokenIssuancePolicy, PersonalTokenIssuancePolicy>();
+        services.AddSingleton<ISubjectTokenProvenancePolicy, SubjectTokenProvenancePolicy>();
+        services.AddScoped<IAuthenticationContextAccessor, AuthenticationContextAccessor>();
+        services.AddSingleton<IAuthenticationContextProjector, AuthenticationContextProjector>();
+        services.AddSingleton<Mtls.IMtlsClientCertificatePolicy,
+            Mtls.MtlsClientCertificatePolicy>();
         services.AddSingleton<IdentityMetricsRuntimeState>();
         services.AddSingleton<IdentityUsageMetricChannel>();
         services.AddSingleton<IIdentityUsageMetricSink>(provider =>
@@ -633,6 +645,11 @@ public static class ServiceCollectionExtensions
                     server.AddEventHandler(Dpop.ValidateDpopAccessTokenProof.Descriptor);
                 }
 
+                if (options.Mtls.Enabled)
+                {
+                    server.AddEventHandler(Mtls.AttachMtlsConfirmation.Descriptor);
+                }
+
                 // -------------------------------------------------------------------
                 // Token lifetimes (Sufficit:Identity:Tokens). Refresh rotation is
                 // ON: OpenIddict's default behavior already issues a new,
@@ -983,12 +1000,12 @@ public static class ServiceCollectionExtensions
                 sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>()),
             sp.GetService<Dpop.IDpopReplayCache>()));
 
-        // DPoP nonce store (RFC 9449 §8). Distributed so every replica shares
-        // the same nonce challenge; the in-memory fallback is still used when
-        // IDistributedCache is the local memory cache (single-node default).
+        // Stateless, partition-bound DPoP nonce (RFC 9449 §8). Data Protection
+        // authenticates it with the same shared key ring used by the cluster;
+        // no client can rotate another client's global state.
         services.AddSingleton<Dpop.IDpopNonceStore>(sp =>
-            new Dpop.DistributedDpopNonceStore(
-                sp.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(),
+            new Dpop.ProtectedDpopNonceStore(
+                sp.GetRequiredService<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>(),
                 timeProvider: TimeProvider.System));
 
         if (options.Jarm.Enabled)
@@ -1072,7 +1089,7 @@ public static class ServiceCollectionExtensions
                 });
         }
 
-        // ---- CIBA (RFC 9126, item 3.5) ----
+        // ---- OpenID Connect CIBA Core 1.0 ----
         // The pending-request store is distributed (IDistributedCache-backed)
         // so CIBA works across replicas and survives restarts. The in-memory
         // fallback is still used when IDistributedCache is the local memory
@@ -1087,6 +1104,7 @@ public static class ServiceCollectionExtensions
             TimeProvider.System));
         services.AddSingleton<Ciba.ICibaPendingRequestStore,
             Ciba.RollingCibaPendingRequestStore>();
+        services.AddScoped<Ciba.ICibaClientPolicy, Ciba.CibaClientPolicy>();
 
         // CIBA access-token generator (item 3.5 / Limitation 2). Registered only
         // when CIBA is enabled — it needs the STS signing key (same family as
@@ -1109,6 +1127,13 @@ public static class ServiceCollectionExtensions
 
     private static void ValidateAdvancedProtocolOptions(SufficitIdentityOptions options)
     {
+        if (options.Mtls.Enabled
+            && options.Mtls.DeploymentMode == MtlsDeploymentMode.Unattested)
+        {
+            throw new InvalidOperationException(
+                "mTLS is enabled without Sufficit:Identity:Mtls:DeploymentMode attestation.");
+        }
+
         if (options.Fapi2.Enabled)
         {
             if (options.Fapi2.ClientIds.Count == 0)
@@ -1128,6 +1153,20 @@ public static class ServiceCollectionExtensions
                 !options.Mtls.Enabled)
                 throw new InvalidOperationException(
                     "FAPI 2.0 SenderConstraint=mTLS requires Sufficit:Identity:Mtls:Enabled=true.");
+            if (options.Fapi2.SenderConstraint == Fapi2SenderConstraint.Mtls)
+            {
+                var missingBindings = options.Fapi2.ClientIds
+                    .Where(clientId =>
+                        !options.Mtls.ClientCertificateThumbprints.TryGetValue(
+                            clientId,
+                            out var thumbprints)
+                        || thumbprints.Count == 0)
+                    .ToArray();
+                if (missingBindings.Length > 0)
+                    throw new InvalidOperationException(
+                        "FAPI mTLS clients require certificate bindings: "
+                        + string.Join(", ", missingBindings));
+            }
         }
 
         if (options.Jarm.Enabled)

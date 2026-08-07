@@ -12,6 +12,8 @@ namespace Sufficit.Identity.STS;
 /// </summary>
 public sealed class AspNetCoreIdentityInteractiveSignInService(
     SignInManager<ApplicationUser> signInManager,
+    IAuthenticationContextAccessor authenticationContextAccessor,
+    TimeProvider timeProvider,
     ILogger<AspNetCoreIdentityInteractiveSignInService> logger)
     : IInteractiveSignInService
 {
@@ -38,6 +40,7 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
     {
         ArgumentNullException.ThrowIfNull(command);
         cancellationToken.ThrowIfCancellationRequested();
+        SetAuthenticationContext(["pwd"], "urn:sufficit:acr:loa1");
         var result = await signInManager.PasswordSignInAsync(
             command.UserName,
             command.Password,
@@ -79,6 +82,7 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
         }
 
         var code = NormalizeAuthenticatorCode(command.Code);
+        SetAuthenticationContext(["pwd", "otp", "mfa"], "urn:sufficit:acr:loa2");
         var result = await signInManager.TwoFactorAuthenticatorSignInAsync(
             code,
             command.IsPersistent,
@@ -108,6 +112,7 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
                 InteractiveSignInStatus.Failed);
         }
 
+        SetAuthenticationContext(["pwd", "rc", "mfa"], "urn:sufficit:acr:loa2");
         var result = await signInManager.TwoFactorRecoveryCodeSignInAsync(
             NormalizeRecoveryCode(code));
         cancellationToken.ThrowIfCancellationRequested();
@@ -141,4 +146,12 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
     private static string NormalizeRecoveryCode(string? code) =>
         (code ?? string.Empty)
             .Replace(" ", string.Empty, StringComparison.Ordinal);
+
+    private void SetAuthenticationContext(
+        IReadOnlyCollection<string> methods,
+        string authenticationContextClass) =>
+        authenticationContextAccessor.Set(new AuthenticationContextEvidence(
+            methods,
+            timeProvider.GetUtcNow(),
+            authenticationContextClass));
 }

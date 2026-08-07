@@ -375,33 +375,32 @@ public sealed class DpopTests
             : "http://localhost/connect/token";
 
         // First attempt: a valid proof but WITHOUT a nonce claim → challenge.
-        var (firstProof, _) = BuildDpopProof("POST", tokenUrl);
+        var (firstProof, proofKey) = BuildDpopProof("POST", tokenUrl);
         client.DefaultRequestHeaders.Add("DPoP", firstProof);
-        var (firstStatus, firstBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
-        {
-            ["grant_type"] = "client_credentials",
-            ["client_id"] = TestDataSeeder.ClientCredentialsClientId,
-            ["client_secret"] = TestDataSeeder.ClientCredentialsClientSecret,
-            ["scope"] = TestDataSeeder.ScopeName,
-        });
+        using var firstResponse = await client.PostAsync(
+            "/connect/token",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["grant_type"] = "client_credentials",
+                ["client_id"] = TestDataSeeder.ClientCredentialsClientId,
+                ["client_secret"] = TestDataSeeder.ClientCredentialsClientSecret,
+                ["scope"] = TestDataSeeder.ScopeName,
+            }));
+        using var firstBody = System.Text.Json.JsonDocument.Parse(
+            await firstResponse.Content.ReadAsStringAsync());
 
-        Assert.True(firstStatus is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized,
-            $"Expected challenge for missing nonce, got {firstStatus}.");
-        Assert.Equal("use_dpop_nonce", firstBody.GetProperty("error").GetString());
+        Assert.True(firstResponse.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized,
+            $"Expected challenge for missing nonce, got {firstResponse.StatusCode}.");
+        Assert.Equal("use_dpop_nonce", firstBody.RootElement.GetProperty("error").GetString());
 
-        // The challenge issued a nonce. Read it directly from the store (the
-        // singleton) instead of probing again — a second request would rotate
-        // the nonce and race the retry. This mirrors what the DPoP-Nonce
-        // response header would have delivered.
-        string nonce;
-        using (var scope = factory.Services.CreateScope())
-        {
-            var store = scope.ServiceProvider.GetRequiredService<Sufficit.Identity.STS.Dpop.IDpopNonceStore>();
-            nonce = store.Current() ?? throw new InvalidOperationException("No nonce in force after the challenge.");
-        }
+        var nonce = firstResponse.Headers.GetValues("DPoP-Nonce").Single();
 
         // Retry: build a fresh proof carrying the nonce in its `nonce` claim.
-        var (retryProof, _) = BuildDpopProof("POST", tokenUrl, nonce: nonce);
+        var (retryProof, _) = BuildDpopProof(
+            "POST",
+            tokenUrl,
+            nonce: nonce,
+            signingKey: proofKey);
         client.DefaultRequestHeaders.Remove("DPoP");
         client.DefaultRequestHeaders.Add("DPoP", retryProof);
         var (retryStatus, retryBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>

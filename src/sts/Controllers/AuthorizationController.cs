@@ -57,6 +57,8 @@ public class AuthorizationController : Controller
     private readonly Fapi2Options _fapi2Options;
     private readonly Dpop.IDpopNonceStore _dpopNonceStore;
     private readonly IAntiforgery _antiforgery;
+    private readonly ISubjectTokenProvenancePolicy _subjectTokenProvenancePolicy;
+    private readonly IAuthenticationContextProjector _authenticationContextProjector;
 
     public AuthorizationController(
         IOpenIddictApplicationManager applicationManager,
@@ -72,7 +74,9 @@ public class AuthorizationController : Controller
         Logout.IFrontchannelLogoutDispatcher frontchannelLogoutDispatcher,
         SharedSignals.ISharedSignalsDispatcher sharedSignalsDispatcher,
         Dpop.DpopProofValidator dpopProofValidator,
-        Dpop.IDpopNonceStore dpopNonceStore)
+        Dpop.IDpopNonceStore dpopNonceStore,
+        ISubjectTokenProvenancePolicy subjectTokenProvenancePolicy,
+        IAuthenticationContextProjector authenticationContextProjector)
     {
         _applicationManager = applicationManager;
         _authorizationManager = authorizationManager;
@@ -89,6 +93,8 @@ public class AuthorizationController : Controller
         _sharedSignalsDispatcher = sharedSignalsDispatcher;
         _dpopProofValidator = dpopProofValidator;
         _dpopNonceStore = dpopNonceStore;
+        _subjectTokenProvenancePolicy = subjectTokenProvenancePolicy;
+        _authenticationContextProjector = authenticationContextProjector;
         // DPoP options (item 3.1, RFC 9449).
         var rootOptions = configuration.GetSection("Sufficit:Identity")
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
@@ -276,7 +282,7 @@ public class AuthorizationController : Controller
             }
         }
 
-        var identity = await BuildIdentityAsync(user);
+        var identity = await BuildIdentityAsync(user, result.Principal);
         identity.SetScopes(requestedScopes);
         identity.SetResources(await ResolveResourcesAsync(identity, request));
 
@@ -329,20 +335,38 @@ public class AuthorizationController : Controller
 
         if (_dpopOptions.Enabled)
         {
-            // DPoP nonce dance (RFC 9449 §8). When RequireNonce is on, the AS
-            // challenges the client: the proof must carry a `nonce` claim
-            // matching the AS's current nonce. A first request without it (or
-            // with a stale one) gets HTTP 400 `use_dpop_nonce` + a `DPoP-Nonce`
-            // response header; the client retries carrying that nonce.
+            var dpopHeader = Request.Headers["DPoP"].ToString();
             string? expectedNonce = null;
-            if (_dpopOptions.RequireNonce)
+            // DPoP nonce dance (RFC 9449 §8). When RequireNonce is on, the AS
+            // challenges a cryptographically valid proof with a stateless
+            // nonce bound to endpoint, client and proof key. Invalid/anonymous
+            // traffic cannot rotate another client's challenge.
+            if (_dpopOptions.RequireNonce && !string.IsNullOrWhiteSpace(dpopHeader))
             {
-                expectedNonce = _dpopNonceStore.Current();
-                if (expectedNonce is null)
+                var partition = BuildDpopNoncePartition(request, dpopHeader);
+                var suppliedNonce = ExtractNonceFromHeader(dpopHeader);
+                if (!_dpopNonceStore.IsValid(suppliedNonce, partition))
                 {
-                    // No nonce in force yet — issue one and challenge.
-                    expectedNonce = _dpopNonceStore.Issue();
-                    Response.Headers["DPoP-Nonce"] = expectedNonce;
+                    var preliminaryProof = await _dpopProofValidator.ValidateAsync(
+                        dpopHeader,
+                        Request.Method,
+                        Request.Scheme + "://" + Request.Host + Request.Path.Value,
+                        expectedNonce: null,
+                        HttpContext.RequestAborted);
+                    if (preliminaryProof is null)
+                    {
+                        return Forbid(
+                            authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                            properties: new AuthenticationProperties(new Dictionary<string, string?>
+                            {
+                                [OpenIddictServerAspNetCoreConstants.Properties.Error] = "invalid_dpop_proof",
+                                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
+                                    "A valid DPoP proof is required before a nonce challenge can be issued."
+                            }));
+                    }
+
+                    var freshNonce = _dpopNonceStore.Issue(partition);
+                    Response.Headers["DPoP-Nonce"] = freshNonce;
                     return Forbid(
                         authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
                         properties: new AuthenticationProperties(new Dictionary<string, string?>
@@ -352,35 +376,15 @@ public class AuthorizationController : Controller
                                 "A DPoP nonce is required. Retry the request with the DPoP-Nonce value in the proof's nonce claim."
                         }));
                 }
+                expectedNonce = suppliedNonce;
             }
 
-            var dpopHeader = Request.Headers["DPoP"].ToString();
             var proof = await _dpopProofValidator.ValidateAsync(
                 dpopHeader,
                 Request.Method,
                 Request.Scheme + "://" + Request.Host + Request.Path.Value,
                 expectedNonce,
                 HttpContext.RequestAborted);
-
-            // If the nonce was required and the proof failed specifically
-            // because of a missing/mismatched nonce, re-challenge with a fresh
-            // nonce (the validator logs the reason; we detect by checking the
-            // nonce validity directly since the validator returns null for any
-            // failure).
-            if (proof is null && _dpopOptions.RequireNonce
-                && !_dpopNonceStore.IsValid(ExtractNonceFromHeader(dpopHeader)))
-            {
-                var freshNonce = _dpopNonceStore.Issue();
-                Response.Headers["DPoP-Nonce"] = freshNonce;
-                return Forbid(
-                    authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
-                    properties: new AuthenticationProperties(new Dictionary<string, string?>
-                    {
-                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = "use_dpop_nonce",
-                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
-                            "The DPoP nonce is missing or invalid. Retry with the current DPoP-Nonce value."
-                    }));
-            }
 
             if (proof is null && !string.IsNullOrWhiteSpace(dpopHeader))
             {
@@ -470,7 +474,7 @@ public class AuthorizationController : Controller
         ClaimsIdentity identity;
         if (request.IsRefreshTokenGrantType())
         {
-            identity = await BuildIdentityAsync(user);
+            identity = await BuildIdentityAsync(user, result.Principal);
 
             // Preserve the session id from the grant principal — BuildIdentityAsync
             // reads it from the HTTP context User (the cookie), which is absent in
@@ -622,7 +626,7 @@ public class AuthorizationController : Controller
         // Fresh claims from current user state (roles/persisted claims may
         // have changed since the device_code was approved) — same rationale
         // as ExchangeForUserAsync's re-sync above.
-        var identity = await BuildIdentityAsync(user);
+        var identity = await BuildIdentityAsync(user, result.Principal);
         identity.SetScopes(result.Principal.GetScopes());
         identity.SetResources(await ResolveResourcesAsync(identity, request));
         ApplyDpopBinding(identity);
@@ -684,12 +688,21 @@ public class AuthorizationController : Controller
             StringComparison.Ordinal);
     }
 
+    private string BuildDpopNoncePartition(
+        OpenIddictRequest request,
+        string dpopHeader)
+    {
+        Dpop.DpopProofValidator.TryGetKeyThumbprint(dpopHeader, out var thumbprint);
+        return string.Join('|',
+            Request.Path.Value ?? "/connect/token",
+            request.ClientId ?? "<anonymous>",
+            string.IsNullOrWhiteSpace(thumbprint) ? "<unknown-key>" : thumbprint);
+    }
+
     /// <summary>
     /// Best-effort extraction of the <c>nonce</c> claim from a DPoP proof
-    /// header, without full validation. Used by the nonce-dance logic to decide
-    /// whether a failed proof was rejected specifically for a nonce mismatch
-    /// (→ re-challenge with a fresh nonce) vs. another reason. Returns null when
-    /// the header is unparseable or has no nonce claim.
+    /// header, without full validation. The value is accepted only after the
+    /// partition-bound nonce protector and full proof validator approve it.
     /// </summary>
     private static string? ExtractNonceFromHeader(string? dpopHeader)
     {
@@ -733,7 +746,11 @@ public class AuthorizationController : Controller
                 }));
         }
 
-        var identity = await BuildIdentityAsync(user);
+        var identity = await BuildIdentityAsync(
+            user,
+            CreateAuthenticationContextPrincipal(
+                ["pwd"],
+                "urn:sufficit:acr:loa1"));
         identity.SetScopes(request.GetScopes());
         identity.SetResources(await ResolveResourcesAsync(identity, request));
         ApplyDpopBinding(identity);
@@ -814,10 +831,11 @@ public class AuthorizationController : Controller
         // grant permission alone gates exchange (the original pre-finding posture).
         if (_tokenExchangeOptions.AllowedClientIds.Count > 0)
         {
-            var subjectTokenAzp = result.Principal.GetClaim("azp")
-                ?? result.Principal.GetClaim("client_id");
-            if (!string.IsNullOrWhiteSpace(subjectTokenAzp)
-                && !_tokenExchangeOptions.AllowedClientIds.Contains(subjectTokenAzp))
+            var provenance = _subjectTokenProvenancePolicy.Evaluate(
+                result.Principal,
+                _tokenExchangeOptions.AllowedClientIds,
+                _tokenExchangeOptions.ProvenanceMode);
+            if (provenance.ShouldReject)
             {
                 return Forbid(
                     authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
@@ -840,7 +858,7 @@ public class AuthorizationController : Controller
         // resource-specific scope, no "roles") therefore no longer leaks the
         // subject's admin role breadth into the issued token, even though the
         // ClaimsIdentity object still carries it in memory for this request.
-        var identity = await BuildIdentityAsync(user);
+        var identity = await BuildIdentityAsync(user, result.Principal);
 
         // Delegated scopes are the intersection of what the calling client asked for
         // and what the subject_token itself carried; a client that doesn't request any
@@ -1248,7 +1266,27 @@ public class AuthorizationController : Controller
         Claims.Role
     };
 
-    private async Task<ClaimsIdentity> BuildIdentityAsync(ApplicationUser user)
+    private static ClaimsPrincipal CreateAuthenticationContextPrincipal(
+        IReadOnlyCollection<string> methods,
+        string authenticationContextClass)
+    {
+        var identity = new ClaimsIdentity();
+        identity.AddClaims(methods.Select(method => new Claim(
+            AuthenticationContextProjector.AuthenticationMethodClaimType,
+            method)));
+        identity.AddClaim(new Claim(
+            AuthenticationContextProjector.AuthenticationContextClassClaimType,
+            authenticationContextClass));
+        identity.AddClaim(new Claim(
+            AuthenticationContextProjector.AuthenticationTimeClaimType,
+            DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(
+                System.Globalization.CultureInfo.InvariantCulture)));
+        return new ClaimsPrincipal(identity);
+    }
+
+    private async Task<ClaimsIdentity> BuildIdentityAsync(
+        ApplicationUser user,
+        ClaimsPrincipal? authenticationContext = null)
     {
         var identity = new ClaimsIdentity(
             authenticationType: TokenValidationParameters.DefaultAuthenticationType,
@@ -1266,6 +1304,10 @@ public class AuthorizationController : Controller
         {
             identity.SetClaim(SessionIdClaimType, sessionId);
         }
+
+        _authenticationContextProjector.Project(
+            authenticationContext ?? User,
+            identity);
 
         // Project persisted claims (AspNetUserClaims — e.g. `directive`, required by
         // downstream APIs for authorization) onto the token. Without this, the 5000+
@@ -1384,6 +1426,13 @@ public class AuthorizationController : Controller
                 }
                 yield break;
 
+            case AuthenticationContextProjector.AuthenticationMethodClaimType:
+            case AuthenticationContextProjector.AuthenticationContextClassClaimType:
+            case AuthenticationContextProjector.AuthenticationTimeClaimType:
+                yield return Destinations.AccessToken;
+                yield return Destinations.IdentityToken;
+                yield break;
+
             case SessionIdClaimType:
                 // OIDC Front-/Back-Channel Logout session correlation. sid is
                 // an ID Token claim; it is not needed by resource servers.
@@ -1472,4 +1521,12 @@ public sealed class TokenExchangeOptions
     /// depth against a mis-provisioned application permission.
     /// </summary>
     public HashSet<string> AllowedClientIds { get; init; } = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Observe preserves legacy subject tokens that have no unambiguous
+    /// authorized-party identity while emitting the future denial. Enforce
+    /// rejects them whenever <see cref="AllowedClientIds"/> is configured.
+    /// </summary>
+    public SecurityPolicyEnforcementMode ProvenanceMode { get; init; } =
+        SecurityPolicyEnforcementMode.Observe;
 }

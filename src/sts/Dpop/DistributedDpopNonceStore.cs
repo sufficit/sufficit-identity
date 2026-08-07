@@ -12,7 +12,7 @@ namespace Sufficit.Identity.STS.Dpop;
 /// </summary>
 internal sealed class DistributedDpopNonceStore : IDpopNonceStore
 {
-    private const string NonceKey = "dpop:nonce:current";
+    private const string NonceKeyPrefix = "dpop:nonce:v2:";
 
     private readonly Microsoft.Extensions.Caching.Distributed.IDistributedCache _cache;
     private readonly TimeProvider _timeProvider;
@@ -28,9 +28,9 @@ internal sealed class DistributedDpopNonceStore : IDpopNonceStore
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    public string? Current()
+    private string? Current(string partition)
     {
-        var value = _cache.GetString(FormatKey());
+        var value = _cache.GetString(FormatKey(partition));
         if (string.IsNullOrEmpty(value)) return null;
 
         var parts = value.Split('|');
@@ -45,13 +45,14 @@ internal sealed class DistributedDpopNonceStore : IDpopNonceStore
         return parts[0];
     }
 
-    public string Issue()
+    public string Issue(string partition)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(partition);
         var bytes = RandomNumberGenerator.GetBytes(24);
         var nonce = Base64UrlEncoder.Encode(bytes);
         var expiresAt = _timeProvider.GetUtcNow() + _ttl;
         // Store as nonce|expiry so Current() can check TTL without a second key.
-        _cache.SetString(FormatKey(), $"{nonce}|{expiresAt:O}",
+        _cache.SetString(FormatKey(partition), $"{nonce}|{expiresAt:O}",
             new DistributedCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = _ttl,
@@ -59,16 +60,17 @@ internal sealed class DistributedDpopNonceStore : IDpopNonceStore
         return nonce;
     }
 
-    public bool IsValid(string? nonce)
+    public bool IsValid(string? nonce, string partition)
     {
         if (string.IsNullOrEmpty(nonce)) return false;
-        return string.Equals(nonce, Current(), StringComparison.Ordinal);
+        return string.Equals(nonce, Current(partition), StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// The cache key is constant (<see cref="NonceKey"/>) so every replica
-    /// shares the same nonce. This is the per-AS model described in the
-    /// interface remarks.
+    /// The partition is hashed before it reaches the cache key to avoid key
+    /// injection and disclosure of client identifiers/proof thumbprints.
     /// </summary>
-    private static string FormatKey() => NonceKey;
+    private static string FormatKey(string partition) =>
+        NonceKeyPrefix + Convert.ToHexStringLower(SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(partition)));
 }

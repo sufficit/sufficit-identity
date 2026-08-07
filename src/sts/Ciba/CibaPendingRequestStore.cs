@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 namespace Sufficit.Identity.STS.Ciba;
 
 /// <summary>
-/// In-memory store for pending CIBA (RFC 9126) authentication requests. Maps
+/// In-memory store for pending CIBA Core 1.0 authentication requests. Maps
 /// an <c>auth_req_id</c> to the state needed by the initiation endpoint, the
 /// completion channel, and the poll handler.
 /// </summary>

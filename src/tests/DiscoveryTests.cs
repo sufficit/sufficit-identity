@@ -154,6 +154,7 @@ public sealed class DiscoveryTests
         using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
         {
             ["Sufficit:Identity:Mtls:Enabled"] = "true",
+            ["Sufficit:Identity:Mtls:DeploymentMode"] = "DirectTls",
         });
         await ((IAsyncLifetime)factory).InitializeAsync();
 

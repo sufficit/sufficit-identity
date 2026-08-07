@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Sufficit.Identity.STS.Ciba;
@@ -112,28 +113,31 @@ public sealed class DistributedStoreTests
     // ---- DPoP nonce store ----
 
     [Fact]
-    public async Task Dpop_nonce_store_issue_current_and_validate()
+    public async Task Dpop_nonce_is_valid_only_for_its_exact_partition()
     {
-        var store = new DistributedDpopNonceStore(CreateCache());
-        Assert.Null(store.Current());
+        var store = new ProtectedDpopNonceStore(
+            new EphemeralDataProtectionProvider());
 
-        var nonce = store.Issue();
-        Assert.Equal(nonce, store.Current());
-        Assert.True(store.IsValid(nonce));
-        Assert.False(store.IsValid("wrong-nonce"));
+        var nonce = store.Issue("/connect/token|client-a|key-a");
+        Assert.True(store.IsValid(nonce, "/connect/token|client-a|key-a"));
+        Assert.False(store.IsValid(nonce, "/connect/token|client-b|key-a"));
+        Assert.False(store.IsValid(nonce, "/connect/token|client-a|key-b"));
+        Assert.False(store.IsValid("wrong-nonce", "/connect/token|client-a|key-a"));
         await Task.CompletedTask;
     }
 
     [Fact]
-    public async Task Dpop_nonce_store_issue_replaces_previous()
+    public async Task Dpop_nonce_issuance_does_not_invalidate_concurrent_challenges()
     {
-        var store = new DistributedDpopNonceStore(CreateCache());
-        var first = store.Issue();
-        var second = store.Issue();
+        var store = new ProtectedDpopNonceStore(
+            new EphemeralDataProtectionProvider());
+        const string partition = "/connect/token|client-a|key-a";
+        var first = store.Issue(partition);
+        var second = store.Issue(partition);
 
         Assert.NotEqual(first, second);
-        Assert.True(store.IsValid(second));
-        Assert.False(store.IsValid(first));
+        Assert.True(store.IsValid(first, partition));
+        Assert.True(store.IsValid(second, partition));
         await Task.CompletedTask;
     }
 

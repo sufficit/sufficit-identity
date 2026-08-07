@@ -22,12 +22,17 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Active plans (pending work)
 
+- [GPT-5 evaluation — remaining work](plans/PLAN-GPT-5-REMAINING.md) — residual protocol, trust-boundary and production-assurance work
+- [GLM-5.2 evaluation — remaining work](plans/PLAN-GLM-5-2-REMAINING.md) — residual authorization, secret and maintainability work
+- [Management applications](plans/PLAN-MANAGEMENT-APPLICATIONS.md) — complete OAuth/OIDC application lifecycle in the Management console
 - [Production readiness](plans/PLAN-PRODUCTION-READINESS.md) — certification, CSP calibration, WCAG, forward protocols
 - [Legacy cutover — operational gates](plans/PLAN-LEGACY-CUTOVER-OPS.md) — clients, keys, rehearsals
 - [Pluggable UI — phases 2-5](plans/PLAN-PLUGGABLE-UI-PHASES-2-5.md) — remote UI, BFF, SDK
 
 ## Completed work (activities/)
 
+- [GPT-5 evaluation remediation](activities/202608071227-completed-gpt-5-remediation.md)
+- [GLM-5.2 evaluation remediation](activities/202608071210-completed-glm-5-2-remediation.md)
 - [Protocol roadmap baseline](activities/202608011800-completed-protocol-roadmap-baseline.md)
 - [Legacy cutover — DB/provider gates](activities/202608011820-completed-legacy-cutover-db-provider.md)
 - [Pluggable UI — phases 0-1](activities/202608012000-completed-pluggable-ui-phase0-phase1.md)

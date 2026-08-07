@@ -11,7 +11,7 @@ using Xunit;
 namespace Sufficit.Identity.Tests;
 
 /// <summary>
-/// Covers CIBA (RFC 9126, item 3.5): initiation, polling, and the out-of-band
+/// Covers OpenID Connect CIBA Core 1.0: initiation, polling, and the out-of-band
 /// completion channel. OpenIddict 7.6 has no CIBA primitives, so this exercises
 /// the from-scratch implementation (<c>CibaController</c> +
 /// <c>ICibaPendingRequestStore</c> + the poll branch in
@@ -254,14 +254,42 @@ public sealed class CibaInitiationTests
         Assert.Equal("invalid_scope", body.GetProperty("error").GetString());
     }
 
+    [Fact]
+    public async Task Enforced_client_policy_rejects_confidential_client_without_ciba_entitlement()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(CibaEnabled());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await EnsureCibaClientAsync(
+            factory,
+            "test-ciba-unentitled",
+            "test-ciba-unentitled-secret",
+            includeGrantPermission: false);
+
+        var client = factory.CreateClient();
+        var (status, body) = await client.PostFormAsync(
+            "/bc-authorize",
+            new Dictionary<string, string>
+            {
+                ["scope"] = TestDataSeeder.ScopeName,
+                ["client_id"] = "test-ciba-unentitled",
+                ["client_secret"] = "test-ciba-unentitled-secret",
+                ["login_hint"] = TestDataSeeder.DefaultUsername,
+            });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, status);
+        Assert.Equal("unauthorized_client", body.GetProperty("error").GetString());
+    }
+
     private static IReadOnlyDictionary<string, string?> CibaEnabled() => new Dictionary<string, string?>
     {
         ["Sufficit:Identity:Ciba:Enabled"] = "true",
+        ["Sufficit:Identity:Ciba:ClientPolicyMode"] = "Enforce",
     };
 
     private static IReadOnlyDictionary<string, string?> CibaEnabledWithShortInterval() => new Dictionary<string, string?>
     {
         ["Sufficit:Identity:Ciba:Enabled"] = "true",
+        ["Sufficit:Identity:Ciba:ClientPolicyMode"] = "Enforce",
         // 0 interval so back-to-back polls in the same test don't trip slow_down.
         ["Sufficit:Identity:Ciba:PollIntervalSeconds"] = "0",
     };
@@ -269,13 +297,14 @@ public sealed class CibaInitiationTests
     private static async Task EnsureCibaClientAsync(
         SufficitIdentityTestFactory factory,
         string clientId = "test-ciba",
-        string clientSecret = "test-ciba-secret")
+        string clientSecret = "test-ciba-secret",
+        bool includeGrantPermission = true)
     {
         using var scope = factory.Services.CreateScope();
         var appManager = scope.ServiceProvider.GetRequiredService<OpenIddict.Abstractions.IOpenIddictApplicationManager>();
         if (await appManager.FindByClientIdAsync(clientId) is null)
         {
-            await appManager.CreateAsync(new OpenIddict.Abstractions.OpenIddictApplicationDescriptor
+            var descriptor = new OpenIddict.Abstractions.OpenIddictApplicationDescriptor
             {
                 ClientId = clientId,
                 ClientSecret = clientSecret,
@@ -286,7 +315,13 @@ public sealed class CibaInitiationTests
                     OpenIddict.Abstractions.OpenIddictConstants.Permissions.Endpoints.Revocation,
                     OpenIddict.Abstractions.OpenIddictConstants.Permissions.Prefixes.Scope + TestDataSeeder.ScopeName,
                 },
-            });
+            };
+            if (includeGrantPermission)
+            {
+                descriptor.Permissions.Add(
+                    "gt:urn:openid:params:grant-type:ciba");
+            }
+            await appManager.CreateAsync(descriptor);
         }
     }
 

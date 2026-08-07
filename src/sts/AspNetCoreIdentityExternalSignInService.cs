@@ -15,6 +15,8 @@ public sealed class AspNetCoreIdentityExternalSignInService(
     UserManager<ApplicationUser> userManager,
     IAccountExternalIdentityService externalIdentityService,
     IAccountOnboardingService onboardingService,
+    IAuthenticationContextAccessor authenticationContextAccessor,
+    TimeProvider timeProvider,
     ILogger<AspNetCoreIdentityExternalSignInService> logger)
     : IExternalSignInService
 {
@@ -49,6 +51,7 @@ public sealed class AspNetCoreIdentityExternalSignInService(
             return new ExternalSignInResult(ExternalSignInStatus.Unavailable);
         }
 
+        SetExternalAuthenticationContext(info.LoginProvider);
         var signIn = await signInManager.ExternalLoginSignInAsync(
             info.LoginProvider,
             info.ProviderKey,
@@ -193,6 +196,7 @@ public sealed class AspNetCoreIdentityExternalSignInService(
             return new ExternalSignInResult(ExternalSignInStatus.NotAllowed);
         }
 
+        SetExternalAuthenticationContext(info.LoginProvider);
         await signInManager.SignInAsync(user, isPersistent: false);
         cancellationToken.ThrowIfCancellationRequested();
         logger.LogInformation(
@@ -203,4 +207,10 @@ public sealed class AspNetCoreIdentityExternalSignInService(
             emailVerified);
         return new ExternalSignInResult(ExternalSignInStatus.Succeeded);
     }
+
+    private void SetExternalAuthenticationContext(string provider) =>
+        authenticationContextAccessor.Set(new AuthenticationContextEvidence(
+            ["federated", provider.ToLowerInvariant()],
+            timeProvider.GetUtcNow(),
+            "urn:sufficit:acr:loa1"));
 }

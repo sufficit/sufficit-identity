@@ -161,6 +161,13 @@ public sealed class SufficitIdentityOptions
     public ClaimScopeMapOptions ClaimScopeMap { get; init; } = new();
 
     /// <summary>
+    /// Compatibility rollout policy for personal access-token issuance.
+    /// Observe mode computes and records the strict decision while preserving
+    /// existing callers; Enforce applies the attenuated decision.
+    /// </summary>
+    public PersonalTokenIssuanceOptions PersonalTokens { get; init; } = new();
+
+    /// <summary>
     /// Mutual TLS (mTLS) client authentication and sender-constrained tokens
     /// (RFC 8705). See <see cref="MtlsOptions"/>.
     /// </summary>
@@ -212,7 +219,7 @@ public sealed class SufficitIdentityOptions
     public SharedSignalsOptions SharedSignals { get; init; } = new();
 
     /// <summary>
-    /// CIBA (Client-Initiated Backchannel Authentication, RFC 9126) —
+    /// CIBA (OpenID Connect Client-Initiated Backchannel Authentication Core 1.0) —
     /// decoupled authentication where the consumption device is NOT the
     /// authentication device. See <see cref="CibaOptions"/>.
     /// </summary>
@@ -747,6 +754,49 @@ public sealed class ClaimScopeMapOptions
     /// from existing tokens during the rollout.
     /// </summary>
     public bool IncludeUnmappedClaimsInAccessTokens { get; init; } = true;
+
+    /// <summary>
+    /// Persisted claim types that are never eligible for token release when
+    /// unmapped, including while the general compatibility bridge is active.
+    /// Values are claim names only; claim values are never logged.
+    /// </summary>
+    public HashSet<string> DeniedUnmappedClaimTypes { get; init; } = new(StringComparer.Ordinal)
+    {
+        "security_stamp",
+        "concurrency_stamp",
+        "password_hash",
+        "authenticator_key",
+        "recovery_codes",
+    };
+}
+
+public enum SecurityPolicyEnforcementMode
+{
+    Observe,
+    Enforce,
+}
+
+/// <summary>
+/// Least-privilege policy for issuing personal access tokens. Defaults remain
+/// observational so existing production callers can be inventoried before
+/// the stricter contract is activated.
+/// </summary>
+public sealed class PersonalTokenIssuanceOptions
+{
+    public SecurityPolicyEnforcementMode Mode { get; init; } =
+        SecurityPolicyEnforcementMode.Observe;
+
+    public string RequiredScope { get; init; } = "personal_tokens.manage";
+
+    public bool RequireRecentAuthentication { get; init; } = true;
+
+    public int MaximumAuthenticationAgeMinutes { get; init; } = 15;
+
+    public int MaximumLifetimeDays { get; init; } = 90;
+
+    public bool RequireSenderConstraint { get; init; }
+
+    public HashSet<string> EligibleClientIds { get; init; } = new(StringComparer.Ordinal);
 }
 
 /// <summary>
@@ -780,6 +830,34 @@ public sealed class MtlsOptions
     /// (otherwise the MTLS-aliased paths would 404 at the TLS layer).
     /// </summary>
     public bool Enabled { get; init; } = false;
+
+    /// <summary>
+    /// Explicit statement of where client-certificate validation occurs.
+    /// Enabling mTLS with Unattested is rejected during startup.
+    /// </summary>
+    public MtlsDeploymentMode DeploymentMode { get; init; } =
+        MtlsDeploymentMode.Unattested;
+
+    /// <summary>
+    /// SHA-256 certificate thumbprints allowed for each OAuth client. Multiple
+    /// entries permit bounded rollover overlap.
+    /// </summary>
+    public Dictionary<string, HashSet<string>> ClientCertificateThumbprints { get; init; } =
+        new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Builds the platform X.509 chain in addition to the explicit client pin.
+    /// Keep enabled in production; private PKI roots must be installed in the
+    /// host trust store.
+    /// </summary>
+    public bool RequireValidCertificateChain { get; init; } = true;
+}
+
+public enum MtlsDeploymentMode
+{
+    Unattested,
+    DirectTls,
+    TrustedProxy,
 }
 
 /// <summary>
@@ -1078,7 +1156,7 @@ public sealed class SharedSignalsReceiverOptions
 }
 
 /// <summary>
-/// CIBA (Client-Initiated Backchannel Authentication, RFC 9126 — item 3.5).
+/// CIBA (OpenID Connect Client-Initiated Backchannel Authentication Core 1.0).
 /// Enables decoupled authentication: a client initiates auth on a consumption
 /// device (kiosk, call-center, AI agent) and the end user approves on a
 /// SEPARATE authentication device. The client polls the token endpoint with an
@@ -1109,16 +1187,30 @@ public sealed class CibaOptions
 
     /// <summary>
     /// How long an unapproved <c>auth_req_id</c> stays valid (seconds).
-    /// Default 600 (10 min) — RFC 9126 §2.2 <c>expires_in</c>.
+    /// Default 600 (10 min) — CIBA Core 1.0 <c>expires_in</c>.
     /// </summary>
     public int ExpiresInSeconds { get; init; } = 600;
 
     /// <summary>
-    /// Minimum seconds the client MUST wait between polls. RFC 9126 §2.2
+    /// Minimum seconds the client MUST wait between polls. CIBA Core 1.0
     /// <c>interval</c>. If the client polls faster, the AS returns
     /// <c>slow_down</c>. Default 5.
     /// </summary>
     public int PollIntervalSeconds { get; init; } = 5;
+
+    /// <summary>
+    /// Observe records clients that would fail the explicit CIBA entitlement
+    /// without interrupting them. Enforce rejects those requests.
+    /// </summary>
+    public SecurityPolicyEnforcementMode ClientPolicyMode { get; init; } =
+        SecurityPolicyEnforcementMode.Observe;
+
+    public bool RequireConfidentialClient { get; init; } = true;
+
+    public string RequiredGrantPermission { get; init; } =
+        "gt:urn:openid:params:grant-type:ciba";
+
+    public HashSet<string> AllowedClientIds { get; init; } = new(StringComparer.Ordinal);
 }
 
 /// <summary>

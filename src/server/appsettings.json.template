@@ -189,12 +189,33 @@
         "ClaimToScope": {
           "directive": "directives"
         },
-        "IncludeUnmappedClaimsInAccessTokens": true
+        "IncludeUnmappedClaimsInAccessTokens": true,
+        "DeniedUnmappedClaimTypes": [
+          "security_stamp",
+          "concurrency_stamp",
+          "password_hash",
+          "authenticator_key",
+          "recovery_codes"
+        ]
+      },
+      "_PersonalTokens": "Observe computes strict least-privilege PAT decisions without breaking existing callers. After inventorying callers and issuing personal_tokens.manage, switch Mode to Enforce.",
+      "PersonalTokens": {
+        "Mode": "Observe",
+        "RequiredScope": "personal_tokens.manage",
+        "RequireRecentAuthentication": true,
+        "MaximumAuthenticationAgeMinutes": 15,
+        "MaximumLifetimeDays": 90,
+        "RequireSenderConstraint": false,
+        "EligibleClientIds": []
       },
       "_Mtls": "Mutual TLS (mTLS) client authentication and sender-constrained access tokens (RFC 8705, item 3.4). Opt-in (default false): enabling registers the MTLS-aliased endpoint paths (e.g. /connect/token/mtls) and advertises tls_client_certificate_bound_access_tokens=true in discovery. mTLS requires the HOST (Kestrel/nginx) to request and validate client certificates at the TLS handshake — that is DEPLOYMENT configuration (see Program.cs comments), not something this flag alone does. private_key_jwt (RFC 7523) is enabled by OpenIddict unconditionally and is the OTHER strong client-auth method (not gated here). Together with PAR (item 3.3) and DPoP (item 3.1), these are the FAPI 2.0 prerequisites.",
       "Mtls": {
         "_Enabled": "true registers MTLS endpoint aliases and advertises mTLS support in discovery. Default false — enable only after the host is configured for client certificates.",
-        "Enabled": false
+        "Enabled": false,
+        "_DeploymentMode": "Must be DirectTls or TrustedProxy before Enabled=true; Unattested fails startup.",
+        "DeploymentMode": "Unattested",
+        "RequireValidCertificateChain": true,
+        "ClientCertificateThumbprints": {}
       },
       "_BackchannelLogout": "OIDC Back-Channel Logout 1.0. The STS signs and POSTs a short-lived logout_token to every RP that registered a backchannel_logout_uri. Enabled by default; clients without metadata are skipped. The OP session sid is included when the RP requires session-specific logout.",
       "BackchannelLogout": {
@@ -248,14 +269,19 @@
         "_RequiredScope": "OAuth scope required to call the stream-management and poll endpoints. Default ssf_transmitter. The scope must exist as an OpenIddict scope (create it via the management API or provisioning manifest).",
         "RequiredScope": "ssf_transmitter"
       },
-      "_Ciba": "CIBA (Client-Initiated Backchannel Authentication, RFC 9126, item 3.5) — decoupled auth where the consumption device (kiosk/call-center/AI agent) is NOT the authentication device. OpenIddict 7.6 has NO CIBA support; the STS implements it from scratch: /bc-authorize initiation, an in-memory ICibaPendingRequestStore, /connect/ciba/complete (out-of-band approval), and /connect/ciba/token (poll). The access token is emitted by CibaAccessTokenGenerator (a hand-built JWT signed with the STS key, validatable against the STS JWKS) because OpenIddict forbids SignIn from the unregistered endpoint. LIMITATION: the CIBA JWT is NOT an OpenIddict reference token (no /connect/introspect or /connect/revocation); insert into IOpenIddictTokenManager when a client needs those.",
+      "_Ciba": "OpenID Connect CIBA Core 1.0 decoupled authentication. Pending state is database-authoritative and atomically consumed; generated access tokens are tracked by OpenIddict for introspection/revocation. Initiation and polling share one explicit client/grant policy, and the approval page displays the binding message.",
       "Ciba": {
         "_Enabled": "true registers the CIBA endpoints (initiation, completion, poll) and the pending-request store. Default false.",
         "Enabled": false,
-        "_ExpiresInSeconds": "How long an unapproved auth_req_id stays valid (RFC 9126 §2.2 expires_in). Default 600 (10 min).",
+        "_ExpiresInSeconds": "How long an unapproved auth_req_id stays valid (CIBA Core expires_in). Default 600 (10 min).",
         "ExpiresInSeconds": 600,
-        "_PollIntervalSeconds": "Minimum seconds the client MUST wait between polls (RFC 9126 §2.2 interval). Faster polls get slow_down. Default 5.",
-        "PollIntervalSeconds": 5
+        "_PollIntervalSeconds": "Minimum seconds the client MUST wait between polls (CIBA Core interval). Faster polls get slow_down. Default 5.",
+        "PollIntervalSeconds": 5,
+        "_ClientPolicyMode": "Observe reports public/unentitled CIBA callers while retaining compatibility. Provision gt:urn:openid:params:grant-type:ciba and switch to Enforce per cohort.",
+        "ClientPolicyMode": "Observe",
+        "RequireConfidentialClient": true,
+        "RequiredGrantPermission": "gt:urn:openid:params:grant-type:ciba",
+        "AllowedClientIds": []
       },
       "_Mcp": "MCP (Model Context Protocol) / agent-AI resource-server configuration (Onda 4). Configures the STS to serve as the authorization server for MCP servers and other agent resource servers. Static resource validation remains active when only RFC 9728 metadata is enabled; it is disabled only when Mcp.Resources explicitly lists dynamic resource URIs, and those URIs still require per-client oi_rprm permissions.",
       "Mcp": {

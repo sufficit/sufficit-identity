@@ -30,7 +30,7 @@ internal static class Fapi2Policy
         }
     }
 
-    public static bool UsesStrongClientAuthentication(
+    public static bool UsesPrivateKeyJwt(
         BaseContext context,
         string? issuer)
     {
@@ -60,8 +60,7 @@ internal static class Fapi2Policy
             }
         }
 
-        return context.Transaction.GetHttpRequest()?.HttpContext.Connection
-            .ClientCertificate is not null;
+        return false;
     }
 }
 
@@ -102,14 +101,17 @@ internal sealed class ValidateFapiPushedAuthorizationRequest :
     private readonly IOpenIddictApplicationManager _applications;
     private readonly Fapi2Options _options;
     private readonly string? _issuer;
+    private readonly Mtls.IMtlsClientCertificatePolicy _mtlsPolicy;
 
     public ValidateFapiPushedAuthorizationRequest(
         IOpenIddictApplicationManager applications,
-        SufficitIdentityOptions options)
+        SufficitIdentityOptions options,
+        Mtls.IMtlsClientCertificatePolicy mtlsPolicy)
     {
         _applications = applications;
         _options = options.Fapi2;
         _issuer = options.Issuer;
+        _mtlsPolicy = mtlsPolicy;
     }
 
     public static OpenIddictServerHandlerDescriptor Descriptor { get; } =
@@ -136,7 +138,11 @@ internal sealed class ValidateFapiPushedAuthorizationRequest :
             return;
         }
 
-        if (!Fapi2Policy.UsesStrongClientAuthentication(context, _issuer))
+        var httpContext = context.Transaction.GetHttpRequest()?.HttpContext;
+        var mtls = httpContext is null
+            ? new Mtls.MtlsClientCertificateDecision(false)
+            : _mtlsPolicy.Evaluate(httpContext, context.Request.ClientId);
+        if (!Fapi2Policy.UsesPrivateKeyJwt(context, _issuer) && !mtls.Allowed)
         {
             context.Reject(Errors.InvalidClient,
                 "FAPI 2.0 clients must authenticate with private_key_jwt or mutual TLS.");
@@ -181,10 +187,14 @@ internal sealed class ValidateFapiTokenRequest :
 {
     private readonly Fapi2Options _options;
     private readonly string? _issuer;
-    public ValidateFapiTokenRequest(SufficitIdentityOptions options)
+    private readonly Mtls.IMtlsClientCertificatePolicy _mtlsPolicy;
+    public ValidateFapiTokenRequest(
+        SufficitIdentityOptions options,
+        Mtls.IMtlsClientCertificatePolicy mtlsPolicy)
     {
         _options = options.Fapi2;
         _issuer = options.Issuer;
+        _mtlsPolicy = mtlsPolicy;
     }
 
     public static OpenIddictServerHandlerDescriptor Descriptor { get; } =
@@ -200,14 +210,17 @@ internal sealed class ValidateFapiTokenRequest :
         if (!Fapi2Policy.Applies(_options, context.Request.ClientId))
             return ValueTask.CompletedTask;
 
-        if (!Fapi2Policy.UsesStrongClientAuthentication(context, _issuer))
+        var httpContext = context.Transaction.GetHttpRequest()?.HttpContext;
+        var mtls = httpContext is null
+            ? new Mtls.MtlsClientCertificateDecision(false)
+            : _mtlsPolicy.Evaluate(httpContext, context.Request.ClientId);
+        if (!Fapi2Policy.UsesPrivateKeyJwt(context, _issuer) && !mtls.Allowed)
         {
             context.Reject(Errors.InvalidClient,
                 "FAPI 2.0 clients must authenticate with private_key_jwt or mutual TLS.");
         }
-        else if (_options.SenderConstraint == Fapi2SenderConstraint.Mtls &&
-                 context.Transaction.GetHttpRequest()?.HttpContext.Connection
-                     .ClientCertificate is null)
+        else if (_options.SenderConstraint == Fapi2SenderConstraint.Mtls
+                 && !mtls.Allowed)
         {
             context.Reject(Errors.InvalidClient,
                 "This FAPI 2.0 client requires mutual-TLS sender-constrained tokens.");

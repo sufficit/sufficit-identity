@@ -272,6 +272,36 @@ public sealed class DpopProofValidator
     }
 
     /// <summary>
+    /// Extracts the public-key thumbprint used only to partition a nonce
+    /// challenge. This is not proof validation; callers must still invoke
+    /// <see cref="ValidateAsync"/> before accepting or issuing credentials.
+    /// </summary>
+    public static bool TryGetKeyThumbprint(string? dpopHeader, out string thumbprint)
+    {
+        thumbprint = string.Empty;
+        if (string.IsNullOrWhiteSpace(dpopHeader)) return false;
+        try
+        {
+            var jwt = new JsonWebToken(dpopHeader);
+            if (!string.Equals(jwt.Typ, DpopHeaderType, StringComparison.Ordinal)
+                || !jwt.TryGetHeaderValue("alg", out string alg)
+                || (alg != "ES256" && alg != "RS256")
+                || !jwt.TryGetHeaderValue("jwk", out string jwkJson))
+            {
+                return false;
+            }
+
+            var key = new JsonWebKey(jwkJson);
+            thumbprint = Base64UrlEncoder.Encode(key.ComputeJwkThumbprint());
+            return !string.IsNullOrWhiteSpace(thumbprint);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Compares two htu values, tolerating trailing-slash differences. RFC 9449
     /// §4.3 compares the htu claim against the request URL without query/fragment.
     /// </summary>
