@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Core.Entities;
@@ -13,10 +12,9 @@ namespace Sufficit.Identity.STS;
 /// </summary>
 public sealed class AspNetCoreIdentityAccountTwoFactorService(
     UserManager<ApplicationUser> userManager,
-    SignInManager<ApplicationUser> signInManager,
     ISecurityEventTrigger securityEvents,
+    ICredentialMutationSecurityCoordinator credentialSecurity,
     IAssuranceLevelResolver assuranceLevelResolver,
-    IHttpContextAccessor httpContextAccessor,
     TwoFactorOptions options,
     ILogger<AspNetCoreIdentityAccountTwoFactorService> logger)
     : IAccountTwoFactorService
@@ -39,6 +37,18 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         if (user is null)
         {
             return Unauthenticated();
+        }
+
+        var authorization = await credentialSecurity.AuthorizeAsync(
+            principal,
+            "two-factor-setup",
+            cancellationToken: cancellationToken);
+        if (!authorization.Allowed)
+        {
+            return AccountTwoFactorResult.Failure(
+                authorization.ErrorCode!,
+                authorization.ErrorDescription!,
+                await BuildOverviewAsync(user, cancellationToken));
         }
 
         if (await userManager.GetTwoFactorEnabledAsync(user))
@@ -90,6 +100,18 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         }
 
         var state = await BuildOverviewAsync(user, cancellationToken);
+        var authorization = await credentialSecurity.AuthorizeAsync(
+            principal,
+            "two-factor-enable",
+            cancellationToken: cancellationToken);
+        if (!authorization.Allowed)
+        {
+            return AccountTwoFactorResult.Failure(
+                authorization.ErrorCode!,
+                authorization.ErrorDescription!,
+                state);
+        }
+
         if (state.IsEnabled)
         {
             return AccountTwoFactorResult.Failure(
@@ -142,11 +164,17 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
             cancellationToken);
         var enabledState = await BuildOverviewAsync(user, cancellationToken);
 
-        // Capture the pre-step-up AAL before RefreshSignInAsync replaces the
+        // Capture the pre-step-up AAL before the coordinator refreshes the
         // cookie principal. Enabling 2FA raises the session from Loa1 → Loa2.
         var previousLevel = assuranceLevelResolver.Resolve(principal);
 
-        await TryRefreshSignInAsync(user);
+        await credentialSecurity.CompleteAsync(
+            user,
+            principal,
+            new CaepCredentialChange(
+                CaepCredentialType.Otp,
+                CaepChangeOperation.Created),
+            cancellationToken);
         if (recoveryCodes is null)
         {
             return AccountTwoFactorResult.Failure(
@@ -158,12 +186,6 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         logger.LogInformation(
             "User {UserId} enabled authenticator two-factor authentication.",
             user.Id);
-
-        await securityEvents.CredentialChangedAsync(
-            principal,
-            user.Id,
-            new CaepCredentialChange(CaepCredentialType.Otp, CaepChangeOperation.Created),
-            cancellationToken);
 
         // CAEP assurance-level-change: enabling 2FA stepped the session up
         // from Loa1 (password-only) to Loa2 (password + OTP).
@@ -196,6 +218,18 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
                 await BuildOverviewAsync(user, cancellationToken));
         }
 
+        var authorization = await credentialSecurity.AuthorizeAsync(
+            principal,
+            "two-factor-recovery-code-regeneration",
+            cancellationToken: cancellationToken);
+        if (!authorization.Allowed)
+        {
+            return AccountTwoFactorResult.Failure(
+                authorization.ErrorCode!,
+                authorization.ErrorDescription!,
+                await BuildOverviewAsync(user, cancellationToken));
+        }
+
         var recoveryCodes = await GenerateRecoveryCodesInternalAsync(
             user,
             cancellationToken);
@@ -212,10 +246,12 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
             "User {UserId} regenerated two-factor recovery codes.",
             user.Id);
 
-        await securityEvents.CredentialChangedAsync(
+        await credentialSecurity.CompleteAsync(
+            user,
             principal,
-            user.Id,
-            new CaepCredentialChange(CaepCredentialType.Otp, CaepChangeOperation.Updated),
+            new CaepCredentialChange(
+                CaepCredentialType.Otp,
+                CaepChangeOperation.Updated),
             cancellationToken);
 
         return AccountTwoFactorResult.Success(state, recoveryCodes);
@@ -229,6 +265,18 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         if (user is null)
         {
             return Unauthenticated();
+        }
+
+        var authorization = await credentialSecurity.AuthorizeAsync(
+            principal,
+            "two-factor-authenticator-reset",
+            cancellationToken: cancellationToken);
+        if (!authorization.Allowed)
+        {
+            return AccountTwoFactorResult.Failure(
+                authorization.ErrorCode!,
+                authorization.ErrorDescription!,
+                await BuildOverviewAsync(user, cancellationToken));
         }
 
         var disabled = await userManager.SetTwoFactorEnabledAsync(user, false);
@@ -249,17 +297,17 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
                 cancellationToken);
         }
 
-        await TryRefreshSignInAsync(user);
+        await credentialSecurity.CompleteAsync(
+            user,
+            principal,
+            new CaepCredentialChange(
+                CaepCredentialType.Otp,
+                CaepChangeOperation.Deleted),
+            cancellationToken);
         var state = await BuildOverviewAsync(user, cancellationToken);
         logger.LogInformation(
             "User {UserId} reset their authenticator key.",
             user.Id);
-
-        await securityEvents.CredentialChangedAsync(
-            principal,
-            user.Id,
-            new CaepCredentialChange(CaepCredentialType.Otp, CaepChangeOperation.Deleted),
-            cancellationToken);
 
         return AccountTwoFactorResult.Success(state);
     }
@@ -274,6 +322,18 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
             return Unauthenticated();
         }
 
+        var authorization = await credentialSecurity.AuthorizeAsync(
+            principal,
+            "two-factor-disable",
+            cancellationToken: cancellationToken);
+        if (!authorization.Allowed)
+        {
+            return AccountTwoFactorResult.Failure(
+                authorization.ErrorCode!,
+                authorization.ErrorDescription!,
+                await BuildOverviewAsync(user, cancellationToken));
+        }
+
         var result = await userManager.SetTwoFactorEnabledAsync(user, false);
         if (!result.Succeeded)
         {
@@ -283,17 +343,17 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
                 cancellationToken);
         }
 
-        await TryRefreshSignInAsync(user);
+        await credentialSecurity.CompleteAsync(
+            user,
+            principal,
+            new CaepCredentialChange(
+                CaepCredentialType.Otp,
+                CaepChangeOperation.Deleted),
+            cancellationToken);
         var state = await BuildOverviewAsync(user, cancellationToken);
         logger.LogInformation(
             "User {UserId} disabled authenticator two-factor authentication.",
             user.Id);
-
-        await securityEvents.CredentialChangedAsync(
-            principal,
-            user.Id,
-            new CaepCredentialChange(CaepCredentialType.Otp, CaepChangeOperation.Deleted),
-            cancellationToken);
 
         return AccountTwoFactorResult.Success(state);
     }
@@ -366,26 +426,6 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         var user = await userManager.GetUserAsync(principal);
         cancellationToken.ThrowIfCancellationRequested();
         return user;
-    }
-
-    private async Task TryRefreshSignInAsync(ApplicationUser user)
-    {
-        if (httpContextAccessor.HttpContext is null)
-        {
-            return;
-        }
-
-        try
-        {
-            await signInManager.RefreshSignInAsync(user);
-        }
-        catch (Exception exception)
-        {
-            logger.LogWarning(
-                exception,
-                "The interactive session could not be refreshed after changing two-factor settings for user {UserId}.",
-                user.Id);
-        }
     }
 
     private string BuildAuthenticatorUri(string accountName, string key)

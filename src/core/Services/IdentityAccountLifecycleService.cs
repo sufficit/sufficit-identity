@@ -19,6 +19,12 @@ public interface IIdentityUserSessionRevoker
     Task<IdentityUserSessionRevocation> RevokeAsync(
         string subject,
         CancellationToken cancellationToken = default);
+
+    Task<IdentityUserSessionRevocation> RevokeAsync(
+        string subject,
+        string? exceptBrowserSessionId,
+        CancellationToken cancellationToken = default) =>
+        RevokeAsync(subject, cancellationToken);
 }
 
 public sealed class OpenIddictIdentityUserSessionRevoker(
@@ -38,6 +44,15 @@ public sealed class OpenIddictIdentityUserSessionRevoker(
     public async Task<IdentityUserSessionRevocation> RevokeAsync(
         string subject,
         CancellationToken cancellationToken = default)
+        => await RevokeAsync(
+            subject,
+            exceptBrowserSessionId: null,
+            cancellationToken);
+
+    public async Task<IdentityUserSessionRevocation> RevokeAsync(
+        string subject,
+        string? exceptBrowserSessionId,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(subject);
         var revokedTokens = await tokens.RevokeBySubjectAsync(
@@ -54,7 +69,7 @@ public sealed class OpenIddictIdentityUserSessionRevoker(
         // per-device enumeration reflect reality.
         var revokedBrowserSessions = await browserSessions.RevokeAllBySubjectAsync(
             subject,
-            exceptSessionId: null,
+            exceptBrowserSessionId,
             cancellationToken);
         return new IdentityUserSessionRevocation(
             revokedTokens,

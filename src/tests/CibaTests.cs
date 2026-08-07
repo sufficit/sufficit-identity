@@ -193,6 +193,25 @@ public sealed class CibaInitiationTests
     }
 
     [Fact]
+    public async Task Database_backed_ciba_consume_has_one_winner_under_concurrency()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            CibaEnabledWithShortInterval());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        var store = factory.Services.GetRequiredService<ICibaPendingRequestStore>();
+        var request = store.Create(
+            "concurrent-client", "subject-1", [], null, TimeSpan.FromMinutes(1));
+        Assert.True(store.Approve(request.AuthReqId, "subject-1"));
+
+        var attempts = await Task.WhenAll(Enumerable.Range(0, 8).Select(index =>
+            Task.Run(() => store.TryConsumeApproved(
+                request.AuthReqId, out var consumed))));
+
+        Assert.Single(attempts, result => result);
+    }
+
+    [Fact]
     public async Task Poll_rejects_an_auth_req_id_issued_to_another_client()
     {
         using var factory = SufficitIdentityTestFactory.CreateIsolated(CibaEnabledWithShortInterval());

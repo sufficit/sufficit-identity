@@ -74,6 +74,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(options.HumanVerification);
         services.AddSingleton(options.TwoFactor);
         services.AddSingleton(options.Passkeys);
+        services.AddSingleton(options.CredentialMutations);
         services.AddSingleton(options.Fapi2);
         services.AddSingleton(options.Jar);
         services.AddSingleton(options.SharedSignals);
@@ -891,6 +892,9 @@ public static class ServiceCollectionExtensions
             OpenIddictIdentityUserSessionRevoker>();
         services.AddScoped<IIdentityAccountLifecycleService,
             IdentityAccountLifecycleService>();
+        services.AddScoped<ICredentialMutationSecurityCoordinator,
+            CredentialMutationSecurityCoordinator>();
+        services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IAssuranceLevelResolver, AmrBasedAssuranceLevelResolver>();
         services.AddScoped<IAccountSelfService, AccountSelfService>();
         services.AddScoped<IAccountAccessService, AccountAccessService>();

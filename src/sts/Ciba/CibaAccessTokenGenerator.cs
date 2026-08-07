@@ -26,15 +26,11 @@ namespace Sufficit.Identity.STS.Ciba;
 /// with, so resource servers validate the CIBA token against the STS JWKS at
 /// <c>.well-known/openid-configuration/jwks</c>.</para>
 ///
-/// <para><b>Limitation (documented).</b> A hand-built JWT is NOT an OpenIddict
-/// reference token: it is invisible to <c>/connect/introspect</c> and
-/// <c>/connect/revocation</c>, and OpenIddict's token storage does not track
-/// it. Clients that validate the JWT locally against JWKS are unaffected. For
-/// a CIBA client that needs introspection/revocation, insert a row into the
-/// OpenIddict tokens table via <c>IOpenIddictTokenManager.CreateAsync</c> —
-/// deferred until a concrete requirement materializes (CIBA is a new grant,
-/// no legacy clients depend on it yet). Portable: depends only on
-/// <c>Microsoft.IdentityModel.JsonWebTokens</c>, survives a move off OpenIddict.</para>
+/// <para><b>Token tracking.</b> The controller creates the matching OpenIddict
+/// token entry and persists this JWT as its payload. That keeps introspection
+/// and revocation available while resource servers can still validate the JWT
+/// locally against JWKS. Portable: generation itself depends only on
+/// <c>Microsoft.IdentityModel.JsonWebTokens</c>.</para>
 /// </remarks>
 public sealed class CibaAccessTokenGenerator
 {
@@ -63,8 +59,8 @@ public sealed class CibaAccessTokenGenerator
     /// Builds a signed JWT access token for the approved CIBA subject.
     /// </summary>
     /// <param name="subject">The user's <c>sub</c>.</param>
-    /// <param name="audience">The resource/audience the token is for (the CIBA
-    /// client that initiated the request).</param>
+    /// <param name="audiences">The resource/audience values derived from the
+    /// granted scopes.</param>
     /// <param name="scopes">The granted scopes (space-joined into the
     /// <c>scope</c> claim).</param>
     /// <param name="clientId">The client_id that initiated the CIBA request
@@ -73,7 +69,7 @@ public sealed class CibaAccessTokenGenerator
     /// cnf for DPoP, etc.) to embed.</param>
     public string Generate(
         string subject,
-        string audience,
+        IReadOnlyCollection<string> audiences,
         IReadOnlyCollection<string> scopes,
         string clientId,
         string tokenId,
@@ -82,11 +78,16 @@ public sealed class CibaAccessTokenGenerator
         var now = _timeProvider.GetUtcNow();
         var expires = now.AddMinutes(_accessTokenLifetimeMinutes);
 
+        if (audiences.Count == 0)
+        {
+            throw new ArgumentException(
+                "At least one token audience is required.", nameof(audiences));
+        }
+
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Iss, _issuer),
             new(JwtRegisteredClaimNames.Sub, subject),
-            new(JwtRegisteredClaimNames.Aud, audience),
             new(JwtRegisteredClaimNames.Iat,
                 EpochTime.GetIntDate(now.DateTime).ToString(),
                 ClaimValueTypes.Integer64),
@@ -100,6 +101,11 @@ public sealed class CibaAccessTokenGenerator
             new(Claims.Private.TokenId, tokenId),
         };
 
+        foreach (var audience in audiences)
+        {
+            claims.Add(new Claim(JwtRegisteredClaimNames.Aud, audience));
+        }
+
         if (extraClaims is not null)
         {
             foreach (var claim in extraClaims)
@@ -111,7 +117,6 @@ public sealed class CibaAccessTokenGenerator
         var descriptor = new SecurityTokenDescriptor
         {
             Issuer = _issuer,
-            Audience = audience,
             IssuedAt = now.DateTime,
             Expires = expires.DateTime,
             SigningCredentials = _signingCredentials,

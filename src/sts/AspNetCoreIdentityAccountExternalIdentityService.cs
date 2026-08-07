@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Core.Entities;
@@ -16,8 +15,7 @@ namespace Sufficit.Identity.STS;
 public sealed class AspNetCoreIdentityAccountExternalIdentityService(
     UserManager<ApplicationUser> userManager,
     SignInManager<ApplicationUser> signInManager,
-    ISecurityEventTrigger securityEvents,
-    IHttpContextAccessor httpContextAccessor,
+    ICredentialMutationSecurityCoordinator credentialSecurity,
     ILogger<AspNetCoreIdentityAccountExternalIdentityService> logger)
     : IAccountExternalIdentityService
 {
@@ -33,7 +31,6 @@ public sealed class AspNetCoreIdentityAccountExternalIdentityService(
         {
             return null;
         }
-
         var logins = await userManager.GetLoginsAsync(user);
         cancellationToken.ThrowIfCancellationRequested();
         var canRemove = await HasAlternativeSignInMethodAsync(
@@ -77,6 +74,17 @@ public sealed class AspNetCoreIdentityAccountExternalIdentityService(
         if (user is null)
         {
             return Unauthenticated();
+        }
+
+        var authorization = await credentialSecurity.AuthorizeAsync(
+            principal,
+            "external-identity-link",
+            cancellationToken: cancellationToken);
+        if (!authorization.Allowed)
+        {
+            return AccountSelfServiceResult.Failure(
+                authorization.ErrorCode!,
+                authorization.ErrorDescription!);
         }
 
         var provider = command.LoginProvider?.Trim() ?? "";
@@ -127,15 +135,14 @@ public sealed class AspNetCoreIdentityAccountExternalIdentityService(
             return FromIdentityResult(result);
         }
 
-        await TryRefreshSignInAsync(user);
         logger.LogInformation(
             "User {UserId} linked external identity provider {Provider}.",
             user.Id,
             scheme.Name);
 
-        await securityEvents.CredentialChangedAsync(
+        await credentialSecurity.CompleteAsync(
+            user,
             principal,
-            user.Id,
             new CaepCredentialChange(
                 CaepCredentialType.Federated,
                 CaepChangeOperation.Created,
@@ -157,6 +164,16 @@ public sealed class AspNetCoreIdentityAccountExternalIdentityService(
             return Unauthenticated();
         }
 
+        var authorization = await credentialSecurity.AuthorizeAsync(
+            principal,
+            "external-identity-removal",
+            cancellationToken: cancellationToken);
+        if (!authorization.Allowed)
+        {
+            return AccountSelfServiceResult.Failure(
+                authorization.ErrorCode!,
+                authorization.ErrorDescription!);
+        }
         loginProvider = loginProvider?.Trim() ?? "";
         providerKey = providerKey?.Trim() ?? "";
         var logins = await userManager.GetLoginsAsync(user);
@@ -196,15 +213,14 @@ public sealed class AspNetCoreIdentityAccountExternalIdentityService(
             return FromIdentityResult(result);
         }
 
-        await TryRefreshSignInAsync(user);
         logger.LogInformation(
             "User {UserId} removed external identity provider {Provider}.",
             user.Id,
             login.LoginProvider);
 
-        await securityEvents.CredentialChangedAsync(
+        await credentialSecurity.CompleteAsync(
+            user,
             principal,
-            user.Id,
             new CaepCredentialChange(
                 CaepCredentialType.Federated,
                 CaepChangeOperation.Deleted,
@@ -245,26 +261,6 @@ public sealed class AspNetCoreIdentityAccountExternalIdentityService(
         var user = await userManager.GetUserAsync(principal);
         cancellationToken.ThrowIfCancellationRequested();
         return user;
-    }
-
-    private async Task TryRefreshSignInAsync(ApplicationUser user)
-    {
-        if (httpContextAccessor.HttpContext is null)
-        {
-            return;
-        }
-
-        try
-        {
-            await signInManager.RefreshSignInAsync(user);
-        }
-        catch (Exception exception)
-        {
-            logger.LogWarning(
-                exception,
-                "The interactive session could not be refreshed after changing external identities for user {UserId}.",
-                user.Id);
-        }
     }
 
     private static string DisplayName(string? value, string fallback) =>

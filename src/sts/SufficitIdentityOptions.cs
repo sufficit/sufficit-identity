@@ -134,6 +134,13 @@ public sealed class SufficitIdentityOptions
     public AccountPasskeyOptions Passkeys { get; init; } = new();
 
     /// <summary>
+    /// Step-up and revocation policy applied around credential mutations.
+    /// Audit mode is the rolling-upgrade default and does not reject an
+    /// existing production session while operators measure its age.
+    /// </summary>
+    public CredentialMutationSecurityOptions CredentialMutations { get; init; } = new();
+
+    /// <summary>
     /// Optional claim-type → required-scope map that gates which custom
     /// persisted claims reach the access and identity tokens. The map is
     /// application configuration; the STS does not assign domain meaning to

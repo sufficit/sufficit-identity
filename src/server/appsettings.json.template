@@ -166,6 +166,11 @@
         "RequireConfirmedEmail": true
       },
       "_ServerSideSessions": "The ASP.NET Core Identity application cookie is SERVER-SIDE: the browser holds only the opaque OIDC `sid` as its cookie value, while the full AuthenticationTicket lives in the `oidcusersessions` table (DataProtection-protected). This enables per-device session enumeration (ISessionManagement.ListBySubjectAsync) and per-session revocation (ISessionManagement.RevokeAsync by sid), closing the protocol gap vs. Keycloak/Duende/Zitadel. The session store is DB-backed and therefore shared across replicas out of the box — no extra Redis dependency (unlike the DPoP/CIBA/nonce stores). Global revocation (RevokeAllSessionsAsync / management revoke-all / user disable/delete) bumps the security stamp AND drops every session row, so both the cookies and the session table reflect reality. Production schema must add the `oidcusersessions` table before deploying — see docs/migration/sql/080-add-oidc-user-sessions.sql (existing databases) or 001-create-empty-database.sql (fresh).",
+      "_CredentialMutations": "Central security boundary for password, MFA, passkey and federated-login mutations. Audit preserves existing sessions during rollout while recording where recent authentication is missing; switch StepUpMode to Enforce after observing production telemetry. Successful mutations revoke OAuth credentials and other browser sessions while preserving and refreshing the initiating browser session.",
+      "CredentialMutations": {
+        "StepUpMode": "Audit",
+        "MaximumAuthenticationAgeMinutes": 15
+      },
       "_ClaimScopeMap": "Central claim-emission policy. Mapped claims require their scope. Unmapped claims retain legacy access-token behavior while IncludeUnmappedClaimsInAccessTokens is true; inventory and map consumers before changing it to false for strict allowlisting.",
       "ClaimScopeMap": {
         "ClaimToScope": {

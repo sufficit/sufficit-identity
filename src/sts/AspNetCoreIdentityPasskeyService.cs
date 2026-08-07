@@ -20,6 +20,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
     UserManager<ApplicationUser> userManager,
     SignInManager<ApplicationUser> signInManager,
     ISecurityEventTrigger securityEvents,
+    ICredentialMutationSecurityCoordinator credentialSecurity,
     AccountPasskeyOptions options,
     ILogger<AspNetCoreIdentityPasskeyService> logger)
     : IAccountPasskeyService, IPasskeyAuthenticationService
@@ -44,6 +45,17 @@ public sealed class AspNetCoreIdentityPasskeyService(
             return PasskeyOptionsResult.Failure(
                 "unauthenticated",
                 "A sessão não está autenticada.");
+        }
+
+        var authorization = await credentialSecurity.AuthorizeAsync(
+            principal,
+            "passkey-registration",
+            cancellationToken: cancellationToken);
+        if (!authorization.Allowed)
+        {
+            return PasskeyOptionsResult.Failure(
+                authorization.ErrorCode!,
+                authorization.ErrorDescription!);
         }
 
         var overview = await BuildOverviewAsync(user, cancellationToken);
@@ -81,6 +93,18 @@ public sealed class AspNetCoreIdentityPasskeyService(
             return AccountPasskeyResult.Failure(
                 "unauthenticated",
                 "A sessão não está autenticada.");
+        }
+
+        var authorization = await credentialSecurity.AuthorizeAsync(
+            principal,
+            "passkey-registration",
+            cancellationToken: cancellationToken);
+        if (!authorization.Allowed)
+        {
+            return AccountPasskeyResult.Failure(
+                authorization.ErrorCode!,
+                authorization.ErrorDescription!,
+                await BuildOverviewAsync(user, cancellationToken));
         }
 
         var overview = await BuildOverviewAsync(user, cancellationToken);
@@ -174,10 +198,12 @@ public sealed class AspNetCoreIdentityPasskeyService(
             user.Id,
             new CaepDeviceChange(CaepChangeOperation.Created, credentialIdB64, attestation.Passkey.Name),
             cancellationToken);
-        await securityEvents.CredentialChangedAsync(
+        await credentialSecurity.CompleteAsync(
+            user,
             principal,
-            user.Id,
-            new CaepCredentialChange(CaepCredentialType.Passkey, CaepChangeOperation.Created),
+            new CaepCredentialChange(
+                CaepCredentialType.Passkey,
+                CaepChangeOperation.Created),
             cancellationToken);
 
         return AccountPasskeyResult.Success(state);
@@ -196,7 +222,6 @@ public sealed class AspNetCoreIdentityPasskeyService(
                 "unauthenticated",
                 "A sessão não está autenticada.");
         }
-
         var credentialId = command.CredentialId?.Trim() ?? "";
         if (credentialId.Length == 0)
         {
@@ -257,6 +282,18 @@ public sealed class AspNetCoreIdentityPasskeyService(
                 "A sessão não está autenticada.");
         }
 
+        var authorization = await credentialSecurity.AuthorizeAsync(
+            principal,
+            "passkey-removal",
+            cancellationToken: cancellationToken);
+        if (!authorization.Allowed)
+        {
+            return AccountPasskeyResult.Failure(
+                authorization.ErrorCode!,
+                authorization.ErrorDescription!,
+                await BuildOverviewAsync(user, cancellationToken));
+        }
+
         var passkeys = await userManager.GetPasskeysAsync(user);
         cancellationToken.ThrowIfCancellationRequested();
         var passkey = passkeys.FirstOrDefault(candidate => string.Equals(
@@ -290,10 +327,12 @@ public sealed class AspNetCoreIdentityPasskeyService(
             user.Id,
             new CaepDeviceChange(CaepChangeOperation.Deleted, credentialId, passkey.Name),
             cancellationToken);
-        await securityEvents.CredentialChangedAsync(
+        await credentialSecurity.CompleteAsync(
+            user,
             principal,
-            user.Id,
-            new CaepCredentialChange(CaepCredentialType.Passkey, CaepChangeOperation.Deleted),
+            new CaepCredentialChange(
+                CaepCredentialType.Passkey,
+                CaepChangeOperation.Deleted),
             cancellationToken);
 
         return AccountPasskeyResult.Success(state);
