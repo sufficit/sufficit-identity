@@ -53,7 +53,7 @@
         "Enabled": false,
         "RoutePrefix": "api",
         "RequireAuthorization": true,
-        "RequiredScope": "skoruba_identity_admin_api",
+        "RequiredScope": "identity.management",
         "_RequireMfa": "true requires the access token to carry an amr claim proving multi-factor auth (item 5.2 [L3]) for the management endpoints. Default true; explicitly set false only for an isolated migration environment.",
         "RequireMfa": true
       },
