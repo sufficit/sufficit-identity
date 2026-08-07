@@ -520,6 +520,29 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Human_verification_waits_for_the_provider_render_api()
+    {
+        var script = File.ReadAllText(Path.Combine(
+            ResolvePublicUiSource(),
+            "wwwroot",
+            "js",
+            "human-verification.js"));
+
+        Assert.Contains(
+            "typeof api.render === 'function'",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "setTimeout(checkReady, 50)",
+            script,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "if (window[definition.global]) return Promise.resolve();",
+            script,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Passkey_ui_uses_canonical_contracts_and_real_http_ceremonies()
     {
         var publicUi = ResolvePublicUiSource();
