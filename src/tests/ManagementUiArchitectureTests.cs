@@ -993,6 +993,22 @@ public sealed class ManagementUiArchitectureTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Database_dashboard_uses_the_runtime_event_stream_instead_of_polling()
+    {
+        var page = File.ReadAllText(Path.Combine(
+            ResolveManagementUiSource(),
+            "Components",
+            "Pages",
+            "Database.razor"));
+
+        Assert.Contains(".WatchAsync(cancellationToken)", page, StringComparison.Ordinal);
+        Assert.Contains("Eventos em tempo real", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("PeriodicTimer", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("FromSeconds(2)", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("a cada 2 segundos", page, StringComparison.Ordinal);
+    }
+
     private static string ResolveManagementUiSource()
     {
         var repositoryRoot = ResolveIdentityRepository();

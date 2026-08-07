@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -17,6 +18,26 @@ public sealed class ManagementDatabaseDataSource(
     AuthenticationStateProvider authenticationStateProvider,
     ILogger<ManagementDatabaseDataSource> logger)
 {
+    public async IAsyncEnumerable<DatabaseRuntimeSnapshot> WatchAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        var authentication =
+            await authenticationStateProvider.GetAuthenticationStateAsync();
+        var context = new ManagementRequestContext(
+            authentication.User,
+            Activity.Current?.Id ?? $"management-ui-{Guid.NewGuid():N}");
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var service = scope.ServiceProvider
+            .GetRequiredService<IDatabaseMonitoringService>();
+
+        await foreach (var snapshot in service
+            .WatchAsync(context, cancellationToken)
+            .WithCancellation(cancellationToken))
+        {
+            yield return snapshot;
+        }
+    }
+
     public async Task<ManagementDataResult<DatabaseRuntimeSnapshot>> GetAsync(
         CancellationToken cancellationToken = default)
     {

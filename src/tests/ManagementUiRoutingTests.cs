@@ -1,4 +1,5 @@
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -9,6 +10,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Sufficit.Identity.Application.Branding;
+using Sufficit.Identity.Application.Diagnostics;
 using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Branding;
@@ -16,6 +18,7 @@ using Sufficit.Identity.Management.Claims;
 using Sufficit.Identity.Management.Clients;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Authorizations;
+using Sufficit.Identity.Management.Database;
 using Sufficit.Identity.Management.Overview;
 using Sufficit.Identity.Management.Provisioning;
 using Sufficit.Identity.Management.Scopes;
@@ -236,6 +239,24 @@ public sealed class ManagementUiRoutingTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("Eventos administrativos", html, StringComparison.Ordinal);
         Assert.Contains("test-correlation", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Administrator_renders_the_event_driven_database_dashboard()
+    {
+        await using var app = await CreateHostAsync();
+        using var client = app.GetTestClient();
+
+        await SignInAsync(client, "administrator");
+
+        using var response = await client.GetAsync("/management/database");
+        var html = WebUtility.HtmlDecode(
+            await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Tempo real ativo", html, StringComparison.Ordinal);
+        Assert.Contains("Eventos em tempo real", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("a cada 2 segundos", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -570,6 +591,9 @@ public sealed class ManagementUiRoutingTests
             StubProvisioningManagementService>();
         builder.Services.AddSingleton<IManagementAuditService, StubManagementAuditService>();
         builder.Services.AddSingleton<
+            IDatabaseMonitoringService,
+            StubDatabaseMonitoringService>();
+        builder.Services.AddSingleton<
             IUserAvatarUrlResolver,
             StubUserAvatarUrlResolver>();
         builder.Services.AddOptions<ManagementOptions>()
@@ -684,6 +708,44 @@ public sealed class ManagementUiRoutingTests
             ManagementRequestContext context,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+    }
+
+    private sealed class StubDatabaseMonitoringService
+        : IDatabaseMonitoringService
+    {
+        private static readonly DatabaseRuntimeSnapshot Snapshot = new(
+            new DateTimeOffset(2026, 8, 7, 3, 0, 0, TimeSpan.Zero),
+            TotalCommands: 42,
+            FailedCommands: 0,
+            Pools: [],
+            ActiveConnections: [],
+            new DatabaseWatchdogSnapshot(
+                Enabled: true,
+                Status: "healthy",
+                ConsecutiveFailures: 0,
+                LastProbeAtUtc: new DateTimeOffset(
+                    2026,
+                    8,
+                    7,
+                    3,
+                    0,
+                    0,
+                    TimeSpan.Zero),
+                LastLatencyMilliseconds: 4,
+                LastFailureCode: null));
+
+        public Task<DatabaseRuntimeSnapshot> GetAsync(
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Snapshot);
+
+        public async IAsyncEnumerable<DatabaseRuntimeSnapshot> WatchAsync(
+            ManagementRequestContext context,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            yield return Snapshot;
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+        }
     }
 
     private sealed class StubClaimManagementService : IClaimManagementService

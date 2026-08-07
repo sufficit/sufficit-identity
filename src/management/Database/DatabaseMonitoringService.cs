@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Sufficit.Identity.Application.Diagnostics;
 using Sufficit.Identity.Management.Authorization;
 
@@ -12,6 +13,10 @@ namespace Sufficit.Identity.Management.Database;
 public interface IDatabaseMonitoringService
 {
     Task<DatabaseRuntimeSnapshot> GetAsync(
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
+    IAsyncEnumerable<DatabaseRuntimeSnapshot> WatchAsync(
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 }
@@ -30,6 +35,29 @@ internal sealed class DatabaseMonitoringService(
         ManagementRequestContext context,
         CancellationToken cancellationToken = default)
     {
+        await AuthorizeAsync(context, cancellationToken);
+
+        return telemetry.GetSnapshot();
+    }
+
+    public async IAsyncEnumerable<DatabaseRuntimeSnapshot> WatchAsync(
+        ManagementRequestContext context,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await AuthorizeAsync(context, cancellationToken);
+
+        await foreach (var snapshot in telemetry
+            .WatchAsync(cancellationToken)
+            .WithCancellation(cancellationToken))
+        {
+            yield return snapshot;
+        }
+    }
+
+    private async ValueTask AuthorizeAsync(
+        ManagementRequestContext context,
+        CancellationToken cancellationToken)
+    {
         ArgumentNullException.ThrowIfNull(context);
 
         var decision = await authorization.EvaluateAsync(
@@ -41,8 +69,6 @@ internal sealed class DatabaseMonitoringService(
         {
             throw new ManagementAccessException(decision);
         }
-
-        return telemetry.GetSnapshot();
     }
 }
 

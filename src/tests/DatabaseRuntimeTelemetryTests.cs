@@ -109,4 +109,67 @@ public sealed class DatabaseRuntimeTelemetryTests
         Assert.Equal("database_probe_timeout", watchdog.LastFailureCode);
         Assert.DoesNotContain("connection string", watchdog.LastFailureCode);
     }
+
+    [Fact]
+    public async Task Live_stream_broadcasts_event_driven_snapshots_to_every_subscriber()
+    {
+        using var telemetry = new DatabaseRuntimeTelemetry();
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        await using var first = telemetry
+            .WatchAsync(cancellation.Token)
+            .GetAsyncEnumerator(cancellation.Token);
+        await using var second = telemetry
+            .WatchAsync(cancellation.Token)
+            .GetAsyncEnumerator(cancellation.Token);
+
+        Assert.True(await first.MoveNextAsync());
+        Assert.True(await second.MoveNextAsync());
+        Assert.Empty(first.Current.ActiveConnections);
+        Assert.Empty(second.Current.ActiveConnections);
+
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        telemetry.TrackOpened(connection);
+
+        var firstUpdate = first.MoveNextAsync().AsTask();
+        var secondUpdate = second.MoveNextAsync().AsTask();
+        var subscribersAdvanced = await Task.WhenAll(firstUpdate, secondUpdate)
+            .WaitAsync(TimeSpan.FromSeconds(2));
+
+        Assert.True(subscribersAdvanced[0]);
+        Assert.True(subscribersAdvanced[1]);
+        Assert.Single(first.Current.ActiveConnections);
+        Assert.Single(second.Current.ActiveConnections);
+    }
+
+    [Fact]
+    public async Task Live_stream_coalesces_command_bursts_into_the_latest_snapshot()
+    {
+        using var telemetry = new DatabaseRuntimeTelemetry();
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        telemetry.TrackOpened(connection);
+        await using var updates = telemetry
+            .WatchAsync(cancellation.Token)
+            .GetAsyncEnumerator(cancellation.Token);
+
+        Assert.True(await updates.MoveNextAsync());
+
+        for (var index = 0; index < 20; index++)
+        {
+            telemetry.TrackCommandStarted(connection);
+            telemetry.TrackCommandCompleted(
+                connection,
+                TimeSpan.FromMilliseconds(1),
+                failed: false);
+        }
+
+        Assert.True(await updates.MoveNextAsync());
+        var connectionSnapshot = Assert.Single(
+            updates.Current.ActiveConnections);
+        Assert.Equal(20, updates.Current.TotalCommands);
+        Assert.Equal(20, connectionSnapshot.LeaseCommandCount);
+        Assert.Equal(0, connectionSnapshot.ActiveCommands);
+    }
 }
