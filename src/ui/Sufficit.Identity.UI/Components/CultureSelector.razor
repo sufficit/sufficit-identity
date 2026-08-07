@@ -3,14 +3,20 @@
 @using Microsoft.AspNetCore.Localization
 @inject NavigationManager Nav
 @inject IHttpContextAccessor HttpContextAccessor
+@inject IStringLocalizer<SharedResource> L
 
 @if (_cultures.Length > 1)
 {
     <div class="culture-selector">
-        <select @onchange="ChangeCulture" value="@_currentCulture">
+        <label class="visually-hidden" for="identity-culture">@L["Culture.Selector"]</label>
+        <select id="identity-culture"
+                name="culture"
+                aria-label="@L["Culture.Selector"]"
+                @onchange="ChangeCulture"
+                value="@_currentCulture.Name">
             @foreach (var culture in _cultures)
             {
-                <option value="@culture.Name">@culture.NativeName</option>
+                <option value="@culture.Name">@GetCultureLabel(culture)</option>
             }
         </select>
     </div>
@@ -24,6 +30,14 @@
     };
 
     private CultureInfo _currentCulture = CultureInfo.CurrentUICulture;
+
+    private static string GetCultureLabel(CultureInfo culture) =>
+        culture.Name switch
+        {
+            "pt-BR" => "PT",
+            "en-US" => "EN",
+            _ => culture.TwoLetterISOLanguageName.ToUpperInvariant(),
+        };
 
     private async Task ChangeCulture(ChangeEventArgs e)
     {

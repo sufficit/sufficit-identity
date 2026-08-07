@@ -103,12 +103,30 @@
                             <span>
                                 <strong>@scope.DisplayName</strong>
                                 <small>@scope.Description</small>
+                                @if (scope.IsTechnical)
+                                {
+                                    <code class="device-scope-item__identifier">@scope.Name</code>
+                                }
                             </span>
                         </li>
                     }
                 </ul>
             }
         </section>
+
+        @if (_resources.Count > 0)
+        {
+            <details class="device-resources">
+                <summary>@L["Device.AccessDestinations"]</summary>
+                <p>@L["Device.AccessDestinationsDescription"]</p>
+                <ul>
+                    @foreach (var resource in _resources)
+                    {
+                        <li><code>@resource</code></li>
+                    }
+                </ul>
+            </details>
+        }
 
         <dl class="device-validity" aria-label="@L["Device.ValidityLabel"]">
             <div class="device-validity__row">
@@ -170,6 +188,7 @@
     private string? _clientId;
     private string? _clientName;
     private IReadOnlyList<ScopeViewModel> _scopes = Array.Empty<ScopeViewModel>();
+    private IReadOnlyList<string> _resources = Array.Empty<string>();
     private TimeSpan? _accessTokenLifetime;
     private DateTimeOffset? _estimatedAccessTokenExpiresAt;
     private bool _allowsRefreshAccess;
@@ -206,7 +225,12 @@
 
         _clientId = context.ClientId;
         _clientName = context.ClientDisplayName ?? context.ClientId;
-        _scopes = ScopeProvider.Build(context.RequestedScopes);
+        _scopes = ScopeProvider.Build(
+            context.ScopePresentations is { Count: > 0 }
+                ? context.ScopePresentations
+                : context.RequestedScopes.Select(scope =>
+                    new AuthorizationScopePresentation(scope, null, null, [])));
+        _resources = context.RequestedResources ?? [];
         _accessTokenLifetime = context.AccessTokenLifetime;
         _estimatedAccessTokenExpiresAt = context.AccessTokenLifetime is { } lifetime
             ? DateTimeOffset.UtcNow.Add(lifetime)

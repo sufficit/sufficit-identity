@@ -255,6 +255,9 @@
   <data name="Scope.phone.Name" xml:space="preserve"><value>Telefone</value></data>
   <data name="Scope.offline_access.Name" xml:space="preserve"><value>Acesso offline</value></data>
   <data name="Scope.offline_access.Description" xml:space="preserve"><value>Permite manter o acesso quando você não está usando o app.</value></data>
+  <data name="Scope.StandardDescription" xml:space="preserve"><value>Permissão padrão de identidade.</value></data>
+  <data name="Scope.TechnicalName" xml:space="preserve"><value>Integração da aplicação</value></data>
+  <data name="Scope.TechnicalDescription" xml:space="preserve"><value>Permissão técnica solicitada pela aplicação ({0}).</value></data>
 
   <!-- ===== Front-channel logout page ===== -->
   <data name="FrontchannelLogout.Title" xml:space="preserve"><value>Encerrando sessões conectadas</value></data>
@@ -297,6 +300,8 @@
   <data name="Device.Requester" xml:space="preserve"><value>Solicitante</value></data>
   <data name="Device.CodeConfirmed" xml:space="preserve"><value>Código confirmado</value></data>
   <data name="Device.NoAdditionalScopes" xml:space="preserve"><value>Nenhuma permissão adicional foi solicitada.</value></data>
+  <data name="Device.AccessDestinations" xml:space="preserve"><value>Serviços que receberão o acesso</value></data>
+  <data name="Device.AccessDestinationsDescription" xml:space="preserve"><value>Identificadores técnicos dos serviços para os quais o token poderá ser apresentado.</value></data>
   <data name="Device.ValidityLabel" xml:space="preserve"><value>Validade do acesso</value></data>
   <data name="Device.SafetyNote" xml:space="preserve"><value>Autorize somente se você iniciou esta solicitação. A aplicação nunca verá sua senha.</value></data>
   <data name="DeleteAccount.DataWarning" xml:space="preserve"><value>Todos os seus dados (perfil, logins externos vinculados, configurações de 2FA) serão removidos.</value></data>
