@@ -4209,6 +4209,11 @@ h3 {
         border-top: 1px solid var(--line);
     }
 
+    .database-capacity__facts > div:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+        border-left: 0;
+    }
+
     .database-capacity__note {
         padding-inline: 16px;
     }

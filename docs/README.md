@@ -55,6 +55,7 @@ Dated evaluations that are useful only as historical evidence live under
 ## Operations
 
 - [Deployment configuration](runbooks/RUNBOOK-DEPLOYMENT.md)
+- [Database connection resilience and monitoring](runbooks/RUNBOOK-DATABASE-CONNECTION-RESILIENCE.md)
 - [CSP calibration](runbooks/RUNBOOK-CSP-CALIBRATION.md)
 - [Confirmed-email rollout](runbooks/RUNBOOK-CONFIRMED-EMAIL.md)
 
