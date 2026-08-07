@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.UI.Abstractions.Hosting;
 using Sufficit.Identity.UI.Services;
 
@@ -92,15 +93,6 @@ public static class ServiceCollectionExtensions
         return app;
     }
 
-    private static string GetSafeLocalReturnUrl(string? returnUrl)
-    {
-        if (string.IsNullOrWhiteSpace(returnUrl)
-            || returnUrl[0] != '/'
-            || (returnUrl.Length > 1 && returnUrl[1] is '/' or '\\'))
-        {
-            return "/";
-        }
-
-        return returnUrl;
-    }
+    private static string GetSafeLocalReturnUrl(string? returnUrl) =>
+        LocalUrlValidator.EnsureLocal(returnUrl);
 }
