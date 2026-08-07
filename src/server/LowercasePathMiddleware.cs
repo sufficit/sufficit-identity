@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
+using Sufficit.Identity.Application.Accounts;
 
 namespace Sufficit.Identity.Server;
 
@@ -33,11 +33,14 @@ public sealed class LowercasePathMiddleware
     {
         var path = context.Request.Path.Value;
 
-        // Finding #5 (open redirect): reject protocol-relative paths like
-        // //evil.host/Login BEFORE any other processing. This guard must run
-        // before NeedsLowercasing because an all-lowercase // path would
-        // otherwise bypass the redirect logic and pass through to routing.
-        if (!string.IsNullOrEmpty(path) && path.StartsWith("//", StringComparison.Ordinal))
+        // Validate before NeedsLowercasing so an already-lowercase ambiguous
+        // request target cannot bypass the redirect branch and reach routing.
+        // LocalUrlValidator is shared by every caller that emits a local
+        // navigation/redirect decision.
+        if (!string.IsNullOrEmpty(path)
+            && !LocalUrlValidator.IsLocal(BuildLocalTarget(
+                context.Request.PathBase.Value,
+                path)))
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
             return;
@@ -62,7 +65,19 @@ public sealed class LowercasePathMiddleware
 
         // Rebuild the URL preserving the original query string untouched.
         // Request.QueryString already contains the leading '?' (or is empty).
-        var location = lower + context.Request.QueryString.Value;
+        var location = BuildLocalTarget(
+            context.Request.PathBase.Value,
+            lower,
+            context.Request.QueryString.Value);
+
+        // Keep the redirect sink independently guarded. This protects future
+        // changes to target construction and makes the shared policy the final
+        // authority before a Location header is written.
+        if (!LocalUrlValidator.IsLocal(location))
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
 
         // 308 Permanent Redirect preserves method and body (unlike 301/302
         // which may downgrade POST to GET in some clients). RFC 7538.
@@ -70,6 +85,12 @@ public sealed class LowercasePathMiddleware
         context.Response.Headers.Location = location;
         await context.Response.CompleteAsync();
     }
+
+    private static string BuildLocalTarget(
+        string? pathBase,
+        string path,
+        string? queryString = null)
+        => string.Concat(pathBase, path, queryString);
 
     /// <summary>
     /// Returns <c>true</c> if the path contains at least one uppercase

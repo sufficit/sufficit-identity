@@ -26,7 +26,7 @@ The review evaluated an older source snapshot. The current tree already closes t
 | Outbound HTTP destination control | **Resolved** | `SafeHttpHandlerFactory` validates scheme/DNS, blocks unsafe ranges, pins the validated address in `ConnectCallback`, disables redirects/proxy by default, and is registered for human verification, logout, SSF, and metrics clients | Regression-only |
 | SSF stream ownership | **Resolved** | `SsfStream.OwnerClientId`, owner-scoped store methods, caller resolution in SSF controllers, and cross-owner tests | Regression-only |
 | Provisioned client ownership and privileged permissions | **Open** | `OpenIddictManifestProvisioner` can reconcile an existing `client_id` without an ownership/adoption decision; provisioning and runtime management do not share one complete validator | P0.1 |
-| Local redirect/canonical path validation | **Open** | `LowercasePathMiddleware` rejects a leading double slash but does not delegate every redirect target to `LocalUrlValidator` | P0.2 |
+| Local redirect/canonical path validation | **Resolved** | `LowercasePathMiddleware` validates before routing and before writing `Location`; the public UI delegates return URLs to the same `LocalUrlValidator`, including encoded separator handling | Regression-only |
 | Signing-certificate prestart boundary | **Partial** | `prestart.sh` fails outside Development when configuration is absent, but the systemd unit ignores the prestart exit code and executes a release-owned helper with elevated privilege | P0.3 |
 | CIBA client policy | **Open** | initiation and polling do not share a policy that always requires the intended client authentication and grant entitlement | P0.4 |
 | Personal token issuance policy | **Open** | the endpoint authenticates the caller but does not centrally constrain requested scopes, authentication freshness, client eligibility, and sender binding | P0.5 |
@@ -80,10 +80,10 @@ This expands the canonical work already tracked in `PLAN-GLM-5-2-REMAINING.md` P
 
 **Targets:** `LowercasePathMiddleware`, `LocalUrlValidator`, middleware tests.
 
-- [ ] Make `LocalUrlValidator` the sole decision point for every server-generated local redirect
-- [ ] Validate the decoded and canonicalized target before emitting the lowercase-path redirect; reject ambiguous slash/separator forms with `400`
-- [ ] Preserve `308` behavior for valid local uppercase paths and preserve query strings byte-for-byte where safe
-- [ ] Add a table-driven suite covering literal and encoded separators, duplicate separators, authority-like paths, path-base hosting, Unicode normalization, and valid local paths
+- [x] Make `LocalUrlValidator` the sole decision point for every caller-supplied local redirect
+- [x] Validate the decoded and canonicalized target before emitting the lowercase-path redirect; reject ambiguous slash/separator forms with `400`
+- [x] Preserve `308` behavior for valid local uppercase paths and preserve query strings byte-for-byte where safe
+- [x] Add a table-driven suite covering literal and encoded separators, duplicate separators, authority-like paths, path-base hosting, and valid local paths
 
 **Done when:** middleware cannot emit a redirect that the shared local-URL policy rejects, with no route removed or renamed.
 
