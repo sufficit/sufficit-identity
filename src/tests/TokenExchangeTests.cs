@@ -1,9 +1,11 @@
 using System.Net;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
+using OpenIddict.Abstractions;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Sufficit.Identity.Tests;
 
@@ -156,6 +158,60 @@ public sealed class TokenExchangeTests
         Assert.False(
             introspectBody.TryGetProperty("role", out var roleClaim),
             $"Exchanged token unexpectedly carries a 'role' claim ({roleClaim}) despite the delegated scope lacking 'roles'.");
+    }
+
+    [Fact]
+    public async Task Token_exchange_rejects_resource_not_present_in_subject_token()
+    {
+        const string escalatedResource = "https://resource-only-at-exchange.tests.local";
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Mcp:Resources:0"] = escalatedResource,
+            });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var applications = scope.ServiceProvider
+                .GetRequiredService<IOpenIddictApplicationManager>();
+            var application = await applications.FindByClientIdAsync(
+                TestDataSeeder.TokenExchangeClientId)
+                ?? throw new InvalidOperationException("Token-exchange client is missing.");
+            var descriptor = new OpenIddictApplicationDescriptor();
+            await applications.PopulateAsync(descriptor, application);
+            descriptor.Permissions.Add(Permissions.Prefixes.Resource + escalatedResource);
+            await applications.UpdateAsync(application, descriptor);
+        }
+
+        var client = factory.CreateClient();
+        var (subjectStatus, subjectBody) = await client.PostFormAsync(
+            "/connect/token",
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "password",
+                ["username"] = TestDataSeeder.DefaultUsername,
+                ["password"] = TestDataSeeder.DefaultPassword,
+                ["client_id"] = TestDataSeeder.PasswordClientId,
+                ["client_secret"] = TestDataSeeder.PasswordClientSecret,
+                ["scope"] = TestDataSeeder.ScopeName,
+            });
+        Assert.Equal(HttpStatusCode.OK, subjectStatus);
+
+        var (exchangeStatus, exchangeBody) = await client.PostFormAsync(
+            "/connect/token",
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "urn:ietf:params:oauth:grant-type:token-exchange",
+                ["subject_token"] = subjectBody.GetProperty("access_token").GetString()!,
+                ["subject_token_type"] = "urn:ietf:params:oauth:token-type:access_token",
+                ["client_id"] = TestDataSeeder.TokenExchangeClientId,
+                ["client_secret"] = TestDataSeeder.TokenExchangeClientSecret,
+                ["resource"] = escalatedResource,
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, exchangeStatus);
+        Assert.Equal("invalid_target", exchangeBody.GetProperty("error").GetString());
     }
 }
 

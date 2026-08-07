@@ -27,7 +27,8 @@ public static class SecurityHeadersMiddlewareExtensions
         "accelerometer=(), autoplay=(), camera=(), cross-origin-isolated=(), " +
         "display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), " +
         "gyroscope=(), keyboard-map=(), magnetometer=(), microphone=(), " +
-        "midi=(), payment=(), picture-in-picture=(), publickey-credentials-get=(), " +
+        "midi=(), payment=(), picture-in-picture=(), " +
+        "publickey-credentials-get=(self), publickey-credentials-create=(self), " +
         "screen-wake-lock=(), sync-xhr=(), usb=(), xr-spatial-tracking=()";
 
     /// <summary>

@@ -48,7 +48,7 @@ public class AuthorizationController : Controller
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly TokenExchangeOptions _tokenExchangeOptions;
-    private readonly IReadOnlyDictionary<string, string> _claimScopeMap;
+    private readonly IApplicationClaimDestinationPolicy _applicationClaimPolicy;
     private readonly Logout.IBackchannelLogoutDispatcher _backchannelLogoutDispatcher;
     private readonly Logout.IFrontchannelLogoutDispatcher _frontchannelLogoutDispatcher;
     private readonly SharedSignals.ISharedSignalsDispatcher _sharedSignalsDispatcher;
@@ -67,6 +67,7 @@ public class AuthorizationController : Controller
         UserManager<ApplicationUser> userManager,
         IConfiguration configuration,
         IAntiforgery antiforgery,
+        IApplicationClaimDestinationPolicy applicationClaimPolicy,
         Logout.IBackchannelLogoutDispatcher backchannelLogoutDispatcher,
         Logout.IFrontchannelLogoutDispatcher frontchannelLogoutDispatcher,
         SharedSignals.ISharedSignalsDispatcher sharedSignalsDispatcher,
@@ -81,15 +82,7 @@ public class AuthorizationController : Controller
         _userManager = userManager;
         _tokenExchangeOptions = configuration.GetSection("Sufficit:Identity:TokenExchange").Get<TokenExchangeOptions>()
             ?? new TokenExchangeOptions();
-        // Claim-type → required-scope map (eval #10 / item 2.5 [M5]). Bound
-        // from Sufficit:Identity:ClaimScopeMap:ClaimToScope. Empty by default
-        // → GetDestinations behavior is byte-identical to before until an
-        // operator adds an entry. Same IConfiguration-read pattern as
-        // TokenExchangeOptions above (the SufficitIdentityOptions type lives
-        // in src/sts and is already referenced here).
-        var claimScopeOptions = configuration.GetSection("Sufficit:Identity:ClaimScopeMap")
-            .Get<ClaimScopeMapOptions>() ?? new ClaimScopeMapOptions();
-        _claimScopeMap = claimScopeOptions.ClaimToScope;
+        _applicationClaimPolicy = applicationClaimPolicy;
         _antiforgery = antiforgery;
         _backchannelLogoutDispatcher = backchannelLogoutDispatcher;
         _frontchannelLogoutDispatcher = frontchannelLogoutDispatcher;
@@ -361,8 +354,9 @@ public class AuthorizationController : Controller
                 }
             }
 
+            var dpopHeader = Request.Headers["DPoP"].ToString();
             var proof = await _dpopProofValidator.ValidateAsync(
-                Request.Headers["DPoP"].ToString(),
+                dpopHeader,
                 Request.Method,
                 Request.Scheme + "://" + Request.Host + Request.Path.Value,
                 expectedNonce,
@@ -374,7 +368,7 @@ public class AuthorizationController : Controller
             // nonce validity directly since the validator returns null for any
             // failure).
             if (proof is null && _dpopOptions.RequireNonce
-                && !_dpopNonceStore.IsValid(ExtractNonceFromHeader(Request.Headers["DPoP"].ToString())))
+                && !_dpopNonceStore.IsValid(ExtractNonceFromHeader(dpopHeader)))
             {
                 var freshNonce = _dpopNonceStore.Issue();
                 Response.Headers["DPoP-Nonce"] = freshNonce;
@@ -385,6 +379,18 @@ public class AuthorizationController : Controller
                         [OpenIddictServerAspNetCoreConstants.Properties.Error] = "use_dpop_nonce",
                         [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
                             "The DPoP nonce is missing or invalid. Retry with the current DPoP-Nonce value."
+                    }));
+            }
+
+            if (proof is null && !string.IsNullOrWhiteSpace(dpopHeader))
+            {
+                return Forbid(
+                    authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = "invalid_dpop_proof",
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
+                            "The supplied DPoP proof is invalid and cannot be downgraded to bearer issuance."
                     }));
             }
 
@@ -845,7 +851,24 @@ public class AuthorizationController : Controller
             ? requestedScopes.Intersect(subjectScopes)
             : (IEnumerable<string>)subjectScopes);
 
-        identity.SetResources(await ResolveResourcesAsync(identity, request));
+        var delegatedResources = (await ResolveResourcesAsync(identity, request))
+            .ToHashSet(StringComparer.Ordinal);
+        var subjectResources = result.Principal.GetResources()
+            .Concat(result.Principal.GetAudiences())
+            .ToHashSet(StringComparer.Ordinal);
+        var requestedResources = request.GetResources();
+        if (requestedResources.Any(resource => !subjectResources.Contains(resource)))
+        {
+            return Forbid(
+                authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                properties: new AuthenticationProperties(new Dictionary<string, string?>
+                {
+                    [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidTarget,
+                    [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
+                        "The requested resource is not authorized by the subject_token."
+                }));
+        }
+        identity.SetResources(delegatedResources.Intersect(subjectResources));
 
         // RFC 8693 §4.1: identify the acting party (the client performing the
         // exchange) with an "act" claim, NESTING any actor chain the
@@ -933,9 +956,9 @@ public class AuthorizationController : Controller
         // Only claims explicitly mapped by the composing host and requested
         // through their corresponding scope are returned; the STS never
         // interprets their names or values.
-        if (_claimScopeMap.Count > 0)
+        if (_applicationClaimPolicy.MappedClaimScopes.Count > 0)
         {
-            foreach (var mapping in _claimScopeMap)
+            foreach (var mapping in _applicationClaimPolicy.MappedClaimScopes)
             {
                 if (!User.HasScope(mapping.Value))
                 {
@@ -1391,16 +1414,9 @@ public class AuthorizationController : Controller
                 // pre-existing behavior (access token, never id_token), so an
                 // empty map (the default) is byte-identical to before — and
                 // callers requesting only a plain custom scope still holds.
-                if (_claimScopeMap.TryGetValue(claim.Type, out var requiredScope))
-                {
-                    if (claim.Subject!.HasScope(requiredScope))
-                    {
-                        yield return Destinations.AccessToken;
-                        yield return Destinations.IdentityToken;
-                    }
-                    yield break;
-                }
-                yield return Destinations.AccessToken;
+                foreach (var destination in _applicationClaimPolicy.GetDestinations(
+                    claim, includeIdentityToken: true))
+                    yield return destination;
                 break;
         }
     }
@@ -1434,16 +1450,12 @@ public class AuthorizationController : Controller
 public sealed class TokenExchangeOptions
 {
     /// <summary>
-    /// Master switch for the token-exchange grant (RFC 8693). Default
-    /// <c>false</c> — secure-by-default (EVALUATION-2026-07-21 §5 P0 #8).
-    /// Production environments that have signed off a delegation policy
-    /// must opt-in explicitly via
-    /// <c>Sufficit:Identity:TokenExchange:Enabled=true</c> AND configure
-    /// <see cref="AllowedClientIds"/> to a closed allowlist. The "test-exchange"
-    /// client used by <c>TokenExchangeTests</c> still works because the
-    /// integration test factory overrides this default via test configuration.
+    /// Master switch for the token-exchange grant (RFC 8693). It remains on by
+    /// default for rolling-upgrade compatibility; OpenIddict's per-application
+    /// grant permission and the attenuation policy still apply. Operators can
+    /// add <see cref="AllowedClientIds"/> as a second client boundary.
     /// </summary>
-    public bool Enabled { get; init; } = false;
+    public bool Enabled { get; init; } = true;
 
     /// <summary>
     /// Client IDs allowed to act as the "actor" in a token exchange, on TOP of

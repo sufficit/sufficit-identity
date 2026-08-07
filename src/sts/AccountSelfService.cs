@@ -20,7 +20,7 @@ public sealed class AccountSelfService(
     UserManager<ApplicationUser> userManager,
     SignInManager<ApplicationUser> signInManager,
     IIdentityAccountLifecycleService accountLifecycle,
-    ISecurityEventTrigger securityEvents,
+    ICredentialMutationSecurityCoordinator credentialSecurity,
     IHttpContextAccessor httpContextAccessor,
     ILogger<AccountSelfService> logger)
     : IAccountSelfService
@@ -90,19 +90,16 @@ public sealed class AccountSelfService(
             return FromIdentityResult(result);
         }
 
-        await TryRefreshSignInAsync(user);
+        await credentialSecurity.CompleteAsync(
+            user,
+            principal,
+            new CaepCredentialChange(
+                CaepCredentialType.Password,
+                CaepChangeOperation.Updated),
+            cancellationToken);
         logger.LogInformation(
             "User {UserId} changed their password.",
             user.Id);
-
-        // CAEP credential-change: notify SSF/CAEP receivers (no-op when SSF
-        // is disabled). Best-effort — the SharedSignalsSecurityEventTrigger
-        // adapter swallows delivery failures.
-        await securityEvents.CredentialChangedAsync(
-            principal,
-            user.Id,
-            new CaepCredentialChange(CaepCredentialType.Password, CaepChangeOperation.Updated),
-            cancellationToken);
 
         return AccountSelfServiceResult.Success;
     }
@@ -261,26 +258,6 @@ public sealed class AccountSelfService(
         var user = await userManager.GetUserAsync(principal);
         cancellationToken.ThrowIfCancellationRequested();
         return user;
-    }
-
-    private async Task TryRefreshSignInAsync(ApplicationUser user)
-    {
-        if (httpContextAccessor.HttpContext is null)
-        {
-            return;
-        }
-
-        try
-        {
-            await signInManager.RefreshSignInAsync(user);
-        }
-        catch (Exception exception)
-        {
-            logger.LogWarning(
-                exception,
-                "The interactive session could not be refreshed after the password change for user {UserId}.",
-                user.Id);
-        }
     }
 
     private async Task TrySignOutAsync()

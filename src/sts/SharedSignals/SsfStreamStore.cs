@@ -1,4 +1,6 @@
+using System.Data;
 using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Sufficit.Identity.Core.Data;
@@ -15,6 +17,7 @@ namespace Sufficit.Identity.STS.SharedSignals;
 public interface ISsfStreamStore
 {
     Task<SsfStream> CreateAsync(
+        string ownerClientId,
         string audience,
         string deliveryMethod,
         string? endpoint,
@@ -22,21 +25,39 @@ public interface ISsfStreamStore
         string subjectScope,
         IReadOnlyCollection<string> eventsRequested,
         string? description,
+        string verificationChallenge,
+        DateTime verificationExpiresAtUtc,
         CancellationToken cancellationToken);
 
     Task<SsfStream?> GetByStreamIdAsync(
         string streamId,
         CancellationToken cancellationToken);
 
+    Task<SsfStream?> GetByStreamIdForOwnerAsync(
+        string ownerClientId,
+        string streamId,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<SsfStream>> ListEnabledAsync(CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<SsfStream>> ListEnabledForOwnerAsync(
+        string ownerClientId,
+        CancellationToken cancellationToken);
 
     Task<IReadOnlyList<SsfStream>> ListEnabledPushAsync(CancellationToken cancellationToken);
 
     Task<IReadOnlyList<SsfStream>> ListEnabledPollAsync(CancellationToken cancellationToken);
 
-    Task MarkVerifiedAsync(string streamId, CancellationToken cancellationToken);
+    Task<SsfVerificationResult> VerifyAsync(
+        string ownerClientId,
+        string streamId,
+        string? verificationChallenge,
+        CancellationToken cancellationToken);
 
-    Task DisableAsync(string streamId, CancellationToken cancellationToken);
+    Task<bool> DisableForOwnerAsync(
+        string ownerClientId,
+        string streamId,
+        CancellationToken cancellationToken);
 
     /// <summary>
     /// Enqueues a SET for later poll delivery (RFC 8934). Idempotent on
@@ -58,6 +79,14 @@ public interface ISsfStreamStore
         CancellationToken cancellationToken);
 }
 
+public enum SsfVerificationResult
+{
+    Verified,
+    NotFound,
+    InvalidChallenge,
+    Expired,
+}
+
 internal sealed class SsfStreamStore : ISsfStreamStore
 {
     public const string PushDeliveryMethod = "urn:ietf:rfc:8935";
@@ -69,14 +98,17 @@ internal sealed class SsfStreamStore : ISsfStreamStore
     private readonly AppDbContext _database;
     private readonly TimeProvider _timeProvider;
     private readonly IKeyVault _keyVault;
+    private readonly OutboundHttpSecurityOptions _outboundHttpOptions;
 
     public SsfStreamStore(
         AppDbContext database,
         IKeyVault keyVault,
+        OutboundHttpSecurityOptions outboundHttpOptions,
         TimeProvider? timeProvider = null)
     {
         _database = database;
         _keyVault = keyVault;
+        _outboundHttpOptions = outboundHttpOptions;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
@@ -114,6 +146,7 @@ internal sealed class SsfStreamStore : ISsfStreamStore
     }
 
     public async Task<SsfStream> CreateAsync(
+        string ownerClientId,
         string audience,
         string deliveryMethod,
         string? endpoint,
@@ -121,9 +154,13 @@ internal sealed class SsfStreamStore : ISsfStreamStore
         string subjectScope,
         IReadOnlyCollection<string> eventsRequested,
         string? description,
+        string verificationChallenge,
+        DateTime verificationExpiresAtUtc,
         CancellationToken cancellationToken)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerClientId);
         ArgumentException.ThrowIfNullOrWhiteSpace(audience);
+        ArgumentException.ThrowIfNullOrWhiteSpace(verificationChallenge);
         if (!AllowedDeliveryMethods.Contains(deliveryMethod))
         {
             throw new ArgumentException(
@@ -137,6 +174,21 @@ internal sealed class SsfStreamStore : ISsfStreamStore
                 "An HTTPS endpoint is required for push delivery.",
                 nameof(endpoint));
         }
+        if (deliveryMethod == PushDeliveryMethod)
+        {
+            try
+            {
+                SafeHttpHandlerFactory.ValidateRequestUri(
+                    Uri.TryCreate(endpoint, UriKind.Absolute, out var endpointUri)
+                        ? endpointUri
+                        : null,
+                    _outboundHttpOptions);
+            }
+            catch (HttpRequestException exception)
+            {
+                throw new ArgumentException(exception.Message, nameof(endpoint), exception);
+            }
+        }
 
         var now = _timeProvider.GetUtcNow().UtcDateTime;
         var id = Guid.NewGuid().ToString("N");
@@ -146,12 +198,15 @@ internal sealed class SsfStreamStore : ISsfStreamStore
         {
             Id = id,
             StreamId = streamId,
+            OwnerClientId = ownerClientId,
             Audience = audience,
             DeliveryMethod = deliveryMethod,
             Endpoint = endpoint,
             Authorization = await EncryptAuthorizationAsync(authorization, streamId, cancellationToken),
             Status = "enabled",
             VerificationState = "pending",
+            VerificationChallengeHash = HashChallenge(verificationChallenge),
+            VerificationExpiresAtUtc = verificationExpiresAtUtc,
             SubjectScope = string.IsNullOrWhiteSpace(subjectScope) ? "ALL" : subjectScope,
             EventsRequested = System.Text.Json.JsonSerializer.Serialize(eventsRequested),
             Description = description,
@@ -179,6 +234,20 @@ internal sealed class SsfStreamStore : ISsfStreamStore
         return stream;
     }
 
+    public async Task<SsfStream?> GetByStreamIdForOwnerAsync(
+        string ownerClientId,
+        string streamId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerClientId);
+        var stream = await OwnedBy(_database.SsfStreams.AsNoTracking(), ownerClientId)
+            .FirstOrDefaultAsync(s => s.StreamId == streamId, cancellationToken);
+        if (stream is null) return null;
+        stream.Authorization = await DecryptAuthorizationAsync(
+            stream.Authorization, stream.StreamId, cancellationToken);
+        return stream;
+    }
+
     public async Task<IReadOnlyList<SsfStream>> ListEnabledAsync(
         CancellationToken cancellationToken)
     {
@@ -190,12 +259,26 @@ internal sealed class SsfStreamStore : ISsfStreamStore
         return streams;
     }
 
+    public async Task<IReadOnlyList<SsfStream>> ListEnabledForOwnerAsync(
+        string ownerClientId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerClientId);
+        var streams = await OwnedBy(_database.SsfStreams.AsNoTracking(), ownerClientId)
+            .Where(s => s.Status == "enabled")
+            .ToArrayAsync(cancellationToken);
+        await DecryptAuthorizationsAsync(streams, cancellationToken);
+        return streams;
+    }
+
     public async Task<IReadOnlyList<SsfStream>> ListEnabledPushAsync(
         CancellationToken cancellationToken)
     {
         var streams = await _database.SsfStreams
             .AsNoTracking()
-            .Where(s => s.Status == "enabled" && s.DeliveryMethod == PushDeliveryMethod)
+            .Where(s => s.Status == "enabled"
+                && s.DeliveryMethod == PushDeliveryMethod
+                && (s.VerificationState == "verified" || s.VerificationChallengeHash == null))
             .ToArrayAsync(cancellationToken);
         await DecryptAuthorizationsAsync(streams, cancellationToken);
         return streams;
@@ -206,7 +289,9 @@ internal sealed class SsfStreamStore : ISsfStreamStore
     {
         var streams = await _database.SsfStreams
             .AsNoTracking()
-            .Where(s => s.Status == "enabled" && s.DeliveryMethod == PollDeliveryMethod)
+            .Where(s => s.Status == "enabled"
+                && s.DeliveryMethod == PollDeliveryMethod
+                && (s.VerificationState == "verified" || s.VerificationChallengeHash == null))
             .ToArrayAsync(cancellationToken);
         await DecryptAuthorizationsAsync(streams, cancellationToken);
         return streams;
@@ -227,24 +312,51 @@ internal sealed class SsfStreamStore : ISsfStreamStore
         }
     }
 
-    public async Task MarkVerifiedAsync(string streamId, CancellationToken cancellationToken)
+    public async Task<SsfVerificationResult> VerifyAsync(
+        string ownerClientId,
+        string streamId,
+        string? verificationChallenge,
+        CancellationToken cancellationToken)
     {
-        var stream = await _database.SsfStreams
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerClientId);
+        var stream = await OwnedBy(_database.SsfStreams, ownerClientId)
             .FirstOrDefaultAsync(s => s.StreamId == streamId, cancellationToken);
-        if (stream is null) return;
+        if (stream is null) return SsfVerificationResult.NotFound;
+
+        // Legacy streams have no persisted challenge. Accepting the historical
+        // no-body confirmation for those rows keeps a rolling deployment
+        // backward compatible; every newly-created stream uses the challenge.
+        if (stream.VerificationChallengeHash is not null)
+        {
+            if (stream.VerificationExpiresAtUtc <= _timeProvider.GetUtcNow().UtcDateTime)
+                return SsfVerificationResult.Expired;
+            if (string.IsNullOrWhiteSpace(verificationChallenge)
+                || !ChallengeMatches(
+                    verificationChallenge, stream.VerificationChallengeHash))
+                return SsfVerificationResult.InvalidChallenge;
+        }
+
         stream.VerificationState = "verified";
+        stream.VerificationChallengeHash = null;
+        stream.VerificationExpiresAtUtc = null;
         stream.UpdatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
         await _database.SaveChangesAsync(cancellationToken);
+        return SsfVerificationResult.Verified;
     }
 
-    public async Task DisableAsync(string streamId, CancellationToken cancellationToken)
+    public async Task<bool> DisableForOwnerAsync(
+        string ownerClientId,
+        string streamId,
+        CancellationToken cancellationToken)
     {
-        var stream = await _database.SsfStreams
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerClientId);
+        var stream = await OwnedBy(_database.SsfStreams, ownerClientId)
             .FirstOrDefaultAsync(s => s.StreamId == streamId, cancellationToken);
-        if (stream is null) return;
+        if (stream is null) return false;
         stream.Status = "disabled";
         stream.UpdatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime;
         await _database.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     public async Task EnqueuePollDeliveryAsync(
@@ -253,19 +365,37 @@ internal sealed class SsfStreamStore : ISsfStreamStore
         string setPayload,
         CancellationToken cancellationToken)
     {
-        // Idempotent: skip if this jti is already queued for this stream.
+        var deliveryKey = CreateDeliveryKey(streamId, jti);
+
+        // Fast idempotency check. The unique delivery key below is the final
+        // authority when concurrent replicas race past this read.
         var exists = await _database.SsfSetDeliveries
-            .AnyAsync(d => d.StreamId == streamId && d.Jti == jti, cancellationToken);
+            .AnyAsync(d => d.DeliveryKey == deliveryKey
+                || (d.DeliveryKey == null && d.StreamId == streamId && d.Jti == jti),
+                cancellationToken);
         if (exists) return;
 
-        _database.SsfSetDeliveries.Add(new SsfSetDelivery
+        var delivery = new SsfSetDelivery
         {
             StreamId = streamId,
             Jti = jti,
+            DeliveryKey = deliveryKey,
             SetPayload = setPayload,
             CreatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
-        });
-        await _database.SaveChangesAsync(cancellationToken);
+        };
+        _database.SsfSetDeliveries.Add(delivery);
+        try
+        {
+            await _database.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            _database.Entry(delivery).State = EntityState.Detached;
+            if (await _database.SsfSetDeliveries.AsNoTracking()
+                .AnyAsync(d => d.DeliveryKey == deliveryKey, cancellationToken))
+                return;
+            throw;
+        }
     }
 
     public async Task<(IReadOnlyList<string> Payloads, bool MoreAvailable)> PullAndConsumeAsync(
@@ -275,6 +405,9 @@ internal sealed class SsfStreamStore : ISsfStreamStore
     {
         limit = Math.Clamp(limit, 1, 100);
         var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+        await using var transaction = await _database.Database
+            .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
         // Pull unconsumed rows ordered oldest-first, then mark them consumed.
         var pending = await _database.SsfSetDeliveries
@@ -297,6 +430,37 @@ internal sealed class SsfStreamStore : ISsfStreamStore
             await _database.SaveChangesAsync(cancellationToken);
         }
 
+        await transaction.CommitAsync(cancellationToken);
+
         return (toConsume.Select(r => r.SetPayload).ToArray(), moreAvailable);
     }
+
+    private static IQueryable<SsfStream> OwnedBy(
+        IQueryable<SsfStream> query,
+        string ownerClientId) =>
+        query.Where(stream => stream.OwnerClientId == ownerClientId
+            || (stream.OwnerClientId == null && stream.Audience == ownerClientId));
+
+    private static string HashChallenge(string challenge) =>
+        WebEncoders.Base64UrlEncode(SHA256.HashData(Encoding.UTF8.GetBytes(challenge)));
+
+    private static bool ChallengeMatches(string challenge, string expectedHash)
+    {
+        byte[] expected;
+        try
+        {
+            expected = WebEncoders.Base64UrlDecode(expectedHash);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+
+        var actual = SHA256.HashData(Encoding.UTF8.GetBytes(challenge));
+        return CryptographicOperations.FixedTimeEquals(actual, expected);
+    }
+
+    private static string CreateDeliveryKey(string streamId, string jti) =>
+        Convert.ToHexStringLower(SHA256.HashData(
+            Encoding.UTF8.GetBytes($"{streamId}\0{jti}")));
 }

@@ -26,6 +26,21 @@ public sealed class EvaluationFixTests
         Assert.Equal("directives", scope);
     }
 
+    [Fact]
+    public void Claim_policy_can_fail_closed_for_unmapped_persisted_claims()
+    {
+        var options = new ClaimScopeMapOptions
+        {
+            IncludeUnmappedClaimsInAccessTokens = false,
+        };
+        var policy = new ApplicationClaimDestinationPolicy(options);
+        var identity = new System.Security.Claims.ClaimsIdentity();
+        var claim = new System.Security.Claims.Claim("unexpected-sensitive", "value");
+        identity.AddClaim(claim);
+
+        Assert.Empty(policy.GetDestinations(claim, includeIdentityToken: true));
+    }
+
     // ---- #5: Open redirect blocked ----
 
     [Theory]

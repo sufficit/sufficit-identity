@@ -130,6 +130,27 @@ public sealed class VaultTests
     }
 
     [Fact]
+    public async Task Real_vault_reads_legacy_pass_through_values_during_migration()
+    {
+        IKeyVault compatibility = new PassThroughKeyVault();
+        var legacy = await compatibility.EncryptAsync(
+            "ssf-stream-authz",
+            "Bearer legacy-token");
+        var (vault, _) = CreateRealVault();
+
+        var decrypted = await vault.DecryptStringAsync(
+            legacy,
+            new Dictionary<string, string> { ["stream_id"] = "legacy" });
+
+        Assert.Equal("Bearer legacy-token", decrypted);
+        var replacement = await vault.EncryptAsync(
+            "ssf-stream-authz",
+            "Bearer legacy-token",
+            new Dictionary<string, string> { ["stream_id"] = "legacy" });
+        Assert.StartsWith("v1.", replacement, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Real_vault_rejects_wrong_aad()
     {
         var (vault, _) = CreateRealVault();

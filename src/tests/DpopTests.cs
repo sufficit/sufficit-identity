@@ -108,6 +108,33 @@ public sealed class DpopTests
     }
 
     [Fact]
+    public async Task Invalid_supplied_proof_is_not_downgraded_when_dpop_is_optional()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Dpop:Enabled"] = "true",
+                ["Sufficit:Identity:Dpop:RequireForAllClients"] = "false",
+            });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("DPoP", "malformed-proof");
+        var (status, body) = await client.PostFormAsync(
+            "/connect/token",
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "client_credentials",
+                ["client_id"] = TestDataSeeder.ClientCredentialsClientId,
+                ["client_secret"] = TestDataSeeder.ClientCredentialsClientSecret,
+                ["scope"] = TestDataSeeder.ScopeName,
+            });
+
+        Assert.True(status is HttpStatusCode.BadRequest or HttpStatusCode.Unauthorized);
+        Assert.Equal("invalid_dpop_proof", body.GetProperty("error").GetString());
+    }
+
+    [Fact]
     public async Task Password_grant_with_valid_proof_issues_a_sender_bound_token()
     {
         using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
@@ -274,6 +301,53 @@ public sealed class DpopTests
         client.DefaultRequestHeaders.Remove("DPoP");
         client.DefaultRequestHeaders.Add("DPoP", attackerProof);
         using var rejected = await client.GetAsync("/connect/userinfo");
+        Assert.Equal(HttpStatusCode.Unauthorized, rejected.StatusCode);
+    }
+
+    [Fact]
+    public async Task Account_api_validates_dpop_proof_through_validation_pipeline()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Dpop:Enabled"] = "true",
+                ["Sufficit:Identity:Dpop:RequireForAllClients"] = "true",
+            });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        var client = factory.CreateClient();
+        var tokenUrl = new Uri(client.BaseAddress!, "connect/token").AbsoluteUri;
+        var (tokenProof, key) = BuildDpopProof("POST", tokenUrl);
+        client.DefaultRequestHeaders.Add("DPoP", tokenProof);
+        var (tokenStatus, tokenBody) = await client.PostFormAsync(
+            "/connect/token",
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "password",
+                ["username"] = TestDataSeeder.DefaultUsername,
+                ["password"] = TestDataSeeder.DefaultPassword,
+                ["client_id"] = TestDataSeeder.PasswordClientId,
+                ["client_secret"] = TestDataSeeder.PasswordClientSecret,
+                ["scope"] = TestDataSeeder.ScopeName,
+            });
+        Assert.Equal(HttpStatusCode.OK, tokenStatus);
+        var accessToken = tokenBody.GetProperty("access_token").GetString()!;
+
+        var apiUrl = new Uri(client.BaseAddress!, "api/account/tokens").AbsoluteUri;
+        var (apiProof, _) = BuildDpopProof(
+            "GET", apiUrl, accessToken: accessToken, signingKey: key);
+        client.DefaultRequestHeaders.Remove("DPoP");
+        client.DefaultRequestHeaders.Add("DPoP", apiProof);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("DPoP", accessToken);
+        using var accepted = await client.GetAsync("/api/account/tokens");
+        Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
+
+        var (attackerProof, _) = BuildDpopProof(
+            "GET", apiUrl, accessToken: accessToken);
+        client.DefaultRequestHeaders.Remove("DPoP");
+        client.DefaultRequestHeaders.Add("DPoP", attackerProof);
+        using var rejected = await client.GetAsync("/api/account/tokens");
         Assert.Equal(HttpStatusCode.Unauthorized, rejected.StatusCode);
     }
 

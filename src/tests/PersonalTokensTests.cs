@@ -23,6 +23,46 @@ public sealed class PersonalTokensTests
         _factory = factory;
 
     [Fact]
+    public async Task Personal_token_can_be_explicitly_attenuated_to_requested_scopes()
+    {
+        var client = _factory.CreateClient();
+        var accessToken = await GetAccessTokenAsync(client);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var createResponse = await client.PostAsJsonAsync(
+            "/api/account/tokens",
+            new
+            {
+                description = "profile-only",
+                expiration = DateTimeOffset.UtcNow.AddDays(7),
+                scopes = new[] { Scopes.Profile },
+            });
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        using var created = JsonDocument.Parse(
+            await createResponse.Content.ReadAsStringAsync());
+        var personalToken = created.RootElement.GetProperty("accessToken").GetString();
+
+        using var introspectionResponse = await client.PostAsJsonAsync(
+            "/api/account/tokens/introspect",
+            new { token = personalToken });
+        using var introspection = JsonDocument.Parse(
+            await introspectionResponse.Content.ReadAsStringAsync());
+        Assert.Equal(
+            Scopes.Profile,
+            introspection.RootElement.GetProperty("scope").GetString());
+
+        using var rejected = await client.PostAsJsonAsync(
+            "/api/account/tokens",
+            new
+            {
+                expiration = DateTimeOffset.UtcNow.AddDays(7),
+                scopes = new[] { "unregistered-escalation" },
+            });
+        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+    }
+
+    [Fact]
     public async Task Personal_token_lifecycle_is_self_contained_in_the_new_identity()
     {
         var client = _factory.CreateClient();

@@ -469,6 +469,38 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Consent_layout_uses_available_desktop_width_and_stacks_on_mobile()
+    {
+        var publicUi = ResolvePublicUiSource();
+        var consent = File.ReadAllText(Path.Combine(
+            publicUi,
+            "Pages",
+            "Consent.razor"));
+        var styles = File.ReadAllText(Path.Combine(
+            publicUi,
+            "wwwroot",
+            "css",
+            "site.css"));
+
+        Assert.Contains(
+            "class=\"auth-card consent-card\"",
+            consent,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".consent-card {\n    max-width: 800px;",
+            styles,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "grid-template-columns: 18px minmax(13.5rem, 0.65fr) minmax(0, 1.35fr);",
+            styles,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "grid-template-columns: 18px minmax(0, 1fr);",
+            styles,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Human_verification_pages_enable_interactive_server_rendering()
     {
         var accountPages = Path.Combine(

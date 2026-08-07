@@ -169,6 +169,9 @@ Exposed as `--space-1` through `--space-10`. No off-grid values.
 The centered `.auth-card` is the atomic unit of this UI:
 
 - `max-width: 420px` on desktop, full-bleed minus padding on mobile.
+- Consent is the deliberate wide exception: `.consent-card` uses `800px` on
+  desktop so scope names and descriptions can be scanned side by side, then
+  returns to a stacked single-column reading order at `768px` and below.
 - `padding: 32px` desktop / `24px` mobile.
 - One card per page. The card is the whole content area — no sidebars on auth
   surfaces.
@@ -189,7 +192,8 @@ an auth surface:
 
 | Surface        | Max width | Notes                                  |
 |----------------|-----------|----------------------------------------|
-| Auth card      | 420px     | login, register, consent, forgot, 2FA  |
+| Auth card      | 420px     | login, register, forgot, 2FA           |
+| Consent card   | 800px     | scope name + description; stacks ≤768px |
 | Manage main    | 640px     | forms, lists                           |
 | Manage wide    | 960px     | grants table, sessions list            |
 | Page padding   | 16px mobile, 24px desktop                                  |

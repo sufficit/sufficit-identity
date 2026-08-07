@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Security.Claims;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Antiforgery;
@@ -37,6 +38,7 @@ public class CibaController : Controller
     public const string CibaGrantType = "urn:openid:params:grant-type:ciba";
 
     private readonly IOpenIddictApplicationManager _applicationManager;
+    private readonly IOpenIddictScopeManager _scopeManager;
     private readonly IOpenIddictTokenManager _tokenManager;
     private readonly Ciba.ICibaPendingRequestStore _pendingStore;
     private readonly Ciba.CibaAccessTokenGenerator _accessTokenGenerator;
@@ -47,6 +49,7 @@ public class CibaController : Controller
 
     public CibaController(
         IOpenIddictApplicationManager applicationManager,
+        IOpenIddictScopeManager scopeManager,
         IOpenIddictTokenManager tokenManager,
         Ciba.ICibaPendingRequestStore pendingStore,
         Ciba.CibaAccessTokenGenerator accessTokenGenerator,
@@ -56,6 +59,7 @@ public class CibaController : Controller
         IAntiforgery antiforgery)
     {
         _applicationManager = applicationManager;
+        _scopeManager = scopeManager;
         _tokenManager = tokenManager;
         _pendingStore = pendingStore;
         _accessTokenGenerator = accessTokenGenerator;
@@ -334,9 +338,26 @@ public class CibaController : Controller
             // because /connect/ciba/token is not a registered OpenIddict
             // endpoint. CibaAccessTokenGenerator builds a self-contained JWT
             // signed with the STS key, validatable against the STS JWKS. This
-            // is NOT an OpenIddict reference token (no introspection/revocation)
-            // — documented limitation; deferred until a client needs it.
-            var scopes = consumed.Scopes.ToList();
+            // is tracked by an OpenIddict token entry so introspection and
+            // revocation can still enforce its status.
+            var scopes = consumed.Scopes.ToImmutableArray();
+            var resources = new List<string>();
+            await foreach (var resource in _scopeManager.ListResourcesAsync(scopes))
+            {
+                if (!resources.Contains(resource, StringComparer.Ordinal))
+                {
+                    resources.Add(resource);
+                }
+            }
+
+            // Scopes without configured resources remain usable by the
+            // initiating client, while mapped scopes use their resource
+            // servers as audiences just like the regular token pipeline.
+            if (resources.Count == 0)
+            {
+                resources.Add(consumed.ClientId);
+            }
+
             var extraClaims = new List<System.Security.Claims.Claim>();
             if (scopes.Contains(Scopes.Email, StringComparer.Ordinal))
             {
@@ -358,36 +379,35 @@ public class CibaController : Controller
                 }
             }
 
-            var accessToken = _accessTokenGenerator.Generate(
-                subject: subject,
-                audience: consumed.ClientId,
-                scopes: scopes,
-                clientId: consumed.ClientId,
-                extraClaims: extraClaims);
-
-            // Finding #16 fix: register the CIBA access token in OpenIddict's
-            // token store so it is revocable (/connect/revocation) and
-            // introspectable (/connect/introspect). Without this, the hand-built
-            // JWT is invisible to OpenIddict's token lifecycle. The reference_id
-            // is the JWT's jti so /connect/revocation can find it.
-            var cibaJti = new Microsoft.IdentityModel.JsonWebTokens.JsonWebToken(accessToken)
-                .TryGetPayloadValue("jti", out string jti) ? jti : Guid.NewGuid().ToString("N");
-
             var application = await _applicationManager.FindByClientIdAsync(
                 consumed.ClientId);
-            await _tokenManager.CreateAsync(new OpenIddictTokenDescriptor
+            var now = DateTimeOffset.UtcNow;
+            var expiration = now + _accessTokenGenerator.AccessTokenLifetime;
+            var tokenEntry = await _tokenManager.CreateAsync(new OpenIddictTokenDescriptor
             {
-                ReferenceId = cibaJti,
                 Subject = subject,
                 Status = Statuses.Valid,
-                Type = "CIBA-access-token",
-                CreationDate = DateTimeOffset.UtcNow,
-                ExpirationDate = DateTimeOffset.UtcNow.AddHours(1),
-                Payload = accessToken,
+                Type = TokenTypeIdentifiers.AccessToken,
+                CreationDate = now,
+                ExpirationDate = expiration,
                 ApplicationId = application is not null
                     ? await _applicationManager.GetIdAsync(application)
                     : null,
             });
+            var tokenId = await _tokenManager.GetIdAsync(tokenEntry)
+                ?? throw new InvalidOperationException(
+                    "The CIBA access-token entry has no identifier.");
+            var accessToken = _accessTokenGenerator.Generate(
+                subject: subject,
+                audiences: resources,
+                scopes: scopes,
+                clientId: consumed.ClientId,
+                tokenId: tokenId,
+                extraClaims: extraClaims);
+            var tokenDescriptor = new OpenIddictTokenDescriptor();
+            await _tokenManager.PopulateAsync(tokenDescriptor, tokenEntry);
+            tokenDescriptor.Payload = accessToken;
+            await _tokenManager.UpdateAsync(tokenEntry, tokenDescriptor);
 
             // RFC 9126 §3.2 / RFC 6749 §5.1 successful token response.
             Response.Headers.CacheControl = "no-store";
@@ -396,7 +416,7 @@ public class CibaController : Controller
             {
                 access_token = accessToken,
                 token_type = "Bearer",
-                expires_in = 3600,
+                expires_in = (long)_accessTokenGenerator.AccessTokenLifetime.TotalSeconds,
                 scope = string.Join(' ', scopes),
             });
         }
