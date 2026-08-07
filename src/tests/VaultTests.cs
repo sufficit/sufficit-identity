@@ -1,8 +1,10 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Tests.Infrastructure;
 using Sufficit.Identity.Vault;
@@ -18,6 +20,26 @@ namespace Sufficit.Identity.Tests;
 /// </summary>
 public sealed class VaultTests
 {
+    [Fact]
+    public void Registration_exposes_the_configured_state_through_options()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{VaultOptions.SectionName}:Enabled"] = "true",
+                [$"{VaultOptions.SectionName}:KeySource"] = "dataprotection"
+            })
+            .Build();
+        var services = new ServiceCollection();
+
+        services.AddSufficitVault(configuration);
+
+        using var provider = services.BuildServiceProvider();
+        var configured = provider.GetRequiredService<IOptions<VaultOptions>>().Value;
+        Assert.True(configured.Enabled);
+        Assert.Equal("dataprotection", configured.KeySource);
+    }
+
     // ---- EnvelopeCrypto (AES-256-GCM) ----
 
     [Fact]
