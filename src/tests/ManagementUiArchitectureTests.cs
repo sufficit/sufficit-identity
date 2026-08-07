@@ -981,7 +981,10 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("window.close();", script, StringComparison.Ordinal);
         Assert.Contains("fallback.hidden = false", script, StringComparison.Ordinal);
         Assert.Contains("window.opener", script, StringComparison.Ordinal);
-        Assert.Contains("window.history.length <= 1", script, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "window.history.length <= 1",
+            script,
+            StringComparison.Ordinal);
         Assert.Contains("button.hidden = true", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Tentar fechar novamente", script, StringComparison.Ordinal);
         Assert.Contains(

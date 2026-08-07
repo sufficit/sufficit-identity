@@ -118,7 +118,7 @@ public sealed class DeviceFlowTests
             {
                 ["client_id"] = TestDataSeeder.DeviceClientId,
                 ["client_secret"] = TestDataSeeder.DeviceClientSecret,
-                ["scope"] = "openid profile email offline_access",
+                ["scope"] = $"openid profile email offline_access {TestDataSeeder.ScopeName}",
             });
         Assert.Equal(HttpStatusCode.OK, authStatus);
         var userCode = authBody.GetProperty("user_code").GetString()!;
@@ -160,6 +160,16 @@ public sealed class DeviceFlowTests
         Assert.Contains("profile", context.RequestedScopes);
         Assert.Contains("email", context.RequestedScopes);
         Assert.Contains("offline_access", context.RequestedScopes);
+        var customScope = Assert.Single(
+            context.ScopePresentations!,
+            scope => scope.Name == TestDataSeeder.ScopeName);
+        Assert.Equal("Test scope", customScope.DisplayName);
+        Assert.Contains(
+            TestDataSeeder.IntrospectionClientId,
+            customScope.Resources);
+        Assert.Contains(
+            TestDataSeeder.IntrospectionClientId,
+            context.RequestedResources!);
         Assert.Equal(TimeSpan.FromMinutes(45), context.AccessTokenLifetime);
         Assert.True(context.AllowsRefreshAccess);
     }

@@ -28,6 +28,7 @@ public sealed class OpenIddictDeviceAuthorizationContextService :
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IOpenIddictTokenManager _tokenManager;
     private readonly IOpenIddictApplicationManager _applicationManager;
+    private readonly IOpenIddictScopeManager _scopeManager;
     private readonly IOptionsMonitor<OpenIddictServerOptions> _serverOptions;
     private readonly ITimeLimitedDataProtector _protector;
 
@@ -35,15 +36,17 @@ public sealed class OpenIddictDeviceAuthorizationContextService :
         IHttpContextAccessor httpContextAccessor,
         IOpenIddictTokenManager tokenManager,
         IOpenIddictApplicationManager applicationManager,
+        IOpenIddictScopeManager scopeManager,
         IOptionsMonitor<OpenIddictServerOptions> serverOptions,
         IDataProtectionProvider dataProtectionProvider)
     {
         _httpContextAccessor = httpContextAccessor;
         _tokenManager = tokenManager;
         _applicationManager = applicationManager;
+        _scopeManager = scopeManager;
         _serverOptions = serverOptions;
         _protector = dataProtectionProvider
-            .CreateProtector("Sufficit.Identity.DeviceAuthorizationContext.v2")
+            .CreateProtector("Sufficit.Identity.DeviceAuthorizationContext.v3")
             .ToTimeLimitedDataProtector();
     }
 
@@ -103,6 +106,15 @@ public sealed class OpenIddictDeviceAuthorizationContextService :
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ToArray();
+        var scopePresentations = await ResolveScopePresentationsAsync(
+            scopes,
+            cancellationToken);
+        var requestedResources = authorizationPrincipal.GetResources()
+            .Concat(scopePresentations.SelectMany(scope => scope.Resources))
+            .Where(resource => !string.IsNullOrWhiteSpace(resource))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
         var accessTokenLifetime = authorizationPrincipal.GetAccessTokenLifetime()
             ?? await GetApplicationAccessTokenLifetimeAsync(
                 application,
@@ -114,6 +126,8 @@ public sealed class OpenIddictDeviceAuthorizationContextService :
             clientId,
             displayName,
             scopes,
+            scopePresentations,
+            requestedResources,
             accessTokenLifetime?.Ticks,
             scopes.Contains(Scopes.OfflineAccess, StringComparer.Ordinal)));
         return _protector.Protect(payload, TicketLifetime);
@@ -167,7 +181,9 @@ public sealed class OpenIddictDeviceAuthorizationContextService :
                 ticket.AccessTokenLifetimeTicks is { } ticks
                     ? TimeSpan.FromTicks(ticks)
                     : null,
-                ticket.AllowsRefreshAccess));
+                ticket.AllowsRefreshAccess,
+                ticket.ScopePresentations ?? [],
+                ticket.RequestedResources ?? []));
         }
         catch (Exception exception) when (exception is CryptographicException
             or JsonException)
@@ -177,7 +193,40 @@ public sealed class OpenIddictDeviceAuthorizationContextService :
     }
 
     private static DeviceAuthorizationContext Invalid() =>
-        new(false, null, null, [], null, false);
+        new(false, null, null, [], null, false, [], []);
+
+    private async Task<AuthorizationScopePresentation[]>
+        ResolveScopePresentationsAsync(
+            IEnumerable<string> scopeNames,
+            CancellationToken cancellationToken)
+    {
+        var result = new List<AuthorizationScopePresentation>();
+        foreach (var name in scopeNames)
+        {
+            var scope = await _scopeManager.FindByNameAsync(
+                name,
+                cancellationToken);
+            if (scope is null)
+            {
+                result.Add(new(name, null, null, []));
+                continue;
+            }
+
+            result.Add(new AuthorizationScopePresentation(
+                name,
+                await _scopeManager.GetDisplayNameAsync(
+                    scope,
+                    cancellationToken),
+                await _scopeManager.GetDescriptionAsync(
+                    scope,
+                    cancellationToken),
+                (await _scopeManager.GetResourcesAsync(
+                    scope,
+                    cancellationToken)).ToArray()));
+        }
+
+        return result.ToArray();
+    }
 
     private async Task<TimeSpan?> GetApplicationAccessTokenLifetimeAsync(
         object application,
@@ -206,6 +255,8 @@ public sealed class OpenIddictDeviceAuthorizationContextService :
         string ClientId,
         string ClientDisplayName,
         string[] RequestedScopes,
+        AuthorizationScopePresentation[] ScopePresentations,
+        string[] RequestedResources,
         long? AccessTokenLifetimeTicks,
         bool AllowsRefreshAccess);
 }

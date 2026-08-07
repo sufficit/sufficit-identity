@@ -36,12 +36,10 @@ window.sufficitIdentityDownloadFile = function (fileName, base64, mimeType) {
  */
 (function () {
     function canCloseDeviceFlowTab() {
-        // Chromium allows script closing for auxiliary windows and, depending
-        // on how they were created, tabs with a single history entry. Calling
-        // window.close() outside those cases only emits a console warning and
-        // cannot be unlocked by a later user click.
-        var hasLiveOpener = Boolean(window.opener && !window.opener.closed);
-        return hasLiveOpener || window.history.length <= 1;
+        // The only portable signal is a live opener. A short history is not
+        // enough: browsers still reject window.close() on a tab opened by the
+        // user and emit "Scripts may close only windows opened by them".
+        return Boolean(window.opener && !window.opener.closed);
     }
 
     function showManualCompletion(result) {

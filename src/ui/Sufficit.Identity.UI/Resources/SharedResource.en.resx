@@ -255,6 +255,9 @@
   <data name="Scope.phone.Name" xml:space="preserve"><value>Phone</value></data>
   <data name="Scope.offline_access.Name" xml:space="preserve"><value>Offline access</value></data>
   <data name="Scope.offline_access.Description" xml:space="preserve"><value>Allows access when you are not actively using the app.</value></data>
+  <data name="Scope.StandardDescription" xml:space="preserve"><value>Standard identity permission.</value></data>
+  <data name="Scope.TechnicalName" xml:space="preserve"><value>Application integration</value></data>
+  <data name="Scope.TechnicalDescription" xml:space="preserve"><value>Technical permission requested by the application ({0}).</value></data>
 
   <!-- ===== Front-channel logout page ===== -->
   <data name="FrontchannelLogout.Title" xml:space="preserve"><value>Signing out connected sessions</value></data>
@@ -297,6 +300,8 @@
   <data name="Device.Requester" xml:space="preserve"><value>Requester</value></data>
   <data name="Device.CodeConfirmed" xml:space="preserve"><value>Code confirmed</value></data>
   <data name="Device.NoAdditionalScopes" xml:space="preserve"><value>No additional permission was requested.</value></data>
+  <data name="Device.AccessDestinations" xml:space="preserve"><value>Services that will receive access</value></data>
+  <data name="Device.AccessDestinationsDescription" xml:space="preserve"><value>Technical identifiers of the services where the token may be presented.</value></data>
   <data name="Device.ValidityLabel" xml:space="preserve"><value>Access validity</value></data>
   <data name="Device.SafetyNote" xml:space="preserve"><value>Authorize only if you started this request. The application will never see your password.</value></data>
   <data name="DeleteAccount.DataWarning" xml:space="preserve"><value>All your data (profile, linked external logins, and 2FA settings) will be removed.</value></data>
