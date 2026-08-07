@@ -79,6 +79,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(options.Jar);
         services.AddSingleton(options.SharedSignals);
         services.AddSingleton(options.OutboundHttp);
+        services.AddSingleton<IPublicOriginResolver, PublicOriginResolver>();
         services.AddSingleton<IApplicationClaimDestinationPolicy>(
             new ApplicationClaimDestinationPolicy(options.ClaimScopeMap));
         services.AddSingleton<IdentityMetricsRuntimeState>();
@@ -128,13 +129,28 @@ public static class ServiceCollectionExtensions
         // already relied on further down.
         var isDevelopmentEnvironment =
             Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+        var configuredPublicOrigin = PublicOriginResolver.ResolveConfigured(options);
+        if (configuredPublicOrigin is null && options.PublicOrigin.Mode == PublicOriginMode.Enforce)
+        {
+            throw new InvalidOperationException(
+                "PublicOrigin:Mode=Enforce requires Sufficit:Identity:PublicUrl or Issuer.");
+        }
+        if (!isDevelopmentEnvironment && configuredPublicOrigin is null)
+        {
+            Console.Error.WriteLine(
+                "[WARNING] No canonical Sufficit:Identity:PublicUrl/Issuer is configured. Public URLs remain request-derived in compatibility Audit mode.");
+        }
         // Auxiliary protocol JWTs (logout_token, JARM, SSF/CAEP and CIBA)
         // share one key for the lifetime of this service provider. In
         // production this resolves the configured STS certificate. In
         // Development it creates one ephemeral key that is also added to the
         // OpenIddict server below, ensuring its public half appears in JWKS.
+        var certificateMaterial = LoadCertificateMaterial(
+            options.Certificates,
+            isDevelopmentEnvironment);
         var auxiliarySigningCredentials = ResolveProtocolSigningCredentials(
-            options, isDevelopmentEnvironment);
+            certificateMaterial.Signing,
+            isDevelopmentEnvironment);
 
         // ---- Database (MySQL/MariaDB via Pomelo.EntityFrameworkCore.MySql) ----
         // Sufficit fork of Pomelo (EF Core 10), built from upstream PR #2019.
@@ -228,14 +244,11 @@ public static class ServiceCollectionExtensions
             .SetApplicationName("Sufficit.Identity")
             .PersistKeysToDbContext<AppDbContext>();
 
-        if (!string.IsNullOrWhiteSpace(options.Certificates.SigningPath))
+        if (certificateMaterial.Signing is not null)
         {
-            var dpCert = X509CertificateLoader.LoadPkcs12FromFile(
-                options.Certificates.SigningPath,
-                options.Certificates.SigningPassword);
             // If ProtectKeysWithCertificate throws (wrong key type, etc.), let
             // it propagate — fail-closed is the correct posture for production.
-            dpBuilder.ProtectKeysWithCertificate(dpCert);
+            dpBuilder.ProtectKeysWithCertificate(certificateMaterial.Signing);
         }
 
         // ---- Internal secret vault (envelope encryption, Transit-style) ----
@@ -694,12 +707,9 @@ public static class ServiceCollectionExtensions
                 // (isDevelopmentEnvironment computed once, near the top of
                 // AddSufficitIdentitySTS, and reused here via closure.)
                 // -------------------------------------------------------------------
-                if (!string.IsNullOrWhiteSpace(options.Certificates.SigningPath))
+                if (certificateMaterial.Signing is not null)
                 {
-                    var signingCertificate = X509CertificateLoader.LoadPkcs12FromFile(
-                        options.Certificates.SigningPath,
-                        options.Certificates.SigningPassword);
-                    server.AddSigningCertificate(signingCertificate);
+                    server.AddSigningCertificate(certificateMaterial.Signing);
                 }
                 else if (isDevelopmentEnvironment)
                 {
@@ -720,12 +730,9 @@ public static class ServiceCollectionExtensions
                         "allowed when ASPNETCORE_ENVIRONMENT=Development.");
                 }
 
-                if (!string.IsNullOrWhiteSpace(options.Certificates.EncryptionPath))
+                if (certificateMaterial.Encryption is not null)
                 {
-                    var encryptionCertificate = X509CertificateLoader.LoadPkcs12FromFile(
-                        options.Certificates.EncryptionPath,
-                        options.Certificates.EncryptionPassword);
-                    server.AddEncryptionCertificate(encryptionCertificate);
+                    server.AddEncryptionCertificate(certificateMaterial.Encryption);
                 }
                 else if (isDevelopmentEnvironment)
                 {
@@ -1172,12 +1179,11 @@ public static class ServiceCollectionExtensions
     /// by the normal JWKS endpoint.
     /// </summary>
     private static Microsoft.IdentityModel.Tokens.SigningCredentials ResolveProtocolSigningCredentials(
-        SufficitIdentityOptions options, bool isDevelopmentEnvironment)
+        X509Certificate2? certificate,
+        bool isDevelopmentEnvironment)
     {
-        if (!string.IsNullOrWhiteSpace(options.Certificates.SigningPath))
+        if (certificate is not null)
         {
-            var certificate = X509CertificateLoader.LoadPkcs12FromFile(
-                options.Certificates.SigningPath, options.Certificates.SigningPassword);
             var algorithm = certificate.GetECDsaPrivateKey() is not null
                 ? Microsoft.IdentityModel.Tokens.SecurityAlgorithms.EcdsaSha256
                 : certificate.GetRSAPrivateKey() is not null
@@ -1208,6 +1214,76 @@ public static class ServiceCollectionExtensions
             "Production deployments require Sufficit:Identity:Certificates:SigningPath " +
             "(the logout_token is signed with the same key as access tokens).");
     }
+
+    private static CertificateMaterial LoadCertificateMaterial(
+        CertificatesOptions options,
+        bool isDevelopmentEnvironment)
+    {
+        var signing = string.IsNullOrWhiteSpace(options.SigningPath)
+            ? null
+            : X509CertificateLoader.LoadPkcs12FromFile(
+                options.SigningPath,
+                options.SigningPassword);
+        var encryption = string.IsNullOrWhiteSpace(options.EncryptionPath)
+            ? null
+            : X509CertificateLoader.LoadPkcs12FromFile(
+                options.EncryptionPath,
+                options.EncryptionPassword);
+
+        ValidateCertificate(signing, "signing", options);
+        ValidateCertificate(encryption, "encryption", options);
+
+        if (!isDevelopmentEnvironment && (signing is null || encryption is null))
+        {
+            throw new InvalidOperationException(
+                "Production deployments require persistent signing and encryption certificates.");
+        }
+
+        return new CertificateMaterial(signing, encryption);
+    }
+
+    private static void ValidateCertificate(
+        X509Certificate2? certificate,
+        string purpose,
+        CertificatesOptions options)
+    {
+        if (certificate is null)
+        {
+            return;
+        }
+
+        if (!certificate.HasPrivateKey)
+        {
+            throw new InvalidOperationException(
+                $"The configured {purpose} certificate does not contain a private key.");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        if (certificate.NotBefore.ToUniversalTime() > now.UtcDateTime
+            || certificate.NotAfter.ToUniversalTime() <= now.UtcDateTime)
+        {
+            throw new InvalidOperationException(
+                $"The configured {purpose} certificate is not currently valid.");
+        }
+
+        var minimumLifetime = TimeSpan.FromDays(
+            Math.Clamp(options.MinimumRemainingLifetimeDays, 1, 365));
+        if (certificate.NotAfter.ToUniversalTime() - now.UtcDateTime < minimumLifetime)
+        {
+            var message =
+                $"The configured {purpose} certificate expires at {certificate.NotAfter:u}, inside the {minimumLifetime.TotalDays:0}-day rotation window.";
+            if (options.FailOnExpiringCertificate)
+            {
+                throw new InvalidOperationException(message);
+            }
+
+            Console.Error.WriteLine("[WARNING] " + message);
+        }
+    }
+
+    private sealed record CertificateMaterial(
+        X509Certificate2? Signing,
+        X509Certificate2? Encryption);
 
     /// <summary>
     /// Registers external login providers (Google, GitHub, etc) from the

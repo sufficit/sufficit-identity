@@ -72,6 +72,7 @@ public sealed class PersonalTokensController : ControllerBase
     private readonly SufficitIdentityOptions _options;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IApplicationClaimDestinationPolicy _applicationClaimPolicy;
+    private readonly IPublicOriginResolver _publicOrigin;
 
     public PersonalTokensController(
         IOpenIddictScopeManager scopeManager,
@@ -81,7 +82,8 @@ public sealed class PersonalTokensController : ControllerBase
         AppDbContext database,
         SufficitIdentityOptions options,
         UserManager<ApplicationUser> userManager,
-        IApplicationClaimDestinationPolicy applicationClaimPolicy)
+        IApplicationClaimDestinationPolicy applicationClaimPolicy,
+        IPublicOriginResolver publicOrigin)
     {
         _scopeManager = scopeManager;
         _dispatcher = dispatcher;
@@ -91,6 +93,7 @@ public sealed class PersonalTokensController : ControllerBase
         _options = options;
         _userManager = userManager;
         _applicationClaimPolicy = applicationClaimPolicy;
+        _publicOrigin = publicOrigin;
     }
 
     [HttpGet]
@@ -700,12 +703,7 @@ public sealed class PersonalTokensController : ControllerBase
 
     private string ResolveIssuer()
     {
-        if (!string.IsNullOrWhiteSpace(_options.Issuer))
-        {
-            return new Uri(_options.Issuer, UriKind.Absolute).AbsoluteUri;
-        }
-
-        return $"{Request.Scheme}://{Request.Host}{Request.PathBase}/";
+        return _publicOrigin.Resolve(Request) + "/";
     }
 
     private static bool IsValidExpiration(

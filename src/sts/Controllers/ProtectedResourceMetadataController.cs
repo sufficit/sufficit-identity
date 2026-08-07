@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 
 namespace Sufficit.Identity.STS.Controllers;
 
@@ -25,15 +24,15 @@ namespace Sufficit.Identity.STS.Controllers;
 [Route(".well-known/oauth-protected-resource")]
 public sealed class ProtectedResourceMetadataController : ControllerBase
 {
-    private readonly IConfiguration _configuration;
     private readonly SufficitIdentityOptions _options;
+    private readonly IPublicOriginResolver _publicOrigin;
 
     public ProtectedResourceMetadataController(
-        IConfiguration configuration,
-        SufficitIdentityOptions options)
+        SufficitIdentityOptions options,
+        IPublicOriginResolver publicOrigin)
     {
-        _configuration = configuration;
         _options = options;
+        _publicOrigin = publicOrigin;
     }
 
     [HttpGet]
@@ -78,13 +77,6 @@ public sealed class ProtectedResourceMetadataController : ControllerBase
 
     private string ResolveIssuer()
     {
-        // Prefer the configured issuer; fall back to the request's scheme+host
-        // (mirrors how the AS discovery derives issuer when unpinned).
-        var configured = _configuration["Sufficit:Identity:Issuer"];
-        if (!string.IsNullOrWhiteSpace(configured))
-        {
-            return configured.TrimEnd('/');
-        }
-        return $"{Request.Scheme}://{Request.Host}";
+        return _publicOrigin.Resolve(Request);
     }
 }
