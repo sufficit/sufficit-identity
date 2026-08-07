@@ -85,6 +85,7 @@
   <data name="Register.Subtitle" xml:space="preserve"><value>Create your account in seconds</value></data>
   <data name="Register.Disabled" xml:space="preserve"><value>New account registration is disabled.</value></data>
   <data name="Register.Success" xml:space="preserve"><value>Account created! Check your email to confirm.</value></data>
+  <data name="Register.SuccessTitle" xml:space="preserve"><value>Account created!</value></data>
   <data name="Register.SuccessConfirmed" xml:space="preserve"><value>Account created and confirmed! You can now sign in.</value></data>
   <data name="Register.UserName" xml:space="preserve"><value>Username</value></data>
   <data name="Register.Email" xml:space="preserve"><value>Email</value></data>
