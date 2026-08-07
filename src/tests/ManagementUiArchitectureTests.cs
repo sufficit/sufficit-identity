@@ -543,6 +543,25 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Human_verification_passes_the_flow_action_to_every_provider()
+    {
+        var script = File.ReadAllText(Path.Combine(
+            ResolvePublicUiSource(),
+            "wwwroot",
+            "js",
+            "human-verification.js"));
+
+        Assert.Contains(
+            "action: action,",
+            script,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "callbacks.action = action;",
+            script,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Passkey_ui_uses_canonical_contracts_and_real_http_ceremonies()
     {
         var publicUi = ResolvePublicUiSource();
