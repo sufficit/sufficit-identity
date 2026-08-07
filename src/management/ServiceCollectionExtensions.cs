@@ -16,7 +16,10 @@ using Sufficit.Identity.Management.Branding;
 using Sufficit.Identity.Management.Claims;
 using Sufficit.Identity.Management.Clients;
 using Sufficit.Identity.Management.Controllers;
+using Sufficit.Identity.Management.Database;
 using Sufficit.Identity.Management.Overview;
+using Sufficit.Identity.Management.Metrics;
+using Sufficit.Identity.Core.Metrics;
 using Sufficit.Identity.Management.Provisioning;
 using Sufficit.Identity.Management.Scopes;
 using Sufficit.Identity.Management.Sessions;
@@ -92,6 +95,11 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IUserManagementService, UserManagementService>();
         services.TryAddScoped<IManagementOverviewService,
             ManagementOverviewService>();
+        services.TryAddScoped<IDatabaseMonitoringService,
+            DatabaseMonitoringService>();
+        services.TryAddScoped<IMetricsManagementService,
+            MetricsManagementService>();
+        services.TryAddSingleton<IdentityMetricsRuntimeState>();
         services.TryAddSingleton<IBrandingThemeProvider,
             BrandingThemeProvider>();
         services.TryAddSingleton<IUserAvatarUrlResolver,

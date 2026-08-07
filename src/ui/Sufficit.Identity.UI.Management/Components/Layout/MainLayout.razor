@@ -3,6 +3,7 @@
 @inject IUserAvatarUrlResolver AvatarUrlResolver
 @inject ManagementOverviewDataSource OverviewData
 @inject ILogger<MainLayout> Logger
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 
 <CascadingValue Name="ManagementOverview" Value="overviewResult">
 <div class="app-shell @(navigationOpen ? "app-shell--nav-open" : null)">
@@ -27,7 +28,7 @@
             </button>
         </div>
         <div class="sidebar-content" @onclick="CloseNavigationAsync">
-            <NavMenu Overview="@overviewResult" />
+            <NavMenu Overview="@overviewResult" ServerHostName="@ServerHostName" />
         </div>
     </aside>
 
@@ -98,6 +99,12 @@
     private ManagementDataResult<ManagementOverview>? overviewResult;
     private ElementReference openNavigationButton;
     private ElementReference closeNavigationButton;
+
+    private string ServerHostName =>
+        Configuration["Sufficit:Runtime:ServerHostName"]?.Trim()
+        is { Length: > 0 } configured
+            ? configured
+            : Environment.MachineName;
 
     private string EnvironmentLabel =>
         overviewResult?.Value?.EnvironmentName ?? "Indisponível";

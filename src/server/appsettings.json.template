@@ -21,7 +21,26 @@
         "_AutoMigrate": "true applies pending EF migrations on startup outside Development. Default false — flip only after confirming the schema is aligned and AllowedDatabaseNames is set.",
         "AutoMigrate": false,
         "_AllowedDatabaseNames": "Allow-list of database names the automatic migrator may touch (parsed from the connection string). When non-empty, a mismatch fails startup fast. Recommended in production. Empty = no guard (Development only).",
-        "AllowedDatabaseNames": []
+        "AllowedDatabaseNames": [],
+        "_ConnectionPool": "Explicit MySQL/MariaDB pool policy applied by the STS. MaximumSize is per process/replica. Size it against the database max_connections budget across every replica and workload.",
+        "ConnectionPool": {
+          "MaximumSize": 50,
+          "MinimumSize": 0,
+          "ConnectionTimeoutSeconds": 15,
+          "CommandTimeoutSeconds": 30,
+          "ConnectionLifetimeSeconds": 180,
+          "ConnectionIdleTimeoutSeconds": 180,
+          "ResetOnCheckout": true,
+          "ApplicationName": "Sufficit.Identity"
+        },
+        "_Watchdog": "After the startup delay, probes the AppDbContext. Three consecutive failed/timed-out probes stop the process with exit code 1 so systemd or the orchestrator recreates the process and pools. Keep liveness separate: /health remains process-only and /health/ready includes the database.",
+        "Watchdog": {
+          "Enabled": true,
+          "StartupDelaySeconds": 60,
+          "ProbeIntervalSeconds": 30,
+          "ProbeTimeoutSeconds": 10,
+          "ConsecutiveFailuresBeforeRestart": 3
+        }
       },
       "_TrustedProxies": "Array of CIDR strings for reverse-proxy networks allowed to set X-Forwarded-* headers. Leaving this UNSET (not listed) trusts only loopback (ASP.NET Core default). The example values below reflect the Sufficit production topology (verified 2026-07-21 from nginx access logs on eveo-apps/apoint-apps/castrum-apps): 203.0.113.10 (eveo-cloud Proxmox gateway), 203.0.113.11 (apoint-cloud gateway), plus the internal sufflocal/healthcheck networks 10.0.0.0/8 and the AWS Route53 health-checker range 198.51.100.0/24. If TrustedProxies is empty in production, the rate limiter partitions by the proxy's IP (one shared bucket for the whole deployment — self-inflicted 429s) and X-Forwarded-Proto is dropped (Request.Scheme stays http, defeating the cookie Secure policy). Adjust per environment in appsettings.<env>.json.",
       "TrustedProxies": [

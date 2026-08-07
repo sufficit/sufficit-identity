@@ -95,6 +95,15 @@ mariadb --defaults-extra-file=/protected/mariadb.cnf \
   < docs/migration/sql/090-audit-post-cutover-drift.sql
 ```
 
+The audited 2026-08-04 two-database rollout also has the one-shot
+`sql/091-reconcile-post-cutover-identity.sql`. Its CHECK-backed preconditions
+must match the corresponding `090` report exactly or the transaction aborts.
+It inserts only missing Identity users/claims/logins and applies credential or
+security-stamp changes only when the current value still equals the cutover
+snapshot. Run the same input with its final `COMMIT` replaced by `ROLLBACK`
+before applying it. Client registration and OAuth runtime artifacts remain
+outside this script by design.
+
 For the database-only real-backup gate, copy the SQL directory and a protected
 logical backup to the database host, then run:
 

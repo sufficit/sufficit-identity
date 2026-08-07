@@ -1,9 +1,16 @@
 @inject IBrandingThemeProvider BrandingProvider
 @inject IStringLocalizer<SharedResource> L
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @inherits LayoutComponentBase
 
 @code {
     protected BrandingTheme? _theme;
+
+    private string ServerHostName =>
+        Configuration["Sufficit:Runtime:ServerHostName"]?.Trim()
+        is { Length: > 0 } configured
+            ? configured
+            : Environment.MachineName;
 
     protected override async Task OnInitializedAsync()
     {
@@ -38,6 +45,12 @@
 
     <footer class="footer">
         <span>&copy; @DateTime.UtcNow.Year Sufficit</span>
+        <span class="footer-server"
+              title="@L["Layout.ServerDescription", ServerHostName]">
+            <span class="footer-server__status" aria-hidden="true"></span>
+            <span>@L["Layout.Server"]</span>
+            <code>@ServerHostName</code>
+        </span>
         <span class="footer-links">
             <a href="/.well-known/openid-configuration">Discovery</a> ·
             <a href="/swagger">API Swagger</a>

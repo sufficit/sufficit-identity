@@ -162,6 +162,7 @@ public sealed class DatabaseSchemaContractTests
             IdentityDatabaseSchema.SsfStreamsMigrationId,
             IdentityDatabaseSchema.OidcUserSessionsMigrationId,
             IdentityDatabaseSchema.VaultKeysMigrationId,
+            IdentityDatabaseSchema.IdentityApplicationMetricsMigrationId,
         ], context.Database.GetMigrations());
 
         var history = context.GetService<IHistoryRepository>().GetCreateScript();

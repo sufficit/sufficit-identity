@@ -27,8 +27,12 @@
              Link="Management\Claims\ClaimManagementContracts.cs" />
     <Compile Include="..\..\management\Clients\ClientManagementService.cs"
              Link="Management\Clients\ClientManagementContracts.cs" />
+    <Compile Include="..\..\management\Database\DatabaseMonitoringService.cs"
+             Link="Management\Database\DatabaseMonitoringContracts.cs" />
     <Compile Include="..\..\management\Overview\ManagementOverviewService.cs"
              Link="Management\Overview\ManagementOverviewContracts.cs" />
+    <Compile Include="..\..\management\Metrics\MetricsManagementService.cs"
+             Link="Management\Metrics\MetricsManagementContracts.cs" />
     <Compile Include="..\..\management\Provisioning\ProvisioningManagementService.cs"
              Link="Management\Provisioning\ProvisioningManagementContracts.cs" />
     <Compile Include="..\..\management\Scopes\ScopeManagementService.cs"

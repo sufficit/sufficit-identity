@@ -294,9 +294,32 @@ a:hover { color: var(--brand-hover); text-decoration: underline; }
 }
 .footer a:hover { color: var(--brand-hover); }
 .footer-links { white-space: nowrap; }
+.footer-server {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    color: var(--ink-muted);
+}
+.footer-server code {
+    overflow-wrap: anywhere;
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+.footer-server__status {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 7px;
+    border-radius: 50%;
+    background: var(--success);
+}
 
 @media (max-width: 640px) {
     .footer { justify-content: center; text-align: center; }
+    .footer-server { width: 100%; order: -1; }
 }
 
 /* --- Brand header (above auth card on login/register) --------------------- */

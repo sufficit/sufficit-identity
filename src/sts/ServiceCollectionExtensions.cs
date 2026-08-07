@@ -13,6 +13,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MySqlConnector;
 using OpenIddict.Abstractions;
 using OpenIddict.Server;
 using OpenIddict.Validation.AspNetCore;
@@ -21,8 +22,12 @@ using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Application.Accounts;
+using Sufficit.Identity.Application.Diagnostics;
 using Sufficit.Identity.Application.Security;
+using Sufficit.Identity.STS.Diagnostics;
 using Sufficit.Identity.STS.Email;
+using Sufficit.Identity.STS.Metrics;
+using Sufficit.Identity.Core.Metrics;
 using Sufficit.Identity.Vault;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -59,6 +64,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(options.Fapi2);
         services.AddSingleton(options.Jar);
         services.AddSingleton(options.SharedSignals);
+        services.AddSingleton<IdentityMetricsRuntimeState>();
+        services.AddSingleton<IdentityUsageMetricChannel>();
+        services.AddSingleton<IIdentityUsageMetricSink>(provider =>
+            provider.GetRequiredService<IdentityUsageMetricChannel>());
+        services.AddHttpClient("identity-metrics-export");
 
         var emailOptions = configuration
             .GetSection("Sufficit:Identity:Email")
@@ -111,9 +121,29 @@ public static class ServiceCollectionExtensions
         // of a production-blocking translation bug (FindByNamesAsync IN(@p)).
         // See docs/NOTICE-mysql-license.md for the full rationale + fork details.
         // API: UseMySql(connectionString, MariaDbServerVersion.AutoDetect(...)).
-        var connectionString = configuration.GetConnectionString(options.ConnectionStringName)
+        var configuredConnectionString = configuration.GetConnectionString(options.ConnectionStringName)
             ?? throw new InvalidOperationException(
                 $"Connection string '{options.ConnectionStringName}' not configured.");
+        // Integration hosts use the documented "unused" sentinel and replace
+        // the provider with one shared in-memory SQLite connection. Running a
+        // background writer against that single connection races EF's SQLite
+        // function initialization. Real connection strings always enable the
+        // collector; the sentinel keeps protocol tests deterministic.
+        if (!string.Equals(configuredConnectionString, "unused", StringComparison.Ordinal))
+            services.AddHostedService<IdentityUsageMetricsWorker>();
+        var databaseTelemetry = new DatabaseRuntimeTelemetry();
+        databaseTelemetry.ConfigureWatchdog(options.Database.Watchdog.Enabled);
+        services.AddSingleton(databaseTelemetry);
+        services.AddSingleton<IDatabaseRuntimeTelemetry>(databaseTelemetry);
+        var connectionTelemetry =
+            new DatabaseConnectionTelemetryInterceptor(databaseTelemetry);
+        var commandTelemetry =
+            new DatabaseCommandTelemetryInterceptor(databaseTelemetry);
+
+        var connectionString = ApplyDatabaseConnectionPolicy(
+            configuredConnectionString,
+            options.Database.ConnectionPool,
+            tolerateInvalidDevelopmentValue: isDevelopmentEnvironment);
 
         // AddDbContextFactory registers BOTH a singleton IDbContextFactory<AppDbContext>
         // (used by singletons like the server-side session ITicketStore, which
@@ -129,7 +159,9 @@ public static class ServiceCollectionExtensions
                 MariaDbServerVersion.AutoDetect(connectionString),
                 mysql => mysql.MigrationsHistoryTable(IdentityDatabaseSchema.MigrationsHistoryTable));
             db.UseOpenIddict();
+            db.AddInterceptors(connectionTelemetry, commandTelemetry);
         });
+        services.AddHostedService<DatabaseHealthWatchdog>();
 
         // ---- Antiforgery (defensive registration — #N1) ----
         // Required so the AuthorizationController's IAntiforgery dependency
@@ -493,6 +525,10 @@ public static class ServiceCollectionExtensions
                       .AllowDeviceAuthorizationFlow()
                       .AllowRefreshTokenFlow()
                       .AllowTokenExchangeFlow();
+
+                server.AddEventHandler(RecordIdentityUsage.Descriptor);
+                server.AddEventHandler(RecordAuthorizationUsageFailure.Descriptor);
+                server.AddEventHandler(RecordTokenUsageFailure.Descriptor);
 
                 if (options.Fapi2.Enabled)
                 {
@@ -1289,6 +1325,57 @@ public static class ServiceCollectionExtensions
                     options.Scope.Add("public_profile");
                 }
             });
+        }
+    }
+
+    internal static string ApplyDatabaseConnectionPolicy(
+        string connectionString,
+        DatabaseConnectionPoolOptions options,
+        bool tolerateInvalidDevelopmentValue = false)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+        ArgumentNullException.ThrowIfNull(options);
+
+        try
+        {
+            var builder = new MySqlConnectionStringBuilder(connectionString);
+            var maximumSize = Math.Clamp(options.MaximumSize, 1, 10_000);
+            var minimumSize = Math.Clamp(options.MinimumSize, 0, maximumSize);
+
+            builder.Pooling = true;
+            builder.MaximumPoolSize = (uint)maximumSize;
+            builder.MinimumPoolSize = (uint)minimumSize;
+            builder.ConnectionTimeout = (uint)Math.Clamp(
+                options.ConnectionTimeoutSeconds,
+                1,
+                300);
+            builder.DefaultCommandTimeout = (uint)Math.Clamp(
+                options.CommandTimeoutSeconds,
+                1,
+                3_600);
+            builder.ConnectionLifeTime = (uint)Math.Clamp(
+                options.ConnectionLifetimeSeconds,
+                0,
+                86_400);
+            builder.ConnectionIdleTimeout = (uint)Math.Clamp(
+                options.ConnectionIdleTimeoutSeconds,
+                0,
+                3_600);
+            builder.ConnectionReset = options.ResetOnCheckout;
+            builder.ApplicationName = string.IsNullOrWhiteSpace(options.ApplicationName)
+                ? "Sufficit.Identity"
+                : options.ApplicationName.Trim()[..Math.Min(
+                    options.ApplicationName.Trim().Length,
+                    64)];
+
+            return builder.ConnectionString;
+        }
+        catch (ArgumentException) when (tolerateInvalidDevelopmentValue)
+        {
+            // Test hosts replace the provider registration after composing the
+            // STS and historically use the sentinel value "unused". Preserve
+            // that development-only seam; production still fails fast.
+            return connectionString;
         }
     }
 

@@ -422,3 +422,47 @@ VALUES ('20260806162913_AddVaultKeys', '10.0.10');
 
 COMMIT;
 
+START TRANSACTION;
+CREATE TABLE `identityapplicationusageevents` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `occurredatutc` datetime(6) NOT NULL,
+    `clientid` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `eventtype` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
+    `endpointtype` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
+    `granttype` varchar(100) CHARACTER SET utf8mb4 NULL,
+    `outcome` varchar(32) CHARACTER SET utf8mb4 NOT NULL,
+    `subjecthash` varchar(64) CHARACTER SET utf8mb4 NULL,
+    CONSTRAINT `PK_identityapplicationusageevents` PRIMARY KEY (`id`)
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `identitymetricsconfiguration` (
+    `id` int NOT NULL,
+    `enabled` tinyint(1) NOT NULL,
+    `retentiondays` int NOT NULL,
+    `exportenabled` tinyint(1) NOT NULL,
+    `provider` varchar(50) CHARACTER SET utf8mb4 NOT NULL,
+    `endpoint` varchar(1024) CHARACTER SET utf8mb4 NULL,
+    `database` varchar(255) CHARACTER SET utf8mb4 NULL,
+    `authorizationscheme` varchar(32) CHARACTER SET utf8mb4 NULL,
+    `username` varchar(255) CHARACTER SET utf8mb4 NULL,
+    `secretciphertext` longtext CHARACTER SET utf8mb4 NULL,
+    `timeoutseconds` int NOT NULL,
+    `batchsize` int NOT NULL,
+    `updatedatutc` datetime(6) NOT NULL,
+    CONSTRAINT `PK_identitymetricsconfiguration` PRIMARY KEY (`id`)
+) CHARACTER SET=utf8mb4;
+
+CREATE INDEX `IX_identityusage_clientid_occurredatutc` ON `identityapplicationusageevents` (`clientid`, `occurredatutc`);
+
+CREATE INDEX `IX_identityusage_eventtype_occurredatutc` ON `identityapplicationusageevents` (`eventtype`, `occurredatutc`);
+
+CREATE INDEX `IX_identityusage_occurredatutc` ON `identityapplicationusageevents` (`occurredatutc`);
+
+INSERT INTO `identitymetricsconfiguration` (`id`, `enabled`, `retentiondays`, `exportenabled`, `provider`, `timeoutseconds`, `batchsize`, `updatedatutc`)
+VALUES (1, TRUE, 90, FALSE, 'internal', 10, 250, TIMESTAMP '2026-08-07 02:08:59');
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260807020859_AddIdentityApplicationMetrics', '10.0.10');
+
+COMMIT;
+

@@ -234,6 +234,64 @@ public sealed class DatabaseOptions
     /// Development.
     /// </summary>
     public string[] AllowedDatabaseNames { get; init; } = [];
+
+    /// <summary>
+    /// Connection-pool limits and timeouts applied by the STS before the
+    /// provider is configured. See <see cref="DatabaseConnectionPoolOptions"/>.
+    /// </summary>
+    public DatabaseConnectionPoolOptions ConnectionPool { get; init; } = new();
+
+    /// <summary>
+    /// In-process database watchdog policy. See
+    /// <see cref="DatabaseWatchdogOptions"/>.
+    /// </summary>
+    public DatabaseWatchdogOptions Watchdog { get; init; } = new();
+}
+
+/// <summary>
+/// Safe defaults for the current MySQL/MariaDB connection provider. Every
+/// value is explicit so deployments do not inherit driver-default drift.
+/// </summary>
+public sealed class DatabaseConnectionPoolOptions
+{
+    public int MaximumSize { get; init; } = 50;
+
+    public int MinimumSize { get; init; } = 0;
+
+    public int ConnectionTimeoutSeconds { get; init; } = 15;
+
+    public int CommandTimeoutSeconds { get; init; } = 30;
+
+    public int ConnectionLifetimeSeconds { get; init; } = 180;
+
+    public int ConnectionIdleTimeoutSeconds { get; init; } = 180;
+
+    public bool ResetOnCheckout { get; init; } = true;
+
+    /// <summary>
+    /// Non-secret pool label emitted by MySqlConnector metrics and server
+    /// connection attributes.
+    /// </summary>
+    public string ApplicationName { get; init; } = "Sufficit.Identity";
+}
+
+/// <summary>
+/// Detects the state in which the process remains alive but cannot obtain a
+/// usable database connection. After sustained failures it asks the host to
+/// stop with a failure exit code so systemd or the container orchestrator can
+/// rebuild the process and its pools.
+/// </summary>
+public sealed class DatabaseWatchdogOptions
+{
+    public bool Enabled { get; init; } = true;
+
+    public int StartupDelaySeconds { get; init; } = 60;
+
+    public int ProbeIntervalSeconds { get; init; } = 30;
+
+    public int ProbeTimeoutSeconds { get; init; } = 10;
+
+    public int ConsecutiveFailuresBeforeRestart { get; init; } = 3;
 }
 
 /// <summary>
