@@ -469,6 +469,34 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Human_verification_pages_enable_interactive_server_rendering()
+    {
+        var accountPages = Path.Combine(
+            ResolvePublicUiSource(),
+            "Pages",
+            "Account");
+        var protectedPages = new[]
+        {
+            "Register.razor",
+            "ForgotPassword.razor",
+            "ResendEmailConfirmation.razor",
+        };
+
+        foreach (var pageName in protectedPages)
+        {
+            var page = File.ReadAllText(Path.Combine(accountPages, pageName));
+            Assert.Contains(
+                "@rendermode @(RenderMode.InteractiveServer)",
+                page,
+                StringComparison.Ordinal);
+            Assert.Contains(
+                "<HumanVerification",
+                page,
+                StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void Passkey_ui_uses_canonical_contracts_and_real_http_ceremonies()
     {
         var publicUi = ResolvePublicUiSource();
