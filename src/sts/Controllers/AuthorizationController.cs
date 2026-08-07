@@ -17,6 +17,7 @@ using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using Sufficit.Identity.Application.Branding;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.STS.Consent;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Sufficit.Identity.STS.Controllers;
@@ -152,9 +153,14 @@ public class AuthorizationController : Controller
             scopes: requestedScopes));
 
         var consentType = await _applicationManager.GetConsentTypeAsync(application);
+        var forcesReconsent = request.HasPromptValue(PromptValues.Consent);
+        var consentRequirement = AuthorizationConsentPolicy.Evaluate(
+            consentType,
+            authorizations.Count > 0,
+            forcesReconsent);
 
         // External consent: only allow if an explicit authorization already exists.
-        if (consentType == ConsentTypes.External && authorizations.Count == 0)
+        if (consentRequirement == AuthorizationConsentRequirement.ExistingAuthorization)
         {
             return Forbid(
                 authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
@@ -252,18 +258,9 @@ public class AuthorizationController : Controller
             // check entirely and fell straight through to auto-grant below) —
             // that inversion is the #B3 bug: a client explicitly asking to
             // reconfirm consent got NO interaction at all. Fixed by making
-            // prompt=consent force `needsInteractiveConsent = true` instead.
-            var forcesReconsent = request.HasPromptValue(PromptValues.Consent);
-
-            var needsInteractiveConsent = consentType switch
-            {
-                ConsentTypes.Implicit => false,
-                ConsentTypes.Explicit => authorizations.Count == 0 || forcesReconsent,
-                ConsentTypes.Systematic => true,
-                _ => false, // External already handled above.
-            };
-
-            if (needsInteractiveConsent)
+            // prompt=consent participate in the centralized policy instead of
+            // bypassing the consent decision.
+            if (consentRequirement == AuthorizationConsentRequirement.Interactive)
             {
                 if (request.HasPromptValue(PromptValues.None))
                 {
