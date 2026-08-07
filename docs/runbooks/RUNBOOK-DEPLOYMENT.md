@@ -1,5 +1,30 @@
 # Deployment configuration
 
+## Persistent OpenID Connect certificate
+
+The OpenIddict signing/encryption certificate is persistent cluster state. Its
+canonical location is `/etc/sufficit/identity/certificate.pfx`, owned by
+`root:www-data` with mode `0640`. Every Identity replica behind the same issuer
+must contain the exact same file. It must not be replaced with a node's TLS
+certificate and must not be generated independently on each replica.
+
+`helpers/prestart.sh` copies the canonical certificate into the active release
+before startup because the current production configuration references the
+release-relative `certificate.pfx`. A production startup fails closed when
+neither the persistent file nor an explicitly supplied release certificate is
+available. Development may still generate a local self-signed certificate.
+
+Before switching a release, verify all replicas report one checksum:
+
+```bash
+sha256sum /etc/sufficit/identity/certificate.pfx
+```
+
+After the rolling restart, query each replica directly and verify the same
+`kid` is published from `/.well-known/openid-configuration/jwks`. A differing
+`kid` causes intermittent signature-validation failures whenever discovery and
+token issuance hit different nodes.
+
 ## test-environment test environment
 
 The versioned source of truth for the Sufficit Identity nginx virtual host in
