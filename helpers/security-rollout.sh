@@ -144,5 +144,5 @@ esac
 
 if [[ ${1:-} != status ]]; then
     echo "[rollout] Backup: ${CONFIG_FILE}.bak"
-    echo "[rollout] Apply with: systemctl restart sufficit-identity"
+    echo "[rollout] Apply with: /opt/sufficit-identity/helpers/activate-release.sh --current"
 fi

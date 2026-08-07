@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Sufficit.Identity.STS.Ciba;
 
@@ -43,6 +44,9 @@ public sealed class CibaAccessTokenGenerator
     private readonly TimeProvider _timeProvider;
     private readonly int _accessTokenLifetimeMinutes;
 
+    public TimeSpan AccessTokenLifetime =>
+        TimeSpan.FromMinutes(_accessTokenLifetimeMinutes);
+
     public CibaAccessTokenGenerator(
         SigningCredentials signingCredentials,
         string issuer,
@@ -72,6 +76,7 @@ public sealed class CibaAccessTokenGenerator
         string audience,
         IReadOnlyCollection<string> scopes,
         string clientId,
+        string tokenId,
         IEnumerable<Claim>? extraClaims = null)
     {
         var now = _timeProvider.GetUtcNow();
@@ -92,6 +97,7 @@ public sealed class CibaAccessTokenGenerator
             new("client_id", clientId),
             new("scope", string.Join(' ', scopes)),
             new("token_type", "Bearer"),
+            new(Claims.Private.TokenId, tokenId),
         };
 
         if (extraClaims is not null)

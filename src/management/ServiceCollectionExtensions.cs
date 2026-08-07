@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using OpenIddict.Abstractions;
 using OpenIddict.Validation.AspNetCore;
 using Sufficit.Identity.Application.Branding;
 using Sufficit.Identity.Core.Branding;
@@ -156,10 +157,19 @@ public sealed class ScopeHandler : AuthorizationHandler<ScopeRequirement>
     protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context, ScopeRequirement requirement)
     {
-        var scopes = context.User.FindAll(ScopeClaimType).SelectMany(c =>
-            c.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        // OpenIddict keeps granted scopes in private principal metadata while
+        // processing reference tokens. Other JWT middleware can expose the
+        // same information as the public RFC `scope` claim. Accept both
+        // representations so a valid management token is not denied merely
+        // because of the validation transport used by the host.
+        var hasPublicScope = context.User
+            .FindAll(ScopeClaimType)
+            .SelectMany(claim => claim.Value.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries))
+            .Contains(requirement.Scope, StringComparer.Ordinal);
 
-        if (scopes.Contains(requirement.Scope))
+        if (context.User.HasScope(requirement.Scope) || hasPublicScope)
         {
             context.Succeed(requirement);
         }

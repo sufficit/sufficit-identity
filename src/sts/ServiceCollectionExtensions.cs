@@ -77,13 +77,18 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(options.Fapi2);
         services.AddSingleton(options.Jar);
         services.AddSingleton(options.SharedSignals);
+        services.AddSingleton(options.OutboundHttp);
+        services.AddSingleton<IApplicationClaimDestinationPolicy>(
+            new ApplicationClaimDestinationPolicy(options.ClaimScopeMap));
         services.AddSingleton<IdentityMetricsRuntimeState>();
         services.AddSingleton<IdentityUsageMetricChannel>();
         services.AddSingleton<IIdentityUsageMetricSink>(provider =>
             provider.GetRequiredService<IdentityUsageMetricChannel>());
-        services.AddHttpClient("identity-metrics-export");
+        services.AddSafeHttpClient(
+            "identity-metrics-export", options.OutboundHttp);
         services.AddHttpClient<IHumanVerificationService,
-            RemoteHumanVerificationService>();
+                RemoteHumanVerificationService>()
+            .UseSafeOutboundHttp(options.OutboundHttp);
 
         var emailOptions = configuration
             .GetSection("Sufficit:Identity:Email")
@@ -277,7 +282,8 @@ public static class ServiceCollectionExtensions
         // unavailability (see BreachedPasswordValidator remarks).
         if (options.Password.RejectBreached)
         {
-            services.AddHttpClient<BreachedPasswordValidator>();
+            services.AddHttpClient<BreachedPasswordValidator>()
+                .UseSafeOutboundHttp(options.OutboundHttp);
             services.AddScoped<IPasswordValidator<ApplicationUser>, BreachedPasswordValidator>();
         }
 
@@ -872,6 +878,13 @@ public static class ServiceCollectionExtensions
             {
                 validation.UseLocalServer();
                 validation.UseAspNetCore();
+                if (options.Dpop.Enabled)
+                {
+                    validation.AddEventHandler(
+                        Dpop.ExtractDpopValidationToken.Descriptor);
+                    validation.AddEventHandler(
+                        Dpop.ValidateDpopApiAccessTokenProof.Descriptor);
+                }
             });
 
         services.AddScoped<IIdentityUserSessionRevoker,
@@ -919,7 +932,8 @@ public static class ServiceCollectionExtensions
             services.AddSingleton(new Logout.LogoutTokenGenerator(
                 auxiliarySigningCredentials, issuer));
             services.AddHttpClient<Logout.IBackchannelLogoutDispatcher, Logout.BackchannelLogoutDistributor>()
-                .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(7));
+                .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(7))
+                .UseSafeOutboundHttp(options.OutboundHttp);
         }
         else
         {
@@ -947,7 +961,11 @@ public static class ServiceCollectionExtensions
         // option is enabled). The distributed replay cache and nonce store use
         // IDistributedCache (registered above as AddDistributedMemoryCache;
         // swap for Redis when multi-replica).
-        services.AddSingleton<Dpop.IDpopReplayCache, Dpop.DistributedDpopReplayCache>();
+        services.AddSingleton<Dpop.DistributedDpopReplayCache>();
+        services.AddSingleton(sp => new Dpop.DatabaseDpopReplayCache(
+            sp.GetRequiredService<IDbContextFactory<AppDbContext>>(),
+            TimeProvider.System));
+        services.AddSingleton<Dpop.IDpopReplayCache, Dpop.RollingDpopReplayCache>();
         services.AddSingleton(sp => new Dpop.DpopProofValidator(
             TimeProvider.System,
             Microsoft.Extensions.Logging.LoggerFactoryExtensions.CreateLogger<Dpop.DpopProofValidator>(
@@ -996,7 +1014,8 @@ public static class ServiceCollectionExtensions
             services.AddHttpClient<SharedSignals.ISharedSignalsDispatcher,
                     SharedSignals.SharedSignalsPushDispatcher>()
                 .ConfigureHttpClient(client =>
-                    client.Timeout = TimeSpan.FromSeconds(7));
+                    client.Timeout = TimeSpan.FromSeconds(7))
+                .UseSafeOutboundHttp(options.OutboundHttp);
 
             // ISecurityEventTrigger adapter: translates credential/device
             // change calls from the account/management/SCIM surfaces into
@@ -1008,6 +1027,8 @@ public static class ServiceCollectionExtensions
             // SSF is on so the push dispatcher can route poll streams to the
             // persistent queue even if the REST API is not exposed.
             services.AddScoped<SharedSignals.ISsfStreamStore, SharedSignals.SsfStreamStore>();
+            services.AddSingleton<SharedSignals.ISsfSubscriptionMatcher,
+                SharedSignals.SsfSubscriptionMatcher>();
         }
         else
         {
@@ -1026,7 +1047,8 @@ public static class ServiceCollectionExtensions
         if (options.SharedSignals is { Enabled: true, StreamManagementEnabled: true })
         {
             services.AddHttpClient("ssf-verification")
-                .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(7));
+                .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(7))
+                .UseSafeOutboundHttp(options.OutboundHttp);
             services.AddScoped<IAuthorizationHandler, Controllers.SsfScopeHandler>();
             services.AddAuthorizationBuilder()
                 .AddPolicy("sufficit-ssf-transmitter", policy =>
@@ -1046,10 +1068,14 @@ public static class ServiceCollectionExtensions
         // cache (single-node default). The CibaController and the CIBA poll
         // branch only run when the option is enabled, but the store is always
         // available so the dependency resolves regardless.
-        services.AddSingleton<Ciba.ICibaPendingRequestStore>(sp =>
-            new Ciba.DistributedCibaPendingRequestStore(
-                sp.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(),
-                TimeProvider.System));
+        services.AddSingleton(sp => new Ciba.DistributedCibaPendingRequestStore(
+            sp.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(),
+            TimeProvider.System));
+        services.AddSingleton(sp => new Ciba.DatabaseCibaPendingRequestStore(
+            sp.GetRequiredService<IDbContextFactory<AppDbContext>>(),
+            TimeProvider.System));
+        services.AddSingleton<Ciba.ICibaPendingRequestStore,
+            Ciba.RollingCibaPendingRequestStore>();
 
         // CIBA access-token generator (item 3.5 / Limitation 2). Registered only
         // when CIBA is enabled — it needs the STS signing key (same family as

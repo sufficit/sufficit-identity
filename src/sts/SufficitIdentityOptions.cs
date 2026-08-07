@@ -91,6 +91,13 @@ public sealed class SufficitIdentityOptions
     public CorsOptions Cors { get; init; } = new();
 
     /// <summary>
+    /// Network boundary for HTTP calls initiated by the STS. Private or
+    /// clear-text destinations remain supported through explicit host
+    /// allowlists so internal integrations can be rolled forward safely.
+    /// </summary>
+    public OutboundHttpSecurityOptions OutboundHttp { get; init; } = new();
+
+    /// <summary>
     /// Content Security Policy applied by the host to HTML responses (login,
     /// consent, device and logout pages served by the embedded public UI). See
     /// <see cref="CspOptions"/>.
@@ -683,9 +690,9 @@ public sealed class SignInPolicyOptions
 /// over-disclosure gap (eval #10 / plan item 2.5 [M5]). When a claim type is
 /// present in <see cref="ClaimToScope"/>, that claim reaches the access and
 /// identity tokens ONLY if the subject was granted the mapped scope. Claim
-/// types NOT in the map keep the pre-existing behavior (routed to the access
-/// token unconditionally), so the map ships EMPTY by default — behavior is
-/// byte-identical to before until an operator deliberately adds an entry.
+/// types NOT in the map keep the pre-existing behavior while
+/// <see cref="ClaimScopeMapOptions.IncludeUnmappedClaimsInAccessTokens"/> is
+/// true. The default map protects the authorization directive claim.
 /// </summary>
 /// <remarks>
 /// <b>Rollout model.</b> Add entries one resource server at a time: first
@@ -713,6 +720,14 @@ public sealed class ClaimScopeMapOptions
     {
         ["directive"] = "directives",
     };
+
+    /// <summary>
+    /// Compatibility bridge for persisted claim types that are not yet mapped.
+    /// Keep true while resource servers are inventoried, then set false to make
+    /// <see cref="ClaimToScope"/> a strict allowlist without removing claims
+    /// from existing tokens during the rollout.
+    /// </summary>
+    public bool IncludeUnmappedClaimsInAccessTokens { get; init; } = true;
 }
 
 /// <summary>

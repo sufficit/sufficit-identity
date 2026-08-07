@@ -173,4 +173,10 @@ internal sealed class DistributedCibaPendingRequestStore : ICibaPendingRequestSt
             AbsoluteExpirationRelativeToNow = ttl,
         });
     }
+
+    internal void Upsert(CibaPendingRequest request)
+    {
+        var remaining = request.ExpiresAt - _timeProvider.GetUtcNow();
+        if (remaining > TimeSpan.Zero) SetEntry(request, remaining);
+    }
 }

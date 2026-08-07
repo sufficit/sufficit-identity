@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sufficit.Identity.Core.Data;
 
@@ -11,9 +12,11 @@ using Sufficit.Identity.Core.Data;
 namespace Sufficit.Identity.Core.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260807135147_HardenSsfStreams")]
+    partial class HardenSsfStreams
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -671,95 +674,6 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasDatabaseName("IX_brandingthemes_isactive");
 
                     b.ToTable("brandingthemes", (string)null);
-                });
-
-            modelBuilder.Entity("Sufficit.Identity.Core.Entities.CibaPendingState", b =>
-                {
-                    b.Property<string>("AuthReqId")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("authreqid");
-
-                    b.Property<string>("ApprovedSubject")
-                        .HasMaxLength(400)
-                        .HasColumnType("varchar(400)")
-                        .HasColumnName("approvedsubject");
-
-                    b.Property<string>("BindingMessage")
-                        .HasMaxLength(180)
-                        .HasColumnType("varchar(180)")
-                        .HasColumnName("bindingmessage");
-
-                    b.Property<string>("ClientId")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("varchar(100)")
-                        .HasColumnName("clientid");
-
-                    b.Property<string>("ConsumptionId")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("consumptionid");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("createdatutc");
-
-                    b.Property<DateTime>("ExpiresAtUtc")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("expiresatutc");
-
-                    b.Property<DateTime>("LastPollAtUtc")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("lastpollatutc");
-
-                    b.Property<string>("ScopesJson")
-                        .IsRequired()
-                        .HasMaxLength(2048)
-                        .HasColumnType("varchar(2048)")
-                        .HasColumnName("scopesjson");
-
-                    b.Property<string>("State")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("varchar(16)")
-                        .HasColumnName("state");
-
-                    b.Property<string>("Subject")
-                        .IsRequired()
-                        .HasMaxLength(400)
-                        .HasColumnType("varchar(400)")
-                        .HasColumnName("subject");
-
-                    b.HasKey("AuthReqId");
-
-                    b.HasIndex("ConsumptionId")
-                        .IsUnique()
-                        .HasDatabaseName("AK_cibapendingstates_consumptionid");
-
-                    b.HasIndex("State", "ExpiresAtUtc")
-                        .HasDatabaseName("IX_cibapendingstates_state_expiresatutc");
-
-                    b.ToTable("cibapendingstates", (string)null);
-                });
-
-            modelBuilder.Entity("Sufficit.Identity.Core.Entities.DpopReplayEntry", b =>
-                {
-                    b.Property<string>("Key")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)")
-                        .HasColumnName("key");
-
-                    b.Property<DateTime>("ExpiresAtUtc")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("expiresatutc");
-
-                    b.HasKey("Key");
-
-                    b.HasIndex("ExpiresAtUtc")
-                        .HasDatabaseName("IX_dpopreplayentries_expiresatutc");
-
-                    b.ToTable("dpopreplayentries", (string)null);
                 });
 
             modelBuilder.Entity("Sufficit.Identity.Core.Entities.IdentityApplicationUsageEvent", b =>
