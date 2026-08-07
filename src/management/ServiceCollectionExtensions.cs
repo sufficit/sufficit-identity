@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -62,9 +63,12 @@ public static class ServiceCollectionExtensions
             .Bind(configurationRoot);
 
         // Register the controllers in this assembly.
-        services.AddControllers(options =>
+        var routePrefix = NormalizeRoutePrefix(options.RoutePrefix);
+        services.AddControllers(mvc =>
             {
-                options.Filters.Add<ManagementExceptionFilter>();
+                mvc.Filters.Add<ManagementExceptionFilter>();
+                mvc.Conventions.Add(
+                    new ManagementRoutePrefixConvention(routePrefix));
             })
             .PartManager.ApplicationParts.Add(new AssemblyPart(Assembly.GetExecutingAssembly()));
 
@@ -107,12 +111,14 @@ public static class ServiceCollectionExtensions
             UserAvatarUrlResolver>();
         services.TryAddSingleton<IClientSecretResolver, MissingClientSecretResolver>();
 
-        // Authorization policy for the management endpoints.
-        if (options.RequireAuthorization)
+        // The named policy is always registered because controllers reference
+        // it unconditionally. RequireAuthorization=false remains an explicit
+        // compatibility mode instead of producing an unresolvable-policy 500.
+        services.AddAuthorization(builder =>
         {
-            services.AddAuthorization(builder =>
+            builder.AddPolicy("sufficit-identity-management", policy =>
             {
-                builder.AddPolicy("sufficit-identity-management", policy =>
+                if (options.RequireAuthorization)
                 {
                     policy.AuthenticationSchemes.Add(
                         OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
@@ -123,13 +129,16 @@ public static class ServiceCollectionExtensions
                         policy.Requirements.Add(new MfaRequirement());
                     }
 
-                    // Capability and MFA decisions are applied by the shared
-                    // application services, so embedded UI and HTTP adapters
-                    // cannot diverge. This transport policy owns only bearer
-                    // authentication and the Management API scope.
-                });
+                }
+                else
+                {
+                    policy.RequireAssertion(_ => true);
+                }
             });
+        });
 
+        if (options.RequireAuthorization)
+        {
             services.AddSingleton<IAuthorizationHandler, ScopeHandler>();
             // MfaHandler evaluates the MfaRequirement added to the policy when
             // RequireMfa is true. Without this registration the requirement is
@@ -139,6 +148,51 @@ public static class ServiceCollectionExtensions
         }
 
         return services;
+    }
+
+    private static string NormalizeRoutePrefix(string? value)
+    {
+        var prefix = (value ?? "api").Trim('/');
+        if (prefix.Length == 0
+            || prefix.Contains('{', StringComparison.Ordinal)
+            || prefix.Contains('}', StringComparison.Ordinal)
+            || prefix.Contains('?', StringComparison.Ordinal)
+            || prefix.Contains('#', StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Management RoutePrefix must be a non-empty literal path.");
+        }
+
+        return prefix;
+    }
+}
+
+public sealed class ManagementRoutePrefixConvention(string routePrefix)
+    : IApplicationModelConvention
+{
+    public void Apply(ApplicationModel application)
+    {
+        foreach (var controller in application.Controllers.Where(controller =>
+                     controller.ControllerType.Assembly == typeof(ManagementRoutePrefixConvention).Assembly))
+        {
+            foreach (var selector in controller.Selectors)
+            {
+                var route = selector.AttributeRouteModel;
+                if (route?.Template is not { } template)
+                {
+                    continue;
+                }
+
+                if (string.Equals(template, "api", StringComparison.OrdinalIgnoreCase))
+                {
+                    route.Template = routePrefix;
+                }
+                else if (template.StartsWith("api/", StringComparison.OrdinalIgnoreCase))
+                {
+                    route.Template = routePrefix + template[3..];
+                }
+            }
+        }
     }
 }
 

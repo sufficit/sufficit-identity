@@ -29,6 +29,21 @@ public sealed class SmtpEmailSender : IEmailSender, IDisposable
         if (string.IsNullOrWhiteSpace(_configuration.Host))
             return;
 
+        if (_configuration.RequireTls && !_configuration.EnableSsl)
+        {
+            throw new InvalidOperationException(
+                "SMTP RequireTls=true requires EnableSsl=true.");
+        }
+        if (!_configuration.EnableSsl
+            && !string.Equals(
+                Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+                "Development",
+                StringComparison.Ordinal))
+        {
+            _logger.LogWarning(
+                "SMTP is using plaintext compatibility mode. Enable SSL and then set RequireTls=true.");
+        }
+
         _client = new SmtpClient(
             _configuration.Host,
             _configuration.Port > 0 ? _configuration.Port : 587)
@@ -158,6 +173,7 @@ public sealed class SmtpConfiguration
     public string? Login { get; set; }
     public string? Password { get; set; }
     public bool EnableSsl { get; set; } = true;
+    public bool RequireTls { get; set; } = false;
     public string? From { get; set; }
     public string? FromName { get; set; }
 }

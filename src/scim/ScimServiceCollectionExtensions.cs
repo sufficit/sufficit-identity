@@ -1,5 +1,6 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,7 +27,8 @@ public static class ScimServiceCollectionExtensions
         services.TryAddScoped<IScimProvisioningService,
             ScimProvisioningService>();
         services.TryAddScoped<ScimExceptionFilter>();
-        services.TryAddScoped<ScimAuthorizationAuditFilter>();
+        services.AddSingleton<IAuthorizationMiddlewareResultHandler,
+            ScimAuthorizationAuditHandler>();
 
         services.AddAuthorization(builder =>
         {

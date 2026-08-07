@@ -45,6 +45,24 @@ public static class EmailSenderExtensions
             return services;
         }
 
+        var rabbitOptions = configuration
+            .GetSection(RabbitMqEmailOptions.SectionName)
+            .Get<RabbitMqEmailOptions>() ?? new RabbitMqEmailOptions();
+        if (rabbitOptions.RequireTls && !rabbitOptions.UseTls)
+        {
+            throw new InvalidOperationException(
+                "RabbitMQ RequireTls=true requires UseTls=true.");
+        }
+        if (!rabbitOptions.UseTls
+            && !string.Equals(
+                Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+                "Development",
+                StringComparison.Ordinal))
+        {
+            Console.Error.WriteLine(
+                "[WARNING] RabbitMQ email transport is using plaintext AMQP compatibility mode. Enable UseTls, verify broker certificates, then set RequireTls=true.");
+        }
+
         services.Configure<RabbitMqEmailOptions>(
             configuration.GetSection(RabbitMqEmailOptions.SectionName));
         services.TryAddSingleton<IEmailMessagePublisher, RabbitMqEmailPublisher>();

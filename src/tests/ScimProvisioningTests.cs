@@ -300,6 +300,28 @@ public sealed class ScimProvisioningTests
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Denied_SCIM_requests_are_written_by_the_authorization_middleware()
+    {
+        using var parent = ManagementTestFactory.CreateWithRealAuthz();
+        await ((IAsyncLifetime)parent).InitializeAsync();
+        using var factory = ScimFactory(parent, requireAuthorization: true);
+
+        using var response = await factory.CreateClient().GetAsync(
+            "/scim/v2/users");
+        await using var scope = factory.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var audit = await database.ManagementAuditEvents
+            .OrderByDescending(item => item.Id)
+            .FirstOrDefaultAsync(item => item.Capability == "scim.authorization");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.NotNull(audit);
+        Assert.Equal("denied", audit.AuthorizationOutcome);
+        Assert.Equal("not_authenticated", audit.ReasonCode);
+        Assert.Equal("/scim/v2/users", audit.ResourceId);
+    }
+
     private static WebApplicationFactory<ManagementTestFactory> ScimFactory(
         ManagementTestFactory parent,
         bool requireAuthorization) =>
