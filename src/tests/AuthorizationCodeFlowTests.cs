@@ -95,6 +95,75 @@ public sealed class AuthorizationCodeFlowTests
     }
 
     [Fact]
+    public async Task Consent_post_with_repeated_scope_fields_preserves_profile_and_offline_access()
+    {
+        var username = $"consent-scopes-{Guid.NewGuid():N}";
+        const string password = "Str0ng!Passw0rd#Consent";
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await TestDataSeeder.CreateUserAsync(userManager, username, password);
+            await userManager.AddClaimAsync(user, new Claim("name", "Consent Test User"));
+        }
+
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        await TestOnlyEndpoints.SignInAsync(client, username);
+        var antiforgeryToken = await TestOnlyEndpoints.GetAntiforgeryTokenAsync(client);
+        var (verifier, challenge) = Pkce.CreatePair();
+
+        var form = new List<KeyValuePair<string, string>>
+        {
+            new("response_type", "code"),
+            new("client_id", TestDataSeeder.AuthorizationCodeClientId),
+            new("redirect_uri", TestDataSeeder.AuthorizationCodeRedirectUri),
+            new("scope", "openid"),
+            new("scope", "profile"),
+            new("scope", "offline_access"),
+            new("state", Guid.NewGuid().ToString("N")),
+            new("code_challenge", challenge),
+            new("code_challenge_method", "S256"),
+            new("consent_decision", "allow"),
+            new("__RequestVerificationToken", antiforgeryToken),
+        };
+
+        using var authorizationResponse = await client.PostAsync(
+            "/connect/authorize",
+            new FormUrlEncodedContent(form));
+        Assert.Equal(HttpStatusCode.Redirect, authorizationResponse.StatusCode);
+
+        var location = authorizationResponse.Headers.Location
+            ?? throw new InvalidOperationException("No redirect Location header.");
+        var authorizationQuery = QueryHelpers.ParseQuery(location.Query);
+        var code = authorizationQuery["code"].ToString();
+        Assert.False(string.IsNullOrWhiteSpace(code));
+
+        var (tokenStatus, tokenBody) = await client.PostFormAsync(
+            "/connect/token",
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "authorization_code",
+                ["code"] = code,
+                ["redirect_uri"] = TestDataSeeder.AuthorizationCodeRedirectUri,
+                ["client_id"] = TestDataSeeder.AuthorizationCodeClientId,
+                ["code_verifier"] = verifier,
+            });
+
+        Assert.Equal(HttpStatusCode.OK, tokenStatus);
+        Assert.False(string.IsNullOrWhiteSpace(tokenBody.GetProperty("refresh_token").GetString()));
+
+        using var userinfoRequest = new HttpRequestMessage(HttpMethod.Get, "/connect/userinfo");
+        userinfoRequest.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            tokenBody.GetProperty("access_token").GetString());
+        using var userinfoResponse = await client.SendAsync(userinfoRequest);
+
+        Assert.Equal(HttpStatusCode.OK, userinfoResponse.StatusCode);
+        var userinfo = await userinfoResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Consent Test User", userinfo.GetProperty("name").GetString());
+    }
+
+    [Fact]
     public async Task End_session_accepts_the_registered_post_logout_redirect_uri()
     {
         var username = $"endsession-{Guid.NewGuid():N}";
