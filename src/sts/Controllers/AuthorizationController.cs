@@ -481,7 +481,14 @@ public class AuthorizationController : Controller
             // auth-code token worked. Mirrors ExchangeForDeviceCodeAsync. The
             // auth-code branch below instead inherits these from the code
             // principal's claims, so it does not need this.
-            identity.SetScopes(result.Principal!.GetScopes());
+            // Tokens issued by the briefly deployed pre-fix refresh path may
+            // themselves carry no scopes. Recover only the scopes persisted on
+            // that token's original authorization so existing sessions heal on
+            // their next refresh without broadening the grant.
+            identity.SetScopes(await RefreshGrantScopeResolver.ResolveAsync(
+                result.Principal!,
+                _authorizationManager,
+                HttpContext.RequestAborted));
             identity.SetResources(await ResolveResourcesAsync(identity, request));
         }
         else
