@@ -214,10 +214,10 @@ public sealed class OpenIddictDeviceAuthorizationContextService :
 
             result.Add(new AuthorizationScopePresentation(
                 name,
-                await _scopeManager.GetDisplayNameAsync(
+                await _scopeManager.GetLocalizedDisplayNameAsync(
                     scope,
                     cancellationToken),
-                await _scopeManager.GetDescriptionAsync(
+                await _scopeManager.GetLocalizedDescriptionAsync(
                     scope,
                     cancellationToken),
                 (await _scopeManager.GetResourcesAsync(
