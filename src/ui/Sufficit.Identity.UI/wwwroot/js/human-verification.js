@@ -28,7 +28,12 @@
     }
 
     function loadScript(definition) {
-        if (window[definition.global]) return Promise.resolve();
+        function providerReady() {
+            var api = window[definition.global];
+            return api && typeof api.render === 'function';
+        }
+
+        if (providerReady()) return Promise.resolve();
         if (scriptPromises.has(definition.key)) return scriptPromises.get(definition.key);
 
         var promise = new Promise(function (resolve, reject) {
@@ -36,20 +41,34 @@
                 definition.key + '"]');
             var script = existing || document.createElement('script');
             var completed = false;
+            var readinessTimer;
+            var readinessDeadline = Date.now() + 10000;
 
-            function ready() {
+            function finish(error) {
                 if (completed) return;
                 completed = true;
-                if (window[definition.global]) resolve();
-                else reject(new Error('Human-verification provider did not initialize.'));
+                if (readinessTimer) clearTimeout(readinessTimer);
+                if (error) reject(error);
+                else resolve();
             }
 
-            script.addEventListener('load', ready, { once: true });
-            script.addEventListener('error', function () {
-                if (!completed) {
-                    completed = true;
-                    reject(new Error('Unable to load human-verification provider.'));
+            // Google creates window.grecaptcha before the localized runtime
+            // installs grecaptcha.render. Resolving on the script load event
+            // therefore races with recaptcha__*.js on fast/cached responses.
+            function checkReady() {
+                if (providerReady()) {
+                    finish();
+                } else if (Date.now() >= readinessDeadline) {
+                    finish(new Error(
+                        'Human-verification provider did not initialize.'));
+                } else {
+                    readinessTimer = setTimeout(checkReady, 50);
                 }
+            }
+
+            script.addEventListener('error', function () {
+                finish(new Error(
+                    'Unable to load human-verification provider.'));
             }, { once: true });
 
             if (!existing) {
@@ -59,10 +78,16 @@
                 script.dataset.humanVerification = definition.key;
                 document.head.appendChild(script);
             }
+
+            checkReady();
         });
 
-        scriptPromises.set(definition.key, promise);
-        return promise;
+        var trackedPromise = promise.catch(function (error) {
+            scriptPromises.delete(definition.key);
+            throw error;
+        });
+        scriptPromises.set(definition.key, trackedPromise);
+        return trackedPromise;
     }
 
     function updateToken(inputId, token) {
