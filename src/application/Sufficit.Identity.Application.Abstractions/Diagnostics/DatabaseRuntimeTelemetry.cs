@@ -8,6 +8,14 @@ namespace Sufficit.Identity.Application.Diagnostics;
 public interface IDatabaseRuntimeTelemetry
 {
     DatabaseRuntimeSnapshot GetSnapshot();
+
+    /// <summary>
+    /// Streams an initial snapshot followed by event-driven updates. Bursts are
+    /// coalesced by the implementation so slow consumers never apply pressure
+    /// to database command execution.
+    /// </summary>
+    IAsyncEnumerable<DatabaseRuntimeSnapshot> WatchAsync(
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record DatabaseRuntimeSnapshot(

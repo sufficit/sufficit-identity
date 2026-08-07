@@ -3,8 +3,10 @@ using System.Data.Common;
 using System.Diagnostics.Metrics;
 using System.Globalization;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Channels;
 using Sufficit.Identity.Application.Diagnostics;
 
 namespace Sufficit.Identity.STS.Diagnostics;
@@ -19,6 +21,8 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
 {
     private static readonly string[] PhysicalIdPropertyNames =
         ["ServerThread", "ProcessID", "ServerProcessId", "ClientConnectionId"];
+    private static readonly TimeSpan UpdateCoalescingWindow =
+        TimeSpan.FromMilliseconds(100);
 
     private readonly ConcurrentDictionary<DbConnection, ActiveLease> connections =
         new(ReferenceEqualityComparer.Instance);
@@ -26,10 +30,12 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
         new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<(string Provider, string Pool), PoolCounters> pools = new();
     private readonly ConcurrentDictionary<Type, Func<DbConnection, string?>> physicalIdReaders = new();
+    private readonly ConcurrentDictionary<long, Channel<byte>> subscribers = new();
     private readonly MeterListener meterListener;
     private DatabaseWatchdogSnapshot watchdog =
         new(false, "disabled", 0, null, null, null);
     private long nextConnectionId;
+    private long nextSubscriberId;
     private long totalCommands;
     private long failedCommands;
     private int disposed;
@@ -80,6 +86,56 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
             Volatile.Read(ref watchdog));
     }
 
+    public async IAsyncEnumerable<DatabaseRuntimeSnapshot> WatchAsync(
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(
+            Volatile.Read(ref disposed) is not 0,
+            this);
+
+        var channel = Channel.CreateBounded<byte>(
+            new BoundedChannelOptions(1)
+            {
+                SingleReader = true,
+                SingleWriter = false,
+                FullMode = BoundedChannelFullMode.DropOldest,
+                AllowSynchronousContinuations = false
+            });
+        var subscriberId = Interlocked.Increment(ref nextSubscriberId);
+        if (!subscribers.TryAdd(subscriberId, channel))
+        {
+            throw new InvalidOperationException(
+                "The database telemetry subscription could not be registered.");
+        }
+
+        try
+        {
+            yield return GetSnapshot();
+
+            while (await channel.Reader.WaitToReadAsync(cancellationToken))
+            {
+                while (channel.Reader.TryRead(out _))
+                {
+                }
+
+                // Database commands can arrive in large bursts. Waiting for a
+                // short quiet window keeps the stream event-driven while
+                // bounding Blazor render work to at most ten updates/second.
+                await Task.Delay(UpdateCoalescingWindow, cancellationToken);
+                while (channel.Reader.TryRead(out _))
+                {
+                }
+
+                yield return GetSnapshot();
+            }
+        }
+        finally
+        {
+            subscribers.TryRemove(subscriberId, out _);
+            channel.Writer.TryComplete();
+        }
+    }
+
     internal void ConfigureWatchdog(bool enabled)
     {
         Volatile.Write(
@@ -91,6 +147,7 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
                 null,
                 null,
                 null));
+        PublishChanged();
     }
 
     internal void RecordWatchdogProbe(
@@ -108,6 +165,7 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
                 DateTimeOffset.UtcNow,
                 duration.TotalMilliseconds,
                 healthy ? null : failureCode ?? "database_probe_failed"));
+        PublishChanged();
     }
 
     internal void RecordWatchdogStopping(int consecutiveFailures)
@@ -120,6 +178,7 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
                 Status = "restarting",
                 ConsecutiveFailures = consecutiveFailures
             });
+        PublishChanged();
     }
 
     internal void TrackOpened(DbConnection connection)
@@ -131,6 +190,7 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
             (_, existing) => existing.Reopen(
                 DateTimeOffset.UtcNow,
                 ResolvePhysicalCounters(connection)));
+        PublishChanged();
     }
 
     internal void TrackClosed(DbConnection connection)
@@ -139,6 +199,7 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
         if (connections.TryRemove(connection, out var lease))
         {
             lease.MarkReturned();
+            PublishChanged();
         }
     }
 
@@ -152,6 +213,7 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
         var lease = connections.GetOrAdd(connection, CreateLease);
         lease.CommandStarted();
         Interlocked.Increment(ref totalCommands);
+        PublishChanged();
     }
 
     internal void TrackCommandCompleted(
@@ -164,6 +226,7 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
             if (failed)
             {
                 Interlocked.Increment(ref failedCommands);
+                PublishChanged();
             }
             return;
         }
@@ -173,6 +236,7 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
         {
             Interlocked.Increment(ref failedCommands);
         }
+        PublishChanged();
     }
 
     private ActiveLease CreateLease(DbConnection connection)
@@ -263,6 +327,20 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
             static _ => new PoolCounters());
         var delta = Convert.ToInt64(measurement, CultureInfo.InvariantCulture);
         counters.Record(instrument.Name, usageState, delta);
+        PublishChanged();
+    }
+
+    private void PublishChanged()
+    {
+        if (Volatile.Read(ref disposed) is not 0)
+        {
+            return;
+        }
+
+        foreach (var subscriber in subscribers.Values)
+        {
+            subscriber.Writer.TryWrite(0);
+        }
     }
 
     private void PrunePhysicalCounters(DateTimeOffset now)
@@ -326,6 +404,11 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
     {
         if (Interlocked.Exchange(ref disposed, 1) is 0)
         {
+            foreach (var subscriber in subscribers.Values)
+            {
+                subscriber.Writer.TryComplete();
+            }
+            subscribers.Clear();
             meterListener.Dispose();
         }
     }

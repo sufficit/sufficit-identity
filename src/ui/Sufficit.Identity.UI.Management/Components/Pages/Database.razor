@@ -3,6 +3,7 @@
 @attribute [StreamRendering]
 @implements IAsyncDisposable
 @inject ManagementDatabaseDataSource DatabaseData
+@inject ILogger<Database> Logger
 
 <PageTitle>Banco de dados | Sufficit Identity</PageTitle>
 
@@ -12,11 +13,11 @@
         <div class="database-page-actions">
             <button class="button button--secondary database-live-control"
                     type="button"
-                    aria-pressed="@autoRefresh"
-                    @onclick="ToggleAutoRefresh">
-                <span class="status-dot @(autoRefresh ? "status-dot--success" : null)"
+                    aria-pressed="@liveUpdatesEnabled"
+                    @onclick="ToggleLiveUpdatesAsync">
+                <span class="status-dot @LiveStatusDotClass"
                       aria-hidden="true"></span>
-                @(autoRefresh ? "Atualização automática" : "Atualização pausada")
+                @LiveControlLabel
             </button>
             <button class="button button--secondary"
                     type="button"
@@ -151,9 +152,9 @@ else
                 </p>
             </div>
             <div class="database-live-status" aria-live="polite">
-                <span class="status-dot @(autoRefresh ? "status-dot--success" : null)"
+                <span class="status-dot @LiveStatusDotClass"
                       aria-hidden="true"></span>
-                <span>@(autoRefresh ? "Atualiza a cada 2 segundos" : "Atualização automática pausada")</span>
+                <span>@LiveStatusLabel</span>
             </div>
         </div>
 
@@ -234,12 +235,33 @@ else
 
 @code {
     private readonly CancellationTokenSource disposal = new();
+    private readonly TaskCompletionSource<bool> initialSnapshot =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
     private DatabaseRuntimeSnapshot? snapshot;
-    private Task? refreshLoop;
+    private Task? liveUpdateLoop;
     private string? refreshError;
     private bool loading = true;
     private bool refreshing;
-    private bool autoRefresh = true;
+    private bool liveUpdatesEnabled = true;
+    private bool liveConnected;
+
+    private string? LiveStatusDotClass => !liveUpdatesEnabled
+        ? null
+        : liveConnected
+            ? "status-dot--success"
+            : "status-dot--warning";
+
+    private string LiveControlLabel => !liveUpdatesEnabled
+        ? "Tempo real pausado"
+        : liveConnected
+            ? "Tempo real ativo"
+            : "Reconectando…";
+
+    private string LiveStatusLabel => !liveUpdatesEnabled
+        ? "Eventos em tempo real pausados"
+        : liveConnected
+            ? "Eventos em tempo real"
+            : "Reconectando eventos…";
 
     private IReadOnlyList<DatabasePoolSnapshot> EffectivePools =>
         snapshot?.Pools.Count > 0
@@ -314,8 +336,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        await RefreshAsync();
-        refreshLoop = RunRefreshLoopAsync(disposal.Token);
+        liveUpdateLoop = RunLiveUpdatesAsync(disposal.Token);
+        await initialSnapshot.Task;
     }
 
     private async Task RefreshAsync()
@@ -331,8 +353,7 @@ else
             var result = await DatabaseData.GetAsync(disposal.Token);
             if (result.IsSuccess && result.Value is not null)
             {
-                snapshot = result.Value;
-                refreshError = null;
+                ApplySnapshot(result.Value);
             }
             else
             {
@@ -347,31 +368,104 @@ else
         }
     }
 
-    private async Task RunRefreshLoopAsync(CancellationToken cancellationToken)
+    private async Task RunLiveUpdatesAsync(CancellationToken cancellationToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
-        try
+        var reconnectDelay = TimeSpan.FromSeconds(1);
+        while (!cancellationToken.IsCancellationRequested)
         {
-            while (await timer.WaitForNextTickAsync(cancellationToken))
+            try
             {
-                if (!autoRefresh)
+                await foreach (var updatedSnapshot in DatabaseData
+                    .WatchAsync(cancellationToken)
+                    .WithCancellation(cancellationToken))
                 {
-                    continue;
+                    reconnectDelay = TimeSpan.FromSeconds(1);
+                    await InvokeAsync(() =>
+                    {
+                        liveConnected = true;
+                        if (liveUpdatesEnabled || snapshot is null)
+                        {
+                            ApplySnapshot(updatedSnapshot);
+                        }
+                        initialSnapshot.TrySetResult(true);
+                        StateHasChanged();
+                    });
                 }
 
-                await InvokeAsync(async () =>
+                if (!cancellationToken.IsCancellationRequested)
                 {
-                    await RefreshAsync();
+                    throw new InvalidOperationException(
+                        "The database telemetry event stream ended unexpectedly.");
+                }
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (ManagementAccessException exception)
+            {
+                await InvokeAsync(() =>
+                {
+                    liveConnected = false;
+                    loading = false;
+                    refreshError = exception.Decision.Outcome is
+                        ManagementAuthorizationOutcome.StepUpRequired
+                            ? "Conclua a autenticação multifator para continuar."
+                            : "Sua conta não possui a capability necessária.";
+                    initialSnapshot.TrySetResult(false);
                     StateHasChanged();
                 });
+                break;
+            }
+            catch (Exception exception)
+            {
+                Logger.LogWarning(
+                    exception,
+                    "Database telemetry live stream was interrupted.");
+                await InvokeAsync(() =>
+                {
+                    liveConnected = false;
+                    loading = false;
+                    refreshError =
+                        "O fluxo em tempo real foi interrompido e será reconectado automaticamente.";
+                    initialSnapshot.TrySetResult(false);
+                    StateHasChanged();
+                });
+
+                try
+                {
+                    await Task.Delay(reconnectDelay, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                    when (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                reconnectDelay = TimeSpan.FromSeconds(
+                    Math.Min(reconnectDelay.TotalSeconds * 2, 15));
             }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+
+        initialSnapshot.TrySetResult(false);
+    }
+
+    private async Task ToggleLiveUpdatesAsync()
+    {
+        liveUpdatesEnabled = !liveUpdatesEnabled;
+        if (liveUpdatesEnabled)
         {
+            await RefreshAsync();
         }
     }
 
-    private void ToggleAutoRefresh() => autoRefresh = !autoRefresh;
+    private void ApplySnapshot(DatabaseRuntimeSnapshot value)
+    {
+        snapshot = value;
+        refreshError = null;
+        loading = false;
+    }
 
     private long? PoolUsed(DatabasePoolSnapshot pool) =>
         pool.UsedConnections
@@ -491,9 +585,9 @@ else
     public async ValueTask DisposeAsync()
     {
         await disposal.CancelAsync();
-        if (refreshLoop is not null)
+        if (liveUpdateLoop is not null)
         {
-            await refreshLoop;
+            await liveUpdateLoop;
         }
         disposal.Dispose();
     }

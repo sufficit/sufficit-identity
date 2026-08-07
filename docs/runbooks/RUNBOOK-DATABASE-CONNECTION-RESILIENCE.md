@@ -64,7 +64,17 @@ Both call the same `IDatabaseMonitoringService`; the UI does not access EF Core
 or the provider directly. The response and UI never include connection
 strings, credentials, SQL text or parameters.
 
-The screen updates every two seconds and shows:
+The screen is event-driven. Connection, command, pool and watchdog changes are
+published through the in-process telemetry stream; the embedded Blazor Server
+UI sends the resulting render diffs over its existing SignalR connection
+(WebSocket when available, with the framework transport fallback). Event bursts
+are coalesced into a 100 ms window, so the database execution path never waits
+for a UI consumer and no periodic telemetry query runs while the state is idle.
+The operator can pause live rendering, request a manual snapshot and resume
+without losing the current view. An interrupted internal stream reconnects with
+bounded exponential backoff from 1 to 15 seconds.
+
+The screen shows:
 
 - provider pool usage, idle connections, maximum size, pending requests and
   pool-acquisition timeouts;
@@ -81,7 +91,9 @@ warning state for the lifetime of that process so the incident remains visible.
 ## Interpretation and limitations
 
 - “Conexões locadas agora” means logical connections currently checked out by
-  EF Core. Fast commands may open and return between two UI refreshes.
+  EF Core. A lease that opens and returns entirely inside the 100 ms event
+  coalescing window may not persist as an individual row; aggregate command
+  counters still advance to the latest observed value.
 - Idle physical connections are available as aggregate provider metrics, not
   as an individually enumerable cross-provider list. This is an ADO.NET/provider
   boundary, not missing UI data.
