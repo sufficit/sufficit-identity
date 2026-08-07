@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.JsonWebTokens;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.STS;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -266,6 +268,61 @@ public sealed class ClaimScopeMapTests
         // that the refreshed token must carry it too.
         Assert.Equal(directiveValue, await IntrospectDirectiveAsync(client, initialAccessToken));
         Assert.Equal(directiveValue, await IntrospectDirectiveAsync(client, refreshedAccessToken));
+    }
+
+    [Fact]
+    public async Task Scope_less_legacy_refresh_grant_recovers_scopes_from_its_authorization()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(MapConfiguration());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        using var scope = factory.Services.CreateScope();
+        var applicationManager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        var authorizationManager = scope.ServiceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
+        var application = await applicationManager.FindByClientIdAsync(
+            TestDataSeeder.AuthorizationCodeClientId);
+        Assert.NotNull(application);
+
+        var descriptor = new OpenIddictAuthorizationDescriptor
+        {
+            ApplicationId = await applicationManager.GetIdAsync(application),
+            Status = OpenIddictConstants.Statuses.Valid,
+            Subject = $"legacy-refresh-{Guid.NewGuid():N}",
+            Type = OpenIddictConstants.AuthorizationTypes.Permanent,
+        };
+        descriptor.Scopes.UnionWith(["openid", "roles", DirectiveScopeName]);
+        var authorization = await authorizationManager.CreateAsync(descriptor);
+        var authorizationId = await authorizationManager.GetIdAsync(authorization);
+
+        var grant = new ClaimsPrincipal(new ClaimsIdentity("refresh-token"));
+        grant.SetAuthorizationId(authorizationId);
+        Assert.Empty(grant.GetScopes());
+
+        var recovered = await RefreshGrantScopeResolver.ResolveAsync(
+            grant,
+            authorizationManager);
+
+        Assert.Equal(
+            [DirectiveScopeName, "openid", "roles"],
+            recovered.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task Refresh_grant_scopes_take_precedence_over_authorization_fallback()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(MapConfiguration());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        using var scope = factory.Services.CreateScope();
+        var authorizationManager = scope.ServiceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
+        var grant = new ClaimsPrincipal(new ClaimsIdentity("refresh-token"));
+        grant.SetScopes("openid", "profile");
+
+        var resolved = await RefreshGrantScopeResolver.ResolveAsync(
+            grant,
+            authorizationManager);
+
+        Assert.Equal(["openid", "profile"], resolved.ToArray());
     }
 
     /// <summary>Introspects <paramref name="accessToken"/> and returns the mapped directive value (or null).</summary>
