@@ -154,6 +154,8 @@ internal sealed class RollingCibaPendingRequestStore(
     DatabaseCibaPendingRequestStore database,
     DistributedCibaPendingRequestStore legacy) : ICibaPendingRequestStore
 {
+    private readonly object _consumeLock = new();
+
     public CibaPendingRequest Create(
         string clientId,
         string subject,
@@ -191,10 +193,17 @@ internal sealed class RollingCibaPendingRequestStore(
         string authReqId,
         out CibaPendingRequest request)
     {
-        Synchronize(authReqId);
-        if (!database.TryConsumeApproved(authReqId, out request)) return false;
-        legacy.Deny(authReqId);
-        return true;
+        // The database update is the cross-replica compare-and-set authority.
+        // Serialize the rolling legacy import inside each process so it cannot
+        // race the winning transition, and so providers that serialize writes
+        // (notably the SQLite test host) still observe exactly one winner.
+        lock (_consumeLock)
+        {
+            Synchronize(authReqId);
+            if (!database.TryConsumeApproved(authReqId, out request)) return false;
+            legacy.Deny(authReqId);
+            return true;
+        }
     }
 
     public bool TryRecordPoll(string authReqId, TimeSpan minimumInterval)
