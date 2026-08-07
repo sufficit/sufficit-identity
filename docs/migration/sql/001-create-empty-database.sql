@@ -466,3 +466,58 @@ VALUES ('20260807020859_AddIdentityApplicationMetrics', '10.0.10');
 
 COMMIT;
 
+START TRANSACTION;
+ALTER TABLE `ssfstreams` ADD `ownerclientid` varchar(100) CHARACTER SET utf8mb4 NULL;
+
+ALTER TABLE `ssfstreams` ADD `verificationchallengehash` varchar(43) CHARACTER SET utf8mb4 NULL;
+
+ALTER TABLE `ssfstreams` ADD `verificationexpiresatutc` datetime(6) NULL;
+
+ALTER TABLE `ssfsetdeliveries` ADD `deliverykey` varchar(64) CHARACTER SET utf8mb4 NULL;
+
+UPDATE `ssfstreams`
+SET `ownerclientid` = `audience`
+WHERE `ownerclientid` IS NULL;
+
+CREATE INDEX `IX_ssfstreams_ownerclientid_status` ON `ssfstreams` (`ownerclientid`, `status`);
+
+CREATE UNIQUE INDEX `AK_ssfsetdeliveries_deliverykey` ON `ssfsetdeliveries` (`deliverykey`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260807135147_HardenSsfStreams', '10.0.10');
+
+COMMIT;
+
+START TRANSACTION;
+CREATE TABLE `cibapendingstates` (
+    `authreqid` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
+    `clientid` varchar(100) CHARACTER SET utf8mb4 NOT NULL,
+    `subject` varchar(400) CHARACTER SET utf8mb4 NOT NULL,
+    `scopesjson` varchar(2048) CHARACTER SET utf8mb4 NOT NULL,
+    `bindingmessage` varchar(180) CHARACTER SET utf8mb4 NULL,
+    `expiresatutc` datetime(6) NOT NULL,
+    `createdatutc` datetime(6) NOT NULL,
+    `lastpollatutc` datetime(6) NOT NULL,
+    `approvedsubject` varchar(400) CHARACTER SET utf8mb4 NULL,
+    `state` varchar(16) CHARACTER SET utf8mb4 NOT NULL,
+    `consumptionid` varchar(64) CHARACTER SET utf8mb4 NULL,
+    CONSTRAINT `PK_cibapendingstates` PRIMARY KEY (`authreqid`)
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `dpopreplayentries` (
+    `key` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
+    `expiresatutc` datetime(6) NOT NULL,
+    CONSTRAINT `PK_dpopreplayentries` PRIMARY KEY (`key`)
+) CHARACTER SET=utf8mb4;
+
+CREATE UNIQUE INDEX `AK_cibapendingstates_consumptionid` ON `cibapendingstates` (`consumptionid`);
+
+CREATE INDEX `IX_cibapendingstates_state_expiresatutc` ON `cibapendingstates` (`state`, `expiresatutc`);
+
+CREATE INDEX `IX_dpopreplayentries_expiresatutc` ON `dpopreplayentries` (`expiresatutc`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260807140821_AddAtomicProtocolState', '10.0.10');
+
+COMMIT;
+

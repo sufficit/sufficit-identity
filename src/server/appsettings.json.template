@@ -7,14 +7,26 @@
     "LogLevel": {
       "Default": "Information",
       "Microsoft.AspNetCore": "Warning",
-      "Microsoft.EntityFrameworkCore": "Warning"
+      "Microsoft.EntityFrameworkCore": "Warning",
+      "OpenIddict": "Warning"
     }
   },
   "_AllowedHosts": "Kestrel's Host-header allowlist, semicolon-separated (e.g. \"your-identity-host;www.your-identity-host\"). '*' accepts ANY Host header — combined with a reverse proxy that forwards the client's original Host unchecked, this enables host-header poisoning (spoofed password-reset links, cache-poisoning). Set this to the real production host(s); it does not need to match Issuer's scheme, only its host.",
   "AllowedHosts": "your-identity-host",
   "Sufficit": {
+    "Vault": {
+      "Enabled": false,
+      "RequireEncryptionInProduction": false,
+      "KeySource": "dataprotection",
+      "DataProtectionPurpose": "Sufficit.Identity.Vault.Master.v1"
+    },
     "Identity": {
       "Issuer": "https://your-identity-host/",
+      "PublicUrl": "https://your-identity-host/",
+      "_PublicOrigin": "Audit preserves request-derived URLs for a rolling upgrade but logs their use. After PublicUrl/Issuer is pinned in every environment, set Mode=Enforce so Host headers can never shape security links or metadata.",
+      "PublicOrigin": {
+        "Mode": "Audit"
+      },
       "ConnectionStringName": "DefaultConnection",
       "_Database": "Schema provisioning policy. In Development the host ALWAYS applies pending EF Core migrations on startup (MigrateAsync). In production it does so ONLY when Database:AutoMigrate=true (default false — conservative for the legacy shared Duende/Skoruba database, which predates the EF model). When AutoMigrate is false in production, provision schema from the checked-in canonical SQL (docs/migration/sql/*) before each deploy. CRITICAL: when enabling AutoMigrate, ALWAYS set AllowedDatabaseNames to the concrete database name(s) the migrator may touch — if the connection string points elsewhere (e.g. the production database by a config typo), the process refuses to start rather than migrate the wrong database. Empty AllowedDatabaseNames disables the guard (Development only).",
       "Database": {
@@ -70,6 +82,8 @@
       },
       "_Certificates": "Required in production. PFX files (X509Certificate2) used to sign and encrypt tokens. Leave empty only in Development, where ephemeral dev certificates are used automatically; any other environment fails to start without these.",
       "Certificates": {
+        "MinimumRemainingLifetimeDays": 30,
+        "FailOnExpiringCertificate": false,
         "_SigningPath": "Path to the PFX file used to sign tokens.",
         "SigningPath": "",
         "_SigningPassword": "Password protecting the signing PFX file.",
@@ -107,9 +121,9 @@
         "_MaxLifetimeSeconds": "Maximum request-object lifetime in seconds. Default 120 (2 minutes).",
         "MaxLifetimeSeconds": 120
       },
-      "_TokenExchange": "Master switch for RFC 8693 token exchange. Default FALSE (secure-by-default). Production environments that have signed off a delegation policy must opt-in via Enabled=true AND configure a closed AllowedClientIds allowlist.",
+      "_TokenExchange": "RFC 8693 token exchange remains enabled for compatibility and still requires the per-client OpenIddict grant permission. AllowedClientIds adds a second closed allowlist without removing the grant globally; exchanged scopes and resources are always attenuated against the subject token.",
       "TokenExchange": {
-        "Enabled": false,
+        "Enabled": true,
         "AllowedClientIds": []
       },
       "_RateLimit": "Fixed-window rate limit applied to POST /connect/token, per client IP, no queueing. Complements (never replaces) account lockout. Disable only if an upstream gateway already throttles the token endpoint.",
@@ -165,10 +179,17 @@
         "RequireConfirmedEmail": true
       },
       "_ServerSideSessions": "The ASP.NET Core Identity application cookie is SERVER-SIDE: the browser holds only the opaque OIDC `sid` as its cookie value, while the full AuthenticationTicket lives in the `oidcusersessions` table (DataProtection-protected). This enables per-device session enumeration (ISessionManagement.ListBySubjectAsync) and per-session revocation (ISessionManagement.RevokeAsync by sid), closing the protocol gap vs. Keycloak/Duende/Zitadel. The session store is DB-backed and therefore shared across replicas out of the box — no extra Redis dependency (unlike the DPoP/CIBA/nonce stores). Global revocation (RevokeAllSessionsAsync / management revoke-all / user disable/delete) bumps the security stamp AND drops every session row, so both the cookies and the session table reflect reality. Production schema must add the `oidcusersessions` table before deploying — see docs/migration/sql/080-add-oidc-user-sessions.sql (existing databases) or 001-create-empty-database.sql (fresh).",
-      "_ClaimScopeMap": "Config-driven claim-type → required-scope allowlist for application-specific claims. A mapped claim reaches access and identity tokens ONLY if the subject was granted the mapped scope; unmapped claims retain the legacy access-token behavior. The map ships EMPTY by default. Mapped claim names and scopes are registered automatically, so the generic STS does not need to know their domain meaning. Roll out one resource server at a time: first confirm it requests the mapped scope, THEN add the entry.",
+      "_CredentialMutations": "Central security boundary for password, MFA, passkey and federated-login mutations. Audit preserves existing sessions during rollout while recording where recent authentication is missing; switch StepUpMode to Enforce after observing production telemetry. Successful mutations revoke OAuth credentials and other browser sessions while preserving and refreshing the initiating browser session.",
+      "CredentialMutations": {
+        "StepUpMode": "Audit",
+        "MaximumAuthenticationAgeMinutes": 15
+      },
+      "_ClaimScopeMap": "Central claim-emission policy. Mapped claims require their scope. Unmapped claims retain legacy access-token behavior while IncludeUnmappedClaimsInAccessTokens is true; inventory and map consumers before changing it to false for strict allowlisting.",
       "ClaimScopeMap": {
-        "_ClaimToScope": "Object mapping an application claim type → scope name. Empty object = no gating (retrocompatible).",
-        "ClaimToScope": {}
+        "ClaimToScope": {
+          "directive": "directives"
+        },
+        "IncludeUnmappedClaimsInAccessTokens": true
       },
       "_Mtls": "Mutual TLS (mTLS) client authentication and sender-constrained access tokens (RFC 8705, item 3.4). Opt-in (default false): enabling registers the MTLS-aliased endpoint paths (e.g. /connect/token/mtls) and advertises tls_client_certificate_bound_access_tokens=true in discovery. mTLS requires the HOST (Kestrel/nginx) to request and validate client certificates at the TLS handshake — that is DEPLOYMENT configuration (see Program.cs comments), not something this flag alone does. private_key_jwt (RFC 7523) is enabled by OpenIddict unconditionally and is the OTHER strong client-auth method (not gated here). Together with PAR (item 3.3) and DPoP (item 3.1), these are the FAPI 2.0 prerequisites.",
       "Mtls": {
@@ -276,6 +297,12 @@
         "AllowedOrigins": [],
         "AllowCredentials": false
       },
+      "_OutboundHttp": "SSRF boundary for every STS-owned HTTP client. Public HTTPS works by default. List internal DNS names explicitly when a receiver, logout URI or metrics backend resolves to a private address; list hosts separately under AllowedHttpHosts only when an internal integration cannot use TLS yet.",
+      "OutboundHttp": {
+        "AllowedPrivateHosts": [],
+        "AllowedHttpHosts": [],
+        "UseEnvironmentProxy": false
+      },
       "_Csp": "Content Security Policy baseline for the STS HTML pages (login/consent/device/logout served by the embedded public UI). XSS on those pages is the highest-impact client-side risk in an IdP (forged consent / stolen session), and CSP is the missing containment layer (eval M1). Ships in Report-Only mode by default so a misconfigured policy CANNOT break the UI — flip ReportOnly to false only after calibrating against the real UI pages (exercise login/consent/device/logout, collect violation reports, tighten directives — ideally removing 'unsafe-inline' from style-src via nonces/hashes).",
       "Csp": {
         "_Enabled": "Master switch. Disable only if an upstream gateway already injects a CSP.",
@@ -317,11 +344,10 @@
         "Login": "",
         "Password": "",
         "EnableSsl": true,
+        "RequireTls": false,
         "From": "no-reply@your-domain.com",
         "FromName": "Sufficit Identity"
       },
-      "_PublicUrl": "Optional. Used to build absolute URLs in emails (e.g. https://identity.example.com). If empty, the request scheme/host is used.",
-      "PublicUrl": "",
       "Email": {
         "_TestEmailAddress": "When non-empty, ALL outgoing emails are redirected to this address (dev/staging safety net). Leave empty in production.",
         "TestEmailAddress": ""
@@ -352,6 +378,11 @@
         "HostName": "",
         "UserName": "",
         "Password": "",
+        "Port": 5672,
+        "UseTls": false,
+        "RequireTls": false,
+        "TlsServerName": "",
+        "CheckCertificateRevocation": true,
         "Heartbeat": null
       }
     }

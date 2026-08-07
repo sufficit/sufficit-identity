@@ -30,11 +30,11 @@ On an installed host, enable or roll back the capability explicitly:
 
 ```bash
 /opt/sufficit-identity/helpers/security-rollout.sh enable-jarm
-systemctl restart sufficit-identity
+/opt/sufficit-identity/helpers/activate-release.sh --current
 
 # rollback
 /opt/sufficit-identity/helpers/security-rollout.sh disable-jarm
-systemctl restart sufficit-identity
+/opt/sufficit-identity/helpers/activate-release.sh --current
 ```
 
 ## SSF/CAEP

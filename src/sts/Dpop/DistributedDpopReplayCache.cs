@@ -1,5 +1,8 @@
 using System.Security.Cryptography;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.EntityFrameworkCore;
+using Sufficit.Identity.Core.Data;
+using Sufficit.Identity.Core.Entities;
 
 namespace Sufficit.Identity.STS.Dpop;
 
@@ -63,5 +66,61 @@ internal sealed class DistributedDpopReplayCache : IDpopReplayCache
         // Read back: if another replica wrote concurrently, our marker lost.
         var readback = _cache.GetString(key);
         return readback != markerB64;
+    }
+}
+
+internal sealed class DatabaseDpopReplayCache(
+    IDbContextFactory<AppDbContext> databaseFactory,
+    TimeProvider? timeProvider = null) : IDpopReplayCache
+{
+    private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
+    private int _cleanupCounter;
+
+    public bool IsReplay(string jti, TimeSpan ttl)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(jti);
+        var key = Convert.ToHexStringLower(SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(jti)));
+        using var database = databaseFactory.CreateDbContext();
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+
+        var expired = database.DpopReplayEntries.Find(key);
+        if (expired is not null && expired.ExpiresAtUtc <= now)
+        {
+            database.DpopReplayEntries.Remove(expired);
+            database.SaveChanges();
+            database.ChangeTracker.Clear();
+        }
+
+        database.DpopReplayEntries.Add(new DpopReplayEntry
+        {
+            Key = key,
+            ExpiresAtUtc = now + ttl,
+        });
+        try
+        {
+            database.SaveChanges();
+        }
+        catch (DbUpdateException)
+        {
+            return true;
+        }
+
+        if (Interlocked.Increment(ref _cleanupCounter) % 256 == 0)
+            database.DpopReplayEntries
+                .Where(entry => entry.ExpiresAtUtc <= now)
+                .ExecuteDelete();
+        return false;
+    }
+}
+
+internal sealed class RollingDpopReplayCache(
+    DistributedDpopReplayCache legacyCache,
+    DatabaseDpopReplayCache databaseCache) : IDpopReplayCache
+{
+    public bool IsReplay(string jti, TimeSpan ttl)
+    {
+        if (legacyCache.IsReplay(jti, ttl)) return true;
+        return databaseCache.IsReplay(jti, ttl);
     }
 }

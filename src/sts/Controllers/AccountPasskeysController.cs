@@ -137,6 +137,7 @@ public sealed class AccountPasskeysController(
             "passkey-limit-reached" => StatusCodes.Status409Conflict,
             "account-locked" => StatusCodes.Status423Locked,
             "sign-in-not-allowed" => StatusCodes.Status403Forbidden,
+            "step-up-required" => StatusCodes.Status403Forbidden,
             "passkey-authentication-failed" => StatusCodes.Status401Unauthorized,
             _ => StatusCodes.Status400BadRequest,
         };

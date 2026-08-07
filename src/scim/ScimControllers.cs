@@ -6,7 +6,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Sufficit.Identity.Scim;
 
-public abstract class ScimControllerBase : ControllerBase
+public abstract class ScimControllerBase(
+    IScimPublicOriginResolver publicOrigin) : ControllerBase
 {
     protected ObjectResult ScimOk(object value) =>
         ScimResult(value, StatusCodes.Status200OK);
@@ -28,7 +29,7 @@ public abstract class ScimControllerBase : ControllerBase
         new(User, HttpContext.TraceIdentifier);
 
     protected string AbsoluteLocation(string relativePath) =>
-        $"{Request.Scheme}://{Request.Host}{Request.PathBase}/{relativePath.TrimStart('/')}";
+        publicOrigin.BuildAbsolute(Request, relativePath);
 
     protected void ApplyUserLocation(ScimUserResource resource)
     {
@@ -71,10 +72,10 @@ public abstract class ScimControllerBase : ControllerBase
 [ApiController]
 [Authorize(Policy = ScimServiceCollectionExtensions.PolicyName)]
 [ServiceFilter(typeof(ScimExceptionFilter))]
-[ServiceFilter(typeof(ScimAuthorizationAuditFilter))]
 [Route("scim/v2/users")]
 public sealed class ScimUsersController(
-    IScimProvisioningService provisioning) : ScimControllerBase
+    IScimProvisioningService provisioning,
+    IScimPublicOriginResolver publicOrigin) : ScimControllerBase(publicOrigin)
 {
     [HttpGet]
     public async Task<ObjectResult> List(
@@ -169,10 +170,10 @@ public sealed class ScimUsersController(
 [ApiController]
 [Authorize(Policy = ScimServiceCollectionExtensions.PolicyName)]
 [ServiceFilter(typeof(ScimExceptionFilter))]
-[ServiceFilter(typeof(ScimAuthorizationAuditFilter))]
 [Route("scim/v2/groups")]
 public sealed class ScimGroupsController(
-    IScimProvisioningService provisioning) : ScimControllerBase
+    IScimProvisioningService provisioning,
+    IScimPublicOriginResolver publicOrigin) : ScimControllerBase(publicOrigin)
 {
     [HttpGet]
     public async Task<ObjectResult> List(

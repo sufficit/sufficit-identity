@@ -29,6 +29,31 @@ public static class ServiceCollectionExtensions
         services.AddOptions<VaultOptions>().Bind(section);
         services.AddSingleton(options);
 
+        if (!string.Equals(
+                options.KeySource,
+                "dataprotection",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Vault:KeySource currently supports only 'dataprotection'.");
+        }
+
+        var isDevelopment = string.Equals(
+            Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+            "Development",
+            StringComparison.Ordinal);
+        if (!options.Enabled && !isDevelopment)
+        {
+            if (options.RequireEncryptionInProduction)
+            {
+                throw new InvalidOperationException(
+                    "Sufficit:Vault encryption is required in production, but Sufficit:Vault:Enabled is false.");
+            }
+
+            Console.Error.WriteLine(
+                "[WARNING] Sufficit:Vault is using plaintext compatibility mode in production. Enable it, migrate pt1 values, then set RequireEncryptionInProduction=true.");
+        }
+
         if (options.Enabled)
         {
             services.AddSingleton<DataProtectionKeySource>();

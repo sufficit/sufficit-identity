@@ -26,6 +26,8 @@ public static class IdentityDatabaseSchema
     public const string OidcUserSessionsMigrationId = "20260806131249_AddOidcUserSessions";
     public const string VaultKeysMigrationId = "20260806162913_AddVaultKeys"; // gitleaks:allow
     public const string IdentityApplicationMetricsMigrationId = "20260807020859_AddIdentityApplicationMetrics";
+    public const string SsfStreamSecurityMigrationId = "20260807135147_HardenSsfStreams";
+    public const string AtomicProtocolStateMigrationId = "20260807140821_AddAtomicProtocolState";
 
     /// <summary>
     /// Migration history owned by the new Sufficit Identity model.
@@ -76,6 +78,16 @@ public static class IdentityDatabaseSchema
     public const int SsfEventsRequestedLength = 1024; // events JSON array
     public const int SsfDescriptionLength = 256;
     public const int SsfJtiLength = 64;               // SET jti (poll queue)
+    public const int SsfOwnerClientIdLength = 100;
+    public const int SsfChallengeHashLength = 43;     // base64url SHA-256
+    public const int SsfDeliveryKeyLength = 64;       // lowercase hex SHA-256
+
+    // Protocol replay / one-shot state
+    public const int ProtocolStateKeyLength = 64;
+    public const int ProtocolStateValueLength = 400;
+    public const int ProtocolStateJsonLength = 2048;
+    public const int ProtocolStateStatusLength = 16;
+    public const int CibaBindingMessageLength = 180;
 
     // OIDC server-side sessions (browser SSO sessions for the Identity cookie)
     public const int OidcSessionIdLength = 64;          // the sid (32 random bytes base64url)

@@ -162,6 +162,53 @@ public sealed class CibaInitiationTests
             ["client_secret"] = "test-ciba-secret",
         });
         Assert.Equal(HttpStatusCode.BadRequest, replayStatus);
+
+        client.DefaultRequestHeaders.Authorization = IntrospectionTests.BasicAuthFor(
+            TestDataSeeder.IntrospectionClientId,
+            TestDataSeeder.IntrospectionClientSecret);
+        var (_, active) = await client.PostFormAsync(
+            "/connect/introspect",
+            new Dictionary<string, string> { ["token"] = accessToken! });
+        Assert.True(active.GetProperty("active").GetBoolean());
+
+        client.DefaultRequestHeaders.Authorization = null;
+        var (revocationStatus, _) = await client.PostFormAsync(
+            "/connect/revocation",
+            new Dictionary<string, string>
+            {
+                ["token"] = accessToken!,
+                ["token_type_hint"] = "access_token",
+                ["client_id"] = "test-ciba",
+                ["client_secret"] = "test-ciba-secret",
+            });
+        Assert.Equal(HttpStatusCode.OK, revocationStatus);
+
+        client.DefaultRequestHeaders.Authorization = IntrospectionTests.BasicAuthFor(
+            TestDataSeeder.IntrospectionClientId,
+            TestDataSeeder.IntrospectionClientSecret);
+        var (_, inactive) = await client.PostFormAsync(
+            "/connect/introspect",
+            new Dictionary<string, string> { ["token"] = accessToken! });
+        Assert.False(inactive.GetProperty("active").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Database_backed_ciba_consume_has_one_winner_under_concurrency()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            CibaEnabledWithShortInterval());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        var store = factory.Services.GetRequiredService<ICibaPendingRequestStore>();
+        var request = store.Create(
+            "concurrent-client", "subject-1", [], null, TimeSpan.FromMinutes(1));
+        Assert.True(store.Approve(request.AuthReqId, "subject-1"));
+
+        var attempts = await Task.WhenAll(Enumerable.Range(0, 8).Select(index =>
+            Task.Run(() => store.TryConsumeApproved(
+                request.AuthReqId, out var consumed))));
+
+        Assert.Single(attempts, result => result);
     }
 
     [Fact]
@@ -236,6 +283,7 @@ public sealed class CibaInitiationTests
                 Permissions =
                 {
                     OpenIddict.Abstractions.OpenIddictConstants.Permissions.Endpoints.Token,
+                    OpenIddict.Abstractions.OpenIddictConstants.Permissions.Endpoints.Revocation,
                     OpenIddict.Abstractions.OpenIddictConstants.Permissions.Prefixes.Scope + TestDataSeeder.ScopeName,
                 },
             });

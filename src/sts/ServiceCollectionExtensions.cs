@@ -74,16 +74,23 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(options.HumanVerification);
         services.AddSingleton(options.TwoFactor);
         services.AddSingleton(options.Passkeys);
+        services.AddSingleton(options.CredentialMutations);
         services.AddSingleton(options.Fapi2);
         services.AddSingleton(options.Jar);
         services.AddSingleton(options.SharedSignals);
+        services.AddSingleton(options.OutboundHttp);
+        services.AddSingleton<IPublicOriginResolver, PublicOriginResolver>();
+        services.AddSingleton<IApplicationClaimDestinationPolicy>(
+            new ApplicationClaimDestinationPolicy(options.ClaimScopeMap));
         services.AddSingleton<IdentityMetricsRuntimeState>();
         services.AddSingleton<IdentityUsageMetricChannel>();
         services.AddSingleton<IIdentityUsageMetricSink>(provider =>
             provider.GetRequiredService<IdentityUsageMetricChannel>());
-        services.AddHttpClient("identity-metrics-export");
+        services.AddSafeHttpClient(
+            "identity-metrics-export", options.OutboundHttp);
         services.AddHttpClient<IHumanVerificationService,
-            RemoteHumanVerificationService>();
+                RemoteHumanVerificationService>()
+            .UseSafeOutboundHttp(options.OutboundHttp);
 
         var emailOptions = configuration
             .GetSection("Sufficit:Identity:Email")
@@ -122,13 +129,28 @@ public static class ServiceCollectionExtensions
         // already relied on further down.
         var isDevelopmentEnvironment =
             Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development";
+        var configuredPublicOrigin = PublicOriginResolver.ResolveConfigured(options);
+        if (configuredPublicOrigin is null && options.PublicOrigin.Mode == PublicOriginMode.Enforce)
+        {
+            throw new InvalidOperationException(
+                "PublicOrigin:Mode=Enforce requires Sufficit:Identity:PublicUrl or Issuer.");
+        }
+        if (!isDevelopmentEnvironment && configuredPublicOrigin is null)
+        {
+            Console.Error.WriteLine(
+                "[WARNING] No canonical Sufficit:Identity:PublicUrl/Issuer is configured. Public URLs remain request-derived in compatibility Audit mode.");
+        }
         // Auxiliary protocol JWTs (logout_token, JARM, SSF/CAEP and CIBA)
         // share one key for the lifetime of this service provider. In
         // production this resolves the configured STS certificate. In
         // Development it creates one ephemeral key that is also added to the
         // OpenIddict server below, ensuring its public half appears in JWKS.
+        var certificateMaterial = LoadCertificateMaterial(
+            options.Certificates,
+            isDevelopmentEnvironment);
         var auxiliarySigningCredentials = ResolveProtocolSigningCredentials(
-            options, isDevelopmentEnvironment);
+            certificateMaterial.Signing,
+            isDevelopmentEnvironment);
 
         // ---- Database (MySQL/MariaDB via Pomelo.EntityFrameworkCore.MySql) ----
         // Sufficit fork of Pomelo (EF Core 10), built from upstream PR #2019.
@@ -222,14 +244,11 @@ public static class ServiceCollectionExtensions
             .SetApplicationName("Sufficit.Identity")
             .PersistKeysToDbContext<AppDbContext>();
 
-        if (!string.IsNullOrWhiteSpace(options.Certificates.SigningPath))
+        if (certificateMaterial.Signing is not null)
         {
-            var dpCert = X509CertificateLoader.LoadPkcs12FromFile(
-                options.Certificates.SigningPath,
-                options.Certificates.SigningPassword);
             // If ProtectKeysWithCertificate throws (wrong key type, etc.), let
             // it propagate — fail-closed is the correct posture for production.
-            dpBuilder.ProtectKeysWithCertificate(dpCert);
+            dpBuilder.ProtectKeysWithCertificate(certificateMaterial.Signing);
         }
 
         // ---- Internal secret vault (envelope encryption, Transit-style) ----
@@ -277,7 +296,8 @@ public static class ServiceCollectionExtensions
         // unavailability (see BreachedPasswordValidator remarks).
         if (options.Password.RejectBreached)
         {
-            services.AddHttpClient<BreachedPasswordValidator>();
+            services.AddHttpClient<BreachedPasswordValidator>()
+                .UseSafeOutboundHttp(options.OutboundHttp);
             services.AddScoped<IPasswordValidator<ApplicationUser>, BreachedPasswordValidator>();
         }
 
@@ -687,12 +707,9 @@ public static class ServiceCollectionExtensions
                 // (isDevelopmentEnvironment computed once, near the top of
                 // AddSufficitIdentitySTS, and reused here via closure.)
                 // -------------------------------------------------------------------
-                if (!string.IsNullOrWhiteSpace(options.Certificates.SigningPath))
+                if (certificateMaterial.Signing is not null)
                 {
-                    var signingCertificate = X509CertificateLoader.LoadPkcs12FromFile(
-                        options.Certificates.SigningPath,
-                        options.Certificates.SigningPassword);
-                    server.AddSigningCertificate(signingCertificate);
+                    server.AddSigningCertificate(certificateMaterial.Signing);
                 }
                 else if (isDevelopmentEnvironment)
                 {
@@ -713,12 +730,9 @@ public static class ServiceCollectionExtensions
                         "allowed when ASPNETCORE_ENVIRONMENT=Development.");
                 }
 
-                if (!string.IsNullOrWhiteSpace(options.Certificates.EncryptionPath))
+                if (certificateMaterial.Encryption is not null)
                 {
-                    var encryptionCertificate = X509CertificateLoader.LoadPkcs12FromFile(
-                        options.Certificates.EncryptionPath,
-                        options.Certificates.EncryptionPassword);
-                    server.AddEncryptionCertificate(encryptionCertificate);
+                    server.AddEncryptionCertificate(certificateMaterial.Encryption);
                 }
                 else if (isDevelopmentEnvironment)
                 {
@@ -872,12 +886,22 @@ public static class ServiceCollectionExtensions
             {
                 validation.UseLocalServer();
                 validation.UseAspNetCore();
+                if (options.Dpop.Enabled)
+                {
+                    validation.AddEventHandler(
+                        Dpop.ExtractDpopValidationToken.Descriptor);
+                    validation.AddEventHandler(
+                        Dpop.ValidateDpopApiAccessTokenProof.Descriptor);
+                }
             });
 
         services.AddScoped<IIdentityUserSessionRevoker,
             OpenIddictIdentityUserSessionRevoker>();
         services.AddScoped<IIdentityAccountLifecycleService,
             IdentityAccountLifecycleService>();
+        services.AddScoped<ICredentialMutationSecurityCoordinator,
+            CredentialMutationSecurityCoordinator>();
+        services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IAssuranceLevelResolver, AmrBasedAssuranceLevelResolver>();
         services.AddScoped<IAccountSelfService, AccountSelfService>();
         services.AddScoped<IAccountAccessService, AccountAccessService>();
@@ -919,7 +943,8 @@ public static class ServiceCollectionExtensions
             services.AddSingleton(new Logout.LogoutTokenGenerator(
                 auxiliarySigningCredentials, issuer));
             services.AddHttpClient<Logout.IBackchannelLogoutDispatcher, Logout.BackchannelLogoutDistributor>()
-                .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(7));
+                .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(7))
+                .UseSafeOutboundHttp(options.OutboundHttp);
         }
         else
         {
@@ -947,7 +972,11 @@ public static class ServiceCollectionExtensions
         // option is enabled). The distributed replay cache and nonce store use
         // IDistributedCache (registered above as AddDistributedMemoryCache;
         // swap for Redis when multi-replica).
-        services.AddSingleton<Dpop.IDpopReplayCache, Dpop.DistributedDpopReplayCache>();
+        services.AddSingleton<Dpop.DistributedDpopReplayCache>();
+        services.AddSingleton(sp => new Dpop.DatabaseDpopReplayCache(
+            sp.GetRequiredService<IDbContextFactory<AppDbContext>>(),
+            TimeProvider.System));
+        services.AddSingleton<Dpop.IDpopReplayCache, Dpop.RollingDpopReplayCache>();
         services.AddSingleton(sp => new Dpop.DpopProofValidator(
             TimeProvider.System,
             Microsoft.Extensions.Logging.LoggerFactoryExtensions.CreateLogger<Dpop.DpopProofValidator>(
@@ -996,7 +1025,8 @@ public static class ServiceCollectionExtensions
             services.AddHttpClient<SharedSignals.ISharedSignalsDispatcher,
                     SharedSignals.SharedSignalsPushDispatcher>()
                 .ConfigureHttpClient(client =>
-                    client.Timeout = TimeSpan.FromSeconds(7));
+                    client.Timeout = TimeSpan.FromSeconds(7))
+                .UseSafeOutboundHttp(options.OutboundHttp);
 
             // ISecurityEventTrigger adapter: translates credential/device
             // change calls from the account/management/SCIM surfaces into
@@ -1008,6 +1038,8 @@ public static class ServiceCollectionExtensions
             // SSF is on so the push dispatcher can route poll streams to the
             // persistent queue even if the REST API is not exposed.
             services.AddScoped<SharedSignals.ISsfStreamStore, SharedSignals.SsfStreamStore>();
+            services.AddSingleton<SharedSignals.ISsfSubscriptionMatcher,
+                SharedSignals.SsfSubscriptionMatcher>();
         }
         else
         {
@@ -1026,7 +1058,8 @@ public static class ServiceCollectionExtensions
         if (options.SharedSignals is { Enabled: true, StreamManagementEnabled: true })
         {
             services.AddHttpClient("ssf-verification")
-                .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(7));
+                .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(7))
+                .UseSafeOutboundHttp(options.OutboundHttp);
             services.AddScoped<IAuthorizationHandler, Controllers.SsfScopeHandler>();
             services.AddAuthorizationBuilder()
                 .AddPolicy("sufficit-ssf-transmitter", policy =>
@@ -1046,10 +1079,14 @@ public static class ServiceCollectionExtensions
         // cache (single-node default). The CibaController and the CIBA poll
         // branch only run when the option is enabled, but the store is always
         // available so the dependency resolves regardless.
-        services.AddSingleton<Ciba.ICibaPendingRequestStore>(sp =>
-            new Ciba.DistributedCibaPendingRequestStore(
-                sp.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(),
-                TimeProvider.System));
+        services.AddSingleton(sp => new Ciba.DistributedCibaPendingRequestStore(
+            sp.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(),
+            TimeProvider.System));
+        services.AddSingleton(sp => new Ciba.DatabaseCibaPendingRequestStore(
+            sp.GetRequiredService<IDbContextFactory<AppDbContext>>(),
+            TimeProvider.System));
+        services.AddSingleton<Ciba.ICibaPendingRequestStore,
+            Ciba.RollingCibaPendingRequestStore>();
 
         // CIBA access-token generator (item 3.5 / Limitation 2). Registered only
         // when CIBA is enabled — it needs the STS signing key (same family as
@@ -1142,12 +1179,11 @@ public static class ServiceCollectionExtensions
     /// by the normal JWKS endpoint.
     /// </summary>
     private static Microsoft.IdentityModel.Tokens.SigningCredentials ResolveProtocolSigningCredentials(
-        SufficitIdentityOptions options, bool isDevelopmentEnvironment)
+        X509Certificate2? certificate,
+        bool isDevelopmentEnvironment)
     {
-        if (!string.IsNullOrWhiteSpace(options.Certificates.SigningPath))
+        if (certificate is not null)
         {
-            var certificate = X509CertificateLoader.LoadPkcs12FromFile(
-                options.Certificates.SigningPath, options.Certificates.SigningPassword);
             var algorithm = certificate.GetECDsaPrivateKey() is not null
                 ? Microsoft.IdentityModel.Tokens.SecurityAlgorithms.EcdsaSha256
                 : certificate.GetRSAPrivateKey() is not null
@@ -1178,6 +1214,76 @@ public static class ServiceCollectionExtensions
             "Production deployments require Sufficit:Identity:Certificates:SigningPath " +
             "(the logout_token is signed with the same key as access tokens).");
     }
+
+    private static CertificateMaterial LoadCertificateMaterial(
+        CertificatesOptions options,
+        bool isDevelopmentEnvironment)
+    {
+        var signing = string.IsNullOrWhiteSpace(options.SigningPath)
+            ? null
+            : X509CertificateLoader.LoadPkcs12FromFile(
+                options.SigningPath,
+                options.SigningPassword);
+        var encryption = string.IsNullOrWhiteSpace(options.EncryptionPath)
+            ? null
+            : X509CertificateLoader.LoadPkcs12FromFile(
+                options.EncryptionPath,
+                options.EncryptionPassword);
+
+        ValidateCertificate(signing, "signing", options);
+        ValidateCertificate(encryption, "encryption", options);
+
+        if (!isDevelopmentEnvironment && (signing is null || encryption is null))
+        {
+            throw new InvalidOperationException(
+                "Production deployments require persistent signing and encryption certificates.");
+        }
+
+        return new CertificateMaterial(signing, encryption);
+    }
+
+    private static void ValidateCertificate(
+        X509Certificate2? certificate,
+        string purpose,
+        CertificatesOptions options)
+    {
+        if (certificate is null)
+        {
+            return;
+        }
+
+        if (!certificate.HasPrivateKey)
+        {
+            throw new InvalidOperationException(
+                $"The configured {purpose} certificate does not contain a private key.");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        if (certificate.NotBefore.ToUniversalTime() > now.UtcDateTime
+            || certificate.NotAfter.ToUniversalTime() <= now.UtcDateTime)
+        {
+            throw new InvalidOperationException(
+                $"The configured {purpose} certificate is not currently valid.");
+        }
+
+        var minimumLifetime = TimeSpan.FromDays(
+            Math.Clamp(options.MinimumRemainingLifetimeDays, 1, 365));
+        if (certificate.NotAfter.ToUniversalTime() - now.UtcDateTime < minimumLifetime)
+        {
+            var message =
+                $"The configured {purpose} certificate expires at {certificate.NotAfter:u}, inside the {minimumLifetime.TotalDays:0}-day rotation window.";
+            if (options.FailOnExpiringCertificate)
+            {
+                throw new InvalidOperationException(message);
+            }
+
+            Console.Error.WriteLine("[WARNING] " + message);
+        }
+    }
+
+    private sealed record CertificateMaterial(
+        X509Certificate2? Signing,
+        X509Certificate2? Encryption);
 
     /// <summary>
     /// Registers external login providers (Google, GitHub, etc) from the

@@ -89,6 +89,12 @@ public sealed class AppDbContext
     public DbSet<Entities.IdentityApplicationUsageEvent> IdentityApplicationUsageEvents =>
         Set<Entities.IdentityApplicationUsageEvent>();
 
+    public DbSet<Entities.DpopReplayEntry> DpopReplayEntries =>
+        Set<Entities.DpopReplayEntry>();
+
+    public DbSet<Entities.CibaPendingState> CibaPendingStates =>
+        Set<Entities.CibaPendingState>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -104,6 +110,69 @@ public sealed class AppDbContext
         MapOidcUserSessions(builder);
         MapVaultKeys(builder);
         MapIdentityMetrics(builder);
+        MapProtocolSecurityState(builder);
+    }
+
+    private static void MapProtocolSecurityState(ModelBuilder builder)
+    {
+        builder.Entity<Entities.DpopReplayEntry>(b =>
+        {
+            b.ToTable("dpopreplayentries");
+            b.HasKey(x => x.Key);
+            b.Property(x => x.Key)
+                .HasMaxLength(IdentityDatabaseSchema.ProtocolStateKeyLength);
+            b.Property(x => x.ExpiresAtUtc).IsRequired();
+            b.HasIndex(x => x.ExpiresAtUtc)
+                .HasDatabaseName("IX_dpopreplayentries_expiresatutc");
+            SnakeCaseColumns(b, [
+                ("Key", "key"),
+                ("ExpiresAtUtc", "expiresatutc"),
+            ]);
+        });
+
+        builder.Entity<Entities.CibaPendingState>(b =>
+        {
+            b.ToTable("cibapendingstates");
+            b.HasKey(x => x.AuthReqId);
+            b.Property(x => x.AuthReqId)
+                .HasMaxLength(IdentityDatabaseSchema.ProtocolStateKeyLength);
+            b.Property(x => x.ClientId)
+                .HasMaxLength(IdentityDatabaseSchema.OpenIddictClientIdLength)
+                .IsRequired();
+            b.Property(x => x.Subject)
+                .HasMaxLength(IdentityDatabaseSchema.OpenIddictSubjectLength)
+                .IsRequired();
+            b.Property(x => x.ScopesJson)
+                .HasMaxLength(IdentityDatabaseSchema.ProtocolStateJsonLength)
+                .IsRequired();
+            b.Property(x => x.BindingMessage)
+                .HasMaxLength(IdentityDatabaseSchema.CibaBindingMessageLength);
+            b.Property(x => x.ApprovedSubject)
+                .HasMaxLength(IdentityDatabaseSchema.OpenIddictSubjectLength);
+            b.Property(x => x.State)
+                .HasMaxLength(IdentityDatabaseSchema.ProtocolStateStatusLength)
+                .IsRequired();
+            b.Property(x => x.ConsumptionId)
+                .HasMaxLength(IdentityDatabaseSchema.ProtocolStateKeyLength);
+            b.HasIndex(x => new { x.State, x.ExpiresAtUtc })
+                .HasDatabaseName("IX_cibapendingstates_state_expiresatutc");
+            b.HasIndex(x => x.ConsumptionId)
+                .IsUnique()
+                .HasDatabaseName("AK_cibapendingstates_consumptionid");
+            SnakeCaseColumns(b, [
+                ("AuthReqId", "authreqid"),
+                ("ClientId", "clientid"),
+                ("Subject", "subject"),
+                ("ScopesJson", "scopesjson"),
+                ("BindingMessage", "bindingmessage"),
+                ("ExpiresAtUtc", "expiresatutc"),
+                ("CreatedAtUtc", "createdatutc"),
+                ("LastPollAtUtc", "lastpollatutc"),
+                ("ApprovedSubject", "approvedsubject"),
+                ("State", "state"),
+                ("ConsumptionId", "consumptionid"),
+            ]);
+        });
     }
 
     private static void MapIdentityMetrics(ModelBuilder builder)
@@ -194,6 +263,8 @@ public sealed class AppDbContext
             b.Property(x => x.StreamId)
                 .HasMaxLength(IdentityDatabaseSchema.SsfStreamIdLength)
                 .IsRequired();
+            b.Property(x => x.OwnerClientId)
+                .HasMaxLength(IdentityDatabaseSchema.SsfOwnerClientIdLength);
             b.Property(x => x.Audience)
                 .HasMaxLength(IdentityDatabaseSchema.SsfAudienceLength)
                 .IsRequired();
@@ -214,6 +285,9 @@ public sealed class AppDbContext
             b.Property(x => x.VerificationState)
                 .HasMaxLength(IdentityDatabaseSchema.SsfVerificationStateLength)
                 .IsRequired();
+            b.Property(x => x.VerificationChallengeHash)
+                .HasMaxLength(IdentityDatabaseSchema.SsfChallengeHashLength);
+            b.Property(x => x.VerificationExpiresAtUtc);
             b.Property(x => x.SubjectScope)
                 .HasMaxLength(IdentityDatabaseSchema.SsfScopeLength)
                 .IsRequired();
@@ -229,15 +303,20 @@ public sealed class AppDbContext
                 .HasDatabaseName("AK_ssfstreams_streamid");
             b.HasIndex(x => x.Status)
                 .HasDatabaseName("IX_ssfstreams_status");
+            b.HasIndex(x => new { x.OwnerClientId, x.Status })
+                .HasDatabaseName("IX_ssfstreams_ownerclientid_status");
             SnakeCaseColumns(b, [
                 ("Id", "id"),
                 ("StreamId", "streamid"),
+                ("OwnerClientId", "ownerclientid"),
                 ("Audience", "audience"),
                 ("DeliveryMethod", "deliverymethod"),
                 ("Endpoint", "endpoint"),
                 ("Authorization", "authorization"),
                 ("Status", "status"),
                 ("VerificationState", "verificationstate"),
+                ("VerificationChallengeHash", "verificationchallengehash"),
+                ("VerificationExpiresAtUtc", "verificationexpiresatutc"),
                 ("SubjectScope", "subjectscope"),
                 ("EventsRequested", "eventsrequested"),
                 ("Description", "description"),
@@ -257,6 +336,8 @@ public sealed class AppDbContext
             b.Property(x => x.Jti)
                 .HasMaxLength(IdentityDatabaseSchema.SsfJtiLength)
                 .IsRequired();
+            b.Property(x => x.DeliveryKey)
+                .HasMaxLength(IdentityDatabaseSchema.SsfDeliveryKeyLength);
             b.Property(x => x.SetPayload)
                 .HasColumnType("longtext")
                 .IsRequired();
@@ -266,10 +347,14 @@ public sealed class AppDbContext
                 .HasDatabaseName("IX_ssfsetdeliveries_streamid_consumedat");
             b.HasIndex(x => x.Jti)
                 .HasDatabaseName("IX_ssfsetdeliveries_jti");
+            b.HasIndex(x => x.DeliveryKey)
+                .IsUnique()
+                .HasDatabaseName("AK_ssfsetdeliveries_deliverykey");
             SnakeCaseColumns(b, [
                 ("Id", "id"),
                 ("StreamId", "streamid"),
                 ("Jti", "jti"),
+                ("DeliveryKey", "deliverykey"),
                 ("SetPayload", "setpayload"),
                 ("CreatedAtUtc", "createdatutc"),
                 ("ConsumedAt", "consumedat"),

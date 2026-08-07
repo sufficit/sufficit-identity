@@ -9,7 +9,8 @@ namespace Sufficit.Identity.Scim;
 [ServiceFilter(typeof(ScimExceptionFilter))]
 [Route("scim/v2")]
 public sealed class ScimDiscoveryController(
-    IOptions<ScimOptions> options) : ScimControllerBase
+    IOptions<ScimOptions> options,
+    IScimPublicOriginResolver publicOrigin) : ScimControllerBase(publicOrigin)
 {
     [HttpGet("service-provider-config")]
     public ObjectResult ServiceProviderConfig() =>

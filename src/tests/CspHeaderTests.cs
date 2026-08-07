@@ -71,6 +71,16 @@ public sealed class CspHeaderTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("DENY", response.Headers.GetValues("X-Frame-Options").FirstOrDefault());
         Assert.True(response.Headers.Contains("Content-Security-Policy-Report-Only"));
+        var permissions = Assert.Single(
+            response.Headers.GetValues("Permissions-Policy"));
+        Assert.Contains(
+            "publickey-credentials-get=(self)",
+            permissions,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "publickey-credentials-create=(self)",
+            permissions,
+            StringComparison.Ordinal);
     }
 
     [Fact]

@@ -233,6 +233,9 @@ public sealed class DpopProofValidator
             }
         }
 
+        var thumbprintBytes = jwk.ComputeJwkThumbprint();
+        var thumbprint = Base64UrlEncoder.Encode(thumbprintBytes);
+
         // jti: unique proof identifier. RFC 9449 §4.3 requires the AS/RS to
         // ensure the same jti is not reused within the proof's validity window.
         if (!jwt.TryGetPayloadValue("jti", out string jti) || string.IsNullOrWhiteSpace(jti))
@@ -240,7 +243,7 @@ public sealed class DpopProofValidator
             _logger.LogWarning("DPoP proof has no jti claim.");
             return null;
         }
-        if (IsReplayedJti(jti))
+        if (IsReplayedJti(thumbprint + ":" + jti))
         {
             _logger.LogWarning("DPoP proof jti '{Jti}' was already used (replay rejected).", jti);
             return null;
@@ -264,9 +267,6 @@ public sealed class DpopProofValidator
         // access token to this key. RFC 9449 §7.2: the cnf claim is a JSON
         // object {"jkt": "<base64url-thumbprint>"}. ComputeJwkThumbprint
         // returns raw bytes; the cnf.jkt is the base64url encoding of them.
-        var thumbprintBytes = jwk.ComputeJwkThumbprint();
-        var thumbprint = Base64UrlEncoder.Encode(thumbprintBytes);
-
         _logger.LogDebug("DPoP proof valid; binding token to key thumbprint {Thumbprint}.", thumbprint);
         return new DpopProof(jti, thumbprint, jwk);
     }

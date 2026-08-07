@@ -747,6 +747,9 @@ a:hover { color: var(--brand-hover); text-decoration: underline; }
 .muted code { color: var(--ink); }
 
 /* --- Consent scope list --------------------------------------------------- */
+.consent-card {
+    max-width: 800px;
+}
 .scope-list {
     border: none;
     padding: 0;
@@ -760,9 +763,10 @@ a:hover { color: var(--brand-hover); text-decoration: underline; }
     padding: 0;
 }
 .scope-item {
-    display: flex;
+    display: grid;
+    grid-template-columns: 18px minmax(13.5rem, 0.65fr) minmax(0, 1.35fr);
     align-items: flex-start;
-    gap: var(--space-3);
+    column-gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
     border: 1px solid var(--line);
     border-radius: var(--radius);
@@ -783,12 +787,31 @@ a:hover { color: var(--brand-hover); text-decoration: underline; }
     cursor: pointer;
     flex-shrink: 0;
 }
-.scope-name { font-weight: 500; display: block; color: var(--ink); }
+.scope-name {
+    min-width: 0;
+    color: var(--ink);
+    font-weight: 500;
+    line-height: 1.45;
+}
 .scope-desc {
+    min-width: 0;
     font-size: 0.8125rem;
     color: var(--ink-muted);
-    display: block;
-    margin-top: 2px;
+    line-height: 1.45;
+}
+
+@media (max-width: 768px) {
+    .scope-item {
+        grid-template-columns: 18px minmax(0, 1fr);
+        row-gap: var(--space-1);
+    }
+    .scope-item input[type="checkbox"] {
+        grid-row: 1 / span 2;
+    }
+    .scope-name,
+    .scope-desc {
+        grid-column: 2;
+    }
 }
 
 /* --- External login separator -------------------------------------------- */

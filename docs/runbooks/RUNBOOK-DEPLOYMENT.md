@@ -25,6 +25,25 @@ After the rolling restart, query each replica directly and verify the same
 `kid` causes intermittent signature-validation failures whenever discovery and
 token issuance hit different nodes.
 
+## Serialized production activation
+
+Never switch `/opt/sufficit-identity` and call `systemctl restart` directly in
+separate commands. Activate a prepared release through the versioned helper:
+
+```bash
+/opt/sufficit-identity/helpers/activate-release.sh \
+  /opt/sufficit-identity.releases/<release>
+```
+
+The helper holds `/run/lock/sufficit-identity-deploy.lock`, rejects overlapping
+deploys, changes the release symlink atomically, waits for the direct nginx
+health endpoint and rolls the symlink back when the new release does not become
+healthy. For a configuration-only restart of the active release, use:
+
+```bash
+/opt/sufficit-identity/helpers/activate-release.sh --current
+```
+
 ## test-environment test environment
 
 The versioned source of truth for the Sufficit Identity nginx virtual host in
@@ -110,7 +129,7 @@ Prepare or reset CSP calibration:
 
 ```bash
 /opt/sufficit-identity/helpers/security-rollout.sh prepare-csp
-systemctl restart sufficit-identity
+/opt/sufficit-identity/helpers/activate-release.sh --current
 ```
 
 Exercise login, registration, consent, logout, device flow, MFA, external
@@ -120,7 +139,7 @@ enable enforcement:
 
 ```bash
 /opt/sufficit-identity/helpers/security-rollout.sh enforce-csp
-systemctl restart sufficit-identity
+/opt/sufficit-identity/helpers/activate-release.sh --current
 ```
 
 For administrative MFA, first enroll at least two operators, store recovery
@@ -129,14 +148,14 @@ Then apply the explicit gate:
 
 ```bash
 /opt/sufficit-identity/helpers/security-rollout.sh enforce-mfa --confirmed
-systemctl restart sufficit-identity
+/opt/sufficit-identity/helpers/activate-release.sh --current
 ```
 
 Emergency rollback is explicit and does not affect CSP:
 
 ```bash
 /opt/sufficit-identity/helpers/security-rollout.sh disable-mfa
-systemctl restart sufficit-identity
+/opt/sufficit-identity/helpers/activate-release.sh --current
 ```
 
 Every modifying command preserves the pre-command file as

@@ -1,7 +1,9 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using OpenIddict.Abstractions;
 using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Overview;
@@ -12,6 +14,38 @@ namespace Sufficit.Identity.Tests;
 
 public sealed class ManagementApplicationAuthorizationTests
 {
+    [Fact]
+    public async Task Management_scope_accepts_openiddict_principal_metadata()
+    {
+        var requirement = new ScopeRequirement("identity.management");
+        var principal = PrincipalWithClaims(new Claim("sub", "operator-1"));
+        principal.SetScopes("openid", "identity.management");
+        var context = new AuthorizationHandlerContext(
+            [requirement],
+            principal,
+            resource: null);
+
+        await new ScopeHandler().HandleAsync(context);
+
+        Assert.True(context.HasSucceeded);
+    }
+
+    [Fact]
+    public async Task Management_scope_still_accepts_public_scope_claim()
+    {
+        var requirement = new ScopeRequirement("identity.management");
+        var context = new AuthorizationHandlerContext(
+            [requirement],
+            PrincipalWithClaims(new Claim(
+                "scope",
+                "openid identity.management")),
+            resource: null);
+
+        await new ScopeHandler().HandleAsync(context);
+
+        Assert.True(context.HasSucceeded);
+    }
+
     [Fact]
     public async Task Configured_provider_operator_role_receives_all_capabilities()
     {
@@ -292,17 +326,14 @@ public sealed class ManagementApplicationAuthorizationTests
         string role,
         params Claim[] additionalClaims) =>
         PrincipalWithClaims(
-            new Claim(ClaimTypes.Role, role),
-            additionalClaims);
+            [new Claim(ClaimTypes.Role, role), .. additionalClaims]);
 
     private static ClaimsPrincipal PrincipalWithClaims(
-        Claim firstClaim,
-        params Claim[] additionalClaims) =>
+        params Claim[] claims) =>
         new(new ClaimsIdentity(
             [
                 new Claim(ClaimTypes.NameIdentifier, "operator-1"),
-                firstClaim,
-                .. additionalClaims
+                .. claims
             ],
             authenticationType: "test",
             nameType: ClaimTypes.Name,

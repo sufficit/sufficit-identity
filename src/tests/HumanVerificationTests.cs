@@ -131,13 +131,13 @@ public sealed class HumanVerificationTests
     private static HumanVerificationOptions EnabledOptions(
         HumanVerificationProvider provider =
             HumanVerificationProvider.GoogleRecaptchaV2) => new()
-        {
-            Enabled = true,
-            Provider = provider,
-            SiteKey = "site",
-            SecretKey = "secret",
-            AllowedHostnames = ["identity.example.test"],
-        };
+            {
+                Enabled = true,
+                Provider = provider,
+                SiteKey = "site",
+                SecretKey = "secret",
+                AllowedHostnames = ["identity.example.test"],
+            };
 
     private static RemoteHumanVerificationService CreateService(
         HttpMessageHandler handler,

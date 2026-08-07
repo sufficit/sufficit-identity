@@ -18,6 +18,13 @@ public sealed class SsfStream
     /// </summary>
     public string StreamId { get; set; } = string.Empty;
 
+    /// <summary>
+    /// OAuth client that owns this stream. Null is retained only for rows
+    /// created before ownership was persisted; the store resolves those rows
+    /// against their existing audience for rolling-upgrade compatibility.
+    /// </summary>
+    public string? OwnerClientId { get; set; }
+
     /// <summary>Receiver audience (<c>aud</c> claim in emitted SETs).</summary>
     public string Audience { get; set; } = string.Empty;
 
@@ -46,6 +53,16 @@ public sealed class SsfStream
     /// confirms it can decode the SETs (RFC 8933 §6).
     /// </summary>
     public string VerificationState { get; set; } = "pending";
+
+    /// <summary>
+    /// Base64url-encoded SHA-256 hash of the opaque verification state. The
+    /// plaintext is sent only inside the verification SET and is never stored.
+    /// Null identifies a pre-challenge legacy stream.
+    /// </summary>
+    public string? VerificationChallengeHash { get; set; }
+
+    /// <summary>UTC deadline for accepting the verification challenge.</summary>
+    public DateTime? VerificationExpiresAtUtc { get; set; }
 
     /// <summary>
     /// Subject scope: a JSON array of subject identifiers, or the literal
@@ -79,6 +96,13 @@ public sealed class SsfSetDelivery
 
     /// <summary>The SET's <c>jti</c> — for idempotent ack by the receiver.</summary>
     public string Jti { get; set; } = string.Empty;
+
+    /// <summary>
+    /// SHA-256(stream_id + NUL + jti), used as an additive unique key for
+    /// race-free enqueue. It is nullable so existing rows remain valid during
+    /// a rolling migration.
+    /// </summary>
+    public string? DeliveryKey { get; set; }
 
     /// <summary>The complete signed SET (JWT compact serialization).</summary>
     public string SetPayload { get; set; } = string.Empty;

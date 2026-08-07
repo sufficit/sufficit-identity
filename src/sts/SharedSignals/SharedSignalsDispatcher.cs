@@ -72,6 +72,8 @@ internal sealed class SharedSignalsPushDispatcher : ISharedSignalsDispatcher
         string? sessionId,
         CancellationToken cancellationToken) =>
         FanOutAsync(
+            subject,
+            CaepEventGenerator.SessionRevokedEventType,
             cancellationToken,
             audience => _generator.GenerateSessionRevoked(subject, sessionId, audience));
 
@@ -81,6 +83,8 @@ internal sealed class SharedSignalsPushDispatcher : ISharedSignalsDispatcher
         CaepCredentialChange change,
         CancellationToken cancellationToken) =>
         FanOutAsync(
+            subject,
+            CaepEventGenerator.CredentialChangeEventType,
             cancellationToken,
             audience => _generator.GenerateCredentialChange(subject, sessionId, audience, change));
 
@@ -90,6 +94,8 @@ internal sealed class SharedSignalsPushDispatcher : ISharedSignalsDispatcher
         CaepDeviceChange change,
         CancellationToken cancellationToken) =>
         FanOutAsync(
+            subject,
+            CaepEventGenerator.DeviceChangeEventType,
             cancellationToken,
             audience => _generator.GenerateDeviceChange(subject, sessionId, audience, change));
 
@@ -99,6 +105,8 @@ internal sealed class SharedSignalsPushDispatcher : ISharedSignalsDispatcher
         CaepAssuranceLevelChange change,
         CancellationToken cancellationToken) =>
         FanOutAsync(
+            subject,
+            CaepEventGenerator.AssuranceLevelChangeEventType,
             cancellationToken,
             audience => _generator.GenerateAssuranceLevelChange(subject, sessionId, audience, change));
 
@@ -111,6 +119,8 @@ internal sealed class SharedSignalsPushDispatcher : ISharedSignalsDispatcher
     /// HTTP delivery, poll streams are enqueued for later pull (RFC 8934).
     /// </summary>
     private async Task FanOutAsync(
+        string subject,
+        string eventType,
         CancellationToken cancellationToken,
         Func<string, string> generateForAudience)
     {
@@ -119,7 +129,8 @@ internal sealed class SharedSignalsPushDispatcher : ISharedSignalsDispatcher
 
         var streamTask = (_scopeFactory is null)
             ? Task.CompletedTask
-            : DeliverToStreamsAsync(generateForAudience, cancellationToken);
+            : DeliverToStreamsAsync(
+                subject, eventType, generateForAudience, cancellationToken);
 
         await Task.WhenAll(staticTasks.Append(streamTask));
     }
@@ -129,6 +140,8 @@ internal sealed class SharedSignalsPushDispatcher : ISharedSignalsDispatcher
     /// use the same HTTP path as static receivers; poll streams are enqueued.
     /// </summary>
     private async Task DeliverToStreamsAsync(
+        string subject,
+        string eventType,
         Func<string, string> generateForAudience,
         CancellationToken cancellationToken)
     {
@@ -136,16 +149,19 @@ internal sealed class SharedSignalsPushDispatcher : ISharedSignalsDispatcher
 
         using var scope = _scopeFactory.CreateScope();
         var store = scope.ServiceProvider.GetService<ISsfStreamStore>();
-        if (store is null) return;
+        var matcher = scope.ServiceProvider.GetService<ISsfSubscriptionMatcher>();
+        if (store is null || matcher is null) return;
 
         // Push streams: deliver via HTTP using their configured endpoint/auth.
-        var pushStreams = await store.ListEnabledPushAsync(cancellationToken);
+        var pushStreams = (await store.ListEnabledPushAsync(cancellationToken))
+            .Where(stream => matcher.Matches(stream, subject, eventType));
         var pushTasks = pushStreams.Select(stream => DeliverPushStreamAsync(
             stream, generateForAudience(stream.Audience), cancellationToken));
         await Task.WhenAll(pushTasks);
 
         // Poll streams: persist the SET for later pull.
-        var pollStreams = await store.ListEnabledPollAsync(cancellationToken);
+        var pollStreams = (await store.ListEnabledPollAsync(cancellationToken))
+            .Where(stream => matcher.Matches(stream, subject, eventType));
         foreach (var stream in pollStreams)
         {
             var set = generateForAudience(stream.Audience);

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Core.Data;
@@ -69,6 +70,18 @@ internal sealed class KeyVault : IKeyVault
         IReadOnlyDictionary<string, string>? additionalAuthenticatedData = null,
         CancellationToken cancellationToken = default)
     {
+        if (ciphertext.StartsWith(
+                SelfDescribingCiphertext.PassThroughPrefix,
+                StringComparison.Ordinal))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _logger.LogWarning(
+                "Vault read a legacy plaintext compatibility value. Rewrite or rotate the owning record to migrate it to envelope encryption.");
+            var encoded = ciphertext[
+                SelfDescribingCiphertext.PassThroughPrefix.Length..];
+            return WebEncoders.Base64UrlDecode(encoded);
+        }
+
         var parsed = SelfDescribingCiphertext.Parse(ciphertext);
         var itemKey = await GetKeyAsync(parsed.KeyName, parsed.KeyVersion, cancellationToken);
 

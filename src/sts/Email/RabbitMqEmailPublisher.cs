@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Security.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
@@ -15,6 +16,11 @@ internal sealed class RabbitMqEmailOptions
     public string UserName { get; init; } = string.Empty;
     public string Password { get; init; } = string.Empty;
     public TimeSpan? Heartbeat { get; init; }
+    public int Port { get; init; }
+    public bool UseTls { get; init; } = false;
+    public bool RequireTls { get; init; } = false;
+    public string? TlsServerName { get; init; }
+    public bool CheckCertificateRevocation { get; init; } = true;
 }
 
 internal sealed class EmailQueueMessage
@@ -125,10 +131,12 @@ internal sealed class RabbitMqEmailPublisher : IEmailMessagePublisher, IAsyncDis
             var factory = new ConnectionFactory
             {
                 HostName = FirstHost(_options.HostName),
+                Port = EffectivePort,
                 UserName = _options.UserName,
                 Password = _options.Password,
                 AutomaticRecoveryEnabled = _options.Persistent,
-                ClientProvidedName = $"{Environment.MachineName.ToLowerInvariant()}:sufficit-identity"
+                ClientProvidedName = $"{Environment.MachineName.ToLowerInvariant()}:sufficit-identity",
+                Ssl = BuildSslOptions(),
             };
 
             if (_options.Heartbeat is { } heartbeat)
@@ -136,7 +144,10 @@ internal sealed class RabbitMqEmailPublisher : IEmailMessagePublisher, IAsyncDis
 
             var endpoints = _options.HostName
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(host => new AmqpTcpEndpoint(host))
+                .Select(host => new AmqpTcpEndpoint(
+                    host,
+                    EffectivePort,
+                    BuildSslOptions(host)))
                 .ToArray();
 
             _connection = endpoints.Length > 1
@@ -159,6 +170,20 @@ internal sealed class RabbitMqEmailPublisher : IEmailMessagePublisher, IAsyncDis
         hosts.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .FirstOrDefault()
         ?? throw new InvalidOperationException("RabbitMQ HostName is required.");
+
+    private int EffectivePort => _options.Port > 0
+        ? _options.Port
+        : _options.UseTls ? 5671 : 5672;
+
+    private SslOption BuildSslOptions(string? host = null) => new()
+    {
+        Enabled = _options.UseTls,
+        ServerName = string.IsNullOrWhiteSpace(_options.TlsServerName)
+            ? host ?? FirstHost(_options.HostName)
+            : _options.TlsServerName,
+        Version = SslProtocols.Tls12 | SslProtocols.Tls13,
+        CheckCertificateRevocation = _options.CheckCertificateRevocation,
+    };
 
     public async ValueTask DisposeAsync()
     {
