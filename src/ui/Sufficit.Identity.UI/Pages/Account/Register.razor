@@ -51,6 +51,7 @@ else
 
             <EditForm Model="_model" Method="post" OnValidSubmit="RegisterAsync" FormName="register">
                 <DataAnnotationsValidator />
+                <ValidationSummary class="validation-summary" role="alert" aria-live="polite" />
 
                 @if (_registrationPolicy.RequiresUserName)
                 {
@@ -122,6 +123,7 @@ else
     {
         _registrationPolicy = await AccountOnboarding
             .GetRegistrationPolicyAsync();
+        _model.RequiresUserName = _registrationPolicy.RequiresUserName;
 
         // Load branding theme logo
         var theme = await BrandingProvider.GetActiveAsync();
@@ -181,11 +183,13 @@ else
         }
     }
 
-    private sealed class RegisterInput
+    private sealed class RegisterInput : IValidatableObject
     {
         // UserName is collected only when required by the runtime policy.
         [StringLength(50, ErrorMessage = "O usuário deve ter entre {2} e {1} caracteres.", MinimumLength = 3)]
-        public string UserName { get; set; } = string.Empty;
+        public string? UserName { get; set; }
+
+        public bool RequiresUserName { get; set; }
 
         [Required(ErrorMessage = "O e-mail é obrigatório.")]
         [EmailAddress(ErrorMessage = "E-mail inválido.")]
@@ -200,5 +204,15 @@ else
         [DataType(System.ComponentModel.DataAnnotations.DataType.Password)]
         [Compare(nameof(Password), ErrorMessage = "As senhas não conferem.")]
         public string ConfirmPassword { get; set; } = string.Empty;
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (RequiresUserName && string.IsNullOrWhiteSpace(UserName))
+            {
+                yield return new ValidationResult(
+                    "O usuário é obrigatório.",
+                    [nameof(UserName)]);
+            }
+        }
     }
 }

@@ -497,6 +497,37 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Registration_validates_username_only_when_the_field_is_required()
+    {
+        var page = File.ReadAllText(Path.Combine(
+            ResolvePublicUiSource(),
+            "Pages",
+            "Account",
+            "Register.razor"));
+
+        Assert.Contains(
+            "public string? UserName { get; set; }",
+            page,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "_model.RequiresUserName = _registrationPolicy.RequiresUserName;",
+            page,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "if (RequiresUserName && string.IsNullOrWhiteSpace(UserName))",
+            page,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "<ValidationSummary class=\"validation-summary\" role=\"alert\" aria-live=\"polite\" />",
+            page,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "public string UserName { get; set; } = string.Empty;",
+            page,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Human_verification_only_uses_js_after_interactive_initialization()
     {
         var component = File.ReadAllText(Path.Combine(
