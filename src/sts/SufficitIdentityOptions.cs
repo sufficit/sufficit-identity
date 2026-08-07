@@ -1306,9 +1306,7 @@ public sealed class ManagementOptions
 
     /// <summary>
     /// Required authorization policy/scope. Defaults to
-    /// <c>identity.management</c>. Operators migrating from the legacy
-    /// Skoruba deployment may keep the old <c>skoruba_identity_admin_api</c>
-    /// scope name here until clients are re-registered.
+    /// <c>identity.management</c>.
     /// </summary>
     public string RequiredScope { get; init; } = "identity.management";
 }
