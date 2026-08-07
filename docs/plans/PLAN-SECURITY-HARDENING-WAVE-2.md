@@ -37,7 +37,7 @@ The review evaluated an older source snapshot. The current tree already closes t
 | Database-provider provenance | **Open** | the local provider fork uses an upstream package identity, a local feed without source mapping, and checksum-only CI verification | P1.8 |
 | Custom claim release | **Open** | unmapped custom claims remain eligible for access tokens by default | P1.1 |
 | Token-exchange source-client attribution | **Open** | an enabled allow-list does not reject a subject token whose authorized-party identity is absent | P1.2 |
-| Unknown/null consent mode | **Open** | the authorization decision falls through to a no-consent path for unrecognized values | P1.3 |
+| Unknown/null consent mode | **Resolved at runtime; data cleanup pending** | `AuthorizationConsentPolicy` maps missing/unrecognized legacy metadata to interactive consent, while current management, provisioning, and DCR paths accept only known/default consent modes | P1.3 |
 | DPoP nonce partitioning | **Open** | `DistributedDpopNonceStore` uses one global current-nonce key | P1.4 |
 | FAPI mTLS client binding | **Open** | presence of a client certificate counts as strong authentication without application-specific certificate binding | P1.5 |
 | OAuth resource validation | **Open** | MCP resource configuration globally disables OpenIddict resource validation | P1.6 |
@@ -178,10 +178,10 @@ This is the same canonical object-policy migration tracked in `PLAN-GLM-5-2-REMA
 
 **Targets:** authorization consent decision, application data migration, provisioning/client validators.
 
-- [ ] Replace the default fallthrough with an explicit typed consent policy
+- [x] Replace the default fallthrough with an explicit typed consent policy
 - [ ] Backfill null/unknown values to the intended legacy mode before enforcing validation
-- [ ] Reject new client definitions with unknown consent types
-- [ ] Add null, unknown, explicit, external, implicit, and systematic consent tests
+- [x] Reject new client definitions with unknown consent types
+- [x] Add null, unknown, explicit, external, implicit, and systematic consent tests
 
 ### P1.4 Partition DPoP nonce state
 
