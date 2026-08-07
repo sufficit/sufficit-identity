@@ -95,6 +95,13 @@ keywords = ["id_ed25519_sufficit", "2804:1740"]
 # Global allowlist — these paths are explicitly allowed and never scanned:
 [allowlist]
 description = "Global allowlist — build artifacts, dependencies, and lock files"
+regexes = [
+  # Narrative security-review terminology. The default generic-api-key rule
+  # treats `auth, stamp/revocation` as a key/value pair; this exact phrase is
+  # not credential material. Keep the exception narrower than the rule or
+  # evaluation document so real findings in archived reviews still fail CI.
+  '''stamp/revocation''',
+]
 paths = [
   '''(^|/)(bin|obj|node_modules|\.vs|\.idea)/''',
   '''\.git/''',

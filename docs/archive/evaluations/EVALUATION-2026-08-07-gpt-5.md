@@ -495,7 +495,7 @@ Uma nota baixa aqui não pede reescrita total. O caminho de maior retorno é red
 
 5. **Boundary de saída HTTP.** IOutboundHttpPolicy + typed clients e conexão IP-pinned, integrado a logout, SSF, metrics, captcha/HIBP. Egress firewall operacional. Nenhuma URL controlável pode usar IHttpClientFactory genérico.
 
-6. **Credential security boundary.** ICredentialMutationCoordinator + IStepUpAuthorizationService + IAuthenticationContextProjector. Password/MFA/passkey/IdP passam por recent auth, stamp/revocation e amr/acr/auth_time de sessão. Resolve V-11, V-12 e V-20.
+6. **Credential security boundary.** ICredentialMutationCoordinator + IStepUpAuthorizationService + IAuthenticationContextProjector. Password/MFA/passkey/IdP passam por autenticação recente, atualização do security stamp, revogação e claims `amr`, `acr` e `auth_time` de sessão. Resolve V-11, V-12 e V-20.
 
 7. **Key e secret lifecycle.** IProtocolKeyRing com purpose separation e active/retiring; ISecretProtector fail-closed/KMS. Remover TLS cert como signing key, fallback self-signed de produção e ownership gravável do release.
 
