@@ -85,6 +85,7 @@
   <data name="Register.Subtitle" xml:space="preserve"><value>Crie sua conta em poucos segundos</value></data>
   <data name="Register.Disabled" xml:space="preserve"><value>Cadastro de novas contas está desativado.</value></data>
   <data name="Register.Success" xml:space="preserve"><value>Conta criada! Verifique seu e-mail para confirmar.</value></data>
+  <data name="Register.SuccessTitle" xml:space="preserve"><value>Conta criada!</value></data>
   <data name="Register.SuccessConfirmed" xml:space="preserve"><value>Conta criada e confirmada! Você já pode entrar.</value></data>
   <data name="Register.UserName" xml:space="preserve"><value>Usuário</value></data>
   <data name="Register.Email" xml:space="preserve"><value>E-mail</value></data>

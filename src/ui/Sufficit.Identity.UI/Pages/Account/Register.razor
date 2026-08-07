@@ -28,19 +28,24 @@ else
 
         @if (_registered)
         {
-            <div class="alert alert-success" role="alert">
-                @L["Register.Success"]
-                @if (_confirmationMessageSent)
-                {
-                    <text> @L["Register.ConfirmationSentPrefix"] <strong>@_model.Email</strong>.
-                    @L["Register.ConfirmationSentSuffix"]</text>
-                }
-                else
-                {
-                    <text> @L["Register.ConfirmationFailed"]</text>
-                }
+            <div class="alert alert-success registration-success" role="status" aria-live="polite">
+                <div class="registration-success__content">
+                    <p class="registration-success__title">@L["Register.SuccessTitle"]</p>
+                    @if (_confirmationMessageSent)
+                    {
+                        <p>
+                            @L["Register.ConfirmationSentPrefix"]
+                            <strong class="registration-success__email">@_model.Email</strong>.
+                            @L["Register.ConfirmationSentSuffix"]
+                        </p>
+                    }
+                    else
+                    {
+                        <p>@L["Register.ConfirmationFailed"]</p>
+                    }
+                </div>
             </div>
-            <a href="/account/login" class="btn btn-primary">@L["Common.BackToLogin"]</a>
+            <a href="/account/login" class="btn btn-primary btn-block">@L["Common.BackToLogin"]</a>
         }
         else
         {

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -14,6 +15,9 @@ namespace Sufficit.Identity.UI;
 /// </summary>
 public static class ServiceCollectionExtensions
 {
+    private static readonly HashSet<string> SupportedCultures =
+        new(StringComparer.OrdinalIgnoreCase) { "pt-BR", "en-US" };
+
     /// <summary>
     /// Registers the Blazor Server components and supporting services for the
     /// Identity UI (login, consent, logout, device flow, manage area).
@@ -56,10 +60,47 @@ public static class ServiceCollectionExtensions
         app.MapGet("/favicon.ico", () => Results.Redirect(
             "/_content/Sufficit.Identity.UI/img/favicon.png", permanent: true));
 
+        app.MapGet("/culture/set", (
+            HttpContext context,
+            string? culture,
+            string? returnUrl) =>
+        {
+            var selectedCulture = SupportedCultures.Contains(culture ?? string.Empty)
+                ? culture!
+                : "pt-BR";
+
+            context.Response.Cookies.Append(
+                CookieRequestCultureProvider.DefaultCookieName,
+                CookieRequestCultureProvider.MakeCookieValue(
+                    new RequestCulture(selectedCulture)),
+                new CookieOptions
+                {
+                    Expires = DateTimeOffset.UtcNow.AddYears(1),
+                    IsEssential = true,
+                    SameSite = SameSiteMode.Lax,
+                    Secure = context.Request.IsHttps,
+                    Path = "/",
+                });
+
+            return Results.Redirect(GetSafeLocalReturnUrl(returnUrl));
+        }).ExcludeFromDescription();
+
         app.MapStaticAssets();
         app.MapRazorComponents<Components.App>()
            .AddInteractiveServerRenderMode();
 
         return app;
+    }
+
+    private static string GetSafeLocalReturnUrl(string? returnUrl)
+    {
+        if (string.IsNullOrWhiteSpace(returnUrl)
+            || returnUrl[0] != '/'
+            || (returnUrl.Length > 1 && returnUrl[1] is '/' or '\\'))
+        {
+            return "/";
+        }
+
+        return returnUrl;
     }
 }

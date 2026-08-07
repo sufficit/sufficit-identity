@@ -1,25 +1,30 @@
 @using System.Globalization
-@using Microsoft.AspNetCore.Http
-@using Microsoft.AspNetCore.Localization
 @inject NavigationManager Nav
-@inject IHttpContextAccessor HttpContextAccessor
 @inject IStringLocalizer<SharedResource> L
 
 @if (_cultures.Length > 1)
 {
-    <div class="culture-selector">
+    <form class="culture-selector"
+          action="/culture/set"
+          method="get"
+          data-enhance="false"
+          data-culture-selector>
         <label class="visually-hidden" for="identity-culture">@L["Culture.Selector"]</label>
+        <input type="hidden" name="returnUrl" value="@CurrentReturnUrl" />
         <select id="identity-culture"
                 name="culture"
-                aria-label="@L["Culture.Selector"]"
-                @onchange="ChangeCulture"
-                value="@_currentCulture.Name">
+                aria-label="@L["Culture.Selector"]">
             @foreach (var culture in _cultures)
             {
-                <option value="@culture.Name">@GetCultureLabel(culture)</option>
+                <option value="@culture.Name" selected="@(culture.Name == _currentCulture.Name)">
+                    @GetCultureLabel(culture)
+                </option>
             }
         </select>
-    </div>
+        <noscript>
+            <button type="submit" class="culture-selector__submit">@L["Common.Confirm"]</button>
+        </noscript>
+    </form>
 }
 
 @code {
@@ -31,6 +36,15 @@
 
     private CultureInfo _currentCulture = CultureInfo.CurrentUICulture;
 
+    private string CurrentReturnUrl
+    {
+        get
+        {
+            var currentUri = Nav.ToAbsoluteUri(Nav.Uri);
+            return currentUri.PathAndQuery + currentUri.Fragment;
+        }
+    }
+
     private static string GetCultureLabel(CultureInfo culture) =>
         culture.Name switch
         {
@@ -39,21 +53,4 @@
             _ => culture.TwoLetterISOLanguageName.ToUpperInvariant(),
         };
 
-    private async Task ChangeCulture(ChangeEventArgs e)
-    {
-        var culture = e.Value?.ToString() ?? "pt-BR";
-        var cultureCookie = $"c={culture}|uic={culture}";
-
-        var httpContext = HttpContextAccessor.HttpContext;
-        if (httpContext is not null)
-        {
-            httpContext.Response.Cookies.Append(
-                CookieRequestCultureProvider.DefaultCookieName,
-                cultureCookie,
-                new CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1), IsEssential = true });
-        }
-
-        // Force reload so the new culture takes effect across the Blazor circuit.
-        Nav.NavigateTo(Nav.Uri, forceLoad: true);
-    }
 }

@@ -30,6 +30,18 @@ window.sufficitIdentityDownloadFile = function (fileName, base64, mimeType) {
 };
 
 /**
+ * Persists the selected UI culture through a regular HTTP request. This is
+ * deliberately browser-side rather than Blazor interop: the localization
+ * cookie must be written on a fresh response, and the delegated listener also
+ * works on statically rendered authentication pages.
+ */
+document.addEventListener('change', function (event) {
+    var selector = event.target.closest('[data-culture-selector] select[name="culture"]');
+    if (!selector || !selector.form) return;
+    selector.form.requestSubmit();
+});
+
+/**
  * Ends the browser side of an RFC 8628 device flow. Browsers only allow
  * window.close() for tabs they consider script-opened; when closing is
  * blocked, the terminal page remains visible and explains the manual action.
