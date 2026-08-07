@@ -1092,7 +1092,8 @@
         "dependencies": {
           "OpenIddict.AspNetCore": "[7.6.0, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
-          "Sufficit.Identity.Core": "[0.4.0-alpha, )"
+          "Sufficit.Identity.Core": "[0.4.0-alpha, )",
+          "Sufficit.Identity.Vault": "[0.4.0-alpha, )"
         }
       },
       "sufficit.identity.scim": {
