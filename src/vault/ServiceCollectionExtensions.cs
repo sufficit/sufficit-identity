@@ -19,9 +19,14 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var options = configuration
-            .GetSection(VaultOptions.SectionName)
-            .Get<VaultOptions>() ?? new VaultOptions();
+        var section = configuration.GetSection(VaultOptions.SectionName);
+        var options = section.Get<VaultOptions>() ?? new VaultOptions();
+
+        // Consumers use both VaultOptions directly (the vault implementation)
+        // and IOptions<VaultOptions> (management validation). Keep both views
+        // bound to the same configuration so an enabled vault cannot be
+        // reported as disabled by a service resolving the options pattern.
+        services.AddOptions<VaultOptions>().Bind(section);
         services.AddSingleton(options);
 
         if (options.Enabled)
