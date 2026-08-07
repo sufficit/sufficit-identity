@@ -26,6 +26,8 @@ public static class ScimServiceCollectionExtensions
                 new AssemblyPart(Assembly.GetExecutingAssembly()));
         services.TryAddScoped<IScimProvisioningService,
             ScimProvisioningService>();
+        services.TryAddSingleton<IScimPublicOriginResolver,
+            ScimPublicOriginResolver>();
         services.TryAddScoped<ScimExceptionFilter>();
         services.AddSingleton<IAuthorizationMiddlewareResultHandler,
             ScimAuthorizationAuditHandler>();
