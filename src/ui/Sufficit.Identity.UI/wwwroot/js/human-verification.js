@@ -108,6 +108,11 @@
 
             var callbacks = {
                 sitekey: siteKey,
+                // Google Cloud checkbox keys require an action even when they
+                // are consumed through the legacy-compatible api.js/siteverify
+                // flow. Classic v2 keys safely accept the same parameter, and
+                // Turnstile also uses it to bind the challenge to the flow.
+                action: action,
                 callback: function (token) { updateToken(inputId, token); },
                 'expired-callback': function () { updateToken(inputId, ''); },
                 'error-callback': function () { updateToken(inputId, ''); }
@@ -115,7 +120,6 @@
 
             var widget;
             if (provider === 'Turnstile') {
-                callbacks.action = action;
                 callbacks.theme = 'auto';
                 callbacks.size = 'flexible';
                 widget = window.turnstile.render('#' + widgetId, callbacks);
