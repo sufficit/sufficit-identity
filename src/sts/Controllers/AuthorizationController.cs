@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
@@ -14,6 +15,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
+using Sufficit.Identity.Application.Branding;
 using Sufficit.Identity.Core.Entities;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -42,6 +44,7 @@ public class AuthorizationController : Controller
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly IOpenIddictAuthorizationManager _authorizationManager;
     private readonly IOpenIddictScopeManager _scopeManager;
+    private readonly IUserAvatarUrlResolver _avatarUrlResolver;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly TokenExchangeOptions _tokenExchangeOptions;
@@ -59,6 +62,7 @@ public class AuthorizationController : Controller
         IOpenIddictApplicationManager applicationManager,
         IOpenIddictAuthorizationManager authorizationManager,
         IOpenIddictScopeManager scopeManager,
+        IUserAvatarUrlResolver avatarUrlResolver,
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         IConfiguration configuration,
@@ -72,6 +76,7 @@ public class AuthorizationController : Controller
         _applicationManager = applicationManager;
         _authorizationManager = authorizationManager;
         _scopeManager = scopeManager;
+        _avatarUrlResolver = avatarUrlResolver;
         _signInManager = signInManager;
         _userManager = userManager;
         _tokenExchangeOptions = configuration.GetSection("Sufficit:Identity:TokenExchange").Get<TokenExchangeOptions>()
@@ -139,12 +144,13 @@ public class AuthorizationController : Controller
             throw new InvalidOperationException(
                 "Details concerning the calling client application cannot be found.");
 
+        var requestedScopes = await GetRequestedScopesAsync(request, application);
         var authorizations = await ToListAsync(_authorizationManager.FindAsync(
             subject: await _userManager.GetUserIdAsync(user),
             client: await _applicationManager.GetIdAsync(application),
             status: Statuses.Valid,
             type: AuthorizationTypes.Permanent,
-            scopes: request.GetScopes()));
+            scopes: requestedScopes));
 
         var consentType = await _applicationManager.GetConsentTypeAsync(application);
 
@@ -278,7 +284,7 @@ public class AuthorizationController : Controller
         }
 
         var identity = await BuildIdentityAsync(user);
-        identity.SetScopes(request.GetScopes());
+        identity.SetScopes(requestedScopes);
         identity.SetResources(await ResolveResourcesAsync(identity, request));
 
         // FAPI 2.0 + DPoP authorization-code binding (RFC 9449 §10.1):
@@ -884,9 +890,18 @@ public class AuthorizationController : Controller
         var user = (subject is not null ? await _userManager.FindByIdAsync(subject) : null) ??
             throw new InvalidOperationException("The user details cannot be retrieved.");
 
+        var userId = await _userManager.GetUserIdAsync(user);
+        var persistedClaims = await _userManager.GetClaimsAsync(user);
+        var displayName = persistedClaims
+            .LastOrDefault(claim => string.Equals(
+                claim.Type,
+                Claims.Name,
+                StringComparison.Ordinal))
+            ?.Value;
+
         var claims = new Dictionary<string, object?>
         {
-            [Claims.Subject] = await _userManager.GetUserIdAsync(user)
+            [Claims.Subject] = userId
         };
 
         if (User.HasScope(Scopes.Email))
@@ -897,8 +912,16 @@ public class AuthorizationController : Controller
 
         if (User.HasScope(Scopes.Profile))
         {
-            claims[Claims.Name] = await _userManager.GetUserNameAsync(user);
+            claims[Claims.Name] = displayName ?? await _userManager.GetUserNameAsync(user);
             claims[Claims.PreferredUsername] = await _userManager.GetUserNameAsync(user);
+
+            var avatarUrl = await _avatarUrlResolver.ResolveAsync(
+                userId,
+                HttpContext.RequestAborted);
+            if (!string.IsNullOrWhiteSpace(avatarUrl))
+            {
+                claims[Claims.Picture] = avatarUrl;
+            }
         }
 
         if (User.HasScope(Scopes.Roles))
@@ -912,7 +935,6 @@ public class AuthorizationController : Controller
         // interprets their names or values.
         if (_claimScopeMap.Count > 0)
         {
-            var persistedClaims = await _userManager.GetClaimsAsync(user);
             foreach (var mapping in _claimScopeMap)
             {
                 if (!User.HasScope(mapping.Value))
@@ -937,6 +959,45 @@ public class AuthorizationController : Controller
         }
 
         return Ok(claims);
+    }
+
+    private async Task<ImmutableArray<string>> GetRequestedScopesAsync(
+        OpenIddictRequest request,
+        object application)
+    {
+        var scopes = request.GetScopes().ToHashSet(StringComparer.Ordinal);
+
+        // The consent UI submits one checked `scope` field per selected item.
+        // OpenIddict validates that multi-value field but GetScopes() only
+        // projects the scalar representation, which previously discarded all
+        // granted scopes on the consent POST. Losing `offline_access` prevented
+        // refresh-token issuance; losing `profile`/`email` also reduced
+        // /connect/userinfo to `sub` only.
+        if (Request.HasFormContentType && Request.Form.ContainsKey(Parameters.Scope))
+        {
+            foreach (var value in Request.Form[Parameters.Scope])
+            {
+                foreach (var scope in value?.Split(
+                    ' ',
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries) ?? [])
+                {
+                    scopes.Add(scope);
+                }
+            }
+        }
+
+        var allowedScopes = ImmutableArray.CreateBuilder<string>();
+        foreach (var scope in scopes)
+        {
+            if (await _applicationManager.HasPermissionAsync(
+                application,
+                Permissions.Prefixes.Scope + scope))
+            {
+                allowedScopes.Add(scope);
+            }
+        }
+
+        return allowedScopes.ToImmutable();
     }
 
     // -----------------------------------------------------------------------
