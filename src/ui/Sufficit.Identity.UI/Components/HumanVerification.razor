@@ -1,0 +1,103 @@
+@implements IAsyncDisposable
+@inject IHumanVerificationService Verification
+@inject IJSRuntime JS
+@inject IStringLocalizer<SharedResource> L
+
+@if (_widget.Required)
+{
+    <div class="human-verification" aria-labelledby="@_labelId">
+        <span id="@_labelId" class="human-verification__label">
+            @L["HumanVerification.Label"]
+        </span>
+        <div id="@_widgetId" class="human-verification__widget"></div>
+        <input id="@_tokenInputId"
+               name="human-verification-response"
+               type="hidden"
+               value="@Token"
+               @onchange="TokenUpdatedAsync"
+               autocomplete="off"
+               aria-hidden="true"
+               tabindex="-1" />
+        <p class="human-verification__hint">@L["HumanVerification.Hint"]</p>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public HumanVerificationFlow Flow { get; set; }
+
+    [Parameter]
+    public string Token { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> TokenChanged { get; set; }
+
+    private readonly string _instanceId = Guid.NewGuid().ToString("N");
+    private HumanVerificationWidget _widget = new(
+        false,
+        HumanVerificationProvider.GoogleRecaptchaV2,
+        null,
+        string.Empty);
+
+    private string _widgetId => $"human-verification-{_instanceId}";
+    private string _tokenInputId => $"human-verification-token-{_instanceId}";
+    private string _labelId => $"human-verification-label-{_instanceId}";
+
+    protected override void OnParametersSet()
+    {
+        _widget = Verification.GetWidget(Flow);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || !_widget.Required)
+        {
+            return;
+        }
+
+        await JS.InvokeVoidAsync(
+            "sufficitHumanVerification.render",
+            _widgetId,
+            _tokenInputId,
+            _widget.Provider.ToString(),
+            _widget.SiteKey,
+            _widget.Action,
+            System.Globalization.CultureInfo.CurrentUICulture.Name);
+    }
+
+    public async ValueTask ResetAsync()
+    {
+        Token = string.Empty;
+        await TokenChanged.InvokeAsync(Token);
+        if (_widget.Required)
+        {
+            await JS.InvokeVoidAsync(
+                "sufficitHumanVerification.reset",
+                _widgetId,
+                _tokenInputId);
+        }
+    }
+
+    private async Task TokenUpdatedAsync(ChangeEventArgs eventArgs)
+    {
+        Token = eventArgs.Value?.ToString() ?? string.Empty;
+        await TokenChanged.InvokeAsync(Token);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_widget.Required)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync(
+                    "sufficitHumanVerification.remove",
+                    _widgetId);
+            }
+            catch (JSDisconnectedException)
+            {
+                // The circuit has already ended; browser state disappears too.
+            }
+        }
+    }
+}

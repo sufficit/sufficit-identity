@@ -1,3 +1,5 @@
+using Sufficit.Identity.Application.Security;
+
 namespace Sufficit.Identity.STS;
 
 /// <summary>
@@ -94,6 +96,12 @@ public sealed class SufficitIdentityOptions
     /// <see cref="CspOptions"/>.
     /// </summary>
     public CspOptions Csp { get; init; } = new();
+
+    /// <summary>
+    /// Provider-neutral CAPTCHA/human-verification policy for public account
+    /// flows that create users or send email.
+    /// </summary>
+    public HumanVerificationOptions HumanVerification { get; init; } = new();
 
     /// <summary>
     /// Password complexity policy applied on user creation and password

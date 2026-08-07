@@ -1,5 +1,6 @@
 @page "/account/resendemailconfirmation"
 @inject IAccountOnboardingService AccountOnboarding
+@inject IHumanVerificationService HumanVerification
 @inject IStringLocalizer<SharedResource> L
 
 <PageTitle>@L["ResendEmail.Title"]</PageTitle>
@@ -16,6 +17,11 @@
     }
     else
     {
+        @if (_error is not null)
+        {
+            <div class="alert alert-error" role="alert">@_error</div>
+        }
+
         <EditForm Model="_model" Method="post" OnValidSubmit="ResendAsync" FormName="resend-confirm">
             <DataAnnotationsValidator />
 
@@ -26,7 +32,13 @@
                 <ValidationMessage For="@(() => _model.Email)" />
             </div>
 
-            <button type="submit" class="btn btn-primary btn-block">@L["ResendEmail.Submit"]</button>
+            <HumanVerification Flow="HumanVerificationFlow.EmailConfirmation"
+                               @bind-Token="_verificationToken"
+                               @ref="_verificationControl" />
+
+            <button type="submit" class="btn btn-primary btn-block" disabled="@_submitting">
+                @L["ResendEmail.Submit"]
+            </button>
         </EditForm>
     }
 </div>
@@ -40,12 +52,43 @@
         set => _boundModel = value;
     }
     private bool _sent;
+    private bool _submitting;
+    private string? _error;
+    private string _verificationToken = string.Empty;
+    private HumanVerification? _verificationControl;
 
     private async Task ResendAsync()
     {
-        var result = await AccountOnboarding
-            .RequestEmailConfirmationAsync(_model.Email);
-        _sent = result.Accepted;
+        if (_submitting)
+        {
+            return;
+        }
+
+        _submitting = true;
+        _error = null;
+        try
+        {
+            var verification = await HumanVerification.VerifyAsync(
+                HumanVerificationFlow.EmailConfirmation,
+                _verificationToken);
+            if (!verification.Succeeded)
+            {
+                _error = L["HumanVerification.Required"];
+                if (_verificationControl is not null)
+                {
+                    await _verificationControl.ResetAsync();
+                }
+                return;
+            }
+
+            var result = await AccountOnboarding
+                .RequestEmailConfirmationAsync(_model.Email);
+            _sent = result.Accepted;
+        }
+        finally
+        {
+            _submitting = false;
+        }
     }
 
     private sealed class EmailInput

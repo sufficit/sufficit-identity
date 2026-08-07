@@ -135,4 +135,39 @@ public sealed class CspHeaderTests
         // Baseline headers still present.
         Assert.Equal("DENY", response.Headers.GetValues("X-Frame-Options").FirstOrDefault());
     }
+
+    [Theory]
+    [InlineData(
+        "GoogleRecaptchaV2",
+        "https://www.google.com",
+        "https://www.gstatic.com")]
+    [InlineData(
+        "Turnstile",
+        "https://challenges.cloudflare.com",
+        "https://challenges.cloudflare.com")]
+    public async Task Human_verification_adds_provider_origins_to_csp(
+        string provider,
+        string frameOrigin,
+        string scriptOrigin)
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:HumanVerification:Enabled"] = "true",
+                ["Sufficit:Identity:HumanVerification:Provider"] = provider,
+                ["Sufficit:Identity:HumanVerification:SiteKey"] = "test-site-key",
+                ["Sufficit:Identity:HumanVerification:SecretKey"] = "test-secret-key",
+            });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        var client = factory.CreateClient();
+        using var response = await client.GetAsync("/health");
+
+        var csp = Assert.Single(response.Headers.GetValues(
+            "Content-Security-Policy-Report-Only"));
+        Assert.Contains($"script-src 'self'", csp, StringComparison.Ordinal);
+        Assert.Contains(scriptOrigin, csp, StringComparison.Ordinal);
+        Assert.Contains("frame-src", csp, StringComparison.Ordinal);
+        Assert.Contains(frameOrigin, csp, StringComparison.Ordinal);
+    }
 }

@@ -22,8 +22,8 @@ using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Application.Accounts;
-using Sufficit.Identity.Application.Diagnostics;
 using Sufficit.Identity.Application.Security;
+using Sufficit.Identity.Application.Diagnostics;
 using Sufficit.Identity.STS.Diagnostics;
 using Sufficit.Identity.STS.Email;
 using Sufficit.Identity.STS.Metrics;
@@ -58,7 +58,9 @@ public static class ServiceCollectionExtensions
             .GetSection(configurationSection)
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
         ValidateAdvancedProtocolOptions(options);
+        options.HumanVerification.Validate();
         services.AddSingleton(options);
+        services.AddSingleton(options.HumanVerification);
         services.AddSingleton(options.TwoFactor);
         services.AddSingleton(options.Passkeys);
         services.AddSingleton(options.Fapi2);
@@ -69,6 +71,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IIdentityUsageMetricSink>(provider =>
             provider.GetRequiredService<IdentityUsageMetricChannel>());
         services.AddHttpClient("identity-metrics-export");
+        services.AddHttpClient<IHumanVerificationService,
+            RemoteHumanVerificationService>();
 
         var emailOptions = configuration
             .GetSection("Sufficit:Identity:Email")
