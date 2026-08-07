@@ -122,6 +122,99 @@ public sealed class PersonalTokensTests
     }
 
     [Fact]
+    public async Task Personal_token_uses_current_persisted_roles_and_claims()
+    {
+        var username = $"personal-claims-{Guid.NewGuid():N}";
+        const string password = "Str0ng!Passw0rd#4";
+        const string role = "financial";
+        const string directive = "sufficit:test:financial-directive";
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var roles = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+            var scopeManager = scope.ServiceProvider.GetRequiredService<IOpenIddictScopeManager>();
+            var directiveScope = await scopeManager.FindByNameAsync("directives");
+            if (directiveScope is null)
+            {
+                await scopeManager.CreateAsync(new OpenIddictScopeDescriptor
+                {
+                    Name = "directives",
+                    Resources = { TestDataSeeder.IntrospectionClientId },
+                });
+            }
+            else
+            {
+                var descriptor = new OpenIddictScopeDescriptor();
+                await scopeManager.PopulateAsync(descriptor, directiveScope);
+                descriptor.Resources.Add(TestDataSeeder.IntrospectionClientId);
+                await scopeManager.UpdateAsync(directiveScope, descriptor);
+            }
+
+            var user = await TestDataSeeder.CreateUserAsync(users, username, password, directive);
+            await TestDataSeeder.AddToRoleAsync(roles, users, user, role);
+        }
+
+        var client = _factory.CreateClient();
+        // Deliberately request neither `roles` nor `directives`: the token used
+        // to manage personal tokens does not contain those claims. The created
+        // personal token must rebuild them from the authoritative user store.
+        var managementToken = await GetAccessTokenAsync(client, username, password);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", managementToken);
+
+        using var createResponse = await client.PostAsJsonAsync(
+            "/api/account/tokens",
+            new
+            {
+                description = "Current authorization snapshot",
+                expiration = DateTimeOffset.UtcNow.AddDays(30),
+            });
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        using var created = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var personalToken = created.RootElement.GetProperty("accessToken").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(personalToken));
+
+        using var selfIntrospectionResponse = await client.PostAsJsonAsync(
+            "/api/account/tokens/introspect",
+            new { token = personalToken });
+        Assert.Equal(HttpStatusCode.OK, selfIntrospectionResponse.StatusCode);
+        using var selfIntrospection = JsonDocument.Parse(
+            await selfIntrospectionResponse.Content.ReadAsStringAsync());
+        Assert.Contains(
+            TestDataSeeder.IntrospectionClientId,
+            selfIntrospection.RootElement.GetProperty("aud").EnumerateArray()
+                .Select(item => item.GetString()));
+
+        client.DefaultRequestHeaders.Authorization = IntrospectionTests.BasicAuthFor(
+            TestDataSeeder.IntrospectionClientId,
+            TestDataSeeder.IntrospectionClientSecret);
+        var (status, introspection) = await client.PostFormAsync(
+            "/connect/introspect",
+            new Dictionary<string, string> { ["token"] = personalToken! });
+
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.True(introspection.GetProperty("active").GetBoolean());
+        Assert.True(
+            introspection.TryGetProperty(Claims.Role, out var roleClaim),
+            introspection.ToString());
+        Assert.Equal(role, roleClaim.GetString());
+        Assert.Equal(
+            directive,
+            introspection.GetProperty(TestDataSeeder.DirectiveClaimType).GetString());
+        var scopes = introspection.GetProperty("scope").GetString() ?? string.Empty;
+        Assert.Contains(Scopes.Roles, scopes.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        Assert.Contains("directives", scopes.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+        // The same bearer can be forwarded by compatibility proxies to the
+        // new self-service endpoint without needing a separate admin secret.
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", personalToken);
+        using var listResponse = await client.GetAsync("/api/account/tokens");
+        Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task List_includes_metadata_only_legacy_tokens_but_does_not_mutate_them()
     {
         var client = _factory.CreateClient();
@@ -263,13 +356,19 @@ public sealed class PersonalTokensTests
             out _));
     }
 
-    private static async Task<string> GetAccessTokenAsync(HttpClient client)
+    private static Task<string> GetAccessTokenAsync(HttpClient client) =>
+        GetAccessTokenAsync(client, TestDataSeeder.DefaultUsername, TestDataSeeder.DefaultPassword);
+
+    private static async Task<string> GetAccessTokenAsync(
+        HttpClient client,
+        string username,
+        string password)
     {
         var (status, body) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
         {
             ["grant_type"] = "password",
-            ["username"] = TestDataSeeder.DefaultUsername,
-            ["password"] = TestDataSeeder.DefaultPassword,
+            ["username"] = username,
+            ["password"] = password,
             ["client_id"] = TestDataSeeder.PasswordClientId,
             ["client_secret"] = TestDataSeeder.PasswordClientSecret,
             ["scope"] = TestDataSeeder.ScopeName,

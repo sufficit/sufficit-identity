@@ -27,6 +27,7 @@ namespace Sufficit.Identity.STS.Controllers;
 [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
 public sealed class PersonalTokensController : ControllerBase
 {
+    private const string LegacyAddressClaimType = "urn:sufficit:claim:address";
     private const string DescriptionProperty = "urn:sufficit:token:description";
     private const string ClientIdProperty = "urn:sufficit:token:client_id";
     private const string ReplacesTokenIdProperty = "urn:sufficit:token:replaces_id";
@@ -204,27 +205,55 @@ public sealed class PersonalTokensController : ControllerBase
             nameType: Claims.Name,
             roleType: Claims.Role);
 
-        foreach (var claim in User.Claims)
-        {
-            if (ProtocolClaims.Contains(claim.Type)
-                || claim.Type.StartsWith(Claims.Prefixes.Private, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            if (!identity.HasClaim(claim.Type, claim.Value))
-            {
-                identity.AddClaim(new Claim(
-                    claim.Type,
-                    claim.Value,
-                    claim.ValueType,
-                    claim.Issuer));
-            }
-        }
+        // A personal token is a new authorization snapshot, not a clone of the
+        // management token used to create it. Rebuild it from ASP.NET Identity
+        // so roles/claims added after login are included and revoked values are
+        // not kept alive until the caller's current access token expires.
+        var roles = await _userManager.GetRolesAsync(user);
+        var persistedClaims = await _userManager.GetClaimsAsync(user);
 
         identity.SetClaim(Claims.Subject, subject);
         identity.SetClaim(Claims.ClientId, PersonalTokenClientId);
         identity.SetClaim(Claims.Name, user.UserName ?? user.Email ?? subject);
+        identity.SetClaim(Claims.PreferredUsername, user.UserName ?? user.Email ?? subject);
+        if (!string.IsNullOrWhiteSpace(user.Email))
+        {
+            identity.SetClaim(Claims.Email, user.Email);
+        }
+        identity.SetClaims(Claims.Role, [.. roles]);
+
+        foreach (var claim in persistedClaims)
+        {
+            if (ProtocolClaims.Contains(claim.Type)
+                || claim.Type.StartsWith(Claims.Prefixes.Private, StringComparison.Ordinal)
+                || claim.Type is Claims.Subject
+                    or Claims.ClientId
+                    or Claims.Name
+                    or Claims.PreferredUsername
+                    or Claims.Email
+                    or Claims.Role)
+            {
+                continue;
+            }
+
+            var projected = claim.Type == Claims.Address
+                ? new Claim(
+                    LegacyAddressClaimType,
+                    claim.Value,
+                    ClaimValueTypes.String,
+                    claim.Issuer)
+                : claim;
+
+            if (!identity.HasClaim(projected.Type, projected.Value))
+            {
+                identity.AddClaim(new Claim(
+                    projected.Type,
+                    projected.Value,
+                    projected.ValueType,
+                    projected.Issuer));
+            }
+        }
+
         identity.SetCreationDate(now);
         identity.SetExpirationDate(expiration);
         // Preserve any application-specific claim scopes configured by the
@@ -232,12 +261,22 @@ public sealed class PersonalTokensController : ControllerBase
         var applicationScopes = _options.ClaimScopeMap.ClaimToScope
             .Values
             .Where(scope => !string.IsNullOrWhiteSpace(scope))
+            .Append(Scopes.Roles)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
         identity.SetScopes(applicationScopes);
-        identity.SetResources(await ToListAsync(
+        var resources = await ToListAsync(
             _scopeManager.ListResourcesAsync(identity.GetScopes(), cancellationToken),
-            cancellationToken));
+            cancellationToken);
+        identity.SetResources(resources);
+
+        // GenerateTokenContext is intentionally lower-level than the regular
+        // token endpoint pipeline. Materialize the public RFC claims as well
+        // as OpenIddict's private metadata so introspection can identify the
+        // resource server as an audience and return its authorized claims.
+        identity.SetClaim(Claims.Scope, string.Join(' ', applicationScopes));
+        identity.SetClaims(Claims.Audience, [.. resources]);
+        identity.SetDestinations(GetPersonalTokenDestinations);
         identity.SetClaim(Claims.Private.Issuer, ResolveIssuer());
 
         var principal = new ClaimsPrincipal(identity);
@@ -580,6 +619,36 @@ public sealed class PersonalTokensController : ControllerBase
             value,
             "administrator",
             StringComparison.OrdinalIgnoreCase));
+
+    private IEnumerable<string> GetPersonalTokenDestinations(Claim claim)
+    {
+        if (claim.Type == Claims.Role)
+        {
+            if (claim.Subject!.HasScope(Scopes.Roles))
+            {
+                yield return Destinations.AccessToken;
+            }
+
+            yield break;
+        }
+
+        if (_options.ClaimScopeMap.ClaimToScope.TryGetValue(
+                claim.Type,
+                out var requiredScope))
+        {
+            if (claim.Subject!.HasScope(requiredScope))
+            {
+                yield return Destinations.AccessToken;
+            }
+
+            yield break;
+        }
+
+        // Personal tokens are access tokens only. Persisted, host-specific
+        // claims that are not scope-gated retain the generic STS behavior and
+        // are available to resource servers, never to an identity token.
+        yield return Destinations.AccessToken;
+    }
 
     private static IEnumerable<string> ParseClaimValues(string value)
     {
