@@ -331,7 +331,9 @@ else
     private static T ParseEnum<T>(string? value, T fallback) where T : struct, Enum => Enum.TryParse<T>(value, true, out var parsed) && Enum.IsDefined(parsed) ? parsed : fallback;
     private static string? NullIfEmpty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     private static int NormalizeRange(int value) => value is 14 or 30 or 60 or 90 ? value : 30;
-    private decimal BarHeight(int count) => Math.Max(count > 0 ? 8m : 2m, count * 100m / ChartMax);
+    private string BarHeight(int count) => Math
+        .Max(count > 0 ? 8m : 2m, count * 100m / ChartMax)
+        .ToString("0.###", CultureInfo.InvariantCulture);
     private static string UserHref(string id) => $"users/{Uri.EscapeDataString(id)}";
     private static string DisplayUserName(ManagementUserSummary user) => string.IsNullOrWhiteSpace(user.UserName) ? user.Email ?? user.Id : user.UserName;
     private static string DisplayEmail(ManagementUserSummary user) => string.IsNullOrWhiteSpace(user.Email) ? "Não informado" : user.Email;
