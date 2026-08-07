@@ -285,6 +285,9 @@
   <data name="Common.Cancel" xml:space="preserve"><value>Cancelar</value></data>
   <data name="Common.BackHome" xml:space="preserve"><value>Voltar ao início</value></data>
   <data name="Common.TryAgain" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="HumanVerification.Label" xml:space="preserve"><value>Verificação de segurança</value></data>
+  <data name="HumanVerification.Hint" xml:space="preserve"><value>Essa etapa ajuda a impedir cadastros e mensagens automatizados.</value></data>
+  <data name="HumanVerification.Required" xml:space="preserve"><value>Conclua novamente a verificação de segurança para continuar.</value></data>
   <data name="Logout.Continue" xml:space="preserve"><value>Continuar</value></data>
   <data name="TwoFactor.Submit" xml:space="preserve"><value>Verificar</value></data>
   <data name="Register.ConfirmationSentPrefix" xml:space="preserve"><value>Enviamos um e-mail de confirmação para</value></data>

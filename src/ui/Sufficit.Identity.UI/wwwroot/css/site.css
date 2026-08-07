@@ -430,6 +430,39 @@ a:hover { color: var(--brand-hover); text-decoration: underline; }
     font-size: 0.8125rem;
     line-height: 1.45;
 }
+
+.human-verification {
+    margin: 0 0 var(--space-5);
+    min-width: 0;
+}
+.human-verification__label {
+    display: block;
+    margin-bottom: var(--space-2);
+    color: var(--ink);
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+.human-verification__widget {
+    min-height: 65px;
+    max-width: 100%;
+    overflow: hidden;
+}
+.human-verification__widget[data-load-failed="true"] {
+    display: flex;
+    align-items: center;
+    min-height: 52px;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--danger);
+    border-radius: var(--radius);
+    color: var(--danger);
+    background: var(--danger-soft);
+    font-size: 0.8125rem;
+}
+.human-verification__hint {
+    margin: var(--space-2) 0 0;
+    color: var(--ink-muted);
+    font-size: 0.75rem;
+}
 .form-control-static {
     display: block;
     padding: var(--space-3) 0;
@@ -1427,6 +1460,9 @@ img.profile-avatar { background: var(--surface-sunken); }
         border-left: none;
         border-right: none;
         /* Keep glass effect on mobile — card still floats over background */
+    }
+    .human-verification__widget {
+        transform-origin: left top;
     }
     .topbar { padding: 0 var(--space-4); height: 56px; }
     .topbar-brand .brand-sub { display: none; }

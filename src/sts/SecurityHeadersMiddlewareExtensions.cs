@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.STS;
 
@@ -97,7 +98,9 @@ public static class SecurityHeadersMiddlewareExtensions
                 var header = options.Csp.ReportOnly
                     ? "Content-Security-Policy-Report-Only"
                     : "Content-Security-Policy";
-                var value = options.Csp.Policy;
+                var value = AddHumanVerificationSources(
+                    options.Csp.Policy,
+                    options.HumanVerification);
                 if (!string.IsNullOrWhiteSpace(options.Csp.ReportUri))
                     value += $"; report-uri {options.Csp.ReportUri}";
                 context.Response.Headers[header] = value;
@@ -107,5 +110,77 @@ public static class SecurityHeadersMiddlewareExtensions
         });
 
         return app;
+    }
+
+    private static string AddHumanVerificationSources(
+        string policy,
+        HumanVerificationOptions verification)
+    {
+        if (!verification.Enabled)
+        {
+            return policy;
+        }
+
+        return verification.Provider switch
+        {
+            HumanVerificationProvider.GoogleRecaptchaV2 => AddSources(
+                AddSources(
+                    AddSources(
+                        policy,
+                        "script-src",
+                        "https://www.google.com",
+                        "https://www.gstatic.com"),
+                    "frame-src",
+                    "https://www.google.com",
+                    "https://recaptcha.google.com"),
+                "connect-src",
+                "https://www.google.com"),
+            HumanVerificationProvider.Turnstile => AddSources(
+                AddSources(
+                    AddSources(
+                        policy,
+                        "script-src",
+                        "https://challenges.cloudflare.com"),
+                    "frame-src",
+                    "https://challenges.cloudflare.com"),
+                "connect-src",
+                "https://challenges.cloudflare.com"),
+            _ => policy,
+        };
+    }
+
+    private static string AddSources(
+        string policy,
+        string directiveName,
+        params string[] sources)
+    {
+        var directives = policy
+            .Split(';', StringSplitOptions.RemoveEmptyEntries
+                | StringSplitOptions.TrimEntries)
+            .ToList();
+        var index = directives.FindIndex(value =>
+            value.Equals(directiveName, StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith(
+                directiveName + " ",
+                StringComparison.OrdinalIgnoreCase));
+
+        if (index < 0)
+        {
+            directives.Add($"{directiveName} {string.Join(' ', sources)}");
+        }
+        else
+        {
+            var existing = directives[index]
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Skip(1)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var additions = sources.Where(existing.Add).ToArray();
+            if (additions.Length > 0)
+            {
+                directives[index] += " " + string.Join(' ', additions);
+            }
+        }
+
+        return string.Join("; ", directives);
     }
 }

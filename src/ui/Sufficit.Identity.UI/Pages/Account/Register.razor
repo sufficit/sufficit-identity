@@ -1,5 +1,6 @@
 @page "/account/register"
 @inject IAccountOnboardingService AccountOnboarding
+@inject IHumanVerificationService HumanVerification
 @inject IBrandingThemeProvider BrandingProvider
 @inject IStringLocalizer<SharedResource> L
 
@@ -82,7 +83,13 @@ else
                     <ValidationMessage For="@(() => _model.ConfirmPassword)" />
                 </div>
 
-                <button type="submit" class="btn btn-primary btn-block">@L["Register.Submit"]</button>
+                <HumanVerification Flow="HumanVerificationFlow.Registration"
+                                   @bind-Token="_verificationToken"
+                                   @ref="_verificationControl" />
+
+                <button type="submit" class="btn btn-primary btn-block" disabled="@_submitting">
+                    @L["Register.Submit"]
+                </button>
             </EditForm>
 
             <div class="auth-links">
@@ -104,6 +111,9 @@ else
     private string? _error;
     private bool _registered;
     private bool _confirmationMessageSent;
+    private bool _submitting;
+    private string _verificationToken = string.Empty;
+    private HumanVerification? _verificationControl;
     private AccountRegistrationPolicy _registrationPolicy = new(false, false);
     private string _logoUrl = "_content/Sufficit.Identity.UI/img/logo-full.png";
 
@@ -120,21 +130,54 @@ else
 
     private async Task RegisterAsync()
     {
-        var result = await AccountOnboarding.RegisterAsync(
-            new AccountRegistrationCommand(
-                _model.UserName,
-                _model.Email,
-                _model.Password));
-        if (!result.Succeeded)
+        if (_submitting)
         {
-            _error = string.Join(
-                " ",
-                result.Errors.Select(error => error.Description));
             return;
         }
 
-        _confirmationMessageSent = result.ConfirmationMessageSent;
-        _registered = true;
+        _submitting = true;
+        _error = null;
+        try
+        {
+            var verification = await HumanVerification.VerifyAsync(
+                HumanVerificationFlow.Registration,
+                _verificationToken);
+            if (!verification.Succeeded)
+            {
+                _error = L["HumanVerification.Required"];
+                if (_verificationControl is not null)
+                {
+                    await _verificationControl.ResetAsync();
+                }
+                return;
+            }
+
+            var result = await AccountOnboarding.RegisterAsync(
+                new AccountRegistrationCommand(
+                    _model.UserName,
+                    _model.Email,
+                    _model.Password));
+            if (!result.Succeeded)
+            {
+                _error = string.Join(
+                    " ",
+                    result.Errors.Select(error => error.Description));
+                if (_verificationControl is not null)
+                {
+                    // Provider responses are single-use. A corrected form must
+                    // always receive a fresh challenge.
+                    await _verificationControl.ResetAsync();
+                }
+                return;
+            }
+
+            _confirmationMessageSent = result.ConfirmationMessageSent;
+            _registered = true;
+        }
+        finally
+        {
+            _submitting = false;
+        }
     }
 
     private sealed class RegisterInput

@@ -287,6 +287,23 @@
         "_ReportUri": "Optional violation-report collector endpoint appended as 'report-uri <value>'. Empty = no report-uri directive.",
         "ReportUri": ""
       },
+      "_HumanVerification": "Provider-neutral CAPTCHA protection for public operations that create accounts or send email. Validation always occurs server-side before the operation. Keep SecretKey in the environment or machine-specific file, never in source control.",
+      "HumanVerification": {
+        "Enabled": false,
+        "_Provider": "GoogleRecaptchaV2 reuses a Google reCAPTCHA v2 checkbox key. Turnstile uses Cloudflare Turnstile and does not require the site to be proxied by Cloudflare.",
+        "Provider": "GoogleRecaptchaV2",
+        "SiteKey": "",
+        "SecretKey": "",
+        "RequestTimeoutSeconds": 5,
+        "_ProtectedFlows": "Registration creates an account and sends confirmation. PasswordRecovery sends a reset link. EmailConfirmation resends the confirmation message.",
+        "ProtectedFlows": [
+          "Registration",
+          "PasswordRecovery",
+          "EmailConfirmation"
+        ],
+        "_AllowedHostnames": "Optional exact hostnames accepted from the provider response. Recommended in production in addition to the provider console's domain restriction.",
+        "AllowedHostnames": []
+      },
       "Register": {
         "_Enabled": "false disables /account/register entirely (login-only STS).",
         "Enabled": true,
