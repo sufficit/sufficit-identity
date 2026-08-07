@@ -469,6 +469,20 @@ public class AuthorizationController : Controller
             {
                 identity.SetClaim(SessionIdClaimType, grantSid);
             }
+
+            // Restore the granted scopes and resources onto the freshly-built
+            // identity. BuildIdentityAsync starts from current user state and
+            // does NOT inherit the grant principal's `oi_scp`/`oi_resrc`, so
+            // without this the refreshed token carries NO scopes — which makes
+            // GetDestinations drop every scope-gated claim (e.g. `directive`,
+            // gated behind the `directives` scope) and leaves the token with no
+            // audience. The result: refreshed access tokens were rejected by
+            // resource servers (403) even though the initial device-code /
+            // auth-code token worked. Mirrors ExchangeForDeviceCodeAsync. The
+            // auth-code branch below instead inherits these from the code
+            // principal's claims, so it does not need this.
+            identity.SetScopes(result.Principal!.GetScopes());
+            identity.SetResources(await ResolveResourcesAsync(identity, request));
         }
         else
         {
@@ -982,9 +996,17 @@ public class AuthorizationController : Controller
         // back-channel logout (item 3.2 [L1]). The distributor is a no-op when
         // BackchannelLogout is disabled, so this call is cheap in that case.
         var sessionId = User.GetClaim(SessionIdClaimType);
-        var userId = await _userManager.GetUserIdAsync(
-            await _userManager.GetUserAsync(User) ?? throw new InvalidOperationException(
-                "The user details cannot be retrieved."));
+        var user = await _userManager.GetUserAsync(User);
+        var userId = user is null
+            ? User.GetClaim(Claims.Subject)
+                ?? User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)
+            : await _userManager.GetUserIdAsync(user);
+
+        // RP-initiated logout is intentionally idempotent. The Identity cookie
+        // may already be absent (expired, explicitly cleared or lost during a
+        // failover) while the validated end-session request is still valid.
+        // In that case there is no subject-specific fan-out to perform, but the
+        // local sign-out and registered post-logout redirect must still finish.
 
         // Resolve the RP front-channel targets while the subject/session is
         // still available. Only a short-lived opaque context identifier is
