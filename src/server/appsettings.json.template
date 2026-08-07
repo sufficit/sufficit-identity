@@ -14,8 +14,19 @@
   "_AllowedHosts": "Kestrel's Host-header allowlist, semicolon-separated (e.g. \"your-identity-host;www.your-identity-host\"). '*' accepts ANY Host header — combined with a reverse proxy that forwards the client's original Host unchecked, this enables host-header poisoning (spoofed password-reset links, cache-poisoning). Set this to the real production host(s); it does not need to match Issuer's scheme, only its host.",
   "AllowedHosts": "your-identity-host",
   "Sufficit": {
+    "Vault": {
+      "Enabled": false,
+      "RequireEncryptionInProduction": false,
+      "KeySource": "dataprotection",
+      "DataProtectionPurpose": "Sufficit.Identity.Vault.Master.v1"
+    },
     "Identity": {
       "Issuer": "https://your-identity-host/",
+      "PublicUrl": "https://your-identity-host/",
+      "_PublicOrigin": "Audit preserves request-derived URLs for a rolling upgrade but logs their use. After PublicUrl/Issuer is pinned in every environment, set Mode=Enforce so Host headers can never shape security links or metadata.",
+      "PublicOrigin": {
+        "Mode": "Audit"
+      },
       "ConnectionStringName": "DefaultConnection",
       "_Database": "Schema provisioning policy. In Development the host ALWAYS applies pending EF Core migrations on startup (MigrateAsync). In production it does so ONLY when Database:AutoMigrate=true (default false — conservative for the legacy shared Duende/Skoruba database, which predates the EF model). When AutoMigrate is false in production, provision schema from the checked-in canonical SQL (docs/migration/sql/*) before each deploy. CRITICAL: when enabling AutoMigrate, ALWAYS set AllowedDatabaseNames to the concrete database name(s) the migrator may touch — if the connection string points elsewhere (e.g. the production database by a config typo), the process refuses to start rather than migrate the wrong database. Empty AllowedDatabaseNames disables the guard (Development only).",
       "Database": {
@@ -71,6 +82,8 @@
       },
       "_Certificates": "Required in production. PFX files (X509Certificate2) used to sign and encrypt tokens. Leave empty only in Development, where ephemeral dev certificates are used automatically; any other environment fails to start without these.",
       "Certificates": {
+        "MinimumRemainingLifetimeDays": 30,
+        "FailOnExpiringCertificate": false,
         "_SigningPath": "Path to the PFX file used to sign tokens.",
         "SigningPath": "",
         "_SigningPassword": "Password protecting the signing PFX file.",

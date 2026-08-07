@@ -15,6 +15,18 @@ public sealed class SufficitIdentityOptions
     public string? Issuer { get; init; }
 
     /// <summary>
+    /// Canonical externally reachable base URL used in account emails and
+    /// resource metadata. When absent, <see cref="Issuer"/> is used.
+    /// </summary>
+    public string? PublicUrl { get; init; }
+
+    /// <summary>
+    /// Controls whether request-derived public URLs are observed or rejected.
+    /// Audit is the compatibility default for rolling upgrades.
+    /// </summary>
+    public PublicOriginPolicyOptions PublicOrigin { get; init; } = new();
+
+    /// <summary>
     /// Database connection string key (under ConnectionStrings) used by the
     /// unified <see cref="Sufficit.Identity.Core.Data.AppDbContext"/>.
     /// </summary>
@@ -1265,6 +1277,18 @@ public sealed class ParOptions
 /// </summary>
 public sealed class CertificatesOptions
 {
+    /// <summary>
+    /// Warn (or fail) when a configured certificate has less remaining
+    /// lifetime than this rollout window.
+    /// </summary>
+    public int MinimumRemainingLifetimeDays { get; init; } = 30;
+
+    /// <summary>
+    /// When true, the expiry window is enforced at startup. False preserves
+    /// availability while operators first deploy expiry telemetry.
+    /// </summary>
+    public bool FailOnExpiringCertificate { get; init; } = false;
+
     /// <summary>
     /// Filesystem path to the PFX file used to sign tokens (JWT signing key).
     /// Required in production.

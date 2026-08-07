@@ -18,6 +18,12 @@ public sealed class VaultOptions
     public bool Enabled { get; init; } = false;
 
     /// <summary>
+    /// Rolling-upgrade guard. When true outside Development, startup fails
+    /// instead of registering the plaintext compatibility vault.
+    /// </summary>
+    public bool RequireEncryptionInProduction { get; init; } = false;
+
+    /// <summary>
     /// KEK source: <c>dataprotection</c> (default) | <c>certificate</c> |
     /// <c>external</c>. Only <c>dataprotection</c> is implemented in Phase 1;
     /// it wraps vault DEKs using ASP.NET Core Data Protection (already

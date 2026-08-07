@@ -20,6 +20,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
     IEmailSender emailSender,
     IHttpContextAccessor httpContextAccessor,
     IConfiguration configuration,
+    IPublicOriginResolver publicOrigin,
     ILogger<AspNetCoreIdentityAccountOnboardingService> logger)
     : IAccountOnboardingService
 {
@@ -30,9 +31,6 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
         configuration.GetValue(
             "Sufficit:Identity:Register:RequireUsername",
             false));
-
-    private readonly string? _publicBaseUrl = configuration[
-        "Sufficit:Identity:PublicUrl"]?.TrimEnd('/');
 
     public Task<AccountRegistrationPolicy> GetRegistrationPolicyAsync(
         CancellationToken cancellationToken = default)
@@ -327,15 +325,10 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
         IEnumerable<KeyValuePair<string, string?>> query)
     {
         var pathWithQuery = QueryHelpers.AddQueryString(relativePath, query);
-        if (!string.IsNullOrWhiteSpace(_publicBaseUrl))
-        {
-            return $"{_publicBaseUrl}{pathWithQuery}";
-        }
-
         var request = httpContextAccessor.HttpContext?.Request
             ?? throw new InvalidOperationException(
                 "An HTTP request is required to build an account callback URL.");
-        return $"{request.Scheme}://{request.Host}{pathWithQuery}";
+        return publicOrigin.BuildAbsolute(request, pathWithQuery);
     }
 
     private static AccountRegistrationResult RegistrationFailure(
