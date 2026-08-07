@@ -158,6 +158,32 @@ public sealed class AuthorizationCodeFlowTests
     }
 
     [Fact]
+    public async Task End_session_post_is_idempotent_when_identity_cookie_is_missing()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+        var antiforgeryToken = await TestOnlyEndpoints.GetAntiforgeryTokenAsync(client);
+
+        using var response = await client.PostAsync(
+            "/connect/endsession",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["post_logout_redirect_uri"] =
+                    TestDataSeeder.AuthorizationCodePostLogoutRedirectUri,
+                ["state"] = "already-signed-out",
+                ["__RequestVerificationToken"] = antiforgeryToken,
+            }));
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal(
+            TestDataSeeder.AuthorizationCodePostLogoutRedirectUri
+                + "?state=already-signed-out",
+            response.Headers.Location?.OriginalString);
+    }
+
+    [Fact]
     public async Task Authorization_code_remaps_a_legacy_string_address_claim()
     {
         var username = $"authcode-address-{Guid.NewGuid():N}";

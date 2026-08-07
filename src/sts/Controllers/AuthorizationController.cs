@@ -982,9 +982,17 @@ public class AuthorizationController : Controller
         // back-channel logout (item 3.2 [L1]). The distributor is a no-op when
         // BackchannelLogout is disabled, so this call is cheap in that case.
         var sessionId = User.GetClaim(SessionIdClaimType);
-        var userId = await _userManager.GetUserIdAsync(
-            await _userManager.GetUserAsync(User) ?? throw new InvalidOperationException(
-                "The user details cannot be retrieved."));
+        var user = await _userManager.GetUserAsync(User);
+        var userId = user is null
+            ? User.GetClaim(Claims.Subject)
+                ?? User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)
+            : await _userManager.GetUserIdAsync(user);
+
+        // RP-initiated logout is intentionally idempotent. The Identity cookie
+        // may already be absent (expired, explicitly cleared or lost during a
+        // failover) while the validated end-session request is still valid.
+        // In that case there is no subject-specific fan-out to perform, but the
+        // local sign-out and registered post-logout redirect must still finish.
 
         // Resolve the RP front-channel targets while the subject/session is
         // still available. Only a short-lived opaque context identifier is
