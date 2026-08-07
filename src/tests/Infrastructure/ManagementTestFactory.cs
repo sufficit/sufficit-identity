@@ -39,6 +39,7 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     private readonly bool _bypassAuthz;
+    private string? _routePrefix;
 
     /// <summary>
     /// Creates a factory that does NOT bypass authorization — the real
@@ -49,6 +50,13 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
     public static ManagementTestFactory CreateWithRealAuthz()
     {
         var factory = new ManagementTestFactory(bypassAuthz: false);
+        return factory;
+    }
+
+    public static ManagementTestFactory CreateWithRoutePrefix(string routePrefix)
+    {
+        var factory = new ManagementTestFactory();
+        factory._routePrefix = routePrefix;
         return factory;
     }
 
@@ -95,6 +103,13 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
                 ["Sufficit:Identity:Management:RequireAuthorization"] = "true",
                 ["Sufficit:Identity:Management:RequireMfa"] = "false",
             });
+            if (!string.IsNullOrWhiteSpace(_routePrefix))
+            {
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Sufficit:Identity:Management:RoutePrefix"] = _routePrefix,
+                });
+            }
         });
 
         builder.ConfigureServices((context, services) =>

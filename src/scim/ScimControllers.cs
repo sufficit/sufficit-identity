@@ -71,7 +71,6 @@ public abstract class ScimControllerBase : ControllerBase
 [ApiController]
 [Authorize(Policy = ScimServiceCollectionExtensions.PolicyName)]
 [ServiceFilter(typeof(ScimExceptionFilter))]
-[ServiceFilter(typeof(ScimAuthorizationAuditFilter))]
 [Route("scim/v2/users")]
 public sealed class ScimUsersController(
     IScimProvisioningService provisioning) : ScimControllerBase
@@ -169,7 +168,6 @@ public sealed class ScimUsersController(
 [ApiController]
 [Authorize(Policy = ScimServiceCollectionExtensions.PolicyName)]
 [ServiceFilter(typeof(ScimExceptionFilter))]
-[ServiceFilter(typeof(ScimAuthorizationAuditFilter))]
 [Route("scim/v2/groups")]
 public sealed class ScimGroupsController(
     IScimProvisioningService provisioning) : ScimControllerBase

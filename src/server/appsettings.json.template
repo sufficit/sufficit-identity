@@ -344,11 +344,10 @@
         "Login": "",
         "Password": "",
         "EnableSsl": true,
+        "RequireTls": false,
         "From": "no-reply@your-domain.com",
         "FromName": "Sufficit Identity"
       },
-      "_PublicUrl": "Optional. Used to build absolute URLs in emails (e.g. https://identity.example.com). If empty, the request scheme/host is used.",
-      "PublicUrl": "",
       "Email": {
         "_TestEmailAddress": "When non-empty, ALL outgoing emails are redirected to this address (dev/staging safety net). Leave empty in production.",
         "TestEmailAddress": ""
@@ -379,6 +378,11 @@
         "HostName": "",
         "UserName": "",
         "Password": "",
+        "Port": 5672,
+        "UseTls": false,
+        "RequireTls": false,
+        "TlsServerName": "",
+        "CheckCertificateRevocation": true,
         "Heartbeat": null
       }
     }
