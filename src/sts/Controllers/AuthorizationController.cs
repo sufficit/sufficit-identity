@@ -469,6 +469,20 @@ public class AuthorizationController : Controller
             {
                 identity.SetClaim(SessionIdClaimType, grantSid);
             }
+
+            // Restore the granted scopes and resources onto the freshly-built
+            // identity. BuildIdentityAsync starts from current user state and
+            // does NOT inherit the grant principal's `oi_scp`/`oi_resrc`, so
+            // without this the refreshed token carries NO scopes — which makes
+            // GetDestinations drop every scope-gated claim (e.g. `directive`,
+            // gated behind the `directives` scope) and leaves the token with no
+            // audience. The result: refreshed access tokens were rejected by
+            // resource servers (403) even though the initial device-code /
+            // auth-code token worked. Mirrors ExchangeForDeviceCodeAsync. The
+            // auth-code branch below instead inherits these from the code
+            // principal's claims, so it does not need this.
+            identity.SetScopes(result.Principal!.GetScopes());
+            identity.SetResources(await ResolveResourcesAsync(identity, request));
         }
         else
         {

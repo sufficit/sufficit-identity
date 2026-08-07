@@ -209,6 +209,78 @@ public sealed class ClaimScopeMapTests
             && claim.Value == directiveValue);
     }
 
+    [Fact]
+    public async Task Mapped_claim_survives_a_refresh_token_redemption()
+    {
+        // Regression: a refreshed access token must still carry the mapped
+        // `directive` claim. The refresh grant rebuilds the identity from
+        // current user state (BuildIdentityAsync) and must re-apply the granted
+        // scopes/resources onto it — otherwise GetDestinations sees no
+        // `directives` scope and drops `directive`, so long-running/unattended
+        // clients (which only ever hold refreshed tokens) lose authorization
+        // even though their initial token worked.
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(MapConfiguration());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await ProvisionDirectiveScopeAndClientAsync(factory);
+
+        var username = $"csm-refresh-{Guid.NewGuid():N}";
+        const string password = "Str0ng!Passw0rd#R";
+        const string directiveValue = "sufficit:test:csm-refresh";
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            await TestDataSeeder.CreateUserAsync(userManager, username, password, directiveValue);
+        }
+
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        await TestOnlyEndpoints.SignInAsync(client, username);
+        var (verifier, challenge) = Pkce.CreatePair();
+        var code = await AuthorizationCodeFlowTests.AuthorizeAsync(
+            client, challenge, scope: $"openid offline_access {DirectiveScopeName}");
+
+        var (initialStatus, initialBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "authorization_code",
+            ["code"] = code,
+            ["redirect_uri"] = TestDataSeeder.AuthorizationCodeRedirectUri,
+            ["client_id"] = TestDataSeeder.AuthorizationCodeClientId,
+            ["code_verifier"] = verifier,
+        });
+        Assert.Equal(HttpStatusCode.OK, initialStatus);
+        var refreshToken = initialBody.GetProperty("refresh_token").GetString();
+        Assert.False(string.IsNullOrEmpty(refreshToken));
+        var initialAccessToken = initialBody.GetProperty("access_token").GetString()!;
+
+        // Redeem the refresh token BEFORE introspecting — introspection sets a
+        // Basic auth header on the client that must not leak into this POST.
+        var (refreshStatus, refreshBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = refreshToken!,
+            ["client_id"] = TestDataSeeder.AuthorizationCodeClientId,
+        });
+        Assert.Equal(HttpStatusCode.OK, refreshStatus);
+        var refreshedAccessToken = refreshBody.GetProperty("access_token").GetString()!;
+
+        // Baseline: the initial token carries `directive`; the regression is
+        // that the refreshed token must carry it too.
+        Assert.Equal(directiveValue, await IntrospectDirectiveAsync(client, initialAccessToken));
+        Assert.Equal(directiveValue, await IntrospectDirectiveAsync(client, refreshedAccessToken));
+    }
+
+    /// <summary>Introspects <paramref name="accessToken"/> and returns the mapped directive value (or null).</summary>
+    private static async Task<string?> IntrospectDirectiveAsync(HttpClient client, string accessToken)
+    {
+        client.DefaultRequestHeaders.Authorization = IntrospectionTests.BasicAuthFor(
+            TestDataSeeder.IntrospectionClientId, TestDataSeeder.IntrospectionClientSecret);
+        var (_, body) = await client.PostFormAsync("/connect/introspect", new Dictionary<string, string>
+        {
+            ["token"] = accessToken,
+        });
+        Assert.True(body.GetProperty("active").GetBoolean());
+        return body.TryGetProperty(TestDataSeeder.DirectiveClaimType, out var v) ? v.GetString() : null;
+    }
+
     /// <summary>
     /// Overlay that configures <c>ClaimScopeMap.ClaimToScope</c> to map
     /// <c>directive</c> → <c>directives</c>. The in-memory-collection binding
