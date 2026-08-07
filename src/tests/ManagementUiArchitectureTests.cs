@@ -497,6 +497,29 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Human_verification_only_uses_js_after_interactive_initialization()
+    {
+        var component = File.ReadAllText(Path.Combine(
+            ResolvePublicUiSource(),
+            "Components",
+            "HumanVerification.razor"));
+
+        Assert.Contains(
+            "private bool _browserWidgetInitialized;",
+            component,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "_browserWidgetInitialized = true;",
+            component,
+            StringComparison.Ordinal);
+        Assert.Equal(
+            2,
+            component.Split(
+                "if (_browserWidgetInitialized)",
+                StringSplitOptions.None).Length - 1);
+    }
+
+    [Fact]
     public void Passkey_ui_uses_canonical_contracts_and_real_http_ceremonies()
     {
         var publicUi = ResolvePublicUiSource();

@@ -38,6 +38,7 @@
         HumanVerificationProvider.GoogleRecaptchaV2,
         null,
         string.Empty);
+    private bool _browserWidgetInitialized;
 
     private string _widgetId => $"human-verification-{_instanceId}";
     private string _tokenInputId => $"human-verification-token-{_instanceId}";
@@ -63,13 +64,17 @@
             _widget.SiteKey,
             _widget.Action,
             System.Globalization.CultureInfo.CurrentUICulture.Name);
+        _browserWidgetInitialized = true;
     }
 
     public async ValueTask ResetAsync()
     {
         Token = string.Empty;
         await TokenChanged.InvokeAsync(Token);
-        if (_widget.Required)
+        // Static SSR form posts do not have a browser-side widget. Clearing the
+        // bound token is still required, but JS interop is only legal after the
+        // interactive render initialized the widget.
+        if (_browserWidgetInitialized)
         {
             await JS.InvokeVoidAsync(
                 "sufficitHumanVerification.reset",
@@ -86,7 +91,7 @@
 
     public async ValueTask DisposeAsync()
     {
-        if (_widget.Required)
+        if (_browserWidgetInitialized)
         {
             try
             {
@@ -97,6 +102,11 @@
             catch (JSDisconnectedException)
             {
                 // The circuit has already ended; browser state disappears too.
+            }
+            catch (InvalidOperationException)
+            {
+                // The component was disposed while statically rendered or
+                // after the interactive circuit stopped accepting JS calls.
             }
         }
     }
