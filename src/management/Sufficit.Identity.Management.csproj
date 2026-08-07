@@ -19,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\application\Sufficit.Identity.Application.Abstractions\Sufficit.Identity.Application.Abstractions.csproj" />
     <ProjectReference Include="..\core\Sufficit.Identity.Core.csproj" />
+    <ProjectReference Include="..\vault\Sufficit.Identity.Vault.csproj" />
   </ItemGroup>
 
 </Project>

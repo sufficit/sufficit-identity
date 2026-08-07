@@ -34,6 +34,9 @@ public static class ManagementCapabilities
     public const string AuthorizationsRevoke =
         "identity.authorizations.revoke";
     public const string AuditRead = "identity.audit.read";
+    public const string DatabaseRead = "identity.database.read";
+    public const string MetricsRead = "identity.metrics.read";
+    public const string MetricsManage = "identity.metrics.manage";
     public const string ProvisioningPreview =
         "identity.provisioning.preview";
     public const string ProvisioningApply =
@@ -66,6 +69,9 @@ public static class ManagementCapabilities
                 AuthorizationsRead,
                 AuthorizationsRevoke,
                 AuditRead,
+                DatabaseRead,
+                MetricsRead,
+                MetricsManage,
                 ProvisioningPreview,
                 ProvisioningApply
             ],
@@ -89,7 +95,9 @@ public static class ManagementResourceTypes
     public const string Authorization = "authorization";
     public const string AuthorizationCollection = "authorization-collection";
     public const string Audit = "audit";
+    public const string DatabaseRuntime = "database-runtime";
     public const string Overview = "overview";
+    public const string Metrics = "metrics";
     public const string Provisioning = "provisioning";
 }
 
@@ -216,7 +224,7 @@ public sealed class ManagementAuthorizationOptions
     /// <summary>
     /// Deployment-specific roles that receive every management capability
     /// (full administrator). <b>Use sparingly.</b> Every principal in any of
-    /// these roles bypasses per-capability checks and gets all 27 capabilities.
+    /// these roles bypasses per-capability checks and gets every capability.
     /// Default is empty (no god-mode) — set explicitly to grant blanket access.
     /// </summary>
     public string[] FullAdministratorRoles { get; set; } = [];
@@ -344,7 +352,7 @@ public sealed class ScopeAndRoleManagementEntitlementResolver(
 
         // --- Full administrator roles (god-mode) ---
         // Opt-in only: default is empty. Every principal in any of these roles
-        // receives all 27 capabilities. Use sparingly for break-glass access.
+        // receives every capability. Use sparingly for break-glass access.
         var adminRoles = authorization.FullAdministratorRoles;
         if (adminRoles.Length > 0 && adminRoles.Any(principal.IsInRole))
         {

@@ -70,6 +70,8 @@ public sealed class ManagementOverviewService(
         new("branding", ManagementCapabilities.BrandingRead),
         new("sessions", ManagementCapabilities.SessionsRead),
         new("audit", ManagementCapabilities.AuditRead),
+        new("database", ManagementCapabilities.DatabaseRead),
+        new("metrics", ManagementCapabilities.MetricsRead),
         new("provisioning", ManagementCapabilities.ProvisioningPreview)
     ];
 

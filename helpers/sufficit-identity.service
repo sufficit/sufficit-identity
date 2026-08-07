@@ -2,6 +2,8 @@
 Description=.NET Sufficit Identity Service (OpenIddict)
 After=network-online.target
 Requires=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=10
 
 [Service]
 ExecStartPre=+-/bin/bash /opt/sufficit-identity/helpers/prestart.sh
@@ -17,9 +19,10 @@ StandardOutput=journal
 StandardError=journal
 
 Restart=on-failure
-TimeoutStartSec=30
-TimeoutStopSec=5
+TimeoutStartSec=120
+TimeoutStopSec=15
 RestartSec=10
+KillMode=mixed
 
 KillSignal=SIGINT
 Environment=ASPNETCORE_ENVIRONMENT=Production

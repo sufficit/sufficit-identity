@@ -1,0 +1,500 @@
+@page "/database"
+@attribute [Authorize(Policy = ManagementUiPolicies.ReadDatabase)]
+@attribute [StreamRendering]
+@implements IAsyncDisposable
+@inject ManagementDatabaseDataSource DatabaseData
+
+<PageTitle>Banco de dados | Sufficit Identity</PageTitle>
+
+<PageHeader Title="Banco de dados"
+            Description="Acompanhe a pressão do pool, as conexões locadas pelo runtime e a recuperação automática do acesso à persistência.">
+    <Actions>
+        <div class="database-page-actions">
+            <button class="button button--secondary database-live-control"
+                    type="button"
+                    aria-pressed="@autoRefresh"
+                    @onclick="ToggleAutoRefresh">
+                <span class="status-dot @(autoRefresh ? "status-dot--success" : null)"
+                      aria-hidden="true"></span>
+                @(autoRefresh ? "Atualização automática" : "Atualização pausada")
+            </button>
+            <button class="button button--secondary"
+                    type="button"
+                    disabled="@refreshing"
+                    @onclick="RefreshAsync">
+                <AppIcon Name="refresh"
+                         Size="17"
+                         CssClass="@(refreshing ? "database-refresh-icon database-refresh-icon--active" : "database-refresh-icon")" />
+                @(refreshing ? "Atualizando…" : "Atualizar agora")
+            </button>
+        </div>
+    </Actions>
+</PageHeader>
+
+@if (loading)
+{
+    <section class="detail-shell"
+             aria-busy="true"
+             aria-label="Carregando telemetria do banco de dados">
+        <div class="detail-skeleton"></div>
+        <div class="detail-skeleton detail-skeleton--short"></div>
+    </section>
+}
+else if (snapshot is null)
+{
+    <EmptyState Icon="database"
+                Title="Não foi possível consultar o banco de dados"
+                Description="@(refreshError ?? "O runtime não informou a telemetria de conexões.")">
+        <Actions>
+            <button class="button button--primary"
+                    type="button"
+                    @onclick="RefreshAsync">
+                Tentar novamente
+            </button>
+        </Actions>
+    </EmptyState>
+}
+else
+{
+    <section class="contract-strip @WatchdogStripClass"
+             aria-live="polite">
+        <AppIcon Name="database" Size="20" />
+        <div>
+            <strong>@WatchdogTitle</strong>
+            <span>@WatchdogDescription</span>
+        </div>
+        <StatusBadge Tone="@WatchdogTone">@WatchdogBadge</StatusBadge>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(refreshError))
+    {
+        <section class="inline-notice inline-notice--danger" role="status">
+            <AppIcon Name="alert" Size="19" />
+            <div>
+                <strong>Os dados podem estar desatualizados</strong>
+                <span>@refreshError A última captura válida continua visível.</span>
+            </div>
+        </section>
+    }
+
+    <div class="database-capacity-stack" aria-label="Capacidade dos pools de conexão">
+        @foreach (var pool in EffectivePools)
+        {
+            var used = PoolUsed(pool);
+            var pressure = PoolPressure(pool);
+
+            <section class="database-capacity" aria-labelledby="@PoolHeadingId(pool)">
+                <div class="database-capacity__header">
+                    <div>
+                        <h2 id="@PoolHeadingId(pool)">@pool.Provider</h2>
+                        <p>Pool <code>@pool.Name</code></p>
+                    </div>
+                    <StatusBadge Tone="@PoolTone(pool)">@PoolStatus(pool)</StatusBadge>
+                </div>
+
+                <div class="database-capacity__pressure">
+                    <div class="database-capacity__pressure-copy">
+                        <span>Ocupação observada</span>
+                        <strong>@PressureDescription(pool)</strong>
+                    </div>
+                    <div class="database-capacity__track"
+                         role="progressbar"
+                         aria-label="Ocupação do pool @pool.Name"
+                         aria-valuemin="0"
+                        aria-valuenow="@pressure"
+                         aria-valuemax="100">
+                        <span class="database-capacity__fill database-capacity__fill--@PoolTone(pool)"
+                              style="transform: scaleX(@PressureScale(pressure))"></span>
+                    </div>
+                </div>
+
+                <dl class="database-capacity__facts">
+                    <div>
+                        <dt>Em uso</dt>
+                        <dd>@FormatMetric(used)</dd>
+                    </div>
+                    <div>
+                        <dt>Ociosas</dt>
+                        <dd>@FormatMetric(pool.IdleConnections)</dd>
+                    </div>
+                    <div>
+                        <dt>Limite</dt>
+                        <dd>@FormatMetric(pool.MaximumConnections)</dd>
+                    </div>
+                    <div>
+                        <dt>Na fila</dt>
+                        <dd>@FormatMetric(pool.PendingRequests)</dd>
+                    </div>
+                    <div>
+                        <dt>Timeouts do pool</dt>
+                        <dd>@FormatNumber(pool.ConnectionTimeouts)</dd>
+                    </div>
+                </dl>
+
+                @if (!pool.MetricsAvailable)
+                {
+                    <p class="database-capacity__note">
+                        Este provedor ainda não publicou métricas de pool. A lista abaixo continua mostrando as conexões observadas pelo EF Core.
+                    </p>
+                }
+            </section>
+        }
+    </div>
+
+    <section class="table-panel" aria-labelledby="database-connections-heading">
+        <div class="data-toolbar">
+            <div>
+                <h2 id="database-connections-heading">Conexões locadas agora</h2>
+                <p>
+                    @snapshot.ActiveConnections.Count conexão(ões) · captura em
+                    @FormatTimestamp(snapshot.CapturedAtUtc)
+                </p>
+            </div>
+            <div class="database-live-status" aria-live="polite">
+                <span class="status-dot @(autoRefresh ? "status-dot--success" : null)"
+                      aria-hidden="true"></span>
+                <span>@(autoRefresh ? "Atualiza a cada 2 segundos" : "Atualização automática pausada")</span>
+            </div>
+        </div>
+
+        @if (snapshot.ActiveConnections.Count is 0)
+        {
+            <EmptyState Icon="database"
+                        Title="Nenhuma conexão locada neste instante"
+                        Description="O EF Core abre e devolve conexões rapidamente. Isso é normal quando não há comando em execução; os contadores do pool acima continuam representando conexões ociosas." />
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data-table data-table--database">
+                    <thead>
+                        <tr>
+                            <th scope="col">Conexão</th>
+                            <th scope="col">Origem</th>
+                            <th scope="col">Abertura</th>
+                            <th scope="col">Requisições</th>
+                            <th scope="col">Última execução</th>
+                            <th scope="col">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var connection in snapshot.ActiveConnections)
+                        {
+                            <tr>
+                                <td data-label="Conexão">
+                                    <span class="database-connection-id">
+                                        <strong>@PhysicalConnectionLabel(connection)</strong>
+                                        <code>@connection.Id</code>
+                                    </span>
+                                </td>
+                                <td data-label="Origem">
+                                    <span class="database-origin">
+                                        <strong>@connection.DataSource</strong>
+                                        <span>@connection.Provider · @connection.Database</span>
+                                    </span>
+                                </td>
+                                <td data-label="Abertura">
+                                    <span class="database-timing">
+                                        <strong>@FormatTimestamp(connection.OpenedAtUtc)</strong>
+                                        <span>há @FormatElapsed(connection.OpenedAtUtc)</span>
+                                    </span>
+                                </td>
+                                <td data-label="Requisições">
+                                    <span class="database-request-count">
+                                        <strong>@FormatNumber(connection.CommandCount)</strong>
+                                        <span>@FormatNumber(connection.LeaseCommandCount) nesta locação</span>
+                                    </span>
+                                </td>
+                                <td data-label="Última execução">
+                                    <span class="database-timing">
+                                        <strong>@FormatLastCommand(connection)</strong>
+                                        <span>@FormatDuration(connection.LastDurationMilliseconds)</span>
+                                    </span>
+                                </td>
+                                <td data-label="Estado">
+                                    <StatusBadge Tone="@(connection.ActiveCommands > 0 ? "info" : "neutral")">
+                                        @(connection.ActiveCommands > 0
+                                            ? $"{connection.ActiveCommands} em execução"
+                                            : "Locada")
+                                    </StatusBadge>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <footer class="table-footer database-telemetry-footer">
+            <span>@FormatNumber(snapshot.TotalCommands) comandos observados desde o início do processo</span>
+            <span>@FormatNumber(snapshot.FailedCommands) falha(s) · SQL e parâmetros não são coletados</span>
+        </footer>
+    </section>
+}
+
+@code {
+    private readonly CancellationTokenSource disposal = new();
+    private DatabaseRuntimeSnapshot? snapshot;
+    private Task? refreshLoop;
+    private string? refreshError;
+    private bool loading = true;
+    private bool refreshing;
+    private bool autoRefresh = true;
+
+    private IReadOnlyList<DatabasePoolSnapshot> EffectivePools =>
+        snapshot?.Pools.Count > 0
+            ? snapshot.Pools
+            :
+            [
+                new DatabasePoolSnapshot(
+                    "runtime",
+                    snapshot?.ActiveConnections.FirstOrDefault()?.Provider
+                        ?? "Provedor não identificado",
+                    snapshot?.ActiveConnections.Count ?? 0,
+                    null,
+                    null,
+                    null,
+                    null,
+                    0,
+                    MetricsAvailable: false)
+            ];
+
+    private DatabaseWatchdogSnapshot Watchdog =>
+        snapshot?.Watchdog
+        ?? new DatabaseWatchdogSnapshot(false, "disabled", 0, null, null, null);
+
+    private string WatchdogTone => Watchdog.Status switch
+    {
+        "healthy" => "success",
+        "degraded" or "restarting" => "warning",
+        _ => "info"
+    };
+
+    private string WatchdogStripClass => $"contract-strip--{WatchdogTone}";
+
+    private string WatchdogTitle => Watchdog.Status switch
+    {
+        "healthy" => "Watchdog confirmou acesso ao banco",
+        "degraded" => "Watchdog detectou degradação do banco",
+        "restarting" => "Runtime solicitou reinicialização controlada",
+        "starting" => "Watchdog aguardando a primeira verificação",
+        _ => "Watchdog de banco desativado"
+    };
+
+    private string WatchdogBadge => Watchdog.Status switch
+    {
+        "healthy" => "Saudável",
+        "degraded" => "Degradado",
+        "restarting" => "Reiniciando",
+        "starting" => "Inicializando",
+        _ => "Desativado"
+    };
+
+    private string WatchdogDescription
+    {
+        get
+        {
+            if (!Watchdog.Enabled)
+            {
+                return "O processo não será reiniciado automaticamente se o pool permanecer inutilizável.";
+            }
+            if (Watchdog.LastProbeAtUtc is null)
+            {
+                return "A primeira verificação ocorre após a janela de aquecimento do serviço.";
+            }
+
+            var latency = Watchdog.LastLatencyMilliseconds is null
+                ? "latência indisponível"
+                : $"{Watchdog.LastLatencyMilliseconds:0} ms";
+            return Watchdog.ConsecutiveFailures is 0
+                ? $"Última verificação em {FormatTimestamp(Watchdog.LastProbeAtUtc.Value)} · {latency}."
+                : $"{Watchdog.ConsecutiveFailures} falha(s) consecutiva(s) · última tentativa em {FormatTimestamp(Watchdog.LastProbeAtUtc.Value)}.";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshAsync();
+        refreshLoop = RunRefreshLoopAsync(disposal.Token);
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (refreshing)
+        {
+            return;
+        }
+
+        refreshing = true;
+        try
+        {
+            var result = await DatabaseData.GetAsync(disposal.Token);
+            if (result.IsSuccess && result.Value is not null)
+            {
+                snapshot = result.Value;
+                refreshError = null;
+            }
+            else
+            {
+                refreshError = result.ErrorMessage
+                    ?? "A captura atual não ficou disponível.";
+            }
+        }
+        finally
+        {
+            refreshing = false;
+            loading = false;
+        }
+    }
+
+    private async Task RunRefreshLoopAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                if (!autoRefresh)
+                {
+                    continue;
+                }
+
+                await InvokeAsync(async () =>
+                {
+                    await RefreshAsync();
+                    StateHasChanged();
+                });
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+    }
+
+    private void ToggleAutoRefresh() => autoRefresh = !autoRefresh;
+
+    private long? PoolUsed(DatabasePoolSnapshot pool) =>
+        pool.UsedConnections
+        ?? (snapshot is null ? null : snapshot.ActiveConnections.Count);
+
+    private int PoolPressure(DatabasePoolSnapshot pool)
+    {
+        var used = PoolUsed(pool);
+        if (used is null || pool.MaximumConnections is null
+            || pool.MaximumConnections <= 0)
+        {
+            return 0;
+        }
+
+        return Math.Clamp(
+            (int)Math.Round(used.Value * 100d / pool.MaximumConnections.Value),
+            0,
+            100);
+    }
+
+    private static string PressureScale(int pressure) =>
+        (pressure / 100d).ToString(
+            "0.##",
+            System.Globalization.CultureInfo.InvariantCulture);
+
+    private string PoolTone(DatabasePoolSnapshot pool)
+    {
+        if ((pool.PendingRequests ?? 0) > 0 || PoolPressure(pool) >= 90)
+        {
+            return "danger";
+        }
+        if (pool.ConnectionTimeouts > 0 || PoolPressure(pool) >= 75)
+        {
+            return "warning";
+        }
+        return pool.MetricsAvailable ? "success" : "info";
+    }
+
+    private string PoolStatus(DatabasePoolSnapshot pool) => PoolTone(pool) switch
+    {
+        "danger" => "Pressão crítica",
+        "warning" => "Atenção",
+        "success" => "Dentro do limite",
+        _ => "Telemetria parcial"
+    };
+
+    private string PressureDescription(DatabasePoolSnapshot pool)
+    {
+        var used = PoolUsed(pool);
+        return used is not null && pool.MaximumConnections is not null
+            ? $"{used} de {pool.MaximumConnections} conexões ({PoolPressure(pool)}%)"
+            : used is not null
+                ? $"{used} conexão(ões) em uso; limite não publicado"
+                : "O provedor não publicou ocupação";
+    }
+
+    private static string PoolHeadingId(DatabasePoolSnapshot pool)
+    {
+        var safe = new string(pool.Name
+            .Where(character => char.IsLetterOrDigit(character))
+            .Take(32)
+            .ToArray());
+        return $"database-pool-{(string.IsNullOrEmpty(safe) ? "default" : safe)}";
+    }
+
+    private static string PhysicalConnectionLabel(
+        DatabaseConnectionSnapshot connection) =>
+        string.IsNullOrWhiteSpace(connection.PhysicalId)
+            ? "Identificador lógico"
+            : $"Sessão {connection.PhysicalId}";
+
+    private static string FormatMetric(long? value) =>
+        value is null ? "—" : FormatNumber(value.Value);
+
+    private static string FormatNumber(long value) =>
+        value.ToString(
+            "N0",
+            System.Globalization.CultureInfo.GetCultureInfo("pt-BR"));
+
+    private static string FormatTimestamp(DateTimeOffset value) =>
+        value.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss");
+
+    private static string FormatElapsed(DateTimeOffset value)
+    {
+        var elapsed = DateTimeOffset.UtcNow - value.ToUniversalTime();
+        if (elapsed.TotalSeconds < 1)
+        {
+            return "menos de 1 segundo";
+        }
+        if (elapsed.TotalMinutes < 1)
+        {
+            return $"{Math.Floor(elapsed.TotalSeconds):0} s";
+        }
+        if (elapsed.TotalHours < 1)
+        {
+            return $"{Math.Floor(elapsed.TotalMinutes):0} min";
+        }
+        return $"{elapsed.TotalHours:0.#} h";
+    }
+
+    private static string FormatLastCommand(DatabaseConnectionSnapshot connection) =>
+        connection.LastCommandAtUtc is null
+            ? "Nenhum comando"
+            : FormatTimestamp(connection.LastCommandAtUtc.Value);
+
+    private static string FormatDuration(double? milliseconds)
+    {
+        if (milliseconds is null)
+        {
+            return "Duração indisponível";
+        }
+        return milliseconds < 1
+            ? "menos de 1 ms"
+            : $"{milliseconds:0.#} ms";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await disposal.CancelAsync();
+        if (refreshLoop is not null)
+        {
+            await refreshLoop;
+        }
+        disposal.Dispose();
+    }
+}

@@ -195,6 +195,25 @@ JOIN identity.usertokens n
  AND n.name = l.name
 WHERE NOT (n.value <=> l.value);
 
+SELECT 'claims_missing_semantically_legacy_to_current' AS metric, COUNT(*) AS value
+FROM identity_legacy.userclaims l
+WHERE NOT EXISTS (
+    SELECT 1 FROM identity.userclaims n
+    WHERE n.userid = l.userid
+      AND n.claimtype <=> l.claimtype
+      AND n.claimvalue <=> l.claimvalue
+)
+UNION ALL
+SELECT 'current_claims_with_missing_user', COUNT(*)
+FROM identity.userclaims c
+LEFT JOIN identity.users u ON u.id = c.userid
+WHERE u.id IS NULL
+UNION ALL
+SELECT 'current_logins_with_missing_user', COUNT(*)
+FROM identity.userlogins l
+LEFT JOIN identity.users u ON u.id = l.userid
+WHERE u.id IS NULL;
+
 -- Client registrations. A semantic field-by-field conversion must use the
 -- migration mapper; these metrics identify candidates that require it.
 SELECT 'applications_only_in_legacy' AS metric, COUNT(*) AS value

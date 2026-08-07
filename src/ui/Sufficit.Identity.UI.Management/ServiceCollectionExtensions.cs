@@ -13,11 +13,13 @@ using Sufficit.Identity.UI.Management.Branding;
 using Sufficit.Identity.UI.Management.Claims;
 using Sufficit.Identity.UI.Management.Clients;
 using Sufficit.Identity.UI.Management.Configuration;
+using Sufficit.Identity.UI.Management.Database;
 using Sufficit.Identity.UI.Management.Overview;
 using Sufficit.Identity.UI.Management.Provisioning;
 using Sufficit.Identity.UI.Management.Scopes;
 using Sufficit.Identity.UI.Management.Sessions;
 using Sufficit.Identity.UI.Management.Users;
+using Sufficit.Identity.UI.Management.Metrics;
 
 namespace Sufficit.Identity.UI.Management;
 
@@ -33,8 +35,11 @@ public static class ManagementUiPolicies
         "sufficit-identity-management-ui-authorizations";
     public const string ManageBranding = "sufficit-identity-management-ui-branding";
     public const string ReadAudit = "sufficit-identity-management-ui-audit";
+    public const string ReadDatabase =
+        "sufficit-identity-management-ui-database";
     public const string ManageProvisioning =
         "sufficit-identity-management-ui-provisioning";
+    public const string ManageMetrics = "sufficit-identity-management-ui-metrics";
 }
 
 public sealed class ManagementCapabilityRequirement(
@@ -188,6 +193,15 @@ public static class ServiceCollectionExtensions
                         ManagementResourceTypes.Audit));
             });
 
+            authorization.AddPolicy(ManagementUiPolicies.ReadDatabase, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.Requirements.Add(
+                    new ManagementCapabilityRequirement(
+                        ManagementCapabilities.DatabaseRead,
+                        ManagementResourceTypes.DatabaseRuntime));
+            });
+
             authorization.AddPolicy(
                 ManagementUiPolicies.ManageProvisioning,
                 policy =>
@@ -198,6 +212,13 @@ public static class ServiceCollectionExtensions
                             ManagementCapabilities.ProvisioningPreview,
                             ManagementResourceTypes.Provisioning));
                 });
+            authorization.AddPolicy(ManagementUiPolicies.ManageMetrics, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.Requirements.Add(new ManagementCapabilityRequirement(
+                    ManagementCapabilities.MetricsRead,
+                    ManagementResourceTypes.Metrics));
+            });
         });
 
         services.TryAddEnumerable(
@@ -216,6 +237,8 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<ManagementUserDataSource>();
         services.TryAddScoped<ManagementOverviewDataSource>();
         services.TryAddScoped<ManagementProvisioningDataSource>();
+        services.TryAddScoped<ManagementDatabaseDataSource>();
+        services.TryAddScoped<ManagementMetricsDataSource>();
 
         services.AddCascadingAuthenticationState();
         // i18n: IStringLocalizer for Management UI strings.

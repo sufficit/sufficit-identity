@@ -43,11 +43,19 @@
             <span>@RuntimeDescription</span>
         </div>
     </div>
+    <div class="sidebar-instance"
+         title="Servidor que está processando esta interface">
+        <span>Servidor</span>
+        <code>@ServerHostName</code>
+    </div>
 </div>
 
 @code {
     [Parameter]
     public ManagementDataResult<ManagementOverview>? Overview { get; set; }
+
+    [Parameter, EditorRequired]
+    public string ServerHostName { get; set; } = string.Empty;
 
     private IEnumerable<IGrouping<string, ManagementModulePresentation>>
         NavigationSections =>

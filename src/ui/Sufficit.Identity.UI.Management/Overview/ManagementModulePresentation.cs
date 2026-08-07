@@ -101,7 +101,25 @@ public static class ManagementModulePresentations
             "Auditoria",
             "Decisões e mutações administrativas persistidas",
             "audit",
-            "audit")
+            "audit"),
+        new(
+            "metrics",
+            "Operações",
+            40,
+            25,
+            "Métricas",
+            "Uso das aplicações e saúde da coleta",
+            "metrics",
+            "chart"),
+        new(
+            "database",
+            "Operações",
+            40,
+            40,
+            "Banco de dados",
+            "Pool, conexões ativas e recuperação do runtime",
+            "database",
+            "database")
     ];
 
     public static ManagementModulePresentation? Find(string key) =>

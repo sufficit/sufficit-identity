@@ -6,6 +6,17 @@ namespace Sufficit.Identity.Core.Data;
 /// </summary>
 public static class IdentityDatabaseSchema
 {
+    public const int MetricsProviderLength = 50;
+    public const int MetricsEndpointLength = 1024;
+    public const int MetricsDatabaseLength = 255;
+    public const int MetricsAuthorizationSchemeLength = 32;
+    public const int MetricsUsernameLength = 255;
+    public const int MetricsClientIdLength = 255;
+    public const int MetricsEventTypeLength = 64;
+    public const int MetricsEndpointTypeLength = 64;
+    public const int MetricsGrantTypeLength = 100;
+    public const int MetricsOutcomeLength = 32;
+    public const int MetricsSubjectHashLength = 64;
     public const string InitialMigrationId = "20260726213918_Initial";
     public const string BrandingThemesMigrationId = "20260729025623_AddBrandingThemes";
     public const string ManagementAuditMigrationId = "20260729221512_AddManagementAuditEvents";
@@ -14,6 +25,7 @@ public static class IdentityDatabaseSchema
     public const string SsfStreamsMigrationId = "20260805202819_AddSsfStreams";
     public const string OidcUserSessionsMigrationId = "20260806131249_AddOidcUserSessions";
     public const string VaultKeysMigrationId = "20260806162913_AddVaultKeys"; // gitleaks:allow
+    public const string IdentityApplicationMetricsMigrationId = "20260807020859_AddIdentityApplicationMetrics";
 
     /// <summary>
     /// Migration history owned by the new Sufficit Identity model.

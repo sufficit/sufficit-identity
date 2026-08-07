@@ -673,6 +673,132 @@ namespace Sufficit.Identity.Core.Migrations
                     b.ToTable("brandingthemes", (string)null);
                 });
 
+            modelBuilder.Entity("Sufficit.Identity.Core.Entities.IdentityApplicationUsageEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("clientid");
+
+                    b.Property<string>("EndpointType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("endpointtype");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("eventtype");
+
+                    b.Property<string>("GrantType")
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("granttype");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("occurredatutc");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasColumnName("outcome");
+
+                    b.Property<string>("SubjectHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("subjecthash");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAtUtc")
+                        .HasDatabaseName("IX_identityusage_occurredatutc");
+
+                    b.HasIndex("ClientId", "OccurredAtUtc")
+                        .HasDatabaseName("IX_identityusage_clientid_occurredatutc");
+
+                    b.HasIndex("EventType", "OccurredAtUtc")
+                        .HasDatabaseName("IX_identityusage_eventtype_occurredatutc");
+
+                    b.ToTable("identityapplicationusageevents", (string)null);
+                });
+
+            modelBuilder.Entity("Sufficit.Identity.Core.Entities.IdentityMetricsConfiguration", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AuthorizationScheme")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasColumnName("authorizationscheme");
+
+                    b.Property<int>("BatchSize")
+                        .HasColumnType("int")
+                        .HasColumnName("batchsize");
+
+                    b.Property<string>("Database")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("database");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("enabled");
+
+                    b.Property<string>("Endpoint")
+                        .HasMaxLength(1024)
+                        .HasColumnType("varchar(1024)")
+                        .HasColumnName("endpoint");
+
+                    b.Property<bool>("ExportEnabled")
+                        .HasColumnType("tinyint(1)")
+                        .HasColumnName("exportenabled");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("provider");
+
+                    b.Property<int>("RetentionDays")
+                        .HasColumnType("int")
+                        .HasColumnName("retentiondays");
+
+                    b.Property<string>("SecretCiphertext")
+                        .HasColumnType("longtext")
+                        .HasColumnName("secretciphertext");
+
+                    b.Property<int>("TimeoutSeconds")
+                        .HasColumnType("int")
+                        .HasColumnName("timeoutseconds");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updatedatutc");
+
+                    b.Property<string>("Username")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)")
+                        .HasColumnName("username");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("identitymetricsconfiguration", (string)null);
+                });
+
             modelBuilder.Entity("Sufficit.Identity.Core.Entities.ManagementAuditEvent", b =>
                 {
                     b.Property<long>("Id")

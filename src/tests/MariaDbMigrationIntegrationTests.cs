@@ -68,19 +68,20 @@ public sealed class MariaDbMigrationIntegrationTests
                 IdentityDatabaseSchema.SsfStreamsMigrationId,
                 IdentityDatabaseSchema.OidcUserSessionsMigrationId,
                 IdentityDatabaseSchema.VaultKeysMigrationId,
+                IdentityDatabaseSchema.IdentityApplicationMetricsMigrationId,
             ],
             await context.Database.GetAppliedMigrationsAsync());
 
         await using var connection = context.Database.GetDbConnection();
         await connection.OpenAsync();
 
-        Assert.Equal(24, await ScalarIntAsync(connection, """
+        Assert.Equal(26, await ScalarIntAsync(connection, """
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
             """));
 
-        Assert.Equal(8, await ScalarIntAsync(connection, $"""
+        Assert.Equal(9, await ScalarIntAsync(connection, $"""
             SELECT COUNT(*)
             FROM `{IdentityDatabaseSchema.MigrationsHistoryTable}`
             WHERE `MigrationId` IN (
@@ -91,7 +92,8 @@ public sealed class MariaDbMigrationIntegrationTests
                 '{IdentityDatabaseSchema.UserCreatedAtMigrationId}',
                 '{IdentityDatabaseSchema.SsfStreamsMigrationId}',
                 '{IdentityDatabaseSchema.OidcUserSessionsMigrationId}',
-                '{IdentityDatabaseSchema.VaultKeysMigrationId}'
+                '{IdentityDatabaseSchema.VaultKeysMigrationId}',
+                '{IdentityDatabaseSchema.IdentityApplicationMetricsMigrationId}'
               )
             """));
 
