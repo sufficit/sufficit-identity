@@ -73,6 +73,7 @@ public sealed class PersonalTokensController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IApplicationClaimDestinationPolicy _applicationClaimPolicy;
     private readonly IPublicOriginResolver _publicOrigin;
+    private readonly IPersonalTokenIssuancePolicy _issuancePolicy;
 
     public PersonalTokensController(
         IOpenIddictScopeManager scopeManager,
@@ -83,7 +84,8 @@ public sealed class PersonalTokensController : ControllerBase
         SufficitIdentityOptions options,
         UserManager<ApplicationUser> userManager,
         IApplicationClaimDestinationPolicy applicationClaimPolicy,
-        IPublicOriginResolver publicOrigin)
+        IPublicOriginResolver publicOrigin,
+        IPersonalTokenIssuancePolicy issuancePolicy)
     {
         _scopeManager = scopeManager;
         _dispatcher = dispatcher;
@@ -94,6 +96,7 @@ public sealed class PersonalTokensController : ControllerBase
         _userManager = userManager;
         _applicationClaimPolicy = applicationClaimPolicy;
         _publicOrigin = publicOrigin;
+        _issuancePolicy = issuancePolicy;
     }
 
     [HttpGet]
@@ -286,7 +289,25 @@ public sealed class PersonalTokensController : ControllerBase
                 error_description = "A requested personal-token scope is not allowed by the issuance policy.",
             });
         }
-        var applicationScopes = requestedApplicationScopes ?? allowedApplicationScopes;
+        var issuanceDecision = _issuancePolicy.Evaluate(new PersonalTokenIssuanceContext(
+            subject,
+            ResolveCallerClientId(),
+            User.GetScopes().ToArray(),
+            requestedApplicationScopes ?? [],
+            allowedApplicationScopes,
+            ResolveAuthenticationTime(),
+            now,
+            expiration,
+            !string.IsNullOrWhiteSpace(User.GetClaim(Dpop.DpopProofValidator.ConfirmationClaimType))));
+        if (issuanceDecision.ShouldReject)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                error = issuanceDecision.ErrorCode,
+                error_description = "The personal token exceeds the caller's delegated authority.",
+            });
+        }
+        var applicationScopes = issuanceDecision.EffectiveScopes;
         identity.SetScopes(applicationScopes);
         var resources = await ToListAsync(
             _scopeManager.ListResourcesAsync(identity.GetScopes(), cancellationToken),
@@ -704,6 +725,19 @@ public sealed class PersonalTokensController : ControllerBase
     private string ResolveIssuer()
     {
         return _publicOrigin.Resolve(Request) + "/";
+    }
+
+    private string? ResolveCallerClientId() =>
+        User.GetClaim(Claims.AuthorizedParty)
+        ?? User.GetClaim(Claims.ClientId)
+        ?? User.GetPresenters().SingleOrDefault();
+
+    private DateTimeOffset? ResolveAuthenticationTime()
+    {
+        var value = User.GetClaim("auth_time");
+        return long.TryParse(value, out var unixSeconds)
+            ? DateTimeOffset.FromUnixTimeSeconds(unixSeconds)
+            : null;
     }
 
     private static bool IsValidExpiration(

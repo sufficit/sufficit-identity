@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Sufficit.Identity.STS.Dpop;
@@ -10,72 +11,81 @@ namespace Sufficit.Identity.STS.Dpop;
 /// <c>DPoP-Nonce</c> response header carrying the current nonce; the client
 /// retries with that nonce in the proof's <c>nonce</c> claim.
 /// </summary>
-/// <remarks>
-/// <b>Scope.</b> Single-instance STS. For multi-replica, swap for a shared
-/// cache (Redis); the interface isolates that change. A nonce is per-AS (one
-/// current value at a time, rotated on issue) — RFC 9449 §8 allows either a
-/// per-AS or per-client nonce; per-AS is simpler and standard. The TTL is
-/// short (default 60s) so a leaked nonce is short-lived.
-/// </remarks>
 public interface IDpopNonceStore
 {
     /// <summary>
-    /// Returns the current valid nonce for this AS, or null if none is in
-    /// force (the caller then decides whether to challenge).
+    /// Issues a nonce bound to an endpoint/client/proof-key partition.
     /// </summary>
-    string? Current();
+    string Issue(string partition);
 
     /// <summary>
-    /// Issues a fresh nonce (invalidating any previous one) and returns it.
-    /// Use when the AS decides to start/re-arm the nonce challenge.
+    /// Validates the protected nonce, its expiry and exact partition. Nonces
+    /// are reusable for concurrent requests during their short lifetime.
     /// </summary>
-    string Issue();
-
-    /// <summary>
-    /// Validates that <paramref name="nonce"/> matches the current nonce and is
-    /// not expired. Does NOT consume the nonce (a nonce is reusable within its
-    /// TTL — multiple concurrent requests may carry the same valid nonce).
-    /// </summary>
-    bool IsValid(string? nonce);
+    bool IsValid(string? nonce, string partition);
 }
 
-internal sealed class InMemoryDpopNonceStore : IDpopNonceStore
+/// <summary>
+/// Stateless DPoP nonce store. Data Protection authenticates the partition,
+/// expiry and entropy, so replicas sharing the normal key ring need no global
+/// mutable nonce and one client cannot rotate another client's challenge.
+/// </summary>
+internal sealed class ProtectedDpopNonceStore : IDpopNonceStore
 {
+    private readonly IDataProtector _protector;
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _ttl;
-    private (string Nonce, DateTimeOffset ExpiresAt) _current;
 
-    public InMemoryDpopNonceStore(TimeSpan? ttl = null, TimeProvider? timeProvider = null)
+    public ProtectedDpopNonceStore(
+        IDataProtectionProvider dataProtectionProvider,
+        TimeSpan? ttl = null,
+        TimeProvider? timeProvider = null)
     {
+        _protector = dataProtectionProvider.CreateProtector(
+            "Sufficit.Identity.DPoP.Nonce.v2");
         _timeProvider = timeProvider ?? TimeProvider.System;
         _ttl = ttl ?? TimeSpan.FromSeconds(60);
     }
 
-    public string? Current()
+    public string Issue(string partition)
     {
-        var (nonce, expiresAt) = _current;
-        if (nonce is null || expiresAt < _timeProvider.GetUtcNow())
+        ArgumentException.ThrowIfNullOrWhiteSpace(partition);
+        var partitionHash = HashPartition(partition);
+        var expiresAt = (_timeProvider.GetUtcNow() + _ttl).ToUnixTimeSeconds();
+        var entropy = Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(24));
+        return _protector.Protect($"{partitionHash}|{expiresAt}|{entropy}");
+    }
+
+    public bool IsValid(string? nonce, string partition)
+    {
+        if (string.IsNullOrWhiteSpace(nonce)
+            || string.IsNullOrWhiteSpace(partition))
         {
-            return null;
+            return false;
         }
-        return nonce;
+        try
+        {
+            var payload = _protector.Unprotect(nonce);
+            var parts = payload.Split('|', 3);
+            if (parts.Length != 3
+                || !long.TryParse(parts[1], out var expiresAt)
+                || expiresAt < _timeProvider.GetUtcNow().ToUnixTimeSeconds())
+            {
+                return false;
+            }
+
+            var expected = Convert.FromHexString(HashPartition(partition));
+            var actual = Convert.FromHexString(parts[0]);
+            return expected.Length == actual.Length
+                && CryptographicOperations.FixedTimeEquals(expected, actual);
+        }
+        catch (Exception exception) when (exception is CryptographicException or FormatException)
+        {
+            return false;
+        }
     }
 
-    public string Issue()
-    {
-        // 192 bits of entropy, base64url-encoded. RFC 9449 §8 does not mandate
-        // a length; this is comfortably unguessable.
-        var bytes = RandomNumberGenerator.GetBytes(24);
-        var nonce = Base64UrlEncoder.Encode(bytes);
-        _current = (nonce, _timeProvider.GetUtcNow() + _ttl);
-        return nonce;
-    }
-
-    public bool IsValid(string? nonce)
-    {
-        if (string.IsNullOrEmpty(nonce)) return false;
-        var (current, expiresAt) = _current;
-        if (current is null || expiresAt < _timeProvider.GetUtcNow()) return false;
-        return string.Equals(current, nonce, StringComparison.Ordinal);
-    }
+    private static string HashPartition(string partition) =>
+        Convert.ToHexStringLower(SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(partition)));
 }

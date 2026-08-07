@@ -23,6 +23,36 @@ public sealed class PersonalTokensTests
         _factory = factory;
 
     [Fact]
+    public async Task Personal_token_enforcement_rejects_scope_not_held_by_caller()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:PersonalTokens:Mode"] = "Enforce",
+                ["Sufficit:Identity:PersonalTokens:RequiredScope"] = "",
+                ["Sufficit:Identity:PersonalTokens:RequireRecentAuthentication"] = "false",
+                ["Sufficit:Identity:PersonalTokens:MaximumLifetimeDays"] = "30",
+            });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        var accessToken = await GetAccessTokenAsync(client);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/account/tokens",
+            new
+            {
+                expiration = DateTimeOffset.UtcNow.AddDays(7),
+                scopes = new[] { Scopes.Profile },
+            });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("invalid_scope", body.RootElement.GetProperty("error").GetString());
+    }
+
+    [Fact]
     public async Task Personal_token_can_be_explicitly_attenuated_to_requested_scopes()
     {
         var client = _factory.CreateClient();

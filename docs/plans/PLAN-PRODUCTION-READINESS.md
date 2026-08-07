@@ -1,6 +1,10 @@
 # Production readiness — remaining work
 
-> **Status:** All evaluation security findings are closed (16/17). Protocol coverage is complete. The items below are the gap between "code-complete" and "production-ready for regulated/high-assurance workloads."
+> **Status:** ACTIVE. Findings from the earlier production-readiness baseline
+> were remediated, but later independent evaluations identified residual
+> protocol and trust-boundary work. Those implementation items are tracked in
+> `PLAN-GPT-5-REMAINING.md` and `PLAN-GLM-5-2-REMAINING.md`; this plan owns the
+> remaining certification, deployment assurance and product-quality gates.
 
 ## Certification
 - [ ] Run OpenID Foundation FAPI 2.0 conformance suite and submit for formal certification

@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
 using System.Security.Claims;
+using System.Text;
+using System.Text.Encodings.Web;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
@@ -17,7 +19,7 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 namespace Sufficit.Identity.STS.Controllers;
 
 /// <summary>
-/// CIBA (Client-Initiated Backchannel Authentication, RFC 9126 — item 3.5).
+/// CIBA (OpenID Connect Client-Initiated Backchannel Authentication Core 1.0).
 /// Implements the initiation (<c>/bc-authorize</c>) and completion
 /// (<c>/connect/ciba/complete</c>) halves. The polling half
 /// (<c>grant_type=urn:openid:params:grant-type:ciba</c>) lives in
@@ -34,7 +36,7 @@ namespace Sufficit.Identity.STS.Controllers;
 /// </remarks>
 public class CibaController : Controller
 {
-    /// <summary>RFC 9126 §2.1 — the CIBA grant-type URI.</summary>
+    /// <summary>CIBA Core 1.0 §3 — the CIBA grant-type URI.</summary>
     public const string CibaGrantType = "urn:openid:params:grant-type:ciba";
 
     private readonly IOpenIddictApplicationManager _applicationManager;
@@ -46,6 +48,7 @@ public class CibaController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAntiforgery _antiforgery;
     private readonly CibaOptions _options;
+    private readonly Ciba.ICibaClientPolicy _clientPolicy;
 
     public CibaController(
         IOpenIddictApplicationManager applicationManager,
@@ -56,7 +59,8 @@ public class CibaController : Controller
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         IConfiguration configuration,
-        IAntiforgery antiforgery)
+        IAntiforgery antiforgery,
+        Ciba.ICibaClientPolicy clientPolicy)
     {
         _applicationManager = applicationManager;
         _scopeManager = scopeManager;
@@ -66,13 +70,14 @@ public class CibaController : Controller
         _signInManager = signInManager;
         _userManager = userManager;
         _antiforgery = antiforgery;
+        _clientPolicy = clientPolicy;
         var root = configuration.GetSection("Sufficit:Identity")
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
         _options = root.Ciba;
     }
 
     // -----------------------------------------------------------------------
-    // POST /bc-authorize — RFC 9126 §2.2 initiation endpoint.
+    // POST /bc-authorize — CIBA Core 1.0 initiation endpoint.
     // -----------------------------------------------------------------------
     [HttpPost("~/bc-authorize")]
     [IgnoreAntiforgeryToken]
@@ -87,7 +92,7 @@ public class CibaController : Controller
         var clientSecret = form["client_secret"].ToString();
         var loginHint = form["login_hint"].ToString();
         var bindingMessage = form["binding_message"].ToString();
-        // RFC 9126 §2.1: binding_message is a human-readable string; cap it
+        // CIBA Core 1.0: binding_message is human-readable; cap it
         // to prevent abuse/log-injection. 180 chars covers any reasonable
         // display without being a transport for arbitrary content.
         if (bindingMessage.Length > 180)
@@ -101,24 +106,19 @@ public class CibaController : Controller
             return BadRequest(new { error = "invalid_request", error_description = "client_id is required." });
         }
 
-        // Authenticate the client. For confidential clients, validate the
-        // secret against the OpenIddict application store. (OpenIddict's own
-        // client-auth pipeline only runs on its registered endpoints, so CIBA
-        // initiation does this here.)
-        var application = await _applicationManager.FindByClientIdAsync(clientId);
-        if (application is null)
+        // This custom endpoint does not enter OpenIddict's token-endpoint
+        // client-authentication pipeline, so initiation and polling share one
+        // explicit client/entitlement policy.
+        var clientAuthorization = await _clientPolicy.AuthorizeAsync(
+            clientId,
+            clientSecret,
+            "initiate",
+            HttpContext.RequestAborted);
+        if (!clientAuthorization.Allowed)
         {
-            return Unauthorized(new { error = "invalid_client" });
+            return Unauthorized(new { error = clientAuthorization.ErrorCode });
         }
-        var clientType = (string?)await _applicationManager.GetClientTypeAsync(application);
-        if (string.Equals(clientType, OpenIddictConstants.ClientTypes.Confidential, StringComparison.OrdinalIgnoreCase))
-        {
-            if (string.IsNullOrEmpty(clientSecret)
-                || !await _applicationManager.ValidateClientSecretAsync(application, clientSecret))
-            {
-                return Unauthorized(new { error = "invalid_client" });
-            }
-        }
+        var application = clientAuthorization.Application!;
 
         // Resolve the target user from login_hint (email-or-username).
         // M3 fix (eval M3): do NOT return unknown_user — that is a user-existence
@@ -161,6 +161,63 @@ public class CibaController : Controller
             expires_in = _options.ExpiresInSeconds,
             interval = _options.PollIntervalSeconds,
         });
+    }
+
+    // -----------------------------------------------------------------------
+    // GET ~/connect/ciba/complete — authenticated approval review. The
+    // binding_message is rendered before a user can approve the transaction.
+    // -----------------------------------------------------------------------
+    [HttpGet("~/connect/ciba/complete")]
+    public async Task<IActionResult> Review([FromQuery(Name = "auth_req_id")] string authReqId)
+    {
+        var pendingRequest = _pendingStore.Find(authReqId);
+        if (pendingRequest is null)
+        {
+            return NotFound("The authentication request is unknown or expired.");
+        }
+
+        var result = await HttpContext.AuthenticateAsync();
+        if (result is not { Succeeded: true, Principal: not null })
+        {
+            return Challenge(new AuthenticationProperties
+            {
+                RedirectUri = Request.PathBase + Request.Path + Request.QueryString,
+            });
+        }
+        var user = await _userManager.GetUserAsync(result.Principal);
+        var userId = user is null ? null : await _userManager.GetUserIdAsync(user);
+        if (string.IsNullOrWhiteSpace(userId)
+            || !string.Equals(userId, pendingRequest.Subject, StringComparison.Ordinal))
+        {
+            return Forbid();
+        }
+
+        var tokens = _antiforgery.GetAndStoreTokens(HttpContext);
+        Response.Headers.CacheControl = "no-store";
+        Response.Headers.Pragma = "no-cache";
+        var encoder = HtmlEncoder.Default;
+        var bindingMessage = string.IsNullOrWhiteSpace(pendingRequest.BindingMessage)
+            ? "No transaction message was supplied. Confirm the requesting application before continuing."
+            : pendingRequest.BindingMessage;
+        var html = new StringBuilder("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">")
+            .Append("<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">")
+            .Append("<title>Confirm sign-in request</title></head><body><main>")
+            .Append("<h1>Confirm sign-in request</h1><p>Application: <strong>")
+            .Append(encoder.Encode(pendingRequest.ClientId))
+            .Append("</strong></p><p>Verification message: <strong>")
+            .Append(encoder.Encode(bindingMessage))
+            .Append("</strong></p><form method=\"post\" action=\"")
+            .Append(encoder.Encode(Request.PathBase + Request.Path))
+            .Append("\"><input type=\"hidden\" name=\"")
+            .Append(encoder.Encode(tokens.FormFieldName))
+            .Append("\" value=\"")
+            .Append(encoder.Encode(tokens.RequestToken ?? string.Empty))
+            .Append("\"><input type=\"hidden\" name=\"auth_req_id\" value=\"")
+            .Append(encoder.Encode(authReqId))
+            .Append("\"><button type=\"submit\" name=\"approved\" value=\"true\">Approve</button>")
+            .Append("<button type=\"submit\" name=\"approved\" value=\"false\">Deny</button>")
+            .Append("</form></main></body></html>");
+        return Content(html.ToString(), "text/html; charset=utf-8");
     }
 
     // -----------------------------------------------------------------------
@@ -251,9 +308,9 @@ public class CibaController : Controller
     }
 
     // -----------------------------------------------------------------------
-    // POST ~/connect/ciba/token — the CIBA poll endpoint (RFC 9126 §3).
+    // POST ~/connect/ciba/token — the CIBA poll endpoint (CIBA Core 1.0 §10).
     // -----------------------------------------------------------------------
-    // RFC 9126 §3 specifies the token endpoint as the poll target. However,
+    // CIBA Core 1.0 specifies the token endpoint as the poll target. However,
     // OpenIddict 7.6 has no CIBA grant-type registration, so a
     // grant_type=urn:openid:params:grant-type:ciba posted to /connect/token is
     // rejected with unsupported_grant_type before the controller runs. This
@@ -277,27 +334,14 @@ public class CibaController : Controller
             return BadRequest(new { error = Errors.UnsupportedGrantType });
         }
 
-        // M3 fix (eval M3): authenticate the polling client. RFC 9126 §3
-        // requires client authentication at the token endpoint — the auth_req_id
-        // alone must NOT redeem a token. Validate client_id + client_secret
-        // against the OpenIddict application store (same as Initiate).
-        if (string.IsNullOrEmpty(clientId))
+        var clientAuthorization = await _clientPolicy.AuthorizeAsync(
+            clientId,
+            clientSecret,
+            "poll",
+            HttpContext.RequestAborted);
+        if (!clientAuthorization.Allowed)
         {
-            return Unauthorized(new { error = Errors.InvalidClient });
-        }
-        var pollApplication = await _applicationManager.FindByClientIdAsync(clientId);
-        if (pollApplication is null)
-        {
-            return Unauthorized(new { error = Errors.InvalidClient });
-        }
-        var pollClientType = (string?)await _applicationManager.GetClientTypeAsync(pollApplication);
-        if (string.Equals(pollClientType, OpenIddictConstants.ClientTypes.Confidential, StringComparison.OrdinalIgnoreCase))
-        {
-            if (string.IsNullOrEmpty(clientSecret)
-                || !await _applicationManager.ValidateClientSecretAsync(pollApplication, clientSecret))
-            {
-                return Unauthorized(new { error = Errors.InvalidClient });
-            }
+            return Unauthorized(new { error = clientAuthorization.ErrorCode });
         }
 
         var pending = _pendingStore.Find(authReqId);
@@ -307,7 +351,7 @@ public class CibaController : Controller
             return BadRequest(new { error = Errors.ExpiredToken, error_description = "The auth_req_id is unknown or expired." });
         }
 
-        // RFC 9126 §3.3: auth_req_id is issued to exactly one client. A
+        // CIBA Core 1.0: auth_req_id is issued to exactly one client. A
         // different, otherwise valid client must never be able to redeem it.
         // Use invalid_grant so the response does not disclose whether the
         // identifier belongs to another client.
@@ -409,7 +453,7 @@ public class CibaController : Controller
             tokenDescriptor.Payload = accessToken;
             await _tokenManager.UpdateAsync(tokenEntry, tokenDescriptor);
 
-            // RFC 9126 §3.2 / RFC 6749 §5.1 successful token response.
+            // CIBA Core 1.0 / RFC 6749 §5.1 successful token response.
             Response.Headers.CacheControl = "no-store";
             Response.Headers.Pragma = "no-cache";
             return Ok(new
@@ -428,7 +472,7 @@ public class CibaController : Controller
             return BadRequest(new { error = Errors.ExpiredToken, error_description = "The auth_req_id is unknown or expired." });
         }
 
-        // Slow-down enforcement (RFC 9126 §3): reject polls faster than the
+        // CIBA Core 1.0 slow-down enforcement: reject polls faster than the
         // configured interval.
         if (!_pendingStore.TryRecordPoll(authReqId, TimeSpan.FromSeconds(_options.PollIntervalSeconds)))
         {

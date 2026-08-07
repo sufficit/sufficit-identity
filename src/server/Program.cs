@@ -380,16 +380,15 @@ if (identityOptions.DistributedCache.RequireShared && !app.Environment.IsDevelop
 //       client cert (or its thumbprint) to the app, and restrict the MTLS
 //       paths at the proxy so only cert-authenticated traffic reaches them.
 //
-// Without that host configuration, Enabled=true here would advertise a
-// capability the deployment does not actually enforce — a false signal to
-// clients. This log is the only in-app reminder; the real wiring lives in
-// the deployment.
+// Startup validation requires an explicit deployment attestation. Runtime
+// FAPI policy additionally binds the validated certificate thumbprint to the
+// requesting OAuth client before treating it as strong authentication.
 if (identityOptions.Mtls.Enabled)
 {
-    app.Logger.LogWarning(
-        "Sufficit:Identity:Mtls:Enabled is true — the STS advertises mTLS sender-constrained tokens and MTLS endpoint aliases, " +
-        "but the HOST (Kestrel/nginx) must also be configured to require and validate client certificates at the TLS layer. " +
-        "Without that host configuration, the advertised mTLS capability is NOT actually enforced. See Program.cs comments.");
+    app.Logger.LogInformation(
+        "mTLS is enabled with deployment mode {DeploymentMode} and {BindingCount} client certificate binding(s).",
+        identityOptions.Mtls.DeploymentMode,
+        identityOptions.Mtls.ClientCertificateThumbprints.Count);
 }
 
 // ---- Honor X-Forwarded-* headers from reverse proxy (Nginx/k8s/CloudFlare) ----

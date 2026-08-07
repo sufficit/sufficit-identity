@@ -22,6 +22,8 @@ public sealed class AspNetCoreIdentityPasskeyService(
     ISecurityEventTrigger securityEvents,
     ICredentialMutationSecurityCoordinator credentialSecurity,
     AccountPasskeyOptions options,
+    IAuthenticationContextAccessor authenticationContextAccessor,
+    TimeProvider timeProvider,
     ILogger<AspNetCoreIdentityPasskeyService> logger)
     : IAccountPasskeyService, IPasskeyAuthenticationService
 {
@@ -386,6 +388,10 @@ public sealed class AspNetCoreIdentityPasskeyService(
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+            authenticationContextAccessor.Set(new AuthenticationContextEvidence(
+                ["passkey", "hwk", "mfa"],
+                timeProvider.GetUtcNow(),
+                "urn:sufficit:acr:loa3"));
             result = await signInManager.PasskeySignInAsync(credentialJson);
         }
         catch (Exception exception) when (IsInvalidCeremony(exception))
