@@ -31,10 +31,26 @@ public sealed record IdentityManifestInventoryEntry(
     int? SchemaVersion = null);
 
 public sealed record IdentityProvisioningInventory(
-    IReadOnlyList<IdentityManifestInventoryEntry> Entries)
+    IReadOnlyList<IdentityManifestInventoryEntry> Entries,
+    string? ManifestId = null,
+    DateTimeOffset? GeneratedAtUtc = null,
+    string? CorrelationId = null)
 {
     public bool HasActionRequired => Entries.Any(entry =>
         entry.Status is not IdentityManifestInventoryStatus.DeclaredCurrent);
+
+    /// <summary>
+    /// Redacted, operator-friendly counts that can be reviewed and approved
+    /// without scanning the full client list. Keys are enum names so the
+    /// report remains stable for shell/JSON consumers.
+    /// </summary>
+    public IReadOnlyDictionary<string, int> StatusCounts =>
+        Entries
+            .GroupBy(entry => entry.Status.ToString(), StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Count(),
+                StringComparer.Ordinal);
 }
 
 public sealed record IdentityManifestChange(

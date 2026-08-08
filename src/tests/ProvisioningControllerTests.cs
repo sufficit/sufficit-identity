@@ -61,12 +61,23 @@ public sealed class ProvisioningControllerTests
         var inventory = await response.Content
             .ReadFromJsonAsync<IdentityProvisioningInventory>();
         Assert.NotNull(inventory);
+        Assert.Null(inventory.ManifestId);
+        Assert.True(inventory.GeneratedAtUtc.HasValue);
+        Assert.False(string.IsNullOrWhiteSpace(inventory.CorrelationId));
+        Assert.Equal(
+            inventory.Entries.Count,
+            inventory.StatusCounts.Values.Sum());
         Assert.Contains(
             inventory.Entries,
             entry =>
                 entry.ClientId == TestDataSeeder.ClientCredentialsClientId
                 && entry.Status ==
                     IdentityManifestInventoryStatus.UnmanagedAndUndeclared);
+        Assert.True(
+            inventory.StatusCounts.TryGetValue(
+                nameof(IdentityManifestInventoryStatus.UnmanagedAndUndeclared),
+                out var unmanagedCount));
+        Assert.True(unmanagedCount > 0);
         using var scope = factory.Services.CreateScope();
         var database = scope.ServiceProvider
             .GetRequiredService<AppDbContext>();

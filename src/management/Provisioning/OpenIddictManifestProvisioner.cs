@@ -169,7 +169,9 @@ public sealed class OpenIddictManifestProvisioner
         return new IdentityProvisioningInventory(
             entries
                 .OrderBy(entry => entry.ClientId, StringComparer.Ordinal)
-                .ToArray());
+                .ToArray(),
+            manifest.ManifestId,
+            DateTimeOffset.UtcNow);
     }
 
     private async Task<IdentityProvisioningPlan> ProcessAsync(
