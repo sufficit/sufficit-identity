@@ -147,8 +147,10 @@ else
             <div>
                 <h2 id="database-connections-heading">Conexões locadas agora</h2>
                 <p>
-                    @snapshot.ActiveConnections.Count conexão(ões) · captura em
-                    @FormatTimestamp(snapshot.CapturedAtUtc)
+                    @FormatNumber(snapshot.ActiveConnections.Count) conexão(ões) · captura em
+                    <time datetime="@snapshot.CapturedAtUtc.ToUniversalTime().ToString("O", System.Globalization.CultureInfo.InvariantCulture)">
+                        @FormatTimestamp(snapshot.CapturedAtUtc)
+                    </time>
                 </p>
             </div>
             <div class="database-live-status" aria-live="polite">
