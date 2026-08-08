@@ -13,6 +13,13 @@ public enum ClientDefinitionRolloutMode
     Enforce,
 }
 
+public sealed record ClientDefinitionSnapshot(
+    string ClientType,
+    bool HasClientSecret,
+    IReadOnlySet<string> GrantTypes,
+    IReadOnlySet<string> ScopeNames,
+    IReadOnlySet<string> RedirectUris);
+
 public sealed record ClientDefinitionRequest(
     ClientDefinitionSource Source,
     string? ClientId,
@@ -24,7 +31,10 @@ public sealed record ClientDefinitionRequest(
     bool HasClientSecret,
     ClientDefinitionRolloutMode RolloutMode = ClientDefinitionRolloutMode.Enforce,
     IReadOnlySet<string>? AllowedGrantTypes = null,
-    IReadOnlySet<string>? AllowedScopes = null);
+    IReadOnlySet<string>? AllowedScopes = null,
+    string? ActorSubject = null,
+    ClientDefinitionSnapshot? Current = null,
+    bool AuthorizeSensitiveTransitions = false);
 
 public sealed record ClientDefinitionValidationIssue(
     string Code,
@@ -32,9 +42,14 @@ public sealed record ClientDefinitionValidationIssue(
     string Message);
 
 public sealed record ClientDefinitionValidationResult(
-    IReadOnlyList<ClientDefinitionValidationIssue> Issues)
+    IReadOnlyList<ClientDefinitionValidationIssue> Issues,
+    ClientDefinitionRolloutMode RolloutMode = ClientDefinitionRolloutMode.Enforce)
 {
-    public bool IsValid => Issues.Count == 0;
+    public bool IsValid => RolloutMode is ClientDefinitionRolloutMode.Observe
+        || Issues.Count == 0;
+
+    public bool HasObservedIssues =>
+        RolloutMode is ClientDefinitionRolloutMode.Observe && Issues.Count > 0;
 
     public static ClientDefinitionValidationResult Valid { get; } =
         new([]);
@@ -50,6 +65,95 @@ public interface IClientScopeGrantPolicy
     IReadOnlyList<ClientDefinitionValidationIssue> Validate(
         IReadOnlyCollection<string> grantTypes,
         IReadOnlyCollection<string> scopeNames);
+}
+
+public interface IClientDefinitionTransitionPolicy
+{
+    IReadOnlyList<ClientDefinitionValidationIssue> Validate(
+        string? actorSubject,
+        ClientDefinitionSnapshot current,
+        ClientDefinitionSnapshot desired,
+        bool authorizeSensitiveTransitions);
+}
+
+public sealed class ClientDefinitionTransitionPolicy(
+    IReservedScopePolicy reservedScopes) : IClientDefinitionTransitionPolicy
+{
+    public IReadOnlyList<ClientDefinitionValidationIssue> Validate(
+        string? actorSubject,
+        ClientDefinitionSnapshot current,
+        ClientDefinitionSnapshot desired,
+        bool authorizeSensitiveTransitions)
+    {
+        var transitions = new List<(string Code, string Field, string Message)>();
+
+        if (string.Equals(
+                current.ClientType,
+                "confidential",
+                StringComparison.Ordinal)
+            && string.Equals(
+                desired.ClientType,
+                "public",
+                StringComparison.Ordinal))
+        {
+            transitions.Add((
+                "confidential_to_public_requires_authorization",
+                "clientType",
+                "Converting a confidential client to public requires an explicit transition authorization."));
+        }
+
+        if (current.HasClientSecret && !desired.HasClientSecret)
+        {
+            transitions.Add((
+                "secret_removal_requires_authorization",
+                "clientSecret",
+                "Removing a client secret requires an explicit transition authorization."));
+        }
+
+        if (!current.RedirectUris.SetEquals(desired.RedirectUris))
+        {
+            transitions.Add((
+                "redirect_replacement_requires_authorization",
+                "redirectUris",
+                "Replacing redirect URIs requires an explicit transition authorization."));
+        }
+
+        var privilegedExpansion = desired.ScopeNames
+            .Except(current.ScopeNames, StringComparer.Ordinal)
+            .Any(reservedScopes.IsReserved);
+        if (privilegedExpansion)
+        {
+            transitions.Add((
+                "privileged_scope_expansion_requires_authorization",
+                "scopes",
+                "Expanding a client into a reserved scope requires an explicit transition authorization."));
+        }
+
+        if (transitions.Count == 0)
+        {
+            return [];
+        }
+
+        if (string.IsNullOrWhiteSpace(actorSubject))
+        {
+            return [new(
+                "transition_actor_required",
+                "actor",
+                "Sensitive client transitions require an authenticated actor identity.")];
+        }
+
+        if (authorizeSensitiveTransitions)
+        {
+            return [];
+        }
+
+        return transitions
+            .Select(transition => new ClientDefinitionValidationIssue(
+                transition.Code,
+                transition.Field,
+                transition.Message))
+            .ToArray();
+    }
 }
 
 public sealed class ClientScopeGrantPolicy : IClientScopeGrantPolicy
@@ -118,7 +222,9 @@ public sealed class ReservedScopePolicy : IReservedScopePolicy
 /// </summary>
 public sealed class ClientDefinitionValidator(
     IReservedScopePolicy reservedScopes,
-    IClientScopeGrantPolicy? scopeGrantPolicy = null) : IClientDefinitionValidator
+    IClientScopeGrantPolicy? scopeGrantPolicy = null,
+    IClientDefinitionTransitionPolicy? transitionPolicy = null)
+    : IClientDefinitionValidator
 {
     private static readonly IReadOnlySet<string> SupportedGrantTypes =
         new HashSet<string>(StringComparer.Ordinal)
@@ -258,9 +364,29 @@ public sealed class ClientDefinitionValidator(
             }
         }
 
+        if (request.Current is not null)
+        {
+            var desired = new ClientDefinitionSnapshot(
+                request.ClientType,
+                request.HasClientSecret,
+                grants.ToHashSet(StringComparer.Ordinal),
+                scopes.ToHashSet(StringComparer.Ordinal),
+                request.RedirectUris
+                    .Select(uri => uri.OriginalString)
+                    .ToHashSet(StringComparer.Ordinal));
+            issues.AddRange((transitionPolicy
+                ?? new ClientDefinitionTransitionPolicy(reservedScopes)).Validate(
+                request.ActorSubject,
+                request.Current,
+                desired,
+                request.AuthorizeSensitiveTransitions));
+        }
+
         return issues.Count == 0
-            ? ClientDefinitionValidationResult.Valid
-            : new(issues);
+            ? request.RolloutMode is ClientDefinitionRolloutMode.Enforce
+                ? ClientDefinitionValidationResult.Valid
+                : new([], request.RolloutMode)
+            : new(issues, request.RolloutMode);
     }
 
     private static bool IsAuthorizationCodeGrant(string grant) =>

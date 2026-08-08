@@ -8,6 +8,7 @@ public enum IdentityManifestChangeKind
     Create,
     Update,
     Adopted,
+    Observed,
     Unchanged,
 }
 

@@ -25,7 +25,7 @@ The review evaluated an older source snapshot. The current tree already closes t
 |---|---|---|---|
 | Outbound HTTP destination control | **Resolved** | `SafeHttpHandlerFactory` validates scheme/DNS, blocks unsafe ranges, pins the validated address in `ConnectCallback`, disables redirects/proxy by default, and is registered for human verification, logout, SSF, and metrics clients | Regression-only |
 | SSF stream ownership | **Resolved** | `SsfStream.OwnerClientId`, owner-scoped store methods, caller resolution in SSF controllers, and cross-owner tests | Regression-only |
-| Provisioned client ownership and privileged permissions | **Partially implemented** | `IClientDefinitionValidator`, `IClientScopeGrantPolicy`, reserved-scope checks, provisioning ownership markers, and explicit audited `adoptExisting` reconciliation are wired into management, provisioning, and DCR; transition authorization, Observe behavior, and manifest inventory remain open | P0.1 |
+| Provisioned client ownership and privileged permissions | **Partially implemented** | `IClientDefinitionValidator`, `IClientScopeGrantPolicy`, reserved-scope checks, provisioning ownership markers, explicit audited `adoptExisting` reconciliation, sensitive-transition authorization, and Observe-mode audit events are wired into management, provisioning, and DCR; production manifest inventory remains open | P0.1 |
 | Local redirect/canonical path validation | **Resolved** | `LowercasePathMiddleware` validates before routing and before writing `Location`; the public UI delegates return URLs to the same `LocalUrlValidator`, including encoded separator handling | Regression-only |
 | Signing-certificate prestart boundary | **Partial** | `prestart.sh` fails outside Development when configuration is absent, but the systemd unit ignores the prestart exit code and executes a release-owned helper with elevated privilege | P0.3 |
 | CIBA client policy | **Open** | initiation and polling do not share a policy that always requires the intended client authentication and grant entitlement | P0.4 |
@@ -68,8 +68,8 @@ The review evaluated an older source snapshot. The current tree already closes t
 - [x] Introduce the companion `IClientScopeGrantPolicy` and use it from provisioning, management CRUD, and DCR
 - [x] Persist a provisioning ownership marker containing schema version and manifest identity; existing applications without that marker remain unmanaged
 - [x] Require an explicit, audited `adopt` operation before provisioning may mutate an unmanaged existing `client_id`
-- [ ] Treat confidential-to-public conversion, secret removal, redirect replacement, and privileged-scope expansion as separately authorized transitions
-- [ ] Add `Observe | Enforce` rollout mode; in Observe, calculate and audit the future denial while preserving the existing request
+- [x] Treat confidential-to-public conversion, secret removal, redirect replacement, and privileged-scope expansion as separately authorized transitions
+- [x] Add `Observe | Enforce` rollout mode; in Observe, calculate and audit the future denial while preserving the existing request
 - [ ] Inventory current manifests and adopt existing managed clients explicitly before enabling enforcement
 - [x] Add concurrency/idempotency tests plus negative tests for unmanaged IDs, unknown permissions, protected scopes, and confidential/public transitions
 
@@ -77,11 +77,11 @@ The review evaluated an older source snapshot. The current tree already closes t
 three client-definition entry points and rejects unknown grants, disallowed DCR
 permissions, reserved scopes, invalid redirect URIs, public
 `client_credentials`, and public authorization-code clients without PKCE.
-Provisioning stamps schema/owner/manifest identity properties and records
-explicit adoptions in the management audit stream. The remaining P0.1 work is
-deliberately kept open: actor/current-vs-desired transition authorization,
-functional `Observe` behavior, and inventory/adoption of existing production
-manifests before enforcement.
+Provisioning stamps schema/owner/manifest identity properties, records explicit
+adoptions in the management audit stream, authorizes sensitive transitions with
+an actor plus explicit approval, and records Observe-mode future denials without
+mutating clients. The remaining P0.1 work is deliberately kept open:
+inventory/adoption of existing production manifests before enforcement.
 
 **Done when:** all three client-definition entry points share one validator, reconciliation cannot silently claim an unmanaged client, and current clients have an explicit ownership state without interruption.
 

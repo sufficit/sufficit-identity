@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
+using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Management.Provisioning;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
@@ -224,6 +225,103 @@ public sealed class ProvisioningManifestTests
     }
 
     [Fact]
+    public async Task Sensitive_redirect_transition_is_observed_without_mutation()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var scopeName = $"transition_scope_{suffix}";
+        var clientId = $"transition_observe_{suffix}";
+        var initial = RedirectTransitionManifest(
+            scopeName,
+            clientId,
+            new Uri("https://client.example.invalid/old"),
+            ClientDefinitionRolloutMode.Enforce);
+
+        using var serviceScope = _factory.Services.CreateScope();
+        var applications = serviceScope.ServiceProvider
+            .GetRequiredService<IOpenIddictApplicationManager>();
+        var scopes = serviceScope.ServiceProvider
+            .GetRequiredService<IOpenIddictScopeManager>();
+        var provisioner = new OpenIddictManifestProvisioner(
+            applications,
+            scopes,
+            new TrackingSecretResolver());
+
+        await provisioner.ApplyAsync(initial);
+
+        var observed = RedirectTransitionManifest(
+            scopeName,
+            clientId,
+            new Uri("https://client.example.invalid/new"),
+            ClientDefinitionRolloutMode.Observe);
+        var preview = await provisioner.PreviewAsync(observed);
+        Assert.Contains(
+            preview.Changes,
+            change => change.Kind is IdentityManifestChangeKind.Observed);
+        Assert.False(preview.HasChanges);
+
+        await provisioner.ApplyAsync(observed);
+        var application = await applications.FindByClientIdAsync(clientId);
+        Assert.NotNull(application);
+        var redirectUris = await applications.GetRedirectUrisAsync(application);
+        Assert.Contains(
+            redirectUris,
+            uri => uri.EndsWith("/old", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            redirectUris,
+            uri => uri.EndsWith("/new", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Sensitive_redirect_transition_requires_authorization_in_enforce_mode()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var scopeName = $"transition_scope_{suffix}";
+        var clientId = $"transition_enforce_{suffix}";
+
+        using var serviceScope = _factory.Services.CreateScope();
+        var applications = serviceScope.ServiceProvider
+            .GetRequiredService<IOpenIddictApplicationManager>();
+        var scopes = serviceScope.ServiceProvider
+            .GetRequiredService<IOpenIddictScopeManager>();
+        var provisioner = new OpenIddictManifestProvisioner(
+            applications,
+            scopes,
+            new TrackingSecretResolver());
+        await provisioner.ApplyAsync(RedirectTransitionManifest(
+            scopeName,
+            clientId,
+            new Uri("https://client.example.invalid/old"),
+            ClientDefinitionRolloutMode.Enforce));
+
+        var denied = RedirectTransitionManifest(
+            scopeName,
+            clientId,
+            new Uri("https://client.example.invalid/new"),
+            ClientDefinitionRolloutMode.Enforce);
+        var exception = await Assert.ThrowsAsync<IdentityProvisioningManifestException>(
+            () => provisioner.ApplyAsync(
+                denied,
+                default,
+                "operator-transition-test"));
+        Assert.Contains(exception.Errors, error =>
+            error.Contains("redirect_replacement_requires_authorization", StringComparison.Ordinal));
+
+        var authorized = RedirectTransitionManifest(
+            scopeName,
+            clientId,
+            new Uri("https://client.example.invalid/new"),
+            ClientDefinitionRolloutMode.Enforce,
+            authorizeSensitiveTransitions: true);
+        var plan = await provisioner.ApplyAsync(
+            authorized,
+            default,
+            "operator-transition-test");
+        Assert.Contains(
+            plan.Changes,
+            change => change.Kind is IdentityManifestChangeKind.Update);
+    }
+
+    [Fact]
     public async Task Confidential_client_resolves_on_create_and_explicit_reference_rotation_only()
     {
         var suffix = Guid.NewGuid().ToString("N");
@@ -433,6 +531,42 @@ public sealed class ProvisioningManifestTests
                         $"https://{clientId}.example.invalid/oidc/frontchannel-logout"),
                     BackchannelLogoutUri = new Uri(
                         $"https://{clientId}.example.invalid/oidc/backchannel-logout"),
+                },
+            ],
+        };
+
+    private static IdentityProvisioningManifest RedirectTransitionManifest(
+        string scopeName,
+        string clientId,
+        Uri redirectUri,
+        ClientDefinitionRolloutMode rolloutMode,
+        bool authorizeSensitiveTransitions = false) =>
+        new()
+        {
+            ManifestId = $"transition:{clientId}",
+            RolloutMode = rolloutMode,
+            Scopes =
+            [
+                new IdentityScopeManifest
+                {
+                    Name = scopeName,
+                    Resources = [scopeName],
+                },
+            ],
+            Clients =
+            [
+                new IdentityClientManifest
+                {
+                    ClientId = clientId,
+                    ClientType = ManifestClientTypes.Public,
+                    ConsentType = ManifestConsentTypes.Explicit,
+                    RequirePkce = true,
+                    AuthorizeSensitiveTransitions =
+                        authorizeSensitiveTransitions,
+                    GrantTypes = [ManifestGrantTypes.AuthorizationCode],
+                    ResponseTypes = [ManifestResponseTypes.Code],
+                    Scopes = [scopeName],
+                    RedirectUris = [redirectUri],
                 },
             ],
         };
