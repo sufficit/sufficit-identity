@@ -468,6 +468,22 @@ if (identityOptions.DistributedCache.RequireShared && !app.Environment.IsDevelop
     }
 }
 
+// ---- Consolidated production posture check (fail-closed) ----
+// Several subsystems ship a deliberately permissive default so a fresh install
+// or a rolling migration does not break (CSP report-only, management Observe
+// modes, non-shared DPoP replay cache, unencrypted JARM for FAPI clients).
+// Individually reasonable, collectively easy to ship to production unnoticed.
+// This gathers them into one place and — outside Development, by default —
+// refuses to start until each is resolved or explicitly acknowledged. Set
+// Sufficit:Identity:Security:FailClosedOnInsecureDefaults=false to downgrade to
+// a warning. Development is never blocked.
+Sufficit.Identity.STS.Security.ProductionPostureCheck.Enforce(
+    app.Services,
+    identityOptions,
+    app.Environment.IsDevelopment(),
+    identityOptions.Security.FailClosedOnInsecureDefaults,
+    app.Logger);
+
 // ---- mTLS (mutual TLS, RFC 8705) host configuration reminder ----
 // When Sufficit:Identity:Mtls:Enabled is true, the STS registers the MTLS-
 // aliased endpoint paths and advertises tls_client_certificate_bound_access_tokens
