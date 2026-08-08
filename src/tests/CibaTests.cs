@@ -364,3 +364,36 @@ public sealed class CibaInitiationTests
         return body.GetProperty("auth_req_id").GetString()!;
     }
 }
+
+/// <summary>
+/// Unit tests for <see cref="CibaIdentifier"/>: the auth_req_id is a bearer
+/// credential during polling, so it must be high-entropy, URL-safe, and
+/// unique — not a structured/timestamped GUID.
+/// </summary>
+public sealed class CibaIdentifierTests
+{
+    [Fact]
+    public void Create_returns_urlsafe_high_entropy_identifier()
+    {
+        var id = CibaIdentifier.Create();
+
+        // 32 bytes base64url (no padding) => 43 chars, URL-safe alphabet only.
+        Assert.Equal(43, id.Length);
+        Assert.DoesNotContain('+', id);
+        Assert.DoesNotContain('/', id);
+        Assert.DoesNotContain('=', id);
+        Assert.Matches("^[A-Za-z0-9_-]+$", id);
+    }
+
+    [Fact]
+    public void Create_is_unique_across_many_calls()
+    {
+        // Collisions in 256 bits of CSPRNG are astronomically unlikely; this
+        // guards against an accidental static/seeded generator regression.
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i < 10_000; i++)
+        {
+            Assert.True(seen.Add(CibaIdentifier.Create()));
+        }
+    }
+}

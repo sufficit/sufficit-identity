@@ -57,6 +57,31 @@ public sealed class DpopTests
     }
 
     [Fact]
+    public async Task Proof_ath_check_rejects_non_ascii_access_token()
+    {
+        // RFC 9449 §4.2 defines ath over the ASCII bytes of the access token.
+        // A non-ASCII access token cannot yield a conformant ath, so the
+        // validator must reject it outright rather than silently hashing a
+        // '?'-substituted string (which would fail with a misleading "mismatch").
+        var apiUrl = "https://sts.tests.local/connect/userinfo";
+        var nonAsciiToken = "tok-with-café-ñ";
+
+        var (proofJwt, _) = BuildDpopProof(
+            method: "GET",
+            url: apiUrl,
+            accessToken: nonAsciiToken);
+
+        var validator = new DpopProofValidator(TimeProvider.System,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<DpopProofValidator>.Instance);
+
+        var proof = await validator.ValidateAsync(
+            proofJwt, "GET", apiUrl, expectedNonce: null, CancellationToken.None,
+            accessToken: nonAsciiToken);
+
+        Assert.Null(proof);
+    }
+
+    [Fact]
     public async Task Replayed_jti_is_rejected()
     {
         // RFC 9449 §4.3: the same jti MUST NOT be accepted twice within the
