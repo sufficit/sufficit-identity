@@ -85,14 +85,24 @@ public static class ServiceCollectionExtensions
     }
 
     public static IApplicationBuilder UseSufficitIdentityVaultUI(
-        this WebApplication app)
+        this WebApplication app,
+        bool mapEndpoints = true)
     {
         MapEmbeddedAsset(app, "/_content/Sufficit.Identity.UI.Vault/vault.css",
             "Sufficit.Identity.UI.Vault.Assets.vault.css",
             "text/css; charset=utf-8");
 
-        app.MapRazorComponents<Components.App>()
-            .AddInteractiveServerRenderMode();
+        // When the public UI is embedded, it owns the single root Razor
+        // component endpoint and adds this assembly as an additional route
+        // assembly. Registering a second root map here creates duplicate
+        // /_blazor/initializers and hub endpoints, which ASP.NET Core rejects
+        // with AmbiguousMatchException during every interactive page load.
+        if (mapEndpoints)
+        {
+            app.MapRazorComponents<Components.App>()
+                .AddInteractiveServerRenderMode();
+        }
+
         return app;
     }
 

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.Reflection;
 using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.UI.Abstractions.Hosting;
 using Sufficit.Identity.UI.Services;
@@ -52,7 +53,9 @@ public static class ServiceCollectionExtensions
     /// Must be called AFTER <c>UseAuthentication</c> / <c>UseAuthorization</c> /
     /// <c>UseRouting</c> and BEFORE the catch-all fallback.
     /// </summary>
-    public static IApplicationBuilder UseSufficitIdentityUI(this WebApplication app)
+    public static IApplicationBuilder UseSufficitIdentityUI(
+        this WebApplication app,
+        params Assembly[] additionalAssemblies)
     {
         app.UseAntiforgery();
 
@@ -87,8 +90,13 @@ public static class ServiceCollectionExtensions
         }).ExcludeFromDescription();
 
         app.MapStaticAssets();
-        app.MapRazorComponents<Components.App>()
-           .AddInteractiveServerRenderMode();
+        var razorComponents = app.MapRazorComponents<Components.App>();
+        if (additionalAssemblies is { Length: > 0 })
+        {
+            razorComponents.AddAdditionalAssemblies(additionalAssemblies);
+        }
+
+        razorComponents.AddInteractiveServerRenderMode();
 
         return app;
     }

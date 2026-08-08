@@ -1,6 +1,7 @@
 @page "/vault"
 @attribute [Authorize(Policy = VaultUiPolicies.User)]
 @rendermode InteractiveServer
+@layout VaultLayout
 @inject VaultDataSource Data
 
 <PageTitle>Meu Vault | Sufficit Identity</PageTitle>

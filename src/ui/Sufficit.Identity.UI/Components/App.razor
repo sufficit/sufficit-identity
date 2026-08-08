@@ -1,5 +1,7 @@
 @inject IBrandingThemeProvider BrandingProvider
+@inject IUiModuleRegistry UiModules
 @using System.Globalization
+@using Sufficit.Identity.UI.Abstractions.Hosting
 
 @code {
     private BrandingTheme? _theme;
@@ -22,6 +24,10 @@
     <link rel="preload" href="_content/Sufficit.Identity.UI/fonts/inter-latin-600.woff2" as="font" type="font/woff2" crossorigin />
     <meta name="theme-color" content="@(_theme?.ThemeColor ?? "#cc0000")" />
     <link rel="stylesheet" href="_content/Sufficit.Identity.UI/css/site.css" />
+    @if (UiModules.HasSurface(UiSurface.Vault))
+    {
+        <link rel="stylesheet" href="_content/Sufficit.Identity.UI.Vault/vault.css" />
+    }
     @if (!string.IsNullOrEmpty(_theme?.BrandColor))
     {
         <style>

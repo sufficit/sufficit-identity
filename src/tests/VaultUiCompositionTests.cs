@@ -36,6 +36,35 @@ public sealed class VaultUiCompositionTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Embedded_vault_shares_the_public_blazor_endpoint()
+    {
+        var root = ResolveIdentityRepository();
+        var vaultExtensions = File.ReadAllText(Path.Combine(
+            root, "src", "ui", "Sufficit.Identity.UI.Vault",
+            "ServiceCollectionExtensions.cs"));
+        var publicExtensions = File.ReadAllText(Path.Combine(
+            root, "src", "ui", "Sufficit.Identity.UI",
+            "ServiceCollectionExtensions.cs"));
+        var program = File.ReadAllText(Path.Combine(
+            root, "src", "server", "Program.cs"));
+
+        Assert.Contains("bool mapEndpoints = true", vaultExtensions,
+            StringComparison.Ordinal);
+        Assert.Contains("if (mapEndpoints)", vaultExtensions,
+            StringComparison.Ordinal);
+        Assert.Contains("razorComponents.AddAdditionalAssemblies",
+            publicExtensions, StringComparison.Ordinal);
+        Assert.Contains(
+            "mapEndpoints: !uiHostingOptions.Public.IsEmbedded",
+            program,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "typeof(Sufficit.Identity.UI.Vault.ServiceCollectionExtensions).Assembly",
+            program,
+            StringComparison.Ordinal);
+    }
+
     private static string ResolveIdentityRepository()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

@@ -729,13 +729,17 @@ if (mgmtEnabled)
 
 if (vaultUiEnabled)
 {
-    app.UseSufficitIdentityVaultUI();
+    app.UseSufficitIdentityVaultUI(
+        mapEndpoints: !uiHostingOptions.Public.IsEmbedded);
 }
 
 // ---- Sufficit Identity UI (Blazor Server endpoints + static assets) ----
 if (uiHostingOptions.Public.IsEmbedded)
 {
-    app.UseSufficitIdentityUI();
+    var publicAdditionalAssemblies = vaultUiEnabled
+        ? new[] { typeof(Sufficit.Identity.UI.Vault.ServiceCollectionExtensions).Assembly }
+        : Array.Empty<System.Reflection.Assembly>();
+    app.UseSufficitIdentityUI(publicAdditionalAssemblies);
 }
 
 app.Run();

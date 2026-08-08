@@ -1,8 +1,21 @@
 @using Sufficit.Identity.UI.Components.Layout
 @using Sufficit.Identity.UI.Components
+@using System.Reflection
+
+@code {
+    private static readonly IReadOnlyList<Assembly> RouteAssemblies =
+        new[] { typeof(Program).Assembly }
+            .Concat(AppDomain.CurrentDomain.GetAssemblies()
+                .Where(assembly => string.Equals(
+                    assembly.GetName().Name,
+                    "Sufficit.Identity.UI.Vault",
+                    StringComparison.Ordinal)))
+            .Distinct()
+            .ToArray();
+}
 
 <Router AppAssembly="typeof(Program).Assembly"
-        AdditionalAssemblies="new[] { typeof(Program).Assembly }">
+        AdditionalAssemblies="RouteAssemblies">
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
             <NotAuthorized>
