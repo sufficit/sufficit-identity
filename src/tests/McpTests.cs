@@ -254,6 +254,10 @@ public sealed class DcrTests
                     "2099-01-01T00:00:00Z",
                 ["Sufficit:Identity:Mcp:Dcr:InitialAccessTokenSingleUse"] =
                     "false",
+                ["Sufficit:Identity:Mcp:Dcr:AllowCallerSuppliedClientIds"] =
+                    "false",
+                ["Sufficit:Identity:Mcp:Dcr:AllowCallerSuppliedSecrets"] =
+                    "false",
             });
         await ((IAsyncLifetime)factory).InitializeAsync();
         var client = factory.CreateClient();
