@@ -7,6 +7,7 @@ public enum IdentityManifestChangeKind
 {
     Create,
     Update,
+    Adopted,
     Unchanged,
 }
 
@@ -20,5 +21,6 @@ public sealed record IdentityProvisioningPlan(
 {
     public bool HasChanges => Changes.Any(change =>
         change.Kind is IdentityManifestChangeKind.Create
-            or IdentityManifestChangeKind.Update);
+            or IdentityManifestChangeKind.Update
+            or IdentityManifestChangeKind.Adopted);
 }

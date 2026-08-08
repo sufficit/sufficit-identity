@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using OpenIddict.Abstractions;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Management.Provisioning;
 
@@ -14,19 +15,32 @@ public sealed class OpenIddictManifestProvisioner
         "identity:provisioning-manifest:schema-version";
     internal const string SecretReferenceProperty =
         "identity:provisioning-manifest:secret-reference";
+    internal const string OwnerProperty =
+        "identity:provisioning-manifest:owner";
+    internal const string ManifestIdentityProperty =
+        "identity:provisioning-manifest:identity";
+    private const string ProvisioningOwner = "provisioning";
 
     private readonly IOpenIddictApplicationManager _applications;
     private readonly IOpenIddictScopeManager _scopes;
     private readonly IClientSecretResolver _secrets;
+    private readonly IReservedScopePolicy _reservedScopePolicy;
+    private readonly IClientDefinitionValidator _clientDefinitionValidator;
 
     public OpenIddictManifestProvisioner(
         IOpenIddictApplicationManager applications,
         IOpenIddictScopeManager scopes,
-        IClientSecretResolver secrets)
+        IClientSecretResolver secrets,
+        IReservedScopePolicy? reservedScopePolicy = null,
+        IClientDefinitionValidator? clientDefinitionValidator = null)
     {
         _applications = applications;
         _scopes = scopes;
         _secrets = secrets;
+        _reservedScopePolicy = reservedScopePolicy ?? new ReservedScopePolicy(
+            ["identity.management", "scim"]);
+        _clientDefinitionValidator = clientDefinitionValidator
+            ?? new ClientDefinitionValidator(_reservedScopePolicy);
     }
 
     public Task<IdentityProvisioningPlan> PreviewAsync(
@@ -44,7 +58,10 @@ public sealed class OpenIddictManifestProvisioner
         bool apply,
         CancellationToken cancellationToken)
     {
-        IdentityProvisioningManifestValidator.ValidateAndThrow(manifest);
+        IdentityProvisioningManifestValidator.ValidateAndThrow(
+            manifest,
+            _reservedScopePolicy,
+            _clientDefinitionValidator);
 
         var changes = new List<IdentityManifestChange>(
             manifest.Scopes.Count + manifest.Clients.Count);
@@ -52,6 +69,7 @@ public sealed class OpenIddictManifestProvisioner
         foreach (var scope in manifest.Scopes.OrderBy(scope => scope.Name, StringComparer.Ordinal))
         {
             changes.Add(await ProcessScopeAsync(
+                manifest.ManifestId,
                 manifest.SchemaVersion,
                 scope,
                 apply,
@@ -63,6 +81,7 @@ public sealed class OpenIddictManifestProvisioner
                      StringComparer.Ordinal))
         {
             changes.Add(await ProcessClientAsync(
+                manifest.ManifestId,
                 manifest.SchemaVersion,
                 client,
                 apply,
@@ -73,12 +92,16 @@ public sealed class OpenIddictManifestProvisioner
     }
 
     private async Task<IdentityManifestChange> ProcessScopeAsync(
+        string? manifestId,
         int schemaVersion,
         IdentityScopeManifest manifest,
         bool apply,
         CancellationToken cancellationToken)
     {
-        var desired = CreateScopeDescriptor(schemaVersion, manifest);
+        var desired = CreateScopeDescriptor(
+            schemaVersion,
+            manifest,
+            GetManifestIdentity(manifestId, "scope:" + manifest.Name));
         var scope = await _scopes.FindByNameAsync(manifest.Name, cancellationToken);
 
         if (scope is null)
@@ -118,12 +141,19 @@ public sealed class OpenIddictManifestProvisioner
     }
 
     private async Task<IdentityManifestChange> ProcessClientAsync(
+        string? manifestId,
         int schemaVersion,
         IdentityClientManifest manifest,
         bool apply,
         CancellationToken cancellationToken)
     {
-        var desired = CreateApplicationDescriptor(schemaVersion, manifest);
+        var manifestIdentity = GetManifestIdentity(
+            manifestId,
+            "client:" + manifest.ClientId);
+        var desired = CreateApplicationDescriptor(
+            schemaVersion,
+            manifest,
+            manifestIdentity);
         var application = await _applications.FindByClientIdAsync(
             manifest.ClientId,
             cancellationToken);
@@ -150,6 +180,27 @@ public sealed class OpenIddictManifestProvisioner
 
         var current = new OpenIddictApplicationDescriptor();
         await _applications.PopulateAsync(current, application, cancellationToken);
+
+        var currentOwner = GetStringProperty(
+            current.Properties,
+            OwnerProperty);
+        var currentIdentity = GetStringProperty(
+            current.Properties,
+            ManifestIdentityProperty);
+        var managedByThisManifest =
+            string.Equals(currentOwner, ProvisioningOwner, StringComparison.Ordinal)
+            && string.Equals(
+                currentIdentity,
+                manifestIdentity,
+                StringComparison.Ordinal);
+        if (!managedByThisManifest && !manifest.AdoptExisting)
+        {
+            throw new IdentityProvisioningManifestException([
+                $"clients[{manifest.ClientId}] is not owned by this manifest. " +
+                "Set adoptExisting=true to authorize an explicit audited adoption."]);
+        }
+
+        var adopted = !managedByThisManifest;
 
         if (ApplicationEquals(current, desired))
         {
@@ -196,7 +247,9 @@ public sealed class OpenIddictManifestProvisioner
         return new IdentityManifestChange(
             "client",
             manifest.ClientId,
-            IdentityManifestChangeKind.Update);
+            adopted
+                ? IdentityManifestChangeKind.Adopted
+                : IdentityManifestChangeKind.Update);
     }
 
     private async ValueTask<string> ResolveSecretAsync(
@@ -214,7 +267,8 @@ public sealed class OpenIddictManifestProvisioner
 
     private static OpenIddictScopeDescriptor CreateScopeDescriptor(
         int schemaVersion,
-        IdentityScopeManifest manifest)
+        IdentityScopeManifest manifest,
+        string manifestIdentity)
     {
         var descriptor = new OpenIddictScopeDescriptor
         {
@@ -224,13 +278,18 @@ public sealed class OpenIddictManifestProvisioner
         };
 
         descriptor.Resources.UnionWith(manifest.Resources);
-        SetManifestProperties(descriptor.Properties, schemaVersion, secretReference: null);
+        SetManifestProperties(
+            descriptor.Properties,
+            schemaVersion,
+            secretReference: null,
+            manifestIdentity);
         return descriptor;
     }
 
     private static OpenIddictApplicationDescriptor CreateApplicationDescriptor(
         int schemaVersion,
-        IdentityClientManifest manifest)
+        IdentityClientManifest manifest,
+        string manifestIdentity)
     {
         var descriptor = new OpenIddictApplicationDescriptor
         {
@@ -332,7 +391,8 @@ public sealed class OpenIddictManifestProvisioner
         SetManifestProperties(
             descriptor.Properties,
             schemaVersion,
-            manifest.SecretReference);
+            manifest.SecretReference,
+            manifestIdentity);
 
         return descriptor;
     }
@@ -458,6 +518,14 @@ public sealed class OpenIddictManifestProvisioner
         GetInt32Property(current, SchemaVersionProperty) ==
         GetInt32Property(desired, SchemaVersionProperty) &&
         string.Equals(
+            GetStringProperty(current, OwnerProperty),
+            GetStringProperty(desired, OwnerProperty),
+            StringComparison.Ordinal) &&
+        string.Equals(
+            GetStringProperty(current, ManifestIdentityProperty),
+            GetStringProperty(desired, ManifestIdentityProperty),
+            StringComparison.Ordinal) &&
+        string.Equals(
             GetStringProperty(current, SecretReferenceProperty),
             GetStringProperty(desired, SecretReferenceProperty),
             StringComparison.Ordinal);
@@ -465,9 +533,13 @@ public sealed class OpenIddictManifestProvisioner
     private static void SetManifestProperties(
         IDictionary<string, JsonElement> properties,
         int schemaVersion,
-        string? secretReference)
+        string? secretReference,
+        string manifestIdentity)
     {
         properties[SchemaVersionProperty] = JsonSerializer.SerializeToElement(schemaVersion);
+        properties[OwnerProperty] = JsonSerializer.SerializeToElement(ProvisioningOwner);
+        properties[ManifestIdentityProperty] =
+            JsonSerializer.SerializeToElement(manifestIdentity);
 
         if (string.IsNullOrEmpty(secretReference))
         {
@@ -485,6 +557,9 @@ public sealed class OpenIddictManifestProvisioner
         IDictionary<string, JsonElement> source)
     {
         target[SchemaVersionProperty] = source[SchemaVersionProperty];
+
+        target[OwnerProperty] = source[OwnerProperty];
+        target[ManifestIdentityProperty] = source[ManifestIdentityProperty];
 
         if (source.TryGetValue(SecretReferenceProperty, out var secretReference))
         {
@@ -512,4 +587,11 @@ public sealed class OpenIddictManifestProvisioner
         value.ValueKind == JsonValueKind.String
             ? value.GetString()
             : null;
+
+    private static string GetManifestIdentity(
+        string? manifestId,
+        string fallback) =>
+        string.IsNullOrWhiteSpace(manifestId)
+            ? fallback
+            : manifestId.Trim();
 }

@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using OpenIddict.Abstractions;
 using Sufficit.Identity.Management.Controllers;
 using Sufficit.Identity.STS.Controllers;
 using Sufficit.Identity.Tests.Infrastructure;
@@ -73,6 +75,7 @@ public sealed class DcrTests
         {
             ["Sufficit:Identity:Mcp:Dcr:Enabled"] = "true",
             ["Sufficit:Identity:Mcp:Dcr:InitialAccessToken"] = "secret-init-token",
+            ["Sufficit:Identity:Mcp:Dcr:InitialAccessTokenExpiresAtUtc"] = "2099-01-01T00:00:00Z",
         });
         await ((IAsyncLifetime)factory).InitializeAsync();
         var client = factory.CreateClient();
@@ -95,6 +98,7 @@ public sealed class DcrTests
         {
             ["Sufficit:Identity:Mcp:Dcr:Enabled"] = "true",
             ["Sufficit:Identity:Mcp:Dcr:InitialAccessToken"] = "secret-init-token",
+            ["Sufficit:Identity:Mcp:Dcr:InitialAccessTokenExpiresAtUtc"] = "2099-01-01T00:00:00Z",
             ["Sufficit:Identity:Mcp:Dcr:AllowedGrantTypes:0"] = "client_credentials",
             ["Sufficit:Identity:Mcp:Dcr:AllowedScopes:0"] = "test.scope",
         });
@@ -102,11 +106,9 @@ public sealed class DcrTests
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "secret-init-token");
 
-        var clientId = $"dcr-ok-{Guid.NewGuid():N}";
         var request = new DcrRequest
         {
-            ClientId = clientId,
-            ClientSecret = "dcr-secret",
+            TokenEndpointAuthMethod = "client_secret_basic",
             GrantTypes = new() { "client_credentials" },
             Scopes = new() { "test.scope" },
         };
@@ -114,7 +116,12 @@ public sealed class DcrTests
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal(clientId, body.GetProperty("client_id").GetString());
+        var clientId = body.GetProperty("client_id").GetString()
+            ?? throw new InvalidOperationException("DCR client_id missing.");
+        var clientSecret = body.GetProperty("client_secret").GetString()
+            ?? throw new InvalidOperationException("DCR client_secret missing.");
+        Assert.StartsWith("dcr_", clientId, StringComparison.Ordinal);
+        Assert.True(clientSecret.Length >= 64);
 
         // The registered client must be usable immediately: a token grant works.
         var tokenClient = factory.CreateClient();
@@ -122,11 +129,61 @@ public sealed class DcrTests
         {
             ["grant_type"] = "client_credentials",
             ["client_id"] = clientId,
-            ["client_secret"] = "dcr-secret",
+            ["client_secret"] = clientSecret,
             ["scope"] = "test.scope",
         });
         Assert.Equal(HttpStatusCode.OK, status);
         Assert.False(string.IsNullOrEmpty(tokenBody.GetProperty("access_token").GetString()));
+
+        using var replay = await client.PostAsJsonAsync(
+            "/connect/register",
+            new DcrRequest
+            {
+                TokenEndpointAuthMethod = "client_secret_basic",
+                GrantTypes = new() { "client_credentials" },
+                Scopes = new() { "test.scope" },
+            });
+        Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
+    }
+
+    [Fact]
+    public async Task Dcr_authorization_code_clients_always_require_pkce()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
+        {
+            ["Sufficit:Identity:Mcp:Dcr:Enabled"] = "true",
+            ["Sufficit:Identity:Mcp:Dcr:InitialAccessToken"] = "secret-init-token",
+            ["Sufficit:Identity:Mcp:Dcr:InitialAccessTokenExpiresAtUtc"] = "2099-01-01T00:00:00Z",
+            ["Sufficit:Identity:Mcp:Dcr:AllowedGrantTypes:0"] = "authorization_code",
+            ["Sufficit:Identity:Mcp:Dcr:AllowedScopes:0"] = "openid",
+        });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", "secret-init-token");
+
+        using var response = await client.PostAsJsonAsync("/connect/register", new DcrRequest
+        {
+            TokenEndpointAuthMethod = "client_secret_basic",
+            GrantTypes = new() { "authorization_code" },
+            Scopes = new() { "openid" },
+            RedirectUris = new() { new Uri("https://client.tests.local/callback") },
+        });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var registeredId = body.GetProperty("client_id").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(registeredId));
+
+        using var scope = factory.Services.CreateScope();
+        var applications = scope.ServiceProvider
+            .GetRequiredService<IOpenIddictApplicationManager>();
+        var application = await applications.FindByClientIdAsync(registeredId!);
+        Assert.NotNull(application);
+        var requirements = await applications.GetRequirementsAsync(application!);
+        Assert.Contains(
+            OpenIddictConstants.Requirements.Features.ProofKeyForCodeExchange,
+            requirements);
     }
 
     [Fact]
@@ -139,6 +196,7 @@ public sealed class DcrTests
         {
             ["Sufficit:Identity:Mcp:Dcr:Enabled"] = "true",
             ["Sufficit:Identity:Mcp:Dcr:InitialAccessToken"] = "secret-init-token",
+            ["Sufficit:Identity:Mcp:Dcr:InitialAccessTokenExpiresAtUtc"] = "2099-01-01T00:00:00Z",
         });
         await ((IAsyncLifetime)factory).InitializeAsync();
         var client = factory.CreateClient();
@@ -146,8 +204,6 @@ public sealed class DcrTests
 
         var request = new DcrRequest
         {
-            ClientId = $"dcr-baduri-{Guid.NewGuid():N}",
-            ClientSecret = "dcr-secret",
             GrantTypes = new() { "authorization_code" },
             RedirectUris = new() { new Uri("http://insecure.example.com/callback") },
         };
@@ -162,6 +218,8 @@ public sealed class DcrTests
         {
             ["Sufficit:Identity:Mcp:Dcr:Enabled"] = "true",
             ["Sufficit:Identity:Mcp:Dcr:InitialAccessToken"] = "secret-init-token",
+            ["Sufficit:Identity:Mcp:Dcr:InitialAccessTokenExpiresAtUtc"] = "2099-01-01T00:00:00Z",
+            ["Sufficit:Identity:Mcp:Dcr:InitialAccessTokenSingleUse"] = "false",
         });
         await ((IAsyncLifetime)factory).InitializeAsync();
         var client = factory.CreateClient();
@@ -169,19 +227,51 @@ public sealed class DcrTests
 
         using var grantResponse = await client.PostAsJsonAsync("/connect/register", new DcrRequest
         {
-            ClientId = $"dcr-grant-{Guid.NewGuid():N}",
-            ClientSecret = "dcr-secret",
+            TokenEndpointAuthMethod = "client_secret_basic",
             GrantTypes = new() { "client_credentials" },
         });
         Assert.Equal(HttpStatusCode.BadRequest, grantResponse.StatusCode);
 
         using var scopeResponse = await client.PostAsJsonAsync("/connect/register", new DcrRequest
         {
-            ClientId = $"dcr-scope-{Guid.NewGuid():N}",
             GrantTypes = new() { "authorization_code" },
             Scopes = new() { "identity.management" },
             RedirectUris = new() { new Uri("https://client.example/callback") },
         });
         Assert.Equal(HttpStatusCode.BadRequest, scopeResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Dcr_rejects_caller_supplied_identifiers_and_secrets()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Mcp:Dcr:Enabled"] = "true",
+                ["Sufficit:Identity:Mcp:Dcr:InitialAccessToken"] =
+                    "secret-init-token",
+                ["Sufficit:Identity:Mcp:Dcr:InitialAccessTokenExpiresAtUtc"] =
+                    "2099-01-01T00:00:00Z",
+                ["Sufficit:Identity:Mcp:Dcr:InitialAccessTokenSingleUse"] =
+                    "false",
+            });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", "secret-init-token");
+
+        using var identifierResponse = await client.PostAsJsonAsync(
+            "/connect/register",
+            new DcrRequest { ClientId = "caller-controlled" });
+        using var secretResponse = await client.PostAsJsonAsync(
+            "/connect/register",
+            new DcrRequest
+            {
+                ClientSecret = "caller-controlled",
+                TokenEndpointAuthMethod = "client_secret_basic",
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, identifierResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, secretResponse.StatusCode);
     }
 }

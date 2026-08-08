@@ -153,6 +153,13 @@ public sealed class ProvisioningManifestTests
 
         var application = await applications.FindByClientIdAsync(clientId)
             ?? throw new InvalidOperationException("Provisioned client missing.");
+        var properties = await applications.GetPropertiesAsync(application);
+        Assert.Equal(
+            "provisioning",
+            properties["identity:provisioning-manifest:owner"].GetString());
+        Assert.Equal(
+            $"client:{clientId}",
+            properties["identity:provisioning-manifest:identity"].GetString());
         var logoutSettings = await applications.GetSettingsAsync(application);
         Assert.Equal(
             $"https://{clientId}.example.invalid/oidc/frontchannel-logout",
@@ -181,6 +188,39 @@ public sealed class ProvisioningManifestTests
         // not declared in this manifest.
         Assert.NotNull(await applications.FindByClientIdAsync(
             TestDataSeeder.ClientCredentialsClientId));
+    }
+
+    [Fact]
+    public async Task Concurrent_previews_are_side_effect_free_and_idempotent()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var scopeName = $"manifest_scope_{suffix}";
+        var clientId = $"manifest_preview_{suffix}";
+
+        using var serviceScope = _factory.Services.CreateScope();
+        var applications = serviceScope.ServiceProvider
+            .GetRequiredService<IOpenIddictApplicationManager>();
+        var scopes = serviceScope.ServiceProvider
+            .GetRequiredService<IOpenIddictScopeManager>();
+        var provisioner = new OpenIddictManifestProvisioner(
+            applications,
+            scopes,
+            new TrackingSecretResolver());
+        var manifest = PublicClientManifest(
+            scopeName,
+            clientId,
+            "Concurrent preview",
+            "API");
+
+        var plans = await Task.WhenAll(
+            Enumerable.Range(0, 8)
+                .Select(_ => provisioner.PreviewAsync(manifest)));
+
+        Assert.All(plans, plan =>
+            Assert.All(plan.Changes, change =>
+                Assert.Equal(IdentityManifestChangeKind.Create, change.Kind)));
+        Assert.Null(await applications.FindByClientIdAsync(clientId));
+        Assert.Null(await scopes.FindByNameAsync(scopeName));
     }
 
     [Fact]
@@ -291,9 +331,13 @@ public sealed class ProvisioningManifestTests
         var manifest = ConfidentialClientManifest(
             scopeName,
             clientId,
-            secretReference);
+            secretReference,
+            adoptExisting: true);
 
-        await provisioner.ApplyAsync(manifest);
+        var adoptionPlan = await provisioner.ApplyAsync(manifest);
+        Assert.Contains(
+            adoptionPlan.Changes,
+            change => change.Kind is IdentityManifestChangeKind.Adopted);
 
         Assert.Empty(resolver.Requests);
         var application = await applications.FindByClientIdAsync(clientId);
@@ -302,6 +346,46 @@ public sealed class ProvisioningManifestTests
             application,
             existingSecret));
         Assert.False((await provisioner.PreviewAsync(manifest)).HasChanges);
+    }
+
+    [Fact]
+    public async Task Unmanaged_existing_client_requires_explicit_adoption()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var scopeName = $"manifest_scope_{suffix}";
+        var clientId = $"manifest_unmanaged_{suffix}";
+
+        using var serviceScope = _factory.Services.CreateScope();
+        var applications = serviceScope.ServiceProvider
+            .GetRequiredService<IOpenIddictApplicationManager>();
+        var scopes = serviceScope.ServiceProvider
+            .GetRequiredService<IOpenIddictScopeManager>();
+        await scopes.CreateAsync(new OpenIddictScopeDescriptor
+        {
+            Name = scopeName,
+            Resources = { scopeName },
+        });
+        await applications.CreateAsync(new OpenIddictApplicationDescriptor
+        {
+            ClientId = clientId,
+            ClientType = OpenIddictConstants.ClientTypes.Public,
+            ConsentType = OpenIddictConstants.ConsentTypes.Explicit,
+        });
+
+        var provisioner = new OpenIddictManifestProvisioner(
+            applications,
+            scopes,
+            new TrackingSecretResolver());
+        var manifest = PublicClientManifest(
+            scopeName,
+            clientId,
+            "Unmanaged client",
+            "API");
+
+        var exception = await Assert.ThrowsAsync<IdentityProvisioningManifestException>(
+            () => provisioner.ApplyAsync(manifest));
+        Assert.Contains(exception.Errors, error =>
+            error.Contains("adoptExisting=true", StringComparison.Ordinal));
     }
 
     private static IdentityProvisioningManifest PublicClientManifest(
@@ -356,7 +440,8 @@ public sealed class ProvisioningManifestTests
     private static IdentityProvisioningManifest ConfidentialClientManifest(
         string scopeName,
         string clientId,
-        string secretReference) =>
+        string secretReference,
+        bool adoptExisting = false) =>
         new()
         {
             Scopes =
@@ -375,6 +460,7 @@ public sealed class ProvisioningManifestTests
                     ClientType = ManifestClientTypes.Confidential,
                     ConsentType = ManifestConsentTypes.Implicit,
                     SecretReference = secretReference,
+                    AdoptExisting = adoptExisting,
                     GrantTypes = [ManifestGrantTypes.ClientCredentials],
                     Scopes = [scopeName],
                 },

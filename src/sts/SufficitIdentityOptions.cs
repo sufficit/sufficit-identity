@@ -1284,6 +1284,22 @@ public sealed class DcrOptions
     public string InitialAccessToken { get; init; } = "";
 
     /// <summary>
+    /// Required expiry for the bootstrap credential when DCR is enabled.
+    /// Provision a new credential/expiry for each registration ceremony.
+    /// </summary>
+    public DateTimeOffset? InitialAccessTokenExpiresAtUtc { get; init; }
+
+    public bool InitialAccessTokenSingleUse { get; init; } = true;
+
+    /// <summary>
+    /// Deprecated migration adapters. Secure registrations use server-issued
+    /// identifiers and one-time plaintext secrets.
+    /// </summary>
+    public bool AllowCallerSuppliedClientIds { get; init; } = true;
+
+    public bool AllowCallerSuppliedSecrets { get; init; } = true;
+
+    /// <summary>
     /// Grant types that a dynamically registered client may request. Defaults
     /// to the interactive OAuth 2.1 grants; privileged and legacy grants must
     /// be enabled deliberately.

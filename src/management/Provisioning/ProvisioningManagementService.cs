@@ -5,6 +5,7 @@ using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management.Audit;
 #endif
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Management.Provisioning;
 
@@ -33,6 +34,8 @@ internal sealed class ProvisioningManagementService(
     OpenIddictManifestProvisioner provisioner,
     AppDbContext database,
     IManagementAuthorizationEvaluator authorization,
+    IReservedScopePolicy reservedScopePolicy,
+    IClientDefinitionValidator clientDefinitionValidator,
     ILogger<ProvisioningManagementService> logger)
     : IProvisioningManagementService
 {
@@ -117,7 +120,10 @@ internal sealed class ProvisioningManagementService(
 
         try
         {
-            IdentityProvisioningManifestValidator.ValidateAndThrow(manifest);
+            IdentityProvisioningManifestValidator.ValidateAndThrow(
+                manifest,
+                reservedScopePolicy,
+                clientDefinitionValidator);
         }
         catch (IdentityProvisioningManifestException)
         {
@@ -138,6 +144,21 @@ internal sealed class ProvisioningManagementService(
             var plan = await provisioner.ApplyAsync(
                 manifest,
                 cancellationToken);
+            foreach (var adoption in plan.Changes.Where(change =>
+                         change.Kind is IdentityManifestChangeKind.Adopted))
+            {
+                database.ManagementAuditEvents.Add(
+                    ManagementAuditEventFactory.Create(
+                        context,
+                        ManagementCapabilities.ProvisioningApply,
+                        new ManagementResource(
+                            ManagementResourceTypes.Client,
+                            adoption.Identifier),
+                        decision,
+                        "succeeded",
+                        "provisioning_client_adopted"));
+            }
+
             database.ManagementAuditEvents.Add(
                 ManagementAuditEventFactory.Create(
                     context,
