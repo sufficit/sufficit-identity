@@ -152,6 +152,7 @@ public sealed class ProductionPostureCheckTests
         var options = new SufficitIdentityOptions
         {
             Csp = new CspOptions { ReportOnly = false },
+            Dpop = new DpopOptions { Enabled = true },
             DistributedCache = new DistributedCacheOptions { RequireShared = true },
         };
 
