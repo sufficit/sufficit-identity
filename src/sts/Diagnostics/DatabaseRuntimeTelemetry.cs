@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Data;
 using System.Data.Common;
 using System.Diagnostics.Metrics;
 using System.Globalization;
@@ -63,6 +64,7 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
     public DatabaseRuntimeSnapshot GetSnapshot()
     {
         var now = DateTimeOffset.UtcNow;
+        PruneClosedConnections();
         PrunePhysicalCounters(now);
 
         var active = connections.Values
@@ -84,6 +86,34 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
             poolSnapshots,
             active,
             Volatile.Read(ref watchdog));
+    }
+
+    private void PruneClosedConnections()
+    {
+        foreach (var item in connections)
+        {
+            if (IsOpen(item.Key))
+            {
+                continue;
+            }
+
+            if (connections.TryRemove(item.Key, out var lease))
+            {
+                lease.MarkReturned();
+            }
+        }
+    }
+
+    private static bool IsOpen(DbConnection connection)
+    {
+        try
+        {
+            return connection.State is ConnectionState.Open;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     public async IAsyncEnumerable<DatabaseRuntimeSnapshot> WatchAsync(
@@ -409,6 +439,10 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
                 subscriber.Writer.TryComplete();
             }
             subscribers.Clear();
+            connections.Clear();
+            physicalConnections.Clear();
+            pools.Clear();
+            physicalIdReaders.Clear();
             meterListener.Dispose();
         }
     }

@@ -92,6 +92,19 @@ public sealed class DatabaseRuntimeTelemetryTests
     }
 
     [Fact]
+    public void Snapshot_drops_connections_closed_without_an_interceptor_callback()
+    {
+        using var telemetry = new DatabaseRuntimeTelemetry();
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        telemetry.TrackOpened(connection);
+
+        connection.Close();
+
+        Assert.Empty(telemetry.GetSnapshot().ActiveConnections);
+    }
+
+    [Fact]
     public void Watchdog_snapshot_exposes_only_sanitized_failure_state()
     {
         using var telemetry = new DatabaseRuntimeTelemetry();
