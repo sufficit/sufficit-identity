@@ -83,7 +83,11 @@ chmod -R go-w "${release}"
 while IFS= read -r -d '' configuration_file; do
     chown root:www-data "${configuration_file}"
     chmod 0640 "${configuration_file}"
-done < <(find "${release}" -maxdepth 1 -type f -name 'appsettings*.json' -print0)
+done < <(
+    find "${release}" -maxdepth 1 -type f \
+        \( -name 'appsettings*.json' -o -name 'certificate*.pfx' \) \
+        -print0
+)
 install -o root -g www-data -m 0640 \
     "${certificate_store}" "${certificate_destination}"
 
