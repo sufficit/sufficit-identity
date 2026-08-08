@@ -103,6 +103,35 @@ public sealed class SessionsAndAuthorizationsControllerTests
             await tokens.GetStatusAsync(token));
     }
 
+    [Fact]
+    public async Task Machine_authorization_does_not_project_client_subject_as_user()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        const string clientId = "sufficit_provisioning_credentials";
+
+        await SeedMachineAuthorizationAsync(factory.Services, clientId);
+        using var client = factory.CreateClient();
+
+        using var listed = await client.GetAsync(
+            $"/api/authorizations?clientId={Uri.EscapeDataString(clientId)}");
+        var body = await listed.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.OK, listed.StatusCode);
+        var grant = Assert.Single(body.GetProperty("items").EnumerateArray());
+        Assert.Equal(clientId, grant.GetProperty("clientId").GetString());
+        Assert.Equal(JsonValueKind.Null, grant.GetProperty("userId").ValueKind);
+
+        using var sessions = await client.GetAsync(
+            $"/api/sessions?clientId={Uri.EscapeDataString(clientId)}");
+        var sessionsBody = await sessions.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(HttpStatusCode.OK, sessions.StatusCode);
+        var session = Assert.Single(
+            sessionsBody.GetProperty("items").EnumerateArray());
+        Assert.Equal(clientId, session.GetProperty("clientId").GetString());
+        Assert.Equal(JsonValueKind.Null, session.GetProperty("userId").ValueKind);
+    }
+
     private static async Task<SeededGrant> SeedGrantAsync(
         IServiceProvider services)
     {
@@ -154,6 +183,61 @@ public sealed class SessionsAndAuthorizationsControllerTests
                 "Seeded token has no identifier.");
 
         return new SeededGrant(user.Id, authorizationId, tokenId);
+    }
+
+    private static async Task SeedMachineAuthorizationAsync(
+        IServiceProvider services,
+        string clientId)
+    {
+        await using var scope = services.CreateAsyncScope();
+        var applications = scope.ServiceProvider
+            .GetRequiredService<IOpenIddictApplicationManager>();
+        var authorizations = scope.ServiceProvider
+            .GetRequiredService<IOpenIddictAuthorizationManager>();
+        var tokens = scope.ServiceProvider
+            .GetRequiredService<IOpenIddictTokenManager>();
+        var application = await applications.CreateAsync(
+            new OpenIddictApplicationDescriptor
+            {
+                ClientId = clientId,
+                ClientType = ClientTypes.Confidential,
+                ClientSecret = "test-machine-secret",
+                Permissions =
+                {
+                    Permissions.Endpoints.Token,
+                    Permissions.GrantTypes.ClientCredentials,
+                    Permissions.Prefixes.Scope + TestDataSeeder.ScopeName
+                }
+            });
+        var applicationId = await applications.GetIdAsync(application)
+            ?? throw new InvalidOperationException(
+                "Machine application has no identifier.");
+
+        var authorization = await authorizations.CreateAsync(
+            new OpenIddictAuthorizationDescriptor
+            {
+                ApplicationId = applicationId,
+                CreationDate = DateTimeOffset.UtcNow,
+                Status = Statuses.Valid,
+                Subject = clientId,
+                Type = AuthorizationTypes.Permanent,
+                Scopes = { TestDataSeeder.ScopeName }
+            });
+        var authorizationId = await authorizations.GetIdAsync(authorization)
+            ?? throw new InvalidOperationException(
+                "Machine authorization has no identifier.");
+
+        await tokens.CreateAsync(
+            new OpenIddictTokenDescriptor
+            {
+                ApplicationId = applicationId,
+                AuthorizationId = authorizationId,
+                CreationDate = DateTimeOffset.UtcNow,
+                ExpirationDate = DateTimeOffset.UtcNow.AddHours(1),
+                Status = Statuses.Valid,
+                Subject = clientId,
+                Type = TokenTypeHints.AccessToken
+            });
     }
 
     private sealed record SeededGrant(

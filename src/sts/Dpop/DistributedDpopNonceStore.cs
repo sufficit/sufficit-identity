@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.IdentityModel.Tokens;
+using Sufficit.Identity.Vault;
 
 namespace Sufficit.Identity.STS.Dpop;
 
@@ -13,27 +14,32 @@ namespace Sufficit.Identity.STS.Dpop;
 internal sealed class DistributedDpopNonceStore : IDpopNonceStore
 {
     private const string NonceKeyPrefix = "dpop:nonce:v2:";
+    private const string VaultKeyName = "dpop-nonce";
 
     private readonly Microsoft.Extensions.Caching.Distributed.IDistributedCache _cache;
+    private readonly IKeyVault? _keyVault;
     private readonly TimeProvider _timeProvider;
     private readonly TimeSpan _ttl;
 
     public DistributedDpopNonceStore(
         Microsoft.Extensions.Caching.Distributed.IDistributedCache cache,
         TimeSpan? ttl = null,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        IKeyVault? keyVault = null)
     {
         _cache = cache;
         _ttl = ttl ?? TimeSpan.FromSeconds(60);
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _keyVault = keyVault;
     }
 
     private string? Current(string partition)
     {
-        var value = _cache.GetString(FormatKey(partition));
+        var cacheKey = FormatKey(partition);
+        var value = _cache.GetString(cacheKey);
         if (string.IsNullOrEmpty(value)) return null;
 
-        var parts = value.Split('|');
+        var parts = DecryptValue(value, partition).Split('|');
         if (parts.Length != 2) return null;
 
         if (!DateTimeOffset.TryParse(parts[1], out var expiresAt) ||
@@ -52,7 +58,8 @@ internal sealed class DistributedDpopNonceStore : IDpopNonceStore
         var nonce = Base64UrlEncoder.Encode(bytes);
         var expiresAt = _timeProvider.GetUtcNow() + _ttl;
         // Store as nonce|expiry so Current() can check TTL without a second key.
-        _cache.SetString(FormatKey(partition), $"{nonce}|{expiresAt:O}",
+        var payload = $"{nonce}|{expiresAt:O}";
+        _cache.SetString(FormatKey(partition), EncryptValue(payload, partition),
             new DistributedCacheEntryOptions
             {
                 AbsoluteExpirationRelativeToNow = _ttl,
@@ -73,4 +80,52 @@ internal sealed class DistributedDpopNonceStore : IDpopNonceStore
     private static string FormatKey(string partition) =>
         NonceKeyPrefix + Convert.ToHexStringLower(SHA256.HashData(
             System.Text.Encoding.UTF8.GetBytes(partition)));
+
+    private string EncryptValue(string payload, string partition)
+    {
+        if (_keyVault is null) return payload;
+
+        return _keyVault.EncryptAsync(
+                VaultKeyName,
+                payload,
+                CreateAad(partition))
+            .GetAwaiter()
+            .GetResult();
+    }
+
+    private string DecryptValue(string value, string partition)
+    {
+        // A null vault is used by the focused unit tests and preserves the
+        // original plaintext cache contract. Once wired through DI, all new
+        // values are encrypted. Existing plaintext values are accepted during
+        // the rolling deployment and are replaced on the next Issue call.
+        if (_keyVault is null || !LooksLikeVaultValue(value)) return value;
+
+        try
+        {
+            return _keyVault.DecryptStringAsync(value, CreateAad(partition))
+                .GetAwaiter()
+                .GetResult();
+        }
+        catch (FormatException)
+        {
+            return value;
+        }
+        catch (CryptographicException)
+        {
+            return string.Empty;
+        }
+    }
+
+    private static IReadOnlyDictionary<string, string> CreateAad(string partition) =>
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["scope"] = VaultKeyName,
+            ["partition"] = Convert.ToHexStringLower(SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(partition))),
+        };
+
+    private static bool LooksLikeVaultValue(string value) =>
+        value.StartsWith("v1.", StringComparison.Ordinal)
+        || value.StartsWith("pt1.", StringComparison.Ordinal);
 }

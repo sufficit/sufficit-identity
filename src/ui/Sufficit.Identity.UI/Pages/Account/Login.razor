@@ -68,14 +68,8 @@
                        it left the page frozen for seconds before falling back.
                        data-redirect-overlay triggers the "connecting…" overlay
                        (script in App.razor). *@
-                    var providerClass = scheme.Name.ToLowerInvariant() switch
-                    {
-                        "google" => "btn-google",
-                        "facebook" => "btn-facebook",
-                        _ => "btn-external"
-                    };
                     <a href="/account/externalchallenge?provider=@scheme.Name&returnUrl=@Uri.EscapeDataString(_returnUrl ?? "/")"
-                       class="btn btn-block @providerClass"
+                       class="btn btn-block @ProviderClass(scheme.Name)"
                        data-enhance-nav="false"
                        data-redirect-overlay="@scheme.DisplayName">
                         @if (scheme.Name.Equals("Google", StringComparison.OrdinalIgnoreCase))
@@ -295,5 +289,13 @@
             _passkeyBusy = false;
         }
     }
+
+    private static string ProviderClass(string providerName) =>
+        providerName.ToLowerInvariant() switch
+        {
+            "google" => "btn-google",
+            "facebook" => "btn-facebook",
+            _ => "btn-external"
+        };
 
 }

@@ -8,11 +8,19 @@ canonical location is `/etc/sufficit/identity/certificate.pfx`, owned by
 must contain the exact same file. It must not be replaced with a node's TLS
 certificate and must not be generated independently on each replica.
 
-`helpers/prestart.sh` copies the canonical certificate into the active release
-before startup because the current production configuration references the
-release-relative `certificate.pfx`. A production startup fails closed when
-neither the persistent file nor an explicitly supplied release certificate is
-available. Development may still generate a local self-signed certificate.
+Certificate and release preparation is a privileged deployment operation. The
+root-owned `/usr/libexec/sufficit-identity/bootstrap-release.sh` copies the
+persistent certificate into a candidate release, persists an existing release
+certificate when necessary, and makes the complete release root-owned and
+non-writable by the service account. Only Development may create a self-signed
+certificate; its password is random and stored in
+`/etc/sufficit/identity/certificate.password` as `root:www-data` mode `0640`.
+
+At runtime, `ExecStartPre` invokes the separately installed, root-owned
+`/usr/libexec/sufficit-identity/prestart.sh` as `dotnetuser`. It performs only
+read-only validation: active release, certificate presence/ownership/mode,
+private-key readability when a protected password source is available, and
+absence of group/other-writable release paths. Any failure blocks startup.
 
 Before switching a release, verify all replicas report one checksum:
 
@@ -24,6 +32,70 @@ After the rolling restart, query each replica directly and verify the same
 `kid` is published from `/.well-known/openid-configuration/jwks`. A differing
 `kid` causes intermittent signature-validation failures whenever discovery and
 token issuance hit different nodes.
+
+For rotation, configure ordered `Certificates:SigningPaths` and
+`Certificates:EncryptionPaths`. The first unique certificate is active for new
+artifacts; the remaining certificates stay available during the validation or
+decryption overlap. Enable `RequirePurposeSeparation` only after distinct
+signing and encryption material has been distributed to every replica.
+
+## Dedicated database migration
+
+Outside Development, the HTTP process rejects `Database:AutoMigrate=true`.
+Apply pending EF migrations through the dedicated oneshot unit before switching
+the application release:
+
+```bash
+systemctl start sufficit-identity-migrator.service
+systemctl status sufficit-identity-migrator.service --no-pager
+```
+
+The unit executes `Sufficit.Identity.Server.dll --migrate-only` as the
+unprivileged service account. The migrator validates the same release and
+certificate invariants as the web process and obtains the MariaDB advisory lock
+`sufficit_identity_schema_migrator`, so two deployment jobs cannot migrate the
+schema concurrently. A non-zero unit result blocks release activation; inspect
+the journal and fix the migration instead of starting the web service against a
+partially upgraded schema.
+
+### Normalized e-mail uniqueness gate
+
+Before enabling the normalized-email unique index, run the additive script from
+an approved database session:
+
+```bash
+mariadb --defaults-extra-file=/protected/mariadb.cnf identity \
+  < docs/migration/sql/083-enforce-normalized-email-uniqueness.sql
+```
+
+The first result set contains only a SHA-256 hash and the number of colliding
+rows. The script aborts before creating the index when any collision exists.
+For each reported hash, an authorized operator must use the internal account
+administration workflow to inspect the corresponding account IDs (never export
+the e-mail address), select the canonical account according to the retention
+policy, and change or remove the duplicate address in an audited transaction.
+Do not merge users, reset credentials, or delete an account as an ad-hoc SQL
+operation. Re-run the script after every correction; only a zero-collision run
+creates `UX_users_normalizedemail` and records its migration marker. The script
+is safe to replay after a successful run.
+
+### Retired Skoruba Admin API scope
+
+The legacy `skoruba_identity_admin_api` scope is no longer a supported API
+surface. After taking the normal production backup, run the idempotent cleanup
+script from an approved database session:
+
+```bash
+mariadb --defaults-extra-file=/protected/mariadb.cnf identity \
+  < docs/migration/sql/092-retire-skoruba-identity-admin-api.sql
+```
+
+The script revokes valid tokens tied to authorizations that granted the old
+scope, removes only that item from application permissions and authorizations,
+and deletes the scope row only when both its historical ID and name match.
+The management and provisioning layers reject the retired name so a later
+release cannot recreate it. Verify zero rows for the scope, old permission,
+old authorization grant and valid token before activating the release.
 
 ## Serialized production activation
 
@@ -111,8 +183,10 @@ The initial state deliberately does the following:
   `/security/csp-report`;
 - leaves administrative MFA enforcement off until administrators have enrolled
   and completed a real two-factor login;
-- leaves DPoP and CIBA off while their nonce/replay and pending-request stores
-  are process-local.
+- leaves DPoP and CIBA off until their client cohorts are provisioned and a
+  multi-replica deployment has a real shared `IDistributedCache`; DPoP replay
+  and CIBA pending state remain database-authoritative, while nonce/session
+  cache behavior still depends on the configured distributed cache.
 
 The CSP report endpoint accepts the browser's legacy `application/csp-report`
 format and the Reporting API JSON format. It logs only sanitized fields, with
@@ -161,8 +235,9 @@ Emergency rollback is explicit and does not affect CSP:
 Every modifying command preserves the pre-command file as
 `/etc/sufficit/identity/hardening.env.bak`. DPoP/CIBA do not have rollout
 commands intentionally: before a second Identity replica or production CIBA,
-replace the process-local stores with an atomic shared implementation such as
-Redis, then add a separately reviewed enablement step.
+configure a shared `IDistributedCache` such as Redis, set
+`DistributedCache:RequireShared=true`, verify database-backed replay/pending
+state across replicas, and add a separately reviewed enablement step.
 
 The Nginx virtual host selects per-IP limits by location: strict zones protect
 interactive authentication, protocol/token endpoints and CSP reports; ordinary

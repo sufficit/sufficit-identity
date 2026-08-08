@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Application.Accounts;
@@ -54,12 +55,18 @@ namespace Sufficit.Identity.STS;
 internal sealed class OidcUserSessionTicketStore(
     IDbContextFactory<AppDbContext> databaseFactory,
     IDataProtectionProvider dataProtectionProvider,
+    IDistributedCache cache,
     IHttpContextAccessor httpContextAccessor,
+    SufficitIdentityOptions options,
     TimeProvider timeProvider,
     ILogger<OidcUserSessionTicketStore> logger) : ITicketStore, ISessionManagement
 {
     private readonly IDataProtector _protector = dataProtectionProvider.CreateProtector(
         "Sufficit.Identity.OidcUserSessionTicketStore.v1");
+    private readonly TimeSpan _cacheLifetime = TimeSpan.FromSeconds(
+        Math.Clamp(options.UserSessions.CacheLifetimeSeconds, 5, 300));
+    private readonly TimeSpan _activityUpdateInterval = TimeSpan.FromSeconds(
+        Math.Clamp(options.UserSessions.ActivityUpdateIntervalSeconds, 60, 3600));
 
     // -----------------------------------------------------------------------
     // ITicketStore
@@ -71,6 +78,7 @@ internal sealed class OidcUserSessionTicketStore(
         var sid = ResolveSessionId(ticket);
         await using var database = await databaseFactory.CreateDbContextAsync(CancellationToken.None);
         await StoreAsync(database, sid, ticket, insertIfMissing: true, CancellationToken.None);
+        await TrySetCacheAsync(sid, ticket);
         return sid;
     }
 
@@ -83,11 +91,18 @@ internal sealed class OidcUserSessionTicketStore(
         // and sliding renewal while refreshing the protected ticket + metadata.
         await using var database = await databaseFactory.CreateDbContextAsync(CancellationToken.None);
         await StoreAsync(database, key, ticket, insertIfMissing: false, CancellationToken.None);
+        await TrySetCacheAsync(key, ticket);
     }
 
     public async Task<AuthenticationTicket?> RetrieveAsync(string key)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        var cached = await TryGetCacheAsync(key);
+        if (cached is not null)
+        {
+            return cached;
+        }
+
         await using var database = await databaseFactory.CreateDbContextAsync(CancellationToken.None);
         var session = await database.OidcUserSessions
             .AsTracking()
@@ -133,7 +148,7 @@ internal sealed class OidcUserSessionTicketStore(
         // Touch last-activity cheaply (only when a minute has elapsed, to avoid
         // a write on every single request). best-effort: never let this throw
         // surface as an auth failure.
-        if ((now - session.LastActivityUtc).TotalMinutes >= 1)
+        if (now - session.LastActivityUtc >= _activityUpdateInterval)
         {
             session.LastActivityUtc = now.UtcDateTime;
             try
@@ -146,6 +161,7 @@ internal sealed class OidcUserSessionTicketStore(
             }
         }
 
+        await TrySetCacheAsync(key, ticket);
         return ticket;
     }
 
@@ -156,6 +172,7 @@ internal sealed class OidcUserSessionTicketStore(
         await database.OidcUserSessions
             .Where(s => s.SessionId == key)
             .ExecuteDeleteAsync(CancellationToken.None);
+        await TryRemoveCacheAsync(key);
     }
 
     // -----------------------------------------------------------------------
@@ -196,6 +213,7 @@ internal sealed class OidcUserSessionTicketStore(
         await database.OidcUserSessions
             .Where(s => s.SessionId == sessionId)
             .ExecuteDeleteAsync(cancellationToken);
+        await TryRemoveCacheAsync(sessionId, cancellationToken);
     }
 
     public async Task<int> RevokeAllBySubjectAsync(
@@ -205,9 +223,19 @@ internal sealed class OidcUserSessionTicketStore(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(subject);
         await using var database = await databaseFactory.CreateDbContextAsync(cancellationToken);
-        return await database.OidcUserSessions
+        var sessionIds = await database.OidcUserSessions
+            .Where(s => s.Subject == subject && s.SessionId != exceptSessionId)
+            .Select(s => s.SessionId)
+            .ToListAsync(cancellationToken);
+        var removed = await database.OidcUserSessions
             .Where(s => s.Subject == subject && s.SessionId != exceptSessionId)
             .ExecuteDeleteAsync(cancellationToken);
+        foreach (var sessionId in sessionIds)
+        {
+            await TryRemoveCacheAsync(sessionId, cancellationToken);
+        }
+
+        return removed;
     }
 
     // -----------------------------------------------------------------------
@@ -292,4 +320,91 @@ internal sealed class OidcUserSessionTicketStore(
         var ua = httpContextAccessor.HttpContext?.Request.Headers.UserAgent.ToString();
         return string.IsNullOrWhiteSpace(ua) ? null : ua;
     }
+
+    private async Task<AuthenticationTicket?> TryGetCacheAsync(string key)
+    {
+        try
+        {
+            var protectedTicket = await cache.GetAsync(
+                CacheKey(key),
+                CancellationToken.None);
+            if (protectedTicket is null)
+            {
+                return null;
+            }
+
+            var ticket = TicketSerializer.Default.Deserialize(
+                _protector.Unprotect(protectedTicket));
+            if (ticket?.Properties.ExpiresUtc is { } expires
+                && expires <= timeProvider.GetUtcNow())
+            {
+                await TryRemoveCacheAsync(key);
+                return null;
+            }
+
+            return ticket;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogWarning(
+                exception,
+                "Shared user-session cache read failed; falling back to the database.");
+            return null;
+        }
+    }
+
+    private async Task TrySetCacheAsync(
+        string key,
+        AuthenticationTicket ticket)
+    {
+        try
+        {
+            var lifetime = _cacheLifetime;
+            if (ticket.Properties.ExpiresUtc is { } expires)
+            {
+                lifetime = expires - timeProvider.GetUtcNow() < lifetime
+                    ? expires - timeProvider.GetUtcNow()
+                    : lifetime;
+            }
+            if (lifetime <= TimeSpan.Zero)
+            {
+                return;
+            }
+
+            await cache.SetAsync(
+                CacheKey(key),
+                _protector.Protect(
+                    TicketSerializer.Default.Serialize(ticket)),
+                new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = lifetime,
+                },
+                CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogWarning(
+                exception,
+                "Shared user-session cache write failed; database persistence remains authoritative.");
+        }
+    }
+
+    private async Task TryRemoveCacheAsync(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await cache.RemoveAsync(CacheKey(key), cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogWarning(
+                exception,
+                "Shared user-session cache invalidation failed; the entry remains bounded by its short TTL.");
+        }
+    }
+
+    private static string CacheKey(string sessionId) =>
+        "identity:oidc-session:v1:" + sessionId;
 }

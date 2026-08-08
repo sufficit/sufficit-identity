@@ -9,27 +9,27 @@
             Description="Revise consentimentos e grants OAuth/OpenID Connect mantidos pelo provedor.">
 </PageHeader>
 
-<section class="contract-strip contract-strip--info">
+<div class="contract-strip contract-strip--info">
     <AppIcon Name="shield" Size="20" />
     <div>
         <strong>Autorizações persistidas</strong>
         <span>Revogar uma autorização também invalida todas as credenciais associadas a ela.</span>
     </div>
     <StatusBadge Tone="info">OAuth &amp; OIDC</StatusBadge>
-</section>
+</div>
 
 @if (revoked)
 {
-    <section class="inline-notice inline-notice--success" role="status">
+    <div class="inline-notice inline-notice--success" role="status">
         <AppIcon Name="check" Size="19" />
         <div>
             <strong>Autorização revogada</strong>
             <span>O grant e suas credenciais relacionadas não podem mais ser utilizados.</span>
         </div>
-    </section>
+    </div>
 }
 
-<section class="table-panel" aria-labelledby="authorizations-list-heading" aria-busy="@loading">
+<div class="table-panel" aria-labelledby="authorizations-list-heading" aria-busy="@loading">
     <div class="data-toolbar data-toolbar--users">
         <div>
             <h2 id="authorizations-list-heading">Grants e consentimentos</h2>
@@ -189,28 +189,28 @@
             </div>
         }
     </footer>
-</section>
+</div>
 
 @if (selected is not null)
 {
-    <section class="delete-zone" aria-labelledby="revoke-authorization-heading">
+    <div class="delete-zone" aria-labelledby="revoke-authorization-heading">
         <div>
             <h2 id="revoke-authorization-heading">Revogar esta autorização?</h2>
             <p>@UserLabel(selected) · @(selected.ClientDisplayName ?? selected.ClientId ?? "Sem cliente") · @selected.CredentialCount credencial(is) associada(s).</p>
         </div>
         @if (revocation?.IsSuccess is false)
         {
-            <section class="inline-notice inline-notice--danger" role="alert">
+            <div class="inline-notice inline-notice--danger" role="alert">
                 <AppIcon Name="alert" Size="19" />
                 <div><strong>Não foi possível revogar</strong><span>@revocation.ErrorMessage</span></div>
-            </section>
+            </div>
         }
         <button class="button button--secondary" type="button" @onclick="CancelRevocation">Cancelar</button>
         <button class="button button--danger" type="button" disabled="@revoking" @onclick="RevokeAsync">
             <AppIcon Name="lock" Size="17" />
             @(revoking ? "Revogando…" : "Confirmar revogação")
         </button>
-    </section>
+    </div>
 }
 
 @code {

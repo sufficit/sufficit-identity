@@ -8,27 +8,33 @@
 
 @if (loading)
 {
-    <section class="wizard-loading" aria-busy="true" aria-label="Carregando configuração">
+    <div class="wizard-loading" aria-busy="true" aria-label="Carregando configuração">
         <span class="button-spinner" aria-hidden="true"></span>
         <p>Recuperando seu rascunho protegido…</p>
-    </section>
+    </div>
 }
 else if (draft is null)
 {
-    <PageHeader Title="Rascunho indisponível"
-                Description="Ele pode ter expirado, sido concluído ou pertencer a outra sessão administrativa." />
-    <EmptyState Icon="alert" Title="Não foi possível abrir esta configuração" Description="@errorMessage">
-        <Actions>
-            <a class="button button--primary" href="clients/new">Iniciar nova aplicação</a>
-            <a class="button button--secondary" href="clients">Voltar para aplicações</a>
-        </Actions>
-    </EmptyState>
+    <div>
+        <PageHeader Title="Rascunho indisponível"
+                    Description="Ele pode ter expirado, sido concluído ou pertencer a outra sessão administrativa." />
+    </div>
+    <div>
+        <EmptyState Icon="alert" Title="Não foi possível abrir esta configuração" Description="@errorMessage">
+            <Actions>
+                <a class="button button--primary" href="clients/new">Iniciar nova aplicação</a>
+                <a class="button button--secondary" href="clients">Voltar para aplicações</a>
+            </Actions>
+        </EmptyState>
+    </div>
 }
 else if (completion is not null)
 {
-    <PageHeader Title="Aplicação criada"
-                Description="A configuração foi validada, registrada e auditada com sucesso." />
-    <section class="completion-panel" aria-labelledby="completion-heading">
+    <div>
+        <PageHeader Title="Aplicação criada"
+                    Description="A configuração foi validada, registrada e auditada com sucesso." />
+    </div>
+    <div class="completion-panel" aria-labelledby="completion-heading">
         <span class="completion-panel__icon"><AppIcon Name="check" Size="26" /></span>
         <div>
             <h2 id="completion-heading">@completion.Client.DisplayName</h2>
@@ -53,10 +59,11 @@ else if (completion is not null)
             <a class="button button--primary" href="@ClientHref(completion.Client.Id)">Abrir aplicação</a>
             <a class="button button--secondary" href="clients">Voltar para aplicações</a>
         </div>
-    </section>
+    </div>
 }
 else
 {
+    <div>
     <PageHeader Title="Configurar aplicação"
                 Description="Avance no seu ritmo. O rascunho é protegido e retomável por 14 dias.">
         <Actions>
@@ -66,10 +73,10 @@ else
 
     @if (!string.IsNullOrWhiteSpace(errorMessage))
     {
-        <section class="inline-notice inline-notice--danger" role="alert">
+        <div class="inline-notice inline-notice--danger" role="alert">
             <AppIcon Name="alert" Size="19" />
             <div><strong>Não foi possível concluir a operação</strong><span>@errorMessage</span></div>
-        </section>
+        </div>
     }
 
     <div class="wizard-shell">
@@ -79,15 +86,14 @@ else
                 <strong>@CurrentStep.Label</strong>
             </div>
             <ol>
-                @for (var index = 0; index < Steps.Length; index++)
+                @foreach (var step in Steps.Select((item, index) => (item, index)))
                 {
-                    var item = Steps[index];
-                    <li class="@(index == CurrentStepIndex ? "is-current" : index < CurrentStepIndex ? "is-complete" : null)">
+                    <li class="@(step.index == CurrentStepIndex ? "is-current" : step.index < CurrentStepIndex ? "is-complete" : null)">
                         <button type="button"
-                                aria-current="@(index == CurrentStepIndex ? "step" : null)"
-                                @onclick="() => GoToStepAsync(item.Id)">
-                            <span>@(index + 1)</span>
-                            <strong>@item.ShortLabel</strong>
+                                aria-current="@(step.index == CurrentStepIndex ? "step" : null)"
+                                @onclick="() => GoToStepAsync(step.item.Id)">
+                            <span>@(step.index + 1)</span>
+                            <strong>@step.item.ShortLabel</strong>
                         </button>
                     </li>
                 }
@@ -95,15 +101,18 @@ else
             <div class="wizard-save-state" aria-live="polite">
                 @if (saving)
                 {
-                    <span class="button-spinner" aria-hidden="true"></span><span>Salvando…</span>
+                    <span class="button-spinner" aria-hidden="true"></span>
+                    <span>Salvando…</span>
                 }
                 else if (savedAt is not null)
                 {
-                    <AppIcon Name="check" Size="15" /><span>Salvo às @savedAt.Value.ToLocalTime().ToString("HH:mm")</span>
+                    <span class="wizard-save-state__icon"><AppIcon Name="check" Size="15" /></span>
+                    <span>Salvo às @savedAt.Value.ToLocalTime().ToString("HH:mm")</span>
                 }
                 else
                 {
-                    <AppIcon Name="lock" Size="15" /><span>Rascunho protegido</span>
+                    <span class="wizard-save-state__icon"><AppIcon Name="lock" Size="15" /></span>
+                    <span>Rascunho protegido</span>
                 }
             </div>
         </nav>
@@ -141,10 +150,10 @@ else
                         }
                     </div>
                 </div>
-                <section class="profile-context">
+                <div class="profile-context">
                     <AppIcon Name="shield" Size="21" />
                     <div><strong>@ProfileName</strong><span>@ProfileOutcome</span></div>
-                </section>
+                </div>
             }
             else if (CurrentStep.Id == ManagementClientDraftSteps.Protocol)
             {
@@ -238,40 +247,38 @@ else
             }
             else if (CurrentStep.Id == ManagementClientDraftSteps.Uris)
             {
-                <section class="uri-editor">
+                <div class="uri-editor">
                     <div class="uri-editor__heading"><div><h3>Redirect URIs</h3><p>Destinos exatos permitidos após o login.</p></div><button class="button button--secondary button--compact" type="button" @onclick="AddRedirectAsync"><AppIcon Name="plus" Size="16" />Adicionar</button></div>
                     @if (draft.Values.RedirectUris.Count == 0)
                     {
                         <p class="uri-editor__empty">Nenhuma URI adicionada.</p>
                     }
-                    @for (var index = 0; index < draft.Values.RedirectUris.Count; index++)
+                    @foreach (var uri in draft.Values.RedirectUris.Select((value, index) => (value, index)))
                     {
-                        var uriIndex = index;
                         <div class="uri-row">
-                            <input id="redirect-uri-@uriIndex" name="redirectUris" class="form-control technical-value"
-                                   aria-label="Redirect URI @(uriIndex + 1)" value="@draft.Values.RedirectUris[uriIndex]"
-                                   @oninput="args => RedirectChangedAsync(uriIndex, args)" />
-                            <button type="button" class="icon-button" aria-label="Remover Redirect URI @(uriIndex + 1)" @onclick="() => RemoveRedirectAsync(uriIndex)"><AppIcon Name="trash" Size="17" /></button>
+                            <input id="redirect-uri-@uri.index" name="redirectUris" class="form-control technical-value"
+                                   aria-label="Redirect URI @(uri.index + 1)" value="@uri.value"
+                                   @oninput="args => RedirectChangedAsync(uri.index, args)" />
+                            <button type="button" class="icon-button" aria-label="Remover Redirect URI @(uri.index + 1)" @onclick="() => RemoveRedirectAsync(uri.index)"><AppIcon Name="trash" Size="17" /></button>
                         </div>
                     }
                     @foreach (var issue in IssuesFor("redirectUris"))
                     {
                         <span class="field-feedback field-feedback--@IssueTone(issue)">@issue.Message</span>
                     }
-                </section>
-                <section class="uri-editor">
+                </div>
+                <div class="uri-editor">
                     <div class="uri-editor__heading"><div><h3>Post logout redirect URIs</h3><p>Destinos permitidos ao encerrar a sessão.</p></div><button class="button button--secondary button--compact" type="button" @onclick="AddLogoutRedirectAsync"><AppIcon Name="plus" Size="16" />Adicionar</button></div>
-                    @for (var index = 0; index < draft.Values.PostLogoutRedirectUris.Count; index++)
+                    @foreach (var uri in draft.Values.PostLogoutRedirectUris.Select((value, index) => (value, index)))
                     {
-                        var uriIndex = index;
                         <div class="uri-row">
-                            <input id="logout-redirect-uri-@uriIndex" name="postLogoutRedirectUris" class="form-control technical-value"
-                                   aria-label="Post logout redirect URI @(uriIndex + 1)" value="@draft.Values.PostLogoutRedirectUris[uriIndex]"
-                                   @oninput="args => LogoutRedirectChangedAsync(uriIndex, args)" />
-                            <button type="button" class="icon-button" aria-label="Remover Post logout redirect URI @(uriIndex + 1)" @onclick="() => RemoveLogoutRedirectAsync(uriIndex)"><AppIcon Name="trash" Size="17" /></button>
+                            <input id="logout-redirect-uri-@uri.index" name="postLogoutRedirectUris" class="form-control technical-value"
+                                   aria-label="Post logout redirect URI @(uri.index + 1)" value="@uri.value"
+                                   @oninput="args => LogoutRedirectChangedAsync(uri.index, args)" />
+                            <button type="button" class="icon-button" aria-label="Remover Post logout redirect URI @(uri.index + 1)" @onclick="() => RemoveLogoutRedirectAsync(uri.index)"><AppIcon Name="trash" Size="17" /></button>
                         </div>
                     }
-                </section>
+                </div>
                 <details class="advanced-disclosure">
                     <summary>Logout avançado</summary>
                     <div class="form-grid form-grid--two">
@@ -286,13 +293,13 @@ else
             }
             else if (CurrentStep.Id == ManagementClientDraftSteps.Credentials)
             {
-                <section class="credential-decision">
+                <div class="credential-decision">
                     <span><AppIcon Name="@(CreatesCredential ? "key" : "shield")" Size="26" /></span>
                     <div>
                         <h3>@(CreatesCredential ? "Uma credencial será gerada na conclusão" : "Esta aplicação não precisa de segredo")</h3>
                         <p>@(CreatesCredential ? "O valor será exibido uma única vez. Guarde-o diretamente em um cofre de segredos; ele nunca entra no rascunho." : "Clientes públicos usam PKCE ou Device Code e não devem carregar um segredo que não conseguiriam proteger.")</p>
                     </div>
-                </section>
+                </div>
                 <ul class="security-checklist">
                     <li><AppIcon Name="check" Size="17" /> O rascunho contém somente configuração protegida</li>
                     <li><AppIcon Name="check" Size="17" /> A credencial é aleatória e criada no último instante</li>
@@ -301,10 +308,10 @@ else
             }
             else
             {
-                <section class="review-status review-status--@(draft.Validation.IsReady ? "ready" : "blocked")">
+                <div class="review-status review-status--@(draft.Validation.IsReady ? "ready" : "blocked")">
                     <AppIcon Name="@(draft.Validation.IsReady ? "check" : "alert")" Size="22" />
                     <div><strong>@(draft.Validation.IsReady ? "Pronto para criar" : "Ainda existem ajustes necessários")</strong><span>@(draft.Validation.IsReady ? "Revise o resumo e conclua quando estiver seguro." : "Abra os itens abaixo para ir diretamente à etapa correspondente.")</span></div>
-                </section>
+                </div>
                 @if (draft.Validation.Issues.Count > 0)
                 {
                     <div class="review-issues">
@@ -312,17 +319,23 @@ else
                         {
                             <button type="button" class="review-issue review-issue--@IssueTone(issue)" @onclick="() => GoToStepAsync(issue.Step)">
                                 <AppIcon Name="@(issue.Severity == ClientValidationSeverity.Error ? "alert" : "info")" Size="18" />
-                                <span><strong>@issue.Message</strong>@if (!string.IsNullOrWhiteSpace(issue.Remediation)){<small>@issue.Remediation</small>}</span>
+                                <span>
+                                    <strong>@issue.Message</strong>
+                                    @if (!string.IsNullOrWhiteSpace(issue.Remediation))
+                                    {
+                                        <small>@issue.Remediation</small>
+                                    }
+                                </span>
                                 <AppIcon Name="arrow-right" Size="16" />
                             </button>
                         }
                     </div>
                 }
                 <div class="review-grid">
-                    <section><h3>Identidade</h3><dl><div><dt>Nome</dt><dd>@ValueOrDash(draft.Values.DisplayName)</dd></div><div><dt>Client ID</dt><dd><code>@ValueOrDash(draft.Values.ClientId)</code></dd></div><div><dt>Tipo</dt><dd>@draft.Values.ClientType</dd></div></dl></section>
-                    <section><h3>Protocolo</h3><dl><div><dt>Fluxos</dt><dd>@GrantSummary</dd></div><div><dt>Consentimento</dt><dd>@draft.Values.ConsentType</dd></div><div><dt>PAR</dt><dd>@(draft.Values.RequirePar ? "Obrigatório" : "Opcional")</dd></div></dl></section>
-                    <section><h3>Permissões</h3><p>@(draft.Values.Scopes.Count == 0 ? "Nenhuma permissão selecionada." : string.Join(", ", draft.Values.Scopes))</p></section>
-                    <section><h3>Retornos</h3><p>@draft.Values.RedirectUris.Count Redirect URI(s) e @draft.Values.PostLogoutRedirectUris.Count retorno(s) pós-logout.</p></section>
+                    <div><h3>Identidade</h3><dl><div><dt>Nome</dt><dd>@ValueOrDash(draft.Values.DisplayName)</dd></div><div><dt>Client ID</dt><dd><code>@ValueOrDash(draft.Values.ClientId)</code></dd></div><div><dt>Tipo</dt><dd>@draft.Values.ClientType</dd></div></dl></div>
+                    <div><h3>Protocolo</h3><dl><div><dt>Fluxos</dt><dd>@GrantSummary</dd></div><div><dt>Consentimento</dt><dd>@draft.Values.ConsentType</dd></div><div><dt>PAR</dt><dd>@(draft.Values.RequirePar ? "Obrigatório" : "Opcional")</dd></div></dl></div>
+                    <div><h3>Permissões</h3><p>@(draft.Values.Scopes.Count == 0 ? "Nenhuma permissão selecionada." : string.Join(", ", draft.Values.Scopes))</p></div>
+                    <div><h3>Retornos</h3><p>@draft.Values.RedirectUris.Count Redirect URI(s) e @draft.Values.PostLogoutRedirectUris.Count retorno(s) pós-logout.</p></div>
                 </div>
             }
 
@@ -345,7 +358,11 @@ else
                     else
                     {
                         <button class="button button--primary" type="button" disabled="@(busy || !draft.Validation.IsReady)" @onclick="CompleteAsync">
-                            @if (busy){<span class="button-spinner" aria-hidden="true"></span>}<span>Criar aplicação</span>
+                            @if (busy)
+                            {
+                                <span class="button-spinner" aria-hidden="true"></span>
+                            }
+                            <span>Criar aplicação</span>
                         </button>
                     }
                 </div>
@@ -364,6 +381,7 @@ else
                 }
             </div>
         </main>
+    </div>
     </div>
 }
 

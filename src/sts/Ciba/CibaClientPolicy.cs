@@ -21,7 +21,8 @@ public interface ICibaClientPolicy
 internal sealed class CibaClientPolicy(
     IOpenIddictApplicationManager applications,
     CibaOptions options,
-    ILogger<CibaClientPolicy> logger) : ICibaClientPolicy
+    ILogger<CibaClientPolicy> logger,
+    ISecurityDecisionTelemetry telemetry) : ICibaClientPolicy
 {
     public async Task<CibaClientAuthorization> AuthorizeAsync(
         string? clientId,
@@ -90,6 +91,12 @@ internal sealed class CibaClientPolicy(
         }
         var enforce = reasons.Count > 0
             && options.ClientPolicyMode == SecurityPolicyEnforcementMode.Enforce;
+        telemetry.Record(
+            "ciba_client",
+            options.ClientPolicyMode.ToString(),
+            reasons.Count > 0,
+            enforce,
+            reasons);
         return new CibaClientAuthorization(
             !enforce,
             application,
@@ -97,10 +104,18 @@ internal sealed class CibaClientPolicy(
             reasons);
     }
 
-    private static CibaClientAuthorization Denied(string reason) =>
-        new(
+    private CibaClientAuthorization Denied(string reason)
+    {
+        telemetry.Record(
+            "ciba_client",
+            "Mandatory",
+            wouldReject: true,
+            rejected: true,
+            [reason]);
+        return new(
             false,
             null,
             OpenIddictConstants.Errors.InvalidClient,
             [reason]);
+    }
 }

@@ -98,6 +98,50 @@ public sealed class FapiJarmTests
     }
 
     [Fact]
+    public async Task Jarm_encryption_resolves_the_recipient_public_key_per_client()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Jarm:Enabled"] = "true",
+                ["Sufficit:Identity:Jarm:Encryption:Enabled"] = "true",
+            });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var rsa = RSA.Create(2048);
+        var publicJwk = JsonWebKeyConverter.ConvertFromRSASecurityKey(
+            new RsaSecurityKey(rsa) { KeyId = "client-encryption-key" });
+        publicJwk.D = null;
+        publicJwk.DP = null;
+        publicJwk.DQ = null;
+        publicJwk.P = null;
+        publicJwk.Q = null;
+        publicJwk.QI = null;
+        publicJwk.Use = "enc";
+        var keySet = new JsonWebKeySet();
+        keySet.Keys.Add(publicJwk);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var applications = scope.ServiceProvider
+            .GetRequiredService<IOpenIddictApplicationManager>();
+        await applications.CreateAsync(new OpenIddictApplicationDescriptor
+        {
+            ClientId = "jarm-encryption-client",
+            ClientType = OpenIddictConstants.ClientTypes.Public,
+            ConsentType = OpenIddictConstants.ConsentTypes.Explicit,
+            JsonWebKeySet = keySet,
+        });
+        var resolver = scope.ServiceProvider.GetRequiredService<
+            IJarmClientEncryptionCredentialsResolver>();
+
+        var credentials = await resolver.ResolveAsync(
+            "jarm-encryption-client");
+        var missing = await resolver.ResolveAsync("missing-client");
+
+        Assert.NotNull(credentials);
+        Assert.Equal("client-encryption-key", credentials.Key.KeyId);
+        Assert.Null(missing);
+    }
+
+    [Fact]
     public async Task Jarm_query_mode_returns_one_signed_response_parameter()
     {
         using var factory = SufficitIdentityTestFactory.CreateIsolated(
@@ -640,6 +684,7 @@ public sealed class FapiJarmTests
             Audience = "https://sts.tests.local/",
             IssuedAt = DateTime.UtcNow,
             Expires = DateTime.UtcNow.AddMinutes(1),
+            TokenType = "oauth-authz-req+jwt",
             SigningCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.EcdsaSha256),
             Claims = new Dictionary<string, object>
             {
@@ -650,6 +695,7 @@ public sealed class FapiJarmTests
                 ["code_challenge"] = challenge,
                 ["code_challenge_method"] = "S256",
                 ["nonce"] = "jar-nonce-123",
+                ["jti"] = Guid.NewGuid().ToString("N"),
             },
         });
 
@@ -679,6 +725,17 @@ public sealed class FapiJarmTests
         Assert.False(query.ContainsKey("error"),
             $"JAR: got error={query.GetValueOrDefault("error")}: {query.GetValueOrDefault("error_description")}");
         Assert.True(query.ContainsKey("code"), "JAR: expected a code in the response");
+
+        var replay = await client.GetAsync(
+            "/connect/authorize?client_id=jar-test-client&request="
+            + Uri.EscapeDataString(requestObject));
+        Assert.True(
+            replay.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Redirect);
+        if (replay.StatusCode is HttpStatusCode.Redirect)
+        {
+            var replayQuery = QueryHelpers.ParseQuery(replay.Headers.Location!.Query);
+            Assert.Equal("invalid_request", replayQuery["error"].ToString());
+        }
     }
 
     private static string CreateClientAssertion(

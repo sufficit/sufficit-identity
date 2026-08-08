@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
+using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 
 namespace Sufficit.Identity.STS;
@@ -20,6 +22,7 @@ internal sealed class OidcSessionClaimsPrincipalFactory(
     IAssuranceLevelResolver assuranceLevelResolver,
     IHttpContextAccessor httpContextAccessor,
     IAuthenticationContextAccessor authenticationContextAccessor,
+    IDbContextFactory<AppDbContext> databaseFactory,
     TimeProvider timeProvider)
     : UserClaimsPrincipalFactory<ApplicationUser, ApplicationRole>(
         userManager,
@@ -33,10 +36,6 @@ internal sealed class OidcSessionClaimsPrincipalFactory(
         ApplicationUser user)
     {
         var identity = await base.GenerateClaimsAsync(user);
-        if (identity.HasClaim(claim => claim.Type == SessionIdClaimType))
-        {
-            return identity;
-        }
 
         // RefreshSignInAsync replaces the cookie principal. Reuse the current
         // session's sid when present so account edits/security-stamp renewal do
@@ -45,16 +44,37 @@ internal sealed class OidcSessionClaimsPrincipalFactory(
         var currentSubject = currentPrincipal?.FindFirst(
                 ClaimTypes.NameIdentifier)?.Value
             ?? currentPrincipal?.FindFirst("sub")?.Value;
-        var sessionId = string.Equals(currentSubject, user.Id, StringComparison.Ordinal)
+        // A sid copied from user claims is not session evidence: claims can be
+        // stale, imported, or deliberately supplied by a caller. Reuse is
+        // allowed only when the current principal is the same subject AND a
+        // durable session row proves that sid belongs to that subject.
+        var sessionId = string.Equals(
+                currentSubject,
+                user.Id,
+                StringComparison.Ordinal)
             ? currentPrincipal?.FindFirst(SessionIdClaimType)?.Value
             : null;
+        if (!string.IsNullOrWhiteSpace(sessionId))
+        {
+            await using var database = await databaseFactory.CreateDbContextAsync();
+            var persisted = await database.OidcUserSessions
+                .AsNoTracking()
+                .AnyAsync(
+                    session => session.SessionId == sessionId &&
+                        session.Subject == user.Id);
+            if (!persisted)
+            {
+                sessionId = null;
+            }
+        }
+
         if (string.IsNullOrWhiteSpace(sessionId))
         {
             sessionId = WebEncoders.Base64UrlEncode(
                 RandomNumberGenerator.GetBytes(32));
         }
 
-        identity.AddClaim(new Claim(SessionIdClaimType, sessionId));
+        ReplaceClaim(identity, SessionIdClaimType, sessionId);
 
         var evidence = authenticationContextAccessor.Current;
         var authenticationMethods = evidence?.AuthenticationMethods
@@ -67,17 +87,23 @@ internal sealed class OidcSessionClaimsPrincipalFactory(
             ?? [];
         foreach (var method in authenticationMethods)
         {
-            identity.AddClaim(new Claim(
+            if (!identity.HasClaim(
                 AuthenticationContextProjector.AuthenticationMethodClaimType,
-                method));
+                method))
+            {
+                identity.AddClaim(new Claim(
+                    AuthenticationContextProjector.AuthenticationMethodClaimType,
+                    method));
+            }
         }
         var authenticatedAt = evidence?.AuthenticatedAt
             ?? ResolveAuthenticationTime(currentPrincipal)
             ?? timeProvider.GetUtcNow();
-        identity.AddClaim(new Claim(
+        ReplaceClaim(
+            identity,
             AuthenticationContextProjector.AuthenticationTimeClaimType,
             authenticatedAt.ToUnixTimeSeconds().ToString(
-                System.Globalization.CultureInfo.InvariantCulture)));
+                System.Globalization.CultureInfo.InvariantCulture));
 
         // Stamp the authentication assurance level (aal) on the session so the
         // CAEP assurance-level-change trigger can read the previous level off
@@ -85,14 +111,26 @@ internal sealed class OidcSessionClaimsPrincipalFactory(
         // claims of the in-flight principal (sign-in flow); missing amr → the
         // resolver returns Loa1, the safe floor.
         var aal = assuranceLevelResolver.Resolve(new ClaimsPrincipal(identity));
-        identity.AddClaim(new Claim(
-            AssuranceLevelClaimType,
-            aal.ToString()));
-        identity.AddClaim(new Claim(
+        ReplaceClaim(identity, AssuranceLevelClaimType, aal.ToString());
+        ReplaceClaim(
+            identity,
             AuthenticationContextProjector.AuthenticationContextClassClaimType,
-            evidence?.AuthenticationContextClass ?? "urn:sufficit:acr:loa" + aal));
+            evidence?.AuthenticationContextClass ?? "urn:sufficit:acr:loa" + aal);
 
         return identity;
+    }
+
+    private static void ReplaceClaim(
+        ClaimsIdentity identity,
+        string claimType,
+        string value)
+    {
+        foreach (var existing in identity.FindAll(claimType).ToArray())
+        {
+            identity.RemoveClaim(existing);
+        }
+
+        identity.AddClaim(new Claim(claimType, value));
     }
 
     private static DateTimeOffset? ResolveAuthenticationTime(ClaimsPrincipal? principal)

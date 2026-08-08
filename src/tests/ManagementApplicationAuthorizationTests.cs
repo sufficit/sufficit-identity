@@ -1,13 +1,18 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Overview;
+using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Server.Management;
+using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 
 namespace Sufficit.Identity.Tests;
@@ -102,6 +107,21 @@ public sealed class ManagementApplicationAuthorizationTests
         Assert.Equal(
             ManagementAuthorizationOutcome.Denied,
             decision.Outcome);
+        Assert.Equal("capability_not_granted", decision.ReasonCode);
+    }
+
+    [Fact]
+    public async Task Vault_secret_read_does_not_grant_secret_mutation()
+    {
+        var evaluator = CreateEvaluator();
+        var decision = await evaluator.EvaluateAsync(
+            PrincipalWithClaims(new Claim(
+                "permission", ManagementCapabilities.VaultSecretsRead)),
+            ManagementCapabilities.VaultSecretsManage,
+            new ManagementResource(ManagementResourceTypes.VaultSecrets,
+                "providers/google/client-secret"));
+
+        Assert.False(decision.IsAllowed);
         Assert.Equal("capability_not_granted", decision.ReasonCode);
     }
 
@@ -278,6 +298,106 @@ public sealed class ManagementApplicationAuthorizationTests
         Assert.Equal("capability_not_granted", decision.ReasonCode);
     }
 
+    [Fact]
+    public async Task Concrete_object_policy_enforces_context_and_item_identity()
+    {
+        var options = Options.Create(new ManagementOptions
+        {
+            Authorization = new ManagementAuthorizationOptions
+            {
+                ObjectAccess = new ManagementObjectAccessOptions
+                {
+                    Mode = ManagementPolicyEnforcementMode.Enforce,
+                    LegacyContextId = "legacy-global",
+                    ContextClaimType = "identity_context",
+                },
+            },
+        });
+        var policy = new ConfigurationManagementObjectAccessPolicy(
+            options,
+            new AllowProtectedPrincipalPolicy(),
+            NullLogger<ConfigurationManagementObjectAccessPolicy>.Instance);
+        var wrongContext = PrincipalWithClaims(
+            new Claim("identity_context", "tenant-b"));
+        var rightContext = PrincipalWithClaims(
+            new Claim("identity_context", "tenant-a"));
+
+        var denied = await policy.EvaluateAsync(
+            wrongContext,
+            ManagementCapabilities.UsersRead,
+            new ManagementResource(
+                ManagementResourceTypes.User,
+                "user-1",
+                "tenant-a"));
+        var allowed = await policy.EvaluateAsync(
+            rightContext,
+            ManagementCapabilities.UsersRead,
+            new ManagementResource(
+                ManagementResourceTypes.User,
+                "user-1",
+                "tenant-a"));
+        var missingId = await policy.EvaluateAsync(
+            rightContext,
+            ManagementCapabilities.UsersRead,
+            new ManagementResource(
+                ManagementResourceTypes.User,
+                ContextId: "tenant-a"));
+
+        Assert.Equal("context_not_accessible", denied.ReasonCode);
+        Assert.True(allowed.IsAllowed);
+        Assert.Equal("resource_id_required", missingId.ReasonCode);
+    }
+
+    [Fact]
+    public async Task Protected_principal_policy_denies_equal_tier_and_audits_break_glass()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await using var scope = factory.Services.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<
+            UserManager<ApplicationUser>>();
+        var target = await users.FindByNameAsync(TestDataSeeder.DefaultUsername)
+            ?? throw new InvalidOperationException("Seed user not found.");
+        var added = await users.AddClaimAsync(
+            target,
+            new Claim("identity_principal_tier", "2"));
+        Assert.True(added.Succeeded);
+        var options = Options.Create(new ManagementOptions
+        {
+            Authorization = new ManagementAuthorizationOptions
+            {
+                ProtectedPrincipals = new ProtectedPrincipalAccessOptions
+                {
+                    Mode = ManagementPolicyEnforcementMode.Enforce,
+                },
+            },
+        });
+        var policy = new ConfigurationProtectedPrincipalAccessPolicy(
+            users,
+            options,
+            NullLogger<ConfigurationProtectedPrincipalAccessPolicy>.Instance);
+
+        var equalTier = await policy.EvaluateAsync(
+            PrincipalWithClaims(new Claim("identity_principal_tier", "2")),
+            ManagementCapabilities.UsersResetPassword,
+            target.Id);
+        var higherTier = await policy.EvaluateAsync(
+            PrincipalWithClaims(new Claim("identity_principal_tier", "3")),
+            ManagementCapabilities.UsersResetPassword,
+            target.Id);
+        var breakGlass = await policy.EvaluateAsync(
+            PrincipalWithClaims(
+                new Claim("identity_principal_tier", "1"),
+                new Claim("identity_break_glass", "identity.management"),
+                new Claim("amr", "pwd mfa")),
+            ManagementCapabilities.UsersResetPassword,
+            target.Id);
+
+        Assert.Equal("protected_principal_higher_or_equal", equalTier.ReasonCode);
+        Assert.True(higherTier.IsAllowed);
+        Assert.Equal("protected_principal_break_glass", breakGlass.ReasonCode);
+    }
+
     /// <summary>Stub object policy that denies every resource with a fixed reason.</summary>
     private sealed class DenyingObjectAccessPolicy(string reason)
         : IManagementObjectAccessPolicy
@@ -300,6 +420,17 @@ public sealed class ManagementApplicationAuthorizationTests
             CancellationToken cancellationToken = default)
             => throw new InvalidOperationException(
                 "Object access policy must not be consulted when capability is denied.");
+    }
+
+    private sealed class AllowProtectedPrincipalPolicy
+        : IProtectedPrincipalAccessPolicy
+    {
+        public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+            ClaimsPrincipal principal,
+            string capability,
+            string targetUserId,
+            CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(ManagementAuthorizationDecision.Allowed());
     }
 
     private static CapabilityManagementAuthorizationEvaluator CreateEvaluator(

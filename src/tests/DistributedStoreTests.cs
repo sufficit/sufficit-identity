@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Sufficit.Identity.STS.Ciba;
 using Sufficit.Identity.STS.Dpop;
+using Sufficit.Identity.Vault;
 using Xunit;
 
 namespace Sufficit.Identity.Tests;
@@ -61,6 +62,24 @@ public sealed class DistributedStoreTests
         // Find returns null after consume.
         Assert.Null(store.Find(request.AuthReqId));
         await Task.CompletedTask;
+    }
+
+    [Fact]
+    public void Ciba_store_encrypts_pending_json_when_vault_is_enabled()
+    {
+        var cache = CreateCache();
+        var store = new DistributedCibaPendingRequestStore(
+            cache,
+            keyVault: new PassThroughKeyVault());
+
+        var request = store.Create("test-client", "user-1", ["openid"], null,
+            TimeSpan.FromMinutes(5));
+
+        var raw = cache.GetString("ciba:pending:" + request.AuthReqId);
+        Assert.NotNull(raw);
+        Assert.StartsWith("pt1.", raw, StringComparison.Ordinal);
+        Assert.DoesNotContain("test-client", raw, StringComparison.Ordinal);
+        Assert.Equal("test-client", store.Find(request.AuthReqId)!.ClientId);
     }
 
     [Fact]
@@ -139,6 +158,27 @@ public sealed class DistributedStoreTests
         Assert.True(store.IsValid(first, partition));
         Assert.True(store.IsValid(second, partition));
         await Task.CompletedTask;
+    }
+
+    [Fact]
+    public void Distributed_dpop_nonce_encrypts_cache_payload_when_vault_is_enabled()
+    {
+        var cache = CreateCache();
+        var store = new DistributedDpopNonceStore(
+            cache,
+            keyVault: new PassThroughKeyVault());
+        const string partition = "/connect/token|client-a|key-a";
+
+        var nonce = store.Issue(partition);
+        Assert.True(store.IsValid(nonce, partition));
+
+        var cacheKey = "dpop:nonce:v2:" + Convert.ToHexStringLower(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(partition)));
+        var raw = cache.GetString(cacheKey);
+        Assert.NotNull(raw);
+        Assert.StartsWith("pt1.", raw, StringComparison.Ordinal);
+        Assert.DoesNotContain(nonce, raw, StringComparison.Ordinal);
     }
 
     // ---- DPoP replay cache ----

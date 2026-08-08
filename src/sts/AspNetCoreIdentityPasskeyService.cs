@@ -21,6 +21,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
     SignInManager<ApplicationUser> signInManager,
     ISecurityEventTrigger securityEvents,
     ICredentialMutationSecurityCoordinator credentialSecurity,
+    IAccountLookupPolicy accountLookup,
     AccountPasskeyOptions options,
     IAuthenticationContextAccessor authenticationContextAccessor,
     TimeProvider timeProvider,
@@ -356,7 +357,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
         if (!string.IsNullOrWhiteSpace(username))
         {
             user = await userManager.FindByNameAsync(username)
-                ?? await userManager.FindByEmailAsync(username);
+                ?? await accountLookup.FindUniqueByEmailAsync(username, cancellationToken);
         }
 
         cancellationToken.ThrowIfCancellationRequested();

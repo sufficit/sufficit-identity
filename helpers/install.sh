@@ -32,6 +32,9 @@ install -o root -g root -m 0755 \
 install -o root -g root -m 0755 \
     "${ROOTDIR}/helpers/prestart.sh" \
     /usr/libexec/${APPTITLE}/prestart.sh
+install -o root -g root -m 0755 \
+    "${ROOTDIR}/helpers/migrate-database.sh" \
+    /usr/libexec/${APPTITLE}/migrate-database.sh
 
 # Install the non-secret operational hardening overlay once. Deliberately do
 # not overwrite it on upgrades: CSP and MFA progress are environment state,
@@ -97,6 +100,9 @@ systemctl restart rsyslog 2>/dev/null || true
 install -o root -g root -m 0644 \
     "${ROOTDIR}/helpers/${APPTITLE}.service" \
     /etc/systemd/system/${APPTITLE}.service
+install -o root -g root -m 0644 \
+    "${ROOTDIR}/helpers/${APPTITLE}-migrator.service" \
+    /etc/systemd/system/${APPTITLE}-migrator.service
 systemctl daemon-reload
 systemctl enable "${APPTITLE}"
 

@@ -35,6 +35,12 @@ public sealed class VaultKey
     /// </summary>
     public byte[] WrappedKey { get; set; } = Array.Empty<byte>();
 
+    /// <summary>
+    /// Public JWK for signing keys. Null for symmetric keys. It never contains
+    /// private key material and is safe to publish through JWKS later.
+    /// </summary>
+    public string? PublicJwk { get; set; }
+
     /// <summary>When this key version was created (UTC).</summary>
     public DateTime CreatedAtUtc { get; set; }
 

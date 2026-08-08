@@ -22,30 +22,30 @@
 
 @if (Deleted)
 {
-    <section class="inline-notice inline-notice--success" role="status">
+    <div class="inline-notice inline-notice--success" role="status">
         <AppIcon Name="check" Size="19" />
         <div><strong>Conta excluída</strong><span>Credenciais, sessões, tokens e autorizações anteriores foram revogados.</span></div>
-    </section>
+    </div>
 }
 
 @if (accessLoading)
 {
-    <section class="users-dashboard users-dashboard--loading" aria-busy="true">
+    <div class="users-dashboard users-dashboard--loading" aria-busy="true">
         <div class="table-skeleton" aria-label="Carregando dashboard"><span></span><span></span><span></span><span></span></div>
-    </section>
+    </div>
 }
 else if (accessResult?.IsSuccess is false)
 {
-    <section class="panel">
+    <div class="panel">
         <EmptyState Icon="shield" Title="@AccessErrorTitle" Description="@accessResult.ErrorMessage">
             <Actions><button class="button button--secondary" type="button" @onclick="LoadAccessAsync">Tentar novamente</button></Actions>
         </EmptyState>
-    </section>
+    </div>
 }
 else
 {
     <main class="users-dashboard" aria-busy="@usersLoading">
-        <section class="users-overview" aria-labelledby="registration-overview-heading">
+        <div class="users-overview" aria-labelledby="registration-overview-heading">
             <div class="users-overview__heading">
                 <div>
                     <h2 id="registration-overview-heading">Cadastros por dia</h2>
@@ -107,9 +107,9 @@ else
                     <span class="chart-legend__hint">Toque em uma coluna para abrir aquele dia</span>
                 </div>
             }
-        </section>
+        </div>
 
-        <section class="users-investigation @(IsStaleUnverifiedReview ? "users-investigation--active" : null)"
+        <div class="users-investigation @(IsStaleUnverifiedReview ? "users-investigation--active" : null)"
                  aria-labelledby="stale-unverified-heading">
             <div class="users-investigation__summary">
                 <span class="users-investigation__icon" aria-hidden="true"><AppIcon Name="alert" Size="20" /></span>
@@ -134,7 +134,7 @@ else
                     Revisar contas <AppIcon Name="arrow-right" Size="15" />
                 </a>
             }
-        </section>
+        </div>
 
         <details class="users-filter-panel" open>
             <summary>
@@ -161,7 +161,7 @@ else
             </form>
         </details>
 
-        <section class="table-panel users-results" aria-labelledby="users-list-heading">
+        <div class="table-panel users-results" aria-labelledby="users-list-heading">
             <div class="data-toolbar users-results__header">
                 <div><h2 id="users-list-heading">Contas encontradas</h2><p>@ResultContextLabel</p></div>
                 <span class="users-result-total" aria-live="polite">@ResultCountLabel</span>
@@ -194,7 +194,17 @@ else
                             {
                                 <tr>
                                     <td data-label="Usuário"><a class="client-name client-link" href="@UserHref(user.Id)">@DisplayUserName(user)</a></td>
-                                    <td data-label="E-mail"><span class="user-email"><span>@DisplayEmail(user)</span>@if (user.EmailConfirmed){<span class="verified-mark" title="E-mail confirmado" aria-label="E-mail confirmado"><AppIcon Name="check" Size="13" /></span>}</span></td>
+                                    <td data-label="E-mail">
+                                        <span class="user-email">
+                                            <span>@DisplayEmail(user)</span>
+                                            @if (user.EmailConfirmed)
+                                            {
+                                                <span class="verified-mark" title="E-mail confirmado" aria-label="E-mail confirmado">
+                                                    <AppIcon Name="check" Size="13" />
+                                                </span>
+                                            }
+                                        </span>
+                                    </td>
                                     <td data-label="Cadastro"><time datetime="@user.CreatedAtUtc.ToString("O")"><strong>@user.CreatedAtUtc.ToString("dd/MM/yyyy", PtBr)</strong><span>@user.CreatedAtUtc.ToString("HH:mm", PtBr) UTC</span></time></td>
                                     <td data-label="Acesso externo"><StatusBadge Tone="@(user.HasExternalLogin ? "info" : "warning")">@(user.HasExternalLogin ? "Vinculado" : "Ausente")</StatusBadge></td>
                                     <td data-label="MFA"><StatusBadge Tone="@(user.TwoFactorEnabled ? "success" : "neutral")">@(user.TwoFactorEnabled ? "Ativo" : "Inativo")</StatusBadge></td>
@@ -218,7 +228,7 @@ else
                     </nav>
                 }
             </footer>
-        </section>
+        </div>
     </main>
 }
 

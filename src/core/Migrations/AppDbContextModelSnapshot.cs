@@ -1455,6 +1455,10 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasColumnType("int")
                         .HasColumnName("keyversion");
 
+                    b.Property<string>("PublicJwk")
+                        .HasColumnType("longtext")
+                        .HasColumnName("publicjwk");
+
                     b.Property<string>("Purpose")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -1477,6 +1481,49 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasDatabaseName("AK_vaultkeys_keyname_keyversion");
 
                     b.ToTable("vaultkeys", (string)null);
+                });
+
+            modelBuilder.Entity("Sufficit.Identity.Core.Entities.VaultSecret", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AadJson")
+                        .HasColumnType("longtext")
+                        .HasColumnName("aadjson");
+
+                    b.Property<string>("Ciphertext")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("ciphertext");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updatedatutc");
+
+                    b.Property<string>("UpdatedBy")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("updatedby");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("AK_vaultsecrets_name");
+
+                    b.ToTable("vaultsecrets", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

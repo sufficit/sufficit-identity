@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography;
+using System.Text.Json;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -23,7 +24,7 @@ namespace Sufficit.Identity.Vault;
 internal sealed class KeyVault : IKeyVault
 {
     private readonly IDbContextFactory<AppDbContext> _dbFactory;
-    private readonly DataProtectionKeySource _kek;
+    private readonly IVaultKeyEncryptionKeySource _kek;
     private readonly ILogger<KeyVault> _logger;
 
     // Cache: (keyName, version) → unwrapped item key (256-bit).
@@ -31,7 +32,7 @@ internal sealed class KeyVault : IKeyVault
 
     public KeyVault(
         IDbContextFactory<AppDbContext> dbFactory,
-        DataProtectionKeySource kek,
+        IVaultKeyEncryptionKeySource kek,
         ILogger<KeyVault> logger)
     {
         _dbFactory = dbFactory;
@@ -130,6 +131,148 @@ internal sealed class KeyVault : IKeyVault
         return new KeyId(keyName, nextVersion);
     }
 
+    public async Task<string> SignAsync(
+        string keyName,
+        byte[] payload,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
+        ArgumentNullException.ThrowIfNull(payload);
+        var key = await GetOrCreateLatestSigningKeyAsync(keyName, cancellationToken);
+        return await SignAsync(keyName, key.KeyVersion, payload, cancellationToken);
+    }
+
+    public async Task<string> SignAsync(
+        string keyName,
+        int keyVersion,
+        byte[] payload,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(keyVersion);
+        ArgumentNullException.ThrowIfNull(payload);
+        var privateKey = await GetSigningPrivateKeyAsync(keyName, keyVersion, cancellationToken);
+        using (privateKey)
+        {
+            var signature = privateKey.SignData(
+                payload,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1);
+            return VaultSignature.Format(keyName, keyVersion, signature);
+        }
+    }
+
+    public async Task<bool> VerifyAsync(
+        string signature,
+        byte[] payload,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+        try
+        {
+            var parsed = VaultSignature.Parse(signature);
+            return await VerifyAsync(
+                parsed.KeyName,
+                parsed.KeyVersion,
+                payload,
+                parsed.Signature,
+                cancellationToken);
+        }
+        catch (CryptographicException)
+        {
+            return false;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> VerifyAsync(
+        string keyName,
+        int keyVersion,
+        byte[] payload,
+        byte[] signature,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(keyVersion);
+        ArgumentNullException.ThrowIfNull(payload);
+        ArgumentNullException.ThrowIfNull(signature);
+        try
+        {
+            await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+            var row = await db.VaultKeys.AsNoTracking()
+                .SingleOrDefaultAsync(key => key.KeyName == keyName
+                    && key.KeyVersion == keyVersion
+                    && key.Purpose == "signing", cancellationToken);
+            if (row is null || string.IsNullOrWhiteSpace(row.PublicJwk)) return false;
+
+            using var rsa = CreatePublicRsa(row.PublicJwk);
+            return rsa.VerifyData(
+                payload,
+                signature,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1);
+        }
+        catch (CryptographicException)
+        {
+            return false;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    public async Task<IReadOnlyList<VaultSigningKey>> GetSigningKeysAsync(
+        string keyName,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var rows = await db.VaultKeys.AsNoTracking()
+            .Where(key => key.KeyName == keyName
+                && key.Purpose == "signing"
+                && key.RetiredAtUtc == null)
+            .OrderByDescending(key => key.KeyVersion)
+            .ToListAsync(cancellationToken);
+        if (rows.Count == 0)
+        {
+            await CreateSigningKeyRowAsync(db, keyName, 1, cancellationToken);
+            await db.SaveChangesAsync(cancellationToken);
+            rows = await db.VaultKeys.AsNoTracking()
+                .Where(key => key.KeyName == keyName
+                    && key.Purpose == "signing"
+                    && key.RetiredAtUtc == null)
+                .OrderByDescending(key => key.KeyVersion)
+                .ToListAsync(cancellationToken);
+            _logger.LogInformation("Created vault signing key '{KeyName}' v1 for public-key discovery.", keyName);
+        }
+
+        return rows
+            .Where(row => !string.IsNullOrWhiteSpace(row.PublicJwk))
+            .Select(row => new VaultSigningKey(
+                row.KeyName,
+                row.KeyVersion,
+                GetSigningKeyId(row.KeyName, row.KeyVersion),
+                row.PublicJwk!))
+            .ToArray();
+    }
+
+    public Task<KeyId> RotateSigningKeyAsync(
+        string keyName,
+        CancellationToken cancellationToken = default) =>
+        CreateSigningKeyAsync(keyName, cancellationToken);
+
     /// <summary>Clears the in-memory key cache (tests/admin).</summary>
     public void FlushCache() => _keyCache.Clear();
 
@@ -168,6 +311,130 @@ internal sealed class KeyVault : IKeyVault
         _logger.LogInformation("Created vault key '{KeyName}' v1.", keyName);
         return (itemKey, 1);
     }
+
+    private async Task<(RSA Key, int KeyVersion)> GetOrCreateLatestSigningKeyAsync(
+        string keyName,
+        CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(
+            cancellationToken);
+        var latest = await db.VaultKeys.AsNoTracking()
+            .Where(key => key.KeyName == keyName
+                && key.Purpose == "signing"
+                && key.RetiredAtUtc == null)
+            .OrderByDescending(key => key.KeyVersion)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (latest is not null)
+        {
+            var privateBytes = _kek.Unwrap(latest.WrappedKey);
+            var existing = RSA.Create();
+            existing.ImportPkcs8PrivateKey(privateBytes, out _);
+            return (existing, latest.KeyVersion);
+        }
+
+        await CreateSigningKeyRowAsync(db, keyName, 1, cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
+        var created = await db.VaultKeys.AsNoTracking()
+            .SingleAsync(key => key.KeyName == keyName
+                && key.KeyVersion == 1
+                && key.Purpose == "signing", cancellationToken);
+        var privateKey = RSA.Create();
+        privateKey.ImportPkcs8PrivateKey(_kek.Unwrap(created.WrappedKey), out _);
+        _logger.LogInformation("Created vault signing key '{KeyName}' v1.", keyName);
+        return (privateKey, 1);
+    }
+
+    private async Task<RSA> GetSigningPrivateKeyAsync(
+        string keyName,
+        int keyVersion,
+        CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var row = await db.VaultKeys.AsNoTracking()
+            .SingleOrDefaultAsync(key => key.KeyName == keyName
+                && key.KeyVersion == keyVersion
+                && key.Purpose == "signing", cancellationToken)
+            ?? throw new CryptographicException(
+                $"Vault signing key '{keyName}' v{keyVersion} not found.");
+        var privateKey = RSA.Create();
+        privateKey.ImportPkcs8PrivateKey(_kek.Unwrap(row.WrappedKey), out _);
+        return privateKey;
+    }
+
+    private async Task<KeyId> CreateSigningKeyAsync(
+        string keyName,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
+        await using var db = await _dbFactory.CreateDbContextAsync(
+            cancellationToken);
+        var nextVersion = await db.VaultKeys.AsNoTracking()
+            .Where(key => key.KeyName == keyName && key.Purpose == "signing")
+            .Select(key => (int?)key.KeyVersion)
+            .MaxAsync(cancellationToken) ?? 0;
+        nextVersion++;
+        await CreateSigningKeyRowAsync(db, keyName, nextVersion,
+            cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation(
+            "Rotated vault signing key '{KeyName}' to version {Version}.",
+            keyName,
+            nextVersion);
+        return new KeyId(keyName, nextVersion);
+    }
+
+    private async Task CreateSigningKeyRowAsync(
+        AppDbContext db,
+        string keyName,
+        int version,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        using var rsa = RSA.Create(3072);
+        var privateBytes = rsa.ExportPkcs8PrivateKey();
+        var parameters = rsa.ExportParameters(false);
+        var publicJwk = JsonSerializer.Serialize(new
+        {
+            kty = "RSA",
+            n = WebEncoders.Base64UrlEncode(parameters.Modulus!),
+            e = WebEncoders.Base64UrlEncode(parameters.Exponent!),
+            alg = "RS256",
+            use = "sig",
+            kid = GetSigningKeyId(keyName, version),
+        });
+        db.VaultKeys.Add(new VaultKey
+        {
+            KeyName = keyName,
+            KeyVersion = version,
+            Purpose = "signing",
+            WrappedKey = _kek.Wrap(privateBytes),
+            PublicJwk = publicJwk,
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        await Task.CompletedTask;
+    }
+
+    private static RSA CreatePublicRsa(string publicJwk)
+    {
+        using var jwk = JsonDocument.Parse(publicJwk);
+        var root = jwk.RootElement;
+        if (!root.TryGetProperty("n", out var modulus)
+            || !root.TryGetProperty("e", out var exponent))
+        {
+            throw new FormatException("Signing JWK is missing RSA modulus or exponent.");
+        }
+
+        var rsa = RSA.Create();
+        rsa.ImportParameters(new RSAParameters
+        {
+            Modulus = WebEncoders.Base64UrlDecode(modulus.GetString() ?? ""),
+            Exponent = WebEncoders.Base64UrlDecode(exponent.GetString() ?? ""),
+        });
+        return rsa;
+    }
+
+    internal static string GetSigningKeyId(string keyName, int version) =>
+        $"vault:{keyName}:{version}";
 
     private async Task<byte[]> GetKeyAsync(string keyName, int version, CancellationToken cancellationToken)
     {
@@ -209,3 +476,31 @@ internal sealed class KeyVault : IKeyVault
         return (maxVersion ?? 0) + 1;
     }
 }
+
+internal static class VaultSignature
+{
+    private const string Scheme = "sig1";
+
+    public static string Format(string keyName, int version, byte[] signature) =>
+        $"{Scheme}.{keyName}:{version}.{WebEncoders.Base64UrlEncode(signature)}";
+
+    public static ParsedVaultSignature Parse(string value)
+    {
+        var parts = value.Split('.', StringSplitOptions.None);
+        if (parts.Length != 3 || parts[0] != Scheme)
+            throw new FormatException("Unsupported vault signature format.");
+        var key = parts[1].Split(':', 2);
+        if (key.Length != 2 || !int.TryParse(key[1], out var version)
+            || version < 1 || string.IsNullOrWhiteSpace(key[0]))
+            throw new FormatException("Invalid vault signing key identifier.");
+        return new ParsedVaultSignature(
+            key[0],
+            version,
+            WebEncoders.Base64UrlDecode(parts[2]));
+    }
+}
+
+internal sealed record ParsedVaultSignature(
+    string KeyName,
+    int KeyVersion,
+    byte[] Signature);

@@ -1,5 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
+using System.Security.Cryptography;
+using Sufficit.Identity.Vault;
 
 namespace Sufficit.Identity.STS.Ciba;
 
@@ -29,16 +31,20 @@ internal sealed class DistributedCibaPendingRequestStore : ICibaPendingRequestSt
 
     private const string KeyPrefix = "ciba:pending:";
     private const string ConsumedKeyPrefix = "ciba:consumed:";
+    private const string VaultKeyName = "ciba-pending";
 
     private readonly Microsoft.Extensions.Caching.Distributed.IDistributedCache _cache;
     private readonly TimeProvider _timeProvider;
+    private readonly IKeyVault? _keyVault;
 
     public DistributedCibaPendingRequestStore(
         Microsoft.Extensions.Caching.Distributed.IDistributedCache cache,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        IKeyVault? keyVault = null)
     {
         _cache = cache;
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _keyVault = keyVault;
     }
 
     public CibaPendingRequest Create(
@@ -157,9 +163,28 @@ internal sealed class DistributedCibaPendingRequestStore : ICibaPendingRequestSt
         if (string.IsNullOrEmpty(json)) return null;
         try
         {
+            if (_keyVault is not null && LooksLikeVaultValue(json))
+            {
+                json = _keyVault.DecryptStringAsync(json, CreateAad(authReqId))
+                    .GetAwaiter()
+                    .GetResult();
+            }
             return JsonSerializer.Deserialize<CibaPendingRequest>(json, JsonOptions);
         }
-        catch
+        catch (FormatException)
+        {
+            // A malformed vault envelope is not a valid pending request. A
+            // legacy plaintext row never enters this branch because it does
+            // not carry the v1/pt1 marker.
+            return null;
+        }
+        catch (CryptographicException)
+        {
+            // AAD mismatch or tampering is treated as an unavailable request;
+            // callers must not receive an unauthenticated pending state.
+            return null;
+        }
+        catch (JsonException)
         {
             return null;
         }
@@ -168,6 +193,15 @@ internal sealed class DistributedCibaPendingRequestStore : ICibaPendingRequestSt
     private void SetEntry(CibaPendingRequest request, TimeSpan ttl)
     {
         var json = JsonSerializer.Serialize(request, JsonOptions);
+        if (_keyVault is not null)
+        {
+            json = _keyVault.EncryptAsync(
+                    VaultKeyName,
+                    json,
+                    CreateAad(request.AuthReqId))
+                .GetAwaiter()
+                .GetResult();
+        }
         _cache.SetString(Key(request.AuthReqId), json, new DistributedCacheEntryOptions
         {
             AbsoluteExpirationRelativeToNow = ttl,
@@ -179,4 +213,15 @@ internal sealed class DistributedCibaPendingRequestStore : ICibaPendingRequestSt
         var remaining = request.ExpiresAt - _timeProvider.GetUtcNow();
         if (remaining > TimeSpan.Zero) SetEntry(request, remaining);
     }
+
+    private static IReadOnlyDictionary<string, string> CreateAad(string authReqId) =>
+        new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["scope"] = VaultKeyName,
+            ["auth_req_id"] = authReqId,
+        };
+
+    private static bool LooksLikeVaultValue(string value) =>
+        value.StartsWith("v1.", StringComparison.Ordinal)
+        || value.StartsWith("pt1.", StringComparison.Ordinal);
 }

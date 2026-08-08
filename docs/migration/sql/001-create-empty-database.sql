@@ -546,3 +546,29 @@ VALUES ('20260807161036_AddManagementClientDrafts', '10.0.10');
 
 COMMIT;
 
+START TRANSACTION;
+CREATE TABLE `vaultsecrets` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `name` varchar(128) CHARACTER SET utf8mb4 NOT NULL,
+    `ciphertext` longtext CHARACTER SET utf8mb4 NOT NULL,
+    `aadjson` longtext CHARACTER SET utf8mb4 NULL,
+    `updatedatutc` datetime(6) NOT NULL,
+    `updatedby` varchar(128) CHARACTER SET utf8mb4 NOT NULL,
+    CONSTRAINT `PK_vaultsecrets` PRIMARY KEY (`id`)
+) CHARACTER SET=utf8mb4;
+
+CREATE UNIQUE INDEX `AK_vaultsecrets_name` ON `vaultsecrets` (`name`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260808173938_AddVaultSecrets', '10.0.10');
+
+COMMIT;
+
+START TRANSACTION;
+ALTER TABLE `vaultkeys` ADD `publicjwk` longtext CHARACTER SET utf8mb4 NULL;
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260808174200_AddVaultSigningKeyJwk', '10.0.10');
+
+COMMIT;
+

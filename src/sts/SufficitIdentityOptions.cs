@@ -72,11 +72,21 @@ public sealed class SufficitIdentityOptions
     /// </summary>
     public RateLimitOptions RateLimit { get; init; } = new();
 
+    public UserSessionStoreOptions UserSessions { get; init; } = new();
+
     /// <summary>
     /// Distributed-cache policy for multi-replica deployments. See
     /// <see cref="DistributedCacheOptions"/>.
     /// </summary>
     public DistributedCacheOptions DistributedCache { get; init; } = new();
+
+    /// <summary>
+    /// Deployment shape used to derive the minimum proxy, cache and issuer
+    /// contract.  The default preserves the single-process compatibility
+    /// posture; clustered deployments must opt in explicitly.
+    /// </summary>
+    public DeploymentTopology DeploymentTopology { get; init; } =
+        DeploymentTopology.SingleReplica;
 
     /// <summary>
     /// Token lifetimes. See <see cref="TokenLifetimeOptions"/>.
@@ -256,6 +266,15 @@ public sealed class SufficitIdentityOptions
 public sealed class DatabaseOptions
 {
     /// <summary>
+    /// Transport contract for the database connection. Compatibility keeps
+    /// existing rolling deployments unchanged; production can select
+    /// <c>RequireVerifiedTls</c> or the explicit <c>PrivateSocket</c>
+    /// exception after its CA/socket is provisioned.
+    /// </summary>
+    public DatabaseTransportMode TransportMode { get; init; } =
+        DatabaseTransportMode.Compatibility;
+
+    /// <summary>
     /// When <c>true</c> outside Development, the host applies pending EF Core
     /// migrations on startup via <c>Database.MigrateAsync()</c>. Default
     /// <c>false</c>: production keeps provisioning schema from the checked-in
@@ -287,6 +306,13 @@ public sealed class DatabaseOptions
     /// <see cref="DatabaseWatchdogOptions"/>.
     /// </summary>
     public DatabaseWatchdogOptions Watchdog { get; init; } = new();
+}
+
+public enum DatabaseTransportMode
+{
+    Compatibility,
+    RequireVerifiedTls,
+    PrivateSocket,
 }
 
 /// <summary>
@@ -407,6 +433,15 @@ public sealed class RateLimitOptions
     public int WindowSeconds { get; init; } = 60;
 
     /// <summary>
+    /// Anonymous lookups allowed per client/IP for
+    /// <c>GET /connect/device/info</c>. This bucket is independent from
+    /// credential POSTs so enumeration cannot consume the login/token bucket.
+    /// </summary>
+    public int DeviceInformationPermitLimit { get; init; } = 12;
+
+    public int DeviceInformationWindowSeconds { get; init; } = 60;
+
+    /// <summary>
     /// When <c>true</c> AND <c>TrustedProxies</c> is empty outside Development,
     /// the STS fails to start (instead of only logging a warning). Without
     /// trusted proxies, every request's <c>RemoteIpAddress</c> is the proxy's
@@ -417,6 +452,19 @@ public sealed class RateLimitOptions
     /// the rate limiter into a self-DoS (item 5.1 [L4]).
     /// </summary>
     public bool FailOnUntrustedProxy { get; init; } = false;
+}
+
+public sealed class UserSessionStoreOptions
+{
+    /// <summary>
+    /// Shared-cache lifetime for protected server-side cookie tickets. Short
+    /// enough to bound stale outage behavior; explicit revocation invalidates
+    /// the entry immediately.
+    /// </summary>
+    public int CacheLifetimeSeconds { get; init; } = 60;
+
+    /// <summary>Minimum interval between durable activity updates.</summary>
+    public int ActivityUpdateIntervalSeconds { get; init; } = 300;
 }
 
 /// <summary>
@@ -443,6 +491,82 @@ public sealed class DistributedCacheOptions
     /// and CIBA cross-replica flows.
     /// </summary>
     public bool RequireShared { get; init; } = false;
+}
+
+/// <summary>
+/// Supported hosting shapes for security-sensitive state and forwarded
+/// headers.  This is deliberately an enum so configuration cannot silently
+/// invent a fourth topology with incompatible assumptions.
+/// </summary>
+public enum DeploymentTopology
+{
+    SingleReplica,
+    Clustered,
+    BehindTrustedProxy,
+    ClusteredBehindTrustedProxy,
+}
+
+/// <summary>
+/// Startup contract for the selected deployment topology.
+/// </summary>
+public static class DeploymentTopologyPolicy
+{
+    public static void Validate(
+        SufficitIdentityOptions options,
+        int trustedProxyCount,
+        bool isDevelopment)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        var clustered = options.DeploymentTopology is
+            DeploymentTopology.Clustered or
+            DeploymentTopology.ClusteredBehindTrustedProxy;
+        var behindProxy = options.DeploymentTopology is
+            DeploymentTopology.BehindTrustedProxy or
+            DeploymentTopology.ClusteredBehindTrustedProxy;
+
+        if (clustered && !options.DistributedCache.RequireShared)
+        {
+            throw new InvalidOperationException(
+                $"Sufficit:Identity:DeploymentTopology={options.DeploymentTopology} " +
+                "requires Sufficit:Identity:DistributedCache:RequireShared=true " +
+                "because DPoP, CIBA, logout and passkey state must be shared.");
+        }
+
+        if (behindProxy)
+        {
+            if (!isDevelopment && trustedProxyCount == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Sufficit:Identity:DeploymentTopology={options.DeploymentTopology} " +
+                    "requires at least one configured Sufficit:Identity:TrustedProxies entry.");
+            }
+
+            if (!options.RateLimit.FailOnUntrustedProxy)
+            {
+                throw new InvalidOperationException(
+                    $"Sufficit:Identity:DeploymentTopology={options.DeploymentTopology} " +
+                    "requires RateLimit:FailOnUntrustedProxy=true so a missing proxy " +
+                    "trust boundary cannot degrade into a shared rate-limit bucket.");
+            }
+
+            if (!Uri.TryCreate(options.Issuer, UriKind.Absolute, out var issuer) ||
+                issuer.Scheme != Uri.UriSchemeHttps)
+            {
+                throw new InvalidOperationException(
+                    $"Sufficit:Identity:DeploymentTopology={options.DeploymentTopology} " +
+                    "requires an explicit HTTPS Sufficit:Identity:Issuer.");
+            }
+        }
+
+        if (clustered && !Uri.TryCreate(options.Issuer, UriKind.Absolute, out _))
+        {
+            throw new InvalidOperationException(
+                $"Sufficit:Identity:DeploymentTopology={options.DeploymentTopology} " +
+                "requires an explicit absolute Sufficit:Identity:Issuer for stable " +
+                "cross-replica discovery and token validation.");
+        }
+    }
 }
 
 /// <summary>
@@ -615,7 +739,7 @@ public sealed class CspOptions
         "default-src 'self'; " +
         "script-src 'self'; " +
         "style-src 'self' 'unsafe-inline'; " +
-        "img-src 'self' data: https://api.example.com; " +
+        "img-src 'self' data:; " +
         // 'self' covers the same-origin SignalR WebSocket upgrade — no need
         // for broad wss:/ws: wildcards that would allow XSS exfil to any host.
         "connect-src 'self'; " +
@@ -1026,8 +1150,8 @@ public sealed class JarmOptions
 
 /// <summary>
 /// JWE encryption settings for JARM responses. The STS encrypts the signed
-/// JWT response to the configured X.509 certificate's public key (RSA). The
-/// receiver decrypts with the matching private key. This is the
+/// JWT response to an RSA public key registered in each client's JWKS. The
+/// receiver decrypts with its matching private key. This is the
 /// signed-and-encrypted response mode required by the FAPI 2.0 Advancing
 /// Profile for sensitive responses.
 /// </summary>
@@ -1040,14 +1164,12 @@ public sealed class JarmEncryptionOptions
     public bool Enabled { get; init; } = false;
 
     /// <summary>
-    /// Filesystem path to a PFX whose RSA public key encrypts JARM responses.
-    /// Required when <see cref="Enabled"/> is true.
+    /// Deprecated and ignored. Recipient keys must come from client metadata.
     /// </summary>
     public string? Path { get; init; }
 
     /// <summary>
-    /// Password protecting the encryption PFX. Required when the PFX is
-    /// password-protected.
+    /// Deprecated and ignored with <see cref="Path"/>.
     /// </summary>
     public string? Password { get; init; }
 
@@ -1102,6 +1224,9 @@ public sealed class JarOptions
     /// 120 (2 minutes). RFC 9101 recommends a short lifetime.
     /// </summary>
     public int MaxLifetimeSeconds { get; init; } = 120;
+
+    /// <summary>Required RFC 9101 request-object media type.</summary>
+    public string RequiredTokenType { get; init; } = "oauth-authz-req+jwt";
 }
 
 /// <summary>
@@ -1386,6 +1511,12 @@ public sealed class ParOptions
 public sealed class CertificatesOptions
 {
     /// <summary>
+    /// When enabled, active signing and encryption credentials must be
+    /// different certificates. Disabled initially as a rollout gate.
+    /// </summary>
+    public bool RequirePurposeSeparation { get; init; } = false;
+
+    /// <summary>
     /// Warn (or fail) when a configured certificate has less remaining
     /// lifetime than this rollout window.
     /// </summary>
@@ -1404,6 +1535,12 @@ public sealed class CertificatesOptions
     public string? SigningPath { get; init; }
 
     /// <summary>
+    /// Ordered active/retiring signing certificates. The first unique entry is
+    /// active; subsequent certificates remain published during overlap.
+    /// </summary>
+    public string[] SigningPaths { get; init; } = [];
+
+    /// <summary>
     /// Password protecting the signing PFX file referenced by <see cref="SigningPath"/>.
     /// </summary>
     public string? SigningPassword { get; init; }
@@ -1413,6 +1550,12 @@ public sealed class CertificatesOptions
     /// Required in production.
     /// </summary>
     public string? EncryptionPath { get; init; }
+
+    /// <summary>
+    /// Ordered active/retiring encryption certificates. The first unique entry
+    /// is active; subsequent certificates remain available during overlap.
+    /// </summary>
+    public string[] EncryptionPaths { get; init; } = [];
 
     /// <summary>
     /// Password protecting the encryption PFX file referenced by <see cref="EncryptionPath"/>.

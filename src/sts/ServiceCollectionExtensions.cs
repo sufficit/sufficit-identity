@@ -68,6 +68,14 @@ public static class ServiceCollectionExtensions
         var options = configuration
             .GetSection(configurationSection)
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
+        var vaultOptions = configuration
+            .GetSection(VaultOptions.SectionName)
+            .Get<VaultOptions>() ?? new VaultOptions();
+        if (vaultOptions.ManageSigningKeys && !vaultOptions.Enabled)
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Vault:ManageSigningKeys requires Sufficit:Vault:Enabled=true.");
+        }
         ValidateAdvancedProtocolOptions(options);
         options.HumanVerification.Validate();
         services.AddSingleton(options);
@@ -83,8 +91,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(options.SharedSignals);
         services.AddSingleton(options.OutboundHttp);
         services.AddSingleton<IPublicOriginResolver, PublicOriginResolver>();
+        services.AddScoped<IAccountLookupPolicy, AccountLookupPolicy>();
+        services.AddSingleton<ISecurityDecisionTelemetry,
+            SecurityDecisionTelemetry>();
         services.AddSingleton<IReservedScopePolicy>(
-            new ReservedScopePolicy(["identity.management", "scim"]));
+            new ReservedScopePolicy(
+                new[] { "identity.management", "scim" }
+                    .Concat(RetiredIdentityScopes.Names)));
         services.AddSingleton<IClientScopeGrantPolicy,
             ClientScopeGrantPolicy>();
         services.AddSingleton<IClientDefinitionValidator,
@@ -92,7 +105,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IApplicationClaimDestinationPolicy>(provider =>
             new ApplicationClaimDestinationPolicy(
                 options.ClaimScopeMap,
-                provider.GetRequiredService<ILogger<ApplicationClaimDestinationPolicy>>()));
+                provider.GetRequiredService<ILogger<ApplicationClaimDestinationPolicy>>(),
+                provider.GetRequiredService<ISecurityDecisionTelemetry>()));
         services.AddSingleton<ITokenIssuancePolicyKernel, TokenIssuancePolicyKernel>();
         services.AddSingleton<IPersonalTokenIssuancePolicy, PersonalTokenIssuancePolicy>();
         services.AddSingleton<ISubjectTokenProvenancePolicy, SubjectTokenProvenancePolicy>();
@@ -167,7 +181,7 @@ public static class ServiceCollectionExtensions
             options.Certificates,
             isDevelopmentEnvironment);
         var auxiliarySigningCredentials = ResolveProtocolSigningCredentials(
-            certificateMaterial.Signing,
+            certificateMaterial.PrimarySigning,
             isDevelopmentEnvironment);
 
         // ---- Database (MySQL/MariaDB via Pomelo.EntityFrameworkCore.MySql) ----
@@ -179,6 +193,10 @@ public static class ServiceCollectionExtensions
         var configuredConnectionString = configuration.GetConnectionString(options.ConnectionStringName)
             ?? throw new InvalidOperationException(
                 $"Connection string '{options.ConnectionStringName}' not configured.");
+        DatabaseTransportPolicy.Validate(
+            configuredConnectionString,
+            options.Database.TransportMode,
+            isDevelopmentEnvironment);
         // Integration hosts use the documented "unused" sentinel and replace
         // the provider with one shared in-memory SQLite connection. Running a
         // background writer against that single connection races EF's SQLite
@@ -262,11 +280,12 @@ public static class ServiceCollectionExtensions
             .SetApplicationName("Sufficit.Identity")
             .PersistKeysToDbContext<AppDbContext>();
 
-        if (certificateMaterial.Signing is not null)
+        if (certificateMaterial.PrimarySigning is not null)
         {
             // If ProtectKeysWithCertificate throws (wrong key type, etc.), let
             // it propagate — fail-closed is the correct posture for production.
-            dpBuilder.ProtectKeysWithCertificate(certificateMaterial.Signing);
+            dpBuilder.ProtectKeysWithCertificate(
+                certificateMaterial.PrimarySigning);
         }
 
         // ---- Internal secret vault (envelope encryption, Transit-style) ----
@@ -276,6 +295,11 @@ public static class ServiceCollectionExtensions
         // deps). Consumers (SsfStreamStore, future) inject IKeyVault and get
         // the right impl transparently.
         services.AddSufficitVault(configuration);
+        if (vaultOptions.ManageSigningKeys)
+        {
+            services.AddScoped<Vault.VaultSigningCredentialsHandler>();
+            services.AddScoped<Vault.VaultJsonWebKeySetHandler>();
+        }
 
         // ---- ASP.NET Core Identity ----
         services.AddIdentity<ApplicationUser, ApplicationRole>(identity =>
@@ -523,30 +547,17 @@ public static class ServiceCollectionExtensions
                     "sufficit_ai_openai_bridge",
                     .. applicationScopes]);
 
-                // MCP / agent-AI resource servers (RFC 8707, item 4.2). MCP
-                // resource URIs are inherently dynamic (each deployment has its
-                // own), so the STS trusts the per-client oi_rprm permission
-                // (Permissions.Prefixes.Resource + uri, checked by OpenIddict's
-                // ValidateResourcePermissions) rather than a static allowlist.
-                // DisableResourceValidation turns OFF the static "is this a
-                // known audience" check (ID2190 invalid_target) while keeping
-                // the per-client permission check — the right tradeoff for an
-                // AS serving many dynamic MCP/RS endpoints. RegisterAudiences/
-                // RegisterResources would require listing every resource up
-                // front, which does not fit the MCP model.
-                // Serving RFC 9728 metadata must not disable OpenIddict's
-                // static audience validation for unrelated OAuth clients.
-                // Only an explicitly configured dynamic resource set opts into
-                // dynamic resource validation.
+                // MCP / agent-AI resource servers (RFC 8707, item 4.2). Every
+                // resource accepted by this host must be explicitly configured
+                // and registered as an audience. OpenIddict's normal resource
+                // validation remains enabled, so the per-client oi_rprm
+                // permission and the host allow-list both have to authorize a
+                // requested resource. This prevents an unrelated client from
+                // turning an arbitrary URI into an access-token audience.
                 if (options.Mcp.Resources.Count > 0)
                 {
-                    server.DisableResourceValidation();
-                    // Still advertise the explicitly-configured resources for
-                    // discoverability (clients can read them from discovery).
-                    if (options.Mcp.Resources.Count > 0)
-                    {
-                        server.RegisterAudiences(options.Mcp.Resources.ToArray());
-                    }
+                    server.RegisterAudiences(options.Mcp.Resources.ToArray());
+                    server.RegisterResources(options.Mcp.Resources.ToArray());
                 }
 
                 // -------------------------------------------------------------------
@@ -730,9 +741,35 @@ public static class ServiceCollectionExtensions
                 // (isDevelopmentEnvironment computed once, near the top of
                 // AddSufficitIdentitySTS, and reused here via closure.)
                 // -------------------------------------------------------------------
-                if (certificateMaterial.Signing is not null)
+                if (vaultOptions.ManageSigningKeys)
                 {
-                    server.AddSigningCertificate(certificateMaterial.Signing);
+                    // OpenIddict token signing is replaced by the vault
+                    // handler registered below. Certificates remain available
+                    // to auxiliary protocol JWT generators.
+                    // OpenIddict requires one asymmetric credential during
+                    // options validation; this bootstrap key is never selected
+                    // by GenerateTokenContext and is removed from JWKS by the
+                    // vault discovery handler.
+                    server.AddEphemeralSigningKey();
+                    // Auxiliary JWTs (logout/JARM/SSF/CIBA) still use the
+                    // protocol credential resolved above. Publish their
+                    // public halves alongside the vault keys without making
+                    // them the OpenIddict token-signing choice.
+                    foreach (var certificate in certificateMaterial.Signing)
+                    {
+                        server.AddSigningKey(new Microsoft.IdentityModel.Tokens.X509SecurityKey(certificate));
+                    }
+                    if (isDevelopmentEnvironment)
+                    {
+                        server.AddSigningKey(auxiliarySigningCredentials.Key);
+                    }
+                }
+                else if (certificateMaterial.Signing.Count > 0)
+                {
+                    foreach (var certificate in certificateMaterial.Signing)
+                    {
+                        server.AddSigningCertificate(certificate);
+                    }
                 }
                 else if (isDevelopmentEnvironment)
                 {
@@ -753,9 +790,18 @@ public static class ServiceCollectionExtensions
                         "allowed when ASPNETCORE_ENVIRONMENT=Development.");
                 }
 
-                if (certificateMaterial.Encryption is not null)
+                if (vaultOptions.ManageSigningKeys)
                 {
-                    server.AddEncryptionCertificate(certificateMaterial.Encryption);
+                    server.AddEventHandler(Vault.VaultSigningCredentialsHandler.Descriptor);
+                    server.AddEventHandler(Vault.VaultJsonWebKeySetHandler.Descriptor);
+                }
+
+                if (certificateMaterial.Encryption.Count > 0)
+                {
+                    foreach (var certificate in certificateMaterial.Encryption)
+                    {
+                        server.AddEncryptionCertificate(certificate);
+                    }
                 }
                 else if (isDevelopmentEnvironment)
                 {
@@ -1006,13 +1052,18 @@ public static class ServiceCollectionExtensions
                 sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>()),
             sp.GetService<Dpop.IDpopReplayCache>()));
 
-        // Stateless, partition-bound DPoP nonce (RFC 9449 §8). Data Protection
-        // authenticates it with the same shared key ring used by the cluster;
-        // no client can rotate another client's global state.
+        // Distributed, partition-bound DPoP nonce (RFC 9449 §8). The cache
+        // payload is encrypted through IKeyVault when enabled, so a shared
+        // Redis/SQL cache does not expose nonce material at rest.
         services.AddSingleton<Dpop.IDpopNonceStore>(sp =>
-            new Dpop.ProtectedDpopNonceStore(
-                sp.GetRequiredService<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>(),
-                timeProvider: TimeProvider.System));
+            sp.GetRequiredService<Dpop.DistributedDpopNonceStore>());
+
+        // Concrete registration is separate so tests and deployment-specific
+        // composition roots can resolve the implementation directly.
+        services.AddSingleton(sp => new Dpop.DistributedDpopNonceStore(
+            sp.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(),
+            timeProvider: TimeProvider.System,
+            keyVault: sp.GetRequiredService<Sufficit.Identity.Vault.IKeyVault>()));
 
         if (options.Jarm.Enabled)
         {
@@ -1020,25 +1071,12 @@ public static class ServiceCollectionExtensions
                 ? "https://localhost/"
                 : options.Issuer;
 
-            // Optional JWE encryption (signed-then-encrypted responses) for the
-            // FAPI 2.0 Advancing Profile. Loaded from the JARM-specific cert
-            // when Encryption.Enabled; otherwise null (signed-only).
-            Microsoft.IdentityModel.Tokens.EncryptingCredentials? jarmEncryption = null;
-            if (options.Jarm.Encryption is { Enabled: true, Path: { Length: > 0 } encryptionPath })
-            {
-                var encryptionCertificate = X509CertificateLoader.LoadPkcs12FromFile(
-                    encryptionPath, options.Jarm.Encryption.Password);
-                jarmEncryption = new Microsoft.IdentityModel.Tokens.EncryptingCredentials(
-                    new Microsoft.IdentityModel.Tokens.X509SecurityKey(encryptionCertificate),
-                    options.Jarm.Encryption.KeyManagementAlgorithm,
-                    options.Jarm.Encryption.ContentEncryptionAlgorithm);
-            }
-
             services.AddSingleton(new Jarm.JarmResponseGenerator(
                 auxiliarySigningCredentials,
                 issuer,
-                TimeSpan.FromSeconds(options.Jarm.LifetimeSeconds),
-                jarmEncryption));
+                TimeSpan.FromSeconds(options.Jarm.LifetimeSeconds)));
+            services.AddScoped<Jarm.IJarmClientEncryptionCredentialsResolver,
+                Jarm.JarmClientEncryptionCredentialsResolver>();
         }
 
         if (options.SharedSignals.Enabled)
@@ -1104,7 +1142,8 @@ public static class ServiceCollectionExtensions
         // available so the dependency resolves regardless.
         services.AddSingleton(sp => new Ciba.DistributedCibaPendingRequestStore(
             sp.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(),
-            TimeProvider.System));
+            TimeProvider.System,
+            sp.GetRequiredService<Sufficit.Identity.Vault.IKeyVault>()));
         services.AddSingleton(sp => new Ciba.DatabaseCibaPendingRequestStore(
             sp.GetRequiredService<IDbContextFactory<AppDbContext>>(),
             TimeProvider.System));
@@ -1112,21 +1151,18 @@ public static class ServiceCollectionExtensions
             Ciba.RollingCibaPendingRequestStore>();
         services.AddScoped<Ciba.ICibaClientPolicy, Ciba.CibaClientPolicy>();
 
-        // CIBA access-token generator (item 3.5 / Limitation 2). Registered only
-        // when CIBA is enabled — it needs the STS signing key (same family as
-        // logout_token / OpenIddict access tokens) so resource servers validate
-        // the hand-built CIBA JWT against the STS JWKS. The access-token
-        // lifetime reuses the configured Tokens.AccessTokenLifetimeMinutes
-        // (null → OpenIddict default 60).
-        if (options.Ciba.Enabled)
-        {
-            var issuer = string.IsNullOrWhiteSpace(options.Issuer)
-                ? "https://localhost/"
-                : options.Issuer;
-            var accessTokenMinutes = options.Tokens.AccessTokenLifetimeMinutes ?? 60;
-            services.AddSingleton(new Ciba.CibaAccessTokenGenerator(
-                auxiliarySigningCredentials, issuer, accessTokenMinutes));
-        }
+        // Always resolvable so the disabled controller can return a deliberate
+        // 404 instead of failing activation with a DI 500. The feature gate
+        // prevents any generator method from running while CIBA is disabled.
+        var cibaIssuer = string.IsNullOrWhiteSpace(options.Issuer)
+            ? "https://localhost/"
+            : options.Issuer;
+        var cibaAccessTokenMinutes =
+            options.Tokens.AccessTokenLifetimeMinutes ?? 60;
+        services.AddSingleton(new Ciba.CibaAccessTokenGenerator(
+            auxiliarySigningCredentials,
+            cibaIssuer,
+            cibaAccessTokenMinutes));
 
         return services;
     }
@@ -1264,27 +1300,72 @@ public static class ServiceCollectionExtensions
         CertificatesOptions options,
         bool isDevelopmentEnvironment)
     {
-        var signing = string.IsNullOrWhiteSpace(options.SigningPath)
-            ? null
-            : X509CertificateLoader.LoadPkcs12FromFile(
-                options.SigningPath,
-                options.SigningPassword);
-        var encryption = string.IsNullOrWhiteSpace(options.EncryptionPath)
-            ? null
-            : X509CertificateLoader.LoadPkcs12FromFile(
-                options.EncryptionPath,
-                options.EncryptionPassword);
+        var signing = LoadCertificateSet(
+            options.SigningPath,
+            options.SigningPaths,
+            options.SigningPassword,
+            "signing",
+            options);
+        var encryption = LoadCertificateSet(
+            options.EncryptionPath,
+            options.EncryptionPaths,
+            options.EncryptionPassword,
+            "encryption",
+            options);
 
-        ValidateCertificate(signing, "signing", options);
-        ValidateCertificate(encryption, "encryption", options);
-
-        if (!isDevelopmentEnvironment && (signing is null || encryption is null))
+        if (!isDevelopmentEnvironment
+            && (signing.Count == 0 || encryption.Count == 0))
         {
             throw new InvalidOperationException(
                 "Production deployments require persistent signing and encryption certificates.");
         }
 
+        if (options.RequirePurposeSeparation
+            && signing.Count > 0
+            && encryption.Count > 0
+            && string.Equals(
+                signing[0].Thumbprint,
+                encryption[0].Thumbprint,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "Certificate purpose separation requires different active signing and encryption certificates.");
+        }
+
         return new CertificateMaterial(signing, encryption);
+    }
+
+    private static IReadOnlyList<X509Certificate2> LoadCertificateSet(
+        string? primaryPath,
+        IEnumerable<string>? overlapPaths,
+        string? password,
+        string purpose,
+        CertificatesOptions options)
+    {
+        var paths = new[] { primaryPath }
+            .Concat(overlapPaths ?? [])
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Select(path => path!.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var certificates = new List<X509Certificate2>(paths.Length);
+        var thumbprints = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in paths)
+        {
+            var certificate = X509CertificateLoader.LoadPkcs12FromFile(
+                path,
+                password);
+            ValidateCertificate(certificate, purpose, options);
+            if (!thumbprints.Add(certificate.Thumbprint))
+            {
+                certificate.Dispose();
+                continue;
+            }
+
+            certificates.Add(certificate);
+        }
+
+        return certificates;
     }
 
     private static void ValidateCertificate(
@@ -1327,8 +1408,11 @@ public static class ServiceCollectionExtensions
     }
 
     private sealed record CertificateMaterial(
-        X509Certificate2? Signing,
-        X509Certificate2? Encryption);
+        IReadOnlyList<X509Certificate2> Signing,
+        IReadOnlyList<X509Certificate2> Encryption)
+    {
+        public X509Certificate2? PrimarySigning => Signing.FirstOrDefault();
+    }
 
     /// <summary>
     /// Registers external login providers (Google, GitHub, etc) from the

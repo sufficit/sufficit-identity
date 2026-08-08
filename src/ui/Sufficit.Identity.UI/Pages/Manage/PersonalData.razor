@@ -11,7 +11,10 @@
     <h1>@L["PersonalData.Title"]</h1>
     <p class="info">@L["PersonalData.Description"]</p>
 
-    @if (_error is not null) { <div class="alert alert-error">@_error</div> }
+    @if (_error is not null)
+    {
+        <div class="alert alert-error">@_error</div>
+    }
 
     <div class="btn-group">
         <EditForm Method="post" Model="_empty" OnValidSubmit="DownloadAsync" FormName="download-data">

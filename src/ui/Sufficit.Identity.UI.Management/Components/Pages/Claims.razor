@@ -25,48 +25,50 @@
 
 @if (!HasUserContext)
 {
-    <EmptyState Icon="users"
-                Title="Selecione um usuário"
-                Description="Abra uma conta no diretório de identidades para consultar e administrar suas claims.">
-        <Actions>
-            <a class="button button--primary" href="users">Abrir diretório de usuários</a>
-        </Actions>
-    </EmptyState>
+    <div>
+        <EmptyState Icon="users"
+                    Title="Selecione um usuário"
+                    Description="Abra uma conta no diretório de identidades para consultar e administrar suas claims.">
+            <Actions>
+                <a class="button button--primary" href="users">Abrir diretório de usuários</a>
+            </Actions>
+        </EmptyState>
+    </div>
 }
 else
 {
     @if (Created is 1)
     {
-        <section class="inline-notice inline-notice--success" role="status">
+        <div class="inline-notice inline-notice--success" role="status">
             <AppIcon Name="check" Size="19" />
             <div>
                 <strong>Claim atribuída</strong>
                 <span>O selo de segurança foi atualizado e os tokens anteriores foram revogados.</span>
             </div>
-        </section>
+        </div>
     }
 
     @if (Deleted is 1)
     {
-        <section class="inline-notice inline-notice--success" role="status">
+        <div class="inline-notice inline-notice--success" role="status">
             <AppIcon Name="check" Size="19" />
             <div>
                 <strong>Claim removida</strong>
                 <span>A atribuição foi excluída e as credenciais emitidas anteriormente foram revogadas.</span>
             </div>
-        </section>
+        </div>
     }
 
-    <section class="contract-strip contract-strip--info">
+    <div class="contract-strip contract-strip--info">
         <AppIcon Name="users" Size="20" />
         <div>
             <strong>@AccountLabel</strong>
             <span>@AccountDescription</span>
         </div>
         <StatusBadge Tone="info">Conta selecionada</StatusBadge>
-    </section>
+    </div>
 
-    <section class="table-panel" aria-labelledby="claims-list-heading" aria-busy="@loading">
+    <div class="table-panel" aria-labelledby="claims-list-heading" aria-busy="@loading">
         <div class="data-toolbar data-toolbar--users">
             <div>
                 <h2 id="claims-list-heading">Claims da conta</h2>
@@ -190,9 +192,9 @@ else
                 </div>
             }
         </footer>
-    </section>
+    </div>
 
-    <section class="client-guardrails" aria-labelledby="claim-boundary-heading">
+    <div class="client-guardrails" aria-labelledby="claim-boundary-heading">
         <div>
             <h2 id="claim-boundary-heading">Atributos do protocolo, não regras empresariais</h2>
             <p>O provedor armazena os valores; cada aplicação decide como interpretá-los.</p>
@@ -202,7 +204,7 @@ else
             <li><AppIcon Name="refresh" Size="18" /> Cada mutação revoga tokens da conta</li>
             <li><AppIcon Name="audit" Size="18" /> Valores não entram na auditoria</li>
         </ul>
-    </section>
+    </div>
 }
 
 @code {

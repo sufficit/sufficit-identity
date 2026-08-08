@@ -3,7 +3,13 @@
 > **Status:** ACTIVE. This plan contains only work that remained partial or
 > unimplemented when the 2026-08-07 GPT-5 evaluation was reconciled against
 > `79e0f82`. Delivered work is recorded in
-> `docs/activities/202608071227-completed-gpt-5-remediation.md`.
+> `docs/activities/202608071227-completed-gpt-5-remediation.md` and the later
+> `docs/activities/202608071330-completed-security-hardening-wave-2.md`.
+
+The compound checklists below remain as release acceptance criteria. The
+second activity records the code-level controls now present; unchecked
+operational inventory, enforcement, conformance, multi-replica and lifecycle
+requirements remain mandatory and prevent this plan from being closed.
 
 ## Delivery constraint
 

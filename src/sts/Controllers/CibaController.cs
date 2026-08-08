@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -49,6 +50,7 @@ public class CibaController : Controller
     private readonly IAntiforgery _antiforgery;
     private readonly CibaOptions _options;
     private readonly Ciba.ICibaClientPolicy _clientPolicy;
+    private readonly IAccountLookupPolicy _accountLookup;
 
     public CibaController(
         IOpenIddictApplicationManager applicationManager,
@@ -60,7 +62,8 @@ public class CibaController : Controller
         UserManager<ApplicationUser> userManager,
         IConfiguration configuration,
         IAntiforgery antiforgery,
-        Ciba.ICibaClientPolicy clientPolicy)
+        Ciba.ICibaClientPolicy clientPolicy,
+        IAccountLookupPolicy accountLookup)
     {
         _applicationManager = applicationManager;
         _scopeManager = scopeManager;
@@ -71,9 +74,21 @@ public class CibaController : Controller
         _userManager = userManager;
         _antiforgery = antiforgery;
         _clientPolicy = clientPolicy;
+        _accountLookup = accountLookup;
         var root = configuration.GetSection("Sufficit:Identity")
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
         _options = root.Ciba;
+    }
+
+    public override void OnActionExecuting(ActionExecutingContext context)
+    {
+        if (!_options.Enabled)
+        {
+            context.Result = NotFound();
+            return;
+        }
+
+        base.OnActionExecuting(context);
     }
 
     // -----------------------------------------------------------------------
@@ -130,7 +145,9 @@ public class CibaController : Controller
         if (!string.IsNullOrWhiteSpace(loginHint))
         {
             user = await _userManager.FindByNameAsync(loginHint)
-                ?? await _userManager.FindByEmailAsync(loginHint);
+                ?? await _accountLookup.FindUniqueByEmailAsync(
+                    loginHint,
+                    HttpContext.RequestAborted);
         }
 
         IReadOnlyCollection<string> scopes = scope.Split(' ', StringSplitOptions.RemoveEmptyEntries);

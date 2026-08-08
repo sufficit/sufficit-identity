@@ -18,35 +18,35 @@
 
 @if (!string.IsNullOrWhiteSpace(DeletedClientId))
 {
-    <section class="inline-notice inline-notice--success" role="status">
+    <div class="inline-notice inline-notice--success" role="status">
         <AppIcon Name="check" Size="19" />
         <div>
             <strong>Cliente excluído</strong>
             <span>O registro <code>@DeletedClientId</code> foi removido e a operação foi auditada.</span>
         </div>
-    </section>
+    </div>
 }
 
 @if (DraftDeletedFlag is 1)
 {
-    <section class="inline-notice inline-notice--success" role="status">
+    <div class="inline-notice inline-notice--success" role="status">
         <AppIcon Name="check" Size="19" />
         <div><strong>Rascunho descartado</strong><span>A configuração incompleta foi removida com segurança.</span></div>
-    </section>
+    </div>
 }
 
-<section class="contract-strip contract-strip--info" id="clients-integration-note">
+<div class="contract-strip contract-strip--info" id="clients-integration-note">
     <AppIcon Name="code" Size="20" />
     <div>
         <strong>Uma única fonte de verdade</strong>
         <span>A interface e a API usam as mesmas validações, permissões e trilha de auditoria.</span>
     </div>
     <StatusBadge Tone="info">Capability</StatusBadge>
-</section>
+</div>
 
 @if (!loading && Drafts.Count > 0)
 {
-    <section class="draft-panel" aria-labelledby="drafts-heading">
+    <div class="draft-panel" aria-labelledby="drafts-heading">
         <div class="data-toolbar">
             <div><h2 id="drafts-heading">Continuar configuração</h2><p>Rascunhos protegidos e disponíveis somente para sua conta administrativa.</p></div>
             <StatusBadge Tone="info">@Drafts.Count @(Drafts.Count == 1 ? "rascunho" : "rascunhos")</StatusBadge>
@@ -66,10 +66,10 @@
                 </a>
             }
         </div>
-    </section>
+    </div>
 }
 
-<section class="table-panel" aria-labelledby="clients-list-heading" aria-busy="@loading">
+<div class="table-panel" aria-labelledby="clients-list-heading" aria-busy="@loading">
     <div class="data-toolbar">
         <div>
             <h2 id="clients-list-heading">Aplicações registradas</h2>
@@ -207,9 +207,9 @@
         <span aria-live="polite" aria-atomic="true">@ResultCountLabel</span>
         <span>Serviço de aplicações incorporado</span>
     </footer>
-</section>
+</div>
 
-<section class="client-guardrails" aria-labelledby="client-safety-heading">
+<div class="client-guardrails" aria-labelledby="client-safety-heading">
     <div>
         <h2 id="client-safety-heading">Proteções aplicadas</h2>
         <p>Cada alteração é validada, autorizada e auditada antes de chegar ao registro OAuth.</p>
@@ -219,7 +219,7 @@
         <li><AppIcon Name="lock" Size="18" /> Segredos nunca aparecem na listagem</li>
         <li><AppIcon Name="audit" Size="18" /> Criação e exclusão geram eventos persistentes</li>
     </ul>
-</section>
+</div>
 
 @code {
     private ManagementDataResult<IReadOnlyList<ManagementClientSummary>>? result;

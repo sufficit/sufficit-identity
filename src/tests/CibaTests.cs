@@ -29,6 +29,24 @@ namespace Sufficit.Identity.Tests;
 public sealed class CibaInitiationTests
 {
     [Fact]
+    public async Task Disabled_ciba_surface_returns_404_instead_of_activation_failure()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+
+        var initiation = await client.PostFormAsync(
+            "/bc-authorize",
+            new Dictionary<string, string>());
+        using var completion = await client.GetAsync(
+            "/connect/ciba/complete?auth_req_id=disabled");
+
+        Assert.Equal(HttpStatusCode.NotFound, initiation.Status);
+        Assert.Equal(HttpStatusCode.NotFound, completion.StatusCode);
+    }
+
+    [Fact]
     public async Task Bc_authorize_with_a_known_login_hint_returns_an_auth_req_id()
     {
         // Initiation: a confidential client posts login_hint (the seeded user's

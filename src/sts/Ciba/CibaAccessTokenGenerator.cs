@@ -6,8 +6,9 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 namespace Sufficit.Identity.STS.Ciba;
 
 /// <summary>
-/// Generates self-contained JWT access tokens for the CIBA poll handler
-/// (RFC 9126), because OpenIddict 7.6 forbids <c>SignIn</c> from the
+/// Generates self-contained JWT access tokens for the OpenID Connect
+/// Client-Initiated Backchannel Authentication (CIBA) Core 1.0 poll handler,
+/// because OpenIddict 7.6 forbids <c>SignIn</c> from the
 /// unregistered <c>/connect/ciba/token</c> endpoint.
 /// </summary>
 /// <remarks>

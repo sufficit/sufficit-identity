@@ -111,6 +111,10 @@ internal sealed class AuthorizationManagementService(
             {
                 grant.Id,
                 grant.Subject,
+                // A client-credentials authorization uses the client subject
+                // as its OpenIddict subject. It is not an Identity user and
+                // must never be projected as a user-management resource ID.
+                UserId = user == null ? null : grant.Subject,
                 UserName = user == null ? null : user.UserName,
                 Email = user == null ? null : user.Email,
                 ClientId = application == null ? null : application.ClientId,
@@ -167,7 +171,7 @@ internal sealed class AuthorizationManagementService(
         var items = rows
             .Select(grant => new ManagementAuthorizationSummary(
                 grant.Id,
-                grant.Subject,
+                grant.UserId,
                 grant.UserName,
                 grant.Email,
                 grant.ClientId,

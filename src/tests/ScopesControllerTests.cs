@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
+using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Management.Controllers;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
@@ -11,6 +12,25 @@ namespace Sufficit.Identity.Tests;
 
 public sealed class ScopesControllerTests
 {
+    [Fact]
+    public async Task Create_rejects_a_retired_scope_name()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/scopes",
+            new CreateScopeRequest
+            {
+                Name = RetiredIdentityScopes.SkorubaIdentityAdminApi
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("scope_retired", body, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Create_update_and_delete_manage_a_custom_scope()
     {

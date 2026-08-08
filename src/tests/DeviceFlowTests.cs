@@ -105,6 +105,30 @@ public sealed class DeviceFlowTests
     }
 
     [Fact]
+    public async Task Device_information_has_an_independent_enumeration_bucket()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:RateLimit:DeviceInformationPermitLimit"] = "2",
+                ["Sufficit:Identity:RateLimit:DeviceInformationWindowSeconds"] = "60",
+            });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+
+        using var first = await client.GetAsync(
+            "/connect/device/info?user_code=AAAA-BBBB");
+        using var second = await client.GetAsync(
+            "/connect/device/info?user_code=CCCC-DDDD");
+        using var limited = await client.GetAsync(
+            "/connect/device/info?user_code=EEEE-FFFF");
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+    }
+
+    [Fact]
     public async Task Device_confirmation_requires_login_and_describes_the_client_and_requested_scopes()
     {
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions

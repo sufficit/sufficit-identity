@@ -45,7 +45,11 @@ COPY . /src/sufficit-identity/
 RUN rm -f /src/sufficit-identity/src/server/appsettings.json \
           /src/sufficit-identity/src/server/appsettings.Development.json
 
-RUN dotnet restore /src/sufficit-identity/src/server/Sufficit.Identity.Server.csproj
+# The repository commits packages.lock.json for every project.  Container
+# builds must consume that reviewed graph instead of silently resolving a new
+# transitive version from NuGet.
+RUN dotnet restore /src/sufficit-identity/src/server/Sufficit.Identity.Server.csproj \
+      --locked-mode
 
 RUN dotnet publish /src/sufficit-identity/src/server/Sufficit.Identity.Server.csproj \
       --configuration Release \

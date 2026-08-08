@@ -18,7 +18,7 @@ A self-hostable, .NET-native identity provider that goes well beyond stock OpenI
 | OAuth 2.0 / OIDC Core | RFC 6749 / OpenID Connect 1.0 | ✅ |
 | OAuth 2.1 baseline (PKCE mandatory, implicit/hybrid off) | draft-ietf-oauth-v2-1 | ✅ |
 | DPoP (sender-constrained tokens) | RFC 9449 | ✅ Hand-implemented |
-| CIBA (decoupled authentication) | RFC 9126 | ✅ Hand-implemented |
+| CIBA (decoupled authentication) | OpenID Connect CIBA Core 1.0 | ✅ Hand-implemented |
 | PAR (Pushed Authorization Request) | RFC 9126 | ✅ |
 | JAR (JWT-Secured Authorization Request) | RFC 9101 | ✅ Hand-implemented |
 | JARM (JWT response mode, signed + encrypted) | JARM | ✅ |

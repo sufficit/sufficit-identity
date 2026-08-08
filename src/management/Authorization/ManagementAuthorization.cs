@@ -1,6 +1,9 @@
 using System.Security.Claims;
 #if !APPLICATION_CONTRACTS
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Sufficit.Identity.Core.Entities;
 #endif
 
 namespace Sufficit.Identity.Management.Authorization;
@@ -38,6 +41,8 @@ public static class ManagementCapabilities
     public const string DatabaseRead = "identity.database.read";
     public const string MetricsRead = "identity.metrics.read";
     public const string MetricsManage = "identity.metrics.manage";
+    public const string VaultSecretsRead = "identity.vault.secrets.read";
+    public const string VaultSecretsManage = "identity.vault.secrets.manage";
     public const string ProvisioningPreview =
         "identity.provisioning.preview";
     public const string ProvisioningApply =
@@ -74,6 +79,8 @@ public static class ManagementCapabilities
                 DatabaseRead,
                 MetricsRead,
                 MetricsManage,
+                VaultSecretsRead,
+                VaultSecretsManage,
                 ProvisioningPreview,
                 ProvisioningApply
             ],
@@ -100,6 +107,7 @@ public static class ManagementResourceTypes
     public const string DatabaseRuntime = "database-runtime";
     public const string Overview = "overview";
     public const string Metrics = "metrics";
+    public const string VaultSecrets = "vault-secrets";
     public const string Provisioning = "provisioning";
 }
 
@@ -151,8 +159,9 @@ public sealed record ManagementAuthorizationDecision(
 {
     public bool IsAllowed => Outcome is ManagementAuthorizationOutcome.Allowed;
 
-    public static ManagementAuthorizationDecision Allowed() =>
-        new(ManagementAuthorizationOutcome.Allowed, "allowed");
+    public static ManagementAuthorizationDecision Allowed(
+        string reasonCode = "allowed") =>
+        new(ManagementAuthorizationOutcome.Allowed, reasonCode);
 
     public static ManagementAuthorizationDecision Denied(string reasonCode) =>
         new(ManagementAuthorizationOutcome.Denied, reasonCode);
@@ -221,8 +230,56 @@ public interface IManagementObjectAccessPolicy
         CancellationToken cancellationToken = default);
 }
 
+public interface IProtectedPrincipalAccessPolicy
+{
+    ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+        ClaimsPrincipal principal,
+        string capability,
+        string targetUserId,
+        CancellationToken cancellationToken = default);
+}
+
+public enum ManagementPolicyEnforcementMode
+{
+    Observe,
+    Enforce,
+}
+
+public sealed class ManagementObjectAccessOptions
+{
+    public ManagementPolicyEnforcementMode Mode { get; set; } =
+        ManagementPolicyEnforcementMode.Observe;
+
+    public string ContextClaimType { get; set; } = "identity_context";
+
+    public string LegacyContextId { get; set; } = "global";
+}
+
+public sealed class ProtectedPrincipalAccessOptions
+{
+    public ManagementPolicyEnforcementMode Mode { get; set; } =
+        ManagementPolicyEnforcementMode.Observe;
+
+    public string TierClaimType { get; set; } = "identity_principal_tier";
+
+    public string[] ProtectedUserIds { get; set; } = [];
+
+    public string[] ProtectedRoles { get; set; } = [];
+
+    public string BreakGlassClaimType { get; set; } =
+        "identity_break_glass";
+
+    public string BreakGlassClaimValue { get; set; } =
+        "identity.management";
+}
+
 public sealed class ManagementAuthorizationOptions
 {
+    public ManagementObjectAccessOptions ObjectAccess { get; set; } = new();
+
+    public ProtectedPrincipalAccessOptions ProtectedPrincipals { get; set; } =
+        new();
+
     /// <summary>
     /// Deployment-specific roles that receive every management capability
     /// (full administrator). <b>Use sparingly.</b> Every principal in any of
@@ -415,6 +472,200 @@ public sealed class DefaultManagementObjectAccessPolicy
     {
         cancellationToken.ThrowIfCancellationRequested();
         return ValueTask.FromResult(ManagementAuthorizationDecision.Allowed());
+    }
+}
+
+/// <summary>
+/// Concrete context boundary. Existing objects without a context are assigned
+/// to the explicit legacy/global context. Observe mode records mismatches while
+/// preserving a rolling deployment; Enforce changes the decision to deny.
+/// </summary>
+public sealed class ConfigurationManagementObjectAccessPolicy(
+    IOptions<ManagementOptions> options,
+    IProtectedPrincipalAccessPolicy protectedPrincipals,
+    ILogger<ConfigurationManagementObjectAccessPolicy> logger)
+    : IManagementObjectAccessPolicy
+{
+    private static readonly HashSet<string> ItemResourceTypes =
+        new(StringComparer.Ordinal)
+        {
+            ManagementResourceTypes.Client,
+            ManagementResourceTypes.User,
+            ManagementResourceTypes.Claim,
+            ManagementResourceTypes.Scope,
+            ManagementResourceTypes.Session,
+            ManagementResourceTypes.Authorization,
+        };
+
+    private static readonly HashSet<string> ProtectedPrincipalCapabilities =
+        new(StringComparer.Ordinal)
+        {
+            ManagementCapabilities.UsersUpdate,
+            ManagementCapabilities.UsersDisable,
+            ManagementCapabilities.UsersDelete,
+            ManagementCapabilities.UsersResetPassword,
+        };
+
+    public async ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+        ClaimsPrincipal principal,
+        string capability,
+        ManagementResource resource,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (ItemResourceTypes.Contains(resource.Type)
+            && string.IsNullOrWhiteSpace(resource.Id))
+        {
+            return ManagementAuthorizationDecision.Denied(
+                "resource_id_required");
+        }
+
+        var policy = options.Value.Authorization.ObjectAccess;
+        var requiredContext = string.IsNullOrWhiteSpace(resource.ContextId)
+            ? policy.LegacyContextId
+            : resource.ContextId;
+        var contexts = principal.FindAll(policy.ContextClaimType)
+            .SelectMany(claim => claim.Value.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries
+                | StringSplitOptions.TrimEntries));
+        if (!contexts.Contains(requiredContext, StringComparer.Ordinal))
+        {
+            logger.LogWarning(
+                "Management object context policy {PolicyMode} rejected capability {Capability} on resource type {ResourceType} in context {ContextId}",
+                policy.Mode,
+                capability,
+                resource.Type,
+                requiredContext);
+            if (policy.Mode is ManagementPolicyEnforcementMode.Enforce)
+            {
+                return ManagementAuthorizationDecision.Denied(
+                    "context_not_accessible");
+            }
+        }
+
+        if (resource.Type == ManagementResourceTypes.User
+            && resource.Id is not null
+            && ProtectedPrincipalCapabilities.Contains(capability))
+        {
+            return await protectedPrincipals.EvaluateAsync(
+                principal,
+                capability,
+                resource.Id,
+                cancellationToken);
+        }
+
+        return ManagementAuthorizationDecision.Allowed();
+    }
+}
+
+/// <summary>
+/// Prevents equal/lower-tier operators from mutating explicitly protected
+/// principals. Break-glass requires both a dedicated claim and MFA evidence.
+/// </summary>
+public sealed class ConfigurationProtectedPrincipalAccessPolicy(
+    UserManager<ApplicationUser> userManager,
+    IOptions<ManagementOptions> options,
+    ILogger<ConfigurationProtectedPrincipalAccessPolicy> logger)
+    : IProtectedPrincipalAccessPolicy
+{
+    private static readonly HashSet<string> MfaMethods =
+        new(StringComparer.Ordinal)
+        {
+            "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina"
+        };
+
+    public async ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+        ClaimsPrincipal principal,
+        string capability,
+        string targetUserId,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var policy = options.Value.Authorization.ProtectedPrincipals;
+        var target = await userManager.FindByIdAsync(targetUserId);
+        if (target is null)
+        {
+            return ManagementAuthorizationDecision.Allowed();
+        }
+
+        var targetClaims = await userManager.GetClaimsAsync(target);
+        var targetTier = HighestTier(targetClaims, policy.TierClaimType);
+        if (policy.ProtectedUserIds.Contains(targetUserId, StringComparer.Ordinal))
+        {
+            targetTier = Math.Max(targetTier, 1);
+        }
+        if (policy.ProtectedRoles.Length > 0)
+        {
+            var roles = await userManager.GetRolesAsync(target);
+            if (roles.Any(role => policy.ProtectedRoles.Contains(
+                role,
+                StringComparer.OrdinalIgnoreCase)))
+            {
+                targetTier = Math.Max(targetTier, 1);
+            }
+        }
+
+        if (targetTier <= 0)
+        {
+            return ManagementAuthorizationDecision.Allowed();
+        }
+
+        if (HasBreakGlassEvidence(principal, policy))
+        {
+            logger.LogWarning(
+                "Break-glass management access used for capability {Capability} against protected user {TargetUserId}",
+                capability,
+                targetUserId);
+            return ManagementAuthorizationDecision.Allowed(
+                "protected_principal_break_glass");
+        }
+
+        var operatorTier = HighestTier(principal.Claims, policy.TierClaimType);
+        if (operatorTier > targetTier)
+        {
+            return ManagementAuthorizationDecision.Allowed();
+        }
+
+        logger.LogWarning(
+            "Protected-principal policy {PolicyMode} rejected operator tier {OperatorTier} for capability {Capability} against target tier {TargetTier}",
+            policy.Mode,
+            operatorTier,
+            capability,
+            targetTier);
+        return policy.Mode is ManagementPolicyEnforcementMode.Enforce
+            ? ManagementAuthorizationDecision.Denied(
+                "protected_principal_higher_or_equal")
+            : ManagementAuthorizationDecision.Allowed(
+                "protected_principal_observed");
+    }
+
+    private static int HighestTier(
+        IEnumerable<Claim> claims,
+        string claimType) =>
+        claims.Where(claim => string.Equals(
+                claim.Type,
+                claimType,
+                StringComparison.Ordinal))
+            .Select(claim => int.TryParse(claim.Value, out var tier) ? tier : 0)
+            .DefaultIfEmpty(0)
+            .Max();
+
+    private static bool HasBreakGlassEvidence(
+        ClaimsPrincipal principal,
+        ProtectedPrincipalAccessOptions policy)
+    {
+        var hasClaim = principal.FindAll(policy.BreakGlassClaimType)
+            .Any(claim => string.Equals(
+                claim.Value,
+                policy.BreakGlassClaimValue,
+                StringComparison.Ordinal));
+        var hasMfa = principal.FindAll("amr")
+            .SelectMany(claim => claim.Value.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries))
+            .Any(MfaMethods.Contains);
+        return hasClaim && hasMfa;
     }
 }
 

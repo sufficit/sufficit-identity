@@ -7,14 +7,14 @@
 <PageHeader Title="Provisionamento"
             Description="Revise e aplique manifestos aditivos de clientes e scopes usando o mesmo caso de uso da API." />
 
-<section class="contract-strip contract-strip--success">
+<div class="contract-strip contract-strip--success">
     <AppIcon Name="shield" Size="20" />
     <div>
         <strong>Operação centralizada e auditável</strong>
         <span>Preview e aplicação passam pela autorização do Management; nenhum segredo é recebido em texto puro.</span>
     </div>
     <StatusBadge Tone="success">Ativo</StatusBadge>
-</section>
+</div>
 
 <ol class="workflow-steps" aria-label="Etapas do provisionamento">
     <li class="@StepClass(1)">
@@ -35,7 +35,7 @@
 
 @if (OperationResult?.IsSuccess is false)
 {
-    <section class="inline-notice inline-notice--danger" role="alert">
+    <div class="inline-notice inline-notice--danger" role="alert">
         <AppIcon Name="alert" Size="19" />
         <div>
             <strong>@ErrorTitle</strong>
@@ -50,21 +50,21 @@
                 </ul>
             }
         </div>
-    </section>
+    </div>
 }
 else if (applyResult?.IsSuccess is true)
 {
-    <section class="inline-notice inline-notice--success" role="status">
+    <div class="inline-notice inline-notice--success" role="status">
         <AppIcon Name="check" Size="19" />
         <div>
             <strong>Manifesto aplicado</strong>
             <span>A operação foi concluída de forma transacional e registrada na auditoria.</span>
         </div>
-    </section>
+    </div>
 }
 
 <div class="provisioning-grid">
-    <section class="manifest-panel" aria-labelledby="manifest-heading">
+    <div class="manifest-panel" aria-labelledby="manifest-heading">
         <div class="panel-header">
             <div>
                 <h2 id="manifest-heading">Manifesto JSON</h2>
@@ -102,7 +102,7 @@ else if (applyResult?.IsSuccess is true)
                 }
             </button>
         </footer>
-    </section>
+    </div>
 
     <aside class="safety-panel" aria-labelledby="safety-heading">
         <span class="safety-panel__icon"><AppIcon Name="shield" Size="24" /></span>
@@ -119,7 +119,7 @@ else if (applyResult?.IsSuccess is true)
 
 @if (Plan is not null)
 {
-    <section class="provisioning-plan" aria-labelledby="plan-heading">
+    <div class="provisioning-plan" aria-labelledby="plan-heading">
         <div class="data-toolbar">
             <div>
                 <h2 id="plan-heading">@(applyResult?.IsSuccess is true ? "Mudanças aplicadas" : "Preview do manifesto")</h2>
@@ -206,7 +206,7 @@ else if (applyResult?.IsSuccess is true)
                 }
             </footer>
         }
-    </section>
+    </div>
 }
 
 @code {

@@ -18,7 +18,10 @@
       "Enabled": false,
       "RequireEncryptionInProduction": false,
       "KeySource": "dataprotection",
-      "DataProtectionPurpose": "Sufficit.Identity.Vault.Master.v1"
+      "DataProtectionPurpose": "Sufficit.Identity.Vault.Master.v1",
+      "EnableSecretStore": false,
+      "ManageSigningKeys": false,
+      "SigningKeyName": "oidc-signing"
     },
     "Identity": {
       "Issuer": "https://your-identity-host/",
@@ -30,6 +33,8 @@
       "ConnectionStringName": "DefaultConnection",
       "_Database": "Schema provisioning policy. In Development the host ALWAYS applies pending EF Core migrations on startup (MigrateAsync). In production it does so ONLY when Database:AutoMigrate=true (default false — conservative for the legacy shared Duende/Skoruba database, which predates the EF model). When AutoMigrate is false in production, provision schema from the checked-in canonical SQL (docs/migration/sql/*) before each deploy. CRITICAL: when enabling AutoMigrate, ALWAYS set AllowedDatabaseNames to the concrete database name(s) the migrator may touch — if the connection string points elsewhere (e.g. the production database by a config typo), the process refuses to start rather than migrate the wrong database. Empty AllowedDatabaseNames disables the guard (Development only).",
       "Database": {
+        "_TransportMode": "Compatibility preserves rolling deployments. Set RequireVerifiedTls with SslMode=VerifyCA/VerifyFull and a trusted CA, or PrivateSocket with an explicit UnixSocket for an audited private-lab exception.",
+        "TransportMode": "Compatibility",
         "_AutoMigrate": "true applies pending EF migrations on startup outside Development. Default false — flip only after confirming the schema is aligned and AllowedDatabaseNames is set.",
         "AutoMigrate": false,
         "_AllowedDatabaseNames": "Allow-list of database names the automatic migrator may touch (parsed from the connection string). When non-empty, a mismatch fails startup fast. Recommended in production. Empty = no guard (Development only).",
@@ -66,13 +71,32 @@
         "RoutePrefix": "api",
         "RequireAuthorization": true,
         "RequiredScope": "identity.management",
+        "Authorization": {
+          "ObjectAccess": {
+            "Mode": "Observe",
+            "ContextClaimType": "identity_context",
+            "LegacyContextId": "global"
+          },
+          "ProtectedPrincipals": {
+            "Mode": "Observe",
+            "TierClaimType": "identity_principal_tier",
+            "ProtectedUserIds": [],
+            "ProtectedRoles": [],
+            "BreakGlassClaimType": "identity_break_glass",
+            "BreakGlassClaimValue": "identity.management"
+          }
+        },
         "_RequireMfa": "true requires the access token to carry an amr claim proving multi-factor auth (item 5.2 [L3]) for the management endpoints. Default true; explicitly set false only for an isolated migration environment.",
         "RequireMfa": true
       },
       "_Scim": "Optional SCIM 2.0 provisioning endpoint at /scim/v2. Groups are opaque provisioning groups and are never interpreted as ASP.NET Identity roles or Sufficit business authorities.",
       "Scim": {
         "Enabled": false,
+        "_RequireAuthorization": "Deprecated compatibility alias. When RequireScope is omitted, this controls only the scope check and never disables authentication or the client allow-list.",
         "RequireAuthorization": true,
+        "RequireScope": true,
+        "RequireAllowedClient": true,
+        "ClientPolicyMode": "Enforce",
         "RequiredScope": "scim",
         "_RequireMfa": "true requires every SCIM request to carry an amr claim proving MFA (RFC 8176), mirroring the management API. Default false — SCIM is typically driven by machine-to-machine provisioning (client_credentials), which cannot do MFA. Enable only when SCIM is exposed to delegated (human) flows; otherwise restrict the scim scope to a single dedicated provisioning client.",
         "RequireMfa": false,
@@ -84,12 +108,15 @@
       "Certificates": {
         "MinimumRemainingLifetimeDays": 30,
         "FailOnExpiringCertificate": false,
+        "RequirePurposeSeparation": false,
         "_SigningPath": "Path to the PFX file used to sign tokens.",
         "SigningPath": "",
+        "SigningPaths": [],
         "_SigningPassword": "Password protecting the signing PFX file.",
         "SigningPassword": "",
         "_EncryptionPath": "Path to the PFX file used to encrypt tokens.",
         "EncryptionPath": "",
+        "EncryptionPaths": [],
         "_EncryptionPassword": "Password protecting the encryption PFX file.",
         "EncryptionPassword": ""
       },
@@ -133,9 +160,17 @@
         "PermitLimit": 30,
         "_WindowSeconds": "Window length in seconds; also sent as Retry-After on 429.",
         "WindowSeconds": 60,
+        "DeviceInformationPermitLimit": 12,
+        "DeviceInformationWindowSeconds": 60,
         "_FailOnUntrustedProxy": "true (item 5.1 [L4]) makes startup FAIL when TrustedProxies is empty outside Development, instead of only logging a warning. Without trusted proxies, the rate limiter shares ONE bucket for all traffic (the proxy's IP) → self-inflicted 429s. Default false (warning); flip to true in production so a missing TrustedProxies cannot silently turn the rate limiter into a self-DoS.",
         "FailOnUntrustedProxy": false
       },
+      "UserSessions": {
+        "CacheLifetimeSeconds": 60,
+        "ActivityUpdateIntervalSeconds": 300
+      },
+      "_DeploymentTopology": "Explicit hosting contract: SingleReplica, Clustered, BehindTrustedProxy or ClusteredBehindTrustedProxy. Clustered modes require a shared distributed cache and an explicit issuer; proxy modes require TrustedProxies, HTTPS issuer and RateLimit:FailOnUntrustedProxy=true.",
+      "DeploymentTopology": "SingleReplica",
       "_DistributedCache": "Multi-replica distributed-cache guard. Several security-critical stores (DPoP replay/nonce, CIBA pending requests, front-channel logout, passkey tickets) depend on IDistributedCache. The default AddDistributedMemoryCache is single-node — correct for one replica, but with >1 replica each replica has its own isolated cache and DPoP replay protection / CIBA cross-replica / nonce challenges silently break. Set RequireShared=true before scaling out so the STS fails fast if the cache is the in-memory fallback (i.e. a shared cache like Redis is missing).",
       "DistributedCache": {
         "_RequireShared": "true makes startup FAIL outside Development if the registered IDistributedCache is the in-memory fallback (MemoryDistributedCache), because that backend is not shared across replicas. Default false (no check) — flip to true before deploying more than one replica.",
@@ -245,15 +280,13 @@
         "AuthorizationCodeLifetimeSeconds": 60,
         "PushedAuthorizationRequestLifetimeSeconds": 300
       },
-      "_Jarm": "JWT Secured Authorization Response Mode. Independent of FAPI 2.0 and disabled by default. When enabled, supports query.jwt, fragment.jwt, form_post.jwt and jwt, signs the complete response with the STS signing key, and returns it as the single response parameter. When Encryption.Enabled is true and a PFX is configured, responses are signed-then-encrypted (JWE) — the shape required by the FAPI 2.0 Advancing Profile for sensitive responses.",
+      "_Jarm": "JWT Secured Authorization Response Mode. Independent of FAPI 2.0 and disabled by default. Encryption resolves an eligible RSA public key from each recipient client's registered JWKS; no server-global recipient private key is used.",
       "Jarm": {
         "Enabled": false,
         "LifetimeSeconds": 120,
         "Encryption": {
-          "_Enabled": "true produces signed-then-encrypted (JWE) JARM responses. Default false (signed-only). Requires Path + Password pointing to an RSA PFX whose public key encrypts the response.",
+          "_Enabled": "true requires an RSA public encryption key (use=enc or encrypt/wrapKey key_ops) in each client's registered JWKS.",
           "Enabled": false,
-          "Path": "",
-          "Password": "",
           "_KeyManagementAlgorithm": "JWE alg (key management). Default RSA-OAEP.",
           "KeyManagementAlgorithm": "RSA-OAEP",
           "_ContentEncryptionAlgorithm": "JWE enc (content encryption). Default A256CBC-HS512 (compatible with RSA key transport in Microsoft IdentityModel).",
@@ -297,6 +330,10 @@
           "RequireInitialAccessToken": true,
           "_InitialAccessToken": "The static initial access token accepted by /connect/register. Configure via User Secrets / env var — NEVER commit a real value. Empty = endpoint rejects all requests (even when Enabled).",
           "InitialAccessToken": "",
+          "InitialAccessTokenExpiresAtUtc": null,
+          "InitialAccessTokenSingleUse": true,
+          "AllowCallerSuppliedClientIds": false,
+          "AllowCallerSuppliedSecrets": false,
           "_AllowedGrantTypes": "Grant types DCR callers may request. Defaults exclude client_credentials, password, device_code and token exchange. Add any privileged grant only after defining who can obtain an initial access token.",
           "AllowedGrantTypes": [
             "authorization_code",
@@ -336,7 +373,7 @@
         "_ReportOnly": "true = emit Content-Security-Policy-Report-Only (violations reported, NOT blocked — safe default). false = emit Content-Security-Policy (enforce). Flip to false ONLY after calibrating Policy against the real UI.",
         "ReportOnly": true,
         "_Policy": "CSP directive string. Default tuned for a same-origin Blazor Server UI: connect-src allows the SignalR WebSocket; style-src allows 'unsafe-inline' (Blazor/Bootstrap commonly need it — calibrate to remove); frame-ancestors 'none' reinforces X-Frame-Options: DENY.",
-        "Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://api.example.com; connect-src 'self' wss: ws:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+        "Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
         "_ReportUri": "Optional violation-report collector endpoint appended as 'report-uri <value>'. Empty = no report-uri directive.",
         "ReportUri": ""
       },

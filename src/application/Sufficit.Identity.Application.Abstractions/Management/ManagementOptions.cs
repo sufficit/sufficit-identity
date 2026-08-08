@@ -1,5 +1,7 @@
 using Sufficit.Identity.Management.Authorization;
 
+using Sufficit.Identity.Application.Security;
+
 namespace Sufficit.Identity.Management;
 
 /// <summary>Bindable options for the provider-management application.</summary>
@@ -36,5 +38,9 @@ public sealed class ManagementOptions
     /// bootstrap/provisioning.
     /// </summary>
     public string[] ReservedApiScopes { get; init; } =
-        ["identity.management", "scim"];
+        [
+            "identity.management",
+            "scim",
+            RetiredIdentityScopes.SkorubaIdentityAdminApi
+        ];
 }

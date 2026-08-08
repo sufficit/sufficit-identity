@@ -86,6 +86,13 @@ public sealed class AppDbContext
     public DbSet<Entities.VaultKey> VaultKeys =>
         Set<Entities.VaultKey>();
 
+    /// <summary>
+    /// Optional named secrets (Phase 2). Values are always vault ciphertext;
+    /// this table contains no plaintext secret material.
+    /// </summary>
+    public DbSet<Entities.VaultSecret> VaultSecrets =>
+        Set<Entities.VaultSecret>();
+
     public DbSet<Entities.IdentityMetricsConfiguration> IdentityMetricsConfigurations =>
         Set<Entities.IdentityMetricsConfiguration>();
 
@@ -113,6 +120,7 @@ public sealed class AppDbContext
         MapSsfStreams(builder);
         MapOidcUserSessions(builder);
         MapVaultKeys(builder);
+        MapVaultSecrets(builder);
         MapIdentityMetrics(builder);
         MapProtocolSecurityState(builder);
     }
@@ -488,6 +496,7 @@ public sealed class AppDbContext
                 .HasMaxLength(IdentityDatabaseSchema.VaultPurposeLength)
                 .IsRequired();
             b.Property(x => x.WrappedKey).HasColumnType("longblob").IsRequired();
+            b.Property(x => x.PublicJwk).HasColumnType("longtext");
             b.Property(x => x.CreatedAtUtc).HasColumnType("datetime(6)").IsRequired();
             b.Property(x => x.RetiredAtUtc).HasColumnType("datetime(6)");
 
@@ -501,8 +510,44 @@ public sealed class AppDbContext
                 ("KeyVersion", "keyversion"),
                 ("Purpose", "purpose"),
                 ("WrappedKey", "wrappedkey"),
+                ("PublicJwk", "publicjwk"),
                 ("CreatedAtUtc", "createdatutc"),
                 ("RetiredAtUtc", "retiredatutc"),
+            ]);
+        });
+    }
+
+    private static void MapVaultSecrets(ModelBuilder builder)
+    {
+        builder.Entity<Entities.VaultSecret>(b =>
+        {
+            b.ToTable("vaultsecrets");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Id).ValueGeneratedOnAdd();
+            b.Property(x => x.Name)
+                .HasMaxLength(IdentityDatabaseSchema.VaultSecretNameLength)
+                .IsRequired();
+            b.Property(x => x.Ciphertext)
+                .HasColumnType("longtext")
+                .IsRequired();
+            b.Property(x => x.AadJson).HasColumnType("longtext");
+            b.Property(x => x.UpdatedAtUtc)
+                .HasColumnType("datetime(6)")
+                .IsRequired();
+            b.Property(x => x.UpdatedBy)
+                .HasMaxLength(IdentityDatabaseSchema.VaultSecretUpdatedByLength)
+                .IsRequired();
+            b.HasIndex(x => x.Name)
+                .IsUnique()
+                .HasDatabaseName("AK_vaultsecrets_name");
+
+            SnakeCaseColumns(b, [
+                ("Id", "id"),
+                ("Name", "name"),
+                ("Ciphertext", "ciphertext"),
+                ("AadJson", "aadjson"),
+                ("UpdatedAtUtc", "updatedatutc"),
+                ("UpdatedBy", "updatedby"),
             ]);
         });
     }

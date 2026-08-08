@@ -21,6 +21,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
     IHttpContextAccessor httpContextAccessor,
     IConfiguration configuration,
     IPublicOriginResolver publicOrigin,
+    IAccountLookupPolicy accountLookup,
     ILogger<AspNetCoreIdentityAccountOnboardingService> logger)
     : IAccountOnboardingService
 {
@@ -88,7 +89,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
             CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var user = await userManager.FindByEmailAsync(email);
+        var user = await accountLookup.FindUniqueByEmailAsync(email, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         if (user is not null)
         {
@@ -148,7 +149,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var user = await userManager.FindByEmailAsync(email);
+        var user = await accountLookup.FindUniqueByEmailAsync(email, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
         if (user is null || !await userManager.IsEmailConfirmedAsync(user))
         {

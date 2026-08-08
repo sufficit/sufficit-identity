@@ -16,7 +16,8 @@ public interface IApplicationClaimDestinationPolicy
 
 internal sealed class ApplicationClaimDestinationPolicy(
     ClaimScopeMapOptions options,
-    ILogger<ApplicationClaimDestinationPolicy>? logger = null) : IApplicationClaimDestinationPolicy
+    ILogger<ApplicationClaimDestinationPolicy>? logger = null,
+    ISecurityDecisionTelemetry? telemetry = null) : IApplicationClaimDestinationPolicy
 {
     public IReadOnlyDictionary<string, string> MappedClaimScopes =>
         options.ClaimToScope;
@@ -37,6 +38,12 @@ internal sealed class ApplicationClaimDestinationPolicy(
 
         if (options.DeniedUnmappedClaimTypes.Contains(claim.Type))
         {
+            telemetry?.Record(
+                "claim_release",
+                "enforce",
+                wouldReject: true,
+                rejected: true,
+                ["sensitive_unmapped"]);
             logger?.LogWarning(
                 "Suppressed sensitive unmapped claim type {ClaimType} from token release.",
                 claim.Type);
@@ -112,7 +119,8 @@ public interface IPersonalTokenIssuancePolicy
 internal sealed class PersonalTokenIssuancePolicy(
     PersonalTokenIssuanceOptions options,
     ITokenIssuancePolicyKernel kernel,
-    ILogger<PersonalTokenIssuancePolicy> logger) : IPersonalTokenIssuancePolicy
+    ILogger<PersonalTokenIssuancePolicy> logger,
+    ISecurityDecisionTelemetry? telemetry = null) : IPersonalTokenIssuancePolicy
 {
     public PersonalTokenIssuanceDecision Evaluate(PersonalTokenIssuanceContext context)
     {
@@ -182,6 +190,12 @@ internal sealed class PersonalTokenIssuancePolicy(
                 context.CallerClientId ?? "<unknown>",
                 string.Join(',', reasons));
         }
+        telemetry?.Record(
+            "personal_token_issuance",
+            options.Mode.ToString(),
+            wouldReject,
+            shouldReject,
+            reasons);
 
         var compatibilityScopes = context.RequestedScopes.Count > 0
             ? context.RequestedScopes
@@ -220,7 +234,8 @@ public interface ISubjectTokenProvenancePolicy
 }
 
 internal sealed class SubjectTokenProvenancePolicy(
-    ILogger<SubjectTokenProvenancePolicy> logger) : ISubjectTokenProvenancePolicy
+    ILogger<SubjectTokenProvenancePolicy> logger,
+    ISecurityDecisionTelemetry? telemetry = null) : ISubjectTokenProvenancePolicy
 {
     public SubjectTokenProvenanceDecision Evaluate(
         ClaimsPrincipal subjectToken,
@@ -257,6 +272,13 @@ internal sealed class SubjectTokenProvenancePolicy(
                 mode,
                 reason);
         }
+
+        telemetry?.Record(
+            "token_exchange_provenance",
+            mode.ToString(),
+            reason is not null,
+            reason is not null && mode == SecurityPolicyEnforcementMode.Enforce,
+            reason is null ? null : [reason]);
 
         return new SubjectTokenProvenanceDecision(
             reason is not null && mode == SecurityPolicyEnforcementMode.Enforce,

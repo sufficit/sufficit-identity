@@ -15,6 +15,7 @@ public sealed class AspNetCoreIdentityExternalSignInService(
     UserManager<ApplicationUser> userManager,
     IAccountExternalIdentityService externalIdentityService,
     IAccountOnboardingService onboardingService,
+    IAccountLookupPolicy accountLookup,
     IAuthenticationContextAccessor authenticationContextAccessor,
     TimeProvider timeProvider,
     ILogger<AspNetCoreIdentityExternalSignInService> logger)
@@ -111,7 +112,7 @@ public sealed class AspNetCoreIdentityExternalSignInService(
                 ExternalSignInStatus.MissingEmail);
         }
 
-        if (await userManager.FindByEmailAsync(email) is not null)
+        if (await accountLookup.FindUniqueByEmailAsync(email, cancellationToken) is not null)
         {
             logger.LogWarning(
                 "External {Provider} identity matched an existing local email "

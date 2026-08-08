@@ -239,8 +239,8 @@
 .review-issue--danger > svg:first-child { color: var(--danger); }
 .review-issue--warning > svg:first-child { color: var(--warning); }
 .review-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-top: 20px; }
-.review-grid section { padding: 14px 0; border-top: 1px solid var(--line); }
-.review-grid section > p { margin: 0; color: var(--ink-muted); overflow-wrap: anywhere; }
+.review-grid > div { padding: 14px 0; border-top: 1px solid var(--line); }
+.review-grid > div > p { margin: 0; color: var(--ink-muted); overflow-wrap: anywhere; }
 .review-grid dl { margin: 0; }
 .review-grid dl div { display: flex; justify-content: space-between; gap: 14px; padding: 5px 0; }
 .review-grid dt { color: var(--ink-muted); }
@@ -3539,12 +3539,12 @@ h3 {
     border-top: 1px solid var(--line);
 }
 
-.detail-columns > section {
+.detail-columns > div {
     min-width: 0;
     padding: 22px;
 }
 
-.detail-columns > section + section {
+.detail-columns > div + div {
     border-left: 1px solid var(--line);
 }
 
@@ -4765,7 +4765,7 @@ h3 {
         padding: 20px 16px;
     }
 
-    .detail-columns > section + section {
+    .detail-columns > div + div {
         border-top: 1px solid var(--line);
         border-left: 0;
     }

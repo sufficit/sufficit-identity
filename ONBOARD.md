@@ -112,6 +112,7 @@ Before deploying to production:
 - [ ] **Database** — run `dotnet ef database update` (or apply `docs/migration/sql/001-create-empty-database.sql`) against your MariaDB instance
 - [ ] **Rate limiting** — verify `RateLimit.Enabled=true` and `FailOnUntrustedProxy=true` so a missing proxy config fails fast instead of self-DoSing
 - [ ] **CSP** — calibrate `Csp.ReportOnly` against the real UI, then flip to `false` (enforce)
+- [ ] **Secrets at rest** — deploy readers first, then set `Sufficit__Vault__Enabled=true`; after the `pt1.` migration is complete, set `Sufficit__Vault__RequireEncryptionInProduction=true` (see [`RUNBOOK-VAULT.md`](docs/runbooks/RUNBOOK-VAULT.md))
 - [ ] **Docker** — the included Dockerfile builds a non-root, digest-pinned image. Mount secrets via env vars or files.
 
 ## 6. Docker Compose (recommended for local dev)

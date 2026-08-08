@@ -117,6 +117,12 @@ public static partial class IdentityProvisioningManifestValidator
                 errors.Add($"{path}.name duplicates scope '{scope.Name}'.");
             }
 
+            if (RetiredIdentityScopes.Contains(scope.Name))
+            {
+                errors.Add(
+                    $"{path}.name references retired scope '{scope.Name}'.");
+            }
+
             ValidateOptionalLength(scope.DisplayName, 200, $"{path}.displayName", errors);
             ValidateOptionalLength(scope.Description, 1000, $"{path}.description", errors);
             ValidateUniqueStrings(scope.Resources, $"{path}.resources", 100, errors);
@@ -162,6 +168,14 @@ public static partial class IdentityProvisioningManifestValidator
             ValidateUniqueStrings(client.GrantTypes, $"{path}.grantTypes", 200, errors);
             ValidateUniqueStrings(client.ResponseTypes, $"{path}.responseTypes", 100, errors);
             ValidateUniqueStrings(client.Scopes, $"{path}.scopes", 200, errors);
+
+            foreach (var retiredScope in (client.Scopes ?? [])
+                         .Where(RetiredIdentityScopes.Contains)
+                         .Distinct(StringComparer.Ordinal))
+            {
+                errors.Add(
+                    $"{path}.scopes contains retired scope '{retiredScope}'.");
+            }
 
             var grants = new HashSet<string>(client.GrantTypes ?? [], StringComparer.Ordinal);
             var responseTypes = new HashSet<string>(

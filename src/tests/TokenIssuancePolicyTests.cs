@@ -24,6 +24,44 @@ public sealed class TokenIssuancePolicyTests
     }
 
     [Fact]
+    public void Claim_destination_matrix_keeps_scope_and_token_destinations_separate()
+    {
+        var policy = new ApplicationClaimDestinationPolicy(new ClaimScopeMapOptions
+        {
+            ClaimToScope = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["department"] = "profile",
+            },
+            IncludeUnmappedClaimsInAccessTokens = true,
+        });
+
+        var mappedIdentity = new ClaimsIdentity();
+        mappedIdentity.AddClaim(new Claim("department", "support"));
+        mappedIdentity.SetScopes(Scopes.Profile);
+        var mapped = policy.GetDestinations(
+            mappedIdentity.FindFirst("department")!,
+            includeIdentityToken: true);
+
+        var mappedWithoutScopeIdentity = new ClaimsIdentity();
+        mappedWithoutScopeIdentity.AddClaim(new Claim("department", "support"));
+        var mappedWithoutScope = policy.GetDestinations(
+            mappedWithoutScopeIdentity.FindFirst("department")!,
+            includeIdentityToken: true);
+
+        var unmappedIdentity = new ClaimsIdentity();
+        unmappedIdentity.AddClaim(new Claim("locale", "pt-BR"));
+        var unmapped = policy.GetDestinations(
+            unmappedIdentity.FindFirst("locale")!,
+            includeIdentityToken: true);
+
+        Assert.Equal(
+            [Destinations.AccessToken, Destinations.IdentityToken],
+            mapped.ToArray());
+        Assert.Empty(mappedWithoutScope);
+        Assert.Equal([Destinations.AccessToken], unmapped.ToArray());
+    }
+
+    [Fact]
     public void Personal_token_observe_mode_reports_future_denial_without_breaking_scope_shape()
     {
         var policy = CreatePersonalTokenPolicy(new PersonalTokenIssuanceOptions

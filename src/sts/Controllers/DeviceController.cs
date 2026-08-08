@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
@@ -192,6 +193,7 @@ public class DeviceController : Controller
     // -----------------------------------------------------------------------
     [AllowAnonymous]
     [HttpGet("/connect/device/info")]
+    [EnableRateLimiting("device-information")]
     public async Task<IActionResult> Info([FromQuery(Name = "user_code")] string? userCode)
     {
         if (string.IsNullOrWhiteSpace(userCode))

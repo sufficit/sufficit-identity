@@ -4,7 +4,33 @@ public sealed class ScimOptions
 {
     public bool Enabled { get; init; }
 
+    /// <summary>
+    /// Compatibility alias retained for one release. When
+    /// <see cref="RequireScope"/> is not configured, this value controls only
+    /// the OAuth scope requirement; it never disables authentication or the
+    /// independent client allow-list.
+    /// </summary>
+    [Obsolete("Use RequireScope. This alias no longer controls client authorization.")]
     public bool RequireAuthorization { get; init; } = true;
+
+    /// <summary>
+    /// Requires <see cref="RequiredScope"/>. A null value inherits the legacy
+    /// <see cref="RequireAuthorization"/> switch for rolling upgrades.
+    /// </summary>
+    public bool? RequireScope { get; init; }
+
+    /// <summary>
+    /// Requires an authenticated OAuth client from <see cref="AllowedClientIds"/>.
+    /// This boundary is deliberately independent from scope compatibility.
+    /// </summary>
+    public bool RequireAllowedClient { get; init; } = true;
+
+    /// <summary>
+    /// Observe logs an allow-list miss but temporarily permits it. Enforce is
+    /// fail-closed and is the secure default for new and upgraded deployments.
+    /// </summary>
+    public ScimClientPolicyMode ClientPolicyMode { get; init; } =
+        ScimClientPolicyMode.Enforce;
 
     public string RequiredScope { get; init; } = "scim";
 
@@ -33,4 +59,15 @@ public sealed class ScimOptions
     public string[] AllowedClientIds { get; init; } = [];
 
     public int MaxResults { get; init; } = 100;
+
+#pragma warning disable CS0618
+    internal bool EffectiveRequireScope =>
+        RequireScope ?? RequireAuthorization;
+#pragma warning restore CS0618
+}
+
+public enum ScimClientPolicyMode
+{
+    Observe,
+    Enforce,
 }

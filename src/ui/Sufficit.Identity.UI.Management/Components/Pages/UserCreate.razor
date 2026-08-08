@@ -15,29 +15,29 @@
     </Actions>
 </PageHeader>
 
-<section class="contract-strip contract-strip--success">
+<div class="contract-strip contract-strip--success">
     <AppIcon Name="shield" Size="20" />
     <div>
         <strong>Conta de autenticação, não perfil empresarial</strong>
         <span>Esta operação cria identificação e credencial. Grupos, cargos e permissões são definidos pelos sistemas que os utilizam.</span>
     </div>
     <StatusBadge Tone="success">Auditável</StatusBadge>
-</section>
+</div>
 
 @if (loading)
 {
-    <section class="form-section" aria-busy="true">
+    <div class="form-section" aria-busy="true">
         <div class="table-skeleton" aria-label="Carregando autorização">
             @for (var index = 0; index < 4; index++)
             {
                 <span></span>
             }
         </div>
-    </section>
+    </div>
 }
 else if (accessResult?.IsSuccess is false)
 {
-    <section class="panel">
+    <div class="panel">
         <EmptyState Icon="shield"
                     Title="@AccessErrorTitle"
                     Description="@accessResult.ErrorMessage">
@@ -49,11 +49,11 @@ else if (accessResult?.IsSuccess is false)
                 </button>
             </Actions>
         </EmptyState>
-    </section>
+    </div>
 }
 else if (!Access.CanCreate)
 {
-    <section class="panel">
+    <div class="panel">
         <EmptyState Icon="users"
                     Title="Criação de usuários não autorizada"
                     Description="Sua sessão pode consultar o diretório, mas não possui a capability necessária para criar contas.">
@@ -61,28 +61,29 @@ else if (!Access.CanCreate)
                 <a class="button button--secondary" href="users">Voltar para usuários</a>
             </Actions>
         </EmptyState>
-    </section>
+    </div>
 }
 else
 {
     @if (submission?.IsSuccess is false)
     {
-        <section class="inline-notice inline-notice--danger" role="alert">
+        <div class="inline-notice inline-notice--danger" role="alert">
             <AppIcon Name="alert" Size="19" />
             <div>
                 <strong>@SubmissionTitle</strong>
                 <span>@submission.ErrorMessage</span>
             </div>
-        </section>
+        </div>
     }
 
+    <div>
     <EditForm Model="model"
               OnValidSubmit="CreateAsync"
               FormName="create-management-user"
               class="management-form">
         <DataAnnotationsValidator />
 
-        <section class="form-section" aria-labelledby="user-identity-heading">
+        <div class="form-section" aria-labelledby="user-identity-heading">
             <div class="form-section__heading">
                 <h2 id="user-identity-heading">Identificação</h2>
                 <p>Use dados reconhecíveis pelo usuário. O e-mail começa pendente de confirmação.</p>
@@ -118,9 +119,9 @@ else
                     }
                 </div>
             </div>
-        </section>
+        </div>
 
-        <section class="form-section" aria-labelledby="user-password-heading">
+        <div class="form-section" aria-labelledby="user-password-heading">
             <div class="form-section__heading">
                 <h2 id="user-password-heading">Senha inicial</h2>
                 <p>A política real é validada pelo Identity no servidor. A senha nunca entra na auditoria ou na resposta.</p>
@@ -152,7 +153,7 @@ else
                 </div>
             </div>
             <span class="field-hint">Compartilhe a senha por um canal seguro e oriente a troca após o primeiro acesso.</span>
-        </section>
+        </div>
 
         <footer class="form-actions">
             <a class="button button--secondary" href="users">Cancelar</a>
@@ -172,6 +173,7 @@ else
             </button>
         </footer>
     </EditForm>
+    </div>
 }
 
 @code {

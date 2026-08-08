@@ -1,6 +1,8 @@
 @page "/"
 @inject ManagementOverviewDataSource OverviewData
 
+@{ var overview = result?.Value!; }
+
 <PageTitle>Visão geral | Sufficit Identity</PageTitle>
 
 <PageHeader Title="Visão geral"
@@ -15,42 +17,42 @@
 
 @if (loading)
 {
-    <section class="detail-shell"
+    <div class="detail-shell"
              aria-busy="true"
              aria-label="Carregando estado administrativo">
         <div class="detail-skeleton"></div>
         <div class="detail-skeleton detail-skeleton--short"></div>
-    </section>
+    </div>
 }
 else if (result?.IsSuccess is not true || result.Value is null)
 {
-    <EmptyState Icon="alert"
-                Title="Não foi possível consultar o runtime"
-                Description="@(result?.ErrorMessage ?? "O serviço de identidade não informou seu estado administrativo.")">
-        <Actions>
-            <button class="button button--primary"
-                    type="button"
-                    @onclick="RefreshAsync">
-                Tentar novamente
-            </button>
-        </Actions>
-    </EmptyState>
+    <div>
+        <EmptyState Icon="alert"
+                    Title="Não foi possível consultar o runtime"
+                    Description="@(result?.ErrorMessage ?? "O serviço de identidade não informou seu estado administrativo.")">
+            <Actions>
+                <button class="button button--primary"
+                        type="button"
+                        @onclick="RefreshAsync">
+                    Tentar novamente
+                </button>
+            </Actions>
+        </EmptyState>
+    </div>
 }
 else
 {
-    var overview = result.Value;
-
-    <section class="contract-strip contract-strip--success">
+    <div class="contract-strip contract-strip--success">
         <AppIcon Name="shield" Size="20" />
         <div>
             <strong>Estado fornecido pelo runtime</strong>
             <span>Ambiente @overview.EnvironmentName · @overview.Operator.Capabilities.Count capabilities efetivas</span>
         </div>
         <StatusBadge Tone="success">Atual</StatusBadge>
-    </section>
+    </div>
 
     <div class="dashboard-grid">
-        <section class="panel" aria-labelledby="available-modules-heading">
+        <div class="panel" aria-labelledby="available-modules-heading">
             <div class="panel-header">
                 <div>
                     <h2 id="available-modules-heading">Áreas disponíveis</h2>
@@ -85,9 +87,9 @@ else
                     }
                 </div>
             }
-        </section>
+        </div>
 
-        <section class="settings-panel" aria-labelledby="effective-policy-heading">
+        <div class="settings-panel" aria-labelledby="effective-policy-heading">
             <div class="panel-header">
                 <div>
                     <h2 id="effective-policy-heading">Política efetiva</h2>
@@ -127,10 +129,10 @@ else
                     </dd>
                 </div>
             </dl>
-        </section>
+        </div>
     </div>
 
-    <section class="security-note" aria-labelledby="runtime-source-title">
+    <div class="security-note" aria-labelledby="runtime-source-title">
         <AppIcon Name="check" Size="21" />
         <div>
             <h2 id="runtime-source-title">Uma consulta, a mesma decisão</h2>
@@ -143,7 +145,7 @@ else
             Ver detalhes
             <AppIcon Name="arrow-right" Size="15" />
         </a>
-    </section>
+    </div>
 }
 
 @code {
