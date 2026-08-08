@@ -53,6 +53,6 @@ pode ser ativado/desativado sem quebrar as demais superfícies.
 
 - `dotnet build src/server/Sufficit.Identity.Server.csproj --no-restore`
 - `dotnet test src/tests/Sufficit.Identity.Tests.csproj --no-restore`
-  — 530 testes (529 aprovados antes da atividade + 1 novo teste de isolamento),
+  — 532 testes (531 aprovados, incluindo isolamento e composição mobile),
   1 teste de localização ignorado por regra existente.
 - Auditoria visual Impeccable no RCL e no Vault UI — nenhum antipadrão detectado.
