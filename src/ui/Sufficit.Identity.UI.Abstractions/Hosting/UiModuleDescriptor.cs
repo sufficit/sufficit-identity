@@ -10,6 +10,9 @@ public enum UiSurface
 
     /// <summary>The operator management UI.</summary>
     Management = 1,
+
+    /// <summary>The personal and operator Vault UI.</summary>
+    Vault = 2,
 }
 
 /// <summary>

@@ -38,6 +38,8 @@ public static class ServiceCollectionExtensions
             services.TryAddSingleton<ISecretStore, EnvironmentSecretStore>();
         }
         services.TryAddScoped<IVaultNamedSecretStore, VaultBackedSecretStore>();
+        services.TryAddScoped<Sufficit.Identity.Management.Vault.IUserVaultService,
+            UserVaultPersonalSecretService>();
 
         if (!string.Equals(
                 options.KeySource,

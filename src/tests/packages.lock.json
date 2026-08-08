@@ -1117,6 +1117,7 @@
           "Sufficit.Identity.UI": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Management": "[0.4.0-alpha, )",
+          "Sufficit.Identity.UI.Vault": "[0.4.0-alpha, )",
           "Swashbuckle.AspNetCore": "[7.2.0, )"
         }
       },
@@ -1147,11 +1148,23 @@
       "sufficit.identity.ui.abstractions": {
         "type": "Project"
       },
+      "sufficit.identity.ui.components": {
+        "type": "Project"
+      },
       "sufficit.identity.ui.management": {
         "type": "Project",
         "dependencies": {
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
-          "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )"
+          "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
+          "Sufficit.Identity.UI.Components": "[0.4.0-alpha, )"
+        }
+      },
+      "sufficit.identity.ui.vault": {
+        "type": "Project",
+        "dependencies": {
+          "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
+          "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
+          "Sufficit.Identity.UI.Components": "[0.4.0-alpha, )"
         }
       },
       "sufficit.identity.vault": {

@@ -29,6 +29,7 @@
     <ProjectReference Include="..\ui\Sufficit.Identity.UI.Abstractions\Sufficit.Identity.UI.Abstractions.csproj" />
     <ProjectReference Include="..\ui\Sufficit.Identity.UI\Sufficit.Identity.UI.csproj" />
     <ProjectReference Include="..\ui\Sufficit.Identity.UI.Management\Sufficit.Identity.UI.Management.csproj" />
+    <ProjectReference Include="..\ui\Sufficit.Identity.UI.Vault\Sufficit.Identity.UI.Vault.csproj" />
   </ItemGroup>
 
   <ItemGroup>

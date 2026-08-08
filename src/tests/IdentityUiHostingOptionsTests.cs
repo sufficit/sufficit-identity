@@ -15,8 +15,10 @@ public sealed class IdentityUiHostingOptionsTests
 
         Assert.Equal(IdentityUiHostingMode.Embedded, options.Public.Mode);
         Assert.Equal(IdentityUiHostingMode.Embedded, options.Management.Mode);
+        Assert.Equal(IdentityUiHostingMode.Embedded, options.Vault.Mode);
         Assert.True(options.Public.IsEmbedded);
         Assert.True(options.Management.IsEmbedded);
+        Assert.True(options.Vault.IsEmbedded);
     }
 
     [Fact]
@@ -27,6 +29,7 @@ public sealed class IdentityUiHostingOptionsTests
             {
                 ["Sufficit:Identity:UI:Public:Mode"] = "None",
                 ["Sufficit:Identity:UI:Management:Mode"] = "Embedded",
+                ["Sufficit:Identity:UI:Vault:Mode"] = "None",
             })
             .Build();
 
@@ -38,6 +41,7 @@ public sealed class IdentityUiHostingOptionsTests
         options.Validate();
         Assert.False(options.Public.IsEmbedded);
         Assert.True(options.Management.IsEmbedded);
+        Assert.False(options.Vault.IsEmbedded);
     }
 
     [Fact]
@@ -100,6 +104,8 @@ public sealed class IdentityUiHostingOptionsTests
             1,
             Count(program, "builder.Services.AddSufficitIdentityManagementUI"));
         Assert.Equal(1, Count(program, "app.UseSufficitIdentityManagementUI"));
+        Assert.Equal(1, Count(program, "builder.Services.AddSufficitIdentityVaultUI"));
+        Assert.Equal(1, Count(program, "app.UseSufficitIdentityVaultUI"));
     }
 
     private static int Count(string source, string value)

@@ -23,13 +23,17 @@ public sealed class IdentityUiHostingOptions
 
     public IdentityUiSurfaceHostingOptions Management { get; set; } = new();
 
+    public IdentityUiSurfaceHostingOptions Vault { get; set; } = new();
+
     public void Validate()
     {
         ArgumentNullException.ThrowIfNull(Public);
         ArgumentNullException.ThrowIfNull(Management);
+        ArgumentNullException.ThrowIfNull(Vault);
 
         Public.Validate(nameof(Public));
         Management.Validate(nameof(Management));
+        Vault.Validate(nameof(Vault));
     }
 }
 

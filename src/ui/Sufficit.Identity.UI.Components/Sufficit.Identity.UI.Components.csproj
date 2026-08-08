@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Sufficit.Identity.UI.Components</RootNamespace>
+    <AssemblyName>Sufficit.Identity.UI.Components</AssemblyName>
+    <Description>Sufficit Identity shared visual components.</Description>
+    <IsPackable>true</IsPackable>
+    <StaticWebAssetsEnabled>true</StaticWebAssetsEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+</Project>
