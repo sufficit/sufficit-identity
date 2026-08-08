@@ -17,6 +17,17 @@ namespace Sufficit.Identity.Management.Provisioning;
 /// </summary>
 public interface IProvisioningManagementService
 {
+    /// <summary>
+    /// Returns a read-only ownership/drift inventory. The operation never
+    /// resolves secrets and never changes OpenIddict state.
+    /// </summary>
+    Task<IdentityProvisioningInventory> InventoryAsync(
+        IdentityProvisioningManifest manifest,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "This provisioning adapter does not support inventory queries.");
+
     Task<IdentityProvisioningPlan> PreviewAsync(
         IdentityProvisioningManifest manifest,
         ManagementRequestContext context,
@@ -112,6 +123,65 @@ internal sealed class ProvisioningManagementService(
                 decision,
                 "failed",
                 "provisioning_preview_failed",
+                cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task<IdentityProvisioningInventory> InventoryAsync(
+        IdentityProvisioningManifest manifest,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(manifest);
+        ArgumentNullException.ThrowIfNull(context);
+
+        var decision = await DemandAsync(
+            context,
+            ManagementCapabilities.ProvisioningPreview,
+            cancellationToken);
+
+        try
+        {
+            var inventory = await provisioner.InventoryAsync(
+                manifest,
+                cancellationToken);
+            await WriteAuditAsync(
+                context,
+                ManagementCapabilities.ProvisioningPreview,
+                decision,
+                "succeeded",
+                "provisioning_manifest_inventory",
+                cancellationToken);
+            return inventory;
+        }
+        catch (IdentityProvisioningManifestException)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ProvisioningPreview,
+                decision,
+                "rejected",
+                "provisioning_manifest_invalid",
+                cancellationToken);
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(
+                exception,
+                "Provisioning inventory failed. CorrelationId={CorrelationId}",
+                context.CorrelationId);
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ProvisioningPreview,
+                decision,
+                "failed",
+                "provisioning_inventory_failed",
                 cancellationToken);
             throw;
         }

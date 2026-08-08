@@ -55,6 +55,123 @@ public sealed class OpenIddictManifestProvisioner
         string? actorSubject = null) =>
         ProcessAsync(manifest, apply: true, cancellationToken, actorSubject);
 
+    /// <summary>
+    /// Builds a non-mutating inventory of manifest ownership and drift. It
+    /// deliberately never resolves client secrets, so operators can run it
+    /// before approving an adoption or enabling Enforce mode.
+    /// </summary>
+    public async Task<IdentityProvisioningInventory> InventoryAsync(
+        IdentityProvisioningManifest manifest,
+        CancellationToken cancellationToken = default)
+    {
+        IdentityProvisioningManifestValidator.ValidateAndThrow(
+            manifest,
+            _reservedScopePolicy,
+            _clientDefinitionValidator);
+
+        var declaredIds = manifest.Clients
+            .Select(client => client.ClientId)
+            .ToHashSet(StringComparer.Ordinal);
+        var entries = new List<IdentityManifestInventoryEntry>();
+
+        foreach (var client in manifest.Clients.OrderBy(
+                     client => client.ClientId,
+                     StringComparer.Ordinal))
+        {
+            var manifestIdentity = GetManifestIdentity(
+                manifest.ManifestId,
+                "client:" + client.ClientId);
+            var application = await _applications.FindByClientIdAsync(
+                client.ClientId,
+                cancellationToken);
+
+            if (application is null)
+            {
+                entries.Add(new IdentityManifestInventoryEntry(
+                    client.ClientId,
+                    IdentityManifestInventoryStatus.DeclaredMissing,
+                    manifestIdentity));
+                continue;
+            }
+
+            var current = new OpenIddictApplicationDescriptor();
+            await _applications.PopulateAsync(
+                current,
+                application,
+                cancellationToken);
+
+            var currentOwner = GetStringProperty(
+                current.Properties,
+                OwnerProperty);
+            var currentIdentity = GetStringProperty(
+                current.Properties,
+                ManifestIdentityProperty);
+            var schemaVersion = GetInt32Property(
+                current.Properties,
+                SchemaVersionProperty);
+            var managedByThisManifest =
+                string.Equals(currentOwner, ProvisioningOwner, StringComparison.Ordinal)
+                && string.Equals(
+                    currentIdentity,
+                    manifestIdentity,
+                    StringComparison.Ordinal);
+
+            var status = !string.Equals(
+                    currentOwner,
+                    ProvisioningOwner,
+                    StringComparison.Ordinal)
+                ? IdentityManifestInventoryStatus.DeclaredUnmanaged
+                : !managedByThisManifest
+                    ? IdentityManifestInventoryStatus.DeclaredOwnedByAnotherManifest
+                    : ApplicationEquals(
+                        current,
+                        CreateApplicationDescriptor(
+                            manifest.SchemaVersion,
+                            client,
+                            manifestIdentity))
+                        ? IdentityManifestInventoryStatus.DeclaredCurrent
+                        : IdentityManifestInventoryStatus.DeclaredDrifted;
+
+            entries.Add(new IdentityManifestInventoryEntry(
+                client.ClientId,
+                status,
+                currentIdentity,
+                schemaVersion));
+        }
+
+        await foreach (var application in _applications.ListAsync(
+                           cancellationToken: cancellationToken))
+        {
+            var clientId = (string?)await _applications.GetClientIdAsync(
+                application,
+                cancellationToken);
+            if (string.IsNullOrWhiteSpace(clientId) ||
+                declaredIds.Contains(clientId))
+            {
+                continue;
+            }
+
+            var current = new OpenIddictApplicationDescriptor();
+            await _applications.PopulateAsync(
+                current,
+                application,
+                cancellationToken);
+            var owner = GetStringProperty(current.Properties, OwnerProperty);
+            entries.Add(new IdentityManifestInventoryEntry(
+                clientId,
+                string.Equals(owner, ProvisioningOwner, StringComparison.Ordinal)
+                    ? IdentityManifestInventoryStatus.ManagedButUndeclared
+                    : IdentityManifestInventoryStatus.UnmanagedAndUndeclared,
+                GetStringProperty(current.Properties, ManifestIdentityProperty),
+                GetInt32Property(current.Properties, SchemaVersionProperty)));
+        }
+
+        return new IdentityProvisioningInventory(
+            entries
+                .OrderBy(entry => entry.ClientId, StringComparer.Ordinal)
+                .ToArray());
+    }
+
     private async Task<IdentityProvisioningPlan> ProcessAsync(
         IdentityProvisioningManifest manifest,
         bool apply,

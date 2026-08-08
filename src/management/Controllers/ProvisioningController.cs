@@ -16,6 +16,20 @@ public sealed class ProvisioningController(
     IProvisioningManagementService provisioning) : ControllerBase
 {
     /// <summary>
+    /// Returns ownership and drift information without mutating clients or
+    /// resolving secret references. This is the required first step before an
+    /// operator opts a production manifest into Enforce mode.
+    /// </summary>
+    [HttpPost("inventory")]
+    public async Task<ActionResult<IdentityProvisioningInventory>> Inventory(
+        [FromBody] IdentityProvisioningManifest manifest,
+        CancellationToken cancellationToken) =>
+        Ok(await provisioning.InventoryAsync(
+            manifest,
+            RequestContext(),
+            cancellationToken));
+
+    /// <summary>
     /// Returns the create/update/unchanged plan without changing the database
     /// or resolving any secret references.
     /// </summary>
