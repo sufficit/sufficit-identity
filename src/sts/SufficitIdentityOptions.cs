@@ -722,8 +722,8 @@ public sealed class CorsOptions
 /// <summary>
 /// Policy for the consolidated production posture check
 /// (<c>ProductionPostureCheck</c>). The check gathers permissive
-/// rollout-friendly defaults (CSP report-only, management Observe modes,
-/// non-shared DPoP replay cache, unencrypted JARM for FAPI clients) that are
+/// rollout-friendly defaults (CSP report-only, management Observe modes and a
+/// non-shared DPoP replay cache) that are
 /// easy to ship to production unnoticed.
 /// </summary>
 public sealed class SecurityPostureOptions
@@ -1186,11 +1186,11 @@ public sealed class JarmOptions
 }
 
 /// <summary>
-/// JWE encryption settings for JARM responses. The STS encrypts the signed
-/// JWT response to an RSA public key registered in each client's JWKS. The
-/// receiver decrypts with its matching private key. This is the
-/// signed-and-encrypted response mode required by the FAPI 2.0 Advancing
-/// Profile for sensitive responses.
+/// JWE encryption settings for JARM responses. The STS can encrypt the signed
+/// JWT response to an RSA or EC public key registered in each client's JWKS.
+/// The receiver decrypts with its matching private key. Encryption is an
+/// optional JARM confidentiality mode; FAPI 2.0 does not require it for the
+/// authorization code response.
 /// </summary>
 public sealed class JarmEncryptionOptions
 {
@@ -1199,16 +1199,6 @@ public sealed class JarmEncryptionOptions
     /// are signed-only even when <see cref="JarmOptions.Enabled"/> is true.
     /// </summary>
     public bool Enabled { get; init; } = false;
-
-    /// <summary>
-    /// Acknowledges that FAPI-profiled clients may receive signed-only (not
-    /// encrypted) JARM authorization responses. When false (default) and FAPI
-    /// 2.0 is enabled for at least one client while <see cref="Enabled"/> is
-    /// false, the production posture check flags this as an unresolved
-    /// permissive default. Set true only if signed-only responses are
-    /// acceptable for your FAPI clients.
-    /// </summary>
-    public bool AcknowledgeUnencryptedForFapi { get; init; }
 
     /// <summary>
     /// Deprecated and ignored. Recipient keys must come from client metadata.
@@ -1222,9 +1212,8 @@ public sealed class JarmEncryptionOptions
 
     /// <summary>
     /// JWE <c>alg</c> (key management) algorithm for RSA recipient keys.
-    /// Defaults to <c>RSA-OAEP-256</c> (RSA-OAEP with SHA-256), the value the
-    /// FAPI 2.0 profile calls for; the legacy <c>RSA-OAEP</c> (SHA-1) is
-    /// discouraged. Ignored for EC recipient keys, which use
+    /// Defaults to <c>RSA-OAEP-256</c> (RSA-OAEP with SHA-256). The legacy
+    /// <c>RSA-OAEP</c> (SHA-1) is discouraged. Ignored for EC recipient keys, which use
     /// <see cref="EcKeyManagementAlgorithm"/>.
     /// </summary>
     public string KeyManagementAlgorithm { get; init; } = "RSA-OAEP-256";

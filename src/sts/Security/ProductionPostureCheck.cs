@@ -23,7 +23,8 @@ public sealed record ProductionPostureFinding(
 /// deliberately permissive default so a fresh install or a rolling migration
 /// does not break: CSP runs Report-Only, the management authorization
 /// object/principal policies run in Observe (log-only) mode, the DPoP replay
-/// cache can be single-node, and JARM encryption may be off for FAPI clients.
+/// cache can be single-node. JARM encryption is intentionally not a finding:
+/// FAPI 2.0 authorization-code responses do not require it.
 /// Each is individually reasonable, but collectively they are easy to ship to
 /// production unnoticed — the operator believes a protection is active when it
 /// is only observing.
@@ -127,25 +128,6 @@ public static class ProductionPostureCheck
                 + "AddStackExchangeRedisCache), or set "
                 + "Sufficit:Identity:DistributedCache:RequireShared=false for a "
                 + "genuine single-replica deployment."));
-        }
-
-        // --- JARM encryption off for FAPI-profiled clients ---
-        if (options.Fapi2.Enabled
-            && options.Fapi2.ClientIds.Count > 0
-            && options.Jarm.Enabled
-            && !options.Jarm.Encryption.Enabled
-            && !options.Jarm.Encryption.AcknowledgeUnencryptedForFapi)
-        {
-            findings.Add(new ProductionPostureFinding(
-                "jarm-unencrypted-for-fapi",
-                "FAPI 2.0 is enabled for one or more clients but JARM "
-                + "encryption is disabled: those clients receive signed-only "
-                + "authorization responses instead of the encrypted responses "
-                + "the FAPI 2.0 Advancing profile calls for.",
-                "Set Sufficit:Identity:Jarm:Encryption:Enabled=true (clients "
-                + "must register an encryption key), or "
-                + "AcknowledgeUnencryptedForFapi=true to accept signed-only "
-                + "responses for these clients."));
         }
 
         return findings;
