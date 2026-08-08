@@ -23,9 +23,15 @@ fi
 # Add dotnetuser to www-data group so the Unix socket is accessible by nginx
 usermod -aG www-data dotnetuser 2>/dev/null || true
 
-# Fix permissions (prestart.sh also does this, but run here for first install)
-chown -R dotnetuser:www-data "${ROOTDIR}"
-chmod 755 "${ROOTDIR}"/helpers/*.sh
+# Install privileged helpers outside the release. systemd must never execute a
+# service-writable release file with elevated privilege.
+install -d -o root -g root -m 0755 /usr/libexec/${APPTITLE}
+install -o root -g root -m 0755 \
+    "${ROOTDIR}/helpers/bootstrap-release.sh" \
+    /usr/libexec/${APPTITLE}/bootstrap-release.sh
+install -o root -g root -m 0755 \
+    "${ROOTDIR}/helpers/prestart.sh" \
+    /usr/libexec/${APPTITLE}/prestart.sh
 
 # Install the non-secret operational hardening overlay once. Deliberately do
 # not overwrite it on upgrades: CSP and MFA progress are environment state,
@@ -69,6 +75,10 @@ while IFS= read -r default_line; do
         missing_defaults=$((missing_defaults + 1))
     fi
 done < "${ROOTDIR}/helpers/hardening.env.template"
+
+# Persist signing material and make the active release immutable to the
+# service account before systemd is allowed to execute it.
+/usr/libexec/${APPTITLE}/bootstrap-release.sh "${ROOTDIR}"
 
 if [ "${missing_defaults}" -gt 0 ]; then
     echo "[install] Added ${missing_defaults} missing hardening default(s); existing values preserved"
