@@ -25,6 +25,18 @@ public sealed class ManagementClientDataSource(
             "Client listing",
             cancellationToken);
 
+    public Task<ManagementDataResult<ManagementClientPage>>
+        SearchClientsAsync(
+            ManagementClientQuery query,
+            CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (clients, context) => clients.SearchAsync(
+                query,
+                context,
+                cancellationToken),
+            "Client search",
+            cancellationToken);
+
     public Task<ManagementDataResult<IReadOnlyList<ManagementClientProfile>>>
         GetClientProfilesAsync(CancellationToken cancellationToken = default) =>
         ExecuteDraftAsync(

@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management.Audit;
+using Sufficit.Identity.Management.Clients;
 using Sufficit.Identity.Management.Controllers;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
@@ -24,6 +25,52 @@ namespace Sufficit.Identity.Tests;
 /// </summary>
 public sealed class ClientsControllerTests
 {
+    [Fact]
+    public async Task List_supports_server_paging_and_composable_filters()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+
+        foreach (var suffix in new[] { "one", "two", "three" })
+        {
+            var request = ConfidentialClient(
+                $"paged-{suffix}-{Guid.NewGuid():N}",
+                "https://client.tests.local/callback");
+            request.DisplayName = $"Paginated alpha {suffix}";
+            request.GrantTypes = [Permissions.GrantTypes.AuthorizationCode];
+            request.Scopes = ["openid"];
+            using var created = await client.PostAsJsonAsync("/api/clients", request);
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        }
+
+        using var response = await client.GetAsync(
+            "/api/clients?q=alpha&type=confidential&grant=authorization_code&page=2&pageSize=1");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await response.Content.ReadFromJsonAsync<ManagementClientPage>();
+        Assert.NotNull(page);
+        Assert.Equal(3, page.TotalCount);
+        Assert.Equal(2, page.Page);
+        Assert.Equal(1, page.PageSize);
+        Assert.Single(page.Items);
+        Assert.Contains("alpha", page.Items[0].DisplayName,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task List_rejects_an_unbounded_page_size()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+
+        using var response = await client.GetAsync("/api/clients?pageSize=101");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("pageSize", await response.Content.ReadAsStringAsync(),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
     private static CreateClientRequest ConfidentialClient(string clientId, params string[] redirectUris) => new()
     {
         ClientId = clientId,

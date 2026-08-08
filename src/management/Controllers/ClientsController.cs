@@ -15,11 +15,30 @@ namespace Sufficit.Identity.Management.Controllers;
 public sealed class ClientsController(IClientManagementService clients)
     : ControllerBase
 {
-    /// <summary>Lists all registered clients.</summary>
+    /// <summary>Lists registered clients with bounded server-side paging.</summary>
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<ManagementClientSummary>>> List(
-        CancellationToken cancellationToken) =>
-        Ok(await clients.ListAsync(RequestContext(), cancellationToken));
+    public async Task<ActionResult<ManagementClientPage>> List(
+        CancellationToken cancellationToken,
+        [FromQuery(Name = "q")] string? search,
+        [FromQuery] string? type,
+        [FromQuery] string? grant,
+        [FromQuery] string? scope,
+        [FromQuery] string? origin,
+        [FromQuery] string? status,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25) =>
+        Ok(await clients.SearchAsync(
+            new ManagementClientQuery(
+                search,
+                type,
+                grant,
+                scope,
+                origin,
+                status,
+                page,
+                pageSize),
+            RequestContext(),
+            cancellationToken));
 
     /// <summary>Gets a single client by client_id.</summary>
     [HttpGet("{clientId}")]
