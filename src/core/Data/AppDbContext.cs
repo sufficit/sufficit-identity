@@ -47,6 +47,9 @@ public sealed class AppDbContext
     public DbSet<Entities.ManagementAuditEvent> ManagementAuditEvents =>
         Set<Entities.ManagementAuditEvent>();
 
+    public DbSet<Entities.ManagementClientDraftRecord> ManagementClientDrafts =>
+        Set<Entities.ManagementClientDraftRecord>();
+
     public DbSet<Entities.ScimUserProfile> ScimUserProfiles =>
         Set<Entities.ScimUserProfile>();
 
@@ -105,6 +108,7 @@ public sealed class AppDbContext
         ConfigurePasskeyEntities(builder);
         MapBrandingTables(builder);
         MapManagementAuditTables(builder);
+        MapManagementClientDrafts(builder);
         MapScimTables(builder);
         MapSsfStreams(builder);
         MapOidcUserSessions(builder);
@@ -171,6 +175,56 @@ public sealed class AppDbContext
                 ("ApprovedSubject", "approvedsubject"),
                 ("State", "state"),
                 ("ConsumptionId", "consumptionid"),
+            ]);
+        });
+    }
+
+    private static void MapManagementClientDrafts(ModelBuilder builder)
+    {
+        builder.Entity<Entities.ManagementClientDraftRecord>(b =>
+        {
+            b.ToTable("managementclientdrafts");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.OwnerSubject)
+                .HasMaxLength(IdentityDatabaseSchema.ManagementDraftOwnerLength)
+                .IsRequired();
+            b.Property(x => x.Profile)
+                .HasMaxLength(IdentityDatabaseSchema.ManagementDraftProfileLength)
+                .IsRequired();
+            b.Property(x => x.CurrentStep)
+                .HasMaxLength(IdentityDatabaseSchema.ManagementDraftStepLength)
+                .IsRequired();
+            b.Property(x => x.Status)
+                .HasMaxLength(IdentityDatabaseSchema.ManagementDraftStatusLength)
+                .IsRequired();
+            b.Property(x => x.ProtectedPayload)
+                .HasColumnType("longtext")
+                .IsRequired();
+            b.Property(x => x.Version)
+                .HasMaxLength(IdentityDatabaseSchema.ManagementDraftVersionLength)
+                .IsConcurrencyToken()
+                .IsRequired();
+            b.Property(x => x.CreatedClientId)
+                .HasMaxLength(IdentityDatabaseSchema.OpenIddictClientIdLength);
+            b.Property(x => x.CreatedAtUtc).HasColumnType("datetime(6)").IsRequired();
+            b.Property(x => x.UpdatedAtUtc).HasColumnType("datetime(6)").IsRequired();
+            b.Property(x => x.ExpiresAtUtc).HasColumnType("datetime(6)").IsRequired();
+            b.HasIndex(x => new { x.OwnerSubject, x.Status, x.UpdatedAtUtc })
+                .HasDatabaseName("IX_managementclientdrafts_owner_status_updated");
+            b.HasIndex(x => x.ExpiresAtUtc)
+                .HasDatabaseName("IX_managementclientdrafts_expiresatutc");
+            SnakeCaseColumns(b, [
+                ("Id", "id"),
+                ("OwnerSubject", "ownersubject"),
+                ("Profile", "profile"),
+                ("CurrentStep", "currentstep"),
+                ("Status", "status"),
+                ("ProtectedPayload", "protectedpayload"),
+                ("Version", "version"),
+                ("CreatedClientId", "createdclientid"),
+                ("CreatedAtUtc", "createdatutc"),
+                ("UpdatedAtUtc", "updatedatutc"),
+                ("ExpiresAtUtc", "expiresatutc"),
             ]);
         });
     }

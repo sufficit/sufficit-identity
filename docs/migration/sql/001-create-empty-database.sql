@@ -521,3 +521,28 @@ VALUES ('20260807140821_AddAtomicProtocolState', '10.0.10');
 
 COMMIT;
 
+START TRANSACTION;
+CREATE TABLE `managementclientdrafts` (
+    `id` char(36) COLLATE ascii_general_ci NOT NULL,
+    `ownersubject` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `profile` varchar(40) CHARACTER SET utf8mb4 NOT NULL,
+    `currentstep` varchar(32) CHARACTER SET utf8mb4 NOT NULL,
+    `status` varchar(24) CHARACTER SET utf8mb4 NOT NULL,
+    `protectedpayload` longtext CHARACTER SET utf8mb4 NOT NULL,
+    `version` varchar(32) CHARACTER SET utf8mb4 NOT NULL,
+    `createdclientid` varchar(100) CHARACTER SET utf8mb4 NULL,
+    `createdatutc` datetime(6) NOT NULL,
+    `updatedatutc` datetime(6) NOT NULL,
+    `expiresatutc` datetime(6) NOT NULL,
+    CONSTRAINT `PK_managementclientdrafts` PRIMARY KEY (`id`)
+) CHARACTER SET=utf8mb4;
+
+CREATE INDEX `IX_managementclientdrafts_expiresatutc` ON `managementclientdrafts` (`expiresatutc`);
+
+CREATE INDEX `IX_managementclientdrafts_owner_status_updated` ON `managementclientdrafts` (`ownersubject`, `status`, `updatedatutc`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260807161036_AddManagementClientDrafts', '10.0.10');
+
+COMMIT;
+

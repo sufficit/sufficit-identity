@@ -25,6 +25,76 @@ public sealed class ManagementClientDataSource(
             "Client listing",
             cancellationToken);
 
+    public Task<ManagementDataResult<IReadOnlyList<ManagementClientProfile>>>
+        GetClientProfilesAsync(CancellationToken cancellationToken = default) =>
+        ExecuteDraftAsync(
+            (drafts, context) => drafts.GetProfilesAsync(context, cancellationToken),
+            "Client profile listing",
+            cancellationToken);
+
+    public Task<ManagementDataResult<IReadOnlyList<ManagementClientAvailableScope>>>
+        GetAvailableClientScopesAsync(CancellationToken cancellationToken = default) =>
+        ExecuteDraftAsync(
+            (drafts, context) => drafts.GetAvailableScopesAsync(context, cancellationToken),
+            "Available client scope listing",
+            cancellationToken);
+
+    public Task<ManagementDataResult<IReadOnlyList<ManagementClientDraftSummary>>>
+        GetClientDraftsAsync(CancellationToken cancellationToken = default) =>
+        ExecuteDraftAsync(
+            (drafts, context) => drafts.ListAsync(context, cancellationToken),
+            "Client draft listing",
+            cancellationToken);
+
+    public Task<ManagementDataResult<ManagementClientDraftDetail>>
+        CreateClientDraftAsync(
+            string profile,
+            CancellationToken cancellationToken = default) =>
+        ExecuteDraftAsync(
+            (drafts, context) => drafts.CreateAsync(profile, context, cancellationToken),
+            "Client draft creation",
+            cancellationToken);
+
+    public Task<ManagementDataResult<ManagementClientDraftDetail>>
+        GetClientDraftAsync(
+            Guid id,
+            CancellationToken cancellationToken = default) =>
+        ExecuteDraftAsync(
+            (drafts, context) => drafts.GetAsync(id, context, cancellationToken),
+            "Client draft detail",
+            cancellationToken);
+
+    public Task<ManagementDataResult<ManagementClientDraftDetail>>
+        SaveClientDraftAsync(
+            SaveManagementClientDraftCommand command,
+            CancellationToken cancellationToken = default) =>
+        ExecuteDraftAsync(
+            (drafts, context) => drafts.SaveAsync(command, context, cancellationToken),
+            "Client draft save",
+            cancellationToken);
+
+    public Task<ManagementDataResult<CompleteManagementClientDraftResult>>
+        CompleteClientDraftAsync(
+            Guid id,
+            string version,
+            CancellationToken cancellationToken = default) =>
+        ExecuteDraftAsync(
+            (drafts, context) => drafts.CompleteAsync(id, version, context, cancellationToken),
+            "Client draft completion",
+            cancellationToken);
+
+    public Task<ManagementDataResult<bool>> AbandonClientDraftAsync(
+        Guid id,
+        CancellationToken cancellationToken = default) =>
+        ExecuteDraftAsync(
+            async (drafts, context) =>
+            {
+                await drafts.AbandonAsync(id, context, cancellationToken);
+                return true;
+            },
+            "Client draft abandonment",
+            cancellationToken);
+
     public Task<ManagementDataResult<ManagementClientDetail>>
         GetClientAsync(
             string id,
@@ -78,6 +148,76 @@ public sealed class ManagementClientDataSource(
 
             return ManagementDataResult<T>.Success(
                 await operation(clients, context));
+        }
+        catch (ManagementValidationException exception)
+        {
+            return ManagementDataResult<T>.Failure(
+                ManagementDataOutcome.Invalid,
+                exception.Message,
+                exception.Field);
+        }
+        catch (ManagementConflictException exception)
+        {
+            return ManagementDataResult<T>.Failure(
+                ManagementDataOutcome.Conflict,
+                exception.Message);
+        }
+        catch (ManagementNotFoundException exception)
+        {
+            return ManagementDataResult<T>.Failure(
+                ManagementDataOutcome.NotFound,
+                exception.Message);
+        }
+        catch (ManagementAccessException exception)
+        {
+            var outcome = exception.Decision.Outcome is
+                ManagementAuthorizationOutcome.StepUpRequired
+                    ? ManagementDataOutcome.StepUpRequired
+                    : ManagementDataOutcome.Forbidden;
+            return ManagementDataResult<T>.Failure(
+                outcome,
+                outcome is ManagementDataOutcome.StepUpRequired
+                    ? "Conclua a autenticação multifator para continuar."
+                    : "Sua conta não possui a autoridade necessária.");
+        }
+        catch (OperationCanceledException)
+            when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("{OperationName} timed out.", operationName);
+            return ManagementDataResult<T>.Failure(
+                ManagementDataOutcome.Unavailable,
+                "O serviço demorou mais que o esperado. Tente novamente.");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(
+                exception,
+                "{OperationName} failed in the embedded management module.",
+                operationName);
+            return ManagementDataResult<T>.Failure(
+                ManagementDataOutcome.Unavailable,
+                "O serviço de identidade não conseguiu concluir a operação.");
+        }
+    }
+
+    private async Task<ManagementDataResult<T>> ExecuteDraftAsync<T>(
+        Func<IClientConfigurationDraftService, ManagementRequestContext, Task<T>> operation,
+        string operationName,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var drafts = scope.ServiceProvider
+                .GetRequiredService<IClientConfigurationDraftService>();
+            var context = await CreateRequestContextAsync();
+
+            return ManagementDataResult<T>.Success(
+                await operation(drafts, context));
         }
         catch (ManagementValidationException exception)
         {

@@ -1,0 +1,576 @@
+@page "/clients/drafts/{Id:guid}/{Step}"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageClients)]
+@implements IAsyncDisposable
+@inject ManagementClientDataSource ClientData
+@inject NavigationManager Navigation
+
+<PageTitle>Configurar aplicação | Sufficit Identity</PageTitle>
+
+@if (loading)
+{
+    <section class="wizard-loading" aria-busy="true" aria-label="Carregando configuração">
+        <span class="button-spinner" aria-hidden="true"></span>
+        <p>Recuperando seu rascunho protegido…</p>
+    </section>
+}
+else if (draft is null)
+{
+    <PageHeader Title="Rascunho indisponível"
+                Description="Ele pode ter expirado, sido concluído ou pertencer a outra sessão administrativa." />
+    <EmptyState Icon="alert" Title="Não foi possível abrir esta configuração" Description="@errorMessage">
+        <Actions>
+            <a class="button button--primary" href="clients/new">Iniciar nova aplicação</a>
+            <a class="button button--secondary" href="clients">Voltar para aplicações</a>
+        </Actions>
+    </EmptyState>
+}
+else if (completion is not null)
+{
+    <PageHeader Title="Aplicação criada"
+                Description="A configuração foi validada, registrada e auditada com sucesso." />
+    <section class="completion-panel" aria-labelledby="completion-heading">
+        <span class="completion-panel__icon"><AppIcon Name="check" Size="26" /></span>
+        <div>
+            <h2 id="completion-heading">@completion.Client.DisplayName</h2>
+            <p>Client ID: <code>@completion.Client.ClientId</code></p>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(completion.OneTimeSecret))
+        {
+            <div class="one-time-secret" role="alert">
+                <div>
+                    <strong>Copie a credencial agora</strong>
+                    <span>Ela não será armazenada nem exibida novamente.</span>
+                </div>
+                <input id="generated-client-secret"
+                       name="generated-client-secret"
+                       class="form-control technical-value"
+                       value="@completion.OneTimeSecret"
+                       readonly
+                       aria-label="Credencial gerada para a aplicação" />
+            </div>
+        }
+        <div class="wizard-actions wizard-actions--complete">
+            <a class="button button--primary" href="@ClientHref(completion.Client.Id)">Abrir aplicação</a>
+            <a class="button button--secondary" href="clients">Voltar para aplicações</a>
+        </div>
+    </section>
+}
+else
+{
+    <PageHeader Title="Configurar aplicação"
+                Description="Avance no seu ritmo. O rascunho é protegido e retomável por 14 dias.">
+        <Actions>
+            <a class="button button--secondary" href="clients">Salvar e sair</a>
+        </Actions>
+    </PageHeader>
+
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <section class="inline-notice inline-notice--danger" role="alert">
+            <AppIcon Name="alert" Size="19" />
+            <div><strong>Não foi possível concluir a operação</strong><span>@errorMessage</span></div>
+        </section>
+    }
+
+    <div class="wizard-shell">
+        <nav class="wizard-progress" aria-label="Etapas da configuração">
+            <div class="wizard-progress__summary">
+                <span>Etapa @(CurrentStepIndex + 1) de @Steps.Length</span>
+                <strong>@CurrentStep.Label</strong>
+            </div>
+            <ol>
+                @for (var index = 0; index < Steps.Length; index++)
+                {
+                    var item = Steps[index];
+                    <li class="@(index == CurrentStepIndex ? "is-current" : index < CurrentStepIndex ? "is-complete" : null)">
+                        <button type="button"
+                                aria-current="@(index == CurrentStepIndex ? "step" : null)"
+                                @onclick="() => GoToStepAsync(item.Id)">
+                            <span>@(index + 1)</span>
+                            <strong>@item.ShortLabel</strong>
+                        </button>
+                    </li>
+                }
+            </ol>
+            <div class="wizard-save-state" aria-live="polite">
+                @if (saving)
+                {
+                    <span class="button-spinner" aria-hidden="true"></span><span>Salvando…</span>
+                }
+                else if (savedAt is not null)
+                {
+                    <AppIcon Name="check" Size="15" /><span>Salvo às @savedAt.Value.ToLocalTime().ToString("HH:mm")</span>
+                }
+                else
+                {
+                    <AppIcon Name="lock" Size="15" /><span>Rascunho protegido</span>
+                }
+            </div>
+        </nav>
+
+        <main class="wizard-stage" aria-labelledby="wizard-stage-heading">
+            <header class="wizard-stage__heading">
+                <span class="wizard-stage__eyebrow">@CurrentStep.Eyebrow</span>
+                <h2 id="wizard-stage-heading">@CurrentStep.Label</h2>
+                <p>@CurrentStep.Description</p>
+            </header>
+
+            @if (CurrentStep.Id == ManagementClientDraftSteps.Identity)
+            {
+                <div class="form-grid form-grid--two">
+                    <div class="field-group">
+                        <label for="client-display-name">Nome da aplicação</label>
+                        <input id="client-display-name" name="displayName" class="form-control"
+                               autocomplete="organization" value="@draft.Values.DisplayName"
+                               @oninput="DisplayNameChangedAsync" />
+                        <span class="field-hint">Nome humano mostrado em consentimentos e auditoria.</span>
+                        @foreach (var issue in IssuesFor("displayName"))
+                        {
+                            <span class="field-feedback field-feedback--@IssueTone(issue)">@issue.Message</span>
+                        }
+                    </div>
+                    <div class="field-group">
+                        <label for="client-id">Client ID</label>
+                        <input id="client-id" name="clientId" class="form-control technical-value"
+                               autocomplete="off" spellcheck="false" value="@draft.Values.ClientId"
+                               @oninput="ClientIdChangedAsync" />
+                        <span class="field-hint">Identificador estável usado pelo protocolo. Exemplo: <code>portal_web</code>.</span>
+                        @foreach (var issue in IssuesFor("clientId"))
+                        {
+                            <span class="field-feedback field-feedback--@IssueTone(issue)">@issue.Message</span>
+                        }
+                    </div>
+                </div>
+                <section class="profile-context">
+                    <AppIcon Name="shield" Size="21" />
+                    <div><strong>@ProfileName</strong><span>@ProfileOutcome</span></div>
+                </section>
+            }
+            else if (CurrentStep.Id == ManagementClientDraftSteps.Protocol)
+            {
+                <fieldset class="choice-fieldset">
+                    <legend>Tipo de cliente</legend>
+                    <div class="choice-grid choice-grid--two">
+                        <label class="choice-control">
+                            <input name="client-type" type="radio" value="public"
+                                   checked="@(draft.Values.ClientType == "public")"
+                                   @onchange='() => SetClientTypeAsync("public")' />
+                            <span><strong>Público</strong><small>Sem segredo armazenado no navegador, dispositivo ou CLI.</small></span>
+                        </label>
+                        <label class="choice-control">
+                            <input name="client-type" type="radio" value="confidential"
+                                   checked="@(draft.Values.ClientType == "confidential")"
+                                   @onchange='() => SetClientTypeAsync("confidential")' />
+                            <span><strong>Confidencial</strong><small>Servidor capaz de proteger uma credencial.</small></span>
+                        </label>
+                    </div>
+                </fieldset>
+                <fieldset class="choice-fieldset">
+                    <legend>Como obtém tokens</legend>
+                    <div class="choice-grid">
+                        <label class="choice-control">
+                            <input id="grant-authorization-code" name="grantTypes" type="checkbox" checked="@draft.Values.AuthorizationCode" @onchange="AuthorizationCodeChangedAsync" />
+                            <span><strong>Authorization Code + PKCE</strong><small>Login interativo moderno.</small></span>
+                        </label>
+                        <label class="choice-control">
+                            <input id="grant-refresh-token" name="grantTypes" type="checkbox" checked="@draft.Values.RefreshToken" @onchange="RefreshTokenChangedAsync" />
+                            <span><strong>Refresh Token</strong><small>Renova a sessão sem novo login.</small></span>
+                        </label>
+                        <label class="choice-control">
+                            <input id="grant-client-credentials" name="grantTypes" type="checkbox" checked="@draft.Values.ClientCredentials" @onchange="ClientCredentialsChangedAsync" />
+                            <span><strong>Client Credentials</strong><small>Integração sem usuário.</small></span>
+                        </label>
+                        <label class="choice-control">
+                            <input id="grant-device-code" name="grantTypes" type="checkbox" checked="@draft.Values.DeviceCode" @onchange="DeviceCodeChangedAsync" />
+                            <span><strong>Device Code</strong><small>Autoriza em outro dispositivo.</small></span>
+                        </label>
+                    </div>
+                    @foreach (var issue in IssuesFor("grantTypes"))
+                    {
+                        <span class="field-feedback field-feedback--@IssueTone(issue)">@issue.Message</span>
+                    }
+                </fieldset>
+                <div class="form-grid form-grid--two">
+                    <div class="field-group">
+                        <label for="consent-type">Consentimento</label>
+                        <select id="consent-type" name="consentType" class="form-control"
+                                value="@draft.Values.ConsentType" @onchange="ConsentChangedAsync">
+                            <option value="explicit">Explícito — o usuário confirma</option>
+                            <option value="implicit">Implícito — aplicação confiável</option>
+                            <option value="external">Externo — decisão administrada fora do fluxo</option>
+                            <option value="systematic">Sistemático — confirmação recorrente</option>
+                        </select>
+                    </div>
+                    <label class="choice-control choice-control--single">
+                        <input id="require-par" name="requirePar" type="checkbox"
+                               checked="@draft.Values.RequirePar" @onchange="RequireParChangedAsync" />
+                        <span><strong>Exigir PAR</strong><small>Protege os parâmetros antes de abrir o navegador.</small></span>
+                    </label>
+                </div>
+            }
+            else if (CurrentStep.Id == ManagementClientDraftSteps.Permissions)
+            {
+                <label class="search-field scope-search">
+                    <span class="visually-hidden">Pesquisar permissões</span>
+                    <AppIcon Name="search" Size="18" />
+                    <input id="scope-search" name="scopeSearch" type="search" placeholder="Pesquisar por nome ou finalidade"
+                           autocomplete="off" @bind="scopeSearch" @bind:event="oninput" />
+                </label>
+                <div class="scope-picker">
+                    @foreach (var scope in FilteredScopes)
+                    {
+                        <label class="scope-option">
+                            <input name="selectedScopes" type="checkbox" value="@scope.Name"
+                                   checked="@draft.Values.Scopes.Contains(scope.Name, StringComparer.Ordinal)"
+                                   @onchange="args => ScopeChangedAsync(scope.Name, args)" />
+                            <span><strong>@scope.DisplayName</strong><code>@scope.Name</code><small>@scope.Description</small></span>
+                            @if (scope.IsProtocolScope)
+                            {
+                                <StatusBadge Tone="neutral">Padrão</StatusBadge>
+                            }
+                        </label>
+                    }
+                </div>
+                @foreach (var issue in IssuesFor("scopes"))
+                {
+                    <span class="field-feedback field-feedback--@IssueTone(issue)">@issue.Message</span>
+                }
+            }
+            else if (CurrentStep.Id == ManagementClientDraftSteps.Uris)
+            {
+                <section class="uri-editor">
+                    <div class="uri-editor__heading"><div><h3>Redirect URIs</h3><p>Destinos exatos permitidos após o login.</p></div><button class="button button--secondary button--compact" type="button" @onclick="AddRedirectAsync"><AppIcon Name="plus" Size="16" />Adicionar</button></div>
+                    @if (draft.Values.RedirectUris.Count == 0)
+                    {
+                        <p class="uri-editor__empty">Nenhuma URI adicionada.</p>
+                    }
+                    @for (var index = 0; index < draft.Values.RedirectUris.Count; index++)
+                    {
+                        var uriIndex = index;
+                        <div class="uri-row">
+                            <input id="redirect-uri-@uriIndex" name="redirectUris" class="form-control technical-value"
+                                   aria-label="Redirect URI @(uriIndex + 1)" value="@draft.Values.RedirectUris[uriIndex]"
+                                   @oninput="args => RedirectChangedAsync(uriIndex, args)" />
+                            <button type="button" class="icon-button" aria-label="Remover Redirect URI @(uriIndex + 1)" @onclick="() => RemoveRedirectAsync(uriIndex)"><AppIcon Name="trash" Size="17" /></button>
+                        </div>
+                    }
+                    @foreach (var issue in IssuesFor("redirectUris"))
+                    {
+                        <span class="field-feedback field-feedback--@IssueTone(issue)">@issue.Message</span>
+                    }
+                </section>
+                <section class="uri-editor">
+                    <div class="uri-editor__heading"><div><h3>Post logout redirect URIs</h3><p>Destinos permitidos ao encerrar a sessão.</p></div><button class="button button--secondary button--compact" type="button" @onclick="AddLogoutRedirectAsync"><AppIcon Name="plus" Size="16" />Adicionar</button></div>
+                    @for (var index = 0; index < draft.Values.PostLogoutRedirectUris.Count; index++)
+                    {
+                        var uriIndex = index;
+                        <div class="uri-row">
+                            <input id="logout-redirect-uri-@uriIndex" name="postLogoutRedirectUris" class="form-control technical-value"
+                                   aria-label="Post logout redirect URI @(uriIndex + 1)" value="@draft.Values.PostLogoutRedirectUris[uriIndex]"
+                                   @oninput="args => LogoutRedirectChangedAsync(uriIndex, args)" />
+                            <button type="button" class="icon-button" aria-label="Remover Post logout redirect URI @(uriIndex + 1)" @onclick="() => RemoveLogoutRedirectAsync(uriIndex)"><AppIcon Name="trash" Size="17" /></button>
+                        </div>
+                    }
+                </section>
+                <details class="advanced-disclosure">
+                    <summary>Logout avançado</summary>
+                    <div class="form-grid form-grid--two">
+                        <div class="field-group"><label for="frontchannel-uri">Front-channel logout URI</label><input id="frontchannel-uri" name="frontchannelLogoutUri" class="form-control technical-value" value="@draft.Values.FrontchannelLogoutUri" @oninput="FrontchannelChangedAsync" /></div>
+                        <div class="field-group"><label for="backchannel-uri">Back-channel logout URI</label><input id="backchannel-uri" name="backchannelLogoutUri" class="form-control technical-value" value="@draft.Values.BackchannelLogoutUri" @oninput="BackchannelChangedAsync" /></div>
+                    </div>
+                    <div class="choice-grid choice-grid--two">
+                        <label class="choice-control"><input name="frontchannelSessionRequired" type="checkbox" checked="@draft.Values.FrontchannelLogoutSessionRequired" @onchange="FrontchannelSessionChangedAsync" /><span><strong>Sessão no front-channel</strong><small>Inclui o identificador da sessão no logout.</small></span></label>
+                        <label class="choice-control"><input name="backchannelSessionRequired" type="checkbox" checked="@draft.Values.BackchannelLogoutSessionRequired" @onchange="BackchannelSessionChangedAsync" /><span><strong>Sessão no back-channel</strong><small>Inclui o identificador da sessão no logout.</small></span></label>
+                    </div>
+                </details>
+            }
+            else if (CurrentStep.Id == ManagementClientDraftSteps.Credentials)
+            {
+                <section class="credential-decision">
+                    <span><AppIcon Name="@(CreatesCredential ? "key" : "shield")" Size="26" /></span>
+                    <div>
+                        <h3>@(CreatesCredential ? "Uma credencial será gerada na conclusão" : "Esta aplicação não precisa de segredo")</h3>
+                        <p>@(CreatesCredential ? "O valor será exibido uma única vez. Guarde-o diretamente em um cofre de segredos; ele nunca entra no rascunho." : "Clientes públicos usam PKCE ou Device Code e não devem carregar um segredo que não conseguiriam proteger.")</p>
+                    </div>
+                </section>
+                <ul class="security-checklist">
+                    <li><AppIcon Name="check" Size="17" /> O rascunho contém somente configuração protegida</li>
+                    <li><AppIcon Name="check" Size="17" /> A credencial é aleatória e criada no último instante</li>
+                    <li><AppIcon Name="check" Size="17" /> Auditoria registra a operação, nunca o segredo</li>
+                </ul>
+            }
+            else
+            {
+                <section class="review-status review-status--@(draft.Validation.IsReady ? "ready" : "blocked")">
+                    <AppIcon Name="@(draft.Validation.IsReady ? "check" : "alert")" Size="22" />
+                    <div><strong>@(draft.Validation.IsReady ? "Pronto para criar" : "Ainda existem ajustes necessários")</strong><span>@(draft.Validation.IsReady ? "Revise o resumo e conclua quando estiver seguro." : "Abra os itens abaixo para ir diretamente à etapa correspondente.")</span></div>
+                </section>
+                @if (draft.Validation.Issues.Count > 0)
+                {
+                    <div class="review-issues">
+                        @foreach (var issue in draft.Validation.Issues)
+                        {
+                            <button type="button" class="review-issue review-issue--@IssueTone(issue)" @onclick="() => GoToStepAsync(issue.Step)">
+                                <AppIcon Name="@(issue.Severity == ClientValidationSeverity.Error ? "alert" : "info")" Size="18" />
+                                <span><strong>@issue.Message</strong>@if (!string.IsNullOrWhiteSpace(issue.Remediation)){<small>@issue.Remediation</small>}</span>
+                                <AppIcon Name="arrow-right" Size="16" />
+                            </button>
+                        }
+                    </div>
+                }
+                <div class="review-grid">
+                    <section><h3>Identidade</h3><dl><div><dt>Nome</dt><dd>@ValueOrDash(draft.Values.DisplayName)</dd></div><div><dt>Client ID</dt><dd><code>@ValueOrDash(draft.Values.ClientId)</code></dd></div><div><dt>Tipo</dt><dd>@draft.Values.ClientType</dd></div></dl></section>
+                    <section><h3>Protocolo</h3><dl><div><dt>Fluxos</dt><dd>@GrantSummary</dd></div><div><dt>Consentimento</dt><dd>@draft.Values.ConsentType</dd></div><div><dt>PAR</dt><dd>@(draft.Values.RequirePar ? "Obrigatório" : "Opcional")</dd></div></dl></section>
+                    <section><h3>Permissões</h3><p>@(draft.Values.Scopes.Count == 0 ? "Nenhuma permissão selecionada." : string.Join(", ", draft.Values.Scopes))</p></section>
+                    <section><h3>Retornos</h3><p>@draft.Values.RedirectUris.Count Redirect URI(s) e @draft.Values.PostLogoutRedirectUris.Count retorno(s) pós-logout.</p></section>
+                </div>
+            }
+
+            <footer class="wizard-actions">
+                <div>
+                    @if (CurrentStepIndex > 0)
+                    {
+                        <button class="button button--secondary" type="button" disabled="@busy" @onclick="PreviousAsync"><AppIcon Name="arrow-left" Size="17" />Anterior</button>
+                    }
+                    else
+                    {
+                        <a class="button button--secondary" href="clients/new">Trocar perfil</a>
+                    }
+                </div>
+                <div>
+                    @if (CurrentStepIndex < Steps.Length - 1)
+                    {
+                        <button class="button button--primary" type="button" disabled="@busy" @onclick="NextAsync">Continuar<AppIcon Name="arrow-right" Size="17" /></button>
+                    }
+                    else
+                    {
+                        <button class="button button--primary" type="button" disabled="@(busy || !draft.Validation.IsReady)" @onclick="CompleteAsync">
+                            @if (busy){<span class="button-spinner" aria-hidden="true"></span>}<span>Criar aplicação</span>
+                        </button>
+                    }
+                </div>
+            </footer>
+
+            <div class="abandon-zone">
+                @if (confirmAbandon)
+                {
+                    <span>Descartar definitivamente este rascunho?</span>
+                    <button class="button button--danger button--compact" type="button" disabled="@busy" @onclick="AbandonAsync">Sim, descartar</button>
+                    <button class="button button--secondary button--compact" type="button" @onclick="() => confirmAbandon = false">Cancelar</button>
+                }
+                else
+                {
+                    <button class="text-action text-action--danger" type="button" @onclick="() => confirmAbandon = true">Descartar rascunho</button>
+                }
+            </div>
+        </main>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    [Parameter] public string Step { get; set; } = ManagementClientDraftSteps.Identity;
+
+    private static readonly WizardStep[] Steps =
+    [
+        new(ManagementClientDraftSteps.Identity, "Identidade", "Identidade", "Comece pelo essencial", "Defina como pessoas e integrações reconhecerão esta aplicação."),
+        new(ManagementClientDraftSteps.Protocol, "Protocolo", "Protocolo", "Escolha o fluxo", "Selecione apenas os fluxos necessários para reduzir a superfície de risco."),
+        new(ManagementClientDraftSteps.Permissions, "Permissões", "Acessos", "Menor privilégio", "Conceda somente os dados e operações necessários."),
+        new(ManagementClientDraftSteps.Uris, "URIs e logout", "URIs", "Defina retornos exatos", "Cadastre destinos HTTPS e o comportamento de encerramento de sessão."),
+        new(ManagementClientDraftSteps.Credentials, "Credenciais", "Segredo", "Proteja a integração", "Entenda como a credencial será criada e entregue."),
+        new(ManagementClientDraftSteps.Review, "Revisão", "Revisão", "Confira antes de criar", "Valide o contrato completo e corrija pendências."),
+    ];
+
+    private ManagementClientDraftDetail? draft;
+    private IReadOnlyList<ManagementClientProfile> profiles = [];
+    private IReadOnlyList<ManagementClientAvailableScope> scopes = [];
+    private CompleteManagementClientDraftResult? completion;
+    private readonly SemaphoreSlim saveLock = new(1, 1);
+    private CancellationTokenSource? saveDebounce;
+    private bool loading = true;
+    private bool saving;
+    private bool busy;
+    private bool confirmAbandon;
+    private DateTimeOffset? savedAt;
+    private string? errorMessage;
+    private string scopeSearch = string.Empty;
+    private Guid loadedId;
+
+    private int CurrentStepIndex => Math.Max(0, Array.FindIndex(Steps, item => item.Id == NormalizeStep(Step)));
+    private WizardStep CurrentStep => Steps[CurrentStepIndex];
+    private ManagementClientProfile? Profile => profiles.FirstOrDefault(item => item.Id == draft?.Profile);
+    private string ProfileName => Profile?.DisplayName ?? draft?.Profile ?? "Configuração personalizada";
+    private string ProfileOutcome => Profile?.Outcome ?? "A configuração será validada antes da criação.";
+    private bool CreatesCredential => draft?.Values.ClientType == "confidential";
+    private IEnumerable<ManagementClientAvailableScope> FilteredScopes => string.IsNullOrWhiteSpace(scopeSearch)
+        ? scopes
+        : scopes.Where(item => item.Name.Contains(scopeSearch, StringComparison.OrdinalIgnoreCase)
+            || item.DisplayName.Contains(scopeSearch, StringComparison.OrdinalIgnoreCase)
+            || (item.Description?.Contains(scopeSearch, StringComparison.OrdinalIgnoreCase) ?? false));
+    private string GrantSummary => draft is null ? "—" : string.Join(", ", new[]
+    {
+        draft.Values.AuthorizationCode ? "Authorization Code" : null,
+        draft.Values.RefreshToken ? "Refresh Token" : null,
+        draft.Values.ClientCredentials ? "Client Credentials" : null,
+        draft.Values.DeviceCode ? "Device Code" : null,
+    }.Where(value => value is not null));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (loadedId != Id || draft is null)
+        {
+            await LoadAsync();
+            return;
+        }
+        var normalized = NormalizeStep(Step);
+        if (!string.Equals(Step, normalized, StringComparison.Ordinal))
+        {
+            Navigation.NavigateTo(DraftHref(normalized), replace: true);
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        errorMessage = null;
+        var draftTask = ClientData.GetClientDraftAsync(Id);
+        var profilesTask = ClientData.GetClientProfilesAsync();
+        var scopesTask = ClientData.GetAvailableClientScopesAsync();
+        await Task.WhenAll(draftTask, profilesTask, scopesTask);
+        var draftResult = await draftTask;
+        draft = draftResult.Value;
+        profiles = (await profilesTask).Value ?? [];
+        scopes = (await scopesTask).Value ?? [];
+        errorMessage = draftResult.IsSuccess ? null : draftResult.ErrorMessage ?? "O rascunho não foi encontrado.";
+        loadedId = Id;
+        loading = false;
+        if (draft is not null && !ManagementClientDraftSteps.All.Contains(Step, StringComparer.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo(DraftHref(draft.CurrentStep), replace: true);
+        }
+    }
+
+    private async Task DisplayNameChangedAsync(ChangeEventArgs args)
+    {
+        if (draft is null) return;
+        var oldSlug = Slugify(draft.Values.DisplayName);
+        draft.Values.DisplayName = args.Value?.ToString() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(draft.Values.ClientId) || draft.Values.ClientId == oldSlug)
+        {
+            draft.Values.ClientId = Slugify(draft.Values.DisplayName);
+        }
+        await QueueSaveAsync();
+    }
+
+    private async Task ClientIdChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.ClientId = args.Value?.ToString() ?? string.Empty; await QueueSaveAsync(); }
+    private async Task SetClientTypeAsync(string value) { if (draft is null) return; draft.Values.ClientType = value; await QueueSaveAsync(); }
+    private async Task ConsentChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.ConsentType = args.Value?.ToString() ?? "explicit"; await QueueSaveAsync(); }
+    private async Task RequireParChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.RequirePar = IsChecked(args); await QueueSaveAsync(); }
+    private async Task AuthorizationCodeChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.AuthorizationCode = IsChecked(args); await QueueSaveAsync(); }
+    private async Task RefreshTokenChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.RefreshToken = IsChecked(args); await QueueSaveAsync(); }
+    private async Task ClientCredentialsChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.ClientCredentials = IsChecked(args); await QueueSaveAsync(); }
+    private async Task DeviceCodeChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.DeviceCode = IsChecked(args); await QueueSaveAsync(); }
+    private async Task ScopeChangedAsync(string scope, ChangeEventArgs args) { if (draft is null) return; if (IsChecked(args)) { if (!draft.Values.Scopes.Contains(scope, StringComparer.Ordinal)) draft.Values.Scopes.Add(scope); } else draft.Values.Scopes.Remove(scope); await QueueSaveAsync(); }
+    private async Task AddRedirectAsync() { if (draft is null) return; draft.Values.RedirectUris.Add(string.Empty); await QueueSaveAsync(); }
+    private async Task RemoveRedirectAsync(int index) { if (draft is null || index >= draft.Values.RedirectUris.Count) return; draft.Values.RedirectUris.RemoveAt(index); await QueueSaveAsync(); }
+    private async Task RedirectChangedAsync(int index, ChangeEventArgs args) { if (draft is null || index >= draft.Values.RedirectUris.Count) return; draft.Values.RedirectUris[index] = args.Value?.ToString() ?? string.Empty; await QueueSaveAsync(); }
+    private async Task AddLogoutRedirectAsync() { if (draft is null) return; draft.Values.PostLogoutRedirectUris.Add(string.Empty); await QueueSaveAsync(); }
+    private async Task RemoveLogoutRedirectAsync(int index) { if (draft is null || index >= draft.Values.PostLogoutRedirectUris.Count) return; draft.Values.PostLogoutRedirectUris.RemoveAt(index); await QueueSaveAsync(); }
+    private async Task LogoutRedirectChangedAsync(int index, ChangeEventArgs args) { if (draft is null || index >= draft.Values.PostLogoutRedirectUris.Count) return; draft.Values.PostLogoutRedirectUris[index] = args.Value?.ToString() ?? string.Empty; await QueueSaveAsync(); }
+    private async Task FrontchannelChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.FrontchannelLogoutUri = args.Value?.ToString(); await QueueSaveAsync(); }
+    private async Task BackchannelChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.BackchannelLogoutUri = args.Value?.ToString(); await QueueSaveAsync(); }
+    private async Task FrontchannelSessionChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.FrontchannelLogoutSessionRequired = IsChecked(args); await QueueSaveAsync(); }
+    private async Task BackchannelSessionChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.BackchannelLogoutSessionRequired = IsChecked(args); await QueueSaveAsync(); }
+
+    private async Task QueueSaveAsync()
+    {
+        saveDebounce?.Cancel();
+        saveDebounce?.Dispose();
+        saveDebounce = new CancellationTokenSource();
+        var token = saveDebounce.Token;
+        try
+        {
+            await Task.Delay(650, token);
+            await SaveAsync(CurrentStep.Id, token);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+    }
+
+    private async Task<bool> SaveAsync(string step, CancellationToken cancellationToken = default)
+    {
+        if (draft is null) return false;
+        await saveLock.WaitAsync(cancellationToken);
+        try
+        {
+            saving = true;
+            errorMessage = null;
+            await InvokeAsync(StateHasChanged);
+            var result = await ClientData.SaveClientDraftAsync(new(Id, draft.Version, step, draft.Values), cancellationToken);
+            if (result.IsSuccess && result.Value is not null)
+            {
+                draft = result.Value;
+                savedAt = result.Value.UpdatedAt;
+                return true;
+            }
+            errorMessage = result.ErrorMessage ?? "Não foi possível salvar o rascunho.";
+            return false;
+        }
+        finally
+        {
+            saving = false;
+            saveLock.Release();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task GoToStepAsync(string step)
+    {
+        saveDebounce?.Cancel();
+        if (await SaveAsync(step)) Navigation.NavigateTo(DraftHref(step));
+    }
+    private Task PreviousAsync() => GoToStepAsync(Steps[Math.Max(0, CurrentStepIndex - 1)].Id);
+    private Task NextAsync() => GoToStepAsync(Steps[Math.Min(Steps.Length - 1, CurrentStepIndex + 1)].Id);
+
+    private async Task CompleteAsync()
+    {
+        if (draft is null || busy) return;
+        busy = true;
+        saveDebounce?.Cancel();
+        if (await SaveAsync(ManagementClientDraftSteps.Review))
+        {
+            var result = await ClientData.CompleteClientDraftAsync(Id, draft.Version);
+            if (result.IsSuccess) completion = result.Value;
+            else errorMessage = result.ErrorMessage ?? "Não foi possível criar a aplicação.";
+        }
+        busy = false;
+    }
+
+    private async Task AbandonAsync()
+    {
+        if (busy) return;
+        busy = true;
+        var result = await ClientData.AbandonClientDraftAsync(Id);
+        if (result.IsSuccess) Navigation.NavigateTo("clients?draftDeleted=1");
+        else errorMessage = result.ErrorMessage ?? "Não foi possível descartar o rascunho.";
+        busy = false;
+    }
+
+    private IEnumerable<ClientValidationIssue> IssuesFor(string field) => draft?.Validation.Issues.Where(issue => issue.Field == field) ?? [];
+    private string DraftHref(string step) => $"clients/drafts/{Id:D}/{step}";
+    private static string ClientHref(string id) => $"clients/{Uri.EscapeDataString(id)}?created=1";
+    private static string NormalizeStep(string? step) => ManagementClientDraftSteps.All.FirstOrDefault(item => string.Equals(item, step, StringComparison.OrdinalIgnoreCase)) ?? ManagementClientDraftSteps.Identity;
+    private static string IssueTone(ClientValidationIssue issue) => issue.Severity == ClientValidationSeverity.Error ? "danger" : "warning";
+    private static string ValueOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
+    private static bool IsChecked(ChangeEventArgs args) => args.Value is true || string.Equals(args.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+    private static string Slugify(string? value) => string.Join("-", (value ?? string.Empty).Trim().ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries)).Where(character => char.IsLetterOrDigit(character) || character is '-' or '_' or '.').Aggregate(string.Empty, (current, character) => current + character).Trim('-');
+
+    public async ValueTask DisposeAsync()
+    {
+        saveDebounce?.Cancel();
+        saveDebounce?.Dispose();
+        saveLock.Dispose();
+        await Task.CompletedTask;
+    }
+
+    private sealed record WizardStep(string Id, string Label, string ShortLabel, string Eyebrow, string Description);
+}

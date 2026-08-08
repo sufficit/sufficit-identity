@@ -1,6 +1,6 @@
 # PLAN-MANAGEMENT-APPLICATIONS — gerenciamento completo de aplicações OAuth/OIDC
 
-> **Status:** Proposed · **Owner:** Sufficit · **Created:** 2026-08-07
+> **Status:** In progress — guided creation delivered · **Owner:** Sufficit · **Created:** 2026-08-07 · **Updated:** 2026-08-07
 > **Primary surface:** `/management/clients` · **Provider:** OpenIddict 7.6
 > **Legacy reference:** `sufficit-identity-legacy` / Skoruba Duende Admin
 
@@ -579,29 +579,29 @@ hierarquia, foco ou estado. A ação destrutiva permanece separada no fim.
 
 - [ ] concluir `IClientDefinitionValidator` compartilhado entre CRUD e
   provisionamento, conforme `PLAN-GLM-5-2-REMAINING.md` P0.2;
-- [ ] devolver issues estáveis por etapa/campo e manter localização na UI;
+- [x] devolver issues estáveis por etapa/campo e manter localização na UI;
 - [ ] implementar `IManagementScopeGrantPolicy` e shadow decisions;
 - [ ] criar catálogo de perfis a partir das features habilitadas no runtime;
-- [ ] criar entidade, migration e `IClientConfigurationDraftService`, com
+- [x] criar entidade, migration e `IClientConfigurationDraftService`, com
   ownership, expiração, versionamento e limpeza;
-- [ ] garantir por teste que rascunho, URL, log e auditoria não recebem segredo;
+- [x] garantir por teste que rascunho, URL, log e auditoria não recebem segredo;
 - [ ] adicionar `ClientsUpdate` e separar policies de leitura/mutação;
 - [ ] projetar `IsManifestManaged` no detalhe;
-- [ ] adicionar ETag/version token ou equivalente para concorrência;
+- [x] adicionar ETag/version token ou equivalente para concorrência;
 - [ ] caracterizar os clientes existentes antes de alterar contratos.
 
 ### Fase 1 — configurador guiado de criação
 
-- [ ] implementar `/clients/new` com seleção de perfil explicada;
-- [ ] implementar rotas por `draftId` e etapa;
-- [ ] autosave, **Salvar e sair**, retomada, abandono e expiração;
-- [ ] controles estruturados de grants, scopes e URIs;
-- [ ] validação de campo, etapa e configuração completa;
-- [ ] revisão humana e expansão técnica da configuração derivada;
-- [ ] finalização idempotente usando o mesmo `CreateAsync` da API;
-- [ ] sincronizar filtros da lista com a URL;
+- [x] implementar `/clients/new` com seleção de perfil explicada;
+- [x] implementar rotas por `draftId` e etapa;
+- [x] autosave, **Salvar e sair**, retomada, abandono e expiração;
+- [x] controles estruturados de grants, scopes e URIs;
+- [x] validação de campo, etapa e configuração completa;
+- [x] revisão humana e resumo técnico da configuração derivada;
+- [x] finalização idempotente usando o mesmo `CreateAsync` da API;
+- [x] sincronizar filtros da lista com a URL;
 - [ ] entregar e testar primeiro em 320–430 px, depois tablet e desktop;
-- [ ] remover o formulário único somente após equivalência e migração de links.
+- [x] remover o formulário único somente após equivalência e migração de links.
 
 ### Fase 2 — edição essencial ponta a ponta
 
@@ -800,18 +800,25 @@ Legado usado como evidência funcional:
 
 ## 14. Ponto de retomada
 
-Começar pela **Fase 0**, sem editar a UI primeiro:
+O vertical de criação guiada está implementado por serviço, API e UI:
 
-1. extrair o validator compartilhado já previsto no plano GLM;
-2. caracterizar as regras atuais de criação e convertê-las em issues por
-   etapa/campo;
-3. implementar os perfis seguros e testar a configuração derivada;
-4. implementar entidade, migration e serviço de rascunho sem segredo;
-5. somente então substituir `ClientCreate.razor` pelo primeiro vertical do
-   configurador: perfil → identidade → revisão → criação idempotente.
+- perfis explicados em `/management/clients/new`;
+- rascunho cifrado, vinculado ao operador, expirável e versionado;
+- seis etapas com URL estável, autosave, retomada, revisão e abandono;
+- catálogo estruturado de scopes e editores de URI;
+- finalização idempotente sobre o `CreateAsync` canônico;
+- credencial confidencial gerada no último instante e exibida uma única vez;
+- filtros e rascunhos retomáveis em `/management/clients`;
+- testes de integração, isolamento, protocolo, arquitetura e responsividade.
 
-O primeiro incremento deve terminar com esse vertical funcionando por serviço,
-API e UI no Castrum, incluindo F5/retomada e viewport de 320 px. Na sequência,
-adicionar protocolo, permissões, URIs e credenciais como etapas completas antes
-de remover o formulário legado. Edição, segredo, clone e disable não bloqueiam
-o configurador de criação, mas devem reutilizar seus contratos e componentes.
+Retomar pela parte ainda aberta da **Fase 0** e então pela **Fase 2**:
+
+1. concluir o `IClientDefinitionValidator` compartilhado também com o
+   provisionamento e substituir a validação progressiva interna pelo contrato;
+2. derivar o catálogo de perfis das features efetivamente habilitadas no runtime;
+3. implementar a policy granular de concessão de scopes;
+4. adicionar `ClientsUpdate`, `IsManifestManaged` e o comando de edição;
+5. reutilizar as etapas do configurador na edição, com diff e confirmação de
+   impacto;
+6. executar inspeção visual automatizada em viewports 320–430 px quando o
+   harness de navegador estiver disponível.

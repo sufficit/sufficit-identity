@@ -753,6 +753,10 @@ internal sealed class ClientManagementService(
                     OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
                 "refresh_token" =>
                     OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+                "device_code" =>
+                    OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
+                OpenIddictConstants.GrantTypes.DeviceCode =>
+                    OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
                 "password" =>
                     OpenIddictConstants.Permissions.GrantTypes.Password,
                 "implicit" =>
@@ -801,6 +805,9 @@ internal sealed class ClientManagementService(
                 StringComparer.Ordinal)
             || grantTypes.Contains(
                 OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+                StringComparer.Ordinal)
+            || grantTypes.Contains(
+                OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
                 StringComparer.Ordinal))
         {
             descriptor.Permissions.Add(
@@ -813,6 +820,14 @@ internal sealed class ClientManagementService(
         {
             descriptor.Permissions.Add(
                 OpenIddictConstants.Permissions.ResponseTypes.Code);
+        }
+
+        if (grantTypes.Contains(
+                OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
+                StringComparer.Ordinal))
+        {
+            descriptor.Permissions.Add(
+                OpenIddictConstants.Permissions.Endpoints.DeviceAuthorization);
         }
     }
 

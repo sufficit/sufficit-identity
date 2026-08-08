@@ -4,14 +4,14 @@
 @inject ManagementClientDataSource ClientData
 @inject NavigationManager Navigation
 
-<PageTitle>Clientes OAuth | Sufficit Identity</PageTitle>
+<PageTitle>Aplicações | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Clientes"
-            Description="Consulte as aplicações OAuth e OIDC registradas no serviço de identidade.">
+<PageHeader Title="Aplicações"
+            Description="Crie, retome e gerencie integrações OAuth e OpenID Connect.">
     <Actions>
         <a class="button button--primary" href="clients/new">
             <AppIcon Name="plus" Size="17" />
-            Novo cliente
+            Nova aplicação
         </a>
     </Actions>
 </PageHeader>
@@ -27,32 +27,74 @@
     </section>
 }
 
+@if (DraftDeletedFlag is 1)
+{
+    <section class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div><strong>Rascunho descartado</strong><span>A configuração incompleta foi removida com segurança.</span></div>
+    </section>
+}
+
 <section class="contract-strip contract-strip--info" id="clients-integration-note">
     <AppIcon Name="code" Size="20" />
     <div>
-        <strong>Fluxo incorporado sobre a mesma fonte de verdade</strong>
-        <span>Listagem, detalhe, criação e exclusão usam os mesmos casos de uso e a mesma auditoria da API.</span>
+        <strong>Uma única fonte de verdade</strong>
+        <span>A interface e a API usam as mesmas validações, permissões e trilha de auditoria.</span>
     </div>
     <StatusBadge Tone="info">Capability</StatusBadge>
 </section>
 
+@if (!loading && Drafts.Count > 0)
+{
+    <section class="draft-panel" aria-labelledby="drafts-heading">
+        <div class="data-toolbar">
+            <div><h2 id="drafts-heading">Continuar configuração</h2><p>Rascunhos protegidos e disponíveis somente para sua conta administrativa.</p></div>
+            <StatusBadge Tone="info">@Drafts.Count @(Drafts.Count == 1 ? "rascunho" : "rascunhos")</StatusBadge>
+        </div>
+        <div class="draft-list">
+            @foreach (var item in Drafts)
+            {
+                <a class="draft-item" href="@DraftHref(item)">
+                    <span class="draft-item__icon"><AppIcon Name="edit" Size="19" /></span>
+                    <span class="draft-item__body">
+                        <strong>@DraftName(item)</strong>
+                        <span>@item.ProfileDisplayName · Etapa @DraftStepLabel(item.CurrentStep)</span>
+                        <small>Atualizado @FormatRelative(item.UpdatedAt) · expira em @item.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy")</small>
+                    </span>
+                    <StatusBadge Tone="@(item.IsReady ? "success" : "neutral")">@(item.IsReady ? "Pronto" : "Em andamento")</StatusBadge>
+                    <AppIcon Name="arrow-right" Size="17" />
+                </a>
+            }
+        </div>
+    </section>
+}
+
 <section class="table-panel" aria-labelledby="clients-list-heading" aria-busy="@loading">
     <div class="data-toolbar">
         <div>
-            <h2 id="clients-list-heading">Clientes registrados</h2>
+            <h2 id="clients-list-heading">Aplicações registradas</h2>
             <p>@ToolbarDescription</p>
         </div>
         <div class="data-toolbar__actions">
             @if (CanFilter)
             {
+                <label class="compact-filter">
+                    <span>Tipo</span>
+                    <select id="client-type-filter" name="type" class="form-control" value="@typeFilter" @onchange="TypeChanged">
+                        <option value="all">Todos</option>
+                        <option value="public">Públicos</option>
+                        <option value="confidential">Confidenciais</option>
+                    </select>
+                </label>
                 <label class="search-field">
                     <span class="visually-hidden">Pesquisar clientes</span>
                     <AppIcon Name="search" Size="18" />
                     <input type="search"
                            placeholder="Pesquisar por client_id ou nome"
                            autocomplete="off"
-                           @bind="search"
-                           @bind:event="oninput" />
+                           name="q"
+                           value="@search"
+                           @oninput="SearchChanged" />
                 </label>
             }
         </div>
@@ -72,7 +114,7 @@
         {
             @if (FilteredClients.Count is 0)
             {
-                @if (string.IsNullOrWhiteSpace(search))
+                @if (string.IsNullOrWhiteSpace(search) && typeFilter == "all")
                 {
                     <EmptyState Icon="database"
                                 Title="@EmptyTitle"
@@ -163,14 +205,14 @@
 
     <footer class="table-footer">
         <span aria-live="polite" aria-atomic="true">@ResultCountLabel</span>
-        <span>Serviço de aplicação incorporado</span>
+        <span>Serviço de aplicações incorporado</span>
     </footer>
 </section>
 
 <section class="client-guardrails" aria-labelledby="client-safety-heading">
     <div>
-        <h2 id="client-safety-heading">Limites desta entrega</h2>
-        <p>A camada de aplicação autoriza e audita cada mutação antes de devolver o resultado à interface.</p>
+        <h2 id="client-safety-heading">Proteções aplicadas</h2>
+        <p>Cada alteração é validada, autorizada e auditada antes de chegar ao registro OAuth.</p>
     </div>
     <ul>
         <li><AppIcon Name="shield" Size="18" /> Operações exigem capabilities específicas do provedor</li>
@@ -181,23 +223,39 @@
 
 @code {
     private ManagementDataResult<IReadOnlyList<ManagementClientSummary>>? result;
+    private ManagementDataResult<IReadOnlyList<ManagementClientDraftSummary>>? draftsResult;
     private bool loading = true;
     private string search = string.Empty;
+    private string typeFilter = "all";
+    private string? loadedFingerprint;
 
     [SupplyParameterFromQuery(Name = "deleted")]
     public string? DeletedClientId { get; set; }
 
+    [SupplyParameterFromQuery(Name = "draftDeleted")]
+    public int DraftDeletedFlag { get; set; }
+
+    [SupplyParameterFromQuery(Name = "q")]
+    public string? QuerySearch { get; set; }
+
+    [SupplyParameterFromQuery(Name = "type")]
+    public string? QueryType { get; set; }
+
     private IReadOnlyList<ManagementClientSummary> AllClients =>
         result?.Value ?? [];
 
+    private IReadOnlyList<ManagementClientDraftSummary> Drafts =>
+        draftsResult?.Value ?? [];
+
     private IReadOnlyList<ManagementClientSummary> FilteredClients =>
-        string.IsNullOrWhiteSpace(search)
-            ? AllClients
-            : AllClients
-                .Where(client =>
+        AllClients
+            .Where(client => typeFilter == "all"
+                || string.Equals(client.Type, typeFilter, StringComparison.OrdinalIgnoreCase))
+            .Where(client => string.IsNullOrWhiteSpace(search)
+                ||
                     client.ClientId.Contains(search, StringComparison.OrdinalIgnoreCase)
                     || (client.DisplayName?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false))
-                .ToArray();
+            .ToArray();
 
     private bool CanFilter => result?.IsSuccess is true && AllClients.Count > 0;
 
@@ -216,29 +274,113 @@
                 : "Nenhum registro carregado";
 
     private string EmptyTitle =>
-        string.IsNullOrWhiteSpace(search)
+        string.IsNullOrWhiteSpace(search) && typeFilter == "all"
             ? "Nenhum cliente registrado"
             : "Nenhum cliente corresponde à pesquisa";
 
     private string EmptyDescription =>
-        string.IsNullOrWhiteSpace(search)
-            ? "O serviço respondeu com uma coleção vazia. Crie o primeiro cliente para começar."
-            : "Revise o client_id ou o nome informado e tente novamente.";
+        string.IsNullOrWhiteSpace(search) && typeFilter == "all"
+            ? "O serviço respondeu com uma coleção vazia. Crie a primeira aplicação para começar."
+            : "Revise o nome, o client ID ou o tipo informado e tente novamente.";
 
-    protected override async Task OnInitializedAsync() =>
-        await LoadClientsAsync();
+    protected override async Task OnParametersSetAsync()
+    {
+        var normalizedType = NormalizeType(QueryType);
+        var fingerprint = $"{QuerySearch}|{normalizedType}";
+        if (fingerprint == loadedFingerprint)
+        {
+            return;
+        }
+        loadedFingerprint = fingerprint;
+        search = QuerySearch ?? string.Empty;
+        typeFilter = normalizedType;
+        if (result is null || draftsResult is null)
+        {
+            await LoadClientsAsync();
+        }
+    }
 
     private async Task LoadClientsAsync()
     {
         loading = true;
-        result = await ClientData.GetClientsAsync();
+        var clientsTask = ClientData.GetClientsAsync();
+        var draftsTask = ClientData.GetClientDraftsAsync();
+        await Task.WhenAll(clientsTask, draftsTask);
+        result = await clientsTask;
+        draftsResult = await draftsTask;
         loading = false;
     }
 
-    private void ClearSearch() => search = string.Empty;
+    private void SearchChanged(ChangeEventArgs args)
+    {
+        search = args.Value?.ToString() ?? string.Empty;
+        SyncUrl();
+    }
+
+    private void TypeChanged(ChangeEventArgs args)
+    {
+        typeFilter = NormalizeType(args.Value?.ToString());
+        SyncUrl();
+    }
+
+    private void ClearSearch()
+    {
+        search = string.Empty;
+        typeFilter = "all";
+        SyncUrl();
+    }
+
+    private void SyncUrl()
+    {
+        var uri = Navigation.GetUriWithQueryParameters(BaseUri, new Dictionary<string, object?>
+        {
+            ["q"] = string.IsNullOrWhiteSpace(search) ? null : search.Trim(),
+            ["type"] = typeFilter == "all" ? null : typeFilter,
+        });
+        Navigation.NavigateTo(uri, replace: true);
+    }
 
     private static string ClientHref(string id) =>
         $"clients/{Uri.EscapeDataString(id)}";
+
+    private static string DraftHref(ManagementClientDraftSummary item) =>
+        $"clients/drafts/{item.Id:D}/{item.CurrentStep}";
+
+    private static string DraftName(ManagementClientDraftSummary item) =>
+        !string.IsNullOrWhiteSpace(item.DisplayName)
+            ? item.DisplayName
+            : !string.IsNullOrWhiteSpace(item.ClientId)
+                ? item.ClientId
+                : "Aplicação sem nome";
+
+    private static string DraftStepLabel(string step) => step switch
+    {
+        ManagementClientDraftSteps.Identity => "Identidade",
+        ManagementClientDraftSteps.Protocol => "Protocolo",
+        ManagementClientDraftSteps.Permissions => "Permissões",
+        ManagementClientDraftSteps.Uris => "URIs e logout",
+        ManagementClientDraftSteps.Credentials => "Credenciais",
+        ManagementClientDraftSteps.Review => "Revisão",
+        _ => "Configuração"
+    };
+
+    private static string FormatRelative(DateTimeOffset value)
+    {
+        var elapsed = DateTimeOffset.UtcNow - value.ToUniversalTime();
+        if (elapsed < TimeSpan.FromMinutes(1)) return "agora";
+        if (elapsed < TimeSpan.FromHours(1)) return $"há {(int)elapsed.TotalMinutes} min";
+        if (elapsed < TimeSpan.FromDays(1)) return $"há {(int)elapsed.TotalHours} h";
+        return $"em {value.ToLocalTime():dd/MM/yyyy}";
+    }
+
+    private static string NormalizeType(string? value) => value?.ToLowerInvariant() switch
+    {
+        "public" => "public",
+        "confidential" => "confidential",
+        _ => "all"
+    };
+
+    private string BaseUri => Navigation.Uri.Split('?', '#')[0];
 
     private static string DisplayName(ManagementClientSummary client) =>
         string.IsNullOrWhiteSpace(client.DisplayName)
