@@ -119,6 +119,18 @@ public sealed class ManagementClientDataSource(
             "Client creation",
             cancellationToken);
 
+    public Task<ManagementDataResult<ManagementClientDetail>>
+        UpdateClientAsync(
+            UpdateManagementClientCommand command,
+            CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (clients, context) => clients.UpdateAsync(
+                command,
+                context,
+                cancellationToken),
+            "Client update",
+            cancellationToken);
+
     public Task<ManagementDataResult<bool>> DeleteClientAsync(
         string clientId,
         CancellationToken cancellationToken = default) =>

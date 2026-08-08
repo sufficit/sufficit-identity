@@ -5,6 +5,7 @@ using OpenIddict.Abstractions;
 using OpenIddict.EntityFrameworkCore.Models;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management.Audit;
+using Sufficit.Identity.Management.Provisioning;
 #endif
 using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Management.Authorization;
@@ -38,6 +39,11 @@ public interface IClientManagementService
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 
+    Task<ManagementClientDetail> UpdateAsync(
+        UpdateManagementClientCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
     Task DeleteAsync(
         string clientId,
         ManagementRequestContext context,
@@ -63,7 +69,9 @@ public sealed record ManagementClientDetail(
     string? FrontchannelLogoutUri = null,
     bool FrontchannelLogoutSessionRequired = false,
     string? BackchannelLogoutUri = null,
-    bool BackchannelLogoutSessionRequired = false);
+    bool BackchannelLogoutSessionRequired = false,
+    string? Version = null,
+    bool IsManifestManaged = false);
 
 public sealed record CreateManagementClientCommand(
     string ClientId,
@@ -79,6 +87,21 @@ public sealed record CreateManagementClientCommand(
     bool FrontchannelLogoutSessionRequired = false,
     string? BackchannelLogoutUri = null,
     bool BackchannelLogoutSessionRequired = false);
+
+public sealed record UpdateManagementClientCommand(
+    string ClientId,
+    string? DisplayName,
+    string? ConsentType,
+    bool RequirePar,
+    IReadOnlyList<string> GrantTypes,
+    IReadOnlyList<string> Scopes,
+    IReadOnlyList<string> RedirectUris,
+    IReadOnlyList<string>? PostLogoutRedirectUris = null,
+    string? FrontchannelLogoutUri = null,
+    bool FrontchannelLogoutSessionRequired = false,
+    string? BackchannelLogoutUri = null,
+    bool BackchannelLogoutSessionRequired = false,
+    string? ExpectedVersion = null);
 
 #else
 
@@ -408,8 +431,16 @@ internal sealed class ClientManagementService(
                 cancellationToken);
             throw;
         }
-        catch (ManagementConflictException)
+        catch (ManagementConflictException exception)
         {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ClientsCreate,
+                resource,
+                decision,
+                "rejected",
+                exception.ReasonCode,
+                cancellationToken);
             throw;
         }
         catch (Exception exception)
@@ -517,6 +548,267 @@ internal sealed class ClientManagementService(
         }
     }
 
+    public async Task<ManagementClientDetail> UpdateAsync(
+        UpdateManagementClientCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        var clientId = command.ClientId?.Trim() ?? string.Empty;
+        var resource = new ManagementResource(
+            ManagementResourceTypes.Client,
+            clientId);
+        var decision = await DemandAsync(
+            context,
+            ManagementCapabilities.ClientsUpdate,
+            resource,
+            cancellationToken);
+
+        var application = await applications.FindByClientIdAsync(
+            clientId,
+            cancellationToken);
+        if (application is null)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "not-found",
+                "client_not_found",
+                cancellationToken);
+            throw new ManagementNotFoundException(
+                "client_not_found",
+                $"Client '{clientId}' was not found.");
+        }
+
+        try
+        {
+            if (application is not OpenIddictEntityFrameworkCoreApplication entity)
+            {
+                throw new InvalidOperationException(
+                    "The configured OpenIddict application entity is unsupported.");
+            }
+
+            if (string.IsNullOrWhiteSpace(command.ExpectedVersion))
+            {
+                throw new ManagementValidationException(
+                    "client_version_required",
+                    "Recarregue a aplicação antes de salvar para confirmar a versão atual.",
+                    "expectedVersion");
+            }
+
+            if (!string.Equals(
+                    command.ExpectedVersion,
+                    entity.ConcurrencyToken,
+                    StringComparison.Ordinal))
+            {
+                throw new ManagementConflictException(
+                    "client_changed",
+                    "O cliente foi alterado por outra operação. Recarregue os dados antes de salvar.");
+            }
+
+            var descriptor = new OpenIddictApplicationDescriptor();
+            await applications.PopulateAsync(
+                descriptor,
+                application,
+                cancellationToken);
+
+            if (descriptor.Properties.ContainsKey(
+                    OpenIddictManifestProvisioner.SchemaVersionProperty))
+            {
+                throw new ManagementConflictException(
+                    "client_manifest_managed",
+                    "Este cliente é gerenciado por manifesto declarativo. Altere o manifesto e aplique o provisionamento.");
+            }
+
+            var redirectUris = ValidateRedirectUris(
+                command.RedirectUris,
+                "redirectUris");
+            var postLogoutRedirectUris = ValidateRedirectUris(
+                command.PostLogoutRedirectUris,
+                "postLogoutRedirectUris");
+            var frontchannelLogoutUri = ValidateLogoutUri(
+                command.FrontchannelLogoutUri,
+                "frontchannelLogoutUri");
+            var backchannelLogoutUri = ValidateLogoutUri(
+                command.BackchannelLogoutUri,
+                "backchannelLogoutUri");
+
+            ValidateLogoutConfiguration(
+                redirectUris,
+                frontchannelLogoutUri,
+                command.FrontchannelLogoutSessionRequired,
+                backchannelLogoutUri,
+                command.BackchannelLogoutSessionRequired);
+
+            var consentType = NormalizeConsentType(command.ConsentType)
+                ?? OpenIddictConstants.ConsentTypes.Explicit;
+            var grantTypes = NormalizeGrantTypes(command.GrantTypes);
+            if (grantTypes.Any(grant =>
+                    grant == OpenIddictConstants.Permissions.GrantTypes.Password ||
+                    grant == OpenIddictConstants.Permissions.GrantTypes.Implicit))
+            {
+                throw new ManagementValidationException(
+                    "insecure_grant_type",
+                    "Password and implicit grant types are removed by OAuth 2.1 and cannot be assigned to clients.",
+                    "grantTypes");
+            }
+
+            var normalizedScopes = NormalizeScopes(command.Scopes);
+            var clientType = descriptor.ClientType
+                ?? OpenIddictConstants.ClientTypes.Public;
+            var definitionValidation = clientDefinitionValidator.Validate(
+                new ClientDefinitionRequest(
+                    ClientDefinitionSource.Management,
+                    clientId,
+                    clientType,
+                    grantTypes,
+                    normalizedScopes,
+                    redirectUris,
+                    RequirePkce: clientType == OpenIddictConstants.ClientTypes.Public,
+                    HasClientSecret: clientType == OpenIddictConstants.ClientTypes.Confidential));
+            if (!definitionValidation.IsValid)
+            {
+                var issue = definitionValidation.Issues[0];
+                throw new ManagementValidationException(
+                    issue.Code,
+                    issue.Message,
+                    issue.Field);
+            }
+
+            var forbidden = normalizedScopes
+                .Select(scope => scope.StartsWith(
+                    OpenIddictConstants.Permissions.Prefixes.Scope,
+                    StringComparison.Ordinal)
+                    ? scope[OpenIddictConstants.Permissions.Prefixes.Scope.Length..]
+                    : scope)
+                .FirstOrDefault(reservedScopePolicy.IsReserved);
+            if (forbidden is not null)
+            {
+                throw new ManagementValidationException(
+                    "scope_reserved",
+                    $"O scope '{forbidden}' protege uma superfície administrativa e não pode ser atribuído a um cliente pela API de gerenciamento.",
+                    "scopes");
+            }
+
+            descriptor.DisplayName = NullIfWhiteSpace(command.DisplayName);
+            descriptor.ConsentType = consentType;
+            RemoveManagedPermissions(descriptor);
+            descriptor.Requirements.Remove(
+                OpenIddictConstants.Requirements.Features.ProofKeyForCodeExchange);
+            descriptor.Requirements.Remove(
+                OpenIddictConstants.Requirements.Features.PushedAuthorizationRequests);
+            descriptor.RedirectUris.Clear();
+            descriptor.PostLogoutRedirectUris.Clear();
+            foreach (var grantType in grantTypes)
+            {
+                descriptor.Permissions.Add(grantType);
+            }
+            AddDerivedProtocolPermissions(descriptor, grantTypes);
+            foreach (var scope in normalizedScopes)
+            {
+                descriptor.Permissions.Add(scope);
+            }
+            foreach (var uri in redirectUris)
+            {
+                descriptor.RedirectUris.Add(uri);
+            }
+            foreach (var uri in postLogoutRedirectUris)
+            {
+                descriptor.PostLogoutRedirectUris.Add(uri);
+            }
+
+            descriptor.Settings.Remove("frontchannel_logout_uri");
+            descriptor.Settings.Remove("frontchannel_logout_session_required");
+            descriptor.Settings.Remove("backchannel_logout_uri");
+            descriptor.Settings.Remove("backchannel_logout_session_required");
+            AddLogoutSettings(
+                descriptor.Settings,
+                frontchannelLogoutUri,
+                command.FrontchannelLogoutSessionRequired,
+                backchannelLogoutUri,
+                command.BackchannelLogoutSessionRequired);
+
+            if (descriptor.Permissions.Contains(
+                    OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode) &&
+                descriptor.ClientType == OpenIddictConstants.ClientTypes.Public)
+            {
+                descriptor.Requirements.Add(
+                    OpenIddictConstants.Requirements.Features.ProofKeyForCodeExchange);
+            }
+            if (command.RequirePar)
+            {
+                descriptor.Permissions.Add(
+                    OpenIddictConstants.Permissions.Endpoints.PushedAuthorization);
+                descriptor.Requirements.Add(
+                    OpenIddictConstants.Requirements.Features.PushedAuthorizationRequests);
+            }
+
+            await using var transaction = await database.Database
+                .BeginTransactionAsync(cancellationToken);
+            await applications.UpdateAsync(
+                application,
+                descriptor,
+                cancellationToken);
+            var detail = await ToDetailAsync(application, cancellationToken);
+            database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "succeeded"));
+            await database.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return detail;
+        }
+        catch (ManagementValidationException exception)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "rejected",
+                exception.ReasonCode,
+                cancellationToken);
+            throw;
+        }
+        catch (ManagementConflictException exception)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "rejected",
+                exception.ReasonCode,
+                cancellationToken);
+            throw;
+        }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            logger.LogWarning(
+                exception,
+                "OAuth client update lost a concurrency race. ClientId={ClientId} CorrelationId={CorrelationId}",
+                clientId,
+                context.CorrelationId);
+            throw new ManagementConflictException(
+                "client_changed",
+                "O cliente foi alterado por outra operação. Recarregue os dados antes de salvar.");
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(
+                exception,
+                "OAuth client update failed. ClientId={ClientId} CorrelationId={CorrelationId}",
+                clientId,
+                context.CorrelationId);
+            throw;
+        }
+    }
+
     private async Task<ManagementAuthorizationDecision> DemandAsync(
         ManagementRequestContext context,
         string capability,
@@ -596,6 +888,12 @@ internal sealed class ClientManagementService(
             application,
             cancellationToken);
 
+        var descriptor = new OpenIddictApplicationDescriptor();
+        await applications.PopulateAsync(
+            descriptor,
+            application,
+            cancellationToken);
+
         return new ManagementClientDetail(
             Id: (string)(await applications.GetIdAsync(
                 application,
@@ -631,7 +929,11 @@ internal sealed class ClientManagementService(
                 "backchannel_logout_uri"),
             BackchannelLogoutSessionRequired: GetBooleanSetting(
                 settings,
-                "backchannel_logout_session_required"));
+                "backchannel_logout_session_required"),
+            Version: (application as OpenIddictEntityFrameworkCoreApplication)
+                ?.ConcurrencyToken,
+            IsManifestManaged: descriptor.Properties.ContainsKey(
+                OpenIddictManifestProvisioner.SchemaVersionProperty));
     }
 
     private static void ValidateClientId(string clientId)
@@ -741,6 +1043,37 @@ internal sealed class ClientManagementService(
             settings["backchannel_logout_uri"] = backchannelLogoutUri.AbsoluteUri;
             settings["backchannel_logout_session_required"] =
                 backchannelSessionRequired ? "true" : "false";
+        }
+    }
+
+    private static void ValidateLogoutConfiguration(
+        IReadOnlyList<Uri> redirectUris,
+        Uri? frontchannelLogoutUri,
+        bool frontchannelSessionRequired,
+        Uri? backchannelLogoutUri,
+        bool backchannelSessionRequired)
+    {
+        if (frontchannelSessionRequired && frontchannelLogoutUri is null)
+        {
+            throw new ManagementValidationException(
+                "frontchannel_logout_uri_required",
+                "frontchannelLogoutUri is required when session-specific front-channel logout is requested.",
+                "frontchannelLogoutUri");
+        }
+        if (backchannelSessionRequired && backchannelLogoutUri is null)
+        {
+            throw new ManagementValidationException(
+                "backchannel_logout_uri_required",
+                "backchannelLogoutUri is required when session-specific back-channel logout is requested.",
+                "backchannelLogoutUri");
+        }
+        if (frontchannelLogoutUri is not null &&
+            !redirectUris.Any(redirect => SameOrigin(redirect, frontchannelLogoutUri)))
+        {
+            throw new ManagementValidationException(
+                "frontchannel_logout_origin_mismatch",
+                "frontchannelLogoutUri must use the same scheme, host and port as a redirect URI.",
+                "frontchannelLogoutUri");
         }
     }
 
@@ -865,6 +1198,34 @@ internal sealed class ClientManagementService(
         {
             descriptor.Permissions.Add(
                 OpenIddictConstants.Permissions.Endpoints.DeviceAuthorization);
+        }
+    }
+
+    private static void RemoveManagedPermissions(
+        OpenIddictApplicationDescriptor descriptor)
+    {
+        // Keep protocol capabilities that this editor does not model (for
+        // example introspection or custom endpoints). Only remove values that
+        // are derived from the editable grants/scopes, otherwise a routine
+        // display-name/redirect edit could silently weaken or broaden a client.
+        var managed = descriptor.Permissions
+            .Where(permission =>
+                permission.StartsWith(
+                    "gt:",
+                    StringComparison.Ordinal)
+                || permission.StartsWith(
+                    OpenIddictConstants.Permissions.Prefixes.Scope,
+                    StringComparison.Ordinal)
+                || permission == OpenIddictConstants.Permissions.Endpoints.Authorization
+                || permission == OpenIddictConstants.Permissions.Endpoints.Token
+                || permission == OpenIddictConstants.Permissions.Endpoints.DeviceAuthorization
+                || permission == OpenIddictConstants.Permissions.Endpoints.PushedAuthorization
+                || permission == OpenIddictConstants.Permissions.ResponseTypes.Code)
+            .ToArray();
+
+        foreach (var permission in managed)
+        {
+            descriptor.Permissions.Remove(permission);
         }
     }
 

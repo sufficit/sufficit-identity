@@ -1,0 +1,296 @@
+@page "/clients/{Id}/edit"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageClients)]
+@inject ManagementClientDataSource ClientData
+@inject NavigationManager Navigation
+
+<PageTitle>Editar aplicação | Sufficit Identity</PageTitle>
+
+<PageHeader Title="Editar aplicação"
+            Description="Revise a configuração em etapas curtas. O client secret existente nunca é alterado ou exibido.">
+    <Actions>
+        <a class="button button--secondary" href="@DetailHref">
+            <AppIcon Name="arrow-left" Size="17" />
+            Cancelar
+        </a>
+    </Actions>
+</PageHeader>
+
+@if (loading)
+{
+    <div class="wizard-loading" aria-busy="true" aria-label="Carregando aplicação">
+        <span class="button-spinner" aria-hidden="true"></span>
+        <p>Recuperando configuração…</p>
+    </div>
+}
+else if (client is null)
+{
+    <EmptyState Icon="alert"
+                Title="Não foi possível editar esta aplicação"
+                Description="@(loadResult?.ErrorMessage ?? "O registro não está disponível.")">
+        <Actions><a class="button button--secondary" href="clients">Voltar para aplicações</a></Actions>
+    </EmptyState>
+}
+else if (client.IsManifestManaged)
+{
+    <div class="inline-notice inline-notice--warning" role="status">
+        <AppIcon Name="lock" Size="19" />
+        <div>
+            <strong>Aplicação gerenciada por manifesto</strong>
+            <span>Edite o manifesto declarativo e aplique o provisionamento para alterar este registro.</span>
+        </div>
+    </div>
+    <div class="wizard-actions wizard-actions--complete">
+        <a class="button button--primary" href="@DetailHref">Voltar aos detalhes</a>
+    </div>
+}
+else
+{
+    <div class="wizard-shell client-edit-shell">
+        <nav class="wizard-progress" aria-label="Seções da edição">
+            <div class="wizard-progress__summary">
+                <span>Aplicação existente</span>
+                <strong>Revisão segura</strong>
+            </div>
+            <ol>
+                @foreach (var item in Sections.Select((value, index) => (value, index)))
+                {
+                    <li class="@(item.index == activeSection ? "is-current" : null)">
+                        <button type="button" @onclick="() => activeSection = item.index">
+                            <span>@(item.index + 1)</span>
+                            <strong>@item.value</strong>
+                        </button>
+                    </li>
+                }
+            </ol>
+            <div class="wizard-save-state">
+                <span class="wizard-save-state__icon"><AppIcon Name="lock" Size="15" /></span>
+                <span>Segredo preservado</span>
+            </div>
+        </nav>
+
+        <main class="wizard-stage" aria-labelledby="edit-stage-heading">
+            <header class="wizard-stage__heading">
+                <span class="wizard-stage__eyebrow">Seção @(activeSection + 1) de @Sections.Length</span>
+                <h2 id="edit-stage-heading">@Sections[activeSection]</h2>
+                <p>@SectionDescription</p>
+            </header>
+
+            @if (activeSection == 0)
+            {
+                <div class="form-grid form-grid--two">
+                    <div class="field-group">
+                        <label for="edit-display-name">Nome da aplicação</label>
+                        <input id="edit-display-name" name="displayName" class="form-control"
+                               autocomplete="organization" @bind="displayName" />
+                        <span class="field-hint">Nome exibido no consentimento e na auditoria.</span>
+                    </div>
+                    <div class="field-group">
+                        <label for="edit-client-id">Client ID</label>
+                        <input id="edit-client-id" name="clientId" class="form-control technical-value"
+                               value="@client.ClientId" readonly />
+                        <span class="field-hint">O identificador é imutável para não quebrar integrações existentes.</span>
+                    </div>
+                </div>
+                <div class="form-grid form-grid--two">
+                    <div class="field-group">
+                        <label for="edit-consent">Consentimento</label>
+                        <select id="edit-consent" name="consentType" class="form-control" @bind="consentType">
+                            <option value="explicit">Explícito — o usuário confirma</option>
+                            <option value="implicit">Implícito — aplicação confiável</option>
+                            <option value="external">Externo — decisão fora do fluxo</option>
+                            <option value="systematic">Sistemático — confirmação recorrente</option>
+                        </select>
+                    </div>
+                    <label class="choice-control choice-control--single">
+                        <input id="edit-require-par" name="requirePar" type="checkbox" @bind="requirePar" />
+                        <span><strong>Exigir PAR</strong><small>Protege parâmetros antes de abrir o navegador.</small></span>
+                    </label>
+                </div>
+            }
+            else if (activeSection == 1)
+            {
+                <fieldset class="choice-fieldset">
+                    <legend>Fluxos autorizados</legend>
+                    <div class="choice-grid choice-grid--two">
+                        <label class="choice-control"><input id="edit-grant-authorization-code" name="grantAuthorizationCode" type="checkbox" @bind="authorizationCode" /><span><strong>Authorization Code + PKCE</strong><small>Login interativo moderno.</small></span></label>
+                        <label class="choice-control"><input id="edit-grant-refresh-token" name="grantRefreshToken" type="checkbox" @bind="refreshToken" /><span><strong>Refresh Token</strong><small>Renova a sessão sem novo login.</small></span></label>
+                        <label class="choice-control"><input id="edit-grant-client-credentials" name="grantClientCredentials" type="checkbox" @bind="clientCredentials" /><span><strong>Client Credentials</strong><small>Integração sem usuário.</small></span></label>
+                        <label class="choice-control"><input id="edit-grant-device-code" name="grantDeviceCode" type="checkbox" @bind="deviceCode" /><span><strong>Device Code</strong><small>Autoriza em outro dispositivo.</small></span></label>
+                    </div>
+                    <span class="field-hint">O tipo (@ClientTypeLabel(client.Type)) e o segredo são preservados.</span>
+                </fieldset>
+                <div class="field-group edit-textarea-group">
+                    <label for="edit-scopes">Scopes</label>
+                    <textarea id="edit-scopes" name="scopes" class="form-control form-control--textarea technical-value"
+                              @bind="scopesText"></textarea>
+                    <span class="field-hint">Um scope por linha, sem o prefixo técnico <code>scp:</code>.</span>
+                </div>
+            }
+            else
+            {
+                <div class="field-group">
+                    <label for="edit-redirects">Redirect URIs</label>
+                    <textarea id="edit-redirects" name="redirectUris" class="form-control form-control--textarea technical-value"
+                              @bind="redirectUrisText"></textarea>
+                    <span class="field-hint">Uma URI HTTPS por linha. Fragmentos não são permitidos.</span>
+                </div>
+                <div class="field-group">
+                    <label for="edit-post-logout">Redirect URIs após logout <span class="label-optional">opcional</span></label>
+                    <textarea id="edit-post-logout" name="postLogoutRedirectUris" class="form-control form-control--textarea technical-value"
+                              @bind="postLogoutRedirectUrisText"></textarea>
+                </div>
+                <div class="form-grid form-grid--two">
+                    <div class="field-group">
+                        <label for="edit-frontchannel">Logout front-channel <span class="label-optional">opcional</span></label>
+                        <input id="edit-frontchannel" name="frontchannelLogoutUri" class="form-control technical-value" @bind="frontchannelLogoutUri" />
+                        <label class="switch-control"><input id="edit-frontchannel-session" name="frontchannelLogoutSessionRequired" type="checkbox" @bind="frontchannelLogoutSessionRequired" /><span><strong>Exigir sessão</strong><small>Inclui sid no logout federado.</small></span></label>
+                    </div>
+                    <div class="field-group">
+                        <label for="edit-backchannel">Logout back-channel <span class="label-optional">opcional</span></label>
+                        <input id="edit-backchannel" name="backchannelLogoutUri" class="form-control technical-value" @bind="backchannelLogoutUri" />
+                        <label class="switch-control"><input id="edit-backchannel-session" name="backchannelLogoutSessionRequired" type="checkbox" @bind="backchannelLogoutSessionRequired" /><span><strong>Exigir sessão</strong><small>Envia a notificação de logout.</small></span></label>
+                    </div>
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <div class="inline-notice inline-notice--danger" role="alert">
+                    <AppIcon Name="alert" Size="19" />
+                    <div><strong>Revise a configuração</strong><span>@errorMessage</span></div>
+                </div>
+            }
+
+            <div class="wizard-actions">
+                <div>
+                    <button class="button button--secondary" type="button" disabled="@(activeSection == 0 || saving)" @onclick="PreviousSection">Anterior</button>
+                    @if (activeSection < Sections.Length - 1)
+                    {
+                        <button class="button button--primary" type="button" disabled="@saving" @onclick="NextSection">Continuar</button>
+                    }
+                    else
+                    {
+                        <button class="button button--primary" type="button" disabled="@saving" @onclick="SaveAsync">
+                            @if (saving) { <span class="button-spinner" aria-hidden="true"></span><span>Salvando…</span> } else { <AppIcon Name="check" Size="17" /><span>Salvar alterações</span> }
+                        </button>
+                    }
+                </div>
+                <span class="field-hint">As alterações serão auditadas e usam a versão @client.Version.</span>
+            </div>
+        </main>
+    </div>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    private static readonly string[] Sections = ["Identidade", "Protocolos e scopes", "URLs e logout"];
+    private ManagementClientDetail? client;
+    private ManagementDataResult<ManagementClientDetail>? loadResult;
+    private bool loading = true;
+    private bool saving;
+    private int activeSection;
+    private string? errorMessage;
+    private string displayName = string.Empty;
+    private string consentType = "explicit";
+    private bool requirePar;
+    private bool authorizationCode;
+    private bool refreshToken;
+    private bool clientCredentials;
+    private bool deviceCode;
+    private string scopesText = string.Empty;
+    private string redirectUrisText = string.Empty;
+    private string postLogoutRedirectUrisText = string.Empty;
+    private string? frontchannelLogoutUri;
+    private bool frontchannelLogoutSessionRequired;
+    private string? backchannelLogoutUri;
+    private bool backchannelLogoutSessionRequired;
+
+    private string DetailHref => $"clients/{Uri.EscapeDataString(Id)}";
+    private string SectionDescription => activeSection switch
+    {
+        0 => "Altere apenas os dados de apresentação e consentimento; o client ID permanece estável.",
+        1 => "Escolha somente os fluxos necessários e os scopes que a aplicação realmente consome.",
+        _ => "Confira os destinos antes de salvar. Cada URI é validada no servidor.",
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        loadResult = await ClientData.GetClientAsync(Id);
+        client = loadResult.Value;
+        if (client is not null) Populate(client);
+        loading = false;
+    }
+
+    private void Populate(ManagementClientDetail value)
+    {
+        displayName = value.DisplayName ?? string.Empty;
+        consentType = string.IsNullOrWhiteSpace(value.ConsentType) ? "explicit" : value.ConsentType!;
+        requirePar = value.Permissions.Contains("ept:pushed_authorization", StringComparer.Ordinal) || value.Requirements.Contains("ft:par", StringComparer.Ordinal);
+        authorizationCode = value.Permissions.Contains("gt:authorization_code", StringComparer.Ordinal);
+        refreshToken = value.Permissions.Contains("gt:refresh_token", StringComparer.Ordinal);
+        clientCredentials = value.Permissions.Contains("gt:client_credentials", StringComparer.Ordinal);
+        deviceCode = value.Permissions.Contains("gt:device_code", StringComparer.Ordinal);
+        scopesText = string.Join(Environment.NewLine, value.Permissions.Where(p => p.StartsWith("scp:", StringComparison.Ordinal)).Select(p => p[4..]));
+        redirectUrisText = string.Join(Environment.NewLine, value.RedirectUris);
+        postLogoutRedirectUrisText = string.Join(Environment.NewLine, value.PostLogoutRedirectUris);
+        frontchannelLogoutUri = value.FrontchannelLogoutUri;
+        frontchannelLogoutSessionRequired = value.FrontchannelLogoutSessionRequired;
+        backchannelLogoutUri = value.BackchannelLogoutUri;
+        backchannelLogoutSessionRequired = value.BackchannelLogoutSessionRequired;
+    }
+
+    private void PreviousSection() => activeSection = Math.Max(0, activeSection - 1);
+    private void NextSection() => activeSection = Math.Min(Sections.Length - 1, activeSection + 1);
+
+    private async Task SaveAsync()
+    {
+        if (client is null) return;
+        saving = true;
+        errorMessage = null;
+        var result = await ClientData.UpdateClientAsync(new UpdateManagementClientCommand(
+            client.ClientId,
+            displayName,
+            consentType,
+            requirePar,
+            GrantTypes(),
+            Lines(scopesText),
+            Lines(redirectUrisText),
+            Lines(postLogoutRedirectUrisText),
+            frontchannelLogoutUri,
+            frontchannelLogoutSessionRequired,
+            backchannelLogoutUri,
+            backchannelLogoutSessionRequired,
+            client.Version));
+        saving = false;
+        if (result.IsSuccess)
+        {
+            Navigation.NavigateTo($"{DetailHref}?updated=1");
+            return;
+        }
+        errorMessage = result.ErrorMessage ?? "Não foi possível salvar as alterações.";
+    }
+
+    private IReadOnlyList<string> GrantTypes()
+    {
+        var values = new List<string>();
+        if (authorizationCode) values.Add("authorization_code");
+        if (refreshToken) values.Add("refresh_token");
+        if (clientCredentials) values.Add("client_credentials");
+        if (deviceCode) values.Add("device_code");
+        return values;
+    }
+
+    private static IReadOnlyList<string> Lines(string value) => value
+        .Split(['\r', '\n', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Distinct(StringComparer.Ordinal)
+        .ToArray();
+
+    private static string ClientTypeLabel(string? type) => type?.ToLowerInvariant() switch
+    {
+        "confidential" => "confidencial",
+        "public" => "público",
+        _ => "não informado"
+    };
+}

@@ -346,6 +346,63 @@ public sealed class ClientsControllerTests
     }
 
     [Fact]
+    public async Task Update_preserves_secret_and_rejects_stale_version()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        var clientId = $"cc-update-{Guid.NewGuid():N}";
+        var secret = $"secret-{Guid.NewGuid():N}";
+
+        var createRequest = ConfidentialClient(
+            clientId,
+            "https://client.tests.local/callback");
+        createRequest.ClientSecret = secret;
+        using var created = await client.PostAsJsonAsync(
+            "/api/clients",
+            createRequest);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var before = await created.Content.ReadFromJsonAsync<JsonElement>();
+        var version = before.GetProperty("version").GetString();
+
+        using var updated = await client.PutAsJsonAsync(
+            $"/api/clients/{Uri.EscapeDataString(clientId)}",
+            new UpdateClientRequest
+            {
+                DisplayName = "Updated client",
+                ConsentType = "explicit",
+                GrantTypes = [Permissions.GrantTypes.AuthorizationCode],
+                Scopes = ["profile"],
+                RedirectUris = ["https://client.tests.local/updated"],
+                ExpectedVersion = version
+            });
+        Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+        var after = await updated.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Updated client", after.GetProperty("displayName").GetString());
+        Assert.False(after.TryGetProperty("clientSecret", out _));
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var applications = scope.ServiceProvider
+                .GetRequiredService<IOpenIddictApplicationManager>();
+            var application = await applications.FindByClientIdAsync(clientId);
+            Assert.NotNull(application);
+            Assert.True(await applications.ValidateClientSecretAsync(application, secret));
+        }
+
+        using var stale = await client.PutAsJsonAsync(
+            $"/api/clients/{Uri.EscapeDataString(clientId)}",
+            new UpdateClientRequest
+            {
+                DisplayName = "Stale update",
+                GrantTypes = [Permissions.GrantTypes.AuthorizationCode],
+                RedirectUris = ["https://client.tests.local/updated"],
+                ExpectedVersion = version
+            });
+        Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
+    }
+
+    [Fact]
     public async Task Create_and_delete_append_redacted_audit_events()
     {
         using var factory = new ManagementTestFactory();

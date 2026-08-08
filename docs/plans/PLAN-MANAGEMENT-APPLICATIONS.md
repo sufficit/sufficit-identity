@@ -1,6 +1,6 @@
 # PLAN-MANAGEMENT-APPLICATIONS — gerenciamento completo de aplicações OAuth/OIDC
 
-> **Status:** In progress — guided creation delivered · **Owner:** Sufficit · **Created:** 2026-08-07 · **Updated:** 2026-08-07
+> **Status:** In progress — pendências de gerenciamento de aplicações · **Owner:** Sufficit · **Created:** 2026-08-07 · **Updated:** 2026-08-08
 > **Primary surface:** `/management/clients` · **Provider:** OpenIddict 7.6
 > **Legacy reference:** `sufficit-identity-legacy` / Skoruba Duende Admin
 
@@ -49,22 +49,21 @@ ser tratada na navegação/documentação do deployment.
 - sessões e autorizações filtráveis por cliente;
 - provisionamento declarativo capaz de criar e atualizar clientes gerenciados
   por manifesto;
-- capabilities `identity.clients.read`, `identity.clients.create` e
-  `identity.clients.delete`.
+- capabilities `identity.clients.read`, `identity.clients.create`,
+  `identity.clients.update` e `identity.clients.delete`.
 
 ### 2.3 Lacuna real
 
-O contrato `IClientManagementService` oferece apenas `List`, `Get`, `Create` e
-`Delete`. Não existem:
+O contrato `IClientManagementService` agora oferece `List`, `Get`, `Create`,
+`Update` e `Delete`. Permanecem como próximas lacunas:
 
-- `identity.clients.update`;
-- edição de nome, consentimento, grants, scopes, requirements ou URIs;
 - paginação/pesquisa no servidor;
 - habilitação/desabilitação operacional;
 - rotação ou remoção de client secret;
 - metadados seguros de credencial;
 - clonagem;
-- indicação de cliente gerenciado por manifesto;
+- indicação de cliente gerenciado por manifesto (agora disponível no detalhe e
+  bloqueia edição manual);
 - configuração tipada de tempos de vida por aplicação;
 - metadados públicos da aplicação, como descrição, URL e logotipo;
 - administração segura de propriedades/claims específicas do cliente.
@@ -798,27 +797,36 @@ Legado usado como evidência funcional:
 - `docs/Images/client-edit.png`
 - `docs/Images/client-summary.png`
 
-## 14. Ponto de retomada
+## 14. Próximas etapas pendentes
 
-O vertical de criação guiada está implementado por serviço, API e UI:
+Este arquivo registra somente trabalho ainda pendente. Entregas concluídas
+foram movidas para `docs/activities/`.
 
-- perfis explicados em `/management/clients/new`;
-- rascunho cifrado, vinculado ao operador, expirável e versionado;
-- seis etapas com URL estável, autosave, retomada, revisão e abandono;
-- catálogo estruturado de scopes e editores de URI;
-- finalização idempotente sobre o `CreateAsync` canônico;
-- credencial confidencial gerada no último instante e exibida uma única vez;
-- filtros e rascunhos retomáveis em `/management/clients`;
-- testes de integração, isolamento, protocolo, arquitetura e responsividade.
+### Fase 0 — contratos e políticas restantes
 
-Retomar pela parte ainda aberta da **Fase 0** e então pela **Fase 2**:
+- [ ] Concluir o `IClientDefinitionValidator` compartilhado também no
+  provisionamento e eliminar validações divergentes.
+- [ ] Derivar o catálogo de perfis das features efetivamente habilitadas no
+  runtime.
+- [ ] Implementar a policy granular de concessão de scopes.
 
-1. concluir o `IClientDefinitionValidator` compartilhado também com o
-   provisionamento e substituir a validação progressiva interna pelo contrato;
-2. derivar o catálogo de perfis das features efetivamente habilitadas no runtime;
-3. implementar a policy granular de concessão de scopes;
-4. adicionar `ClientsUpdate`, `IsManifestManaged` e o comando de edição;
-5. reutilizar as etapas do configurador na edição, com diff e confirmação de
-   impacto;
-6. executar inspeção visual automatizada em viewports 320–430 px quando o
-   harness de navegador estiver disponível.
+### Fase 3 — ciclo de vida operacional
+
+- [ ] Paginar e pesquisar aplicações no servidor, mantendo filtros reproduzíveis
+  pela URL.
+- [ ] Implementar clonagem segura sem copiar segredos, tokens, autorizações ou
+  propriedades de manifesto.
+- [ ] Implementar habilitação/desabilitação somente quando houver enforcement
+  real no runtime.
+- [ ] Implementar metadados e rotação de client secret por `SecretReference`
+  com Vault, sem exibir segredo na API ou na auditoria.
+- [ ] Definir claims e propriedades tipadas da aplicação com allowlist e
+  política de emissão.
+
+### Fase 4 — validação visual e rollout
+
+- [ ] Executar inspeção visual automatizada em 320, 360, 390 e 430 px.
+- [ ] Validar teclado, foco, teclado virtual, deep link, F5 e concorrência na
+  edição guiada.
+- [ ] Publicar a capability de atualização por deployment e validar clientes
+  representativos antes de habilitar em produção.
