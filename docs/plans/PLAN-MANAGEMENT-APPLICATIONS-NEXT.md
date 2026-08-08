@@ -9,6 +9,7 @@ operacional foram concluídos e movidos para:
 
 - [`../activities/202608082230-completed-runtime-capability-catalog.md`](../activities/202608082230-completed-runtime-capability-catalog.md)
 - [`../activities/202608082300-completed-client-catalog-pagination.md`](../activities/202608082300-completed-client-catalog-pagination.md)
+- [`../activities/202608082330-completed-client-empty-deep-link.md`](../activities/202608082330-completed-client-empty-deep-link.md)
 
 Este arquivo mantém somente o trabalho que ainda falta.
 
@@ -21,8 +22,6 @@ vida sem inventar um estado de ativação que o runtime ainda não aplica.
 
 - [ ] Fazer inspeção visual em 320, 360, 390 e 430 px, incluindo teclado,
   foco, filtros empilhados e paginação.
-- [ ] Cobrir estados vazios, deep links, filtros inválidos e capability negada
-  com testes de contrato, integração e UI.
 - [ ] Definir o modelo de estado operacional antes de expor filtros além de
   `active`; a entidade OpenIddict atual não possui habilitação/desabilitação.
 

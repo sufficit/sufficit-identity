@@ -143,7 +143,7 @@
         {
             @if (FilteredClients.Count is 0)
             {
-                @if (string.IsNullOrWhiteSpace(search) && typeFilter == "all")
+                @if (!HasActiveClientFilters)
                 {
                     <EmptyState Icon="database"
                                 Title="@EmptyTitle"
@@ -158,7 +158,7 @@
                             <button class="button button--secondary"
                                     type="button"
                                     @onclick="ClearSearch">
-                                Limpar pesquisa
+                                    Limpar filtros
                             </button>
                         </Actions>
                     </EmptyState>
@@ -260,7 +260,7 @@
         }
         else
         {
-            <span>Serviço de aplicações incorporado</span>
+            <span class="pagination__status">Página única</span>
         }
     </footer>
 </div>
@@ -346,18 +346,22 @@
                 : "Nenhum registro carregado";
 
     private string EmptyTitle =>
-        string.IsNullOrWhiteSpace(search) && typeFilter == "all"
-            && grantFilter == "all" && string.IsNullOrWhiteSpace(scopeFilter)
-            && originFilter == "all" && statusFilter == "all"
-            ? "Nenhum cliente registrado"
-            : "Nenhum cliente corresponde à pesquisa";
+        HasActiveClientFilters
+            ? "Nenhum cliente corresponde aos filtros"
+            : "Nenhum cliente registrado";
 
     private string EmptyDescription =>
-        string.IsNullOrWhiteSpace(search) && typeFilter == "all"
-            && grantFilter == "all" && string.IsNullOrWhiteSpace(scopeFilter)
-            && originFilter == "all" && statusFilter == "all"
-            ? "O serviço respondeu com uma coleção vazia. Crie a primeira aplicação para começar."
-            : "Revise o nome, o client ID ou o tipo informado e tente novamente.";
+        HasActiveClientFilters
+            ? "Revise os filtros de busca, tipo, fluxo, origem, estado ou scope e tente novamente."
+            : "O serviço respondeu com uma coleção vazia. Crie a primeira aplicação para começar.";
+
+    private bool HasActiveClientFilters =>
+        !string.IsNullOrWhiteSpace(search)
+        || typeFilter != "all"
+        || grantFilter != "all"
+        || !string.IsNullOrWhiteSpace(scopeFilter)
+        || originFilter != "all"
+        || statusFilter != "all";
 
     private int TotalCount => result?.Value?.TotalCount ?? 0;
     private int CurrentPage => result?.Value?.Page ?? page;
