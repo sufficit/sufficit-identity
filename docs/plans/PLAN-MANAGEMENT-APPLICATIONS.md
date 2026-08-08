@@ -804,11 +804,14 @@ foram movidas para `docs/activities/`.
 
 ### Fase 0 — contratos e políticas restantes
 
-- [ ] Concluir o `IClientDefinitionValidator` compartilhado também no
-  provisionamento e eliminar validações divergentes.
+Os contratos compartilhados, a policy de scopes e as transições do
+provisionamento foram concluídos e estão registrados em
+[`202608081900-completed-client-provisioning-lifecycle.md`](../activities/202608081900-completed-client-provisioning-lifecycle.md).
+
+- [ ] Inventariar os manifests reais de produção e adotar clientes existentes
+  individualmente antes de habilitar `Enforce`.
 - [ ] Derivar o catálogo de perfis das features efetivamente habilitadas no
   runtime.
-- [ ] Implementar a policy granular de concessão de scopes.
 
 ### Fase 3 — ciclo de vida operacional
 
