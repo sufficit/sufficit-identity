@@ -105,6 +105,20 @@ public sealed class DatabaseRuntimeTelemetryTests
     }
 
     [Fact]
+    public async Task Snapshot_drops_idle_logical_leases_after_the_safety_window()
+    {
+        using var telemetry = new DatabaseRuntimeTelemetry(
+            idleLeasePruneAfter: TimeSpan.FromMilliseconds(10));
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        telemetry.TrackOpened(connection);
+
+        await Task.Delay(40);
+
+        Assert.Empty(telemetry.GetSnapshot().ActiveConnections);
+    }
+
+    [Fact]
     public void Watchdog_snapshot_exposes_only_sanitized_failure_state()
     {
         using var telemetry = new DatabaseRuntimeTelemetry();

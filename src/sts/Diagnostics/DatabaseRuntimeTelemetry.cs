@@ -24,6 +24,8 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
         ["ServerThread", "ProcessID", "ServerProcessId", "ClientConnectionId"];
     private static readonly TimeSpan UpdateCoalescingWindow =
         TimeSpan.FromMilliseconds(100);
+    private static readonly TimeSpan DefaultIdleLeasePruneAfter =
+        TimeSpan.FromMinutes(15);
 
     private readonly ConcurrentDictionary<DbConnection, ActiveLease> connections =
         new(ReferenceEqualityComparer.Instance);
@@ -33,6 +35,7 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
     private readonly ConcurrentDictionary<Type, Func<DbConnection, string?>> physicalIdReaders = new();
     private readonly ConcurrentDictionary<long, Channel<byte>> subscribers = new();
     private readonly MeterListener meterListener;
+    private readonly TimeSpan idleLeasePruneAfter;
     private DatabaseWatchdogSnapshot watchdog =
         new(false, "disabled", 0, null, null, null);
     private long nextConnectionId;
@@ -41,8 +44,9 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
     private long failedCommands;
     private int disposed;
 
-    public DatabaseRuntimeTelemetry()
+    internal DatabaseRuntimeTelemetry(TimeSpan? idleLeasePruneAfter = null)
     {
+        this.idleLeasePruneAfter = idleLeasePruneAfter ?? DefaultIdleLeasePruneAfter;
         meterListener = new MeterListener
         {
             InstrumentPublished = static (instrument, listener) =>
@@ -64,6 +68,7 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
     public DatabaseRuntimeSnapshot GetSnapshot()
     {
         var now = DateTimeOffset.UtcNow;
+        PruneIdleLeases(now);
         PruneClosedConnections();
         PrunePhysicalCounters(now);
 
@@ -99,6 +104,27 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
 
             if (connections.TryRemove(item.Key, out var lease))
             {
+                lease.MarkReturned();
+            }
+        }
+    }
+
+    private void PruneIdleLeases(DateTimeOffset now)
+    {
+        foreach (var item in connections)
+        {
+            if (!item.Value.IsIdle(now, idleLeasePruneAfter))
+            {
+                continue;
+            }
+
+            if (connections.TryRemove(item.Key, out var lease))
+            {
+                // A provider can leave a logical DbConnection object open
+                // while its pool has already returned the physical lease.
+                // Do not let that bookkeeping object live forever in the
+                // management view: this page reports currently leased
+                // connections, not every object ever observed by EF Core.
                 lease.MarkReturned();
             }
         }
@@ -507,6 +533,21 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
         }
 
         public void MarkReturned() => Counters.Touch();
+
+        public bool IsIdle(DateTimeOffset now, TimeSpan idleAfter)
+        {
+            if (Volatile.Read(ref activeCommands) is not 0)
+            {
+                return false;
+            }
+
+            var lastCommand = Interlocked.Read(ref lastCommandUnixMilliseconds);
+            var lastActivity = lastCommand is 0
+                ? Interlocked.Read(ref openedAtUnixMilliseconds)
+                : lastCommand;
+            var elapsed = now.ToUnixTimeMilliseconds() - lastActivity;
+            return elapsed >= idleAfter.TotalMilliseconds;
+        }
 
         public DatabaseConnectionSnapshot ToSnapshot()
         {
