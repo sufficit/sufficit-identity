@@ -90,7 +90,7 @@ public sealed class MariaDbMigrationIntegrationTests
         await using var connection = context.Database.GetDbConnection();
         await connection.OpenAsync();
 
-        Assert.Equal(29, await ScalarIntAsync(connection, """
+        Assert.Equal(30, await ScalarIntAsync(connection, """
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
