@@ -63,9 +63,12 @@ FROM ${DOTNET_RUNTIME_IMAGE} AS final
 WORKDIR /app
 
 # Non-root (defense in depth — nothing this process does needs root inside
-# the container).
-RUN groupadd --gid 1654 sufficit \
-    && useradd --uid 1654 --gid sufficit --create-home --shell /usr/sbin/nologin sufficit
+# the container). Do not force a numeric UID/GID: the .NET base image may
+# already reserve those values (for example, GID 1654 on Debian slim).
+RUN if ! getent group sufficit >/dev/null; then groupadd sufficit; fi \
+    && if ! getent passwd sufficit >/dev/null; then \
+        useradd --gid sufficit --create-home --shell /usr/sbin/nologin sufficit; \
+    fi
 
 # Install curl as root (BEFORE the USER directive — apt-get needs root) so
 # the HEALTHCHECK below can probe the liveness endpoint. The aspnet:10.0
