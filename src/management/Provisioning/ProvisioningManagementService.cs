@@ -61,7 +61,19 @@ internal sealed class ProvisioningManagementService(
         {
             var plan = await provisioner.PreviewAsync(
                 manifest,
-                cancellationToken);
+                cancellationToken,
+                context.OperatorSubject);
+            foreach (var observed in plan.Changes.Where(change =>
+                         change.Kind is IdentityManifestChangeKind.Observed))
+            {
+                await TryWriteAuditAsync(
+                    context,
+                    ManagementCapabilities.ProvisioningPreview,
+                    decision,
+                    "observed",
+                    "provisioning_client_transition_observed",
+                    cancellationToken);
+            }
             await WriteAuditAsync(
                 context,
                 ManagementCapabilities.ProvisioningPreview,
@@ -143,7 +155,8 @@ internal sealed class ProvisioningManagementService(
         {
             var plan = await provisioner.ApplyAsync(
                 manifest,
-                cancellationToken);
+                cancellationToken,
+                context.OperatorSubject);
             foreach (var adoption in plan.Changes.Where(change =>
                          change.Kind is IdentityManifestChangeKind.Adopted))
             {
@@ -157,6 +170,21 @@ internal sealed class ProvisioningManagementService(
                         decision,
                         "succeeded",
                         "provisioning_client_adopted"));
+            }
+
+            foreach (var observed in plan.Changes.Where(change =>
+                         change.Kind is IdentityManifestChangeKind.Observed))
+            {
+                database.ManagementAuditEvents.Add(
+                    ManagementAuditEventFactory.Create(
+                        context,
+                        ManagementCapabilities.ProvisioningApply,
+                        new ManagementResource(
+                            ManagementResourceTypes.Client,
+                            observed.Identifier),
+                        decision,
+                        "observed",
+                        "provisioning_client_transition_observed"));
             }
 
             database.ManagementAuditEvents.Add(

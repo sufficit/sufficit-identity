@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Management.Provisioning;
 
@@ -17,6 +18,14 @@ public sealed class IdentityProvisioningManifest
     /// provisioner derives a client-scoped compatibility identity.
     /// </summary>
     public string? ManifestId { get; init; }
+    /// <summary>
+    /// Compatibility rollout for sensitive changes to existing clients.
+    /// Observe records future denials without mutating or interrupting callers;
+    /// Enforce rejects unauthorized transitions.
+    /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter<ClientDefinitionRolloutMode>))]
+    public ClientDefinitionRolloutMode RolloutMode { get; init; } =
+        ClientDefinitionRolloutMode.Observe;
     public List<IdentityScopeManifest> Scopes { get; init; } = [];
     public List<IdentityClientManifest> Clients { get; init; } = [];
 }
@@ -53,6 +62,12 @@ public sealed class IdentityClientManifest
     /// unmanaged or owned by another manifest identity.
     /// </summary>
     public bool AdoptExisting { get; init; }
+    /// <summary>
+    /// Explicitly authorizes sensitive transitions for this client when the
+    /// manifest rollout mode is Enforce. The provisioning service audits the
+    /// actor and resulting transition.
+    /// </summary>
+    public bool AuthorizeSensitiveTransitions { get; init; }
     public bool RequirePkce { get; init; }
     public List<string> GrantTypes { get; init; } = [];
     public List<string> ResponseTypes { get; init; } = [];

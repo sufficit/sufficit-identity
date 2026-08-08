@@ -45,18 +45,21 @@ public sealed class OpenIddictManifestProvisioner
 
     public Task<IdentityProvisioningPlan> PreviewAsync(
         IdentityProvisioningManifest manifest,
-        CancellationToken cancellationToken = default) =>
-        ProcessAsync(manifest, apply: false, cancellationToken);
+        CancellationToken cancellationToken = default,
+        string? actorSubject = null) =>
+        ProcessAsync(manifest, apply: false, cancellationToken, actorSubject);
 
     public Task<IdentityProvisioningPlan> ApplyAsync(
         IdentityProvisioningManifest manifest,
-        CancellationToken cancellationToken = default) =>
-        ProcessAsync(manifest, apply: true, cancellationToken);
+        CancellationToken cancellationToken = default,
+        string? actorSubject = null) =>
+        ProcessAsync(manifest, apply: true, cancellationToken, actorSubject);
 
     private async Task<IdentityProvisioningPlan> ProcessAsync(
         IdentityProvisioningManifest manifest,
         bool apply,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? actorSubject)
     {
         IdentityProvisioningManifestValidator.ValidateAndThrow(
             manifest,
@@ -85,7 +88,9 @@ public sealed class OpenIddictManifestProvisioner
                 manifest.SchemaVersion,
                 client,
                 apply,
-                cancellationToken));
+                cancellationToken,
+                actorSubject,
+                manifest.RolloutMode));
         }
 
         return new IdentityProvisioningPlan(changes);
@@ -145,7 +150,9 @@ public sealed class OpenIddictManifestProvisioner
         int schemaVersion,
         IdentityClientManifest manifest,
         bool apply,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? actorSubject,
+        ClientDefinitionRolloutMode rolloutMode)
     {
         var manifestIdentity = GetManifestIdentity(
             manifestId,
@@ -201,6 +208,38 @@ public sealed class OpenIddictManifestProvisioner
         }
 
         var adopted = !managedByThisManifest;
+
+        var transitionValidation = _clientDefinitionValidator.Validate(
+            new ClientDefinitionRequest(
+                ClientDefinitionSource.Provisioning,
+                manifest.ClientId,
+                manifest.ClientType,
+                manifest.GrantTypes,
+                manifest.Scopes,
+                manifest.RedirectUris,
+                manifest.RequirePkce,
+                manifest.ClientType == ManifestClientTypes.Confidential,
+                RolloutMode: rolloutMode,
+                ActorSubject: actorSubject,
+                Current: Snapshot(current),
+                AuthorizeSensitiveTransitions:
+                    manifest.AuthorizeSensitiveTransitions));
+        if (!transitionValidation.IsValid)
+        {
+            throw new IdentityProvisioningManifestException(
+                transitionValidation.Issues.Select(issue =>
+                    $"clients[{manifest.ClientId}].{issue.Code} " +
+                    $"({issue.Field}): {issue.Message}")
+                    .ToArray());
+        }
+
+        if (transitionValidation.HasObservedIssues)
+        {
+            return new IdentityManifestChange(
+                "client",
+                manifest.ClientId,
+                IdentityManifestChangeKind.Observed);
+        }
 
         if (ApplicationEquals(current, desired))
         {
@@ -457,6 +496,23 @@ public sealed class OpenIddictManifestProvisioner
         current.Requirements.SetEquals(desired.Requirements) &&
         ManagedLogoutSettingsEqual(current.Settings, desired.Settings) &&
         ManifestPropertiesEqual(current.Properties, desired.Properties);
+
+    private static ClientDefinitionSnapshot Snapshot(
+        OpenIddictApplicationDescriptor descriptor) =>
+        new(
+            descriptor.ClientType ?? "",
+            !string.IsNullOrEmpty(descriptor.ClientSecret),
+            descriptor.Permissions.ToHashSet(StringComparer.Ordinal),
+            descriptor.Permissions
+                .Where(permission => permission.StartsWith(
+                    OpenIddictConstants.Permissions.Prefixes.Scope,
+                    StringComparison.Ordinal))
+                .Select(permission => permission[
+                    OpenIddictConstants.Permissions.Prefixes.Scope.Length..])
+                .ToHashSet(StringComparer.Ordinal),
+            descriptor.RedirectUris
+                .Select(uri => uri.OriginalString)
+                .ToHashSet(StringComparer.Ordinal));
 
     private static readonly string[] ManagedLogoutSettingKeys =
     [
