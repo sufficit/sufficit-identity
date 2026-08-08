@@ -21,8 +21,9 @@ vida sem inventar um estado de ativação que o runtime ainda não aplica.
 
 ## Entregas pendentes
 
-- [ ] Definir o modelo de estado operacional antes de expor filtros além de
-  `active`; a entidade OpenIddict atual não possui habilitação/desabilitação.
+- [ ] Definir e implementar o modelo de estado operacional conforme o plano
+  [`PLAN-CLIENT-OPERATIONAL-STATE.md`](PLAN-CLIENT-OPERATIONAL-STATE.md), antes
+  de expor filtros além de `active`.
 
 ## Limites
 
