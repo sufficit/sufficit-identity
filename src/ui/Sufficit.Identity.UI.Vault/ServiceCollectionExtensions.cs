@@ -77,7 +77,7 @@ public static class ServiceCollectionExtensions
                 policy.AddRequirements(new VaultAdminRequirement());
             });
         });
-        services.AddSingleton<IAuthorizationHandler, VaultAdminAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, VaultAdminAuthorizationHandler>();
         services.AddCascadingAuthenticationState();
         services.TryAddScoped<VaultDataSource>();
         services.AddRazorComponents().AddInteractiveServerComponents();
