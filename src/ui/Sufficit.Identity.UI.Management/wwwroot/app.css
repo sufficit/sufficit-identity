@@ -79,7 +79,10 @@
     transform: translateY(-1px);
 }
 
-.profile-card:disabled { cursor: wait; opacity: .68; }
+.profile-card:disabled { cursor: not-allowed; opacity: .68; }
+.profile-card--unavailable { background: var(--surface-muted, var(--surface)); }
+.profile-card--unavailable .profile-card__icon,
+.profile-card--unavailable .profile-card__action { color: var(--ink-subtle); }
 .profile-card__icon {
     display: grid;
     width: 44px;

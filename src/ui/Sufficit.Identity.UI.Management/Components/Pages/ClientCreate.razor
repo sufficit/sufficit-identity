@@ -63,19 +63,23 @@ else
     <div class="profile-grid" aria-label="Perfis de aplicação">
         @foreach (var profile in profiles)
         {
-            <button class="profile-card"
+            <button class="profile-card @(profile.IsAvailable ? string.Empty : "profile-card--unavailable")"
                     type="button"
-                    disabled="@(creatingProfile is not null)"
+                    disabled="@(creatingProfile is not null || !profile.IsAvailable)"
                     aria-busy="@(creatingProfile == profile.Id)"
                     @onclick="() => CreateDraftAsync(profile.Id)">
                 <span class="profile-card__icon"><AppIcon Name="@profile.Icon" Size="23" /></span>
                 <span class="profile-card__body">
                     <strong>@profile.DisplayName</strong>
                     <span>@profile.Description</span>
-                    <small>@profile.Outcome</small>
+                    <small>@(profile.IsAvailable ? profile.Outcome : profile.UnavailableReason)</small>
                 </span>
                 <span class="profile-card__action">
-                    @if (creatingProfile == profile.Id)
+                    @if (!profile.IsAvailable)
+                    {
+                        <AppIcon Name="lock" Size="17" />
+                    }
+                    else if (creatingProfile == profile.Id)
                     {
                         <span class="button-spinner" aria-hidden="true"></span>
                         <span class="visually-hidden">Criando rascunho</span>

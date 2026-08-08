@@ -46,7 +46,9 @@ public sealed record ManagementClientProfile(
     string Icon,
     string Outcome,
     bool RequiresRedirectUris,
-    bool CreatesCredential);
+    bool CreatesCredential,
+    bool IsAvailable = true,
+    string? UnavailableReason = null);
 
 public sealed record ManagementClientAvailableScope(
     string Name,
@@ -180,6 +182,7 @@ internal sealed class ClientConfigurationDraftService(
     IClientManagementService clients,
     IManagementAuthorizationEvaluator authorization,
     IOptions<ManagementOptions> managementOptions,
+    IIdentityRuntimeCapabilityCatalog runtimeCapabilities,
     TimeProvider timeProvider,
     ILogger<ClientConfigurationDraftService> logger)
     : IClientConfigurationDraftService
@@ -248,7 +251,10 @@ internal sealed class ClientConfigurationDraftService(
         CancellationToken cancellationToken = default)
     {
         await DemandCreateAsync(context, cancellationToken);
-        return Profiles;
+        var capabilities = runtimeCapabilities.Current;
+        return Profiles
+            .Select(profile => WithAvailability(profile, capabilities))
+            .ToArray();
     }
 
     public async Task<IReadOnlyList<ManagementClientAvailableScope>> GetAvailableScopesAsync(
@@ -331,6 +337,7 @@ internal sealed class ClientConfigurationDraftService(
     {
         await DemandCreateAsync(context, cancellationToken);
         var definition = FindProfile(profile);
+        EnsureProfileAvailable(definition, runtimeCapabilities.Current);
         var now = timeProvider.GetUtcNow();
         var row = new ManagementClientDraftRecord
         {
@@ -776,6 +783,54 @@ internal sealed class ClientConfigurationDraftService(
             "client_profile_invalid",
             "Escolha um perfil de aplicação disponível.",
             "profile");
+
+    private static ManagementClientProfile WithAvailability(
+        ManagementClientProfile profile,
+        IdentityRuntimeCapabilitySnapshot capabilities)
+    {
+        var (available, reason) = profile.Id switch
+        {
+            ManagementClientProfiles.Web or
+            ManagementClientProfiles.Spa or
+            ManagementClientProfiles.Native or
+            ManagementClientProfiles.Advanced =>
+                (capabilities.SupportsGrant(
+                    ManagementRuntimeCapabilities.AuthorizationCode),
+                 "O runtime não habilita Authorization Code."),
+            ManagementClientProfiles.Service =>
+                (capabilities.SupportsGrant(
+                    ManagementRuntimeCapabilities.ClientCredentials),
+                 "O runtime não habilita Client Credentials."),
+            ManagementClientProfiles.Device =>
+                (capabilities.SupportsGrant(
+                        ManagementRuntimeCapabilities.DeviceCode) &&
+                 capabilities.SupportsFeature(
+                     ManagementRuntimeCapabilities.DeviceAuthorization),
+                 "O runtime não habilita Device Authorization."),
+            _ => (false, "Perfil desconhecido para este runtime."),
+        };
+
+        return profile with
+        {
+            IsAvailable = available,
+            UnavailableReason = available ? null : reason,
+        };
+    }
+
+    private static void EnsureProfileAvailable(
+        ManagementClientProfile profile,
+        IdentityRuntimeCapabilitySnapshot capabilities)
+    {
+        var resolved = WithAvailability(profile, capabilities);
+        if (!resolved.IsAvailable)
+        {
+            throw new ManagementValidationException(
+                "client_profile_unavailable",
+                resolved.UnavailableReason ??
+                    "Este perfil não está habilitado no runtime atual.",
+                "profile");
+        }
+    }
 
     private static ManagementClientDraftValues DefaultsFor(string profile) => profile switch
     {

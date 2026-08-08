@@ -4,18 +4,17 @@
 **Plano principal:** [`PLAN-MANAGEMENT-APPLICATIONS.md`](PLAN-MANAGEMENT-APPLICATIONS.md)
 **Criado:** 2026-08-08
 
+O catálogo de capacidades e a derivação de perfis foram concluídos e movidos
+para [`../activities/202608082230-completed-runtime-capability-catalog.md`](../activities/202608082230-completed-runtime-capability-catalog.md).
+Este arquivo mantém somente o trabalho que ainda falta.
+
 ## Objetivo
 
-Remover defaults estáticos da entrada do configurador e preparar a lista de
-aplicações para operação real em produção, sem prometer no wizard um fluxo que
-o runtime não habilita.
+Preparar a lista de aplicações para operação real em produção, sem carregar
+todos os registros no circuito e sem perder filtros ao recarregar a página.
 
 ## Entregas pendentes
 
-- [ ] Criar um catálogo de capacidades do runtime (grants, PAR, device flow,
-  token exchange e scopes disponíveis) atrás de contrato de aplicação.
-- [ ] Derivar os perfis do wizard desse catálogo, informando quando um perfil
-  está indisponível e por quê.
 - [ ] Paginar, pesquisar e filtrar aplicações no serviço/API; manter `q`,
   `type`, `grant`, `scope`, `origin`, `status`, `page` e `pageSize` na URL.
 - [ ] Transformar a lista em cards rotulados no mobile, preservando uma tabela
