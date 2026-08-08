@@ -2,11 +2,6 @@
 
 set -euo pipefail
 
-readonly app_name="sufficit-identity"
-readonly releases_root="/opt/${app_name}.releases"
-readonly app_link="/opt/${app_name}"
-readonly remote_lock="/run/lock/${app_name}-cluster-deploy.lock"
-
 usage() {
     cat >&2 <<'EOF'
 usage: activate-cluster-release.sh <release-name> <expected-revision> [host ...]
@@ -85,7 +80,7 @@ lock_fd=''
 cleanup() {
     if [[ -n ${lock_fd} ]]; then
         printf 'RELEASE\n' >&"${lock_fd}" 2>/dev/null || true
-        eval "exec ${lock_fd}>&-" 2>/dev/null || true
+        exec {lock_fd}>&- 2>/dev/null || true
     fi
     if [[ -n ${remote_lock_pid} ]]; then
         kill "${remote_lock_pid}" 2>/dev/null || true
@@ -103,7 +98,17 @@ remote_lock_pid=$!
 
 exec {lock_fd}>"${control_fifo}"
 lock_status=''
-if ! IFS= read -r -t "${IDENTITY_LOCK_TIMEOUT:-15}" lock_status <"${status_file}"; then
+lock_deadline=$((SECONDS + ${IDENTITY_LOCK_TIMEOUT:-15}))
+while [[ ! -s ${status_file} && SECONDS -lt ${lock_deadline} ]]; do
+    if ! kill -0 "${remote_lock_pid}" 2>/dev/null; then
+        break
+    fi
+    sleep 0.1
+done
+if [[ -s ${status_file} ]]; then
+    IFS= read -r lock_status <"${status_file}" || true
+fi
+if [[ -z ${lock_status} ]]; then
     echo "[cluster] Timed out acquiring the production deployment lease." >&2
     sed 's/^/[cluster] /' "${error_file}" >&2 || true
     exit 75
@@ -144,6 +149,13 @@ if [[ -z ${active} || ! -d ${active} ]]; then
     printf 'active-release-missing\n' >&2
     exit 1
 fi
+case "${active}/" in
+    /opt/sufficit-identity.releases/*/) ;;
+    *)
+        printf 'active-release-outside-release-root: %s\n' "${active}" >&2
+        exit 1
+        ;;
+esac
 printf '%s\n' "${active}"
 REMOTE_PREFLIGHT
     ); then
