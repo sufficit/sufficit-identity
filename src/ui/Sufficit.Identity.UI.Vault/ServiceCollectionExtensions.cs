@@ -62,7 +62,7 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<UiModuleRegistry>());
         services.TryAddScoped<IManagementEntitlementResolver,
             DenyManagementEntitlementResolver>();
-        services.TryAddSingleton(new UiModuleDescriptor(
+        services.AddSingleton(new UiModuleDescriptor(
             "sufficit-identity-vault-ui",
             UiSurface.Vault,
             new Version(0, 4, 0),
