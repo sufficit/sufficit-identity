@@ -153,7 +153,7 @@ internal sealed class ProvisioningManagementService(
                 "succeeded",
                 "provisioning_manifest_inventory",
                 cancellationToken);
-            return inventory;
+            return inventory with { CorrelationId = context.CorrelationId };
         }
         catch (IdentityProvisioningManifestException)
         {
