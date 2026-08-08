@@ -29,7 +29,9 @@ RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 SystemCallArchitectures=native
 CapabilityBoundingSet=
 AmbientCapabilities=
-UMask=0027
+# The Unix socket is shared with nginx through the www-data group. Keep
+# group-write permission while leaving all other permissions masked.
+UMask=0007
 
 SyslogIdentifier=[sufficit][identity]
 StandardOutput=journal
