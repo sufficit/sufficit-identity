@@ -69,7 +69,10 @@ public sealed record ManagementSessionSummary(
     DateTimeOffset? CreatedAt,
     DateTimeOffset? ExpiresAt,
     DateTimeOffset? RedeemedAt,
-    bool IsActive);
+    bool IsActive,
+    // client_credentials tokens use the client as subject, not an Identity
+    // user. Keep the application primary key for management navigation.
+    string? ClientApplicationId = null);
 
 public sealed record ManagementUserSessionRevocation(
     long RevokedTokens,
@@ -126,8 +129,13 @@ internal sealed class SessionManagementService(
             {
                 token.Id,
                 token.Subject,
+                // Client-credentials tokens use the client subject and are
+                // not Identity users. Keep the raw subject for filtering, but
+                // expose a user ID only when the join resolved a real user.
+                UserId = user == null ? null : token.Subject,
                 UserName = user == null ? null : user.UserName,
                 Email = user == null ? null : user.Email,
+                ClientApplicationId = application == null ? null : application.Id,
                 ClientId = application == null ? null : application.ClientId,
                 ClientDisplayName =
                     application == null ? null : application.DisplayName,
@@ -178,7 +186,7 @@ internal sealed class SessionManagementService(
         var items = rows
             .Select(token => new ManagementSessionSummary(
                 token.Id,
-                token.Subject,
+                token.UserId,
                 token.UserName,
                 token.Email,
                 token.ClientId,
@@ -192,7 +200,8 @@ internal sealed class SessionManagementService(
                 string.Equals(
                     token.Status,
                     OpenIddictConstants.Statuses.Valid,
-                    StringComparison.Ordinal)))
+                    StringComparison.Ordinal),
+                token.ClientApplicationId))
             .ToArray();
 
         // L3 fix (eval): no audit row on read paths.

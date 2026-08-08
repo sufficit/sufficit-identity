@@ -92,7 +92,7 @@
                     <table class="data-table data-table--claims">
                         <thead>
                             <tr>
-                                <th scope="col">Usuário</th>
+                                <th scope="col">Usuário / aplicação</th>
                                 <th scope="col">Cliente</th>
                                 <th scope="col">Tipo</th>
                                 <th scope="col">Emissão / expiração</th>
@@ -104,14 +104,20 @@
                             @foreach (var session in Page.Items)
                             {
                                 <tr>
-                                    <td data-label="Usuário">
-                                        @if (session.UserId is not null)
+                                    <td data-label="Usuário / aplicação">
+                                        @if (HasHumanUser(session))
                                         {
                                             <a class="client-name" href="@UserHref(session.UserId)">@UserLabel(session)</a>
                                         }
+                                        else if (session.ClientApplicationId is not null)
+                                        {
+                                            <a class="client-name" href="@ClientHref(session.ClientApplicationId)">
+                                                @ClientLabel(session)
+                                            </a>
+                                        }
                                         else
                                         {
-                                            <span>Sem usuário</span>
+                                            <span>Cliente técnico sem aplicação</span>
                                         }
                                     </td>
                                     <td data-label="Cliente">
@@ -187,7 +193,7 @@
     <section class="delete-zone" aria-labelledby="revoke-session-heading">
         <div>
             <h2 id="revoke-session-heading">Revogar esta credencial?</h2>
-            <p>@UserLabel(selected) · @TypeLabel(selected.Type) · emitida @DateLabel(selected.CreatedAt).</p>
+            <p>@PrincipalLabel(selected) · @TypeLabel(selected.Type) · emitida @DateLabel(selected.CreatedAt).</p>
         </div>
         @if (revocation?.IsSuccess is false)
         {
@@ -364,11 +370,24 @@
         }
     }
 
+    private static bool HasHumanUser(ManagementSessionSummary session) =>
+        session.UserId is not null
+        && (session.UserName is not null || session.Email is not null);
+
     private static string UserLabel(ManagementSessionSummary session) =>
         session.UserName ?? session.Email ?? session.UserId ?? "Sem usuário";
 
     private static string UserHref(string id) =>
         $"users/{Uri.EscapeDataString(id)}";
+
+    private static string ClientLabel(ManagementSessionSummary session) =>
+        session.ClientDisplayName ?? session.ClientId ?? "Aplicação";
+
+    private static string ClientHref(string id) =>
+        $"clients/{Uri.EscapeDataString(id)}";
+
+    private static string PrincipalLabel(ManagementSessionSummary session) =>
+        HasHumanUser(session) ? UserLabel(session) : ClientLabel(session);
 
     private static string TypeLabel(string value) =>
         value.Replace('_', ' ');
