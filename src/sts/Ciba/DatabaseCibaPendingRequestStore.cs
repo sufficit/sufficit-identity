@@ -20,7 +20,7 @@ internal sealed class DatabaseCibaPendingRequestStore(
     {
         var now = _timeProvider.GetUtcNow();
         var request = new CibaPendingRequest(
-            Guid.NewGuid().ToString("N"), clientId, subject, scopes,
+            CibaIdentifier.Create(), clientId, subject, scopes,
             bindingMessage, now + lifetime, now, now, null);
         using var database = databaseFactory.CreateDbContext();
         database.CibaPendingStates.Add(ToEntity(request));
@@ -67,7 +67,7 @@ internal sealed class DatabaseCibaPendingRequestStore(
         out CibaPendingRequest request)
     {
         request = null!;
-        var consumptionId = Guid.NewGuid().ToString("N");
+        var consumptionId = CibaIdentifier.Create();
         using var database = databaseFactory.CreateDbContext();
         var now = _timeProvider.GetUtcNow().UtcDateTime;
         var affected = database.CibaPendingStates

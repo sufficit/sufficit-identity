@@ -69,7 +69,7 @@ internal sealed class InMemoryCibaPendingRequestStore : ICibaPendingRequestStore
     {
         var now = _timeProvider.GetUtcNow();
         var request = new CibaPendingRequest(
-            AuthReqId: Guid.NewGuid().ToString("N"),
+            AuthReqId: CibaIdentifier.Create(),
             ClientId: clientId,
             Subject: subject,
             Scopes: scopes,

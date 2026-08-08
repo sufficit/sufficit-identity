@@ -8,6 +8,11 @@
 # The stack runs: MariaDB 10.4 + the STS container (built from the Dockerfile)
 # + nginx reverse proxy with self-signed TLS for a realistic topology.
 # No real secrets are used — everything is local dev configuration.
+#
+# WARNING — NEVER use this file (or these throwaway credentials) in
+# production. Production deployments must inject credentials via an external
+# secret store / environment (Docker secrets, K8s Secrets, vault), use TLS to
+# the database (SslMode enabled), and never commit real values to git.
 
 services:
 

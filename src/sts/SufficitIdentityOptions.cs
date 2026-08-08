@@ -589,6 +589,10 @@ public sealed class TokenLifetimeOptions
     /// Refresh token lifetime, in days. Rotation itself is always on
     /// (single-use refresh tokens); this only bounds how long an unused
     /// refresh token stays redeemable.
+    /// FAPI 2.0 NOTE: the 14-day default targets general-purpose deployments.
+    /// For FAPI 2.0 / financial-grade profiles, deploy a materially shorter
+    /// lifetime (e.g. 1 day or less) in configuration — ecosystem guidance
+    /// favors short-lived, rotated refresh tokens for high-assurance clients.
     /// </summary>
     public double RefreshTokenLifetimeDays { get; init; } = 14;
 
