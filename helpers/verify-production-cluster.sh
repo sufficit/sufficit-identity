@@ -2,14 +2,6 @@
 
 set -euo pipefail
 
-readonly app_name="sufficit-identity"
-readonly app_link="/opt/${app_name}"
-readonly releases_root="/opt/${app_name}.releases"
-readonly health_host="identity.sufficit.com.br"
-readonly health_port="26501"
-readonly health_url="https://${health_host}:${health_port}"
-readonly jwks_path="/.well-known/openid-configuration/jwks"
-
 usage() {
     cat >&2 <<'EOF'
 usage: verify-production-cluster.sh <expected-revision> [host ...]
@@ -69,7 +61,7 @@ for host in "${hosts[@]}"; do
     result=''
 
     if ! result=$(ssh "${ssh_options[@]}" "${target}" bash -s -- "${expected_revision}" <<'REMOTE_CHECK'
-set -u
+set -uo pipefail
 
 expected=$1
 app_link=/opt/sufficit-identity
