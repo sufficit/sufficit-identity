@@ -1546,7 +1546,9 @@ h3 {
 
 .data-toolbar__actions {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-end;
     gap: 8px;
 }
 
@@ -4936,6 +4938,14 @@ h3 {
 .draft-item__body small { font-size: 12px; }
 .compact-filter { display: flex; gap: 8px; align-items: center; color: var(--ink-muted); font-size: 12px; }
 .compact-filter .form-control { min-width: 136px; min-height: 42px; padding-block: 8px; }
+.compact-filter--text input { min-width: 120px; }
+.pagination__status {
+    min-width: 92px;
+    color: var(--ink-muted);
+    font-size: 11px;
+    text-align: center;
+    white-space: nowrap;
+}
 
 @media (max-width: 640px) {
     .setup-intro { display: grid; }
@@ -4945,6 +4955,8 @@ h3 {
     .data-toolbar__actions, .compact-filter { width: 100%; }
     .compact-filter { display: grid; grid-template-columns: auto minmax(0, 1fr); }
     .compact-filter .form-control { width: 100%; }
+    .pagination { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+    .pagination__status { order: -1; width: 100%; }
     .wizard-actions .button { min-width: 0; padding-inline: 12px; }
     .scope-option { grid-template-columns: auto minmax(0, 1fr); }
     .scope-option > .status-badge { display: none; }

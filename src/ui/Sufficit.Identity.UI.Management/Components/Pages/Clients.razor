@@ -78,6 +78,16 @@
         <div class="data-toolbar__actions">
             @if (CanFilter)
             {
+                <label class="search-field">
+                    <span class="visually-hidden">Pesquisar aplicações</span>
+                    <AppIcon Name="search" Size="18" />
+                    <input type="search"
+                           placeholder="Pesquisar por client_id ou nome"
+                           autocomplete="off"
+                           name="q"
+                           value="@search"
+                           @onchange="SearchChanged" />
+                </label>
                 <label class="compact-filter">
                     <span>Tipo</span>
                     <select id="client-type-filter" name="type" class="form-control" value="@typeFilter" @onchange="TypeChanged">
@@ -86,15 +96,34 @@
                         <option value="confidential">Confidenciais</option>
                     </select>
                 </label>
-                <label class="search-field">
-                    <span class="visually-hidden">Pesquisar clientes</span>
-                    <AppIcon Name="search" Size="18" />
-                    <input type="search"
-                           placeholder="Pesquisar por client_id ou nome"
-                           autocomplete="off"
-                           name="q"
-                           value="@search"
-                           @oninput="SearchChanged" />
+                <label class="compact-filter">
+                    <span>Fluxo</span>
+                    <select id="client-grant-filter" name="grant" class="form-control" value="@grantFilter" @onchange="GrantChanged">
+                        <option value="all">Todos os fluxos</option>
+                        <option value="authorization_code">Authorization Code</option>
+                        <option value="client_credentials">Client Credentials</option>
+                        <option value="device_code">Device Code</option>
+                        <option value="refresh_token">Refresh Token</option>
+                    </select>
+                </label>
+                <label class="compact-filter">
+                    <span>Origem</span>
+                    <select id="client-origin-filter" name="origin" class="form-control" value="@originFilter" @onchange="OriginChanged">
+                        <option value="all">Todas</option>
+                        <option value="manual">Manual</option>
+                        <option value="manifest">Manifesto</option>
+                    </select>
+                </label>
+                <label class="compact-filter">
+                    <span>Estado</span>
+                    <select id="client-status-filter" name="status" class="form-control" value="@statusFilter" @onchange="StatusChanged">
+                        <option value="all">Todos</option>
+                        <option value="active">Ativos</option>
+                    </select>
+                </label>
+                <label class="compact-filter compact-filter--text">
+                    <span>Scope</span>
+                    <input id="client-scope-filter" name="scope" class="form-control" value="@scopeFilter" placeholder="ex.: openid" @onchange="ScopeChanged" />
                 </label>
             }
         </div>
@@ -145,6 +174,7 @@
                                 <th scope="col">Client ID</th>
                                 <th scope="col">Tipo</th>
                                 <th scope="col">Estado</th>
+                                <th scope="col">Origem</th>
                                 <th scope="col"><span class="visually-hidden">Ações</span></th>
                             </tr>
                         </thead>
@@ -168,9 +198,12 @@
                                     </td>
                                     <td data-label="Estado">
                                         <span class="registration-state">
-                                            <span class="status-dot status-dot--success" aria-hidden="true"></span>
-                                            Registrado
+                                            <span class="status-dot @(ClientStatusTone(client.Status))" aria-hidden="true"></span>
+                                            @ClientStatusLabel(client.Status)
                                         </span>
+                                    </td>
+                                    <td data-label="Origem">
+                                        <span class="registration-state">@ClientOriginLabel(client.Origin)</span>
                                     </td>
                                     <td data-label="Ações">
                                         <a class="row-action"
@@ -203,9 +236,32 @@
         }
     </div>
 
-    <footer class="table-footer">
+    <footer class="table-footer table-footer--paginated">
         <span aria-live="polite" aria-atomic="true">@ResultCountLabel</span>
-        <span>Serviço de aplicações incorporado</span>
+        @if (HasPages)
+        {
+            <nav class="pagination" aria-label="Paginação de aplicações">
+                <button class="button button--secondary button--small"
+                        type="button"
+                        disabled="@(CurrentPage <= 1 || loading)"
+                        @onclick="() => GoToPage(CurrentPage - 1)">
+                    <AppIcon Name="arrow-left" Size="15" />
+                    Anterior
+                </button>
+                <span class="pagination__status">Página @CurrentPage de @PageCount</span>
+                <button class="button button--secondary button--small"
+                        type="button"
+                        disabled="@(CurrentPage >= PageCount || loading)"
+                        @onclick="() => GoToPage(CurrentPage + 1)">
+                    Próxima
+                    <AppIcon Name="arrow-right" Size="15" />
+                </button>
+            </nav>
+        }
+        else
+        {
+            <span>Serviço de aplicações incorporado</span>
+        }
     </footer>
 </div>
 
@@ -222,11 +278,17 @@
 </div>
 
 @code {
-    private ManagementDataResult<IReadOnlyList<ManagementClientSummary>>? result;
+    private ManagementDataResult<ManagementClientPage>? result;
     private ManagementDataResult<IReadOnlyList<ManagementClientDraftSummary>>? draftsResult;
     private bool loading = true;
     private string search = string.Empty;
     private string typeFilter = "all";
+    private string grantFilter = "all";
+    private string scopeFilter = string.Empty;
+    private string originFilter = "all";
+    private string statusFilter = "all";
+    private int page = 1;
+    private int pageSize = 25;
     private string? loadedFingerprint;
 
     [SupplyParameterFromQuery(Name = "deleted")]
@@ -241,52 +303,91 @@
     [SupplyParameterFromQuery(Name = "type")]
     public string? QueryType { get; set; }
 
+    [SupplyParameterFromQuery(Name = "grant")]
+    public string? QueryGrant { get; set; }
+
+    [SupplyParameterFromQuery(Name = "scope")]
+    public string? QueryScope { get; set; }
+
+    [SupplyParameterFromQuery(Name = "origin")]
+    public string? QueryOrigin { get; set; }
+
+    [SupplyParameterFromQuery(Name = "status")]
+    public string? QueryStatus { get; set; }
+
+    [SupplyParameterFromQuery(Name = "page")]
+    public int QueryPage { get; set; } = 1;
+
+    [SupplyParameterFromQuery(Name = "pageSize")]
+    public int QueryPageSize { get; set; } = 25;
+
     private IReadOnlyList<ManagementClientSummary> AllClients =>
-        result?.Value ?? [];
+        result?.Value?.Items ?? [];
 
     private IReadOnlyList<ManagementClientDraftSummary> Drafts =>
         draftsResult?.Value ?? [];
 
-    private IReadOnlyList<ManagementClientSummary> FilteredClients =>
-        AllClients
-            .Where(client => typeFilter == "all"
-                || string.Equals(client.Type, typeFilter, StringComparison.OrdinalIgnoreCase))
-            .Where(client => string.IsNullOrWhiteSpace(search)
-                ||
-                    client.ClientId.Contains(search, StringComparison.OrdinalIgnoreCase)
-                    || (client.DisplayName?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false))
-            .ToArray();
+    private IReadOnlyList<ManagementClientSummary> FilteredClients => AllClients;
 
-    private bool CanFilter => result?.IsSuccess is true && AllClients.Count > 0;
+    private bool CanFilter => result?.IsSuccess is true;
 
     private string ToolbarDescription =>
         loading
             ? "Consultando o registro de aplicações…"
             : result?.IsSuccess is true
-                ? "Dados recebidos diretamente do serviço de aplicação."
+                ? "Filtros e paginação são processados pelo serviço de aplicação."
                 : "A consulta falhou antes de retornar registros.";
 
     private string ResultCountLabel =>
         loading
             ? "Carregando registros"
             : result?.IsSuccess is true
-                ? $"{FilteredClients.Count} de {AllClients.Count} {Pluralize(AllClients.Count, "registro", "registros")}"
+                ? ResultRangeLabel
                 : "Nenhum registro carregado";
 
     private string EmptyTitle =>
         string.IsNullOrWhiteSpace(search) && typeFilter == "all"
+            && grantFilter == "all" && string.IsNullOrWhiteSpace(scopeFilter)
+            && originFilter == "all" && statusFilter == "all"
             ? "Nenhum cliente registrado"
             : "Nenhum cliente corresponde à pesquisa";
 
     private string EmptyDescription =>
         string.IsNullOrWhiteSpace(search) && typeFilter == "all"
+            && grantFilter == "all" && string.IsNullOrWhiteSpace(scopeFilter)
+            && originFilter == "all" && statusFilter == "all"
             ? "O serviço respondeu com uma coleção vazia. Crie a primeira aplicação para começar."
             : "Revise o nome, o client ID ou o tipo informado e tente novamente.";
+
+    private int TotalCount => result?.Value?.TotalCount ?? 0;
+    private int CurrentPage => result?.Value?.Page ?? page;
+    private int PageSize => result?.Value?.PageSize ?? pageSize;
+    private int PageCount => result?.Value?.PageCount ?? 0;
+    private bool HasPages => PageCount > 1;
+    private string ResultRangeLabel
+    {
+        get
+        {
+            if (TotalCount is 0)
+            {
+                return "0 registros";
+            }
+
+            var first = ((CurrentPage - 1) * PageSize) + 1;
+            var last = Math.Min(CurrentPage * PageSize, TotalCount);
+            return $"{first}–{last} de {TotalCount} {Pluralize(TotalCount, "registro", "registros")}";
+        }
+    }
 
     protected override async Task OnParametersSetAsync()
     {
         var normalizedType = NormalizeType(QueryType);
-        var fingerprint = $"{QuerySearch}|{normalizedType}";
+        var normalizedGrant = NormalizeGrant(QueryGrant);
+        var normalizedOrigin = NormalizeOrigin(QueryOrigin);
+        var normalizedStatus = NormalizeStatus(QueryStatus);
+        var normalizedPage = NormalizePage(QueryPage);
+        var normalizedPageSize = NormalizePageSize(QueryPageSize);
+        var fingerprint = $"{QuerySearch}|{normalizedType}|{normalizedGrant}|{QueryScope}|{normalizedOrigin}|{normalizedStatus}|{normalizedPage}|{normalizedPageSize}";
         if (fingerprint == loadedFingerprint)
         {
             return;
@@ -294,17 +395,31 @@
         loadedFingerprint = fingerprint;
         search = QuerySearch ?? string.Empty;
         typeFilter = normalizedType;
-        if (result is null || draftsResult is null)
-        {
-            await LoadClientsAsync();
-        }
+        grantFilter = normalizedGrant;
+        scopeFilter = QueryScope?.Trim() ?? string.Empty;
+        originFilter = normalizedOrigin;
+        statusFilter = normalizedStatus;
+        page = normalizedPage;
+        pageSize = normalizedPageSize;
+        await LoadClientsAsync();
     }
 
     private async Task LoadClientsAsync()
     {
         loading = true;
-        var clientsTask = ClientData.GetClientsAsync();
-        var draftsTask = ClientData.GetClientDraftsAsync();
+        var query = new ManagementClientQuery(
+            search,
+            typeFilter,
+            grantFilter,
+            string.IsNullOrWhiteSpace(scopeFilter) ? null : scopeFilter,
+            originFilter,
+            statusFilter,
+            page,
+            pageSize);
+        var clientsTask = ClientData.SearchClientsAsync(query);
+        var draftsTask = draftsResult is null
+            ? ClientData.GetClientDraftsAsync()
+            : Task.FromResult(draftsResult);
         await Task.WhenAll(clientsTask, draftsTask);
         result = await clientsTask;
         draftsResult = await draftsTask;
@@ -314,28 +429,78 @@
     private void SearchChanged(ChangeEventArgs args)
     {
         search = args.Value?.ToString() ?? string.Empty;
-        SyncUrl();
+        SyncUrl(resetPage: true);
     }
 
     private void TypeChanged(ChangeEventArgs args)
     {
         typeFilter = NormalizeType(args.Value?.ToString());
-        SyncUrl();
+        SyncUrl(resetPage: true);
+    }
+
+    private void GrantChanged(ChangeEventArgs args)
+    {
+        grantFilter = NormalizeGrant(args.Value?.ToString());
+        SyncUrl(resetPage: true);
+    }
+
+    private void ScopeChanged(ChangeEventArgs args)
+    {
+        scopeFilter = args.Value?.ToString()?.Trim() ?? string.Empty;
+        SyncUrl(resetPage: true);
+    }
+
+    private void OriginChanged(ChangeEventArgs args)
+    {
+        originFilter = NormalizeOrigin(args.Value?.ToString());
+        SyncUrl(resetPage: true);
+    }
+
+    private void StatusChanged(ChangeEventArgs args)
+    {
+        statusFilter = NormalizeStatus(args.Value?.ToString());
+        SyncUrl(resetPage: true);
     }
 
     private void ClearSearch()
     {
         search = string.Empty;
         typeFilter = "all";
-        SyncUrl();
+        grantFilter = "all";
+        scopeFilter = string.Empty;
+        originFilter = "all";
+        statusFilter = "all";
+        SyncUrl(resetPage: true);
     }
 
-    private void SyncUrl()
+    private void GoToPage(int targetPage)
     {
+        if (targetPage < 1 || targetPage > PageCount)
+        {
+            return;
+        }
+
+        page = targetPage;
+        SyncUrl(resetPage: false);
+    }
+
+    private void SyncUrl(bool resetPage)
+    {
+        if (resetPage)
+        {
+            page = 1;
+        }
+
         var uri = Navigation.GetUriWithQueryParameters(BaseUri, new Dictionary<string, object?>
         {
             ["q"] = string.IsNullOrWhiteSpace(search) ? null : search.Trim(),
             ["type"] = typeFilter == "all" ? null : typeFilter,
+            ["grant"] = grantFilter == "all" ? null : grantFilter,
+            ["scope"] = string.IsNullOrWhiteSpace(scopeFilter) ? null : scopeFilter.Trim(),
+            ["origin"] = originFilter == "all" ? null : originFilter,
+            ["status"] = statusFilter == "all" ? null : statusFilter,
+            ["page"] = resetPage || page <= 1 ? null : page,
+            ["pageSize"] = pageSize == 25 ? null : pageSize,
         });
         Navigation.NavigateTo(uri, replace: true);
     }
@@ -380,6 +545,37 @@
         _ => "all"
     };
 
+    private static string NormalizeGrant(string? value) => value?.ToLowerInvariant() switch
+    {
+        "authorization_code" => "authorization_code",
+        "client_credentials" => "client_credentials",
+        "device_code" => "device_code",
+        "refresh_token" => "refresh_token",
+        _ => "all"
+    };
+
+    private static string NormalizeOrigin(string? value) => value?.ToLowerInvariant() switch
+    {
+        "manual" => "manual",
+        "manifest" => "manifest",
+        _ => "all"
+    };
+
+    private static string NormalizeStatus(string? value) => value?.ToLowerInvariant() switch
+    {
+        "active" => "active",
+        _ => "all"
+    };
+
+    private static int NormalizePage(int value) => value < 1 ? 1 : value;
+
+    private static int NormalizePageSize(int value) => value switch
+    {
+        < 1 => 25,
+        > 100 => 100,
+        _ => value
+    };
+
     private string BaseUri => Navigation.Uri.Split('?', '#')[0];
 
     private static string DisplayName(ManagementClientSummary client) =>
@@ -400,6 +596,15 @@
         string.Equals(type, "confidential", StringComparison.OrdinalIgnoreCase)
             ? "info"
             : "neutral";
+
+    private static string ClientStatusLabel(string? status) => "Ativo";
+
+    private static string ClientStatusTone(string? status) => "status-dot--success";
+
+    private static string ClientOriginLabel(string? origin) =>
+        string.Equals(origin, "manifest", StringComparison.OrdinalIgnoreCase)
+            ? "Manifesto"
+            : "Manual";
 
     private static string Pluralize(int count, string singular, string plural) =>
         count is 1 ? singular : plural;

@@ -24,6 +24,44 @@ public interface IClientManagementService
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Queries the application catalog with bounded paging. The default
+    /// adapter keeps older embedders source-compatible; the server
+    /// implementation overrides it with a database query.
+    /// </summary>
+    async Task<ManagementClientPage> SearchAsync(
+        ManagementClientQuery query,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        var all = await ListAsync(context, cancellationToken);
+        var search = query.Search?.Trim();
+        var type = string.IsNullOrWhiteSpace(query.Type)
+            ? "all"
+            : query.Type.Trim().ToLowerInvariant();
+        var filtered = all
+            .Where(client => type == "all"
+                || string.Equals(client.Type, type, StringComparison.OrdinalIgnoreCase))
+            .Where(client => string.IsNullOrWhiteSpace(search)
+                || client.ClientId.Contains(search, StringComparison.OrdinalIgnoreCase)
+                || (client.DisplayName?.Contains(search,
+                    StringComparison.OrdinalIgnoreCase) ?? false))
+            .ToArray();
+        if (query.Page < 1 || query.PageSize is < 1 or > 100)
+        {
+            throw new ArgumentOutOfRangeException(nameof(query.PageSize),
+                "Page must be positive and pageSize must be between 1 and 100.");
+        }
+
+        var page = (Page: query.Page, PageSize: query.PageSize);
+        return new ManagementClientPage(
+            filtered.Skip((page.Page - 1) * page.PageSize).Take(page.PageSize).ToArray(),
+            filtered.Length,
+            page.Page,
+            page.PageSize);
+    }
+
     Task<ManagementClientDetail> GetByIdAsync(
         string id,
         ManagementRequestContext context,
@@ -54,7 +92,29 @@ public sealed record ManagementClientSummary(
     string Id,
     string ClientId,
     string? DisplayName,
-    string? Type);
+    string? Type,
+    string? Status = null,
+    string? Origin = null);
+
+public sealed record ManagementClientQuery(
+    string? Search = null,
+    string? Type = null,
+    string? Grant = null,
+    string? Scope = null,
+    string? Origin = null,
+    string? Status = null,
+    int Page = 1,
+    int PageSize = 25);
+
+public sealed record ManagementClientPage(
+    IReadOnlyList<ManagementClientSummary> Items,
+    int TotalCount,
+    int Page,
+    int PageSize)
+{
+    public int PageCount =>
+        TotalCount is 0 ? 0 : (int)Math.Ceiling(TotalCount / (double)PageSize);
+}
 
 public sealed record ManagementClientDetail(
     string Id,
@@ -150,6 +210,94 @@ internal sealed class ClientManagementService(
                 StringComparer.OrdinalIgnoreCase)
             .ThenBy(client => client.ClientId, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+    }
+
+    public async Task<ManagementClientPage> SearchAsync(
+        ManagementClientQuery query,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        await DemandAsync(
+            context,
+            ManagementCapabilities.ClientsRead,
+            new ManagementResource(ManagementResourceTypes.ClientCollection),
+            cancellationToken);
+
+        var normalized = NormalizeSearchQuery(query);
+        var applicationsQuery = database.Set<OpenIddictEntityFrameworkCoreApplication>()
+            .AsNoTracking();
+
+        var search = normalized.Search;
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            applicationsQuery = applicationsQuery.Where(application =>
+                (application.ClientId != null &&
+                 application.ClientId!.Contains(search)) ||
+                (application.DisplayName != null &&
+                 application.DisplayName.Contains(search)));
+        }
+
+        if (normalized.Type is not "all")
+        {
+            applicationsQuery = applicationsQuery.Where(application =>
+                application.ClientType == normalized.Type);
+        }
+
+        if (normalized.Grant is not "all")
+        {
+            var permission = $"\"gt:{normalized.Grant}\"";
+            applicationsQuery = applicationsQuery.Where(application =>
+                application.Permissions != null &&
+                application.Permissions.Contains(permission));
+        }
+
+        if (normalized.Scope is not "all")
+        {
+            var permission = $"\"scp:{normalized.Scope}\"";
+            applicationsQuery = applicationsQuery.Where(application =>
+                application.Permissions != null &&
+                application.Permissions.Contains(permission));
+        }
+
+        if (normalized.Origin is "manifest")
+        {
+            applicationsQuery = applicationsQuery.Where(application =>
+                application.Properties != null &&
+                application.Properties.Contains(
+                    OpenIddictManifestProvisioner.SchemaVersionProperty));
+        }
+        else if (normalized.Origin is "manual")
+        {
+            applicationsQuery = applicationsQuery.Where(application =>
+                application.Properties == null ||
+                !application.Properties.Contains(
+                    OpenIddictManifestProvisioner.SchemaVersionProperty));
+        }
+
+        var totalCount = await applicationsQuery.CountAsync(cancellationToken);
+        var rows = await applicationsQuery
+            .OrderBy(application => application.DisplayName ?? application.ClientId)
+            .ThenBy(application => application.ClientId)
+            .Skip((normalized.Page - 1) * normalized.PageSize)
+            .Take(normalized.PageSize)
+            .ToArrayAsync(cancellationToken);
+
+        var items = rows
+            .Select(application => new ManagementClientSummary(
+                application.Id ?? string.Empty,
+                application.ClientId ?? string.Empty,
+                application.DisplayName,
+                application.ClientType,
+                null,
+                IsManifestManaged(application.Properties) ? "manifest" : "manual"))
+            .ToArray();
+
+        return new ManagementClientPage(
+            items,
+            totalCount,
+            normalized.Page,
+            normalized.PageSize);
     }
 
     public async Task<ManagementClientDetail> GetByIdAsync(
@@ -1090,6 +1238,59 @@ internal sealed class ClientManagementService(
         settings.TryGetValue(key, out var value) &&
         bool.TryParse(value, out var result) &&
         result;
+
+    private static (string? Search, string Type, string Grant, string Scope,
+        string Origin, string Status, int Page, int PageSize)
+        NormalizeSearchQuery(ManagementClientQuery query)
+    {
+        if (query.Page < 1 || query.PageSize is < 1 or > 100)
+        {
+            throw new ManagementValidationException(
+                "client_query_paging_invalid",
+                "page deve ser positivo e pageSize deve estar entre 1 e 100.",
+                "pageSize");
+        }
+
+        static string Normalize(string? value) =>
+            string.IsNullOrWhiteSpace(value) ? "all" : value.Trim().ToLowerInvariant();
+
+        var type = Normalize(query.Type);
+        if (type is not ("all" or "public" or "confidential"))
+        {
+            throw new ManagementValidationException(
+                "client_query_type_invalid",
+                "type deve ser all, public ou confidential.",
+                "type");
+        }
+
+        var grant = Normalize(query.Grant);
+        var scope = Normalize(query.Scope);
+        var origin = Normalize(query.Origin);
+        if (origin is not ("all" or "manual" or "manifest"))
+        {
+            throw new ManagementValidationException(
+                "client_query_origin_invalid",
+                "origin deve ser all, manual ou manifest.",
+                "origin");
+        }
+
+        var status = Normalize(query.Status);
+        if (status is not ("all" or "active"))
+        {
+            throw new ManagementValidationException(
+                "client_query_status_invalid",
+                "status deve ser all ou active até que o ciclo de ativação seja habilitado.",
+                "status");
+        }
+
+        return (string.IsNullOrWhiteSpace(query.Search) ? null : query.Search.Trim(),
+            type, grant, scope, origin, status, query.Page, query.PageSize);
+    }
+
+    private static bool IsManifestManaged(string? properties) =>
+        properties?.Contains(
+            OpenIddictManifestProvisioner.SchemaVersionProperty,
+            StringComparison.Ordinal) is true;
 
     private static IReadOnlyList<string> NormalizeGrantTypes(
         IReadOnlyList<string>? values) =>
