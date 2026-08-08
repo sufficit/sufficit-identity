@@ -53,6 +53,20 @@ public sealed class DpopProofValidator
         _timeProvider = timeProvider ?? TimeProvider.System;
         _logger = logger;
         _replayCache = null; // fallback: in-process ConcurrentDictionary
+
+        // The in-process jti cache is single-instance ONLY. In a multi-replica
+        // deployment it provides no cross-replica replay protection: a proof
+        // replayed against a different replica within its window would be
+        // accepted. This constructor must never be used in production behind a
+        // load balancer — the DI registration always supplies a shared
+        // (database-backed) IDpopReplayCache. We warn loudly so a
+        // misconfiguration surfaces in logs instead of silently weakening the
+        // sender-constraining guarantee.
+        _logger.LogWarning(
+            "DpopProofValidator constructed WITHOUT a distributed replay cache; "
+            + "jti replay protection is in-process only and is unsafe for "
+            + "multi-replica deployments. Ensure a shared IDpopReplayCache is "
+            + "registered in production.");
     }
 
     /// <summary>
@@ -223,6 +237,19 @@ public sealed class DpopProofValidator
         // ath, so this check is enabled only when the caller supplies a token.
         if (accessToken is not null)
         {
+            // RFC 9449 §4.2 defines ath as base64url(SHA-256(ASCII(access_token))).
+            // OAuth access tokens are ASCII by construction, so we keep ASCII as
+            // the spec mandates — but we reject any non-ASCII token explicitly
+            // rather than letting Encoding.ASCII silently substitute '?' for
+            // out-of-range code points, which would produce a hash that diverges
+            // from every conformant peer's and mask the real cause behind a
+            // generic "ath mismatch".
+            if (!IsAscii(accessToken))
+            {
+                _logger.LogWarning("DPoP ath cannot be computed: access token contains non-ASCII characters.");
+                return null;
+            }
+
             var expectedAth = Base64UrlEncoder.Encode(
                 SHA256.HashData(Encoding.ASCII.GetBytes(accessToken)));
             if (!jwt.TryGetPayloadValue("ath", out string ath)
@@ -310,6 +337,23 @@ public sealed class DpopProofValidator
         var a = claimed.TrimEnd('/');
         var b = actual.TrimEnd('/');
         return string.Equals(a, b, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// True when every character is within the 7-bit ASCII range. Used to
+    /// guard the ath computation (RFC 9449 §4.2), which is defined over the
+    /// ASCII bytes of the access token.
+    /// </summary>
+    private static bool IsAscii(string value)
+    {
+        foreach (var c in value)
+        {
+            if (c > '\x7F')
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     // Simplest-correct replay cache: a ConcurrentDictionary of jti -> expiry.

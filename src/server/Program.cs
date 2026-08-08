@@ -529,6 +529,20 @@ if (!app.Environment.IsDevelopment())
 // calibrating against the real UI pages. ----
 app.UseSufficitSecurityHeaders(identityOptions);
 
+// Surface the CSP posture at startup. Report-Only is the safe default for
+// calibration, but a production deployment running Report-Only gets NO
+// browser-side XSS mitigation from the policy — only violation reports. Make
+// that state explicit in the logs so going live in Report-Only is a conscious
+// choice, not an unnoticed gap.
+if (!app.Environment.IsDevelopment() && identityOptions.Csp.ReportOnly)
+{
+    app.Logger.LogWarning(
+        "Content-Security-Policy is running in REPORT-ONLY mode in a non-Development "
+        + "environment: violations are reported but NOT blocked. Flip "
+        + "Sufficit:Identity:Csp:ReportOnly to false to enforce the policy once it "
+        + "has been calibrated against the UI.");
+}
+
 // ---- i18n: request localization (cookie-based, Blazor Server safe) ----
 var supportedCultures = new[] { "pt-BR", "en-US" };
 app.UseRequestLocalization(new RequestLocalizationOptions()
