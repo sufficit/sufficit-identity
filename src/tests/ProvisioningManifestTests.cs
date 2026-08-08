@@ -78,6 +78,23 @@ public sealed class ProvisioningManifestTests
     }
 
     [Fact]
+    public void Enforce_requires_a_stable_manifest_identity()
+    {
+        var manifest = new IdentityProvisioningManifest
+        {
+            RolloutMode = ClientDefinitionRolloutMode.Enforce,
+        };
+
+        var errors = IdentityProvisioningManifestValidator.Validate(manifest);
+
+        Assert.Contains(
+            errors,
+            error => error.Contains(
+                "manifestId is required when rolloutMode is Enforce",
+                StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Legacy_grants_and_non_loopback_http_redirects_are_rejected()
     {
         var manifest = new IdentityProvisioningManifest
