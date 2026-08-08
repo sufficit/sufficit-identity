@@ -12,6 +12,31 @@ public enum IdentityManifestChangeKind
     Unchanged,
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<IdentityManifestInventoryStatus>))]
+public enum IdentityManifestInventoryStatus
+{
+    DeclaredMissing,
+    DeclaredCurrent,
+    DeclaredDrifted,
+    DeclaredUnmanaged,
+    DeclaredOwnedByAnotherManifest,
+    ManagedButUndeclared,
+    UnmanagedAndUndeclared,
+}
+
+public sealed record IdentityManifestInventoryEntry(
+    string ClientId,
+    IdentityManifestInventoryStatus Status,
+    string? ManifestIdentity = null,
+    int? SchemaVersion = null);
+
+public sealed record IdentityProvisioningInventory(
+    IReadOnlyList<IdentityManifestInventoryEntry> Entries)
+{
+    public bool HasActionRequired => Entries.Any(entry =>
+        entry.Status is not IdentityManifestInventoryStatus.DeclaredCurrent);
+}
+
 public sealed record IdentityManifestChange(
     string ResourceType,
     string Identifier,

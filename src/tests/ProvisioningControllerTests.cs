@@ -47,6 +47,43 @@ public sealed class ProvisioningControllerTests
     }
 
     [Fact]
+    public async Task Inventory_reports_undeclared_clients_without_mutation()
+    {
+        await using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/provisioning/manifest/inventory",
+            EmptyManifest());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var inventory = await response.Content
+            .ReadFromJsonAsync<IdentityProvisioningInventory>();
+        Assert.NotNull(inventory);
+        Assert.Contains(
+            inventory.Entries,
+            entry =>
+                entry.ClientId == TestDataSeeder.ClientCredentialsClientId
+                && entry.Status ==
+                    IdentityManifestInventoryStatus.UnmanagedAndUndeclared);
+        using var scope = factory.Services.CreateScope();
+        var database = scope.ServiceProvider
+            .GetRequiredService<AppDbContext>();
+        Assert.Contains(
+            await database
+                .ManagementAuditEvents
+                .AsNoTracking()
+                .ToArrayAsync(),
+            entry =>
+                entry.Capability ==
+                    ManagementCapabilities.ProvisioningPreview
+                && entry.OperationOutcome == "succeeded"
+                && entry.ReasonCode ==
+                    "provisioning_manifest_inventory");
+    }
+
+    [Fact]
     public async Task Apply_is_transactional_and_persists_audit()
     {
         await using var factory = new ManagementTestFactory();
