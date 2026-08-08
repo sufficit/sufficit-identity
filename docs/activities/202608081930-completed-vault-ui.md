@@ -1,0 +1,38 @@
+# Atividade concluída — módulo UI do Vault
+
+**Data:** 08/08/2026 16:17 (BRT)
+
+**Plano:** `docs/plans/PLAN-VAULT-UI.md`
+
+## Entrega
+
+- Criado o RCL `Sufficit.Identity.UI.Components` com `AppIcon`, `EmptyState`,
+  `PageHeader` e `StatusBadge`; a UI de Management passou a consumir os
+  componentes compartilhados.
+- Criado `Sufficit.Identity.UI.Vault`, integrado ao host e à solução, com as
+  rotas `/vault` (usuário) e `/management/vault` (operador).
+- Implementado layout mobile-first, lista sem tabela larga, estados de carga,
+  mensagens acessíveis, foco visível e redução de movimento.
+- Criados contratos `IUserVaultService` e `SaveUserVaultSecret`; a tela chama
+  somente o contrato de aplicação e não acessa banco ou criptografia.
+- Criada a tabela `vaultpersonalsecrets`, com ownership composto por
+  `owner_subject`, `namespace` e `name`, índice único e migration EF.
+- Segredos pessoais são criptografados com AAD contendo proprietário,
+  namespace e nome; consultas sempre filtram pelo proprietário; listagens nunca
+  retornam o valor.
+- Área administrativa permanece protegida por
+  `identity.vault.secrets.read`; mutações continuam submetidas à capability de
+  gerenciamento no serviço existente. O resolver padrão é deny-by-default
+  quando a API de Management está desativada.
+- A superfície pode ser desligada por
+  `Sufficit:Identity:UI:Vault:Mode=None` ou
+  `Sufficit:Identity:UI:Vault:Enabled=false`.
+
+## Evidências
+
+- Build do servidor: aprovado, 0 avisos e 0 erros.
+- Suíte completa: 531 aprovados, 1 ignorado por regra preexistente; testes novos
+  de isolamento e composição mobile aprovados.
+- Script de banco `docs/migration/sql/001-create-empty-database.sql` regenerado
+  a partir do modelo EF e validado pelo teste de contrato.
+- Auditoria visual Impeccable sem antipadrões detectados.

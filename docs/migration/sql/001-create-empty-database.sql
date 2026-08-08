@@ -572,3 +572,25 @@ VALUES ('20260808174200_AddVaultSigningKeyJwk', '10.0.10');
 
 COMMIT;
 
+START TRANSACTION;
+CREATE TABLE `vaultpersonalsecrets` (
+    `id` bigint NOT NULL AUTO_INCREMENT,
+    `ownersubject` varchar(255) CHARACTER SET utf8mb4 NOT NULL,
+    `namespace` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
+    `name` varchar(128) CHARACTER SET utf8mb4 NOT NULL,
+    `ciphertext` longtext CHARACTER SET utf8mb4 NOT NULL,
+    `aadjson` longtext CHARACTER SET utf8mb4 NULL,
+    `updatedatutc` datetime(6) NOT NULL,
+    `updatedby` varchar(128) CHARACTER SET utf8mb4 NOT NULL,
+    CONSTRAINT `PK_vaultpersonalsecrets` PRIMARY KEY (`id`)
+) CHARACTER SET=utf8mb4;
+
+CREATE UNIQUE INDEX `AK_vaultpersonalsecrets_owner_namespace_name` ON `vaultpersonalsecrets` (`ownersubject`, `namespace`, `name`);
+
+CREATE INDEX `IX_vaultpersonalsecrets_owner_namespace` ON `vaultpersonalsecrets` (`ownersubject`, `namespace`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260808191220_AddVaultPersonalSecrets', '10.0.10');
+
+COMMIT;
+

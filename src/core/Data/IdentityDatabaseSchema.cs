@@ -26,6 +26,7 @@ public static class IdentityDatabaseSchema
     public const string OidcUserSessionsMigrationId = "20260806131249_AddOidcUserSessions";
     public const string VaultKeysMigrationId = "20260806162913_AddVaultKeys"; // gitleaks:allow
     public const string VaultSecretsMigrationId = "20260808173938_AddVaultSecrets"; // gitleaks:allow
+    public const string VaultPersonalSecretsMigrationId = "20260808191220_AddVaultPersonalSecrets"; // gitleaks:allow
     public const string VaultSigningKeyJwkMigrationId = "20260808174200_AddVaultSigningKeyJwk"; // gitleaks:allow
     public const string IdentityApplicationMetricsMigrationId = "20260807020859_AddIdentityApplicationMetrics";
     public const string SsfStreamSecurityMigrationId = "20260807135147_HardenSsfStreams";
@@ -109,4 +110,6 @@ public static class IdentityDatabaseSchema
     public const int VaultPurposeLength = 16;           // symmetric | signing
     public const int VaultSecretNameLength = 128;
     public const int VaultSecretUpdatedByLength = 128;
+    public const int VaultPersonalSecretOwnerLength = 255;
+    public const int VaultPersonalSecretNamespaceLength = 64;
 }

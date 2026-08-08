@@ -29,7 +29,7 @@ AmbientCapabilities=
 UMask=0027
 Environment=ASPNETCORE_ENVIRONMENT=Production
 Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
-Environment=DOTNET_ROOT=/usr/share/dotnet
+Environment=DOTNET_ROOT=/opt/dotnet-10
 EnvironmentFile=-/etc/sufficit/identity/hardening.env
 
 [Install]

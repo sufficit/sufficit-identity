@@ -697,11 +697,23 @@
       "sufficit.identity.ui.abstractions": {
         "type": "Project"
       },
+      "sufficit.identity.ui.components": {
+        "type": "Project"
+      },
       "sufficit.identity.ui.management": {
         "type": "Project",
         "dependencies": {
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
-          "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )"
+          "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
+          "Sufficit.Identity.UI.Components": "[0.4.0-alpha, )"
+        }
+      },
+      "sufficit.identity.ui.vault": {
+        "type": "Project",
+        "dependencies": {
+          "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
+          "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
+          "Sufficit.Identity.UI.Components": "[0.4.0-alpha, )"
         }
       },
       "sufficit.identity.vault": {

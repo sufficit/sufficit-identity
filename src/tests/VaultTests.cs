@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Tests.Infrastructure;
+using Sufficit.Identity.Management.Vault;
 using Sufficit.Identity.STS.Vault;
 using Sufficit.Identity.Vault;
 using Sufficit.Identity.Vault.Crypto;
@@ -22,6 +23,43 @@ namespace Sufficit.Identity.Tests;
 /// </summary>
 public sealed class VaultTests
 {
+    [Fact]
+    public async Task Personal_secrets_are_scoped_by_owner_and_never_return_plaintext()
+    {
+        var (vault, dbFactory) = CreateRealVault();
+        var service = new UserVaultPersonalSecretService(
+            dbFactory,
+            vault,
+            new VaultOptions { Enabled = true });
+
+        await service.PutAsync(
+            "user-a", "personal", "provider/api-key",
+            new SaveUserVaultSecret("secret-a"));
+        await service.PutAsync(
+            "user-b", "personal", "provider/api-key",
+            new SaveUserVaultSecret("secret-b"));
+
+        var userA = await service.ListAsync("user-a", "personal");
+        var userB = await service.ListAsync("user-b", "personal");
+
+        Assert.Single(userA);
+        Assert.Single(userB);
+        Assert.Equal("user-a", userA[0].UpdatedBy);
+        Assert.Equal("user-b", userB[0].UpdatedBy);
+
+        await using var database = await dbFactory.CreateDbContextAsync();
+        var stored = await database.VaultPersonalSecrets
+            .OrderBy(secret => secret.OwnerSubject)
+            .ToArrayAsync();
+        Assert.Equal(2, stored.Length);
+        Assert.DoesNotContain("secret-a", stored[0].Ciphertext, StringComparison.Ordinal);
+        Assert.DoesNotContain("secret-b", stored[1].Ciphertext, StringComparison.Ordinal);
+
+        await service.DeleteAsync("user-a", "personal", "provider/api-key");
+        Assert.Empty(await service.ListAsync("user-a", "personal"));
+        Assert.Single(await service.ListAsync("user-b", "personal"));
+    }
+
     [Fact]
     public void Registration_exposes_the_configured_state_through_options()
     {

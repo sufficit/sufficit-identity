@@ -17,6 +17,7 @@ using Sufficit.Identity.STS;
 using Sufficit.Identity.UI.Abstractions.Hosting;
 using Sufficit.Identity.UI;
 using Sufficit.Identity.UI.Management;
+using Sufficit.Identity.UI.Vault;
 
 var builder = WebApplication.CreateBuilder(args);
 var migrateOnly = args.Contains("--migrate-only", StringComparer.Ordinal);
@@ -160,6 +161,9 @@ builder.Services.AddSufficitEmailSender(builder.Configuration);
 // ---- Optional: management REST API (opt-in via Sufficit:Identity:Management:Enabled) ----
 var mgmtEnabled = builder.Configuration
     .GetValue<bool>("Sufficit:Identity:Management:Enabled");
+var vaultUiEnabled = uiHostingOptions.Vault.IsEmbedded
+    && builder.Configuration.GetValue(
+        "Sufficit:Identity:UI:Vault:Enabled", defaultValue: true);
 
 if (mgmtEnabled)
 {
@@ -181,6 +185,12 @@ if (mgmtEnabled)
     {
         builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
     }
+}
+
+// ---- Optional Vault UI (personal secrets + capability-protected operator Vault) ----
+if (vaultUiEnabled)
+{
+    builder.Services.AddSufficitIdentityVaultUI(builder.Configuration);
 }
 
 // ---- Optional: SCIM 2.0 provisioning (RFC 7643/7644) ----
@@ -399,6 +409,12 @@ var app = builder.Build();
             }
             throw new UiCompositionException(
                 "Management UI surface is Embedded but no management UI module was registered.");
+        }
+
+        if (vaultUiEnabled && !registry.HasSurface(UiSurface.Vault))
+        {
+            throw new UiCompositionException(
+                "Vault UI surface is Embedded but no Vault UI module was registered.");
         }
     }
 }
@@ -695,6 +711,11 @@ if (mgmtEnabled)
     {
         app.UseSufficitIdentityManagementUI();
     }
+}
+
+if (vaultUiEnabled)
+{
+    app.UseSufficitIdentityVaultUI();
 }
 
 // ---- Sufficit Identity UI (Blazor Server endpoints + static assets) ----

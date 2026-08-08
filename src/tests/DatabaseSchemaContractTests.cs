@@ -146,6 +146,14 @@ public sealed class DatabaseSchemaContractTests
             ["GroupId", "MemberGroupId"],
             scimGroupMember.FindPrimaryKey()!.Properties.Select(
                 property => property.Name));
+
+        var personalSecret = RequiredEntity<VaultPersonalSecret>(model);
+        Assert.Equal("vaultpersonalsecrets", personalSecret.GetTableName());
+        AssertProperty(personalSecret, "OwnerSubject", "ownersubject", "varchar(255)", 255, nullable: false);
+        AssertProperty(personalSecret, "Namespace", "namespace", "varchar(64)", 64, nullable: false);
+        AssertProperty(personalSecret, "Ciphertext", "ciphertext", "longtext", null, nullable: false);
+        AssertIndex(personalSecret, "AK_vaultpersonalsecrets_owner_namespace_name", unique: true,
+            "OwnerSubject", "Namespace", "Name");
     }
 
     [Fact]
@@ -168,6 +176,7 @@ public sealed class DatabaseSchemaContractTests
             IdentityDatabaseSchema.ManagementClientDraftsMigrationId,
             IdentityDatabaseSchema.VaultSecretsMigrationId,
             IdentityDatabaseSchema.VaultSigningKeyJwkMigrationId,
+            IdentityDatabaseSchema.VaultPersonalSecretsMigrationId,
         ], context.Database.GetMigrations());
 
         var history = context.GetService<IHistoryRepository>().GetCreateScript();

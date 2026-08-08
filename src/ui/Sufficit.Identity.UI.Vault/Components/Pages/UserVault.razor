@@ -1,0 +1,92 @@
+@page "/vault"
+@attribute [Authorize(Policy = VaultUiPolicies.User)]
+@rendermode InteractiveServer
+@inject VaultDataSource Data
+
+<PageTitle>Meu Vault | Sufficit Identity</PageTitle>
+<PageHeader Title="Meu Vault"
+            Description="Guarde referências privadas de integração sem expor valores na interface.">
+    <Actions><StatusBadge Tone="success" Icon="shield">Criptografado</StatusBadge></Actions>
+</PageHeader>
+
+<div class="vault-note" role="note">
+    <AppIcon Name="lock" Size="20" />
+    <div><strong>Somente você pode operar estes segredos.</strong><span>Os valores são criptografados no servidor e nunca são devolvidos pela listagem.</span></div>
+</div>
+
+<section class="vault-panel" aria-labelledby="personal-secret-heading">
+    <div class="vault-panel__heading"><div><h2 id="personal-secret-heading">Adicionar ou substituir segredo</h2><p>Use um nome lógico, como <code>openai/api-key</code>.</p></div><StatusBadge Tone="neutral">namespace: pessoal</StatusBadge></div>
+    <EditForm Model="form" OnValidSubmit="SaveAsync" class="vault-form">
+        <DataAnnotationsValidator />
+        <div class="vault-form__grid">
+            <div class="vault-field"><label for="personal-secret-name">Nome</label><InputText id="personal-secret-name" @bind-Value="form.Name" autocomplete="off" placeholder="ex.: fornecedor/api-key" /><ValidationMessage For="() => form.Name" /></div>
+            <div class="vault-field"><label for="personal-secret-value">Valor</label><InputText id="personal-secret-value" type="password" @bind-Value="form.Value" autocomplete="new-password" placeholder="Não será exibido novamente" /><ValidationMessage For="() => form.Value" /></div>
+        </div>
+        <div class="vault-form__actions"><button class="vault-button vault-button--primary" type="submit" disabled="@saving">@(saving ? "Salvando…" : "Salvar segredo")</button></div>
+    </EditForm>
+    @if (!string.IsNullOrWhiteSpace(message)) { <p class="vault-feedback @(success ? "vault-feedback--success" : "vault-feedback--error")" role="status">@message</p> }
+</section>
+
+<section class="vault-panel" aria-labelledby="personal-list-heading">
+    <div class="vault-panel__heading"><div><h2 id="personal-list-heading">Segredos pessoais</h2><p>Metadados para confirmar existência e última rotação.</p></div><StatusBadge Tone="info">@items.Count @(items.Count == 1 ? "item" : "itens")</StatusBadge></div>
+    @if (loading) { <div class="vault-loading" aria-label="Carregando segredos"></div> }
+    else if (items.Count == 0) { <EmptyState Icon="key" Title="Nenhum segredo pessoal" Description="Salve o primeiro valor para uma integração que você controla." /> }
+    else
+    {
+        <div class="vault-list">
+            @foreach (var item in items)
+            {
+                <div class="vault-list__item"><span class="vault-list__icon"><AppIcon Name="key" Size="18" /></span><div class="vault-list__copy"><strong>@item.Name</strong><span>Atualizado em @item.UpdatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></div><button class="vault-button vault-button--quiet" type="button" @onclick="() => DeleteAsync(item.Name)" disabled="@saving">Remover</button></div>
+            }
+        </div>
+    }
+</section>
+
+@code {
+    private const string Namespace = "personal";
+    private readonly PersonalSecretForm form = new();
+    private IReadOnlyList<UserVaultSecretMetadata> items = [];
+    private bool loading = true;
+    private bool saving;
+    private bool success;
+    private string? message;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        var result = await Data.ListPersonalAsync(Namespace);
+        if (result.IsSuccess) items = result.Value ?? [];
+        else { items = []; message = result.Error; success = false; }
+        loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        saving = true; message = null;
+        var result = await Data.PutPersonalAsync(Namespace, form.Name, form.Value);
+        success = result.IsSuccess;
+        message = result.IsSuccess ? "Segredo salvo com proteção de envelope." : result.Error;
+        if (result.IsSuccess) { form.Value = string.Empty; await LoadAsync(); }
+        saving = false;
+    }
+
+    private async Task DeleteAsync(string name)
+    {
+        saving = true;
+        var result = await Data.DeletePersonalAsync(Namespace, name);
+        success = result.IsSuccess;
+        message = result.IsSuccess ? "Segredo removido." : result.Error;
+        if (result.IsSuccess) await LoadAsync();
+        saving = false;
+    }
+
+    private sealed class PersonalSecretForm
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Informe um nome.")]
+        public string Name { get; set; } = string.Empty;
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Informe um valor.")]
+        public string Value { get; set; } = string.Empty;
+    }
+}

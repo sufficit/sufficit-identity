@@ -74,6 +74,7 @@ public sealed class MariaDbMigrationIntegrationTests
             IdentityDatabaseSchema.ManagementClientDraftsMigrationId,
             IdentityDatabaseSchema.VaultSecretsMigrationId,
             IdentityDatabaseSchema.VaultSigningKeyJwkMigrationId,
+            IdentityDatabaseSchema.VaultPersonalSecretsMigrationId,
         };
         var appliedMigrations = await context.Database
             .GetAppliedMigrationsAsync();
@@ -90,7 +91,7 @@ public sealed class MariaDbMigrationIntegrationTests
         await using var connection = context.Database.GetDbConnection();
         await connection.OpenAsync();
 
-        Assert.Equal(30, await ScalarIntAsync(connection, """
+        Assert.Equal(31, await ScalarIntAsync(connection, """
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
