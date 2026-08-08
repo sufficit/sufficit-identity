@@ -76,6 +76,14 @@ fi
 # by systemd or lives in external databases/caches.
 chown -R root:root "${release}"
 chmod -R go-w "${release}"
+# The service runs as dotnetuser:www-data. Keep the runtime configuration
+# readable by that group while retaining an immutable, non-world-readable
+# release. Without this exception, the recursive root:root ownership above
+# leaves appsettings*.json at 0640 and the process cannot load its settings.
+while IFS= read -r -d '' configuration_file; do
+    chown root:www-data "${configuration_file}"
+    chmod 0640 "${configuration_file}"
+done < <(find "${release}" -maxdepth 1 -type f -name 'appsettings*.json' -print0)
 install -o root -g www-data -m 0640 \
     "${certificate_store}" "${certificate_destination}"
 
