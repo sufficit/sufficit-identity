@@ -58,7 +58,8 @@ jobs:
         run: |
           set -euo pipefail
           for migration in src/core/Migrations/*.cs; do
-            [[ "${migration}" == *.Designer.cs ]] && continue
+            [[ "${migration}" == *.Designer.cs \
+                || "${migration}" == *AppDbContextModelSnapshot.cs ]] && continue
             migration_id="$(basename "${migration}" .cs)"
             if ! grep -Rqs "${migration_id}" docs/migration/sql; then
               echo "::error::Migration ${migration_id} has no canonical or additive SQL coverage."
