@@ -53,6 +53,19 @@ jobs:
         working-directory: sufficit-identity/.nuget-feed
         run: sha256sum --check SHA256SUMS
 
+      - name: Verify EF migration deployment coverage
+        working-directory: sufficit-identity
+        run: |
+          set -euo pipefail
+          for migration in src/core/Migrations/*.cs; do
+            [[ "${migration}" == *.Designer.cs ]] && continue
+            migration_id="$(basename "${migration}" .cs)"
+            if ! grep -Rqs "${migration_id}" docs/migration/sql; then
+              echo "::error::Migration ${migration_id} has no canonical or additive SQL coverage."
+              exit 1
+            fi
+          done
+
       - name: Restore
         working-directory: sufficit-identity
         run: dotnet restore Sufficit.Identity.sln --locked-mode
@@ -64,6 +77,13 @@ jobs:
       - name: Build (warnings treated as errors)
         working-directory: sufficit-identity
         run: dotnet build Sufficit.Identity.sln --configuration Release --no-restore -warnaserror
+
+      # Exercise the production container recipe in CI.  The Dockerfile uses
+      # the same committed lock files and package-source mapping as the host
+      # build, so a container-only restore drift cannot reach deployment.
+      - name: Build production container
+        working-directory: sufficit-identity
+        run: docker build --file Dockerfile --tag sufficit-identity:ci .
 
       # Oracle's EF Core 10 migration lock implementation casts MariaDB
       # GET_LOCK() NULL to Int64 and fails before executing any DDL. Apply the
@@ -87,6 +107,33 @@ jobs:
           docker exec -i "${mariadb_containers[0]}" \
             mysql --user=root identity_contract \
             < docs/migration/sql/001-create-empty-database.sql
+
+      # Exercise the additive hardening path against the same fresh schema
+      # twice.  This proves the rolling-upgrade script is idempotent and that
+      # every post-081 object has deployment coverage, not only EF fresh-install
+      # coverage.
+      - name: Rehearse additive hardening SQL twice
+        working-directory: sufficit-identity
+        run: |
+          set -euo pipefail
+          mapfile -t mariadb_containers < <(
+            docker ps \
+              --filter "ancestor=mariadb:10.4.34" \
+              --format "{{.ID}}"
+          )
+          if [[ "${#mariadb_containers[@]}" -ne 1 ]]; then
+            echo "::error::Expected exactly one MariaDB 10.4.34 service container."
+            exit 1
+          fi
+          for _ in 1 2; do
+            for script in \
+              docs/migration/sql/082-add-security-hardening-state.sql \
+              docs/migration/sql/083-enforce-normalized-email-uniqueness.sql; do
+              docker exec -i "${mariadb_containers[0]}" \
+                mysql --user=root identity_contract \
+                < "${script}"
+            done
+          done
 
       - name: Test
         working-directory: sufficit-identity

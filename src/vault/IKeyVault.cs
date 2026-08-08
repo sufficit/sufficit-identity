@@ -64,6 +64,54 @@ public interface IKeyVault
     Task<KeyId> RotateKeyAsync(
         string keyName,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Signs a payload with a versioned RSA signing key held by the vault.
+    /// The returned signature embeds the key version and can be verified after
+    /// a rotation without a side table.
+    /// </summary>
+    Task<string> SignAsync(
+        string keyName,
+        byte[] payload,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Signs with a specific key version. This is used by token providers so
+    /// an overlapping rotation can keep issuing and validating with the
+    /// exact public JWK selected for the token.
+    /// </summary>
+    Task<string> SignAsync(
+        string keyName,
+        int keyVersion,
+        byte[] payload,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Verifies a self-describing vault signature.</summary>
+    Task<bool> VerifyAsync(
+        string signature,
+        byte[] payload,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Verifies a raw signature against a specific public key version.</summary>
+    Task<bool> VerifyAsync(
+        string keyName,
+        int keyVersion,
+        byte[] payload,
+        byte[] signature,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists public signing keys. The returned records never contain wrapped
+    /// private material and include retained versions for rotation overlap.
+    /// </summary>
+    Task<IReadOnlyList<VaultSigningKey>> GetSigningKeysAsync(
+        string keyName,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Creates a new RSA signing-key version.</summary>
+    Task<KeyId> RotateSigningKeyAsync(
+        string keyName,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -71,3 +119,10 @@ public interface IKeyVault
 /// ciphertext blob so decrypt picks the right key version for free.
 /// </summary>
 public sealed record KeyId(string Name, int Version);
+
+/// <summary>Public metadata for a vault-backed RSA signing key.</summary>
+public sealed record VaultSigningKey(
+    string KeyName,
+    int KeyVersion,
+    string KeyId,
+    string PublicJwk);

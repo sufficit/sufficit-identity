@@ -1,6 +1,8 @@
 @page "/settings"
 @inject ManagementOverviewDataSource OverviewData
 
+@{ var overview = result?.Value!; }
+
 <PageTitle>Configurações | Sufficit Identity</PageTitle>
 
 <PageHeader Title="Configuração administrativa"
@@ -8,42 +10,42 @@
 
 @if (loading)
 {
-    <section class="detail-shell"
+    <div class="detail-shell"
              aria-busy="true"
              aria-label="Carregando configuração administrativa">
         <div class="detail-skeleton"></div>
         <div class="detail-skeleton detail-skeleton--short"></div>
-    </section>
+    </div>
 }
 else if (result?.IsSuccess is not true || result.Value is null)
 {
-    <EmptyState Icon="alert"
-                Title="Não foi possível carregar a configuração"
-                Description="@(result?.ErrorMessage ?? "O serviço de identidade não informou sua configuração administrativa.")">
-        <Actions>
-            <button class="button button--primary"
-                    type="button"
-                    @onclick="RefreshAsync">
-                Tentar novamente
-            </button>
-        </Actions>
-    </EmptyState>
+    <div>
+        <EmptyState Icon="alert"
+                    Title="Não foi possível carregar a configuração"
+                    Description="@(result?.ErrorMessage ?? "O serviço de identidade não informou sua configuração administrativa.")">
+            <Actions>
+                <button class="button button--primary"
+                        type="button"
+                        @onclick="RefreshAsync">
+                    Tentar novamente
+                </button>
+            </Actions>
+        </EmptyState>
+    </div>
 }
 else
 {
-    var overview = result.Value;
-
-    <section class="contract-strip contract-strip--info">
+    <div class="contract-strip contract-strip--info">
         <AppIcon Name="settings" Size="20" />
         <div>
             <strong>Configuração fornecida pelo serviço</strong>
             <span>Os valores abaixo são a mesma projeção publicada pelo adaptador HTTP.</span>
         </div>
         <StatusBadge Tone="info">@overview.EnvironmentName</StatusBadge>
-    </section>
+    </div>
 
     <div class="settings-grid">
-        <section class="settings-panel" aria-labelledby="policy-settings-heading">
+        <div class="settings-panel" aria-labelledby="policy-settings-heading">
             <div class="panel-header">
                 <div>
                     <h2 id="policy-settings-heading">Política do operador</h2>
@@ -83,9 +85,9 @@ else
                     </dd>
                 </div>
             </dl>
-        </section>
+        </div>
 
-        <section class="settings-panel" aria-labelledby="transport-settings-heading">
+        <div class="settings-panel" aria-labelledby="transport-settings-heading">
             <div class="panel-header">
                 <div>
                     <h2 id="transport-settings-heading">Transporte HTTP</h2>
@@ -127,10 +129,10 @@ else
                     </dd>
                 </div>
             </dl>
-        </section>
+        </div>
     </div>
 
-    <section class="settings-panel" aria-labelledby="module-settings-heading">
+    <div class="settings-panel" aria-labelledby="module-settings-heading">
         <div class="panel-header">
             <div>
                 <h2 id="module-settings-heading">Catálogo de módulos</h2>
@@ -154,7 +156,7 @@ else
                 </div>
             }
         </dl>
-    </section>
+    </div>
 }
 
 @code {

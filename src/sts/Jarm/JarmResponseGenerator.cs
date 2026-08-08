@@ -48,7 +48,10 @@ public sealed class JarmResponseGenerator
     /// </summary>
     public bool IsEncrypted => _encryptingCredentials is not null;
 
-    public string Generate(OpenIddictResponse response, string audience)
+    public string Generate(
+        OpenIddictResponse response,
+        string audience,
+        EncryptingCredentials? encryptingCredentials = null)
     {
         ArgumentNullException.ThrowIfNull(response);
         ArgumentException.ThrowIfNullOrWhiteSpace(audience);
@@ -83,7 +86,8 @@ public sealed class JarmResponseGenerator
         };
 
         // Signed-only: one CreateToken call produces the compact JWS.
-        if (_encryptingCredentials is null)
+        var effectiveEncryption = encryptingCredentials ?? _encryptingCredentials;
+        if (effectiveEncryption is null)
         {
             return _handler.CreateToken(descriptor);
         }
@@ -92,7 +96,7 @@ public sealed class JarmResponseGenerator
         // JsonWebTokenHandler.CreateToken produces a nested JWT (JWS-in-JWE)
         // when both SigningCredentials and EncryptingCredentials are set and
         // the handler is configured to encrypt.
-        descriptor.EncryptingCredentials = _encryptingCredentials;
+        descriptor.EncryptingCredentials = effectiveEncryption;
         return _handler.CreateToken(descriptor);
     }
 }

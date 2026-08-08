@@ -46,4 +46,47 @@ internal sealed class PassThroughKeyVault : IKeyVault
         string keyName,
         CancellationToken cancellationToken = default)
         => Task.FromResult(new KeyId(keyName, Version: 1));
+
+    public Task<string> SignAsync(
+        string keyName,
+        byte[] payload,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "Signing keys require Sufficit:Vault:Enabled=true.");
+
+    public Task<string> SignAsync(
+        string keyName,
+        int keyVersion,
+        byte[] payload,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "Signing keys require Sufficit:Vault:Enabled=true.");
+
+    public Task<bool> VerifyAsync(
+        string signature,
+        byte[] payload,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "Signing keys require Sufficit:Vault:Enabled=true.");
+
+    public Task<bool> VerifyAsync(
+        string keyName,
+        int keyVersion,
+        byte[] payload,
+        byte[] signature,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "Signing keys require Sufficit:Vault:Enabled=true.");
+
+    public Task<IReadOnlyList<VaultSigningKey>> GetSigningKeysAsync(
+        string keyName,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "Signing keys require Sufficit:Vault:Enabled=true.");
+
+    public Task<KeyId> RotateSigningKeyAsync(
+        string keyName,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "Signing keys require Sufficit:Vault:Enabled=true.");
 }

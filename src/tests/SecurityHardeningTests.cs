@@ -115,7 +115,7 @@ public sealed class SecurityHardeningTests
         var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["RequireAuthorization"] = "false",
+                ["Sufficit:Identity:Scim:RequireAuthorization"] = "false",
             })
             .Build();
 
@@ -136,6 +136,12 @@ public sealed class SecurityHardeningTests
         // assertion that returns true for everyone).
         Assert.NotEmpty(policy!.Requirements);
         Assert.NotEmpty(policy.AuthenticationSchemes);
+        Assert.Contains(
+            policy.Requirements,
+            requirement => requirement is Sufficit.Identity.Scim.ScimClientRequirement);
+        Assert.DoesNotContain(
+            policy.Requirements,
+            requirement => requirement is Sufficit.Identity.Scim.ScimScopeRequirement);
         // Must NOT contain a DenyAnonymousAuthorizationRequirement bypass.
         Assert.DoesNotContain(policy.Requirements,
             r => r.GetType().Name.Contains("Assertion", StringComparison.Ordinal));

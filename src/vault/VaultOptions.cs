@@ -38,4 +38,20 @@ public sealed class VaultOptions
     /// </summary>
     public string DataProtectionPurpose { get; init; } =
         "Sufficit.Identity.Vault.Master.v1";
+
+    /// <summary>
+    /// Enables the optional database-backed named-secret store. It requires
+    /// <see cref="Enabled"/> and replaces the environment-only ISecretStore
+    /// registration.
+    /// </summary>
+    public bool EnableSecretStore { get; init; } = false;
+
+    /// <summary>
+    /// Opts OpenIddict token signing into the vault-backed RSA provider. When
+    /// false, the existing certificate path remains unchanged.
+    /// </summary>
+    public bool ManageSigningKeys { get; init; } = false;
+
+    /// <summary>Name of the versioned RSA key used for OpenIddict tokens.</summary>
+    public string SigningKeyName { get; init; } = "oidc-signing";
 }

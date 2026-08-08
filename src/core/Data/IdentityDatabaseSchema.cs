@@ -25,6 +25,8 @@ public static class IdentityDatabaseSchema
     public const string SsfStreamsMigrationId = "20260805202819_AddSsfStreams";
     public const string OidcUserSessionsMigrationId = "20260806131249_AddOidcUserSessions";
     public const string VaultKeysMigrationId = "20260806162913_AddVaultKeys"; // gitleaks:allow
+    public const string VaultSecretsMigrationId = "20260808173938_AddVaultSecrets"; // gitleaks:allow
+    public const string VaultSigningKeyJwkMigrationId = "20260808174200_AddVaultSigningKeyJwk"; // gitleaks:allow
     public const string IdentityApplicationMetricsMigrationId = "20260807020859_AddIdentityApplicationMetrics";
     public const string SsfStreamSecurityMigrationId = "20260807135147_HardenSsfStreams";
     public const string AtomicProtocolStateMigrationId = "20260807140821_AddAtomicProtocolState";
@@ -105,4 +107,6 @@ public static class IdentityDatabaseSchema
     // Vault keys (internal secret vault — wrapped DEKs / item keys)
     public const int VaultKeyNameLength = 64;
     public const int VaultPurposeLength = 16;           // symmetric | signing
+    public const int VaultSecretNameLength = 128;
+    public const int VaultSecretUpdatedByLength = 128;
 }

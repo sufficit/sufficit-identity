@@ -28,8 +28,14 @@
             :root {
                 --brand: @_theme.BrandColor;
                 --brand-ring: @(_theme.BrandColor)40;
-                @if (!string.IsNullOrEmpty(_theme.BrandHoverColor)) { <text>--brand-hover: @_theme.BrandHoverColor;</text> }
-                @if (!string.IsNullOrEmpty(_theme.BrandSoftColor)) { <text>--brand-soft: @_theme.BrandSoftColor;</text> }
+                @if (!string.IsNullOrEmpty(_theme.BrandHoverColor))
+                {
+                    @:--brand-hover: @_theme.BrandHoverColor;
+                }
+                @if (!string.IsNullOrEmpty(_theme.BrandSoftColor))
+                {
+                    @:--brand-soft: @_theme.BrandSoftColor;
+                }
             }
         </style>
     }

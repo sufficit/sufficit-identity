@@ -72,6 +72,8 @@ public sealed class MariaDbMigrationIntegrationTests
                 IdentityDatabaseSchema.SsfStreamSecurityMigrationId,
                 IdentityDatabaseSchema.AtomicProtocolStateMigrationId,
                 IdentityDatabaseSchema.ManagementClientDraftsMigrationId,
+                IdentityDatabaseSchema.VaultSecretsMigrationId,
+                IdentityDatabaseSchema.VaultSigningKeyJwkMigrationId,
             ],
             await context.Database.GetAppliedMigrationsAsync());
 

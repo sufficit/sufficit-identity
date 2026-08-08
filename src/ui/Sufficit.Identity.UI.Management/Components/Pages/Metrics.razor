@@ -4,21 +4,23 @@
 @inject ManagementMetricsDataSource MetricsData
 @inject NavigationManager Navigation
 
+@{ var overview = overviewResult?.Value!; }
+
 <PageTitle>Métricas | Sufficit Identity</PageTitle>
 
 <PageHeader Title="Uso das aplicações"
             Description="Acompanhe autenticações por cliente e configure a coleta sem acoplar a disponibilidade do Identity ao destino externo." />
 
-<section class="contract-strip contract-strip--success">
+<div class="contract-strip contract-strip--success">
     <AppIcon Name="chart" Size="20" />
     <div>
         <strong>Coleta fora do caminho crítico</strong>
         <span>Autenticação nunca aguarda banco ou exportador; pressão excessiva é descartada e fica visível.</span>
     </div>
     <StatusBadge Tone="success">Não bloqueante</StatusBadge>
-</section>
+</div>
 
-<section class="metrics-filter" aria-labelledby="metrics-filter-heading">
+<div class="metrics-filter" aria-labelledby="metrics-filter-heading">
     <div>
         <h2 id="metrics-filter-heading">Período analisado</h2>
         <p>Os filtros ficam na URL para preservar e compartilhar a investigação.</p>
@@ -40,25 +42,26 @@
         </div>
         <button class="button button--primary" type="button" @onclick="ApplyFilters">Aplicar filtros</button>
     </div>
-</section>
+</div>
 
 @if (loading)
 {
-    <section class="detail-shell" aria-busy="true" aria-label="Carregando métricas">
+    <div class="detail-shell" aria-busy="true" aria-label="Carregando métricas">
         <div class="detail-skeleton"></div>
         <div class="detail-skeleton detail-skeleton--short"></div>
-    </section>
+    </div>
 }
 else if (overviewResult?.IsSuccess is not true || overviewResult.Value is null)
 {
-    <EmptyState Icon="alert" Title="Não foi possível consultar as métricas"
-                Description="@(overviewResult?.ErrorMessage ?? "O coletor não informou seu estado.")">
-        <Actions><button class="button button--primary" type="button" @onclick="LoadAsync">Tentar novamente</button></Actions>
-    </EmptyState>
+    <div>
+        <EmptyState Icon="alert" Title="Não foi possível consultar as métricas"
+                    Description="@(overviewResult?.ErrorMessage ?? "O coletor não informou seu estado.")">
+            <Actions><button class="button button--primary" type="button" @onclick="LoadAsync">Tentar novamente</button></Actions>
+        </EmptyState>
+    </div>
 }
 else
 {
-    var overview = overviewResult.Value;
     <div class="metrics-summary" aria-label="Resumo de uso">
         <div><span>Eventos no período</span><strong>@FormatNumber(overview.TotalEvents)</strong></div>
         <div><span>Aplicações ativas</span><strong>@FormatNumber(overview.ActiveApplications)</strong></div>
@@ -67,7 +70,7 @@ else
     </div>
 
     <div class="metrics-workspace">
-        <section class="panel metrics-chart-panel" aria-labelledby="usage-chart-heading">
+        <div class="panel metrics-chart-panel" aria-labelledby="usage-chart-heading">
             <div class="panel-header">
                 <div><h2 id="usage-chart-heading">Cadência diária</h2><p>Emissões OAuth/OIDC concluídas por dia.</p></div>
                 <span class="section-meta">UTC</span>
@@ -89,9 +92,9 @@ else
                     }
                 </div>
             }
-        </section>
+        </div>
 
-        <section class="panel" aria-labelledby="collector-heading">
+        <div class="panel" aria-labelledby="collector-heading">
             <div class="panel-header"><div><h2 id="collector-heading">Saúde da coleta</h2><p>Pressão e entregas desde o início do processo.</p></div></div>
             <dl class="metrics-health">
                 <div><dt>Na fila</dt><dd>@FormatNumber(overview.Collector.QueueDepth)</dd></div>
@@ -99,10 +102,10 @@ else
                 <div><dt>Exportados</dt><dd>@FormatNumber(overview.Collector.Exported)</dd></div>
                 <div><dt>Falhas isoladas</dt><dd>@FormatNumber(overview.Collector.Failures)</dd></div>
             </dl>
-        </section>
+        </div>
     </div>
 
-    <section class="table-panel" aria-labelledby="top-applications-heading">
+    <div class="table-panel" aria-labelledby="top-applications-heading">
         <div class="data-toolbar">
             <div><h2 id="top-applications-heading">Aplicações mais utilizadas</h2><p>Ordenadas pelo volume no período selecionado.</p></div>
         </div>
@@ -122,10 +125,10 @@ else
                 }
             </div>
         }
-    </section>
+    </div>
 }
 
-<section class="form-section metrics-settings" aria-labelledby="metrics-settings-heading">
+<div class="form-section metrics-settings" aria-labelledby="metrics-settings-heading">
     <div class="form-section__heading">
         <h2 id="metrics-settings-heading">Coleta e exportação</h2>
         <p>A configuração é persistida no banco e reaplicada em execução. O vault interno deve estar habilitado para armazenar credenciais.</p>
@@ -157,11 +160,14 @@ else
             {
                 <label class="switch-control metrics-clear-secret" for="metrics-clear-secret"><InputCheckbox id="metrics-clear-secret" @bind-Value="configuration.ClearSecret" /><span>Remover a credencial protegida ao salvar</span></label>
             }
-            @if (!string.IsNullOrWhiteSpace(configurationMessage)) { <p class="form-feedback" role="status">@configurationMessage</p> }
+            @if (!string.IsNullOrWhiteSpace(configurationMessage))
+            {
+                <p class="form-feedback" role="status">@configurationMessage</p>
+            }
             <div class="form-actions"><button class="button button--primary" type="submit" disabled="@savingConfiguration">@(savingConfiguration ? "Salvando…" : "Salvar configuração")</button></div>
         </EditForm>
     }
-</section>
+</div>
 
 @code {
     [SupplyParameterFromQuery(Name = "days")] public int? Days { get; set; }

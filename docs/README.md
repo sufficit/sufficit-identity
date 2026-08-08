@@ -28,14 +28,19 @@ Dated evaluations that are useful only as historical evidence live under
 - [Production readiness](plans/PLAN-PRODUCTION-READINESS.md) — certification, CSP calibration, WCAG, forward protocols
 - [Legacy cutover — operational gates](plans/PLAN-LEGACY-CUTOVER-OPS.md) — clients, keys, rehearsals
 - [Pluggable UI — phases 2-5](plans/PLAN-PLUGGABLE-UI-PHASES-2-5.md) — remote UI, BFF, SDK
+- [Internal vault](plans/PLAN-VAULT.md) — Phase 1 delivered; named-secret and signing-key phases remain
 
 ## Completed work (activities/)
 
+- [Security hardening wave 2](activities/202608071330-completed-security-hardening-wave-2.md)
 - [GPT-5 evaluation remediation](activities/202608071227-completed-gpt-5-remediation.md)
 - [GLM-5.2 evaluation remediation](activities/202608071210-completed-glm-5-2-remediation.md)
 - [Protocol roadmap baseline](activities/202608011800-completed-protocol-roadmap-baseline.md)
 - [Legacy cutover — DB/provider gates](activities/202608011820-completed-legacy-cutover-db-provider.md)
 - [Pluggable UI — phases 0-1](activities/202608012000-completed-pluggable-ui-phase0-phase1.md)
+- [Internal vault — Phase 1](activities/202608081430-completed-vault-phase-1.md)
+- [Internal vault — Phases 2/3 foundation](activities/202608081745-vault-phases-2-3-foundation.md)
+- [Internal vault — signing provider and JWKS](activities/202608081530-completed-vault-signing-provider-jwks.md)
 
 ## Architecture
 
@@ -63,6 +68,7 @@ Dated evaluations that are useful only as historical evidence live under
 - [Database connection resilience and monitoring](runbooks/RUNBOOK-DATABASE-CONNECTION-RESILIENCE.md)
 - [CSP calibration](runbooks/RUNBOOK-CSP-CALIBRATION.md)
 - [Confirmed-email rollout](runbooks/RUNBOOK-CONFIRMED-EMAIL.md)
+- [Internal vault](runbooks/RUNBOOK-VAULT.md)
 
 ## Investigations
 

@@ -9,6 +9,7 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 using OAuthScopes = OpenIddict.Abstractions.OpenIddictConstants.Scopes;
 #endif
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Management.Scopes;
 
@@ -583,6 +584,13 @@ internal sealed class ScopeManagementService(
             throw new ManagementValidationException(
                 "scope_name_reserved",
                 "Esse scope é definido pelo protocolo e não deve ser cadastrado como scope customizado.",
+                "name");
+        }
+        if (RetiredIdentityScopes.Contains(name))
+        {
+            throw new ManagementValidationException(
+                "scope_retired",
+                "Esse scope foi aposentado e não pode ser criado novamente.",
                 "name");
         }
         // H2/M3 fix (eval): API-protection scopes (management, SCIM, custom

@@ -17,18 +17,18 @@
 
 @if (loading)
 {
-    <section class="form-section" aria-busy="true">
+    <div class="form-section" aria-busy="true">
         <div class="table-skeleton" aria-label="Carregando perfil do usuário">
             @for (var index = 0; index < 4; index++)
             {
                 <span></span>
             }
         </div>
-    </section>
+    </div>
 }
 else if (detailResult?.IsSuccess is false)
 {
-    <section class="panel">
+    <div class="panel">
         <EmptyState Icon="alert"
                     Title="@LoadErrorTitle"
                     Description="@detailResult.ErrorMessage">
@@ -46,11 +46,11 @@ else if (detailResult?.IsSuccess is false)
                 }
             </Actions>
         </EmptyState>
-    </section>
+    </div>
 }
 else if (User.Actions.UpdateProfileRequiresMfa)
 {
-    <section class="panel">
+    <div class="panel">
         <EmptyState Icon="shield"
                     Title="MFA necessário para editar o perfil"
                     Description="A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.">
@@ -60,11 +60,11 @@ else if (User.Actions.UpdateProfileRequiresMfa)
                 </a>
             </Actions>
         </EmptyState>
-    </section>
+    </div>
 }
 else if (!User.Actions.CanUpdateProfile)
 {
-    <section class="panel">
+    <div class="panel">
         <EmptyState Icon="lock"
                     Title="Edição de perfil não autorizada"
                     Description="Sua sessão não possui a capability necessária para alterar contas do provedor.">
@@ -74,37 +74,38 @@ else if (!User.Actions.CanUpdateProfile)
                 </a>
             </Actions>
         </EmptyState>
-    </section>
+    </div>
 }
 else
 {
-    <section class="contract-strip contract-strip--warning">
+    <div class="contract-strip contract-strip--warning">
         <AppIcon Name="shield" Size="20" />
         <div>
             <strong>Alteração da conta no provedor</strong>
             <span>Dados modificados invalidam tokens ativos; consentimentos duráveis permanecem preservados.</span>
         </div>
         <StatusBadge Tone="warning">Sessões afetadas</StatusBadge>
-    </section>
+    </div>
 
     @if (submission?.IsSuccess is false)
     {
-        <section class="inline-notice inline-notice--danger" role="alert">
+        <div class="inline-notice inline-notice--danger" role="alert">
             <AppIcon Name="alert" Size="19" />
             <div>
                 <strong>@SubmissionTitle</strong>
                 <span>@submission.ErrorMessage</span>
             </div>
-        </section>
+        </div>
     }
 
+    <div>
     <EditForm Model="model"
               OnValidSubmit="UpdateAsync"
               FormName="update-management-user-profile"
               class="management-form">
         <DataAnnotationsValidator />
 
-        <section class="form-section" aria-labelledby="user-profile-heading">
+        <div class="form-section" aria-labelledby="user-profile-heading">
             <div class="form-section__heading">
                 <h2 id="user-profile-heading">Identificação</h2>
                 <p>O Identity valida unicidade e formato no servidor. E-mail e telefone alterados voltam a exigir confirmação.</p>
@@ -159,7 +160,7 @@ else
                 }
                 <span class="field-hint">Use o formato reconhecido pelo provedor de confirmação configurado para este runtime.</span>
             </div>
-        </section>
+        </div>
 
         <footer class="form-actions">
             <a class="button button--secondary" href="@DetailHref">Cancelar</a>
@@ -179,6 +180,7 @@ else
             </button>
         </footer>
     </EditForm>
+    </div>
 }
 
 @code {

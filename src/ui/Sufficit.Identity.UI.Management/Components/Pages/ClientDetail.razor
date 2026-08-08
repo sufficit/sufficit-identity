@@ -3,6 +3,8 @@
 @inject ManagementClientDataSource ClientData
 @inject NavigationManager Navigation
 
+@{ var client = result?.Value!; }
+
 <PageTitle>@PageTitleText</PageTitle>
 
 <PageHeader Title="@HeaderTitle"
@@ -53,27 +55,25 @@
 
 @if (Created)
 {
-    <section class="inline-notice inline-notice--success" role="status">
+    <div class="inline-notice inline-notice--success" role="status">
         <AppIcon Name="check" Size="19" />
         <div>
             <strong>Cliente criado</strong>
             <span>O registro foi persistido com padrões seguros e o evento está disponível na auditoria.</span>
         </div>
-    </section>
+    </div>
 }
 
 @if (loading)
 {
-    <section class="detail-shell" aria-busy="true" aria-label="Carregando detalhes do cliente">
+    <div class="detail-shell" aria-busy="true" aria-label="Carregando detalhes do cliente">
         <div class="detail-skeleton"></div>
         <div class="detail-skeleton detail-skeleton--short"></div>
-    </section>
+    </div>
 }
 else if (result?.IsSuccess is true && result.Value is not null)
 {
-    var client = result.Value;
-
-    <section class="detail-shell">
+    <div class="detail-shell">
         <div class="detail-summary">
             <div>
                 <span class="detail-label">Client ID</span>
@@ -104,7 +104,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
         }
 
         <div class="detail-columns">
-            <section aria-labelledby="redirect-heading">
+            <div aria-labelledby="redirect-heading">
                 <h2 id="redirect-heading">Redirect URIs</h2>
                 @if (client.RedirectUris.Count is 0)
                 {
@@ -119,9 +119,9 @@ else if (result?.IsSuccess is true && result.Value is not null)
                         }
                     </ul>
                 }
-            </section>
+            </div>
 
-            <section aria-labelledby="permission-heading">
+            <div aria-labelledby="permission-heading">
                 <h2 id="permission-heading">Permissões</h2>
                 @if (client.Permissions.Count is 0)
                 {
@@ -136,11 +136,11 @@ else if (result?.IsSuccess is true && result.Value is not null)
                         }
                     </ul>
                 }
-            </section>
+            </div>
         </div>
 
         <div class="detail-columns">
-            <section aria-labelledby="post-logout-heading">
+            <div aria-labelledby="post-logout-heading">
                 <h2 id="post-logout-heading">Redirecionamento após logout</h2>
                 @if (client.PostLogoutRedirectUris.Count is 0)
                 {
@@ -155,9 +155,9 @@ else if (result?.IsSuccess is true && result.Value is not null)
                         }
                     </ul>
                 }
-            </section>
+            </div>
 
-            <section aria-labelledby="federated-logout-heading">
+            <div aria-labelledby="federated-logout-heading">
                 <h2 id="federated-logout-heading">Logout federado</h2>
                 @if (client.FrontchannelLogoutUri is null && client.BackchannelLogoutUri is null)
                 {
@@ -182,12 +182,12 @@ else if (result?.IsSuccess is true && result.Value is not null)
                         }
                     </dl>
                 }
-            </section>
+            </div>
         </div>
 
         @if (client.Requirements.Count > 0)
         {
-            <section class="requirements-line" aria-labelledby="requirements-heading">
+            <div class="requirements-line" aria-labelledby="requirements-heading">
                 <div>
                     <h2 id="requirements-heading">Requisitos de segurança</h2>
                     <p>Controles adicionais aplicados pelo servidor durante a autorização.</p>
@@ -198,11 +198,11 @@ else if (result?.IsSuccess is true && result.Value is not null)
                         <StatusBadge Tone="info">@RequirementLabel(requirement)</StatusBadge>
                     }
                 </div>
-            </section>
+            </div>
         }
-    </section>
+    </div>
 
-    <section class="danger-zone" aria-labelledby="delete-client-heading">
+    <div class="danger-zone" aria-labelledby="delete-client-heading">
         <div>
             <h2 id="delete-client-heading">Excluir cliente</h2>
             <p>
@@ -260,25 +260,27 @@ else if (result?.IsSuccess is true && result.Value is not null)
                 </div>
             </div>
         }
-    </section>
+    </div>
 }
 else
 {
-    <EmptyState Icon="alert"
-                Title="@ErrorTitle"
-                Description="@ErrorDescription">
-        <Actions>
-            <a class="button button--secondary" href="clients">Voltar para clientes</a>
-            @if (result?.Outcome is ManagementDataOutcome.Unavailable)
-            {
-                <button class="button button--primary"
-                        type="button"
-                        @onclick="LoadAsync">
-                    Tentar novamente
-                </button>
-            }
-        </Actions>
-    </EmptyState>
+    <div>
+        <EmptyState Icon="alert"
+                    Title="@ErrorTitle"
+                    Description="@ErrorDescription">
+            <Actions>
+                <a class="button button--secondary" href="clients">Voltar para clientes</a>
+                @if (result?.Outcome is ManagementDataOutcome.Unavailable)
+                {
+                    <button class="button button--primary"
+                            type="button"
+                            @onclick="LoadAsync">
+                        Tentar novamente
+                    </button>
+                }
+            </Actions>
+        </EmptyState>
+    </div>
 }
 
 @code {

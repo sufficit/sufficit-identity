@@ -2,6 +2,8 @@
 @inject ManagementUserDataSource UserData
 @inject NavigationManager Navigation
 
+@{ var user = result?.Value!; var currentlyLocked = IsLockedOut(user); }
+
 <PageTitle>@PageTitleText</PageTitle>
 
 <PageHeader Title="@HeaderTitle"
@@ -47,40 +49,40 @@
 
 @if (Created)
 {
-    <section class="inline-notice inline-notice--success" role="status">
+    <div class="inline-notice inline-notice--success" role="status">
         <AppIcon Name="check" Size="19" />
         <div>
             <strong>Usuário criado</strong>
             <span>A conta foi criada sem atribuir cargos ou permissões próprias de aplicações.</span>
         </div>
-    </section>
+    </div>
 }
 
 @if (Updated)
 {
-    <section class="inline-notice inline-notice--success" role="status">
+    <div class="inline-notice inline-notice--success" role="status">
         <AppIcon Name="check" Size="19" />
         <div>
             <strong>Perfil atualizado</strong>
             <span>Os dados foram salvos e os tokens ativos anteriores foram invalidados.</span>
         </div>
-    </section>
+    </div>
 }
 
 @if (passwordResetSucceeded)
 {
-    <section class="inline-notice inline-notice--success" role="status">
+    <div class="inline-notice inline-notice--success" role="status">
         <AppIcon Name="check" Size="19" />
         <div>
             <strong>Senha redefinida</strong>
             <span>A credencial e o selo de segurança foram atualizados; o evento foi registrado na auditoria.</span>
         </div>
-    </section>
+    </div>
 }
 
 @if (lockoutChangeSucceeded)
 {
-    <section class="inline-notice inline-notice--success" role="status">
+    <div class="inline-notice inline-notice--success" role="status">
         <AppIcon Name="check" Size="19" />
         <div>
             <strong>@(lastLockoutState is true ? "Acesso bloqueado" : "Acesso desbloqueado")</strong>
@@ -90,21 +92,19 @@
                     : "A conta pode autenticar novamente; as sessões anteriores continuam revogadas.")
             </span>
         </div>
-    </section>
+    </div>
 }
 
 @if (loading)
 {
-    <section class="detail-shell" aria-busy="true" aria-label="Carregando detalhes do usuário">
+    <div class="detail-shell" aria-busy="true" aria-label="Carregando detalhes do usuário">
         <div class="detail-skeleton"></div>
         <div class="detail-skeleton detail-skeleton--short"></div>
-    </section>
+    </div>
 }
 else if (result?.IsSuccess is true && result.Value is not null)
 {
-    var user = result.Value;
-
-    <section class="detail-shell">
+    <div class="detail-shell">
         <div class="detail-summary detail-summary--users">
             <div>
                 <span class="detail-label">Nome de usuário</span>
@@ -127,7 +127,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
         </div>
 
         <div class="detail-columns detail-columns--users">
-            <section aria-labelledby="user-security-heading">
+            <div aria-labelledby="user-security-heading">
                 <h2 id="user-security-heading">Segurança da conta</h2>
                 <dl class="property-list">
                     <div>
@@ -151,9 +151,9 @@ else if (result?.IsSuccess is true && result.Value is not null)
                         <dd>@Display(user.PhoneNumber)</dd>
                     </div>
                 </dl>
-            </section>
+            </div>
 
-            <section aria-labelledby="user-state-heading">
+            <div aria-labelledby="user-state-heading">
                 <h2 id="user-state-heading">Estados da identidade</h2>
                 <dl class="property-list">
                     <div>
@@ -173,23 +173,21 @@ else if (result?.IsSuccess is true && result.Value is not null)
                         <dd>@user.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
                     </div>
                 </dl>
-            </section>
+            </div>
         </div>
 
-        <section class="requirements-line" aria-labelledby="user-audit-heading">
+        <div class="requirements-line" aria-labelledby="user-audit-heading">
             <div>
                 <h2 id="user-audit-heading">Consulta auditada</h2>
                 <p>O operador, o usuário, a decisão e a correlação foram registrados sem claims ou credenciais.</p>
             </div>
             <StatusBadge Tone="success" Icon="audit">Registrada</StatusBadge>
-        </section>
-    </section>
+        </div>
+    </div>
 
     @if (user.Actions.CanSetLockout)
     {
-        var currentlyLocked = IsLockedOut(user);
-
-        <section class="account-access-panel @(currentlyLocked ? "account-access-panel--restore" : "account-access-panel--restrict")"
+        <div class="account-access-panel @(currentlyLocked ? "account-access-panel--restore" : "account-access-panel--restrict")"
                  aria-labelledby="account-access-heading">
             <div class="account-access-panel__heading">
                 <div class="account-access-panel__icon">
@@ -212,13 +210,13 @@ else if (result?.IsSuccess is true && result.Value is not null)
 
             @if (lockoutResult?.IsSuccess is false)
             {
-                <section class="inline-notice inline-notice--danger" role="alert">
+                <div class="inline-notice inline-notice--danger" role="alert">
                     <AppIcon Name="alert" Size="19" />
                     <div>
                         <strong>@LockoutErrorTitle</strong>
                         <span>@lockoutResult.ErrorMessage</span>
                     </div>
-                </section>
+                </div>
             }
 
             @if (!currentlyLocked)
@@ -252,37 +250,37 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     }
                 </button>
             </div>
-        </section>
+        </div>
     }
     else if (user.Actions.SetLockoutRequiresMfa)
     {
-        <section class="decision-note decision-note--neutral">
+        <div class="decision-note decision-note--neutral">
             <AppIcon Name="shield" Size="21" />
             <div>
                 <h2>MFA necessário para alterar o acesso</h2>
                 <p>A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.</p>
             </div>
-        </section>
+        </div>
     }
     else if (user.Actions.SetLockoutReasonCode is "user_self_lockout_not_allowed")
     {
-        <section class="decision-note decision-note--neutral">
+        <div class="decision-note decision-note--neutral">
             <AppIcon Name="shield" Size="21" />
             <div>
                 <h2>Sua própria conta permanece protegida</h2>
                 <p>Para evitar perda acidental de acesso administrativo, outro operador autorizado deve bloquear esta conta.</p>
             </div>
-        </section>
+        </div>
     }
     else
     {
-        <section class="decision-note decision-note--neutral">
+        <div class="decision-note decision-note--neutral">
             <AppIcon Name="lock" Size="21" />
             <div>
                 <h2>Bloqueio não autorizado</h2>
                 <p>Sua sessão não possui a capability necessária para bloquear ou desbloquear contas.</p>
             </div>
-        </section>
+        </div>
     }
 
     @if (user.Actions.CanResetPassword)
@@ -305,13 +303,13 @@ else if (result?.IsSuccess is true && result.Value is not null)
 
             @if (resetResult?.IsSuccess is false)
             {
-                <section class="inline-notice inline-notice--danger" role="alert">
+                <div class="inline-notice inline-notice--danger" role="alert">
                     <AppIcon Name="alert" Size="19" />
                     <div>
                         <strong>@ResetErrorTitle</strong>
                         <span>@resetResult.ErrorMessage</span>
                     </div>
-                </section>
+                </div>
             }
 
             <div class="form-grid form-grid--two credential-panel__fields">
@@ -360,28 +358,28 @@ else if (result?.IsSuccess is true && result.Value is not null)
     }
     else if (user.Actions.ResetPasswordRequiresMfa)
     {
-        <section class="decision-note decision-note--neutral">
+        <div class="decision-note decision-note--neutral">
             <AppIcon Name="shield" Size="21" />
             <div>
                 <h2>MFA necessário para redefinir a senha</h2>
                 <p>A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.</p>
             </div>
-        </section>
+        </div>
     }
     else
     {
-        <section class="decision-note decision-note--neutral">
+        <div class="decision-note decision-note--neutral">
             <AppIcon Name="lock" Size="21" />
             <div>
                 <h2>Redefinição não autorizada</h2>
                 <p>Sua sessão não possui a capability necessária para redefinir credenciais.</p>
             </div>
-        </section>
+        </div>
     }
 
     @if (user.Actions.CanDelete)
     {
-        <section class="delete-zone" aria-labelledby="delete-user-heading">
+        <div class="delete-zone" aria-labelledby="delete-user-heading">
             <div>
                 <h2 id="delete-user-heading">Excluir conta do provedor</h2>
                 <p>A conta, suas credenciais e os vínculos Identity serão removidos. Tokens, sessões e autorizações serão revogados antes da exclusão.</p>
@@ -420,54 +418,56 @@ else if (result?.IsSuccess is true && result.Value is not null)
 
             @if (deleteResult?.IsSuccess is false)
             {
-                <section class="inline-notice inline-notice--danger" role="alert">
+                <div class="inline-notice inline-notice--danger" role="alert">
                     <AppIcon Name="alert" Size="19" />
                     <div>
                         <strong>@DeleteErrorTitle</strong>
                         <span>@deleteResult.ErrorMessage</span>
                     </div>
-                </section>
+                </div>
             }
-        </section>
+        </div>
     }
     else if (user.Actions.DeleteRequiresMfa)
     {
-        <section class="decision-note decision-note--neutral">
+        <div class="decision-note decision-note--neutral">
             <AppIcon Name="shield" Size="21" />
             <div>
                 <h2>MFA necessário para excluir a conta</h2>
                 <p>A política administrativa exige autenticação multifator antes de uma exclusão permanente.</p>
             </div>
-        </section>
+        </div>
     }
     else if (user.Actions.DeleteReasonCode is "user_self_delete_not_allowed")
     {
-        <section class="decision-note decision-note--neutral">
+        <div class="decision-note decision-note--neutral">
             <AppIcon Name="shield" Size="21" />
             <div>
                 <h2>Sua própria conta não pode ser excluída</h2>
                 <p>Outro operador autorizado deve executar esta operação para evitar perda acidental do acesso administrativo.</p>
             </div>
-        </section>
+        </div>
     }
 }
 else
 {
-    <EmptyState Icon="alert"
-                Title="@ErrorTitle"
-                Description="@ErrorDescription">
-        <Actions>
-            <a class="button button--secondary" href="@BackHref">Voltar para usuários</a>
-            @if (result?.Outcome is ManagementDataOutcome.Unavailable)
-            {
-                <button class="button button--primary"
-                        type="button"
-                        @onclick="LoadAsync">
-                    Tentar novamente
-                </button>
-            }
-        </Actions>
-    </EmptyState>
+    <div>
+        <EmptyState Icon="alert"
+                    Title="@ErrorTitle"
+                    Description="@ErrorDescription">
+            <Actions>
+                <a class="button button--secondary" href="@BackHref">Voltar para usuários</a>
+                @if (result?.Outcome is ManagementDataOutcome.Unavailable)
+                {
+                    <button class="button button--primary"
+                            type="button"
+                            @onclick="LoadAsync">
+                        Tentar novamente
+                    </button>
+                }
+            </Actions>
+        </EmptyState>
+    </div>
 }
 
 @code {

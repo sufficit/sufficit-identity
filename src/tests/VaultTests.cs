@@ -5,8 +5,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Tests.Infrastructure;
+using Sufficit.Identity.STS.Vault;
 using Sufficit.Identity.Vault;
 using Sufficit.Identity.Vault.Crypto;
 using Xunit;
@@ -38,6 +40,25 @@ public sealed class VaultTests
         var configured = provider.GetRequiredService<IOptions<VaultOptions>>().Value;
         Assert.True(configured.Enabled);
         Assert.Equal("dataprotection", configured.KeySource);
+    }
+
+    [Fact]
+    public async Task Registration_exposes_environment_configuration_secret_boundary()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Secrets:database/password"] = "configured-secret",
+            })
+            .Build();
+        var services = new ServiceCollection();
+        services.AddSufficitVault(configuration);
+
+        using var provider = services.BuildServiceProvider();
+        var store = provider.GetRequiredService<ISecretStore>();
+
+        Assert.Equal("configured-secret",
+            await store.GetSecretAsync("database/password"));
     }
 
     // ---- EnvelopeCrypto (AES-256-GCM) ----
@@ -189,6 +210,132 @@ public sealed class VaultTests
             .Where(k => k.KeyName == "rot-key")
             .ToListAsync();
         Assert.Equal(2, versions.Count);
+    }
+
+    [Fact]
+    public async Task Named_secret_store_persists_only_ciphertext_and_round_trips()
+    {
+        var (vault, dbFactory) = CreateRealVault();
+        var store = new VaultBackedSecretStore(
+            dbFactory,
+            vault,
+            new VaultOptions { Enabled = true });
+
+        var metadata = await store.PutAsync(
+            "providers/google/client-secret",
+            "super-secret-value",
+            "operator-1");
+
+        Assert.Equal("providers/google/client-secret", metadata.Name);
+        Assert.Equal("super-secret-value", await store.GetSecretAsync(metadata.Name));
+        Assert.Contains(await store.ListAsync(), item => item.Name == metadata.Name);
+
+        await using var database = await dbFactory.CreateDbContextAsync();
+        var row = await database.VaultSecrets.SingleAsync(
+            item => item.Name == metadata.Name);
+        Assert.DoesNotContain("super-secret-value", row.Ciphertext,
+            StringComparison.Ordinal);
+        Assert.True(await store.DeleteAsync(metadata.Name));
+        Assert.Null(await store.GetSecretAsync(metadata.Name));
+    }
+
+    [Fact]
+    public async Task Vault_signatures_verify_across_rotation_without_exposing_private_key()
+    {
+        var (vault, dbFactory) = CreateRealVault();
+        var payload = System.Text.Encoding.UTF8.GetBytes("jwt-digest");
+
+        var first = await vault.SignAsync("identity-signing", payload);
+        Assert.StartsWith("sig1.identity-signing:1.", first,
+            StringComparison.Ordinal);
+        Assert.True(await vault.VerifyAsync(first, payload));
+        Assert.False(await vault.VerifyAsync(first,
+            System.Text.Encoding.UTF8.GetBytes("tampered")));
+
+        await vault.RotateSigningKeyAsync("identity-signing");
+        var second = await vault.SignAsync("identity-signing", payload);
+        Assert.Contains(":2.", second, StringComparison.Ordinal);
+        Assert.True(await vault.VerifyAsync(first, payload));
+        Assert.True(await vault.VerifyAsync(second, payload));
+
+        await using var database = await dbFactory.CreateDbContextAsync();
+        var keys = await database.VaultKeys
+            .Where(key => key.KeyName == "identity-signing")
+            .ToArrayAsync();
+        Assert.Equal(2, keys.Length);
+        Assert.All(keys, key => Assert.Equal("signing", key.Purpose));
+        Assert.All(keys, key => Assert.Contains("\"kty\":\"RSA\"",
+            key.PublicJwk, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task IdentityModel_provider_delegates_signing_to_vault_and_uses_public_rotation_keys()
+    {
+        var (vault, _) = CreateRealVault();
+        var payload = System.Text.Encoding.UTF8.GetBytes("identity-model-signature");
+        var descriptor = (await vault.GetSigningKeysAsync("oidc-signing")).Single();
+        var key = new VaultSigningSecurityKey(descriptor, vault);
+
+        using var signer = key.CryptoProviderFactory.CreateForSigning(
+            key,
+            SecurityAlgorithms.RsaSha256);
+        var signature = signer.Sign(payload);
+
+        Assert.True(signer.Verify(payload, signature));
+        Assert.Equal(descriptor.KeyId, key.KeyId);
+        Assert.DoesNotContain("PRIVATE", key.PublicJwk,
+            StringComparison.OrdinalIgnoreCase);
+
+        await vault.RotateSigningKeyAsync("oidc-signing");
+        var rotated = await vault.GetSigningKeysAsync("oidc-signing");
+        Assert.Equal(2, rotated.Count);
+        Assert.Contains(rotated, item => item.KeyVersion == descriptor.KeyVersion);
+    }
+
+    [Fact]
+    public async Task Vault_managed_signing_publishes_versioned_jwks_endpoint()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                [$"{VaultOptions.SectionName}:Enabled"] = "true",
+                [$"{VaultOptions.SectionName}:ManageSigningKeys"] = "true",
+                ["Sufficit:Identity:Tokens:UseReferenceAccessTokens"] = "false",
+            });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient();
+
+        using var response = await client.GetAsync(
+            "/.well-known/openid-configuration/jwks");
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Contains("vault:oidc-signing:1", body,
+            StringComparison.Ordinal);
+        Assert.Contains("\"kty\":\"RSA\"", body,
+            StringComparison.Ordinal);
+
+        await factory.Services.GetRequiredService<IKeyVault>()
+            .RotateSigningKeyAsync("oidc-signing");
+        using var rotatedResponse = await client.GetAsync(
+            "/.well-known/openid-configuration/jwks");
+        rotatedResponse.EnsureSuccessStatusCode();
+        var rotatedBody = await rotatedResponse.Content.ReadAsStringAsync();
+        Assert.Contains("vault:oidc-signing:1", rotatedBody,
+            StringComparison.Ordinal);
+        Assert.Contains("vault:oidc-signing:2", rotatedBody,
+            StringComparison.Ordinal);
+
+    }
+
+    [Theory]
+    [InlineData("../escape")]
+    [InlineData("name with spaces")]
+    [InlineData("name?query")]
+    public void Named_secret_store_rejects_unsafe_names(string name)
+    {
+        Assert.Throws<ArgumentException>(
+            () => VaultBackedSecretStore.NormalizeName(name));
     }
 
     // ---- VaultBackedClientSecretResolver (M1 fix) ----

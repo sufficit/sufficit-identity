@@ -5,12 +5,14 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Threading.RateLimiting;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Server;
@@ -184,6 +186,27 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
             // registrations are TryAdd-based, so calling it again here is a
             // harmless no-op if Program.cs's real wiring already added it.
             services.AddAntiforgery();
+
+            var rateLimit = context.Configuration
+                .GetSection("Sufficit:Identity:RateLimit")
+                .Get<RateLimitOptions>() ?? new RateLimitOptions();
+            services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode =
+                    StatusCodes.Status429TooManyRequests;
+                options.AddPolicy("device-information", httpContext =>
+                    RateLimitPartition.GetFixedWindowLimiter(
+                        httpContext.Connection.RemoteIpAddress?.ToString()
+                            ?? "unknown",
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = rateLimit.DeviceInformationPermitLimit,
+                            Window = TimeSpan.FromSeconds(
+                                rateLimit.DeviceInformationWindowSeconds),
+                            QueueLimit = 0,
+                            AutoReplenishment = true,
+                        }));
+            });
         });
 
         builder.Configure(app =>
@@ -198,6 +221,7 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
             app.UseSufficitSecurityHeaders(configuration);
 
             app.UseRouting();
+            app.UseRateLimiter();
             app.UseSufficitCors(
                 app.ApplicationServices.GetRequiredService<SufficitIdentityOptions>().Cors);
 

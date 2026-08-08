@@ -45,7 +45,7 @@ public sealed class CspHeaderTests
         Assert.Contains("default-src 'self'", csp, StringComparison.Ordinal);
         Assert.Contains("script-src 'self'", csp, StringComparison.Ordinal);
         Assert.Contains(
-            "img-src 'self' data: https://api.example.com",
+            "img-src 'self' data:",
             csp,
             StringComparison.Ordinal);
         Assert.Contains("connect-src 'self'", csp, StringComparison.Ordinal);

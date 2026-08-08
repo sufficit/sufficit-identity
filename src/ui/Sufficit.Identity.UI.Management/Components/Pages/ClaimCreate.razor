@@ -18,43 +18,46 @@
 
 @if (!HasUserContext)
 {
-    <EmptyState Icon="users"
-                Title="Selecione um usuário"
-                Description="Abra uma conta no diretório de identidades antes de atribuir uma claim.">
-        <Actions>
-            <a class="button button--primary" href="users">Abrir diretório de usuários</a>
-        </Actions>
-    </EmptyState>
+    <div>
+        <EmptyState Icon="users"
+                    Title="Selecione um usuário"
+                    Description="Abra uma conta no diretório de identidades antes de atribuir uma claim.">
+            <Actions>
+                <a class="button button--primary" href="users">Abrir diretório de usuários</a>
+            </Actions>
+        </EmptyState>
+    </div>
 }
 else
 {
-    <section class="contract-strip contract-strip--warning">
+    <div class="contract-strip contract-strip--warning">
         <AppIcon Name="refresh" Size="20" />
         <div>
             <strong>Alteração efetiva na próxima emissão</strong>
             <span>A atribuição atualiza o selo de segurança e revoga tokens ativos da conta.</span>
         </div>
         <StatusBadge Tone="warning">Impacta credenciais</StatusBadge>
-    </section>
+    </div>
 
     @if (submission?.IsSuccess is false)
     {
-        <section class="inline-notice inline-notice--danger" role="alert">
+        <div class="inline-notice inline-notice--danger" role="alert">
             <AppIcon Name="alert" Size="19" />
             <div>
                 <strong>Não foi possível atribuir a claim</strong>
                 <span>@submission.ErrorMessage</span>
             </div>
-        </section>
+        </div>
     }
 
+    <div>
     <EditForm Model="model"
               OnValidSubmit="CreateAsync"
               FormName="create-user-claim"
               class="management-form">
         <DataAnnotationsValidator />
 
-        <section class="form-section" aria-labelledby="claim-account-heading">
+        <div class="form-section" aria-labelledby="claim-account-heading">
             <div class="form-section__heading">
                 <h2 id="claim-account-heading">Conta</h2>
                 <p>A claim será vinculada somente a esta identidade.</p>
@@ -73,9 +76,9 @@ else
                     <dd><code class="client-id">@UserId</code></dd>
                 </div>
             </dl>
-        </section>
+        </div>
 
-        <section class="form-section" aria-labelledby="claim-value-heading">
+        <div class="form-section" aria-labelledby="claim-value-heading">
             <div class="form-section__heading">
                 <h2 id="claim-value-heading">Atributo</h2>
                 <p>Use nomes interoperáveis quando existirem. Claims de protocolo e perfil básico são protegidas.</p>
@@ -106,7 +109,7 @@ else
                 <ValidationMessage For="() => model.Value" />
                 <span class="field-hint">O valor não será copiado para o evento de auditoria.</span>
             </div>
-        </section>
+        </div>
 
         <footer class="form-actions">
             <a class="button button--secondary" href="@BackHref">Cancelar</a>
@@ -125,6 +128,7 @@ else
             </button>
         </footer>
     </EditForm>
+    </div>
 }
 
 @code {

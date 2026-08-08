@@ -28,6 +28,16 @@ public static class ServiceCollectionExtensions
         // reported as disabled by a service resolving the options pattern.
         services.AddOptions<VaultOptions>().Bind(section);
         services.AddSingleton(options);
+        services.TryAddSingleton(configuration);
+        if (options.EnableSecretStore)
+        {
+            services.TryAddScoped<ISecretStore, VaultBackedSecretStore>();
+        }
+        else
+        {
+            services.TryAddSingleton<ISecretStore, EnvironmentSecretStore>();
+        }
+        services.TryAddScoped<IVaultNamedSecretStore, VaultBackedSecretStore>();
 
         if (!string.Equals(
                 options.KeySource,
@@ -57,6 +67,8 @@ public static class ServiceCollectionExtensions
         if (options.Enabled)
         {
             services.AddSingleton<DataProtectionKeySource>();
+            services.AddSingleton<IVaultKeyEncryptionKeySource>(sp =>
+                sp.GetRequiredService<DataProtectionKeySource>());
             services.AddSingleton<KeyVault>();
             services.AddSingleton<IKeyVault>(sp => sp.GetRequiredService<KeyVault>());
         }

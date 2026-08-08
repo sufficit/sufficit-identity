@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using OpenIddict.Validation.AspNetCore;
 
 namespace Sufficit.Identity.Scim;
@@ -39,23 +40,20 @@ public static class ScimServiceCollectionExtensions
                 policy.AuthenticationSchemes.Add(
                     OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
                 policy.RequireAuthenticatedUser();
-                // RequireAuthorization only controls the scope check for
-                // trusted migration scenarios. Authentication must remain
-                // mandatory so disabling the scope requirement can never make
-                // SCIM CRUD (including password/delete) anonymous.
-                if (options.RequireAuthorization)
+                // Scope compatibility and machine-client authorization are
+                // independent boundaries. The obsolete RequireAuthorization
+                // alias can relax only the scope check during migration.
+                if (options.EffectiveRequireScope)
                 {
                     policy.Requirements.Add(
                         new ScimScopeRequirement(options.RequiredScope));
-                    // M4 fix (eval M4): restrict SCIM to an explicit allow-list
-                    // of trusted provisioning clients. SCIM is full-directory-
-                    // trust (any allowed client can enumerate/reset/delete ANY
-                    // user), so access must be deliberate. The requirement
-                    // always fires; when AllowedClientIds is empty (the default)
-                    // the handler fails closed — SCIM stays inaccessible until an
-                    // operator lists at least one trusted client_id.
+                }
+                if (options.RequireAllowedClient)
+                {
                     policy.Requirements.Add(
-                        new ScimClientRequirement(options.AllowedClientIds));
+                        new ScimClientRequirement(
+                            options.AllowedClientIds,
+                            options.ClientPolicyMode));
                 }
                 // M2 fix (eval M2): opt-in MFA for the full SCIM surface. SCIM
                 // can reset any user's password and delete any account, so when
@@ -152,7 +150,9 @@ public sealed class ScimMfaHandler : AuthorizationHandler<ScimMfaRequirement>
 /// only deliberately-listed provisioning clients may call it.
 /// <see cref="AllowedClientIds"/> empty (the default) fails closed.
 /// </summary>
-public sealed record ScimClientRequirement(string[] AllowedClientIds)
+public sealed record ScimClientRequirement(
+    string[] AllowedClientIds,
+    ScimClientPolicyMode Mode = ScimClientPolicyMode.Enforce)
     : IAuthorizationRequirement;
 
 /// <summary>
@@ -161,24 +161,31 @@ public sealed record ScimClientRequirement(string[] AllowedClientIds)
 /// only then; when the allow-list is empty, the requirement is never satisfied
 /// (SCIM stays inaccessible until an operator lists a trusted client).
 /// </summary>
-public sealed class ScimClientHandler : AuthorizationHandler<ScimClientRequirement>
+public sealed class ScimClientHandler(
+    Microsoft.Extensions.Logging.ILogger<ScimClientHandler> logger)
+    : AuthorizationHandler<ScimClientRequirement>
 {
     protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         ScimClientRequirement requirement)
     {
-        if (requirement.AllowedClientIds.Length == 0)
+        var clientId = context.User.FindFirst("client_id")?.Value
+            ?? context.User.FindFirst("azp")?.Value;
+        var allowed = clientId is not null
+            && requirement.AllowedClientIds.Contains(
+                clientId, StringComparer.Ordinal);
+        if (allowed)
         {
-            // Fail closed: no client is trusted until the operator configures
-            // at least one. Leave the requirement unsatisfied → policy denies.
+            context.Succeed(requirement);
             return Task.CompletedTask;
         }
 
-        var clientId = context.User.FindFirst("client_id")?.Value
-            ?? context.User.FindFirst("azp")?.Value;
-        if (clientId is not null
-            && requirement.AllowedClientIds.Contains(
-                clientId, StringComparer.Ordinal))
+        logger.LogWarning(
+            "SCIM client policy {PolicyMode} rejected client {ClientId}; configured allow-list count is {AllowedClientCount}",
+            requirement.Mode,
+            clientId ?? "<missing>",
+            requirement.AllowedClientIds.Length);
+        if (requirement.Mode is ScimClientPolicyMode.Observe)
         {
             context.Succeed(requirement);
         }

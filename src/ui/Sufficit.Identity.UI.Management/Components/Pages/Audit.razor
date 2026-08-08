@@ -8,16 +8,16 @@
 <PageHeader Title="Auditoria"
             Description="Rastreabilidade das decisões de autorização e mutações administrativas." />
 
-<section class="contract-strip contract-strip--success">
+<div class="contract-strip contract-strip--success">
     <AppIcon Name="audit" Size="20" />
     <div>
         <strong>Eventos persistentes e sem segredos</strong>
         <span>Operador, capability, alvo, resultado e correlation ID são registrados pela camada de aplicação.</span>
     </div>
     <StatusBadge Tone="success">Ativa</StatusBadge>
-</section>
+</div>
 
-<section class="table-panel" aria-labelledby="audit-list-heading" aria-busy="@loading">
+<div class="table-panel" aria-labelledby="audit-list-heading" aria-busy="@loading">
     <div class="data-toolbar">
         <div>
             <h2 id="audit-list-heading">Eventos administrativos</h2>
@@ -152,9 +152,9 @@
         <span>@ResultCountLabel</span>
         <span>Registros em UTC · limite de 100</span>
     </footer>
-</section>
+</div>
 
-<section class="client-guardrails" aria-labelledby="audit-safety-heading">
+<div class="client-guardrails" aria-labelledby="audit-safety-heading">
     <div>
         <h2 id="audit-safety-heading">Conteúdo protegido</h2>
         <p>A trilha registra metadados operacionais suficientes para investigação sem replicar dados sensíveis.</p>
@@ -164,7 +164,7 @@
         <li><AppIcon Name="shield" Size="18" /> Decisões negadas usam códigos estáveis</li>
         <li><AppIcon Name="code" Size="18" /> Correlation ID conecta operação e logs</li>
     </ul>
-</section>
+</div>
 
 @code {
     private ManagementDataResult<IReadOnlyList<ManagementAuditRecord>>? result;

@@ -7,6 +7,7 @@ using OpenIddict.Server;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using static OpenIddict.Server.OpenIddictServerEvents;
 using static OpenIddict.Server.OpenIddictServerHandlers;
+using Sufficit.Identity.STS.Dpop;
 
 namespace Sufficit.Identity.STS.Jar;
 
@@ -33,7 +34,8 @@ internal static class JarRequestObjectHandler
     /// </summary>
     public sealed class ExtractAuthorizationRequestObject(
         IOpenIddictApplicationManager applications,
-        SufficitIdentityOptions rootOptions)
+        SufficitIdentityOptions rootOptions,
+        IDpopReplayCache replayCache)
         : IOpenIddictServerHandler<ExtractAuthorizationRequestContext>
     {
         public static OpenIddictServerHandlerDescriptor Descriptor { get; } =
@@ -51,6 +53,7 @@ internal static class JarRequestObjectHandler
                 applications,
                 rootOptions.Jar,
                 rootOptions.Issuer,
+                replayCache,
                 context.Logger,
                 (msg, desc) => context.Reject(Errors.InvalidRequest, msg, desc),
                 CancellationToken.None);
@@ -63,7 +66,8 @@ internal static class JarRequestObjectHandler
     /// </summary>
     public sealed class ExtractPushedAuthorizationRequestObject(
         IOpenIddictApplicationManager applications,
-        SufficitIdentityOptions rootOptions)
+        SufficitIdentityOptions rootOptions,
+        IDpopReplayCache replayCache)
         : IOpenIddictServerHandler<ExtractPushedAuthorizationRequestContext>
     {
         public static OpenIddictServerHandlerDescriptor Descriptor { get; } =
@@ -81,6 +85,7 @@ internal static class JarRequestObjectHandler
                 applications,
                 rootOptions.Jar,
                 rootOptions.Issuer,
+                replayCache,
                 context.Logger,
                 (msg, desc) => context.Reject(Errors.InvalidRequest, msg, desc),
                 CancellationToken.None);
@@ -105,6 +110,7 @@ internal static class JarExtractor
         IOpenIddictApplicationManager applications,
         JarOptions options,
         string? issuer,
+        IDpopReplayCache replayCache,
         Microsoft.Extensions.Logging.ILogger logger,
         Action<string, string?> reject,
         CancellationToken cancellationToken)
@@ -126,6 +132,41 @@ internal static class JarExtractor
             logger.LogWarning(ex,
                 "JAR: request parameter is not a parseable JWT.");
             reject("The request parameter is not a valid JWT.", null);
+            return;
+        }
+
+        if (!string.Equals(
+            jwt.Typ,
+            options.RequiredTokenType,
+            StringComparison.Ordinal))
+        {
+            reject(
+                $"The request object typ must be '{options.RequiredTokenType}'.",
+                null);
+            return;
+        }
+
+        if (!jwt.TryGetPayloadValue("iat", out long issuedAtUnix)
+            || issuedAtUnix <= 0
+            || !jwt.TryGetPayloadValue("exp", out long expiresAtUnix)
+            || expiresAtUnix <= issuedAtUnix
+            || !jwt.TryGetPayloadValue("jti", out string? requestId)
+            || string.IsNullOrWhiteSpace(requestId))
+        {
+            reject(
+                "The request object must contain valid iat, exp and jti claims.",
+                null);
+            return;
+        }
+
+        var issuedAt = DateTimeOffset.FromUnixTimeSeconds(issuedAtUnix);
+        var expiresAt = DateTimeOffset.FromUnixTimeSeconds(expiresAtUnix);
+        var nowOffset = DateTimeOffset.UtcNow;
+        if (issuedAt > nowOffset.AddSeconds(30)
+            || expiresAt - issuedAt > TimeSpan.FromSeconds(
+                Math.Clamp(options.MaxLifetimeSeconds, 1, 600)))
+        {
+            reject("The request object lifetime is outside the allowed window.", null);
             return;
         }
 
@@ -201,30 +242,39 @@ internal static class JarExtractor
         }
 
         // 6. Enforce a short max lifetime (exp bound) beyond JWT lifetime validation.
-        if (jwt.TryGetPayloadValue("iat", out long iat) && iat > 0)
+        if ((now - issuedAt.UtcDateTime).TotalSeconds > options.MaxLifetimeSeconds)
         {
-            var issuedAt = DateTimeOffset.FromUnixTimeSeconds(iat).UtcDateTime;
-            if ((now - issuedAt).TotalSeconds > options.MaxLifetimeSeconds)
-            {
-                reject("The request object has expired.", null);
-                return;
-            }
+            reject("The request object has expired.", null);
+            return;
+        }
+
+        // Mark replay only after issuer/key/signature/lifetime validation so
+        // anonymous garbage cannot reserve another client's jti namespace.
+        var replayLifetime = expiresAt - nowOffset;
+        if (replayLifetime <= TimeSpan.Zero
+            || replayCache.IsReplay(
+                $"jar:{jarClientId}:{requestId}",
+                replayLifetime + TimeSpan.FromSeconds(30)))
+        {
+            reject("The request object has already been used.", null);
+            return;
         }
 
         // 7. Merge: replace every outer parameter with the signed value, then
         // drop the request parameter itself. RFC 9101 §6: a parameter present
         // in both must match; we treat the signed value as authoritative and
         // overwrite (the signed object is the source of truth).
-        var validated = (JsonWebToken)result.SecurityToken;
-        foreach (var claim in validated.Claims)
+        using var payload = JsonDocument.Parse(
+            Base64UrlEncoder.Decode(jwt.EncodedPayload));
+        foreach (var parameter in payload.RootElement.EnumerateObject())
         {
             // Skip JWT-internal claims that are not authorization parameters.
-            if (claim.Type is "iss" or "aud" or "exp" or "iat" or "nbf" or "jti"
+            if (parameter.Name is "iss" or "aud" or "exp" or "iat" or "nbf" or "jti"
                 or "client_id")
             {
                 continue;
             }
-            request.SetParameter(claim.Type, claim.Value);
+            request.SetParameter(parameter.Name, parameter.Value.Clone());
         }
 
         // Ensure client_id is set on the outer request (PAR may receive it

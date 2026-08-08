@@ -20,7 +20,7 @@
 - ✅ Subject identifier formats: iss_sub, email, phone, device, jwt-id, uri, opaque, complex
 - ✅ Front-channel logout (OIDC Front-Channel Logout 1.0)
 - ✅ Back-channel logout (OIDC Back-Channel Logout 1.0, signed logout_token)
-- ✅ CIBA (RFC 9126): /bc-authorize, poll, complete, distributed pending store
+- ✅ CIBA (OpenID Connect CIBA Core 1.0): /bc-authorize, poll, complete, distributed pending store
 
 ### SCIM interoperability
 - ✅ Users + Groups CRUD (RFC 7643/7644)
@@ -28,7 +28,7 @@
 - ✅ SCIM authorization audit filter (denied requests audited)
 
 ### Product quality
-- ✅ Independent evaluation performed, all findings closed (16/17, M5 by-design)
+- ✅ Independent evaluation performed; the findings listed in this historical baseline were addressed (16/17, M5 by-design). Later hardening work is tracked in the active security plan.
 
 ### Evaluation security fixes (EVALUATION-2026-08-04-GLM-5.2)
 - ✅ H4: in-memory stores → distributed

@@ -121,7 +121,13 @@ no remote-host defaults, embedded password or production database target.
 Deployments already running the canonical model apply later additive steps in
 order: `050-add-branding-themes.sql`,
 `060-add-management-audit-events.sql` and
-`070-add-scim-provisioning.sql`.
+`070-add-scim-provisioning.sql`, followed by
+`080-add-oidc-user-sessions.sql`, `081-add-ssf-streams-and-vault-keys.sql`
+`082-add-security-hardening-state.sql` and the guarded
+`083-enforce-normalized-email-uniqueness.sql` gate. The one-time retirement
+script `092-retire-skoruba-identity-admin-api.sql` removes the superseded
+Skoruba Admin API scope, revokes tokens issued from its authorizations and
+removes only that permission from affected clients.
 
 `011-add-openiddict-to-legacy.sql` intentionally does not use
 `CREATE TABLE IF NOT EXISTS`: encountering an existing protocol table is drift
@@ -194,6 +200,21 @@ legacy `__efmigrationshistory`, which contains Skoruba/Duende migrations.
 The additive script marks the canonical `Initial` migration as applied after
 creating the four OpenIddict tables. Existing users, roles, claims, logins,
 tokens, passkeys and Data Protection keys are not copied or changed.
+
+## Additive hardening scripts
+
+The numbered scripts below are safe to replay only when their documented
+preconditions hold; they are additive and record their own markers in
+`__sufficit_identity_migrations`:
+
+- `082-add-security-hardening-state.sql` adds the metrics, SSF, CIBA, DPoP and
+  Management draft state required by the current hardening code.
+- `083-enforce-normalized-email-uniqueness.sql` emits only SHA-256 hashes and
+  counts for duplicate normalized e-mails, aborts while any collision exists,
+  and then adds the nullable unique index `UX_users_normalizedemail`.
+
+Resolve every collision from the redacted report through the operator workflow
+before running `083`; the script never selects or deletes an account.
 
 ## CI enforcement
 

@@ -15,7 +15,7 @@
     </Actions>
 </PageHeader>
 
-<section class="setup-intro" aria-labelledby="profile-heading">
+<div class="setup-intro" aria-labelledby="profile-heading">
     <div>
         <h2 id="profile-heading">Como esta aplicação será usada?</h2>
         <p>Você poderá revisar e ajustar tudo antes de criar. Nenhuma aplicação incompleta será registrada.</p>
@@ -24,41 +24,43 @@
         <AppIcon Name="shield" Size="20" />
         <span>Defaults seguros, validação progressiva e rascunho retomável</span>
     </div>
-</section>
+</div>
 
 @if (!string.IsNullOrWhiteSpace(errorMessage))
 {
-    <section class="inline-notice inline-notice--danger" role="alert">
+    <div class="inline-notice inline-notice--danger" role="alert">
         <AppIcon Name="alert" Size="19" />
         <div>
             <strong>Não foi possível iniciar a configuração</strong>
             <span>@errorMessage</span>
         </div>
-    </section>
+    </div>
 }
 
 @if (loading)
 {
-    <section class="profile-grid" aria-label="Carregando perfis de aplicação" aria-busy="true">
+    <div class="profile-grid" aria-label="Carregando perfis de aplicação" aria-busy="true">
         @for (var index = 0; index < 4; index++)
         {
             <div class="profile-card profile-card--loading"></div>
         }
-    </section>
+    </div>
 }
 else if (profiles.Count is 0)
 {
-    <EmptyState Icon="alert"
-                Title="Nenhum perfil disponível"
-                Description="O runtime não informou uma configuração de aplicação disponível.">
-        <Actions>
-            <button class="button button--secondary" type="button" @onclick="LoadAsync">Tentar novamente</button>
-        </Actions>
-    </EmptyState>
+    <div>
+        <EmptyState Icon="alert"
+                    Title="Nenhum perfil disponível"
+                    Description="O runtime não informou uma configuração de aplicação disponível.">
+            <Actions>
+                <button class="button button--secondary" type="button" @onclick="LoadAsync">Tentar novamente</button>
+            </Actions>
+        </EmptyState>
+    </div>
 }
 else
 {
-    <section class="profile-grid" aria-label="Perfis de aplicação">
+    <div class="profile-grid" aria-label="Perfis de aplicação">
         @foreach (var profile in profiles)
         {
             <button class="profile-card"
@@ -85,13 +87,13 @@ else
                 </span>
             </button>
         }
-    </section>
+    </div>
 }
 
-<section class="setup-footnote">
+<div class="setup-footnote">
     <AppIcon Name="lock" Size="18" />
     <p>Credenciais nunca entram na URL ou no rascunho. Quando necessárias, são geradas somente na conclusão e exibidas uma única vez.</p>
-</section>
+</div>
 
 @code {
     private IReadOnlyList<ManagementClientProfile> profiles = [];

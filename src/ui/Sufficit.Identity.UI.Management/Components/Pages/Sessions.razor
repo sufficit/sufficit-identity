@@ -9,38 +9,38 @@
             Description="Inspecione metadados das credenciais emitidas pelo provedor e interrompa seu uso.">
 </PageHeader>
 
-<section class="contract-strip contract-strip--info">
+<div class="contract-strip contract-strip--info">
     <AppIcon Name="clock" Size="20" />
     <div>
         <strong>Fonte canônica: runtime de autorização</strong>
         <span>Esta tela não exibe conteúdo, referência ou payload de tokens. Cookies só são invalidados no encerramento total da conta.</span>
     </div>
     <StatusBadge Tone="info">Metadados seguros</StatusBadge>
-</section>
+</div>
 
 @if (revoked)
 {
-    <section class="inline-notice inline-notice--success" role="status">
+    <div class="inline-notice inline-notice--success" role="status">
         <AppIcon Name="check" Size="19" />
         <div>
             <strong>Credencial revogada</strong>
             <span>Novas validações dessa credencial serão recusadas.</span>
         </div>
-    </section>
+    </div>
 }
 
 @if (revokedAll is not null)
 {
-    <section class="inline-notice inline-notice--success" role="status">
+    <div class="inline-notice inline-notice--success" role="status">
         <AppIcon Name="check" Size="19" />
         <div>
             <strong>Sessões da conta encerradas</strong>
             <span>@revokedAll.RevokedTokens credencial(is) e @revokedAll.RevokedAuthorizations autorização(ões) foram revogadas; o cookie foi invalidado pelo selo de segurança.</span>
         </div>
-    </section>
+    </div>
 }
 
-<section class="table-panel" aria-labelledby="sessions-list-heading" aria-busy="@loading">
+<div class="table-panel" aria-labelledby="sessions-list-heading" aria-busy="@loading">
     <div class="data-toolbar data-toolbar--users">
         <div>
             <h2 id="sessions-list-heading">Credenciais emitidas</h2>
@@ -186,33 +186,33 @@
             </div>
         }
     </footer>
-</section>
+</div>
 
 @if (selected is not null)
 {
-    <section class="delete-zone" aria-labelledby="revoke-session-heading">
+    <div class="delete-zone" aria-labelledby="revoke-session-heading">
         <div>
             <h2 id="revoke-session-heading">Revogar esta credencial?</h2>
             <p>@PrincipalLabel(selected) · @TypeLabel(selected.Type) · emitida @DateLabel(selected.CreatedAt).</p>
         </div>
         @if (revocation?.IsSuccess is false)
         {
-            <section class="inline-notice inline-notice--danger" role="alert">
+            <div class="inline-notice inline-notice--danger" role="alert">
                 <AppIcon Name="alert" Size="19" />
                 <div><strong>Não foi possível revogar</strong><span>@revocation.ErrorMessage</span></div>
-            </section>
+            </div>
         }
         <button class="button button--secondary" type="button" @onclick="CancelRevocation">Cancelar</button>
         <button class="button button--danger" type="button" disabled="@revoking" @onclick="RevokeAsync">
             <AppIcon Name="lock" Size="17" />
             @(revoking ? "Revogando…" : "Confirmar revogação")
         </button>
-    </section>
+    </div>
 }
 
 @if (!string.IsNullOrWhiteSpace(UserId))
 {
-    <section class="danger-zone" aria-labelledby="revoke-all-heading">
+    <div class="danger-zone" aria-labelledby="revoke-all-heading">
         <div>
             <h2 id="revoke-all-heading">Encerrar todas as sessões desta conta</h2>
             <p>Gira o selo de segurança e revoga tokens e autorizações vinculados ao usuário filtrado.</p>
@@ -230,7 +230,7 @@
                 @(revokingAll ? "Encerrando…" : "Encerrar todas")
             </button>
         </div>
-    </section>
+    </div>
 }
 
 @code {

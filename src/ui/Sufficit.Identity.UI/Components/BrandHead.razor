@@ -73,11 +73,11 @@
             --brand-ring: @(_brandColor)40;
             @if (!string.IsNullOrEmpty(_brandHoverColor))
             {
-                <text>--brand-hover: @_brandHoverColor;</text>
+                @:--brand-hover: @_brandHoverColor;
             }
             @if (!string.IsNullOrEmpty(_brandSoftColor))
             {
-                <text>--brand-soft: @_brandSoftColor;</text>
+                @:--brand-soft: @_brandSoftColor;
             }
         }
     </style>

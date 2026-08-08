@@ -17,25 +17,25 @@
 
 @if (Deleted is 1)
 {
-    <section class="inline-notice inline-notice--success" role="status">
+    <div class="inline-notice inline-notice--success" role="status">
         <AppIcon Name="check" Size="19" />
         <div>
             <strong>Scope excluído</strong>
             <span>A definição foi removida e a operação foi auditada.</span>
         </div>
-    </section>
+    </div>
 }
 
-<section class="contract-strip contract-strip--info">
+<div class="contract-strip contract-strip--info">
     <AppIcon Name="scope" Size="20" />
     <div>
         <strong>Definições personalizadas OAuth/OIDC</strong>
         <span>Scopes padrão como <code>openid</code>, <code>profile</code> e <code>offline_access</code> pertencem ao protocolo e não são duplicados aqui.</span>
     </div>
     <StatusBadge Tone="info">OAuth 2.0</StatusBadge>
-</section>
+</div>
 
-<section class="table-panel" aria-labelledby="scopes-list-heading" aria-busy="@loading">
+<div class="table-panel" aria-labelledby="scopes-list-heading" aria-busy="@loading">
     <div class="data-toolbar">
         <div>
             <h2 id="scopes-list-heading">Scopes registrados</h2>
@@ -145,9 +145,9 @@
         <span>@ResultCountLabel</span>
         <span>Registro canônico do runtime de autorização</span>
     </footer>
-</section>
+</div>
 
-<section class="client-guardrails" aria-labelledby="scope-safety-heading">
+<div class="client-guardrails" aria-labelledby="scope-safety-heading">
     <div>
         <h2 id="scope-safety-heading">Ciclo de vida seguro</h2>
         <p>A interface respeita a origem e os vínculos existentes antes de qualquer mutação.</p>
@@ -157,7 +157,7 @@
         <li><AppIcon Name="workflow" Size="18" /> Scopes declarativos mudam somente no manifesto</li>
         <li><AppIcon Name="key" Size="18" /> Exclusão bloqueada enquanto clientes utilizam o scope</li>
     </ul>
-</section>
+</div>
 
 @code {
     [SupplyParameterFromQuery(Name = "deleted")]

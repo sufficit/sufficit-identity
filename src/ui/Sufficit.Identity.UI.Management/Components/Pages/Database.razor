@@ -34,30 +34,32 @@
 
 @if (loading)
 {
-    <section class="detail-shell"
+    <div class="detail-shell"
              aria-busy="true"
              aria-label="Carregando telemetria do banco de dados">
         <div class="detail-skeleton"></div>
         <div class="detail-skeleton detail-skeleton--short"></div>
-    </section>
+    </div>
 }
 else if (snapshot is null)
 {
-    <EmptyState Icon="database"
-                Title="Não foi possível consultar o banco de dados"
-                Description="@(refreshError ?? "O runtime não informou a telemetria de conexões.")">
-        <Actions>
-            <button class="button button--primary"
-                    type="button"
-                    @onclick="RefreshAsync">
-                Tentar novamente
-            </button>
-        </Actions>
-    </EmptyState>
+    <div>
+        <EmptyState Icon="database"
+                    Title="Não foi possível consultar o banco de dados"
+                    Description="@(refreshError ?? "O runtime não informou a telemetria de conexões.")">
+            <Actions>
+                <button class="button button--primary"
+                        type="button"
+                        @onclick="RefreshAsync">
+                    Tentar novamente
+                </button>
+            </Actions>
+        </EmptyState>
+    </div>
 }
 else
 {
-    <section class="contract-strip @WatchdogStripClass"
+    <div class="contract-strip @WatchdogStripClass"
              aria-live="polite">
         <AppIcon Name="database" Size="20" />
         <div>
@@ -65,26 +67,23 @@ else
             <span>@WatchdogDescription</span>
         </div>
         <StatusBadge Tone="@WatchdogTone">@WatchdogBadge</StatusBadge>
-    </section>
+    </div>
 
     @if (!string.IsNullOrWhiteSpace(refreshError))
     {
-        <section class="inline-notice inline-notice--danger" role="status">
+        <div class="inline-notice inline-notice--danger" role="status">
             <AppIcon Name="alert" Size="19" />
             <div>
                 <strong>Os dados podem estar desatualizados</strong>
                 <span>@refreshError A última captura válida continua visível.</span>
             </div>
-        </section>
+        </div>
     }
 
     <div class="database-capacity-stack" aria-label="Capacidade dos pools de conexão">
         @foreach (var pool in EffectivePools)
         {
-            var used = PoolUsed(pool);
-            var pressure = PoolPressure(pool);
-
-            <section class="database-capacity" aria-labelledby="@PoolHeadingId(pool)">
+            <div class="database-capacity" aria-labelledby="@PoolHeadingId(pool)">
                 <div class="database-capacity__header">
                     <div>
                         <h2 id="@PoolHeadingId(pool)">@pool.Provider</h2>
@@ -102,17 +101,17 @@ else
                          role="progressbar"
                          aria-label="Ocupação do pool @pool.Name"
                          aria-valuemin="0"
-                        aria-valuenow="@pressure"
+                         aria-valuenow="@PoolPressure(pool)"
                          aria-valuemax="100">
                         <span class="database-capacity__fill database-capacity__fill--@PoolTone(pool)"
-                              style="transform: scaleX(@PressureScale(pressure))"></span>
+                              style="transform: scaleX(@PressureScale(PoolPressure(pool)))"></span>
                     </div>
                 </div>
 
                 <dl class="database-capacity__facts">
                     <div>
                         <dt>Em uso</dt>
-                        <dd>@FormatMetric(used)</dd>
+                        <dd>@FormatMetric(PoolUsed(pool))</dd>
                     </div>
                     <div>
                         <dt>Ociosas</dt>
@@ -138,11 +137,11 @@ else
                         Este provedor ainda não publicou métricas de pool. A lista abaixo continua mostrando as conexões observadas pelo EF Core.
                     </p>
                 }
-            </section>
+            </div>
         }
     </div>
 
-    <section class="table-panel" aria-labelledby="database-connections-heading">
+    <div class="table-panel" aria-labelledby="database-connections-heading">
         <div class="data-toolbar">
             <div>
                 <h2 id="database-connections-heading">Conexões locadas agora</h2>
@@ -232,7 +231,7 @@ else
             <span>@FormatNumber(snapshot.TotalCommands) comandos observados desde o início do processo</span>
             <span>@FormatNumber(snapshot.FailedCommands) falha(s) · SQL e parâmetros não são coletados</span>
         </footer>
-    </section>
+    </div>
 }
 
 @code {

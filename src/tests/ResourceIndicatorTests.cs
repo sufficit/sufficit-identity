@@ -1,6 +1,8 @@
 using System.Net;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
+using OpenIddict.Server;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -24,7 +26,7 @@ public sealed class ResourceIndicatorTests
 {
     private const string ResourceClientId = "test-resource-cc";
     private const string ResourceClientSecret = "test-resource-cc-secret";
-    private const string McpResource = "https://mcp.tests.local";
+    private const string McpResource = "https://mcp.tests.local/";
 
     [Fact]
     public async Task Token_requested_with_resource_carries_it_as_audience()
@@ -38,6 +40,13 @@ public sealed class ResourceIndicatorTests
         await ((IAsyncLifetime)factory).InitializeAsync();
         await EnsureResourceClientAsync(factory);
 
+        using (var optionsScope = factory.Services.CreateScope())
+        {
+            var serverOptions = optionsScope.ServiceProvider
+                .GetRequiredService<IOptions<OpenIddictServerOptions>>().Value;
+            Assert.Contains(new Uri(McpResource), serverOptions.Resources);
+        }
+
         var client = factory.CreateClient();
         var (status, body) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
         {
@@ -49,7 +58,9 @@ public sealed class ResourceIndicatorTests
             ["resource"] = McpResource,
         });
 
-        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.True(
+            status == HttpStatusCode.OK,
+            $"Expected a valid configured resource to be accepted, got {status}: {body}");
         var accessToken = body.GetProperty("access_token").GetString();
         Assert.False(string.IsNullOrEmpty(accessToken));
 
@@ -73,6 +84,30 @@ public sealed class ResourceIndicatorTests
             ? aud.EnumerateArray().Select(a => a.GetString()!).ToArray()
             : new[] { aud.GetString()! };
         Assert.Contains(McpResource, audiences);
+    }
+
+    [Fact]
+    public async Task Token_requested_with_unregistered_resource_is_rejected()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
+        {
+            ["Sufficit:Identity:Mcp:Resources:0"] = McpResource,
+        });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await EnsureResourceClientAsync(factory);
+
+        var client = factory.CreateClient();
+        var (status, body) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "client_credentials",
+            ["client_id"] = ResourceClientId,
+            ["client_secret"] = ResourceClientSecret,
+            ["scope"] = TestDataSeeder.ScopeName,
+            ["resource"] = "https://unregistered.tests.local",
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+        Assert.Equal("invalid_target", body.GetProperty("error").GetString());
     }
 
     private static async Task EnsureResourceClientAsync(SufficitIdentityTestFactory factory)

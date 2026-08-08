@@ -35,6 +35,8 @@
              Link="Management\Overview\ManagementOverviewContracts.cs" />
     <Compile Include="..\..\management\Metrics\MetricsManagementService.cs"
              Link="Management\Metrics\MetricsManagementContracts.cs" />
+    <Compile Include="..\..\management\Vault\VaultSecretsManagementService.cs"
+             Link="Management\Vault\VaultSecretsManagementContracts.cs" />
     <Compile Include="..\..\management\Provisioning\ProvisioningManagementService.cs"
              Link="Management\Provisioning\ProvisioningManagementContracts.cs" />
     <Compile Include="..\..\management\Scopes\ScopeManagementService.cs"

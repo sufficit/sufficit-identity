@@ -1,6 +1,6 @@
 # PLAN-VAULT — Internal Secret Vault for sufficit-identity
 
-> **Status:** Proposed · **Owner:** Sufficit · **Created:** 2026-08-05
+> **Status:** Phases 1–3 implemented (opt-in signing/JWKS) · **Owner:** Sufficit · **Created:** 2026-08-05
 > **Target version:** `0.4.0-alpha` · **Prerequisite:** none (greenfield module)
 
 ## 1. Motivation
@@ -348,9 +348,10 @@ leaves the vault; the STS asks the vault to sign a JWT digest.
 
 - Adds `SignAsync(keyName, payload)` / `VerifyAsync(keyName, signature, payload)`
   to `IKeyVault`, backed by an RSA/ECDSA key held inside the vault.
-- OpenIddict's `AddSigningCertificate` is replaced by a custom
-  `ISigningCredentialProvider` (or `AddDevelopmentEncryptionCertificate`-equivalent)
-  that delegates to the vault. This is the "Transit for JWTs" pattern.
+- OpenIddict's certificate credential is replaced at token generation by a
+  custom IdentityModel `ICryptoProvider`/`SecurityKey` that delegates to the
+  vault. The JWKS event publishes the retained public JWK versions. This is the
+  "Transit for JWTs" pattern.
 - **Scope caution:** this is the most invasive change and touches the JWKS
   endpoint. Phase 3 is opt-in (`VaultOptions.ManageSigningKeys = true`) and the
   PFX path remains the default so onboarding isn't broken.
@@ -416,6 +417,9 @@ public sealed class VaultOptions
     /// <summary>Opt-in: vault manages JWT signing keys instead of PFX-on-disk (Phase 3).</summary>
     public bool ManageSigningKeys { get; init; } = false;
 
+    /// <summary>Name of the versioned OpenIddict signing key.</summary>
+    public string SigningKeyName { get; init; } = "oidc-signing";
+
     /// <summary>External KMS settings (only used when KeySource != dataprotection).</summary>
     public ExternalKmsOptions? ExternalKms { get; init; }
 }
@@ -431,7 +435,7 @@ public sealed class VaultOptions
 
 Each phase is independently shippable and leaves CI green.
 
-### Phase 1 — Core vault module + at-rest field encryption
+### Phase 1 — Core vault module + at-rest field encryption (implemented)
 1. New `src/vault/Sufficit.Identity.Vault.csproj` + interfaces + `EnvelopeCrypto`
    (AES-256-GCM) + `SelfDescribingCiphertext` + `DataProtectionKeySource`.
 2. `vault_keys` table + migration + schema contract test updates + SQL regen.
@@ -441,26 +445,31 @@ Each phase is independently shippable and leaves CI green.
    `DistributedCibaPendingRequestStore` — call `EncryptAsync`/`DecryptAsync`
    with owner-bound AAD.
 5. Tests: envelope round-trip, AAD mismatch rejection, key rotation (old
-   ciphertext still decrypts), `PassThroughKeyVault` no-op contract.
+   ciphertext still decrypts), `PassThroughKeyVault` no-op contract and
+   encrypted distributed-store payloads.
 
-### Phase 2 — `ISecretStore` + named-secret KV table
+The remaining named-secret CRUD (`vault_secrets`) and signing-key management
+are now available. Until `ManageSigningKeys` is explicitly enabled, JWT
+signing continues through the existing OpenIddict certificate path.
+
+### Phase 2 — `ISecretStore` + named-secret KV table (implemented)
 1. `ISecretStore` + `EnvironmentSecretStore` (default) + `VaultBackedSecretStore`
    (opt-in) + `vault_secrets` table + migration.
-2. Management API endpoint `GET/PUT/DELETE /api/v1/vault/secrets/{name}`
-   (operator-scoped, `FullAdministrator` policy).
-3. Migrate 2–3 config-time secrets (DB password, OAuth client secret) behind
-   `ISecretStore` as a proof-of-concept; document in ONBOARD.
-4. Tests: store round-trip, env fallback, authorization (non-admin → 403).
+2. Management API endpoint `GET/PUT/DELETE /api/vault/secrets/{name}`
+   (capability-scoped; values are write-only in the response).
+3. Config-time consumers still require a separate rollout; existing
+   connection/certificate settings remain configuration-bound until their
+   secret rotation contract is approved.
+4. Store round-trip and environment fallback tests are included; full
+   management authorization integration remains a deployment-test gate.
 
-### Phase 3 — Signing-key management (Transit for JWTs, opt-in)
-1. `SignAsync` / `VerifyAsync` on `IKeyVault`; RSA/ECDSA item keys with
+### Phase 3 — Signing-key management (Transit for JWTs, opt-in; implemented)
+1. `SignAsync` / `VerifyAsync` on `IKeyVault`; versioned RSA keys with
    `public_jwk` in `vault_keys`.
-2. Custom OpenIddict signing credential provider delegating to the vault when
-   `ManageSigningKeys = true`; JWKS endpoint serves vault-managed public keys.
-3. Runbook: how to rotate signing keys (create v2, publish JWKS, retire v1
-   after token TTL).
-4. Tests: sign/verify round-trip, JWKS serves current public key, rotation
-   doesn't invalidate unexpired tokens.
+2. Custom OpenIddict signing credential provider and JWKS publication are
+   enabled by `ManageSigningKeys`; the certificate path remains the default.
+3. RSA signing, delegated IdentityModel provider, JWKS and overlapping-key
+   rotation have unit and HTTP integration coverage.
 
 ## 9. Security properties & threat model
 

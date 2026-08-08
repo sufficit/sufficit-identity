@@ -24,50 +24,50 @@
     </Actions>
 </PageHeader>
 
-<section class="contract-strip contract-strip--success">
+<div class="contract-strip contract-strip--success">
     <AppIcon Name="shield" Size="20" />
     <div>
         <strong>Uma fonte de verdade</strong>
         <span>Esta tela e a API executam os mesmos casos de uso, validações, autorização e auditoria.</span>
     </div>
     <StatusBadge Tone="success">Integrado</StatusBadge>
-</section>
+</div>
 
 @if (ActiveThemeCount > 1)
 {
-    <section class="inline-notice inline-notice--danger" role="alert">
+    <div class="inline-notice inline-notice--danger" role="alert">
         <AppIcon Name="alert" Size="19" />
         <div>
             <strong>Mais de um tema está marcado como ativo</strong>
             <span>Ative o tema correto abaixo; a operação desativará os demais de forma atômica.</span>
         </div>
-    </section>
+    </div>
 }
 
 @if (!string.IsNullOrWhiteSpace(successMessage))
 {
-    <section class="inline-notice inline-notice--success" role="status">
+    <div class="inline-notice inline-notice--success" role="status">
         <AppIcon Name="check" Size="19" />
         <div>
             <strong>Branding atualizado</strong>
             <span>@successMessage</span>
         </div>
-    </section>
+    </div>
 }
 
 @if (operation?.IsSuccess is false)
 {
-    <section class="inline-notice inline-notice--danger" role="alert">
+    <div class="inline-notice inline-notice--danger" role="alert">
         <AppIcon Name="alert" Size="19" />
         <div>
             <strong>Não foi possível concluir a operação</strong>
             <span>@operation.ErrorMessage</span>
         </div>
-    </section>
+    </div>
 }
 
 <div class="branding-workspace">
-    <section class="panel branding-themes" aria-labelledby="themes-heading">
+    <div class="panel branding-themes" aria-labelledby="themes-heading">
         <div class="panel-header">
             <div>
                 <h2 id="themes-heading">Configurações salvas</h2>
@@ -143,19 +143,17 @@
                 }
             </div>
         }
-    </section>
+    </div>
 
-    <section class="brand-preview-panel" aria-labelledby="brand-preview-heading">
+    <div class="brand-preview-panel" aria-labelledby="brand-preview-heading">
         @if (Selected is null)
         {
             <EmptyState Icon="palette"
                         Title="Selecione um tema"
                         Description="A prévia usa os valores persistidos pelo serviço de identidade." />
         }
-        else
+        else if (Selected is { } theme)
         {
-            var theme = Selected;
-
             <div class="brand-preview-panel__header">
                 <div>
                     <h2 id="brand-preview-heading">@theme.Name</h2>
@@ -242,18 +240,19 @@
                 }
             </div>
         }
-    </section>
+    </div>
 </div>
 
 @if (editing)
 {
+    <div>
     <EditForm Model="model"
               OnValidSubmit="SaveAsync"
               FormName="branding-theme"
               class="management-form branding-form">
         <DataAnnotationsValidator />
 
-        <section class="form-section" aria-labelledby="branding-identity-heading">
+        <div class="form-section" aria-labelledby="branding-identity-heading">
             <div class="form-section__heading">
                 <h2 id="branding-identity-heading">@(creating ? "Novo tema" : "Editar tema")</h2>
                 <p>Textos e ativos são persistidos no serviço e reutilizados pelas superfícies públicas.</p>
@@ -290,9 +289,9 @@
                                autocomplete="off" />
                 </div>
             </div>
-        </section>
+        </div>
 
-        <section class="form-section" aria-labelledby="branding-assets-heading">
+        <div class="form-section" aria-labelledby="branding-assets-heading">
             <div class="form-section__heading">
                 <h2 id="branding-assets-heading">Ativos visuais</h2>
                 <p>Use caminhos relativos à raiz, como /_content/…, ou URLs HTTP(S) absolutas.</p>
@@ -328,9 +327,9 @@
                                autocomplete="url" />
                 </div>
             </div>
-        </section>
+        </div>
 
-        <section class="form-section" aria-labelledby="branding-colors-heading">
+        <div class="form-section" aria-labelledby="branding-colors-heading">
             <div class="form-section__heading">
                 <h2 id="branding-colors-heading">Cores</h2>
                 <p>Valores opcionais no formato hexadecimal #RRGGBB; campos vazios usam o padrão do host.</p>
@@ -370,9 +369,9 @@
                                autocomplete="off" />
                 </div>
             </div>
-        </section>
+        </div>
 
-        <section class="form-section" aria-labelledby="branding-avatar-heading">
+        <div class="form-section" aria-labelledby="branding-avatar-heading">
             <div class="form-section__heading">
                 <h2 id="branding-avatar-heading">Avatares administrativos</h2>
                 <p>O marcador &#123;userid&#125; será substituído pelo identificador do usuário.</p>
@@ -384,7 +383,7 @@
                            @bind-Value="model.AvatarUrlTemplate"
                            autocomplete="off" />
             </div>
-        </section>
+        </div>
 
         <footer class="form-actions">
             <button class="button button--secondary"
@@ -409,11 +408,12 @@
             </button>
         </footer>
     </EditForm>
+    </div>
 }
 
 @if (Selected is { IsActive: false } selectedTheme && !editing)
 {
-    <section class="danger-zone" aria-labelledby="delete-theme-heading">
+    <div class="danger-zone" aria-labelledby="delete-theme-heading">
         <div>
             <h2 id="delete-theme-heading">Excluir tema</h2>
             <p>A exclusão remove este rascunho e registra a operação na auditoria administrativa.</p>
@@ -465,7 +465,7 @@
                 </div>
             </div>
         }
-    </section>
+    </div>
 }
 
 @code {

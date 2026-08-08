@@ -335,6 +335,7 @@ public sealed class ScimProvisioningTests
                         ["Sufficit:Identity:Scim:Enabled"] = "true",
                         ["Sufficit:Identity:Scim:RequireAuthorization"] =
                             requireAuthorization.ToString(),
+                        ["Sufficit:Identity:Scim:RequireAllowedClient"] = "false",
                         ["Sufficit:Identity:Scim:RequiredScope"] = "scim"
                     });
             });

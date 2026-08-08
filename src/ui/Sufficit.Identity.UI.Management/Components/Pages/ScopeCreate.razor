@@ -15,24 +15,24 @@
     </Actions>
 </PageHeader>
 
-<section class="contract-strip contract-strip--success">
+<div class="contract-strip contract-strip--success">
     <AppIcon Name="shield" Size="20" />
     <div>
         <strong>Validação centralizada</strong>
         <span>Nome, recursos, autorização e auditoria passam pelo mesmo serviço usado pela Management API.</span>
     </div>
     <StatusBadge Tone="success">Canônico</StatusBadge>
-</section>
+</div>
 
 @if (submission?.IsSuccess is false)
 {
-    <section class="inline-notice inline-notice--danger" role="alert">
+    <div class="inline-notice inline-notice--danger" role="alert">
         <AppIcon Name="alert" Size="19" />
         <div>
             <strong>Não foi possível criar o scope</strong>
             <span>@submission.ErrorMessage</span>
         </div>
-    </section>
+    </div>
 }
 
 <EditForm Model="model"
@@ -41,7 +41,7 @@
           class="management-form">
     <DataAnnotationsValidator />
 
-    <section class="form-section" aria-labelledby="scope-identity-heading">
+    <div class="form-section" aria-labelledby="scope-identity-heading">
         <div class="form-section__heading">
             <h2 id="scope-identity-heading">Identificação</h2>
             <p>O nome faz parte do contrato OAuth e não poderá ser alterado após a criação.</p>
@@ -73,9 +73,9 @@
             <ValidationMessage For="() => model.Description" />
             <span class="field-hint">Explique de forma concreta o acesso concedido ao cliente.</span>
         </div>
-    </section>
+    </div>
 
-    <section class="form-section" aria-labelledby="scope-resources-heading">
+    <div class="form-section" aria-labelledby="scope-resources-heading">
         <div class="form-section__heading">
             <h2 id="scope-resources-heading">Recursos protegidos</h2>
             <p>Informe os audiences que recebem este scope, um por linha.</p>
@@ -87,7 +87,7 @@
                            @bind-Value="model.Resources" />
             <span class="field-hint">Exemplo: <code>https://api.example.com/calendar</code></span>
         </div>
-    </section>
+    </div>
 
     <footer class="form-actions">
         <a class="button button--secondary" href="scopes">Cancelar</a>

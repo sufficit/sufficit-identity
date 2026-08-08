@@ -19,12 +19,38 @@ using Sufficit.Identity.UI;
 using Sufficit.Identity.UI.Management;
 
 var builder = WebApplication.CreateBuilder(args);
+var migrateOnly = args.Contains("--migrate-only", StringComparer.Ordinal);
 
 // WebApplication.CreateBuilder already loads appsettings.json followed by
 // appsettings.{Environment}.json. Add the machine-specific file after those
 // standard sources so each Sufficit server can override only its local values
 // (for example, the database endpoint) using a lowercase hostname filename.
 builder.Configuration.AddMachineSpecificJsonFile();
+
+// Optional file-based certificate password ingress. The privileged bootstrap
+// uses this for randomly generated Development certificates and operators can
+// use it to keep production PFX passwords out of JSON/environment values. It
+// only fills missing values, preserving explicit deployment configuration.
+var certificatePasswordFile = Environment.GetEnvironmentVariable(
+        "SUFFICIT_IDENTITY_CERTIFICATE_PASSWORD_FILE")
+    ?? "/etc/sufficit/identity/certificate.password";
+if (File.Exists(certificatePasswordFile)
+    && string.IsNullOrWhiteSpace(builder.Configuration[
+        "Sufficit:Identity:Certificates:SigningPassword"]))
+{
+    var certificatePassword = File.ReadAllText(certificatePasswordFile).Trim();
+    if (!string.IsNullOrEmpty(certificatePassword))
+    {
+        builder.Configuration.AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Certificates:SigningPassword"] =
+                    certificatePassword,
+                ["Sufficit:Identity:Certificates:EncryptionPassword"] =
+                    certificatePassword,
+            });
+    }
+}
 
 // ---- Forwarded headers (behind reverse proxy) ----
 // Allows the STS to honor X-Forwarded-Proto / X-Forwarded-Host so that
@@ -48,6 +74,11 @@ var trustedProxies = builder.Configuration
 var identityOptions = builder.Configuration
     .GetSection("Sufficit:Identity")
     .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
+
+DeploymentTopologyPolicy.Validate(
+    identityOptions,
+    trustedProxies.Length,
+    builder.Environment.IsDevelopment());
 
 // ---- Optional presentation composition ----
 // Embedded is the compatibility default. Either surface can be set to None so
@@ -220,7 +251,9 @@ static bool IsCredentialEndpoint(PathString path, string method)
         return true;
     }
 
-    // CIBA initiation lives outside the /connect/ prefix (RFC 9126 §2.2).
+    // CIBA initiation lives outside the /connect/ prefix as defined by the
+    // OpenID Connect Client-Initiated Backchannel Authentication Core 1.0
+    // specification. RFC 9126 defines PAR, not CIBA.
     if (p.StartsWith("/bc-authorize", StringComparison.OrdinalIgnoreCase))
     {
         return true;
@@ -234,6 +267,12 @@ static bool IsCredentialEndpoint(PathString path, string method)
         || p.StartsWith("/account/externallogincallback", StringComparison.OrdinalIgnoreCase)
         || p.StartsWith("/account/passkeys", StringComparison.OrdinalIgnoreCase);
 }
+
+static bool IsDeviceInformationEndpoint(PathString path, string method) =>
+    HttpMethods.IsGet(method)
+    && path.StartsWithSegments(
+        "/connect/device/info",
+        StringComparison.OrdinalIgnoreCase);
 
 if (rateLimit.Enabled)
 {
@@ -249,6 +288,31 @@ if (rateLimit.Enabled)
 
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
         {
+            if (IsDeviceInformationEndpoint(
+                httpContext.Request.Path,
+                httpContext.Request.Method))
+            {
+                var clientId = httpContext.User.FindFirst("client_id")?.Value
+                    ?? httpContext.User.FindFirst("azp")?.Value;
+                var partition = !string.IsNullOrWhiteSpace(clientId)
+                    ? "device-client:" + clientId
+                    : "device-ip:" + (httpContext.Connection.RemoteIpAddress?.ToString()
+                        ?? "unknown");
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    partition,
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = Math.Max(
+                            1,
+                            rateLimit.DeviceInformationPermitLimit),
+                        Window = TimeSpan.FromSeconds(Math.Max(
+                            1,
+                            rateLimit.DeviceInformationWindowSeconds)),
+                        QueueLimit = 0,
+                        AutoReplenishment = true,
+                    });
+            }
+
             if (!IsCredentialEndpoint(httpContext.Request.Path, httpContext.Request.Method))
             {
                 return RateLimitPartition.GetNoLimiter("unrestricted");
@@ -263,6 +327,29 @@ if (rateLimit.Enabled)
                 QueueLimit = 0,
                 AutoReplenishment = true
             });
+        });
+
+        options.AddPolicy("device-information", httpContext =>
+        {
+            var clientId = httpContext.User.FindFirst("client_id")?.Value
+                ?? httpContext.User.FindFirst("azp")?.Value;
+            var partition = !string.IsNullOrWhiteSpace(clientId)
+                ? "client:" + clientId
+                : "ip:" + (httpContext.Connection.RemoteIpAddress?.ToString()
+                    ?? "unknown");
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partition,
+                _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = Math.Max(
+                        1,
+                        rateLimit.DeviceInformationPermitLimit),
+                    Window = TimeSpan.FromSeconds(Math.Max(
+                        1,
+                        rateLimit.DeviceInformationWindowSeconds)),
+                    QueueLimit = 0,
+                    AutoReplenishment = true,
+                });
         });
     });
 }
@@ -439,34 +526,37 @@ app.UseRequestLocalization(new RequestLocalizationOptions()
 // canonical form. Query string values are preserved untouched.
 app.UseLowercasePaths();
 
-// ---- Rate limiter (must see the real client IP resolved above; must run
-// before UseAuthentication so unauthenticated brute-force attempts against
-// /connect/token are throttled regardless of credentials supplied). ----
-if (rateLimit.Enabled)
-{
-    app.UseRateLimiter();
-}
-
 // The explicit routing boundary is required before global CORS middleware so
 // preflight requests can be handled with endpoint metadata rather than being
 // rejected by an API controller.
 app.UseRouting();
+
+// Rate limiting runs after routing so named endpoint policies are visible, but
+// still before authentication/authorization. It already sees the trusted
+// forwarded client address resolved at the beginning of the pipeline.
+if (rateLimit.Enabled)
+{
+    app.UseRateLimiter();
+}
 
 // CORS must run before authentication/authorization so browser preflight
 // requests receive the policy headers without requiring a bearer token.
 app.UseSufficitCors(identityOptions.Cors);
 
 // ---- Database schema provisioning (migrations). ----
-// Dev/test ALWAYS applies pending EF migrations (exercises the Up/Down paths
-// for real, unlike EnsureCreated which ignores migrations). Production applies
-// them ONLY when Sufficit:Identity:Database:AutoMigrate=true, AND only if the
-// connection string's database name is in AllowedDatabaseNames (a guard against
-// pointing the migrator at the wrong/production database by accident). When
-// AutoMigrate is false in production, schema stays provisioned from the
-// checked-in canonical SQL (docs/migration/sql/*) — the conservative posture
-// for the legacy shared Duende/Skoruba database.
-var shouldAutoMigrate = app.Environment.IsDevelopment() || identityOptions.Database.AutoMigrate;
-if (shouldAutoMigrate)
+// Dev/test applies pending EF migrations to exercise migration paths. Outside
+// Development, only the dedicated --migrate-only process may change schema;
+// the HTTP process rejects the legacy AutoMigrate switch.
+if (!app.Environment.IsDevelopment()
+    && identityOptions.Database.AutoMigrate
+    && !migrateOnly)
+{
+    throw new InvalidOperationException(
+        "Database:AutoMigrate is no longer supported by the production web process. Run Sufficit.Identity.Server.dll --migrate-only as a dedicated deployment job.");
+}
+
+var shouldMigrate = migrateOnly || app.Environment.IsDevelopment();
+if (shouldMigrate)
 {
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -489,10 +579,18 @@ if (shouldAutoMigrate)
         }
     }
 
-    await db.Database.MigrateAsync();
+    await ApplyMigrationsWithAdvisoryLockAsync(db);
     app.Logger.LogInformation(
-        "Applied pending database migrations (environment: {Environment}, autoMigrate: {AutoMigrate}).",
-        app.Environment.EnvironmentName, identityOptions.Database.AutoMigrate);
+        "Applied pending database migrations (environment: {Environment}, dedicatedMigrator: {DedicatedMigrator}).",
+        app.Environment.EnvironmentName,
+        migrateOnly);
+}
+
+if (migrateOnly)
+{
+    app.Logger.LogInformation(
+        "Dedicated migration job completed; the HTTP host will not start.");
+    return;
 }
 
 // Parse the MySQL/MariaDB database name out of a connection string for the
@@ -522,10 +620,53 @@ static string? ParseDatabaseName(string? connectionString)
     return null;
 }
 
+static async Task ApplyMigrationsWithAdvisoryLockAsync(
+    AppDbContext database)
+{
+    var provider = database.Database.ProviderName ?? string.Empty;
+    if (!provider.Contains("MySql", StringComparison.OrdinalIgnoreCase))
+    {
+        await database.Database.MigrateAsync();
+        return;
+    }
+
+    var connection = database.Database.GetDbConnection();
+    await connection.OpenAsync();
+    try
+    {
+        await using var acquire = connection.CreateCommand();
+        acquire.CommandText =
+            "SELECT GET_LOCK('sufficit_identity_schema_migrator', 60);";
+        var acquired = Convert.ToInt32(
+            await acquire.ExecuteScalarAsync(),
+            System.Globalization.CultureInfo.InvariantCulture);
+        if (acquired != 1)
+        {
+            throw new InvalidOperationException(
+                "Unable to acquire the Sufficit Identity schema migration lock.");
+        }
+
+        try
+        {
+            await database.Database.MigrateAsync();
+        }
+        finally
+        {
+            await using var release = connection.CreateCommand();
+            release.CommandText =
+                "SELECT RELEASE_LOCK('sufficit_identity_schema_migrator');";
+            await release.ExecuteScalarAsync();
+        }
+    }
+    finally
+    {
+        await connection.CloseAsync();
+    }
+}
+
 // ---- Swagger (#5) ----
-// Development only: this previously published the whole API surface
-// (including management controllers, if enabled) unconditionally in every
-// environment.
+// Development only: keeping the API description out of production avoids
+// publishing the management surface and its security-sensitive schemas.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

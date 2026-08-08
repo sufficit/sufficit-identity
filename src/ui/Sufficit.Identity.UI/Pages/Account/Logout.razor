@@ -25,7 +25,7 @@
             @L["Logout.ConfirmTitle"]
             @if (_clientName is not null)
             {
-                <br /><span class="muted">@L["Logout.ClientRequested", _clientName]</span>
+                <span class="muted logout-client-requested">@L["Logout.ClientRequested", _clientName]</span>
             }
         </p>
         @* POST goes to /connect/endsession, whose runtime protocol handler

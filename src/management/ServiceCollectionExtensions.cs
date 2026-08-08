@@ -27,6 +27,7 @@ using Sufficit.Identity.Management.Provisioning;
 using Sufficit.Identity.Management.Scopes;
 using Sufficit.Identity.Management.Sessions;
 using Sufficit.Identity.Management.Users;
+using Sufficit.Identity.Management.Vault;
 
 namespace Sufficit.Identity.Management;
 
@@ -63,7 +64,8 @@ public static class ServiceCollectionExtensions
         services.AddOptions<ManagementOptions>()
             .Bind(configurationRoot);
         services.Replace(ServiceDescriptor.Singleton<IReservedScopePolicy>(
-            new ReservedScopePolicy(options.ReservedApiScopes)));
+            new ReservedScopePolicy(options.ReservedApiScopes
+                .Concat(RetiredIdentityScopes.Names))));
         services.TryAddSingleton<IClientScopeGrantPolicy,
             ClientScopeGrantPolicy>();
         services.TryAddSingleton<IClientDefinitionValidator,
@@ -86,12 +88,10 @@ public static class ServiceCollectionExtensions
             ScopeAndRoleManagementEntitlementResolver>();
         services.TryAddScoped<IManagementAccessPolicyProvider,
             ConfigurationManagementAccessPolicyProvider>();
-        // H3 (eval): object-level authorization boundary. Permissive default
-        // preserves the trust-everything posture; a deployment replaces it via
-        // services.Replace<IManagementObjectAccessPolicy, ...>() to enforce
-        // tenant/object scoping (mirrors how the host replaces the resolver).
+        services.TryAddScoped<IProtectedPrincipalAccessPolicy,
+            ConfigurationProtectedPrincipalAccessPolicy>();
         services.TryAddScoped<IManagementObjectAccessPolicy,
-            DefaultManagementObjectAccessPolicy>();
+            ConfigurationManagementObjectAccessPolicy>();
         services.TryAddScoped<IManagementAuthorizationEvaluator,
             CapabilityManagementAuthorizationEvaluator>();
         services.TryAddScoped<IManagementAuditService, ManagementAuditService>();
@@ -114,6 +114,8 @@ public static class ServiceCollectionExtensions
             DatabaseMonitoringService>();
         services.TryAddScoped<IMetricsManagementService,
             MetricsManagementService>();
+        services.TryAddScoped<IVaultSecretsManagementService,
+            VaultSecretsManagementService>();
         services.TryAddSingleton<IdentityMetricsRuntimeState>();
         services.TryAddSingleton<IBrandingThemeProvider,
             BrandingThemeProvider>();

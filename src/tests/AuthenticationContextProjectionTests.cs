@@ -2,6 +2,8 @@ using System.Net;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Core.Entities;
@@ -60,6 +62,86 @@ public sealed class AuthenticationContextProjectionTests
         Assert.Contains(principal.FindAll("amr"), claim => claim.Value == "mfa");
         Assert.Equal("urn:sufficit:acr:loa2", principal.FindFirst("acr")?.Value);
         Assert.True(long.TryParse(principal.FindFirst("auth_time")?.Value, out _));
+    }
+
+    [Fact]
+    public async Task Session_factory_refreshes_authentication_evidence_when_sid_already_exists()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await using var scope = factory.Services.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await users.FindByNameAsync(TestDataSeeder.DefaultUsername)
+            ?? throw new InvalidOperationException("Seed user not found.");
+        var databaseFactory = scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<Sufficit.Identity.Core.Data.AppDbContext>>();
+        await using (var database = await databaseFactory.CreateDbContextAsync())
+        {
+            database.OidcUserSessions.Add(new OidcUserSession
+            {
+                SessionId = "persisted-session",
+                Subject = user.Id,
+                CreatedAtUtc = DateTime.UtcNow,
+                LastActivityUtc = DateTime.UtcNow,
+            });
+            await database.SaveChangesAsync();
+        }
+        var httpContextAccessor = scope.ServiceProvider
+            .GetRequiredService<IHttpContextAccessor>();
+        httpContextAccessor.HttpContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [
+                    new Claim(ClaimTypes.NameIdentifier, user.Id),
+                    new Claim("sid", "persisted-session"),
+                ],
+                authenticationType: "Test")),
+        };
+
+        var evidence = scope.ServiceProvider.GetRequiredService<IAuthenticationContextAccessor>();
+        evidence.Set(new AuthenticationContextEvidence(
+            ["passkey", "hwk", "mfa"],
+            DateTimeOffset.UtcNow.AddSeconds(-30),
+            "urn:sufficit:acr:loa3"));
+        var claimsFactory = scope.ServiceProvider
+            .GetRequiredService<IUserClaimsPrincipalFactory<ApplicationUser>>();
+
+        var principal = await claimsFactory.CreateAsync(user);
+
+        Assert.Equal("persisted-session", principal.FindFirst("sid")?.Value);
+        Assert.Contains(principal.FindAll("amr"), claim => claim.Value == "passkey");
+        Assert.Equal("urn:sufficit:acr:loa3", principal.FindFirst("acr")?.Value);
+        Assert.Single(principal.FindAll("auth_time"));
+    }
+
+    [Fact]
+    public async Task Session_factory_does_not_reuse_sid_without_matching_persisted_row()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await using var scope = factory.Services.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await users.FindByNameAsync(TestDataSeeder.DefaultUsername)
+            ?? throw new InvalidOperationException("Seed user not found.");
+        scope.ServiceProvider.GetRequiredService<IHttpContextAccessor>().HttpContext =
+            new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [
+                        new Claim(ClaimTypes.NameIdentifier, user.Id),
+                        new Claim("sid", "stale-cookie-sid"),
+                    ],
+                    authenticationType: "Test")),
+            };
+
+        var principal = await scope.ServiceProvider
+            .GetRequiredService<IUserClaimsPrincipalFactory<ApplicationUser>>()
+            .CreateAsync(user);
+
+        Assert.NotEqual("stale-cookie-sid", principal.FindFirst("sid")?.Value);
+        Assert.False(string.IsNullOrWhiteSpace(principal.FindFirst("sid")?.Value));
     }
 
     [Fact]
