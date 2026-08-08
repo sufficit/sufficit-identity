@@ -107,7 +107,7 @@
                                     <td data-label="Usuário / aplicação">
                                         @if (HasHumanUser(session))
                                         {
-                                            <a class="client-name" href="@UserHref(session.UserId)">@UserLabel(session)</a>
+                                            <a class="client-name" href="@UserHref(session.UserId!)">@UserLabel(session)</a>
                                         }
                                         else if (session.ClientApplicationId is not null)
                                         {
