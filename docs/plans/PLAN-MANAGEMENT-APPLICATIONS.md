@@ -57,7 +57,6 @@ ser tratada na navegação/documentação do deployment.
 O contrato `IClientManagementService` agora oferece `List`, `Get`, `Create`,
 `Update` e `Delete`. Permanecem como próximas lacunas:
 
-- paginação/pesquisa no servidor;
 - habilitação/desabilitação operacional;
 - rotação ou remoção de client secret;
 - metadados seguros de credencial;
@@ -627,7 +626,6 @@ hierarquia, foco ou estado. A ação destrutiva permanece separada no fim.
 
 ### Fase 4 — operação e escala
 
-- [ ] pesquisa/paginação/filtros no banco;
 - [ ] estado de desabilitação com enforcement no authorize/token/PAR/device;
 - [ ] métricas por aplicação ligadas ao módulo já existente;
 - [ ] timeline de auditoria filtrada pelo client ID;
@@ -810,13 +808,8 @@ provisionamento foram concluídos e estão registrados em
 
 - [ ] Inventariar os manifests reais de produção e adotar clientes existentes
   individualmente antes de habilitar `Enforce`.
-- [ ] Derivar o catálogo de perfis das features efetivamente habilitadas no
-  runtime.
-
 ### Fase 3 — ciclo de vida operacional
 
-- [ ] Paginar e pesquisar aplicações no servidor, mantendo filtros reproduzíveis
-  pela URL.
 - [ ] Implementar clonagem segura sem copiar segredos, tokens, autorizações ou
   propriedades de manifesto.
 - [ ] Implementar habilitação/desabilitação somente quando houver enforcement

@@ -1,26 +1,30 @@
-# Próximo plano — catálogo de capacidades e lista operacional de aplicações
+# Próximo plano — operação e escala da lista de aplicações
 
 **Status:** pendente
 **Plano principal:** [`PLAN-MANAGEMENT-APPLICATIONS.md`](PLAN-MANAGEMENT-APPLICATIONS.md)
 **Criado:** 2026-08-08
 
-O catálogo de capacidades e a derivação de perfis foram concluídos e movidos
-para [`../activities/202608082230-completed-runtime-capability-catalog.md`](../activities/202608082230-completed-runtime-capability-catalog.md).
+O catálogo de capacidades, a derivação de perfis e a primeira entrega da lista
+operacional foram concluídos e movidos para:
+
+- [`../activities/202608082230-completed-runtime-capability-catalog.md`](../activities/202608082230-completed-runtime-capability-catalog.md)
+- [`../activities/202608082300-completed-client-catalog-pagination.md`](../activities/202608082300-completed-client-catalog-pagination.md)
+
 Este arquivo mantém somente o trabalho que ainda falta.
 
 ## Objetivo
 
-Preparar a lista de aplicações para operação real em produção, sem carregar
-todos os registros no circuito e sem perder filtros ao recarregar a página.
+Completar a operação da lista de aplicações e preparar a evolução do ciclo de
+vida sem inventar um estado de ativação que o runtime ainda não aplica.
 
 ## Entregas pendentes
 
-- [ ] Paginar, pesquisar e filtrar aplicações no serviço/API; manter `q`,
-  `type`, `grant`, `scope`, `origin`, `status`, `page` e `pageSize` na URL.
-- [ ] Transformar a lista em cards rotulados no mobile, preservando uma tabela
-  eficiente no desktop.
-- [ ] Cobrir catálogo vazio, feature desabilitada, capability negada, filtros
-  inválidos e deep links com testes de contrato, integração e UI.
+- [ ] Fazer inspeção visual em 320, 360, 390 e 430 px, incluindo teclado,
+  foco, filtros empilhados e paginação.
+- [ ] Cobrir estados vazios, deep links, filtros inválidos e capability negada
+  com testes de contrato, integração e UI.
+- [ ] Definir o modelo de estado operacional antes de expor filtros além de
+  `active`; a entidade OpenIddict atual não possui habilitação/desabilitação.
 
 ## Limites
 
@@ -31,6 +35,6 @@ todos os registros no circuito e sem perder filtros ao recarregar a página.
 
 ## Critério de conclusão
 
-O configurador mostra somente capacidades realmente habilitadas, a lista não
-carrega todos os registros no circuito e a mesma consulta reproduzida pela URL
-retorna o mesmo resultado em API e UI.
+O catálogo e a lista não carregam todos os registros no circuito, a mesma
+consulta reproduzida pela URL retorna o mesmo resultado em API e UI e nenhum
+estado operacional é exibido sem enforcement correspondente.
