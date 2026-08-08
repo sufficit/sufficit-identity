@@ -12,6 +12,11 @@ public sealed class IdentityProvisioningManifest
     public const int CurrentSchemaVersion = 1;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
+    /// <summary>
+    /// Stable identifier of the declarative source. When omitted, the
+    /// provisioner derives a client-scoped compatibility identity.
+    /// </summary>
+    public string? ManifestId { get; init; }
     public List<IdentityScopeManifest> Scopes { get; init; } = [];
     public List<IdentityClientManifest> Clients { get; init; } = [];
 }
@@ -43,6 +48,11 @@ public sealed class IdentityClientManifest
     // not one that never asks.
     public string ConsentType { get; init; } = ManifestConsentTypes.Explicit;
     public string? SecretReference { get; init; }
+    /// <summary>
+    /// Explicitly authorizes provisioning to adopt an existing client that is
+    /// unmanaged or owned by another manifest identity.
+    /// </summary>
+    public bool AdoptExisting { get; init; }
     public bool RequirePkce { get; init; }
     public List<string> GrantTypes { get; init; } = [];
     public List<string> ResponseTypes { get; init; } = [];

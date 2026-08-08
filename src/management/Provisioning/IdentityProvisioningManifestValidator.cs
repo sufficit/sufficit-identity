@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Management.Provisioning;
 
@@ -48,9 +49,16 @@ public static partial class IdentityProvisioningManifestValidator
         "roles",
     ];
 
-    public static IReadOnlyList<string> Validate(IdentityProvisioningManifest? manifest)
+    public static IReadOnlyList<string> Validate(
+        IdentityProvisioningManifest? manifest,
+        IReservedScopePolicy? reservedScopePolicy = null,
+        IClientDefinitionValidator? clientDefinitionValidator = null)
     {
         var errors = new List<string>();
+        reservedScopePolicy ??= new ReservedScopePolicy(
+            ["identity.management", "scim"]);
+        clientDefinitionValidator ??= new ClientDefinitionValidator(
+            reservedScopePolicy);
 
         if (manifest is null)
         {
@@ -63,6 +71,11 @@ public static partial class IdentityProvisioningManifestValidator
             errors.Add(
                 $"schemaVersion must be {IdentityProvisioningManifest.CurrentSchemaVersion}; " +
                 $"received {manifest.SchemaVersion}.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(manifest.ManifestId))
+        {
+            ValidateIdentifier(manifest.ManifestId, 200, "manifestId", errors);
         }
 
         if (manifest.Scopes is null)
@@ -147,6 +160,21 @@ public static partial class IdentityProvisioningManifestValidator
             var grants = new HashSet<string>(client.GrantTypes ?? [], StringComparer.Ordinal);
             var responseTypes = new HashSet<string>(
                 client.ResponseTypes ?? [], StringComparer.Ordinal);
+
+            var definitionValidation = clientDefinitionValidator.Validate(
+                new ClientDefinitionRequest(
+                    ClientDefinitionSource.Provisioning,
+                    client.ClientId,
+                    client.ClientType,
+                    client.GrantTypes ?? [],
+                    client.Scopes ?? [],
+                    client.RedirectUris ?? [],
+                    client.RequirePkce,
+                    client.ClientType == ManifestClientTypes.Confidential));
+            foreach (var issue in definitionValidation.Issues)
+            {
+                errors.Add($"{path}.{issue.Field}: {issue.Message}");
+            }
 
             foreach (var grant in grants.Where(grant => !AllowedGrantTypes.Contains(grant)))
             {
@@ -312,9 +340,15 @@ public static partial class IdentityProvisioningManifestValidator
         return errors;
     }
 
-    public static void ValidateAndThrow(IdentityProvisioningManifest? manifest)
+    public static void ValidateAndThrow(
+        IdentityProvisioningManifest? manifest,
+        IReservedScopePolicy? reservedScopePolicy = null,
+        IClientDefinitionValidator? clientDefinitionValidator = null)
     {
-        var errors = Validate(manifest);
+        var errors = Validate(
+            manifest,
+            reservedScopePolicy,
+            clientDefinitionValidator);
         if (errors.Count > 0)
         {
             throw new IdentityProvisioningManifestException(errors);

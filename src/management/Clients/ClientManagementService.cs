@@ -6,6 +6,7 @@ using OpenIddict.EntityFrameworkCore.Models;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management.Audit;
 #endif
+using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Clients;
@@ -87,7 +88,8 @@ internal sealed class ClientManagementService(
         applicationCache,
     AppDbContext database,
     IManagementAuthorizationEvaluator authorization,
-    Microsoft.Extensions.Options.IOptions<ManagementOptions> managementOptions,
+    IReservedScopePolicy reservedScopePolicy,
+    IClientDefinitionValidator clientDefinitionValidator,
     ILogger<ClientManagementService> logger) : IClientManagementService
 {
     public async Task<IReadOnlyList<ManagementClientSummary>> ListAsync(
@@ -293,30 +295,46 @@ internal sealed class ClientManagementService(
             AddDerivedProtocolPermissions(descriptor, grantTypes);
 
             var normalizedScopes = NormalizeScopes(command.Scopes);
+            var definitionValidation = clientDefinitionValidator.Validate(
+                new ClientDefinitionRequest(
+                    ClientDefinitionSource.Management,
+                    clientId,
+                    string.IsNullOrEmpty(command.ClientSecret)
+                        ? OpenIddictConstants.ClientTypes.Public
+                        : OpenIddictConstants.ClientTypes.Confidential,
+                    grantTypes,
+                    normalizedScopes,
+                    redirectUris,
+                    RequirePkce: string.IsNullOrEmpty(command.ClientSecret),
+                    HasClientSecret: !string.IsNullOrEmpty(command.ClientSecret)));
+            if (!definitionValidation.IsValid)
+            {
+                var issue = definitionValidation.Issues[0];
+                throw new ManagementValidationException(
+                    issue.Code,
+                    issue.Message,
+                    issue.Field);
+            }
+
             // H2/M3 fix (eval): reject API-protection scopes (management, SCIM,
             // custom privileged APIs) at the client-create boundary. Without
             // this, an operator with identity.clients.create could mint a
             // client_credentials client carrying identity.management and
             // defeat the transport policy. Reserved scopes are provisioned via
             // bootstrap, not the runtime CRUD path.
-            var reserved = managementOptions.Value.ReservedApiScopes;
-            if (reserved.Length > 0)
+            var requestedScopeNames = normalizedScopes
+                .Select(s => s.StartsWith(
+                    OpenIddictConstants.Permissions.Prefixes.Scope,
+                    StringComparison.Ordinal)
+                    ? s[OpenIddictConstants.Permissions.Prefixes.Scope.Length..]
+                    : s);
+            var forbidden = requestedScopeNames.FirstOrDefault(reservedScopePolicy.IsReserved);
+            if (forbidden is not null)
             {
-                var requestedScopeNames = normalizedScopes
-                    .Select(s => s.StartsWith(
-                        OpenIddictConstants.Permissions.Prefixes.Scope,
-                        StringComparison.Ordinal)
-                        ? s[OpenIddictConstants.Permissions.Prefixes.Scope.Length..]
-                        : s);
-                var forbidden = requestedScopeNames
-                    .FirstOrDefault(s => reserved.Contains(s, StringComparer.Ordinal));
-                if (forbidden is not null)
-                {
-                    throw new ManagementValidationException(
-                        "scope_reserved",
-                        $"O scope '{forbidden}' protege uma superfície administrativa e não pode ser atribuído a um cliente pela API de gerenciamento.",
-                        "scopes");
-                }
+                throw new ManagementValidationException(
+                    "scope_reserved",
+                    $"O scope '{forbidden}' protege uma superfície administrativa e não pode ser atribuído a um cliente pela API de gerenciamento.",
+                    "scopes");
             }
 
             foreach (var scope in normalizedScopes)
@@ -749,19 +767,38 @@ internal sealed class ClientManagementService(
             {
                 "authorization_code" =>
                     OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
+                OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode =>
+                    OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
                 "client_credentials" =>
                     OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
+                OpenIddictConstants.Permissions.GrantTypes.ClientCredentials =>
+                    OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
                 "refresh_token" =>
+                    OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
+                OpenIddictConstants.Permissions.GrantTypes.RefreshToken =>
                     OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
                 "device_code" =>
                     OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
                 OpenIddictConstants.GrantTypes.DeviceCode =>
                     OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
+                OpenIddictConstants.Permissions.GrantTypes.DeviceCode =>
+                    OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
+                OpenIddictConstants.GrantTypes.TokenExchange =>
+                    OpenIddictConstants.Permissions.GrantTypes.TokenExchange,
+                OpenIddictConstants.Permissions.GrantTypes.TokenExchange =>
+                    OpenIddictConstants.Permissions.GrantTypes.TokenExchange,
                 "password" =>
+                    OpenIddictConstants.Permissions.GrantTypes.Password,
+                OpenIddictConstants.Permissions.GrantTypes.Password =>
                     OpenIddictConstants.Permissions.GrantTypes.Password,
                 "implicit" =>
                     OpenIddictConstants.Permissions.GrantTypes.Implicit,
-                _ => value
+                OpenIddictConstants.Permissions.GrantTypes.Implicit =>
+                    OpenIddictConstants.Permissions.GrantTypes.Implicit,
+                _ => throw new ManagementValidationException(
+                    "unsupported_grant_type",
+                    $"Grant type '{value}' is not supported by the Management API.",
+                    "grantTypes")
             })
             .Distinct(StringComparer.Ordinal)
             .ToArray();

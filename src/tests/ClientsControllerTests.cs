@@ -210,6 +210,26 @@ public sealed class ClientsControllerTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Create_rejects_unknown_grant_type_before_persisting_client()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+
+        var request = ConfidentialClient(
+            $"cc-badgrant-{Guid.NewGuid():N}",
+            "https://client.tests.local/callback");
+        request.GrantTypes = ["urn:example:grant:made-up"];
+
+        using var response = await client.PostAsJsonAsync("/api/clients", request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(
+            "unsupported_grant_type",
+            await response.Content.ReadAsStringAsync(),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
     // ----------------------------------------------------------------------
     // Item 3.3 — Pushed Authorization Request (RFC 9126) requirement, opt-in
     // per client. Proves the requirement is persisted when requested and

@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using OpenIddict.Abstractions;
 using OpenIddict.Validation.AspNetCore;
 using Sufficit.Identity.Application.Branding;
+using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Core.Branding;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorizations;
@@ -61,6 +62,12 @@ public static class ServiceCollectionExtensions
 
         services.AddOptions<ManagementOptions>()
             .Bind(configurationRoot);
+        services.Replace(ServiceDescriptor.Singleton<IReservedScopePolicy>(
+            new ReservedScopePolicy(options.ReservedApiScopes)));
+        services.TryAddSingleton<IClientScopeGrantPolicy,
+            ClientScopeGrantPolicy>();
+        services.TryAddSingleton<IClientDefinitionValidator,
+            ClientDefinitionValidator>();
 
         // Register the controllers in this assembly.
         var routePrefix = NormalizeRoutePrefix(options.RoutePrefix);

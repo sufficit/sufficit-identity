@@ -83,6 +83,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(options.SharedSignals);
         services.AddSingleton(options.OutboundHttp);
         services.AddSingleton<IPublicOriginResolver, PublicOriginResolver>();
+        services.AddSingleton<IReservedScopePolicy>(
+            new ReservedScopePolicy(["identity.management", "scim"]));
+        services.AddSingleton<IClientScopeGrantPolicy,
+            ClientScopeGrantPolicy>();
+        services.AddSingleton<IClientDefinitionValidator,
+            ClientDefinitionValidator>();
         services.AddSingleton<IApplicationClaimDestinationPolicy>(provider =>
             new ApplicationClaimDestinationPolicy(
                 options.ClaimScopeMap,

@@ -25,7 +25,7 @@ The review evaluated an older source snapshot. The current tree already closes t
 |---|---|---|---|
 | Outbound HTTP destination control | **Resolved** | `SafeHttpHandlerFactory` validates scheme/DNS, blocks unsafe ranges, pins the validated address in `ConnectCallback`, disables redirects/proxy by default, and is registered for human verification, logout, SSF, and metrics clients | Regression-only |
 | SSF stream ownership | **Resolved** | `SsfStream.OwnerClientId`, owner-scoped store methods, caller resolution in SSF controllers, and cross-owner tests | Regression-only |
-| Provisioned client ownership and privileged permissions | **Open** | `OpenIddictManifestProvisioner` can reconcile an existing `client_id` without an ownership/adoption decision; provisioning and runtime management do not share one complete validator | P0.1 |
+| Provisioned client ownership and privileged permissions | **Partially implemented** | `IClientDefinitionValidator`, `IClientScopeGrantPolicy`, reserved-scope checks, provisioning ownership markers, and explicit audited `adoptExisting` reconciliation are wired into management, provisioning, and DCR; transition authorization, Observe behavior, and manifest inventory remain open | P0.1 |
 | Local redirect/canonical path validation | **Resolved** | `LowercasePathMiddleware` validates before routing and before writing `Location`; the public UI delegates return URLs to the same `LocalUrlValidator`, including encoded separator handling | Regression-only |
 | Signing-certificate prestart boundary | **Partial** | `prestart.sh` fails outside Development when configuration is absent, but the systemd unit ignores the prestart exit code and executes a release-owned helper with elevated privilege | P0.3 |
 | CIBA client policy | **Open** | initiation and polling do not share a policy that always requires the intended client authentication and grant entitlement | P0.4 |
@@ -64,13 +64,24 @@ The review evaluated an older source snapshot. The current tree already closes t
 
 - [ ] Extract an `IClientDefinitionValidator` that receives the actor, source (`management`, `provisioning`, or `dcr`), current descriptor, desired descriptor, and rollout mode
 - [ ] Replace raw string grant/endpoint/scope permissions with typed value objects and an exhaustive mapping; reject unknown values before an OpenIddict descriptor is built
-- [ ] Introduce `IReservedScopePolicy` and `IClientScopeGrantPolicy`; use both from provisioning, management CRUD, and DCR
-- [ ] Persist a provisioning ownership marker containing schema version and manifest identity; existing applications without that marker remain unmanaged
-- [ ] Require an explicit, audited `adopt` operation before provisioning may mutate an unmanaged existing `client_id`
+- [x] Introduce `IReservedScopePolicy` and use it from provisioning, management CRUD, and DCR
+- [x] Introduce the companion `IClientScopeGrantPolicy` and use it from provisioning, management CRUD, and DCR
+- [x] Persist a provisioning ownership marker containing schema version and manifest identity; existing applications without that marker remain unmanaged
+- [x] Require an explicit, audited `adopt` operation before provisioning may mutate an unmanaged existing `client_id`
 - [ ] Treat confidential-to-public conversion, secret removal, redirect replacement, and privileged-scope expansion as separately authorized transitions
 - [ ] Add `Observe | Enforce` rollout mode; in Observe, calculate and audit the future denial while preserving the existing request
 - [ ] Inventory current manifests and adopt existing managed clients explicitly before enabling enforcement
-- [ ] Add concurrency/idempotency tests plus negative tests for unmanaged IDs, unknown permissions, protected scopes, and confidential/public transitions
+- [x] Add concurrency/idempotency tests plus negative tests for unmanaged IDs, unknown permissions, protected scopes, and confidential/public transitions
+
+**Implementation checkpoint (2026-08-08):** The shared validator now governs the
+three client-definition entry points and rejects unknown grants, disallowed DCR
+permissions, reserved scopes, invalid redirect URIs, public
+`client_credentials`, and public authorization-code clients without PKCE.
+Provisioning stamps schema/owner/manifest identity properties and records
+explicit adoptions in the management audit stream. The remaining P0.1 work is
+deliberately kept open: actor/current-vs-desired transition authorization,
+functional `Observe` behavior, and inventory/adoption of existing production
+manifests before enforcement.
 
 **Done when:** all three client-definition entry points share one validator, reconciliation cannot silently claim an unmanaged client, and current clients have an explicit ownership state without interruption.
 
@@ -240,7 +251,7 @@ This is the same canonical object-policy migration tracked in `PLAN-GLM-5-2-REMA
 
 **Targets:** `RegistrationController`, `IClientDefinitionValidator`, secret generator/resolver, DCR tests.
 
-- [ ] Route DCR through the shared typed client validator from P0.1
+- [x] Route DCR through the shared typed client validator from P0.1
 - [ ] Generate high-entropy secrets server-side, store only the OpenIddict-protected representation, and return plaintext once
 - [ ] Retain caller-supplied secrets only behind a deprecated audited adapter during migration, with an entropy floor and deadline
 - [ ] Require PKCE S256 for every authorization-code client unless a separately reviewed profile explicitly proves an exception
