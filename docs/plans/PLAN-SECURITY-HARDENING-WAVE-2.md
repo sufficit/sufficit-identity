@@ -58,34 +58,23 @@ The review evaluated an older source snapshot. The current tree already closes t
 
 ## P0 — close direct authorization and deployment boundaries
 
-### P0.1 Unify client-definition validation and protect provisioned ownership
+### P0.1 Production manifest inventory and cohort adoption
 
-**Targets:** `OpenIddictManifestProvisioner`, `IdentityProvisioningManifestValidator`, `ClientManagementService`, `RegistrationController`, Application Abstractions.
+**Delivered implementation:** the shared client-definition validator,
+ownership markers, explicit adoption, sensitive-transition authorization,
+`Observe | Enforce` rollout, stable `manifestId` enforcement and read-only inventory are recorded in
+[`202608081900-completed-client-provisioning-lifecycle.md`](../activities/202608081900-completed-client-provisioning-lifecycle.md).
 
-- [ ] Extract an `IClientDefinitionValidator` that receives the actor, source (`management`, `provisioning`, or `dcr`), current descriptor, desired descriptor, and rollout mode
-- [ ] Replace raw string grant/endpoint/scope permissions with typed value objects and an exhaustive mapping; reject unknown values before an OpenIddict descriptor is built
-- [x] Introduce `IReservedScopePolicy` and use it from provisioning, management CRUD, and DCR
-- [x] Introduce the companion `IClientScopeGrantPolicy` and use it from provisioning, management CRUD, and DCR
-- [x] Persist a provisioning ownership marker containing schema version and manifest identity; existing applications without that marker remain unmanaged
-- [x] Require an explicit, audited `adopt` operation before provisioning may mutate an unmanaged existing `client_id`
-- [x] Treat confidential-to-public conversion, secret removal, redirect replacement, and privileged-scope expansion as separately authorized transitions
-- [x] Add `Observe | Enforce` rollout mode; in Observe, calculate and audit the future denial while preserving the existing request
-- [ ] Inventory current manifests and adopt existing managed clients explicitly before enabling enforcement
-- [x] Add concurrency/idempotency tests plus negative tests for unmanaged IDs, unknown permissions, protected scopes, and confidential/public transitions
+The remaining work is operational and must not mutate clients implicitly:
 
-**Implementation checkpoint (2026-08-08):** The shared validator now governs the
-three client-definition entry points and rejects unknown grants, disallowed DCR
-permissions, reserved scopes, invalid redirect URIs, public
-`client_credentials`, and public authorization-code clients without PKCE.
-Provisioning stamps schema/owner/manifest identity properties, records explicit
-adoptions in the management audit stream, authorizes sensitive transitions with
-an actor plus explicit approval, and records Observe-mode future denials without
-mutating clients. The remaining P0.1 work is deliberately kept open:
-inventory/adoption of existing production manifests before enforcement.
+- [ ] Obtain the versioned production manifest and record its owner and schema version
+- [ ] Run `POST /api/provisioning/manifest/inventory` and review every declared, drifted, unmanaged and undeclared client
+- [ ] Adopt existing clients individually with `adoptExisting=true`, an authenticated operator and an audit record
+- [ ] Enable `Enforce` by bounded client cohort, with an explicit rollback window
 
-**Done when:** all three client-definition entry points share one validator, reconciliation cannot silently claim an unmanaged client, and current clients have an explicit ownership state without interruption.
-
-This expands the canonical work already tracked in `PLAN-GLM-5-2-REMAINING.md` P0.2; close both checklist entries in the same implementation.
+**Done when:** every production client has an explicit ownership state, the
+manifest inventory is reconciled, and enforcement can be enabled without
+removing a grant, endpoint, client type or integration.
 
 ### P0.2 Centralize local redirect validation
 

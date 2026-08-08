@@ -77,6 +77,12 @@ public static partial class IdentityProvisioningManifestValidator
         {
             ValidateIdentifier(manifest.ManifestId, 200, "manifestId", errors);
         }
+        else if (manifest.RolloutMode is ClientDefinitionRolloutMode.Enforce)
+        {
+            errors.Add(
+                "manifestId is required when rolloutMode is Enforce so ownership " +
+                "and adoption decisions have a stable audit identity.");
+        }
 
         if (manifest.Scopes is null)
         {
