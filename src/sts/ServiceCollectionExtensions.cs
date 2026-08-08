@@ -31,6 +31,7 @@ using Sufficit.Identity.STS.Diagnostics;
 using Sufficit.Identity.STS.Email;
 using Sufficit.Identity.STS.Metrics;
 using Sufficit.Identity.Core.Metrics;
+using Sufficit.Identity.Management;
 using Sufficit.Identity.Vault;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -79,6 +80,9 @@ public static class ServiceCollectionExtensions
         ValidateAdvancedProtocolOptions(options);
         options.HumanVerification.Validate();
         services.AddSingleton(options);
+        services.Replace(ServiceDescriptor.Singleton<
+            IIdentityRuntimeCapabilityCatalog>(
+            new SufficitIdentityRuntimeCapabilityCatalog(options)));
         services.AddSingleton(options.HumanVerification);
         services.AddSingleton(options.TwoFactor);
         services.AddSingleton(options.Passkeys);

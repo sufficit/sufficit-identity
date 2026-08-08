@@ -70,6 +70,8 @@ public static class ServiceCollectionExtensions
             ClientScopeGrantPolicy>();
         services.TryAddSingleton<IClientDefinitionValidator,
             ClientDefinitionValidator>();
+        services.TryAddSingleton<IIdentityRuntimeCapabilityCatalog,
+            DisabledIdentityRuntimeCapabilityCatalog>();
 
         // Register the controllers in this assembly.
         var routePrefix = NormalizeRoutePrefix(options.RoutePrefix);
