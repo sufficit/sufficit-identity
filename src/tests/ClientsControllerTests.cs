@@ -71,6 +71,26 @@ public sealed class ClientsControllerTests
             StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task List_returns_an_empty_page_for_a_reproducible_filter_deep_link()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+
+        using var response = await client.GetAsync(
+            "/api/clients?q=does-not-exist&type=confidential&grant=device_code"
+            + "&origin=manifest&status=active&page=3&pageSize=10");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var page = await response.Content.ReadFromJsonAsync<ManagementClientPage>();
+        Assert.NotNull(page);
+        Assert.Equal(0, page.TotalCount);
+        Assert.Empty(page.Items);
+        Assert.Equal(3, page.Page);
+        Assert.Equal(10, page.PageSize);
+    }
+
     private static CreateClientRequest ConfidentialClient(string clientId, params string[] redirectUris) => new()
     {
         ClientId = clientId,
