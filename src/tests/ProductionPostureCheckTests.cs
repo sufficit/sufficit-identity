@@ -6,7 +6,7 @@ using Xunit;
 // Disambiguate: ManagementOptions exists in both Sufficit.Identity.STS and
 // Sufficit.Identity.Management. The posture check inspects the management-layer
 // one (with the Authorization policy modes).
-using ManagementOptions = Sufficit.Identity.Management.ManagementOptions;
+using ManagementOptions = global::Sufficit.Identity.Management.ManagementOptions;
 
 namespace Sufficit.Identity.Tests;
 

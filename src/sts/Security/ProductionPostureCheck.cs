@@ -2,11 +2,6 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Management.Authorization;
-// ManagementOptions exists in both Sufficit.Identity.STS and
-// Sufficit.Identity.Management; alias the management-layer one (which carries
-// the Authorization policy modes this check inspects) to avoid ambiguity with
-// the STS-layer type in this same namespace.
-using ManagementOptions = Sufficit.Identity.Management.ManagementOptions;
 
 namespace Sufficit.Identity.STS.Security;
 
@@ -62,7 +57,7 @@ public static class ProductionPostureCheck
     /// </param>
     public static IReadOnlyList<ProductionPostureFinding> Evaluate(
         SufficitIdentityOptions options,
-        ManagementOptions? management,
+        global::Sufficit.Identity.Management.ManagementOptions? management,
         bool distributedCacheIsMemoryFallback)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -180,7 +175,7 @@ public static class ProductionPostureCheck
         ArgumentNullException.ThrowIfNull(logger);
 
         bool memoryFallback;
-        ManagementOptions? management;
+        global::Sufficit.Identity.Management.ManagementOptions? management;
         using (var scope = services.CreateScope())
         {
             var cache = scope.ServiceProvider.GetService<IDistributedCache>();
@@ -190,7 +185,7 @@ public static class ProductionPostureCheck
             // enabled; absent means "management disabled", so its policies do
             // not apply.
             management = scope.ServiceProvider
-                .GetService<Microsoft.Extensions.Options.IOptions<ManagementOptions>>()
+                .GetService<Microsoft.Extensions.Options.IOptions<global::Sufficit.Identity.Management.ManagementOptions>>()
                 ?.Value;
         }
 
