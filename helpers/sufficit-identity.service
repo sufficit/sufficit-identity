@@ -6,13 +6,30 @@ StartLimitIntervalSec=300
 StartLimitBurst=10
 
 [Service]
-ExecStartPre=+-/bin/bash /opt/sufficit-identity/helpers/prestart.sh
+ExecStartPre=/usr/libexec/sufficit-identity/prestart.sh
 ExecStart=/usr/share/dotnet/dotnet Sufficit.Identity.Server.dll
 WorkingDirectory=/opt/sufficit-identity/
 User=dotnetuser
 Group=www-data
 PrivateTmp=true
-UMask=0006
+PrivateDevices=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0027
 
 SyslogIdentifier=[sufficit][identity]
 StandardOutput=journal
@@ -32,6 +49,7 @@ EnvironmentFile=-/etc/sufficit/identity/hardening.env
 
 RuntimeDirectory=sufficit-identity
 RuntimeDirectoryMode=0775
+ReadWritePaths=/run/sufficit-identity
 
 [Install]
 WantedBy=multi-user.target

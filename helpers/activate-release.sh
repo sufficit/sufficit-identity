@@ -65,6 +65,7 @@ for required in \
     Sufficit.Identity.Server.dll \
     appsettings.Production.json \
     appsettings.eveo-apps.json \
+    helpers/bootstrap-release.sh \
     helpers/prestart.sh
 do
     if [[ ! -f "${candidate_release}/${required}" ]]; then
@@ -72,6 +73,10 @@ do
         exit 1
     fi
 done
+
+# Prepare certificate state and immutable ownership before the symlink switch.
+# This calls the root-owned installed helper, never code from the candidate.
+/usr/libexec/${app_name}/bootstrap-release.sh "${candidate_release}"
 
 next_link="${app_link}.next.$$"
 cleanup() {
