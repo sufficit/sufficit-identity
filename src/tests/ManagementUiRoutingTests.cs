@@ -213,6 +213,9 @@ public sealed class ManagementUiRoutingTests
         using var detail = await client.GetAsync(
             "/management/clients/test-id");
         var detailHtml = await detail.Content.ReadAsStringAsync();
+        using var edit = await client.GetAsync(
+            "/management/clients/test-id/edit");
+        var editHtml = await edit.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, create.StatusCode);
         Assert.Contains("Nova aplicação", createHtml, StringComparison.Ordinal);
@@ -226,6 +229,9 @@ public sealed class ManagementUiRoutingTests
             "https://client.tests.local/callback",
             detailHtml,
             StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
+        Assert.Contains("Editar aplicação", editHtml, StringComparison.Ordinal);
+        Assert.Contains("Segredo preservado", editHtml, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -742,6 +748,12 @@ public sealed class ManagementUiRoutingTests
 
         public Task<ManagementClientDetail> CreateAsync(
             CreateManagementClientCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<ManagementClientDetail> UpdateAsync(
+            UpdateManagementClientCommand command,
             ManagementRequestContext context,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();

@@ -14,6 +14,13 @@
         </a>
         @if (result?.Value is { } selectedClient)
         {
+            @if (!selectedClient.IsManifestManaged)
+            {
+                <a class="button button--primary" href="@EditHref(selectedClient.Id)">
+                    <AppIcon Name="edit" Size="17" />
+                    Editar
+                </a>
+            }
             <AuthorizeView Policy="@ManagementUiPolicies.ManageSessions">
                 <Authorized>
                     <a class="button button--secondary"
@@ -35,6 +42,14 @@
         }
     </Actions>
 </PageHeader>
+
+@if (Updated)
+{
+    <div class="inline-notice inline-notice--success" role="status">
+        <AppIcon Name="check" Size="19" />
+        <div><strong>Alterações salvas</strong><span>A aplicação foi atualizada e a nova versão está ativa.</span></div>
+    </div>
+}
 
 @if (Created)
 {
@@ -79,6 +94,14 @@ else if (result?.IsSuccess is true && result.Value is not null)
                 <code class="detail-value detail-value--code">@client.Id</code>
             </div>
         </div>
+
+        @if (client.IsManifestManaged)
+        {
+            <div class="inline-notice inline-notice--warning" role="status">
+                <AppIcon Name="lock" Size="19" />
+                <div><strong>Gerenciada por manifesto</strong><span>Altere a definição declarativa para evitar que o próximo provisionamento sobrescreva este registro.</span></div>
+            </div>
+        }
 
         <div class="detail-columns">
             <section aria-labelledby="redirect-heading">
@@ -265,6 +288,9 @@ else
     [SupplyParameterFromQuery(Name = "created")]
     public int CreatedFlag { get; set; }
 
+    [SupplyParameterFromQuery(Name = "updated")]
+    public int UpdatedFlag { get; set; }
+
     private ManagementDataResult<ManagementClientDetail>? result;
     private ManagementDataResult<bool>? deleteResult;
     private bool loading = true;
@@ -273,6 +299,7 @@ else
     private string deleteConfirmation = string.Empty;
 
     private bool Created => CreatedFlag is 1;
+    private bool Updated => UpdatedFlag is 1;
 
     private string HeaderTitle =>
         result?.Value?.DisplayName
@@ -287,6 +314,9 @@ else
 
     private static string AuthorizationsHref(string clientId) =>
         $"authorizations?client={Uri.EscapeDataString(clientId)}";
+
+    private static string EditHref(string id) =>
+        $"clients/{Uri.EscapeDataString(id)}/edit";
 
     private bool CanDelete =>
         !deleting

@@ -11,6 +11,7 @@ public static class ManagementCapabilities
 {
     public const string ClientsRead = "identity.clients.read";
     public const string ClientsCreate = "identity.clients.create";
+    public const string ClientsUpdate = "identity.clients.update";
     public const string ClientsDelete = "identity.clients.delete";
     public const string BrandingRead = "identity.branding.read";
     public const string BrandingManage = "identity.branding.manage";
@@ -47,6 +48,7 @@ public static class ManagementCapabilities
             [
                 ClientsRead,
                 ClientsCreate,
+                ClientsUpdate,
                 ClientsDelete,
                 BrandingRead,
                 BrandingManage,
