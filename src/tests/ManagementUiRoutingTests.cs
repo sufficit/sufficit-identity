@@ -140,7 +140,7 @@ public sealed class ManagementUiRoutingTests
         var html = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("Clientes registrados", html, StringComparison.Ordinal);
+        Assert.Contains("Aplicações registradas", html, StringComparison.Ordinal);
         Assert.Contains("test-client", html, StringComparison.Ordinal);
         Assert.Contains(
             "src=\"/_content/Sufficit.Identity.UI.Management/_framework/blazor.web.js\"",
@@ -215,14 +215,35 @@ public sealed class ManagementUiRoutingTests
         var detailHtml = await detail.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, create.StatusCode);
-        Assert.Contains("Novo cliente", createHtml, StringComparison.Ordinal);
-        Assert.Contains("Authorization Code", createHtml, StringComparison.Ordinal);
+        Assert.Contains("Nova aplicação", createHtml, StringComparison.Ordinal);
+        Assert.Contains(
+            "Como esta aplicação será usada?",
+            createHtml,
+            StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
         Assert.Contains("test-client", detailHtml, StringComparison.Ordinal);
         Assert.Contains(
             "https://client.tests.local/callback",
             detailHtml,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Administrator_can_resume_client_draft_at_a_stable_step_url()
+    {
+        await using var app = await CreateHostAsync();
+        using var client = app.GetTestClient();
+        await SignInAsync(client, "administrator");
+
+        using var response = await client.GetAsync(
+            $"/management/clients/drafts/{StubClientConfigurationDraftService.DraftId:D}/permissions");
+        var html = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Menor privilégio", html, StringComparison.Ordinal);
+        Assert.Contains("Pesquisar por nome ou finalidade", html, StringComparison.Ordinal);
+        Assert.Contains("test.scope", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("client secret", html, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -600,6 +621,8 @@ public sealed class ManagementUiRoutingTests
             });
         builder.Services.AddAuthorization();
         builder.Services.AddSingleton<IClientManagementService, StubClientManagementService>();
+        builder.Services.AddSingleton<IClientConfigurationDraftService,
+            StubClientConfigurationDraftService>();
         builder.Services.AddSingleton<IClaimManagementService, StubClaimManagementService>();
         builder.Services.AddSingleton<IScopeManagementService, StubScopeManagementService>();
         builder.Services.AddSingleton<ISessionManagementService, StubSessionManagementService>();
@@ -725,6 +748,88 @@ public sealed class ManagementUiRoutingTests
 
         public Task DeleteAsync(
             string clientId,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class StubClientConfigurationDraftService
+        : IClientConfigurationDraftService
+    {
+        internal static readonly Guid DraftId = Guid.Parse(
+            "96774ce4-a56d-4c50-8668-d25f046b30fc");
+
+        private static ManagementClientDraftDetail Draft => new(
+            DraftId,
+            ManagementClientProfiles.Spa,
+            ManagementClientDraftSteps.Permissions,
+            new ManagementClientDraftValues
+            {
+                ClientId = "test-spa",
+                DisplayName = "Test SPA",
+                ClientType = "public",
+                AuthorizationCode = true,
+                Scopes = ["openid", "test.scope"],
+                RedirectUris = ["https://spa.tests.local/callback"],
+            },
+            new ClientDraftValidation(true, []),
+            "test-version",
+            DateTimeOffset.UtcNow,
+            DateTimeOffset.UtcNow.AddDays(14));
+
+        public Task<IReadOnlyList<ManagementClientProfile>> GetProfilesAsync(
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ManagementClientProfile>>(
+            [
+                new(ManagementClientProfiles.Spa, "SPA pública",
+                    "Aplicação no navegador.", "code",
+                    "Authorization Code + PKCE.", true, false),
+            ]);
+
+        public Task<IReadOnlyList<ManagementClientAvailableScope>> GetAvailableScopesAsync(
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ManagementClientAvailableScope>>(
+            [
+                new("openid", "Identidade OpenID", "Identifica o usuário.", [], true),
+                new("test.scope", "Acesso de teste", "Permissão da API de teste.", ["test-api"], false),
+            ]);
+
+        public Task<IReadOnlyList<ManagementClientDraftSummary>> ListAsync(
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ManagementClientDraftSummary>>(
+            [
+                new(DraftId, ManagementClientProfiles.Spa, "SPA pública",
+                    ManagementClientDraftSteps.Permissions, "test-spa", "Test SPA",
+                    true, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(14)),
+            ]);
+
+        public Task<ManagementClientDraftDetail> CreateAsync(
+            string profile,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) => Task.FromResult(Draft);
+
+        public Task<ManagementClientDraftDetail> GetAsync(
+            Guid id,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) => Task.FromResult(Draft);
+
+        public Task<ManagementClientDraftDetail> SaveAsync(
+            SaveManagementClientDraftCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) => Task.FromResult(Draft);
+
+        public Task<CompleteManagementClientDraftResult> CompleteAsync(
+            Guid id,
+            string version,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task AbandonAsync(
+            Guid id,
             ManagementRequestContext context,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();

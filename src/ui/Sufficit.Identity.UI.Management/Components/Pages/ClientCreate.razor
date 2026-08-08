@@ -3,306 +3,132 @@
 @inject ManagementClientDataSource ClientData
 @inject NavigationManager Navigation
 
-<PageTitle>Novo cliente OAuth | Sufficit Identity</PageTitle>
+<PageTitle>Nova aplicação | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Novo cliente"
-            Description="Registre uma aplicação OAuth ou OIDC com padrões seguros e auditoria automática.">
+<PageHeader Title="Nova aplicação"
+            Description="Escolha o cenário de uso. O Identity prepara uma configuração segura e explica cada decisão.">
     <Actions>
         <a class="button button--secondary" href="clients">
             <AppIcon Name="arrow-left" Size="17" />
-            Voltar para clientes
+            Voltar para aplicações
         </a>
     </Actions>
 </PageHeader>
 
-<section class="contract-strip contract-strip--success">
-    <AppIcon Name="shield" Size="20" />
+<section class="setup-intro" aria-labelledby="profile-heading">
     <div>
-        <strong>Validação centralizada</strong>
-        <span>HTTPS, consentimento, PKCE e PAR são aplicados pelo mesmo caso de uso consumido pela API.</span>
+        <h2 id="profile-heading">Como esta aplicação será usada?</h2>
+        <p>Você poderá revisar e ajustar tudo antes de criar. Nenhuma aplicação incompleta será registrada.</p>
     </div>
-    <StatusBadge Tone="success">Auditável</StatusBadge>
+    <div class="setup-intro__assurance">
+        <AppIcon Name="shield" Size="20" />
+        <span>Defaults seguros, validação progressiva e rascunho retomável</span>
+    </div>
 </section>
 
-@if (submission?.IsSuccess is false)
+@if (!string.IsNullOrWhiteSpace(errorMessage))
 {
     <section class="inline-notice inline-notice--danger" role="alert">
         <AppIcon Name="alert" Size="19" />
         <div>
-            <strong>Não foi possível criar o cliente</strong>
-            <span>@submission.ErrorMessage Revise os campos e tente novamente.</span>
+            <strong>Não foi possível iniciar a configuração</strong>
+            <span>@errorMessage</span>
         </div>
     </section>
 }
 
-<EditForm Model="model"
-          OnValidSubmit="CreateAsync"
-          FormName="create-oauth-client"
-          class="management-form">
-    <DataAnnotationsValidator />
-
-    <section class="form-section" aria-labelledby="client-identity-heading">
-        <div class="form-section__heading">
-            <h2 id="client-identity-heading">Identificação</h2>
-            <p>Use um identificador estável; integrações dependerão dele durante todo o ciclo de vida.</p>
-        </div>
-
-        <div class="form-grid form-grid--two">
-            <div class="field-group">
-                <label for="client-id">Client ID</label>
-                <InputText id="client-id"
-                           class="form-control"
-                           @bind-Value="model.ClientId"
-                           autocomplete="off" />
-                <ValidationMessage For="() => model.ClientId" />
-                <span class="field-hint">Até 100 caracteres. Não poderá ser alterado nesta entrega.</span>
-            </div>
-
-            <div class="field-group">
-                <label for="display-name">Nome de exibição</label>
-                <InputText id="display-name"
-                           class="form-control"
-                           @bind-Value="model.DisplayName"
-                           autocomplete="off" />
-                <span class="field-hint">Nome legível exibido aos operadores e usuários.</span>
-            </div>
-        </div>
-
-        <div class="field-group">
-            <label for="client-secret">Client secret <span class="label-optional">opcional</span></label>
-            <InputText id="client-secret"
-                       class="form-control"
-                       type="password"
-                       @bind-Value="model.ClientSecret"
-                       autocomplete="new-password" />
-            <span class="field-hint">
-                Deixe vazio para cliente público. O segredo não será exibido novamente nem gravado na auditoria.
-            </span>
-        </div>
+@if (loading)
+{
+    <section class="profile-grid" aria-label="Carregando perfis de aplicação" aria-busy="true">
+        @for (var index = 0; index < 4; index++)
+        {
+            <div class="profile-card profile-card--loading"></div>
+        }
     </section>
-
-    <section class="form-section" aria-labelledby="client-flow-heading">
-        <div class="form-section__heading">
-            <h2 id="client-flow-heading">Fluxos e consentimento</h2>
-            <p>Selecione apenas os fluxos necessários para reduzir a superfície de autorização.</p>
-        </div>
-
-        <fieldset class="choice-fieldset">
-            <legend>Tipos de concessão</legend>
-            <div class="choice-grid">
-                <label class="choice-control">
-                    <InputCheckbox @bind-Value="model.AuthorizationCode" />
-                    <span>
-                        <strong>Authorization Code</strong>
-                        <small>Login interativo; PKCE será obrigatório para clientes públicos.</small>
-                    </span>
-                </label>
-                <label class="choice-control">
-                    <InputCheckbox @bind-Value="model.RefreshToken" />
-                    <span>
-                        <strong>Refresh Token</strong>
-                        <small>Renovação de sessão sem repetir o login do usuário.</small>
-                    </span>
-                </label>
-                <label class="choice-control">
-                    <InputCheckbox @bind-Value="model.ClientCredentials" />
-                    <span>
-                        <strong>Client Credentials</strong>
-                        <small>Comunicação entre serviços; requer um client secret.</small>
-                    </span>
-                </label>
-            </div>
-        </fieldset>
-
-        <div class="form-grid form-grid--two">
-            <div class="field-group">
-                <label for="consent-type">Consentimento</label>
-                <InputSelect id="consent-type"
-                             class="form-control"
-                             @bind-Value="model.ConsentType">
-                    <option value="explicit">Explícito — padrão seguro</option>
-                    <option value="implicit">Implícito — somente primeira parte</option>
-                    <option value="external">Externo</option>
-                    <option value="systematic">Sistemático</option>
-                </InputSelect>
-            </div>
-
-            <label class="switch-control">
-                <InputCheckbox @bind-Value="model.RequirePar" />
-                <span>
-                    <strong>Exigir PAR</strong>
-                    <small>Solicitações de autorização devem passar por Pushed Authorization Requests.</small>
+}
+else if (profiles.Count is 0)
+{
+    <EmptyState Icon="alert"
+                Title="Nenhum perfil disponível"
+                Description="O runtime não informou uma configuração de aplicação disponível.">
+        <Actions>
+            <button class="button button--secondary" type="button" @onclick="LoadAsync">Tentar novamente</button>
+        </Actions>
+    </EmptyState>
+}
+else
+{
+    <section class="profile-grid" aria-label="Perfis de aplicação">
+        @foreach (var profile in profiles)
+        {
+            <button class="profile-card"
+                    type="button"
+                    disabled="@(creatingProfile is not null)"
+                    aria-busy="@(creatingProfile == profile.Id)"
+                    @onclick="() => CreateDraftAsync(profile.Id)">
+                <span class="profile-card__icon"><AppIcon Name="@profile.Icon" Size="23" /></span>
+                <span class="profile-card__body">
+                    <strong>@profile.DisplayName</strong>
+                    <span>@profile.Description</span>
+                    <small>@profile.Outcome</small>
                 </span>
-            </label>
-        </div>
+                <span class="profile-card__action">
+                    @if (creatingProfile == profile.Id)
+                    {
+                        <span class="button-spinner" aria-hidden="true"></span>
+                        <span class="visually-hidden">Criando rascunho</span>
+                    }
+                    else
+                    {
+                        <AppIcon Name="arrow-right" Size="18" />
+                    }
+                </span>
+            </button>
+        }
     </section>
+}
 
-    <section class="form-section" aria-labelledby="client-endpoints-heading">
-        <div class="form-section__heading">
-            <h2 id="client-endpoints-heading">Endpoints e escopos</h2>
-            <p>Informe uma URI por linha. HTTP é aceito apenas para loopback local.</p>
-        </div>
-
-        <div class="field-group">
-            <label for="redirect-uris">Redirect URIs</label>
-            <InputTextArea id="redirect-uris"
-                           class="form-control form-control--textarea"
-                           @bind-Value="model.RedirectUris" />
-            <span class="field-hint">Exemplo: https://app.exemplo.com/signin-oidc</span>
-        </div>
-
-        <div class="field-group">
-            <label for="post-logout-redirect-uris">Post-logout redirect URIs</label>
-            <InputTextArea id="post-logout-redirect-uris"
-                           class="form-control form-control--textarea"
-                           @bind-Value="model.PostLogoutRedirectUris" />
-            <span class="field-hint">Destinos permitidos após o encerramento iniciado pela aplicação.</span>
-        </div>
-
-        <div class="form-grid form-grid--two">
-            <div class="field-group">
-                <label for="frontchannel-logout-uri">Front-channel logout URI <span class="label-optional">opcional</span></label>
-                <InputText id="frontchannel-logout-uri"
-                           class="form-control"
-                           @bind-Value="model.FrontchannelLogoutUri"
-                           autocomplete="off" />
-                <span class="field-hint">Deve ter a mesma origem de uma Redirect URI; será carregada em iframe.</span>
-            </div>
-
-            <div class="field-group">
-                <label for="backchannel-logout-uri">Back-channel logout URI <span class="label-optional">opcional</span></label>
-                <InputText id="backchannel-logout-uri"
-                           class="form-control"
-                           @bind-Value="model.BackchannelLogoutUri"
-                           autocomplete="off" />
-                <span class="field-hint">Recebe um logout_token assinado diretamente do serviço.</span>
-            </div>
-        </div>
-
-        <div class="field-group">
-            <label for="scopes">Escopos</label>
-            <InputText id="scopes"
-                       class="form-control"
-                       @bind-Value="model.Scopes"
-                       autocomplete="off" />
-            <span class="field-hint">Separe por espaço ou vírgula, por exemplo: openid profile email.</span>
-        </div>
-    </section>
-
-    <footer class="form-actions">
-        <a class="button button--secondary" href="clients">Cancelar</a>
-        <button class="button button--primary"
-                type="submit"
-                disabled="@submitting">
-            @if (submitting)
-            {
-                <span class="button-spinner" aria-hidden="true"></span>
-                <span>Criando cliente…</span>
-            }
-            else
-            {
-                <AppIcon Name="plus" Size="17" />
-                <span>Criar cliente</span>
-            }
-        </button>
-    </footer>
-</EditForm>
+<section class="setup-footnote">
+    <AppIcon Name="lock" Size="18" />
+    <p>Credenciais nunca entram na URL ou no rascunho. Quando necessárias, são geradas somente na conclusão e exibidas uma única vez.</p>
+</section>
 
 @code {
-    private readonly ClientCreateModel model = new();
-    private ManagementDataResult<ManagementClientDetail>? submission;
-    private bool submitting;
+    private IReadOnlyList<ManagementClientProfile> profiles = [];
+    private bool loading = true;
+    private string? creatingProfile;
+    private string? errorMessage;
 
-    private async Task CreateAsync()
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
     {
-        if (submitting)
+        loading = true;
+        errorMessage = null;
+        var result = await ClientData.GetClientProfilesAsync();
+        profiles = result.Value ?? [];
+        errorMessage = result.IsSuccess ? null : result.ErrorMessage;
+        loading = false;
+    }
+
+    private async Task CreateDraftAsync(string profile)
+    {
+        if (creatingProfile is not null)
         {
             return;
         }
 
-        submitting = true;
-        submission = await ClientData.CreateClientAsync(
-            new CreateManagementClientCommand(
-                model.ClientId,
-                model.ClientSecret,
-                model.DisplayName,
-                model.ConsentType,
-                model.RequirePar,
-                GrantTypes(),
-                SplitValues(model.Scopes),
-                SplitLines(model.RedirectUris),
-                SplitLines(model.PostLogoutRedirectUris),
-                FrontchannelLogoutUri: model.FrontchannelLogoutUri,
-                FrontchannelLogoutSessionRequired: false,
-                BackchannelLogoutUri: model.BackchannelLogoutUri,
-                BackchannelLogoutSessionRequired: false));
-        submitting = false;
-
-        if (submission.IsSuccess && submission.Value is not null)
+        creatingProfile = profile;
+        errorMessage = null;
+        var result = await ClientData.CreateClientDraftAsync(profile);
+        creatingProfile = null;
+        if (result.IsSuccess && result.Value is not null)
         {
             Navigation.NavigateTo(
-                $"clients/{Uri.EscapeDataString(submission.Value.Id)}?created=1");
+                $"clients/drafts/{result.Value.Id:D}/{ManagementClientDraftSteps.Identity}");
+            return;
         }
-    }
 
-    private IReadOnlyList<string> GrantTypes()
-    {
-        var values = new List<string>();
-        if (model.AuthorizationCode)
-        {
-            values.Add("authorization_code");
-        }
-        if (model.RefreshToken)
-        {
-            values.Add("refresh_token");
-        }
-        if (model.ClientCredentials)
-        {
-            values.Add("client_credentials");
-        }
-        return values;
-    }
-
-    private static IReadOnlyList<string> SplitValues(string? value) =>
-        (value ?? string.Empty)
-            .Split(
-                [' ', ',', '\r', '\n', '\t'],
-                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-    private static IReadOnlyList<string> SplitLines(string? value) =>
-        (value ?? string.Empty)
-            .Split(
-                ['\r', '\n'],
-                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-    private sealed class ClientCreateModel
-    {
-        [Required(ErrorMessage = "Informe o Client ID.")]
-        [StringLength(100, ErrorMessage = "Use no máximo 100 caracteres.")]
-        public string ClientId { get; set; } = string.Empty;
-
-        public string? DisplayName { get; set; }
-
-        public string? ClientSecret { get; set; }
-
-        public string ConsentType { get; set; } = "explicit";
-
-        public bool AuthorizationCode { get; set; } = true;
-
-        public bool RefreshToken { get; set; } = true;
-
-        public bool ClientCredentials { get; set; }
-
-        public bool RequirePar { get; set; }
-
-        public string RedirectUris { get; set; } = string.Empty;
-
-        public string PostLogoutRedirectUris { get; set; } = string.Empty;
-
-        public string? FrontchannelLogoutUri { get; set; }
-
-        public string? BackchannelLogoutUri { get; set; }
-
-        public string Scopes { get; set; } = "openid profile";
+        errorMessage = result.ErrorMessage ?? "O serviço não conseguiu criar o rascunho.";
     }
 }

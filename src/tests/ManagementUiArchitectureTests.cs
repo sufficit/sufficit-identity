@@ -1165,6 +1165,62 @@ public sealed class ManagementUiArchitectureTests
         Assert.DoesNotContain("a cada 2 segundos", page, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Client_configurator_is_resumable_protected_and_uses_shared_cases_of_use()
+    {
+        var repository = ResolveIdentityRepository();
+        var managementUi = ResolveManagementUiSource();
+        var wizard = File.ReadAllText(Path.Combine(
+            managementUi,
+            "Components",
+            "Pages",
+            "ClientDraft.razor"));
+        var list = File.ReadAllText(Path.Combine(
+            managementUi,
+            "Components",
+            "Pages",
+            "Clients.razor"));
+        var dataSource = File.ReadAllText(Path.Combine(
+            managementUi,
+            "Clients",
+            "ManagementClientDataSource.cs"));
+        var controller = File.ReadAllText(Path.Combine(
+            repository,
+            "src",
+            "management",
+            "Controllers",
+            "ClientDraftsController.cs"));
+
+        Assert.Contains("/clients/drafts/{Id:guid}/{Step}", wizard, StringComparison.Ordinal);
+        Assert.Contains("Task.Delay(650", wizard, StringComparison.Ordinal);
+        Assert.Contains("SaveClientDraftAsync", wizard, StringComparison.Ordinal);
+        Assert.Contains("CompleteClientDraftAsync", wizard, StringComparison.Ordinal);
+        Assert.Contains("OneTimeSecret", wizard, StringComparison.Ordinal);
+        Assert.DoesNotContain("OneTimeSecret)}", wizard, StringComparison.Ordinal);
+        Assert.Contains("SupplyParameterFromQuery(Name = \"q\")", list, StringComparison.Ordinal);
+        Assert.Contains("SupplyParameterFromQuery(Name = \"type\")", list, StringComparison.Ordinal);
+        Assert.Contains("GetClientDraftsAsync", list, StringComparison.Ordinal);
+        Assert.Contains("IClientConfigurationDraftService", dataSource, StringComparison.Ordinal);
+        Assert.Contains("IClientConfigurationDraftService", controller, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Client_configurator_styles_are_mobile_first_and_touch_friendly()
+    {
+        var stylesheet = File.ReadAllText(Path.Combine(
+            ResolveManagementUiSource(),
+            "wwwroot",
+            "app.css"));
+
+        Assert.Contains(".wizard-shell", stylesheet, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: minmax(0, 1fr);", stylesheet, StringComparison.Ordinal);
+        Assert.Contains("@media (min-width: 768px)", stylesheet, StringComparison.Ordinal);
+        Assert.Contains("@media (min-width: 1100px)", stylesheet, StringComparison.Ordinal);
+        Assert.Contains("min-height: 44px", stylesheet, StringComparison.Ordinal);
+        Assert.Contains("env(safe-area-inset-bottom)", stylesheet, StringComparison.Ordinal);
+        Assert.Contains("prefers-reduced-motion", stylesheet, StringComparison.Ordinal);
+    }
+
     private static string ResolveManagementUiSource()
     {
         var repositoryRoot = ResolveIdentityRepository();

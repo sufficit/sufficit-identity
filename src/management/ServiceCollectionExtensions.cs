@@ -89,6 +89,9 @@ public static class ServiceCollectionExtensions
             CapabilityManagementAuthorizationEvaluator>();
         services.TryAddScoped<IManagementAuditService, ManagementAuditService>();
         services.TryAddScoped<IClientManagementService, ClientManagementService>();
+        services.TryAddScoped<IClientConfigurationDraftService,
+            ClientConfigurationDraftService>();
+        services.TryAddSingleton(TimeProvider.System);
         services.TryAddScoped<IClaimManagementService, ClaimManagementService>();
         services.TryAddScoped<IScopeManagementService, ScopeManagementService>();
         services.TryAddScoped<ISessionManagementService,

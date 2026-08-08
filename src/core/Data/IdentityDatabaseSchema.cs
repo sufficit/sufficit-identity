@@ -28,6 +28,7 @@ public static class IdentityDatabaseSchema
     public const string IdentityApplicationMetricsMigrationId = "20260807020859_AddIdentityApplicationMetrics";
     public const string SsfStreamSecurityMigrationId = "20260807135147_HardenSsfStreams";
     public const string AtomicProtocolStateMigrationId = "20260807140821_AddAtomicProtocolState";
+    public const string ManagementClientDraftsMigrationId = "20260807161036_AddManagementClientDrafts";
 
     /// <summary>
     /// Migration history owned by the new Sufficit Identity model.
@@ -58,6 +59,13 @@ public static class IdentityDatabaseSchema
     public const int AuditReasonLength = 100;
     public const int AuditCorrelationLength = 100;
     public const int AuditAuthenticationMethodsLength = 255;
+
+    // Management OAuth/OIDC application drafts
+    public const int ManagementDraftOwnerLength = 255;
+    public const int ManagementDraftProfileLength = 40;
+    public const int ManagementDraftStepLength = 32;
+    public const int ManagementDraftStatusLength = 24;
+    public const int ManagementDraftVersionLength = 32;
 
     // SCIM
     public const int ScimIdentifierLength = 255;
