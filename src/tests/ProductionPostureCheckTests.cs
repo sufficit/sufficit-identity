@@ -168,7 +168,7 @@ public sealed class ProductionPostureCheckTests
     }
 
     [Fact]
-    public void Jarm_unencrypted_for_fapi_is_flagged()
+    public void Fapi2_signed_jarm_without_encryption_is_not_a_posture_finding()
     {
         var options = new SufficitIdentityOptions
         {
@@ -186,28 +186,7 @@ public sealed class ProductionPostureCheckTests
             },
         };
 
-        Assert.True(Has(
-            ProductionPostureCheck.Evaluate(options, null, false),
-            "jarm-unencrypted-for-fapi"));
-
-        // Acknowledged → not flagged.
-        var acknowledged = new SufficitIdentityOptions
-        {
-            Csp = new CspOptions { ReportOnly = false },
-            Fapi2 = options.Fapi2,
-            Jarm = new JarmOptions
-            {
-                Enabled = true,
-                Encryption = new JarmEncryptionOptions
-                {
-                    Enabled = false,
-                    AcknowledgeUnencryptedForFapi = true,
-                },
-            },
-        };
-        Assert.False(Has(
-            ProductionPostureCheck.Evaluate(acknowledged, null, false),
-            "jarm-unencrypted-for-fapi"));
+        Assert.Empty(ProductionPostureCheck.Evaluate(options, null, false));
     }
 
     [Fact]
