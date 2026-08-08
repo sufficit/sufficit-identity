@@ -58,24 +58,34 @@ public sealed class MariaDbMigrationIntegrationTests
 
         Assert.True(await context.Database.CanConnectAsync());
         Assert.Empty(await context.Database.GetPendingMigrationsAsync());
+        var expectedMigrations = new[]
+        {
+            IdentityDatabaseSchema.InitialMigrationId,
+            IdentityDatabaseSchema.BrandingThemesMigrationId,
+            IdentityDatabaseSchema.ManagementAuditMigrationId,
+            IdentityDatabaseSchema.ScimProvisioningMigrationId,
+            IdentityDatabaseSchema.UserCreatedAtMigrationId,
+            IdentityDatabaseSchema.SsfStreamsMigrationId,
+            IdentityDatabaseSchema.OidcUserSessionsMigrationId,
+            IdentityDatabaseSchema.VaultKeysMigrationId,
+            IdentityDatabaseSchema.IdentityApplicationMetricsMigrationId,
+            IdentityDatabaseSchema.SsfStreamSecurityMigrationId,
+            IdentityDatabaseSchema.AtomicProtocolStateMigrationId,
+            IdentityDatabaseSchema.ManagementClientDraftsMigrationId,
+            IdentityDatabaseSchema.VaultSecretsMigrationId,
+            IdentityDatabaseSchema.VaultSigningKeyJwkMigrationId,
+        };
+        var appliedMigrations = await context.Database
+            .GetAppliedMigrationsAsync();
+
+        // Additive rollout scripts record their own operational markers in the
+        // same history table. Compare the EF sequence after filtering those
+        // markers, while still requiring every canonical migration in order.
         Assert.Equal(
-            [
-                IdentityDatabaseSchema.InitialMigrationId,
-                IdentityDatabaseSchema.BrandingThemesMigrationId,
-                IdentityDatabaseSchema.ManagementAuditMigrationId,
-                IdentityDatabaseSchema.ScimProvisioningMigrationId,
-                IdentityDatabaseSchema.UserCreatedAtMigrationId,
-                IdentityDatabaseSchema.SsfStreamsMigrationId,
-                IdentityDatabaseSchema.OidcUserSessionsMigrationId,
-                IdentityDatabaseSchema.VaultKeysMigrationId,
-                IdentityDatabaseSchema.IdentityApplicationMetricsMigrationId,
-                IdentityDatabaseSchema.SsfStreamSecurityMigrationId,
-                IdentityDatabaseSchema.AtomicProtocolStateMigrationId,
-                IdentityDatabaseSchema.ManagementClientDraftsMigrationId,
-                IdentityDatabaseSchema.VaultSecretsMigrationId,
-                IdentityDatabaseSchema.VaultSigningKeyJwkMigrationId,
-            ],
-            await context.Database.GetAppliedMigrationsAsync());
+            expectedMigrations,
+            appliedMigrations
+                .Where(expectedMigrations.Contains)
+                .ToArray());
 
         await using var connection = context.Database.GetDbConnection();
         await connection.OpenAsync();
