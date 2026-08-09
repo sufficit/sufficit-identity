@@ -7,7 +7,9 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Application.Accounts;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.STS;
 
@@ -22,6 +24,8 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
     IConfiguration configuration,
     IPublicOriginResolver publicOrigin,
     IAccountLookupPolicy accountLookup,
+    IIdentityUserSessionRevoker sessionRevoker,
+    ISecurityEventTrigger securityEvents,
     ILogger<AspNetCoreIdentityAccountOnboardingService> logger)
     : IAccountOnboardingService
 {
@@ -270,6 +274,56 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
         cancellationToken.ThrowIfCancellationRequested();
         if (reset.Succeeded)
         {
+            // A password reset is the flow a victim uses AFTER losing control
+            // of the account, so the attacker's existing access must not
+            // survive it. ResetPasswordAsync rotates the security stamp
+            // (invalidating cookies at the next stamp validation), but it does
+            // NOT revoke issued OpenIddict refresh/access tokens, their
+            // authorizations, or other browser sessions. Revoke everything —
+            // unlike the authenticated change-password path there is no
+            // current session to preserve, since this flow is unauthenticated.
+            try
+            {
+                var revocation = await sessionRevoker.RevokeAsync(
+                    user.Id,
+                    cancellationToken);
+
+                logger.LogInformation(
+                    "Password reset for user {UserId} revoked {TokenCount} tokens, "
+                    + "{AuthorizationCount} authorizations and {BrowserSessionCount} browser sessions.",
+                    user.Id,
+                    revocation.RevokedTokens,
+                    revocation.RevokedAuthorizations,
+                    revocation.RevokedBrowserSessions);
+
+                // CAEP credential-change so SSF receivers can react (the
+                // authenticated change-password path already emits this).
+                await securityEvents.CredentialChangedAsync(
+                    user.Id,
+                    sessionId: null,
+                    new CaepCredentialChange(
+                        CaepCredentialType.Password,
+                        CaepChangeOperation.Updated),
+                    cancellationToken);
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                // The password has already been changed; failing the response
+                // now would tell the user the reset did not work when it did.
+                // Surface the revocation failure loudly instead.
+                logger.LogError(
+                    exception,
+                    "Password reset for user {UserId} succeeded but session/token "
+                    + "revocation or the credential-change signal failed. Existing "
+                    + "sessions may still be valid.",
+                    user.Id);
+            }
+
             logger.LogInformation(
                 "Password reset succeeded for user {UserId}.",
                 user.Id);
