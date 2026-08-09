@@ -76,6 +76,13 @@ fi
 # by systemd or lives in external databases/caches.
 chown -R root:root "${release}"
 chmod -R go-w "${release}"
+# A release archive may preserve the restrictive mode of its temporary
+# staging directory (for example, mktemp creates it as 0700).  The service
+# user must be able to traverse the immutable release tree, while individual
+# files remain protected below.  Normalize directory traversal explicitly.
+while IFS= read -r -d '' release_directory; do
+    chmod 0755 "${release_directory}"
+done < <(find "${release}" -type d -print0)
 # The service runs as dotnetuser:www-data. Keep the runtime configuration
 # readable by that group while retaining an immutable, non-world-readable
 # release. Without this exception, the recursive root:root ownership above
