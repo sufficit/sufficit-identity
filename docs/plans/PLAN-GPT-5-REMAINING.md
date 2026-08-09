@@ -145,7 +145,6 @@ administrator gains global object access merely by holding a generic role.
 - [ ] Move interfaces/DTOs physically into Application Abstractions and remove external `Compile Include` plus dual-purpose preprocessor compilation
 - [ ] Decompose SCIM parsing, user/group provisioning, PATCH, persistence and publishing through `PLAN-GLM-5-2-REMAINING.md` P1.6
 - [ ] Split operational/security contexts and migrations only after transactional boundaries and outbox behavior are defined
-- [ ] Select JWT/reference format per client/resource rather than through a single global choice
 
 ## P2 — production proof
 

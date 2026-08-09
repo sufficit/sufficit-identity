@@ -143,6 +143,22 @@ change its concurrency token before restarting Identity. Tokens issued before
 the change retain their old audiences, so validation must use a fresh login or
 refresh token after the rollout.
 
+### Migração gradual do formato de access token
+
+`Tokens:UseReferenceAccessTokens` é apenas o fallback para integrações ainda
+não inventariadas. Migre sem flag day com `AccessTokenFormatsByResource` ou,
+quando o contrato realmente pertencer ao chamador, com
+`AccessTokenFormatsByClient`. Valores aceitos são `Reference` e `Jwt`; regras
+por recurso têm precedência e recursos conflitantes na mesma emissão são
+negados.
+
+Antes de configurar `Jwt`, confirme que o resource server valida o JWS pelo
+JWKS público, fixa issuer/audience e não depende de revogação imediata por
+introspecção. Emita um token novo, valide-o localmente e também via introspecção,
+depois observe erros até o maior lifetime. Para rollback, remova a regra exata:
+novas emissões retornam ao fallback, enquanto tokens anteriores permanecem
+válidos até expirar.
+
 The application owns authentication state. In particular, passkey
 authentication tickets are protected and stored server-side by
 `PasskeyAuthenticationTicketStore`; nginx must not be made responsible for
