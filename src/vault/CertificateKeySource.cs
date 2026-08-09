@@ -14,10 +14,7 @@ internal sealed class CertificateKeySource : IVaultKeyEncryptionKeySource, IDisp
     public CertificateKeySource(VaultOptions options)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(options.CertificatePath);
-        _certificate = X509CertificateLoader.LoadPkcs12FromFile(
-            options.CertificatePath,
-            options.CertificatePassword);
-        Validate(_certificate);
+        _certificate = VaultKeyEncryptionCertificate.Load(options);
     }
 
     public string KeyIdentifier => $"certificate:{_certificate.Thumbprint}";
@@ -40,27 +37,4 @@ internal sealed class CertificateKeySource : IVaultKeyEncryptionKeySource, IDisp
 
     public void Dispose() => _certificate.Dispose();
 
-    internal static void Validate(X509Certificate2 certificate)
-    {
-        if (!certificate.HasPrivateKey)
-        {
-            throw new InvalidOperationException(
-                "The vault KEK certificate must contain an RSA private key.");
-        }
-
-        using var rsa = certificate.GetRSAPrivateKey();
-        if (rsa is null || rsa.KeySize < 3072)
-        {
-            throw new InvalidOperationException(
-                "The vault KEK certificate must contain an RSA key of at least 3072 bits.");
-        }
-
-        var now = DateTime.UtcNow;
-        if (certificate.NotBefore.ToUniversalTime() > now
-            || certificate.NotAfter.ToUniversalTime() <= now)
-        {
-            throw new InvalidOperationException(
-                "The vault KEK certificate is not currently valid.");
-        }
-    }
 }

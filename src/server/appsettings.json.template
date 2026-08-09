@@ -17,11 +17,25 @@
     "Vault": {
       "Enabled": true,
       "RequireEncryptionInProduction": true,
+      "_KeySource": "dataprotection preserves existing wrapped DEKs while its shared key ring is protected by CertificatePath; certificate wraps DEKs directly; external delegates to a registered KMS/HSM adapter. Every production mode keeps the protection certificate separate from token signing.",
       "KeySource": "dataprotection",
       "DataProtectionPurpose": "Sufficit.Identity.Vault.Master.v1",
+      "CertificatePath": "/run/secrets/sufficit-vault-kek.pfx",
+      "_CertificatePassword": "Supply through SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD; never commit the real value.",
+      "CertificatePassword": "",
+      "_ExternalKeyIdentifier": "For KeySource=external, pin the immutable KMS/HSM key-version URI. Required outside Development.",
+      "ExternalKeyIdentifier": "",
+      "LegacyDataProtectionCertificateMigration": {
+        "_": "Set Owner, Reason and a future ExpiresAtUtc only while old Data Protection keys still require token-signing certificates for decrypt-only migration. Remove the block after the ring rotates.",
+        "Owner": "",
+        "Reason": "",
+        "ExpiresAtUtc": null
+      },
       "EnableSecretStore": false,
       "ManageSigningKeys": false,
-      "SigningKeyName": "oidc-signing"
+      "SigningKeyName": "oidc-signing",
+      "SigningKeyOverlapSeconds": 1209600,
+      "SigningKeyLockSeconds": 60
     },
     "Identity": {
       "Issuer": "https://your-identity-host/",

@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
+using System.Security.Cryptography.X509Certificates;
 using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Vault;
@@ -121,18 +122,15 @@ public static class ServiceCollectionExtensions
 
         if (!options.Enabled) return;
 
-        if (!isDevelopment && source == "dataprotection")
-        {
-            throw new InvalidOperationException(
-                "The Data Protection vault KEK is development-only. Production must use a dedicated certificate or external KMS/HSM provider.");
-        }
-
-        if (source == "certificate")
+        var requiresDedicatedCertificate = !isDevelopment
+            || source == "certificate"
+            || !string.IsNullOrWhiteSpace(options.CertificatePath);
+        if (requiresDedicatedCertificate)
         {
             if (string.IsNullOrWhiteSpace(options.CertificatePath))
             {
                 throw new InvalidOperationException(
-                    "Sufficit:Vault:CertificatePath is required for the certificate KEK source.");
+                    "Sufficit:Vault:CertificatePath is required outside Development to protect the Data Protection key ring with a certificate dedicated to the vault.");
             }
 
             var kekPath = Path.GetFullPath(options.CertificatePath);
@@ -142,9 +140,10 @@ public static class ServiceCollectionExtensions
                 }
                 .Concat(configuration
                     .GetSection("Sufficit:Identity:Certificates:SigningPaths")
-                    .Get<string[]>() ?? [])
+                .Get<string[]>() ?? [])
                 .Where(path => !string.IsNullOrWhiteSpace(path))
-                .Select(path => Path.GetFullPath(path!));
+                .Select(path => Path.GetFullPath(path!))
+                .ToArray();
             if (signingPaths.Any(path => string.Equals(
                     path,
                     kekPath,
@@ -153,6 +152,37 @@ public static class ServiceCollectionExtensions
                 throw new InvalidOperationException(
                     "The vault KEK certificate must be different from every token-signing certificate.");
             }
+
+            using var kekCertificate = VaultKeyEncryptionCertificate.Load(options);
+            var signingPassword = configuration[
+                "Sufficit:Identity:Certificates:SigningPassword"];
+            foreach (var signingPath in signingPaths)
+            {
+                using var signingCertificate =
+                    X509CertificateLoader.LoadPkcs12FromFile(
+                        signingPath,
+                        signingPassword);
+                if (string.Equals(
+                        signingCertificate.Thumbprint,
+                        kekCertificate.Thumbprint,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        "The vault KEK certificate thumbprint must be different from every token-signing certificate.");
+                }
+            }
+        }
+
+        ValidateLegacyCertificateMigration(
+            options.LegacyDataProtectionCertificateMigration,
+            _now: DateTimeOffset.UtcNow);
+
+        if (!isDevelopment
+            && source == "external"
+            && string.IsNullOrWhiteSpace(options.ExternalKeyIdentifier))
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Vault:ExternalKeyIdentifier is required in production to pin the KMS/HSM KEK version.");
         }
 
         if (options.SigningKeyOverlapSeconds < 1)
@@ -165,6 +195,34 @@ public static class ServiceCollectionExtensions
         {
             throw new InvalidOperationException(
                 "Sufficit:Vault:SigningKeyLockSeconds must be between 5 and 600.");
+        }
+    }
+
+    internal static void ValidateLegacyCertificateMigration(
+        VaultLegacyCertificateMigrationOptions migration,
+        DateTimeOffset _now)
+    {
+        ArgumentNullException.ThrowIfNull(migration);
+        if (!migration.IsConfigured) return;
+
+        if (string.IsNullOrWhiteSpace(migration.Owner)
+            || string.IsNullOrWhiteSpace(migration.Reason)
+            || migration.ExpiresAtUtc is null)
+        {
+            throw new InvalidOperationException(
+                "LegacyDataProtectionCertificateMigration requires Owner, Reason and ExpiresAtUtc together.");
+        }
+
+        if (migration.ExpiresAtUtc <= _now)
+        {
+            throw new InvalidOperationException(
+                "LegacyDataProtectionCertificateMigration has expired; remove the signing-certificate unwrap fallback.");
+        }
+
+        if (migration.ExpiresAtUtc > _now.AddDays(180))
+        {
+            throw new InvalidOperationException(
+                "LegacyDataProtectionCertificateMigration cannot exceed 180 days.");
         }
     }
 }
