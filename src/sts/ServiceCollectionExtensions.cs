@@ -79,6 +79,20 @@ public static class ServiceCollectionExtensions
             throw new InvalidOperationException(
                 "Sufficit:Vault:ManageSigningKeys requires Sufficit:Vault:Enabled=true.");
         }
+        if (vaultOptions.ManageSigningKeys)
+        {
+            var longestTokenLifetimeSeconds = Math.Max(
+                options.Tokens.RefreshTokenLifetimeDays * 86_400,
+                Math.Max(
+                    (options.Tokens.AccessTokenLifetimeMinutes ?? 60) * 60,
+                    (options.Tokens.IdentityTokenLifetimeMinutes ?? 20) * 60));
+            if (vaultOptions.SigningKeyOverlapSeconds
+                < Math.Ceiling(longestTokenLifetimeSeconds))
+            {
+                throw new InvalidOperationException(
+                    "Sufficit:Vault:SigningKeyOverlapSeconds must cover the longest configured token lifetime so retiring kids remain verifiable.");
+            }
+        }
         ValidateAdvancedProtocolOptions(options);
         options.HumanVerification.Validate();
         services.AddSingleton(options);

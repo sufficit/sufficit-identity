@@ -26,11 +26,10 @@ public sealed class VaultOptions
     public bool RequireEncryptionInProduction { get; init; } = true;
 
     /// <summary>
-    /// KEK source: <c>dataprotection</c> (default) | <c>certificate</c> |
-    /// <c>external</c>. Only <c>dataprotection</c> is implemented in Phase 1;
-    /// it wraps vault DEKs using ASP.NET Core Data Protection (already
-    /// persisted + X.509-protected by the host), so there are zero new
-    /// dependencies.
+    /// KEK source: <c>dataprotection</c> (development compatibility only),
+    /// <c>certificate</c> (dedicated RSA certificate) or <c>external</c>
+    /// (KMS/HSM adapter). Production rejects <c>dataprotection</c> so a
+    /// database/key-ring dump cannot also recover the vault KEK.
     /// </summary>
     public string KeySource { get; init; } = "dataprotection";
 
@@ -40,6 +39,24 @@ public sealed class VaultOptions
     /// </summary>
     public string DataProtectionPurpose { get; init; } =
         "Sufficit.Identity.Vault.Master.v1";
+
+    /// <summary>
+    /// Dedicated PKCS#12/PFX certificate used only to wrap vault DEKs when
+    /// <see cref="KeySource"/> is <c>certificate</c>. It must not be one of
+    /// the token-signing certificates.
+    /// </summary>
+    public string? CertificatePath { get; init; }
+
+    /// <summary>Password for <see cref="CertificatePath"/>. Supply it through
+    /// a secret-bearing configuration provider, never a committed file.</summary>
+    public string? CertificatePassword { get; init; }
+
+    /// <summary>
+    /// Stable, non-secret identifier expected from the external KMS/HSM
+    /// adapter. A mismatch fails startup and prevents accidentally switching
+    /// to a different remote KEK.
+    /// </summary>
+    public string? ExternalKeyIdentifier { get; init; }
 
     /// <summary>
     /// Enables the optional database-backed named-secret store. It requires
@@ -56,4 +73,14 @@ public sealed class VaultOptions
 
     /// <summary>Name of the versioned RSA key used for OpenIddict tokens.</summary>
     public string SigningKeyName { get; init; } = "oidc-signing";
+
+    /// <summary>
+    /// Minimum time that a previous signing key remains published after a
+    /// rotation. The STS validates this against its longest token lifetime.
+    /// </summary>
+    public int SigningKeyOverlapSeconds { get; init; } = 1_209_600;
+
+    /// <summary>Lease duration for the database-backed distributed rotation
+    /// lock. An abandoned lease can be recovered after this interval.</summary>
+    public int SigningKeyLockSeconds { get; init; } = 60;
 }

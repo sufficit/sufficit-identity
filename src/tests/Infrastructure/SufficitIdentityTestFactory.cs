@@ -363,6 +363,19 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
             db.UseSqlite(connection);
             db.UseOpenIddict();
         });
+
+        // The vault KEK readiness probe is an IHostedService and therefore
+        // starts before IAsyncLifetime.InitializeAsync().  Persisted
+        // DataProtection keys use the same AppDbContext, so the probe must
+        // see its table before the host starts.  Bootstrap the SQLite schema
+        // here (the later EnsureCreatedAsync call remains idempotent and still
+        // seeds the test data after the host is ready).
+        var bootstrapOptions = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(connection)
+            .UseOpenIddict()
+            .Options;
+        using var bootstrapDb = new AppDbContext(bootstrapOptions);
+        bootstrapDb.Database.EnsureCreated();
     }
 
     async Task IAsyncLifetime.InitializeAsync()

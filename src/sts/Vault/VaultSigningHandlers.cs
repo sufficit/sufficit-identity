@@ -30,7 +30,8 @@ public sealed class VaultSigningCredentialsHandler : IOpenIddictServerHandler<
     {
         var keys = await _keyVault.GetSigningKeysAsync(_options.SigningKeyName,
             CancellationToken.None);
-        var current = keys.OrderByDescending(key => key.KeyVersion).FirstOrDefault()
+        var current = keys.FirstOrDefault(key =>
+                key.Status == VaultSigningKeyStatus.Active)
             ?? throw new InvalidOperationException(
                 $"Vault signing key '{_options.SigningKeyName}' is not available.");
         var securityKey = new VaultSigningSecurityKey(current, _keyVault);
