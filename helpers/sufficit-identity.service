@@ -48,6 +48,7 @@ Environment=ASPNETCORE_ENVIRONMENT=Production
 Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
 Environment=DOTNET_ROOT=/opt/dotnet-10
 EnvironmentFile=-/etc/sufficit/identity/hardening.env
+EnvironmentFile=-/etc/sufficit/identity/vault-secrets.env
 
 RuntimeDirectory=sufficit-identity
 RuntimeDirectoryMode=0775

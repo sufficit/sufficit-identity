@@ -35,6 +35,9 @@ install -o root -g root -m 0755 \
 install -o root -g root -m 0755 \
     "${ROOTDIR}/helpers/migrate-database.sh" \
     /usr/libexec/${APPTITLE}/migrate-database.sh
+install -o root -g root -m 0755 \
+    "${ROOTDIR}/helpers/check-vault-secrets.sh" \
+    /usr/libexec/${APPTITLE}/check-vault-secrets.sh
 
 # Install the non-secret operational hardening overlay once. Deliberately do
 # not overwrite it on upgrades: CSP and MFA progress are environment state,
@@ -54,6 +57,18 @@ if [ ! -f "${CONFIGDIR}/hardening.env" ]; then
     fi
 else
     echo "[install] Preserved existing ${CONFIGDIR}/hardening.env"
+fi
+
+# Install the configuration-time secret ingress without overwriting operator
+# values. The file is intentionally empty/comment-only until an operator
+# provisions the corresponding values through the secret manager.
+if [ ! -f "${CONFIGDIR}/vault-secrets.env" ]; then
+    install -o root -g www-data -m 0640 \
+        "${ROOTDIR}/helpers/vault-secrets.env.template" \
+        "${CONFIGDIR}/vault-secrets.env"
+    echo "[install] Created ${CONFIGDIR}/vault-secrets.env"
+else
+    echo "[install] Preserved existing ${CONFIGDIR}/vault-secrets.env"
 fi
 
 # Releases may introduce new non-secret rollout gates. Preserve every existing
