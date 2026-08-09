@@ -122,6 +122,8 @@ public static class ServiceCollectionExtensions
             MetricsManagementService>();
         services.TryAddScoped<IVaultSecretsManagementService,
             VaultSecretsManagementService>();
+        services.TryAddScoped<IVaultSecretNamespaceAccessPolicy,
+            ConfigurationVaultSecretNamespaceAccessPolicy>();
         services.TryAddSingleton<IdentityMetricsRuntimeState>();
         services.TryAddSingleton<IBrandingThemeProvider,
             BrandingThemeProvider>();

@@ -10,6 +10,7 @@ using OpenIddict.Abstractions;
 using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Overview;
+using Sufficit.Identity.Management.Vault;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Server.Management;
 using Sufficit.Identity.Tests.Infrastructure;
@@ -346,6 +347,82 @@ public sealed class ManagementApplicationAuthorizationTests
         Assert.Equal("context_not_accessible", denied.ReasonCode);
         Assert.True(allowed.IsAllowed);
         Assert.Equal("resource_id_required", missingId.ReasonCode);
+
+        var missingVaultSecretId = await policy.EvaluateAsync(
+            rightContext,
+            ManagementCapabilities.VaultSecretsRead,
+            new ManagementResource(
+                ManagementResourceTypes.VaultSecrets,
+                ContextId: "tenant-a"));
+        Assert.Equal("resource_id_required", missingVaultSecretId.ReasonCode);
+    }
+
+    [Fact]
+    public async Task Vault_namespace_claims_are_context_bound_and_break_glass_requires_mfa()
+    {
+        var options = Options.Create(new ManagementOptions
+        {
+            Authorization = new ManagementAuthorizationOptions(),
+        });
+        var policy = new ConfigurationVaultSecretNamespaceAccessPolicy(options);
+        var scoped = PrincipalWithClaims(
+            new Claim("identity_vault_namespace", "tenant-a:providers"),
+            new Claim("identity_vault_namespace", "tenant-b:billing"));
+
+        var allowed = await policy.ResolveAsync(
+            scoped,
+            "tenant-a",
+            "providers");
+        var guessed = await policy.ResolveAsync(
+            scoped,
+            "tenant-a",
+            "billing");
+        var list = await policy.ResolveAsync(
+            scoped,
+            "tenant-a",
+            requiredNamespace: null);
+        Assert.True(allowed.Authorization.IsAllowed);
+        Assert.Equal(
+            "vault_namespace_not_accessible",
+            guessed.Authorization.ReasonCode);
+        Assert.Equal(["providers"], list.Namespaces);
+
+        var breakGlassWithoutMfa = PrincipalWithClaims(
+            new Claim(
+                "identity_vault_break_glass",
+                "identity.vault.secrets"));
+        var deniedBreakGlass = await policy.ResolveAsync(
+            breakGlassWithoutMfa,
+            "tenant-a",
+            "providers");
+        Assert.False(deniedBreakGlass.Authorization.IsAllowed);
+
+        var breakGlass = PrincipalWithClaims(
+            new Claim(
+                "identity_vault_break_glass",
+                "identity.vault.secrets"),
+            new Claim("amr", "pwd mfa"));
+        var emergency = await policy.ResolveAsync(
+            breakGlass,
+            "tenant-a",
+            "providers");
+        Assert.True(emergency.Authorization.IsAllowed);
+        Assert.Equal("vault_break_glass", emergency.Authorization.ReasonCode);
+        Assert.Null(emergency.Namespaces);
+
+        var objectPolicy = new ConfigurationManagementObjectAccessPolicy(
+            options,
+            new AllowProtectedPrincipalPolicy(),
+            NullLogger<ConfigurationManagementObjectAccessPolicy>.Instance);
+        var contextBypass = await objectPolicy.EvaluateAsync(
+            breakGlass,
+            ManagementCapabilities.VaultSecretsRead,
+            new ManagementResource(
+                ManagementResourceTypes.VaultSecrets,
+                "providers/google/client-secret",
+                "tenant-a"));
+        Assert.True(contextBypass.IsAllowed);
+        Assert.Equal("vault_break_glass", contextBypass.ReasonCode);
     }
 
     [Fact]

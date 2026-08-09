@@ -7,13 +7,20 @@ namespace Sufficit.Identity.Vault;
 /// KEK and Data Protection key-ring configuration.</summary>
 public static class VaultKeyEncryptionCertificate
 {
-    public static X509Certificate2 Load(VaultOptions options)
+    public static X509Certificate2 Load(
+        VaultOptions options,
+        ISecretStore? secretStore = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentException.ThrowIfNullOrWhiteSpace(options.CertificatePath);
+        var password = secretStore is null
+            ? options.CertificatePassword
+            : secretStore.GetSecretAsync("vault/kek-certificate-password")
+                .GetAwaiter()
+                .GetResult() ?? options.CertificatePassword;
         var certificate = X509CertificateLoader.LoadPkcs12FromFile(
             options.CertificatePath,
-            options.CertificatePassword);
+            password);
         try
         {
             Validate(certificate);

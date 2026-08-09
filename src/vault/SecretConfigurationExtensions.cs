@@ -21,6 +21,8 @@ public static class SecretConfigurationExtensions
             "Sufficit:Vault:CertificatePassword"),
         ("identity/human-verification/secret-key",
             "Sufficit:Identity:HumanVerification:SecretKey"),
+        ("identity/dcr/initial-access-token",
+            "Sufficit:Identity:Mcp:Dcr:InitialAccessToken"),
         ("identity/external-providers/google/client-id",
             "Sufficit:Identity:ExternalProviders:Google:ClientId"),
         ("identity/external-providers/google/client-secret",

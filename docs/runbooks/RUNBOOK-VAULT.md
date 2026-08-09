@@ -161,9 +161,26 @@ rotação deliberada criar a substituta. Registre esse impacto na resposta ao
 incidente antes da revogação, quando o risco permitir.
 
 Para um segredo nomeado, use a API de gestão com uma capability de leitura ou
-gestão. O `PUT /api/vault/secrets/{name}` recebe `{ "value": "..." }`; `GET`
-retorna apenas nome, data, operador e `hasValue`. O valor só pode ser lido por
-consumidores internos através de `IVaultNamedSecretStore`.
+gestão. O `PUT /api/vault/secrets/{name}?contextId=<contexto>` recebe
+`{ "value": "..." }`; `GET` retorna apenas nome, namespace, contexto, owner,
+data, operador e `hasValue`. O valor só pode ser lido por consumidores internos
+através de `IVaultNamedSecretStore`.
+
+O primeiro segmento do nome é o namespace e todos os segmentos filhos o
+herdam; por exemplo, `providers/google/client-secret` pertence a `providers`.
+Nomes e contextos são normalizados para ASCII minúsculo antes da autorização e
+persistência. O operador precisa, simultaneamente, da capability, do claim de
+contexto configurado e de um claim `identity_vault_namespace` no formato
+`<contextId>:<namespace>` (por exemplo `global:providers`). Listagens são
+filtradas para exatamente esses pares; capability global não revela os demais
+nomes.
+
+O claim `identity_vault_break_glass=identity.vault.secrets` é separado dos
+grants comuns, exige MFA e cada leitura/mutação registra
+`ReasonCode=vault_break_glass`. Os tipos de claim de contexto, namespace,
+capability e break-glass são reservados pela API genérica de Claims e não podem
+ser atribuídos por ela. A emissão desses claims pertence ao processo externo de
+acesso privilegiado.
 
 ## Compatibilidade e diagnóstico
 

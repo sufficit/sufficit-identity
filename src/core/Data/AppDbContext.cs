@@ -602,6 +602,15 @@ public sealed class AppDbContext
             b.Property(x => x.Name)
                 .HasMaxLength(IdentityDatabaseSchema.VaultSecretNameLength)
                 .IsRequired();
+            b.Property(x => x.Namespace)
+                .HasMaxLength(IdentityDatabaseSchema.VaultSecretNamespaceLength)
+                .IsRequired();
+            b.Property(x => x.ContextId)
+                .HasMaxLength(IdentityDatabaseSchema.VaultSecretContextLength)
+                .IsRequired();
+            b.Property(x => x.OwnerSubject)
+                .HasMaxLength(IdentityDatabaseSchema.VaultSecretOwnerLength)
+                .IsRequired();
             b.Property(x => x.Ciphertext)
                 .HasColumnType("longtext")
                 .IsRequired();
@@ -612,13 +621,18 @@ public sealed class AppDbContext
             b.Property(x => x.UpdatedBy)
                 .HasMaxLength(IdentityDatabaseSchema.VaultSecretUpdatedByLength)
                 .IsRequired();
-            b.HasIndex(x => x.Name)
+            b.HasIndex(x => new { x.ContextId, x.Name })
                 .IsUnique()
-                .HasDatabaseName("AK_vaultsecrets_name");
+                .HasDatabaseName("AK_vaultsecrets_context_name");
+            b.HasIndex(x => new { x.ContextId, x.Namespace })
+                .HasDatabaseName("IX_vaultsecrets_context_namespace");
 
             SnakeCaseColumns(b, [
                 ("Id", "id"),
                 ("Name", "name"),
+                ("Namespace", "namespace"),
+                ("ContextId", "contextid"),
+                ("OwnerSubject", "ownersubject"),
                 ("Ciphertext", "ciphertext"),
                 ("AadJson", "aadjson"),
                 ("UpdatedAtUtc", "updatedatutc"),
