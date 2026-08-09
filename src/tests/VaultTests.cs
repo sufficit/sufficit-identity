@@ -127,6 +127,51 @@ public sealed class VaultTests
         }
     }
 
+    [Fact]
+    public async Task Environment_secret_store_maps_legacy_startup_configuration()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Certificates:SigningPassword"] =
+                    "legacy-signing-password",
+            })
+            .Build();
+
+        var store = new EnvironmentSecretStore(configuration);
+
+        Assert.Equal(
+            "legacy-signing-password",
+            await store.GetSecretAsync(
+                "identity/certificates/signing-password"));
+    }
+
+    [Fact]
+    public void Startup_secret_overrides_can_be_resolved_through_ISecretStore()
+    {
+        var store = new DictionarySecretStore(new Dictionary<string, string?>
+        {
+            ["database/connection-string"] = "server=secret-host;database=identity",
+            ["identity/certificates/signing-password"] = "signing-secret",
+        });
+        var configuration = new ConfigurationBuilder()
+            .AddSufficitSecretOverrides(store)
+            .Build();
+
+        Assert.Equal(
+            "server=secret-host;database=identity",
+            configuration["ConnectionStrings:DefaultConnection"]);
+        Assert.Equal(
+            "signing-secret",
+            configuration["Sufficit:Identity:Certificates:SigningPassword"]);
+        Assert.Null(configuration["Sufficit:Identity:Certificates:EncryptionPassword"]);
+        Assert.Equal(
+            SecretConfigurationExtensions.GetSufficitSecretOverrideMappings().Count,
+            store.RequestedNames.Count);
+        Assert.Contains("database/connection-string", store.RequestedNames);
+        Assert.Contains("identity/certificates/signing-password", store.RequestedNames);
+    }
+
     // ---- EnvelopeCrypto (AES-256-GCM) ----
 
     [Fact]
@@ -466,5 +511,21 @@ public sealed class VaultTests
         var logger = provider.GetRequiredService<ILogger<KeyVault>>();
         IKeyVault vault = new KeyVault(dbFactory, kek, logger);
         return (vault, dbFactory);
+    }
+
+    private sealed class DictionarySecretStore(
+        IReadOnlyDictionary<string, string?> values) : ISecretStore
+    {
+        public List<string> RequestedNames { get; } = [];
+
+        public Task<string?> GetSecretAsync(
+            string name,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RequestedNames.Add(name);
+            values.TryGetValue(name, out var value);
+            return Task.FromResult(value);
+        }
     }
 }

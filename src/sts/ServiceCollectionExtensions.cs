@@ -50,7 +50,8 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddSufficitIdentitySTS(
         this IServiceCollection services,
         IConfiguration configuration,
-        string configurationSection = "Sufficit:Identity")
+        string configurationSection = "Sufficit:Identity",
+        ISecretStore? secretStore = null)
     {
         // The STS is a self-contained API module. Register its controllers as
         // an MVC application part so any composition host can map them without
@@ -66,6 +67,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IBrandingThemeProvider, BrandingThemeProvider>();
         services.TryAddSingleton<IUserAvatarUrlResolver, UserAvatarUrlResolver>();
 
+        var startupSecretStore = secretStore ?? new EnvironmentSecretStore(configuration);
         var options = configuration
             .GetSection(configurationSection)
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
@@ -183,7 +185,8 @@ public static class ServiceCollectionExtensions
         // OpenIddict server below, ensuring its public half appears in JWKS.
         var certificateMaterial = LoadCertificateMaterial(
             options.Certificates,
-            isDevelopmentEnvironment);
+            isDevelopmentEnvironment,
+            startupSecretStore);
         var auxiliarySigningCredentials = ResolveProtocolSigningCredentials(
             certificateMaterial.PrimarySigning,
             isDevelopmentEnvironment);
@@ -194,7 +197,9 @@ public static class ServiceCollectionExtensions
         // of a production-blocking translation bug (FindByNamesAsync IN(@p)).
         // See docs/NOTICE-mysql-license.md for the full rationale + fork details.
         // API: UseMySql(connectionString, MariaDbServerVersion.AutoDetect(...)).
-        var configuredConnectionString = configuration.GetConnectionString(options.ConnectionStringName)
+        var configuredConnectionString = ResolveSecret(
+                startupSecretStore,
+                "database/connection-string")
             ?? throw new InvalidOperationException(
                 $"Connection string '{options.ConnectionStringName}' not configured.");
         DatabaseTransportPolicy.Validate(
@@ -442,7 +447,7 @@ public static class ServiceCollectionExtensions
         // are present. The UI (Login.razor) lists the registered schemes
         // automatically via SignInManager.GetExternalAuthenticationSchemesAsync().
         var externalBuilder = services.AddAuthentication();
-        AddExternalProviders(externalBuilder, configuration);
+        AddExternalProviders(externalBuilder, configuration, startupSecretStore);
 
         // ---- OpenIddict (Core + Server + Validation) ----
         services.AddOpenIddict()
@@ -1302,18 +1307,25 @@ public static class ServiceCollectionExtensions
 
     private static CertificateMaterial LoadCertificateMaterial(
         CertificatesOptions options,
-        bool isDevelopmentEnvironment)
+        bool isDevelopmentEnvironment,
+        ISecretStore secretStore)
     {
+        var signingPassword = ResolveSecret(
+            secretStore,
+            "identity/certificates/signing-password");
+        var encryptionPassword = ResolveSecret(
+            secretStore,
+            "identity/certificates/encryption-password");
         var signing = LoadCertificateSet(
             options.SigningPath,
             options.SigningPaths,
-            options.SigningPassword,
+            signingPassword,
             "signing",
             options);
         var encryption = LoadCertificateSet(
             options.EncryptionPath,
             options.EncryptionPaths,
-            options.EncryptionPassword,
+            encryptionPassword,
             "encryption",
             options);
 
@@ -1418,28 +1430,46 @@ public static class ServiceCollectionExtensions
         public X509Certificate2? PrimarySigning => Signing.FirstOrDefault();
     }
 
+    private static string? ResolveSecret(
+        ISecretStore secretStore,
+        string logicalName)
+    {
+        return secretStore.GetSecretAsync(logicalName)
+            .GetAwaiter()
+            .GetResult();
+    }
+
     /// <summary>
     /// Registers external login providers (Google, GitHub, etc) from the
     /// <c>Sufficit:Identity:ExternalProviders</c> configuration section.
     /// Each provider is only registered if Enabled=true and credentials
     /// are present (ClientId + ClientSecret).
     /// </summary>
-    private static void AddExternalProviders(AuthenticationBuilder builder, IConfiguration configuration)
+    private static void AddExternalProviders(
+        AuthenticationBuilder builder,
+        IConfiguration configuration,
+        ISecretStore secretStore)
     {
         var section = configuration.GetSection("Sufficit:Identity:ExternalProviders");
         if (section is null) return;
 
         // Google
         var google = section.GetSection("Google");
+        var googleClientId = ResolveSecret(
+            secretStore,
+            "identity/external-providers/google/client-id");
+        var googleClientSecret = ResolveSecret(
+            secretStore,
+            "identity/external-providers/google/client-secret");
         if (google.GetValue<bool>("Enabled")
-            && !string.IsNullOrWhiteSpace(google["ClientId"])
-            && !string.IsNullOrWhiteSpace(google["ClientSecret"]))
+            && !string.IsNullOrWhiteSpace(googleClientId)
+            && !string.IsNullOrWhiteSpace(googleClientSecret))
         {
             builder.AddGoogle(options =>
             {
                 ConfigureExternalProvider(options);
-                options.ClientId = google["ClientId"]!;
-                options.ClientSecret = google["ClientSecret"]!;
+                options.ClientId = googleClientId!;
+                options.ClientSecret = googleClientSecret!;
                 // Use the ASP.NET Core default (/signin-google) to match the
                 // redirect URI already authorized in the Google Cloud Console.
                 // Surface Google's email_verified so the UI external-login flow
@@ -1451,15 +1481,21 @@ public static class ServiceCollectionExtensions
 
         // GitHub (requires AspNet.Security.OAuth.GitHub package in the host)
         var github = section.GetSection("GitHub");
+        var githubClientId = ResolveSecret(
+            secretStore,
+            "identity/external-providers/github/client-id");
+        var githubClientSecret = ResolveSecret(
+            secretStore,
+            "identity/external-providers/github/client-secret");
         if (github.GetValue<bool>("Enabled")
-            && !string.IsNullOrWhiteSpace(github["ClientId"])
-            && !string.IsNullOrWhiteSpace(github["ClientSecret"]))
+            && !string.IsNullOrWhiteSpace(githubClientId)
+            && !string.IsNullOrWhiteSpace(githubClientSecret))
         {
             builder.AddGitHub(options =>
             {
                 ConfigureExternalProvider(options);
-                options.ClientId = github["ClientId"]!;
-                options.ClientSecret = github["ClientSecret"]!;
+                options.ClientId = githubClientId!;
+                options.ClientSecret = githubClientSecret!;
                 options.Scope.Add("user:email");
                 // Use the ASP.NET Core default (/signin-github).
                 // Surface GitHub's email verification so the UI external-login
@@ -1474,15 +1510,21 @@ public static class ServiceCollectionExtensions
 
         // Facebook
         var facebook = section.GetSection("Facebook");
+        var facebookClientId = ResolveSecret(
+            secretStore,
+            "identity/external-providers/facebook/client-id");
+        var facebookClientSecret = ResolveSecret(
+            secretStore,
+            "identity/external-providers/facebook/client-secret");
         if (facebook.GetValue<bool>("Enabled")
-            && !string.IsNullOrWhiteSpace(facebook["ClientId"])
-            && !string.IsNullOrWhiteSpace(facebook["ClientSecret"]))
+            && !string.IsNullOrWhiteSpace(facebookClientId)
+            && !string.IsNullOrWhiteSpace(facebookClientSecret))
         {
             builder.AddFacebook(options =>
             {
                 ConfigureExternalProvider(options);
-                options.ClientId = facebook["ClientId"]!;
-                options.ClientSecret = facebook["ClientSecret"]!;
+                options.ClientId = facebookClientId!;
+                options.ClientSecret = facebookClientSecret!;
 
                 // Force the Meta Graph API version to v22.0 (the package's
                 // built-in default of v14.0 is deprecated and Meta now rejects

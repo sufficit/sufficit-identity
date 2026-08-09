@@ -1,7 +1,9 @@
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using Microsoft.Extensions.Configuration;
 using Sufficit.Identity.STS;
+using Sufficit.Identity.Vault;
 using Xunit;
 
 namespace Sufficit.Identity.Tests;
@@ -65,11 +67,20 @@ public sealed class CertificateRotationTests
 
     private static object Load(CertificatesOptions options)
     {
-        var method = typeof(ServiceCollectionExtensions).GetMethod(
+        var method = typeof(Sufficit.Identity.STS.ServiceCollectionExtensions).GetMethod(
             "LoadCertificateMaterial",
             BindingFlags.NonPublic | BindingFlags.Static)
             ?? throw new InvalidOperationException("Certificate loader not found.");
-        return method.Invoke(null, [options, true])
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Certificates:SigningPassword"] =
+                    options.SigningPassword,
+                ["Sufficit:Identity:Certificates:EncryptionPassword"] =
+                    options.EncryptionPassword,
+            })
+            .Build();
+        return method.Invoke(null, [options, true, new EnvironmentSecretStore(configuration)])
             ?? throw new InvalidOperationException("Certificate material was null.");
     }
 

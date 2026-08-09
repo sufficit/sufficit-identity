@@ -23,6 +23,13 @@ using Sufficit.Identity.Vault;
 var builder = WebApplication.CreateBuilder(args);
 var migrateOnly = args.Contains("--migrate-only", StringComparer.Ordinal);
 
+// Resolve configuration-time secrets through the same ISecretStore boundary
+// used by STS consumers. The default store reads SUFFICIT_SECRET_* and falls
+// back to the already-loaded configuration only during migration.
+var startupSecretStore = new EnvironmentSecretStore(
+    builder.Configuration,
+    Microsoft.Extensions.Logging.Abstractions.NullLogger<EnvironmentSecretStore>.Instance);
+
 // WebApplication.CreateBuilder already loads appsettings.json followed by
 // appsettings.{Environment}.json. Add the machine-specific file after those
 // standard sources so each Sufficit server can override only its local values
@@ -31,7 +38,7 @@ builder.Configuration.AddMachineSpecificJsonFile();
 // Resolve deployment-provided secret overrides before any startup options are
 // bound. The JSON layer remains a compatibility fallback during migration;
 // operators can move each secret to SUFFICIT_SECRET_* independently.
-builder.Configuration.AddSufficitSecretOverrides();
+builder.Configuration.AddSufficitSecretOverrides(startupSecretStore);
 
 // Optional file-based certificate password ingress. The privileged bootstrap
 // uses this for randomly generated Development certificates and operators can
@@ -41,8 +48,8 @@ var certificatePasswordFile = Environment.GetEnvironmentVariable(
         "SUFFICIT_IDENTITY_CERTIFICATE_PASSWORD_FILE")
     ?? "/etc/sufficit/identity/certificate.password";
 if (File.Exists(certificatePasswordFile)
-    && string.IsNullOrWhiteSpace(builder.Configuration[
-        "Sufficit:Identity:Certificates:SigningPassword"]))
+    && string.IsNullOrWhiteSpace(startupSecretStore.GetSecretAsync(
+        "identity/certificates/signing-password").GetAwaiter().GetResult()))
 {
     var certificatePassword = File.ReadAllText(certificatePasswordFile).Trim();
     if (!string.IsNullOrEmpty(certificatePassword))
@@ -144,7 +151,9 @@ builder.Services.AddSingleton(new System.Text.Json.JsonSerializerOptions
 });
 
 // ---- Sufficit Identity STS (Identity + OpenIddict server/validation) ----
-builder.Services.AddSufficitIdentitySTS(builder.Configuration);
+builder.Services.AddSufficitIdentitySTS(
+    builder.Configuration,
+    secretStore: startupSecretStore);
 
 // ---- Branding theme provider (singleton cache, DB-backed) ----
 // Registered before UI and management so both can resolve it.
@@ -631,7 +640,10 @@ if (shouldMigrate)
 
     if (identityOptions.Database.AllowedDatabaseNames.Length > 0)
     {
-        var configured = builder.Configuration.GetConnectionString(identityOptions.ConnectionStringName);
+        var configured = startupSecretStore.GetSecretAsync(
+                "database/connection-string")
+            .GetAwaiter()
+            .GetResult();
         var actualName = ParseDatabaseName(configured);
         if (actualName is null || !identityOptions.Database.AllowedDatabaseNames.Contains(
                 actualName, StringComparer.Ordinal))
