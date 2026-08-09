@@ -1,0 +1,88 @@
+version: 2
+
+# Dependabot keeps the dependency graph patched. It complements the existing
+# "Dependency vulnerability audit" step in ci.yml: that step FAILS a build when
+# a High/Critical advisory is already present, while Dependabot proactively
+# opens the PR that fixes it. Security updates are enabled repository-wide in
+# the Security settings; the schedules below cover routine version drift too.
+updates:
+  # ---- NuGet (central package management via Directory.Packages.props) ----
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - security
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      # One PR per family instead of a dozen: the Microsoft/ASP.NET and
+      # OpenIddict packages are released in lockstep and must move together, so
+      # separate PRs would each fail to build on their own.
+      microsoft:
+        patterns:
+          - "Microsoft.*"
+          - "System.*"
+      openiddict:
+        patterns:
+          - "OpenIddict*"
+      testing:
+        patterns:
+          - "xunit*"
+          - "coverlet*"
+          - "Microsoft.NET.Test.*"
+    ignore:
+      # The EF Core provider is a deliberately fixed internal Pomelo fork built
+      # from upstream PR #2019 and restored from the in-repo .nuget-feed. CI
+      # verifies the exact artifact ("Verify approved Pomelo fork artifacts"),
+      # so an automated bump would break the build by design. Revisit when
+      # upstream ships stable EF Core 10 support (Pomelo issue #2007).
+      - dependency-name: "Pomelo.EntityFrameworkCore.MySql"
+
+  # ---- GitHub Actions ----
+  # Actions are SHA-pinned in this repo; Dependabot understands that and bumps
+  # the SHA while keeping the readable version comment in sync.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "chore(ci)"
+
+  # ---- Docker base images ----
+  # The Dockerfile pins base images by SHA256 digest; Dependabot updates the
+  # digest when a new patched image is published, which is exactly the case
+  # digest-pinning otherwise makes easy to forget.
+  #
+  # CAVEAT: this Dockerfile declares its images through ARG defaults
+  # (ARG DOTNET_SDK_IMAGE=...@sha256:...) rather than a literal FROM. Dependabot
+  # handles plain FROM lines reliably; ARG-indirected images are less reliably
+  # detected. If no Docker PRs appear after a base-image release, check
+  # Insights > Dependency graph > Dependabot for parse errors — the fix is to
+  # inline the image in FROM (keeping the ARG for local overrides) rather than
+  # to drop this entry.
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - docker
+    commit-message:
+      prefix: "chore(docker)"
