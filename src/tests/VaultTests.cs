@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Tests.Infrastructure;
+using Sufficit.Identity.Management.Provisioning;
 using Sufficit.Identity.Management.Vault;
 using Sufficit.Identity.STS;
 using Sufficit.Identity.STS.Email;
@@ -83,11 +85,37 @@ public sealed class VaultTests
     }
 
     [Fact]
+    public void Encryption_is_required_by_default_and_cannot_be_disabled_outside_development()
+    {
+        var defaults = new VaultOptions();
+#pragma warning disable CS0618
+        Assert.True(defaults.RequireEncryptionInProduction);
+        var legacyOverride = new VaultOptions
+        {
+            Enabled = false,
+            RequireEncryptionInProduction = false,
+        };
+#pragma warning restore CS0618
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            Sufficit.Identity.Vault.ServiceCollectionExtensions.ValidateRuntimeMode(
+                legacyOverride,
+                isDevelopment: false));
+        Assert.Contains("development-only", exception.Message,
+            StringComparison.Ordinal);
+
+        Sufficit.Identity.Vault.ServiceCollectionExtensions.ValidateRuntimeMode(
+            new VaultOptions { Enabled = false },
+            isDevelopment: true);
+    }
+
+    [Fact]
     public async Task Registration_exposes_environment_configuration_secret_boundary()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
+                [$"{VaultOptions.SectionName}:Enabled"] = "true",
                 ["Secrets:database/password"] = "configured-secret",
             })
             .Build();
@@ -329,6 +357,33 @@ public sealed class VaultTests
     }
 
     [Fact]
+    public async Task Real_vault_rejects_aad_hash_with_different_length()
+    {
+        var (vault, _) = CreateRealVault();
+        var aad = new Dictionary<string, string> { ["stream_id"] = "s1" };
+        var ciphertext = await vault.EncryptAsync("test-key", "secret", aad);
+        var parts = ciphertext.Split('.', StringSplitOptions.None);
+        parts[^1] = WebEncoders.Base64UrlEncode(new byte[7]);
+        var malformed = string.Join('.', parts);
+
+        await Assert.ThrowsAnyAsync<CryptographicException>(
+            () => vault.DecryptStringAsync(malformed, aad));
+    }
+
+    [Fact]
+    public async Task Real_vault_rejects_truncated_ciphertext()
+    {
+        var (vault, _) = CreateRealVault();
+        var ciphertext = await vault.EncryptAsync("test-key", "secret");
+        var parts = ciphertext.Split('.', StringSplitOptions.None);
+        parts[2] = WebEncoders.Base64UrlEncode([1, 2, 3]);
+        var malformed = string.Join('.', parts);
+
+        await Assert.ThrowsAnyAsync<CryptographicException>(
+            () => vault.DecryptStringAsync(malformed));
+    }
+
+    [Fact]
     public async Task Real_vault_old_ciphertext_decrypts_after_rotation()
     {
         var (vault, dbFactory) = CreateRealVault();
@@ -508,6 +563,17 @@ public sealed class VaultTests
         Assert.Equal(plaintext, resolved);
         // The reference must not contain the plaintext.
         Assert.DoesNotContain(plaintext, reference);
+    }
+
+    [Fact]
+    public async Task Client_secret_resolver_rejects_plaintext_with_real_vault()
+    {
+        var (vault, _) = CreateRealVault();
+        var resolver = new VaultBackedClientSecretResolver(vault);
+
+        await Assert.ThrowsAsync<ClientSecretResolutionException>(
+            async () => await resolver.ResolveAsync(
+                "raw-client-secret-must-not-fall-back"));
     }
 
     // ---- Helpers ----

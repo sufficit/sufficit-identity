@@ -1,7 +1,7 @@
 # Avaliação Claude Fable 5 — plano de implementação remanescente
 
 > **Status:** ACTIVE. Reconciliado em 2026-08-09 contra
-> `2d2dcdb`. Origem: avaliação interna `EVALUATION-2026-08-09-claude-fable-5.md`
+> `2aebda1`. Origem: avaliação interna `EVALUATION-2026-08-09-claude-fable-5.md`
 > (mantida fora do versionamento após a reconciliação).
 >
 > Este documento contém somente trabalho ainda aplicável. Ele não incorpora a
@@ -10,15 +10,17 @@
 > fechamento, sem criar uma segunda implementação concorrente.
 >
 > Contributors modulares, acknowledgements estruturados, fail-closed efetivo,
-> defaults seguros, invariantes PKCE/JAR e exclusividade DPoP/mTLS foram
-> entregues e removidos deste plano; evidências em
+> defaults seguros, invariantes PKCE/JAR, exclusividade DPoP/mTLS e boundaries
+> fail-closed do vault foram entregues e removidos deste plano; evidências em
 > [`202608091904-completed-production-posture-contributors.md`](../activities/202608091904-completed-production-posture-contributors.md)
 > e
 > [`202608091911-completed-secure-policy-defaults.md`](../activities/202608091911-completed-secure-policy-defaults.md)
 > e
 > [`202608091918-completed-pkce-jar-invariants.md`](../activities/202608091918-completed-pkce-jar-invariants.md)
 > e
-> [`202608091925-completed-sender-constraint-exclusivity.md`](../activities/202608091925-completed-sender-constraint-exclusivity.md).
+> [`202608091925-completed-sender-constraint-exclusivity.md`](../activities/202608091925-completed-sender-constraint-exclusivity.md)
+> e
+> [`202608091930-completed-vault-fail-closed-boundaries.md`](../activities/202608091930-completed-vault-fail-closed-boundaries.md).
 
 ## Resultado da reconciliação
 
@@ -67,12 +69,10 @@ Quatro recomendações precisam de ajuste antes de serem implementadas:
 | --- | --- | --- |
 | S3 — SCIM Observe permite cliente fora da allow-list | **Aceito com rollout, P0** | O default já é `Enforce`, mas `ScimClientHandler` concede em `Observe`. Tornar o uso temporário, reconhecido e bloqueado pelo posture check; remover após a janela de migração. |
 | S4 — proveniência de token exchange em Observe | **Aceito com rollout, P0** | `TokenExchangeOptions.ProvenanceMode` agora inicia em `Enforce`; P0.2 mantém somente o inventário e a remoção de overrides `Observe` existentes nos ambientes. |
-| S5 — vault plaintext por default | **Aceito, gate de produção P0** | `Enabled=false` e `RequireEncryptionInProduction=false` ainda selecionam `pt1` fora de Development. A migração canônica permanece no plano GLM/Vault. |
+| S5 — vault plaintext por default | **Aceito, gate operacional P0** | O startup agora impede `PassThroughKeyVault` fora de Development e o template habilita criptografia. Resta executar e comprovar a migração `pt1` nos ambientes conforme o plano GLM/Vault. |
 | S6 — KEK no mesmo domínio do banco | **Aceito, P1** | O backend disponível é Data Protection, persistido no mesmo `AppDbContext` e protegido pelo certificado de assinatura. Separar certificado/KEK e entregar KMS/HSM em P1.1. |
 | S7 — signing keys nunca aposentadas | **Aceito, P1** | Rotação cria nova versão; nenhum fluxo define `RetiredAtUtc`. Implementar lifecycle completo em P1.1. |
 | S9 — vault secrets sem escopo por item | **Aceito, P1** | O serviço envia o nome no `ManagementResource`, mas `VaultSecrets` não pertence a `ItemResourceTypes` e não existe política de namespace. Fechar junto do modelo de contexto/tenant. |
-| S13 — comparação AAD | **Aceito, correção curta P0** | Trocar `SequenceEqual` por `CryptographicOperations.FixedTimeEquals` e testar tamanhos diferentes. |
-| S13 — fallback plaintext do resolver | **Aceito, P0** | `VaultBackedClientSecretResolver` retorna texto cru em qualquer `FormatException`, inclusive com vault real. Permitir fallback apenas no backend de compatibilidade. |
 | S13 — `jwks_uri` de JAR | **Aceito como gap funcional, P1** | O código e o comentário prometem fallback, mas `ResolveSigningKeysAsync` lê apenas JWKS embutido. Implementar fetch seguro ou rejeitar o metadado de forma explícita até a implementação. |
 | S13 — revogação mTLS | **Aceito como defesa em profundidade, P1** | Thumbprint por cliente limita o impacto, mas `NoCheck` é fixo. Tornar a política configurável e documentar o comportamento de proxy. |
 | S13 — replay DPoP distribuído | **Sem mudança funcional** | O get/set isolado não é a autoridade final: `RollingDpopReplayCache` inclui insert único no banco. Adicionar somente teste de composição para impedir remoção acidental dessa camada. |
@@ -110,25 +110,18 @@ public origin e autorização Management.
 **Concluído quando:** produção não contém um modo permissivo sem acknowledgement
 válido e todas as exceções temporárias têm data de remoção observável.
 
-### P0.5 Fechar plaintext e fallbacks criptográficos em produção
+### P0.5 Executar a migração criptográfica nos ambientes
 
-**Alvos:** `VaultOptions`, registro DI do vault, client-secret resolver e crypto.
+**Plano canônico:** `PLAN-GLM-5-2-REMAINING.md` P0.1 e
+`RUNBOOK-VAULT.md`. Os guards, defaults, fallbacks e testes locais já foram
+entregues.
 
-- [ ] Executar a migração de `pt1`, configuração e credenciais descrita em
-  `PLAN-GLM-5-2-REMAINING.md` P0.1 e no runbook do vault
-- [ ] Alterar o estado final para `RequireEncryptionInProduction=true` por
-  default e impedir `PassThroughKeyVault` fora de Development
-- [ ] Fazer o resolver de client secrets aceitar referência plaintext apenas
-  quando o backend indicar explicitamente modo de compatibilidade; com vault
-  real, formato inválido deve falhar fechado
-- [ ] Trocar a comparação do hash AAD por
-  `CryptographicOperations.FixedTimeEquals` sem remover a autenticação GCM
-- [ ] Adicionar testes de startup não-Development, migração `pt1`, ciphertext
-  inválido, AAD incorreto e ausência de fallback plaintext com vault habilitado
+- [ ] Por ambiente, inventariar e regravar todos os valores `pt1.`, configurar
+  `Enabled=true`, comprovar zero leituras legadas durante a janela definida e
+  registrar backup restaurável, owner e rollback sem incluir segredos
 
-**Concluído quando:** nenhum consumidor de `IKeyVault` consegue persistir ou
-resolver segredo reversível em produção e valores legados têm migração e
-rollback documentados.
+**Concluído quando:** nenhum ambiente contém valor reversível legado e a prova
+redigida de migração/rollback está anexada ao gate de release.
 
 ## P1 — custódia de chaves, lifecycle e autorização granular
 

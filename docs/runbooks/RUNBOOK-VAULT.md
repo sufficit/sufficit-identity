@@ -40,13 +40,18 @@ protegido pela estratégia de certificado já usada pelo STS. Não altere
 
 Em produção, recomenda-se a sequência:
 
-1. implantar os leitores compatíveis (a versão atual entende `pt1.` e valores
-   legados);
-2. habilitar `Enabled=true` em uma réplica e observar os logs;
-3. migrar/regravar registros que ainda tenham o marcador `pt1.`;
-4. habilitar em todas as réplicas;
-5. somente quando não houver leituras legadas, definir
-   `RequireEncryptionInProduction=true`.
+1. confirmar backup restaurável do banco e do key-ring compartilhado;
+2. configurar `Enabled=true` em todas as réplicas antes de implantar esta
+   versão; o processo recusa startup com vault desabilitado fora de
+   Development;
+3. iniciar por uma réplica de canário e observar os avisos de leitura `pt1.`;
+4. migrar/regravar registros que ainda tenham o marcador `pt1.`;
+5. validar zero leituras legadas por uma janela completa e manter a versão
+   anterior somente pelo período de rollback acordado.
+
+`RequireEncryptionInProduction` permanece no binding para compatibilidade, mas
+seu valor não desliga o guard. O default é `true` e `PassThroughKeyVault` é
+restrito a Development.
 
 ### Segredos de configuração no ambiente
 
@@ -97,8 +102,9 @@ para resolver `database/connection-string`, senhas dos certificados, credenciais
 OAuth e senhas dos transportes SMTP/RabbitMQ. O `VaultBackedSecretStore` não é usado nessa fase, porque o
 banco ainda precisa ser aberto para que ele próprio possa ler segredos.
 
-Se `RequireEncryptionInProduction=true` e o vault estiver desabilitado, o
-processo falha no startup. Isso evita um downgrade silencioso.
+Se o vault estiver desabilitado fora de Development, o processo falha no
+startup mesmo que uma configuração legada defina
+`RequireEncryptionInProduction=false`. Isso evita downgrade silencioso.
 
 ## Rotação
 
@@ -121,6 +127,8 @@ consumidores internos através de `IVaultNamedSecretStore`.
 
 - `pt1.` é o marcador de compatibilidade sem criptografia. Ele é aceito apenas
   durante a migração e gera aviso no log do vault.
+- Referências de client secret em texto cru são aceitas somente pelo backend
+  pass-through de Development. Com o vault real, formato inválido falha fechado.
 - Valores SSF, DPoP e CIBA legados em claro continuam legíveis durante o
   rolling deploy; novas escritas já são cifradas quando `Enabled=true`.
 - Erros de AAD, ciphertext truncado ou tag GCM inválida fazem a leitura falhar

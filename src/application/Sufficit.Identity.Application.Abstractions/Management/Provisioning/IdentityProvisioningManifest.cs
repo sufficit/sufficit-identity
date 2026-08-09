@@ -122,5 +122,17 @@ public sealed class ClientSecretResolverUnavailableException()
     : Exception(
         $"No {nameof(IClientSecretResolver)} is configured for this environment.");
 
-public sealed class ClientSecretResolutionException()
-    : Exception("The secret reference did not resolve to a usable value.");
+public sealed class ClientSecretResolutionException : Exception
+{
+    public ClientSecretResolutionException()
+        : base("The secret reference did not resolve to a usable value.")
+    {
+    }
+
+    public ClientSecretResolutionException(Exception innerException)
+        : base(
+            "The secret reference did not resolve to a usable value.",
+            innerException)
+    {
+    }
+}

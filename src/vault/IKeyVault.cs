@@ -115,6 +115,15 @@ public interface IKeyVault
 }
 
 /// <summary>
+/// Explicit capability implemented only by a development/migration backend
+/// that is allowed to interpret a raw client-secret reference as plaintext.
+/// </summary>
+internal interface IKeyVaultPlaintextReferenceCompatibility
+{
+    bool AcceptsPlaintextClientSecretReferences { get; }
+}
+
+/// <summary>
 /// Parsed identity of a vault key: its name + version. Embedded in every
 /// ciphertext blob so decrypt picks the right key version for free.
 /// </summary>

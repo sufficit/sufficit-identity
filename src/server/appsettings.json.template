@@ -15,8 +15,8 @@
   "AllowedHosts": "your-identity-host",
   "Sufficit": {
     "Vault": {
-      "Enabled": false,
-      "RequireEncryptionInProduction": false,
+      "Enabled": true,
+      "RequireEncryptionInProduction": true,
       "KeySource": "dataprotection",
       "DataProtectionPurpose": "Sufficit.Identity.Vault.Master.v1",
       "EnableSecretStore": false,
