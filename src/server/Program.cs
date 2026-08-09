@@ -739,6 +739,28 @@ if (app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Account recovery and registration are anonymous-only surfaces. Keep the
+// rule at the host boundary so a signed-in user cannot reach them through a
+// direct URL, enhanced navigation request, or a stale form POST. This also
+// avoids rendering a recovery/register circuit before the client-side router
+// has had a chance to inspect the current authentication state.
+app.Use(async (context, next) =>
+{
+    if (context.User.Identity?.IsAuthenticated == true
+        && (context.Request.Path.StartsWithSegments(
+                "/account/forgotpassword",
+                StringComparison.OrdinalIgnoreCase)
+            || context.Request.Path.StartsWithSegments(
+                "/account/register",
+                StringComparison.OrdinalIgnoreCase)))
+    {
+        context.Response.Redirect("/manage");
+        return;
+    }
+
+    await next();
+});
+
 app.MapControllers();
 
 // ---- Health checks (liveness/readiness) ----
