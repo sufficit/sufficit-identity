@@ -18,6 +18,7 @@ using Sufficit.Identity.UI.Abstractions.Hosting;
 using Sufficit.Identity.UI;
 using Sufficit.Identity.UI.Management;
 using Sufficit.Identity.UI.Vault;
+using Sufficit.Identity.Vault;
 
 var builder = WebApplication.CreateBuilder(args);
 var migrateOnly = args.Contains("--migrate-only", StringComparer.Ordinal);
@@ -27,6 +28,10 @@ var migrateOnly = args.Contains("--migrate-only", StringComparer.Ordinal);
 // standard sources so each Sufficit server can override only its local values
 // (for example, the database endpoint) using a lowercase hostname filename.
 builder.Configuration.AddMachineSpecificJsonFile();
+// Resolve deployment-provided secret overrides before any startup options are
+// bound. The JSON layer remains a compatibility fallback during migration;
+// operators can move each secret to SUFFICIT_SECRET_* independently.
+builder.Configuration.AddSufficitSecretOverrides();
 
 // Optional file-based certificate password ingress. The privileged bootstrap
 // uses this for randomly generated Development certificates and operators can

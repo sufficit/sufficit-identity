@@ -48,6 +48,27 @@ Em produção, recomenda-se a sequência:
 5. somente quando não houver leituras legadas, definir
    `RequireEncryptionInProduction=true`.
 
+### Segredos de configuração no ambiente
+
+O host aplica variáveis `SUFFICIT_SECRET_*` antes de vincular as opções de
+startup. Elas têm precedência sobre JSON e permitem retirar credenciais de
+`appsettings.*.json` sem alterar os consumidores:
+
+| Nome lógico | Variável | Chave substituída |
+|---|---|---|
+| `database/connection-string` | `SUFFICIT_SECRET_DATABASE_CONNECTION_STRING` | `ConnectionStrings:DefaultConnection` |
+| `identity/certificates/signing-password` | `SUFFICIT_SECRET_IDENTITY_CERTIFICATES_SIGNING_PASSWORD` | `Sufficit:Identity:Certificates:SigningPassword` |
+| `identity/certificates/encryption-password` | `SUFFICIT_SECRET_IDENTITY_CERTIFICATES_ENCRYPTION_PASSWORD` | `Sufficit:Identity:Certificates:EncryptionPassword` |
+| `identity/human-verification/secret-key` | `SUFFICIT_SECRET_IDENTITY_HUMAN_VERIFICATION_SECRET_KEY` | `Sufficit:Identity:HumanVerification:SecretKey` |
+| `identity/external-providers/{google,github,facebook}/client-secret` | `SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_*` | credencial do provedor |
+
+As variáveis devem ser instaladas pelo supervisor/secret manager com permissões
+restritas. O JSON continua sendo fallback durante a migração; depois de validar
+que cada override está presente em todas as réplicas, remova o valor legado e
+registre apenas a evidência redigida de rotação. O fallback em `ISecretStore`
+gera telemetria de aviso com o nome lógico (nunca o valor), permitindo medir
+quando a dependência de configuração plaintext chegou a zero.
+
 Se `RequireEncryptionInProduction=true` e o vault estiver desabilitado, o
 processo falha no startup. Isso evita um downgrade silencioso.
 
