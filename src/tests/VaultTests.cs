@@ -371,18 +371,6 @@ public sealed class VaultTests
             () => EnvelopeCrypto.Decrypt(ciphertext, key, "owner=B"u8.ToArray()));
     }
 
-    [Fact]
-    public void Wrap_and_unwrap_round_trip()
-    {
-        var kek = EnvelopeCrypto.GenerateKey();
-        var dek = EnvelopeCrypto.GenerateKey();
-
-        var wrapped = EnvelopeCrypto.Wrap(dek, kek);
-        var unwrapped = EnvelopeCrypto.Unwrap(wrapped, kek);
-
-        Assert.Equal(dek, unwrapped);
-    }
-
     // ---- PassThroughKeyVault (disabled vault) ----
 
     [Fact]

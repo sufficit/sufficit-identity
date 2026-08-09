@@ -33,6 +33,8 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Completed work (activities/)
 
+- [Crypto model and atomic DPoP replay composition](activities/202608092045-completed-crypto-model-replay-composition.md)
+- [P1 integrated JAR and mTLS validation](activities/202608092036-completed-p1-integrated-validation.md)
 - [mTLS revocation and trusted-proxy topology](activities/202608092035-completed-mtls-revocation-topology.md)
 - [JAR remote JWKS with safe egress](activities/202608092022-completed-jar-remote-jwks.md)
 - [Vault named-secret namespace authorization](activities/202608092010-completed-vault-secret-namespaces.md)

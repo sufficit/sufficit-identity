@@ -30,8 +30,9 @@ public sealed class VaultKey
     public string Purpose { get; set; } = "symmetric";
 
     /// <summary>
-    /// The wrapped (KEK-encrypted) key material. Format is the
-    /// <c>EnvelopeCrypto.Wrap</c> output: <c>iv ‖ wrapped-key ‖ tag</c>.
+    /// Opaque key material wrapped by the configured KEK authority. Its format
+    /// is backend-specific (RSA-OAEP, Data Protection or external KMS/HSM) and
+    /// must only be interpreted by that same authority/key identifier.
     /// </summary>
     public byte[] WrappedKey { get; set; } = Array.Empty<byte>();
 

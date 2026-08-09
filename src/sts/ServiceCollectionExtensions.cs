@@ -1105,6 +1105,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(sp => new Dpop.DatabaseDpopReplayCache(
             sp.GetRequiredService<IDbContextFactory<AppDbContext>>(),
             TimeProvider.System));
+        services.AddSingleton<Dpop.IAtomicDpopReplayCache>(sp =>
+            sp.GetRequiredService<Dpop.DatabaseDpopReplayCache>());
         services.AddSingleton<Dpop.IDpopReplayCache, Dpop.RollingDpopReplayCache>();
         services.AddSingleton(sp => new Dpop.DpopProofValidator(
             TimeProvider.System,

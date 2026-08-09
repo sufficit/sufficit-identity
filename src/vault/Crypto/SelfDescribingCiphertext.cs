@@ -7,7 +7,7 @@ namespace Sufficit.Identity.Vault.Crypto;
 /// <summary>
 /// Self-describing ciphertext format (Vault Transit / age inspired):
 /// <code>
-/// v1.&lt;keyName&gt;:&lt;keyVersion&gt;.&lt;base64url(iv‖ct‖tag)&gt;.&lt;base64url(aadHash)&gt;
+/// v1.&lt;keyName&gt;:&lt;keyVersion&gt;.&lt;base64url(nonce‖ct‖tag)&gt;.&lt;base64url(aadHash)&gt;
 /// </code>
 /// The key name and version are embedded, so decryption picks the right key
 /// version for free — no side table needed. The AAD hash (first 8 bytes of
@@ -27,7 +27,7 @@ internal static class SelfDescribingCiphertext
     public static string Format(
         string keyName,
         int keyVersion,
-        byte[] packedCiphertext, // iv ‖ ct ‖ tag from EnvelopeCrypto
+        byte[] packedCiphertext, // nonce ‖ ct ‖ tag from EnvelopeCrypto
         byte[]? aadHash) // null when no AAD
     {
         var blob = WebEncoders.Base64UrlEncode(packedCiphertext);
