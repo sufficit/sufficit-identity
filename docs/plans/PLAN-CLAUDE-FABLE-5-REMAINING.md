@@ -1,7 +1,7 @@
 # Avaliação Claude Fable 5 — plano de implementação remanescente
 
 > **Status:** ACTIVE. Reconciliado em 2026-08-09 contra
-> `2aebda1`. Origem: avaliação interna `EVALUATION-2026-08-09-claude-fable-5.md`
+> `52ce1f9`. Origem: avaliação interna `EVALUATION-2026-08-09-claude-fable-5.md`
 > (mantida fora do versionamento após a reconciliação).
 >
 > Este documento contém somente trabalho ainda aplicável. Ele não incorpora a
@@ -20,7 +20,9 @@
 > e
 > [`202608091925-completed-sender-constraint-exclusivity.md`](../activities/202608091925-completed-sender-constraint-exclusivity.md)
 > e
-> [`202608091930-completed-vault-fail-closed-boundaries.md`](../activities/202608091930-completed-vault-fail-closed-boundaries.md).
+> [`202608091930-completed-vault-fail-closed-boundaries.md`](../activities/202608091930-completed-vault-fail-closed-boundaries.md)
+> e
+> [`202608092355-completed-vault-signing-key-lifecycle.md`](../activities/202608092355-completed-vault-signing-key-lifecycle.md).
 
 ## Resultado da reconciliação
 
@@ -70,8 +72,6 @@ Quatro recomendações precisam de ajuste antes de serem implementadas:
 | S3 — SCIM Observe permite cliente fora da allow-list | **Aceito com rollout, P0** | O default já é `Enforce`, mas `ScimClientHandler` concede em `Observe`. Tornar o uso temporário, reconhecido e bloqueado pelo posture check; remover após a janela de migração. |
 | S4 — proveniência de token exchange em Observe | **Aceito com rollout, P0** | `TokenExchangeOptions.ProvenanceMode` agora inicia em `Enforce`; P0.2 mantém somente o inventário e a remoção de overrides `Observe` existentes nos ambientes. |
 | S5 — vault plaintext por default | **Aceito, gate operacional P0** | O startup agora impede `PassThroughKeyVault` fora de Development e o template habilita criptografia. Resta executar e comprovar a migração `pt1` nos ambientes conforme o plano GLM/Vault. |
-| S6 — KEK no mesmo domínio do banco | **Aceito, P1** | O backend disponível é Data Protection, persistido no mesmo `AppDbContext` e protegido pelo certificado de assinatura. Separar certificado/KEK e entregar KMS/HSM em P1.1. |
-| S7 — signing keys nunca aposentadas | **Aceito, P1** | Rotação cria nova versão; nenhum fluxo define `RetiredAtUtc`. Implementar lifecycle completo em P1.1. |
 | S9 — vault secrets sem escopo por item | **Aceito, P1** | O serviço envia o nome no `ManagementResource`, mas `VaultSecrets` não pertence a `ItemResourceTypes` e não existe política de namespace. Fechar junto do modelo de contexto/tenant. |
 | S13 — `jwks_uri` de JAR | **Aceito como gap funcional, P1** | O código e o comentário prometem fallback, mas `ResolveSigningKeysAsync` lê apenas JWKS embutido. Implementar fetch seguro ou rejeitar o metadado de forma explícita até a implementação. |
 | S13 — revogação mTLS | **Aceito como defesa em profundidade, P1** | Thumbprint por cliente limita o impacto, mas `NoCheck` é fixo. Tornar a política configurável e documentar o comportamento de proxy. |
@@ -123,30 +123,7 @@ entregues.
 **Concluído quando:** nenhum ambiente contém valor reversível legado e a prova
 redigida de migração/rollback está anexada ao gate de release.
 
-## P1 — custódia de chaves, lifecycle e autorização granular
-
-### P1.1 Separar a KEK e implementar lifecycle real de signing keys
-
-**Plano canônico relacionado:** `PLAN-SECURITY-HARDENING-WAVE-2.md` P2.5 e
-`PLAN-VAULT.md`.
-
-- [ ] Adicionar backend de certificado dedicado e backend KMS/HSM para
-  `IVaultKeyEncryptionKeySource`; o certificado de proteção DP não pode ser o
-  certificado de assinatura de tokens
-- [ ] Falhar startup quando vault estiver ativo e a key ring/KEK não satisfizer
-  a política do ambiente
-- [ ] Modelar signing key como `active`, `retiring`, `retired` ou `revoked`, com
-  uma única chave de emissão ativa e transições auditadas
-- [ ] Ao rotacionar, parar de emitir com a versão anterior, mantê-la em JWKS
-  pelo maior lifetime verificável e definir `RetiredAtUtc` ao fim do overlap
-- [ ] Implementar revogação emergencial que remova o `kid` de JWKS e impeça
-  `SignAsync`/`VerifyAsync`, com impacto explícito sobre tokens ainda válidos
-- [ ] Proteger rotação com lock distribuído, idempotência, journal e testes de
-  concorrência, restauração, perda de KEK e rollback
-
-**Concluído quando:** dump do banco não basta para recuperar a KEK, uma chave
-antiga deixa de ser confiável em prazo definido e comprometimento tem caminho
-de revogação exercitado.
+## P1 — autorização granular, chaves remotas e topologia mTLS
 
 ### P1.2 Autorizar named secrets por namespace
 
@@ -233,8 +210,8 @@ operador escolhe conscientemente a política de revogação.
    fechar PKCE/JAR/sender constraint/fallbacks e bloquear novas regressões.
 4. **Expiração de compatibilidade:** retirar acknowledgements vencidos,
    `Observe` de SCIM após uma release limpa e adapters de configuração antigos.
-5. **Custódia e certificação:** concluir KMS/HSM, lifecycle de signing keys,
-   namespaces e provas externas antes do go-live irrestrito.
+5. **Custódia e certificação:** concluir namespaces e provas externas antes do
+   go-live irrestrito.
 
 ## Verificação mínima
 
@@ -244,7 +221,6 @@ operador escolhe conscientemente a política de revogação.
 - Testes de Management/Provisioning/DCR para PKCE
 - Testes JAR de parâmetros externos, tipos estruturados, replay e `jwks_uri`
 - Testes DPoP/mTLS de emissão, refresh e consumo
-- Testes vault com MariaDB para rotação, retirement, concorrência e migração
 - Rehearsal de rolling deployment antes de remover cada compatibilidade
 
 ## Gate de encerramento
@@ -256,7 +232,6 @@ Este plano pode ser arquivado somente quando:
 - Management, provisioning e DCR compartilham PKCE para todo auth-code client;
 - JAR não usa parâmetros externos ao JWT validado;
 - DPoP e mTLS não sofrem downgrade quando apresentados em conjunto;
-- produção não usa `pt1`/PassThrough e a KEK está fora do domínio do banco;
-- signing keys têm overlap, retirement e emergency revoke exercitados;
+- produção não usa `pt1`/PassThrough;
 - os gates canônicos de produção, vault, autorização e auditoria externa foram
   concluídos.
