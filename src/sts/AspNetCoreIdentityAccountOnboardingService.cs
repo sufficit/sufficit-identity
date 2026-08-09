@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Http;
@@ -7,7 +8,9 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Application.Accounts;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.STS;
 
@@ -22,9 +25,19 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
     IConfiguration configuration,
     IPublicOriginResolver publicOrigin,
     IAccountLookupPolicy accountLookup,
+    IIdentityUserSessionRevoker sessionRevoker,
+    ISecurityEventTrigger securityEvents,
     ILogger<AspNetCoreIdentityAccountOnboardingService> logger)
     : IAccountOnboardingService
 {
+    private const int PasswordResetRevocationAttempts = 3;
+    private static readonly Meter SecurityMeter = new(
+        "Sufficit.Identity.Security",
+        "1.0.0");
+    private static readonly Counter<long> PasswordResetRevocationCounter =
+        SecurityMeter.CreateCounter<long>(
+            "identity.security.password_reset_revocation");
+
     private readonly AccountRegistrationPolicy _registrationPolicy = new(
         configuration.GetValue(
             "Sufficit:Identity:Register:Enabled",
@@ -270,6 +283,57 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
         cancellationToken.ThrowIfCancellationRequested();
         if (reset.Succeeded)
         {
+            // A password reset is the flow a victim uses AFTER losing control
+            // of the account, so the attacker's existing access must not
+            // survive it. ResetPasswordAsync rotates the security stamp
+            // (invalidating cookies at the next stamp validation), but it does
+            // NOT revoke issued OpenIddict refresh/access tokens, their
+            // authorizations, or other browser sessions. Revoke everything —
+            // unlike the authenticated change-password path there is no
+            // current session to preserve, since this flow is unauthenticated.
+            var revocation = await RevokePasswordResetSessionsAsync(
+                user.Id,
+                cancellationToken);
+            if (revocation is not null)
+            {
+                logger.LogInformation(
+                    "Password reset for user {UserId} revoked {TokenCount} tokens, "
+                    + "{AuthorizationCount} authorizations and {BrowserSessionCount} browser sessions.",
+                    user.Id,
+                    revocation.RevokedTokens,
+                    revocation.RevokedAuthorizations,
+                    revocation.RevokedBrowserSessions);
+            }
+
+            // CAEP credential-change so SSF receivers can react (the
+            // authenticated change-password path already emits this). Keep it
+            // independent from local revocation: even if the database cleanup
+            // exhausts its retries, receivers still get a chance to terminate
+            // their own sessions.
+            try
+            {
+                await securityEvents.CredentialChangedAsync(
+                    user.Id,
+                    sessionId: null,
+                    new CaepCredentialChange(
+                        CaepCredentialType.Password,
+                        CaepChangeOperation.Updated),
+                    cancellationToken);
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(
+                    exception,
+                    "Password reset for user {UserId} succeeded but the "
+                    + "credential-change signal failed.",
+                    user.Id);
+            }
+
             logger.LogInformation(
                 "Password reset succeeded for user {UserId}.",
                 user.Id);
@@ -280,6 +344,73 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
                 ? AccountPasswordResetStatus.Succeeded
                 : AccountPasswordResetStatus.Failed,
             MapErrors(reset.Errors));
+    }
+
+    private async Task<IdentityUserSessionRevocation?>
+        RevokePasswordResetSessionsAsync(
+            string userId,
+            CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; attempt <= PasswordResetRevocationAttempts; attempt++)
+        {
+            try
+            {
+                var revocation = await sessionRevoker.RevokeAsync(
+                    userId,
+                    cancellationToken);
+                PasswordResetRevocationCounter.Add(
+                    1,
+                    new KeyValuePair<string, object?>("outcome", "succeeded"),
+                    new KeyValuePair<string, object?>("attempt", attempt));
+                return revocation;
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                var finalAttempt = attempt == PasswordResetRevocationAttempts;
+                PasswordResetRevocationCounter.Add(
+                    1,
+                    new KeyValuePair<string, object?>(
+                        "outcome",
+                        finalAttempt ? "failed" : "retry"),
+                    new KeyValuePair<string, object?>("attempt", attempt));
+
+                if (finalAttempt)
+                {
+                    // ResetPasswordAsync already committed the new password and
+                    // rotated the security stamp. Returning a generic failure
+                    // would make the user retry with an invalidated reset token,
+                    // so retain the successful result while emitting a critical,
+                    // metric-backed operational signal.
+                    logger.LogCritical(
+                        exception,
+                        "Password reset for user {UserId} succeeded, but token, "
+                        + "authorization and browser-session revocation failed "
+                        + "after {AttemptCount} attempts. Existing OAuth sessions "
+                        + "may remain valid and require operational intervention.",
+                        userId,
+                        PasswordResetRevocationAttempts);
+                    return null;
+                }
+
+                logger.LogWarning(
+                    exception,
+                    "Password reset session revocation for user {UserId} failed "
+                    + "on attempt {Attempt}/{AttemptCount}; retrying.",
+                    userId,
+                    attempt,
+                    PasswordResetRevocationAttempts);
+                await Task.Delay(
+                    TimeSpan.FromMilliseconds(50 * attempt),
+                    cancellationToken);
+            }
+        }
+
+        return null;
     }
 
     private async Task<bool> SendConfirmationMessageAsync(
