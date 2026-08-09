@@ -845,6 +845,33 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Branding_preview_uses_the_configured_background_and_safe_live_draft_values()
+    {
+        var repositoryRoot = ResolveIdentityRepository();
+        var page = File.ReadAllText(Path.Combine(
+            repositoryRoot,
+            "src",
+            "ui",
+            "Sufficit.Identity.UI.Management",
+            "Components",
+            "Pages",
+            "Branding.razor"));
+        var styles = File.ReadAllText(Path.Combine(
+            repositoryRoot,
+            "src",
+            "ui",
+            "Sufficit.Identity.UI.Management",
+            "wwwroot",
+            "app.css"));
+
+        Assert.Contains("@bind-Value:event=\"oninput\"", page, StringComparison.Ordinal);
+        Assert.Contains("SafePreviewImageUrl", page, StringComparison.Ordinal);
+        Assert.Contains("--preview-background-image", page, StringComparison.Ordinal);
+        Assert.Contains("var(--preview-background-image, none)", styles, StringComparison.Ordinal);
+        Assert.Contains("Fundo personalizado", page, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Overview_controller_is_only_an_http_adapter()
     {
         var controller = File.ReadAllText(Path.Combine(

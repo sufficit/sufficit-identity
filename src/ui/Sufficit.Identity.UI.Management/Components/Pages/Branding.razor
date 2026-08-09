@@ -163,7 +163,7 @@
                 </StatusBadge>
             </div>
 
-            <div class="identity-preview" style="@PreviewStyle(theme)">
+            <div class="identity-preview" style="@PreviewStyle">
                 <div class="identity-preview__top">
                     <img @key="PreviewHeaderIcon"
                          src="@PreviewHeaderIcon"
@@ -172,6 +172,10 @@
                          alt=""
                          @onerror="UseHeaderFallback" />
                     <span>@ThemeIdentity(theme)</span>
+                    @if (PreviewBackgroundUrl is not null)
+                    {
+                        <span class="identity-preview__asset-badge">Fundo personalizado</span>
+                    }
                 </div>
                 <div class="identity-preview__body">
                     <div class="identity-preview__card">
@@ -324,7 +328,11 @@
                     <InputText id="background-url"
                                class="form-control"
                                @bind-Value="model.BackgroundImageUrl"
+                               @bind-Value:event="oninput"
                                autocomplete="url" />
+                    <span class="field-hint">
+                        A prévia acima atualiza enquanto você ajusta a URL; o tema público usa o valor salvo.
+                    </span>
                 </div>
             </div>
         </div>
@@ -502,11 +510,18 @@
     private string PreviewHeaderIcon =>
         headerFallback
             ? FallbackIcon
-            : Selected?.HeaderIconUrl ?? FallbackIcon;
+            : (editing ? model.HeaderIconUrl : Selected?.HeaderIconUrl) ?? FallbackIcon;
     private string PreviewLogo =>
         logoFallback
             ? FallbackIcon
-            : Selected?.LogoUrl ?? FallbackIcon;
+            : (editing ? model.LogoUrl : Selected?.LogoUrl) ?? FallbackIcon;
+    private string? PreviewBackgroundUrl =>
+        SafePreviewImageUrl(editing ? model.BackgroundImageUrl : Selected?.BackgroundImageUrl);
+    private string PreviewStyle =>
+        BuildPreviewStyle(
+            editing ? model.BrandColor : Selected?.BrandColor,
+            editing ? model.BrandSoftColor : Selected?.BrandSoftColor,
+            PreviewBackgroundUrl);
 
     protected override async Task OnInitializedAsync() =>
         await LoadAsync();
@@ -676,9 +691,35 @@
             : value;
     }
 
-    private static string PreviewStyle(ManagementBrandingTheme theme) =>
-        $"--preview-brand:{theme.BrandColor ?? "#cc0000"};"
-        + $"--preview-brand-soft:{theme.BrandSoftColor ?? "#fbe9e9"};";
+    private static string BuildPreviewStyle(
+        string? brandColor,
+        string? brandSoftColor,
+        string? backgroundImageUrl) =>
+        $"--preview-brand:{brandColor ?? "#cc0000"};"
+        + $"--preview-brand-soft:{brandSoftColor ?? "#fbe9e9"};"
+        + $"--preview-background-image:{(backgroundImageUrl is null ? "none" : $"url(\"{backgroundImageUrl}\")")};";
+
+    private static string? SafePreviewImageUrl(string? value)
+    {
+        var normalized = value?.Trim();
+        if (string.IsNullOrWhiteSpace(normalized)
+            || normalized.StartsWith("//", StringComparison.Ordinal)
+            || normalized.Any(char.IsControl)
+            || normalized.IndexOfAny(['"', '\'', '\\', '(', ')']) >= 0)
+        {
+            return null;
+        }
+
+        if (normalized.StartsWith("/", StringComparison.Ordinal))
+        {
+            return normalized;
+        }
+
+        return Uri.TryCreate(normalized, UriKind.Absolute, out var uri)
+            && string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
+            ? uri.AbsoluteUri
+            : null;
+    }
 
     private static string ThemeMarkStyle(ManagementBrandingTheme theme) =>
         $"background:{theme.BrandColor ?? "#cc0000"}";
