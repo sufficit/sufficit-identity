@@ -79,6 +79,10 @@ keywords = ["clientsecret", "client_secret"]
     '''CLIENT_SECRET''',
     '''CHANGE_ME''',
     '''client_secret=PKCE_''',
+    # These are local variable names, not credential values. The assignment
+    # is resolved through ISecretStore and the names are scanned as secrets
+    # only because they are exactly 20+ characters long.
+    '''(?:google|github|facebook)ClientSecret!?''',
   ]
   paths = ['''src/tests/.*''', '''appsettings\.json\.template''']
 
