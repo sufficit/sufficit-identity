@@ -23,6 +23,8 @@
 > [`202608091930-completed-vault-fail-closed-boundaries.md`](../activities/202608091930-completed-vault-fail-closed-boundaries.md)
 > e
 > [`202608092355-completed-vault-signing-key-lifecycle.md`](../activities/202608092355-completed-vault-signing-key-lifecycle.md).
+> Autorização de named secrets por contexto/namespace foi entregue em
+> [`202608092010-completed-vault-secret-namespaces.md`](../activities/202608092010-completed-vault-secret-namespaces.md).
 
 ## Resultado da reconciliação
 
@@ -72,7 +74,6 @@ Quatro recomendações precisam de ajuste antes de serem implementadas:
 | S3 — SCIM Observe permite cliente fora da allow-list | **Aceito com rollout, P0** | O default já é `Enforce`, mas `ScimClientHandler` concede em `Observe`. Tornar o uso temporário, reconhecido e bloqueado pelo posture check; remover após a janela de migração. |
 | S4 — proveniência de token exchange em Observe | **Aceito com rollout, P0** | `TokenExchangeOptions.ProvenanceMode` agora inicia em `Enforce`; P0.2 mantém somente o inventário e a remoção de overrides `Observe` existentes nos ambientes. |
 | S5 — vault plaintext por default | **Aceito, gate operacional P0** | O startup agora impede `PassThroughKeyVault` fora de Development e o template habilita criptografia. Resta executar e comprovar a migração `pt1` nos ambientes conforme o plano GLM/Vault. |
-| S9 — vault secrets sem escopo por item | **Aceito, P1** | O serviço envia o nome no `ManagementResource`, mas `VaultSecrets` não pertence a `ItemResourceTypes` e não existe política de namespace. Fechar junto do modelo de contexto/tenant. |
 | S13 — `jwks_uri` de JAR | **Aceito como gap funcional, P1** | O código e o comentário prometem fallback, mas `ResolveSigningKeysAsync` lê apenas JWKS embutido. Implementar fetch seguro ou rejeitar o metadado de forma explícita até a implementação. |
 | S13 — revogação mTLS | **Aceito como defesa em profundidade, P1** | Thumbprint por cliente limita o impacto, mas `NoCheck` é fixo. Tornar a política configurável e documentar o comportamento de proxy. |
 | S13 — replay DPoP distribuído | **Sem mudança funcional** | O get/set isolado não é a autoridade final: `RollingDpopReplayCache` inclui insert único no banco. Adicionar somente teste de composição para impedir remoção acidental dessa camada. |
@@ -123,24 +124,7 @@ entregues.
 **Concluído quando:** nenhum ambiente contém valor reversível legado e a prova
 redigida de migração/rollback está anexada ao gate de release.
 
-## P1 — autorização granular, chaves remotas e topologia mTLS
-
-### P1.2 Autorizar named secrets por namespace
-
-**Plano canônico relacionado:** `PLAN-GLM-5-2-REMAINING.md` P0.3.
-
-- [ ] Definir namespaces, ownership/context e regra de herança para nomes de
-  segredo antes de expor novos capabilities
-- [ ] Adicionar `VaultSecrets` ao conjunto de recursos por item e exigir ID
-  normalizado para get/put/delete
-- [ ] Filtrar listagem pelo mesmo contexto; capability global não pode revelar
-  nomes de outro namespace
-- [ ] Manter break-glass separado, auditado e não atribuível por APIs comuns
-- [ ] Testar listagem, nome adivinhado, overwrite/delete cross-context e
-  normalização ambígua
-
-**Concluído quando:** `identity.vault.secrets.manage` autoriza uma operação, mas
-o namespace/context decide sobre qual segredo ela pode ocorrer.
+## P1 — chaves remotas e topologia mTLS
 
 ### P1.3 Completar chaves remotas de JAR com egress seguro
 
@@ -210,8 +194,8 @@ operador escolhe conscientemente a política de revogação.
    fechar PKCE/JAR/sender constraint/fallbacks e bloquear novas regressões.
 4. **Expiração de compatibilidade:** retirar acknowledgements vencidos,
    `Observe` de SCIM após uma release limpa e adapters de configuração antigos.
-5. **Custódia e certificação:** concluir namespaces e provas externas antes do
-   go-live irrestrito.
+5. **Custódia e certificação:** concluir provas externas antes do go-live
+   irrestrito.
 
 ## Verificação mínima
 
