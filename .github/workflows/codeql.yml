@@ -1,0 +1,77 @@
+name: CodeQL
+
+# Semantic static analysis for security defects (injection, unsafe
+# deserialization, hard-coded credentials, path traversal, weak crypto usage).
+# This complements — it does not replace — the build/test gate in ci.yml and the
+# gitleaks secret scan: those catch broken builds and committed secrets, while
+# CodeQL reasons about data flow across the codebase.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly re-scan so newly published queries reach existing code even when
+    # nothing is being merged. Sunday 04:17 UTC — an off-peak, non-round time
+    # to avoid the top-of-hour scheduling spike on GitHub-hosted runners.
+    - cron: "17 4 * * 0"
+  workflow_dispatch:
+
+# Least privilege, matching ci.yml. security-events:write is the one scope
+# CodeQL genuinely needs: it uploads findings to the repository's Security tab.
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  # A push that supersedes an in-flight analysis makes the older run pointless.
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    name: Analyze C#
+    runs-on: ubuntu-latest
+    # The build below restores and compiles the full solution; the default
+    # 6-hour ceiling is far more than needed and delays failure feedback.
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@24c7eb380a2dc368f2d129e4c65e51d172983a1e # v4
+        with:
+          languages: csharp
+          # security-extended adds lower-severity and higher-precision-cost
+          # security queries beyond the default set. For an identity provider
+          # the extra signal is worth the extra analysis time.
+          queries: security-extended
+          # Manual build: the solution pins an internal Pomelo fork from a local
+          # feed, so autobuild's heuristics are not a safe bet here.
+          build-mode: manual
+
+      # Mirrors ci.yml: the EF Core provider is a deliberately fixed internal
+      # build, restored from the in-repo feed rather than nuget.org.
+      - name: Restore
+        # --locked-mode mirrors ci.yml: the repo commits packages.lock.json, so
+        # analysis must resolve exactly the audited dependency graph rather than
+        # silently floating to newer versions.
+        run: dotnet restore Sufficit.Identity.sln --locked-mode
+
+      - name: Build
+        # No -warnaserror here: ci.yml already enforces that gate. This build
+        # exists only to give CodeQL a complete compilation to analyze, and
+        # failing it on style warnings would mask real security findings.
+        run: dotnet build Sufficit.Identity.sln --no-restore --configuration Release
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@24c7eb380a2dc368f2d129e4c65e51d172983a1e # v4
+        with:
+          category: "/language:csharp"
