@@ -22,6 +22,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
     IConfiguration configuration,
     IPublicOriginResolver publicOrigin,
     IAccountLookupPolicy accountLookup,
+    Sufficit.Identity.Core.Services.IIdentityUserSessionRevoker sessionRevoker,
     ILogger<AspNetCoreIdentityAccountOnboardingService> logger)
     : IAccountOnboardingService
 {
@@ -270,9 +271,44 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
         cancellationToken.ThrowIfCancellationRequested();
         if (reset.Succeeded)
         {
-            logger.LogInformation(
-                "Password reset succeeded for user {UserId}.",
-                user.Id);
+            // A password reset is the account-recovery path: the person driving
+            // it may be recovering from a compromise. ResetPasswordAsync rotates
+            // the security stamp (which invalidates auth cookies on the next
+            // stamp validation), but that does NOT revoke issued OAuth refresh
+            // tokens or authorizations — an attacker holding one would keep
+            // access after the victim "recovered" the account. Revoke server-side
+            // sessions and tokens explicitly, mirroring what the authenticated
+            // credential-mutation path does via
+            // ICredentialMutationSecurityCoordinator (which cannot be used here:
+            // this flow has no authenticated principal).
+            try
+            {
+                var revocation = await sessionRevoker.RevokeAsync(
+                    user.Id,
+                    cancellationToken);
+                logger.LogInformation(
+                    "Password reset succeeded for user {UserId}; revoked sessions and tokens ({Revocation}).",
+                    user.Id,
+                    revocation);
+            }
+            catch (OperationCanceledException)
+                when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                // The password itself is already changed; failing the whole
+                // operation here would leave the user unable to complete
+                // recovery. Surface it loudly instead so the stale sessions are
+                // visible to operators.
+                logger.LogError(
+                    exception,
+                    "Password reset succeeded for user {UserId}, but revoking existing "
+                    + "sessions and tokens FAILED. Previously issued refresh tokens may "
+                    + "remain valid; revoke them manually.",
+                    user.Id);
+            }
         }
 
         return new AccountPasswordResetResult(
