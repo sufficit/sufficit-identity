@@ -44,7 +44,7 @@ The review evaluated an older source snapshot. The current tree already closes t
 | Token-exchange source-client attribution | **Implemented with rollout gate** | `ISubjectTokenProvenancePolicy` rejects missing, ambiguous or disallowed presenter identity in Enforce mode and records compatibility decisions | P1.2 characterization |
 | Unknown/null consent mode | **Resolved at runtime; data cleanup pending** | `AuthorizationConsentPolicy` maps missing/unrecognized legacy metadata to interactive consent, while current management, provisioning, and DCR paths accept only known/default consent modes | P1.3 |
 | DPoP nonce partitioning | **Partial; partition implemented** | nonce keys are hashed partitions over endpoint/client/proof key; current/previous overlap and atomic multi-replica proof remain | P1.4 |
-| FAPI mTLS client binding | **Implemented with deployment gate** | deployment attestation, per-client SHA-256 certificate pins, chain validation and startup binding checks are implemented; trusted-proxy proof and conformance remain | P1.5 |
+| FAPI mTLS client binding | **Implemented with deployment gate** | deployment attestation, per-client SHA-256 certificate pins, chain/revocation policy, trusted-proxy forwarding boundary and startup binding checks are implemented; production topology proof and conformance remain | P1.5 |
 | OAuth resource validation | **Implemented with explicit allow-list** | MCP resources are registered as audiences and OpenIddict resource validation remains enabled; dynamic resource onboarding and per-client inventory remain | P1.6 |
 | Browser-session `sid` reuse | **Implemented with persistence proof** | reuse now requires the current principal subject to equal the target user and a matching durable session row; missing-row and stale-cookie cases mint a fresh sid | Regression-only |
 | Anonymous device-information throttling | **Resolved in code** | a named GET limiter is independent from credential POST limits and has focused burst/enumeration tests | Regression-only |
@@ -56,7 +56,7 @@ The review evaluated an older source snapshot. The current tree already closes t
 | Production database transport | **Partial** | an explicit transport policy now validates VerifyCA/VerifyFull or a UnixSocket exception; production still needs the mode selected and CA/socket provisioned | P2.3 |
 | Email identity uniqueness | **Partial** | recovery, external-login, CIBA and passkey lookup reject ambiguous normalized matches; 083 provides a redacted duplicate report and guarded nullable unique index, while operator cleanup/race coverage remains | P1.12 |
 | MariaDB support baseline | **Open** | CI and provider configuration remain fixed to MariaDB 10.4.34 | P2.4 |
-| Vault separation and rotation operations | **Partial** | envelope encryption and versioned DEKs now depend on an explicit wrapping-key source abstraction; external KMS/HSM custody and a production rotation orchestrator remain | P2.5 / vault plan |
+| Vault separation and rotation operations | **Partial** | certificate and provider-agnostic external KMS/HSM wrapping sources are implemented; provider deployment/custody and the symmetric-key production rotation orchestrator remain | P2.5 / vault plan |
 | Authenticator/recovery secret-at-rest boundary | **Open** | the standard Identity token store persists authenticator/recovery material through `usertokens` without an application encryption adapter | P1.13 |
 | Security-critical protocol comments | **Partially reconciled** | The current CIBA route comment now references the OIDC CIBA Core specification and distinguishes RFC 9126/PAR; a repository-wide standards/comment audit remains | P2.6 |
 | MariaDB integration-test gating | **Resolved** | missing MariaDB/rehearsal configuration fails tests in CI; real-provider grant and schema tests execute against the service container | Regression-only |
@@ -212,9 +212,9 @@ This is the same canonical object-policy migration tracked in `PLAN-GLM-5-2-REMA
 **Targets:** `Fapi2Policy`, new `IMtlsClientCertificatePolicy`, proxy/certificate configuration.
 
 - [x] Validate certificate chain/trust source and bind client ID to configured thumbprint, SAN, or registered certificate metadata
-- [ ] Accept forwarded certificate evidence only from explicitly trusted proxies and after signature/format validation
+- [x] Accept forwarded certificate evidence only from explicitly trusted proxies and after signature/format validation
 - [x] Fail startup when a client selects mTLS sender constraint without a configured binding policy
-- [ ] Add wrong-client, untrusted-chain, trusted-proxy, direct-connection, rollover-overlap, and expiry tests
+- [x] Add wrong-client, untrusted-chain, trusted-proxy, direct-connection, rollover-overlap, and expiry tests
 
 ### P1.6 Restore per-client OAuth resource validation
 
@@ -342,7 +342,7 @@ This is primarily an operational platform upgrade; no STS feature should change 
 **Targets:** `IKeyVault`, `DataProtectionKeySource`, new key-source abstraction, management job/runbook, `PLAN-VAULT.md`.
 
 - [x] Extract `IVaultKeyEncryptionKeySource`; keep Data Protection as the compatibility implementation
-- [ ] Add a certificate/external KMS implementation behind the wrapping-key source boundary
+- [x] Add a certificate/external KMS implementation behind the wrapping-key source boundary
 - [ ] Add an authorized rotation orchestrator with distributed lock, progress journal, rewrap/re-encrypt strategy, rollback window, and audit events
 - [ ] Separate database-reader authority from KEK authority in production
 - [ ] Exercise loss/recovery, old-version decrypt, concurrent rotate/encrypt, and disaster-restore tests

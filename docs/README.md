@@ -33,6 +33,7 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Completed work (activities/)
 
+- [Operational production-gate handoff](activities/202608092105-completed-operational-gate-handoff.md)
 - [P2 architecture scope reconciliation](activities/202608092100-completed-p2-architecture-reconciliation.md)
 - [Per-client and per-resource access-token format](activities/202608092055-completed-per-client-access-token-format.md)
 - [Vault AES-GCM message-budget metrics](activities/202608092052-completed-vault-encryption-budget-metrics.md)
@@ -81,6 +82,7 @@ Dated evaluations that are useful only as historical evidence live under
 ## Operations
 
 - [Deployment configuration](runbooks/RUNBOOK-DEPLOYMENT.md)
+- [Production evidence and release gates](runbooks/RUNBOOK-PRODUCTION-EVIDENCE.md)
 - [Database connection resilience and monitoring](runbooks/RUNBOOK-DATABASE-CONNECTION-RESILIENCE.md)
 - [CSP calibration](runbooks/RUNBOOK-CSP-CALIBRATION.md)
 - [Confirmed-email rollout](runbooks/RUNBOOK-CONFIRMED-EMAIL.md)

@@ -5,15 +5,26 @@
 > protocol and trust-boundary work. Those implementation items are tracked in
 > `PLAN-GPT-5-REMAINING.md` and `PLAN-GLM-5-2-REMAINING.md`; this plan owns the
 > remaining certification, deployment assurance and product-quality gates.
+> O procedimento e o formato de evidência por ambiente estão em
+> `RUNBOOK-PRODUCTION-EVIDENCE.md`.
 
 ## Certification
-- [ ] Run OpenID Foundation FAPI 2.0 conformance suite and submit for formal certification
-- [ ] Commission an external security audit (independent review of hand-rolled DPoP, CIBA, JARM, JAR, SSF code)
+- [ ] Executar conformance OAuth/OIDC/FAPI/SSF para as capabilities anunciadas e submeter os perfis aplicáveis à certificação formal
+- [ ] Commissionar auditoria externa de DPoP, CIBA, JARM, JAR, mTLS, token exchange, SSF e vault; corrigir e retestar findings impeditivos
 
-## Operational hardening
-- [ ] Execute RUNBOOK-CONFIRMED-EMAIL (confirmed-email rollout + legacy user migration query)
-- [ ] Calibrate CSP against the real Blazor UI (exercise login/consent/device/logout/manage, collect violations, flip to enforce)
-- [ ] Configure a real Redis `IDistributedCache` before multi-replica deployment (current `AddDistributedMemoryCache` is single-node)
+## Deployment assurance
+- [ ] Por ambiente, inventariar SCIM, token exchange, personal tokens, CIBA, credential mutations, origem pública e Management; remover `Observe`/`Audit`/authorization-off ou registrar exceção temporária válida
+- [ ] Habilitar o vault e provar zero valores/leituras `pt1.`, backup restaurável e rollback sem registrar material sensível
+- [ ] Executar `RUNBOOK-CONFIRMED-EMAIL` (rollout e migração dos usuários legados)
+- [ ] Calibrar CSP na UI Blazor real e configurar `ReportOnly=false`
+- [ ] Configurar Redis `IDistributedCache` real e passar o ensaio de emissão/consumo/replay entre múltiplas réplicas
+- [ ] Inventariar e rotacionar certificados, provar separação signing/KEK e executar restore/disaster recovery
+
+**Procedimento canônico:**
+[`RUNBOOK-PRODUCTION-EVIDENCE.md`](../runbooks/RUNBOOK-PRODUCTION-EVIDENCE.md).
+Os itens acima vieram do plano Claude Fable 5 e permanecem abertos aqui até
+existir evidência real de cada ambiente; a transferência não declara o rollout
+concluído.
 
 ## Product quality
 - [ ] WCAG 2.2 AA accessibility audit for both embedded UIs
