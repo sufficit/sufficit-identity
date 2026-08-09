@@ -91,4 +91,25 @@ done < <(
 install -o root -g www-data -m 0640 \
     "${certificate_store}" "${certificate_destination}"
 
+# Preserve certificate overlap material from the currently active release when
+# a candidate was prepared without bundling it. Signing/encryption paths may
+# intentionally include an older certificate during a rolling rotation (for
+# example, certificate-old.pfx); dropping that file makes the new process fail
+# closed at startup even though the persistent primary certificate is present.
+if [[ ${candidate} != "${app_link}" ]]; then
+    active_release=$(readlink -f -- "${app_link}" 2>/dev/null || true)
+    if [[ -n ${active_release} && -d ${active_release} && ${active_release} != "${release}" ]]; then
+        while IFS= read -r -d '' overlap_certificate; do
+            certificate_name=$(basename -- "${overlap_certificate}")
+            [[ ${certificate_name} == certificate.pfx ]] && continue
+            if [[ ! -f "${release}/${certificate_name}" ]]; then
+                install -o root -g www-data -m 0640 \
+                    "${overlap_certificate}" "${release}/${certificate_name}"
+                echo "[bootstrap] Preserved certificate overlap ${certificate_name}"
+            fi
+        done < <(find "${active_release}" -maxdepth 1 -type f \
+            -name 'certificate*.pfx' -print0)
+    fi
+fi
+
 echo "[bootstrap] Release ownership and certificate state prepared"

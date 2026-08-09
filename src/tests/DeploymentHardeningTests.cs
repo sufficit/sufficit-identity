@@ -49,6 +49,8 @@ public sealed class DeploymentHardeningTests
         Assert.DoesNotContain("openssl req", prestart, StringComparison.Ordinal);
         Assert.DoesNotContain("TestCert", prestart + bootstrap, StringComparison.Ordinal);
         Assert.Contains("openssl rand", bootstrap, StringComparison.Ordinal);
+        Assert.Contains("certificate*.pfx", bootstrap, StringComparison.Ordinal);
+        Assert.Contains("Preserved certificate overlap", bootstrap, StringComparison.Ordinal);
         Assert.Contains("chown -R root:root", bootstrap, StringComparison.Ordinal);
         Assert.Contains(
             "install -o root -g root -m 0755",
