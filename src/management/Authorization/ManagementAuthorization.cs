@@ -248,7 +248,7 @@ public enum ManagementPolicyEnforcementMode
 public sealed class ManagementObjectAccessOptions
 {
     public ManagementPolicyEnforcementMode Mode { get; set; } =
-        ManagementPolicyEnforcementMode.Observe;
+        ManagementPolicyEnforcementMode.Enforce;
 
     public string ContextClaimType { get; set; } = "identity_context";
 
@@ -268,7 +268,7 @@ public sealed class ManagementObjectAccessOptions
 public sealed class ProtectedPrincipalAccessOptions
 {
     public ManagementPolicyEnforcementMode Mode { get; set; } =
-        ManagementPolicyEnforcementMode.Observe;
+        ManagementPolicyEnforcementMode.Enforce;
 
     public string TierClaimType { get; set; } = "identity_principal_tier";
 

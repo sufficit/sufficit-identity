@@ -1,221 +1,353 @@
-using System.Linq;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Sufficit.Identity.Application.Security;
+using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Scim;
 using Sufficit.Identity.STS;
 using Sufficit.Identity.STS.Security;
+using Sufficit.Identity.Vault;
 using Xunit;
-// Disambiguate: ManagementOptions exists in both Sufficit.Identity.STS and
-// Sufficit.Identity.Management. The posture check inspects the management-layer
-// one (with the Authorization policy modes).
-using ManagementOptions = global::Sufficit.Identity.Management.ManagementOptions;
+using ManagementLayerOptions = Sufficit.Identity.Management.ManagementOptions;
 
 namespace Sufficit.Identity.Tests;
 
-/// <summary>
-/// Covers the consolidated production posture check: each permissive default is
-/// flagged unless hardened or explicitly acknowledged, and a fully hardened
-/// configuration produces no findings.
-/// </summary>
 public sealed class ProductionPostureCheckTests
 {
-    private static bool Has(
-        System.Collections.Generic.IReadOnlyList<ProductionPostureFinding> findings,
-        string id)
-        => findings.Any(f => f.Id == id);
+    private static readonly DateTimeOffset Now =
+        new(2026, 8, 9, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public void Default_options_flag_csp_report_only()
+    public void Contract_covers_every_known_permissive_production_switch()
     {
-        // A bare SufficitIdentityOptions ships CSP in report-only mode.
-        var findings = ProductionPostureCheck.Evaluate(
-            new SufficitIdentityOptions(),
-            management: null,
-            distributedCacheIsMemoryFallback: false);
-
-        Assert.True(Has(findings, "csp-report-only"));
-    }
-
-    [Fact]
-    public void Acknowledged_csp_report_only_is_not_flagged()
-    {
-        var options = new SufficitIdentityOptions
+        var root = new SufficitIdentityOptions
         {
-            Csp = new CspOptions { ReportOnly = true, AcknowledgeReportOnly = true },
-        };
-
-        var findings = ProductionPostureCheck.Evaluate(
-            options, management: null, distributedCacheIsMemoryFallback: false);
-
-        Assert.False(Has(findings, "csp-report-only"));
-    }
-
-    [Fact]
-    public void Enforced_csp_is_not_flagged()
-    {
-        var options = new SufficitIdentityOptions
-        {
-            Csp = new CspOptions { ReportOnly = false },
-        };
-
-        var findings = ProductionPostureCheck.Evaluate(
-            options, management: null, distributedCacheIsMemoryFallback: false);
-
-        Assert.False(Has(findings, "csp-report-only"));
-    }
-
-    [Fact]
-    public void Management_observe_modes_are_flagged_when_enabled()
-    {
-        var management = new ManagementOptions
-        {
-            Enabled = true,
-            Authorization = new ManagementAuthorizationOptions
+            Csp = new CspOptions { Enabled = true, ReportOnly = true },
+            PersonalTokens = new PersonalTokenIssuanceOptions
             {
-                ObjectAccess = new ManagementObjectAccessOptions
-                {
-                    Mode = ManagementPolicyEnforcementMode.Observe,
-                },
-                ProtectedPrincipals = new ProtectedPrincipalAccessOptions
-                {
-                    Mode = ManagementPolicyEnforcementMode.Observe,
-                },
+                Mode = SecurityPolicyEnforcementMode.Observe,
             },
-        };
-
-        var findings = ProductionPostureCheck.Evaluate(
-            new SufficitIdentityOptions
+            Ciba = new CibaOptions
             {
-                Csp = new CspOptions { ReportOnly = false },
+                Enabled = true,
+                ClientPolicyMode = SecurityPolicyEnforcementMode.Observe,
             },
-            management,
-            distributedCacheIsMemoryFallback: false);
-
-        Assert.True(Has(findings, "management-object-access-observe"));
-        Assert.True(Has(findings, "management-protected-principal-observe"));
-    }
-
-    [Fact]
-    public void Management_observe_modes_are_not_flagged_when_management_disabled()
-    {
-        // Management disabled → its policies do not apply.
-        var management = new ManagementOptions
-        {
-            Enabled = false,
-            Authorization = new ManagementAuthorizationOptions
+            CredentialMutations = new CredentialMutationSecurityOptions
             {
-                ObjectAccess = new ManagementObjectAccessOptions
-                {
-                    Mode = ManagementPolicyEnforcementMode.Observe,
-                },
+                StepUpMode = CredentialMutationStepUpMode.Audit,
             },
-        };
-
-        var findings = ProductionPostureCheck.Evaluate(
-            new SufficitIdentityOptions { Csp = new CspOptions { ReportOnly = false } },
-            management,
-            distributedCacheIsMemoryFallback: false);
-
-        Assert.False(Has(findings, "management-object-access-observe"));
-    }
-
-    [Fact]
-    public void Enforced_or_acknowledged_management_modes_are_not_flagged()
-    {
-        var management = new ManagementOptions
-        {
-            Enabled = true,
-            Authorization = new ManagementAuthorizationOptions
+            PublicOrigin = new PublicOriginPolicyOptions
             {
-                ObjectAccess = new ManagementObjectAccessOptions
-                {
-                    Mode = ManagementPolicyEnforcementMode.Enforce,
-                },
-                ProtectedPrincipals = new ProtectedPrincipalAccessOptions
-                {
-                    Mode = ManagementPolicyEnforcementMode.Observe,
-                    AcknowledgeObserveInProduction = true,
-                },
+                Mode = PublicOriginMode.Audit,
             },
-        };
-
-        var findings = ProductionPostureCheck.Evaluate(
-            new SufficitIdentityOptions { Csp = new CspOptions { ReportOnly = false } },
-            management,
-            distributedCacheIsMemoryFallback: false);
-
-        Assert.False(Has(findings, "management-object-access-observe"));
-        Assert.False(Has(findings, "management-protected-principal-observe"));
-    }
-
-    [Fact]
-    public void Dpop_replay_cache_flagged_only_when_shared_required_and_memory_fallback()
-    {
-        var options = new SufficitIdentityOptions
-        {
-            Csp = new CspOptions { ReportOnly = false },
             Dpop = new DpopOptions { Enabled = true },
-            DistributedCache = new DistributedCacheOptions { RequireShared = true },
-        };
-
-        // Memory fallback + RequireShared + DPoP enabled → flagged.
-        Assert.True(Has(
-            ProductionPostureCheck.Evaluate(options, null, distributedCacheIsMemoryFallback: true),
-            "dpop-replay-cache-not-shared"));
-
-        // A real shared cache (not memory fallback) → not flagged.
-        Assert.False(Has(
-            ProductionPostureCheck.Evaluate(options, null, distributedCacheIsMemoryFallback: false),
-            "dpop-replay-cache-not-shared"));
-    }
-
-    [Fact]
-    public void Fapi2_signed_jarm_without_encryption_is_not_a_posture_finding()
-    {
-        var options = new SufficitIdentityOptions
-        {
-            Csp = new CspOptions { ReportOnly = false },
-            Fapi2 = new Fapi2Options
+            DistributedCache = new DistributedCacheOptions
             {
-                Enabled = true,
-                ClientIds = new System.Collections.Generic.HashSet<string>(
-                    System.StringComparer.Ordinal) { "fapi-client" },
-            },
-            Jarm = new JarmOptions
-            {
-                Enabled = true,
-                Encryption = new JarmEncryptionOptions { Enabled = false },
+                RequireShared = true,
             },
         };
-
-        Assert.Empty(ProductionPostureCheck.Evaluate(options, null, false));
-    }
-
-    [Fact]
-    public void Fully_hardened_configuration_produces_no_findings()
-    {
-        var options = new SufficitIdentityOptions
-        {
-            Csp = new CspOptions { ReportOnly = false },
-            DistributedCache = new DistributedCacheOptions { RequireShared = false },
-        };
-        var management = new ManagementOptions
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:TokenExchange:Enabled"] = "true",
+                ["Sufficit:Identity:TokenExchange:AllowedClientIds:0"] = "exchange-client",
+                ["Sufficit:Identity:TokenExchange:ProvenanceMode"] = "Observe",
+            })
+            .Build();
+        var cache = new MemoryDistributedCache(
+            Options.Create(new MemoryDistributedCacheOptions()));
+        var management = new ManagementLayerOptions
         {
             Enabled = true,
+            RequireAuthorization = false,
             Authorization = new ManagementAuthorizationOptions
             {
                 ObjectAccess = new ManagementObjectAccessOptions
                 {
-                    Mode = ManagementPolicyEnforcementMode.Enforce,
+                    Mode = ManagementPolicyEnforcementMode.Observe,
                 },
                 ProtectedPrincipals = new ProtectedPrincipalAccessOptions
                 {
-                    Mode = ManagementPolicyEnforcementMode.Enforce,
+                    Mode = ManagementPolicyEnforcementMode.Observe,
+                },
+            },
+        };
+        var scim = new ScimOptions
+        {
+            Enabled = true,
+            RequireAllowedClient = true,
+            ClientPolicyMode = ScimClientPolicyMode.Observe,
+        };
+
+        var findings = Evaluate(
+            new StsProductionPostureContributor(root, configuration, cache),
+            new ManagementProductionPostureContributor(Options.Create(management)),
+            new ScimProductionPostureContributor(Options.Create(scim)),
+            new VaultProductionPostureContributor(new VaultOptions()));
+
+        var expected = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "csp-report-only",
+            "personal-tokens-observe",
+            "token-exchange-provenance-observe",
+            "ciba-client-policy-observe",
+            "credential-mutations-step-up-audit",
+            "public-origin-request-derived",
+            "dpop-replay-cache-not-shared",
+            "management-authorization-disabled",
+            "management-object-access-observe",
+            "management-protected-principal-observe",
+            "scim-client-policy-observe",
+            "vault-plaintext-compatibility",
+        };
+
+        Assert.Equal(expected, findings.Select(finding => finding.Id).ToHashSet());
+    }
+
+    [Fact]
+    public void Scim_disabled_allow_list_is_a_distinct_finding()
+    {
+        var contributor = new ScimProductionPostureContributor(
+            Options.Create(new ScimOptions
+            {
+                Enabled = true,
+                RequireAllowedClient = false,
+            }));
+
+        var finding = Assert.Single(Evaluate(contributor));
+        Assert.Equal("scim-client-allow-list-disabled", finding.Id);
+    }
+
+    [Fact]
+    public void Valid_structured_acknowledgement_suppresses_one_finding()
+    {
+        var options = new SecurityPostureOptions
+        {
+            Acknowledgements = new Dictionary<string, ProductionPostureAcknowledgement>(
+                StringComparer.Ordinal)
+            {
+                ["test-finding"] = new()
+                {
+                    Owner = "identity-team",
+                    Reason = "bounded migration",
+                    ExpiresAtUtc = Now.AddDays(7),
                 },
             },
         };
 
         var findings = ProductionPostureCheck.Evaluate(
-            options, management, distributedCacheIsMemoryFallback: false);
+            [new StubContributor(new ProductionPostureFinding("test-finding", "summary", "remedy"))],
+            options,
+            Now);
 
         Assert.Empty(findings);
+    }
+
+    [Theory]
+    [InlineData(false, "")]
+    [InlineData(true, "")]
+    [InlineData(true, "owner")]
+    public void Invalid_or_expired_acknowledgement_does_not_suppress(
+        bool futureExpiry,
+        string owner)
+    {
+        var options = new SecurityPostureOptions
+        {
+            Acknowledgements = new Dictionary<string, ProductionPostureAcknowledgement>(
+                StringComparer.Ordinal)
+            {
+                ["test-finding"] = new()
+                {
+                    Owner = owner,
+                    Reason = owner.Length == 0 ? string.Empty : "reason",
+                    ExpiresAtUtc = futureExpiry ? Now.AddDays(1) : Now.AddMinutes(-1),
+                },
+            },
+        };
+
+        var findings = ProductionPostureCheck.Evaluate(
+            [new StubContributor(new ProductionPostureFinding("test-finding", "summary", "remedy"))],
+            options,
+            Now);
+
+        if (futureExpiry && owner == "owner")
+        {
+            Assert.Empty(findings);
+        }
+        else
+        {
+            Assert.Equal("test-finding", Assert.Single(findings).Id);
+        }
+    }
+
+    [Fact]
+    public void Stale_acknowledgement_is_a_finding()
+    {
+        var options = new SecurityPostureOptions
+        {
+            Acknowledgements = new Dictionary<string, ProductionPostureAcknowledgement>(
+                StringComparer.Ordinal)
+            {
+                ["removed-finding"] = new()
+                {
+                    Owner = "identity-team",
+                    Reason = "old rollout",
+                    ExpiresAtUtc = Now.AddDays(1),
+                },
+            },
+        };
+
+        var finding = Assert.Single(ProductionPostureCheck.Evaluate(
+            [], options, Now));
+        Assert.Equal("stale-acknowledgement:removed-finding", finding.Id);
+    }
+
+    [Fact]
+    public void Legacy_boolean_acknowledgement_requires_explicit_bridge()
+    {
+        var contributor = new StubContributor(
+            new ProductionPostureFinding(
+                "legacy-finding",
+                "summary",
+                "remedy",
+                LegacyAcknowledged: true));
+
+        Assert.Single(ProductionPostureCheck.Evaluate(
+            [contributor], new SecurityPostureOptions(), Now));
+        Assert.Empty(ProductionPostureCheck.Evaluate(
+            [contributor],
+            new SecurityPostureOptions
+            {
+                AllowLegacyBooleanAcknowledgements = true,
+            },
+            Now));
+    }
+
+    [Fact]
+    public void Duplicate_finding_ids_fail_closed()
+    {
+        var contributors = new IProductionPostureContributor[]
+        {
+            new StubContributor(new ProductionPostureFinding("duplicate", "one", "remedy")),
+            new StubContributor(new ProductionPostureFinding("duplicate", "two", "remedy")),
+        };
+
+        Assert.Throws<InvalidOperationException>(() =>
+            ProductionPostureCheck.Evaluate(
+                contributors,
+                new SecurityPostureOptions(),
+                Now));
+    }
+
+    [Fact]
+    public void Hardened_configuration_has_no_findings()
+    {
+        var root = new SufficitIdentityOptions
+        {
+            PublicUrl = "https://identity.example.com",
+            Csp = new CspOptions { Enabled = true, ReportOnly = false },
+            PersonalTokens = new PersonalTokenIssuanceOptions
+            {
+                Mode = SecurityPolicyEnforcementMode.Enforce,
+            },
+            CredentialMutations = new CredentialMutationSecurityOptions
+            {
+                StepUpMode = CredentialMutationStepUpMode.Enforce,
+            },
+        };
+        var configuration = new ConfigurationBuilder().Build();
+        var management = new ManagementLayerOptions
+        {
+            Enabled = true,
+            RequireAuthorization = true,
+            Authorization = new ManagementAuthorizationOptions
+            {
+                ObjectAccess = new ManagementObjectAccessOptions
+                {
+                    Mode = ManagementPolicyEnforcementMode.Enforce,
+                },
+                ProtectedPrincipals = new ProtectedPrincipalAccessOptions
+                {
+                    Mode = ManagementPolicyEnforcementMode.Enforce,
+                },
+            },
+        };
+        var scim = new ScimOptions
+        {
+            Enabled = true,
+            RequireAllowedClient = true,
+            ClientPolicyMode = ScimClientPolicyMode.Enforce,
+        };
+        var vault = new VaultOptions { Enabled = true };
+
+        Assert.Empty(Evaluate(
+            new StsProductionPostureContributor(root, configuration),
+            new ManagementProductionPostureContributor(Options.Create(management)),
+            new ScimProductionPostureContributor(Options.Create(scim)),
+            new VaultProductionPostureContributor(vault)));
+    }
+
+    [Fact]
+    public void Non_development_always_fails_closed_even_when_legacy_global_option_is_false()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IProductionPostureContributor>(
+            new StubContributor(new ProductionPostureFinding("unresolved", "summary", "remedy")));
+        using var provider = services.BuildServiceProvider();
+        var options = new SufficitIdentityOptions
+        {
+#pragma warning disable CS0618
+            Security = new SecurityPostureOptions
+            {
+                FailClosedOnInsecureDefaults = false,
+            },
+#pragma warning restore CS0618
+        };
+
+        Assert.Throws<ProductionPostureException>(() =>
+            ProductionPostureCheck.Enforce(
+                provider,
+                options,
+                isDevelopment: false,
+                NullLogger.Instance,
+                new FixedTimeProvider(Now)));
+    }
+
+    [Fact]
+    public void Development_logs_but_does_not_throw()
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IProductionPostureContributor>(
+            new StubContributor(new ProductionPostureFinding("unresolved", "summary", "remedy")));
+        using var provider = services.BuildServiceProvider();
+
+        ProductionPostureCheck.Enforce(
+            provider,
+            new SufficitIdentityOptions(),
+            isDevelopment: true,
+            NullLogger.Instance,
+            new FixedTimeProvider(Now));
+    }
+
+    private static IReadOnlyList<ProductionPostureFinding> Evaluate(
+        params IProductionPostureContributor[] contributors) =>
+        ProductionPostureCheck.Evaluate(
+            contributors,
+            new SecurityPostureOptions(),
+            Now);
+
+    private sealed class StubContributor(params ProductionPostureFinding[] findings)
+        : IProductionPostureContributor
+    {
+        public IEnumerable<ProductionPostureFinding> Evaluate() => findings;
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
     }
 }
