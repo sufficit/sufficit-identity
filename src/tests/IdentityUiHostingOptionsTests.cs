@@ -106,6 +106,22 @@ public sealed class IdentityUiHostingOptionsTests
         Assert.Equal(1, Count(program, "app.UseSufficitIdentityManagementUI"));
         Assert.Equal(1, Count(program, "builder.Services.AddSufficitIdentityVaultUI"));
         Assert.Equal(1, Count(program, "app.UseSufficitIdentityVaultUI"));
+        Assert.Contains(
+            "context.User.Identity?.IsAuthenticated == true",
+            program,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "\"/account/forgotpassword\"",
+            program,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "\"/account/register\"",
+            program,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "context.Response.Redirect(\"/manage\")",
+            program,
+            StringComparison.Ordinal);
     }
 
     private static int Count(string source, string value)
