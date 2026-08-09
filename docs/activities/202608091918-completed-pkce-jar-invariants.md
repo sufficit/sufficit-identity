@@ -29,10 +29,11 @@
   string; os testes cobrem `claims` e `authorization_details` estruturados.
 - O replay continua sendo marcado somente depois da validação criptográfica.
 
-## Limite desta entrega
+## Continuação concluída
 
-- O suporte remoto a `jwks_uri` não foi declarado concluído. Ele permanece no
-  P1.3, onde será implementado com egress seguro, limites e cache controlado.
+O suporte remoto a `jwks_uri` foi entregue posteriormente com egress seguro,
+limites e cache controlado; evidência em
+[`202608092022-completed-jar-remote-jwks.md`](202608092022-completed-jar-remote-jwks.md).
 
 ## Validação
 

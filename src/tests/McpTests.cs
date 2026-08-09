@@ -223,6 +223,54 @@ public sealed class DcrTests
     }
 
     [Fact]
+    public async Task Dcr_persists_public_jwks_uri_and_rejects_private_targets()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Mcp:Dcr:Enabled"] = "true",
+                ["Sufficit:Identity:Mcp:Dcr:InitialAccessToken"] =
+                    "secret-init-token",
+                ["Sufficit:Identity:Mcp:Dcr:InitialAccessTokenExpiresAtUtc"] =
+                    "2099-01-01T00:00:00Z",
+                ["Sufficit:Identity:Mcp:Dcr:InitialAccessTokenSingleUse"] =
+                    "false",
+            });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", "secret-init-token");
+
+        using var accepted = await client.PostAsJsonAsync(
+            "/connect/register",
+            new DcrRequest
+            {
+                JwksUri = new Uri("https://keys.example/jwks.json"),
+            });
+        Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
+        var body = await accepted.Content.ReadFromJsonAsync<JsonElement>();
+        var clientId = body.GetProperty("client_id").GetString();
+
+        using var scope = factory.Services.CreateScope();
+        var applications = scope.ServiceProvider
+            .GetRequiredService<IOpenIddictApplicationManager>();
+        var application = await applications.FindByClientIdAsync(clientId!);
+        Assert.NotNull(application);
+        var settings = await applications.GetSettingsAsync(application!);
+        Assert.Equal(
+            "https://keys.example/jwks.json",
+            settings["jwks_uri"]);
+
+        using var rejected = await client.PostAsJsonAsync(
+            "/connect/register",
+            new DcrRequest
+            {
+                JwksUri = new Uri("https://127.0.0.1/jwks.json"),
+            });
+        Assert.Equal(HttpStatusCode.BadRequest, rejected.StatusCode);
+    }
+
+    [Fact]
     public async Task Dcr_rejects_grants_and_scopes_outside_the_operator_allowlist()
     {
         using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>

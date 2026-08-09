@@ -131,7 +131,8 @@ public sealed record ManagementClientDetail(
     string? BackchannelLogoutUri = null,
     bool BackchannelLogoutSessionRequired = false,
     string? Version = null,
-    bool IsManifestManaged = false);
+    bool IsManifestManaged = false,
+    string? JwksUri = null);
 
 public sealed record CreateManagementClientCommand(
     string ClientId,
@@ -146,7 +147,8 @@ public sealed record CreateManagementClientCommand(
     string? FrontchannelLogoutUri = null,
     bool FrontchannelLogoutSessionRequired = false,
     string? BackchannelLogoutUri = null,
-    bool BackchannelLogoutSessionRequired = false);
+    bool BackchannelLogoutSessionRequired = false,
+    string? JwksUri = null);
 
 public sealed record UpdateManagementClientCommand(
     string ClientId,
@@ -161,7 +163,8 @@ public sealed record UpdateManagementClientCommand(
     bool FrontchannelLogoutSessionRequired = false,
     string? BackchannelLogoutUri = null,
     bool BackchannelLogoutSessionRequired = false,
-    string? ExpectedVersion = null);
+    string? ExpectedVersion = null,
+    string? JwksUri = null);
 
 #else
 
@@ -382,6 +385,7 @@ internal sealed class ClientManagementService(
             var backchannelLogoutUri = ValidateLogoutUri(
                 command.BackchannelLogoutUri,
                 "backchannelLogoutUri");
+            var jwksUri = ValidateJwksUri(command.JwksUri);
 
             if (command.FrontchannelLogoutSessionRequired &&
                 frontchannelLogoutUri is null)
@@ -530,6 +534,10 @@ internal sealed class ClientManagementService(
                 command.FrontchannelLogoutSessionRequired,
                 backchannelLogoutUri,
                 command.BackchannelLogoutSessionRequired);
+            if (jwksUri is not null)
+            {
+                descriptor.Settings["jwks_uri"] = jwksUri.AbsoluteUri;
+            }
 
             if (clientDefinitionValidator.RequiresProofKeyForCodeExchange(
                     grantTypes))
@@ -783,6 +791,7 @@ internal sealed class ClientManagementService(
             var backchannelLogoutUri = ValidateLogoutUri(
                 command.BackchannelLogoutUri,
                 "backchannelLogoutUri");
+            var jwksUri = ValidateJwksUri(command.JwksUri);
 
             ValidateLogoutConfiguration(
                 redirectUris,
@@ -879,6 +888,17 @@ internal sealed class ClientManagementService(
                 command.FrontchannelLogoutSessionRequired,
                 backchannelLogoutUri,
                 command.BackchannelLogoutSessionRequired);
+            // Null means the caller did not manage this metadata (keeps older
+            // API/UI clients source-compatible). An explicit empty value
+            // removes it; a non-empty value replaces it after validation.
+            if (command.JwksUri is not null)
+            {
+                descriptor.Settings.Remove("jwks_uri");
+                if (jwksUri is not null)
+                {
+                    descriptor.Settings["jwks_uri"] = jwksUri.AbsoluteUri;
+                }
+            }
 
             if (clientDefinitionValidator.RequiresProofKeyForCodeExchange(
                     grantTypes))
@@ -1081,7 +1101,8 @@ internal sealed class ClientManagementService(
             Version: (application as OpenIddictEntityFrameworkCoreApplication)
                 ?.ConcurrencyToken,
             IsManifestManaged: descriptor.Properties.ContainsKey(
-                OpenIddictManifestProvisioner.SchemaVersionProperty));
+                OpenIddictManifestProvisioner.SchemaVersionProperty),
+            JwksUri: GetSetting(settings, "jwks_uri"));
     }
 
     private static void ValidateClientId(string clientId)
@@ -1165,6 +1186,25 @@ internal sealed class ClientManagementService(
         }
 
         return ValidateRedirectUris([value], field)[0];
+    }
+
+    private static Uri? ValidateJwksUri(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri)
+            || !PublicHttpsUriPolicy.IsAllowed(uri))
+        {
+            throw new ManagementValidationException(
+                "jwks_uri_invalid",
+                "jwksUri must be a public absolute HTTPS URI without user-info or fragment.",
+                "jwksUri");
+        }
+
+        return uri;
     }
 
     private static bool SameOrigin(Uri left, Uri right) =>

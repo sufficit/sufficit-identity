@@ -25,6 +25,10 @@
 > [`202608092355-completed-vault-signing-key-lifecycle.md`](../activities/202608092355-completed-vault-signing-key-lifecycle.md).
 > Autorização de named secrets por contexto/namespace foi entregue em
 > [`202608092010-completed-vault-secret-namespaces.md`](../activities/202608092010-completed-vault-secret-namespaces.md).
+> Resolução segura de `jwks_uri` para JAR foi entregue em
+> [`202608092022-completed-jar-remote-jwks.md`](../activities/202608092022-completed-jar-remote-jwks.md).
+> Revogação e topologia confiável de mTLS foram entregues em
+> [`202608092035-completed-mtls-revocation-topology.md`](../activities/202608092035-completed-mtls-revocation-topology.md).
 
 ## Resultado da reconciliação
 
@@ -74,8 +78,6 @@ Quatro recomendações precisam de ajuste antes de serem implementadas:
 | S3 — SCIM Observe permite cliente fora da allow-list | **Aceito com rollout, P0** | O default já é `Enforce`, mas `ScimClientHandler` concede em `Observe`. Tornar o uso temporário, reconhecido e bloqueado pelo posture check; remover após a janela de migração. |
 | S4 — proveniência de token exchange em Observe | **Aceito com rollout, P0** | `TokenExchangeOptions.ProvenanceMode` agora inicia em `Enforce`; P0.2 mantém somente o inventário e a remoção de overrides `Observe` existentes nos ambientes. |
 | S5 — vault plaintext por default | **Aceito, gate operacional P0** | O startup agora impede `PassThroughKeyVault` fora de Development e o template habilita criptografia. Resta executar e comprovar a migração `pt1` nos ambientes conforme o plano GLM/Vault. |
-| S13 — `jwks_uri` de JAR | **Aceito como gap funcional, P1** | O código e o comentário prometem fallback, mas `ResolveSigningKeysAsync` lê apenas JWKS embutido. Implementar fetch seguro ou rejeitar o metadado de forma explícita até a implementação. |
-| S13 — revogação mTLS | **Aceito como defesa em profundidade, P1** | Thumbprint por cliente limita o impacto, mas `NoCheck` é fixo. Tornar a política configurável e documentar o comportamento de proxy. |
 | S13 — replay DPoP distribuído | **Sem mudança funcional** | O get/set isolado não é a autoridade final: `RollingDpopReplayCache` inclui insert único no banco. Adicionar somente teste de composição para impedir remoção acidental dessa camada. |
 | S13 — orçamento de nonce GCM | **Diferido, P2** | Risco teórico dependente de volume. Medir operações por versão e definir limite antes de criar rotação por contagem. |
 | S13 — CSP | **Já canônico** | Calibração e enforcement permanecem em `PLAN-PRODUCTION-READINESS.md` e `RUNBOOK-CSP-CALIBRATION.md`. |
@@ -123,34 +125,6 @@ entregues.
 
 **Concluído quando:** nenhum ambiente contém valor reversível legado e a prova
 redigida de migração/rollback está anexada ao gate de release.
-
-## P1 — chaves remotas e topologia mTLS
-
-### P1.3 Completar chaves remotas de JAR com egress seguro
-
-- [ ] Até existir fetch seguro, corrigir mensagens/docs e rejeitar explicitamente
-  clientes JAR que tenham somente `jwks_uri`; não anunciar suporte inexistente
-- [ ] Implementar resolução HTTPS por `SafeOutboundHttp`, sem redirects, com
-  validação DNS/IP, limite de tamanho, timeout, cache bounded e falha fechada
-- [ ] Definir política de refresh/rotação por `kid`, cache stale e indisponibilidade
-  remota sem aceitar chave fora do metadata registrado
-- [ ] Cobrir SSRF, DNS rebinding, resposta excessiva/malformada, key rotation,
-  `kid` ausente e indisponibilidade
-
-**Concluído quando:** `jwks_uri` funciona conforme anunciado sem criar uma nova
-rota de SSRF nem fallback para chave não confiável.
-
-### P1.4 Tornar revogação mTLS e topologia de proxy verificáveis
-
-- [ ] Adicionar política configurável `NoCheck`, `Online` ou `Offline`, com
-  timeout/failure mode explícitos e default documentado por tipo de pinning
-- [ ] Validar em startup como o certificado chega ao app; header encaminhado só
-  é aceito de proxy confiável e deve ser removido de conexões não confiáveis
-- [ ] Documentar overlap e revogação por cliente e adicionar testes com cadeia
-  expirada, revogada, indisponibilidade de CRL/OCSP e header forjado
-
-**Concluído quando:** a confiança não depende implicitamente da topologia e o
-operador escolhe conscientemente a política de revogação.
 
 ## P2 — manutenção e evolução arquitetural
 

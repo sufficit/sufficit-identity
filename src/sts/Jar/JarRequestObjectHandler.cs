@@ -34,6 +34,7 @@ internal static class JarRequestObjectHandler
     /// </summary>
     public sealed class ExtractAuthorizationRequestObject(
         IOpenIddictApplicationManager applications,
+        IJarSigningKeyResolver signingKeys,
         SufficitIdentityOptions rootOptions,
         IDpopReplayCache replayCache)
         : IOpenIddictServerHandler<ExtractAuthorizationRequestContext>
@@ -51,6 +52,7 @@ internal static class JarRequestObjectHandler
             await JarExtractor.TryMergeAsync(
                 context.Transaction.Request!,
                 applications,
+                signingKeys,
                 rootOptions.Jar,
                 rootOptions.Issuer,
                 replayCache,
@@ -66,6 +68,7 @@ internal static class JarRequestObjectHandler
     /// </summary>
     public sealed class ExtractPushedAuthorizationRequestObject(
         IOpenIddictApplicationManager applications,
+        IJarSigningKeyResolver signingKeys,
         SufficitIdentityOptions rootOptions,
         IDpopReplayCache replayCache)
         : IOpenIddictServerHandler<ExtractPushedAuthorizationRequestContext>
@@ -83,6 +86,7 @@ internal static class JarRequestObjectHandler
             await JarExtractor.TryMergeAsync(
                 context.Transaction.Request!,
                 applications,
+                signingKeys,
                 rootOptions.Jar,
                 rootOptions.Issuer,
                 replayCache,
@@ -108,6 +112,7 @@ internal static class JarExtractor
     public static async Task TryMergeAsync(
         OpenIddictRequest request,
         IOpenIddictApplicationManager applications,
+        IJarSigningKeyResolver signingKeyResolver,
         JarOptions options,
         string? issuer,
         IDpopReplayCache replayCache,
@@ -206,8 +211,29 @@ internal static class JarExtractor
             return;
         }
 
-        var signingKeys = await ResolveSigningKeysAsync(
-            applications, application, jwt.Kid, cancellationToken);
+        IReadOnlyList<SecurityKey> signingKeys;
+        try
+        {
+            signingKeys = await signingKeyResolver.ResolveAsync(
+                application,
+                jwt.Kid,
+                cancellationToken);
+        }
+        catch (Exception exception) when (
+            exception is HttpRequestException
+                or InvalidOperationException
+                or JsonException
+                or TaskCanceledException)
+        {
+            logger.LogWarning(
+                exception,
+                "JAR: registered signing-key metadata could not be resolved for client {ClientId}.",
+                jarClientId);
+            reject(
+                "The client's registered request-object signing keys are unavailable or invalid.",
+                null);
+            return;
+        }
         if (signingKeys.Count == 0)
         {
             reject(
@@ -340,43 +366,4 @@ internal static class JarExtractor
         return true;
     }
 
-    /// <summary>
-    /// Resolves the client's signing keys. OpenIddict stores <c>jwks</c> as a
-    /// JsonElement; we parse it into <see cref="JsonWebKey"/> objects. Falls
-    /// back to <c>jwks_uri</c> fetch when <c>jwks</c> is absent (defensive —
-    /// most deployments embed jwks).
-    /// </summary>
-    private static async Task<IList<SecurityKey>> ResolveSigningKeysAsync(
-        IOpenIddictApplicationManager applications,
-        object application,
-        string? kid,
-        CancellationToken cancellationToken)
-    {
-        var keys = new List<SecurityKey>();
-
-        var jwks = await applications.GetJsonWebKeySetAsync(application, cancellationToken);
-        if (jwks is { Keys: { Count: > 0 } jwksKeys })
-        {
-            foreach (var key in jwksKeys)
-            {
-                // Serialize the JsonWebKey back to JSON and re-parse as a
-                // SecurityKey via JsonWebKey.SetTokenParameters.
-                var json = JsonSerializer.Serialize(key);
-                try
-                {
-                    var securityKey = JsonWebKey.Create(json);
-                    if (kid is null || string.Equals(securityKey.KeyId, kid, StringComparison.Ordinal))
-                    {
-                        keys.Add(securityKey);
-                    }
-                }
-                catch
-                {
-                    // Skip keys that cannot be parsed.
-                }
-            }
-        }
-
-        return keys;
-    }
 }

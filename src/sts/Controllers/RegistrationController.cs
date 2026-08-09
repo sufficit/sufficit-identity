@@ -8,6 +8,7 @@ using Sufficit.Identity.STS.Dpop;
 using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Vault;
 using OpenIddict.Abstractions;
+using Sufficit.Identity.STS.Jar;
 
 namespace Sufficit.Identity.STS.Controllers;
 
@@ -166,6 +167,22 @@ public sealed class RegistrationController : ControllerBase
             });
         }
 
+        if (request.JwksUri is not null)
+        {
+            try
+            {
+                RemoteJwksProvider.ValidateUri(request.JwksUri);
+            }
+            catch (HttpRequestException)
+            {
+                return BadRequest(new
+                {
+                    error = "invalid_client_metadata",
+                    error_description = "jwks_uri must be a public absolute HTTPS URI without user-info or fragment.",
+                });
+            }
+        }
+
         var descriptor = new OpenIddictApplicationDescriptor
         {
             ClientId = clientId,
@@ -178,6 +195,10 @@ public sealed class RegistrationController : ControllerBase
                 ? OpenIddictConstants.ClientTypes.Confidential
                 : OpenIddictConstants.ClientTypes.Public,
         };
+        if (request.JwksUri is not null)
+        {
+            descriptor.Settings["jwks_uri"] = request.JwksUri.AbsoluteUri;
+        }
 
         var requestedGrants = request.GrantTypes ?? new List<string>();
         var requestedScopes = request.Scopes ?? new List<string>();
@@ -224,6 +245,7 @@ public sealed class RegistrationController : ControllerBase
             client_secret = clientSecret,
             client_name = descriptor.DisplayName,
             token_endpoint_auth_method = authenticationMethod,
+            jwks_uri = request.JwksUri?.AbsoluteUri,
             client_id_issued_at = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
         });
     }
@@ -272,4 +294,5 @@ public sealed class DcrRequest
     public List<string>? GrantTypes { get; set; }
     public List<string>? Scopes { get; set; }
     public List<Uri> RedirectUris { get; set; } = new();
+    public Uri? JwksUri { get; set; }
 }

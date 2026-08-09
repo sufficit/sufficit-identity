@@ -1028,6 +1028,39 @@ public sealed class MtlsOptions
     /// host trust store.
     /// </summary>
     public bool RequireValidCertificateChain { get; init; } = true;
+
+    /// <summary>
+    /// Certificate-revocation strategy used while building the platform chain.
+    /// The secure default performs online CRL/OCSP retrieval.
+    /// </summary>
+    public MtlsCertificateRevocationMode RevocationMode { get; init; } =
+        MtlsCertificateRevocationMode.Online;
+
+    /// <summary>
+    /// Controls whether an unavailable CRL/OCSP responder is denied. The
+    /// default is fail-closed; the compatibility mode never permits an
+    /// explicitly revoked, expired, untrusted or wrongly pinned certificate.
+    /// </summary>
+    public MtlsRevocationFailureMode RevocationFailureMode { get; init; } =
+        MtlsRevocationFailureMode.FailClosed;
+
+    /// <summary>Maximum platform chain URL retrieval time.</summary>
+    public int RevocationTimeoutSeconds { get; init; } = 3;
+
+    /// <summary>
+    /// Header carrying the URL-encoded PEM or base64 DER certificate in
+    /// TrustedProxy mode. It is removed before downstream middleware runs.
+    /// </summary>
+    public string ForwardedCertificateHeader { get; init; } =
+        "X-Sufficit-Client-Certificate";
+
+    /// <summary>
+    /// CIDRs authorized specifically to assert the forwarded client
+    /// certificate. This list is deliberately separate from general
+    /// X-Forwarded-* proxy trust.
+    /// </summary>
+    public HashSet<string> TrustedProxyNetworks { get; init; } =
+        new(StringComparer.Ordinal);
 }
 
 public enum MtlsDeploymentMode
@@ -1035,6 +1068,19 @@ public enum MtlsDeploymentMode
     Unattested,
     DirectTls,
     TrustedProxy,
+}
+
+public enum MtlsCertificateRevocationMode
+{
+    NoCheck,
+    Online,
+    Offline,
+}
+
+public enum MtlsRevocationFailureMode
+{
+    FailClosed,
+    AllowWhenUnavailable,
 }
 
 /// <summary>
@@ -1291,6 +1337,23 @@ public sealed class JarOptions
 
     /// <summary>Required RFC 9101 request-object media type.</summary>
     public string RequiredTokenType { get; init; } = "oauth-authz-req+jwt";
+
+    /// <summary>Maximum remote JWKS response size. Responses are streamed and
+    /// rejected once this bound is crossed.</summary>
+    public int RemoteJwksMaxBytes { get; init; } = 65_536;
+
+    /// <summary>Per-request timeout for a registered remote JWKS URI.</summary>
+    public int RemoteJwksTimeoutSeconds { get; init; } = 3;
+
+    /// <summary>Fresh-cache lifetime for remote key sets.</summary>
+    public int RemoteJwksCacheSeconds { get; init; } = 300;
+
+    /// <summary>Additional bounded interval during which an already-known kid
+    /// may be used if the remote endpoint is temporarily unavailable.</summary>
+    public int RemoteJwksStaleSeconds { get; init; } = 900;
+
+    /// <summary>Maximum number of registered JWKS URIs retained in process.</summary>
+    public int RemoteJwksMaxCacheEntries { get; init; } = 256;
 }
 
 /// <summary>
