@@ -3870,6 +3870,21 @@ h3 {
     display: block;
 }
 
+/* Keep outcome chips visually balanced in the audit result column. The
+   generic table rule above targets every direct span, so restore the badge's
+   flex layout before centering its label. */
+.data-table--audit th:nth-child(5),
+.data-table--audit td[data-label="Resultado"] {
+    text-align: center;
+}
+
+.data-table--audit td[data-label="Resultado"] > .status-badge {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+}
+
 .audit-operator {
     display: block;
     color: var(--ink-strong);
@@ -4869,6 +4884,14 @@ h3 {
     .data-table--audit td > * {
         min-width: 0;
         justify-self: start;
+    }
+
+    .data-table--audit td[data-label="Resultado"] {
+        text-align: left;
+    }
+
+    .data-table--audit td[data-label="Resultado"] > .status-badge {
+        justify-self: center;
     }
 
     .config-list > div {
