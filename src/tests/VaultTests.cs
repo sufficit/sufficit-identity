@@ -9,6 +9,8 @@ using Microsoft.IdentityModel.Tokens;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Tests.Infrastructure;
 using Sufficit.Identity.Management.Vault;
+using Sufficit.Identity.STS;
+using Sufficit.Identity.STS.Email;
 using Sufficit.Identity.STS.Vault;
 using Sufficit.Identity.Vault;
 using Sufficit.Identity.Vault.Crypto;
@@ -144,6 +146,33 @@ public sealed class VaultTests
             "legacy-signing-password",
             await store.GetSecretAsync(
                 "identity/certificates/signing-password"));
+    }
+
+    [Fact]
+    public void Email_transports_resolve_passwords_from_the_secret_store()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sufficit:Exchange:RabbitMQ:HostName"] = "broker",
+                ["Sufficit:Exchange:RabbitMQ:Password"] = "legacy-rabbit",
+                ["Sufficit:Identity:Smtp:Password"] = "legacy-smtp",
+            })
+            .Build();
+        var store = new DictionarySecretStore(new Dictionary<string, string?>
+        {
+            ["exchange/rabbitmq/password"] = "store-rabbit",
+            ["identity/smtp/password"] = "store-smtp",
+        });
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSufficitEmailSender(configuration, store);
+
+        using var provider = services.BuildServiceProvider();
+        var rabbit = provider.GetRequiredService<IOptions<RabbitMqEmailOptions>>().Value;
+
+        Assert.Equal("store-rabbit", rabbit.Password);
+        Assert.Contains("exchange/rabbitmq/password", store.RequestedNames);
     }
 
     [Fact]

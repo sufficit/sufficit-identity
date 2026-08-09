@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Sufficit.Identity.STS.Email;
+using Sufficit.Identity.Vault;
 
 namespace Sufficit.Identity.STS;
 
@@ -36,8 +37,11 @@ public static class EmailSenderExtensions
     /// </summary>
     public static IServiceCollection AddSufficitEmailSender(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ISecretStore? secretStore = null)
     {
+        var startupSecretStore = secretStore
+            ?? new EnvironmentSecretStore(configuration);
         var hostName = configuration["Sufficit:Exchange:RabbitMQ:HostName"];
         if (string.IsNullOrWhiteSpace(hostName))
         {
@@ -63,8 +67,14 @@ public static class EmailSenderExtensions
                 "[WARNING] RabbitMQ email transport is using plaintext AMQP compatibility mode. Enable UseTls, verify broker certificates, then set RequireTls=true.");
         }
 
+        var rabbitPassword = startupSecretStore.GetSecretAsync(
+                "exchange/rabbitmq/password")
+            .GetAwaiter()
+            .GetResult();
         services.Configure<RabbitMqEmailOptions>(
             configuration.GetSection(RabbitMqEmailOptions.SectionName));
+        services.PostConfigure<RabbitMqEmailOptions>(options =>
+            options.Password = rabbitPassword ?? string.Empty);
         services.TryAddSingleton<IEmailMessagePublisher, RabbitMqEmailPublisher>();
 
         // Replace the default IEmailSender registered by the STS runtime
