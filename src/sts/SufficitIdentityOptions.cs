@@ -604,32 +604,32 @@ public sealed class TokenLifetimeOptions
     public double RefreshTokenLifetimeDays { get; init; } = 14;
 
     /// <summary>
-    /// Access token format switch (P0 #5 / eval #B2). <c>true</c> (default —
-    /// the CURRENT, pre-existing behavior, preserved so this flag is a no-op
-    /// until someone deliberately changes it) makes
-    /// <c>server.UseReferenceAccessTokens()</c> apply: access tokens are
-    /// opaque reference tokens, validated only via
-    /// <c>/connect/introspect</c>. <c>false</c> switches to self-contained
-    /// JWT access tokens, validated locally by any resource server holding
-    /// the signing public key (no introspection round-trip).
-    ///
-    /// This setting is GLOBAL — OpenIddict does not support a per-client
-    /// token format natively — while the legacy client inventory
-    /// (docs/migration/PLAN.md in git HEAD) records that only ONE of the 26
-    /// legacy clients (<c>sufficit-endpoints</c>) actually relied on
-    /// reference tokens; the rest expect a JWT they can validate locally.
-    /// Flipping this to <c>false</c> is therefore a real migration-contract
-    /// decision, not a drop-in security hardening: JWTs are self-contained
-    /// (faster, no introspection dependency/availability coupling, but
-    /// un-revocable before expiry and visible to anyone holding the token)
-    /// vs. reference+introspection (instantly revocable, opaque to the
-    /// client, but every validation is a network round-trip to this STS and
-    /// every RS must be coded against /connect/introspect). Do NOT flip
-    /// this without coordinating with every resource server (RS) team first
-    /// — this file only surfaces the decision as explicit and reversible
-    /// config; it does not make the call for you.
+    /// Compatibility fallback when no per-resource or per-client rule exists.
+    /// <c>true</c> preserves the historical opaque reference-token behavior;
+    /// <c>false</c> uses self-contained JWT access tokens. New migrations
+    /// should use the maps below instead of flipping every client at once.
     /// </summary>
     public bool UseReferenceAccessTokens { get; init; } = true;
+
+    /// <summary>
+    /// Exact OAuth client_id to access-token format. Resource rules take
+    /// precedence when a token has a mapped audience.
+    /// </summary>
+    public Dictionary<string, AccessTokenStorageMode> AccessTokenFormatsByClient
+        { get; init; } = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Exact resource/audience to format. All mapped resources in one token
+    /// must agree; conflicting formats fail issuance closed.
+    /// </summary>
+    public Dictionary<string, AccessTokenStorageMode> AccessTokenFormatsByResource
+        { get; init; } = new(StringComparer.Ordinal);
+}
+
+public enum AccessTokenStorageMode
+{
+    Reference,
+    Jwt,
 }
 
 /// <summary>

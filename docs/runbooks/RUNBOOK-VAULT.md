@@ -140,6 +140,14 @@ reescrita imediata dos dados. O cache de chaves em memória é descartado no
 reinício; as versões persistidas são desembrulhadas novamente pela KEK
 configurada.
 
+Monitore `sufficit.vault.aes_gcm.encryptions` por `key.name` e `key.version`.
+O orçamento default é 250 milhões de mensagens por versão e pode ser ajustado
+em `AesGcmMessageBudgetPerKeyVersion`; agregue todas as réplicas e reinícios no
+backend de métricas. Ao atingir 80%, planeje `RotateKeyAsync`. Ao atingir o
+orçamento, interrompa novas gravações para esse key name ou rotacione antes de
+retomar. A rotação automática por contagem permanece desabilitada até existir
+volume operacional suficiente para definir uma política sem oscilações.
+
 Antes de remover uma versão antiga, confirme que não existem valores com essa
 versão e mantenha um backup testado do banco e do key-ring.
 

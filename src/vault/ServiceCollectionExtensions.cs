@@ -69,6 +69,7 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<IVaultKeyEncryptionKeySource>(sp =>
                 CreateKeySource(sp, options, resolvedSecretStore));
             services.AddSingleton<IHostedService, VaultKekReadinessService>();
+            services.AddSingleton<VaultCryptographyTelemetry>();
             services.AddSingleton<KeyVault>();
             services.AddSingleton<IKeyVault>(sp => sp.GetRequiredService<KeyVault>());
             if (options.ManageSigningKeys)
@@ -134,6 +135,12 @@ public static class ServiceCollectionExtensions
         }
 
         if (!options.Enabled) return;
+
+        if (options.AesGcmMessageBudgetPerKeyVersion is < 1 or > 4_294_967_296)
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Vault:AesGcmMessageBudgetPerKeyVersion must be between 1 and 4294967296.");
+        }
 
         var requiresDedicatedCertificate = !isDevelopment
             || source == "certificate"

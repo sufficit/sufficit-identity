@@ -35,7 +35,9 @@
       "ManageSigningKeys": false,
       "SigningKeyName": "oidc-signing",
       "SigningKeyOverlapSeconds": 1209600,
-      "SigningKeyLockSeconds": 60
+      "SigningKeyLockSeconds": 60,
+      "_AesGcmMessageBudgetPerKeyVersion": "Successful encryptions allowed operationally per symmetric key version before manual rotation. Default 250M keeps random 96-bit nonce collision risk below approximately 4e-13. Monitor sufficit.vault.aes_gcm.encryptions by key.name/key.version; automatic rotation remains disabled until production volume is characterized.",
+      "AesGcmMessageBudgetPerKeyVersion": 250000000
     },
     "Identity": {
       "Issuer": "https://your-identity-host/",
@@ -221,8 +223,12 @@
         "AccessTokenLifetimeMinutes": null,
         "IdentityTokenLifetimeMinutes": null,
         "RefreshTokenLifetimeDays": 14,
-        "_UseReferenceAccessTokens": "P0 #5 / eval #B2 — MIGRATION-CONTRACT DECISION, not a mechanical toggle. true (default, current/legacy behavior) = opaque reference access tokens validated only via /connect/introspect. false = self-contained JWT access tokens validated locally by any resource server holding the signing public key. This applies to ALL clients at once (OpenIddict has no per-client token-format switch) — but the legacy inventory (docs/migration/PLAN.md) shows only ONE of the 26 legacy clients (sufficit-endpoints) actually used reference tokens; the rest expect a JWT they validate locally. Do NOT flip to false without first confirming every resource server can handle the new format (JWT: faster, no introspection dependency, but un-revocable before expiry; reference: instantly revocable, opaque, but every validation is a network round-trip here).",
-        "UseReferenceAccessTokens": true
+        "_UseReferenceAccessTokens": "Compatibility fallback only when no resource/client map matches. true preserves opaque reference tokens; false uses signed self-contained JWTs. Prefer gradual exact overrides below instead of a flag day.",
+        "UseReferenceAccessTokens": true,
+        "_AccessTokenFormatsByClient": "Exact client_id overrides for gradual migration. Values: Reference or Jwt. Resource rules take precedence.",
+        "AccessTokenFormatsByClient": {},
+        "_AccessTokenFormatsByResource": "Exact resource/audience overrides. All mapped resources requested in one token must agree or issuance fails closed.",
+        "AccessTokenFormatsByResource": {}
       },
       "_Lockout": "Account lockout enforced on password verification (interactive login and grant_type=password).",
       "Lockout": {

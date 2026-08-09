@@ -138,6 +138,8 @@ public static class ServiceCollectionExtensions
                 provider.GetRequiredService<ILogger<ApplicationClaimDestinationPolicy>>(),
                 provider.GetRequiredService<ISecurityDecisionTelemetry>()));
         services.AddSingleton<ITokenIssuancePolicyKernel, TokenIssuancePolicyKernel>();
+        services.AddSingleton(new Tokens.AccessTokenFormatPolicy(
+            options.Tokens));
         services.AddSingleton<IPersonalTokenIssuancePolicy, PersonalTokenIssuancePolicy>();
         services.AddSingleton<ISubjectTokenProvenancePolicy, SubjectTokenProvenancePolicy>();
         services.AddScoped<IAuthenticationContextAccessor, AuthenticationContextAccessor>();
@@ -653,6 +655,9 @@ public static class ServiceCollectionExtensions
                 server.AddEventHandler(RecordIdentityUsage.Descriptor);
                 server.AddEventHandler(RecordAuthorizationUsageFailure.Descriptor);
                 server.AddEventHandler(RecordTokenUsageFailure.Descriptor);
+                server.AddEventHandler(Tokens.ApplyAccessTokenFormat.Descriptor);
+                server.AddEventHandler(
+                    Tokens.PrepareSelfContainedAccessToken.Descriptor);
 
                 if (options.Fapi2.Enabled)
                 {
@@ -766,10 +771,10 @@ public static class ServiceCollectionExtensions
                 // JWT-vs-reference tradeoff. Do NOT flip to false without
                 // coordinating with every resource server first.
                 // -------------------------------------------------------------------
-                if (options.Tokens.UseReferenceAccessTokens)
-                {
-                    server.UseReferenceAccessTokens();
-                }
+                // Keep both reference and JWT access-token pipelines available;
+                // ApplyAccessTokenFormat chooses per resource/client and falls
+                // back to the legacy global flag when no exact rule exists.
+                server.UseReferenceAccessTokens();
 
                 // -------------------------------------------------------------------
                 // PAR (Pushed Authorization Request, RFC 9126). The endpoint is
@@ -1245,6 +1250,13 @@ public static class ServiceCollectionExtensions
 
     private static void ValidateAdvancedProtocolOptions(SufficitIdentityOptions options)
     {
+        ValidateTokenFormatMap(
+            options.Tokens.AccessTokenFormatsByClient,
+            "Tokens:AccessTokenFormatsByClient");
+        ValidateTokenFormatMap(
+            options.Tokens.AccessTokenFormatsByResource,
+            "Tokens:AccessTokenFormatsByResource");
+
         if (options.Mtls.Enabled
             && options.Mtls.DeploymentMode == MtlsDeploymentMode.Unattested)
         {
@@ -1352,6 +1364,21 @@ public static class ServiceCollectionExtensions
                     throw new InvalidOperationException(
                         "Each SSF/CAEP receiver requires an id, audience and fragment-free HTTPS endpoint.");
             }
+        }
+    }
+
+    private static void ValidateTokenFormatMap(
+        IReadOnlyDictionary<string, AccessTokenStorageMode> values,
+        string setting)
+    {
+        if (values.Count > 4096
+            || values.Keys.Any(key =>
+                string.IsNullOrWhiteSpace(key)
+                || key.Length > 512
+                || !string.Equals(key, key.Trim(), StringComparison.Ordinal)))
+        {
+            throw new InvalidOperationException(
+                $"Sufficit:Identity:{setting} contains an invalid or excessive exact-match token-format mapping.");
         }
     }
 
