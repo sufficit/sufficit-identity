@@ -320,25 +320,29 @@ with an AAD dict binding the secret to its owner (e.g.
 `{ "stream_id": streamId }` for SSF auth tokens). This is the sops MAC pattern —
 a ciphertext lifted from stream A won't decrypt for stream B.
 
-### 5.2 Phase 2 — `ISecretStore` for config-time secrets
+### 5.2 Phase 2 — `ISecretStore` for config-time secrets (consumer migration complete)
 
-Today `Program.cs:21` relies on `WebApplication.CreateBuilder` defaults (user
-secrets in dev, env vars always). Phase 2 introduces `ISecretStore` so consumers
-can ask for a secret by name without knowing the source:
+The composition host now resolves startup secrets through `ISecretStore` before
+binding options. Consumers ask for a secret by name without knowing the source:
 
 ```csharp
-// before
-var dbPassword = _config["ConnectionStrings:DefaultConnection"]; // env-coupled
-
-// after
-var dbPassword = await _secretStore.GetSecretAsync("database/password");
+var connectionString =
+    await _secretStore.GetSecretAsync("database/connection-string");
 ```
 
 - **Default impl `EnvironmentSecretStore`** reads `SUFFICIT_SECRET_<NAME>` env
-  vars and falls back to `IConfiguration`. Zero-behavior-change default.
+  vars and falls back to `IConfiguration` only as a compatibility bridge.
 - **Optional `VaultBackedSecretStore`** reads from the encrypted `vault_secrets`
   table (a named-secret store like Vault KV) for operators who want secrets in
   the DB rather than env vars. Opt-in via `VaultOptions.EnableSecretStore = true`.
+
+The startup consumers in `Program.cs` and the STS registration now use the
+boundary for the database connection, certificate passwords and external
+provider credentials. The configuration mappings remain only to preserve
+rolling-deployment compatibility while legacy JSON values are removed from each
+host. Runtime vault consumers continue to use `VaultBackedSecretStore`; it is
+not used for startup resolution because the database connection itself is a
+startup prerequisite.
 
 ### 5.3 Phase 3 — Sign/verify as a service (optional, Transit for JWTs)
 
@@ -457,9 +461,9 @@ signing continues through the existing OpenIddict certificate path.
    (opt-in) + `vault_secrets` table + migration.
 2. Management API endpoint `GET/PUT/DELETE /api/vault/secrets/{name}`
    (capability-scoped; values are write-only in the response).
-3. Config-time consumers still require a separate rollout; existing
-   connection/certificate settings remain configuration-bound until their
-   secret rotation contract is approved.
+3. Startup consumers resolve named secrets through `ISecretStore`; the
+   configuration fallback remains only for rolling-deploy compatibility and can
+   be removed after every host has the corresponding `SUFFICIT_SECRET_*` value.
 4. Store round-trip and environment fallback tests are included; full
    management authorization integration remains a deployment-test gate.
 

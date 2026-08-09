@@ -51,8 +51,10 @@ Em produção, recomenda-se a sequência:
 ### Segredos de configuração no ambiente
 
 O host aplica variáveis `SUFFICIT_SECRET_*` antes de vincular as opções de
-startup. Elas têm precedência sobre JSON e permitem retirar credenciais de
-`appsettings.*.json` sem alterar os consumidores:
+startup. Elas têm precedência sobre JSON e os consumidores de banco, certificados
+e provedores externos consultam o `ISecretStore` por nome lógico. Isso permite
+retirar credenciais de `appsettings.*.json` sem acoplar os consumidores ao
+provedor de configuração:
 
 | Nome lógico | Variável | Chave substituída |
 |---|---|---|
@@ -81,11 +83,17 @@ de qualquer alteração, use `systemctl daemon-reload` e reinicie apenas a
 instância validada. O arquivo precisa ser `root:www-data` com modo `0640`.
 
 As variáveis devem ser instaladas pelo supervisor/secret manager com permissões
-restritas. O JSON continua sendo fallback durante a migração; depois de validar
-que cada override está presente em todas as réplicas, remova o valor legado e
-registre apenas a evidência redigida de rotação. O fallback em `ISecretStore`
-gera telemetria de aviso com o nome lógico (nunca o valor), permitindo medir
-quando a dependência de configuração plaintext chegou a zero.
+restritas. O JSON ainda é aceito como fallback de rolling deploy; depois de
+validar que cada override está presente em todas as réplicas, remova o valor
+legado e registre apenas a evidência redigida de rotação. O fallback em
+`ISecretStore` preserva a compatibilidade sem registrar o valor, permitindo
+medir quando a dependência de configuração plaintext chegou a zero.
+
+O boundary é deliberadamente síncrono no startup: `Program.cs` cria o
+`EnvironmentSecretStore` antes do bind das opções e o STS usa a mesma instância
+para resolver `database/connection-string`, senhas dos certificados e
+credenciais OAuth. O `VaultBackedSecretStore` não é usado nessa fase, porque o
+banco ainda precisa ser aberto para que ele próprio possa ler segredos.
 
 Se `RequireEncryptionInProduction=true` e o vault estiver desabilitado, o
 processo falha no startup. Isso evita um downgrade silencioso.
