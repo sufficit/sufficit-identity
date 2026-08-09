@@ -18,13 +18,17 @@ namespace Sufficit.Identity.Tests;
 /// invalidates auth cookies, but refresh tokens and authorizations survive it
 /// unless they are revoked explicitly.
 /// </summary>
-[Collection(StsCollection.Name)]
-public sealed class PasswordResetRevocationTests(
-    SufficitIdentityTestFactory factory)
+public sealed class PasswordResetRevocationTests
 {
     [Fact]
     public async Task Password_reset_revokes_previously_issued_tokens()
     {
+        // Isolated factory: this test revokes every token for its subject, so
+        // it must not share the collection fixture with tests that seed grants.
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
         await using var scope = factory.Services.CreateAsyncScope();
         var services = scope.ServiceProvider;
         SetHttpContext(services);
