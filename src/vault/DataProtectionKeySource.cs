@@ -17,11 +17,11 @@ public interface IVaultKeyEncryptionKeySource
 }
 
 /// <summary>
-/// Default <c>KEK</c> (Key Encryption Key) source: ASP.NET Core Data
-/// Protection. Wraps/unwraps vault DEKs via <see cref="IDataProtector"/> with
-/// a configured purpose string. Zero new dependencies — Data Protection is
-/// already used by the STS (key ring persisted to the DB, optionally X.509-
-/// protected). This inherits all that hardening for free.
+/// Compatibility <c>KEK</c> source backed by ASP.NET Core Data Protection.
+/// Its shared key ring is persisted in the identity DB but must be encrypted
+/// with the dedicated vault certificate outside Development. This preserves
+/// existing wrapped DEKs while separating key-ring protection from token
+/// signing.
 /// </summary>
 internal sealed class DataProtectionKeySource : IVaultKeyEncryptionKeySource
 {
