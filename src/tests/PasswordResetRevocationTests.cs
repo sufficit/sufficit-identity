@@ -27,6 +27,7 @@ public sealed class PasswordResetRevocationTests(
         var users = services.GetRequiredService<UserManager<ApplicationUser>>();
         var authorizations = services
             .GetRequiredService<IOpenIddictAuthorizationManager>();
+        SetHttpContext(services);
 
         var email = $"reset-revocation-{Guid.NewGuid():N}@example.test";
         var user = new ApplicationUser
@@ -40,8 +41,18 @@ public sealed class PasswordResetRevocationTests(
 
         // Stand in for the attacker's live grant: a valid authorization for the
         // account, which is what backs an issued refresh token.
+        var applications = services
+            .GetRequiredService<IOpenIddictApplicationManager>();
+        var application = await applications.FindByClientIdAsync(
+            TestDataSeeder.PasswordClientId)
+            ?? throw new InvalidOperationException("Seeded application is missing.");
+        var applicationId = await applications.GetIdAsync(application)
+            ?? throw new InvalidOperationException("Seeded application has no id.");
+
         await authorizations.CreateAsync(new OpenIddictAuthorizationDescriptor
         {
+            ApplicationId = applicationId,
+            CreationDate = DateTimeOffset.UtcNow,
             Subject = user.Id,
             Status = OpenIddictConstants.Statuses.Valid,
             Type = OpenIddictConstants.AuthorizationTypes.Permanent,
@@ -84,4 +95,22 @@ public sealed class PasswordResetRevocationTests(
     private static string EncodeToken(string token) =>
         Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(
             System.Text.Encoding.UTF8.GetBytes(token));
+
+    /// <summary>
+    /// The onboarding service resolves absolute callback URLs through
+    /// IHttpContextAccessor, so an ambient context is required exactly as in
+    /// the other onboarding tests.
+    /// </summary>
+    private static void SetHttpContext(IServiceProvider services)
+    {
+        var context = new Microsoft.AspNetCore.Http.DefaultHttpContext
+        {
+            RequestServices = services,
+        };
+        context.Request.Scheme = "https";
+        context.Request.Host =
+            new Microsoft.AspNetCore.Http.HostString("sts.tests.local");
+        services.GetRequiredService<
+            Microsoft.AspNetCore.Http.IHttpContextAccessor>().HttpContext = context;
+    }
 }
