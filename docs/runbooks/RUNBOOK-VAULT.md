@@ -63,6 +63,8 @@ provedor de configuração:
 | `identity/certificates/encryption-password` | `SUFFICIT_SECRET_IDENTITY_CERTIFICATES_ENCRYPTION_PASSWORD` | `Sufficit:Identity:Certificates:EncryptionPassword` |
 | `identity/human-verification/secret-key` | `SUFFICIT_SECRET_IDENTITY_HUMAN_VERIFICATION_SECRET_KEY` | `Sufficit:Identity:HumanVerification:SecretKey` |
 | `identity/external-providers/{google,github,facebook}/client-secret` | `SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_*` | credencial do provedor |
+| `identity/smtp/password` | `SUFFICIT_SECRET_IDENTITY_SMTP_PASSWORD` | `Sufficit:Identity:Smtp:Password` |
+| `exchange/rabbitmq/password` | `SUFFICIT_SECRET_EXCHANGE_RABBITMQ_PASSWORD` | `Sufficit:Exchange:RabbitMQ:Password` |
 
 O instalador cria o arquivo opcional
 `/etc/sufficit/identity/vault-secrets.env` a partir de
@@ -91,8 +93,8 @@ medir quando a dependência de configuração plaintext chegou a zero.
 
 O boundary é deliberadamente síncrono no startup: `Program.cs` cria o
 `EnvironmentSecretStore` antes do bind das opções e o STS usa a mesma instância
-para resolver `database/connection-string`, senhas dos certificados e
-credenciais OAuth. O `VaultBackedSecretStore` não é usado nessa fase, porque o
+para resolver `database/connection-string`, senhas dos certificados, credenciais
+OAuth e senhas dos transportes SMTP/RabbitMQ. O `VaultBackedSecretStore` não é usado nessa fase, porque o
 banco ainda precisa ser aberto para que ele próprio possa ler segredos.
 
 Se `RequireEncryptionInProduction=true` e o vault estiver desabilitado, o

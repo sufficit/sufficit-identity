@@ -14,7 +14,7 @@ internal sealed class RabbitMqEmailOptions
     public bool Persistent { get; init; } = true;
     public string HostName { get; init; } = string.Empty;
     public string UserName { get; init; } = string.Empty;
-    public string Password { get; init; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
     public TimeSpan? Heartbeat { get; init; }
     public int Port { get; init; }
     public bool UseTls { get; init; } = false;

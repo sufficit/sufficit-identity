@@ -170,7 +170,9 @@ if (uiHostingOptions.Public.IsEmbedded)
 // Activates only when Sufficit:Exchange:RabbitMQ:HostName is configured.
 // When active, replaces the UI's default IEmailSender (Smtp/Logging) with
 // the production RabbitMQEmailQueue (port from the legacy Skoruba STS).
-builder.Services.AddSufficitEmailSender(builder.Configuration);
+builder.Services.AddSufficitEmailSender(
+    builder.Configuration,
+    secretStore: startupSecretStore);
 
 // ---- Optional: management REST API (opt-in via Sufficit:Identity:Management:Enabled) ----
 var mgmtEnabled = builder.Configuration

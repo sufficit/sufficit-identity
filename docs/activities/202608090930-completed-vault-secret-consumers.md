@@ -14,8 +14,12 @@
   `ISecretStore`, mantendo a composição testável e sem acoplamento ao ambiente.
 - O carregamento de certificados usa a mesma fronteira e preserva o fallback de
   configuração apenas para rolling deploys já instalados.
+- Os transportes SMTP e RabbitMQ/Q-EMAIL também resolvem suas senhas por
+  `ISecretStore`, com os nomes `identity/smtp/password` e
+  `exchange/rabbitmq/password`.
 - Cobertura adicionada para o mapeamento de overrides e para o loader de
-  certificados; a suíte completa passou com 559 testes e 1 teste de UI pulado.
+  certificados e transportes de e-mail; a suíte completa passou com 560 testes
+  e 1 teste de UI pulado.
 
 ## Operação e limite
 

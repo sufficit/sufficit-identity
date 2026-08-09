@@ -337,8 +337,8 @@ var connectionString =
   the DB rather than env vars. Opt-in via `VaultOptions.EnableSecretStore = true`.
 
 The startup consumers in `Program.cs` and the STS registration now use the
-boundary for the database connection, certificate passwords and external
-provider credentials. The configuration mappings remain only to preserve
+boundary for the database connection, certificate passwords, external provider
+credentials and SMTP/RabbitMQ transport passwords. The configuration mappings remain only to preserve
 rolling-deployment compatibility while legacy JSON values are removed from each
 host. Runtime vault consumers continue to use `VaultBackedSecretStore`; it is
 not used for startup resolution because the database connection itself is a

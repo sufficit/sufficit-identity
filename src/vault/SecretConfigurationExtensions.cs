@@ -31,6 +31,8 @@ public static class SecretConfigurationExtensions
             "Sufficit:Identity:ExternalProviders:Facebook:ClientId"),
         ("identity/external-providers/facebook/client-secret",
             "Sufficit:Identity:ExternalProviders:Facebook:ClientSecret"),
+        ("identity/smtp/password", "Sufficit:Identity:Smtp:Password"),
+        ("exchange/rabbitmq/password", "Sufficit:Exchange:RabbitMQ:Password"),
     ];
 
     /// <summary>
