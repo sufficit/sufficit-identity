@@ -62,6 +62,24 @@ startup. Elas têm precedência sobre JSON e permitem retirar credenciais de
 | `identity/human-verification/secret-key` | `SUFFICIT_SECRET_IDENTITY_HUMAN_VERIFICATION_SECRET_KEY` | `Sufficit:Identity:HumanVerification:SecretKey` |
 | `identity/external-providers/{google,github,facebook}/client-secret` | `SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_*` | credencial do provedor |
 
+O instalador cria o arquivo opcional
+`/etc/sufficit/identity/vault-secrets.env` a partir de
+`helpers/vault-secrets.env.template` e não sobrescreve um arquivo já existente.
+O unit do systemd carrega esse arquivo antes do processo, mantendo os valores
+fora do release. Preencha-o pelo gerenciador de segredos do host, sem editar o
+template versionado, e valide somente nomes, valores não vazios e permissões
+com:
+
+```bash
+sudo /usr/libexec/sufficit-identity/check-vault-secrets.sh \
+  /etc/sufficit/identity/vault-secrets.env
+```
+
+O verificador nunca imprime valores. Em hosts onde o helper ainda não foi
+instalado, execute `helpers/check-vault-secrets.sh` a partir do release. Depois
+de qualquer alteração, use `systemctl daemon-reload` e reinicie apenas a
+instância validada. O arquivo precisa ser `root:www-data` com modo `0640`.
+
 As variáveis devem ser instaladas pelo supervisor/secret manager com permissões
 restritas. O JSON continua sendo fallback durante a migração; depois de validar
 que cada override está presente em todas as réplicas, remova o valor legado e
