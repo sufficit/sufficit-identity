@@ -33,6 +33,7 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Completed work (activities/)
 
+- [Vault production fail-closed boundaries](activities/202608091930-completed-vault-fail-closed-boundaries.md)
 - [DPoP/mTLS sender-constraint exclusivity](activities/202608091925-completed-sender-constraint-exclusivity.md)
 - [Client and Request Object invariants](activities/202608091918-completed-pkce-jar-invariants.md)
 - [Security-sensitive policy defaults](activities/202608091911-completed-secure-policy-defaults.md)

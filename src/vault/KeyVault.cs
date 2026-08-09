@@ -90,7 +90,10 @@ internal sealed class KeyVault : IKeyVault
         if (parsed.AadHash is not null)
         {
             var expectedHash = SelfDescribingCiphertext.ComputeAadHash(additionalAuthenticatedData, itemKey);
-            if (!expectedHash.SequenceEqual(parsed.AadHash))
+            if (expectedHash.Length != parsed.AadHash.Length
+                || !CryptographicOperations.FixedTimeEquals(
+                    expectedHash,
+                    parsed.AadHash))
             {
                 throw new CryptographicException(
                     "AAD mismatch: the ciphertext was encrypted with different " +

@@ -9,8 +9,12 @@ namespace Sufficit.Identity.Vault;
 /// This lets every consumer wire <see cref="IKeyVault"/> unconditionally
 /// without forcing encryption on in dev, while keeping a correct round-trip.
 /// </summary>
-internal sealed class PassThroughKeyVault : IKeyVault
+internal sealed class PassThroughKeyVault :
+    IKeyVault,
+    IKeyVaultPlaintextReferenceCompatibility
 {
+    public bool AcceptsPlaintextClientSecretReferences => true;
+
     public Task<string> EncryptAsync(
         string keyName,
         byte[] plaintext,

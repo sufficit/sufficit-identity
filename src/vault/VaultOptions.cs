@@ -9,19 +9,21 @@ public sealed class VaultOptions
     public const string SectionName = "Sufficit:Vault";
 
     /// <summary>
-    /// Master toggle. When <c>false</c> (default), <see cref="IKeyVault"/>
-    /// resolves to <see cref="PassThroughKeyVault"/> — round-trip without
-    /// crypto, so consumers can be wired unconditionally without forcing
-    /// encryption on in dev. When <c>true</c>, real envelope encryption with
-    /// the configured <see cref="KeySource"/>.
+    /// Master toggle. When <c>false</c> in Development,
+    /// <see cref="IKeyVault"/> resolves to <see cref="PassThroughKeyVault"/>.
+    /// Outside Development the disabled state is rejected at startup. When
+    /// <c>true</c>, real envelope encryption uses the configured
+    /// <see cref="KeySource"/>.
     /// </summary>
     public bool Enabled { get; init; } = false;
 
     /// <summary>
-    /// Rolling-upgrade guard. When true outside Development, startup fails
-    /// instead of registering the plaintext compatibility vault.
+    /// Retained for configuration compatibility. Encryption is always
+    /// required outside Development; setting this value to false no longer
+    /// permits the pass-through backend.
     /// </summary>
-    public bool RequireEncryptionInProduction { get; init; } = false;
+    [Obsolete("Encryption is always required outside Development.")]
+    public bool RequireEncryptionInProduction { get; init; } = true;
 
     /// <summary>
     /// KEK source: <c>dataprotection</c> (default) | <c>certificate</c> |

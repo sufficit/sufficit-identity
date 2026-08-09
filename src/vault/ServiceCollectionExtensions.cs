@@ -12,10 +12,9 @@ namespace Sufficit.Identity.Vault;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the vault services. When <c>Sufficit:Vault:Enabled</c> is
-    /// false (default), <see cref="IKeyVault"/> resolves to
-    /// <see cref="PassThroughKeyVault"/> (round-trip without crypto). When
-    /// true, the real <see cref="KeyVault"/> with envelope encryption is used.
+    /// Registers the vault services. A disabled vault resolves to
+    /// <see cref="PassThroughKeyVault"/> only in Development. Other
+    /// environments fail startup unless the real encrypted vault is enabled.
     /// </summary>
     public static IServiceCollection AddSufficitVault(
         this IServiceCollection services,
@@ -61,17 +60,7 @@ public static class ServiceCollectionExtensions
             Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
             "Development",
             StringComparison.Ordinal);
-        if (!options.Enabled && !isDevelopment)
-        {
-            if (options.RequireEncryptionInProduction)
-            {
-                throw new InvalidOperationException(
-                    "Sufficit:Vault encryption is required in production, but Sufficit:Vault:Enabled is false.");
-            }
-
-            Console.Error.WriteLine(
-                "[WARNING] Sufficit:Vault is using plaintext compatibility mode in production. Enable it, migrate pt1 values, then set RequireEncryptionInProduction=true.");
-        }
+        ValidateRuntimeMode(options, isDevelopment);
 
         if (options.Enabled)
         {
@@ -87,5 +76,18 @@ public static class ServiceCollectionExtensions
         }
 
         return services;
+    }
+
+    internal static void ValidateRuntimeMode(
+        VaultOptions options,
+        bool isDevelopment)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        if (!options.Enabled && !isDevelopment)
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Vault:Enabled=true is required outside Development; " +
+                "the PassThroughKeyVault compatibility backend is development-only.");
+        }
     }
 }
