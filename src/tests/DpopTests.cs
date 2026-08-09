@@ -21,6 +21,34 @@ namespace Sufficit.Identity.Tests;
 public sealed class DpopTests
 {
     [Fact]
+    public void Rolling_replay_cache_keeps_an_atomic_authority_after_the_distributed_hint()
+    {
+        var services = new ServiceCollection();
+        services.AddDistributedMemoryCache();
+        using var provider = services.BuildServiceProvider();
+        var distributed = new DistributedDpopReplayCache(
+            provider.GetRequiredService<
+                Microsoft.Extensions.Caching.Distributed.IDistributedCache>());
+        var atomic = new RecordingAtomicReplayCache();
+        var rolling = new RollingDpopReplayCache(distributed, atomic);
+
+        var replay = rolling.IsReplay("composition-contract", TimeSpan.FromMinutes(1));
+
+        Assert.False(replay);
+        Assert.Equal(1, atomic.InvocationCount);
+        Assert.Contains(
+            typeof(IAtomicDpopReplayCache),
+            typeof(RollingDpopReplayCache)
+                .GetConstructors(
+                    System.Reflection.BindingFlags.Instance
+                    | System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.Public)
+                .Single()
+                .GetParameters()
+                .Select(parameter => parameter.ParameterType));
+    }
+
+    [Fact]
     public async Task Valid_dpop_proof_yields_a_thumbprint_bound_proof()
     {
         // Round-trip: build a proof with a fresh EC P-256 key, validate it, and
@@ -532,5 +560,16 @@ public sealed class DpopTests
         var handler = new JsonWebTokenHandler();
         var token = handler.CreateToken(descriptor);
         return (token, key);
+    }
+
+    private sealed class RecordingAtomicReplayCache : IAtomicDpopReplayCache
+    {
+        public int InvocationCount { get; private set; }
+
+        public bool IsReplay(string jti, TimeSpan ttl)
+        {
+            InvocationCount++;
+            return false;
+        }
     }
 }

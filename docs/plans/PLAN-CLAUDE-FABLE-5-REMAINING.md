@@ -29,6 +29,11 @@
 > [`202608092022-completed-jar-remote-jwks.md`](../activities/202608092022-completed-jar-remote-jwks.md).
 > Revogação e topologia confiável de mTLS foram entregues em
 > [`202608092035-completed-mtls-revocation-topology.md`](../activities/202608092035-completed-mtls-revocation-topology.md).
+> A validação integrada dessas entregas está em
+> [`202608092036-completed-p1-integrated-validation.md`](../activities/202608092036-completed-p1-integrated-validation.md).
+> A correção do modelo de envelope, a composição atômica de replay DPoP e a
+> decisão sobre enums estão em
+> [`202608092045-completed-crypto-model-replay-composition.md`](../activities/202608092045-completed-crypto-model-replay-composition.md).
 
 ## Resultado da reconciliação
 
@@ -78,10 +83,8 @@ Quatro recomendações precisam de ajuste antes de serem implementadas:
 | S3 — SCIM Observe permite cliente fora da allow-list | **Aceito com rollout, P0** | O default já é `Enforce`, mas `ScimClientHandler` concede em `Observe`. Tornar o uso temporário, reconhecido e bloqueado pelo posture check; remover após a janela de migração. |
 | S4 — proveniência de token exchange em Observe | **Aceito com rollout, P0** | `TokenExchangeOptions.ProvenanceMode` agora inicia em `Enforce`; P0.2 mantém somente o inventário e a remoção de overrides `Observe` existentes nos ambientes. |
 | S5 — vault plaintext por default | **Aceito, gate operacional P0** | O startup agora impede `PassThroughKeyVault` fora de Development e o template habilita criptografia. Resta executar e comprovar a migração `pt1` nos ambientes conforme o plano GLM/Vault. |
-| S13 — replay DPoP distribuído | **Sem mudança funcional** | O get/set isolado não é a autoridade final: `RollingDpopReplayCache` inclui insert único no banco. Adicionar somente teste de composição para impedir remoção acidental dessa camada. |
 | S13 — orçamento de nonce GCM | **Diferido, P2** | Risco teórico dependente de volume. Medir operações por versão e definir limite antes de criar rotação por contagem. |
 | S13 — CSP | **Já canônico** | Calibração e enforcement permanecem em `PLAN-PRODUCTION-READINESS.md` e `RUNBOOK-CSP-CALIBRATION.md`. |
-| S13 — `EnvelopeCrypto.Wrap/Unwrap` | **Aceito como limpeza, P2** | Corrigir comentários/modelo que atribuem o wrapping real a AES-GCM ou remover o caminho morto e seu teste. |
 
 Referência normativa de S11: [RFC 9101, seções 4 e
 5](https://www.rfc-editor.org/rfc/rfc9101.html#section-4).
@@ -134,11 +137,6 @@ redigida de migração/rollback está anexada ao gate de release.
   `PLAN-GLM-5-2-REMAINING.md` P1.7, preservando rotas e caracterização de tokens
 - [ ] Dividir `SufficitIdentityOptions` por feature e manter uma façade de
   binding compatível por uma release
-- [ ] Reavaliar a unificação dos enums de enforcement depois que contributors e
-  acknowledgements estiverem estáveis; não criar uma migração de tipos sem
-  benefício mensurável
-- [ ] Remover ou corrigir `EnvelopeCrypto.Wrap/Unwrap` e os comentários de
-  entidade que não descrevem o wrapping real por Data Protection
 
 ### P2.2 Evoluir formato de token e limites criptográficos com evidência
 
@@ -146,8 +144,6 @@ redigida de migração/rollback está anexada ao gate de release.
   `PLAN-GPT-5-REMAINING.md` P1.13, com migração sem flag day
 - [ ] Medir encryptions por key name/version e definir orçamento de mensagens
   antes de automatizar rotação por contagem de nonce GCM
-- [ ] Manter teste de composição garantindo que `RollingDpopReplayCache`
-  contenha a camada atômica de banco enquanto o cache distribuído usar get/set
 
 ### P2.3 Prova externa de produção
 

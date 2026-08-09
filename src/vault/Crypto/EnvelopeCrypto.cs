@@ -3,9 +3,10 @@ using System.Security.Cryptography;
 namespace Sufficit.Identity.Vault.Crypto;
 
 /// <summary>
-/// AES-256-GCM envelope crypto. Used to encrypt data under an item key, and
-/// to wrap/unwrap DEKs under the KEK. GCM provides authenticated encryption
-/// (confidentiality + integrity in one primitive); no separate HMAC needed.
+/// AES-256-GCM data encryption under an item key. GCM provides authenticated
+/// encryption (confidentiality + integrity in one primitive); no separate
+/// HMAC is needed. KEK wrapping is owned by <c>IVaultKeyEncryptionKeySource</c>
+/// and may use RSA, Data Protection or an external KMS/HSM backend.
 /// </summary>
 /// <remarks>
 /// Nonce/IV is 12 bytes (GCM standard), tag is 16 bytes (full). Both are
@@ -65,17 +66,4 @@ internal static class EnvelopeCrypto
         gcm.Decrypt(nonce, ciphertext, tag, plaintext, aad);
         return plaintext;
     }
-
-    /// <summary>
-    /// Wraps a key (the DEK or item key) under another key (the KEK or DEK).
-    /// Same as Encrypt but semantically distinct (key-on-key, not data).
-    /// </summary>
-    public static byte[] Wrap(ReadOnlySpan<byte> keyToWrap, byte[] wrappingKey)
-        => Encrypt(keyToWrap, wrappingKey, "vault-key-wrap"u8);
-
-    /// <summary>
-    /// Unwraps a key wrapped by <see cref="Wrap"/>.
-    /// </summary>
-    public static byte[] Unwrap(ReadOnlySpan<byte> wrappedKey, byte[] wrappingKey)
-        => Decrypt(wrappedKey, wrappingKey, "vault-key-wrap"u8);
 }

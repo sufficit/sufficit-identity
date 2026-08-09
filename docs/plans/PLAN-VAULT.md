@@ -200,8 +200,8 @@ src/vault/
 ├── IKeyVault.cs                 ← encrypt/decrypt as a service (Transit-style)
 ├── IVaultKeySource.cs           ← pluggable KEK provider (DP / cert / KMS)
 ├── Crypto/
-│   ├── EnvelopeCrypto.cs        ← AES-256-GCM envelope (encrypt/decrypt/wrap)
-│   ├── SelfDescribingCiphertext.cs  ← "v1.<keyId>.<b64(iv‖ct‖tag||aad-hash)>"
+│   ├── EnvelopeCrypto.cs        ← AES-256-GCM data encryption/decryption
+│   ├── SelfDescribingCiphertext.cs  ← "v1.<keyId>.<b64(nonce‖ct‖tag||aad-hash)>"
 │   └── KeyId.cs                 ← key version + name parsing
 ├── Keys/
 │   ├── DataProtectionKeySource.cs   ← default: wrap DEK with DP keyring
@@ -499,8 +499,9 @@ signing continues through the existing OpenIddict certificate path.
 
 ## 10. Testing strategy
 
-- **Unit:** `EnvelopeCrypto` round-trips, AAD mismatch, nonce reuse resistance
-  (GCM), key-version selection from ciphertext prefix.
+- **Unit:** `EnvelopeCrypto` data round-trips, AAD mismatch, nonce reuse
+  resistance (GCM), key-version selection from ciphertext prefix; KEK wrapping
+  is tested through each `IVaultKeyEncryptionKeySource` contract.
 - **Contract:** `IKeyVault` implementations (pass-through, DP, cert) satisfy the
   same round-trip + rotation contract via a shared `[Theory]`.
 - **Integration:** `WebApplicationFactory` test that stores an SSF stream with an
