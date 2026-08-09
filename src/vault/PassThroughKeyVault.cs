@@ -93,4 +93,27 @@ internal sealed class PassThroughKeyVault :
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             "Signing keys require Sufficit:Vault:Enabled=true.");
+
+    public Task<KeyId> RotateSigningKeyAsync(
+        string keyName,
+        string operationId,
+        string? reason = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "Signing keys require Sufficit:Vault:Enabled=true.");
+
+    public Task<int> RetireSigningKeysAsync(
+        string keyName,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "Signing keys require Sufficit:Vault:Enabled=true.");
+
+    public Task<bool> RevokeSigningKeyAsync(
+        string keyName,
+        int keyVersion,
+        string operationId,
+        string reason,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "Signing keys require Sufficit:Vault:Enabled=true.");
 }

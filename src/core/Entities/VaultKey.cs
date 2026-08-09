@@ -2,8 +2,8 @@ namespace Sufficit.Identity.Core.Entities;
 
 /// <summary>
 /// A wrapped vault key (DEK or item key) persisted in the <c>vault_keys</c>
-/// table. The key material is never stored unwrapped; the KEK (Data Protection)
-/// unwraps it at runtime, and the unwrapped key lives only in memory.
+/// table. The key material is never stored unwrapped; the configured KEK
+/// authority unwraps it at runtime, and the unwrapped key lives only in memory.
 /// </summary>
 public sealed class VaultKey
 {
@@ -49,4 +49,26 @@ public sealed class VaultKey
     /// decryptable. Set on rotation after all ciphertext has migrated.
     /// </summary>
     public DateTime? RetiredAtUtc { get; set; }
+
+    /// <summary>Lifecycle state for signing keys. Null for symmetric and
+    /// rolling-deployment legacy rows.</summary>
+    public VaultSigningKeyState? SigningState { get; set; }
+
+    /// <summary>Deadline through which a retiring key remains in JWKS.</summary>
+    public DateTime? RetireAfterUtc { get; set; }
+
+    /// <summary>Emergency revocation timestamp. Revoked keys are never
+    /// published, used for issuance or accepted for verification.</summary>
+    public DateTime? RevokedAtUtc { get; set; }
+
+    /// <summary>Optimistic concurrency counter for lifecycle transitions.</summary>
+    public int LifecycleVersion { get; set; }
+}
+
+public enum VaultSigningKeyState
+{
+    Active,
+    Retiring,
+    Retired,
+    Revoked,
 }

@@ -17,6 +17,8 @@ public static class SecretConfigurationExtensions
             "Sufficit:Identity:Certificates:SigningPassword"),
         ("identity/certificates/encryption-password",
             "Sufficit:Identity:Certificates:EncryptionPassword"),
+        ("vault/kek-certificate-password",
+            "Sufficit:Vault:CertificatePassword"),
         ("identity/human-verification/secret-key",
             "Sufficit:Identity:HumanVerification:SecretKey"),
         ("identity/external-providers/google/client-id",
