@@ -93,6 +93,14 @@ public sealed class VaultOptions
     /// <summary>Lease duration for the database-backed distributed rotation
     /// lock. An abandoned lease can be recovered after this interval.</summary>
     public int SigningKeyLockSeconds { get; init; } = 60;
+
+    /// <summary>
+    /// Operational ceiling for successful AES-GCM encryptions under one
+    /// random 96-bit-nonce key version. The default 250 million keeps the
+    /// approximate nonce-collision probability below 4e-13. Metrics warn at
+    /// 80% and at the budget; rotation remains an explicit operator action.
+    /// </summary>
+    public long AesGcmMessageBudgetPerKeyVersion { get; init; } = 250_000_000;
 }
 
 public sealed class VaultLegacyCertificateMigrationOptions

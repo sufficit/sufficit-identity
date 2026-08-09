@@ -33,6 +33,7 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Completed work (activities/)
 
+- [Vault AES-GCM message-budget metrics](activities/202608092052-completed-vault-encryption-budget-metrics.md)
 - [Crypto model and atomic DPoP replay composition](activities/202608092045-completed-crypto-model-replay-composition.md)
 - [P1 integrated JAR and mTLS validation](activities/202608092036-completed-p1-integrated-validation.md)
 - [mTLS revocation and trusted-proxy topology](activities/202608092035-completed-mtls-revocation-topology.md)

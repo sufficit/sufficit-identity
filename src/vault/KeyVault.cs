@@ -29,6 +29,7 @@ internal sealed class KeyVault : IKeyVault
     private readonly ILogger<KeyVault> _logger;
     private readonly VaultOptions _options;
     private readonly TimeProvider _timeProvider;
+    private readonly VaultCryptographyTelemetry _cryptographyTelemetry;
 
     // Cache: (keyName, version) → unwrapped item key (256-bit).
     private readonly ConcurrentDictionary<(string Name, int Version), byte[]> _keyCache = new();
@@ -39,11 +40,32 @@ internal sealed class KeyVault : IKeyVault
         ILogger<KeyVault> logger,
         VaultOptions options,
         TimeProvider? timeProvider = null)
+        : this(
+            dbFactory,
+            kek,
+            logger,
+            options,
+            new VaultCryptographyTelemetry(
+                options,
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<
+                    VaultCryptographyTelemetry>.Instance),
+            timeProvider)
+    {
+    }
+
+    public KeyVault(
+        IDbContextFactory<AppDbContext> dbFactory,
+        IVaultKeyEncryptionKeySource kek,
+        ILogger<KeyVault> logger,
+        VaultOptions options,
+        VaultCryptographyTelemetry cryptographyTelemetry,
+        TimeProvider? timeProvider = null)
     {
         _dbFactory = dbFactory;
         _kek = kek;
         _logger = logger;
         _options = options;
+        _cryptographyTelemetry = cryptographyTelemetry;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
@@ -65,8 +87,10 @@ internal sealed class KeyVault : IKeyVault
         var aadBytes = SelfDescribingCiphertext.CanonicalizeAad(additionalAuthenticatedData);
 
         var packed = EnvelopeCrypto.Encrypt(plaintext, itemKey, aadBytes);
-        return SelfDescribingCiphertext.Format(keyName, version, packed,
+        var ciphertext = SelfDescribingCiphertext.Format(keyName, version, packed,
             additionalAuthenticatedData is null || additionalAuthenticatedData.Count == 0 ? null : aadHash);
+        _cryptographyTelemetry.RecordEncryption(keyName, version);
+        return ciphertext;
     }
 
     /// <summary>

@@ -34,6 +34,8 @@
 > A correção do modelo de envelope, a composição atômica de replay DPoP e a
 > decisão sobre enums estão em
 > [`202608092045-completed-crypto-model-replay-composition.md`](../activities/202608092045-completed-crypto-model-replay-composition.md).
+> Métrica e orçamento de mensagens AES-GCM foram entregues em
+> [`202608092052-completed-vault-encryption-budget-metrics.md`](../activities/202608092052-completed-vault-encryption-budget-metrics.md).
 
 ## Resultado da reconciliação
 
@@ -83,7 +85,6 @@ Quatro recomendações precisam de ajuste antes de serem implementadas:
 | S3 — SCIM Observe permite cliente fora da allow-list | **Aceito com rollout, P0** | O default já é `Enforce`, mas `ScimClientHandler` concede em `Observe`. Tornar o uso temporário, reconhecido e bloqueado pelo posture check; remover após a janela de migração. |
 | S4 — proveniência de token exchange em Observe | **Aceito com rollout, P0** | `TokenExchangeOptions.ProvenanceMode` agora inicia em `Enforce`; P0.2 mantém somente o inventário e a remoção de overrides `Observe` existentes nos ambientes. |
 | S5 — vault plaintext por default | **Aceito, gate operacional P0** | O startup agora impede `PassThroughKeyVault` fora de Development e o template habilita criptografia. Resta executar e comprovar a migração `pt1` nos ambientes conforme o plano GLM/Vault. |
-| S13 — orçamento de nonce GCM | **Diferido, P2** | Risco teórico dependente de volume. Medir operações por versão e definir limite antes de criar rotação por contagem. |
 | S13 — CSP | **Já canônico** | Calibração e enforcement permanecem em `PLAN-PRODUCTION-READINESS.md` e `RUNBOOK-CSP-CALIBRATION.md`. |
 
 Referência normativa de S11: [RFC 9101, seções 4 e
@@ -142,8 +143,6 @@ redigida de migração/rollback está anexada ao gate de release.
 
 - [ ] Selecionar JWT/reference token por cliente/recurso conforme
   `PLAN-GPT-5-REMAINING.md` P1.13, com migração sem flag day
-- [ ] Medir encryptions por key name/version e definir orçamento de mensagens
-  antes de automatizar rotação por contagem de nonce GCM
 
 ### P2.3 Prova externa de produção
 
