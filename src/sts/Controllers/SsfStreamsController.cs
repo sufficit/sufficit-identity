@@ -89,9 +89,8 @@ public sealed class SsfStreamsController : ControllerBase
         public string? Subject { get; init; }
 
         /// <summary>
-        /// Event-type URIs to receive. Must list at least one type when
-        /// SharedSignals.RequireExplicitEvents is enabled (the default); an
-        /// empty list subscribes to nothing, not to everything.
+        /// Event-type URIs to receive. Must list at least one type; an empty
+        /// list subscribes to nothing, not to everything.
         /// </summary>
         public IReadOnlyCollection<string>? EventsRequested { get; init; }
 
@@ -112,14 +111,12 @@ public sealed class SsfStreamsController : ControllerBase
         var ownerClientId = ResolveOwnerClientId();
         if (ownerClientId is null) return Forbid();
 
-        var ssf = _options.SharedSignals;
-
         // Least privilege on subscription scope. An omitted events_requested
         // used to mean "every supported event type", so the least specific
         // request produced the broadest delivery — every CAEP signal for every
         // subject. Require the subscription to be stated explicitly.
         var requestedEvents = request.EventsRequested ?? [];
-        if (ssf.RequireExplicitEvents && requestedEvents.Count == 0)
+        if (requestedEvents.Count == 0)
         {
             return BadRequest(new
             {
@@ -137,7 +134,7 @@ public sealed class SsfStreamsController : ControllerBase
         // legacy default is kept but surfaced in the logs.
         if (string.IsNullOrWhiteSpace(request.Subject))
         {
-            if (ssf.RequireExplicitSubject)
+            if (_options.SharedSignals.RequireExplicitSubject)
             {
                 return BadRequest(new
                 {

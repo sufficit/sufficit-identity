@@ -26,9 +26,8 @@ internal sealed class SsfSubscriptionMatcher : ISsfSubscriptionMatcher
             // created without events_requested silently received every CAEP
             // signal for every subject — the least specific request produced
             // the broadest delivery. A stream that subscribes to nothing now
-            // receives nothing; creation-time validation
-            // (SharedSignals.RequireExplicitEvents) rejects the empty list up
-            // front so this state is not reachable for new streams.
+            // receives nothing; creation-time validation rejects the empty
+            // list up front so this state is not reachable for new streams.
             return document.RootElement.EnumerateArray().Any(
                 item => item.ValueKind == JsonValueKind.String
                     && string.Equals(item.GetString(), eventType, StringComparison.Ordinal));
