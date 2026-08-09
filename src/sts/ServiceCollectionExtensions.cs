@@ -1513,18 +1513,18 @@ public static class ServiceCollectionExtensions
         var facebookClientId = ResolveSecret(
             secretStore,
             "identity/external-providers/facebook/client-id");
-        var facebookClientSecret = ResolveSecret(
+        var facebookSecret = ResolveSecret(
             secretStore,
             "identity/external-providers/facebook/client-secret");
         if (facebook.GetValue<bool>("Enabled")
             && !string.IsNullOrWhiteSpace(facebookClientId)
-            && !string.IsNullOrWhiteSpace(facebookClientSecret))
+            && !string.IsNullOrWhiteSpace(facebookSecret))
         {
             builder.AddFacebook(options =>
             {
                 ConfigureExternalProvider(options);
                 options.ClientId = facebookClientId!;
-                options.ClientSecret = facebookClientSecret!;
+                options.ClientSecret = facebookSecret!;
 
                 // Force the Meta Graph API version to v22.0 (the package's
                 // built-in default of v14.0 is deprecated and Meta now rejects
