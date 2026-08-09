@@ -476,7 +476,8 @@ internal sealed class ClientManagementService(
                     grantTypes,
                     normalizedScopes,
                     redirectUris,
-                    RequirePkce: string.IsNullOrEmpty(command.ClientSecret),
+                    RequirePkce: clientDefinitionValidator
+                        .RequiresProofKeyForCodeExchange(grantTypes),
                     HasClientSecret: !string.IsNullOrEmpty(command.ClientSecret)));
             if (!definitionValidation.IsValid)
             {
@@ -530,9 +531,8 @@ internal sealed class ClientManagementService(
                 backchannelLogoutUri,
                 command.BackchannelLogoutSessionRequired);
 
-            if (descriptor.Permissions.Contains(
-                    OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode)
-                && descriptor.ClientType == OpenIddictConstants.ClientTypes.Public)
+            if (clientDefinitionValidator.RequiresProofKeyForCodeExchange(
+                    grantTypes))
             {
                 descriptor.Requirements.Add(
                     OpenIddictConstants.Requirements.Features.ProofKeyForCodeExchange);
@@ -815,7 +815,8 @@ internal sealed class ClientManagementService(
                     grantTypes,
                     normalizedScopes,
                     redirectUris,
-                    RequirePkce: clientType == OpenIddictConstants.ClientTypes.Public,
+                    RequirePkce: clientDefinitionValidator
+                        .RequiresProofKeyForCodeExchange(grantTypes),
                     HasClientSecret: clientType == OpenIddictConstants.ClientTypes.Confidential));
             if (!definitionValidation.IsValid)
             {
@@ -879,9 +880,8 @@ internal sealed class ClientManagementService(
                 backchannelLogoutUri,
                 command.BackchannelLogoutSessionRequired);
 
-            if (descriptor.Permissions.Contains(
-                    OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode) &&
-                descriptor.ClientType == OpenIddictConstants.ClientTypes.Public)
+            if (clientDefinitionValidator.RequiresProofKeyForCodeExchange(
+                    grantTypes))
             {
                 descriptor.Requirements.Add(
                     OpenIddictConstants.Requirements.Features.ProofKeyForCodeExchange);

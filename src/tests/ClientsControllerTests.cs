@@ -207,6 +207,46 @@ public sealed class ClientsControllerTests
     }
 
     [Fact]
+    public async Task Create_projects_pkce_for_confidential_authorization_code_only()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+
+        using var interactiveResponse = await client.PostAsJsonAsync(
+            "/api/clients",
+            ConfidentialClient(
+                $"confidential-code-{Guid.NewGuid():N}",
+                "https://client.tests.local/callback"));
+        using var serviceResponse = await client.PostAsJsonAsync(
+            "/api/clients",
+            new CreateClientRequest
+            {
+                ClientId = $"confidential-service-{Guid.NewGuid():N}",
+                ClientSecret = $"secret-{Guid.NewGuid():N}",
+                GrantTypes = [Permissions.GrantTypes.ClientCredentials],
+            });
+
+        Assert.Equal(HttpStatusCode.Created, interactiveResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, serviceResponse.StatusCode);
+        var interactive = await interactiveResponse.Content
+            .ReadFromJsonAsync<JsonElement>();
+        var service = await serviceResponse.Content
+            .ReadFromJsonAsync<JsonElement>();
+        Assert.Contains(
+            interactive.GetProperty("requirements").EnumerateArray(),
+            requirement => requirement.GetString()
+                == Requirements.Features.ProofKeyForCodeExchange);
+        if (service.TryGetProperty("requirements", out var requirements))
+        {
+            Assert.DoesNotContain(
+                requirements.EnumerateArray(),
+                requirement => requirement.GetString()
+                    == Requirements.Features.ProofKeyForCodeExchange);
+        }
+    }
+
+    [Fact]
     public async Task Client_credentials_client_can_issue_token_and_delete_dependents()
     {
         using var factory = new ManagementTestFactory();

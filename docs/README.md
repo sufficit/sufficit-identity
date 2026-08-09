@@ -33,6 +33,7 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Completed work (activities/)
 
+- [Security-sensitive policy defaults](activities/202608091911-completed-secure-policy-defaults.md)
 - [Production posture — contributors and fail-closed](activities/202608091904-completed-production-posture-contributors.md)
 - [Security hardening wave 2](activities/202608071330-completed-security-hardening-wave-2.md)
 - [GPT-5 evaluation remediation](activities/202608071227-completed-gpt-5-remediation.md)

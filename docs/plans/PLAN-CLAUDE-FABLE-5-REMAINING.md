@@ -1,17 +1,19 @@
 # Avaliação Claude Fable 5 — plano de implementação remanescente
 
 > **Status:** ACTIVE. Reconciliado em 2026-08-09 contra
-> `f2e5d0f275e4`. Origem:
-> [`EVALUATION-2026-08-09-claude-fable-5.md`](../archive/evaluations/EVALUATION-2026-08-09-claude-fable-5.md).
+> `20db3a4`. Origem: avaliação interna `EVALUATION-2026-08-09-claude-fable-5.md`
+> (mantida fora do versionamento após a reconciliação).
 >
 > Este documento contém somente trabalho ainda aplicável. Ele não incorpora a
 > nota de mercado nem transforma observações informativas em bloqueadores. Onde
 > já existe um plano canônico, este plano registra a dependência e o critério de
 > fechamento, sem criar uma segunda implementação concorrente.
 >
-> Contributors modulares, acknowledgements estruturados e fail-closed efetivo
-> foram entregues e removidos deste plano; evidência em
-> [`202608091904-completed-production-posture-contributors.md`](../activities/202608091904-completed-production-posture-contributors.md).
+> Contributors modulares, acknowledgements estruturados, fail-closed efetivo e
+> defaults seguros foram entregues e removidos deste plano; evidências em
+> [`202608091904-completed-production-posture-contributors.md`](../activities/202608091904-completed-production-posture-contributors.md)
+> e
+> [`202608091911-completed-secure-policy-defaults.md`](../activities/202608091911-completed-secure-policy-defaults.md).
 
 ## Resultado da reconciliação
 
@@ -59,7 +61,7 @@ Quatro recomendações precisam de ajuste antes de serem implementadas:
 | Achado | Decisão | Evidência atual e destino |
 | --- | --- | --- |
 | S3 — SCIM Observe permite cliente fora da allow-list | **Aceito com rollout, P0** | O default já é `Enforce`, mas `ScimClientHandler` concede em `Observe`. Tornar o uso temporário, reconhecido e bloqueado pelo posture check; remover após a janela de migração. |
-| S4 — proveniência de token exchange em Observe | **Aceito com rollout, P0** | `TokenExchangeOptions.ProvenanceMode` ainda inicia em `Observe`. Inventário e ativação já pertencem ao plano de hardening; P0.2 fecha o gate de postura. |
+| S4 — proveniência de token exchange em Observe | **Aceito com rollout, P0** | `TokenExchangeOptions.ProvenanceMode` agora inicia em `Enforce`; P0.2 mantém somente o inventário e a remoção de overrides `Observe` existentes nos ambientes. |
 | S5 — vault plaintext por default | **Aceito, gate de produção P0** | `Enabled=false` e `RequireEncryptionInProduction=false` ainda selecionam `pt1` fora de Development. A migração canônica permanece no plano GLM/Vault. |
 | S6 — KEK no mesmo domínio do banco | **Aceito, P1** | O backend disponível é Data Protection, persistido no mesmo `AppDbContext` e protegido pelo certificado de assinatura. Separar certificado/KEK e entregar KMS/HSM em P1.1. |
 | S7 — signing keys nunca aposentadas | **Aceito, P1** | Rotação cria nova versão; nenhum fluxo define `RetiredAtUtc`. Implementar lifecycle completo em P1.1. |
@@ -86,20 +88,22 @@ Referência normativa de S11: [RFC 9101, seções 4 e
 **Alvos:** SCIM, token exchange, personal tokens, CIBA, credential mutations,
 public origin e autorização Management.
 
-- [ ] SCIM: inventariar clientes que seriam negados, provisionar a allow-list,
-  ativar `Enforce` por ambiente e remover `Observe` depois de uma release sem
-  decisões de compatibilidade
+- [ ] SCIM: inventariar clientes negados nos ambientes, provisionar a
+  allow-list e remover overrides `Observe` depois de uma release sem decisões
+  de compatibilidade
 - [ ] Token exchange: caracterizar `azp`/`client_id` dos subject tokens,
-  corrigir emissores ambíguos, ativar provenance `Enforce` e manter atenuação de
-  scopes/resources como invariante
-- [ ] Personal tokens e CIBA: concluir inventários e ativar seus modos
-  `Enforce` conforme `PLAN-SECURITY-HARDENING-WAVE-2.md`
-- [ ] Credential mutations: concluir a cerimônia real de step-up antes de
-  trocar `Audit` por `Enforce`, conforme `PLAN-GPT-5-REMAINING.md`
+  corrigir emissores ambíguos, remover overrides de provenance `Observe` e
+  manter atenuação de scopes/resources como invariante
+- [ ] Personal tokens e CIBA: concluir inventários e remover overrides
+  `Observe` conforme `PLAN-SECURITY-HARDENING-WAVE-2.md`
+- [ ] Credential mutations: provar a cerimônia real de step-up e remover
+  overrides `Audit`, conforme `PLAN-GPT-5-REMAINING.md`
 - [ ] Public origin: configurar issuer/public URL canônico em todos os hosts e
-  ativar `Enforce`; nenhum link de segurança pode depender de Host não confiável
-- [ ] Management: proibir `RequireAuthorization=false` fora de Development,
-  salvo acknowledgement temporário que bloqueie certificação/go-live
+  remover overrides `Audit`; nenhum link de segurança pode depender de Host não
+  confiável
+- [ ] Management: auditar as configurações implantadas e remover
+  `RequireAuthorization=false` fora de Development, salvo acknowledgement
+  temporário que bloqueie certificação/go-live
 
 **Concluído quando:** produção não contém um modo permissivo sem acknowledgement
 válido e todas as exceções temporárias têm data de remoção observável.
