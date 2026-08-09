@@ -464,8 +464,9 @@ signing continues through the existing OpenIddict certificate path.
 3. Startup consumers resolve named secrets through `ISecretStore`; the
    configuration fallback remains only for rolling-deploy compatibility and can
    be removed after every host has the corresponding `SUFFICIT_SECRET_*` value.
-4. Store round-trip and environment fallback tests are included; full
-   management authorization integration remains a deployment-test gate.
+4. Named secrets are isolated by `(contextId, namespace)`, use context-bound
+   AAD and require exact namespace claims in Management. Cross-context CRUD,
+   filtered lists and break-glass audit have integration coverage.
 
 ### Phase 3 — Signing-key management (Transit for JWTs, opt-in; implemented)
 1. `SignAsync` / `VerifyAsync` on `IKeyVault`; versioned RSA keys with
