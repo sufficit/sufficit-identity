@@ -33,6 +33,7 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Completed work (activities/)
 
+- [Client and Request Object invariants](activities/202608091918-completed-pkce-jar-invariants.md)
 - [Security-sensitive policy defaults](activities/202608091911-completed-secure-policy-defaults.md)
 - [Production posture — contributors and fail-closed](activities/202608091904-completed-production-posture-contributors.md)
 - [Security hardening wave 2](activities/202608071330-completed-security-hardening-wave-2.md)

@@ -123,6 +123,17 @@ public sealed class DcrTests
         Assert.StartsWith("dcr_", clientId, StringComparison.Ordinal);
         Assert.True(clientSecret.Length >= 64);
 
+        using (var scope = factory.Services.CreateScope())
+        {
+            var applications = scope.ServiceProvider
+                .GetRequiredService<IOpenIddictApplicationManager>();
+            var application = await applications.FindByClientIdAsync(clientId);
+            Assert.NotNull(application);
+            Assert.DoesNotContain(
+                OpenIddictConstants.Requirements.Features.ProofKeyForCodeExchange,
+                await applications.GetRequirementsAsync(application!));
+        }
+
         // The registered client must be usable immediately: a token grant works.
         var tokenClient = factory.CreateClient();
         var (status, tokenBody) = await tokenClient.PostFormAsync("/connect/token", new Dictionary<string, string>
