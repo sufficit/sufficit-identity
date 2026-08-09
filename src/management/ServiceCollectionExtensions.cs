@@ -63,6 +63,10 @@ public static class ServiceCollectionExtensions
 
         services.AddOptions<ManagementOptions>()
             .Bind(configurationRoot);
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<
+                IProductionPostureContributor,
+                ManagementProductionPostureContributor>());
         services.Replace(ServiceDescriptor.Singleton<IReservedScopePolicy>(
             new ReservedScopePolicy(options.ReservedApiScopes
                 .Concat(RetiredIdentityScopes.Names))));

@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Vault;
 
@@ -30,6 +31,10 @@ public static class ServiceCollectionExtensions
         // reported as disabled by a service resolving the options pattern.
         services.AddOptions<VaultOptions>().Bind(section);
         services.AddSingleton(options);
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<
+                IProductionPostureContributor,
+                VaultProductionPostureContributor>());
         services.TryAddSingleton(configuration);
         if (options.EnableSecretStore)
         {

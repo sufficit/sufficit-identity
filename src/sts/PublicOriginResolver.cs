@@ -11,7 +11,7 @@ public enum PublicOriginMode
 
 public sealed class PublicOriginPolicyOptions
 {
-    public PublicOriginMode Mode { get; init; } = PublicOriginMode.Audit;
+    public PublicOriginMode Mode { get; init; } = PublicOriginMode.Enforce;
 }
 
 public interface IPublicOriginResolver

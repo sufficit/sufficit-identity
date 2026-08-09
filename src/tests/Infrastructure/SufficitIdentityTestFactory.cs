@@ -145,6 +145,14 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                 ["Sufficit:Identity:LegacyGrants:Password"] = "true",
                 ["Sufficit:Identity:LegacyGrants:None"] = "true",
                 ["Sufficit:Identity:TokenExchange:Enabled"] = "true",
+                // The shared fixture exercises legacy account/token flows
+                // without manufacturing a fresh-authentication claim for
+                // every test. Production keeps the secure defaults; tests
+                // that cover Enforce provide an explicit override below.
+                ["Sufficit:Identity:CredentialMutations:StepUpMode"] = "Audit",
+                ["Sufficit:Identity:PersonalTokens:Mode"] = "Observe",
+                ["Sufficit:Identity:PersonalTokens:RequiredScope"] = "",
+                ["Sufficit:Identity:PersonalTokens:RequireRecentAuthentication"] = "false",
             });
 
             // Layered on top so a per-test override (e.g. a restricted

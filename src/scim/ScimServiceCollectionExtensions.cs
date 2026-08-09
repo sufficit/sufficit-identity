@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Validation.AspNetCore;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Scim;
 
@@ -22,6 +23,10 @@ public static class ScimServiceCollectionExtensions
         var section = configuration.GetSection(configurationSection);
         var options = section.Get<ScimOptions>() ?? new ScimOptions();
         services.AddOptions<ScimOptions>().Bind(section);
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<
+                IProductionPostureContributor,
+                ScimProductionPostureContributor>());
         services.AddControllers()
             .PartManager.ApplicationParts.Add(
                 new AssemblyPart(Assembly.GetExecutingAssembly()));

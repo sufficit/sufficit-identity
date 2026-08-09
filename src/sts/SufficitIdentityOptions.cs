@@ -22,7 +22,8 @@ public sealed class SufficitIdentityOptions
 
     /// <summary>
     /// Controls whether request-derived public URLs are observed or rejected.
-    /// Audit is the compatibility default for rolling upgrades.
+    /// Enforce is the secure default; Audit is migration-only and reported by
+    /// the production posture check when no canonical origin is configured.
     /// </summary>
     public PublicOriginPolicyOptions PublicOrigin { get; init; } = new();
 
@@ -729,12 +730,27 @@ public sealed class CorsOptions
 public sealed class SecurityPostureOptions
 {
     /// <summary>
-    /// When true (default), the host refuses to start outside Development if
-    /// any permissive default is still in effect and unacknowledged. Set false
-    /// to downgrade the check to a startup warning (not recommended for
-    /// production). Development is never blocked regardless of this value.
+    /// Retained only so older configuration files continue to bind. The host
+    /// now always fails closed outside Development; false is logged and ignored.
     /// </summary>
+    [Obsolete("The production posture check always fails closed outside Development. Use bounded per-finding acknowledgements.")]
     public bool FailClosedOnInsecureDefaults { get; init; } = true;
+
+    /// <summary>
+    /// Temporary bridge for the old CSP/Management acknowledgement booleans.
+    /// Disabled by default. When explicitly enabled, old booleans are honored
+    /// with a deprecation warning while deployments migrate to
+    /// <see cref="Acknowledgements"/>.
+    /// </summary>
+    public bool AllowLegacyBooleanAcknowledgements { get; init; }
+
+    /// <summary>
+    /// Bounded exceptions keyed by stable production posture finding ID. Owner,
+    /// reason and a future expiry are all required; stale or expired entries
+    /// are themselves startup findings.
+    /// </summary>
+    public Dictionary<string, ProductionPostureAcknowledgement> Acknowledgements
+    { get; init; } = new(StringComparer.Ordinal);
 }
 
 public sealed class CspOptions
@@ -938,14 +954,14 @@ public enum SecurityPolicyEnforcementMode
 }
 
 /// <summary>
-/// Least-privilege policy for issuing personal access tokens. Defaults remain
-/// observational so existing production callers can be inventoried before
-/// the stricter contract is activated.
+/// Least-privilege policy for issuing personal access tokens. Enforce is the
+/// secure default; Observe remains available only as an explicit, posture-
+/// checked migration mode.
 /// </summary>
 public sealed class PersonalTokenIssuanceOptions
 {
     public SecurityPolicyEnforcementMode Mode { get; init; } =
-        SecurityPolicyEnforcementMode.Observe;
+        SecurityPolicyEnforcementMode.Enforce;
 
     public string RequiredScope { get; init; } = "personal_tokens.manage";
 
@@ -1386,7 +1402,7 @@ public sealed class CibaOptions
     /// without interrupting them. Enforce rejects those requests.
     /// </summary>
     public SecurityPolicyEnforcementMode ClientPolicyMode { get; init; } =
-        SecurityPolicyEnforcementMode.Observe;
+        SecurityPolicyEnforcementMode.Enforce;
 
     public bool RequireConfidentialClient { get; init; } = true;
 

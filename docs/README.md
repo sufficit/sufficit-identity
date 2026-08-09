@@ -22,6 +22,7 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Active plans (pending work)
 
+- [Claude Fable 5 evaluation — remaining work](plans/PLAN-CLAUDE-FABLE-5-REMAINING.md) — fail-closed posture, protocol invariants, vault custody and key lifecycle
 - [GPT-5 evaluation — remaining work](plans/PLAN-GPT-5-REMAINING.md) — residual protocol, trust-boundary and production-assurance work
 - [GLM-5.2 evaluation — remaining work](plans/PLAN-GLM-5-2-REMAINING.md) — residual authorization, secret and maintainability work
 - [Management applications](plans/PLAN-MANAGEMENT-APPLICATIONS.md) — complete OAuth/OIDC application lifecycle in the Management console
@@ -32,6 +33,7 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Completed work (activities/)
 
+- [Production posture — contributors and fail-closed](activities/202608091904-completed-production-posture-contributors.md)
 - [Security hardening wave 2](activities/202608071330-completed-security-hardening-wave-2.md)
 - [GPT-5 evaluation remediation](activities/202608071227-completed-gpt-5-remediation.md)
 - [GLM-5.2 evaluation remediation](activities/202608071210-completed-glm-5-2-remediation.md)

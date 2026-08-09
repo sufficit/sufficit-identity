@@ -1520,10 +1520,10 @@ public sealed class TokenExchangeOptions
     public HashSet<string> AllowedClientIds { get; init; } = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// Observe preserves legacy subject tokens that have no unambiguous
-    /// authorized-party identity while emitting the future denial. Enforce
-    /// rejects them whenever <see cref="AllowedClientIds"/> is configured.
+    /// Enforce rejects subject tokens without an unambiguous authorized-party
+    /// identity whenever <see cref="AllowedClientIds"/> is configured. Observe
+    /// is retained only as an explicit posture-checked migration mode.
     /// </summary>
     public SecurityPolicyEnforcementMode ProvenanceMode { get; init; } =
-        SecurityPolicyEnforcementMode.Observe;
+        SecurityPolicyEnforcementMode.Enforce;
 }

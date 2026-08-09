@@ -96,6 +96,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(options.Ciba);
         services.AddSingleton(options.SharedSignals);
         services.AddSingleton(options.OutboundHttp);
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<
+                IProductionPostureContributor,
+                Security.StsProductionPostureContributor>());
         services.AddSingleton<IPublicOriginResolver, PublicOriginResolver>();
         services.AddScoped<IAccountLookupPolicy, AccountLookupPolicy>();
         services.AddSingleton<ISecurityDecisionTelemetry,

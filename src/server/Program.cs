@@ -485,36 +485,15 @@ if (identityOptions.DistributedCache.RequireShared && !app.Environment.IsDevelop
 }
 
 // ---- Consolidated production posture check (fail-closed) ----
-// Several subsystems ship a deliberately permissive default so a fresh install
-// or a rolling migration does not break (CSP report-only, management Observe
-// modes and non-shared DPoP replay cache).
-// Individually reasonable, collectively easy to ship to production unnoticed.
-// This gathers them into one place and — outside Development, by default —
-// refuses to start when the deployment has explicitly opted into fail-closed
-// mode until each finding is resolved or acknowledged. Existing deployments
-// that predate this setting remain in warning mode until the operator makes
-// the migration decision explicit; this avoids taking a live host down on its
-// first restart after the feature is introduced. Development is never blocked.
-const string failClosedSetting =
-    "Sufficit:Identity:Security:FailClosedOnInsecureDefaults";
-var failClosedSettingConfigured = builder.Configuration
-    .GetSection(failClosedSetting)
-    .Exists();
-var failClosed = failClosedSettingConfigured
-    && identityOptions.Security.FailClosedOnInsecureDefaults;
-if (!app.Environment.IsDevelopment() && !failClosedSettingConfigured)
-{
-    app.Logger.LogWarning(
-        "{Setting} is not configured; the production posture check is running "
-        + "in compatibility warning mode. Set it explicitly to true only "
-        + "after resolving or acknowledging every finding.",
-        failClosedSetting);
-}
+// Each enabled module contributes its own permissive settings. Development
+// logs them; every other environment fails closed unless a finding has a
+// bounded acknowledgement with owner, reason and expiry. The old global false
+// switch is intentionally ignored: it could suppress unrelated boundaries at
+// once and silently outlive a migration.
 Sufficit.Identity.STS.Security.ProductionPostureCheck.Enforce(
     app.Services,
     identityOptions,
     app.Environment.IsDevelopment(),
-    failClosed,
     app.Logger);
 
 // ---- mTLS (mutual TLS, RFC 8705) host configuration reminder ----
