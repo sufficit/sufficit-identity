@@ -633,3 +633,23 @@ VALUES ('20260809224037_AddVaultSigningKeyLifecycle', '10.0.10');
 
 COMMIT;
 
+START TRANSACTION;
+ALTER TABLE `vaultsecrets` DROP INDEX `AK_vaultsecrets_name`;
+
+ALTER TABLE `vaultsecrets` ADD `contextid` varchar(64) CHARACTER SET utf8mb4 NOT NULL DEFAULT '';
+
+ALTER TABLE `vaultsecrets` ADD `namespace` varchar(64) CHARACTER SET utf8mb4 NOT NULL DEFAULT '';
+
+ALTER TABLE `vaultsecrets` ADD `ownersubject` varchar(128) CHARACTER SET utf8mb4 NOT NULL DEFAULT '';
+
+UPDATE vaultsecrets SET contextid = 'global', namespace = LOWER(SUBSTRING_INDEX(TRIM(name), '/', 1)), ownersubject = CASE WHEN TRIM(updatedby) = '' THEN 'legacy-migration' ELSE LEFT(TRIM(updatedby), 128) END;
+
+CREATE UNIQUE INDEX `AK_vaultsecrets_context_name` ON `vaultsecrets` (`contextid`, `name`);
+
+CREATE INDEX `IX_vaultsecrets_context_namespace` ON `vaultsecrets` (`contextid`, `namespace`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260809230136_AddVaultSecretNamespaces', '10.0.10');
+
+COMMIT;
+

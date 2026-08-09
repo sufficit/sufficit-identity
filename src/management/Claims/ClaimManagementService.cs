@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
@@ -99,6 +100,7 @@ internal sealed class ClaimManagementService(
     IManagementAuthorizationEvaluator authorization,
     IIdentityUserSessionRevoker sessionRevoker,
     ISecurityEventTrigger securityEvents,
+    IOptions<Sufficit.Identity.Management.ManagementOptions> managementOptions,
     ILogger<ClaimManagementService> logger) : IClaimManagementService
 {
     private const int ClaimTypeMaxLength = 256;
@@ -691,7 +693,7 @@ internal sealed class ClaimManagementService(
         }
     }
 
-    private static string ValidateClaimType(string? value)
+    private string ValidateClaimType(string? value)
     {
         var type = Required(
             value,
@@ -712,7 +714,7 @@ internal sealed class ClaimManagementService(
                 "O tipo da claim não pode conter espaços ou caracteres de controle.",
                 "type");
         }
-        if (ReservedClaimTypes.Contains(type))
+        if (IsAuthorizationSensitiveClaimType(type))
         {
             throw new ManagementValidationException(
                 "claim_type_reserved",
@@ -721,6 +723,36 @@ internal sealed class ClaimManagementService(
         }
 
         return type;
+    }
+
+    private bool IsAuthorizationSensitiveClaimType(string type)
+    {
+        if (ReservedClaimTypes.Contains(type)) return true;
+
+        var authorization = managementOptions.Value.Authorization;
+        return string.Equals(
+                type,
+                authorization.ObjectAccess.ContextClaimType,
+                StringComparison.OrdinalIgnoreCase)
+            || string.Equals(
+                type,
+                authorization.ProtectedPrincipals.TierClaimType,
+                StringComparison.OrdinalIgnoreCase)
+            || string.Equals(
+                type,
+                authorization.ProtectedPrincipals.BreakGlassClaimType,
+                StringComparison.OrdinalIgnoreCase)
+            || string.Equals(
+                type,
+                authorization.VaultSecrets.NamespaceClaimType,
+                StringComparison.OrdinalIgnoreCase)
+            || string.Equals(
+                type,
+                authorization.VaultSecrets.BreakGlassClaimType,
+                StringComparison.OrdinalIgnoreCase)
+            || authorization.CapabilityClaimTypes.Contains(
+                type,
+                StringComparer.OrdinalIgnoreCase);
     }
 
     private static string ValidateClaimValue(string? value)

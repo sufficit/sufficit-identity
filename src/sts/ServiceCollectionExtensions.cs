@@ -95,10 +95,16 @@ public static class ServiceCollectionExtensions
         }
         ValidateAdvancedProtocolOptions(options);
         options.HumanVerification.Validate();
+        var dcrInitialAccessTokenConfigured = !string.IsNullOrWhiteSpace(
+            ResolveSecret(
+                startupSecretStore,
+                "identity/dcr/initial-access-token"));
         services.AddSingleton(options);
         services.Replace(ServiceDescriptor.Singleton<
             IIdentityRuntimeCapabilityCatalog>(
-            new SufficitIdentityRuntimeCapabilityCatalog(options)));
+            new SufficitIdentityRuntimeCapabilityCatalog(
+                options,
+                dcrInitialAccessTokenConfigured)));
         services.AddSingleton(options.HumanVerification);
         services.AddSingleton(options.TwoFactor);
         services.AddSingleton(options.Passkeys);
@@ -312,7 +318,9 @@ public static class ServiceCollectionExtensions
             && !string.IsNullOrWhiteSpace(vaultOptions.CertificatePath))
         {
             var vaultProtectionCertificate =
-                VaultKeyEncryptionCertificate.Load(vaultOptions);
+                VaultKeyEncryptionCertificate.Load(
+                    vaultOptions,
+                    startupSecretStore);
             dpBuilder.ProtectKeysWithCertificate(vaultProtectionCertificate);
 
             var decryptOnlyCertificates =
@@ -336,7 +344,7 @@ public static class ServiceCollectionExtensions
         // ---- Internal secret vault (envelope encryption, Transit-style) ----
         // The real KeyVault wraps DEKs through the selected certificate,
         // external KMS/HSM or the now-dedicated Data Protection key ring.
-        services.AddSufficitVault(configuration);
+        services.AddSufficitVault(configuration, startupSecretStore);
         if (vaultOptions.ManageSigningKeys)
         {
             services.AddScoped<Vault.VaultSigningCredentialsHandler>();

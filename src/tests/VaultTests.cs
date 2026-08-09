@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using System.Security.Claims;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
@@ -12,6 +13,8 @@ using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Tests.Infrastructure;
 using Sufficit.Identity.Management.Provisioning;
+using Sufficit.Identity.Management;
+using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Vault;
 using Sufficit.Identity.STS;
 using Sufficit.Identity.STS.Email;
@@ -531,6 +534,176 @@ public sealed class VaultTests
             StringComparison.Ordinal);
         Assert.True(await store.DeleteAsync(metadata.Name));
         Assert.Null(await store.GetSecretAsync(metadata.Name));
+    }
+
+    [Fact]
+    public async Task Named_secrets_are_isolated_by_context_and_namespace()
+    {
+        var (vault, dbFactory) = CreateRealVault();
+        var store = new VaultBackedSecretStore(
+            dbFactory,
+            vault,
+            new VaultOptions { Enabled = true });
+
+        await store.PutAsync(
+            "Providers/Google/Client-Secret",
+            "tenant-a-secret",
+            "operator-a",
+            "tenant-a");
+        await store.PutAsync(
+            "providers/google/client-secret",
+            "tenant-b-secret",
+            "operator-b",
+            "tenant-b");
+        await store.PutAsync(
+            "billing/gateway/api-key",
+            "billing-secret",
+            "operator-a",
+            "tenant-a");
+
+        Assert.Equal(
+            "tenant-a-secret",
+            await store.GetSecretAsync(
+                "providers/google/client-secret",
+                "tenant-a"));
+        Assert.Equal(
+            "tenant-b-secret",
+            await store.GetSecretAsync(
+                "providers/google/client-secret",
+                "tenant-b"));
+        Assert.Null(await store.GetSecretAsync(
+            "providers/google/client-secret",
+            "tenant-c"));
+
+        var providersOnly = await store.ListAsync(
+            "tenant-a",
+            new HashSet<string>(["providers"], StringComparer.Ordinal));
+        var provider = Assert.Single(providersOnly);
+        Assert.Equal("providers", provider.Namespace);
+        Assert.Equal("tenant-a", provider.ContextId);
+        Assert.Equal("operator-a", provider.OwnerSubject);
+        Assert.False(await store.DeleteAsync(
+            "providers/google/client-secret",
+            "tenant-c"));
+
+        await store.PutAsync(
+            "providers/google/client-secret",
+            "tenant-a-rotated",
+            "operator-c",
+            "tenant-a");
+        var rotated = Assert.Single(await store.ListAsync(
+            "tenant-a",
+            new HashSet<string>(["providers"], StringComparer.Ordinal)));
+        Assert.Equal("operator-a", rotated.OwnerSubject);
+        Assert.Equal("operator-c", rotated.UpdatedBy);
+        Assert.Equal(
+            "tenant-a-rotated",
+            await store.GetSecretAsync(rotated.Name, "tenant-a"));
+        Assert.Equal(
+            "tenant-b-secret",
+            await store.GetSecretAsync(rotated.Name, "tenant-b"));
+
+        await using (var database = await dbFactory.CreateDbContextAsync())
+        {
+            var moved = await database.VaultSecrets.SingleAsync(secret =>
+                secret.ContextId == "tenant-b"
+                && secret.Name == rotated.Name);
+            moved.ContextId = "tenant-c";
+            await database.SaveChangesAsync();
+        }
+        await Assert.ThrowsAnyAsync<CryptographicException>(() =>
+            store.GetSecretAsync(rotated.Name, "tenant-c"));
+    }
+
+    [Theory]
+    [InlineData(" Providers/Google/Client-Secret ", "providers/google/client-secret")]
+    [InlineData("billing/API_KEY", "billing/api_key")]
+    public void Named_secret_normalization_is_canonical(
+        string input,
+        string expected) =>
+        Assert.Equal(expected, VaultBackedSecretStore.NormalizeName(input));
+
+    [Fact]
+    public async Task Management_named_secrets_filter_namespaces_and_audit_break_glass()
+    {
+        var vaultOptions = new VaultOptions { Enabled = true };
+        var (vault, dbFactory) = CreateRealVault(vaultOptions);
+        var store = new VaultBackedSecretStore(
+            dbFactory,
+            vault,
+            vaultOptions);
+        await store.PutAsync(
+            "providers/google/client-secret",
+            "provider-secret",
+            "seed",
+            "global");
+        await store.PutAsync(
+            "billing/gateway/api-key",
+            "billing-secret",
+            "seed",
+            "global");
+
+        var managementOptions = Options.Create(
+            new Sufficit.Identity.Management.ManagementOptions
+        {
+            Authorization = new ManagementAuthorizationOptions(),
+        });
+        var namespacePolicy =
+            new ConfigurationVaultSecretNamespaceAccessPolicy(
+                managementOptions);
+        await using var database = await dbFactory.CreateDbContextAsync();
+        var service = new VaultSecretsManagementService(
+            database,
+            store,
+            new AllowingManagementAuthorizationEvaluator(),
+            namespacePolicy,
+            Options.Create(vaultOptions));
+        var scopedPrincipal = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim("sub", "operator-1"),
+                new Claim("identity_vault_namespace", "global:providers"),
+            ],
+            "test"));
+        var scopedContext = new ManagementRequestContext(
+            scopedPrincipal,
+            "namespace-filter-test");
+
+        var visible = await service.ListAsync("global", scopedContext);
+        Assert.Equal(
+            "providers/google/client-secret",
+            Assert.Single(visible).Name);
+        var guessed = await Assert.ThrowsAsync<ManagementAccessException>(() =>
+            service.GetAsync(
+                "billing/gateway/api-key",
+                "global",
+                scopedContext));
+        Assert.Equal(
+            "vault_namespace_not_accessible",
+            guessed.Decision.ReasonCode);
+
+        var breakGlassPrincipal = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim("sub", "incident-operator"),
+                new Claim(
+                    "identity_vault_break_glass",
+                    "identity.vault.secrets"),
+                new Claim("amr", "pwd mfa"),
+            ],
+            "test"));
+        var breakGlassContext = new ManagementRequestContext(
+            breakGlassPrincipal,
+            "break-glass-test");
+        Assert.Equal(2, (await service.ListAsync(
+            "global",
+            breakGlassContext)).Count);
+
+        var audit = await database.ManagementAuditEvents.AsNoTracking()
+            .SingleAsync(item => item.CorrelationId == "break-glass-test");
+        Assert.Equal("vault_break_glass", audit.ReasonCode);
+        Assert.Equal("global", audit.ContextId);
+        Assert.Equal(
+            ManagementResourceTypes.VaultSecretCollection,
+            audit.ResourceType);
     }
 
     [Fact]
@@ -1058,6 +1231,21 @@ public sealed class VaultTests
             plaintextKey.Span.ToArray().Select(value => (byte)(value ^ 0xA5)).ToArray();
 
         public byte[] Unwrap(ReadOnlyMemory<byte> wrappedKey) => Wrap(wrappedKey);
+    }
+
+    private sealed class AllowingManagementAuthorizationEvaluator
+        : IManagementAuthorizationEvaluator
+    {
+        public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+            ClaimsPrincipal principal,
+            string capability,
+            ManagementResource resource,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(
+                ManagementAuthorizationDecision.Allowed());
+        }
     }
 
     private sealed class DictionarySecretStore(

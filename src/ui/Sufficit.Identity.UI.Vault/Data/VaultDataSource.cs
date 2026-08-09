@@ -52,19 +52,19 @@ public sealed class VaultDataSource(
     public Task<VaultDataResult<IReadOnlyList<ManagementVaultSecret>>> ListAdminAsync(
         CancellationToken cancellationToken = default) =>
         ExecuteAsync<IVaultSecretsManagementService, IReadOnlyList<ManagementVaultSecret>>(
-            async (service, context) => await service.ListAsync(context, cancellationToken),
+            async (service, context) => await service.ListAsync("global", context, cancellationToken),
             "operator Vault listing", cancellationToken, useManagementContext: true);
 
     public Task<VaultDataResult<ManagementVaultSecret>> PutAdminAsync(
         string name, string value, CancellationToken cancellationToken = default) =>
         ExecuteAsync<IVaultSecretsManagementService, ManagementVaultSecret>(
-            (service, context) => service.PutAsync(name, new SaveManagementVaultSecret(value), context, cancellationToken),
+            (service, context) => service.PutAsync(name, "global", new SaveManagementVaultSecret(value), context, cancellationToken),
             "operator Vault update", cancellationToken, useManagementContext: true);
 
     public Task<VaultDataResult<bool>> DeleteAdminAsync(
         string name, CancellationToken cancellationToken = default) =>
         ExecuteAsync<IVaultSecretsManagementService, bool>(
-            async (service, context) => { await service.DeleteAsync(name, context, cancellationToken); return true; },
+            async (service, context) => { await service.DeleteAsync(name, "global", context, cancellationToken); return true; },
             "operator Vault deletion", cancellationToken, useManagementContext: true);
 
     private async Task<VaultDataResult<T>> ExecuteAsync<TService, T>(

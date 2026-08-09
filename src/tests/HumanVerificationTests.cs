@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.STS;
+using Sufficit.Identity.Vault;
 using Xunit;
 
 namespace Sufficit.Identity.Tests;
@@ -65,6 +66,29 @@ public sealed class HumanVerificationTests
         Assert.Contains("secret=secret", handler.LastBody, StringComparison.Ordinal);
         Assert.Contains("response=browser-proof", handler.LastBody, StringComparison.Ordinal);
         Assert.Contains("remoteip=192.0.2.42", handler.LastBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Provider_secret_is_resolved_from_ISecretStore()
+    {
+        var handler = new RecordingHandler(
+            "{\"success\":true,\"hostname\":\"identity.example.test\"}");
+        var service = CreateService(
+            handler,
+            EnabledOptions(),
+            new DictionarySecretStore(
+                "identity/human-verification/secret-key",
+                "from-secret-store"));
+
+        var result = await service.VerifyAsync(
+            HumanVerificationFlow.Registration,
+            "browser-proof");
+
+        Assert.True(result.Succeeded);
+        Assert.Contains("secret=from-secret-store", handler.LastBody,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("secret=secret", handler.LastBody,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -141,7 +165,8 @@ public sealed class HumanVerificationTests
 
     private static RemoteHumanVerificationService CreateService(
         HttpMessageHandler handler,
-        HumanVerificationOptions options)
+        HumanVerificationOptions options,
+        ISecretStore? secretStore = null)
     {
         options.Validate();
         var context = new DefaultHttpContext();
@@ -150,7 +175,24 @@ public sealed class HumanVerificationTests
             new HttpClient(handler),
             options,
             new HttpContextAccessor { HttpContext = context },
-            NullLogger<RemoteHumanVerificationService>.Instance);
+            NullLogger<RemoteHumanVerificationService>.Instance,
+            secretStore);
+    }
+
+    private sealed class DictionarySecretStore(
+        string name,
+        string value) : ISecretStore
+    {
+        public Task<string?> GetSecretAsync(
+            string requestedName,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult<string?>(
+                string.Equals(requestedName, name, StringComparison.Ordinal)
+                    ? value
+                    : null);
+        }
     }
 
     private sealed class RecordingHandler(string responseJson)

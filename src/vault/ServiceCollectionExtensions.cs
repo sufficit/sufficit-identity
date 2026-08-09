@@ -20,7 +20,8 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddSufficitVault(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ISecretStore? startupSecretStore = null)
     {
         services.AddLogging();
         var section = configuration.GetSection(VaultOptions.SectionName);
@@ -37,6 +38,8 @@ public static class ServiceCollectionExtensions
                 IProductionPostureContributor,
                 VaultProductionPostureContributor>());
         services.TryAddSingleton(configuration);
+        var resolvedSecretStore = startupSecretStore
+            ?? new EnvironmentSecretStore(configuration);
         if (options.EnableSecretStore)
         {
             services.TryAddScoped<ISecretStore, VaultBackedSecretStore>();
@@ -55,12 +58,16 @@ public static class ServiceCollectionExtensions
             "Development",
             StringComparison.Ordinal);
         ValidateRuntimeMode(options, isDevelopment);
-        ValidateKeyEncryptionKeyPolicy(options, configuration, isDevelopment);
+        ValidateKeyEncryptionKeyPolicy(
+            options,
+            configuration,
+            isDevelopment,
+            resolvedSecretStore);
 
         if (options.Enabled)
         {
             services.AddSingleton<IVaultKeyEncryptionKeySource>(sp =>
-                CreateKeySource(sp, options));
+                CreateKeySource(sp, options, resolvedSecretStore));
             services.AddSingleton<IHostedService, VaultKekReadinessService>();
             services.AddSingleton<KeyVault>();
             services.AddSingleton<IKeyVault>(sp => sp.GetRequiredService<KeyVault>());
@@ -80,12 +87,15 @@ public static class ServiceCollectionExtensions
 
     private static IVaultKeyEncryptionKeySource CreateKeySource(
         IServiceProvider services,
-        VaultOptions options) => options.KeySource.Trim().ToLowerInvariant() switch
+        VaultOptions options,
+        ISecretStore secretStore) => options.KeySource.Trim().ToLowerInvariant() switch
         {
             "dataprotection" => new DataProtectionKeySource(
                 services.GetRequiredService<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>(),
                 options),
-            "certificate" => new CertificateKeySource(options),
+            "certificate" => new CertificateKeySource(
+                options,
+                secretStore),
             "external" => new ExternalKeySource(
                 services.GetRequiredService<IVaultExternalKeyEncryptionProvider>(),
                 options),
@@ -109,10 +119,13 @@ public static class ServiceCollectionExtensions
     internal static void ValidateKeyEncryptionKeyPolicy(
         VaultOptions options,
         IConfiguration configuration,
-        bool isDevelopment)
+        bool isDevelopment,
+        ISecretStore? secretStore = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(configuration);
+        var effectiveSecretStore = secretStore
+            ?? new EnvironmentSecretStore(configuration);
         var source = options.KeySource.Trim().ToLowerInvariant();
         if (source is not ("dataprotection" or "certificate" or "external"))
         {
@@ -153,9 +166,13 @@ public static class ServiceCollectionExtensions
                     "The vault KEK certificate must be different from every token-signing certificate.");
             }
 
-            using var kekCertificate = VaultKeyEncryptionCertificate.Load(options);
-            var signingPassword = configuration[
-                "Sufficit:Identity:Certificates:SigningPassword"];
+            using var kekCertificate = VaultKeyEncryptionCertificate.Load(
+                options,
+                effectiveSecretStore);
+            var signingPassword = effectiveSecretStore.GetSecretAsync(
+                    "identity/certificates/signing-password")
+                .GetAwaiter()
+                .GetResult();
             foreach (var signingPath in signingPaths)
             {
                 using var signingCertificate =

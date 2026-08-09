@@ -7,6 +7,14 @@ namespace Sufficit.Identity.Core.Entities;
 public sealed class VaultSecret
 {
     public long Id { get; set; }
+    /// <summary>Root path segment. Nested names inherit this namespace and
+    /// cannot override it.</summary>
+    public string Namespace { get; set; } = string.Empty;
+    /// <summary>Management authorization context owning this secret.</summary>
+    public string ContextId { get; set; } = "global";
+    /// <summary>Subject that first created the scoped secret. Ownership is
+    /// immutable metadata; access still requires context + namespace policy.</summary>
+    public string OwnerSubject { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Ciphertext { get; set; } = string.Empty;
     public string? AadJson { get; set; }

@@ -31,6 +31,11 @@ public sealed class HumanVerificationOptions
 
     public string? SiteKey { get; init; }
 
+    /// <summary>
+    /// Legacy compatibility value. New deployments should provide the secret
+    /// through <see cref="Sufficit.Identity.Vault.ISecretStore"/> using the
+    /// logical name <c>identity/human-verification/secret-key</c>.
+    /// </summary>
     public string? SecretKey { get; init; }
 
     public int RequestTimeoutSeconds { get; init; } = 5;
@@ -60,11 +65,10 @@ public sealed class HumanVerificationOptions
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(SiteKey)
-            || string.IsNullOrWhiteSpace(SecretKey))
+        if (string.IsNullOrWhiteSpace(SiteKey))
         {
             throw new InvalidOperationException(
-                "Human verification is enabled but SiteKey/SecretKey is missing.");
+                "Human verification is enabled but SiteKey is missing. The provider secret must be supplied through ISecretStore.");
         }
 
         if (RequestTimeoutSeconds is < 1 or > 30)

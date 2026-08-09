@@ -17,15 +17,21 @@ public sealed class VaultSecretsController(
 {
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<ManagementVaultSecret>>> List(
-        CancellationToken cancellationToken) =>
-        Ok(await secrets.ListAsync(RequestContext(), cancellationToken));
+        [FromQuery] string contextId = "global",
+        CancellationToken cancellationToken = default) =>
+        Ok(await secrets.ListAsync(contextId, RequestContext(), cancellationToken));
 
     [HttpGet("{*name}")]
     public async Task<ActionResult<ManagementVaultSecret>> Get(
         string name,
-        CancellationToken cancellationToken)
+        [FromQuery] string contextId = "global",
+        CancellationToken cancellationToken = default)
     {
-        var result = await secrets.GetAsync(name, RequestContext(), cancellationToken);
+        var result = await secrets.GetAsync(
+            name,
+            contextId,
+            RequestContext(),
+            cancellationToken);
         return result is null ? NotFound() : Ok(result);
     }
 
@@ -33,15 +39,26 @@ public sealed class VaultSecretsController(
     public async Task<ActionResult<ManagementVaultSecret>> Put(
         string name,
         [FromBody] SaveManagementVaultSecret command,
-        CancellationToken cancellationToken) =>
-        Ok(await secrets.PutAsync(name, command, RequestContext(), cancellationToken));
+        [FromQuery] string contextId = "global",
+        CancellationToken cancellationToken = default) =>
+        Ok(await secrets.PutAsync(
+            name,
+            contextId,
+            command,
+            RequestContext(),
+            cancellationToken));
 
     [HttpDelete("{*name}")]
     public async Task<IActionResult> Delete(
         string name,
-        CancellationToken cancellationToken)
+        [FromQuery] string contextId = "global",
+        CancellationToken cancellationToken = default)
     {
-        await secrets.DeleteAsync(name, RequestContext(), cancellationToken);
+        await secrets.DeleteAsync(
+            name,
+            contextId,
+            RequestContext(),
+            cancellationToken);
         return NoContent();
     }
 

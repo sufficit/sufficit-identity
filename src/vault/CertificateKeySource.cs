@@ -11,10 +11,12 @@ internal sealed class CertificateKeySource : IVaultKeyEncryptionKeySource, IDisp
 {
     private readonly X509Certificate2 _certificate;
 
-    public CertificateKeySource(VaultOptions options)
+    public CertificateKeySource(
+        VaultOptions options,
+        ISecretStore? secretStore = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(options.CertificatePath);
-        _certificate = VaultKeyEncryptionCertificate.Load(options);
+        _certificate = VaultKeyEncryptionCertificate.Load(options, secretStore);
     }
 
     public string KeyIdentifier => $"certificate:{_certificate.Thumbprint}";

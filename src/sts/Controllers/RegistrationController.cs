@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using System.Security.Cryptography;
 using Sufficit.Identity.STS.Dpop;
 using Sufficit.Identity.Application.Security;
+using Sufficit.Identity.Vault;
 using OpenIddict.Abstractions;
 
 namespace Sufficit.Identity.STS.Controllers;
@@ -34,16 +35,19 @@ public sealed class RegistrationController : ControllerBase
     private readonly DcrOptions _options;
     private readonly IClientDefinitionValidator _validator;
     private readonly IDpopReplayCache _bootstrapCredentialReplay;
+    private readonly ISecretStore _secretStore;
 
     public RegistrationController(
         IOpenIddictApplicationManager applications,
         IConfiguration configuration,
         IClientDefinitionValidator validator,
-        IDpopReplayCache bootstrapCredentialReplay)
+        IDpopReplayCache bootstrapCredentialReplay,
+        ISecretStore secretStore)
     {
         _applications = applications;
         _validator = validator;
         _bootstrapCredentialReplay = bootstrapCredentialReplay;
+        _secretStore = secretStore;
         var root = configuration.GetSection("Sufficit:Identity")
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
         _options = root.Mcp.Dcr;
@@ -69,7 +73,8 @@ public sealed class RegistrationController : ControllerBase
         // risk DCR is notorious for.
         if (_options.RequireInitialAccessToken)
         {
-            if (string.IsNullOrEmpty(_options.InitialAccessToken))
+            var initialAccessToken = await ResolveInitialAccessTokenAsync(ct);
+            if (string.IsNullOrEmpty(initialAccessToken))
             {
                 // Enabled + require token, but no token configured: fail closed.
                 return StatusCode(StatusCodes.Status503ServiceUnavailable, new
@@ -95,7 +100,7 @@ public sealed class RegistrationController : ControllerBase
             var header = Request.Headers.Authorization.ToString();
             // L2 fix (eval L2): constant-time comparison to avoid a theoretical
             // timing side-channel on the initial access token.
-            var expected = "Bearer " + _options.InitialAccessToken;
+            var expected = "Bearer " + initialAccessToken;
             var headerBytes = System.Text.Encoding.UTF8.GetBytes(header);
             var expectedBytes = System.Text.Encoding.UTF8.GetBytes(expected);
             if (headerBytes.Length != expectedBytes.Length
@@ -110,7 +115,7 @@ public sealed class RegistrationController : ControllerBase
         {
             var tokenDigest = Convert.ToHexString(SHA256.HashData(
                 System.Text.Encoding.UTF8.GetBytes(
-                    _options.InitialAccessToken)));
+                    (await ResolveInitialAccessTokenAsync(ct)) ?? string.Empty)));
             var remaining = _options.InitialAccessTokenExpiresAtUtc!.Value
                 - DateTimeOffset.UtcNow;
             if (_bootstrapCredentialReplay.IsReplay(
@@ -222,6 +227,13 @@ public sealed class RegistrationController : ControllerBase
             client_id_issued_at = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
         });
     }
+
+    private async Task<string?> ResolveInitialAccessTokenAsync(
+        CancellationToken cancellationToken) =>
+        await _secretStore.GetSecretAsync(
+            "identity/dcr/initial-access-token",
+            cancellationToken)
+        ?? _options.InitialAccessToken;
 
     /// <summary>
     /// Maps an RFC 7591 grant-type name (plain: <c>client_credentials</c>,

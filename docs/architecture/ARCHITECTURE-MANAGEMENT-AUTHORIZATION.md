@@ -63,6 +63,22 @@ not filter the generic user directory.
 Passwords, hashes, recovery material, client secrets and tokens are never
 returned by list or detail operations.
 
+### Named-secret namespaces
+
+Named Vault secrets use an explicit provider-owned authorization tuple:
+`(contextId, namespace, normalizedName)`. The first path segment is the
+namespace; descendants inherit it and cannot declare a different owner or
+context. The capability authorizes the operation, the normal Management
+context claim authorizes the context, and `identity_vault_namespace` authorizes
+one exact `<contextId>:<namespace>` pair. Lists apply the same predicate as
+get/put/delete.
+
+`identity_vault_break_glass` is a separate MFA-bound claim issued outside the
+generic Management APIs. Its use is always recorded in the Management audit
+log. The generic Claims API reserves all authorization-sensitive claim types,
+including configured context, namespace, capability and break-glass types, so
+claim administration cannot grant Management authority.
+
 ## Relying-party responsibilities
 
 An application owns:

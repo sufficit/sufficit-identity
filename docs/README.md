@@ -33,7 +33,9 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Completed work (activities/)
 
+- [Vault named-secret namespace authorization](activities/202608092010-completed-vault-secret-namespaces.md)
 - [Vault signing-key lifecycle and KEK separation](activities/202608092355-completed-vault-signing-key-lifecycle.md)
+- [Vault secret context isolation and ISecretStore consumers](activities/202608092020-completed-vault-secret-context-and-secret-store.md)
 - [Vault production fail-closed boundaries](activities/202608091930-completed-vault-fail-closed-boundaries.md)
 - [DPoP/mTLS sender-constraint exclusivity](activities/202608091925-completed-sender-constraint-exclusivity.md)
 - [Client and Request Object invariants](activities/202608091918-completed-pkce-jar-invariants.md)
