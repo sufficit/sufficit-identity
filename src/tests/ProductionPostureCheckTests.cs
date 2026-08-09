@@ -9,6 +9,7 @@ using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Scim;
 using Sufficit.Identity.STS;
+using Sufficit.Identity.STS.Controllers;
 using Sufficit.Identity.STS.Security;
 using Sufficit.Identity.Vault;
 using Xunit;
@@ -20,6 +21,35 @@ public sealed class ProductionPostureCheckTests
 {
     private static readonly DateTimeOffset Now =
         new(2026, 8, 9, 12, 0, 0, TimeSpan.Zero);
+
+    [Fact]
+    public void Security_sensitive_policy_defaults_are_enforced()
+    {
+        Assert.Equal(
+            PublicOriginMode.Enforce,
+            new PublicOriginPolicyOptions().Mode);
+        Assert.Equal(
+            CredentialMutationStepUpMode.Enforce,
+            new CredentialMutationSecurityOptions().StepUpMode);
+        Assert.Equal(
+            SecurityPolicyEnforcementMode.Enforce,
+            new PersonalTokenIssuanceOptions().Mode);
+        Assert.Equal(
+            SecurityPolicyEnforcementMode.Enforce,
+            new CibaOptions().ClientPolicyMode);
+        Assert.Equal(
+            SecurityPolicyEnforcementMode.Enforce,
+            new TokenExchangeOptions().ProvenanceMode);
+        Assert.Equal(
+            ManagementPolicyEnforcementMode.Enforce,
+            new ManagementObjectAccessOptions().Mode);
+        Assert.Equal(
+            ManagementPolicyEnforcementMode.Enforce,
+            new ProtectedPrincipalAccessOptions().Mode);
+        Assert.Equal(
+            ScimClientPolicyMode.Enforce,
+            new ScimOptions().ClientPolicyMode);
+    }
 
     [Fact]
     public void Contract_covers_every_known_permissive_production_switch()
