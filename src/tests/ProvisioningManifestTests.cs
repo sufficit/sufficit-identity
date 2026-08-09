@@ -133,6 +133,70 @@ public sealed class ProvisioningManifestTests
     }
 
     [Fact]
+    public async Task Provisioning_projects_pkce_for_confidential_authorization_code_only()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var interactiveId = $"manifest_confidential_code_{suffix}";
+        var serviceId = $"manifest_confidential_service_{suffix}";
+        var interactiveSecret = $"identity/clients/{interactiveId}/v1";
+        var serviceSecret = $"identity/clients/{serviceId}/v1";
+        var resolver = new TrackingSecretResolver(
+            new Dictionary<string, string>
+            {
+                [interactiveSecret] = $"secret-interactive-{suffix}",
+                [serviceSecret] = $"secret-service-{suffix}",
+            });
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var applications = scope.ServiceProvider
+            .GetRequiredService<IOpenIddictApplicationManager>();
+        var scopes = scope.ServiceProvider
+            .GetRequiredService<IOpenIddictScopeManager>();
+        var provisioner = new OpenIddictManifestProvisioner(
+            applications,
+            scopes,
+            resolver);
+        var manifest = new IdentityProvisioningManifest
+        {
+            Clients =
+            [
+                new IdentityClientManifest
+                {
+                    ClientId = interactiveId,
+                    ClientType = ManifestClientTypes.Confidential,
+                    SecretReference = interactiveSecret,
+                    RequirePkce = true,
+                    GrantTypes = [ManifestGrantTypes.AuthorizationCode],
+                    ResponseTypes = [ManifestResponseTypes.Code],
+                    RedirectUris =
+                    [
+                        new Uri("https://client.example.invalid/callback"),
+                    ],
+                },
+                new IdentityClientManifest
+                {
+                    ClientId = serviceId,
+                    ClientType = ManifestClientTypes.Confidential,
+                    SecretReference = serviceSecret,
+                    GrantTypes = [ManifestGrantTypes.ClientCredentials],
+                },
+            ],
+        };
+
+        await provisioner.ApplyAsync(manifest);
+
+        var interactive = await applications.FindByClientIdAsync(interactiveId);
+        var service = await applications.FindByClientIdAsync(serviceId);
+        Assert.NotNull(interactive);
+        Assert.NotNull(service);
+        Assert.Contains(
+            OpenIddictConstants.Requirements.Features.ProofKeyForCodeExchange,
+            await applications.GetRequirementsAsync(interactive!));
+        Assert.DoesNotContain(
+            OpenIddictConstants.Requirements.Features.ProofKeyForCodeExchange,
+            await applications.GetRequirementsAsync(service!));
+    }
+
+    [Fact]
     public async Task Apply_is_idempotent_and_updates_only_declared_objects()
     {
         var suffix = Guid.NewGuid().ToString("N");

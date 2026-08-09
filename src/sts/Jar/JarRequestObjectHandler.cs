@@ -15,8 +15,8 @@ namespace Sufficit.Identity.STS.Jar;
 /// Extracts and validates an RFC 9101 JWT-Secured Authorization Request
 /// (<c>request</c> parameter) at the authorization and PAR endpoints. When the
 /// request object is valid, its claims replace the matching query/form
-/// parameters on the OpenIddict request so downstream validation operates on
-/// the signed, tamper-proof parameter set.
+/// parameters on the OpenIddict request so downstream validation operates
+/// exclusively on the signed, tamper-proof parameter set.
 /// </summary>
 /// <remarks>
 /// Implemented from scratch because OpenIddict 7.6 does not parse/validate
@@ -260,31 +260,84 @@ internal static class JarExtractor
             return;
         }
 
-        // 7. Merge: replace every outer parameter with the signed value, then
-        // drop the request parameter itself. RFC 9101 §6: a parameter present
-        // in both must match; we treat the signed value as authoritative and
-        // overwrite (the signed object is the source of truth).
+        // 7. Replace the complete outer parameter set. RFC 9101 requires all
+        // authorization parameters used with a Request Object to be carried
+        // by that object. Keeping an outer parameter merely because the JWT
+        // omitted it would make an unsigned scope/resource/prompt extension
+        // influence the request.
         using var payload = JsonDocument.Parse(
             Base64UrlEncoder.Decode(jwt.EncodedPayload));
-        foreach (var parameter in payload.RootElement.EnumerateObject())
+        if (!TryReplaceWithSignedParameters(
+                request,
+                payload.RootElement,
+                jarClientId!,
+                out var replacementError))
         {
-            // Skip JWT-internal claims that are not authorization parameters.
-            if (parameter.Name is "iss" or "aud" or "exp" or "iat" or "nbf" or "jti"
-                or "client_id")
+            reject(replacementError!, null);
+            return;
+        }
+    }
+
+    internal static bool TryReplaceWithSignedParameters(
+        OpenIddictRequest request,
+        JsonElement payload,
+        string clientId,
+        out string? error)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
+
+        if (payload.ValueKind is not JsonValueKind.Object)
+        {
+            error = "The request object payload must be a JSON object.";
+            return false;
+        }
+
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        var signedParameters = new List<(string Name, JsonElement Value)>();
+        foreach (var parameter in payload.EnumerateObject())
+        {
+            if (!names.Add(parameter.Name))
+            {
+                error = $"The request object contains duplicate parameter '{parameter.Name}'.";
+                return false;
+            }
+
+            // JWT validation claims are not OAuth authorization parameters.
+            if (parameter.Name is "iss" or "aud" or "exp" or "iat" or "nbf"
+                or "jti" or "client_id")
             {
                 continue;
             }
-            request.SetParameter(parameter.Name, parameter.Value.Clone());
+
+            // A Request Object cannot recursively select another request
+            // carrier. Allowing this would reintroduce an unsigned/remote
+            // parameter source after the signed payload was validated.
+            if (parameter.Name is OpenIddictConstants.Parameters.Request
+                or OpenIddictConstants.Parameters.RequestUri)
+            {
+                error = "A request object cannot contain request or request_uri.";
+                return false;
+            }
+
+            signedParameters.Add((parameter.Name, parameter.Value.Clone()));
         }
 
-        // Ensure client_id is set on the outer request (PAR may receive it
-        // only inside the request object).
-        if (string.IsNullOrWhiteSpace(request.ClientId))
+        foreach (var name in request.GetParameters()
+                     .Select(parameter => parameter.Key)
+                     .ToArray())
         {
-            request.ClientId = jarClientId;
+            request.RemoveParameter(name);
         }
 
-        request.RemoveParameter(OpenIddictConstants.Parameters.Request);
+        request.ClientId = clientId;
+        foreach (var parameter in signedParameters)
+        {
+            request.SetParameter(parameter.Name, parameter.Value);
+        }
+
+        error = null;
+        return true;
     }
 
     /// <summary>

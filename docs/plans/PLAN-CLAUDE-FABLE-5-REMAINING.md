@@ -1,7 +1,7 @@
 # Avaliação Claude Fable 5 — plano de implementação remanescente
 
 > **Status:** ACTIVE. Reconciliado em 2026-08-09 contra
-> `20db3a4`. Origem: avaliação interna `EVALUATION-2026-08-09-claude-fable-5.md`
+> `6b90e70`. Origem: avaliação interna `EVALUATION-2026-08-09-claude-fable-5.md`
 > (mantida fora do versionamento após a reconciliação).
 >
 > Este documento contém somente trabalho ainda aplicável. Ele não incorpora a
@@ -9,11 +9,14 @@
 > já existe um plano canônico, este plano registra a dependência e o critério de
 > fechamento, sem criar uma segunda implementação concorrente.
 >
-> Contributors modulares, acknowledgements estruturados, fail-closed efetivo e
-> defaults seguros foram entregues e removidos deste plano; evidências em
+> Contributors modulares, acknowledgements estruturados, fail-closed efetivo,
+> defaults seguros e invariantes PKCE/JAR foram entregues e removidos deste
+> plano; evidências em
 > [`202608091904-completed-production-posture-contributors.md`](../activities/202608091904-completed-production-posture-contributors.md)
 > e
-> [`202608091911-completed-secure-policy-defaults.md`](../activities/202608091911-completed-secure-policy-defaults.md).
+> [`202608091911-completed-secure-policy-defaults.md`](../activities/202608091911-completed-secure-policy-defaults.md)
+> e
+> [`202608091918-completed-pkce-jar-invariants.md`](../activities/202608091918-completed-pkce-jar-invariants.md).
 
 ## Resultado da reconciliação
 
@@ -65,9 +68,7 @@ Quatro recomendações precisam de ajuste antes de serem implementadas:
 | S5 — vault plaintext por default | **Aceito, gate de produção P0** | `Enabled=false` e `RequireEncryptionInProduction=false` ainda selecionam `pt1` fora de Development. A migração canônica permanece no plano GLM/Vault. |
 | S6 — KEK no mesmo domínio do banco | **Aceito, P1** | O backend disponível é Data Protection, persistido no mesmo `AppDbContext` e protegido pelo certificado de assinatura. Separar certificado/KEK e entregar KMS/HSM em P1.1. |
 | S7 — signing keys nunca aposentadas | **Aceito, P1** | Rotação cria nova versão; nenhum fluxo define `RetiredAtUtc`. Implementar lifecycle completo em P1.1. |
-| S8 — PKCE divergente no CRUD | **Aceito, P0** | DCR e provisioning exigem PKCE para todo cliente authorization-code; o validator compartilhado e o CRUD Management ainda limitam a regra a clientes públicos. Corrigir em P0.3. |
 | S9 — vault secrets sem escopo por item | **Aceito, P1** | O serviço envia o nome no `ManagementResource`, mas `VaultSecrets` não pertence a `ItemResourceTypes` e não existe política de namespace. Fechar junto do modelo de contexto/tenant. |
-| S11 — parâmetros externos sobrevivem ao JAR | **Aceito, P0** | O merge sobrescreve duplicados, porém preserva parâmetros existentes que não aparecem no JWT. O RFC 9101 exige que o Request Object contenha todos os parâmetros processados e que somente ele seja usado. Corrigir em P0.3. |
 | S12 — mTLS sobrescreve DPoP em `cnf` | **Aceito com remediação ajustada, P0** | Os handlers escrevem a mesma claim nas ordens `+500` e `+600`. Rejeitar combinação até existir validação cumulativa comprovada. |
 | S13 — comparação AAD | **Aceito, correção curta P0** | Trocar `SequenceEqual` por `CryptographicOperations.FixedTimeEquals` e testar tamanhos diferentes. |
 | S13 — fallback plaintext do resolver | **Aceito, P0** | `VaultBackedClientSecretResolver` retorna texto cru em qualquer `FormatException`, inclusive com vault real. Permitir fallback apenas no backend de compatibilidade. |
@@ -107,30 +108,6 @@ public origin e autorização Management.
 
 **Concluído quando:** produção não contém um modo permissivo sem acknowledgement
 válido e todas as exceções temporárias têm data de remoção observável.
-
-### P0.3 Corrigir invariantes de cliente e request object
-
-**Alvos:** `ClientDefinitionValidator`, `ClientManagementService`, provisioning,
-DCR, `JarRequestObjectHandler` e testes de protocolo.
-
-- [ ] Mover `authorization_code => PKCE` para o validator compartilhado sem
-  condição de client type
-- [ ] Fazer Management CRUD, provisioning e DCR projetarem a decisão do mesmo
-  validator no descriptor, removendo regras locais divergentes
-- [ ] Adicionar matriz de testes público/confidencial × authorization-code/
-  outros grants para os três entry points
-- [ ] Após validar assinatura, issuer, audience, lifetime e replay do JAR,
-  reconstruir o conjunto de parâmetros processáveis exclusivamente do payload
-  assinado; aceitar externamente apenas o carrier `request` e o `client_id` que
-  já foi comparado
-- [ ] Rejeitar Request Object que omita parâmetro necessário ao processamento e
-  adicionar testes de injeção externa para `scope`, `resource`, `prompt`,
-  `max_age`, `login_hint`, `acr_values` e extensões desconhecidas
-- [ ] Preservar valores JSON estruturados/multivalorados sem convertê-los em
-  strings e manter o replay marcado somente depois da validação criptográfica
-
-**Concluído quando:** nenhum entry point cria cliente authorization-code sem
-PKCE e nenhum parâmetro não assinado influencia uma requisição com JAR.
 
 ### P0.4 Impedir downgrade de sender constraint
 
