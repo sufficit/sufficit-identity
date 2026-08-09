@@ -33,6 +33,7 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Completed work (activities/)
 
+- [Vault signing-key lifecycle and KEK separation](activities/202608092355-completed-vault-signing-key-lifecycle.md)
 - [Vault production fail-closed boundaries](activities/202608091930-completed-vault-fail-closed-boundaries.md)
 - [DPoP/mTLS sender-constraint exclusivity](activities/202608091925-completed-sender-constraint-exclusivity.md)
 - [Client and Request Object invariants](activities/202608091918-completed-pkce-jar-invariants.md)

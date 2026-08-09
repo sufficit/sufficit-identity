@@ -173,6 +173,41 @@ public sealed class VaultTests
     }
 
     [Fact]
+    public void Legacy_data_protection_certificate_fallback_is_bounded_and_attributed()
+    {
+        var now = new DateTimeOffset(2026, 8, 9, 12, 0, 0, TimeSpan.Zero);
+        Assert.Throws<InvalidOperationException>(() =>
+            Sufficit.Identity.Vault.ServiceCollectionExtensions
+                .ValidateLegacyCertificateMigration(
+                    new VaultLegacyCertificateMigrationOptions
+                    {
+                        Owner = "identity-platform",
+                        ExpiresAtUtc = now.AddDays(30),
+                    },
+                    now));
+        Assert.Throws<InvalidOperationException>(() =>
+            Sufficit.Identity.Vault.ServiceCollectionExtensions
+                .ValidateLegacyCertificateMigration(
+                    new VaultLegacyCertificateMigrationOptions
+                    {
+                        Owner = "identity-platform",
+                        Reason = "rotate the legacy DP ring",
+                        ExpiresAtUtc = now,
+                    },
+                    now));
+
+        Sufficit.Identity.Vault.ServiceCollectionExtensions
+            .ValidateLegacyCertificateMigration(
+                new VaultLegacyCertificateMigrationOptions
+                {
+                    Owner = "identity-platform",
+                    Reason = "rotate the legacy DP ring",
+                    ExpiresAtUtc = now.AddDays(30),
+                },
+                now);
+    }
+
+    [Fact]
     public async Task Registration_exposes_environment_configuration_secret_boundary()
     {
         var configuration = new ConfigurationBuilder()

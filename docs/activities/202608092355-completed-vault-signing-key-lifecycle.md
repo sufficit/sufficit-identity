@@ -16,6 +16,13 @@
 - O readiness do KEK executa um round-trip de wrap/unwrap na inicialização.
   Nos testes, o schema SQLite é criado antes do `IHostedService`; em produção,
   a falha continua bloqueando o processo.
+- Há três backends de KEK: Data Protection com key-ring protegido por PFX
+  dedicado, wrapping RSA direto por certificado e adapter KMS/HSM externo com
+  identificador de versão fixado. O mesmo thumbprint/caminho dos certificados
+  de assinatura é recusado.
+- A transição de key-rings DP antes protegidos pelo certificado de assinatura
+  usa uma exceção decrypt-only com owner, motivo, expiração e limite de 180
+  dias; novas chaves são sempre protegidas pelo certificado dedicado.
 
 ## Operação
 
@@ -25,8 +32,9 @@
 - Para uma rotação segura, envie um `operationId` estável e um motivo. Em caso
   de comprometimento, revogue o `keyVersion` com motivo obrigatório; a
   revogação não espera a janela de sobreposição.
-- Use uma fonte de KEK dedicada (certificado separado ou KMS/HSM externo) fora
-  de Development. `dataprotection` permanece apenas compatibilidade local.
+- Em `dataprotection`, forneça o PFX dedicado para proteger o key-ring e use a
+  janela legada somente durante a rotação. Em `external`, registre
+  `IVaultExternalKeyEncryptionProvider` e fixe `ExternalKeyIdentifier`.
 
 ## Validação
 
@@ -36,5 +44,7 @@ dotnet test src/tests/Sufficit.Identity.Tests.csproj --no-restore --filter Fully
 dotnet test src/tests/Sufficit.Identity.Tests.csproj --no-restore --filter FullyQualifiedName~DatabaseSchemaContractTests
 ```
 
-Os testes cobrem a rotação idempotente, a sobreposição, a aposentadoria,
-revogação imediata e o contrato do schema.
+Os testes cobrem a rotação idempotente, concorrência entre réplicas, recuperação
+de lease, sobreposição, aposentadoria, revogação imediata, perda de KEK,
+rollback, certificado dedicado, adapter externo e contrato do schema. A
+validação focada final executou 39 testes sem warning.

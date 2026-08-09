@@ -14,8 +14,10 @@ os seguintes valores passam pelo vault quando ele está habilitado:
   aceita escrita, mas nunca devolve o valor.
 
 As chaves de item ficam em `vaultkeys`; o material armazenado no banco é
-sempre protegido pelo Data Protection configurado pelo STS. O texto puro não
-é retornado ao banco/cache depois de gravado.
+protegido pela autoridade KEK configurada (`dataprotection`, `certificate` ou
+`external`). Em produção, o key-ring do Data Protection usa um certificado
+dedicado ao vault e diferente de todos os certificados de assinatura. O texto
+puro não é retornado ao banco/cache depois de gravado.
 
 ## Ativação
 
@@ -27,20 +29,34 @@ Comece em uma implantação de canário:
     "Vault": {
       "Enabled": true,
       "KeySource": "dataprotection",
-      "DataProtectionPurpose": "Sufficit.Identity.Vault.Master.v1"
+      "DataProtectionPurpose": "Sufficit.Identity.Vault.Master.v1",
+      "CertificatePath": "/run/secrets/sufficit-vault-kek.pfx",
+      "CertificatePassword": "",
+      "SigningKeyOverlapSeconds": 1209600,
+      "SigningKeyLockSeconds": 60
     }
   }
 }
 ```
 
 O mesmo bloco pode ser fornecido por variáveis (`Sufficit__Vault__Enabled=true`).
-O key-ring do Data Protection precisa ser compartilhado entre réplicas e
-protegido pela estratégia de certificado já usada pelo STS. Não altere
-`DataProtectionPurpose` depois de haver dados cifrados.
+A senha do PFX deve vir de
+`SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD`. O key-ring do Data Protection
+continua compartilhado entre réplicas, mas novas chaves do ring são protegidas
+pelo certificado dedicado acima, nunca pelo certificado de assinatura. Não
+altere `DataProtectionPurpose` depois de haver dados cifrados.
+
+`KeySource=dataprotection` é o caminho compatível para ambientes que já têm
+DEKs embrulhadas por Data Protection. `KeySource=certificate` usa o mesmo PFX
+dedicado para embrulhar DEKs diretamente. `KeySource=external` exige uma
+implementação registrada de `IVaultExternalKeyEncryptionProvider` e um
+`ExternalKeyIdentifier` imutável que fixe a versão da chave KMS/HSM. O startup
+faz um round-trip de wrap/unwrap e falha se a KEK não estiver utilizável.
 
 Em produção, recomenda-se a sequência:
 
-1. confirmar backup restaurável do banco e do key-ring compartilhado;
+1. confirmar backup restaurável do banco, do key-ring compartilhado e dos
+   certificados antigos, sem copiar material privado para a evidência;
 2. configurar `Enabled=true` em todas as réplicas antes de implantar esta
    versão; o processo recusa startup com vault desabilitado fora de
    Development;
@@ -48,6 +64,14 @@ Em produção, recomenda-se a sequência:
 4. migrar/regravar registros que ainda tenham o marcador `pt1.`;
 5. validar zero leituras legadas por uma janela completa e manter a versão
    anterior somente pelo período de rollback acordado.
+
+Para separar um key-ring antigo ainda protegido pelo certificado de assinatura,
+configure temporariamente `LegacyDataProtectionCertificateMigration` com
+`Owner`, `Reason` e `ExpiresAtUtc`. Durante essa janela, os certificados de
+assinatura anteriores são somente decrypt-only; toda chave DP nova é protegida
+pelo PFX dedicado. A janela não pode exceder 180 dias. Depois de confirmar que
+o ring antigo expirou/rotacionou, remova o bloco e reinicie uma réplica de
+canário; qualquer dependência residual falhará fechada no canário.
 
 `RequireEncryptionInProduction` permanece no binding para compatibilidade, mas
 seu valor não desliga o guard. O default é `true` e `PassThroughKeyVault` é
@@ -66,6 +90,7 @@ provedor de configuração:
 | `database/connection-string` | `SUFFICIT_SECRET_DATABASE_CONNECTION_STRING` | `ConnectionStrings:DefaultConnection` |
 | `identity/certificates/signing-password` | `SUFFICIT_SECRET_IDENTITY_CERTIFICATES_SIGNING_PASSWORD` | `Sufficit:Identity:Certificates:SigningPassword` |
 | `identity/certificates/encryption-password` | `SUFFICIT_SECRET_IDENTITY_CERTIFICATES_ENCRYPTION_PASSWORD` | `Sufficit:Identity:Certificates:EncryptionPassword` |
+| `vault/kek-certificate-password` | `SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD` | `Sufficit:Vault:CertificatePassword` |
 | `identity/human-verification/secret-key` | `SUFFICIT_SECRET_IDENTITY_HUMAN_VERIFICATION_SECRET_KEY` | `Sufficit:Identity:HumanVerification:SecretKey` |
 | `identity/external-providers/{google,github,facebook}/client-secret` | `SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_*` | credencial do provedor |
 | `identity/smtp/password` | `SUFFICIT_SECRET_IDENTITY_SMTP_PASSWORD` | `Sufficit:Identity:Smtp:Password` |
@@ -112,11 +137,28 @@ startup mesmo que uma configuração legada defina
 gravações usam a versão mais alta e blobs antigos continuam decifráveis porque
 o ciphertext é auto-descritivo (`v1.<nome>:<versão>...`). A rotação não exige
 reescrita imediata dos dados. O cache de chaves em memória é descartado no
-reinício; as versões persistidas são desembrulhadas novamente pelo Data
-Protection.
+reinício; as versões persistidas são desembrulhadas novamente pela KEK
+configurada.
 
 Antes de remover uma versão antiga, confirme que não existem valores com essa
 versão e mantenha um backup testado do banco e do key-ring.
+
+### Chaves de assinatura
+
+`RotateSigningKeyAsync(nome, operationId, reason)` é idempotente e protegido por
+lease distribuído em `vaultsigningkeylocks`. A nova versão entra em `Active`; a
+anterior passa a `Retiring`, deixa de emitir imediatamente e continua no JWKS
+até `SigningKeyOverlapSeconds`. O STS recusa uma janela menor que a maior vida
+útil configurada de access, identity ou refresh token. O serviço de lifecycle
+grava `RetiredAtUtc` ao fim da janela e mantém um journal sem segredos em
+`vaultsigningkeyoperations`.
+
+Em comprometimento, `RevokeSigningKeyAsync` exige `operationId` e motivo. A
+versão vai para `Revoked`, sai imediatamente do JWKS e deixa de assinar ou
+verificar; tokens ainda dentro do TTL que usem esse `kid` também deixam de ser
+aceitos. Se a versão revogada era a ativa, emissão fica indisponível até uma
+rotação deliberada criar a substituta. Registre esse impacto na resposta ao
+incidente antes da revogação, quando o risco permitir.
 
 Para um segredo nomeado, use a API de gestão com uma capability de leitura ou
 gestão. O `PUT /api/vault/secrets/{name}` recebe `{ "value": "..." }`; `GET`
@@ -143,21 +185,19 @@ consumidores internos através de `IVaultNamedSecretStore`.
 O provedor de segredos nomeados e a primitiva de assinatura RSA versionada já
 estão disponíveis. Com `Sufficit:Vault:ManageSigningKeys=true` (e o vault
 habilitado), o OpenIddict usa o provider delegado ao vault e o endpoint JWKS
-publica todas as versões não aposentadas. A rotação mantém as chaves antigas
-publicadas para validar tokens em trânsito. Com a opção desligada, o caminho
-existente por certificado permanece autoritativo. O backend de KEK externo
-(KMS/HSM) também não está conectado por padrão.
+publica somente a versão ativa e versões ainda em sobreposição. Com a opção
+desligada, o caminho existente por certificado permanece autoritativo. O
+adapter KMS/HSM é intencionalmente agnóstico de fornecedor: cada implantação
+deve registrar `IVaultExternalKeyEncryptionProvider` para seu serviço remoto.
 
-Para habilitar a assinatura delegada, aplique primeiro as migrações de
-`vault_keys`, defina `SigningKeyName` (padrão `oidc-signing`) e mantenha uma
-janela de sobreposição: execute `IKeyVault.RotateSigningKeyAsync`/a operação
-administrativa equivalente, confirme os dois `kid`s no JWKS e só aposente a
-versão antiga depois do TTL máximo dos tokens. O private key nunca é incluído
-no objeto `SecurityKey` nem no JWKS; ele é desembrulhado somente durante a
-operação de assinatura.
+Para habilitar a assinatura delegada, aplique primeiro
+`20260809224037_AddVaultSigningKeyLifecycle`, defina `SigningKeyName` (padrão
+`oidc-signing`) e valide uma rotação idempotente no canário. O private key nunca
+é incluído no objeto `SecurityKey` nem no JWKS; ele é desembrulhado somente
+durante a operação de assinatura.
 
-Limitação atual: a implantação ainda deve fornecer o PFX de signing quando
+Limitação atual: a implantação ainda deve fornecer o PFX de signing separado quando
 `ManageSigningKeys=true`, porque os geradores auxiliares (logout/JARM/SSF/CIBA)
-e a proteção do key-ring de Data Protection continuam usando esse certificado.
+continuam usando esse certificado.
 O provider do vault é a fonte de assinatura dos tokens OpenIddict; a migração
 dessas superfícies auxiliares para o vault é uma etapa posterior.

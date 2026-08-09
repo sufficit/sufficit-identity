@@ -175,7 +175,7 @@ public static class ServiceCollectionExtensions
 
         ValidateLegacyCertificateMigration(
             options.LegacyDataProtectionCertificateMigration,
-            _now: DateTimeOffset.UtcNow);
+            now: DateTimeOffset.UtcNow);
 
         if (!isDevelopment
             && source == "external"
@@ -200,7 +200,7 @@ public static class ServiceCollectionExtensions
 
     internal static void ValidateLegacyCertificateMigration(
         VaultLegacyCertificateMigrationOptions migration,
-        DateTimeOffset _now)
+        DateTimeOffset now)
     {
         ArgumentNullException.ThrowIfNull(migration);
         if (!migration.IsConfigured) return;
@@ -213,13 +213,13 @@ public static class ServiceCollectionExtensions
                 "LegacyDataProtectionCertificateMigration requires Owner, Reason and ExpiresAtUtc together.");
         }
 
-        if (migration.ExpiresAtUtc <= _now)
+        if (migration.ExpiresAtUtc <= now)
         {
             throw new InvalidOperationException(
                 "LegacyDataProtectionCertificateMigration has expired; remove the signing-certificate unwrap fallback.");
         }
 
-        if (migration.ExpiresAtUtc > _now.AddDays(180))
+        if (migration.ExpiresAtUtc > now.AddDays(180))
         {
             throw new InvalidOperationException(
                 "LegacyDataProtectionCertificateMigration cannot exceed 180 days.");
