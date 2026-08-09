@@ -11,13 +11,11 @@
     --vault-success: #16743b;
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     color: var(--vault-ink);
-    background: var(--vault-bg);
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--vault-bg); }
 button, input { font: inherit; }
-.vault-layout { min-height: 100vh; }
+.vault-layout { min-height: 100vh; background: var(--vault-bg); }
 .vault-topbar { display: flex; min-height: 64px; align-items: center; justify-content: space-between; gap: 16px; padding: 0 clamp(16px, 4vw, 48px); border-bottom: 1px solid var(--vault-line); background: var(--vault-surface); }
 .vault-brand { display: inline-flex; align-items: center; gap: 10px; color: inherit; font-size: 15px; font-weight: 600; text-decoration: none; }
 .vault-brand strong { font-weight: 750; }

@@ -34,6 +34,10 @@ public sealed class VaultUiCompositionTests
             StringComparison.Ordinal);
         Assert.Contains("prefers-reduced-motion", css,
             StringComparison.Ordinal);
+        Assert.Contains(".vault-layout { min-height: 100vh; background: var(--vault-bg); }",
+            css, StringComparison.Ordinal);
+        Assert.DoesNotContain("body { margin: 0; background: var(--vault-bg); }",
+            css, StringComparison.Ordinal);
     }
 
     [Fact]
