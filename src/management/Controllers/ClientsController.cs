@@ -70,7 +70,8 @@ public sealed class ClientsController(IClientManagementService clients)
                 request.FrontchannelLogoutUri,
                 request.FrontchannelLogoutSessionRequired,
                 request.BackchannelLogoutUri,
-                request.BackchannelLogoutSessionRequired),
+                request.BackchannelLogoutSessionRequired,
+                request.JwksUri),
             RequestContext(),
             cancellationToken);
 
@@ -101,7 +102,8 @@ public sealed class ClientsController(IClientManagementService clients)
                 request.FrontchannelLogoutSessionRequired,
                 request.BackchannelLogoutUri,
                 request.BackchannelLogoutSessionRequired,
-                request.ExpectedVersion),
+                request.ExpectedVersion,
+                request.JwksUri),
             RequestContext(),
             cancellationToken);
 
@@ -159,6 +161,8 @@ public sealed class CreateClientRequest
     public string? BackchannelLogoutUri { get; set; }
 
     public bool BackchannelLogoutSessionRequired { get; set; }
+
+    public string? JwksUri { get; set; }
 }
 
 public sealed class UpdateClientRequest
@@ -175,4 +179,5 @@ public sealed class UpdateClientRequest
     public string? BackchannelLogoutUri { get; set; }
     public bool BackchannelLogoutSessionRequired { get; set; }
     public string? ExpectedVersion { get; set; }
+    public string? JwksUri { get; set; }
 }

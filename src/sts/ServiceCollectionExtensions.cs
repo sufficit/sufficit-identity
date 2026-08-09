@@ -142,6 +142,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISubjectTokenProvenancePolicy, SubjectTokenProvenancePolicy>();
         services.AddScoped<IAuthenticationContextAccessor, AuthenticationContextAccessor>();
         services.AddSingleton<IAuthenticationContextProjector, AuthenticationContextProjector>();
+        services.AddSingleton<Mtls.IMtlsCertificateChainValidator,
+            Mtls.SystemMtlsCertificateChainValidator>();
         services.AddSingleton<Mtls.IMtlsClientCertificatePolicy,
             Mtls.MtlsClientCertificatePolicy>();
         services.AddSingleton<IdentityMetricsRuntimeState>();
@@ -150,6 +152,14 @@ public static class ServiceCollectionExtensions
             provider.GetRequiredService<IdentityUsageMetricChannel>());
         services.AddSafeHttpClient(
             "identity-metrics-export", options.OutboundHttp);
+        services.AddSafeHttpClient(
+                "jar-remote-jwks",
+                options.OutboundHttp)
+            .ConfigureHttpClient(client =>
+                client.Timeout = Timeout.InfiniteTimeSpan);
+        services.AddSingleton<Jar.RemoteJwksProvider>();
+        services.AddScoped<Jar.IJarSigningKeyResolver,
+            Jar.JarSigningKeyResolver>();
         services.AddHttpClient<IHumanVerificationService,
                 RemoteHumanVerificationService>()
             .UseSafeOutboundHttp(options.OutboundHttp);
@@ -1115,6 +1125,20 @@ public static class ServiceCollectionExtensions
             timeProvider: TimeProvider.System,
             keyVault: sp.GetRequiredService<Sufficit.Identity.Vault.IKeyVault>()));
 
+        if (options.Jar.Enabled)
+        {
+            if (options.Jar.MaxLifetimeSeconds is < 1 or > 600
+                || options.Jar.RemoteJwksMaxBytes is < 1024 or > 1_048_576
+                || options.Jar.RemoteJwksTimeoutSeconds is < 1 or > 30
+                || options.Jar.RemoteJwksCacheSeconds is < 1 or > 86_400
+                || options.Jar.RemoteJwksStaleSeconds is < 0 or > 86_400
+                || options.Jar.RemoteJwksMaxCacheEntries is < 1 or > 4096)
+            {
+                throw new InvalidOperationException(
+                    "JAR lifetime and remote JWKS timeout/size/cache settings are outside their supported security bounds.");
+            }
+        }
+
         if (options.Jarm.Enabled)
         {
             var issuer = string.IsNullOrWhiteSpace(options.Issuer)
@@ -1224,6 +1248,33 @@ public static class ServiceCollectionExtensions
         {
             throw new InvalidOperationException(
                 "mTLS is enabled without Sufficit:Identity:Mtls:DeploymentMode attestation.");
+        }
+        if (options.Mtls.Enabled)
+        {
+            if (options.Mtls.RevocationTimeoutSeconds is < 1 or > 30)
+            {
+                throw new InvalidOperationException(
+                    "mTLS RevocationTimeoutSeconds must be between 1 and 30 seconds.");
+            }
+            if (string.IsNullOrWhiteSpace(
+                    options.Mtls.ForwardedCertificateHeader)
+                || options.Mtls.ForwardedCertificateHeader.Length > 64
+                || options.Mtls.ForwardedCertificateHeader.Any(character =>
+                    !char.IsAsciiLetterOrDigit(character)
+                    && character != '-'))
+            {
+                throw new InvalidOperationException(
+                    "mTLS ForwardedCertificateHeader must be a non-empty HTTP token using only ASCII letters, digits and hyphens.");
+            }
+            var trustedNetworks =
+                Mtls.MtlsClientCertificateForwarding.ParseNetworks(
+                    options.Mtls.TrustedProxyNetworks);
+            if (options.Mtls.DeploymentMode == MtlsDeploymentMode.TrustedProxy
+                && trustedNetworks.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "mTLS TrustedProxy deployment requires at least one dedicated Mtls:TrustedProxyNetworks entry.");
+            }
         }
 
         if (options.Fapi2.Enabled)

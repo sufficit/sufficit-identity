@@ -33,6 +33,8 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Completed work (activities/)
 
+- [mTLS revocation and trusted-proxy topology](activities/202608092035-completed-mtls-revocation-topology.md)
+- [JAR remote JWKS with safe egress](activities/202608092022-completed-jar-remote-jwks.md)
 - [Vault named-secret namespace authorization](activities/202608092010-completed-vault-secret-namespaces.md)
 - [Vault signing-key lifecycle and KEK separation](activities/202608092355-completed-vault-signing-key-lifecycle.md)
 - [Vault secret context isolation and ISecretStore consumers](activities/202608092020-completed-vault-secret-context-and-secret-store.md)

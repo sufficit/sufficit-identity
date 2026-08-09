@@ -14,6 +14,7 @@ using Sufficit.Identity.Server;
 using Sufficit.Identity.Server.Management;
 using Sufficit.Identity.Scim;
 using Sufficit.Identity.STS;
+using Sufficit.Identity.STS.Mtls;
 using Sufficit.Identity.UI.Abstractions.Hosting;
 using Sufficit.Identity.UI;
 using Sufficit.Identity.UI.Management;
@@ -508,8 +509,8 @@ Sufficit.Identity.STS.Security.ProductionPostureCheck.Enforce(
 //       https.ClientCertificateMode = ClientCertificateMode.RequireCertificate
 //       and a ClientCertificateValidation callback, on the MTLS-aliased paths.
 //   * Behind nginx/Envoy: terminate mTLS at the proxy, forward the validated
-//       client cert (or its thumbprint) to the app, and restrict the MTLS
-//       paths at the proxy so only cert-authenticated traffic reaches them.
+//       client certificate through the configured header, and restrict the
+//       MTLS paths so only cert-authenticated traffic reaches them.
 //
 // Startup validation requires an explicit deployment attestation. Runtime
 // FAPI policy additionally binds the validated certificate thumbprint to the
@@ -521,6 +522,12 @@ if (identityOptions.Mtls.Enabled)
         identityOptions.Mtls.DeploymentMode,
         identityOptions.Mtls.ClientCertificateThumbprints.Count);
 }
+
+// Consume a proxy certificate assertion while the immediate connection peer
+// is still visible. The middleware strips the configured header in every mode
+// and only projects a certificate from the dedicated mTLS proxy CIDRs. This
+// must precede UseForwardedHeaders, which rewrites RemoteIpAddress.
+app.UseMtlsClientCertificateForwarding(identityOptions.Mtls);
 
 // ---- Honor X-Forwarded-* headers from reverse proxy (Nginx/k8s/CloudFlare) ----
 // Must run BEFORE UseHttpsRedirection, UseAuthentication and any path-based
