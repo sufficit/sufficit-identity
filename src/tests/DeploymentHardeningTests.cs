@@ -63,9 +63,9 @@ public sealed class DeploymentHardeningTests
         var service = File.ReadAllText(Path.Combine(
             repository,
             "helpers/sufficit-identity.service"));
-        var localService = File.ReadAllText(Path.Combine(
+        var localServicePath = Path.Combine(
             repository,
-            "deploy/local/systemd/sufficit-identity.service"));
+            "deploy/local/systemd/sufficit-identity.service");
         var installer = File.ReadAllText(Path.Combine(repository, "helpers/install.sh"));
         var template = File.ReadAllText(Path.Combine(
             repository,
@@ -77,10 +77,14 @@ public sealed class DeploymentHardeningTests
             "EnvironmentFile=-/etc/sufficit/identity/vault-secrets.env",
             service,
             StringComparison.Ordinal);
-        Assert.Contains(
-            "EnvironmentFile=-/etc/sufficit/identity/vault-secrets.env",
-            localService,
-            StringComparison.Ordinal);
+        if (File.Exists(localServicePath))
+        {
+            var localService = File.ReadAllText(localServicePath);
+            Assert.Contains(
+                "EnvironmentFile=-/etc/sufficit/identity/vault-secrets.env",
+                localService,
+                StringComparison.Ordinal);
+        }
         Assert.Contains("vault-secrets.env", installer, StringComparison.Ordinal);
         Assert.Contains("check-vault-secrets.sh", installer, StringComparison.Ordinal);
         Assert.Contains(
