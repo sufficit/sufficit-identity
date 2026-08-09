@@ -15,7 +15,7 @@
 - O carregamento de certificados usa a mesma fronteira e preserva o fallback de
   configuração apenas para rolling deploys já instalados.
 - Cobertura adicionada para o mapeamento de overrides e para o loader de
-  certificados; a suíte completa passou com 558 testes e 1 teste de UI pulado.
+  certificados; a suíte completa passou com 559 testes e 1 teste de UI pulado.
 
 ## Operação e limite
 
