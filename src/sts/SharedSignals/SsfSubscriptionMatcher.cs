@@ -21,9 +21,16 @@ internal sealed class SsfSubscriptionMatcher : ISsfSubscriptionMatcher
             using var document = JsonDocument.Parse(configuredEvents);
             if (document.RootElement.ValueKind != JsonValueKind.Array) return false;
 
-            var requested = document.RootElement.EnumerateArray().ToArray();
-            return requested.Length == 0
-                || requested.Any(item => item.ValueKind == JsonValueKind.String
+            // Fail closed on an empty subscription. This previously returned
+            // true (empty == "all supported events"), which meant a stream
+            // created without events_requested silently received every CAEP
+            // signal for every subject — the least specific request produced
+            // the broadest delivery. A stream that subscribes to nothing now
+            // receives nothing; creation-time validation
+            // (SharedSignals.RequireExplicitEvents) rejects the empty list up
+            // front so this state is not reachable for new streams.
+            return document.RootElement.EnumerateArray().Any(
+                item => item.ValueKind == JsonValueKind.String
                     && string.Equals(item.GetString(), eventType, StringComparison.Ordinal));
         }
         catch (JsonException)

@@ -1308,6 +1308,30 @@ public sealed class SharedSignalsOptions
     /// scope (create it via the management API or provisioning manifest).
     /// </summary>
     public string RequiredScope { get; init; } = "ssf_transmitter";
+
+    /// <summary>
+    /// Requires <c>events_requested</c> to be non-empty when a stream is
+    /// created. Default <c>true</c>.
+    /// </summary>
+    /// <remarks>
+    /// A stream created without <c>events_requested</c> historically matched
+    /// EVERY supported event type (an empty list was treated as "all"), so the
+    /// laziest possible request produced the broadest possible subscription —
+    /// every CAEP security signal for every subject. Requiring an explicit list
+    /// makes the subscription an intentional choice. Set false only to restore
+    /// the legacy behaviour during a migration.
+    /// </remarks>
+    public bool RequireExplicitEvents { get; init; } = true;
+
+    /// <summary>
+    /// Requires <c>subject</c> to be supplied explicitly when a stream is
+    /// created, instead of defaulting to <c>ALL</c> (every subject in the
+    /// deployment). Default <c>false</c> for compatibility: existing receivers
+    /// legitimately rely on the <c>ALL</c> default, so tightening it is a
+    /// breaking change an operator opts into. When false, an omitted subject
+    /// still defaults to <c>ALL</c> but is logged at Warning.
+    /// </summary>
+    public bool RequireExplicitSubject { get; init; } = false;
 }
 
 public sealed class SharedSignalsReceiverOptions

@@ -54,17 +54,20 @@ public sealed class SsfStreamsController : ControllerBase
     private readonly CaepEventGenerator _generator;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<SsfStreamsController> _logger;
+    private readonly SufficitIdentityOptions _options;
 
     public SsfStreamsController(
         ISsfStreamStore store,
         CaepEventGenerator generator,
         IHttpClientFactory httpClientFactory,
-        ILogger<SsfStreamsController> logger)
+        ILogger<SsfStreamsController> logger,
+        SufficitIdentityOptions options)
     {
         _store = store;
         _generator = generator;
         _httpClientFactory = httpClientFactory;
         _logger = logger;
+        _options = options;
     }
 
     public sealed class CreateStreamRequest
@@ -82,10 +85,14 @@ public sealed class SsfStreamsController : ControllerBase
         /// <summary>Optional Authorization header value for push delivery.</summary>
         public string? Authorization { get; init; }
 
-        /// <summary>Subject scope JSON or "ALL".</summary>
+        /// <summary>Subject scope JSON, or "ALL" for every subject.</summary>
         public string? Subject { get; init; }
 
-        /// <summary>Event-type URIs to receive; empty = all supported.</summary>
+        /// <summary>
+        /// Event-type URIs to receive. Must list at least one type when
+        /// SharedSignals.RequireExplicitEvents is enabled (the default); an
+        /// empty list subscribes to nothing, not to everything.
+        /// </summary>
         public IReadOnlyCollection<string>? EventsRequested { get; init; }
 
         public string? Description { get; init; }
@@ -105,6 +112,50 @@ public sealed class SsfStreamsController : ControllerBase
         var ownerClientId = ResolveOwnerClientId();
         if (ownerClientId is null) return Forbid();
 
+        var ssf = _options.SharedSignals;
+
+        // Least privilege on subscription scope. An omitted events_requested
+        // used to mean "every supported event type", so the least specific
+        // request produced the broadest delivery — every CAEP signal for every
+        // subject. Require the subscription to be stated explicitly.
+        var requestedEvents = request.EventsRequested ?? [];
+        if (ssf.RequireExplicitEvents && requestedEvents.Count == 0)
+        {
+            return BadRequest(new
+            {
+                error = "invalid_request",
+                error_description =
+                    "events_requested must list at least one event type. A stream "
+                    + "that subscribes to nothing receives nothing; an empty list "
+                    + "is no longer interpreted as 'all events'.",
+            });
+        }
+
+        // Subject scope. ALL means every subject in the deployment, so an
+        // omitted subject is a broad grant by accident. Tightening this is
+        // breaking for existing receivers, so it is opt-in; otherwise the
+        // legacy default is kept but surfaced in the logs.
+        if (string.IsNullOrWhiteSpace(request.Subject))
+        {
+            if (ssf.RequireExplicitSubject)
+            {
+                return BadRequest(new
+                {
+                    error = "invalid_request",
+                    error_description =
+                        "subject must be supplied explicitly. Use \"ALL\" to "
+                        + "deliberately subscribe to every subject.",
+                });
+            }
+
+            _logger.LogWarning(
+                "SSF stream created by client {OwnerClientId} without an explicit "
+                + "subject; defaulting to ALL (every subject in the deployment). "
+                + "Set Sufficit:Identity:SharedSignals:RequireExplicitSubject=true "
+                + "to require an explicit choice.",
+                ownerClientId);
+        }
+
         var state = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(
             System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
         var verificationExpiresAtUtc = DateTime.UtcNow.AddHours(24);
@@ -119,7 +170,7 @@ public sealed class SsfStreamsController : ControllerBase
                 request.Endpoint,
                 request.Authorization,
                 request.Subject ?? "ALL",
-                request.EventsRequested ?? [],
+                requestedEvents,
                 request.Description,
                 state,
                 verificationExpiresAtUtc,

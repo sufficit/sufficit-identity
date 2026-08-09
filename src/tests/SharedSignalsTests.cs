@@ -523,7 +523,7 @@ public sealed class SharedSignalsTests
                 endpoint: null,
                 authorization: null,
                 subjectScope: "ALL",
-                eventsRequested: [],
+                eventsRequested: [CaepEventGenerator.SessionRevokedEventType],
                 description: null,
                 verificationChallenge: "test-verification-state",
                 verificationExpiresAtUtc: DateTime.UtcNow.AddHours(1),
