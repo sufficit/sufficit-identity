@@ -3,6 +3,7 @@ using Microsoft.AspNetCore;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
 using OpenIddict.Server;
+using Sufficit.Identity.STS.Dpop;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using static OpenIddict.Server.OpenIddictServerEvents;
 using static OpenIddict.Server.OpenIddictServerHandlers;
@@ -29,6 +30,16 @@ internal sealed class AttachMtlsConfirmation(
         var decision = certificatePolicy.Evaluate(httpContext, clientId);
         if (!decision.Allowed || string.IsNullOrWhiteSpace(decision.Thumbprint))
             return ValueTask.CompletedTask;
+
+        if (!string.IsNullOrWhiteSpace(context.Principal?.GetClaim(
+                DpopProofValidator.BindingThumbprintClaimType)))
+        {
+            context.Reject(
+                error: Errors.InvalidRequest,
+                description:
+                    "A token request cannot combine DPoP and mTLS sender constraints.");
+            return ValueTask.CompletedTask;
+        }
 
         var confirmation = JsonSerializer.SerializeToElement(
             new Dictionary<string, string>

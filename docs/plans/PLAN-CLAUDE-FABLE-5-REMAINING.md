@@ -1,7 +1,7 @@
 # Avaliação Claude Fable 5 — plano de implementação remanescente
 
 > **Status:** ACTIVE. Reconciliado em 2026-08-09 contra
-> `6b90e70`. Origem: avaliação interna `EVALUATION-2026-08-09-claude-fable-5.md`
+> `2d2dcdb`. Origem: avaliação interna `EVALUATION-2026-08-09-claude-fable-5.md`
 > (mantida fora do versionamento após a reconciliação).
 >
 > Este documento contém somente trabalho ainda aplicável. Ele não incorpora a
@@ -10,13 +10,15 @@
 > fechamento, sem criar uma segunda implementação concorrente.
 >
 > Contributors modulares, acknowledgements estruturados, fail-closed efetivo,
-> defaults seguros e invariantes PKCE/JAR foram entregues e removidos deste
-> plano; evidências em
+> defaults seguros, invariantes PKCE/JAR e exclusividade DPoP/mTLS foram
+> entregues e removidos deste plano; evidências em
 > [`202608091904-completed-production-posture-contributors.md`](../activities/202608091904-completed-production-posture-contributors.md)
 > e
 > [`202608091911-completed-secure-policy-defaults.md`](../activities/202608091911-completed-secure-policy-defaults.md)
 > e
-> [`202608091918-completed-pkce-jar-invariants.md`](../activities/202608091918-completed-pkce-jar-invariants.md).
+> [`202608091918-completed-pkce-jar-invariants.md`](../activities/202608091918-completed-pkce-jar-invariants.md)
+> e
+> [`202608091925-completed-sender-constraint-exclusivity.md`](../activities/202608091925-completed-sender-constraint-exclusivity.md).
 
 ## Resultado da reconciliação
 
@@ -69,7 +71,6 @@ Quatro recomendações precisam de ajuste antes de serem implementadas:
 | S6 — KEK no mesmo domínio do banco | **Aceito, P1** | O backend disponível é Data Protection, persistido no mesmo `AppDbContext` e protegido pelo certificado de assinatura. Separar certificado/KEK e entregar KMS/HSM em P1.1. |
 | S7 — signing keys nunca aposentadas | **Aceito, P1** | Rotação cria nova versão; nenhum fluxo define `RetiredAtUtc`. Implementar lifecycle completo em P1.1. |
 | S9 — vault secrets sem escopo por item | **Aceito, P1** | O serviço envia o nome no `ManagementResource`, mas `VaultSecrets` não pertence a `ItemResourceTypes` e não existe política de namespace. Fechar junto do modelo de contexto/tenant. |
-| S12 — mTLS sobrescreve DPoP em `cnf` | **Aceito com remediação ajustada, P0** | Os handlers escrevem a mesma claim nas ordens `+500` e `+600`. Rejeitar combinação até existir validação cumulativa comprovada. |
 | S13 — comparação AAD | **Aceito, correção curta P0** | Trocar `SequenceEqual` por `CryptographicOperations.FixedTimeEquals` e testar tamanhos diferentes. |
 | S13 — fallback plaintext do resolver | **Aceito, P0** | `VaultBackedClientSecretResolver` retorna texto cru em qualquer `FormatException`, inclusive com vault real. Permitir fallback apenas no backend de compatibilidade. |
 | S13 — `jwks_uri` de JAR | **Aceito como gap funcional, P1** | O código e o comentário prometem fallback, mas `ResolveSigningKeysAsync` lê apenas JWKS embutido. Implementar fetch seguro ou rejeitar o metadado de forma explícita até a implementação. |
@@ -108,22 +109,6 @@ public origin e autorização Management.
 
 **Concluído quando:** produção não contém um modo permissivo sem acknowledgement
 válido e todas as exceções temporárias têm data de remoção observável.
-
-### P0.4 Impedir downgrade de sender constraint
-
-**Alvos:** handlers DPoP/mTLS, FAPI policy e testes de token/userinfo.
-
-- [ ] Detectar a presença simultânea de DPoP e certificado mTLS válido antes da
-  emissão e rejeitar a requisição com erro de protocolo estável
-- [ ] Garantir por teste que exatamente um de `cnf.jkt` ou `cnf.x5t#S256` é
-  emitido e que o tipo de token acompanha o mecanismo escolhido
-- [ ] Cobrir authorization code, client credentials, refresh e token exchange,
-  inclusive tentativas de trocar o mecanismo no refresh
-- [ ] Só considerar suporte cumulativo futuro depois que resource server e STS
-  provarem as duas validações; não apenas depois de mesclar o JSON de `cnf`
-
-**Concluído quando:** apresentar dois mecanismos nunca reduz o vínculo para um
-mecanismo diferente do selecionado pela política.
 
 ### P0.5 Fechar plaintext e fallbacks criptográficos em produção
 

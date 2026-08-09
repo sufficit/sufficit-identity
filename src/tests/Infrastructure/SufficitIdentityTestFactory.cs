@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.RateLimiting;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
@@ -219,6 +220,35 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
 
         builder.Configure(app =>
         {
+            // TestServer does not perform a TLS handshake, so integration
+            // tests cannot populate Connection.ClientCertificate naturally.
+            // This test-only bridge accepts a DER certificate and projects it
+            // onto the connection before the real mTLS policy runs. The
+            // production host never registers this middleware.
+            app.Use(async (context, next) =>
+            {
+                const string headerName = "X-Sufficit-Test-Client-Certificate";
+                if (context.Request.Headers.TryGetValue(
+                        headerName,
+                        out var encodedCertificate)
+                    && !string.IsNullOrWhiteSpace(encodedCertificate))
+                {
+                    try
+                    {
+                        context.Connection.ClientCertificate =
+                            X509CertificateLoader.LoadCertificate(
+                                Convert.FromBase64String(encodedCertificate!));
+                    }
+                    catch (FormatException)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                        return;
+                    }
+                }
+
+                await next();
+            });
+
             // Same security-headers middleware (incl. CSP) as the composition
             // host's Program.cs — exercised here so CspHeaderTests can assert
             // the header is emitted without a separate Program.cs-reproducing

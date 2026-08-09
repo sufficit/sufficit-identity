@@ -71,13 +71,36 @@ internal sealed class AttachDpopTokenType : IOpenIddictServerHandler<ProcessSign
                 ? context.IssuedTokenPrincipal
                 : null);
 
-        if (principal is not null &&
-            !string.IsNullOrEmpty(principal.GetClaim(Claims.Confirmation)))
+        if (principal is not null && HasDpopConfirmation(
+                principal.GetClaim(Claims.Confirmation)))
         {
             context.Response.TokenType = "DPoP";
         }
 
         return ValueTask.CompletedTask;
+    }
+
+    private static bool HasDpopConfirmation(string? confirmation)
+    {
+        if (string.IsNullOrWhiteSpace(confirmation))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(confirmation);
+            return document.RootElement.ValueKind is JsonValueKind.Object
+                && document.RootElement.TryGetProperty(
+                    DpopProofValidator.JktClaimMember,
+                    out var member)
+                && member.ValueKind is JsonValueKind.String
+                && !string.IsNullOrWhiteSpace(member.GetString());
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 }
 
