@@ -195,7 +195,7 @@ public sealed class RegistrationController : ControllerBase
             descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Token);
         }
         // authorization_code grant also needs the authorization endpoint.
-        if (grants.Contains(OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode))
+        if (_validator.RequiresProofKeyForCodeExchange(grants))
         {
             descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Authorization);
             descriptor.Permissions.Add(OpenIddictConstants.Permissions.ResponseTypes.Code);

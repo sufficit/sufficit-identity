@@ -57,6 +57,9 @@ public sealed record ClientDefinitionValidationResult(
 
 public interface IClientDefinitionValidator
 {
+    bool RequiresProofKeyForCodeExchange(
+        IReadOnlyCollection<string> grantTypes);
+
     ClientDefinitionValidationResult Validate(ClientDefinitionRequest request);
 }
 
@@ -245,6 +248,13 @@ public sealed class ClientDefinitionValidator(
             "gt:implicit",
         };
 
+    public bool RequiresProofKeyForCodeExchange(
+        IReadOnlyCollection<string> grantTypes)
+    {
+        ArgumentNullException.ThrowIfNull(grantTypes);
+        return grantTypes.Any(IsAuthorizationCodeGrant);
+    }
+
     public ClientDefinitionValidationResult Validate(
         ClientDefinitionRequest request)
     {
@@ -316,7 +326,7 @@ public sealed class ClientDefinitionValidator(
             "public",
             StringComparison.Ordinal);
         var hasClientCredentials = grants.Any(IsClientCredentialsGrant);
-        var hasAuthorizationCode = grants.Any(IsAuthorizationCodeGrant);
+        var hasAuthorizationCode = RequiresProofKeyForCodeExchange(grants);
 
         if (isPublic && request.HasClientSecret)
         {
@@ -334,12 +344,12 @@ public sealed class ClientDefinitionValidator(
                 "client_credentials requires a confidential client."));
         }
 
-        if (hasAuthorizationCode && isPublic && !request.RequirePkce)
+        if (hasAuthorizationCode && !request.RequirePkce)
         {
             issues.Add(new(
                 "pkce_required",
                 "requirements",
-                "Public authorization-code clients require PKCE."));
+                "All authorization-code clients require PKCE."));
         }
 
         foreach (var redirect in request.RedirectUris)

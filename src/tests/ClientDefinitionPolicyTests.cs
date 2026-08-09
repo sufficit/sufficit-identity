@@ -29,21 +29,33 @@ public sealed class ClientDefinitionPolicyTests
             issue.Code is "client_credentials_requires_confidential");
     }
 
-    [Fact]
-    public void Shared_validator_rejects_public_authorization_code_without_pkce()
+    [Theory]
+    [InlineData("public", "authorization_code", true)]
+    [InlineData("confidential", "authorization_code", true)]
+    [InlineData("public", "refresh_token", false)]
+    [InlineData("confidential", "client_credentials", false)]
+    public void Shared_validator_projects_pkce_from_grant_independent_of_client_type(
+        string clientType,
+        string grantType,
+        bool requiresPkce)
     {
-        var result = CreateValidator().Validate(new ClientDefinitionRequest(
+        var validator = CreateValidator();
+        var result = validator.Validate(new ClientDefinitionRequest(
             ClientDefinitionSource.Provisioning,
-            "public-web",
-            "public",
-            ["authorization_code"],
+            "matrix-client",
+            clientType,
+            [grantType],
             ["openid"],
-            [new Uri("https://client.example.invalid/callback")],
+            [],
             RequirePkce: false,
-            HasClientSecret: false));
+            HasClientSecret: clientType == "confidential"));
 
-        Assert.False(result.IsValid);
-        Assert.Contains(result.Issues, issue => issue.Code is "pkce_required");
+        Assert.Equal(
+            requiresPkce,
+            validator.RequiresProofKeyForCodeExchange([grantType]));
+        Assert.Equal(
+            requiresPkce,
+            result.Issues.Any(issue => issue.Code is "pkce_required"));
     }
 
     [Fact]

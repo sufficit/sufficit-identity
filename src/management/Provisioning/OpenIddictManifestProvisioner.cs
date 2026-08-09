@@ -444,7 +444,7 @@ public sealed class OpenIddictManifestProvisioner
         return descriptor;
     }
 
-    private static OpenIddictApplicationDescriptor CreateApplicationDescriptor(
+    private OpenIddictApplicationDescriptor CreateApplicationDescriptor(
         int schemaVersion,
         IdentityClientManifest manifest,
         string manifestIdentity)
@@ -540,7 +540,8 @@ public sealed class OpenIddictManifestProvisioner
         descriptor.PostLogoutRedirectUris.UnionWith(manifest.PostLogoutRedirectUris);
         SetLogoutSettings(descriptor.Settings, manifest);
 
-        if (manifest.RequirePkce)
+        if (_clientDefinitionValidator.RequiresProofKeyForCodeExchange(
+                manifest.GrantTypes))
         {
             descriptor.Requirements.Add(
                 OpenIddictConstants.Requirements.Features.ProofKeyForCodeExchange);
