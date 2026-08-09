@@ -1308,6 +1308,16 @@ public sealed class SharedSignalsOptions
     /// scope (create it via the management API or provisioning manifest).
     /// </summary>
     public string RequiredScope { get; init; } = "ssf_transmitter";
+
+    /// <summary>
+    /// Requires <c>subject</c> to be supplied explicitly when a stream is
+    /// created, instead of defaulting to <c>ALL</c> (every subject in the
+    /// deployment). Default <c>false</c> for compatibility: existing receivers
+    /// legitimately rely on the <c>ALL</c> default, so tightening it is a
+    /// breaking change an operator opts into. When false, an omitted subject
+    /// still defaults to <c>ALL</c> but is logged at Warning.
+    /// </summary>
+    public bool RequireExplicitSubject { get; init; } = false;
 }
 
 public sealed class SharedSignalsReceiverOptions

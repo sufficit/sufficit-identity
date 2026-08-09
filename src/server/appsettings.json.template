@@ -304,7 +304,9 @@
         "_StreamManagementEnabled": "true exposes the RFC 8933 stream-management REST API (/ssf/streams CRUD + verify) and the RFC 8934 poll endpoint (/ssf/events). Both require the ssf_transmitter scope. Default false — the REST surface is administrative and should be enabled deliberately.",
         "StreamManagementEnabled": false,
         "_RequiredScope": "OAuth scope required to call the stream-management and poll endpoints. Default ssf_transmitter. The scope must exist as an OpenIddict scope (create it via the management API or provisioning manifest).",
-        "RequiredScope": "ssf_transmitter"
+        "RequiredScope": "ssf_transmitter",
+        "_RequireExplicitSubject": "When true, stream creation must include subject explicitly; use ALL only as a deliberate subscription to every subject. Default false for compatibility. Omitted subjects still default to ALL and emit a warning.",
+        "RequireExplicitSubject": false
       },
       "_Ciba": "OpenID Connect CIBA Core 1.0 decoupled authentication. Pending state is database-authoritative and atomically consumed; generated access tokens are tracked by OpenIddict for introspection/revocation. Initiation and polling share one explicit client/grant policy, and the approval page displays the binding message.",
       "Ciba": {
