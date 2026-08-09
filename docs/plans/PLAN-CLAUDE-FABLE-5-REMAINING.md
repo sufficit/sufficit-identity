@@ -36,6 +36,10 @@
 > [`202608092045-completed-crypto-model-replay-composition.md`](../activities/202608092045-completed-crypto-model-replay-composition.md).
 > Métrica e orçamento de mensagens AES-GCM foram entregues em
 > [`202608092052-completed-vault-encryption-budget-metrics.md`](../activities/202608092052-completed-vault-encryption-budget-metrics.md).
+> Seleção gradual do formato de access token foi entregue em
+> [`202608092055-completed-per-client-access-token-format.md`](../activities/202608092055-completed-per-client-access-token-format.md).
+> A reconciliação dos refactors duplicados/sem benefício material está em
+> [`202608092100-completed-p2-architecture-reconciliation.md`](../activities/202608092100-completed-p2-architecture-reconciliation.md).
 
 ## Resultado da reconciliação
 
@@ -131,18 +135,6 @@ entregues.
 redigida de migração/rollback está anexada ao gate de release.
 
 ## P2 — manutenção e evolução arquitetural
-
-### P2.1 Reduzir blast radius sem misturar a mudança com os gates P0
-
-- [ ] Decompor `AuthorizationController` por grant conforme
-  `PLAN-GLM-5-2-REMAINING.md` P1.7, preservando rotas e caracterização de tokens
-- [ ] Dividir `SufficitIdentityOptions` por feature e manter uma façade de
-  binding compatível por uma release
-
-### P2.2 Evoluir formato de token e limites criptográficos com evidência
-
-- [ ] Selecionar JWT/reference token por cliente/recurso conforme
-  `PLAN-GPT-5-REMAINING.md` P1.13, com migração sem flag day
 
 ### P2.3 Prova externa de produção
 

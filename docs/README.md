@@ -33,6 +33,8 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Completed work (activities/)
 
+- [P2 architecture scope reconciliation](activities/202608092100-completed-p2-architecture-reconciliation.md)
+- [Per-client and per-resource access-token format](activities/202608092055-completed-per-client-access-token-format.md)
 - [Vault AES-GCM message-budget metrics](activities/202608092052-completed-vault-encryption-budget-metrics.md)
 - [Crypto model and atomic DPoP replay composition](activities/202608092045-completed-crypto-model-replay-composition.md)
 - [P1 integrated JAR and mTLS validation](activities/202608092036-completed-p1-integrated-validation.md)
