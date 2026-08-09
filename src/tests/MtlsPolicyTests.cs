@@ -38,6 +38,37 @@ public sealed class MtlsPolicyTests
     }
 
     [Fact]
+    public void Multiple_certificate_pins_allow_a_bounded_rollover_overlap()
+    {
+        using var retiringCertificate = CreateCertificate();
+        using var replacementCertificate = CreateCertificate();
+        var policy = new MtlsClientCertificatePolicy(new MtlsOptions
+        {
+            Enabled = true,
+            DeploymentMode = MtlsDeploymentMode.DirectTls,
+            RequireValidCertificateChain = false,
+            ClientCertificateThumbprints = new Dictionary<string, HashSet<string>>
+            {
+                ["bound-client"] = new(StringComparer.Ordinal)
+                {
+                    retiringCertificate.GetCertHashString(HashAlgorithmName.SHA256),
+                    replacementCertificate.GetCertHashString(HashAlgorithmName.SHA256),
+                },
+            },
+        });
+
+        var retiringDecision = policy.Evaluate(
+            ContextWith(retiringCertificate),
+            "bound-client");
+        var replacementDecision = policy.Evaluate(
+            ContextWith(replacementCertificate),
+            "bound-client");
+
+        Assert.True(retiringDecision.Allowed);
+        Assert.True(replacementDecision.Allowed);
+    }
+
+    [Fact]
     public async Task Enabling_mtls_without_deployment_attestation_fails_startup()
     {
         using var factory = SufficitIdentityTestFactory.CreateIsolated(
