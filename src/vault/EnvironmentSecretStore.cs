@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace Sufficit.Identity.Vault;
 
@@ -10,10 +11,19 @@ namespace Sufficit.Identity.Vault;
 /// <c>SUFFICIT_SECRET_DATABASE_PASSWORD</c> (case-insensitive) and then falls
 /// back to the configuration key itself.
 /// </summary>
-internal sealed class EnvironmentSecretStore(IConfiguration configuration)
+internal sealed class EnvironmentSecretStore(
+    IConfiguration configuration,
+    ILogger<EnvironmentSecretStore> logger)
     : ISecretStore
 {
     private const string Prefix = "SUFFICIT_SECRET_";
+
+    internal static string EnvironmentVariableName(string name) =>
+        Prefix + new string(name
+            .Select(character => char.IsLetterOrDigit(character)
+                ? char.ToUpperInvariant(character)
+                : '_')
+            .ToArray());
 
     public Task<string?> GetSecretAsync(
         string name,
@@ -22,11 +32,7 @@ internal sealed class EnvironmentSecretStore(IConfiguration configuration)
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         cancellationToken.ThrowIfCancellationRequested();
 
-        var environmentName = Prefix + new string(name
-            .Select(character => char.IsLetterOrDigit(character)
-                ? char.ToUpperInvariant(character)
-                : '_')
-            .ToArray());
+        var environmentName = EnvironmentVariableName(name);
 
         var value = Environment.GetEnvironmentVariable(environmentName);
         if (value is null)
@@ -35,6 +41,12 @@ internal sealed class EnvironmentSecretStore(IConfiguration configuration)
             // fallback (User Secrets, mounted JSON, etc.).
             value = configuration[name]
                 ?? configuration[$"Secrets:{name}"];
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                logger.LogWarning(
+                    "Legacy configuration secret fallback used for {SecretName}; migrate it to SUFFICIT_SECRET_*.",
+                    name);
+            }
         }
 
         return Task.FromResult(value);

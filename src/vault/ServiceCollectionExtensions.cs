@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Sufficit.Identity.Vault;
 
@@ -19,6 +20,7 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.AddLogging();
         var section = configuration.GetSection(VaultOptions.SectionName);
         var options = section.Get<VaultOptions>() ?? new VaultOptions();
 

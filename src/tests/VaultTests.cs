@@ -99,6 +99,34 @@ public sealed class VaultTests
             await store.GetSecretAsync("database/password"));
     }
 
+    [Fact]
+    public void Startup_secret_overrides_take_precedence_without_logging_values()
+    {
+        const string environmentName =
+            "SUFFICIT_SECRET_IDENTITY_CERTIFICATES_SIGNING_PASSWORD";
+        var previous = Environment.GetEnvironmentVariable(environmentName);
+        try
+        {
+            Environment.SetEnvironmentVariable(environmentName, "from-environment");
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Sufficit:Identity:Certificates:SigningPassword"] =
+                        "from-json",
+                })
+                .AddSufficitSecretOverrides()
+                .Build();
+
+            Assert.Equal(
+                "from-environment",
+                configuration["Sufficit:Identity:Certificates:SigningPassword"]);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(environmentName, previous);
+        }
+    }
+
     // ---- EnvelopeCrypto (AES-256-GCM) ----
 
     [Fact]
