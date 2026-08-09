@@ -49,6 +49,21 @@ Sufficit__Identity__SharedSignals__Receivers__0__Endpoint=https://receiver.examp
 Sufficit__Identity__SharedSignals__Receivers__0__Authorization=Bearer <secret>
 ```
 
+Dynamic streams must always send a non-empty `events_requested` array. An empty
+or omitted array is rejected at creation and an existing persisted empty array
+matches no events. This is an intentional least-privilege policy: there is no
+compatibility switch that turns an unspecified subscription into every event.
+Before rollout, locate old dynamic streams with an empty event list, delete
+them and recreate them with the exact event-type URIs the receiver consumes.
+
+The subject remains backward-compatible by default: an omitted value becomes
+`ALL` and generates a warning. After every receiver sends an explicit subject,
+enable the stricter policy:
+
+```text
+Sufficit__Identity__SharedSignals__RequireExplicitSubject=true
+```
+
 Verify `/.well-known/ssf-configuration`, validate a signed
 `session-revoked` SET against the advertised JWKS, and observe a real logout at
 the receiver. Direct delivery has bounded retries but no durable outbox; add a
