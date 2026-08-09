@@ -117,7 +117,7 @@ public sealed class VaultTests
     }
 
     [Fact]
-    public void Production_kek_policy_rejects_dataprotection_and_token_signing_certificate_reuse()
+    public void Production_kek_policy_requires_dedicated_certificate_and_rejects_token_signing_reuse()
     {
         var emptyConfiguration = new ConfigurationBuilder().Build();
         var dataProtection = Assert.Throws<InvalidOperationException>(() =>
@@ -130,8 +130,8 @@ public sealed class VaultTests
                     },
                     emptyConfiguration,
                     isDevelopment: false));
-        Assert.Contains("development-only", dataProtection.Message,
-            StringComparison.Ordinal);
+        Assert.Contains("certificate", dataProtection.Message,
+            StringComparison.OrdinalIgnoreCase);
 
         var sharedPath = Path.GetFullPath("shared-signing-and-kek.pfx");
         var sharedConfiguration = new ConfigurationBuilder()
@@ -972,7 +972,11 @@ public sealed class VaultTests
         options ??= new VaultOptions
         {
             Enabled = true,
-            SigningKeyOverlapSeconds = 1,
+            // RSA-3072 generation can take longer than one second on a CI
+            // runner. Keep the default overlap comfortably above test
+            // execution time; expiry behavior is covered with an explicit
+            // short window in the lifecycle tests.
+            SigningKeyOverlapSeconds = 300,
         };
         var kek = keySourceFactory?.Invoke(dpProvider)
             ?? new DataProtectionKeySource(dpProvider, options);

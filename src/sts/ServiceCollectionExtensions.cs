@@ -293,9 +293,10 @@ public static class ServiceCollectionExtensions
         // read from config so it can never accidentally drift between
         // environments/replicas due to a config typo.
         //
-        // L8 hardening: encrypt DP keys at rest with the signing certificate
-        // when one is configured. In Development (no cert) keys stay
-        // unencrypted (harmless — ephemeral).
+        // L8/S6 hardening: encrypt DP keys at rest with the vault's dedicated
+        // protection certificate. It must be separate from token signing.
+        // A bounded migration option can retain old signing certificates as
+        // decrypt-only keys while the DP ring naturally rotates.
         //
         // Finding #12 (fail-open): the original code silently fell back to
         // plaintext keys if the cert couldn't be used, which is a security
@@ -307,20 +308,34 @@ public static class ServiceCollectionExtensions
             .SetApplicationName("Sufficit.Identity")
             .PersistKeysToDbContext<AppDbContext>();
 
-        if (certificateMaterial.PrimarySigning is not null)
+        if (vaultOptions.Enabled
+            && !string.IsNullOrWhiteSpace(vaultOptions.CertificatePath))
         {
-            // If ProtectKeysWithCertificate throws (wrong key type, etc.), let
-            // it propagate — fail-closed is the correct posture for production.
+            var vaultProtectionCertificate =
+                VaultKeyEncryptionCertificate.Load(vaultOptions);
+            dpBuilder.ProtectKeysWithCertificate(vaultProtectionCertificate);
+
+            var decryptOnlyCertificates =
+                new List<X509Certificate2> { vaultProtectionCertificate };
+            if (vaultOptions.LegacyDataProtectionCertificateMigration
+                .IsConfigured)
+            {
+                decryptOnlyCertificates.AddRange(certificateMaterial.Signing);
+            }
+            dpBuilder.UnprotectKeysWithAnyCertificate(
+                decryptOnlyCertificates.ToArray());
+        }
+        else if (certificateMaterial.PrimarySigning is not null)
+        {
+            // Development compatibility only. Non-Development rejects a
+            // missing dedicated vault certificate in AddSufficitVault().
             dpBuilder.ProtectKeysWithCertificate(
                 certificateMaterial.PrimarySigning);
         }
 
         // ---- Internal secret vault (envelope encryption, Transit-style) ----
-        // When Sufficit:Vault:Enabled is false (default), IKeyVault resolves to
-        // PassThroughKeyVault (round-trip without crypto). When true, the real
-        // KeyVault wraps DEKs via the Data Protection key ring above (zero new
-        // deps). Consumers (SsfStreamStore, future) inject IKeyVault and get
-        // the right impl transparently.
+        // The real KeyVault wraps DEKs through the selected certificate,
+        // external KMS/HSM or the now-dedicated Data Protection key ring.
         services.AddSufficitVault(configuration);
         if (vaultOptions.ManageSigningKeys)
         {

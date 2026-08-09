@@ -13,7 +13,7 @@ namespace Sufficit.Identity.Vault;
 
 /// <summary>
 /// Real <see cref="IKeyVault"/> implementation: envelope encryption with a
-/// KEK (Data Protection) wrapping per-name DEKs persisted in
+/// configured KEK authority wrapping per-name DEKs persisted in
 /// <c>vault_keys</c>. Item keys are cached in-memory after unwrap.
 /// </summary>
 /// <remarks>
@@ -149,6 +149,7 @@ internal sealed class KeyVault : IKeyVault
         ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
         ArgumentNullException.ThrowIfNull(payload);
         var key = await GetOrCreateLatestSigningKeyAsync(keyName, cancellationToken);
+        key.Key.Dispose();
         return await SignAsync(keyName, key.KeyVersion, payload, cancellationToken);
     }
 
@@ -274,14 +275,7 @@ internal sealed class KeyVault : IKeyVault
                 return [];
             }
 
-            await CreateSigningKeyRowAsync(
-                db,
-                keyName,
-                1,
-                VaultSigningKeyState.Active,
-                cancellationToken);
-            AddInitializationJournal(db, keyName);
-            await db.SaveChangesAsync(cancellationToken);
+            await EnsureSigningKeyInitializedAsync(keyName, cancellationToken);
             rows = await db.VaultKeys.AsNoTracking()
                 .Where(key => key.KeyName == keyName
                     && key.Purpose == "signing"
@@ -468,7 +462,11 @@ internal sealed class KeyVault : IKeyVault
             "revoke",
             keyName,
             cancellationToken);
-        if (existing is not null) return existing.KeyVersion == keyVersion;
+        if (existing is not null)
+        {
+            EnsureMatchingKeyVersion(existing, keyVersion);
+            return true;
+        }
 
         await using var lease = await AcquireSigningKeyLeaseAsync(
             keyName,
@@ -480,7 +478,8 @@ internal sealed class KeyVault : IKeyVault
         if (existing is not null)
         {
             EnsureMatchingOperation(existing, "revoke", keyName);
-            return existing.KeyVersion == keyVersion;
+            EnsureMatchingKeyVersion(existing, keyVersion);
+            return true;
         }
 
         var key = await db.VaultKeys.SingleOrDefaultAsync(item =>
@@ -567,9 +566,16 @@ internal sealed class KeyVault : IKeyVault
         if (latest is not null)
         {
             var privateBytes = _kek.Unwrap(latest.WrappedKey);
-            var existing = RSA.Create();
-            existing.ImportPkcs8PrivateKey(privateBytes, out _);
-            return (existing, latest.KeyVersion);
+            try
+            {
+                var existingKey = RSA.Create();
+                existingKey.ImportPkcs8PrivateKey(privateBytes, out _);
+                return (existingKey, latest.KeyVersion);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(privateBytes);
+            }
         }
 
         var anySigningKey = await db.VaultKeys.AsNoTracking()
@@ -581,14 +587,7 @@ internal sealed class KeyVault : IKeyVault
                 $"Vault signing key '{keyName}' has no active issuing version. Rotate a replacement after reviewing its lifecycle journal.");
         }
 
-        await CreateSigningKeyRowAsync(
-            db,
-            keyName,
-            1,
-            VaultSigningKeyState.Active,
-            cancellationToken);
-        AddInitializationJournal(db, keyName);
-        await db.SaveChangesAsync(cancellationToken);
+        await EnsureSigningKeyInitializedAsync(keyName, cancellationToken);
         var created = await db.VaultKeys.AsNoTracking()
             .SingleAsync(key => key.KeyName == keyName
                 && key.KeyVersion == 1
@@ -596,7 +595,15 @@ internal sealed class KeyVault : IKeyVault
                 && key.SigningState == VaultSigningKeyState.Active,
                 cancellationToken);
         var privateKey = RSA.Create();
-        privateKey.ImportPkcs8PrivateKey(_kek.Unwrap(created.WrappedKey), out _);
+        var createdPrivateBytes = _kek.Unwrap(created.WrappedKey);
+        try
+        {
+            privateKey.ImportPkcs8PrivateKey(createdPrivateBytes, out _);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(createdPrivateBytes);
+        }
         _logger.LogInformation("Created vault signing key '{KeyName}' v1.", keyName);
         return (privateKey, 1);
     }
@@ -615,9 +622,17 @@ internal sealed class KeyVault : IKeyVault
                 cancellationToken)
             ?? throw new CryptographicException(
                 $"Vault signing key '{keyName}' v{keyVersion} is not the active issuing key.");
-        var privateKey = RSA.Create();
-        privateKey.ImportPkcs8PrivateKey(_kek.Unwrap(row.WrappedKey), out _);
-        return privateKey;
+        var privateBytes = _kek.Unwrap(row.WrappedKey);
+        try
+        {
+            var privateKey = RSA.Create();
+            privateKey.ImportPkcs8PrivateKey(privateBytes, out _);
+            return privateKey;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(privateBytes);
+        }
     }
 
     private async Task CreateSigningKeyRowAsync(
@@ -660,6 +675,34 @@ internal sealed class KeyVault : IKeyVault
         await Task.CompletedTask;
     }
 
+    private async Task EnsureSigningKeyInitializedAsync(
+        string keyName,
+        CancellationToken cancellationToken)
+    {
+        await using var lease = await AcquireSigningKeyLeaseAsync(
+            keyName,
+            cancellationToken);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        if (await db.VaultKeys.AsNoTracking().AnyAsync(key =>
+                key.KeyName == keyName && key.Purpose == "signing",
+                cancellationToken))
+        {
+            return;
+        }
+
+        await CreateSigningKeyRowAsync(
+            db,
+            keyName,
+            1,
+            VaultSigningKeyState.Active,
+            cancellationToken);
+        AddInitializationJournal(db, keyName);
+        await db.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation(
+            "Created vault signing key '{KeyName}' v1 under the distributed lifecycle lease.",
+            keyName);
+    }
+
     private async Task<VaultSigningKeyLifecycleOperation?>
         FindLifecycleOperationAsync(
             string operationId,
@@ -688,6 +731,17 @@ internal sealed class KeyVault : IKeyVault
         {
             throw new InvalidOperationException(
                 $"Vault lifecycle operation id '{operation.OperationId}' was already used for a different operation.");
+        }
+    }
+
+    private static void EnsureMatchingKeyVersion(
+        VaultSigningKeyLifecycleOperation operation,
+        int keyVersion)
+    {
+        if (operation.KeyVersion != keyVersion)
+        {
+            throw new InvalidOperationException(
+                $"Vault lifecycle operation id '{operation.OperationId}' was already used for key version {operation.KeyVersion}.");
         }
     }
 

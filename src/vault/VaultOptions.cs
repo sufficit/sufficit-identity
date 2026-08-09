@@ -41,15 +41,25 @@ public sealed class VaultOptions
         "Sufficit.Identity.Vault.Master.v1";
 
     /// <summary>
-    /// Dedicated PKCS#12/PFX certificate used only to wrap vault DEKs when
-    /// <see cref="KeySource"/> is <c>certificate</c>. It must not be one of
-    /// the token-signing certificates.
+    /// Dedicated PKCS#12/PFX certificate protecting the shared ASP.NET Data
+    /// Protection key ring. When <see cref="KeySource"/> is
+    /// <c>certificate</c>, the same dedicated certificate also wraps vault
+    /// DEKs directly. It must not be a token-signing certificate.
     /// </summary>
     public string? CertificatePath { get; init; }
 
     /// <summary>Password for <see cref="CertificatePath"/>. Supply it through
     /// a secret-bearing configuration provider, never a committed file.</summary>
     public string? CertificatePassword { get; init; }
+
+    /// <summary>
+    /// Bounded compatibility window for Data Protection keys previously
+    /// encrypted with a token-signing certificate. New keys are always
+    /// protected by <see cref="CertificatePath"/>; this only permits reading
+    /// the legacy ring until it has naturally rotated.
+    /// </summary>
+    public VaultLegacyCertificateMigrationOptions
+        LegacyDataProtectionCertificateMigration { get; init; } = new();
 
     /// <summary>
     /// Stable, non-secret identifier expected from the external KMS/HSM
@@ -83,4 +93,15 @@ public sealed class VaultOptions
     /// <summary>Lease duration for the database-backed distributed rotation
     /// lock. An abandoned lease can be recovered after this interval.</summary>
     public int SigningKeyLockSeconds { get; init; } = 60;
+}
+
+public sealed class VaultLegacyCertificateMigrationOptions
+{
+    public string? Owner { get; init; }
+    public string? Reason { get; init; }
+    public DateTimeOffset? ExpiresAtUtc { get; init; }
+
+    public bool IsConfigured => ExpiresAtUtc is not null
+        || !string.IsNullOrWhiteSpace(Owner)
+        || !string.IsNullOrWhiteSpace(Reason);
 }
