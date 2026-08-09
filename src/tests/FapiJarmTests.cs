@@ -142,6 +142,45 @@ public sealed class FapiJarmTests
     }
 
     [Fact]
+    public async Task Jarm_encryption_resolves_ec_recipient_with_ecdh_key_management()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Jarm:Enabled"] = "true",
+                ["Sufficit:Identity:Jarm:Encryption:Enabled"] = "true",
+            });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        using var ec = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var publicJwk = JsonWebKeyConverter.ConvertFromECDsaSecurityKey(
+            new ECDsaSecurityKey(ec) { KeyId = "client-ec-encryption-key" });
+        publicJwk.Use = "enc";
+        publicJwk.D = null;
+
+        var keySet = new JsonWebKeySet();
+        keySet.Keys.Add(publicJwk);
+        await using var scope = factory.Services.CreateAsyncScope();
+        var applications = scope.ServiceProvider
+            .GetRequiredService<IOpenIddictApplicationManager>();
+        await applications.CreateAsync(new OpenIddictApplicationDescriptor
+        {
+            ClientId = "jarm-ec-encryption-client",
+            ClientType = OpenIddictConstants.ClientTypes.Public,
+            ConsentType = OpenIddictConstants.ConsentTypes.Explicit,
+            JsonWebKeySet = keySet,
+        });
+
+        var resolver = scope.ServiceProvider.GetRequiredService<
+            IJarmClientEncryptionCredentialsResolver>();
+        var credentials = await resolver.ResolveAsync("jarm-ec-encryption-client");
+
+        Assert.NotNull(credentials);
+        Assert.Equal("client-ec-encryption-key", credentials.Key.KeyId);
+        Assert.Equal("ECDH-ES+A256KW", credentials.Alg);
+    }
+
+    [Fact]
     public async Task Jarm_query_mode_returns_one_signed_response_parameter()
     {
         using var factory = SufficitIdentityTestFactory.CreateIsolated(

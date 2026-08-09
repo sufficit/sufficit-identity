@@ -66,6 +66,10 @@
         "10.0.0.0/8",
         "198.51.100.0/24"
       ],
+      "Security": {
+        "_FailClosedOnInsecureDefaults": "Set true only after the production posture findings have been resolved or explicitly acknowledged. Leaving this false during the staged rollout preserves service availability while the CSP and management policies are calibrated.",
+        "FailClosedOnInsecureDefaults": false
+      },
       "Management": {
         "Enabled": false,
         "RoutePrefix": "api",

@@ -150,6 +150,12 @@ public sealed class SufficitIdentityOptions
     public TwoFactorOptions TwoFactor { get; init; } = new();
 
     /// <summary>
+    /// Consolidated production security-posture policy (the fail-closed
+    /// go-live check). See <see cref="SecurityPostureOptions"/>.
+    /// </summary>
+    public SecurityPostureOptions Security { get; init; } = new();
+
+    /// <summary>
     /// WebAuthn/passkey resource limits and relying-party configuration.
     /// See <see cref="AccountPasskeyOptions"/>.
     /// </summary>
@@ -713,6 +719,24 @@ public sealed class CorsOptions
 /// assert that the header is emitted with the configured policy; they do not
 /// validate the policy against the real rendered DOM.</para>
 /// </remarks>
+/// <summary>
+/// Policy for the consolidated production posture check
+/// (<c>ProductionPostureCheck</c>). The check gathers permissive
+/// rollout-friendly defaults (CSP report-only, management Observe modes and a
+/// non-shared DPoP replay cache) that are
+/// easy to ship to production unnoticed.
+/// </summary>
+public sealed class SecurityPostureOptions
+{
+    /// <summary>
+    /// When true (default), the host refuses to start outside Development if
+    /// any permissive default is still in effect and unacknowledged. Set false
+    /// to downgrade the check to a startup warning (not recommended for
+    /// production). Development is never blocked regardless of this value.
+    /// </summary>
+    public bool FailClosedOnInsecureDefaults { get; init; } = true;
+}
+
 public sealed class CspOptions
 {
     /// <summary>
@@ -728,6 +752,15 @@ public sealed class CspOptions
     /// policy against the real UI pages (see the class-level remarks).
     /// </summary>
     public bool ReportOnly { get; init; } = true;
+
+    /// <summary>
+    /// Acknowledges that running CSP in <see cref="ReportOnly"/> mode in
+    /// production is a deliberate choice (e.g. during policy calibration). When
+    /// false (default), the production posture check treats report-only CSP as
+    /// an unresolved permissive default and — if fail-closed is on — blocks
+    /// startup. Set true only if you knowingly want report-only in production.
+    /// </summary>
+    public bool AcknowledgeReportOnly { get; init; }
 
     /// <summary>
     /// The policy string. The default is tuned for a Blazor Server UI hosted
@@ -1153,11 +1186,11 @@ public sealed class JarmOptions
 }
 
 /// <summary>
-/// JWE encryption settings for JARM responses. The STS encrypts the signed
-/// JWT response to an RSA public key registered in each client's JWKS. The
-/// receiver decrypts with its matching private key. This is the
-/// signed-and-encrypted response mode required by the FAPI 2.0 Advancing
-/// Profile for sensitive responses.
+/// JWE encryption settings for JARM responses. The STS can encrypt the signed
+/// JWT response to an RSA or EC public key registered in each client's JWKS.
+/// The receiver decrypts with its matching private key. Encryption is an
+/// optional JARM confidentiality mode; FAPI 2.0 does not require it for the
+/// authorization code response.
 /// </summary>
 public sealed class JarmEncryptionOptions
 {
@@ -1178,9 +1211,20 @@ public sealed class JarmEncryptionOptions
     public string? Password { get; init; }
 
     /// <summary>
-    /// JWE <c>alg</c> (key management) algorithm. Defaults to <c>RSA-OAEP</c>.
+    /// JWE <c>alg</c> (key management) algorithm for RSA recipient keys.
+    /// Defaults to <c>RSA-OAEP-256</c> (RSA-OAEP with SHA-256). The legacy
+    /// <c>RSA-OAEP</c> (SHA-1) is discouraged. Ignored for EC recipient keys, which use
+    /// <see cref="EcKeyManagementAlgorithm"/>.
     /// </summary>
-    public string KeyManagementAlgorithm { get; init; } = "RSA-OAEP";
+    public string KeyManagementAlgorithm { get; init; } = "RSA-OAEP-256";
+
+    /// <summary>
+    /// JWE <c>alg</c> (key management) algorithm for EC recipient keys.
+    /// Defaults to <c>ECDH-ES+A256KW</c>. Used when a FAPI/OIDC client
+    /// registers an elliptic-curve (rather than RSA) encryption key in its
+    /// JWKS.
+    /// </summary>
+    public string EcKeyManagementAlgorithm { get; init; } = "ECDH-ES+A256KW";
 
     /// <summary>
     /// JWE <c>enc</c> (content encryption) algorithm. Defaults to

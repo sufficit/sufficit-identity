@@ -253,6 +253,16 @@ public sealed class ManagementObjectAccessOptions
     public string ContextClaimType { get; set; } = "identity_context";
 
     public string LegacyContextId { get; set; } = "global";
+
+    /// <summary>
+    /// Acknowledges that running this policy in <see cref="Mode"/> =
+    /// <see cref="ManagementPolicyEnforcementMode.Observe"/> in production is a
+    /// deliberate choice (e.g. a single-context deployment that needs no
+    /// tenant boundary). When false (default), the production posture check
+    /// flags Observe mode as an unresolved permissive default — the boundary
+    /// only logs, it does not block.
+    /// </summary>
+    public bool AcknowledgeObserveInProduction { get; set; }
 }
 
 public sealed class ProtectedPrincipalAccessOptions
@@ -271,6 +281,16 @@ public sealed class ProtectedPrincipalAccessOptions
 
     public string BreakGlassClaimValue { get; set; } =
         "identity.management";
+
+    /// <summary>
+    /// Acknowledges that running this policy in <see cref="Mode"/> =
+    /// <see cref="ManagementPolicyEnforcementMode.Observe"/> in production is a
+    /// deliberate choice. When false (default), the production posture check
+    /// flags Observe mode as an unresolved permissive default — privilege-
+    /// escalation attempts against protected principals are logged but
+    /// permitted.
+    /// </summary>
+    public bool AcknowledgeObserveInProduction { get; set; }
 }
 
 public sealed class ManagementAuthorizationOptions
