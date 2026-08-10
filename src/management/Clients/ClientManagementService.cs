@@ -7,6 +7,7 @@ using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Provisioning;
 #endif
+using System.Globalization;
 using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Management.Authorization;
 
@@ -132,7 +133,10 @@ public sealed record ManagementClientDetail(
     bool BackchannelLogoutSessionRequired = false,
     string? Version = null,
     bool IsManifestManaged = false,
-    string? JwksUri = null);
+    string? JwksUri = null,
+    int? AccessTokenLifetimeMinutes = null,
+    int? IdentityTokenLifetimeMinutes = null,
+    int? RefreshTokenLifetimeDays = null);
 
 public sealed record CreateManagementClientCommand(
     string ClientId,
@@ -148,7 +152,10 @@ public sealed record CreateManagementClientCommand(
     bool FrontchannelLogoutSessionRequired = false,
     string? BackchannelLogoutUri = null,
     bool BackchannelLogoutSessionRequired = false,
-    string? JwksUri = null);
+    string? JwksUri = null,
+    int? AccessTokenLifetimeMinutes = null,
+    int? IdentityTokenLifetimeMinutes = null,
+    int? RefreshTokenLifetimeDays = null);
 
 public sealed record UpdateManagementClientCommand(
     string ClientId,
@@ -164,7 +171,13 @@ public sealed record UpdateManagementClientCommand(
     string? BackchannelLogoutUri = null,
     bool BackchannelLogoutSessionRequired = false,
     string? ExpectedVersion = null,
-    string? JwksUri = null);
+    string? JwksUri = null,
+    int? AccessTokenLifetimeMinutes = null,
+    int? IdentityTokenLifetimeMinutes = null,
+    int? RefreshTokenLifetimeDays = null,
+    bool ClearAccessTokenLifetime = false,
+    bool ClearIdentityTokenLifetime = false,
+    bool ClearRefreshTokenLifetime = false);
 
 #else
 
@@ -178,6 +191,13 @@ internal sealed class ClientManagementService(
     IClientDefinitionValidator clientDefinitionValidator,
     ILogger<ClientManagementService> logger) : IClientManagementService
 {
+    private const int MinimumAccessTokenLifetimeMinutes = 1;
+    private const int MaximumAccessTokenLifetimeMinutes = 24 * 60;
+    private const int MinimumIdentityTokenLifetimeMinutes = 1;
+    private const int MaximumIdentityTokenLifetimeMinutes = 120;
+    private const int MinimumRefreshTokenLifetimeDays = 1;
+    private const int MaximumRefreshTokenLifetimeDays = 365;
+
     public async Task<IReadOnlyList<ManagementClientSummary>> ListAsync(
         ManagementRequestContext context,
         CancellationToken cancellationToken = default)
@@ -386,6 +406,10 @@ internal sealed class ClientManagementService(
                 command.BackchannelLogoutUri,
                 "backchannelLogoutUri");
             var jwksUri = ValidateJwksUri(command.JwksUri);
+            ValidateTokenLifetimes(
+                command.AccessTokenLifetimeMinutes,
+                command.IdentityTokenLifetimeMinutes,
+                command.RefreshTokenLifetimeDays);
 
             if (command.FrontchannelLogoutSessionRequired &&
                 frontchannelLogoutUri is null)
@@ -542,6 +566,11 @@ internal sealed class ClientManagementService(
             {
                 descriptor.Settings["jwks_uri"] = jwksUri.AbsoluteUri;
             }
+            ApplyTokenLifetimes(
+                descriptor,
+                command.AccessTokenLifetimeMinutes,
+                command.IdentityTokenLifetimeMinutes,
+                command.RefreshTokenLifetimeDays);
 
             if (clientDefinitionValidator.RequiresProofKeyForCodeExchange(
                     grantTypes))
@@ -796,6 +825,10 @@ internal sealed class ClientManagementService(
                 command.BackchannelLogoutUri,
                 "backchannelLogoutUri");
             var jwksUri = ValidateJwksUri(command.JwksUri);
+            ValidateTokenLifetimes(
+                command.AccessTokenLifetimeMinutes,
+                command.IdentityTokenLifetimeMinutes,
+                command.RefreshTokenLifetimeDays);
 
             ValidateLogoutConfiguration(
                 redirectUris,
@@ -905,6 +938,14 @@ internal sealed class ClientManagementService(
                     descriptor.Settings["jwks_uri"] = jwksUri.AbsoluteUri;
                 }
             }
+            ApplyTokenLifetimes(
+                descriptor,
+                command.AccessTokenLifetimeMinutes,
+                command.IdentityTokenLifetimeMinutes,
+                command.RefreshTokenLifetimeDays,
+                command.ClearAccessTokenLifetime,
+                command.ClearIdentityTokenLifetime,
+                command.ClearRefreshTokenLifetime);
 
             if (clientDefinitionValidator.RequiresProofKeyForCodeExchange(
                     grantTypes))
@@ -1108,7 +1149,127 @@ internal sealed class ClientManagementService(
                 ?.ConcurrencyToken,
             IsManifestManaged: descriptor.Properties.ContainsKey(
                 OpenIddictManifestProvisioner.SchemaVersionProperty),
-            JwksUri: GetSetting(settings, "jwks_uri"));
+            JwksUri: GetSetting(settings, "jwks_uri"),
+            AccessTokenLifetimeMinutes: GetLifetimeMinutes(
+                settings,
+                OpenIddictConstants.Settings.TokenLifetimes.AccessToken),
+            IdentityTokenLifetimeMinutes: GetLifetimeMinutes(
+                settings,
+                OpenIddictConstants.Settings.TokenLifetimes.IdentityToken),
+            RefreshTokenLifetimeDays: GetLifetimeDays(
+                settings,
+                OpenIddictConstants.Settings.TokenLifetimes.RefreshToken));
+    }
+
+    private static void ValidateTokenLifetimes(
+        int? accessTokenLifetimeMinutes,
+        int? identityTokenLifetimeMinutes,
+        int? refreshTokenLifetimeDays)
+    {
+        ValidateLifetime(
+            accessTokenLifetimeMinutes,
+            MinimumAccessTokenLifetimeMinutes,
+            MaximumAccessTokenLifetimeMinutes,
+            "accessTokenLifetimeMinutes",
+            "access_token_lifetime_invalid",
+            "Access token lifetime must be between 1 minute and 24 hours.");
+        ValidateLifetime(
+            identityTokenLifetimeMinutes,
+            MinimumIdentityTokenLifetimeMinutes,
+            MaximumIdentityTokenLifetimeMinutes,
+            "identityTokenLifetimeMinutes",
+            "identity_token_lifetime_invalid",
+            "Identity token lifetime must be between 1 and 120 minutes.");
+        ValidateLifetime(
+            refreshTokenLifetimeDays,
+            MinimumRefreshTokenLifetimeDays,
+            MaximumRefreshTokenLifetimeDays,
+            "refreshTokenLifetimeDays",
+            "refresh_token_lifetime_invalid",
+            "Refresh token lifetime must be between 1 and 365 days.");
+    }
+
+    private static void ValidateLifetime(
+        int? value,
+        int minimum,
+        int maximum,
+        string field,
+        string reasonCode,
+        string message)
+    {
+        if (value is not null && (value < minimum || value > maximum))
+        {
+            throw new ManagementValidationException(reasonCode, message, field);
+        }
+    }
+
+    private static void ApplyTokenLifetimes(
+        OpenIddictApplicationDescriptor descriptor,
+        int? accessTokenLifetimeMinutes,
+        int? identityTokenLifetimeMinutes,
+        int? refreshTokenLifetimeDays,
+        bool clearAccessTokenLifetime = false,
+        bool clearIdentityTokenLifetime = false,
+        bool clearRefreshTokenLifetime = false)
+    {
+        // A clear flag explicitly removes an override. Without it, null means
+        // the caller did not manage that field, preserving older clients.
+        if (clearAccessTokenLifetime)
+        {
+            descriptor.SetAccessTokenLifetime(null);
+        }
+        else if (accessTokenLifetimeMinutes is { } access)
+        {
+            descriptor.SetAccessTokenLifetime(TimeSpan.FromMinutes(access));
+        }
+        if (clearIdentityTokenLifetime)
+        {
+            descriptor.SetIdentityTokenLifetime(null);
+        }
+        else if (identityTokenLifetimeMinutes is { } identity)
+        {
+            descriptor.SetIdentityTokenLifetime(TimeSpan.FromMinutes(identity));
+        }
+        if (clearRefreshTokenLifetime)
+        {
+            descriptor.SetRefreshTokenLifetime(null);
+        }
+        else if (refreshTokenLifetimeDays is { } refresh)
+        {
+            descriptor.SetRefreshTokenLifetime(TimeSpan.FromDays(refresh));
+        }
+    }
+
+    private static int? GetLifetimeMinutes(
+        IReadOnlyDictionary<string, string> settings,
+        string key)
+    {
+        if (!settings.TryGetValue(key, out var value)
+            || !TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out var lifetime)
+            || lifetime <= TimeSpan.Zero)
+        {
+            return null;
+        }
+
+        var minutes = (int)Math.Round(lifetime.TotalMinutes,
+            MidpointRounding.AwayFromZero);
+        return minutes > 0 ? minutes : null;
+    }
+
+    private static int? GetLifetimeDays(
+        IReadOnlyDictionary<string, string> settings,
+        string key)
+    {
+        if (!settings.TryGetValue(key, out var value)
+            || !TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out var lifetime)
+            || lifetime <= TimeSpan.Zero)
+        {
+            return null;
+        }
+
+        var days = (int)Math.Round(lifetime.TotalDays,
+            MidpointRounding.AwayFromZero);
+        return days > 0 ? days : null;
     }
 
     private static void ValidateClientId(string clientId)

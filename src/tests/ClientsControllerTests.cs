@@ -135,6 +135,69 @@ public sealed class ClientsControllerTests
         Assert.Equal(request.JwksUri, body?.JwksUri);
     }
 
+    [Fact]
+    public async Task Create_persists_per_application_token_lifetimes()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        var request = new CreateClientRequest
+        {
+            ClientId = $"cc-lifetime-{Guid.NewGuid():N}",
+            ClientSecret = "lifetime-secret",
+            GrantTypes = [Permissions.GrantTypes.ClientCredentials],
+            AccessTokenLifetimeMinutes = 17,
+            IdentityTokenLifetimeMinutes = 8,
+            RefreshTokenLifetimeDays = 31,
+        };
+
+        using var created = await client.PostAsJsonAsync("/api/clients", request);
+
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var body = await created.Content.ReadFromJsonAsync<ManagementClientDetail>();
+        Assert.Equal(17, body?.AccessTokenLifetimeMinutes);
+        Assert.Equal(8, body?.IdentityTokenLifetimeMinutes);
+        Assert.Equal(31, body?.RefreshTokenLifetimeDays);
+
+        var (status, token) = await client.PostFormAsync(
+            "/connect/token",
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "client_credentials",
+                ["client_id"] = request.ClientId,
+                ["client_secret"] = request.ClientSecret!,
+            });
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.InRange(token.GetProperty("expires_in").GetInt32(), 17 * 60 - 2, 17 * 60);
+    }
+
+    [Theory]
+    [InlineData(0, null, null)]
+    [InlineData(null, 121, null)]
+    [InlineData(null, null, 366)]
+    public async Task Create_rejects_token_lifetimes_outside_safe_bounds(
+        int? accessTokenLifetimeMinutes,
+        int? identityTokenLifetimeMinutes,
+        int? refreshTokenLifetimeDays)
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        var request = new CreateClientRequest
+        {
+            ClientId = $"cc-invalid-lifetime-{Guid.NewGuid():N}",
+            ClientSecret = "lifetime-secret",
+            GrantTypes = [Permissions.GrantTypes.ClientCredentials],
+            AccessTokenLifetimeMinutes = accessTokenLifetimeMinutes,
+            IdentityTokenLifetimeMinutes = identityTokenLifetimeMinutes,
+            RefreshTokenLifetimeDays = refreshTokenLifetimeDays,
+        };
+
+        using var response = await client.PostAsJsonAsync("/api/clients", request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Theory]
     [InlineData("http://keys.example/jwks.json")]
     [InlineData("https://127.0.0.1/jwks.json")]
@@ -520,12 +583,38 @@ public sealed class ClientsControllerTests
                 GrantTypes = [Permissions.GrantTypes.AuthorizationCode],
                 Scopes = ["profile"],
                 RedirectUris = ["https://client.tests.local/updated"],
-                ExpectedVersion = version
+                ExpectedVersion = version,
+                AccessTokenLifetimeMinutes = 23,
+                IdentityTokenLifetimeMinutes = 11,
+                RefreshTokenLifetimeDays = 42,
             });
         Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
         var after = await updated.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("Updated client", after.GetProperty("displayName").GetString());
+        Assert.Equal(23, after.GetProperty("accessTokenLifetimeMinutes").GetInt32());
+        Assert.Equal(11, after.GetProperty("identityTokenLifetimeMinutes").GetInt32());
+        Assert.Equal(42, after.GetProperty("refreshTokenLifetimeDays").GetInt32());
         Assert.False(after.TryGetProperty("clientSecret", out _));
+
+        using var inherited = await client.PutAsJsonAsync(
+            $"/api/clients/{Uri.EscapeDataString(clientId)}",
+            new UpdateClientRequest
+            {
+                DisplayName = "Updated client",
+                ConsentType = "explicit",
+                GrantTypes = [Permissions.GrantTypes.AuthorizationCode],
+                Scopes = ["profile"],
+                RedirectUris = ["https://client.tests.local/updated"],
+                ExpectedVersion = after.GetProperty("version").GetString(),
+                ClearAccessTokenLifetime = true,
+                ClearIdentityTokenLifetime = true,
+                ClearRefreshTokenLifetime = true,
+            });
+        Assert.Equal(HttpStatusCode.OK, inherited.StatusCode);
+        var inheritedBody = await inherited.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(inheritedBody.GetProperty("accessTokenLifetimeMinutes").ValueKind is JsonValueKind.Null);
+        Assert.True(inheritedBody.GetProperty("identityTokenLifetimeMinutes").ValueKind is JsonValueKind.Null);
+        Assert.True(inheritedBody.GetProperty("refreshTokenLifetimeDays").ValueKind is JsonValueKind.Null);
 
         await using (var scope = factory.Services.CreateAsyncScope())
         {
