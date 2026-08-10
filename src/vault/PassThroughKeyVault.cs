@@ -9,8 +9,12 @@ namespace Sufficit.Identity.Vault;
 /// This lets every consumer wire <see cref="IKeyVault"/> unconditionally
 /// without forcing encryption on in dev, while keeping a correct round-trip.
 /// </summary>
-internal sealed class PassThroughKeyVault : IKeyVault
+internal sealed class PassThroughKeyVault :
+    IKeyVault,
+    IKeyVaultPlaintextReferenceCompatibility
 {
+    public bool AcceptsPlaintextClientSecretReferences => true;
+
     public Task<string> EncryptAsync(
         string keyName,
         byte[] plaintext,
@@ -86,6 +90,29 @@ internal sealed class PassThroughKeyVault : IKeyVault
 
     public Task<KeyId> RotateSigningKeyAsync(
         string keyName,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "Signing keys require Sufficit:Vault:Enabled=true.");
+
+    public Task<KeyId> RotateSigningKeyAsync(
+        string keyName,
+        string operationId,
+        string? reason = null,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "Signing keys require Sufficit:Vault:Enabled=true.");
+
+    public Task<int> RetireSigningKeysAsync(
+        string keyName,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "Signing keys require Sufficit:Vault:Enabled=true.");
+
+    public Task<bool> RevokeSigningKeyAsync(
+        string keyName,
+        int keyVersion,
+        string operationId,
+        string reason,
         CancellationToken cancellationToken = default) =>
         throw new NotSupportedException(
             "Signing keys require Sufficit:Vault:Enabled=true.");

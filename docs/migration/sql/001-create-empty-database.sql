@@ -594,3 +594,62 @@ VALUES ('20260808191220_AddVaultPersonalSecrets', '10.0.10');
 
 COMMIT;
 
+START TRANSACTION;
+ALTER TABLE `vaultkeys` ADD `lifecycleversion` int NOT NULL DEFAULT 0;
+
+ALTER TABLE `vaultkeys` ADD `retireafterutc` datetime(6) NULL;
+
+ALTER TABLE `vaultkeys` ADD `revokedatutc` datetime(6) NULL;
+
+ALTER TABLE `vaultkeys` ADD `signingstate` varchar(16) CHARACTER SET utf8mb4 NULL;
+
+UPDATE vaultkeys SET signingstate = 'Retired' WHERE purpose = 'signing' AND retiredatutc IS NOT NULL;
+
+UPDATE vaultkeys AS currentkey INNER JOIN (SELECT keyname, MAX(keyversion) AS activeversion FROM vaultkeys WHERE purpose = 'signing' AND retiredatutc IS NULL GROUP BY keyname) AS latest ON latest.keyname = currentkey.keyname SET currentkey.signingstate = CASE WHEN currentkey.keyversion = latest.activeversion THEN 'Active' ELSE 'Retiring' END, currentkey.retireafterutc = CASE WHEN currentkey.keyversion = latest.activeversion THEN NULL ELSE DATE_ADD(UTC_TIMESTAMP(6), INTERVAL 14 DAY) END WHERE currentkey.purpose = 'signing' AND currentkey.retiredatutc IS NULL;
+
+CREATE TABLE `vaultsigningkeylocks` (
+    `keyname` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
+    `ownerid` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
+    `expiresatutc` datetime(6) NOT NULL,
+    CONSTRAINT `PK_vaultsigningkeylocks` PRIMARY KEY (`keyname`)
+) CHARACTER SET=utf8mb4;
+
+CREATE TABLE `vaultsigningkeyoperations` (
+    `operationid` varchar(80) CHARACTER SET utf8mb4 NOT NULL,
+    `keyname` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
+    `keyversion` int NOT NULL,
+    `previouskeyversion` int NULL,
+    `action` varchar(24) CHARACTER SET utf8mb4 NOT NULL,
+    `reason` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `occurredatutc` datetime(6) NOT NULL,
+    `retireafterutc` datetime(6) NULL,
+    CONSTRAINT `PK_vaultsigningkeyoperations` PRIMARY KEY (`operationid`)
+) CHARACTER SET=utf8mb4;
+
+CREATE INDEX `IX_vaultsigningkeyoperations_keyname_occurred` ON `vaultsigningkeyoperations` (`keyname`, `occurredatutc`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260809224037_AddVaultSigningKeyLifecycle', '10.0.10');
+
+COMMIT;
+
+START TRANSACTION;
+ALTER TABLE `vaultsecrets` DROP INDEX `AK_vaultsecrets_name`;
+
+ALTER TABLE `vaultsecrets` ADD `contextid` varchar(64) CHARACTER SET utf8mb4 NOT NULL DEFAULT '';
+
+ALTER TABLE `vaultsecrets` ADD `namespace` varchar(64) CHARACTER SET utf8mb4 NOT NULL DEFAULT '';
+
+ALTER TABLE `vaultsecrets` ADD `ownersubject` varchar(128) CHARACTER SET utf8mb4 NOT NULL DEFAULT '';
+
+UPDATE vaultsecrets SET contextid = 'global', namespace = LOWER(SUBSTRING_INDEX(TRIM(name), '/', 1)), ownersubject = CASE WHEN TRIM(updatedby) = '' THEN 'legacy-migration' ELSE LEFT(TRIM(updatedby), 128) END;
+
+CREATE UNIQUE INDEX `AK_vaultsecrets_context_name` ON `vaultsecrets` (`contextid`, `name`);
+
+CREATE INDEX `IX_vaultsecrets_context_namespace` ON `vaultsecrets` (`contextid`, `namespace`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260809230136_AddVaultSecretNamespaces', '10.0.10');
+
+COMMIT;
+

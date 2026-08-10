@@ -19,6 +19,31 @@ and PAR `request_uri` lifetime to less than 600 seconds. The current refresh
 token behavior must also be assessed against the selected FAPI ecosystem
 profile before claiming conformance.
 
+## mTLS
+
+Escolha e configure explicitamente uma topologia antes de habilitar mTLS:
+
+- `DirectTls`: Kestrel recebe o certificado no handshake TLS. Qualquer header
+  de certificado encaminhado é removido e não participa da decisão.
+- `TrustedProxy`: o proxy termina mTLS e envia PEM URL-encoded ou DER base64 em
+  `Mtls:ForwardedCertificateHeader`. Cadastre o IP/CIDR do peer imediato em
+  `Mtls:TrustedProxyNetworks`; esta allow-list é independente da confiança
+  geral em `X-Forwarded-*`. Um header vindo de outro peer é descartado.
+
+Mantenha `RequireValidCertificateChain=true`. O default
+`RevocationMode=Online` consulta revogação com o timeout configurado e
+`RevocationFailureMode=FailClosed` nega quando CRL/OCSP não responde. `Offline`
+usa somente dados locais. `NoCheck` e `AllowWhenUnavailable` são decisões de
+compatibilidade explícitas; esta última só tolera indisponibilidade pura e não
+aceita revogação, expiração ou falha de confiança.
+
+Vincule o SHA-256 de cada certificado ao `client_id` em
+`ClientCertificateThumbprints`. Para rotacionar, publique o pin novo, valide o
+novo certificado, mantenha os dois pins somente pela janela de propagação e
+remova o antigo. Revogação de emergência exige remover o pin comprometido e
+revogar o certificado na PKI; confirme que o novo status é negado em cada
+réplica antes de encerrar o incidente.
+
 ## JARM
 
 Set `Jarm:Enabled=true` only for clients that validate the STS signing key from
@@ -36,6 +61,25 @@ On an installed host, enable or roll back the capability explicitly:
 /opt/sufficit-identity/helpers/security-rollout.sh disable-jarm
 /opt/sufficit-identity/helpers/activate-release.sh --current
 ```
+
+## JAR e chaves remotas
+
+Clientes podem registrar um JWKS público embutido ou um `jwks_uri`. Para chave
+remota, use somente HTTPS público; redirect, IP privado/special-use, user-info e
+fragmento são recusados. O transporte valida também o resultado DNS antes da
+conexão, portanto uma allow-list de egress externa continua recomendada, mas
+não substitui essa proteção local.
+
+Dimensione `Jar:RemoteJwksMaxBytes`, `RemoteJwksTimeoutSeconds`,
+`RemoteJwksCacheSeconds`, `RemoteJwksStaleSeconds` e
+`RemoteJwksMaxCacheEntries` conforme a quantidade de clientes. Durante rotação,
+publique a nova chave com `kid` antes de usá-la: um `kid` desconhecido força um
+refresh. Se o endpoint estiver indisponível, somente um `kid` já observado pode
+usar a janela stale. Conjuntos com várias chaves exigem `kid` no request object.
+
+Não remova a chave antiga antes do maior lifetime de request object aceito e da
+janela de propagação do JWKS. Monitore falhas de refresh e valide a rotação em
+staging antes de ativar o novo `kid` em produção.
 
 ## SSF/CAEP
 

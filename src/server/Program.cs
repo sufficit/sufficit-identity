@@ -14,6 +14,7 @@ using Sufficit.Identity.Server;
 using Sufficit.Identity.Server.Management;
 using Sufficit.Identity.Scim;
 using Sufficit.Identity.STS;
+using Sufficit.Identity.STS.Mtls;
 using Sufficit.Identity.UI.Abstractions.Hosting;
 using Sufficit.Identity.UI;
 using Sufficit.Identity.UI.Management;
@@ -23,6 +24,13 @@ using Sufficit.Identity.Vault;
 var builder = WebApplication.CreateBuilder(args);
 var migrateOnly = args.Contains("--migrate-only", StringComparer.Ordinal);
 
+// Resolve configuration-time secrets through the same ISecretStore boundary
+// used by STS consumers. The default store reads SUFFICIT_SECRET_* and falls
+// back to the already-loaded configuration only during migration.
+var startupSecretStore = new EnvironmentSecretStore(
+    builder.Configuration,
+    Microsoft.Extensions.Logging.Abstractions.NullLogger<EnvironmentSecretStore>.Instance);
+
 // WebApplication.CreateBuilder already loads appsettings.json followed by
 // appsettings.{Environment}.json. Add the machine-specific file after those
 // standard sources so each Sufficit server can override only its local values
@@ -31,7 +39,7 @@ builder.Configuration.AddMachineSpecificJsonFile();
 // Resolve deployment-provided secret overrides before any startup options are
 // bound. The JSON layer remains a compatibility fallback during migration;
 // operators can move each secret to SUFFICIT_SECRET_* independently.
-builder.Configuration.AddSufficitSecretOverrides();
+builder.Configuration.AddSufficitSecretOverrides(startupSecretStore);
 
 // Optional file-based certificate password ingress. The privileged bootstrap
 // uses this for randomly generated Development certificates and operators can
@@ -41,8 +49,8 @@ var certificatePasswordFile = Environment.GetEnvironmentVariable(
         "SUFFICIT_IDENTITY_CERTIFICATE_PASSWORD_FILE")
     ?? "/etc/sufficit/identity/certificate.password";
 if (File.Exists(certificatePasswordFile)
-    && string.IsNullOrWhiteSpace(builder.Configuration[
-        "Sufficit:Identity:Certificates:SigningPassword"]))
+    && string.IsNullOrWhiteSpace(startupSecretStore.GetSecretAsync(
+        "identity/certificates/signing-password").GetAwaiter().GetResult()))
 {
     var certificatePassword = File.ReadAllText(certificatePasswordFile).Trim();
     if (!string.IsNullOrEmpty(certificatePassword))
@@ -144,7 +152,9 @@ builder.Services.AddSingleton(new System.Text.Json.JsonSerializerOptions
 });
 
 // ---- Sufficit Identity STS (Identity + OpenIddict server/validation) ----
-builder.Services.AddSufficitIdentitySTS(builder.Configuration);
+builder.Services.AddSufficitIdentitySTS(
+    builder.Configuration,
+    secretStore: startupSecretStore);
 
 // ---- Branding theme provider (singleton cache, DB-backed) ----
 // Registered before UI and management so both can resolve it.
@@ -161,7 +171,9 @@ if (uiHostingOptions.Public.IsEmbedded)
 // Activates only when Sufficit:Exchange:RabbitMQ:HostName is configured.
 // When active, replaces the UI's default IEmailSender (Smtp/Logging) with
 // the production RabbitMQEmailQueue (port from the legacy Skoruba STS).
-builder.Services.AddSufficitEmailSender(builder.Configuration);
+builder.Services.AddSufficitEmailSender(
+    builder.Configuration,
+    secretStore: startupSecretStore);
 
 // ---- Optional: management REST API (opt-in via Sufficit:Identity:Management:Enabled) ----
 var mgmtEnabled = builder.Configuration
@@ -474,36 +486,15 @@ if (identityOptions.DistributedCache.RequireShared && !app.Environment.IsDevelop
 }
 
 // ---- Consolidated production posture check (fail-closed) ----
-// Several subsystems ship a deliberately permissive default so a fresh install
-// or a rolling migration does not break (CSP report-only, management Observe
-// modes and non-shared DPoP replay cache).
-// Individually reasonable, collectively easy to ship to production unnoticed.
-// This gathers them into one place and — outside Development, by default —
-// refuses to start when the deployment has explicitly opted into fail-closed
-// mode until each finding is resolved or acknowledged. Existing deployments
-// that predate this setting remain in warning mode until the operator makes
-// the migration decision explicit; this avoids taking a live host down on its
-// first restart after the feature is introduced. Development is never blocked.
-const string failClosedSetting =
-    "Sufficit:Identity:Security:FailClosedOnInsecureDefaults";
-var failClosedSettingConfigured = builder.Configuration
-    .GetSection(failClosedSetting)
-    .Exists();
-var failClosed = failClosedSettingConfigured
-    && identityOptions.Security.FailClosedOnInsecureDefaults;
-if (!app.Environment.IsDevelopment() && !failClosedSettingConfigured)
-{
-    app.Logger.LogWarning(
-        "{Setting} is not configured; the production posture check is running "
-        + "in compatibility warning mode. Set it explicitly to true only "
-        + "after resolving or acknowledging every finding.",
-        failClosedSetting);
-}
+// Each enabled module contributes its own permissive settings. Development
+// logs them; every other environment fails closed unless a finding has a
+// bounded acknowledgement with owner, reason and expiry. The old global false
+// switch is intentionally ignored: it could suppress unrelated boundaries at
+// once and silently outlive a migration.
 Sufficit.Identity.STS.Security.ProductionPostureCheck.Enforce(
     app.Services,
     identityOptions,
     app.Environment.IsDevelopment(),
-    failClosed,
     app.Logger);
 
 // ---- mTLS (mutual TLS, RFC 8705) host configuration reminder ----
@@ -518,8 +509,8 @@ Sufficit.Identity.STS.Security.ProductionPostureCheck.Enforce(
 //       https.ClientCertificateMode = ClientCertificateMode.RequireCertificate
 //       and a ClientCertificateValidation callback, on the MTLS-aliased paths.
 //   * Behind nginx/Envoy: terminate mTLS at the proxy, forward the validated
-//       client cert (or its thumbprint) to the app, and restrict the MTLS
-//       paths at the proxy so only cert-authenticated traffic reaches them.
+//       client certificate through the configured header, and restrict the
+//       MTLS paths so only cert-authenticated traffic reaches them.
 //
 // Startup validation requires an explicit deployment attestation. Runtime
 // FAPI policy additionally binds the validated certificate thumbprint to the
@@ -531,6 +522,12 @@ if (identityOptions.Mtls.Enabled)
         identityOptions.Mtls.DeploymentMode,
         identityOptions.Mtls.ClientCertificateThumbprints.Count);
 }
+
+// Consume a proxy certificate assertion while the immediate connection peer
+// is still visible. The middleware strips the configured header in every mode
+// and only projects a certificate from the dedicated mTLS proxy CIDRs. This
+// must precede UseForwardedHeaders, which rewrites RemoteIpAddress.
+app.UseMtlsClientCertificateForwarding(identityOptions.Mtls);
 
 // ---- Honor X-Forwarded-* headers from reverse proxy (Nginx/k8s/CloudFlare) ----
 // Must run BEFORE UseHttpsRedirection, UseAuthentication and any path-based
@@ -631,7 +628,10 @@ if (shouldMigrate)
 
     if (identityOptions.Database.AllowedDatabaseNames.Length > 0)
     {
-        var configured = builder.Configuration.GetConnectionString(identityOptions.ConnectionStringName);
+        var configured = startupSecretStore.GetSecretAsync(
+                "database/connection-string")
+            .GetAwaiter()
+            .GetResult();
         var actualName = ParseDatabaseName(configured);
         if (actualName is null || !identityOptions.Database.AllowedDatabaseNames.Contains(
                 actualName, StringComparer.Ordinal))

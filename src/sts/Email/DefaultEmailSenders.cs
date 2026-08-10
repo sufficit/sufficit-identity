@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Core;
+using Sufficit.Identity.Vault;
 
 namespace Sufficit.Identity.STS.Email;
 
@@ -19,6 +20,7 @@ public sealed class SmtpEmailSender : IEmailSender, IDisposable
     public SmtpEmailSender(
         IConfiguration configuration,
         EmailOptions emailOptions,
+        ISecretStore secretStore,
         ILogger<SmtpEmailSender> logger)
     {
         _logger = logger;
@@ -26,6 +28,10 @@ public sealed class SmtpEmailSender : IEmailSender, IDisposable
         _configuration = configuration
             .GetSection("Sufficit:Identity:Smtp")
             .Get<SmtpConfiguration>() ?? new SmtpConfiguration();
+        _configuration.Password = secretStore.GetSecretAsync(
+                "identity/smtp/password")
+            .GetAwaiter()
+            .GetResult() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(_configuration.Host))
             return;
 

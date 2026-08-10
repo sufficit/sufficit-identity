@@ -9,26 +9,27 @@ public sealed class VaultOptions
     public const string SectionName = "Sufficit:Vault";
 
     /// <summary>
-    /// Master toggle. When <c>false</c> (default), <see cref="IKeyVault"/>
-    /// resolves to <see cref="PassThroughKeyVault"/> — round-trip without
-    /// crypto, so consumers can be wired unconditionally without forcing
-    /// encryption on in dev. When <c>true</c>, real envelope encryption with
-    /// the configured <see cref="KeySource"/>.
+    /// Master toggle. When <c>false</c> in Development,
+    /// <see cref="IKeyVault"/> resolves to <see cref="PassThroughKeyVault"/>.
+    /// Outside Development the disabled state is rejected at startup. When
+    /// <c>true</c>, real envelope encryption uses the configured
+    /// <see cref="KeySource"/>.
     /// </summary>
     public bool Enabled { get; init; } = false;
 
     /// <summary>
-    /// Rolling-upgrade guard. When true outside Development, startup fails
-    /// instead of registering the plaintext compatibility vault.
+    /// Retained for configuration compatibility. Encryption is always
+    /// required outside Development; setting this value to false no longer
+    /// permits the pass-through backend.
     /// </summary>
-    public bool RequireEncryptionInProduction { get; init; } = false;
+    [Obsolete("Encryption is always required outside Development.")]
+    public bool RequireEncryptionInProduction { get; init; } = true;
 
     /// <summary>
-    /// KEK source: <c>dataprotection</c> (default) | <c>certificate</c> |
-    /// <c>external</c>. Only <c>dataprotection</c> is implemented in Phase 1;
-    /// it wraps vault DEKs using ASP.NET Core Data Protection (already
-    /// persisted + X.509-protected by the host), so there are zero new
-    /// dependencies.
+    /// KEK source: <c>dataprotection</c> (development compatibility only),
+    /// <c>certificate</c> (dedicated RSA certificate) or <c>external</c>
+    /// (KMS/HSM adapter). Production rejects <c>dataprotection</c> so a
+    /// database/key-ring dump cannot also recover the vault KEK.
     /// </summary>
     public string KeySource { get; init; } = "dataprotection";
 
@@ -38,6 +39,34 @@ public sealed class VaultOptions
     /// </summary>
     public string DataProtectionPurpose { get; init; } =
         "Sufficit.Identity.Vault.Master.v1";
+
+    /// <summary>
+    /// Dedicated PKCS#12/PFX certificate protecting the shared ASP.NET Data
+    /// Protection key ring. When <see cref="KeySource"/> is
+    /// <c>certificate</c>, the same dedicated certificate also wraps vault
+    /// DEKs directly. It must not be a token-signing certificate.
+    /// </summary>
+    public string? CertificatePath { get; init; }
+
+    /// <summary>Password for <see cref="CertificatePath"/>. Supply it through
+    /// a secret-bearing configuration provider, never a committed file.</summary>
+    public string? CertificatePassword { get; init; }
+
+    /// <summary>
+    /// Bounded compatibility window for Data Protection keys previously
+    /// encrypted with a token-signing certificate. New keys are always
+    /// protected by <see cref="CertificatePath"/>; this only permits reading
+    /// the legacy ring until it has naturally rotated.
+    /// </summary>
+    public VaultLegacyCertificateMigrationOptions
+        LegacyDataProtectionCertificateMigration { get; init; } = new();
+
+    /// <summary>
+    /// Stable, non-secret identifier expected from the external KMS/HSM
+    /// adapter. A mismatch fails startup and prevents accidentally switching
+    /// to a different remote KEK.
+    /// </summary>
+    public string? ExternalKeyIdentifier { get; init; }
 
     /// <summary>
     /// Enables the optional database-backed named-secret store. It requires
@@ -54,4 +83,33 @@ public sealed class VaultOptions
 
     /// <summary>Name of the versioned RSA key used for OpenIddict tokens.</summary>
     public string SigningKeyName { get; init; } = "oidc-signing";
+
+    /// <summary>
+    /// Minimum time that a previous signing key remains published after a
+    /// rotation. The STS validates this against its longest token lifetime.
+    /// </summary>
+    public int SigningKeyOverlapSeconds { get; init; } = 1_209_600;
+
+    /// <summary>Lease duration for the database-backed distributed rotation
+    /// lock. An abandoned lease can be recovered after this interval.</summary>
+    public int SigningKeyLockSeconds { get; init; } = 60;
+
+    /// <summary>
+    /// Operational ceiling for successful AES-GCM encryptions under one
+    /// random 96-bit-nonce key version. The default 250 million keeps the
+    /// approximate nonce-collision probability below 4e-13. Metrics warn at
+    /// 80% and at the budget; rotation remains an explicit operator action.
+    /// </summary>
+    public long AesGcmMessageBudgetPerKeyVersion { get; init; } = 250_000_000;
+}
+
+public sealed class VaultLegacyCertificateMigrationOptions
+{
+    public string? Owner { get; init; }
+    public string? Reason { get; init; }
+    public DateTimeOffset? ExpiresAtUtc { get; init; }
+
+    public bool IsConfigured => ExpiresAtUtc is not null
+        || !string.IsNullOrWhiteSpace(Owner)
+        || !string.IsNullOrWhiteSpace(Reason);
 }

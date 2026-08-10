@@ -108,6 +108,7 @@ public static class ManagementResourceTypes
     public const string Overview = "overview";
     public const string Metrics = "metrics";
     public const string VaultSecrets = "vault-secrets";
+    public const string VaultSecretCollection = "vault-secret-collection";
     public const string Provisioning = "provisioning";
 }
 
@@ -248,7 +249,7 @@ public enum ManagementPolicyEnforcementMode
 public sealed class ManagementObjectAccessOptions
 {
     public ManagementPolicyEnforcementMode Mode { get; set; } =
-        ManagementPolicyEnforcementMode.Observe;
+        ManagementPolicyEnforcementMode.Enforce;
 
     public string ContextClaimType { get; set; } = "identity_context";
 
@@ -268,7 +269,7 @@ public sealed class ManagementObjectAccessOptions
 public sealed class ProtectedPrincipalAccessOptions
 {
     public ManagementPolicyEnforcementMode Mode { get; set; } =
-        ManagementPolicyEnforcementMode.Observe;
+        ManagementPolicyEnforcementMode.Enforce;
 
     public string TierClaimType { get; set; } = "identity_principal_tier";
 
@@ -300,6 +301,8 @@ public sealed class ManagementAuthorizationOptions
     public ProtectedPrincipalAccessOptions ProtectedPrincipals { get; set; } =
         new();
 
+    public VaultSecretAccessOptions VaultSecrets { get; set; } = new();
+
     /// <summary>
     /// Deployment-specific roles that receive every management capability
     /// (full administrator). <b>Use sparingly.</b> Every principal in any of
@@ -328,6 +331,21 @@ public sealed class ManagementAuthorizationOptions
     /// </summary>
     public string[] CapabilityClaimTypes { get; set; } =
         ["permission"];
+}
+
+/// <summary>Independent namespace and break-glass claims for named secrets.
+/// These claims are issued by deployment policy and are not mutable through
+/// the generic Management APIs.</summary>
+public sealed class VaultSecretAccessOptions
+{
+    public string NamespaceClaimType { get; set; } =
+        "identity_vault_namespace";
+
+    public string BreakGlassClaimType { get; set; } =
+        "identity_vault_break_glass";
+
+    public string BreakGlassClaimValue { get; set; } =
+        "identity.vault.secrets";
 }
 
 public sealed class ManagementAccessException(
@@ -515,6 +533,13 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
             ManagementResourceTypes.Scope,
             ManagementResourceTypes.Session,
             ManagementResourceTypes.Authorization,
+            ManagementResourceTypes.VaultSecrets,
+        };
+
+    private static readonly HashSet<string> MfaMethods =
+        new(StringComparer.Ordinal)
+        {
+            "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina"
         };
 
     private static readonly HashSet<string> ProtectedPrincipalCapabilities =
@@ -549,6 +574,7 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
                 ' ',
                 StringSplitOptions.RemoveEmptyEntries
                 | StringSplitOptions.TrimEntries));
+        var usedVaultBreakGlass = false;
         if (!contexts.Contains(requiredContext, StringComparer.Ordinal))
         {
             logger.LogWarning(
@@ -559,8 +585,24 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
                 requiredContext);
             if (policy.Mode is ManagementPolicyEnforcementMode.Enforce)
             {
-                return ManagementAuthorizationDecision.Denied(
-                    "context_not_accessible");
+                if (IsVaultResource(resource.Type)
+                    && HasVaultBreakGlassEvidence(
+                        principal,
+                        options.Value.Authorization.VaultSecrets))
+                {
+                    usedVaultBreakGlass = true;
+                    logger.LogCritical(
+                        "Vault break-glass bypassed Management context policy for capability {Capability}, resource {ResourceType}/{ResourceId}, context {ContextId}",
+                        capability,
+                        resource.Type,
+                        resource.Id,
+                        requiredContext);
+                }
+                else
+                {
+                    return ManagementAuthorizationDecision.Denied(
+                        "context_not_accessible");
+                }
             }
         }
 
@@ -575,7 +617,29 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
                 cancellationToken);
         }
 
-        return ManagementAuthorizationDecision.Allowed();
+        return ManagementAuthorizationDecision.Allowed(
+            usedVaultBreakGlass ? "vault_break_glass" : "allowed");
+    }
+
+    private static bool IsVaultResource(string resourceType) =>
+        resourceType is ManagementResourceTypes.VaultSecrets
+            or ManagementResourceTypes.VaultSecretCollection;
+
+    internal static bool HasVaultBreakGlassEvidence(
+        ClaimsPrincipal principal,
+        VaultSecretAccessOptions policy)
+    {
+        var hasClaim = principal.FindAll(policy.BreakGlassClaimType)
+            .Any(claim => string.Equals(
+                claim.Value,
+                policy.BreakGlassClaimValue,
+                StringComparison.Ordinal));
+        var hasMfa = principal.FindAll("amr")
+            .SelectMany(claim => claim.Value.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries))
+            .Any(MfaMethods.Contains);
+        return hasClaim && hasMfa;
     }
 }
 

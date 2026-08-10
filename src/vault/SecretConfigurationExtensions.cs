@@ -17,8 +17,12 @@ public static class SecretConfigurationExtensions
             "Sufficit:Identity:Certificates:SigningPassword"),
         ("identity/certificates/encryption-password",
             "Sufficit:Identity:Certificates:EncryptionPassword"),
+        ("vault/kek-certificate-password",
+            "Sufficit:Vault:CertificatePassword"),
         ("identity/human-verification/secret-key",
             "Sufficit:Identity:HumanVerification:SecretKey"),
+        ("identity/dcr/initial-access-token",
+            "Sufficit:Identity:Mcp:Dcr:InitialAccessToken"),
         ("identity/external-providers/google/client-id",
             "Sufficit:Identity:ExternalProviders:Google:ClientId"),
         ("identity/external-providers/google/client-secret",
@@ -31,6 +35,8 @@ public static class SecretConfigurationExtensions
             "Sufficit:Identity:ExternalProviders:Facebook:ClientId"),
         ("identity/external-providers/facebook/client-secret",
             "Sufficit:Identity:ExternalProviders:Facebook:ClientSecret"),
+        ("identity/smtp/password", "Sufficit:Identity:Smtp:Password"),
+        ("exchange/rabbitmq/password", "Sufficit:Exchange:RabbitMQ:Password"),
     ];
 
     /// <summary>
@@ -40,13 +46,28 @@ public static class SecretConfigurationExtensions
     public static IConfigurationBuilder AddSufficitSecretOverrides(
         this IConfigurationBuilder configuration)
     {
+        return configuration.AddSufficitSecretOverrides(
+            new EnvironmentSecretStore());
+    }
+
+    /// <summary>
+    /// Appends non-empty overrides resolved through the supplied secret store.
+    /// This overload is used by the composition host so startup consumers share
+    /// the same secret boundary as runtime consumers.
+    /// </summary>
+    public static IConfigurationBuilder AddSufficitSecretOverrides(
+        this IConfigurationBuilder configuration,
+        ISecretStore secretStore)
+    {
         ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(secretStore);
 
         var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         foreach (var (logicalName, configurationKey) in Overrides)
         {
-            var value = Environment.GetEnvironmentVariable(
-                EnvironmentSecretStore.EnvironmentVariableName(logicalName));
+            var value = secretStore.GetSecretAsync(logicalName)
+                .GetAwaiter()
+                .GetResult();
             if (!string.IsNullOrWhiteSpace(value))
             {
                 values[configurationKey] = value;
@@ -61,4 +82,17 @@ public static class SecretConfigurationExtensions
     /// <summary>Returns the supported logical-to-configuration mappings.</summary>
     public static IReadOnlyList<(string LogicalName, string ConfigurationKey)>
         GetSufficitSecretOverrideMappings() => Overrides;
+
+    internal static string? GetConfigurationKey(string logicalName)
+    {
+        foreach (var (mappedName, configurationKey) in Overrides)
+        {
+            if (string.Equals(mappedName, logicalName, StringComparison.OrdinalIgnoreCase))
+            {
+                return configurationKey;
+            }
+        }
+
+        return null;
+    }
 }

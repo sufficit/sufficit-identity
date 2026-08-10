@@ -200,8 +200,8 @@ src/vault/
 ├── IKeyVault.cs                 ← encrypt/decrypt as a service (Transit-style)
 ├── IVaultKeySource.cs           ← pluggable KEK provider (DP / cert / KMS)
 ├── Crypto/
-│   ├── EnvelopeCrypto.cs        ← AES-256-GCM envelope (encrypt/decrypt/wrap)
-│   ├── SelfDescribingCiphertext.cs  ← "v1.<keyId>.<b64(iv‖ct‖tag||aad-hash)>"
+│   ├── EnvelopeCrypto.cs        ← AES-256-GCM data encryption/decryption
+│   ├── SelfDescribingCiphertext.cs  ← "v1.<keyId>.<b64(nonce‖ct‖tag||aad-hash)>"
 │   └── KeyId.cs                 ← key version + name parsing
 ├── Keys/
 │   ├── DataProtectionKeySource.cs   ← default: wrap DEK with DP keyring
@@ -320,25 +320,29 @@ with an AAD dict binding the secret to its owner (e.g.
 `{ "stream_id": streamId }` for SSF auth tokens). This is the sops MAC pattern —
 a ciphertext lifted from stream A won't decrypt for stream B.
 
-### 5.2 Phase 2 — `ISecretStore` for config-time secrets
+### 5.2 Phase 2 — `ISecretStore` for config-time secrets (consumer migration complete)
 
-Today `Program.cs:21` relies on `WebApplication.CreateBuilder` defaults (user
-secrets in dev, env vars always). Phase 2 introduces `ISecretStore` so consumers
-can ask for a secret by name without knowing the source:
+The composition host now resolves startup secrets through `ISecretStore` before
+binding options. Consumers ask for a secret by name without knowing the source:
 
 ```csharp
-// before
-var dbPassword = _config["ConnectionStrings:DefaultConnection"]; // env-coupled
-
-// after
-var dbPassword = await _secretStore.GetSecretAsync("database/password");
+var connectionString =
+    await _secretStore.GetSecretAsync("database/connection-string");
 ```
 
 - **Default impl `EnvironmentSecretStore`** reads `SUFFICIT_SECRET_<NAME>` env
-  vars and falls back to `IConfiguration`. Zero-behavior-change default.
+  vars and falls back to `IConfiguration` only as a compatibility bridge.
 - **Optional `VaultBackedSecretStore`** reads from the encrypted `vault_secrets`
   table (a named-secret store like Vault KV) for operators who want secrets in
   the DB rather than env vars. Opt-in via `VaultOptions.EnableSecretStore = true`.
+
+The startup consumers in `Program.cs` and the STS registration now use the
+boundary for the database connection, certificate passwords, external provider
+credentials and SMTP/RabbitMQ transport passwords. The configuration mappings remain only to preserve
+rolling-deployment compatibility while legacy JSON values are removed from each
+host. Runtime vault consumers continue to use `VaultBackedSecretStore`; it is
+not used for startup resolution because the database connection itself is a
+startup prerequisite.
 
 ### 5.3 Phase 3 — Sign/verify as a service (optional, Transit for JWTs)
 
@@ -457,11 +461,12 @@ signing continues through the existing OpenIddict certificate path.
    (opt-in) + `vault_secrets` table + migration.
 2. Management API endpoint `GET/PUT/DELETE /api/vault/secrets/{name}`
    (capability-scoped; values are write-only in the response).
-3. Config-time consumers still require a separate rollout; existing
-   connection/certificate settings remain configuration-bound until their
-   secret rotation contract is approved.
-4. Store round-trip and environment fallback tests are included; full
-   management authorization integration remains a deployment-test gate.
+3. Startup consumers resolve named secrets through `ISecretStore`; the
+   configuration fallback remains only for rolling-deploy compatibility and can
+   be removed after every host has the corresponding `SUFFICIT_SECRET_*` value.
+4. Named secrets are isolated by `(contextId, namespace)`, use context-bound
+   AAD and require exact namespace claims in Management. Cross-context CRUD,
+   filtered lists and break-glass audit have integration coverage.
 
 ### Phase 3 — Signing-key management (Transit for JWTs, opt-in; implemented)
 1. `SignAsync` / `VerifyAsync` on `IKeyVault`; versioned RSA keys with
@@ -494,8 +499,9 @@ signing continues through the existing OpenIddict certificate path.
 
 ## 10. Testing strategy
 
-- **Unit:** `EnvelopeCrypto` round-trips, AAD mismatch, nonce reuse resistance
-  (GCM), key-version selection from ciphertext prefix.
+- **Unit:** `EnvelopeCrypto` data round-trips, AAD mismatch, nonce reuse
+  resistance (GCM), key-version selection from ciphertext prefix; KEK wrapping
+  is tested through each `IVaultKeyEncryptionKeySource` contract.
 - **Contract:** `IKeyVault` implementations (pass-through, DP, cert) satisfy the
   same round-trip + rotation contract via a shared `[Theory]`.
 - **Integration:** `WebApplicationFactory` test that stores an SSF stream with an

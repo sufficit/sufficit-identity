@@ -22,7 +22,8 @@ public sealed class SufficitIdentityOptions
 
     /// <summary>
     /// Controls whether request-derived public URLs are observed or rejected.
-    /// Audit is the compatibility default for rolling upgrades.
+    /// Enforce is the secure default; Audit is migration-only and reported by
+    /// the production posture check when no canonical origin is configured.
     /// </summary>
     public PublicOriginPolicyOptions PublicOrigin { get; init; } = new();
 
@@ -603,32 +604,32 @@ public sealed class TokenLifetimeOptions
     public double RefreshTokenLifetimeDays { get; init; } = 14;
 
     /// <summary>
-    /// Access token format switch (P0 #5 / eval #B2). <c>true</c> (default —
-    /// the CURRENT, pre-existing behavior, preserved so this flag is a no-op
-    /// until someone deliberately changes it) makes
-    /// <c>server.UseReferenceAccessTokens()</c> apply: access tokens are
-    /// opaque reference tokens, validated only via
-    /// <c>/connect/introspect</c>. <c>false</c> switches to self-contained
-    /// JWT access tokens, validated locally by any resource server holding
-    /// the signing public key (no introspection round-trip).
-    ///
-    /// This setting is GLOBAL — OpenIddict does not support a per-client
-    /// token format natively — while the legacy client inventory
-    /// (docs/migration/PLAN.md in git HEAD) records that only ONE of the 26
-    /// legacy clients (<c>sufficit-endpoints</c>) actually relied on
-    /// reference tokens; the rest expect a JWT they can validate locally.
-    /// Flipping this to <c>false</c> is therefore a real migration-contract
-    /// decision, not a drop-in security hardening: JWTs are self-contained
-    /// (faster, no introspection dependency/availability coupling, but
-    /// un-revocable before expiry and visible to anyone holding the token)
-    /// vs. reference+introspection (instantly revocable, opaque to the
-    /// client, but every validation is a network round-trip to this STS and
-    /// every RS must be coded against /connect/introspect). Do NOT flip
-    /// this without coordinating with every resource server (RS) team first
-    /// — this file only surfaces the decision as explicit and reversible
-    /// config; it does not make the call for you.
+    /// Compatibility fallback when no per-resource or per-client rule exists.
+    /// <c>true</c> preserves the historical opaque reference-token behavior;
+    /// <c>false</c> uses self-contained JWT access tokens. New migrations
+    /// should use the maps below instead of flipping every client at once.
     /// </summary>
     public bool UseReferenceAccessTokens { get; init; } = true;
+
+    /// <summary>
+    /// Exact OAuth client_id to access-token format. Resource rules take
+    /// precedence when a token has a mapped audience.
+    /// </summary>
+    public Dictionary<string, AccessTokenStorageMode> AccessTokenFormatsByClient
+        { get; init; } = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Exact resource/audience to format. All mapped resources in one token
+    /// must agree; conflicting formats fail issuance closed.
+    /// </summary>
+    public Dictionary<string, AccessTokenStorageMode> AccessTokenFormatsByResource
+        { get; init; } = new(StringComparer.Ordinal);
+}
+
+public enum AccessTokenStorageMode
+{
+    Reference,
+    Jwt,
 }
 
 /// <summary>
@@ -729,12 +730,27 @@ public sealed class CorsOptions
 public sealed class SecurityPostureOptions
 {
     /// <summary>
-    /// When true (default), the host refuses to start outside Development if
-    /// any permissive default is still in effect and unacknowledged. Set false
-    /// to downgrade the check to a startup warning (not recommended for
-    /// production). Development is never blocked regardless of this value.
+    /// Retained only so older configuration files continue to bind. The host
+    /// now always fails closed outside Development; false is logged and ignored.
     /// </summary>
+    [Obsolete("The production posture check always fails closed outside Development. Use bounded per-finding acknowledgements.")]
     public bool FailClosedOnInsecureDefaults { get; init; } = true;
+
+    /// <summary>
+    /// Temporary bridge for the old CSP/Management acknowledgement booleans.
+    /// Disabled by default. When explicitly enabled, old booleans are honored
+    /// with a deprecation warning while deployments migrate to
+    /// <see cref="Acknowledgements"/>.
+    /// </summary>
+    public bool AllowLegacyBooleanAcknowledgements { get; init; }
+
+    /// <summary>
+    /// Bounded exceptions keyed by stable production posture finding ID. Owner,
+    /// reason and a future expiry are all required; stale or expired entries
+    /// are themselves startup findings.
+    /// </summary>
+    public Dictionary<string, ProductionPostureAcknowledgement> Acknowledgements
+    { get; init; } = new(StringComparer.Ordinal);
 }
 
 public sealed class CspOptions
@@ -938,14 +954,14 @@ public enum SecurityPolicyEnforcementMode
 }
 
 /// <summary>
-/// Least-privilege policy for issuing personal access tokens. Defaults remain
-/// observational so existing production callers can be inventoried before
-/// the stricter contract is activated.
+/// Least-privilege policy for issuing personal access tokens. Enforce is the
+/// secure default; Observe remains available only as an explicit, posture-
+/// checked migration mode.
 /// </summary>
 public sealed class PersonalTokenIssuanceOptions
 {
     public SecurityPolicyEnforcementMode Mode { get; init; } =
-        SecurityPolicyEnforcementMode.Observe;
+        SecurityPolicyEnforcementMode.Enforce;
 
     public string RequiredScope { get; init; } = "personal_tokens.manage";
 
@@ -1012,6 +1028,39 @@ public sealed class MtlsOptions
     /// host trust store.
     /// </summary>
     public bool RequireValidCertificateChain { get; init; } = true;
+
+    /// <summary>
+    /// Certificate-revocation strategy used while building the platform chain.
+    /// The secure default performs online CRL/OCSP retrieval.
+    /// </summary>
+    public MtlsCertificateRevocationMode RevocationMode { get; init; } =
+        MtlsCertificateRevocationMode.Online;
+
+    /// <summary>
+    /// Controls whether an unavailable CRL/OCSP responder is denied. The
+    /// default is fail-closed; the compatibility mode never permits an
+    /// explicitly revoked, expired, untrusted or wrongly pinned certificate.
+    /// </summary>
+    public MtlsRevocationFailureMode RevocationFailureMode { get; init; } =
+        MtlsRevocationFailureMode.FailClosed;
+
+    /// <summary>Maximum platform chain URL retrieval time.</summary>
+    public int RevocationTimeoutSeconds { get; init; } = 3;
+
+    /// <summary>
+    /// Header carrying the URL-encoded PEM or base64 DER certificate in
+    /// TrustedProxy mode. It is removed before downstream middleware runs.
+    /// </summary>
+    public string ForwardedCertificateHeader { get; init; } =
+        "X-Sufficit-Client-Certificate";
+
+    /// <summary>
+    /// CIDRs authorized specifically to assert the forwarded client
+    /// certificate. This list is deliberately separate from general
+    /// X-Forwarded-* proxy trust.
+    /// </summary>
+    public HashSet<string> TrustedProxyNetworks { get; init; } =
+        new(StringComparer.Ordinal);
 }
 
 public enum MtlsDeploymentMode
@@ -1019,6 +1068,19 @@ public enum MtlsDeploymentMode
     Unattested,
     DirectTls,
     TrustedProxy,
+}
+
+public enum MtlsCertificateRevocationMode
+{
+    NoCheck,
+    Online,
+    Offline,
+}
+
+public enum MtlsRevocationFailureMode
+{
+    FailClosed,
+    AllowWhenUnavailable,
 }
 
 /// <summary>
@@ -1275,6 +1337,23 @@ public sealed class JarOptions
 
     /// <summary>Required RFC 9101 request-object media type.</summary>
     public string RequiredTokenType { get; init; } = "oauth-authz-req+jwt";
+
+    /// <summary>Maximum remote JWKS response size. Responses are streamed and
+    /// rejected once this bound is crossed.</summary>
+    public int RemoteJwksMaxBytes { get; init; } = 65_536;
+
+    /// <summary>Per-request timeout for a registered remote JWKS URI.</summary>
+    public int RemoteJwksTimeoutSeconds { get; init; } = 3;
+
+    /// <summary>Fresh-cache lifetime for remote key sets.</summary>
+    public int RemoteJwksCacheSeconds { get; init; } = 300;
+
+    /// <summary>Additional bounded interval during which an already-known kid
+    /// may be used if the remote endpoint is temporarily unavailable.</summary>
+    public int RemoteJwksStaleSeconds { get; init; } = 900;
+
+    /// <summary>Maximum number of registered JWKS URIs retained in process.</summary>
+    public int RemoteJwksMaxCacheEntries { get; init; } = 256;
 }
 
 /// <summary>
@@ -1386,7 +1465,7 @@ public sealed class CibaOptions
     /// without interrupting them. Enforce rejects those requests.
     /// </summary>
     public SecurityPolicyEnforcementMode ClientPolicyMode { get; init; } =
-        SecurityPolicyEnforcementMode.Observe;
+        SecurityPolicyEnforcementMode.Enforce;
 
     public bool RequireConfidentialClient { get; init; } = true;
 

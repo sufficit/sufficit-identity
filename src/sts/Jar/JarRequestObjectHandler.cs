@@ -15,8 +15,8 @@ namespace Sufficit.Identity.STS.Jar;
 /// Extracts and validates an RFC 9101 JWT-Secured Authorization Request
 /// (<c>request</c> parameter) at the authorization and PAR endpoints. When the
 /// request object is valid, its claims replace the matching query/form
-/// parameters on the OpenIddict request so downstream validation operates on
-/// the signed, tamper-proof parameter set.
+/// parameters on the OpenIddict request so downstream validation operates
+/// exclusively on the signed, tamper-proof parameter set.
 /// </summary>
 /// <remarks>
 /// Implemented from scratch because OpenIddict 7.6 does not parse/validate
@@ -34,6 +34,7 @@ internal static class JarRequestObjectHandler
     /// </summary>
     public sealed class ExtractAuthorizationRequestObject(
         IOpenIddictApplicationManager applications,
+        IJarSigningKeyResolver signingKeys,
         SufficitIdentityOptions rootOptions,
         IDpopReplayCache replayCache)
         : IOpenIddictServerHandler<ExtractAuthorizationRequestContext>
@@ -51,6 +52,7 @@ internal static class JarRequestObjectHandler
             await JarExtractor.TryMergeAsync(
                 context.Transaction.Request!,
                 applications,
+                signingKeys,
                 rootOptions.Jar,
                 rootOptions.Issuer,
                 replayCache,
@@ -66,6 +68,7 @@ internal static class JarRequestObjectHandler
     /// </summary>
     public sealed class ExtractPushedAuthorizationRequestObject(
         IOpenIddictApplicationManager applications,
+        IJarSigningKeyResolver signingKeys,
         SufficitIdentityOptions rootOptions,
         IDpopReplayCache replayCache)
         : IOpenIddictServerHandler<ExtractPushedAuthorizationRequestContext>
@@ -83,6 +86,7 @@ internal static class JarRequestObjectHandler
             await JarExtractor.TryMergeAsync(
                 context.Transaction.Request!,
                 applications,
+                signingKeys,
                 rootOptions.Jar,
                 rootOptions.Issuer,
                 replayCache,
@@ -108,6 +112,7 @@ internal static class JarExtractor
     public static async Task TryMergeAsync(
         OpenIddictRequest request,
         IOpenIddictApplicationManager applications,
+        IJarSigningKeyResolver signingKeyResolver,
         JarOptions options,
         string? issuer,
         IDpopReplayCache replayCache,
@@ -206,8 +211,29 @@ internal static class JarExtractor
             return;
         }
 
-        var signingKeys = await ResolveSigningKeysAsync(
-            applications, application, jwt.Kid, cancellationToken);
+        IReadOnlyList<SecurityKey> signingKeys;
+        try
+        {
+            signingKeys = await signingKeyResolver.ResolveAsync(
+                application,
+                jwt.Kid,
+                cancellationToken);
+        }
+        catch (Exception exception) when (
+            exception is HttpRequestException
+                or InvalidOperationException
+                or JsonException
+                or TaskCanceledException)
+        {
+            logger.LogWarning(
+                exception,
+                "JAR: registered signing-key metadata could not be resolved for client {ClientId}.",
+                jarClientId);
+            reject(
+                "The client's registered request-object signing keys are unavailable or invalid.",
+                null);
+            return;
+        }
         if (signingKeys.Count == 0)
         {
             reject(
@@ -260,70 +286,84 @@ internal static class JarExtractor
             return;
         }
 
-        // 7. Merge: replace every outer parameter with the signed value, then
-        // drop the request parameter itself. RFC 9101 §6: a parameter present
-        // in both must match; we treat the signed value as authoritative and
-        // overwrite (the signed object is the source of truth).
+        // 7. Replace the complete outer parameter set. RFC 9101 requires all
+        // authorization parameters used with a Request Object to be carried
+        // by that object. Keeping an outer parameter merely because the JWT
+        // omitted it would make an unsigned scope/resource/prompt extension
+        // influence the request.
         using var payload = JsonDocument.Parse(
             Base64UrlEncoder.Decode(jwt.EncodedPayload));
-        foreach (var parameter in payload.RootElement.EnumerateObject())
+        if (!TryReplaceWithSignedParameters(
+                request,
+                payload.RootElement,
+                jarClientId!,
+                out var replacementError))
         {
-            // Skip JWT-internal claims that are not authorization parameters.
-            if (parameter.Name is "iss" or "aud" or "exp" or "iat" or "nbf" or "jti"
-                or "client_id")
+            reject(replacementError!, null);
+            return;
+        }
+    }
+
+    internal static bool TryReplaceWithSignedParameters(
+        OpenIddictRequest request,
+        JsonElement payload,
+        string clientId,
+        out string? error)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
+
+        if (payload.ValueKind is not JsonValueKind.Object)
+        {
+            error = "The request object payload must be a JSON object.";
+            return false;
+        }
+
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        var signedParameters = new List<(string Name, JsonElement Value)>();
+        foreach (var parameter in payload.EnumerateObject())
+        {
+            if (!names.Add(parameter.Name))
+            {
+                error = $"The request object contains duplicate parameter '{parameter.Name}'.";
+                return false;
+            }
+
+            // JWT validation claims are not OAuth authorization parameters.
+            if (parameter.Name is "iss" or "aud" or "exp" or "iat" or "nbf"
+                or "jti" or "client_id")
             {
                 continue;
             }
-            request.SetParameter(parameter.Name, parameter.Value.Clone());
-        }
 
-        // Ensure client_id is set on the outer request (PAR may receive it
-        // only inside the request object).
-        if (string.IsNullOrWhiteSpace(request.ClientId))
-        {
-            request.ClientId = jarClientId;
-        }
-
-        request.RemoveParameter(OpenIddictConstants.Parameters.Request);
-    }
-
-    /// <summary>
-    /// Resolves the client's signing keys. OpenIddict stores <c>jwks</c> as a
-    /// JsonElement; we parse it into <see cref="JsonWebKey"/> objects. Falls
-    /// back to <c>jwks_uri</c> fetch when <c>jwks</c> is absent (defensive —
-    /// most deployments embed jwks).
-    /// </summary>
-    private static async Task<IList<SecurityKey>> ResolveSigningKeysAsync(
-        IOpenIddictApplicationManager applications,
-        object application,
-        string? kid,
-        CancellationToken cancellationToken)
-    {
-        var keys = new List<SecurityKey>();
-
-        var jwks = await applications.GetJsonWebKeySetAsync(application, cancellationToken);
-        if (jwks is { Keys: { Count: > 0 } jwksKeys })
-        {
-            foreach (var key in jwksKeys)
+            // A Request Object cannot recursively select another request
+            // carrier. Allowing this would reintroduce an unsigned/remote
+            // parameter source after the signed payload was validated.
+            if (parameter.Name is OpenIddictConstants.Parameters.Request
+                or OpenIddictConstants.Parameters.RequestUri)
             {
-                // Serialize the JsonWebKey back to JSON and re-parse as a
-                // SecurityKey via JsonWebKey.SetTokenParameters.
-                var json = JsonSerializer.Serialize(key);
-                try
-                {
-                    var securityKey = JsonWebKey.Create(json);
-                    if (kid is null || string.Equals(securityKey.KeyId, kid, StringComparison.Ordinal))
-                    {
-                        keys.Add(securityKey);
-                    }
-                }
-                catch
-                {
-                    // Skip keys that cannot be parsed.
-                }
+                error = "A request object cannot contain request or request_uri.";
+                return false;
             }
+
+            signedParameters.Add((parameter.Name, parameter.Value.Clone()));
         }
 
-        return keys;
+        foreach (var name in request.GetParameters()
+                     .Select(parameter => parameter.Key)
+                     .ToArray())
+        {
+            request.RemoveParameter(name);
+        }
+
+        request.ClientId = clientId;
+        foreach (var parameter in signedParameters)
+        {
+            request.SetParameter(parameter.Name, parameter.Value);
+        }
+
+        error = null;
+        return true;
     }
+
 }

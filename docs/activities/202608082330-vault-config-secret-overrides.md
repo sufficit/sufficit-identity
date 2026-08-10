@@ -15,10 +15,21 @@
 - O mapeamento e a precedência ambiente > JSON têm cobertura automatizada.
 - O runbook documenta os nomes das variáveis e a sequência de migração.
 
-## Limites desta etapa
+## Atualização — migração dos consumidores (2026-08-09)
 
-- A camada ainda é uma ponte de compatibilidade para o startup; o valor legado
-  só deve ser removido depois de instalar os overrides em todas as réplicas.
-- A migração dos consumidores para buscar diretamente no `ISecretStore` e a
-  ativação de `RequireEncryptionInProduction=true` continuam pendentes.
+- `Program.cs` e `AddSufficitIdentitySTS` agora recebem um `ISecretStore` de
+  startup e resolvem por nome lógico a conexão do banco, senhas de certificados
+  e credenciais dos provedores externos.
+- A ponte de configuração continua disponível somente como fallback de
+  compatibilidade durante o rolling deploy; nenhum valor é registrado.
+- A cobertura valida o mapeamento completo e a passagem pelo boundary (`VaultTests`
+  e `CertificateRotationTests`).
+
+## Limites remanescentes
+
+- A camada de configuração ainda é uma ponte de compatibilidade para o startup;
+  o valor legado só deve ser removido depois de instalar os overrides em todas
+  as réplicas.
+- A ativação de `RequireEncryptionInProduction=true` e a remoção definitiva dos
+  valores JSON são operações de rollout, não mudanças de código desta etapa.
 - Nenhum segredo de produção foi alterado nesta etapa.
