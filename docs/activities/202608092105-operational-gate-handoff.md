@@ -1,4 +1,4 @@
-# Handoff dos gates operacionais da avaliação Claude Fable 5
+# Handoff dos gates operacionais de produção
 
 **Concluído em:** 2026-08-09
 **Escopo:** reconciliação de dependências externas, sem declarar ambientes não
@@ -7,8 +7,7 @@ inspecionados como prontos.
 ## Resultado
 
 As pendências de rollout e comprovação que não podem ser executadas somente no
-workspace foram removidas do plano de implementação Claude Fable 5 e
-transferidas para o plano canônico
+workspace foram removidas do plano de implementação e transferidas para o plano canônico
 [`PLAN-PRODUCTION-READINESS.md`](../plans/PLAN-PRODUCTION-READINESS.md).
 
 Foi criado

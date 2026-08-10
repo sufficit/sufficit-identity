@@ -13,6 +13,7 @@
 - [ ] Commissionar auditoria externa de DPoP, CIBA, JARM, JAR, mTLS, token exchange, SSF e vault; corrigir e retestar findings impeditivos
 
 ## Deployment assurance
+- [ ] Inventariar e rotacionar credenciais/certificados legados de banco e provedores, migrar `deploy/local/` para o secret store aprovado e anexar manifesto redigido com owner, versão, estado e data de retirada
 - [ ] Por ambiente, inventariar SCIM, token exchange, personal tokens, CIBA, credential mutations, origem pública e Management; remover `Observe`/`Audit`/authorization-off ou registrar exceção temporária válida
 - [ ] Habilitar o vault e provar zero valores/leituras `pt1.`, backup restaurável e rollback sem registrar material sensível
 - [ ] Executar `RUNBOOK-CONFIRMED-EMAIL` (rollout e migração dos usuários legados)

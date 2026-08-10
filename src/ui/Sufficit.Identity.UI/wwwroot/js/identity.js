@@ -80,28 +80,50 @@ document.addEventListener('change', function (event) {
         }, 250);
     }
 
-    var result = document.querySelector('[data-device-flow-result]');
-    if (!result) return;
+    function initializeDeviceFlowClose() {
+        var result = document.querySelector('[data-device-flow-result]');
+        if (!result || result.dataset.deviceCloseInitialized === 'true') return;
 
-    var closeButton = document.querySelector('[data-device-flow-close]');
-    if (!canCloseDeviceFlowTab()) {
-        showManualCompletion(result);
-        return;
-    }
+        result.dataset.deviceCloseInitialized = 'true';
 
-    if (closeButton) {
-        closeButton.hidden = false;
-        closeButton.addEventListener('click', function () {
+        var closeButton = document.querySelector('[data-device-flow-close]');
+        if (!canCloseDeviceFlowTab()) {
+            showManualCompletion(result);
+            return;
+        }
+
+        if (closeButton) {
+            closeButton.hidden = false;
+            closeButton.addEventListener('click', function () {
+                closeDeviceFlowTab(result);
+            });
+        }
+
+        // Device verification is terminal in this browser. Attempt to close the
+        // tab automatically only when browser rules are expected to allow it;
+        // never navigate to the Identity home page.
+        window.setTimeout(function () {
             closeDeviceFlowTab(result);
-        });
+        }, 400);
     }
 
-    // Device verification is terminal in this browser. Attempt to close the
-    // tab automatically only when browser rules are expected to allow it;
-    // never navigate to the Identity home page.
-    window.setTimeout(function () {
-        closeDeviceFlowTab(result);
-    }, 400);
+    function subscribeToEnhancedLoads() {
+        if (!window.Blazor || typeof window.Blazor.addEventListener !== 'function') {
+            return false;
+        }
+
+        window.Blazor.addEventListener('enhancedload', initializeDeviceFlowClose);
+        return true;
+    }
+
+    initializeDeviceFlowClose();
+
+    // identity.js is loaded before blazor.web.js. Subscribe as soon as Blazor
+    // exposes its enhanced navigation events so a replaced terminal page gets
+    // the same close behavior as a full page load.
+    if (!subscribeToEnhancedLoads()) {
+        window.addEventListener('load', subscribeToEnhancedLoads, { once: true });
+    }
 })();
 
 /**

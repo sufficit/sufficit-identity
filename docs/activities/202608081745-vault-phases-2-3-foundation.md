@@ -19,4 +19,4 @@
 - migrar consumidores de configuração (banco/certificados) para `ISecretStore`;
 - migrar o backend de KEK para KMS/HSM externo e executar os ensaios de
   autorização da API em ambiente de produção (o provider OpenIddict/JWKS foi
-  entregue em [`202608081530-completed-vault-signing-provider-jwks.md`](202608081530-completed-vault-signing-provider-jwks.md));
+  entregue em [`202608081530-vault-signing-provider-jwks.md`](202608081530-vault-signing-provider-jwks.md));

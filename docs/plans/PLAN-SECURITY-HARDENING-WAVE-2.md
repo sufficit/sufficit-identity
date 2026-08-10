@@ -5,7 +5,7 @@
 > **Disclosure note:** this repository is public. This plan records implementation work and acceptance criteria, but intentionally omits the confidential review identifier, reproduction steps, payloads, and exploitation scenarios. Those details remain in the restricted security-review channel until coordinated disclosure.
 
 Code-level controls delivered after this reconciliation are recorded in
-`docs/activities/202608071330-completed-security-hardening-wave-2.md`. This plan
+`docs/activities/202608071330-security-hardening-wave-2.md`. This plan
 stays active for the remaining cross-entry-point lifecycle work, production
 inventories, cohort enforcement, conformance and operational proof.
 

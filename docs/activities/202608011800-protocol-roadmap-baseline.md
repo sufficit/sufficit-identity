@@ -30,7 +30,7 @@
 ### Product quality
 - ✅ Independent evaluation performed; the findings listed in this historical baseline were addressed (16/17, M5 by-design). Later hardening work is tracked in the active security plan.
 
-### Evaluation security fixes (EVALUATION-2026-08-04-GLM-5.2)
+### Correções de segurança protocolar
 - ✅ H4: in-memory stores → distributed
 - ✅ M1: scope/capability namespace separation
 - ✅ M2: role god-mode → granular RoleCapabilities + opt-in FullAdministratorRoles

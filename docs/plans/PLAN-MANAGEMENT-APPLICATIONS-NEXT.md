@@ -7,10 +7,10 @@
 O catálogo de capacidades, a derivação de perfis e a primeira entrega da lista
 operacional foram concluídos e movidos para:
 
-- [`../activities/202608082230-completed-runtime-capability-catalog.md`](../activities/202608082230-completed-runtime-capability-catalog.md)
-- [`../activities/202608082300-completed-client-catalog-pagination.md`](../activities/202608082300-completed-client-catalog-pagination.md)
-- [`../activities/202608082330-completed-client-empty-deep-link.md`](../activities/202608082330-completed-client-empty-deep-link.md)
-- [`../activities/202608082345-completed-client-mobile-review.md`](../activities/202608082345-completed-client-mobile-review.md)
+- [`../activities/202608082230-runtime-capability-catalog.md`](../activities/202608082230-runtime-capability-catalog.md)
+- [`../activities/202608082300-client-catalog-pagination.md`](../activities/202608082300-client-catalog-pagination.md)
+- [`../activities/202608082330-client-empty-deep-link.md`](../activities/202608082330-client-empty-deep-link.md)
+- [`../activities/202608082345-client-mobile-review.md`](../activities/202608082345-client-mobile-review.md)
 
 Este arquivo mantém somente o trabalho que ainda falta.
 

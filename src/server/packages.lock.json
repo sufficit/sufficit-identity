@@ -299,6 +299,11 @@
           "System.CodeDom": "6.0.0"
         }
       },
+      "MudBlazor": {
+        "type": "Transitive",
+        "resolved": "9.8.0",
+        "contentHash": "JLJ81j6cn5RUTbgpYAtjRfB3bTNweX0q8lkMS6B9v1oGzZsjVTxDDnWahD+rOtzJWPU6D9svsymiETe4G8bSLw=="
+      },
       "MySqlConnector": {
         "type": "Transitive",
         "resolved": "2.5.0",
@@ -641,6 +646,12 @@
           "System.Composition.Runtime": "9.0.0"
         }
       },
+      "sufficit.blazor.ui": {
+        "type": "Project",
+        "dependencies": {
+          "MudBlazor": "[9.8.0, )"
+        }
+      },
       "sufficit.identity.application.abstractions": {
         "type": "Project"
       },
@@ -699,7 +710,10 @@
         "type": "Project"
       },
       "sufficit.identity.ui.components": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "Sufficit.Blazor.UI": "[1.0.0, )"
+        }
       },
       "sufficit.identity.ui.management": {
         "type": "Project",
@@ -712,6 +726,7 @@
       "sufficit.identity.ui.vault": {
         "type": "Project",
         "dependencies": {
+          "Sufficit.Blazor.UI": "[1.0.0, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Components": "[0.4.0-alpha, )"

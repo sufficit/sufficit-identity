@@ -1,6 +1,6 @@
 # Legacy cutover — operational gates pending
 
-> **Status:** NO-GO for production cutover. Database/provider gates are complete (see `202608011820-completed-legacy-cutover-db-provider.md`). The items below are operational — they require human action against real infrastructure and clients, not code.
+> **Status:** NO-GO for production cutover. Database/provider gates are complete (see `202608011820-legacy-cutover-db-provider.md`). The items below are operational — they require human action against real infrastructure and clients, not code.
 
 ## Client gates
 - [ ] Every active client has an assigned owner and documented final state

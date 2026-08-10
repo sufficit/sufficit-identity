@@ -2,7 +2,7 @@
 
 > **Status:** COMPLETED em 2026-08-09. Entrega dos itens P2 de limpeza do
 > envelope criptográfico, composição DPoP e reavaliação de enums em
-> `PLAN-CLAUDE-FABLE-5-REMAINING.md`.
+> plano de criptografia e replay.
 
 ## Resultado
 

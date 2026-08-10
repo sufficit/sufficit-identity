@@ -1,7 +1,7 @@
 # Políticas sensíveis — defaults seguros
 
 > **Status:** COMPLETED em 2026-08-09. Entrega de código correspondente à
-> parcela local do P0.2 de `PLAN-CLAUDE-FABLE-5-REMAINING.md`.
+> parcela local do P0.2 do plano de postura de produção.
 
 ## Entregue
 

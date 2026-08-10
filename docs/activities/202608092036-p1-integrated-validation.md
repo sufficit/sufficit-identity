@@ -1,7 +1,7 @@
 # Validação integrada P1 — JAR e mTLS
 
 > **Status:** COMPLETED em 2026-08-09. Consolida as entregas P1.3 e P1.4 de
-> `PLAN-CLAUDE-FABLE-5-REMAINING.md`.
+> plano integrado de segurança de protocolos.
 
 ## Resultado
 

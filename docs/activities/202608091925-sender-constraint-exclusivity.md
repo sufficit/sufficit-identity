@@ -1,7 +1,7 @@
 # Sender constraints — exclusividade DPoP/mTLS
 
 > **Status:** COMPLETED em 2026-08-09. Entrega correspondente ao P0.4 de
-> `PLAN-CLAUDE-FABLE-5-REMAINING.md`.
+> plano de segurança de tokens.
 
 ## Entregue
 

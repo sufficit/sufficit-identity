@@ -23,7 +23,7 @@ Dated evaluations that are useful only as historical evidence live under
 ## Active plans (pending work)
 
 - [GPT-5 evaluation — remaining work](plans/PLAN-GPT-5-REMAINING.md) — residual protocol, trust-boundary and production-assurance work
-- [GLM-5.2 evaluation — remaining work](plans/PLAN-GLM-5-2-REMAINING.md) — residual authorization, secret and maintainability work
+- [Authorization, SCIM and secret boundaries](plans/PLAN-GLM-5-2-REMAINING.md) — residual authorization, secret and maintainability work
 - [Management applications](plans/PLAN-MANAGEMENT-APPLICATIONS.md) — complete OAuth/OIDC application lifecycle in the Management console
 - [Production readiness](plans/PLAN-PRODUCTION-READINESS.md) — certification, CSP calibration, WCAG, forward protocols
 - [Legacy cutover — operational gates](plans/PLAN-LEGACY-CUTOVER-OPS.md) — clients, keys, rehearsals
@@ -32,32 +32,34 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Completed work (activities/)
 
-- [Claude Fable 5 evaluation implementation](activities/202608092110-completed-claude-fable-5-implementation.md)
-- [Operational production-gate handoff](activities/202608092105-completed-operational-gate-handoff.md)
-- [P2 architecture scope reconciliation](activities/202608092100-completed-p2-architecture-reconciliation.md)
-- [Per-client and per-resource access-token format](activities/202608092055-completed-per-client-access-token-format.md)
-- [Vault AES-GCM message-budget metrics](activities/202608092052-completed-vault-encryption-budget-metrics.md)
-- [Crypto model and atomic DPoP replay composition](activities/202608092045-completed-crypto-model-replay-composition.md)
-- [P1 integrated JAR and mTLS validation](activities/202608092036-completed-p1-integrated-validation.md)
-- [mTLS revocation and trusted-proxy topology](activities/202608092035-completed-mtls-revocation-topology.md)
-- [JAR remote JWKS with safe egress](activities/202608092022-completed-jar-remote-jwks.md)
-- [Vault named-secret namespace authorization](activities/202608092010-completed-vault-secret-namespaces.md)
-- [Vault signing-key lifecycle and KEK separation](activities/202608092355-completed-vault-signing-key-lifecycle.md)
-- [Vault secret context isolation and ISecretStore consumers](activities/202608092020-completed-vault-secret-context-and-secret-store.md)
-- [Vault production fail-closed boundaries](activities/202608091930-completed-vault-fail-closed-boundaries.md)
-- [DPoP/mTLS sender-constraint exclusivity](activities/202608091925-completed-sender-constraint-exclusivity.md)
-- [Client and Request Object invariants](activities/202608091918-completed-pkce-jar-invariants.md)
-- [Security-sensitive policy defaults](activities/202608091911-completed-secure-policy-defaults.md)
-- [Production posture — contributors and fail-closed](activities/202608091904-completed-production-posture-contributors.md)
-- [Security hardening wave 2](activities/202608071330-completed-security-hardening-wave-2.md)
-- [GPT-5 evaluation remediation](activities/202608071227-completed-gpt-5-remediation.md)
-- [GLM-5.2 evaluation remediation](activities/202608071210-completed-glm-5-2-remediation.md)
-- [Protocol roadmap baseline](activities/202608011800-completed-protocol-roadmap-baseline.md)
-- [Legacy cutover — DB/provider gates](activities/202608011820-completed-legacy-cutover-db-provider.md)
-- [Pluggable UI — phases 0-1](activities/202608012000-completed-pluggable-ui-phase0-phase1.md)
-- [Internal vault — Phase 1](activities/202608081430-completed-vault-phase-1.md)
+- [Reconciliação do plano de autorização, SCIM e segredos](activities/202608092130-security-plan-reconciliation.md)
+- [Normalização de nomes e resumos das atividades](activities/202608092120-activity-documentation-normalization.md)
+- [Implementação e encerramento do plano de segurança](activities/202608092110-implementation-plan-closure.md)
+- [Handoff dos gates operacionais de produção](activities/202608092105-operational-gate-handoff.md)
+- [Reconciliação dos refactors arquiteturais P2](activities/202608092100-p2-architecture-reconciliation.md)
+- [Formato de access token por cliente e recurso](activities/202608092055-per-client-access-token-format.md)
+- [Métrica e orçamento de mensagens AES-GCM](activities/202608092052-vault-encryption-budget-metrics.md)
+- [Modelo criptográfico e composição de replay](activities/202608092045-crypto-model-replay-composition.md)
+- [Validação integrada P1 — JAR e mTLS](activities/202608092036-p1-integrated-validation.md)
+- [Revogação e topologia verificável de mTLS](activities/202608092035-mtls-revocation-topology.md)
+- [JAR com `jwks_uri` remoto seguro](activities/202608092022-jar-remote-jwks.md)
+- [Vault — autorização de named secrets](activities/202608092010-vault-secret-namespaces.md)
+- [Vault — lifecycle distribuído das chaves de assinatura](activities/202608092355-vault-signing-key-lifecycle.md)
+- [Vault — isolamento de segredos e consumidores](activities/202608092020-vault-secret-context-and-secret-store.md)
+- [Vault — boundaries fail-closed de produção](activities/202608091930-vault-fail-closed-boundaries.md)
+- [Sender constraints — exclusividade DPoP/mTLS](activities/202608091925-sender-constraint-exclusivity.md)
+- [Invariantes de cliente e Request Object](activities/202608091918-pkce-jar-invariants.md)
+- [Políticas sensíveis — defaults seguros](activities/202608091911-secure-policy-defaults.md)
+- [Production posture — contributors modulares](activities/202608091904-production-posture-contributors.md)
+- [Security hardening wave 2](activities/202608071330-security-hardening-wave-2.md)
+- [Correções de segurança de protocolos e fronteiras](activities/202608071227-protocol-security-remediation.md)
+- [Endurecimento de segurança, sessão e vault](activities/202608071210-security-hardening.md)
+- [Protocol roadmap baseline](activities/202608011800-protocol-roadmap-baseline.md)
+- [Legacy cutover — DB/provider gates](activities/202608011820-legacy-cutover-db-provider.md)
+- [Pluggable UI — phases 0-1](activities/202608012000-pluggable-ui-phase0-phase1.md)
+- [Internal vault — Phase 1](activities/202608081430-vault-phase-1.md)
 - [Internal vault — Phases 2/3 foundation](activities/202608081745-vault-phases-2-3-foundation.md)
-- [Internal vault — signing provider and JWKS](activities/202608081530-completed-vault-signing-provider-jwks.md)
+- [Internal vault — signing provider and JWKS](activities/202608081530-vault-signing-provider-jwks.md)
 
 ## Architecture
 
@@ -95,10 +97,6 @@ Dated evaluations that are useful only as historical evidence live under
 ## Evaluations
 
 - [Evaluation prompt](evaluations/EVALUATION-PROMPT.md)
-
-## Archive
-
-- [Claude Fable 5 implementation plan](archive/plans/PLAN-CLAUDE-FABLE-5-REMAINING.md)
 
 An evaluation describes the repository at a point in time. Findings that still
 require work must be copied into the relevant active plan; an archived evaluation
