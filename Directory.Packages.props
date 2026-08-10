@@ -42,7 +42,7 @@
 
     <!-- Direct Q-EMAIL publisher. Kept local to Identity so the STS does not
          pull the full Sufficit.Communication/EFData/Pomelo graph into EF10. -->
-    <PackageVersion Include="RabbitMQ.Client" Version="7.2.1" />
+    <PackageVersion Include="RabbitMQ.Client" Version="7.2.2" />
 
     <!-- API docs -->
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="7.2.0" />
