@@ -57,5 +57,5 @@ de checkboxes ativos caiu de 41 para 34.
   item marcado como concluído;
 - `DocumentationContractTests.Canonical_documentation_links_resolve` passou;
 - o teste global de nomes permanece bloqueado somente pelo arquivo paralelo
-  não versionado `docs/security/strix-identity-scope.md`, preservado sem
+  não versionado `docs/security/RUNBOOK-STRIX-IDENTITY-SCOPE.md`, preservado sem
   alteração nesta reconciliação.

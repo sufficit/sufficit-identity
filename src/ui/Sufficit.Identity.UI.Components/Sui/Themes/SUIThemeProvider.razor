@@ -1,0 +1,69 @@
+@namespace Sufficit.Blazor.UI.Themes
+@using System
+@using System.Text
+@inject IServiceProvider Services
+
+<CascadingValue Value="@ActiveTheme" IsFixed="true">
+    <div class="@WrapperClass" data-sui-theme="@(ActiveTheme.IsDark ? "dark" : "light")">
+        @ChildContent
+    </div>
+    <style>@ToCssVars(ActiveTheme)</style>
+</CascadingValue>
+
+@code {
+    [Parameter] public ISUITheme? Theme { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private ISUITheme? _resolved;
+    private ISUITheme ActiveTheme => Theme ?? _resolved ?? DefaultSUITheme.Instance;
+    private string WrapperClass => string.IsNullOrWhiteSpace(Class) ? "sui-root" : $"sui-root {Class}";
+
+    protected override void OnInitialized()
+        => _resolved = Services.GetService(typeof(ISUITheme)) as ISUITheme;
+
+    private static string ToCssVars(ISUITheme theme)
+    {
+        var p = theme.Palette;
+        var t = theme.Typography;
+        var l = theme.Layout;
+        var values = new (string Name, string Value)[]
+        {
+            ("--sui-color-primary", p.Primary), ("--sui-color-primary-contrast", p.PrimaryContrast),
+            ("--sui-color-primary-soft", p.PrimarySoft), ("--sui-color-secondary", p.Secondary),
+            ("--sui-color-secondary-contrast", p.SecondaryContrast), ("--sui-color-info", p.Info),
+            ("--sui-color-success", p.Success), ("--sui-color-warning", p.Warning),
+            ("--sui-color-error", p.Error), ("--sui-color-dark", p.Dark), ("--sui-color-light", p.Light),
+            ("--sui-surface", p.Surface), ("--sui-surface-2", p.Surface2), ("--sui-surface-3", p.Surface3),
+            ("--sui-text-primary", p.TextPrimary), ("--sui-text-secondary", p.TextSecondary),
+            ("--sui-text-disabled", p.TextDisabled), ("--sui-border", p.Border),
+            ("--sui-border-strong", p.BorderStrong), ("--sui-overlay", p.Overlay),
+            ("--sui-font", t.FontFamily), ("--sui-font-mono", t.FontFamilyMono),
+            ("--sui-fs-h1", t.FsH1), ("--sui-fs-h2", t.FsH2), ("--sui-fs-h3", t.FsH3),
+            ("--sui-fs-h4", t.FsH4), ("--sui-fs-h5", t.FsH5), ("--sui-fs-h6", t.FsH6),
+            ("--sui-fs-subtitle1", t.FsSubtitle1), ("--sui-fs-subtitle2", t.FsSubtitle2),
+            ("--sui-fs-body1", t.FsBody1), ("--sui-fs-body2", t.FsBody2),
+            ("--sui-fs-button", t.FsButton), ("--sui-fs-caption", t.FsCaption),
+            ("--sui-fs-overline", t.FsOverline), ("--sui-radius-sm", l.RadiusSm),
+            ("--sui-radius", l.Radius), ("--sui-radius-lg", l.RadiusLg),
+            ("--sui-radius-full", l.RadiusFull), ("--sui-space-1", l.Space1),
+            ("--sui-space-2", l.Space2), ("--sui-space-3", l.Space3),
+            ("--sui-space-4", l.Space4), ("--sui-space-5", l.Space5),
+            ("--sui-space-6", l.Space6), ("--sui-shadow-1", l.Shadow1),
+            ("--sui-shadow-2", l.Shadow2), ("--sui-shadow-3", l.Shadow3),
+            ("--sui-transition", l.Transition), ("--sui-transition-slow", l.TransitionSlow),
+            ("--sui-control-h-sm", l.ControlHSm), ("--sui-control-h-md", l.ControlHMd),
+            ("--sui-control-h-lg", l.ControlHLg), ("--sui-control-px-sm", l.ControlPxSm),
+            ("--sui-control-px-md", l.ControlPxMd), ("--sui-control-px-lg", l.ControlPxLg)
+        };
+
+        var css = new StringBuilder(2048).Append(".sui-root{");
+        foreach (var (name, value) in values)
+            css.Append(name).Append(':').Append(value).Append(';');
+
+        return css.Append("color-scheme:")
+            .Append(theme.IsDark ? "dark" : "light")
+            .Append(";}")
+            .ToString();
+    }
+}

@@ -1252,6 +1252,55 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("prefers-reduced-motion", stylesheet, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Identity_ui_is_self_contained_and_serves_its_local_sui_assets()
+    {
+        var repository = ResolveIdentityRepository();
+        var components = Path.Combine(
+            repository,
+            "src",
+            "ui",
+            "Sufficit.Identity.UI.Components");
+        var vault = Path.Combine(
+            repository,
+            "src",
+            "ui",
+            "Sufficit.Identity.UI.Vault");
+
+        var projectFiles = new[]
+        {
+            Path.Combine(components, "Sufficit.Identity.UI.Components.csproj"),
+            Path.Combine(vault, "Sufficit.Identity.UI.Vault.csproj"),
+        };
+
+        foreach (var projectFile in projectFiles)
+        {
+            Assert.DoesNotContain(
+                "sufficit-blazor-ui",
+                File.ReadAllText(projectFile),
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        Assert.True(File.Exists(Path.Combine(components, "wwwroot", "sufficit-ui.css")));
+
+        foreach (var app in new[]
+                 {
+                     Path.Combine(ResolveManagementUiSource(), "Components", "App.razor"),
+                     Path.Combine(vault, "Components", "App.razor"),
+                 })
+        {
+            var source = File.ReadAllText(app);
+            Assert.Contains(
+                "/_content/Sufficit.Identity.UI.Components/sufficit-ui.css",
+                source,
+                StringComparison.Ordinal);
+            Assert.DoesNotContain(
+                "/_content/Sufficit.Blazor.UI/",
+                source,
+                StringComparison.Ordinal);
+        }
+    }
+
     private static string ResolveManagementUiSource()
     {
         var repositoryRoot = ResolveIdentityRepository();

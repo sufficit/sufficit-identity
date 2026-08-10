@@ -125,7 +125,7 @@ Com autorização para testar o serviço próprio, começar pelo domínio públi
 strix -n \
   --target https://identity.sufficit.com.br \
   --scan-mode quick \
-  --instruction-file docs/security/strix-identity-scope.md
+  --instruction-file docs/security/RUNBOOK-STRIX-IDENTITY-SCOPE.md
 ```
 
 O primeiro ciclo deve priorizar autenticação/autorização, OAuth/OIDC, device flow,
