@@ -151,11 +151,11 @@
         "_EncryptionPassword": "Password protecting the encryption PFX file.",
         "EncryptionPassword": ""
       },
-      "_LegacyGrants": "Feature flags for OAuth 2.0 grant types removed by OAuth 2.1 (Resource Owner Password Credentials and the 'none' grant). Both default to FALSE (secure-by-default since EVALUATION-2026-07-21 §5 P0 #8). Opt-in per environment ONLY if a legacy client still requires these — and pair with telemetry + a removal date (Onda E).",
+      "_LegacyGrants": "Feature flags for OAuth 2.0 grant types outside the current OAuth 2.1 draft baseline (Resource Owner Password Credentials and the 'none' grant). OAuth 2.1 is still a draft, so compatibility remains available. Both default to FALSE (secure-by-default since EVALUATION-2026-07-21 §5 P0 #8). Opt in per environment ONLY for existing legacy clients, with telemetry and a documented migration decision.",
       "LegacyGrants": {
-        "_Password": "Enables grant_type=password. Removed by OAuth 2.1. Default false — flip to true ONLY in environments where a legacy client still needs it (e.g. during migration).",
+        "_Password": "Enables grant_type=password. Outside the current OAuth 2.1 draft baseline, but retained for compatibility. Default false — flip to true ONLY in environments where an existing legacy client still needs it, with telemetry and a migration decision.",
         "Password": false,
-        "_None": "Enables the 'none' grant/response type (implicit access_token without PKCE). Removed by OAuth 2.1. Default false — flip to true ONLY for legacy WebForms / old-SwaggerUI clients during migration.",
+        "_None": "Enables the 'none' grant/response type (implicit access_token without PKCE). Outside the current OAuth 2.1 draft baseline, but retained for compatibility. Default false — flip to true ONLY for existing legacy WebForms / old-SwaggerUI clients during migration.",
         "None": false
       },
       "_Pkce": "OAuth 2.1 PKCE policy. The secure defaults require PKCE for every authorization-code client and accept only S256. Use the opt-outs only during a controlled legacy-client migration.",
