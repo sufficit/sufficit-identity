@@ -22,7 +22,6 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Active plans (pending work)
 
-- [Claude Fable 5 evaluation — remaining work](plans/PLAN-CLAUDE-FABLE-5-REMAINING.md) — fail-closed posture, protocol invariants, vault custody and key lifecycle
 - [GPT-5 evaluation — remaining work](plans/PLAN-GPT-5-REMAINING.md) — residual protocol, trust-boundary and production-assurance work
 - [GLM-5.2 evaluation — remaining work](plans/PLAN-GLM-5-2-REMAINING.md) — residual authorization, secret and maintainability work
 - [Management applications](plans/PLAN-MANAGEMENT-APPLICATIONS.md) — complete OAuth/OIDC application lifecycle in the Management console
@@ -33,6 +32,7 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Completed work (activities/)
 
+- [Claude Fable 5 evaluation implementation](activities/202608092110-completed-claude-fable-5-implementation.md)
 - [Operational production-gate handoff](activities/202608092105-completed-operational-gate-handoff.md)
 - [P2 architecture scope reconciliation](activities/202608092100-completed-p2-architecture-reconciliation.md)
 - [Per-client and per-resource access-token format](activities/202608092055-completed-per-client-access-token-format.md)
@@ -95,6 +95,10 @@ Dated evaluations that are useful only as historical evidence live under
 ## Evaluations
 
 - [Evaluation prompt](evaluations/EVALUATION-PROMPT.md)
+
+## Archive
+
+- [Claude Fable 5 implementation plan](archive/plans/PLAN-CLAUDE-FABLE-5-REMAINING.md)
 
 An evaluation describes the repository at a point in time. Findings that still
 require work must be copied into the relevant active plan; an archived evaluation
