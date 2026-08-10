@@ -6,7 +6,9 @@ namespace Sufficit.Identity.Management.Provisioning;
 /// <summary>
 /// Validates the migration manifest before any database access. The accepted
 /// grant/response types intentionally represent the target architecture and
-/// exclude implicit, hybrid and resource-owner-password flows.
+/// exclude implicit, hybrid and resource-owner-password flows for new
+/// provisioning manifests. This validation does not remove runtime compatibility
+/// for existing clients enabled through the explicit legacy-grant flags.
 /// </summary>
 public static partial class IdentityProvisioningManifestValidator
 {
@@ -200,7 +202,9 @@ public static partial class IdentityProvisioningManifestValidator
             {
                 errors.Add(
                     $"{path}.grantTypes contains unsupported target grant '{grant}'. " +
-                    "Implicit, hybrid and password flows must be migrated before cutover.");
+                    "Implicit, hybrid and password flows are not accepted in new " +
+                    "target manifests; migrate them before cutover while preserving " +
+                    "runtime compatibility for existing clients where required.");
             }
 
             foreach (var responseType in responseTypes.Where(

@@ -44,7 +44,7 @@
   "samples": [
     {
       "id": "authz-01-webforms-implicit-formpost",
-      "$comment": "WebForms legado (sufficit-web) — fluxo implicit + form_post. OAuth 2.1 remove implicit; este client DEVE ser migrado para authorization_code+PKCE antes da Onda E (quando LegacyGrants.None for desligado). Por enquanto, o novo STS ainda aceita None (LegacyGrants.None default true).",
+      "$comment": "WebForms legado (sufficit-web) — fluxo implicit + form_post. O fluxo fica fora do baseline atual do rascunho OAuth 2.1 e a política de novos clientes exige migração para authorization_code+PKCE antes da Onda E. A compatibilidade legada permanece controlada por LegacyGrants, conforme a configuração do ambiente.",
       "method": "GET",
       "path": "/connect/authorize",
       "queryParams": {
@@ -105,7 +105,7 @@
     },
     {
       "id": "authz-04-endpoints-swagger-implicit",
-      "$comment": "SwaggerUI do sufficit-endpoints usando implicit flow (response_type=token). OAuth 2.1 removes; SwaggerUI moderno suporta PKCE. Mesma situação do WebForms.",
+      "$comment": "SwaggerUI do sufficit-endpoints usando implicit flow (response_type=token). O fluxo fica fora do baseline atual do rascunho OAuth 2.1; SwaggerUI moderno suporta PKCE, mas a compatibilidade legada permanece durante a migração. Mesma situação do WebForms.",
       "method": "GET",
       "path": "/connect/authorize",
       "queryParams": {

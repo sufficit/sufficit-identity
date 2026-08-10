@@ -641,10 +641,13 @@ public static class ServiceCollectionExtensions
                 // legacy clients must be migrated to authorization_code + PKCE.
                 // Token Exchange (RFC 8693) is enabled here; the delegation/
                 // impersonation logic itself lives in AuthorizationController.
-                // Password and None are legacy grants removed by OAuth 2.1 and are
-                // gated behind the Sufficit:Identity:LegacyGrants feature flags
-                // below (both default to FALSE — secure-by-default; the "Onda E"
-                // cutover will flip them off).
+                // Password and None are outside the current OAuth 2.1 draft
+                // baseline. OAuth 2.1 is still a draft, so Identity keeps
+                // compatibility for existing consumers behind the
+                // Sufficit:Identity:LegacyGrants feature flags below (both
+                // default to FALSE — secure-by-default). Do not remove these
+                // switches until every dependent client has migrated and the
+                // compatibility decision is recorded operationally.
                 // -------------------------------------------------------------------
                 server.AllowAuthorizationCodeFlow()
                       .AllowClientCredentialsFlow()

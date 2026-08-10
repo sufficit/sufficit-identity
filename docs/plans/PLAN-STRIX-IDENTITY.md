@@ -8,9 +8,9 @@
 - [x] Obter credencial de LLM para o CLI Strix e registrar o escopo autorizado.
 - [x] Executar uma varredura inicial não destrutiva em modo `quick` (execução parcial preservada; sem conclusão limpa).
 - [x] Disponibilizar localmente o CLI corrigido com normalização dos argumentos opcionais do Caido.
-- [ ] Concluir uma varredura profunda com o provedor de LLM responsivo.
-- [ ] Revisar os achados e separar falsos positivos de vulnerabilidades reproduzíveis.
-- [ ] Corrigir somente itens aprovados e executar nova varredura de validação.
+- [x] Concluir uma varredura profunda com o provedor de LLM responsivo.
+- [x] Revisar os achados e separar falsos positivos de vulnerabilidades reproduzíveis.
+- [x] Corrigir somente itens aprovados e executar nova varredura de validação.
 
 ## Resultado da descoberta (2026-08-09)
 
@@ -116,6 +116,38 @@ mais do diretório temporário `/tmp`.
 - O contêiner do Strix foi encerrado e não há processo de scan pendente. Os checks
   posteriores permaneceram normais: `/health`, `/health/ready` e o metadata OIDC
   retornaram `200`.
+
+## Revalidação profunda concluída com o patch final (2026-08-10)
+
+- Run: `identity-sufficit-com-br_fc89`.
+- CLI: `/home/hugodeco/.strix/bin/strix`, usando o checkout persistente corrigido
+  em `/home/hugodeco/.strix/src/strix-1.5.2-null-normalization`.
+- Modo: `deep`, orçamento máximo de US$ 1,50, 30 turnos por agente, sandbox
+  `1.2.0`, sem telemetria.
+- Status: `completed` (processo terminou com código 0) após 198 chamadas ao LLM.
+- SARIF: **0 resultados**; nenhum achado explorável foi confirmado no escopo
+  autorizado.
+- Os erros `Invalid ID format`, `Failed to parse cursor`, `list_requests failed`
+  e `list_sitemap failed` não apareceram no log. A correção também normaliza
+  valores opcionais serializados como texto (`"null"`/`"none"`) na fronteira do
+  modelo, antes da validação do Agents SDK, e repete uma listagem sem filtro
+  quando o Caido rejeita um HTTPQL inválido.
+- O relatório recomenda avaliar a desativação do fluxo de password grant se
+  nenhuma aplicação depender dele; isso é uma recomendação de hardening, não uma
+  vulnerabilidade confirmada.
+- O scan registrou algumas tentativas recuperáveis de ferramentas de controle do
+  agente (`update_todo`, `agent_finish`, `create_note` e `apply_patch`); elas não
+  produziram efeitos no alvo e não alteraram o resultado do processo. O escopo
+  instrui explicitamente o modelo a não editar o alvo remoto.
+
+## Validação do código do Strix
+
+- Suíte completa do checkout corrigido: `889 passed, 1 skipped, 2 warnings`.
+- Testes direcionados de modelo/proxy: `84 passed`.
+- Commit local preparado no branch `agent/normalize-tool-call-null-arguments`:
+  `f203862` (`Harden model tool-call argument handling`).
+- O commit contém somente as mudanças no Strix; nenhuma credencial ou alteração
+  do projeto Identity foi incluída.
 
 ## Escopo sugerido
 

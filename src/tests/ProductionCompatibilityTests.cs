@@ -29,7 +29,8 @@ namespace Sufficit.Identity.Tests;
 /// 2. Replays as requisições reais (queryParams method exato como capturado).
 /// 3. Asserta o comportamento esperado — que NÃO seja regressão silenciosa:
 ///    - fluxos suportados devem funcionar;
-///    - fluxos legados removidos pelo OAuth 2.1 devem rejeitar com erro claro;
+///    - fluxos fora do baseline atual do rascunho OAuth 2.1 devem rejeitar com
+///      erro claro quando a política do novo cliente assim exigir;
 ///    - paths de scanner devem 404/400 sem expor informação.
 ///
 /// O dado de produção capturou 4 categorias:
@@ -37,7 +38,9 @@ namespace Sufficit.Identity.Tests;
 ///    cobertos por AuthorizationCodeFlowTests/IntrospectionTests indiretamente
 ///    — este suite replica com tokens emitidos a partir dos clients reais).
 ///  - WebForms + SwaggerUI legados: <c>response_type=code id_token</c> e
-///    <c>response_type=token</c> (implicit/hybrid — OAuth 2.1 remove).
+///    <c>response_type=token</c> (implicit/hybrid — fora do baseline atual do
+///    rascunho OAuth 2.1; a compatibilidade legada é uma decisão explícita por
+///    fluxo e ambiente).
 ///  - Mobile AppAuth: PKCE puro (já suportado, validado aqui com redirect_uri
 ///    custom scheme real).
 ///  - Device flow + PAR (já cobertos, mantidos por regressão).
@@ -93,7 +96,8 @@ public sealed class ProductionCompatibilityTests
     [Fact]
     public async Task WebForms_legacy_hybrid_authorize_request_is_rejected_with_unsupported_response_type()
     {
-        // OAuth 2.1 remove fluxos implicit/hybrid. O novo STS (OpenIddict 7+)
+        // Os fluxos implicit/hybrid ficam fora do baseline atual do rascunho
+        // OAuth 2.1. O novo STS (OpenIddict 7+)
         // NÃO registra implicit/hybrid flows — a requisição real do WebForms
         // legado DEVE falhar com erro claro indicando que o fluxo não é
         // suportado, em vez de comportamento indefinido. Este client DEVE ser
@@ -262,14 +266,15 @@ public sealed class ProductionCompatibilityTests
     }
 
     // ====================================================================
-    // SwaggerUI — implicit (response_type=token), OAuth 2.1 remove
+    // SwaggerUI — implicit (response_type=token), fora do baseline do rascunho
     // ====================================================================
 
     [Fact]
     public async Task SwaggerUI_legacy_implicit_token_request_is_rejected_with_unsupported_response_type()
     {
         // Captura de produção (fixtures/authz-04): legacy-swagger-client
-        // usando response_type=token (implicit access_token). OAuth 2.1 remove.
+        // usando response_type=token (implicit access_token), fora do baseline
+        // atual do rascunho OAuth 2.1.
         // SwaggerUI moderno suporta PKCE — mesma situação do WebForms, deve ser
         // migrado antes da Onda E.
         await SeedProductionClientAsync(
