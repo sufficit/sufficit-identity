@@ -15,20 +15,36 @@
   "AllowedHosts": "your-identity-host",
   "Sufficit": {
     "Vault": {
-      "Enabled": false,
-      "RequireEncryptionInProduction": false,
+      "Enabled": true,
+      "RequireEncryptionInProduction": true,
+      "_KeySource": "dataprotection preserves existing wrapped DEKs while its shared key ring is protected by CertificatePath; certificate wraps DEKs directly; external delegates to a registered KMS/HSM adapter. Every production mode keeps the protection certificate separate from token signing.",
       "KeySource": "dataprotection",
       "DataProtectionPurpose": "Sufficit.Identity.Vault.Master.v1",
+      "CertificatePath": "/run/secrets/sufficit-vault-kek.pfx",
+      "_CertificatePassword": "Supply through SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD; never commit the real value.",
+      "CertificatePassword": "",
+      "_ExternalKeyIdentifier": "For KeySource=external, pin the immutable KMS/HSM key-version URI. Required outside Development.",
+      "ExternalKeyIdentifier": "",
+      "LegacyDataProtectionCertificateMigration": {
+        "_": "Set Owner, Reason and a future ExpiresAtUtc only while old Data Protection keys still require token-signing certificates for decrypt-only migration. Remove the block after the ring rotates.",
+        "Owner": "",
+        "Reason": "",
+        "ExpiresAtUtc": null
+      },
       "EnableSecretStore": false,
       "ManageSigningKeys": false,
-      "SigningKeyName": "oidc-signing"
+      "SigningKeyName": "oidc-signing",
+      "SigningKeyOverlapSeconds": 1209600,
+      "SigningKeyLockSeconds": 60,
+      "_AesGcmMessageBudgetPerKeyVersion": "Successful encryptions allowed operationally per symmetric key version before manual rotation. Default 250M keeps random 96-bit nonce collision risk below approximately 4e-13. Monitor sufficit.vault.aes_gcm.encryptions by key.name/key.version; automatic rotation remains disabled until production volume is characterized.",
+      "AesGcmMessageBudgetPerKeyVersion": 250000000
     },
     "Identity": {
       "Issuer": "https://your-identity-host/",
       "PublicUrl": "https://your-identity-host/",
-      "_PublicOrigin": "Audit preserves request-derived URLs for a rolling upgrade but logs their use. After PublicUrl/Issuer is pinned in every environment, set Mode=Enforce so Host headers can never shape security links or metadata.",
+      "_PublicOrigin": "Enforce requires the configured PublicUrl/Issuer and prevents Host headers from shaping security links or metadata. Audit is an explicitly acknowledged migration-only setting.",
       "PublicOrigin": {
-        "Mode": "Audit"
+        "Mode": "Enforce"
       },
       "ConnectionStringName": "DefaultConnection",
       "_Database": "Schema provisioning policy. In Development the host ALWAYS applies pending EF Core migrations on startup (MigrateAsync). In production it does so ONLY when Database:AutoMigrate=true (default false — conservative for the legacy shared Duende/Skoruba database, which predates the EF model). When AutoMigrate is false in production, provision schema from the checked-in canonical SQL (docs/migration/sql/*) before each deploy. CRITICAL: when enabling AutoMigrate, ALWAYS set AllowedDatabaseNames to the concrete database name(s) the migrator may touch — if the connection string points elsewhere (e.g. the production database by a config typo), the process refuses to start rather than migrate the wrong database. Empty AllowedDatabaseNames disables the guard (Development only).",
@@ -67,8 +83,12 @@
         "198.51.100.0/24"
       ],
       "Security": {
-        "_FailClosedOnInsecureDefaults": "Set true only after the production posture findings have been resolved or explicitly acknowledged. Leaving this false during the staged rollout preserves service availability while the CSP and management policies are calibrated.",
-        "FailClosedOnInsecureDefaults": false
+        "_FailClosedOnInsecureDefaults": "Deprecated compatibility property. Production always fails closed; use one bounded Acknowledgements entry per finding.",
+        "FailClosedOnInsecureDefaults": true,
+        "_AllowLegacyBooleanAcknowledgements": "Temporary migration bridge for the old CSP/Management boolean acknowledgements. Keep false for new deployments.",
+        "AllowLegacyBooleanAcknowledgements": false,
+        "_Acknowledgements": "Optional map keyed by stable finding ID. Every entry requires Owner, Reason and a future ExpiresAtUtc. Empty is the secure default.",
+        "Acknowledgements": {}
       },
       "Management": {
         "Enabled": false,
@@ -77,17 +97,24 @@
         "RequiredScope": "identity.management",
         "Authorization": {
           "ObjectAccess": {
-            "Mode": "Observe",
+            "Mode": "Enforce",
             "ContextClaimType": "identity_context",
             "LegacyContextId": "global"
           },
           "ProtectedPrincipals": {
-            "Mode": "Observe",
+            "Mode": "Enforce",
             "TierClaimType": "identity_principal_tier",
             "ProtectedUserIds": [],
             "ProtectedRoles": [],
             "BreakGlassClaimType": "identity_break_glass",
             "BreakGlassClaimValue": "identity.management"
+          },
+          "VaultSecrets": {
+            "_NamespaceClaimType": "Each value is '<contextId>:<namespace>' (for example 'global:providers'). Capability alone never grants a namespace.",
+            "NamespaceClaimType": "identity_vault_namespace",
+            "_BreakGlass": "Issued only by the deployment emergency-access process. The generic Claims Management API reserves this type; MFA is also mandatory and every use is audited.",
+            "BreakGlassClaimType": "identity_vault_break_glass",
+            "BreakGlassClaimValue": "identity.vault.secrets"
           }
         },
         "_RequireMfa": "true requires the access token to carry an amr claim proving multi-factor auth (item 5.2 [L3]) for the management endpoints. Default true; explicitly set false only for an isolated migration environment.",
@@ -150,12 +177,23 @@
         "_AllowedSigningAlgorithms": "Accepted request-object signing algorithms. Defaults to the FAPI 2.0 baseline.",
         "AllowedSigningAlgorithms": ["PS256", "ES256"],
         "_MaxLifetimeSeconds": "Maximum request-object lifetime in seconds. Default 120 (2 minutes).",
-        "MaxLifetimeSeconds": 120
+        "MaxLifetimeSeconds": 120,
+        "_RemoteJwksMaxBytes": "Hard response-size limit for a registered remote jwks_uri.",
+        "RemoteJwksMaxBytes": 65536,
+        "_RemoteJwksTimeoutSeconds": "End-to-end timeout for a remote JWKS refresh.",
+        "RemoteJwksTimeoutSeconds": 3,
+        "_RemoteJwksCacheSeconds": "Fresh cache lifetime. A missing kid forces one immediate refresh for key rotation.",
+        "RemoteJwksCacheSeconds": 300,
+        "_RemoteJwksStaleSeconds": "Additional stale-if-error window. Only a previously known kid may use stale keys.",
+        "RemoteJwksStaleSeconds": 900,
+        "_RemoteJwksMaxCacheEntries": "Maximum registered JWKS endpoints retained in memory.",
+        "RemoteJwksMaxCacheEntries": 256
       },
       "_TokenExchange": "RFC 8693 token exchange remains enabled for compatibility and still requires the per-client OpenIddict grant permission. AllowedClientIds adds a second closed allowlist without removing the grant globally; exchanged scopes and resources are always attenuated against the subject token.",
       "TokenExchange": {
         "Enabled": true,
-        "AllowedClientIds": []
+        "AllowedClientIds": [],
+        "ProvenanceMode": "Enforce"
       },
       "_RateLimit": "Fixed-window rate limit applied to POST /connect/token, per client IP, no queueing. Complements (never replaces) account lockout. Disable only if an upstream gateway already throttles the token endpoint.",
       "RateLimit": {
@@ -185,8 +223,12 @@
         "AccessTokenLifetimeMinutes": null,
         "IdentityTokenLifetimeMinutes": null,
         "RefreshTokenLifetimeDays": 14,
-        "_UseReferenceAccessTokens": "P0 #5 / eval #B2 — MIGRATION-CONTRACT DECISION, not a mechanical toggle. true (default, current/legacy behavior) = opaque reference access tokens validated only via /connect/introspect. false = self-contained JWT access tokens validated locally by any resource server holding the signing public key. This applies to ALL clients at once (OpenIddict has no per-client token-format switch) — but the legacy inventory (docs/migration/PLAN.md) shows only ONE of the 26 legacy clients (sufficit-endpoints) actually used reference tokens; the rest expect a JWT they validate locally. Do NOT flip to false without first confirming every resource server can handle the new format (JWT: faster, no introspection dependency, but un-revocable before expiry; reference: instantly revocable, opaque, but every validation is a network round-trip here).",
-        "UseReferenceAccessTokens": true
+        "_UseReferenceAccessTokens": "Compatibility fallback only when no resource/client map matches. true preserves opaque reference tokens; false uses signed self-contained JWTs. Prefer gradual exact overrides below instead of a flag day.",
+        "UseReferenceAccessTokens": true,
+        "_AccessTokenFormatsByClient": "Exact client_id overrides for gradual migration. Values: Reference or Jwt. Resource rules take precedence.",
+        "AccessTokenFormatsByClient": {},
+        "_AccessTokenFormatsByResource": "Exact resource/audience overrides. All mapped resources requested in one token must agree or issuance fails closed.",
+        "AccessTokenFormatsByResource": {}
       },
       "_Lockout": "Account lockout enforced on password verification (interactive login and grant_type=password).",
       "Lockout": {
@@ -218,9 +260,9 @@
         "RequireConfirmedEmail": true
       },
       "_ServerSideSessions": "The ASP.NET Core Identity application cookie is SERVER-SIDE: the browser holds only the opaque OIDC `sid` as its cookie value, while the full AuthenticationTicket lives in the `oidcusersessions` table (DataProtection-protected). This enables per-device session enumeration (ISessionManagement.ListBySubjectAsync) and per-session revocation (ISessionManagement.RevokeAsync by sid), closing the protocol gap vs. Keycloak/Duende/Zitadel. The session store is DB-backed and therefore shared across replicas out of the box — no extra Redis dependency (unlike the DPoP/CIBA/nonce stores). Global revocation (RevokeAllSessionsAsync / management revoke-all / user disable/delete) bumps the security stamp AND drops every session row, so both the cookies and the session table reflect reality. Production schema must add the `oidcusersessions` table before deploying — see docs/migration/sql/080-add-oidc-user-sessions.sql (existing databases) or 001-create-empty-database.sql (fresh).",
-      "_CredentialMutations": "Central security boundary for password, MFA, passkey and federated-login mutations. Audit preserves existing sessions during rollout while recording where recent authentication is missing; switch StepUpMode to Enforce after observing production telemetry. Successful mutations revoke OAuth credentials and other browser sessions while preserving and refreshing the initiating browser session.",
+      "_CredentialMutations": "Central security boundary for password, MFA, passkey and federated-login mutations. Enforce requires recent authentication; Audit is an explicitly acknowledged migration-only setting. Successful mutations revoke OAuth credentials and other browser sessions while preserving and refreshing the initiating browser session.",
       "CredentialMutations": {
-        "StepUpMode": "Audit",
+        "StepUpMode": "Enforce",
         "MaximumAuthenticationAgeMinutes": 15
       },
       "_ClaimScopeMap": "Central claim-emission policy. Mapped claims require their scope. Unmapped claims retain legacy access-token behavior while IncludeUnmappedClaimsInAccessTokens is true; inventory and map consumers before changing it to false for strict allowlisting.",
@@ -237,9 +279,9 @@
           "recovery_codes"
         ]
       },
-      "_PersonalTokens": "Observe computes strict least-privilege PAT decisions without breaking existing callers. After inventorying callers and issuing personal_tokens.manage, switch Mode to Enforce.",
+      "_PersonalTokens": "Enforce applies least-privilege PAT scope, caller, authentication-age and lifetime decisions. Observe is an explicitly acknowledged migration-only setting.",
       "PersonalTokens": {
-        "Mode": "Observe",
+        "Mode": "Enforce",
         "RequiredScope": "personal_tokens.manage",
         "RequireRecentAuthentication": true,
         "MaximumAuthenticationAgeMinutes": 15,
@@ -253,7 +295,18 @@
         "Enabled": false,
         "_DeploymentMode": "Must be DirectTls or TrustedProxy before Enabled=true; Unattested fails startup.",
         "DeploymentMode": "Unattested",
+        "_RequireValidCertificateChain": "Build the platform X.509 chain after the per-client SHA-256 thumbprint pin. Keep true in production.",
         "RequireValidCertificateChain": true,
+        "_RevocationMode": "NoCheck, Online or Offline. Online is the secure default and performs bounded CRL/OCSP retrieval; Offline uses only locally cached revocation data.",
+        "RevocationMode": "Online",
+        "_RevocationFailureMode": "FailClosed (default) denies unavailable CRL/OCSP. AllowWhenUnavailable is an explicit availability tradeoff and never permits revoked, expired, untrusted or wrongly pinned certificates.",
+        "RevocationFailureMode": "FailClosed",
+        "RevocationTimeoutSeconds": 3,
+        "_ForwardedCertificateHeader": "TrustedProxy-only header containing URL-encoded PEM or base64 DER. It is stripped from every request before downstream middleware.",
+        "ForwardedCertificateHeader": "X-Sufficit-Client-Certificate",
+        "_TrustedProxyNetworks": "Dedicated CIDRs allowed to assert the client certificate. Required in TrustedProxy mode and intentionally separate from general TrustedProxies.",
+        "TrustedProxyNetworks": [],
+        "_ClientCertificateThumbprints": "Map of OAuth client_id to one or more SHA-256 certificate thumbprints. Multiple pins provide bounded rollover overlap.",
         "ClientCertificateThumbprints": {}
       },
       "_BackchannelLogout": "OIDC Back-Channel Logout 1.0. The STS signs and POSTs a short-lived logout_token to every RP that registered a backchannel_logout_uri. Enabled by default; clients without metadata are skipped. The OP session sid is included when the RP requires session-specific logout.",
@@ -316,8 +369,8 @@
         "ExpiresInSeconds": 600,
         "_PollIntervalSeconds": "Minimum seconds the client MUST wait between polls (CIBA Core interval). Faster polls get slow_down. Default 5.",
         "PollIntervalSeconds": 5,
-        "_ClientPolicyMode": "Observe reports public/unentitled CIBA callers while retaining compatibility. Provision gt:urn:openid:params:grant-type:ciba and switch to Enforce per cohort.",
-        "ClientPolicyMode": "Observe",
+        "_ClientPolicyMode": "Enforce rejects public or unentitled CIBA callers. Observe is an explicitly acknowledged migration-only setting.",
+        "ClientPolicyMode": "Enforce",
         "RequireConfidentialClient": true,
         "RequiredGrantPermission": "gt:urn:openid:params:grant-type:ciba",
         "AllowedClientIds": []

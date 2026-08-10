@@ -26,10 +26,10 @@ public interface IDpopReplayCache
 }
 
 /// <summary>
-/// <see cref="IDistributedCache"/>-backed DPoP replay cache. Uses atomic
-/// key-insertion semantics: the first replica to write the key "wins" and
-/// subsequent writes return the existing value, so a proof replayed on a
-/// different replica is detected.
+/// <see cref="IDistributedCache"/>-backed DPoP replay optimization. The cache
+/// API cannot guarantee atomic add-if-absent, so this layer is never the final
+/// cross-replica authority; <see cref="RollingDpopReplayCache"/> always follows
+/// it with the database unique-key decision.
 /// </summary>
 internal sealed class DistributedDpopReplayCache : IDpopReplayCache
 {
@@ -69,9 +69,11 @@ internal sealed class DistributedDpopReplayCache : IDpopReplayCache
     }
 }
 
+internal interface IAtomicDpopReplayCache : IDpopReplayCache;
+
 internal sealed class DatabaseDpopReplayCache(
     IDbContextFactory<AppDbContext> databaseFactory,
-    TimeProvider? timeProvider = null) : IDpopReplayCache
+    TimeProvider? timeProvider = null) : IAtomicDpopReplayCache
 {
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
     private int _cleanupCounter;
@@ -116,7 +118,7 @@ internal sealed class DatabaseDpopReplayCache(
 
 internal sealed class RollingDpopReplayCache(
     DistributedDpopReplayCache legacyCache,
-    DatabaseDpopReplayCache databaseCache) : IDpopReplayCache
+    IAtomicDpopReplayCache databaseCache) : IDpopReplayCache
 {
     public bool IsReplay(string jti, TimeSpan ttl)
     {

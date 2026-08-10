@@ -19,7 +19,7 @@ public enum CredentialMutationStepUpMode
 public sealed class CredentialMutationSecurityOptions
 {
     public CredentialMutationStepUpMode StepUpMode { get; init; } =
-        CredentialMutationStepUpMode.Audit;
+        CredentialMutationStepUpMode.Enforce;
 
     public int MaximumAuthenticationAgeMinutes { get; init; } = 15;
 }

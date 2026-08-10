@@ -63,9 +63,7 @@ internal static class DynamicClientDefinitionValidation
             grants,
             scopes,
             request.RedirectUris,
-            RequirePkce: grants.Contains(
-                OpenIddictConstants.GrantTypes.AuthorizationCode,
-                StringComparer.Ordinal),
+            RequirePkce: validator.RequiresProofKeyForCodeExchange(grants),
             hasClientSecret,
             AllowedGrantTypes: options.AllowedGrantTypes.ToHashSet(
                 StringComparer.Ordinal),

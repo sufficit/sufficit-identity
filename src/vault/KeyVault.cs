@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Data;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.AspNetCore.WebUtilities;
@@ -12,7 +13,7 @@ namespace Sufficit.Identity.Vault;
 
 /// <summary>
 /// Real <see cref="IKeyVault"/> implementation: envelope encryption with a
-/// KEK (Data Protection) wrapping per-name DEKs persisted in
+/// configured KEK authority wrapping per-name DEKs persisted in
 /// <c>vault_keys</c>. Item keys are cached in-memory after unwrap.
 /// </summary>
 /// <remarks>
@@ -26,6 +27,9 @@ internal sealed class KeyVault : IKeyVault
     private readonly IDbContextFactory<AppDbContext> _dbFactory;
     private readonly IVaultKeyEncryptionKeySource _kek;
     private readonly ILogger<KeyVault> _logger;
+    private readonly VaultOptions _options;
+    private readonly TimeProvider _timeProvider;
+    private readonly VaultCryptographyTelemetry _cryptographyTelemetry;
 
     // Cache: (keyName, version) → unwrapped item key (256-bit).
     private readonly ConcurrentDictionary<(string Name, int Version), byte[]> _keyCache = new();
@@ -33,11 +37,36 @@ internal sealed class KeyVault : IKeyVault
     public KeyVault(
         IDbContextFactory<AppDbContext> dbFactory,
         IVaultKeyEncryptionKeySource kek,
-        ILogger<KeyVault> logger)
+        ILogger<KeyVault> logger,
+        VaultOptions options,
+        TimeProvider? timeProvider = null)
+        : this(
+            dbFactory,
+            kek,
+            logger,
+            options,
+            new VaultCryptographyTelemetry(
+                options,
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<
+                    VaultCryptographyTelemetry>.Instance),
+            timeProvider)
+    {
+    }
+
+    public KeyVault(
+        IDbContextFactory<AppDbContext> dbFactory,
+        IVaultKeyEncryptionKeySource kek,
+        ILogger<KeyVault> logger,
+        VaultOptions options,
+        VaultCryptographyTelemetry cryptographyTelemetry,
+        TimeProvider? timeProvider = null)
     {
         _dbFactory = dbFactory;
         _kek = kek;
         _logger = logger;
+        _options = options;
+        _cryptographyTelemetry = cryptographyTelemetry;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     /// <summary>
@@ -58,8 +87,10 @@ internal sealed class KeyVault : IKeyVault
         var aadBytes = SelfDescribingCiphertext.CanonicalizeAad(additionalAuthenticatedData);
 
         var packed = EnvelopeCrypto.Encrypt(plaintext, itemKey, aadBytes);
-        return SelfDescribingCiphertext.Format(keyName, version, packed,
+        var ciphertext = SelfDescribingCiphertext.Format(keyName, version, packed,
             additionalAuthenticatedData is null || additionalAuthenticatedData.Count == 0 ? null : aadHash);
+        _cryptographyTelemetry.RecordEncryption(keyName, version);
+        return ciphertext;
     }
 
     /// <summary>
@@ -90,7 +121,10 @@ internal sealed class KeyVault : IKeyVault
         if (parsed.AadHash is not null)
         {
             var expectedHash = SelfDescribingCiphertext.ComputeAadHash(additionalAuthenticatedData, itemKey);
-            if (!expectedHash.SequenceEqual(parsed.AadHash))
+            if (expectedHash.Length != parsed.AadHash.Length
+                || !CryptographicOperations.FixedTimeEquals(
+                    expectedHash,
+                    parsed.AadHash))
             {
                 throw new CryptographicException(
                     "AAD mismatch: the ciphertext was encrypted with different " +
@@ -139,6 +173,7 @@ internal sealed class KeyVault : IKeyVault
         ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
         ArgumentNullException.ThrowIfNull(payload);
         var key = await GetOrCreateLatestSigningKeyAsync(keyName, cancellationToken);
+        key.Key.Dispose();
         return await SignAsync(keyName, key.KeyVersion, payload, cancellationToken);
     }
 
@@ -209,7 +244,12 @@ internal sealed class KeyVault : IKeyVault
             var row = await db.VaultKeys.AsNoTracking()
                 .SingleOrDefaultAsync(key => key.KeyName == keyName
                     && key.KeyVersion == keyVersion
-                    && key.Purpose == "signing", cancellationToken);
+                    && key.Purpose == "signing"
+                    && (key.SigningState == VaultSigningKeyState.Active
+                        || key.SigningState == VaultSigningKeyState.Retiring)
+                    && (key.RetireAfterUtc == null
+                        || key.RetireAfterUtc > _timeProvider.GetUtcNow().UtcDateTime),
+                    cancellationToken);
             if (row is null || string.IsNullOrWhiteSpace(row.PublicJwk)) return false;
 
             using var rsa = CreatePublicRsa(row.PublicJwk);
@@ -239,20 +279,31 @@ internal sealed class KeyVault : IKeyVault
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
         var rows = await db.VaultKeys.AsNoTracking()
             .Where(key => key.KeyName == keyName
                 && key.Purpose == "signing"
-                && key.RetiredAtUtc == null)
-            .OrderByDescending(key => key.KeyVersion)
+                && (key.SigningState == VaultSigningKeyState.Active
+                    || (key.SigningState == VaultSigningKeyState.Retiring
+                        && key.RetireAfterUtc > now)))
+            .OrderBy(key => key.SigningState == VaultSigningKeyState.Active ? 0 : 1)
+            .ThenByDescending(key => key.KeyVersion)
             .ToListAsync(cancellationToken);
         if (rows.Count == 0)
         {
-            await CreateSigningKeyRowAsync(db, keyName, 1, cancellationToken);
-            await db.SaveChangesAsync(cancellationToken);
+            var anySigningKey = await db.VaultKeys.AsNoTracking()
+                .AnyAsync(key => key.KeyName == keyName
+                    && key.Purpose == "signing", cancellationToken);
+            if (anySigningKey)
+            {
+                return [];
+            }
+
+            await EnsureSigningKeyInitializedAsync(keyName, cancellationToken);
             rows = await db.VaultKeys.AsNoTracking()
                 .Where(key => key.KeyName == keyName
                     && key.Purpose == "signing"
-                    && key.RetiredAtUtc == null)
+                    && key.SigningState == VaultSigningKeyState.Active)
                 .OrderByDescending(key => key.KeyVersion)
                 .ToListAsync(cancellationToken);
             _logger.LogInformation("Created vault signing key '{KeyName}' v1 for public-key discovery.", keyName);
@@ -264,14 +315,225 @@ internal sealed class KeyVault : IKeyVault
                 row.KeyName,
                 row.KeyVersion,
                 GetSigningKeyId(row.KeyName, row.KeyVersion),
-                row.PublicJwk!))
+                row.PublicJwk!,
+                row.SigningState == VaultSigningKeyState.Retiring
+                    ? VaultSigningKeyStatus.Retiring
+                    : VaultSigningKeyStatus.Active,
+                row.RetireAfterUtc))
             .ToArray();
     }
 
     public Task<KeyId> RotateSigningKeyAsync(
         string keyName,
         CancellationToken cancellationToken = default) =>
-        CreateSigningKeyAsync(keyName, cancellationToken);
+        RotateSigningKeyAsync(
+            keyName,
+            $"rotate:{Guid.NewGuid():N}",
+            reason: null,
+            cancellationToken);
+
+    public async Task<KeyId> RotateSigningKeyAsync(
+        string keyName,
+        string operationId,
+        string? reason = null,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateLifecycleArguments(keyName, operationId, reason);
+        var existing = await FindLifecycleOperationAsync(
+            operationId,
+            "rotate",
+            keyName,
+            cancellationToken);
+        if (existing is not null)
+        {
+            return new KeyId(existing.KeyName, existing.KeyVersion);
+        }
+
+        await using var lease = await AcquireSigningKeyLeaseAsync(
+            keyName,
+            cancellationToken);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = await db.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+
+        existing = await db.VaultSigningKeyLifecycleOperations.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.OperationId == operationId,
+                cancellationToken);
+        if (existing is not null)
+        {
+            EnsureMatchingOperation(existing, "rotate", keyName);
+            await transaction.CommitAsync(cancellationToken);
+            return new KeyId(existing.KeyName, existing.KeyVersion);
+        }
+
+        var active = await db.VaultKeys
+            .SingleOrDefaultAsync(key => key.KeyName == keyName
+                && key.Purpose == "signing"
+                && key.SigningState == VaultSigningKeyState.Active,
+                cancellationToken);
+        var nextVersion = (await db.VaultKeys.AsNoTracking()
+            .Where(key => key.KeyName == keyName && key.Purpose == "signing")
+            .Select(key => (int?)key.KeyVersion)
+            .MaxAsync(cancellationToken) ?? 0) + 1;
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        var retireAfter = now.AddSeconds(_options.SigningKeyOverlapSeconds);
+
+        await CreateSigningKeyRowAsync(
+            db,
+            keyName,
+            nextVersion,
+            VaultSigningKeyState.Active,
+            cancellationToken);
+        if (active is not null)
+        {
+            active.SigningState = VaultSigningKeyState.Retiring;
+            active.RetireAfterUtc = retireAfter;
+            active.LifecycleVersion++;
+        }
+
+        db.VaultSigningKeyLifecycleOperations.Add(
+            new VaultSigningKeyLifecycleOperation
+            {
+                OperationId = operationId,
+                KeyName = keyName,
+                KeyVersion = nextVersion,
+                PreviousKeyVersion = active?.KeyVersion,
+                Action = "rotate",
+                Reason = reason,
+                OccurredAtUtc = now,
+                RetireAfterUtc = active is null ? null : retireAfter,
+            });
+        await db.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        _logger.LogInformation(
+            "Rotated vault signing key '{KeyName}' to version {Version}; previous version {PreviousVersion} retires at {RetireAfterUtc}.",
+            keyName,
+            nextVersion,
+            active?.KeyVersion,
+            active is null ? null : retireAfter);
+        return new KeyId(keyName, nextVersion);
+    }
+
+    public async Task<int> RetireSigningKeysAsync(
+        string keyName,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
+        await using var lease = await AcquireSigningKeyLeaseAsync(
+            keyName,
+            cancellationToken);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        var elapsed = await db.VaultKeys
+            .Where(key => key.KeyName == keyName
+                && key.Purpose == "signing"
+                && key.SigningState == VaultSigningKeyState.Retiring
+                && key.RetireAfterUtc <= now)
+            .ToListAsync(cancellationToken);
+        foreach (var key in elapsed)
+        {
+            key.SigningState = VaultSigningKeyState.Retired;
+            key.RetiredAtUtc = now;
+            key.LifecycleVersion++;
+            var operationId = CreateRetirementOperationId(keyName, key.KeyVersion);
+            if (!await db.VaultSigningKeyLifecycleOperations
+                .AnyAsync(item => item.OperationId == operationId,
+                    cancellationToken))
+            {
+                db.VaultSigningKeyLifecycleOperations.Add(
+                    new VaultSigningKeyLifecycleOperation
+                    {
+                        OperationId = operationId,
+                        KeyName = keyName,
+                        KeyVersion = key.KeyVersion,
+                        Action = "retire",
+                        OccurredAtUtc = now,
+                        RetireAfterUtc = key.RetireAfterUtc,
+                    });
+            }
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        if (elapsed.Count > 0)
+        {
+            _logger.LogInformation(
+                "Retired {Count} elapsed signing key versions for '{KeyName}'.",
+                elapsed.Count,
+                keyName);
+        }
+        return elapsed.Count;
+    }
+
+    public async Task<bool> RevokeSigningKeyAsync(
+        string keyName,
+        int keyVersion,
+        string operationId,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(keyVersion);
+        ValidateLifecycleArguments(keyName, operationId, reason);
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new ArgumentException(
+                "Emergency signing-key revocation requires a reason.",
+                nameof(reason));
+        }
+
+        var existing = await FindLifecycleOperationAsync(
+            operationId,
+            "revoke",
+            keyName,
+            cancellationToken);
+        if (existing is not null)
+        {
+            EnsureMatchingKeyVersion(existing, keyVersion);
+            return true;
+        }
+
+        await using var lease = await AcquireSigningKeyLeaseAsync(
+            keyName,
+            cancellationToken);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        existing = await db.VaultSigningKeyLifecycleOperations.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.OperationId == operationId,
+                cancellationToken);
+        if (existing is not null)
+        {
+            EnsureMatchingOperation(existing, "revoke", keyName);
+            EnsureMatchingKeyVersion(existing, keyVersion);
+            return true;
+        }
+
+        var key = await db.VaultKeys.SingleOrDefaultAsync(item =>
+            item.KeyName == keyName
+            && item.KeyVersion == keyVersion
+            && item.Purpose == "signing", cancellationToken);
+        if (key is null) return false;
+
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        key.SigningState = VaultSigningKeyState.Revoked;
+        key.RevokedAtUtc = now;
+        key.RetireAfterUtc = null;
+        key.LifecycleVersion++;
+        db.VaultSigningKeyLifecycleOperations.Add(
+            new VaultSigningKeyLifecycleOperation
+            {
+                OperationId = operationId,
+                KeyName = keyName,
+                KeyVersion = keyVersion,
+                Action = "revoke",
+                Reason = reason,
+                OccurredAtUtc = now,
+            });
+        await db.SaveChangesAsync(cancellationToken);
+        _logger.LogCritical(
+            "Emergency-revoked vault signing key '{KeyName}' version {Version}. Tokens signed by this kid are no longer accepted.",
+            keyName,
+            keyVersion);
+        return true;
+    }
 
     /// <summary>Clears the in-memory key cache (tests/admin).</summary>
     public void FlushCache() => _keyCache.Clear();
@@ -283,7 +545,9 @@ internal sealed class KeyVault : IKeyVault
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         var latest = await db.VaultKeys
             .AsNoTracking()
-            .Where(k => k.KeyName == keyName && k.RetiredAtUtc == null)
+            .Where(k => k.KeyName == keyName
+                && k.Purpose == "symmetric"
+                && k.RetiredAtUtc == null)
             .OrderByDescending(k => k.KeyVersion)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -303,7 +567,7 @@ internal sealed class KeyVault : IKeyVault
             KeyVersion = 1,
             Purpose = "symmetric",
             WrappedKey = wrappedKey,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
         });
         await db.SaveChangesAsync(cancellationToken);
 
@@ -321,25 +585,49 @@ internal sealed class KeyVault : IKeyVault
         var latest = await db.VaultKeys.AsNoTracking()
             .Where(key => key.KeyName == keyName
                 && key.Purpose == "signing"
-                && key.RetiredAtUtc == null)
-            .OrderByDescending(key => key.KeyVersion)
-            .FirstOrDefaultAsync(cancellationToken);
+                && key.SigningState == VaultSigningKeyState.Active)
+            .SingleOrDefaultAsync(cancellationToken);
         if (latest is not null)
         {
             var privateBytes = _kek.Unwrap(latest.WrappedKey);
-            var existing = RSA.Create();
-            existing.ImportPkcs8PrivateKey(privateBytes, out _);
-            return (existing, latest.KeyVersion);
+            try
+            {
+                var existingKey = RSA.Create();
+                existingKey.ImportPkcs8PrivateKey(privateBytes, out _);
+                return (existingKey, latest.KeyVersion);
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(privateBytes);
+            }
         }
 
-        await CreateSigningKeyRowAsync(db, keyName, 1, cancellationToken);
-        await db.SaveChangesAsync(cancellationToken);
+        var anySigningKey = await db.VaultKeys.AsNoTracking()
+            .AnyAsync(key => key.KeyName == keyName
+                && key.Purpose == "signing", cancellationToken);
+        if (anySigningKey)
+        {
+            throw new CryptographicException(
+                $"Vault signing key '{keyName}' has no active issuing version. Rotate a replacement after reviewing its lifecycle journal.");
+        }
+
+        await EnsureSigningKeyInitializedAsync(keyName, cancellationToken);
         var created = await db.VaultKeys.AsNoTracking()
             .SingleAsync(key => key.KeyName == keyName
                 && key.KeyVersion == 1
-                && key.Purpose == "signing", cancellationToken);
+                && key.Purpose == "signing"
+                && key.SigningState == VaultSigningKeyState.Active,
+                cancellationToken);
         var privateKey = RSA.Create();
-        privateKey.ImportPkcs8PrivateKey(_kek.Unwrap(created.WrappedKey), out _);
+        var createdPrivateBytes = _kek.Unwrap(created.WrappedKey);
+        try
+        {
+            privateKey.ImportPkcs8PrivateKey(createdPrivateBytes, out _);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(createdPrivateBytes);
+        }
         _logger.LogInformation("Created vault signing key '{KeyName}' v1.", keyName);
         return (privateKey, 1);
     }
@@ -353,40 +641,29 @@ internal sealed class KeyVault : IKeyVault
         var row = await db.VaultKeys.AsNoTracking()
             .SingleOrDefaultAsync(key => key.KeyName == keyName
                 && key.KeyVersion == keyVersion
-                && key.Purpose == "signing", cancellationToken)
+                && key.Purpose == "signing"
+                && key.SigningState == VaultSigningKeyState.Active,
+                cancellationToken)
             ?? throw new CryptographicException(
-                $"Vault signing key '{keyName}' v{keyVersion} not found.");
-        var privateKey = RSA.Create();
-        privateKey.ImportPkcs8PrivateKey(_kek.Unwrap(row.WrappedKey), out _);
-        return privateKey;
-    }
-
-    private async Task<KeyId> CreateSigningKeyAsync(
-        string keyName,
-        CancellationToken cancellationToken)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
-        await using var db = await _dbFactory.CreateDbContextAsync(
-            cancellationToken);
-        var nextVersion = await db.VaultKeys.AsNoTracking()
-            .Where(key => key.KeyName == keyName && key.Purpose == "signing")
-            .Select(key => (int?)key.KeyVersion)
-            .MaxAsync(cancellationToken) ?? 0;
-        nextVersion++;
-        await CreateSigningKeyRowAsync(db, keyName, nextVersion,
-            cancellationToken);
-        await db.SaveChangesAsync(cancellationToken);
-        _logger.LogInformation(
-            "Rotated vault signing key '{KeyName}' to version {Version}.",
-            keyName,
-            nextVersion);
-        return new KeyId(keyName, nextVersion);
+                $"Vault signing key '{keyName}' v{keyVersion} is not the active issuing key.");
+        var privateBytes = _kek.Unwrap(row.WrappedKey);
+        try
+        {
+            var privateKey = RSA.Create();
+            privateKey.ImportPkcs8PrivateKey(privateBytes, out _);
+            return privateKey;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(privateBytes);
+        }
     }
 
     private async Task CreateSigningKeyRowAsync(
         AppDbContext db,
         string keyName,
         int version,
+        VaultSigningKeyState signingState,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -402,16 +679,205 @@ internal sealed class KeyVault : IKeyVault
             use = "sig",
             kid = GetSigningKeyId(keyName, version),
         });
-        db.VaultKeys.Add(new VaultKey
+        try
         {
-            KeyName = keyName,
-            KeyVersion = version,
-            Purpose = "signing",
-            WrappedKey = _kek.Wrap(privateBytes),
-            PublicJwk = publicJwk,
-            CreatedAtUtc = DateTime.UtcNow,
-        });
+            db.VaultKeys.Add(new VaultKey
+            {
+                KeyName = keyName,
+                KeyVersion = version,
+                Purpose = "signing",
+                WrappedKey = _kek.Wrap(privateBytes),
+                PublicJwk = publicJwk,
+                CreatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
+                SigningState = signingState,
+            });
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(privateBytes);
+        }
         await Task.CompletedTask;
+    }
+
+    private async Task EnsureSigningKeyInitializedAsync(
+        string keyName,
+        CancellationToken cancellationToken)
+    {
+        await using var lease = await AcquireSigningKeyLeaseAsync(
+            keyName,
+            cancellationToken);
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        if (await db.VaultKeys.AsNoTracking().AnyAsync(key =>
+                key.KeyName == keyName && key.Purpose == "signing",
+                cancellationToken))
+        {
+            return;
+        }
+
+        await CreateSigningKeyRowAsync(
+            db,
+            keyName,
+            1,
+            VaultSigningKeyState.Active,
+            cancellationToken);
+        AddInitializationJournal(db, keyName);
+        await db.SaveChangesAsync(cancellationToken);
+        _logger.LogInformation(
+            "Created vault signing key '{KeyName}' v1 under the distributed lifecycle lease.",
+            keyName);
+    }
+
+    private async Task<VaultSigningKeyLifecycleOperation?>
+        FindLifecycleOperationAsync(
+            string operationId,
+            string action,
+            string keyName,
+            CancellationToken cancellationToken)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        var existing = await db.VaultSigningKeyLifecycleOperations.AsNoTracking()
+            .SingleOrDefaultAsync(item => item.OperationId == operationId,
+                cancellationToken);
+        if (existing is not null)
+        {
+            EnsureMatchingOperation(existing, action, keyName);
+        }
+        return existing;
+    }
+
+    private static void EnsureMatchingOperation(
+        VaultSigningKeyLifecycleOperation operation,
+        string action,
+        string keyName)
+    {
+        if (!string.Equals(operation.Action, action, StringComparison.Ordinal)
+            || !string.Equals(operation.KeyName, keyName, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Vault lifecycle operation id '{operation.OperationId}' was already used for a different operation.");
+        }
+    }
+
+    private static void EnsureMatchingKeyVersion(
+        VaultSigningKeyLifecycleOperation operation,
+        int keyVersion)
+    {
+        if (operation.KeyVersion != keyVersion)
+        {
+            throw new InvalidOperationException(
+                $"Vault lifecycle operation id '{operation.OperationId}' was already used for key version {operation.KeyVersion}.");
+        }
+    }
+
+    private static void ValidateLifecycleArguments(
+        string keyName,
+        string operationId,
+        string? reason)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operationId);
+        if (keyName.Length > IdentityDatabaseSchema.VaultKeyNameLength)
+        {
+            throw new ArgumentException("Vault key name is too long.", nameof(keyName));
+        }
+        if (operationId.Length > IdentityDatabaseSchema.VaultLifecycleOperationIdLength)
+        {
+            throw new ArgumentException(
+                "Vault lifecycle operation id is too long.",
+                nameof(operationId));
+        }
+        if (reason?.Length > IdentityDatabaseSchema.VaultLifecycleReasonLength)
+        {
+            throw new ArgumentException(
+                "Vault lifecycle reason is too long.",
+                nameof(reason));
+        }
+    }
+
+    private static string CreateRetirementOperationId(
+        string keyName,
+        int keyVersion)
+    {
+        var nameHash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(keyName));
+        return $"retire:{WebEncoders.Base64UrlEncode(nameHash)}:{keyVersion}";
+    }
+
+    private void AddInitializationJournal(AppDbContext db, string keyName)
+    {
+        var nameHash = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(keyName));
+        db.VaultSigningKeyLifecycleOperations.Add(
+            new VaultSigningKeyLifecycleOperation
+            {
+                OperationId = $"initialize:{WebEncoders.Base64UrlEncode(nameHash)}",
+                KeyName = keyName,
+                KeyVersion = 1,
+                Action = "initialize",
+                OccurredAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
+            });
+    }
+
+    private async Task<SigningKeyLease> AcquireSigningKeyLeaseAsync(
+        string keyName,
+        CancellationToken cancellationToken)
+    {
+        var ownerId = Guid.NewGuid().ToString("N");
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        var expiresAt = now.AddSeconds(_options.SigningKeyLockSeconds);
+        await using (var insertDb = await _dbFactory.CreateDbContextAsync(
+            cancellationToken))
+        {
+            insertDb.VaultSigningKeyLocks.Add(new VaultSigningKeyLock
+            {
+                KeyName = keyName,
+                OwnerId = ownerId,
+                ExpiresAtUtc = expiresAt,
+            });
+            try
+            {
+                await insertDb.SaveChangesAsync(cancellationToken);
+                return new SigningKeyLease(this, keyName, ownerId);
+            }
+            catch (DbUpdateException)
+            {
+                // Another replica owns the row or an abandoned lease is
+                // waiting to be recovered below.
+            }
+        }
+
+        await using var updateDb = await _dbFactory.CreateDbContextAsync(
+            cancellationToken);
+        var recovered = await updateDb.VaultSigningKeyLocks
+            .Where(item => item.KeyName == keyName
+                && item.ExpiresAtUtc <= now)
+            .ExecuteUpdateAsync(update => update
+                .SetProperty(item => item.OwnerId, ownerId)
+                .SetProperty(item => item.ExpiresAtUtc, expiresAt),
+                cancellationToken);
+        if (recovered != 1)
+        {
+            throw new InvalidOperationException(
+                $"Signing-key lifecycle operation for '{keyName}' is already running on another replica.");
+        }
+        return new SigningKeyLease(this, keyName, ownerId);
+    }
+
+    private async ValueTask ReleaseSigningKeyLeaseAsync(
+        string keyName,
+        string ownerId)
+    {
+        await using var db = await _dbFactory.CreateDbContextAsync();
+        await db.VaultSigningKeyLocks
+            .Where(item => item.KeyName == keyName && item.OwnerId == ownerId)
+            .ExecuteDeleteAsync();
+    }
+
+    private sealed class SigningKeyLease(
+        KeyVault owner,
+        string keyName,
+        string ownerId) : IAsyncDisposable
+    {
+        public ValueTask DisposeAsync() =>
+            owner.ReleaseSigningKeyLeaseAsync(keyName, ownerId);
     }
 
     private static RSA CreatePublicRsa(string publicJwk)

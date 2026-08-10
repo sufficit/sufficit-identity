@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Application.Security;
+using Sufficit.Identity.Vault;
 
 namespace Sufficit.Identity.STS;
 
@@ -15,7 +16,8 @@ public sealed class RemoteHumanVerificationService(
     HttpClient httpClient,
     HumanVerificationOptions options,
     IHttpContextAccessor httpContextAccessor,
-    ILogger<RemoteHumanVerificationService> logger)
+    ILogger<RemoteHumanVerificationService> logger,
+    ISecretStore? secretStore = null)
     : IHumanVerificationService
 {
     private static readonly Uri GoogleVerifyEndpoint = new(
@@ -49,9 +51,21 @@ public sealed class RemoteHumanVerificationService(
             return new(false, "missing-response");
         }
 
+        var secret = secretStore is null
+            ? options.SecretKey
+            : await secretStore.GetSecretAsync(
+                "identity/human-verification/secret-key",
+                cancellationToken) ?? options.SecretKey;
+        if (string.IsNullOrWhiteSpace(secret))
+        {
+            logger.LogError(
+                "Human verification is enabled but its provider secret is unavailable from ISecretStore.");
+            return new(false, "provider-not-configured");
+        }
+
         var fields = new Dictionary<string, string>
         {
-            ["secret"] = options.SecretKey!,
+            ["secret"] = secret,
             ["response"] = responseToken,
         };
 

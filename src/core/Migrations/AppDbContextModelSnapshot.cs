@@ -1455,6 +1455,11 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasColumnType("int")
                         .HasColumnName("keyversion");
 
+                    b.Property<int>("LifecycleVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int")
+                        .HasColumnName("lifecycleversion");
+
                     b.Property<string>("PublicJwk")
                         .HasColumnType("longtext")
                         .HasColumnName("publicjwk");
@@ -1465,9 +1470,22 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasColumnType("varchar(16)")
                         .HasColumnName("purpose");
 
+                    b.Property<DateTime?>("RetireAfterUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("retireafterutc");
+
                     b.Property<DateTime?>("RetiredAtUtc")
                         .HasColumnType("datetime(6)")
                         .HasColumnName("retiredatutc");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("revokedatutc");
+
+                    b.Property<string>("SigningState")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)")
+                        .HasColumnName("signingstate");
 
                     b.Property<byte[]>("WrappedKey")
                         .IsRequired()
@@ -1559,11 +1577,29 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasColumnType("longtext")
                         .HasColumnName("ciphertext");
 
+                    b.Property<string>("ContextId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("contextid");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)")
                         .HasColumnName("name");
+
+                    b.Property<string>("Namespace")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("namespace");
+
+                    b.Property<string>("OwnerSubject")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)")
+                        .HasColumnName("ownersubject");
 
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("datetime(6)")
@@ -1577,11 +1613,84 @@ namespace Sufficit.Identity.Core.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Name")
+                    b.HasIndex("ContextId", "Name")
                         .IsUnique()
-                        .HasDatabaseName("AK_vaultsecrets_name");
+                        .HasDatabaseName("AK_vaultsecrets_context_name");
+
+                    b.HasIndex("ContextId", "Namespace")
+                        .HasDatabaseName("IX_vaultsecrets_context_namespace");
 
                     b.ToTable("vaultsecrets", (string)null);
+                });
+
+            modelBuilder.Entity("Sufficit.Identity.Core.Entities.VaultSigningKeyLifecycleOperation", b =>
+                {
+                    b.Property<string>("OperationId")
+                        .HasMaxLength(80)
+                        .HasColumnType("varchar(80)")
+                        .HasColumnName("operationid");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("varchar(24)")
+                        .HasColumnName("action");
+
+                    b.Property<string>("KeyName")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("keyname");
+
+                    b.Property<int>("KeyVersion")
+                        .HasColumnType("int")
+                        .HasColumnName("keyversion");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("occurredatutc");
+
+                    b.Property<int?>("PreviousKeyVersion")
+                        .HasColumnType("int")
+                        .HasColumnName("previouskeyversion");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTime?>("RetireAfterUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("retireafterutc");
+
+                    b.HasKey("OperationId");
+
+                    b.HasIndex("KeyName", "OccurredAtUtc")
+                        .HasDatabaseName("IX_vaultsigningkeyoperations_keyname_occurred");
+
+                    b.ToTable("vaultsigningkeyoperations", (string)null);
+                });
+
+            modelBuilder.Entity("Sufficit.Identity.Core.Entities.VaultSigningKeyLock", b =>
+                {
+                    b.Property<string>("KeyName")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("keyname");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("expiresatutc");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)")
+                        .HasColumnName("ownerid");
+
+                    b.HasKey("KeyName");
+
+                    b.ToTable("vaultsigningkeylocks", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

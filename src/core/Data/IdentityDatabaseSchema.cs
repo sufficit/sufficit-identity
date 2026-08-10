@@ -28,6 +28,8 @@ public static class IdentityDatabaseSchema
     public const string VaultSecretsMigrationId = "20260808173938_AddVaultSecrets"; // gitleaks:allow
     public const string VaultPersonalSecretsMigrationId = "20260808191220_AddVaultPersonalSecrets"; // gitleaks:allow
     public const string VaultSigningKeyJwkMigrationId = "20260808174200_AddVaultSigningKeyJwk"; // gitleaks:allow
+    public const string VaultSigningKeyLifecycleMigrationId = "20260809224037_AddVaultSigningKeyLifecycle"; // gitleaks:allow
+    public const string VaultSecretNamespacesMigrationId = "20260809230136_AddVaultSecretNamespaces"; // gitleaks:allow
     public const string IdentityApplicationMetricsMigrationId = "20260807020859_AddIdentityApplicationMetrics";
     public const string SsfStreamSecurityMigrationId = "20260807135147_HardenSsfStreams";
     public const string AtomicProtocolStateMigrationId = "20260807140821_AddAtomicProtocolState";
@@ -108,7 +110,15 @@ public static class IdentityDatabaseSchema
     // Vault keys (internal secret vault — wrapped DEKs / item keys)
     public const int VaultKeyNameLength = 64;
     public const int VaultPurposeLength = 16;           // symmetric | signing
+    public const int VaultSigningStateLength = 16;
+    public const int VaultLifecycleOperationIdLength = 80;
+    public const int VaultLifecycleActionLength = 24;
+    public const int VaultLifecycleReasonLength = 256;
+    public const int VaultLockOwnerLength = 64;
     public const int VaultSecretNameLength = 128;
+    public const int VaultSecretNamespaceLength = 64;
+    public const int VaultSecretContextLength = 64;
+    public const int VaultSecretOwnerLength = 128;
     public const int VaultSecretUpdatedByLength = 128;
     public const int VaultPersonalSecretOwnerLength = 255;
     public const int VaultPersonalSecretNamespaceLength = 64;

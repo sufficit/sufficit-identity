@@ -112,6 +112,43 @@ public interface IKeyVault
     Task<KeyId> RotateSigningKeyAsync(
         string keyName,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Idempotent signing-key rotation. The previous active version stops
+    /// issuing immediately and remains published until the configured overlap
+    /// deadline.
+    /// </summary>
+    Task<KeyId> RotateSigningKeyAsync(
+        string keyName,
+        string operationId,
+        string? reason = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Completes every elapsed retiring-key overlap.</summary>
+    Task<int> RetireSigningKeysAsync(
+        string keyName,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Emergency revocation. A revoked version is removed from JWKS and is no
+    /// longer accepted for signing or verification, including still-live
+    /// tokens carrying its kid.
+    /// </summary>
+    Task<bool> RevokeSigningKeyAsync(
+        string keyName,
+        int keyVersion,
+        string operationId,
+        string reason,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Explicit capability implemented only by a development/migration backend
+/// that is allowed to interpret a raw client-secret reference as plaintext.
+/// </summary>
+internal interface IKeyVaultPlaintextReferenceCompatibility
+{
+    bool AcceptsPlaintextClientSecretReferences { get; }
 }
 
 /// <summary>
@@ -125,4 +162,12 @@ public sealed record VaultSigningKey(
     string KeyName,
     int KeyVersion,
     string KeyId,
-    string PublicJwk);
+    string PublicJwk,
+    VaultSigningKeyStatus Status = VaultSigningKeyStatus.Active,
+    DateTime? RetireAfterUtc = null);
+
+public enum VaultSigningKeyStatus
+{
+    Active,
+    Retiring,
+}
