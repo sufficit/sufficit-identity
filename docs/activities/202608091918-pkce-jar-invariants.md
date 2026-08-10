@@ -1,7 +1,7 @@
 # Invariantes de cliente e Request Object
 
 > **Status:** COMPLETED em 2026-08-09. Entrega correspondente ao P0.3 de
-> `PLAN-CLAUDE-FABLE-5-REMAINING.md`.
+> plano de invariantes de cliente e request objects.
 
 ## PKCE
 
@@ -33,7 +33,7 @@
 
 O suporte remoto a `jwks_uri` foi entregue posteriormente com egress seguro,
 limites e cache controlado; evidência em
-[`202608092022-completed-jar-remote-jwks.md`](202608092022-completed-jar-remote-jwks.md).
+[`202608092022-jar-remote-jwks.md`](202608092022-jar-remote-jwks.md).
 
 ## Validação
 

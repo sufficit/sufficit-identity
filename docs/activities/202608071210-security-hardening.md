@@ -1,8 +1,7 @@
-# GLM-5.2 evaluation remediation — completed work
+# Endurecimento de segurança, sessão e vault — trabalho concluído
 
-**Date:** 2026-08-06 → 2026-08-07
-**Originally:** `docs/archive/evaluations/EVALUATION-2026-08-06-GLM-5.2.md` (commit evaluated: `2ce4cf1`)
-**Verified against:** `f97ef7e`
+**Período:** 2026-08-06 → 2026-08-07
+**Versão validada:** `f97ef7e`
 
 ## Closed findings
 
@@ -25,7 +24,7 @@
 
 ## Completed foundations for risks that remain open
 
-These components are implemented and tested, but they are prerequisites rather than full closure of the corresponding finding. The remaining work is tracked in `docs/plans/PLAN-GLM-5-2-REMAINING.md`.
+These components are implemented and tested, but they are prerequisites rather than full closure of the corresponding finding. The remaining work is tracked in the planos canônicos de autorização e produção.
 
 - ✅ **H2 foundation:** reserved-scope blocking now prevents minting the management/SCIM transport scopes through runtime CRUD
 - ✅ **H3 foundation:** `IManagementObjectAccessPolicy` is invoked after capability and MFA checks, with denial propagated by the evaluator; the default implementation intentionally remains permissive

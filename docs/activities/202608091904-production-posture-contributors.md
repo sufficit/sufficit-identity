@@ -1,7 +1,7 @@
 # Production posture — contributors modulares e fail-closed efetivo
 
 > **Status:** COMPLETED em 2026-08-09. Entrega correspondente ao P0.1 de
-> `PLAN-CLAUDE-FABLE-5-REMAINING.md`.
+> plano de implementação de postura de produção.
 
 ## Entregue
 

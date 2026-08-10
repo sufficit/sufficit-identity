@@ -1,7 +1,7 @@
 # JAR com `jwks_uri` remoto seguro
 
 > **Status:** COMPLETED em 2026-08-09. Entrega correspondente ao P1.3 de
-> `PLAN-CLAUDE-FABLE-5-REMAINING.md`.
+> plano de segurança de request objects.
 
 ## Resultado
 

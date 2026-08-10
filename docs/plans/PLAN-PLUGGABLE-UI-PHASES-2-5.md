@@ -1,6 +1,6 @@
 # Pluggable UI — phases 2-5 pending
 
-> **Status:** Phases 0-1 complete (see `202608012000-completed-pluggable-ui-phase0-phase1.md`). The embedded deployment works; the items below are for remote/BFF UI hosting and third-party SDK support.
+> **Status:** Phases 0-1 complete (see `202608012000-pluggable-ui-phase0-phase1.md`). The embedded deployment works; the items below are for remote/BFF UI hosting and third-party SDK support.
 
 ## Phase 2 — explicit embedded composition
 - [ ] Versioned module descriptor and semantic endpoint registration

@@ -1,7 +1,7 @@
 # Revogação e topologia verificável de mTLS
 
 > **Status:** COMPLETED em 2026-08-09. Entrega correspondente ao P1.4 de
-> `PLAN-CLAUDE-FABLE-5-REMAINING.md`.
+> plano de autenticação mTLS.
 
 ## Resultado
 

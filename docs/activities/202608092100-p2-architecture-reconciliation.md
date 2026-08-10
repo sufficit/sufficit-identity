@@ -1,7 +1,7 @@
 # Reconciliação dos refactors arquiteturais P2
 
 > **Status:** COMPLETED em 2026-08-09 como decisão de escopo do
-> `PLAN-CLAUDE-FABLE-5-REMAINING.md`.
+> plano de evolução arquitetural P2.
 
 ## `SufficitIdentityOptions`
 
@@ -20,7 +20,7 @@ novas flags soltas ao host.
 ## `AuthorizationController`
 
 A decomposição por grant continua válida, mas já pertence ao plano canônico
-`PLAN-GLM-5-2-REMAINING.md` P1.7, que exige contrato comum de emissão,
+o item P1.7 do plano canônico de autorização, que exige contrato comum de emissão,
 centralização de claims/resources/lifetime/sender constraints e migração de um
 grant por vez sob caracterização. Fazer apenas o roteamento ou mover métodos de
 arquivo neste ciclo criaria uma abstração nominal sem reduzir acoplamento.

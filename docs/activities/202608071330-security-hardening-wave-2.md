@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-07
 **Baseline:** `df308e3` plus the working-tree implementation validated below
-**Source plans:** `PLAN-GPT-5-REMAINING.md` and `PLAN-SECURITY-HARDENING-WAVE-2.md`
+**Source plans:** the security remediation plan and `PLAN-SECURITY-HARDENING-WAVE-2.md`
 
 ## Outcome
 

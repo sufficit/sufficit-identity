@@ -1,7 +1,7 @@
 # Métrica e orçamento de mensagens AES-GCM do vault
 
 > **Status:** COMPLETED em 2026-08-09. Entrega correspondente ao item P2.2 de
-> `PLAN-CLAUDE-FABLE-5-REMAINING.md`.
+> plano de limites criptográficos do vault.
 
 ## Resultado
 

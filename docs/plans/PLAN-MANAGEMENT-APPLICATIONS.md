@@ -804,7 +804,7 @@ foram movidas para `docs/activities/`.
 
 Os contratos compartilhados, a policy de scopes e as transições do
 provisionamento foram concluídos e estão registrados em
-[`202608081900-completed-client-provisioning-lifecycle.md`](../activities/202608081900-completed-client-provisioning-lifecycle.md).
+[`202608081900-client-provisioning-lifecycle.md`](../activities/202608081900-client-provisioning-lifecycle.md).
 
 - [ ] Inventariar os manifests reais de produção e adotar clientes existentes
   individualmente antes de habilitar `Enforce`.

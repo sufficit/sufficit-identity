@@ -1,13 +1,12 @@
-# Implementação da avaliação Claude Fable 5 concluída
+# Implementação e encerramento do plano de segurança
 
 **Concluído em:** 2026-08-09
 
-**Plano arquivado:**
-[`PLAN-CLAUDE-FABLE-5-REMAINING.md`](../archive/plans/PLAN-CLAUDE-FABLE-5-REMAINING.md)
+**Estado:** checklist de implementação arquivado após chegar a zero itens ativos.
 
 ## Resultado
 
-O plano de implementação derivado da avaliação chegou a zero itens ativos. As
+O plano de implementação chegou a zero itens ativos. As
 entregas cobrem postura fail-closed, defaults seguros, PKCE/JAR, DPoP/mTLS,
 vault, replay atômico, orçamento AES-GCM, formato gradual de access token e as
 decisões arquiteturais registradas nas atividades vinculadas pelo plano
@@ -41,4 +40,4 @@ teste de aplicação falhou.
 - atividade por cada grupo concluído, indexada em `docs/README.md`;
 - runbook único de evidências operacionais de produção;
 - plano de prontidão atualizado como owner dos gates externos;
-- plano Claude arquivado e removido da lista de planos ativos.
+- plano de implementação arquivado e removido da lista de planos ativos.

@@ -1,16 +1,15 @@
-# GPT-5 evaluation remediation — completed work
+# Correções de segurança de protocolos e fronteiras — trabalho concluído
 
-**Date:** 2026-08-07
-**Originally:** `docs/archive/evaluations/EVALUATION-2026-08-07-gpt-5.md`
-**Verified against:** `79e0f82` (runtime-equivalent implementation at `f97ef7e`)
+**Data:** 2026-08-07
+**Versão validada:** `79e0f82` (implementação equivalente em runtime a `f97ef7e`)
 
 ## Outcome
 
-The evaluation was reconciled with the implementation delivered after its
+The security review was reconciled with the implementation delivered after its
 cutoff. Eight findings have their reported exploit boundary closed in code,
 while another nine received deployable foundations that intentionally remain
 in compatibility or audit mode. Every residual requirement is retained in
-`docs/plans/PLAN-GPT-5-REMAINING.md` or in a referenced canonical plan.
+the corresponding implementation plan or in a referenced canonical plan.
 
 This activity records implemented behavior only. It does not treat an audit
 mode, an extension point, or an operational runbook as enforcement evidence.
@@ -64,15 +63,14 @@ reopen the ownership, filtering or verification defects above.
 - `f97ef7e` — validated deployable runtime baseline
 
 The compatibility rollout, additive migrations and canary checks are preserved
-in `docs/archive/evaluations/IMPLEMENTATION-2026-08-07-gpt-5.md` as historical
-deployment evidence.
+in the archived deployment record as historical deployment evidence.
 
 ## Reconciliation map
 
 | Evaluation item | State after reconciliation | Destination for residual work |
 | --- | --- | --- |
 | V-01, V-02 | closed | SSF durable delivery only in `PLAN-PRODUCTION-READINESS.md` |
-| V-03 | partial | `PLAN-GPT-5-REMAINING.md` P0.1 |
+| V-03 | partial | P0.1 do plano de autorização |
 | V-04 | reported amplification closed | unified issuance in P0.1 |
 | V-05 | closed | multi-replica proof in P2.14 |
 | V-06 | open | P0.2 |
@@ -82,9 +80,9 @@ deployment evidence.
 | V-10 | partial | P0.1 |
 | V-11 | closed | — |
 | V-12, V-13 | partial | P0.5–P0.6 |
-| V-14, V-15, V-16 | partial | P0.6 and canonical Vault/GLM plans |
+| V-14, V-15, V-16 | partial | P0.6 e planos canônicos do vault |
 | V-17, V-18 | open | P1.8 |
-| V-19 | routing fixed, tenant policy open | P0.7 and GLM P0.3 |
+| V-19 | routing fixed, tenant policy open | P0.7 e autorização de objetos |
 | V-20 | open | P0.5 |
 | V-21, V-23 | closed | browser/operational proof in P2.14 |
 | V-22 | open | P1.9 |

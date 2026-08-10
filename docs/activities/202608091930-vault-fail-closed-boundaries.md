@@ -1,7 +1,7 @@
 # Vault — boundaries fail-closed de produção
 
 > **Status:** COMPLETED em 2026-08-09. Entrega de código correspondente ao
-> P0.5 de `PLAN-CLAUDE-FABLE-5-REMAINING.md`; a migração dos ambientes continua
+> P0.5 do plano de vault; a migração dos ambientes continua
 > como gate operacional no plano.
 
 ## Entregue

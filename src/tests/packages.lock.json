@@ -65,6 +65,52 @@
         "resolved": "3.0.1",
         "contentHash": "lbyYtsBxA8Pz8kaf5Xn/Mj1mL9z2nlBWdZhqFaj66nxXBa4JwiTDm4eGcpSMet6du9TOWI6bfha+gQR6+IHawg=="
       },
+      "Microsoft.AspNetCore.Authorization": {
+        "type": "Transitive",
+        "resolved": "10.0.10",
+        "contentHash": "FxWC2bc788/51CiSiMkKW5gQyqrSSs1991BhphS6ZARMGii+3Qr355Q9OSB/nBpdHVjIopfegAhreZ6UPpO9WA==",
+        "dependencies": {
+          "Microsoft.AspNetCore.Metadata": "10.0.10",
+          "Microsoft.Extensions.Diagnostics": "10.0.10",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.10",
+          "Microsoft.Extensions.Options": "10.0.10"
+        }
+      },
+      "Microsoft.AspNetCore.Components": {
+        "type": "Transitive",
+        "resolved": "10.0.10",
+        "contentHash": "wlCBFU9YxqhUc2kVbl/FCGNFSbRjS312WVk9YRVjs/OcZ+Yqa9QsD7z+UcBzNNAbcPpEM98f/PaaD6lHt5rmIg==",
+        "dependencies": {
+          "Microsoft.AspNetCore.Authorization": "10.0.10",
+          "Microsoft.AspNetCore.Components.Analyzers": "10.0.10"
+        }
+      },
+      "Microsoft.AspNetCore.Components.Analyzers": {
+        "type": "Transitive",
+        "resolved": "10.0.10",
+        "contentHash": "ZBJobkEDv6yWftw3ycZMkuV9YpvJOBmjWpg2UbQ0Ol4THObhKai0PNl/SGFBmpw03JKCPA63RgplQOA1LQbRDg=="
+      },
+      "Microsoft.AspNetCore.Components.Forms": {
+        "type": "Transitive",
+        "resolved": "10.0.10",
+        "contentHash": "09cKk0/t83Y5DN5ne4J9Y+OiLJEQ+XBFGIoD0UXAnae8yQEkFa/OYbX0bBGkx0k5r5ndta/CMdlMk3lCG81R0g==",
+        "dependencies": {
+          "Microsoft.AspNetCore.Components": "10.0.10",
+          "Microsoft.Extensions.Validation": "10.0.10"
+        }
+      },
+      "Microsoft.AspNetCore.Components.Web": {
+        "type": "Transitive",
+        "resolved": "10.0.10",
+        "contentHash": "8+cyStKhSy94Q2L/2zmgk0H1f+GKvBGEvTImT0qdsCqeNbT7ilGDKTIJ1PiugsPtSNLuUEABUqMpA3rE1yAKFg==",
+        "dependencies": {
+          "Microsoft.AspNetCore.Components": "10.0.10",
+          "Microsoft.AspNetCore.Components.Forms": "10.0.10",
+          "Microsoft.Extensions.DependencyInjection": "10.0.10",
+          "Microsoft.Extensions.Primitives": "10.0.10",
+          "Microsoft.JSInterop": "10.0.10"
+        }
+      },
       "Microsoft.AspNetCore.Cryptography.Internal": {
         "type": "Transitive",
         "resolved": "10.0.10",
@@ -96,6 +142,11 @@
         "type": "Transitive",
         "resolved": "10.0.10",
         "contentHash": "q2RNx0N/qrsU+JgbPE78I9pu5ekwguitAFVoeE1NCgxtkUTguvf7oTzBnn42zSQxuugJ4fmj0RSarob8Rvorrg=="
+      },
+      "Microsoft.AspNetCore.Metadata": {
+        "type": "Transitive",
+        "resolved": "10.0.10",
+        "contentHash": "nmZYV9OQ69r3EDOj0SW1JLgD4uFHfMNDKb8mk8Mf4y0Enw3AzkMD85zPuAk5FqmEz8PS0WagR/tJCwLg8xpI3Q=="
       },
       "Microsoft.AspNetCore.TestHost": {
         "type": "Transitive",
@@ -473,6 +524,22 @@
           "Microsoft.Extensions.Logging": "10.0.10"
         }
       },
+      "Microsoft.Extensions.Localization": {
+        "type": "Transitive",
+        "resolved": "10.0.1",
+        "contentHash": "yJBI3IRm9uTRu7cPc7i90/8+CuiiJJ5M4khj6iWQcYnq6VrG+H2U5GzpRLtkVCsgxc1LjtkNMEbSDatfBA+z5g==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.1",
+          "Microsoft.Extensions.Localization.Abstractions": "10.0.1",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.1",
+          "Microsoft.Extensions.Options": "10.0.1"
+        }
+      },
+      "Microsoft.Extensions.Localization.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.0.1",
+        "contentHash": "TQSQWF+iZdtGNgPiu7gKUqrTEeRD/mhk7KeYiuEwmTUPbawsYfPSNzSvOOeueJ0nU1697X8HZ2vCp2ByHNHkZg=="
+      },
       "Microsoft.Extensions.Logging": {
         "type": "Transitive",
         "resolved": "10.0.10",
@@ -619,6 +686,15 @@
           "Microsoft.Extensions.Options": "10.0.10"
         }
       },
+      "Microsoft.Extensions.Validation": {
+        "type": "Transitive",
+        "resolved": "10.0.10",
+        "contentHash": "d77zBZk+Z4uo6hEuLvMY+yMjLkn2T/vX5c2sB0sdoSxQVZk7qvec6SuORp2/uZp7UchX4hNp+VJm4GsoSE0waA==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.10",
+          "Microsoft.Extensions.Options": "10.0.10"
+        }
+      },
       "Microsoft.IdentityModel.Abstractions": {
         "type": "Transitive",
         "resolved": "8.19.2",
@@ -658,6 +734,11 @@
           "Microsoft.IdentityModel.Logging": "8.19.2"
         }
       },
+      "Microsoft.JSInterop": {
+        "type": "Transitive",
+        "resolved": "10.0.10",
+        "contentHash": "VivWvz1iFR3Ntf/e5/xci6o/MF2tcHiprNkhRlL+gMkBoDjQJCioiO+Gwp/DP8scuzqbp3b9C3wh+zuy4pD4AA=="
+      },
       "Microsoft.OpenApi": {
         "type": "Transitive",
         "resolved": "1.6.22",
@@ -675,6 +756,16 @@
         "dependencies": {
           "Microsoft.TestPlatform.ObjectModel": "17.12.0",
           "Newtonsoft.Json": "13.0.1"
+        }
+      },
+      "MudBlazor": {
+        "type": "Transitive",
+        "resolved": "9.8.0",
+        "contentHash": "JLJ81j6cn5RUTbgpYAtjRfB3bTNweX0q8lkMS6B9v1oGzZsjVTxDDnWahD+rOtzJWPU6D9svsymiETe4G8bSLw==",
+        "dependencies": {
+          "Microsoft.AspNetCore.Components": "10.0.1",
+          "Microsoft.AspNetCore.Components.Web": "10.0.1",
+          "Microsoft.Extensions.Localization": "10.0.1"
         }
       },
       "MySqlConnector": {
@@ -1074,6 +1165,14 @@
           "xunit.extensibility.core": "[2.9.2]"
         }
       },
+      "sufficit.blazor.ui": {
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.AspNetCore.Components": "[10.*, )",
+          "Microsoft.AspNetCore.Components.Web": "[10.*, )",
+          "MudBlazor": "[9.8.0, )"
+        }
+      },
       "sufficit.identity.application.abstractions": {
         "type": "Project"
       },
@@ -1150,7 +1249,10 @@
         "type": "Project"
       },
       "sufficit.identity.ui.components": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "Sufficit.Blazor.UI": "[1.0.0, )"
+        }
       },
       "sufficit.identity.ui.management": {
         "type": "Project",
@@ -1163,6 +1265,7 @@
       "sufficit.identity.ui.vault": {
         "type": "Project",
         "dependencies": {
+          "Sufficit.Blazor.UI": "[1.0.0, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Components": "[0.4.0-alpha, )"

@@ -1,8 +1,7 @@
 # Formato de access token por cliente e recurso
 
-> **Status:** COMPLETED em 2026-08-09. Entrega correspondente ao item P2.2 de
-> `PLAN-CLAUDE-FABLE-5-REMAINING.md` e ao item residual de arquitetura em
-> `PLAN-GPT-5-REMAINING.md`.
+> **Status:** COMPLETED em 2026-08-09. Entrega correspondente ao item P2.2 do
+> plano de formato de tokens e ao item residual de arquitetura.
 
 ## Resultado
 
