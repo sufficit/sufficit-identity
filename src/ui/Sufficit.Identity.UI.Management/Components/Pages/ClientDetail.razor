@@ -140,6 +140,14 @@ else if (result?.IsSuccess is true && result.Value is not null)
         </div>
 
         <div class="detail-columns">
+            <div aria-labelledby="token-lifetime-heading">
+                <h2 id="token-lifetime-heading">Validade dos tokens</h2>
+                <dl class="technical-list">
+                    <div><dt>Access token</dt><dd>@FormatLifetime(client.AccessTokenLifetimeMinutes, "min", "default global")</dd></div>
+                    <div><dt>ID token</dt><dd>@FormatLifetime(client.IdentityTokenLifetimeMinutes, "min", "default global")</dd></div>
+                    <div><dt>Refresh token</dt><dd>@FormatLifetime(client.RefreshTokenLifetimeDays, "dias", "default global")</dd></div>
+                </dl>
+            </div>
             <div aria-labelledby="post-logout-heading">
                 <h2 id="post-logout-heading">Redirecionamento após logout</h2>
                 @if (client.PostLogoutRedirectUris.Count is 0)
@@ -418,4 +426,7 @@ else
             "ft:par" => "PAR obrigatório",
             _ => requirement
         };
+
+    private static string FormatLifetime(int? value, string unit, string fallback) =>
+        value is { } lifetime ? $"{lifetime} {unit}" : fallback;
 }

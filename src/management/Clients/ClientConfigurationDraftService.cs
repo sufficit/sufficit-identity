@@ -68,6 +68,10 @@ public sealed class ManagementClientDraftValues
     public bool ClientCredentials { get; set; }
     public bool DeviceCode { get; set; }
     public bool RequirePar { get; set; }
+    /// <summary>Null inherits the server-wide token lifetime.</summary>
+    public int? AccessTokenLifetimeMinutes { get; set; }
+    public int? IdentityTokenLifetimeMinutes { get; set; }
+    public int? RefreshTokenLifetimeDays { get; set; }
     public List<string> Scopes { get; set; } = [];
     public List<string> RedirectUris { get; set; } = [];
     public List<string> PostLogoutRedirectUris { get; set; } = [];
@@ -473,7 +477,11 @@ internal sealed class ClientConfigurationDraftService(
                 values.FrontchannelLogoutUri,
                 values.FrontchannelLogoutSessionRequired,
                 values.BackchannelLogoutUri,
-                values.BackchannelLogoutSessionRequired),
+                values.BackchannelLogoutSessionRequired,
+                null,
+                values.AccessTokenLifetimeMinutes,
+                values.IdentityTokenLifetimeMinutes,
+                values.RefreshTokenLifetimeDays),
             context,
             cancellationToken);
 
@@ -574,6 +582,13 @@ internal sealed class ClientConfigurationDraftService(
                 ManagementClientDraftSteps.Permissions, "scopes",
                 "offline_access exige que Refresh Token esteja habilitado.");
         }
+
+        ValidateOptionalLifetime(issues, values.AccessTokenLifetimeMinutes, 1, 1440,
+            "accessTokenLifetimeMinutes", "Access token deve ficar entre 1 minuto e 24 horas.");
+        ValidateOptionalLifetime(issues, values.IdentityTokenLifetimeMinutes, 1, 120,
+            "identityTokenLifetimeMinutes", "ID token deve ficar entre 1 e 120 minutos.");
+        ValidateOptionalLifetime(issues, values.RefreshTokenLifetimeDays, 1, 365,
+            "refreshTokenLifetimeDays", "Refresh token deve ficar entre 1 e 365 dias.");
 
         if (values.ClientCredentials && !values.AuthorizationCode && !values.DeviceCode)
         {
@@ -681,6 +696,21 @@ internal sealed class ClientConfigurationDraftService(
 
         uri = null!;
         return false;
+    }
+
+    private static void ValidateOptionalLifetime(
+        ICollection<ClientValidationIssue> issues,
+        int? value,
+        int minimum,
+        int maximum,
+        string field,
+        string message)
+    {
+        if (value is not null && (value < minimum || value > maximum))
+        {
+            AddError(issues, $"{field}_invalid", ManagementClientDraftSteps.Protocol,
+                field, message);
+        }
     }
 
     private static bool SameOrigin(Uri left, Uri right) =>

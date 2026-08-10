@@ -3260,6 +3260,12 @@ h3 {
     color: #8f1d15;
 }
 
+.inline-notice--info {
+    border-color: rgba(45, 95, 160, 0.2);
+    background: rgba(45, 95, 160, 0.08);
+    color: #234e80;
+}
+
 .client-link {
     text-decoration: none;
 }
@@ -3363,6 +3369,19 @@ h3 {
 
 .form-grid--two {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-grid--three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.field-group__heading {
+    display: grid;
+    gap: 4px;
+}
+
+.token-lifetime-editor {
+    margin-top: 20px;
 }
 
 .form-grid + .field-group,
@@ -4171,6 +4190,7 @@ h3 {
         min-height: auto;
     }
 
+    .form-grid--three,
     .form-grid--four {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -4760,6 +4780,7 @@ h3 {
     }
 
     .form-grid--two,
+    .form-grid--three,
     .user-picker,
     .choice-grid,
     .detail-columns,

@@ -71,7 +71,10 @@ public sealed class ClientsController(IClientManagementService clients)
                 request.FrontchannelLogoutSessionRequired,
                 request.BackchannelLogoutUri,
                 request.BackchannelLogoutSessionRequired,
-                request.JwksUri),
+                request.JwksUri,
+                request.AccessTokenLifetimeMinutes,
+                request.IdentityTokenLifetimeMinutes,
+                request.RefreshTokenLifetimeDays),
             RequestContext(),
             cancellationToken);
 
@@ -103,7 +106,13 @@ public sealed class ClientsController(IClientManagementService clients)
                 request.BackchannelLogoutUri,
                 request.BackchannelLogoutSessionRequired,
                 request.ExpectedVersion,
-                request.JwksUri),
+                request.JwksUri,
+                request.AccessTokenLifetimeMinutes,
+                request.IdentityTokenLifetimeMinutes,
+                request.RefreshTokenLifetimeDays,
+                request.ClearAccessTokenLifetime,
+                request.ClearIdentityTokenLifetime,
+                request.ClearRefreshTokenLifetime),
             RequestContext(),
             cancellationToken);
 
@@ -163,6 +172,15 @@ public sealed class CreateClientRequest
     public bool BackchannelLogoutSessionRequired { get; set; }
 
     public string? JwksUri { get; set; }
+
+    /// <summary>Optional per-application access token lifetime in minutes.</summary>
+    public int? AccessTokenLifetimeMinutes { get; set; }
+
+    /// <summary>Optional per-application identity token lifetime in minutes.</summary>
+    public int? IdentityTokenLifetimeMinutes { get; set; }
+
+    /// <summary>Optional per-application refresh token lifetime in days.</summary>
+    public int? RefreshTokenLifetimeDays { get; set; }
 }
 
 public sealed class UpdateClientRequest
@@ -180,4 +198,10 @@ public sealed class UpdateClientRequest
     public bool BackchannelLogoutSessionRequired { get; set; }
     public string? ExpectedVersion { get; set; }
     public string? JwksUri { get; set; }
+    public int? AccessTokenLifetimeMinutes { get; set; }
+    public int? IdentityTokenLifetimeMinutes { get; set; }
+    public int? RefreshTokenLifetimeDays { get; set; }
+    public bool ClearAccessTokenLifetime { get; set; }
+    public bool ClearIdentityTokenLifetime { get; set; }
+    public bool ClearRefreshTokenLifetime { get; set; }
 }

@@ -126,6 +126,33 @@ else
                     <span class="field-hint">Um scope por linha, sem o prefixo técnico <code>scp:</code>.</span>
                 </div>
             }
+            else if (activeSection == 2)
+            {
+                <div class="inline-notice inline-notice--info" role="status">
+                    <SUIIcon Name="clock" Size="19" />
+                    <div>
+                        <strong>Validade por aplicação</strong>
+                        <span>Deixe em branco para herdar o padrão global do servidor. Os limites protegem contra tokens excessivamente longos.</span>
+                    </div>
+                </div>
+                <div class="form-grid form-grid--three">
+                    <div class="field-group">
+                        <label for="edit-access-token-lifetime">Access token (minutos)</label>
+                        <input id="edit-access-token-lifetime" name="accessTokenLifetimeMinutes" type="number" min="1" max="1440" class="form-control" @bind="accessTokenLifetimeMinutes" />
+                        <span class="field-hint">De 1 minuto a 24 horas.</span>
+                    </div>
+                    <div class="field-group">
+                        <label for="edit-identity-token-lifetime">ID token (minutos)</label>
+                        <input id="edit-identity-token-lifetime" name="identityTokenLifetimeMinutes" type="number" min="1" max="120" class="form-control" @bind="identityTokenLifetimeMinutes" />
+                        <span class="field-hint">De 1 a 120 minutos.</span>
+                    </div>
+                    <div class="field-group">
+                        <label for="edit-refresh-token-lifetime">Refresh token (dias)</label>
+                        <input id="edit-refresh-token-lifetime" name="refreshTokenLifetimeDays" type="number" min="1" max="365" class="form-control" @bind="refreshTokenLifetimeDays" />
+                        <span class="field-hint">De 1 a 365 dias.</span>
+                    </div>
+                </div>
+            }
             else
             {
                 <div class="field-group">
@@ -184,7 +211,7 @@ else
 @code {
     [Parameter] public string Id { get; set; } = string.Empty;
 
-    private static readonly string[] Sections = ["Identidade", "Protocolos e scopes", "URLs e logout"];
+    private static readonly string[] Sections = ["Identidade", "Protocolos e scopes", "Tokens", "URLs e logout"];
     private ManagementClientDetail? client;
     private ManagementDataResult<ManagementClientDetail>? loadResult;
     private bool loading = true;
@@ -198,6 +225,9 @@ else
     private bool refreshToken;
     private bool clientCredentials;
     private bool deviceCode;
+    private int? accessTokenLifetimeMinutes;
+    private int? identityTokenLifetimeMinutes;
+    private int? refreshTokenLifetimeDays;
     private string scopesText = string.Empty;
     private string redirectUrisText = string.Empty;
     private string postLogoutRedirectUrisText = string.Empty;
@@ -211,6 +241,7 @@ else
     {
         0 => "Altere apenas os dados de apresentação e consentimento; o client ID permanece estável.",
         1 => "Escolha somente os fluxos necessários e os scopes que a aplicação realmente consome.",
+        2 => "Defina a validade padrão dos tokens emitidos para esta aplicação ou herde o valor global.",
         _ => "Confira os destinos antes de salvar. Cada URI é validada no servidor.",
     };
 
@@ -232,6 +263,9 @@ else
         refreshToken = value.Permissions.Contains("gt:refresh_token", StringComparer.Ordinal);
         clientCredentials = value.Permissions.Contains("gt:client_credentials", StringComparer.Ordinal);
         deviceCode = value.Permissions.Contains("gt:device_code", StringComparer.Ordinal);
+        accessTokenLifetimeMinutes = value.AccessTokenLifetimeMinutes;
+        identityTokenLifetimeMinutes = value.IdentityTokenLifetimeMinutes;
+        refreshTokenLifetimeDays = value.RefreshTokenLifetimeDays;
         scopesText = string.Join(Environment.NewLine, value.Permissions.Where(p => p.StartsWith("scp:", StringComparison.Ordinal)).Select(p => p[4..]));
         redirectUrisText = string.Join(Environment.NewLine, value.RedirectUris);
         postLogoutRedirectUrisText = string.Join(Environment.NewLine, value.PostLogoutRedirectUris);
@@ -262,7 +296,14 @@ else
             frontchannelLogoutSessionRequired,
             backchannelLogoutUri,
             backchannelLogoutSessionRequired,
-            client.Version));
+            client.Version,
+            null,
+            accessTokenLifetimeMinutes,
+            identityTokenLifetimeMinutes,
+            refreshTokenLifetimeDays,
+            accessTokenLifetimeMinutes is null,
+            identityTokenLifetimeMinutes is null,
+            refreshTokenLifetimeDays is null));
         saving = false;
         if (result.IsSuccess)
         {

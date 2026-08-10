@@ -216,6 +216,26 @@ else
                         <span><strong>Exigir PAR</strong><small>Protege os parâmetros antes de abrir o navegador.</small></span>
                     </label>
                 </div>
+                <div class="field-group token-lifetime-editor">
+                    <div class="field-group__heading">
+                        <label>Validade dos tokens</label>
+                        <span class="field-hint">Opcional: em branco, a aplicação herda o padrão global do servidor.</span>
+                    </div>
+                    <div class="form-grid form-grid--three">
+                        <div class="field-group">
+                            <label for="draft-access-token-lifetime">Access token (minutos)</label>
+                            <input id="draft-access-token-lifetime" name="accessTokenLifetimeMinutes" type="number" min="1" max="1440" class="form-control" value="@draft.Values.AccessTokenLifetimeMinutes" @oninput="AccessTokenLifetimeChangedAsync" />
+                        </div>
+                        <div class="field-group">
+                            <label for="draft-identity-token-lifetime">ID token (minutos)</label>
+                            <input id="draft-identity-token-lifetime" name="identityTokenLifetimeMinutes" type="number" min="1" max="120" class="form-control" value="@draft.Values.IdentityTokenLifetimeMinutes" @oninput="IdentityTokenLifetimeChangedAsync" />
+                        </div>
+                        <div class="field-group">
+                            <label for="draft-refresh-token-lifetime">Refresh token (dias)</label>
+                            <input id="draft-refresh-token-lifetime" name="refreshTokenLifetimeDays" type="number" min="1" max="365" class="form-control" value="@draft.Values.RefreshTokenLifetimeDays" @oninput="RefreshTokenLifetimeChangedAsync" />
+                        </div>
+                    </div>
+                </div>
             }
             else if (CurrentStep.Id == ManagementClientDraftSteps.Permissions)
             {
@@ -333,7 +353,7 @@ else
                 }
                 <div class="review-grid">
                     <div><h3>Identidade</h3><dl><div><dt>Nome</dt><dd>@ValueOrDash(draft.Values.DisplayName)</dd></div><div><dt>Client ID</dt><dd><code>@ValueOrDash(draft.Values.ClientId)</code></dd></div><div><dt>Tipo</dt><dd>@draft.Values.ClientType</dd></div></dl></div>
-                    <div><h3>Protocolo</h3><dl><div><dt>Fluxos</dt><dd>@GrantSummary</dd></div><div><dt>Consentimento</dt><dd>@draft.Values.ConsentType</dd></div><div><dt>PAR</dt><dd>@(draft.Values.RequirePar ? "Obrigatório" : "Opcional")</dd></div></dl></div>
+                    <div><h3>Protocolo</h3><dl><div><dt>Fluxos</dt><dd>@GrantSummary</dd></div><div><dt>Consentimento</dt><dd>@draft.Values.ConsentType</dd></div><div><dt>PAR</dt><dd>@(draft.Values.RequirePar ? "Obrigatório" : "Opcional")</dd></div><div><dt>Tokens</dt><dd>@TokenLifetimeSummary</dd></div></dl></div>
                     <div><h3>Permissões</h3><p>@(draft.Values.Scopes.Count == 0 ? "Nenhuma permissão selecionada." : string.Join(", ", draft.Values.Scopes))</p></div>
                     <div><h3>Retornos</h3><p>@draft.Values.RedirectUris.Count Redirect URI(s) e @draft.Values.PostLogoutRedirectUris.Count retorno(s) pós-logout.</p></div>
                 </div>
@@ -432,6 +452,9 @@ else
         draft.Values.ClientCredentials ? "Client Credentials" : null,
         draft.Values.DeviceCode ? "Device Code" : null,
     }.Where(value => value is not null));
+    private string TokenLifetimeSummary => draft is null
+        ? "—"
+        : $"access {draft.Values.AccessTokenLifetimeMinutes?.ToString() ?? "global"} min · ID {draft.Values.IdentityTokenLifetimeMinutes?.ToString() ?? "global"} min · refresh {draft.Values.RefreshTokenLifetimeDays?.ToString() ?? "global"} dias";
 
     protected override async Task OnParametersSetAsync()
     {
@@ -488,6 +511,9 @@ else
     private async Task RefreshTokenChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.RefreshToken = IsChecked(args); await QueueSaveAsync(); }
     private async Task ClientCredentialsChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.ClientCredentials = IsChecked(args); await QueueSaveAsync(); }
     private async Task DeviceCodeChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.DeviceCode = IsChecked(args); await QueueSaveAsync(); }
+    private async Task AccessTokenLifetimeChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.AccessTokenLifetimeMinutes = ParseOptionalInt(args); await QueueSaveAsync(); }
+    private async Task IdentityTokenLifetimeChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.IdentityTokenLifetimeMinutes = ParseOptionalInt(args); await QueueSaveAsync(); }
+    private async Task RefreshTokenLifetimeChangedAsync(ChangeEventArgs args) { if (draft is null) return; draft.Values.RefreshTokenLifetimeDays = ParseOptionalInt(args); await QueueSaveAsync(); }
     private async Task ScopeChangedAsync(string scope, ChangeEventArgs args) { if (draft is null) return; if (IsChecked(args)) { if (!draft.Values.Scopes.Contains(scope, StringComparer.Ordinal)) draft.Values.Scopes.Add(scope); } else draft.Values.Scopes.Remove(scope); await QueueSaveAsync(); }
     private async Task AddRedirectAsync() { if (draft is null) return; draft.Values.RedirectUris.Add(string.Empty); await QueueSaveAsync(); }
     private async Task RemoveRedirectAsync(int index) { if (draft is null || index >= draft.Values.RedirectUris.Count) return; draft.Values.RedirectUris.RemoveAt(index); await QueueSaveAsync(); }
@@ -580,6 +606,7 @@ else
     private static string IssueTone(ClientValidationIssue issue) => issue.Severity == ClientValidationSeverity.Error ? "danger" : "warning";
     private static string ValueOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "—" : value;
     private static bool IsChecked(ChangeEventArgs args) => args.Value is true || string.Equals(args.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+    private static int? ParseOptionalInt(ChangeEventArgs args) => int.TryParse(args.Value?.ToString(), out var value) ? value : null;
     private static string Slugify(string? value) => string.Join("-", (value ?? string.Empty).Trim().ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries)).Where(character => char.IsLetterOrDigit(character) || character is '-' or '_' or '.').Aggregate(string.Empty, (current, character) => current + character).Trim('-');
 
     public async ValueTask DisposeAsync()
