@@ -11,7 +11,9 @@ namespace Sufficit.Identity.STS;
 internal sealed class SufficitIdentityRuntimeCapabilityCatalog
     : IIdentityRuntimeCapabilityCatalog
 {
-    public SufficitIdentityRuntimeCapabilityCatalog(SufficitIdentityOptions options)
+    public SufficitIdentityRuntimeCapabilityCatalog(
+        SufficitIdentityOptions options,
+        bool dcrInitialAccessTokenConfigured = false)
     {
         ArgumentNullException.ThrowIfNull(options);
 
@@ -72,7 +74,8 @@ internal sealed class SufficitIdentityRuntimeCapabilityCatalog
 
         if (options.Mcp.Dcr.Enabled &&
             (!options.Mcp.Dcr.RequireInitialAccessToken ||
-             !string.IsNullOrWhiteSpace(options.Mcp.Dcr.InitialAccessToken)))
+             dcrInitialAccessTokenConfigured
+             || !string.IsNullOrWhiteSpace(options.Mcp.Dcr.InitialAccessToken)))
         {
             features.Add(ManagementRuntimeCapabilities.DynamicClientRegistration);
         }

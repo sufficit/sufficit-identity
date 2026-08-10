@@ -50,7 +50,8 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddSufficitIdentitySTS(
         this IServiceCollection services,
         IConfiguration configuration,
-        string configurationSection = "Sufficit:Identity")
+        string configurationSection = "Sufficit:Identity",
+        ISecretStore? secretStore = null)
     {
         // The STS is a self-contained API module. Register its controllers as
         // an MVC application part so any composition host can map them without
@@ -66,6 +67,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IBrandingThemeProvider, BrandingThemeProvider>();
         services.TryAddSingleton<IUserAvatarUrlResolver, UserAvatarUrlResolver>();
 
+        var startupSecretStore = secretStore ?? new EnvironmentSecretStore(configuration);
         var options = configuration
             .GetSection(configurationSection)
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
@@ -77,12 +79,32 @@ public static class ServiceCollectionExtensions
             throw new InvalidOperationException(
                 "Sufficit:Vault:ManageSigningKeys requires Sufficit:Vault:Enabled=true.");
         }
+        if (vaultOptions.ManageSigningKeys)
+        {
+            var longestTokenLifetimeSeconds = Math.Max(
+                options.Tokens.RefreshTokenLifetimeDays * 86_400,
+                Math.Max(
+                    (options.Tokens.AccessTokenLifetimeMinutes ?? 60) * 60,
+                    (options.Tokens.IdentityTokenLifetimeMinutes ?? 20) * 60));
+            if (vaultOptions.SigningKeyOverlapSeconds
+                < Math.Ceiling(longestTokenLifetimeSeconds))
+            {
+                throw new InvalidOperationException(
+                    "Sufficit:Vault:SigningKeyOverlapSeconds must cover the longest configured token lifetime so retiring kids remain verifiable.");
+            }
+        }
         ValidateAdvancedProtocolOptions(options);
         options.HumanVerification.Validate();
+        var dcrInitialAccessTokenConfigured = !string.IsNullOrWhiteSpace(
+            ResolveSecret(
+                startupSecretStore,
+                "identity/dcr/initial-access-token"));
         services.AddSingleton(options);
         services.Replace(ServiceDescriptor.Singleton<
             IIdentityRuntimeCapabilityCatalog>(
-            new SufficitIdentityRuntimeCapabilityCatalog(options)));
+            new SufficitIdentityRuntimeCapabilityCatalog(
+                options,
+                dcrInitialAccessTokenConfigured)));
         services.AddSingleton(options.HumanVerification);
         services.AddSingleton(options.TwoFactor);
         services.AddSingleton(options.Passkeys);
@@ -94,6 +116,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(options.Ciba);
         services.AddSingleton(options.SharedSignals);
         services.AddSingleton(options.OutboundHttp);
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<
+                IProductionPostureContributor,
+                Security.StsProductionPostureContributor>());
         services.AddSingleton<IPublicOriginResolver, PublicOriginResolver>();
         services.AddScoped<IAccountLookupPolicy, AccountLookupPolicy>();
         services.AddSingleton<ISecurityDecisionTelemetry,
@@ -112,10 +138,14 @@ public static class ServiceCollectionExtensions
                 provider.GetRequiredService<ILogger<ApplicationClaimDestinationPolicy>>(),
                 provider.GetRequiredService<ISecurityDecisionTelemetry>()));
         services.AddSingleton<ITokenIssuancePolicyKernel, TokenIssuancePolicyKernel>();
+        services.AddSingleton(new Tokens.AccessTokenFormatPolicy(
+            options.Tokens));
         services.AddSingleton<IPersonalTokenIssuancePolicy, PersonalTokenIssuancePolicy>();
         services.AddSingleton<ISubjectTokenProvenancePolicy, SubjectTokenProvenancePolicy>();
         services.AddScoped<IAuthenticationContextAccessor, AuthenticationContextAccessor>();
         services.AddSingleton<IAuthenticationContextProjector, AuthenticationContextProjector>();
+        services.AddSingleton<Mtls.IMtlsCertificateChainValidator,
+            Mtls.SystemMtlsCertificateChainValidator>();
         services.AddSingleton<Mtls.IMtlsClientCertificatePolicy,
             Mtls.MtlsClientCertificatePolicy>();
         services.AddSingleton<IdentityMetricsRuntimeState>();
@@ -124,6 +154,14 @@ public static class ServiceCollectionExtensions
             provider.GetRequiredService<IdentityUsageMetricChannel>());
         services.AddSafeHttpClient(
             "identity-metrics-export", options.OutboundHttp);
+        services.AddSafeHttpClient(
+                "jar-remote-jwks",
+                options.OutboundHttp)
+            .ConfigureHttpClient(client =>
+                client.Timeout = Timeout.InfiniteTimeSpan);
+        services.AddSingleton<Jar.RemoteJwksProvider>();
+        services.AddScoped<Jar.IJarSigningKeyResolver,
+            Jar.JarSigningKeyResolver>();
         services.AddHttpClient<IHumanVerificationService,
                 RemoteHumanVerificationService>()
             .UseSafeOutboundHttp(options.OutboundHttp);
@@ -183,7 +221,8 @@ public static class ServiceCollectionExtensions
         // OpenIddict server below, ensuring its public half appears in JWKS.
         var certificateMaterial = LoadCertificateMaterial(
             options.Certificates,
-            isDevelopmentEnvironment);
+            isDevelopmentEnvironment,
+            startupSecretStore);
         var auxiliarySigningCredentials = ResolveProtocolSigningCredentials(
             certificateMaterial.PrimarySigning,
             isDevelopmentEnvironment);
@@ -194,7 +233,9 @@ public static class ServiceCollectionExtensions
         // of a production-blocking translation bug (FindByNamesAsync IN(@p)).
         // See docs/NOTICE-mysql-license.md for the full rationale + fork details.
         // API: UseMySql(connectionString, MariaDbServerVersion.AutoDetect(...)).
-        var configuredConnectionString = configuration.GetConnectionString(options.ConnectionStringName)
+        var configuredConnectionString = ResolveSecret(
+                startupSecretStore,
+                "database/connection-string")
             ?? throw new InvalidOperationException(
                 $"Connection string '{options.ConnectionStringName}' not configured.");
         DatabaseTransportPolicy.Validate(
@@ -270,9 +311,10 @@ public static class ServiceCollectionExtensions
         // read from config so it can never accidentally drift between
         // environments/replicas due to a config typo.
         //
-        // L8 hardening: encrypt DP keys at rest with the signing certificate
-        // when one is configured. In Development (no cert) keys stay
-        // unencrypted (harmless — ephemeral).
+        // L8/S6 hardening: encrypt DP keys at rest with the vault's dedicated
+        // protection certificate. It must be separate from token signing.
+        // A bounded migration option can retain old signing certificates as
+        // decrypt-only keys while the DP ring naturally rotates.
         //
         // Finding #12 (fail-open): the original code silently fell back to
         // plaintext keys if the cert couldn't be used, which is a security
@@ -284,21 +326,37 @@ public static class ServiceCollectionExtensions
             .SetApplicationName("Sufficit.Identity")
             .PersistKeysToDbContext<AppDbContext>();
 
-        if (certificateMaterial.PrimarySigning is not null)
+        if (vaultOptions.Enabled
+            && !string.IsNullOrWhiteSpace(vaultOptions.CertificatePath))
         {
-            // If ProtectKeysWithCertificate throws (wrong key type, etc.), let
-            // it propagate — fail-closed is the correct posture for production.
+            var vaultProtectionCertificate =
+                VaultKeyEncryptionCertificate.Load(
+                    vaultOptions,
+                    startupSecretStore);
+            dpBuilder.ProtectKeysWithCertificate(vaultProtectionCertificate);
+
+            var decryptOnlyCertificates =
+                new List<X509Certificate2> { vaultProtectionCertificate };
+            if (vaultOptions.LegacyDataProtectionCertificateMigration
+                .IsConfigured)
+            {
+                decryptOnlyCertificates.AddRange(certificateMaterial.Signing);
+            }
+            dpBuilder.UnprotectKeysWithAnyCertificate(
+                decryptOnlyCertificates.ToArray());
+        }
+        else if (certificateMaterial.PrimarySigning is not null)
+        {
+            // Development compatibility only. Non-Development rejects a
+            // missing dedicated vault certificate in AddSufficitVault().
             dpBuilder.ProtectKeysWithCertificate(
                 certificateMaterial.PrimarySigning);
         }
 
         // ---- Internal secret vault (envelope encryption, Transit-style) ----
-        // When Sufficit:Vault:Enabled is false (default), IKeyVault resolves to
-        // PassThroughKeyVault (round-trip without crypto). When true, the real
-        // KeyVault wraps DEKs via the Data Protection key ring above (zero new
-        // deps). Consumers (SsfStreamStore, future) inject IKeyVault and get
-        // the right impl transparently.
-        services.AddSufficitVault(configuration);
+        // The real KeyVault wraps DEKs through the selected certificate,
+        // external KMS/HSM or the now-dedicated Data Protection key ring.
+        services.AddSufficitVault(configuration, startupSecretStore);
         if (vaultOptions.ManageSigningKeys)
         {
             services.AddScoped<Vault.VaultSigningCredentialsHandler>();
@@ -442,7 +500,7 @@ public static class ServiceCollectionExtensions
         // are present. The UI (Login.razor) lists the registered schemes
         // automatically via SignInManager.GetExternalAuthenticationSchemesAsync().
         var externalBuilder = services.AddAuthentication();
-        AddExternalProviders(externalBuilder, configuration);
+        AddExternalProviders(externalBuilder, configuration, startupSecretStore);
 
         // ---- OpenIddict (Core + Server + Validation) ----
         services.AddOpenIddict()
@@ -597,6 +655,9 @@ public static class ServiceCollectionExtensions
                 server.AddEventHandler(RecordIdentityUsage.Descriptor);
                 server.AddEventHandler(RecordAuthorizationUsageFailure.Descriptor);
                 server.AddEventHandler(RecordTokenUsageFailure.Descriptor);
+                server.AddEventHandler(Tokens.ApplyAccessTokenFormat.Descriptor);
+                server.AddEventHandler(
+                    Tokens.PrepareSelfContainedAccessToken.Descriptor);
 
                 if (options.Fapi2.Enabled)
                 {
@@ -710,10 +771,10 @@ public static class ServiceCollectionExtensions
                 // JWT-vs-reference tradeoff. Do NOT flip to false without
                 // coordinating with every resource server first.
                 // -------------------------------------------------------------------
-                if (options.Tokens.UseReferenceAccessTokens)
-                {
-                    server.UseReferenceAccessTokens();
-                }
+                // Keep both reference and JWT access-token pipelines available;
+                // ApplyAccessTokenFormat chooses per resource/client and falls
+                // back to the legacy global flag when no exact rule exists.
+                server.UseReferenceAccessTokens();
 
                 // -------------------------------------------------------------------
                 // PAR (Pushed Authorization Request, RFC 9126). The endpoint is
@@ -1049,6 +1110,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(sp => new Dpop.DatabaseDpopReplayCache(
             sp.GetRequiredService<IDbContextFactory<AppDbContext>>(),
             TimeProvider.System));
+        services.AddSingleton<Dpop.IAtomicDpopReplayCache>(sp =>
+            sp.GetRequiredService<Dpop.DatabaseDpopReplayCache>());
         services.AddSingleton<Dpop.IDpopReplayCache, Dpop.RollingDpopReplayCache>();
         services.AddSingleton(sp => new Dpop.DpopProofValidator(
             TimeProvider.System,
@@ -1068,6 +1131,20 @@ public static class ServiceCollectionExtensions
             sp.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(),
             timeProvider: TimeProvider.System,
             keyVault: sp.GetRequiredService<Sufficit.Identity.Vault.IKeyVault>()));
+
+        if (options.Jar.Enabled)
+        {
+            if (options.Jar.MaxLifetimeSeconds is < 1 or > 600
+                || options.Jar.RemoteJwksMaxBytes is < 1024 or > 1_048_576
+                || options.Jar.RemoteJwksTimeoutSeconds is < 1 or > 30
+                || options.Jar.RemoteJwksCacheSeconds is < 1 or > 86_400
+                || options.Jar.RemoteJwksStaleSeconds is < 0 or > 86_400
+                || options.Jar.RemoteJwksMaxCacheEntries is < 1 or > 4096)
+            {
+                throw new InvalidOperationException(
+                    "JAR lifetime and remote JWKS timeout/size/cache settings are outside their supported security bounds.");
+            }
+        }
 
         if (options.Jarm.Enabled)
         {
@@ -1173,11 +1250,45 @@ public static class ServiceCollectionExtensions
 
     private static void ValidateAdvancedProtocolOptions(SufficitIdentityOptions options)
     {
+        ValidateTokenFormatMap(
+            options.Tokens.AccessTokenFormatsByClient,
+            "Tokens:AccessTokenFormatsByClient");
+        ValidateTokenFormatMap(
+            options.Tokens.AccessTokenFormatsByResource,
+            "Tokens:AccessTokenFormatsByResource");
+
         if (options.Mtls.Enabled
             && options.Mtls.DeploymentMode == MtlsDeploymentMode.Unattested)
         {
             throw new InvalidOperationException(
                 "mTLS is enabled without Sufficit:Identity:Mtls:DeploymentMode attestation.");
+        }
+        if (options.Mtls.Enabled)
+        {
+            if (options.Mtls.RevocationTimeoutSeconds is < 1 or > 30)
+            {
+                throw new InvalidOperationException(
+                    "mTLS RevocationTimeoutSeconds must be between 1 and 30 seconds.");
+            }
+            if (string.IsNullOrWhiteSpace(
+                    options.Mtls.ForwardedCertificateHeader)
+                || options.Mtls.ForwardedCertificateHeader.Length > 64
+                || options.Mtls.ForwardedCertificateHeader.Any(character =>
+                    !char.IsAsciiLetterOrDigit(character)
+                    && character != '-'))
+            {
+                throw new InvalidOperationException(
+                    "mTLS ForwardedCertificateHeader must be a non-empty HTTP token using only ASCII letters, digits and hyphens.");
+            }
+            var trustedNetworks =
+                Mtls.MtlsClientCertificateForwarding.ParseNetworks(
+                    options.Mtls.TrustedProxyNetworks);
+            if (options.Mtls.DeploymentMode == MtlsDeploymentMode.TrustedProxy
+                && trustedNetworks.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "mTLS TrustedProxy deployment requires at least one dedicated Mtls:TrustedProxyNetworks entry.");
+            }
         }
 
         if (options.Fapi2.Enabled)
@@ -1256,6 +1367,21 @@ public static class ServiceCollectionExtensions
         }
     }
 
+    private static void ValidateTokenFormatMap(
+        IReadOnlyDictionary<string, AccessTokenStorageMode> values,
+        string setting)
+    {
+        if (values.Count > 4096
+            || values.Keys.Any(key =>
+                string.IsNullOrWhiteSpace(key)
+                || key.Length > 512
+                || !string.Equals(key, key.Trim(), StringComparison.Ordinal)))
+        {
+            throw new InvalidOperationException(
+                $"Sufficit:Identity:{setting} contains an invalid or excessive exact-match token-format mapping.");
+        }
+    }
+
     /// <summary>
     /// Resolves the signing credentials used by auxiliary protocol JWTs.
     /// Reuses the STS signing certificate when configured; otherwise falls
@@ -1302,18 +1428,25 @@ public static class ServiceCollectionExtensions
 
     private static CertificateMaterial LoadCertificateMaterial(
         CertificatesOptions options,
-        bool isDevelopmentEnvironment)
+        bool isDevelopmentEnvironment,
+        ISecretStore secretStore)
     {
+        var signingPassword = ResolveSecret(
+            secretStore,
+            "identity/certificates/signing-password");
+        var encryptionPassword = ResolveSecret(
+            secretStore,
+            "identity/certificates/encryption-password");
         var signing = LoadCertificateSet(
             options.SigningPath,
             options.SigningPaths,
-            options.SigningPassword,
+            signingPassword,
             "signing",
             options);
         var encryption = LoadCertificateSet(
             options.EncryptionPath,
             options.EncryptionPaths,
-            options.EncryptionPassword,
+            encryptionPassword,
             "encryption",
             options);
 
@@ -1418,28 +1551,46 @@ public static class ServiceCollectionExtensions
         public X509Certificate2? PrimarySigning => Signing.FirstOrDefault();
     }
 
+    private static string? ResolveSecret(
+        ISecretStore secretStore,
+        string logicalName)
+    {
+        return secretStore.GetSecretAsync(logicalName)
+            .GetAwaiter()
+            .GetResult();
+    }
+
     /// <summary>
     /// Registers external login providers (Google, GitHub, etc) from the
     /// <c>Sufficit:Identity:ExternalProviders</c> configuration section.
     /// Each provider is only registered if Enabled=true and credentials
     /// are present (ClientId + ClientSecret).
     /// </summary>
-    private static void AddExternalProviders(AuthenticationBuilder builder, IConfiguration configuration)
+    private static void AddExternalProviders(
+        AuthenticationBuilder builder,
+        IConfiguration configuration,
+        ISecretStore secretStore)
     {
         var section = configuration.GetSection("Sufficit:Identity:ExternalProviders");
         if (section is null) return;
 
         // Google
         var google = section.GetSection("Google");
+        var googleClientId = ResolveSecret(
+            secretStore,
+            "identity/external-providers/google/client-id");
+        var googleClientSecret = ResolveSecret(
+            secretStore,
+            "identity/external-providers/google/client-secret");
         if (google.GetValue<bool>("Enabled")
-            && !string.IsNullOrWhiteSpace(google["ClientId"])
-            && !string.IsNullOrWhiteSpace(google["ClientSecret"]))
+            && !string.IsNullOrWhiteSpace(googleClientId)
+            && !string.IsNullOrWhiteSpace(googleClientSecret))
         {
             builder.AddGoogle(options =>
             {
                 ConfigureExternalProvider(options);
-                options.ClientId = google["ClientId"]!;
-                options.ClientSecret = google["ClientSecret"]!;
+                options.ClientId = googleClientId!;
+                options.ClientSecret = googleClientSecret!;
                 // Use the ASP.NET Core default (/signin-google) to match the
                 // redirect URI already authorized in the Google Cloud Console.
                 // Surface Google's email_verified so the UI external-login flow
@@ -1451,15 +1602,21 @@ public static class ServiceCollectionExtensions
 
         // GitHub (requires AspNet.Security.OAuth.GitHub package in the host)
         var github = section.GetSection("GitHub");
+        var githubClientId = ResolveSecret(
+            secretStore,
+            "identity/external-providers/github/client-id");
+        var githubClientSecret = ResolveSecret(
+            secretStore,
+            "identity/external-providers/github/client-secret");
         if (github.GetValue<bool>("Enabled")
-            && !string.IsNullOrWhiteSpace(github["ClientId"])
-            && !string.IsNullOrWhiteSpace(github["ClientSecret"]))
+            && !string.IsNullOrWhiteSpace(githubClientId)
+            && !string.IsNullOrWhiteSpace(githubClientSecret))
         {
             builder.AddGitHub(options =>
             {
                 ConfigureExternalProvider(options);
-                options.ClientId = github["ClientId"]!;
-                options.ClientSecret = github["ClientSecret"]!;
+                options.ClientId = githubClientId!;
+                options.ClientSecret = githubClientSecret!;
                 options.Scope.Add("user:email");
                 // Use the ASP.NET Core default (/signin-github).
                 // Surface GitHub's email verification so the UI external-login
@@ -1474,15 +1631,21 @@ public static class ServiceCollectionExtensions
 
         // Facebook
         var facebook = section.GetSection("Facebook");
+        var facebookClientId = ResolveSecret(
+            secretStore,
+            "identity/external-providers/facebook/client-id");
+        var facebookSecret = ResolveSecret(
+            secretStore,
+            "identity/external-providers/facebook/client-secret");
         if (facebook.GetValue<bool>("Enabled")
-            && !string.IsNullOrWhiteSpace(facebook["ClientId"])
-            && !string.IsNullOrWhiteSpace(facebook["ClientSecret"]))
+            && !string.IsNullOrWhiteSpace(facebookClientId)
+            && !string.IsNullOrWhiteSpace(facebookSecret))
         {
             builder.AddFacebook(options =>
             {
                 ConfigureExternalProvider(options);
-                options.ClientId = facebook["ClientId"]!;
-                options.ClientSecret = facebook["ClientSecret"]!;
+                options.ClientId = facebookClientId!;
+                options.ClientSecret = facebookSecret!;
 
                 // Force the Meta Graph API version to v22.0 (the package's
                 // built-in default of v14.0 is deprecated and Meta now rejects

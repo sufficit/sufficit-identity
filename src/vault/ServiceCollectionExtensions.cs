@@ -2,6 +2,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
+using System.Security.Cryptography.X509Certificates;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Vault;
 
@@ -11,14 +14,14 @@ namespace Sufficit.Identity.Vault;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Registers the vault services. When <c>Sufficit:Vault:Enabled</c> is
-    /// false (default), <see cref="IKeyVault"/> resolves to
-    /// <see cref="PassThroughKeyVault"/> (round-trip without crypto). When
-    /// true, the real <see cref="KeyVault"/> with envelope encryption is used.
+    /// Registers the vault services. A disabled vault resolves to
+    /// <see cref="PassThroughKeyVault"/> only in Development. Other
+    /// environments fail startup unless the real encrypted vault is enabled.
     /// </summary>
     public static IServiceCollection AddSufficitVault(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ISecretStore? startupSecretStore = null)
     {
         services.AddLogging();
         var section = configuration.GetSection(VaultOptions.SectionName);
@@ -30,7 +33,13 @@ public static class ServiceCollectionExtensions
         // reported as disabled by a service resolving the options pattern.
         services.AddOptions<VaultOptions>().Bind(section);
         services.AddSingleton(options);
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<
+                IProductionPostureContributor,
+                VaultProductionPostureContributor>());
         services.TryAddSingleton(configuration);
+        var resolvedSecretStore = startupSecretStore
+            ?? new EnvironmentSecretStore(configuration);
         if (options.EnableSecretStore)
         {
             services.TryAddScoped<ISecretStore, VaultBackedSecretStore>();
@@ -43,38 +52,31 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<Sufficit.Identity.Management.Vault.IUserVaultService,
             UserVaultPersonalSecretService>();
 
-        if (!string.Equals(
-                options.KeySource,
-                "dataprotection",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            throw new InvalidOperationException(
-                "Sufficit:Vault:KeySource currently supports only 'dataprotection'.");
-        }
-
         var isDevelopment = string.Equals(
-            Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
+            configuration["ASPNETCORE_ENVIRONMENT"]
+                ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"),
             "Development",
             StringComparison.Ordinal);
-        if (!options.Enabled && !isDevelopment)
-        {
-            if (options.RequireEncryptionInProduction)
-            {
-                throw new InvalidOperationException(
-                    "Sufficit:Vault encryption is required in production, but Sufficit:Vault:Enabled is false.");
-            }
-
-            Console.Error.WriteLine(
-                "[WARNING] Sufficit:Vault is using plaintext compatibility mode in production. Enable it, migrate pt1 values, then set RequireEncryptionInProduction=true.");
-        }
+        ValidateRuntimeMode(options, isDevelopment);
+        ValidateKeyEncryptionKeyPolicy(
+            options,
+            configuration,
+            isDevelopment,
+            resolvedSecretStore);
 
         if (options.Enabled)
         {
-            services.AddSingleton<DataProtectionKeySource>();
             services.AddSingleton<IVaultKeyEncryptionKeySource>(sp =>
-                sp.GetRequiredService<DataProtectionKeySource>());
+                CreateKeySource(sp, options, resolvedSecretStore));
+            services.AddSingleton<IHostedService, VaultKekReadinessService>();
+            services.AddSingleton<VaultCryptographyTelemetry>();
             services.AddSingleton<KeyVault>();
             services.AddSingleton<IKeyVault>(sp => sp.GetRequiredService<KeyVault>());
+            if (options.ManageSigningKeys)
+            {
+                services.AddSingleton<IHostedService,
+                    VaultSigningKeyLifecycleService>();
+            }
         }
         else
         {
@@ -82,5 +84,169 @@ public static class ServiceCollectionExtensions
         }
 
         return services;
+    }
+
+    private static IVaultKeyEncryptionKeySource CreateKeySource(
+        IServiceProvider services,
+        VaultOptions options,
+        ISecretStore secretStore) => options.KeySource.Trim().ToLowerInvariant() switch
+        {
+            "dataprotection" => new DataProtectionKeySource(
+                services.GetRequiredService<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>(),
+                options),
+            "certificate" => new CertificateKeySource(
+                options,
+                secretStore),
+            "external" => new ExternalKeySource(
+                services.GetRequiredService<IVaultExternalKeyEncryptionProvider>(),
+                options),
+            _ => throw new InvalidOperationException(
+                $"Unsupported Sufficit:Vault:KeySource '{options.KeySource}'."),
+        };
+
+    internal static void ValidateRuntimeMode(
+        VaultOptions options,
+        bool isDevelopment)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        if (!options.Enabled && !isDevelopment)
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Vault:Enabled=true is required outside Development; " +
+                "the PassThroughKeyVault compatibility backend is development-only.");
+        }
+    }
+
+    internal static void ValidateKeyEncryptionKeyPolicy(
+        VaultOptions options,
+        IConfiguration configuration,
+        bool isDevelopment,
+        ISecretStore? secretStore = null)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(configuration);
+        var effectiveSecretStore = secretStore
+            ?? new EnvironmentSecretStore(configuration);
+        var source = options.KeySource.Trim().ToLowerInvariant();
+        if (source is not ("dataprotection" or "certificate" or "external"))
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Vault:KeySource must be 'dataprotection', 'certificate' or 'external'.");
+        }
+
+        if (!options.Enabled) return;
+
+        if (options.AesGcmMessageBudgetPerKeyVersion is < 1 or > 4_294_967_296)
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Vault:AesGcmMessageBudgetPerKeyVersion must be between 1 and 4294967296.");
+        }
+
+        var requiresDedicatedCertificate = !isDevelopment
+            || source == "certificate"
+            || !string.IsNullOrWhiteSpace(options.CertificatePath);
+        if (requiresDedicatedCertificate)
+        {
+            if (string.IsNullOrWhiteSpace(options.CertificatePath))
+            {
+                throw new InvalidOperationException(
+                    "Sufficit:Vault:CertificatePath is required outside Development to protect the Data Protection key ring with a certificate dedicated to the vault.");
+            }
+
+            var kekPath = Path.GetFullPath(options.CertificatePath);
+            var signingPaths = new[]
+                {
+                    configuration["Sufficit:Identity:Certificates:SigningPath"]
+                }
+                .Concat(configuration
+                    .GetSection("Sufficit:Identity:Certificates:SigningPaths")
+                .Get<string[]>() ?? [])
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Select(path => Path.GetFullPath(path!))
+                .ToArray();
+            if (signingPaths.Any(path => string.Equals(
+                    path,
+                    kekPath,
+                    StringComparison.Ordinal)))
+            {
+                throw new InvalidOperationException(
+                    "The vault KEK certificate must be different from every token-signing certificate.");
+            }
+
+            using var kekCertificate = VaultKeyEncryptionCertificate.Load(
+                options,
+                effectiveSecretStore);
+            var signingPassword = effectiveSecretStore.GetSecretAsync(
+                    "identity/certificates/signing-password")
+                .GetAwaiter()
+                .GetResult();
+            foreach (var signingPath in signingPaths)
+            {
+                using var signingCertificate =
+                    X509CertificateLoader.LoadPkcs12FromFile(
+                        signingPath,
+                        signingPassword);
+                if (string.Equals(
+                        signingCertificate.Thumbprint,
+                        kekCertificate.Thumbprint,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        "The vault KEK certificate thumbprint must be different from every token-signing certificate.");
+                }
+            }
+        }
+
+        ValidateLegacyCertificateMigration(
+            options.LegacyDataProtectionCertificateMigration,
+            now: DateTimeOffset.UtcNow);
+
+        if (!isDevelopment
+            && source == "external"
+            && string.IsNullOrWhiteSpace(options.ExternalKeyIdentifier))
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Vault:ExternalKeyIdentifier is required in production to pin the KMS/HSM KEK version.");
+        }
+
+        if (options.SigningKeyOverlapSeconds < 1)
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Vault:SigningKeyOverlapSeconds must be positive.");
+        }
+
+        if (options.SigningKeyLockSeconds is < 5 or > 600)
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Vault:SigningKeyLockSeconds must be between 5 and 600.");
+        }
+    }
+
+    internal static void ValidateLegacyCertificateMigration(
+        VaultLegacyCertificateMigrationOptions migration,
+        DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(migration);
+        if (!migration.IsConfigured) return;
+
+        if (string.IsNullOrWhiteSpace(migration.Owner)
+            || string.IsNullOrWhiteSpace(migration.Reason)
+            || migration.ExpiresAtUtc is null)
+        {
+            throw new InvalidOperationException(
+                "LegacyDataProtectionCertificateMigration requires Owner, Reason and ExpiresAtUtc together.");
+        }
+
+        if (migration.ExpiresAtUtc <= now)
+        {
+            throw new InvalidOperationException(
+                "LegacyDataProtectionCertificateMigration has expired; remove the signing-certificate unwrap fallback.");
+        }
+
+        if (migration.ExpiresAtUtc > now.AddDays(180))
+        {
+            throw new InvalidOperationException(
+                "LegacyDataProtectionCertificateMigration cannot exceed 180 days.");
+        }
     }
 }

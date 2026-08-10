@@ -86,6 +86,13 @@ public sealed class AppDbContext
     public DbSet<Entities.VaultKey> VaultKeys =>
         Set<Entities.VaultKey>();
 
+    public DbSet<Entities.VaultSigningKeyLifecycleOperation>
+        VaultSigningKeyLifecycleOperations =>
+        Set<Entities.VaultSigningKeyLifecycleOperation>();
+
+    public DbSet<Entities.VaultSigningKeyLock> VaultSigningKeyLocks =>
+        Set<Entities.VaultSigningKeyLock>();
+
     /// <summary>
     /// Optional named secrets (Phase 2). Values are always vault ciphertext;
     /// this table contains no plaintext secret material.
@@ -508,6 +515,14 @@ public sealed class AppDbContext
             b.Property(x => x.PublicJwk).HasColumnType("longtext");
             b.Property(x => x.CreatedAtUtc).HasColumnType("datetime(6)").IsRequired();
             b.Property(x => x.RetiredAtUtc).HasColumnType("datetime(6)");
+            b.Property(x => x.SigningState)
+                .HasConversion<string>()
+                .HasMaxLength(IdentityDatabaseSchema.VaultSigningStateLength);
+            b.Property(x => x.RetireAfterUtc).HasColumnType("datetime(6)");
+            b.Property(x => x.RevokedAtUtc).HasColumnType("datetime(6)");
+            b.Property(x => x.LifecycleVersion)
+                .IsRequired()
+                .IsConcurrencyToken();
 
             b.HasIndex(x => new { x.KeyName, x.KeyVersion })
                 .IsUnique()
@@ -522,6 +537,57 @@ public sealed class AppDbContext
                 ("PublicJwk", "publicjwk"),
                 ("CreatedAtUtc", "createdatutc"),
                 ("RetiredAtUtc", "retiredatutc"),
+                ("SigningState", "signingstate"),
+                ("RetireAfterUtc", "retireafterutc"),
+                ("RevokedAtUtc", "revokedatutc"),
+                ("LifecycleVersion", "lifecycleversion"),
+            ]);
+        });
+
+        builder.Entity<Entities.VaultSigningKeyLifecycleOperation>(b =>
+        {
+            b.ToTable("vaultsigningkeyoperations");
+            b.HasKey(x => x.OperationId);
+            b.Property(x => x.OperationId)
+                .HasMaxLength(IdentityDatabaseSchema.VaultLifecycleOperationIdLength);
+            b.Property(x => x.KeyName)
+                .HasMaxLength(IdentityDatabaseSchema.VaultKeyNameLength)
+                .IsRequired();
+            b.Property(x => x.Action)
+                .HasMaxLength(IdentityDatabaseSchema.VaultLifecycleActionLength)
+                .IsRequired();
+            b.Property(x => x.Reason)
+                .HasMaxLength(IdentityDatabaseSchema.VaultLifecycleReasonLength);
+            b.Property(x => x.OccurredAtUtc).HasColumnType("datetime(6)").IsRequired();
+            b.Property(x => x.RetireAfterUtc).HasColumnType("datetime(6)");
+            b.HasIndex(x => new { x.KeyName, x.OccurredAtUtc })
+                .HasDatabaseName("IX_vaultsigningkeyoperations_keyname_occurred");
+            SnakeCaseColumns(b, [
+                ("OperationId", "operationid"),
+                ("KeyName", "keyname"),
+                ("KeyVersion", "keyversion"),
+                ("PreviousKeyVersion", "previouskeyversion"),
+                ("Action", "action"),
+                ("Reason", "reason"),
+                ("OccurredAtUtc", "occurredatutc"),
+                ("RetireAfterUtc", "retireafterutc"),
+            ]);
+        });
+
+        builder.Entity<Entities.VaultSigningKeyLock>(b =>
+        {
+            b.ToTable("vaultsigningkeylocks");
+            b.HasKey(x => x.KeyName);
+            b.Property(x => x.KeyName)
+                .HasMaxLength(IdentityDatabaseSchema.VaultKeyNameLength);
+            b.Property(x => x.OwnerId)
+                .HasMaxLength(IdentityDatabaseSchema.VaultLockOwnerLength)
+                .IsRequired();
+            b.Property(x => x.ExpiresAtUtc).HasColumnType("datetime(6)").IsRequired();
+            SnakeCaseColumns(b, [
+                ("KeyName", "keyname"),
+                ("OwnerId", "ownerid"),
+                ("ExpiresAtUtc", "expiresatutc"),
             ]);
         });
     }
@@ -536,6 +602,15 @@ public sealed class AppDbContext
             b.Property(x => x.Name)
                 .HasMaxLength(IdentityDatabaseSchema.VaultSecretNameLength)
                 .IsRequired();
+            b.Property(x => x.Namespace)
+                .HasMaxLength(IdentityDatabaseSchema.VaultSecretNamespaceLength)
+                .IsRequired();
+            b.Property(x => x.ContextId)
+                .HasMaxLength(IdentityDatabaseSchema.VaultSecretContextLength)
+                .IsRequired();
+            b.Property(x => x.OwnerSubject)
+                .HasMaxLength(IdentityDatabaseSchema.VaultSecretOwnerLength)
+                .IsRequired();
             b.Property(x => x.Ciphertext)
                 .HasColumnType("longtext")
                 .IsRequired();
@@ -546,13 +621,18 @@ public sealed class AppDbContext
             b.Property(x => x.UpdatedBy)
                 .HasMaxLength(IdentityDatabaseSchema.VaultSecretUpdatedByLength)
                 .IsRequired();
-            b.HasIndex(x => x.Name)
+            b.HasIndex(x => new { x.ContextId, x.Name })
                 .IsUnique()
-                .HasDatabaseName("AK_vaultsecrets_name");
+                .HasDatabaseName("AK_vaultsecrets_context_name");
+            b.HasIndex(x => new { x.ContextId, x.Namespace })
+                .HasDatabaseName("IX_vaultsecrets_context_namespace");
 
             SnakeCaseColumns(b, [
                 ("Id", "id"),
                 ("Name", "name"),
+                ("Namespace", "namespace"),
+                ("ContextId", "contextid"),
+                ("OwnerSubject", "ownersubject"),
                 ("Ciphertext", "ciphertext"),
                 ("AadJson", "aadjson"),
                 ("UpdatedAtUtc", "updatedatutc"),

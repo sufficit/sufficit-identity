@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.RateLimiting;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
@@ -145,6 +146,14 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                 ["Sufficit:Identity:LegacyGrants:Password"] = "true",
                 ["Sufficit:Identity:LegacyGrants:None"] = "true",
                 ["Sufficit:Identity:TokenExchange:Enabled"] = "true",
+                // The shared fixture exercises legacy account/token flows
+                // without manufacturing a fresh-authentication claim for
+                // every test. Production keeps the secure defaults; tests
+                // that cover Enforce provide an explicit override below.
+                ["Sufficit:Identity:CredentialMutations:StepUpMode"] = "Audit",
+                ["Sufficit:Identity:PersonalTokens:Mode"] = "Observe",
+                ["Sufficit:Identity:PersonalTokens:RequiredScope"] = "",
+                ["Sufficit:Identity:PersonalTokens:RequireRecentAuthentication"] = "false",
             });
 
             // Layered on top so a per-test override (e.g. a restricted
@@ -211,6 +220,35 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
 
         builder.Configure(app =>
         {
+            // TestServer does not perform a TLS handshake, so integration
+            // tests cannot populate Connection.ClientCertificate naturally.
+            // This test-only bridge accepts a DER certificate and projects it
+            // onto the connection before the real mTLS policy runs. The
+            // production host never registers this middleware.
+            app.Use(async (context, next) =>
+            {
+                const string headerName = "X-Sufficit-Test-Client-Certificate";
+                if (context.Request.Headers.TryGetValue(
+                        headerName,
+                        out var encodedCertificate)
+                    && !string.IsNullOrWhiteSpace(encodedCertificate))
+                {
+                    try
+                    {
+                        context.Connection.ClientCertificate =
+                            X509CertificateLoader.LoadCertificate(
+                                Convert.FromBase64String(encodedCertificate!));
+                    }
+                    catch (FormatException)
+                    {
+                        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+                        return;
+                    }
+                }
+
+                await next();
+            });
+
             // Same security-headers middleware (incl. CSP) as the composition
             // host's Program.cs — exercised here so CspHeaderTests can assert
             // the header is emitted without a separate Program.cs-reproducing
@@ -325,6 +363,19 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
             db.UseSqlite(connection);
             db.UseOpenIddict();
         });
+
+        // The vault KEK readiness probe is an IHostedService and therefore
+        // starts before IAsyncLifetime.InitializeAsync().  Persisted
+        // DataProtection keys use the same AppDbContext, so the probe must
+        // see its table before the host starts.  Bootstrap the SQLite schema
+        // here (the later EnsureCreatedAsync call remains idempotent and still
+        // seeds the test data after the host is ready).
+        var bootstrapOptions = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(connection)
+            .UseOpenIddict()
+            .Options;
+        using var bootstrapDb = new AppDbContext(bootstrapOptions);
+        bootstrapDb.Database.EnsureCreated();
     }
 
     async Task IAsyncLifetime.InitializeAsync()

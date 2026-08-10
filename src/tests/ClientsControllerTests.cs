@@ -118,6 +118,45 @@ public sealed class ClientsControllerTests
     }
 
     [Fact]
+    public async Task Create_persists_a_public_https_jwks_uri()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        var request = ConfidentialClient(
+            $"cc-jwks-{Guid.NewGuid():N}",
+            "https://client.tests.local/callback");
+        request.JwksUri = "https://keys.example/jwks.json";
+
+        using var response = await client.PostAsJsonAsync("/api/clients", request);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<ManagementClientDetail>();
+        Assert.Equal(request.JwksUri, body?.JwksUri);
+    }
+
+    [Theory]
+    [InlineData("http://keys.example/jwks.json")]
+    [InlineData("https://127.0.0.1/jwks.json")]
+    [InlineData("https://10.0.0.1/jwks.json")]
+    public async Task Create_rejects_an_unsafe_jwks_uri(string jwksUri)
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        var request = ConfidentialClient(
+            $"cc-jwks-invalid-{Guid.NewGuid():N}",
+            "https://client.tests.local/callback");
+        request.JwksUri = jwksUri;
+
+        using var response = await client.PostAsJsonAsync("/api/clients", request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("jwks_uri_invalid", await response.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Create_with_explicit_implicit_consent_type_is_honored()
     {
         // The default flipped to Explicit, but a caller can still opt into
@@ -204,6 +243,46 @@ public sealed class ClientsControllerTests
 
         using var response = await client.PostAsJsonAsync("/api/clients", request);
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_projects_pkce_for_confidential_authorization_code_only()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+
+        using var interactiveResponse = await client.PostAsJsonAsync(
+            "/api/clients",
+            ConfidentialClient(
+                $"confidential-code-{Guid.NewGuid():N}",
+                "https://client.tests.local/callback"));
+        using var serviceResponse = await client.PostAsJsonAsync(
+            "/api/clients",
+            new CreateClientRequest
+            {
+                ClientId = $"confidential-service-{Guid.NewGuid():N}",
+                ClientSecret = $"secret-{Guid.NewGuid():N}",
+                GrantTypes = [Permissions.GrantTypes.ClientCredentials],
+            });
+
+        Assert.Equal(HttpStatusCode.Created, interactiveResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, serviceResponse.StatusCode);
+        var interactive = await interactiveResponse.Content
+            .ReadFromJsonAsync<JsonElement>();
+        var service = await serviceResponse.Content
+            .ReadFromJsonAsync<JsonElement>();
+        Assert.Contains(
+            interactive.GetProperty("requirements").EnumerateArray(),
+            requirement => requirement.GetString()
+                == Requirements.Features.ProofKeyForCodeExchange);
+        if (service.TryGetProperty("requirements", out var requirements))
+        {
+            Assert.DoesNotContain(
+                requirements.EnumerateArray(),
+                requirement => requirement.GetString()
+                    == Requirements.Features.ProofKeyForCodeExchange);
+        }
     }
 
     [Fact]

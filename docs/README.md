@@ -32,6 +32,23 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Completed work (activities/)
 
+- [Claude Fable 5 evaluation implementation](activities/202608092110-completed-claude-fable-5-implementation.md)
+- [Operational production-gate handoff](activities/202608092105-completed-operational-gate-handoff.md)
+- [P2 architecture scope reconciliation](activities/202608092100-completed-p2-architecture-reconciliation.md)
+- [Per-client and per-resource access-token format](activities/202608092055-completed-per-client-access-token-format.md)
+- [Vault AES-GCM message-budget metrics](activities/202608092052-completed-vault-encryption-budget-metrics.md)
+- [Crypto model and atomic DPoP replay composition](activities/202608092045-completed-crypto-model-replay-composition.md)
+- [P1 integrated JAR and mTLS validation](activities/202608092036-completed-p1-integrated-validation.md)
+- [mTLS revocation and trusted-proxy topology](activities/202608092035-completed-mtls-revocation-topology.md)
+- [JAR remote JWKS with safe egress](activities/202608092022-completed-jar-remote-jwks.md)
+- [Vault named-secret namespace authorization](activities/202608092010-completed-vault-secret-namespaces.md)
+- [Vault signing-key lifecycle and KEK separation](activities/202608092355-completed-vault-signing-key-lifecycle.md)
+- [Vault secret context isolation and ISecretStore consumers](activities/202608092020-completed-vault-secret-context-and-secret-store.md)
+- [Vault production fail-closed boundaries](activities/202608091930-completed-vault-fail-closed-boundaries.md)
+- [DPoP/mTLS sender-constraint exclusivity](activities/202608091925-completed-sender-constraint-exclusivity.md)
+- [Client and Request Object invariants](activities/202608091918-completed-pkce-jar-invariants.md)
+- [Security-sensitive policy defaults](activities/202608091911-completed-secure-policy-defaults.md)
+- [Production posture — contributors and fail-closed](activities/202608091904-completed-production-posture-contributors.md)
 - [Security hardening wave 2](activities/202608071330-completed-security-hardening-wave-2.md)
 - [GPT-5 evaluation remediation](activities/202608071227-completed-gpt-5-remediation.md)
 - [GLM-5.2 evaluation remediation](activities/202608071210-completed-glm-5-2-remediation.md)
@@ -65,6 +82,7 @@ Dated evaluations that are useful only as historical evidence live under
 ## Operations
 
 - [Deployment configuration](runbooks/RUNBOOK-DEPLOYMENT.md)
+- [Production evidence and release gates](runbooks/RUNBOOK-PRODUCTION-EVIDENCE.md)
 - [Database connection resilience and monitoring](runbooks/RUNBOOK-DATABASE-CONNECTION-RESILIENCE.md)
 - [CSP calibration](runbooks/RUNBOOK-CSP-CALIBRATION.md)
 - [Confirmed-email rollout](runbooks/RUNBOOK-CONFIRMED-EMAIL.md)
@@ -77,6 +95,10 @@ Dated evaluations that are useful only as historical evidence live under
 ## Evaluations
 
 - [Evaluation prompt](evaluations/EVALUATION-PROMPT.md)
+
+## Archive
+
+- [Claude Fable 5 implementation plan](archive/plans/PLAN-CLAUDE-FABLE-5-REMAINING.md)
 
 An evaluation describes the repository at a point in time. Findings that still
 require work must be copied into the relevant active plan; an archived evaluation

@@ -48,13 +48,19 @@ public sealed class VaultBackedClientSecretResolver(IKeyVault keyVault)
         {
             return await keyVault.DecryptStringAsync(reference, null, cancellationToken);
         }
-        catch (FormatException)
+        catch (FormatException) when (
+            keyVault is IKeyVaultPlaintextReferenceCompatibility
+            {
+                AcceptsPlaintextClientSecretReferences: true,
+            })
         {
-            // Not ciphertext — treat the reference as a plaintext secret (dev
-            // mode with PassThrough vault, or an operator who stored the raw
-            // secret as the reference). This is intentional: the resolver
-            // degrades gracefully rather than blocking provisioning.
+            // Only the explicitly marked Development compatibility backend
+            // may interpret a raw reference as plaintext.
             return reference;
+        }
+        catch (FormatException exception)
+        {
+            throw new ClientSecretResolutionException(exception);
         }
     }
 
