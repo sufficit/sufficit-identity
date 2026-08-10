@@ -6,14 +6,17 @@
     <base href="/" />
     <meta name="theme-color" content="#242223" />
     <link rel="stylesheet" href="/_content/Sufficit.Identity.UI.Vault/vault.css" />
+    <link rel="stylesheet" href="/_content/Sufficit.Blazor.UI/sufficit-ui.css" />
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 <body>
-    <Routes @rendermode="InteractiveServer" />
-    <div id="blazor-error-ui" role="alert">
-        <span>Não foi possível manter a conexão com o Vault.</span>
-        <a class="vault-link" href="">Recarregar</a>
-    </div>
+    <SUIThemeProvider>
+        <Routes @rendermode="InteractiveServer" />
+        <div id="blazor-error-ui" role="alert">
+            <span>Não foi possível manter a conexão com o Vault.</span>
+            <a class="vault-link" href="">Recarregar</a>
+        </div>
+    </SUIThemeProvider>
     <script src="/_framework/blazor.web.js"></script>
 </body>
 </html>

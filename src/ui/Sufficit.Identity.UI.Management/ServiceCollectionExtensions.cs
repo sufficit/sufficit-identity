@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using Sufficit.Blazor.UI;
 using Sufficit.Identity.UI.Abstractions.Hosting;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.UI.Management.Audit;
@@ -246,6 +247,11 @@ public static class ServiceCollectionExtensions
         services.AddRazorComponents()
             .AddInteractiveServerComponents();
         services.AddAntiforgery();
+
+        // SUI component library — registers the Identity Management theme so the
+        // shared SUI components render with the red brand (#cc0000) and Inter
+        // typography instead of the library default (blue).
+        services.AddSufficitUI(opts => opts.Theme = new IdentitySUITheme());
 
         return services;
     }

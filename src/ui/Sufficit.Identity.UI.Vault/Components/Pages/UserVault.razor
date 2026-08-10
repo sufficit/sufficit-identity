@@ -5,18 +5,18 @@
 @inject VaultDataSource Data
 
 <PageTitle>Meu Vault | Sufficit Identity</PageTitle>
-<PageHeader Title="Meu Vault"
+<SUIPageHeader Title="Meu Vault"
             Description="Guarde referências privadas de integração sem expor valores na interface.">
-    <Actions><StatusBadge Tone="success" Icon="shield">Criptografado</StatusBadge></Actions>
-</PageHeader>
+    <Actions><SUIStatusBadge Tone="success" Icon="shield">Criptografado</SUIStatusBadge></Actions>
+</SUIPageHeader>
 
 <div class="vault-note" role="note">
-    <AppIcon Name="lock" Size="20" />
+    <SUIIcon Name="lock" Size="20" />
     <div><strong>Somente você pode operar estes segredos.</strong><span>Os valores são criptografados no servidor e nunca são devolvidos pela listagem.</span></div>
 </div>
 
 <section class="vault-panel" aria-labelledby="personal-secret-heading">
-    <div class="vault-panel__heading"><div><h2 id="personal-secret-heading">Adicionar ou substituir segredo</h2><p>Use um nome lógico, como <code>openai/api-key</code>.</p></div><StatusBadge Tone="neutral">namespace: pessoal</StatusBadge></div>
+    <div class="vault-panel__heading"><div><h2 id="personal-secret-heading">Adicionar ou substituir segredo</h2><p>Use um nome lógico, como <code>openai/api-key</code>.</p></div><SUIStatusBadge Tone="neutral">namespace: pessoal</SUIStatusBadge></div>
     <EditForm Model="form" OnValidSubmit="SaveAsync" class="vault-form">
         <DataAnnotationsValidator />
         <div class="vault-form__grid">
@@ -29,15 +29,15 @@
 </section>
 
 <section class="vault-panel" aria-labelledby="personal-list-heading">
-    <div class="vault-panel__heading"><div><h2 id="personal-list-heading">Segredos pessoais</h2><p>Metadados para confirmar existência e última rotação.</p></div><StatusBadge Tone="info">@items.Count @(items.Count == 1 ? "item" : "itens")</StatusBadge></div>
+    <div class="vault-panel__heading"><div><h2 id="personal-list-heading">Segredos pessoais</h2><p>Metadados para confirmar existência e última rotação.</p></div><SUIStatusBadge Tone="info">@items.Count @(items.Count == 1 ? "item" : "itens")</SUIStatusBadge></div>
     @if (loading) { <div class="vault-loading" aria-label="Carregando segredos"></div> }
-    else if (items.Count == 0) { <EmptyState Icon="key" Title="Nenhum segredo pessoal" Description="Salve o primeiro valor para uma integração que você controla." /> }
+    else if (items.Count == 0) { <SUIEmptyState Icon="key" Title="Nenhum segredo pessoal" Description="Salve o primeiro valor para uma integração que você controla." /> }
     else
     {
         <div class="vault-list">
             @foreach (var item in items)
             {
-                <div class="vault-list__item"><span class="vault-list__icon"><AppIcon Name="key" Size="18" /></span><div class="vault-list__copy"><strong>@item.Name</strong><span>Atualizado em @item.UpdatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></div><button class="vault-button vault-button--quiet" type="button" @onclick="() => DeleteAsync(item.Name)" disabled="@saving">Remover</button></div>
+                <div class="vault-list__item"><span class="vault-list__icon"><SUIIcon Name="key" Size="18" /></span><div class="vault-list__copy"><strong>@item.Name</strong><span>Atualizado em @item.UpdatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></div><button class="vault-button vault-button--quiet" type="button" @onclick="() => DeleteAsync(item.Name)" disabled="@saving">Remover</button></div>
             }
         </div>
     }

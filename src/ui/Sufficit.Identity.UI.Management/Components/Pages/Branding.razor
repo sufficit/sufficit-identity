@@ -4,39 +4,39 @@
 
 <PageTitle>Branding | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Branding"
+<SUIPageHeader Title="Branding"
             Description="Gerencie a identidade visual aplicada às superfícies públicas do serviço.">
     <Actions>
         <button class="button button--secondary"
                 type="button"
                 disabled="@busy"
                 @onclick="RefreshAsync">
-            <AppIcon Name="refresh" Size="17" />
+            <SUIIcon Name="refresh" Size="17" />
             Atualizar
         </button>
         <button class="button button--primary"
                 type="button"
                 disabled="@busy"
                 @onclick="BeginCreate">
-            <AppIcon Name="plus" Size="17" />
+            <SUIIcon Name="plus" Size="17" />
             Novo tema
         </button>
     </Actions>
-</PageHeader>
+</SUIPageHeader>
 
 <div class="contract-strip contract-strip--success">
-    <AppIcon Name="shield" Size="20" />
+    <SUIIcon Name="shield" Size="20" />
     <div>
         <strong>Uma fonte de verdade</strong>
         <span>Esta tela e a API executam os mesmos casos de uso, validações, autorização e auditoria.</span>
     </div>
-    <StatusBadge Tone="success">Integrado</StatusBadge>
+    <SUIStatusBadge Tone="success">Integrado</SUIStatusBadge>
 </div>
 
 @if (ActiveThemeCount > 1)
 {
     <div class="inline-notice inline-notice--danger" role="alert">
-        <AppIcon Name="alert" Size="19" />
+        <SUIIcon Name="alert" Size="19" />
         <div>
             <strong>Mais de um tema está marcado como ativo</strong>
             <span>Ative o tema correto abaixo; a operação desativará os demais de forma atômica.</span>
@@ -47,7 +47,7 @@
 @if (!string.IsNullOrWhiteSpace(successMessage))
 {
     <div class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
+        <SUIIcon Name="check" Size="19" />
         <div>
             <strong>Branding atualizado</strong>
             <span>@successMessage</span>
@@ -58,7 +58,7 @@
 @if (operation?.IsSuccess is false)
 {
     <div class="inline-notice inline-notice--danger" role="alert">
-        <AppIcon Name="alert" Size="19" />
+        <SUIIcon Name="alert" Size="19" />
         <div>
             <strong>Não foi possível concluir a operação</strong>
             <span>@operation.ErrorMessage</span>
@@ -74,7 +74,7 @@
             </div>
             @if (!loading && themes.Count > 0)
             {
-                <StatusBadge Tone="neutral">@themes.Count</StatusBadge>
+                <SUIStatusBadge Tone="neutral">@themes.Count</SUIStatusBadge>
             }
         </div>
 
@@ -89,7 +89,7 @@
         }
         else if (loadResult?.IsSuccess is false)
         {
-            <EmptyState Icon="alert"
+            <SUIEmptyState Icon="alert"
                         Title="Não foi possível carregar os temas"
                         Description="@loadResult.ErrorMessage">
                 <Actions>
@@ -99,11 +99,11 @@
                         Tentar novamente
                     </button>
                 </Actions>
-            </EmptyState>
+            </SUIEmptyState>
         }
         else if (themes.Count is 0)
         {
-            <EmptyState Icon="palette"
+            <SUIEmptyState Icon="palette"
                         Title="Nenhum tema configurado"
                         Description="Crie a primeira identidade visual; ela só será publicada após a ativação.">
                 <Actions>
@@ -113,7 +113,7 @@
                         Criar tema
                     </button>
                 </Actions>
-            </EmptyState>
+            </SUIEmptyState>
         }
         else
         {
@@ -133,11 +133,11 @@
                         </span>
                         @if (theme.IsActive)
                         {
-                            <StatusBadge Tone="success">Ativo</StatusBadge>
+                            <SUIStatusBadge Tone="success">Ativo</SUIStatusBadge>
                         }
                         else
                         {
-                            <AppIcon Name="arrow-right" Size="16" />
+                            <SUIIcon Name="arrow-right" Size="16" />
                         }
                     </button>
                 }
@@ -148,7 +148,7 @@
     <div class="brand-preview-panel" aria-labelledby="brand-preview-heading">
         @if (Selected is null)
         {
-            <EmptyState Icon="palette"
+            <SUIEmptyState Icon="palette"
                         Title="Selecione um tema"
                         Description="A prévia usa os valores persistidos pelo serviço de identidade." />
         }
@@ -158,9 +158,9 @@
                 <div>
                     <h2 id="brand-preview-heading">@theme.Name</h2>
                 </div>
-                <StatusBadge Tone="@(theme.IsActive ? "success" : "neutral")">
+                <SUIStatusBadge Tone="@(theme.IsActive ? "success" : "neutral")">
                     @(theme.IsActive ? "Publicado" : "Rascunho")
-                </StatusBadge>
+                </SUIStatusBadge>
             </div>
 
             <div class="identity-preview" style="@PreviewStyle">
@@ -221,7 +221,7 @@
                         type="button"
                         disabled="@busy"
                         @onclick="BeginEdit">
-                    <AppIcon Name="edit" Size="17" />
+                    <SUIIcon Name="edit" Size="17" />
                     Editar tema
                 </button>
                 @if (!theme.IsActive)
@@ -237,7 +237,7 @@
                         }
                         else
                         {
-                            <AppIcon Name="check" Size="17" />
+                            <SUIIcon Name="check" Size="17" />
                             <span>Publicar tema</span>
                         }
                     </button>
@@ -410,7 +410,7 @@
                 }
                 else
                 {
-                    <AppIcon Name="check" Size="17" />
+                    <SUIIcon Name="check" Size="17" />
                     <span>@(creating ? "Criar tema" : "Salvar alterações")</span>
                 }
             </button>
@@ -433,7 +433,7 @@
                     type="button"
                     disabled="@busy"
                     @onclick="BeginDelete">
-                <AppIcon Name="trash" Size="17" />
+                <SUIIcon Name="trash" Size="17" />
                 Excluir tema
             </button>
         }
@@ -466,7 +466,7 @@
                         }
                         else
                         {
-                            <AppIcon Name="trash" Size="17" />
+                            <SUIIcon Name="trash" Size="17" />
                             <span>Confirmar exclusão</span>
                         }
                     </button>

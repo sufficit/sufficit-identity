@@ -5,12 +5,12 @@
 @inject VaultDataSource Data
 
 <PageTitle>Vault administrativo | Sufficit Identity</PageTitle>
-<PageHeader Title="Vault administrativo"
+<SUIPageHeader Title="Vault administrativo"
             Description="Rotacione segredos nomeados usados por serviços. Os valores nunca aparecem na listagem.">
-    <Actions><StatusBadge Tone="warning" Icon="shield">Capability protegida</StatusBadge></Actions>
-</PageHeader>
+    <Actions><SUIStatusBadge Tone="warning" Icon="shield">Capability protegida</SUIStatusBadge></Actions>
+</SUIPageHeader>
 
-<div class="vault-note vault-note--warning" role="note"><AppIcon Name="alert" Size="20" /><div><strong>Operação de alto impacto.</strong><span>Substituir um segredo altera o próximo consumidor que o resolver. Registre a finalidade no nome e faça a rotação de forma controlada.</span></div></div>
+<div class="vault-note vault-note--warning" role="note"><SUIIcon Name="alert" Size="20" /><div><strong>Operação de alto impacto.</strong><span>Substituir um segredo altera o próximo consumidor que o resolver. Registre a finalidade no nome e faça a rotação de forma controlada.</span></div></div>
 
 <section class="vault-panel" aria-labelledby="admin-secret-heading">
     <div class="vault-panel__heading"><div><h2 id="admin-secret-heading">Criar ou rotacionar</h2><p>O valor é aceito somente nesta operação.</p></div></div>
@@ -19,10 +19,10 @@
 </section>
 
 <section class="vault-panel" aria-labelledby="admin-list-heading">
-    <div class="vault-panel__heading"><div><h2 id="admin-list-heading">Segredos nomeados</h2><p>Somente metadados e data da última alteração.</p></div><StatusBadge Tone="info">@items.Count @(items.Count == 1 ? "item" : "itens")</StatusBadge></div>
+    <div class="vault-panel__heading"><div><h2 id="admin-list-heading">Segredos nomeados</h2><p>Somente metadados e data da última alteração.</p></div><SUIStatusBadge Tone="info">@items.Count @(items.Count == 1 ? "item" : "itens")</SUIStatusBadge></div>
     @if (loading) { <div class="vault-loading" aria-label="Carregando segredos"></div> }
-    else if (items.Count == 0) { <EmptyState Icon="database" Title="Nenhum segredo nomeado" Description="O armazenamento ainda não possui segredos administrativos." /> }
-    else { <div class="vault-list">@foreach (var item in items) { <div class="vault-list__item"><span class="vault-list__icon"><AppIcon Name="lock" Size="18" /></span><div class="vault-list__copy"><strong>@item.Name</strong><span>Atualizado por @item.UpdatedBy em @item.UpdatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></div><button class="vault-button vault-button--quiet" type="button" @onclick="() => DeleteAsync(item.Name)" disabled="@saving">Remover</button></div> }</div> }
+    else if (items.Count == 0) { <SUIEmptyState Icon="database" Title="Nenhum segredo nomeado" Description="O armazenamento ainda não possui segredos administrativos." /> }
+    else { <div class="vault-list">@foreach (var item in items) { <div class="vault-list__item"><span class="vault-list__icon"><SUIIcon Name="lock" Size="18" /></span><div class="vault-list__copy"><strong>@item.Name</strong><span>Atualizado por @item.UpdatedBy em @item.UpdatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></div><button class="vault-button vault-button--quiet" type="button" @onclick="() => DeleteAsync(item.Name)" disabled="@saving">Remover</button></div> }</div> }
 </section>
 
 @code {

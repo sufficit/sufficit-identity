@@ -5,15 +5,15 @@
 
 <PageTitle>Nova aplicação | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Nova aplicação"
+<SUIPageHeader Title="Nova aplicação"
             Description="Escolha o cenário de uso. O Identity prepara uma configuração segura e explica cada decisão.">
     <Actions>
         <a class="button button--secondary" href="clients">
-            <AppIcon Name="arrow-left" Size="17" />
+            <SUIIcon Name="arrow-left" Size="17" />
             Voltar para aplicações
         </a>
     </Actions>
-</PageHeader>
+</SUIPageHeader>
 
 <div class="setup-intro" aria-labelledby="profile-heading">
     <div>
@@ -21,7 +21,7 @@
         <p>Você poderá revisar e ajustar tudo antes de criar. Nenhuma aplicação incompleta será registrada.</p>
     </div>
     <div class="setup-intro__assurance">
-        <AppIcon Name="shield" Size="20" />
+        <SUIIcon Name="shield" Size="20" />
         <span>Defaults seguros, validação progressiva e rascunho retomável</span>
     </div>
 </div>
@@ -29,7 +29,7 @@
 @if (!string.IsNullOrWhiteSpace(errorMessage))
 {
     <div class="inline-notice inline-notice--danger" role="alert">
-        <AppIcon Name="alert" Size="19" />
+        <SUIIcon Name="alert" Size="19" />
         <div>
             <strong>Não foi possível iniciar a configuração</strong>
             <span>@errorMessage</span>
@@ -49,13 +49,13 @@
 else if (profiles.Count is 0)
 {
     <div>
-        <EmptyState Icon="alert"
+        <SUIEmptyState Icon="alert"
                     Title="Nenhum perfil disponível"
                     Description="O runtime não informou uma configuração de aplicação disponível.">
             <Actions>
                 <button class="button button--secondary" type="button" @onclick="LoadAsync">Tentar novamente</button>
             </Actions>
-        </EmptyState>
+        </SUIEmptyState>
     </div>
 }
 else
@@ -68,7 +68,7 @@ else
                     disabled="@(creatingProfile is not null || !profile.IsAvailable)"
                     aria-busy="@(creatingProfile == profile.Id)"
                     @onclick="() => CreateDraftAsync(profile.Id)">
-                <span class="profile-card__icon"><AppIcon Name="@profile.Icon" Size="23" /></span>
+                <span class="profile-card__icon"><SUIIcon Name="@profile.Icon" Size="23" /></span>
                 <span class="profile-card__body">
                     <strong>@profile.DisplayName</strong>
                     <span>@profile.Description</span>
@@ -77,7 +77,7 @@ else
                 <span class="profile-card__action">
                     @if (!profile.IsAvailable)
                     {
-                        <AppIcon Name="lock" Size="17" />
+                        <SUIIcon Name="lock" Size="17" />
                     }
                     else if (creatingProfile == profile.Id)
                     {
@@ -86,7 +86,7 @@ else
                     }
                     else
                     {
-                        <AppIcon Name="arrow-right" Size="18" />
+                        <SUIIcon Name="arrow-right" Size="18" />
                     }
                 </span>
             </button>
@@ -95,7 +95,7 @@ else
 }
 
 <div class="setup-footnote">
-    <AppIcon Name="lock" Size="18" />
+    <SUIIcon Name="lock" Size="18" />
     <p>Credenciais nunca entram na URL ou no rascunho. Quando necessárias, são geradas somente na conclusão e exibidas uma única vez.</p>
 </div>
 

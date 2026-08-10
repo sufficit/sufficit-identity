@@ -5,23 +5,23 @@
 
 <PageTitle>Autorizações | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Autorizações"
+<SUIPageHeader Title="Autorizações"
             Description="Revise consentimentos e grants OAuth/OpenID Connect mantidos pelo provedor.">
-</PageHeader>
+</SUIPageHeader>
 
 <div class="contract-strip contract-strip--info">
-    <AppIcon Name="shield" Size="20" />
+    <SUIIcon Name="shield" Size="20" />
     <div>
         <strong>Autorizações persistidas</strong>
         <span>Revogar uma autorização também invalida todas as credenciais associadas a ela.</span>
     </div>
-    <StatusBadge Tone="info">OAuth &amp; OIDC</StatusBadge>
+    <SUIStatusBadge Tone="info">OAuth &amp; OIDC</SUIStatusBadge>
 </div>
 
 @if (revoked)
 {
     <div class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
+        <SUIIcon Name="check" Size="19" />
         <div>
             <strong>Autorização revogada</strong>
             <span>O grant e suas credenciais relacionadas não podem mais ser utilizados.</span>
@@ -39,7 +39,7 @@
             <form class="user-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
                 <label class="search-field">
                     <span class="visually-hidden">Pesquisar autorizações</span>
-                    <AppIcon Name="search" Size="18" />
+                    <SUIIcon Name="search" Size="18" />
                     <input type="search"
                            placeholder="Usuário, cliente, tipo ou estado"
                            autocomplete="off"
@@ -71,7 +71,7 @@
         {
             @if (Page.Items.Count is 0)
             {
-                <EmptyState Icon="shield"
+                <SUIEmptyState Icon="shield"
                             Title="Nenhuma autorização encontrada"
                             Description="Não há grants neste recorte. Altere o estado ou a pesquisa para ampliar a consulta." />
             }
@@ -123,11 +123,11 @@
                                             {
                                                 @foreach (var scope in grant.Scopes.Take(4))
                                                 {
-                                                    <StatusBadge Tone="neutral">@scope</StatusBadge>
+                                                    <SUIStatusBadge Tone="neutral">@scope</SUIStatusBadge>
                                                 }
                                                 @if (grant.Scopes.Count > 4)
                                                 {
-                                                    <StatusBadge Tone="neutral">+@(grant.Scopes.Count - 4)</StatusBadge>
+                                                    <SUIStatusBadge Tone="neutral">+@(grant.Scopes.Count - 4)</SUIStatusBadge>
                                                 }
                                             }
                                         </span>
@@ -140,9 +140,9 @@
                                     </td>
                                     <td data-label="Credenciais">@grant.CredentialCount</td>
                                     <td data-label="Estado">
-                                        <StatusBadge Tone="@(grant.IsActive ? "success" : "neutral")">
+                                        <SUIStatusBadge Tone="@(grant.IsActive ? "success" : "neutral")">
                                             @StatusLabel(grant.Status)
-                                        </StatusBadge>
+                                        </SUIStatusBadge>
                                     </td>
                                     <td data-label="Ações">
                                         @if (grant.IsActive)
@@ -151,7 +151,7 @@
                                                     type="button"
                                                     @onclick="() => SelectForRevocation(grant)">
                                                 Revogar
-                                                <AppIcon Name="lock" Size="15" />
+                                                <SUIIcon Name="lock" Size="15" />
                                             </button>
                                         }
                                     </td>
@@ -164,13 +164,13 @@
         }
         else
         {
-            <EmptyState Icon="alert"
+            <SUIEmptyState Icon="alert"
                         Title="@ErrorTitle"
                         Description="@(result?.ErrorMessage ?? "O serviço não conseguiu consultar as autorizações.")">
                 <Actions>
                     <button class="button button--secondary" type="button" @onclick="LoadAsync">Tentar novamente</button>
                 </Actions>
-            </EmptyState>
+            </SUIEmptyState>
         }
     </div>
 
@@ -201,13 +201,13 @@
         @if (revocation?.IsSuccess is false)
         {
             <div class="inline-notice inline-notice--danger" role="alert">
-                <AppIcon Name="alert" Size="19" />
+                <SUIIcon Name="alert" Size="19" />
                 <div><strong>Não foi possível revogar</strong><span>@revocation.ErrorMessage</span></div>
             </div>
         }
         <button class="button button--secondary" type="button" @onclick="CancelRevocation">Cancelar</button>
         <button class="button button--danger" type="button" disabled="@revoking" @onclick="RevokeAsync">
-            <AppIcon Name="lock" Size="17" />
+            <SUIIcon Name="lock" Size="17" />
             @(revoking ? "Revogando…" : "Confirmar revogação")
         </button>
     </div>

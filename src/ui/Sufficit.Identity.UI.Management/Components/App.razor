@@ -11,16 +11,19 @@
     <meta name="theme-color" content="#242223" />
     <link rel="stylesheet" href="/_content/Sufficit.Identity.UI.Management/app.css" />
     <link rel="stylesheet" href="/_content/Sufficit.Identity.UI.Management/users.css" />
+    <link rel="stylesheet" href="/_content/Sufficit.Blazor.UI/sufficit-ui.css" />
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 
 <body>
-    <Routes @rendermode="InteractiveServer" />
-    <div id="blazor-error-ui" role="alert">
-        <span>Não foi possível manter a conexão com o painel.</span>
-        <a href="" class="reload">Recarregar</a>
-        <button type="button" class="dismiss" aria-label="Fechar aviso">×</button>
-    </div>
+    <SUIThemeProvider>
+        <Routes @rendermode="InteractiveServer" />
+        <div id="blazor-error-ui" role="alert">
+            <span>Não foi possível manter a conexão com o painel.</span>
+            <a href="" class="reload">Recarregar</a>
+            <button type="button" class="dismiss" aria-label="Fechar aviso">×</button>
+        </div>
+    </SUIThemeProvider>
     <script src="/_content/Sufficit.Identity.UI.Management/_framework/blazor.web.js"></script>
 </body>
 

@@ -5,15 +5,15 @@
 
 <PageTitle>Visão geral | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Visão geral"
+<SUIPageHeader Title="Visão geral"
             Description="Consulte as áreas liberadas para sua sessão e a política efetiva do serviço de identidade.">
     <Actions>
         <a class="button button--secondary" href="settings">
-            <AppIcon Name="settings" Size="17" />
+            <SUIIcon Name="settings" Size="17" />
             Ver configuração
         </a>
     </Actions>
-</PageHeader>
+</SUIPageHeader>
 
 @if (loading)
 {
@@ -27,7 +27,7 @@
 else if (result?.IsSuccess is not true || result.Value is null)
 {
     <div>
-        <EmptyState Icon="alert"
+        <SUIEmptyState Icon="alert"
                     Title="Não foi possível consultar o runtime"
                     Description="@(result?.ErrorMessage ?? "O serviço de identidade não informou seu estado administrativo.")">
             <Actions>
@@ -37,18 +37,18 @@ else if (result?.IsSuccess is not true || result.Value is null)
                     Tentar novamente
                 </button>
             </Actions>
-        </EmptyState>
+        </SUIEmptyState>
     </div>
 }
 else
 {
     <div class="contract-strip contract-strip--success">
-        <AppIcon Name="shield" Size="20" />
+        <SUIIcon Name="shield" Size="20" />
         <div>
             <strong>Estado fornecido pelo runtime</strong>
             <span>Ambiente @overview.EnvironmentName · @overview.Operator.Capabilities.Count capabilities efetivas</span>
         </div>
-        <StatusBadge Tone="success">Atual</StatusBadge>
+        <SUIStatusBadge Tone="success">Atual</SUIStatusBadge>
     </div>
 
     <div class="dashboard-grid">
@@ -62,7 +62,7 @@ else
 
             @if (AccessibleModules.Count is 0)
             {
-                <EmptyState Icon="lock"
+                <SUIEmptyState Icon="lock"
                             Title="@NoAccessTitle"
                             Description="@NoAccessDescription" />
             }
@@ -73,14 +73,14 @@ else
                     {
                         <a class="capability-row" href="@module.Presentation.Href">
                             <span class="capability-row__icon">
-                                <AppIcon Name="@module.Presentation.Icon" />
+                                <SUIIcon Name="@module.Presentation.Icon" />
                             </span>
                             <span class="capability-row__copy">
                                 <strong>@module.Presentation.Title</strong>
                                 <span>@module.Presentation.Description</span>
                             </span>
-                            <StatusBadge Tone="success">Permitido</StatusBadge>
-                            <AppIcon Name="arrow-right"
+                            <SUIStatusBadge Tone="success">Permitido</SUIStatusBadge>
+                            <SUIIcon Name="arrow-right"
                                      Size="17"
                                      CssClass="capability-row__arrow" />
                         </a>
@@ -103,7 +103,7 @@ else
                     </dt>
                     <dd>
                         <span class="config-value">@overview.EnvironmentName</span>
-                        <StatusBadge Tone="neutral">Runtime</StatusBadge>
+                        <SUIStatusBadge Tone="neutral">Runtime</SUIStatusBadge>
                     </dd>
                 </div>
                 <div>
@@ -113,7 +113,7 @@ else
                     </dt>
                     <dd>
                         <span class="config-value">@MfaPolicyLabel</span>
-                        <StatusBadge Tone="@MfaTone">@MfaSessionLabel</StatusBadge>
+                        <SUIStatusBadge Tone="@MfaTone">@MfaSessionLabel</SUIStatusBadge>
                     </dd>
                 </div>
                 <div>
@@ -125,7 +125,7 @@ else
                         <span class="config-value">
                             <code>@overview.Api.RequiredScope</code>
                         </span>
-                        <StatusBadge Tone="info">OAuth</StatusBadge>
+                        <SUIStatusBadge Tone="info">OAuth</SUIStatusBadge>
                     </dd>
                 </div>
             </dl>
@@ -133,7 +133,7 @@ else
     </div>
 
     <div class="security-note" aria-labelledby="runtime-source-title">
-        <AppIcon Name="check" Size="21" />
+        <SUIIcon Name="check" Size="21" />
         <div>
             <h2 id="runtime-source-title">Uma consulta, a mesma decisão</h2>
             <p>
@@ -143,7 +143,7 @@ else
         </div>
         <a href="settings">
             Ver detalhes
-            <AppIcon Name="arrow-right" Size="15" />
+            <SUIIcon Name="arrow-right" Size="15" />
         </a>
     </div>
 }

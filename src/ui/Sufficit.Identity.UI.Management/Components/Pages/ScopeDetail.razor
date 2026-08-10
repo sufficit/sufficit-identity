@@ -7,20 +7,20 @@
 
 <PageTitle>@PageTitleText</PageTitle>
 
-<PageHeader Title="@HeaderTitle"
+<SUIPageHeader Title="@HeaderTitle"
             Description="Definição OAuth/OIDC persistida pelo runtime de autorização.">
     <Actions>
         <a class="button button--secondary" href="scopes">
-            <AppIcon Name="arrow-left" Size="17" />
+            <SUIIcon Name="arrow-left" Size="17" />
             Voltar para scopes
         </a>
     </Actions>
-</PageHeader>
+</SUIPageHeader>
 
 @if (Created is 1)
 {
     <div class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
+        <SUIIcon Name="check" Size="19" />
         <div>
             <strong>Scope criado</strong>
             <span>A definição foi persistida e a operação foi auditada.</span>
@@ -31,7 +31,7 @@
 @if (Updated is 1)
 {
     <div class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
+        <SUIIcon Name="check" Size="19" />
         <div>
             <strong>Scope atualizado</strong>
             <span>Nome de exibição, descrição e recursos foram persistidos.</span>
@@ -50,19 +50,19 @@ else if (result?.IsSuccess is true && result.Value is not null)
     @if (scope.IsManifestManaged)
     {
         <div class="contract-strip contract-strip--info">
-            <AppIcon Name="workflow" Size="20" />
+            <SUIIcon Name="workflow" Size="20" />
             <div>
                 <strong>Gerenciado pelo manifesto declarativo</strong>
                 <span>Esta tela é somente leitura. Altere o manifesto e aplique o provisionamento para manter uma única fonte de verdade.</span>
             </div>
-            <StatusBadge Tone="info">Somente leitura</StatusBadge>
+            <SUIStatusBadge Tone="info">Somente leitura</SUIStatusBadge>
         </div>
     }
 
     @if (submission?.IsSuccess is false || deletion?.IsSuccess is false)
     {
         <div class="inline-notice inline-notice--danger" role="alert">
-            <AppIcon Name="alert" Size="19" />
+            <SUIIcon Name="alert" Size="19" />
             <div>
                 <strong>Não foi possível concluir a operação</strong>
                 <span>@(submission?.ErrorMessage ?? deletion?.ErrorMessage)</span>
@@ -146,7 +146,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     }
                     else
                     {
-                        <AppIcon Name="check" Size="17" />
+                        <SUIIcon Name="check" Size="17" />
                         <span>Salvar alterações</span>
                     }
                 </button>
@@ -176,7 +176,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     type="button"
                     disabled="@(!deleteConfirmed || deleting || scope.ClientIds.Count > 0)"
                     @onclick="DeleteAsync">
-                <AppIcon Name="trash" Size="17" />
+                <SUIIcon Name="trash" Size="17" />
                 @(deleting ? "Excluindo…" : "Excluir scope")
             </button>
         </div>
@@ -185,13 +185,13 @@ else if (result?.IsSuccess is true && result.Value is not null)
 else
 {
     <div>
-        <EmptyState Icon="alert"
+        <SUIEmptyState Icon="alert"
                     Title="@ErrorTitle"
                     Description="@(result?.ErrorMessage ?? "O serviço não conseguiu ler o scope.")">
             <Actions>
                 <a class="button button--secondary" href="scopes">Voltar para scopes</a>
             </Actions>
-        </EmptyState>
+        </SUIEmptyState>
     </div>
 }
 

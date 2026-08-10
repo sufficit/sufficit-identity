@@ -5,29 +5,29 @@
 
 <PageTitle>Novo scope OAuth | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Novo scope"
+<SUIPageHeader Title="Novo scope"
             Description="Registre uma permissão OAuth personalizada para um ou mais recursos protegidos.">
     <Actions>
         <a class="button button--secondary" href="scopes">
-            <AppIcon Name="arrow-left" Size="17" />
+            <SUIIcon Name="arrow-left" Size="17" />
             Voltar para scopes
         </a>
     </Actions>
-</PageHeader>
+</SUIPageHeader>
 
 <div class="contract-strip contract-strip--success">
-    <AppIcon Name="shield" Size="20" />
+    <SUIIcon Name="shield" Size="20" />
     <div>
         <strong>Validação centralizada</strong>
         <span>Nome, recursos, autorização e auditoria passam pelo mesmo serviço usado pela Management API.</span>
     </div>
-    <StatusBadge Tone="success">Canônico</StatusBadge>
+    <SUIStatusBadge Tone="success">Canônico</SUIStatusBadge>
 </div>
 
 @if (submission?.IsSuccess is false)
 {
     <div class="inline-notice inline-notice--danger" role="alert">
-        <AppIcon Name="alert" Size="19" />
+        <SUIIcon Name="alert" Size="19" />
         <div>
             <strong>Não foi possível criar o scope</strong>
             <span>@submission.ErrorMessage</span>
@@ -99,7 +99,7 @@
             }
             else
             {
-                <AppIcon Name="plus" Size="17" />
+                <SUIIcon Name="plus" Size="17" />
                 <span>Criar scope</span>
             }
         </button>

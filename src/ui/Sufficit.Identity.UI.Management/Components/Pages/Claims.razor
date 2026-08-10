@@ -6,33 +6,33 @@
 
 <PageTitle>@PageTitleText</PageTitle>
 
-<PageHeader Title="@HeaderTitle"
+<SUIPageHeader Title="@HeaderTitle"
             Description="Atributos adicionais emitidos pelo provedor para esta conta.">
     <Actions>
         <a class="button button--secondary" href="@UserHref">
-            <AppIcon Name="arrow-left" Size="17" />
+            <SUIIcon Name="arrow-left" Size="17" />
             Voltar para o usuário
         </a>
         @if (HasUserContext)
         {
             <a class="button button--primary" href="@CreateHref">
-                <AppIcon Name="plus" Size="17" />
+                <SUIIcon Name="plus" Size="17" />
                 Atribuir claim
             </a>
         }
     </Actions>
-</PageHeader>
+</SUIPageHeader>
 
 @if (!HasUserContext)
 {
     <div>
-        <EmptyState Icon="users"
+        <SUIEmptyState Icon="users"
                     Title="Selecione um usuário"
                     Description="Abra uma conta no diretório de identidades para consultar e administrar suas claims.">
             <Actions>
                 <a class="button button--primary" href="users">Abrir diretório de usuários</a>
             </Actions>
-        </EmptyState>
+        </SUIEmptyState>
     </div>
 }
 else
@@ -40,7 +40,7 @@ else
     @if (Created is 1)
     {
         <div class="inline-notice inline-notice--success" role="status">
-            <AppIcon Name="check" Size="19" />
+            <SUIIcon Name="check" Size="19" />
             <div>
                 <strong>Claim atribuída</strong>
                 <span>O selo de segurança foi atualizado e os tokens anteriores foram revogados.</span>
@@ -51,7 +51,7 @@ else
     @if (Deleted is 1)
     {
         <div class="inline-notice inline-notice--success" role="status">
-            <AppIcon Name="check" Size="19" />
+            <SUIIcon Name="check" Size="19" />
             <div>
                 <strong>Claim removida</strong>
                 <span>A atribuição foi excluída e as credenciais emitidas anteriormente foram revogadas.</span>
@@ -60,12 +60,12 @@ else
     }
 
     <div class="contract-strip contract-strip--info">
-        <AppIcon Name="users" Size="20" />
+        <SUIIcon Name="users" Size="20" />
         <div>
             <strong>@AccountLabel</strong>
             <span>@AccountDescription</span>
         </div>
-        <StatusBadge Tone="info">Conta selecionada</StatusBadge>
+        <SUIStatusBadge Tone="info">Conta selecionada</SUIStatusBadge>
     </div>
 
     <div class="table-panel" aria-labelledby="claims-list-heading" aria-busy="@loading">
@@ -78,7 +78,7 @@ else
                 <form class="user-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
                     <label class="search-field">
                         <span class="visually-hidden">Pesquisar claims da conta</span>
-                        <AppIcon Name="search" Size="18" />
+                        <SUIIcon Name="search" Size="18" />
                         <input type="search"
                                placeholder="Tipo ou valor"
                                autocomplete="off"
@@ -111,25 +111,25 @@ else
             }
             else if (userResult?.IsSuccess is false)
             {
-                <EmptyState Icon="alert"
+                <SUIEmptyState Icon="alert"
                             Title="@UserErrorTitle"
                             Description="@(userResult.ErrorMessage ?? "O serviço não conseguiu ler a conta.")">
                     <Actions>
                         <a class="button button--secondary" href="users">Voltar para usuários</a>
                     </Actions>
-                </EmptyState>
+                </SUIEmptyState>
             }
             else if (result?.IsSuccess is true)
             {
                 @if (Page.Items.Count is 0)
                 {
-                    <EmptyState Icon="shield"
+                    <SUIEmptyState Icon="shield"
                                 Title="Nenhuma claim atribuída"
                                 Description="@EmptyDescription">
                         <Actions>
                             <a class="button button--primary" href="@CreateHref">Atribuir primeira claim</a>
                         </Actions>
-                    </EmptyState>
+                    </SUIEmptyState>
                 }
                 else
                 {
@@ -149,11 +149,11 @@ else
                                     <tr>
                                         <td data-label="Tipo"><code class="client-id">@claim.Type</code></td>
                                         <td data-label="Valor"><span class="claim-value">@claim.Value</span></td>
-                                        <td data-label="Estado"><StatusBadge Tone="success">Atribuída</StatusBadge></td>
+                                        <td data-label="Estado"><SUIStatusBadge Tone="success">Atribuída</SUIStatusBadge></td>
                                         <td data-label="Ações">
                                             <a class="row-action" href="@ClaimHref(claim.Id)">
                                                 Editar
-                                                <AppIcon Name="edit" Size="15" />
+                                                <SUIIcon Name="edit" Size="15" />
                                             </a>
                                         </td>
                                     </tr>
@@ -165,7 +165,7 @@ else
             }
             else
             {
-                <EmptyState Icon="alert"
+                <SUIEmptyState Icon="alert"
                             Title="@ErrorTitle"
                             Description="@(result?.ErrorMessage ?? "O serviço não conseguiu ler as atribuições agora.")">
                     <Actions>
@@ -173,7 +173,7 @@ else
                             Tentar novamente
                         </button>
                     </Actions>
-                </EmptyState>
+                </SUIEmptyState>
             }
         </div>
 
@@ -200,9 +200,9 @@ else
             <p>O provedor armazena os valores; cada aplicação decide como interpretá-los.</p>
         </div>
         <ul>
-            <li><AppIcon Name="shield" Size="18" /> Claims reservadas permanecem protegidas</li>
-            <li><AppIcon Name="refresh" Size="18" /> Cada mutação revoga tokens da conta</li>
-            <li><AppIcon Name="audit" Size="18" /> Valores não entram na auditoria</li>
+            <li><SUIIcon Name="shield" Size="18" /> Claims reservadas permanecem protegidas</li>
+            <li><SUIIcon Name="refresh" Size="18" /> Cada mutação revoga tokens da conta</li>
+            <li><SUIIcon Name="audit" Size="18" /> Valores não entram na auditoria</li>
         </ul>
     </div>
 }

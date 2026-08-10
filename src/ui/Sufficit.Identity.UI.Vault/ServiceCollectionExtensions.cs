@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using Sufficit.Blazor.UI;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.UI.Abstractions.Hosting;
 using Sufficit.Identity.UI.Vault.Data;
@@ -81,6 +82,9 @@ public static class ServiceCollectionExtensions
         services.AddCascadingAuthenticationState();
         services.TryAddScoped<VaultDataSource>();
         services.AddRazorComponents().AddInteractiveServerComponents();
+        // SUI component library — default theme (blue #2563eb). Vault has no
+        // distinct brand color of its own; the library default is used.
+        services.AddSufficitUI();
         return services;
     }
 

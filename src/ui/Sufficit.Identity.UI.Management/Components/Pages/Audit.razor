@@ -5,16 +5,16 @@
 
 <PageTitle>Auditoria | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Auditoria"
+<SUIPageHeader Title="Auditoria"
             Description="Rastreabilidade das decisões de autorização e mutações administrativas." />
 
 <div class="contract-strip contract-strip--success">
-    <AppIcon Name="audit" Size="20" />
+    <SUIIcon Name="audit" Size="20" />
     <div>
         <strong>Eventos persistentes e sem segredos</strong>
         <span>Operador, capability, alvo, resultado e correlation ID são registrados pela camada de aplicação.</span>
     </div>
-    <StatusBadge Tone="success">Ativa</StatusBadge>
+    <SUIStatusBadge Tone="success">Ativa</SUIStatusBadge>
 </div>
 
 <div class="table-panel" aria-labelledby="audit-list-heading" aria-busy="@loading">
@@ -28,7 +28,7 @@
             {
                 <label class="search-field">
                     <span class="visually-hidden">Pesquisar eventos</span>
-                    <AppIcon Name="search" Size="18" />
+                    <SUIIcon Name="search" Size="18" />
                     <input type="search"
                            placeholder="Operador, ação ou alvo"
                            autocomplete="off"
@@ -40,7 +40,7 @@
                     type="button"
                     disabled="@loading"
                     @onclick="LoadAsync">
-                <AppIcon Name="refresh" Size="16" />
+                <SUIIcon Name="refresh" Size="16" />
                 Atualizar
             </button>
         </div>
@@ -60,7 +60,7 @@
         {
             @if (FilteredEvents.Count is 0)
             {
-                <EmptyState Icon="audit"
+                <SUIEmptyState Icon="audit"
                             Title="@EmptyTitle"
                             Description="@EmptyDescription">
                     <Actions>
@@ -73,7 +73,7 @@
                             </button>
                         }
                     </Actions>
-                </EmptyState>
+                </SUIEmptyState>
             }
             else
             {
@@ -118,9 +118,9 @@
                                         }
                                     </td>
                                     <td data-label="Resultado">
-                                        <StatusBadge Tone="@OutcomeTone(entry.OperationOutcome)">
+                                        <SUIStatusBadge Tone="@OutcomeTone(entry.OperationOutcome)">
                                             @OutcomeLabel(entry.OperationOutcome)
-                                        </StatusBadge>
+                                        </SUIStatusBadge>
                                     </td>
                                     <td data-label="Correlação">
                                         <code class="audit-correlation">@entry.CorrelationId</code>
@@ -134,7 +134,7 @@
         }
         else
         {
-            <EmptyState Icon="alert"
+            <SUIEmptyState Icon="alert"
                         Title="Não foi possível consultar a auditoria"
                         Description="@(result?.ErrorMessage ?? "O serviço de identidade não retornou os eventos agora.")">
                 <Actions>
@@ -144,7 +144,7 @@
                         Tentar novamente
                     </button>
                 </Actions>
-            </EmptyState>
+            </SUIEmptyState>
         }
     </div>
 
@@ -160,9 +160,9 @@
         <p>A trilha registra metadados operacionais suficientes para investigação sem replicar dados sensíveis.</p>
     </div>
     <ul>
-        <li><AppIcon Name="lock" Size="18" /> Segredos e tokens nunca são persistidos</li>
-        <li><AppIcon Name="shield" Size="18" /> Decisões negadas usam códigos estáveis</li>
-        <li><AppIcon Name="code" Size="18" /> Correlation ID conecta operação e logs</li>
+        <li><SUIIcon Name="lock" Size="18" /> Segredos e tokens nunca são persistidos</li>
+        <li><SUIIcon Name="shield" Size="18" /> Decisões negadas usam códigos estáveis</li>
+        <li><SUIIcon Name="code" Size="18" /> Correlation ID conecta operação e logs</li>
     </ul>
 </div>
 
