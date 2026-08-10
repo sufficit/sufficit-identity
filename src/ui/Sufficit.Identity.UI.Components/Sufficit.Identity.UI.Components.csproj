@@ -12,9 +12,4 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- SUI component library (SUIIcon, SUIEmptyState, SUIPageHeader,
-         SUIStatusBadge, theme contract). Path is relative to this project. -->
-    <ProjectReference Include="..\..\..\..\sufficit-blazor-ui\src\Sufficit.Blazor.UI\Sufficit.Blazor.UI.csproj" />
-  </ItemGroup>
 </Project>

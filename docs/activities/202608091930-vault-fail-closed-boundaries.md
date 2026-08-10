@@ -38,7 +38,7 @@
 - Suíte sem o contrato documental interferido por arquivo Strix externo:
   578 testes aprovados, 0 warnings.
 - A suíte integral chegou a 578 aprovados e uma falha alheia à entrega:
-  `docs/security/strix-identity-scope.md`, arquivo não versionado criado em
+  `docs/security/RUNBOOK-STRIX-IDENTITY-SCOPE.md`, arquivo não versionado criado em
   paralelo, viola a convenção de prefixos. O arquivo foi preservado.
 
 ## Gate ainda aberto

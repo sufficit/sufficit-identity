@@ -30,7 +30,7 @@ deste plano não as declara executadas.
   sobreposição.
 
 A única falha global vem de
-`docs/security/strix-identity-scope.md`, arquivo paralelo não versionado cujo
+`docs/security/RUNBOOK-STRIX-IDENTITY-SCOPE.md`, arquivo paralelo não versionado cujo
 prefixo minúsculo não pertence ao conjunto permitido pelo contrato documental.
 O arquivo e o plano Strix associado foram preservados sem alteração. Nenhum
 teste de aplicação falhou.
