@@ -6,17 +6,17 @@
 
 <PageTitle>@PageTitleText</PageTitle>
 
-<PageHeader Title="@HeaderTitle"
+<SUIPageHeader Title="@HeaderTitle"
             Description="Perfil, credenciais e estado de autenticação mantidos pelo provedor.">
     <Actions>
         <a class="button button--secondary" href="@BackHref">
-            <AppIcon Name="arrow-left" Size="17" />
+            <SUIIcon Name="arrow-left" Size="17" />
             Voltar para usuários
         </a>
         <AuthorizeView Policy="@ManagementUiPolicies.ManageClaims">
             <Authorized>
                 <a class="button button--secondary" href="@ClaimsHref">
-                    <AppIcon Name="shield" Size="17" />
+                    <SUIIcon Name="shield" Size="17" />
                     Claims da conta
                 </a>
             </Authorized>
@@ -24,7 +24,7 @@
         <AuthorizeView Policy="@ManagementUiPolicies.ManageSessions">
             <Authorized>
                 <a class="button button--secondary" href="@SessionsHref">
-                    <AppIcon Name="clock" Size="17" />
+                    <SUIIcon Name="clock" Size="17" />
                     Sessões
                 </a>
             </Authorized>
@@ -32,7 +32,7 @@
         <AuthorizeView Policy="@ManagementUiPolicies.ManageAuthorizations">
             <Authorized>
                 <a class="button button--secondary" href="@AuthorizationsHref">
-                    <AppIcon Name="shield" Size="17" />
+                    <SUIIcon Name="shield" Size="17" />
                     Autorizações
                 </a>
             </Authorized>
@@ -40,17 +40,17 @@
         @if (result?.Value?.Actions.CanUpdateProfile is true)
         {
             <a class="button button--primary" href="@EditHref">
-                <AppIcon Name="edit" Size="17" />
+                <SUIIcon Name="edit" Size="17" />
                 Editar perfil
             </a>
         }
     </Actions>
-</PageHeader>
+</SUIPageHeader>
 
 @if (Created)
 {
     <div class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
+        <SUIIcon Name="check" Size="19" />
         <div>
             <strong>Usuário criado</strong>
             <span>A conta foi criada sem atribuir cargos ou permissões próprias de aplicações.</span>
@@ -61,7 +61,7 @@
 @if (Updated)
 {
     <div class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
+        <SUIIcon Name="check" Size="19" />
         <div>
             <strong>Perfil atualizado</strong>
             <span>Os dados foram salvos e os tokens ativos anteriores foram invalidados.</span>
@@ -72,7 +72,7 @@
 @if (passwordResetSucceeded)
 {
     <div class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
+        <SUIIcon Name="check" Size="19" />
         <div>
             <strong>Senha redefinida</strong>
             <span>A credencial e o selo de segurança foram atualizados; o evento foi registrado na auditoria.</span>
@@ -83,7 +83,7 @@
 @if (lockoutChangeSucceeded)
 {
     <div class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
+        <SUIIcon Name="check" Size="19" />
         <div>
             <strong>@(lastLockoutState is true ? "Acesso bloqueado" : "Acesso desbloqueado")</strong>
             <span>
@@ -116,9 +116,9 @@ else if (result?.IsSuccess is true && result.Value is not null)
             </div>
             <div>
                 <span class="detail-label">Confirmação</span>
-                <StatusBadge Tone="@(user.EmailConfirmed ? "success" : "neutral")">
+                <SUIStatusBadge Tone="@(user.EmailConfirmed ? "success" : "neutral")">
                     @(user.EmailConfirmed ? "E-mail confirmado" : "Pendente")
-                </StatusBadge>
+                </SUIStatusBadge>
             </div>
             <div>
                 <span class="detail-label">Identificador</span>
@@ -133,9 +133,9 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     <div>
                         <dt>Autenticação multifator</dt>
                         <dd>
-                            <StatusBadge Tone="@(user.TwoFactorEnabled ? "success" : "neutral")">
+                            <SUIStatusBadge Tone="@(user.TwoFactorEnabled ? "success" : "neutral")">
                                 @(user.TwoFactorEnabled ? "Ativa" : "Inativa")
-                            </StatusBadge>
+                            </SUIStatusBadge>
                         </dd>
                     </div>
                     <div>
@@ -181,7 +181,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                 <h2 id="user-audit-heading">Consulta auditada</h2>
                 <p>O operador, o usuário, a decisão e a correlação foram registrados sem claims ou credenciais.</p>
             </div>
-            <StatusBadge Tone="success" Icon="audit">Registrada</StatusBadge>
+            <SUIStatusBadge Tone="success" Icon="audit">Registrada</SUIStatusBadge>
         </div>
     </div>
 
@@ -191,7 +191,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                  aria-labelledby="account-access-heading">
             <div class="account-access-panel__heading">
                 <div class="account-access-panel__icon">
-                    <AppIcon Name="@(currentlyLocked ? "refresh" : "lock")" Size="20" />
+                    <SUIIcon Name="@(currentlyLocked ? "refresh" : "lock")" Size="20" />
                 </div>
                 <div>
                     <h2 id="account-access-heading">
@@ -203,15 +203,15 @@ else if (result?.IsSuccess is true && result.Value is not null)
                             : "Interrompe novas autenticações e revoga sessões, tokens e autorizações desta conta.")
                     </p>
                 </div>
-                <StatusBadge Tone="@(currentlyLocked ? "warning" : "danger")">
+                <SUIStatusBadge Tone="@(currentlyLocked ? "warning" : "danger")">
                     @(currentlyLocked ? "Conta bloqueada" : "Conta ativa")
-                </StatusBadge>
+                </SUIStatusBadge>
             </div>
 
             @if (lockoutResult?.IsSuccess is false)
             {
                 <div class="inline-notice inline-notice--danger" role="alert">
-                    <AppIcon Name="alert" Size="19" />
+                    <SUIIcon Name="alert" Size="19" />
                     <div>
                         <strong>@LockoutErrorTitle</strong>
                         <span>@lockoutResult.ErrorMessage</span>
@@ -245,7 +245,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     }
                     else
                     {
-                        <AppIcon Name="@(currentlyLocked ? "refresh" : "lock")" Size="17" />
+                        <SUIIcon Name="@(currentlyLocked ? "refresh" : "lock")" Size="17" />
                         <span>@(currentlyLocked ? "Desbloquear conta" : "Bloquear conta")</span>
                     }
                 </button>
@@ -255,7 +255,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
     else if (user.Actions.SetLockoutRequiresMfa)
     {
         <div class="decision-note decision-note--neutral">
-            <AppIcon Name="shield" Size="21" />
+            <SUIIcon Name="shield" Size="21" />
             <div>
                 <h2>MFA necessário para alterar o acesso</h2>
                 <p>A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.</p>
@@ -265,7 +265,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
     else if (user.Actions.SetLockoutReasonCode is "user_self_lockout_not_allowed")
     {
         <div class="decision-note decision-note--neutral">
-            <AppIcon Name="shield" Size="21" />
+            <SUIIcon Name="shield" Size="21" />
             <div>
                 <h2>Sua própria conta permanece protegida</h2>
                 <p>Para evitar perda acidental de acesso administrativo, outro operador autorizado deve bloquear esta conta.</p>
@@ -275,7 +275,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
     else
     {
         <div class="decision-note decision-note--neutral">
-            <AppIcon Name="lock" Size="21" />
+            <SUIIcon Name="lock" Size="21" />
             <div>
                 <h2>Bloqueio não autorizado</h2>
                 <p>Sua sessão não possui a capability necessária para bloquear ou desbloquear contas.</p>
@@ -292,19 +292,19 @@ else if (result?.IsSuccess is true && result.Value is not null)
             <DataAnnotationsValidator />
             <div class="credential-panel__heading">
                 <div class="credential-panel__icon">
-                    <AppIcon Name="key" Size="20" />
+                    <SUIIcon Name="key" Size="20" />
                 </div>
                 <div>
                     <h2>Redefinir senha</h2>
                     <p>A nova credencial substitui a senha atual e invalida os tokens afetados.</p>
                 </div>
-                <StatusBadge Tone="info">Conta do provedor</StatusBadge>
+                <SUIStatusBadge Tone="info">Conta do provedor</SUIStatusBadge>
             </div>
 
             @if (resetResult?.IsSuccess is false)
             {
                 <div class="inline-notice inline-notice--danger" role="alert">
-                    <AppIcon Name="alert" Size="19" />
+                    <SUIIcon Name="alert" Size="19" />
                     <div>
                         <strong>@ResetErrorTitle</strong>
                         <span>@resetResult.ErrorMessage</span>
@@ -349,7 +349,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     }
                     else
                     {
-                        <AppIcon Name="key" Size="17" />
+                        <SUIIcon Name="key" Size="17" />
                         <span>Redefinir senha</span>
                     }
                 </button>
@@ -359,7 +359,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
     else if (user.Actions.ResetPasswordRequiresMfa)
     {
         <div class="decision-note decision-note--neutral">
-            <AppIcon Name="shield" Size="21" />
+            <SUIIcon Name="shield" Size="21" />
             <div>
                 <h2>MFA necessário para redefinir a senha</h2>
                 <p>A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.</p>
@@ -369,7 +369,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
     else
     {
         <div class="decision-note decision-note--neutral">
-            <AppIcon Name="lock" Size="21" />
+            <SUIIcon Name="lock" Size="21" />
             <div>
                 <h2>Redefinição não autorizada</h2>
                 <p>Sua sessão não possui a capability necessária para redefinir credenciais.</p>
@@ -411,7 +411,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                 }
                 else
                 {
-                    <AppIcon Name="trash" Size="17" />
+                    <SUIIcon Name="trash" Size="17" />
                     <span>Excluir conta</span>
                 }
             </button>
@@ -419,7 +419,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
             @if (deleteResult?.IsSuccess is false)
             {
                 <div class="inline-notice inline-notice--danger" role="alert">
-                    <AppIcon Name="alert" Size="19" />
+                    <SUIIcon Name="alert" Size="19" />
                     <div>
                         <strong>@DeleteErrorTitle</strong>
                         <span>@deleteResult.ErrorMessage</span>
@@ -431,7 +431,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
     else if (user.Actions.DeleteRequiresMfa)
     {
         <div class="decision-note decision-note--neutral">
-            <AppIcon Name="shield" Size="21" />
+            <SUIIcon Name="shield" Size="21" />
             <div>
                 <h2>MFA necessário para excluir a conta</h2>
                 <p>A política administrativa exige autenticação multifator antes de uma exclusão permanente.</p>
@@ -441,7 +441,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
     else if (user.Actions.DeleteReasonCode is "user_self_delete_not_allowed")
     {
         <div class="decision-note decision-note--neutral">
-            <AppIcon Name="shield" Size="21" />
+            <SUIIcon Name="shield" Size="21" />
             <div>
                 <h2>Sua própria conta não pode ser excluída</h2>
                 <p>Outro operador autorizado deve executar esta operação para evitar perda acidental do acesso administrativo.</p>
@@ -452,7 +452,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
 else
 {
     <div>
-        <EmptyState Icon="alert"
+        <SUIEmptyState Icon="alert"
                     Title="@ErrorTitle"
                     Description="@ErrorDescription">
             <Actions>
@@ -466,7 +466,7 @@ else
                     </button>
                 }
             </Actions>
-        </EmptyState>
+        </SUIEmptyState>
     </div>
 }
 

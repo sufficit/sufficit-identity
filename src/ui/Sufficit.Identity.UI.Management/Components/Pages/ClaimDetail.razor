@@ -7,20 +7,20 @@
 
 <PageTitle>Editar claim | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Editar claim"
+<SUIPageHeader Title="Editar claim"
             Description="Atualize o tipo ou o valor desta atribuição sem recriar o registro.">
     <Actions>
         <a class="button button--secondary" href="@BackHref">
-            <AppIcon Name="arrow-left" Size="17" />
+            <SUIIcon Name="arrow-left" Size="17" />
             Voltar para claims
         </a>
     </Actions>
-</PageHeader>
+</SUIPageHeader>
 
 @if (updated)
 {
     <div class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
+        <SUIIcon Name="check" Size="19" />
         <div>
             <strong>Claim atualizada</strong>
             <span>A nova versão foi persistida e os tokens anteriores da conta foram revogados.</span>
@@ -31,13 +31,13 @@
 @if (!HasClaimContext)
 {
     <div>
-        <EmptyState Icon="users"
+        <SUIEmptyState Icon="users"
                     Title="Selecione uma claim"
                     Description="Abra as claims de um usuário e escolha a atribuição que deseja editar.">
             <Actions>
                 <a class="button button--primary" href="users">Abrir diretório de usuários</a>
             </Actions>
-        </EmptyState>
+        </SUIEmptyState>
     </div>
 }
 else if (loading)
@@ -51,18 +51,18 @@ else if (result?.IsSuccess is true && result.Value is not null
          && string.Equals(result.Value.UserId, UserId, StringComparison.Ordinal))
 {
     <div class="contract-strip contract-strip--warning">
-        <AppIcon Name="refresh" Size="20" />
+        <SUIIcon Name="refresh" Size="20" />
         <div>
             <strong>Atualização com invalidação</strong>
             <span>Salvar gira o selo de segurança e revoga as credenciais emitidas para @AccountLabel(claim).</span>
         </div>
-        <StatusBadge Tone="warning">Impacta credenciais</StatusBadge>
+        <SUIStatusBadge Tone="warning">Impacta credenciais</SUIStatusBadge>
     </div>
 
     @if (submission?.IsSuccess is false)
     {
         <div class="inline-notice inline-notice--danger" role="alert">
-            <AppIcon Name="alert" Size="19" />
+            <SUIIcon Name="alert" Size="19" />
             <div>
                 <strong>Não foi possível atualizar a claim</strong>
                 <span>@submission.ErrorMessage</span>
@@ -129,7 +129,7 @@ else if (result?.IsSuccess is true && result.Value is not null
                 }
                 else
                 {
-                    <AppIcon Name="edit" Size="17" />
+                    <SUIIcon Name="edit" Size="17" />
                     <span>Salvar claim</span>
                 }
             </button>
@@ -145,7 +145,7 @@ else if (result?.IsSuccess is true && result.Value is not null
         @if (deletion?.IsSuccess is false)
         {
             <div class="inline-notice inline-notice--danger" role="alert">
-                <AppIcon Name="alert" Size="19" />
+                <SUIIcon Name="alert" Size="19" />
                 <div>
                     <strong>Não foi possível remover a claim</strong>
                     <span>@deletion.ErrorMessage</span>
@@ -160,7 +160,7 @@ else if (result?.IsSuccess is true && result.Value is not null
                 type="button"
                 disabled="@(!confirmed || deleting)"
                 @onclick="DeleteAsync">
-            <AppIcon Name="trash" Size="17" />
+            <SUIIcon Name="trash" Size="17" />
             @(deleting ? "Removendo…" : "Remover claim")
         </button>
     </div>
@@ -168,13 +168,13 @@ else if (result?.IsSuccess is true && result.Value is not null
 else
 {
     <div>
-        <EmptyState Icon="alert"
+        <SUIEmptyState Icon="alert"
                     Title="@ErrorTitle"
                     Description="@(result?.ErrorMessage ?? "A claim não pertence a esta conta ou não foi encontrada.")">
             <Actions>
                 <a class="button button--secondary" href="@BackHref">Voltar para claims</a>
             </Actions>
-        </EmptyState>
+        </SUIEmptyState>
     </div>
 }
 

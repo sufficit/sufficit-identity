@@ -5,23 +5,23 @@
 
 <PageTitle>Novo usuário | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Novo usuário"
+<SUIPageHeader Title="Novo usuário"
             Description="Crie uma conta no provedor sem atribuir autoridades próprias de aplicações.">
     <Actions>
         <a class="button button--secondary" href="users">
-            <AppIcon Name="arrow-left" Size="17" />
+            <SUIIcon Name="arrow-left" Size="17" />
             Voltar para usuários
         </a>
     </Actions>
-</PageHeader>
+</SUIPageHeader>
 
 <div class="contract-strip contract-strip--success">
-    <AppIcon Name="shield" Size="20" />
+    <SUIIcon Name="shield" Size="20" />
     <div>
         <strong>Conta de autenticação, não perfil empresarial</strong>
         <span>Esta operação cria identificação e credencial. Grupos, cargos e permissões são definidos pelos sistemas que os utilizam.</span>
     </div>
-    <StatusBadge Tone="success">Auditável</StatusBadge>
+    <SUIStatusBadge Tone="success">Auditável</SUIStatusBadge>
 </div>
 
 @if (loading)
@@ -38,7 +38,7 @@
 else if (accessResult?.IsSuccess is false)
 {
     <div class="panel">
-        <EmptyState Icon="shield"
+        <SUIEmptyState Icon="shield"
                     Title="@AccessErrorTitle"
                     Description="@accessResult.ErrorMessage">
             <Actions>
@@ -48,19 +48,19 @@ else if (accessResult?.IsSuccess is false)
                     Tentar novamente
                 </button>
             </Actions>
-        </EmptyState>
+        </SUIEmptyState>
     </div>
 }
 else if (!Access.CanCreate)
 {
     <div class="panel">
-        <EmptyState Icon="users"
+        <SUIEmptyState Icon="users"
                     Title="Criação de usuários não autorizada"
                     Description="Sua sessão pode consultar o diretório, mas não possui a capability necessária para criar contas.">
             <Actions>
                 <a class="button button--secondary" href="users">Voltar para usuários</a>
             </Actions>
-        </EmptyState>
+        </SUIEmptyState>
     </div>
 }
 else
@@ -68,7 +68,7 @@ else
     @if (submission?.IsSuccess is false)
     {
         <div class="inline-notice inline-notice--danger" role="alert">
-            <AppIcon Name="alert" Size="19" />
+            <SUIIcon Name="alert" Size="19" />
             <div>
                 <strong>@SubmissionTitle</strong>
                 <span>@submission.ErrorMessage</span>
@@ -167,7 +167,7 @@ else
                 }
                 else
                 {
-                    <AppIcon Name="plus" Size="17" />
+                    <SUIIcon Name="plus" Size="17" />
                     <span>Criar usuário</span>
                 }
             </button>

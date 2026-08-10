@@ -2,6 +2,17 @@
   "version": 2,
   "dependencies": {
     "net10.0": {
+      "MudBlazor": {
+        "type": "Transitive",
+        "resolved": "9.8.0",
+        "contentHash": "JLJ81j6cn5RUTbgpYAtjRfB3bTNweX0q8lkMS6B9v1oGzZsjVTxDDnWahD+rOtzJWPU6D9svsymiETe4G8bSLw=="
+      },
+      "sufficit.blazor.ui": {
+        "type": "Project",
+        "dependencies": {
+          "MudBlazor": "[9.8.0, )"
+        }
+      },
       "sufficit.identity.application.abstractions": {
         "type": "Project"
       },
@@ -9,7 +20,10 @@
         "type": "Project"
       },
       "sufficit.identity.ui.components": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "Sufficit.Blazor.UI": "[1.0.0, )"
+        }
       }
     }
   }

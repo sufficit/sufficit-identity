@@ -10,7 +10,7 @@
     <div class="nav-section">
         <span class="nav-section__label">Visão geral</span>
         <NavLink class="nav-item" href="" Match="NavLinkMatch.All">
-            <AppIcon Name="dashboard" />
+            <SUIIcon Name="dashboard" />
             <span>Início</span>
         </NavLink>
     </div>
@@ -22,7 +22,7 @@
             @foreach (var item in section)
             {
                 <NavLink class="nav-item" href="@item.Href">
-                    <AppIcon Name="@item.Icon" />
+                    <SUIIcon Name="@item.Icon" />
                     <span>@item.Title</span>
                 </NavLink>
             }
@@ -32,7 +32,7 @@
 
 <div class="sidebar-footer">
     <NavLink class="nav-item" href="settings">
-        <AppIcon Name="settings" />
+        <SUIIcon Name="settings" />
         <span>Configurações</span>
     </NavLink>
     <div class="sidebar-status">

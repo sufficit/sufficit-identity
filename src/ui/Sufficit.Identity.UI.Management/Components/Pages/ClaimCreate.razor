@@ -6,43 +6,43 @@
 
 <PageTitle>Atribuir claim | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Atribuir claim"
+<SUIPageHeader Title="Atribuir claim"
             Description="@HeaderDescription">
     <Actions>
         <a class="button button--secondary" href="@BackHref">
-            <AppIcon Name="arrow-left" Size="17" />
+            <SUIIcon Name="arrow-left" Size="17" />
             Voltar para claims
         </a>
     </Actions>
-</PageHeader>
+</SUIPageHeader>
 
 @if (!HasUserContext)
 {
     <div>
-        <EmptyState Icon="users"
+        <SUIEmptyState Icon="users"
                     Title="Selecione um usuário"
                     Description="Abra uma conta no diretório de identidades antes de atribuir uma claim.">
             <Actions>
                 <a class="button button--primary" href="users">Abrir diretório de usuários</a>
             </Actions>
-        </EmptyState>
+        </SUIEmptyState>
     </div>
 }
 else
 {
     <div class="contract-strip contract-strip--warning">
-        <AppIcon Name="refresh" Size="20" />
+        <SUIIcon Name="refresh" Size="20" />
         <div>
             <strong>Alteração efetiva na próxima emissão</strong>
             <span>A atribuição atualiza o selo de segurança e revoga tokens ativos da conta.</span>
         </div>
-        <StatusBadge Tone="warning">Impacta credenciais</StatusBadge>
+        <SUIStatusBadge Tone="warning">Impacta credenciais</SUIStatusBadge>
     </div>
 
     @if (submission?.IsSuccess is false)
     {
         <div class="inline-notice inline-notice--danger" role="alert">
-            <AppIcon Name="alert" Size="19" />
+            <SUIIcon Name="alert" Size="19" />
             <div>
                 <strong>Não foi possível atribuir a claim</strong>
                 <span>@submission.ErrorMessage</span>
@@ -122,7 +122,7 @@ else
                 }
                 else
                 {
-                    <AppIcon Name="plus" Size="17" />
+                    <SUIIcon Name="plus" Size="17" />
                     <span>Atribuir claim</span>
                 }
             </button>

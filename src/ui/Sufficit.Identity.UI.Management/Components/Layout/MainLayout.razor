@@ -24,7 +24,7 @@
                     aria-label="Fechar navegação"
                     @ref="closeNavigationButton"
                     @onclick="CloseNavigationAsync">
-                <AppIcon Name="x" />
+                <SUIIcon Name="x" />
             </button>
         </div>
         <div class="sidebar-content" @onclick="CloseNavigationAsync">
@@ -42,7 +42,7 @@
                         aria-expanded="@(navigationOpen ? "true" : "false")"
                         @ref="openNavigationButton"
                         @onclick="OpenNavigationAsync">
-                    <AppIcon Name="menu" />
+                    <SUIIcon Name="menu" />
                 </button>
                 <div class="topbar-context">
                     <span>Ambiente</span>
@@ -51,10 +51,10 @@
             </div>
 
             <div class="topbar-actions">
-                <StatusBadge Tone="@RuntimeStatusTone" Icon="@RuntimeStatusIcon">
+                <SUIStatusBadge Tone="@RuntimeStatusTone" Icon="@RuntimeStatusIcon">
                     <span class="topbar-status-full">@RuntimeStatusLabel</span>
                     <span class="topbar-status-short">@RuntimeStatusShortLabel</span>
-                </StatusBadge>
+                </SUIStatusBadge>
                 <AuthorizeView>
                     <Authorized Context="authentication">
                         <div class="operator-placeholder" aria-label="Operador autenticado">

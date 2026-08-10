@@ -7,11 +7,11 @@
 
 <PageTitle>@PageTitleText</PageTitle>
 
-<PageHeader Title="@HeaderTitle"
+<SUIPageHeader Title="@HeaderTitle"
             Description="Configuração registrada no serviço de identidade. Segredos nunca são retornados.">
     <Actions>
         <a class="button button--secondary" href="clients">
-            <AppIcon Name="arrow-left" Size="17" />
+            <SUIIcon Name="arrow-left" Size="17" />
             Voltar para clientes
         </a>
         @if (result?.Value is { } selectedClient)
@@ -19,7 +19,7 @@
             @if (!selectedClient.IsManifestManaged)
             {
                 <a class="button button--primary" href="@EditHref(selectedClient.Id)">
-                    <AppIcon Name="edit" Size="17" />
+                    <SUIIcon Name="edit" Size="17" />
                     Editar
                 </a>
             }
@@ -27,7 +27,7 @@
                 <Authorized>
                     <a class="button button--secondary"
                        href="@SessionsHref(selectedClient.ClientId)">
-                        <AppIcon Name="clock" Size="17" />
+                        <SUIIcon Name="clock" Size="17" />
                         Sessões
                     </a>
                 </Authorized>
@@ -36,19 +36,19 @@
                 <Authorized>
                     <a class="button button--secondary"
                        href="@AuthorizationsHref(selectedClient.ClientId)">
-                        <AppIcon Name="shield" Size="17" />
+                        <SUIIcon Name="shield" Size="17" />
                         Autorizações
                     </a>
                 </Authorized>
             </AuthorizeView>
         }
     </Actions>
-</PageHeader>
+</SUIPageHeader>
 
 @if (Updated)
 {
     <div class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
+        <SUIIcon Name="check" Size="19" />
         <div><strong>Alterações salvas</strong><span>A aplicação foi atualizada e a nova versão está ativa.</span></div>
     </div>
 }
@@ -56,7 +56,7 @@
 @if (Created)
 {
     <div class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
+        <SUIIcon Name="check" Size="19" />
         <div>
             <strong>Cliente criado</strong>
             <span>O registro foi persistido com padrões seguros e o evento está disponível na auditoria.</span>
@@ -81,9 +81,9 @@ else if (result?.IsSuccess is true && result.Value is not null)
             </div>
             <div>
                 <span class="detail-label">Tipo</span>
-                <StatusBadge Tone="@ClientTypeTone(client.Type)">
+                <SUIStatusBadge Tone="@ClientTypeTone(client.Type)">
                     @ClientTypeLabel(client.Type)
-                </StatusBadge>
+                </SUIStatusBadge>
             </div>
             <div>
                 <span class="detail-label">Consentimento</span>
@@ -98,7 +98,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
         @if (client.IsManifestManaged)
         {
             <div class="inline-notice inline-notice--warning" role="status">
-                <AppIcon Name="lock" Size="19" />
+                <SUIIcon Name="lock" Size="19" />
                 <div><strong>Gerenciada por manifesto</strong><span>Altere a definição declarativa para evitar que o próximo provisionamento sobrescreva este registro.</span></div>
             </div>
         }
@@ -195,7 +195,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                 <div class="token-row">
                     @foreach (var requirement in client.Requirements)
                     {
-                        <StatusBadge Tone="info">@RequirementLabel(requirement)</StatusBadge>
+                        <SUIStatusBadge Tone="info">@RequirementLabel(requirement)</SUIStatusBadge>
                     }
                 </div>
             </div>
@@ -216,7 +216,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
             <button class="button button--danger"
                     type="button"
                     @onclick="BeginDelete">
-                <AppIcon Name="trash" Size="17" />
+                <SUIIcon Name="trash" Size="17" />
                 Excluir cliente
             </button>
         }
@@ -253,7 +253,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                         }
                         else
                         {
-                            <AppIcon Name="trash" Size="17" />
+                            <SUIIcon Name="trash" Size="17" />
                             <span>Confirmar exclusão</span>
                         }
                     </button>
@@ -265,7 +265,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
 else
 {
     <div>
-        <EmptyState Icon="alert"
+        <SUIEmptyState Icon="alert"
                     Title="@ErrorTitle"
                     Description="@ErrorDescription">
             <Actions>
@@ -279,7 +279,7 @@ else
                     </button>
                 }
             </Actions>
-        </EmptyState>
+        </SUIEmptyState>
     </div>
 }
 

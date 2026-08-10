@@ -4,16 +4,16 @@
 
 <PageTitle>Provisionamento | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Provisionamento"
+<SUIPageHeader Title="Provisionamento"
             Description="Revise e aplique manifestos aditivos de clientes e scopes usando o mesmo caso de uso da API." />
 
 <div class="contract-strip contract-strip--success">
-    <AppIcon Name="shield" Size="20" />
+    <SUIIcon Name="shield" Size="20" />
     <div>
         <strong>Operação centralizada e auditável</strong>
         <span>Preview e aplicação passam pela autorização do Management; nenhum segredo é recebido em texto puro.</span>
     </div>
-    <StatusBadge Tone="success">Ativo</StatusBadge>
+    <SUIStatusBadge Tone="success">Ativo</SUIStatusBadge>
 </div>
 
 <ol class="workflow-steps" aria-label="Etapas do provisionamento">
@@ -36,7 +36,7 @@
 @if (OperationResult?.IsSuccess is false)
 {
     <div class="inline-notice inline-notice--danger" role="alert">
-        <AppIcon Name="alert" Size="19" />
+        <SUIIcon Name="alert" Size="19" />
         <div>
             <strong>@ErrorTitle</strong>
             <span>@OperationResult.ErrorMessage</span>
@@ -55,7 +55,7 @@
 else if (applyResult?.IsSuccess is true)
 {
     <div class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
+        <SUIIcon Name="check" Size="19" />
         <div>
             <strong>Manifesto aplicado</strong>
             <span>A operação foi concluída de forma transacional e registrada na auditoria.</span>
@@ -70,7 +70,7 @@ else if (applyResult?.IsSuccess is true)
                 <h2 id="manifest-heading">Manifesto JSON</h2>
                 <p>Edite ou cole o contrato declarativo completo antes de gerar o preview.</p>
             </div>
-            <StatusBadge Tone="neutral">Schema v1</StatusBadge>
+            <SUIStatusBadge Tone="neutral">Schema v1</SUIStatusBadge>
         </div>
         <label class="manifest-editor">
             <span class="visually-hidden">Conteúdo do manifesto JSON</span>
@@ -97,7 +97,7 @@ else if (applyResult?.IsSuccess is true)
                 }
                 else
                 {
-                    <AppIcon Name="search" Size="17" />
+                    <SUIIcon Name="search" Size="17" />
                     <span>Gerar preview</span>
                 }
             </button>
@@ -105,15 +105,15 @@ else if (applyResult?.IsSuccess is true)
     </div>
 
     <aside class="safety-panel" aria-labelledby="safety-heading">
-        <span class="safety-panel__icon"><AppIcon Name="shield" Size="24" /></span>
+        <span class="safety-panel__icon"><SUIIcon Name="shield" Size="24" /></span>
         <h2 id="safety-heading">Garantias do fluxo</h2>
         <ul class="plain-check-list">
-            <li><AppIcon Name="check" Size="16" /> Preview não altera o banco</li>
-            <li><AppIcon Name="check" Size="16" /> Objetos omitidos não são excluídos</li>
-            <li><AppIcon Name="check" Size="16" /> Segredos usam referência externa</li>
-            <li><AppIcon Name="check" Size="16" /> Apply e auditoria usam a mesma transação</li>
+            <li><SUIIcon Name="check" Size="16" /> Preview não altera o banco</li>
+            <li><SUIIcon Name="check" Size="16" /> Objetos omitidos não são excluídos</li>
+            <li><SUIIcon Name="check" Size="16" /> Segredos usam referência externa</li>
+            <li><SUIIcon Name="check" Size="16" /> Apply e auditoria usam a mesma transação</li>
         </ul>
-        <a href="audit">Consultar trilha de auditoria <AppIcon Name="arrow-right" Size="15" /></a>
+        <a href="audit">Consultar trilha de auditoria <SUIIcon Name="arrow-right" Size="15" /></a>
     </aside>
 </div>
 
@@ -134,7 +134,7 @@ else if (applyResult?.IsSuccess is true)
 
         @if (Plan.Changes.Count is 0)
         {
-            <EmptyState Icon="workflow"
+            <SUIEmptyState Icon="workflow"
                         Title="Manifesto vazio"
                         Description="Nenhum cliente ou scope foi declarado. Nada será alterado." />
         }
@@ -156,9 +156,9 @@ else if (applyResult?.IsSuccess is true)
                                 <td data-label="Recurso">@ResourceLabel(change.ResourceType)</td>
                                 <td data-label="Identificador"><code>@change.Identifier</code></td>
                                 <td data-label="Resultado">
-                                    <StatusBadge Tone="@ChangeTone(change.Kind)">
+                                    <SUIStatusBadge Tone="@ChangeTone(change.Kind)">
                                         @ChangeLabel(change.Kind)
-                                    </StatusBadge>
+                                    </SUIStatusBadge>
                                 </td>
                             </tr>
                         }
@@ -192,7 +192,7 @@ else if (applyResult?.IsSuccess is true)
                         }
                         else
                         {
-                            <AppIcon Name="workflow" Size="17" />
+                            <SUIIcon Name="workflow" Size="17" />
                             <span>Aplicar manifesto</span>
                         }
                     </button>
@@ -200,7 +200,7 @@ else if (applyResult?.IsSuccess is true)
                 else
                 {
                     <span class="provisioning-current">
-                        <AppIcon Name="check" Size="18" />
+                        <SUIIcon Name="check" Size="18" />
                         O ambiente já corresponde ao manifesto.
                     </span>
                 }

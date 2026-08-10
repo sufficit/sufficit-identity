@@ -5,7 +5,7 @@
 
 <PageTitle>Configurações | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Configuração administrativa"
+<SUIPageHeader Title="Configuração administrativa"
             Description="Consulte a política, o transporte HTTP e os módulos informados pelo runtime." />
 
 @if (loading)
@@ -20,7 +20,7 @@
 else if (result?.IsSuccess is not true || result.Value is null)
 {
     <div>
-        <EmptyState Icon="alert"
+        <SUIEmptyState Icon="alert"
                     Title="Não foi possível carregar a configuração"
                     Description="@(result?.ErrorMessage ?? "O serviço de identidade não informou sua configuração administrativa.")">
             <Actions>
@@ -30,18 +30,18 @@ else if (result?.IsSuccess is not true || result.Value is null)
                     Tentar novamente
                 </button>
             </Actions>
-        </EmptyState>
+        </SUIEmptyState>
     </div>
 }
 else
 {
     <div class="contract-strip contract-strip--info">
-        <AppIcon Name="settings" Size="20" />
+        <SUIIcon Name="settings" Size="20" />
         <div>
             <strong>Configuração fornecida pelo serviço</strong>
             <span>Os valores abaixo são a mesma projeção publicada pelo adaptador HTTP.</span>
         </div>
-        <StatusBadge Tone="info">@overview.EnvironmentName</StatusBadge>
+        <SUIStatusBadge Tone="info">@overview.EnvironmentName</SUIStatusBadge>
     </div>
 
     <div class="settings-grid">
@@ -59,7 +59,7 @@ else
                     </dt>
                     <dd>
                         <span class="config-value">@overview.Operator.Capabilities.Count</span>
-                        <StatusBadge Tone="success">Calculadas</StatusBadge>
+                        <SUIStatusBadge Tone="success">Calculadas</SUIStatusBadge>
                     </dd>
                 </div>
                 <div>
@@ -71,7 +71,7 @@ else
                         <span class="config-value">
                             @(overview.Operator.RequiresMfa ? "Obrigatória" : "Opcional")
                         </span>
-                        <StatusBadge Tone="@MfaTone">@MfaStatus</StatusBadge>
+                        <SUIStatusBadge Tone="@MfaTone">@MfaStatus</SUIStatusBadge>
                     </dd>
                 </div>
                 <div>
@@ -81,7 +81,7 @@ else
                     </dt>
                     <dd>
                         <span class="config-value">@AccessibleModuleCount de @overview.Modules.Count</span>
-                        <StatusBadge Tone="neutral">Nesta sessão</StatusBadge>
+                        <SUIStatusBadge Tone="neutral">Nesta sessão</SUIStatusBadge>
                     </dd>
                 </div>
             </dl>
@@ -101,7 +101,7 @@ else
                     </dt>
                     <dd>
                         <span class="config-value"><code>/@overview.Api.RoutePrefix</code></span>
-                        <StatusBadge Tone="neutral">Rota</StatusBadge>
+                        <SUIStatusBadge Tone="neutral">Rota</SUIStatusBadge>
                     </dd>
                 </div>
                 <div>
@@ -113,9 +113,9 @@ else
                         <span class="config-value">
                             @(overview.Api.RequiresAuthorization ? "Obrigatória" : "Desabilitada")
                         </span>
-                        <StatusBadge Tone="@(overview.Api.RequiresAuthorization ? "success" : "warning")">
+                        <SUIStatusBadge Tone="@(overview.Api.RequiresAuthorization ? "success" : "warning")">
                             @(overview.Api.RequiresAuthorization ? "Protegido" : "Revisar")
-                        </StatusBadge>
+                        </SUIStatusBadge>
                     </dd>
                 </div>
                 <div>
@@ -125,7 +125,7 @@ else
                     </dt>
                     <dd>
                         <span class="config-value"><code>@overview.Api.RequiredScope</code></span>
-                        <StatusBadge Tone="info">OAuth</StatusBadge>
+                        <SUIStatusBadge Tone="info">OAuth</SUIStatusBadge>
                     </dd>
                 </div>
             </dl>
@@ -149,9 +149,9 @@ else
                     </dt>
                     <dd>
                         <span class="config-value">@ModuleDescription(module.Contract)</span>
-                        <StatusBadge Tone="@ModuleTone(module.Contract)">
+                        <SUIStatusBadge Tone="@ModuleTone(module.Contract)">
                             @ModuleStatus(module.Contract)
-                        </StatusBadge>
+                        </SUIStatusBadge>
                     </dd>
                 </div>
             }

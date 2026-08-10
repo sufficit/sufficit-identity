@@ -5,15 +5,15 @@
 
 <PageTitle>Editar usuário | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Editar perfil"
+<SUIPageHeader Title="Editar perfil"
             Description="Atualize a identidade da conta sem duplicar regras de persistência ou autorização na interface.">
     <Actions>
         <a class="button button--secondary" href="@DetailHref">
-            <AppIcon Name="arrow-left" Size="17" />
+            <SUIIcon Name="arrow-left" Size="17" />
             Voltar para o usuário
         </a>
     </Actions>
-</PageHeader>
+</SUIPageHeader>
 
 @if (loading)
 {
@@ -29,7 +29,7 @@
 else if (detailResult?.IsSuccess is false)
 {
     <div class="panel">
-        <EmptyState Icon="alert"
+        <SUIEmptyState Icon="alert"
                     Title="@LoadErrorTitle"
                     Description="@detailResult.ErrorMessage">
             <Actions>
@@ -45,13 +45,13 @@ else if (detailResult?.IsSuccess is false)
                     </button>
                 }
             </Actions>
-        </EmptyState>
+        </SUIEmptyState>
     </div>
 }
 else if (User.Actions.UpdateProfileRequiresMfa)
 {
     <div class="panel">
-        <EmptyState Icon="shield"
+        <SUIEmptyState Icon="shield"
                     Title="MFA necessário para editar o perfil"
                     Description="A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.">
             <Actions>
@@ -59,13 +59,13 @@ else if (User.Actions.UpdateProfileRequiresMfa)
                     Voltar para o usuário
                 </a>
             </Actions>
-        </EmptyState>
+        </SUIEmptyState>
     </div>
 }
 else if (!User.Actions.CanUpdateProfile)
 {
     <div class="panel">
-        <EmptyState Icon="lock"
+        <SUIEmptyState Icon="lock"
                     Title="Edição de perfil não autorizada"
                     Description="Sua sessão não possui a capability necessária para alterar contas do provedor.">
             <Actions>
@@ -73,24 +73,24 @@ else if (!User.Actions.CanUpdateProfile)
                     Voltar para o usuário
                 </a>
             </Actions>
-        </EmptyState>
+        </SUIEmptyState>
     </div>
 }
 else
 {
     <div class="contract-strip contract-strip--warning">
-        <AppIcon Name="shield" Size="20" />
+        <SUIIcon Name="shield" Size="20" />
         <div>
             <strong>Alteração da conta no provedor</strong>
             <span>Dados modificados invalidam tokens ativos; consentimentos duráveis permanecem preservados.</span>
         </div>
-        <StatusBadge Tone="warning">Sessões afetadas</StatusBadge>
+        <SUIStatusBadge Tone="warning">Sessões afetadas</SUIStatusBadge>
     </div>
 
     @if (submission?.IsSuccess is false)
     {
         <div class="inline-notice inline-notice--danger" role="alert">
-            <AppIcon Name="alert" Size="19" />
+            <SUIIcon Name="alert" Size="19" />
             <div>
                 <strong>@SubmissionTitle</strong>
                 <span>@submission.ErrorMessage</span>
@@ -174,7 +174,7 @@ else
                 }
                 else
                 {
-                    <AppIcon Name="check" Size="17" />
+                    <SUIIcon Name="check" Size="17" />
                     <span>Salvar perfil</span>
                 }
             </button>

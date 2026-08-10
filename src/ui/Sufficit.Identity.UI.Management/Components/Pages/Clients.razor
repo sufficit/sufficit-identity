@@ -6,20 +6,20 @@
 
 <PageTitle>Aplicações | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Aplicações"
+<SUIPageHeader Title="Aplicações"
             Description="Crie, retome e gerencie integrações OAuth e OpenID Connect.">
     <Actions>
         <a class="button button--primary" href="clients/new">
-            <AppIcon Name="plus" Size="17" />
+            <SUIIcon Name="plus" Size="17" />
             Nova aplicação
         </a>
     </Actions>
-</PageHeader>
+</SUIPageHeader>
 
 @if (!string.IsNullOrWhiteSpace(DeletedClientId))
 {
     <div class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
+        <SUIIcon Name="check" Size="19" />
         <div>
             <strong>Cliente excluído</strong>
             <span>O registro <code>@DeletedClientId</code> foi removido e a operação foi auditada.</span>
@@ -30,18 +30,18 @@
 @if (DraftDeletedFlag is 1)
 {
     <div class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
+        <SUIIcon Name="check" Size="19" />
         <div><strong>Rascunho descartado</strong><span>A configuração incompleta foi removida com segurança.</span></div>
     </div>
 }
 
 <div class="contract-strip contract-strip--info" id="clients-integration-note">
-    <AppIcon Name="code" Size="20" />
+    <SUIIcon Name="code" Size="20" />
     <div>
         <strong>Uma única fonte de verdade</strong>
         <span>A interface e a API usam as mesmas validações, permissões e trilha de auditoria.</span>
     </div>
-    <StatusBadge Tone="info">Capability</StatusBadge>
+    <SUIStatusBadge Tone="info">Capability</SUIStatusBadge>
 </div>
 
 @if (!loading && Drafts.Count > 0)
@@ -49,20 +49,20 @@
     <div class="draft-panel" aria-labelledby="drafts-heading">
         <div class="data-toolbar">
             <div><h2 id="drafts-heading">Continuar configuração</h2><p>Rascunhos protegidos e disponíveis somente para sua conta administrativa.</p></div>
-            <StatusBadge Tone="info">@Drafts.Count @(Drafts.Count == 1 ? "rascunho" : "rascunhos")</StatusBadge>
+            <SUIStatusBadge Tone="info">@Drafts.Count @(Drafts.Count == 1 ? "rascunho" : "rascunhos")</SUIStatusBadge>
         </div>
         <div class="draft-list">
             @foreach (var item in Drafts)
             {
                 <a class="draft-item" href="@DraftHref(item)">
-                    <span class="draft-item__icon"><AppIcon Name="edit" Size="19" /></span>
+                    <span class="draft-item__icon"><SUIIcon Name="edit" Size="19" /></span>
                     <span class="draft-item__body">
                         <strong>@DraftName(item)</strong>
                         <span>@item.ProfileDisplayName · Etapa @DraftStepLabel(item.CurrentStep)</span>
                         <small>Atualizado @FormatRelative(item.UpdatedAt) · expira em @item.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy")</small>
                     </span>
-                    <StatusBadge Tone="@(item.IsReady ? "success" : "neutral")">@(item.IsReady ? "Pronto" : "Em andamento")</StatusBadge>
-                    <AppIcon Name="arrow-right" Size="17" />
+                    <SUIStatusBadge Tone="@(item.IsReady ? "success" : "neutral")">@(item.IsReady ? "Pronto" : "Em andamento")</SUIStatusBadge>
+                    <SUIIcon Name="arrow-right" Size="17" />
                 </a>
             }
         </div>
@@ -80,7 +80,7 @@
             {
                 <label class="search-field">
                     <span class="visually-hidden">Pesquisar aplicações</span>
-                    <AppIcon Name="search" Size="18" />
+                    <SUIIcon Name="search" Size="18" />
                     <input type="search"
                            placeholder="Pesquisar por client_id ou nome"
                            autocomplete="off"
@@ -145,13 +145,13 @@
             {
                 @if (!HasActiveClientFilters)
                 {
-                    <EmptyState Icon="database"
+                    <SUIEmptyState Icon="database"
                                 Title="@EmptyTitle"
                                 Description="@EmptyDescription" />
                 }
                 else
                 {
-                    <EmptyState Icon="search"
+                    <SUIEmptyState Icon="search"
                                 Title="@EmptyTitle"
                                 Description="@EmptyDescription">
                         <Actions>
@@ -161,7 +161,7 @@
                                     Limpar filtros
                             </button>
                         </Actions>
-                    </EmptyState>
+                    </SUIEmptyState>
                 }
             }
             else
@@ -192,9 +192,9 @@
                                         <code class="client-id">@client.ClientId</code>
                                     </td>
                                     <td data-label="Tipo">
-                                        <StatusBadge Tone="@ClientTypeTone(client.Type)">
+                                        <SUIStatusBadge Tone="@ClientTypeTone(client.Type)">
                                             @ClientTypeLabel(client.Type)
-                                        </StatusBadge>
+                                        </SUIStatusBadge>
                                     </td>
                                     <td data-label="Estado">
                                         <span class="registration-state">
@@ -210,7 +210,7 @@
                                            href="@ClientHref(client.Id)"
                                            aria-label="@($"Abrir detalhes de {client.ClientId}")">
                                             Detalhes
-                                            <AppIcon Name="arrow-right" Size="15" />
+                                            <SUIIcon Name="arrow-right" Size="15" />
                                         </a>
                                     </td>
                                 </tr>
@@ -222,7 +222,7 @@
         }
         else
         {
-            <EmptyState Icon="database"
+            <SUIEmptyState Icon="database"
                         Title="Não foi possível consultar os clientes"
                         Description="O serviço de identidade não conseguiu ler os registros agora. Verifique o banco e tente novamente.">
                 <Actions>
@@ -232,7 +232,7 @@
                         Tentar novamente
                     </button>
                 </Actions>
-            </EmptyState>
+            </SUIEmptyState>
         }
     </div>
 
@@ -245,7 +245,7 @@
                         type="button"
                         disabled="@(CurrentPage <= 1 || loading)"
                         @onclick="() => GoToPage(CurrentPage - 1)">
-                    <AppIcon Name="arrow-left" Size="15" />
+                    <SUIIcon Name="arrow-left" Size="15" />
                     Anterior
                 </button>
                 <span class="pagination__status">Página @CurrentPage de @PageCount</span>
@@ -254,7 +254,7 @@
                         disabled="@(CurrentPage >= PageCount || loading)"
                         @onclick="() => GoToPage(CurrentPage + 1)">
                     Próxima
-                    <AppIcon Name="arrow-right" Size="15" />
+                    <SUIIcon Name="arrow-right" Size="15" />
                 </button>
             </nav>
         }
@@ -271,9 +271,9 @@
         <p>Cada alteração é validada, autorizada e auditada antes de chegar ao registro OAuth.</p>
     </div>
     <ul>
-        <li><AppIcon Name="shield" Size="18" /> Operações exigem capabilities específicas do provedor</li>
-        <li><AppIcon Name="lock" Size="18" /> Segredos nunca aparecem na listagem</li>
-        <li><AppIcon Name="audit" Size="18" /> Criação e exclusão geram eventos persistentes</li>
+        <li><SUIIcon Name="shield" Size="18" /> Operações exigem capabilities específicas do provedor</li>
+        <li><SUIIcon Name="lock" Size="18" /> Segredos nunca aparecem na listagem</li>
+        <li><SUIIcon Name="audit" Size="18" /> Criação e exclusão geram eventos persistentes</li>
     </ul>
 </div>
 

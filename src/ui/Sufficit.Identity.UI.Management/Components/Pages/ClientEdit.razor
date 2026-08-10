@@ -5,15 +5,15 @@
 
 <PageTitle>Editar aplicação | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Editar aplicação"
+<SUIPageHeader Title="Editar aplicação"
             Description="Revise a configuração em etapas curtas. O client secret existente nunca é alterado ou exibido.">
     <Actions>
         <a class="button button--secondary" href="@DetailHref">
-            <AppIcon Name="arrow-left" Size="17" />
+            <SUIIcon Name="arrow-left" Size="17" />
             Cancelar
         </a>
     </Actions>
-</PageHeader>
+</SUIPageHeader>
 
 @if (loading)
 {
@@ -24,16 +24,16 @@
 }
 else if (client is null)
 {
-    <EmptyState Icon="alert"
+    <SUIEmptyState Icon="alert"
                 Title="Não foi possível editar esta aplicação"
                 Description="@(loadResult?.ErrorMessage ?? "O registro não está disponível.")">
         <Actions><a class="button button--secondary" href="clients">Voltar para aplicações</a></Actions>
-    </EmptyState>
+    </SUIEmptyState>
 }
 else if (client.IsManifestManaged)
 {
     <div class="inline-notice inline-notice--warning" role="status">
-        <AppIcon Name="lock" Size="19" />
+        <SUIIcon Name="lock" Size="19" />
         <div>
             <strong>Aplicação gerenciada por manifesto</strong>
             <span>Edite o manifesto declarativo e aplique o provisionamento para alterar este registro.</span>
@@ -63,7 +63,7 @@ else
                 }
             </ol>
             <div class="wizard-save-state">
-                <span class="wizard-save-state__icon"><AppIcon Name="lock" Size="15" /></span>
+                <span class="wizard-save-state__icon"><SUIIcon Name="lock" Size="15" /></span>
                 <span>Segredo preservado</span>
             </div>
         </nav>
@@ -156,7 +156,7 @@ else
             @if (!string.IsNullOrWhiteSpace(errorMessage))
             {
                 <div class="inline-notice inline-notice--danger" role="alert">
-                    <AppIcon Name="alert" Size="19" />
+                    <SUIIcon Name="alert" Size="19" />
                     <div><strong>Revise a configuração</strong><span>@errorMessage</span></div>
                 </div>
             }
@@ -171,7 +171,7 @@ else
                     else
                     {
                         <button class="button button--primary" type="button" disabled="@saving" @onclick="SaveAsync">
-                            @if (saving) { <span class="button-spinner" aria-hidden="true"></span><span>Salvando…</span> } else { <AppIcon Name="check" Size="17" /><span>Salvar alterações</span> }
+                            @if (saving) { <span class="button-spinner" aria-hidden="true"></span><span>Salvando…</span> } else { <SUIIcon Name="check" Size="17" /><span>Salvar alterações</span> }
                         </button>
                     }
                 </div>

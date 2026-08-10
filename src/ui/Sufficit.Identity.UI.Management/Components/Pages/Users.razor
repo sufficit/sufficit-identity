@@ -6,24 +6,24 @@
 
 <PageTitle>Usuários | Sufficit Identity</PageTitle>
 
-<PageHeader Title="Usuários"
+<SUIPageHeader Title="Usuários"
             Description="Investigue cadastros, encontre picos fora do padrão e navegue pelo diretório com filtros compartilháveis.">
     <Actions>
         @if (accessResult?.IsSuccess is true && Access.CanCreate)
         {
             <a class="button button--primary" href="users/new">
-                <AppIcon Name="plus" Size="17" />
+                <SUIIcon Name="plus" Size="17" />
                 Novo usuário
             </a>
         }
-        <StatusBadge Tone="info" Icon="shield">Diretório global</StatusBadge>
+        <SUIStatusBadge Tone="info" Icon="shield">Diretório global</SUIStatusBadge>
     </Actions>
-</PageHeader>
+</SUIPageHeader>
 
 @if (Deleted)
 {
     <div class="inline-notice inline-notice--success" role="status">
-        <AppIcon Name="check" Size="19" />
+        <SUIIcon Name="check" Size="19" />
         <div><strong>Conta excluída</strong><span>Credenciais, sessões, tokens e autorizações anteriores foram revogados.</span></div>
     </div>
 }
@@ -37,9 +37,9 @@
 else if (accessResult?.IsSuccess is false)
 {
     <div class="panel">
-        <EmptyState Icon="shield" Title="@AccessErrorTitle" Description="@accessResult.ErrorMessage">
+        <SUIEmptyState Icon="shield" Title="@AccessErrorTitle" Description="@accessResult.ErrorMessage">
             <Actions><button class="button button--secondary" type="button" @onclick="LoadAccessAsync">Tentar novamente</button></Actions>
-        </EmptyState>
+        </SUIEmptyState>
     </div>
 }
 else
@@ -55,7 +55,7 @@ else
                 {
                     <a class="filter-chip" href="@UrlFor(day: null, clearDay: true, page: 1)">
                         @SelectedDay.Value.ToString("dd/MM/yyyy", PtBr)
-                        <AppIcon Name="x" Size="14" />
+                        <SUIIcon Name="x" Size="14" />
                     </a>
                 }
             </div>
@@ -112,7 +112,7 @@ else
         <div class="users-investigation @(IsStaleUnverifiedReview ? "users-investigation--active" : null)"
                  aria-labelledby="stale-unverified-heading">
             <div class="users-investigation__summary">
-                <span class="users-investigation__icon" aria-hidden="true"><AppIcon Name="alert" Size="20" /></span>
+                <span class="users-investigation__icon" aria-hidden="true"><SUIIcon Name="alert" Size="20" /></span>
                 <div>
                     <h2 id="stale-unverified-heading">Cadastros pendentes há mais de 15 dias</h2>
                     <p>E-mail não confirmado e nenhum login externo vinculado, como Google ou Facebook.</p>
@@ -125,26 +125,26 @@ else
             @if (IsStaleUnverifiedReview)
             {
                 <a class="button button--secondary" href="@BaseUri" aria-current="page">
-                    <AppIcon Name="x" Size="15" /> Encerrar investigação
+                    <SUIIcon Name="x" Size="15" /> Encerrar investigação
                 </a>
             }
             else
             {
                 <a class="button button--secondary" href="@RiskReviewUrl">
-                    Revisar contas <AppIcon Name="arrow-right" Size="15" />
+                    Revisar contas <SUIIcon Name="arrow-right" Size="15" />
                 </a>
             }
         </div>
 
         <details class="users-filter-panel" open>
             <summary>
-                <span><AppIcon Name="search" Size="18" /> Filtros e ordenação</span>
+                <span><SUIIcon Name="search" Size="18" /> Filtros e ordenação</span>
                 <span class="users-filter-count">@ActiveFilterLabel</span>
             </summary>
             <form class="users-filter-form" @onsubmit="ApplyFilters" @onsubmit:preventDefault>
                 <label class="users-field users-field--search">
                     <span>Nome ou e-mail</span>
-                    <div class="search-field"><AppIcon Name="search" Size="18" /><input type="search" autocomplete="off" placeholder="Buscar no diretório" @bind="search" @bind:event="oninput" /></div>
+                    <div class="search-field"><SUIIcon Name="search" Size="18" /><input type="search" autocomplete="off" placeholder="Buscar no diretório" @bind="search" @bind:event="oninput" /></div>
                 </label>
                 <label class="users-field users-field--review"><span>Investigação</span><select @bind="review"><option value="@ManagementUserReviewFilter.All">Diretório completo</option><option value="@ManagementUserReviewFilter.StaleUnverifiedWithoutExternal">Pendentes há mais de 15 dias</option></select></label>
                 <label class="users-field"><span>Estado</span><select @bind="state"><option value="@ManagementUserStateFilter.All">Todos</option><option value="@ManagementUserStateFilter.Active">Ativos</option><option value="@ManagementUserStateFilter.Locked">Bloqueados</option></select></label>
@@ -173,11 +173,11 @@ else
                 }
                 else if (usersResult?.IsSuccess is false)
                 {
-                    <EmptyState Icon="alert" Title="@UsersErrorTitle" Description="@usersResult.ErrorMessage"><Actions><button class="button button--secondary" type="button" @onclick="LoadUsersAsync">Tentar novamente</button></Actions></EmptyState>
+                    <SUIEmptyState Icon="alert" Title="@UsersErrorTitle" Description="@usersResult.ErrorMessage"><Actions><button class="button button--secondary" type="button" @onclick="LoadUsersAsync">Tentar novamente</button></Actions></SUIEmptyState>
                 }
                 else if (Page.Items.Count is 0)
                 {
-                    <EmptyState Icon="users" Title="@EmptyStateTitle" Description="@EmptyStateDescription"><Actions><button class="button button--secondary" type="button" @onclick="ClearFilters">Voltar ao diretório</button></Actions></EmptyState>
+                    <SUIEmptyState Icon="users" Title="@EmptyStateTitle" Description="@EmptyStateDescription"><Actions><button class="button button--secondary" type="button" @onclick="ClearFilters">Voltar ao diretório</button></Actions></SUIEmptyState>
                 }
                 else
                 {
@@ -200,16 +200,16 @@ else
                                             @if (user.EmailConfirmed)
                                             {
                                                 <span class="verified-mark" title="E-mail confirmado" aria-label="E-mail confirmado">
-                                                    <AppIcon Name="check" Size="13" />
+                                                    <SUIIcon Name="check" Size="13" />
                                                 </span>
                                             }
                                         </span>
                                     </td>
                                     <td data-label="Cadastro"><time datetime="@user.CreatedAtUtc.ToString("O")"><strong>@user.CreatedAtUtc.ToString("dd/MM/yyyy", PtBr)</strong><span>@user.CreatedAtUtc.ToString("HH:mm", PtBr) UTC</span></time></td>
-                                    <td data-label="Acesso externo"><StatusBadge Tone="@(user.HasExternalLogin ? "info" : "warning")">@(user.HasExternalLogin ? "Vinculado" : "Ausente")</StatusBadge></td>
-                                    <td data-label="MFA"><StatusBadge Tone="@(user.TwoFactorEnabled ? "success" : "neutral")">@(user.TwoFactorEnabled ? "Ativo" : "Inativo")</StatusBadge></td>
+                                    <td data-label="Acesso externo"><SUIStatusBadge Tone="@(user.HasExternalLogin ? "info" : "warning")">@(user.HasExternalLogin ? "Vinculado" : "Ausente")</SUIStatusBadge></td>
+                                    <td data-label="MFA"><SUIStatusBadge Tone="@(user.TwoFactorEnabled ? "success" : "neutral")">@(user.TwoFactorEnabled ? "Ativo" : "Inativo")</SUIStatusBadge></td>
                                     <td data-label="Estado"><span class="registration-state"><span class="status-dot @(user.IsLockedOut ? "status-dot--danger" : "status-dot--success")" aria-hidden="true"></span>@(user.IsLockedOut ? "Bloqueado" : "Ativo")</span></td>
-                                    <td data-label="Ações"><a class="row-action" href="@UserHref(user.Id)" aria-label="@($"Abrir detalhes de {DisplayUserName(user)}")">Detalhes<AppIcon Name="arrow-right" Size="15" /></a></td>
+                                    <td data-label="Ações"><a class="row-action" href="@UserHref(user.Id)" aria-label="@($"Abrir detalhes de {DisplayUserName(user)}")">Detalhes<SUIIcon Name="arrow-right" Size="15" /></a></td>
                                 </tr>
                             }
                             </tbody>
