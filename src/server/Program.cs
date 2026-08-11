@@ -1,5 +1,6 @@
 using System.Net;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
@@ -189,6 +190,8 @@ if (mgmtEnabled)
         ServiceDescriptor.Scoped<
             IManagementEntitlementResolver,
             SufficitOperatorManagementEntitlementResolver>());
+    builder.Services.AddScoped<IClaimsTransformation,
+        SufficitManagementContextClaimsTransformation>();
     // M1 fix (eval): replace the MissingClientSecretResolver stub with a
     // vault-backed resolver so provisioning of confidential clients works.
     // The vault is already registered by AddSufficitIdentitySTS above; the
