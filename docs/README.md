@@ -64,6 +64,7 @@ Dated evaluations that are useful only as historical evidence live under
 ## Architecture
 
 - [Repository and module architecture](architecture/ARCHITECTURE-REPOSITORY.md)
+- [Distributed snapshot cache architecture](architecture/ARCHITECTURE-DISTRIBUTED-CACHE.md)
 - [Single-source UI boundary](architecture/ARCHITECTURE-SINGLE-SOURCE-UI.md)
 - [Management authorization boundary](architecture/ARCHITECTURE-MANAGEMENT-AUTHORIZATION.md)
 - [Public UI architecture](architecture/ARCHITECTURE-PUBLIC-UI.md)
@@ -84,6 +85,7 @@ Dated evaluations that are useful only as historical evidence live under
 ## Operations
 
 - [Deployment configuration](runbooks/RUNBOOK-DEPLOYMENT.md)
+- [Distributed cache and snapshot](runbooks/RUNBOOK-DISTRIBUTED-CACHE.md)
 - [Production evidence and release gates](runbooks/RUNBOOK-PRODUCTION-EVIDENCE.md)
 - [Database connection resilience and monitoring](runbooks/RUNBOOK-DATABASE-CONNECTION-RESILIENCE.md)
 - [CSP calibration](runbooks/RUNBOOK-CSP-CALIBRATION.md)
