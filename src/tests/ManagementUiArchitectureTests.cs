@@ -1169,11 +1169,14 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("data-device-flow-result", page, StringComparison.Ordinal);
         Assert.Contains("data-device-flow-close", page, StringComparison.Ordinal);
         Assert.Contains("data-device-close-fallback", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-device-flow-close hidden", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-device-close-fallback hidden", page, StringComparison.Ordinal);
         Assert.Contains("data-enhance=\"false\"", page, StringComparison.Ordinal);
         Assert.Contains("window.close();", script, StringComparison.Ordinal);
         Assert.Contains("window.open('', '_self');", script, StringComparison.Ordinal);
         Assert.Contains("fallback.hidden = false", script, StringComparison.Ordinal);
         Assert.Contains("window.opener", script, StringComparison.Ordinal);
+        Assert.Contains("console.warn", script, StringComparison.Ordinal);
         Assert.Contains("initializeDeviceFlowClose", script, StringComparison.Ordinal);
         Assert.Contains("enhancedload", script, StringComparison.Ordinal);
         Assert.Contains("deviceCloseInitialized", script, StringComparison.Ordinal);
@@ -1182,10 +1185,10 @@ public sealed class ManagementUiArchitectureTests
             "window.history.length <= 1",
             script,
             StringComparison.Ordinal);
-        Assert.Contains("button.hidden = true", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("closeDeviceFlowTab(result, false)", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Tentar fechar novamente", script, StringComparison.Ordinal);
         Assert.Contains(
-            "never navigate to the Identity home page",
+            "only from the button",
             script,
             StringComparison.Ordinal);
     }

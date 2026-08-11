@@ -42,45 +42,50 @@ document.addEventListener('change', function (event) {
 });
 
 /**
- * Ends the browser side of an RFC 8628 device flow. Browsers only allow
- * window.close() for tabs they consider script-opened; when closing is
- * blocked, the terminal page remains visible and explains the manual action.
+ * Ends the browser side of an RFC 8628 device flow. The close request is made
+ * only from the explicit button gesture: browsers reject automatic close
+ * attempts for user-created tabs and those attempts cannot be upgraded later.
+ * When closing is blocked, the terminal page remains visible and explains the
+ * manual action.
  */
 (function () {
-    function canCloseDeviceFlowTab() {
-        // The only portable signal is a live opener. A short history is not
-        // enough: browsers still reject window.close() on a tab opened by the
-        // user and emit "Scripts may close only windows opened by them".
-        return Boolean(window.opener && !window.opener.closed);
-    }
-
     function showManualCompletion(result) {
         var fallback = document.querySelector('[data-device-close-fallback]');
         if (fallback) fallback.hidden = false;
 
         var button = document.querySelector('[data-device-flow-close]');
-        if (button) button.hidden = true;
+        if (button) {
+            button.hidden = false;
+            button.disabled = false;
+        }
 
         if (result) result.removeAttribute('aria-busy');
+
+        if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+            console.warn(
+                '[Sufficit Identity] O navegador bloqueou o fechamento desta aba. ' +
+                'Use o controle de abas para encerrá-la.',
+                { hasOpener: Boolean(window.opener && !window.opener.closed) });
+        }
     }
 
-    function tryCloseWindow(fromUserGesture) {
+    function tryCloseWindow() {
         try {
             window.close();
         } catch (_) {
             // Some browsers throw when script closure is disallowed.
         }
 
-        if (window.closed || !fromUserGesture) {
+        if (window.closed) {
             return window.closed;
         }
 
         // Firefox and some Chromium versions require the current browsing
         // context to be retargeted before accepting a close requested by a
-        // direct user gesture. Never use this compatibility path automatically.
+        // direct user gesture. This path is reached only from the button.
         try {
-            window.open('', '_self');
-            window.close();
+            var currentWindow = window.open('', '_self');
+            if (currentWindow) currentWindow.close();
         } catch (_) {
             // The manual completion message below remains the safe fallback.
         }
@@ -88,14 +93,12 @@ document.addEventListener('change', function (event) {
         return window.closed;
     }
 
-    function closeDeviceFlowTab(result, fromUserGesture) {
-        if (!canCloseDeviceFlowTab()) {
-            showManualCompletion(result);
-            return;
-        }
-
+    function closeDeviceFlowTab(result) {
         if (result) result.setAttribute('aria-busy', 'true');
-        if (tryCloseWindow(Boolean(fromUserGesture))) {
+        var button = document.querySelector('[data-device-flow-close]');
+        if (button) button.disabled = true;
+
+        if (tryCloseWindow()) {
             return;
         }
 
@@ -113,24 +116,13 @@ document.addEventListener('change', function (event) {
         result.dataset.deviceCloseInitialized = 'true';
 
         var closeButton = document.querySelector('[data-device-flow-close]');
-        if (!canCloseDeviceFlowTab()) {
-            showManualCompletion(result);
-            return;
-        }
-
-        if (closeButton) {
+        if (closeButton && closeButton.dataset.deviceCloseBound !== 'true') {
+            closeButton.dataset.deviceCloseBound = 'true';
             closeButton.hidden = false;
             closeButton.addEventListener('click', function () {
-                closeDeviceFlowTab(result, true);
+                closeDeviceFlowTab(result);
             });
         }
-
-        // Device verification is terminal in this browser. Attempt to close the
-        // tab automatically only when browser rules are expected to allow it;
-        // never navigate to the Identity home page.
-        window.setTimeout(function () {
-            closeDeviceFlowTab(result, false);
-        }, 400);
     }
 
     function subscribeToEnhancedLoads() {
