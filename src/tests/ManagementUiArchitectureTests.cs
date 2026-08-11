@@ -1073,6 +1073,14 @@ public sealed class ManagementUiArchitectureTests
             userDetail,
             StringComparison.Ordinal);
         Assert.Contains(
+            "private static bool IsLockedOut(ManagementUserDetail? user)",
+            userDetail,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "user?.LockoutEnd",
+            userDetail,
+            StringComparison.Ordinal);
+        Assert.Contains(
             "[SupplyParameterFromQuery(Name = \"user\")]",
             claims,
             StringComparison.Ordinal);

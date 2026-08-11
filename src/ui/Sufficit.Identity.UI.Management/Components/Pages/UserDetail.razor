@@ -657,8 +657,8 @@ else
             : "Sem bloqueio ativo";
     }
 
-    private static bool IsLockedOut(ManagementUserDetail user) =>
-        user.LockoutEnd is { } end
+    private static bool IsLockedOut(ManagementUserDetail? user) =>
+        user?.LockoutEnd is { } end
         && end > DateTimeOffset.UtcNow;
 
     private sealed class PasswordResetModel
