@@ -156,7 +156,7 @@ jobs:
         env:
           ASPNETCORE_ENVIRONMENT: Development
           ASPNETCORE_URLS: http://127.0.0.1:5088
-          ConnectionStrings__DefaultConnection: >-
+          SUFFICIT_SECRET_DATABASE_CONNECTION_STRING: >-
             server=127.0.0.1;port=3306;database=identity_contract;user=root;SslMode=Disabled
           Sufficit__Identity__Issuer: http://127.0.0.1:5088
           Sufficit__Identity__UI__Public__Mode: None
