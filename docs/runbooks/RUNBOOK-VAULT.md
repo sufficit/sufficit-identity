@@ -46,6 +46,14 @@ continua compartilhado entre réplicas, mas novas chaves do ring são protegidas
 pelo certificado dedicado acima, nunca pelo certificado de assinatura. Não
 altere `DataProtectionPurpose` depois de haver dados cifrados.
 
+Em hosts que não recebem segredos por um volume efêmero do supervisor, a
+implantação Sufficit mantém o PFX em
+`/etc/sufficit/identity/vault-kek.pfx` e define
+`Sufficit__Vault__CertificatePath` para esse caminho persistente. O caminho
+`/run/secrets/sufficit-vault-kek.pfx` continua válido quando o ambiente fornece
+esse volume no boot; em ambos os casos o arquivo deve ser `root:www-data` com
+modo `0640` e o mesmo material deve estar presente em todas as réplicas.
+
 `KeySource=dataprotection` é o caminho compatível para ambientes que já têm
 DEKs embrulhadas por Data Protection. `KeySource=certificate` usa o mesmo PFX
 dedicado para embrulhar DEKs diretamente. `KeySource=external` exige uma
