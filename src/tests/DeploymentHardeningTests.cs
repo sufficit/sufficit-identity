@@ -65,6 +65,9 @@ public sealed class DeploymentHardeningTests
         var service = File.ReadAllText(Path.Combine(
             repository,
             "helpers/sufficit-identity.service"));
+        var migratorService = File.ReadAllText(Path.Combine(
+            repository,
+            "helpers/sufficit-identity-migrator.service"));
         var localServicePath = Path.Combine(
             repository,
             "deploy/local/systemd/sufficit-identity.service");
@@ -78,6 +81,10 @@ public sealed class DeploymentHardeningTests
         Assert.Contains(
             "EnvironmentFile=-/etc/sufficit/identity/vault-secrets.env",
             service,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "EnvironmentFile=-/etc/sufficit/identity/vault-secrets.env",
+            migratorService,
             StringComparison.Ordinal);
         if (File.Exists(localServicePath))
         {
