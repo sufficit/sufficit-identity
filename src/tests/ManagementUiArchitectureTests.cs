@@ -1171,11 +1171,13 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("data-device-close-fallback", page, StringComparison.Ordinal);
         Assert.Contains("data-enhance=\"false\"", page, StringComparison.Ordinal);
         Assert.Contains("window.close();", script, StringComparison.Ordinal);
+        Assert.Contains("window.open('', '_self');", script, StringComparison.Ordinal);
         Assert.Contains("fallback.hidden = false", script, StringComparison.Ordinal);
         Assert.Contains("window.opener", script, StringComparison.Ordinal);
         Assert.Contains("initializeDeviceFlowClose", script, StringComparison.Ordinal);
         Assert.Contains("enhancedload", script, StringComparison.Ordinal);
         Assert.Contains("deviceCloseInitialized", script, StringComparison.Ordinal);
+        Assert.Contains("DOMContentLoaded", script, StringComparison.Ordinal);
         Assert.DoesNotContain(
             "window.history.length <= 1",
             script,

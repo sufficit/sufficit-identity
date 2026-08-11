@@ -64,14 +64,40 @@ document.addEventListener('change', function (event) {
         if (result) result.removeAttribute('aria-busy');
     }
 
-    function closeDeviceFlowTab(result) {
+    function tryCloseWindow(fromUserGesture) {
+        try {
+            window.close();
+        } catch (_) {
+            // Some browsers throw when script closure is disallowed.
+        }
+
+        if (window.closed || !fromUserGesture) {
+            return window.closed;
+        }
+
+        // Firefox and some Chromium versions require the current browsing
+        // context to be retargeted before accepting a close requested by a
+        // direct user gesture. Never use this compatibility path automatically.
+        try {
+            window.open('', '_self');
+            window.close();
+        } catch (_) {
+            // The manual completion message below remains the safe fallback.
+        }
+
+        return window.closed;
+    }
+
+    function closeDeviceFlowTab(result, fromUserGesture) {
         if (!canCloseDeviceFlowTab()) {
             showManualCompletion(result);
             return;
         }
 
         if (result) result.setAttribute('aria-busy', 'true');
-        window.close();
+        if (tryCloseWindow(Boolean(fromUserGesture))) {
+            return;
+        }
 
         // If execution continues, the browser kept the tab open. Delay the
         // fallback just enough to avoid flashing it during a successful close.
@@ -95,7 +121,7 @@ document.addEventListener('change', function (event) {
         if (closeButton) {
             closeButton.hidden = false;
             closeButton.addEventListener('click', function () {
-                closeDeviceFlowTab(result);
+                closeDeviceFlowTab(result, true);
             });
         }
 
@@ -103,7 +129,7 @@ document.addEventListener('change', function (event) {
         // tab automatically only when browser rules are expected to allow it;
         // never navigate to the Identity home page.
         window.setTimeout(function () {
-            closeDeviceFlowTab(result);
+            closeDeviceFlowTab(result, false);
         }, 400);
     }
 
@@ -117,12 +143,17 @@ document.addEventListener('change', function (event) {
     }
 
     initializeDeviceFlowClose();
+    document.addEventListener('DOMContentLoaded', initializeDeviceFlowClose, { once: true });
+    window.addEventListener('load', initializeDeviceFlowClose, { once: true });
 
     // identity.js is loaded before blazor.web.js. Subscribe as soon as Blazor
     // exposes its enhanced navigation events so a replaced terminal page gets
     // the same close behavior as a full page load.
     if (!subscribeToEnhancedLoads()) {
-        window.addEventListener('load', subscribeToEnhancedLoads, { once: true });
+        window.addEventListener('load', function () {
+            initializeDeviceFlowClose();
+            subscribeToEnhancedLoads();
+        }, { once: true });
     }
 })();
 
