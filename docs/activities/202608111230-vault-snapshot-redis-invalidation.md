@@ -54,3 +54,14 @@ intervenção manual.
 - Os três serviços confirmaram no log a assinatura Redis Pub/Sub ativa. O
   snapshot continua usando memória local como caminho quente, Redis como
   compartilhamento/invalidação e banco somente em miss/expiração.
+
+### Recuperação do nó Redis `apoint-voip`
+
+- O CT 1104 estava em `emergency.target`: as interfaces de rede estavam
+  `DOWN` e o `redis-server` não havia iniciado porque três mounts GCS falhos
+  bloqueavam a transação de boot.
+- As interfaces foram reativadas, o Redis foi iniciado preservando AOF/RDB e
+  os mounts GCS receberam `nofail,_netdev`, evitando que uma indisponibilidade
+  de armazenamento impeça a rede e o Redis de subirem.
+- Após o reboot do CT, o nó voltou a `master,connected`; o cluster ficou com
+  `cluster_state:ok`, todos os `16384` slots atribuídos e sem `pfail/fail`.
