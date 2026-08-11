@@ -321,7 +321,9 @@ file sealed class MariaDbTestFactory : WebApplicationFactory<MariaDbTestFactory>
 
         builder.ConfigureServices((context, services) =>
         {
-            services.AddSufficitIdentitySTS(context.Configuration);
+            services.AddSufficitIdentitySTS(
+                context.Configuration,
+                secretStore: new TestSecretStore(context.Configuration));
             services.AddControllers()
                 .AddApplicationPart(typeof(Sufficit.Identity.STS.Controllers.AuthorizationController).Assembly);
             services.AddAntiforgery();
