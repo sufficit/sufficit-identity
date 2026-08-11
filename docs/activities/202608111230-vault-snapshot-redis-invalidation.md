@@ -55,6 +55,21 @@ intervenção manual.
   snapshot continua usando memória local como caminho quente, Redis como
   compartilhamento/invalidação e banco somente em miss/expiração.
 
+### Redis dedicado do cluster Apps
+
+- O cluster VoIP não é usado pelo Identity. Foi criado um cluster Redis
+  dedicado nos próprios hosts Apps, usando somente a VPN `suffvpn`:
+  `172.19.1.113` (apoint), `172.19.2.101` (eveo) e `172.19.3.101` (castrum).
+- Cada host é um master Redis 7.0.15; os `16384` slots foram distribuídos
+  entre os três masters, com AOF `everysec`, limite de `1gb` e política
+  `allkeys-lru`. As portas 6379/16379 não ficam expostas no endereço público.
+- A conexão dos três Identity usa os três endpoints VPN. A senha permanece
+  somente nos arquivos de segredo do host e não é versionada.
+- O teste de chave com roteamento de cluster e o teste Pub/Sub entre masters
+  passaram. Como esse Redis serve apenas cache/invalidação, não há réplicas de
+  dados; a fonte de verdade continua sendo o banco e o snapshot tolera a perda
+  temporária de um master por TTL/miss.
+
 ### Recuperação do nó Redis `apoint-voip`
 
 - O CT 1104 estava em `emergency.target`: as interfaces de rede estavam

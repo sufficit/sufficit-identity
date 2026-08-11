@@ -169,9 +169,11 @@ cache tenta primeiro o IDistributedCache e só então consulta o banco. O
 serviço de background atualiza as entradas já utilizadas, mantendo o caminho de
 requisição em memória durante operação normal.
 
-Para um cluster, configure
-SUFFICIT_SECRET_DISTRIBUTED_CACHE_CONNECTION_STRING com uma conexão Redis
-privada e mantenha Sufficit:Identity:DistributedCache:RequireShared=true.
+Para o cluster de produção Apps, configure
+`SUFFICIT_SECRET_DISTRIBUTED_CACHE_CONNECTION_STRING` com os três endpoints
+Redis privados da VPN (`172.19.1.113`, `172.19.2.101` e `172.19.3.101`) e
+mantenha `Sufficit:Identity:DistributedCache:RequireShared=true`. Esse Redis é
+dedicado ao Identity; não use o cluster Redis da infraestrutura VoIP.
 O host registra AddStackExchangeRedisCache antes do STS; sem essa variável, o
 fallback é MemoryDistributedCache, adequado somente para uma réplica.
 
@@ -198,6 +200,13 @@ Configuração recomendada:
 O snapshot é uma otimização de leitura, não uma fonte de verdade: falhas do
 Redis são tratadas como miss e retornam ao banco; falhas do banco não servem
 uma entrada expirada.
+
+O Redis Apps é um cluster de três masters, sem réplicas de dados, destinado
+exclusivamente a cache e invalidação. Os slots são distribuídos entre os
+masters e o cluster usa `cluster-require-full-coverage no`; a perda de um nó
+não deve ser tratada como perda de dados persistentes, mas as chaves nos slots
+desse nó podem ficar indisponíveis até a recuperação. Para dados que exigem
+durabilidade ou redundância de leitura, use o banco de dados, não o snapshot.
 
 ## Rotação
 
