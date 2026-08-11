@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <RootNamespace>Sufficit.Identity.Server</RootNamespace>
     <AssemblyName>Sufficit.Identity.Server</AssemblyName>
-    <!-- Kept for compatibility with existing local User Secrets. -->
+    <!-- Retained for tooling only; runtime startup secrets come from vault-secrets.env. -->
     <UserSecretsId>sufficit-identity-sts</UserSecretsId>
     <Description>Sufficit Identity — composition host for STS, management and UI modules.</Description>
   </PropertyGroup>
@@ -33,10 +33,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Real appsettings files are developer-local/ignored and may contain
-         credentials. Runtime configuration must come from User Secrets,
-         environment variables, or mounted configuration — never from a
-         build/publish artifact. -->
+    <!-- Real appsettings files are developer-local/ignored. Runtime startup
+         secrets must come from vault-secrets.env — never from a build or
+         publish artifact. -->
     <Content Update="appsettings.json;appsettings.*.json"
              CopyToOutputDirectory="Never"
              CopyToPublishDirectory="Never" />

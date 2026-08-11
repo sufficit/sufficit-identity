@@ -10,8 +10,8 @@
 - Banco, senhas dos certificados, reCAPTCHA/Turnstile e credenciais dos
   provedores Google, GitHub e Facebook podem sair do `appsettings.*.json` sem
   alterar os consumidores existentes.
-- O fallback de configuração continua disponível durante o rolling deploy e
-  emite aviso com o nome lógico do segredo, sem registrar o valor.
+- O fallback de configuração foi removido após a migração das réplicas; o
+  startup agora rejeita qualquer segredo plaintext encontrado em appsettings.
 - O mapeamento e a precedência ambiente > JSON têm cobertura automatizada.
 - O runbook documenta os nomes das variáveis e a sequência de migração.
 
@@ -27,9 +27,7 @@
 
 ## Limites remanescentes
 
-- A camada de configuração ainda é uma ponte de compatibilidade para o startup;
-  o valor legado só deve ser removido depois de instalar os overrides em todas
-  as réplicas.
-- A ativação de `RequireEncryptionInProduction=true` e a remoção definitiva dos
-  valores JSON são operações de rollout, não mudanças de código desta etapa.
-- Nenhum segredo de produção foi alterado nesta etapa.
+- A ativação de `RequireEncryptionInProduction=true` permanece uma política de
+  rollout independente desta migração de segredos.
+- O arquivo `vault-secrets.env` continua sendo instalado e rotacionado pelo
+  supervisor do host; o repositório valida somente nomes, presença e permissões.

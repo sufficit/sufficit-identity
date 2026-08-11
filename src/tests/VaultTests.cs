@@ -211,7 +211,7 @@ public sealed class VaultTests
     }
 
     [Fact]
-    public async Task Registration_exposes_environment_configuration_secret_boundary()
+    public async Task Registration_does_not_read_configuration_as_secret()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -227,7 +227,7 @@ public sealed class VaultTests
         using var provider = services.BuildServiceProvider();
         var store = provider.GetRequiredService<ISecretStore>();
 
-        Assert.Equal("configured-secret",
+        Assert.Null(
             await store.GetSecretAsync("database/password"));
     }
 
@@ -260,7 +260,17 @@ public sealed class VaultTests
     }
 
     [Fact]
-    public async Task Environment_secret_store_maps_legacy_startup_configuration()
+    public async Task Environment_secret_store_ignores_legacy_startup_configuration()
+    {
+        var store = new EnvironmentSecretStore();
+
+        Assert.Null(
+            await store.GetSecretAsync(
+                "identity/certificates/signing-password"));
+    }
+
+    [Fact]
+    public void Plaintext_startup_secrets_are_rejected_before_environment_overrides()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -270,12 +280,12 @@ public sealed class VaultTests
             })
             .Build();
 
-        var store = new EnvironmentSecretStore(configuration);
+        var exception = Assert.Throws<InvalidOperationException>(
+            () => SecretConfigurationExtensions.EnsureNoPlaintextSecrets(
+                configuration));
 
-        Assert.Equal(
-            "legacy-signing-password",
-            await store.GetSecretAsync(
-                "identity/certificates/signing-password"));
+        Assert.Contains("SigningPassword", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("legacy-signing-password", exception.Message, StringComparison.Ordinal);
     }
 
     [Fact]

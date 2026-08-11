@@ -461,9 +461,9 @@ signing continues through the existing OpenIddict certificate path.
    (opt-in) + `vault_secrets` table + migration.
 2. Management API endpoint `GET/PUT/DELETE /api/vault/secrets/{name}`
    (capability-scoped; values are write-only in the response).
-3. Startup consumers resolve named secrets through `ISecretStore`; the
-   configuration fallback remains only for rolling-deploy compatibility and can
-   be removed after every host has the corresponding `SUFFICIT_SECRET_*` value.
+3. Startup consumers resolve named secrets through `ISecretStore`; plaintext
+   configuration fallback is rejected after every host has the corresponding
+   `SUFFICIT_SECRET_*` value.
 4. Named secrets are isolated by `(contextId, namespace)`, use context-bound
    AAD and require exact namespace claims in Management. Cross-context CRUD,
    filtered lists and break-glass audit have integration coverage.

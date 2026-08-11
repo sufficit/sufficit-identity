@@ -12,8 +12,8 @@
   GitHub e Facebook são resolvidas por nomes lógicos através de `ISecretStore`.
 - O overload de `AddSufficitSecretOverrides` aceita qualquer implementação de
   `ISecretStore`, mantendo a composição testável e sem acoplamento ao ambiente.
-- O carregamento de certificados usa a mesma fronteira e preserva o fallback de
-  configuração apenas para rolling deploys já instalados.
+- O carregamento de certificados usa a mesma fronteira; não há fallback de
+  configuração para rolling deploys.
 - Os transportes SMTP e RabbitMQ/Q-EMAIL também resolvem suas senhas por
   `ISecretStore`, com os nomes `identity/smtp/password` e
   `exchange/rabbitmq/password`.
@@ -23,7 +23,8 @@
 
 ## Operação e limite
 
-Instale os `SUFFICIT_SECRET_*` em todas as réplicas antes de remover os valores
-legados de `appsettings.*.json`. O `VaultBackedSecretStore` continua reservado
-à resolução em runtime: ele não pode ser usado para o primeiro segredo de
-conexão, pois o banco é pré-requisito do próprio store.
+Instale os `SUFFICIT_SECRET_*` em todas as réplicas antes de ativar o release.
+O startup falha fechado se encontrar um valor legado em `appsettings.*.json`.
+O `VaultBackedSecretStore` continua reservado à resolução em runtime: ele não
+pode ser usado para o primeiro segredo de conexão, pois o banco é pré-requisito
+do próprio store.

@@ -1,7 +1,6 @@
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
-using Microsoft.Extensions.Configuration;
 using Sufficit.Identity.STS;
 using Sufficit.Identity.Vault;
 using Xunit;
@@ -71,17 +70,29 @@ public sealed class CertificateRotationTests
             "LoadCertificateMaterial",
             BindingFlags.NonPublic | BindingFlags.Static)
             ?? throw new InvalidOperationException("Certificate loader not found.");
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Sufficit:Identity:Certificates:SigningPassword"] =
-                    options.SigningPassword,
-                ["Sufficit:Identity:Certificates:EncryptionPassword"] =
-                    options.EncryptionPassword,
-            })
-            .Build();
-        return method.Invoke(null, [options, true, new EnvironmentSecretStore(configuration)])
+        var store = new OptionsSecretStore(
+            options.SigningPassword,
+            options.EncryptionPassword);
+        return method.Invoke(null, [options, true, store])
             ?? throw new InvalidOperationException("Certificate material was null.");
+    }
+
+    private sealed class OptionsSecretStore(
+        string? signingPassword,
+        string? encryptionPassword) : ISecretStore
+    {
+        public Task<string?> GetSecretAsync(
+            string name,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult<string?>(name switch
+            {
+                "identity/certificates/signing-password" => signingPassword,
+                "identity/certificates/encryption-password" => encryptionPassword,
+                _ => null,
+            });
+        }
     }
 
     private static IReadOnlyList<X509Certificate2> ReadCertificates(

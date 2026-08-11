@@ -39,10 +39,17 @@ public static class ServiceCollectionExtensions
                 VaultProductionPostureContributor>());
         services.TryAddSingleton(configuration);
         var resolvedSecretStore = startupSecretStore
-            ?? new EnvironmentSecretStore(configuration);
+            ?? new EnvironmentSecretStore();
         if (options.EnableSecretStore)
         {
             services.TryAddScoped<ISecretStore, VaultBackedSecretStore>();
+        }
+        else if (startupSecretStore is not null)
+        {
+            // Keep the exact startup boundary (EnvironmentSecretStore in
+            // production, an explicit test store in integration hosts) for
+            // runtime consumers that are not using the database-backed vault.
+            services.TryAddSingleton<ISecretStore>(resolvedSecretStore);
         }
         else
         {
@@ -126,7 +133,7 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(configuration);
         var effectiveSecretStore = secretStore
-            ?? new EnvironmentSecretStore(configuration);
+            ?? new EnvironmentSecretStore();
         var source = options.KeySource.Trim().ToLowerInvariant();
         if (source is not ("dataprotection" or "certificate" or "external"))
         {

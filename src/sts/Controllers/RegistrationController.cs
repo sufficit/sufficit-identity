@@ -254,8 +254,7 @@ public sealed class RegistrationController : ControllerBase
         CancellationToken cancellationToken) =>
         await _secretStore.GetSecretAsync(
             "identity/dcr/initial-access-token",
-            cancellationToken)
-        ?? _options.InitialAccessToken;
+            cancellationToken);
 
     /// <summary>
     /// Maps an RFC 7591 grant-type name (plain: <c>client_credentials</c>,
