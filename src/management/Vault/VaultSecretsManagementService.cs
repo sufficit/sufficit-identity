@@ -145,7 +145,7 @@ public sealed class VaultSecretsManagementService(
             contextId);
         var resource = new ManagementResource(
             ManagementResourceTypes.VaultSecretCollection,
-            ContextId: normalizedContext);
+            TenantId: normalizedContext);
         var objectDecision = await DemandAsync(
             context,
             ManagementCapabilities.VaultSecretsRead,

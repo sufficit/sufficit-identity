@@ -68,16 +68,41 @@ returned by list or detail operations.
 Named Vault secrets use an explicit provider-owned authorization tuple:
 `(contextId, namespace, normalizedName)`. The first path segment is the
 namespace; descendants inherit it and cannot declare a different owner or
-context. The capability authorizes the operation, the normal Management
-context claim authorizes the context, and `identity_vault_namespace` authorizes
+context. The capability authorizes the operation, the Management tenant
+authority (`identity:tenant`) authorizes the tenant, and
+`identity_vault_namespace` authorizes
 one exact `<contextId>:<namespace>` pair. Lists apply the same predicate as
 get/put/delete.
 
 `identity_vault_break_glass` is a separate MFA-bound claim issued outside the
 generic Management APIs. Its use is always recorded in the Management audit
-log. The generic Claims API reserves all authorization-sensitive claim types,
-including configured context, namespace, capability and break-glass types, so
-claim administration cannot grant Management authority.
+log. It may bypass a Vault namespace restriction, but never tenant membership.
+The generic Claims API reserves all authorization-sensitive claim types,
+including tenant, namespace, capability and break-glass types, so claim
+administration cannot grant Management authority.
+
+### Management tenant boundary
+
+Management tenant membership is represented by the private claim
+`identity:tenant`. The claim is not a business role, an OAuth scope or a value
+accepted from the browser. Before authorization, the host discards incoming
+tenant claims and reconstructs them from the deployment-controlled mapping
+`Management:Authorization:TenantAccess:SubjectTenants`, keyed by the stable
+operator `sub`.
+
+The mapping is stored in the root-controlled hardening configuration. A role
+such as `administrator` can grant provider capabilities only after the same
+subject has at least one explicit tenant assignment. An empty or malformed
+mapping is a production-posture failure; there is no role-to-`global`
+compatibility fallback.
+
+Provider-wide objects whose model has no narrower tenant belong to
+`ProviderTenantId` (currently `global`). This value identifies the resource;
+it never grants membership. The operator still needs an explicit
+`subject -> global` assignment. Deployments that introduce tenant-owned
+objects must populate `ManagementResource.TenantId` and enforce exact ordinal
+matching. The generic user directory remains provider-owned unless a separate
+realm/organization feature is deliberately designed.
 
 ## Relying-party responsibilities
 

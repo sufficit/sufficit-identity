@@ -11,7 +11,8 @@ namespace Sufficit.Identity.Server.Management;
 /// the generic managed-user model.
 /// </summary>
 public sealed class SufficitOperatorManagementEntitlementResolver(
-    IOptions<ManagementOptions> options) : IManagementEntitlementResolver
+    IOptions<ManagementOptions> options,
+    IManagementTenantResolver tenantResolver) : IManagementEntitlementResolver
 {
     private const string SufficitAdministratorRole = "administrator";
     private readonly ScopeAndRoleManagementEntitlementResolver generic =
@@ -25,6 +26,14 @@ public sealed class SufficitOperatorManagementEntitlementResolver(
             principal,
             cancellationToken);
         if (!principal.IsInRole(SufficitAdministratorRole))
+        {
+            return resolved;
+        }
+
+        var tenantAccess = await tenantResolver.ResolveAsync(
+            principal,
+            cancellationToken);
+        if (tenantAccess.TenantIds.Count is 0)
         {
             return resolved;
         }

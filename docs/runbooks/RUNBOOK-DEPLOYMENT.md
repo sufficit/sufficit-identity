@@ -199,6 +199,10 @@ The initial state deliberately does the following:
   `/security/csp-report`;
 - leaves administrative MFA enforcement off until administrators have enrolled
   and completed a real two-factor login;
+- keeps Management tenant access fail-closed until every operator has an
+  explicit stable-subject assignment. Before enabling or upgrading Management,
+  add one protected entry per tenant to `hardening.env`, for example
+  `Sufficit__Identity__Management__Authorization__TenantAccess__SubjectTenants__<operator-sub>__0=global`;
 - leaves DPoP and CIBA off until their client cohorts are provisioned and a
   multi-replica deployment has a real shared `IDistributedCache`; DPoP replay
   and CIBA pending state remain database-authoritative, while nonce/session

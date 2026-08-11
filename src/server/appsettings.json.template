@@ -97,9 +97,14 @@
         "RequiredScope": "identity.management",
         "Authorization": {
           "ObjectAccess": {
-            "Mode": "Enforce",
-            "ContextClaimType": "identity_context",
-            "LegacyContextId": "global"
+            "Mode": "Enforce"
+          },
+          "TenantAccess": {
+            "_ClaimType": "The canonical claim is identity:tenant and is not configurable. It is projected only after a server-side subject-to-tenant lookup.",
+            "_ProviderTenantId": "Tenant that owns provider-wide resources without a specific tenant. This value does not grant access by itself.",
+            "ProviderTenantId": "global",
+            "_SubjectTenants": "Required when Management is enabled. Keys are stable operator sub values; values are exact tenant IDs. Keep this mapping in protected deployment configuration.",
+            "SubjectTenants": {}
           },
           "ProtectedPrincipals": {
             "Mode": "Enforce",

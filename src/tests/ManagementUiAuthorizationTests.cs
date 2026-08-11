@@ -32,6 +32,10 @@ public sealed class ManagementUiAuthorizationTests
             PrincipalWithRole("manager"),
             resource: null,
             ManagementUiPolicies.Access)).Succeeded);
+        Assert.False((await authorization.AuthorizeAsync(
+            PrincipalWithRole("identity-administrator", "unassigned-operator"),
+            resource: null,
+            ManagementUiPolicies.Access)).Succeeded);
     }
 
     [Fact]
@@ -79,7 +83,8 @@ public sealed class ManagementUiAuthorizationTests
             {
                 ["Sufficit:Identity:Management:RequireMfa"] = "false",
                 ["Sufficit:Identity:Management:Authorization:FullAdministratorRoles:0"] = "identity-administrator",
-                ["Sufficit:Identity:Management:Authorization:CapabilityClaimTypes:0"] = "permission"
+                ["Sufficit:Identity:Management:Authorization:CapabilityClaimTypes:0"] = "permission",
+                ["Sufficit:Identity:Management:Authorization:TenantAccess:SubjectTenants:operator-1:0"] = "global"
             })
             .Build();
         var collection = new ServiceCollection();
@@ -88,6 +93,12 @@ public sealed class ManagementUiAuthorizationTests
             .Bind(configuration.GetSection("Sufficit:Identity:Management"));
         collection.AddScoped<IManagementEntitlementResolver,
             ScopeAndRoleManagementEntitlementResolver>();
+        collection.AddScoped<IManagementTenantResolver,
+            ConfigurationManagementTenantResolver>();
+        collection.AddScoped<IProtectedPrincipalAccessPolicy,
+            TestAllowProtectedPrincipalAccessPolicy>();
+        collection.AddScoped<IManagementObjectAccessPolicy,
+            ConfigurationManagementObjectAccessPolicy>();
         collection.AddScoped<IManagementAccessPolicyProvider,
             ConfigurationManagementAccessPolicyProvider>();
         collection.AddScoped<IManagementAuthorizationEvaluator,
@@ -96,14 +107,20 @@ public sealed class ManagementUiAuthorizationTests
         return collection.BuildServiceProvider();
     }
 
-    private static ClaimsPrincipal PrincipalWithRole(string role) =>
-        PrincipalWithClaim(ClaimTypes.Role, role);
+    private static ClaimsPrincipal PrincipalWithRole(
+        string role,
+        string subject = "operator-1") =>
+        PrincipalWithClaim(ClaimTypes.Role, role, subject);
 
     private static ClaimsPrincipal PrincipalWithClaim(
         string type,
-        string value) =>
+        string value,
+        string subject = "operator-1") =>
         new(new ClaimsIdentity(
-            [new Claim(type, value)],
+            [
+                new Claim(ClaimTypes.NameIdentifier, subject),
+                new Claim(type, value),
+            ],
             authenticationType: "test",
             nameType: ClaimTypes.Name,
             roleType: ClaimTypes.Role));

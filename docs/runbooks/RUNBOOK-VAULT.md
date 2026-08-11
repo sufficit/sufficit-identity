@@ -196,18 +196,19 @@ através de `IVaultNamedSecretStore`.
 O primeiro segmento do nome é o namespace e todos os segmentos filhos o
 herdam; por exemplo, `providers/google/client-secret` pertence a `providers`.
 Nomes e contextos são normalizados para ASCII minúsculo antes da autorização e
-persistência. O operador precisa, simultaneamente, da capability, do claim de
-contexto configurado e de um claim `identity_vault_namespace` no formato
+persistência. O operador precisa, simultaneamente, da capability, da associação
+confiável `identity:tenant` e de um claim `identity_vault_namespace` no formato
 `<contextId>:<namespace>` (por exemplo `global:providers`). Listagens são
 filtradas para exatamente esses pares; capability global não revela os demais
 nomes.
 
 O claim `identity_vault_break_glass=identity.vault.secrets` é separado dos
 grants comuns, exige MFA e cada leitura/mutação registra
-`ReasonCode=vault_break_glass`. Os tipos de claim de contexto, namespace,
+`ReasonCode=vault_break_glass`. Os tipos de claim de tenant, namespace,
 capability e break-glass são reservados pela API genérica de Claims e não podem
-ser atribuídos por ela. A emissão desses claims pertence ao processo externo de
-acesso privilegiado.
+ser atribuídos por ela. O break-glass pode ultrapassar a restrição de namespace,
+mas nunca a associação ao tenant. A emissão desses claims pertence ao processo
+externo de acesso privilegiado.
 
 ## Compatibilidade e diagnóstico
 

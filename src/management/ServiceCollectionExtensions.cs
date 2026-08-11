@@ -92,6 +92,8 @@ public static class ServiceCollectionExtensions
             ProvisioningManagementService>();
         services.TryAddScoped<IManagementEntitlementResolver,
             ScopeAndRoleManagementEntitlementResolver>();
+        services.TryAddScoped<IManagementTenantResolver,
+            ConfigurationManagementTenantResolver>();
         services.TryAddScoped<IManagementAccessPolicyProvider,
             ConfigurationManagementAccessPolicyProvider>();
         services.TryAddScoped<IProtectedPrincipalAccessPolicy,

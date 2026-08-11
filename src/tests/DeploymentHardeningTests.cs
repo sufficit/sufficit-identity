@@ -77,6 +77,9 @@ public sealed class DeploymentHardeningTests
             "helpers/vault-secrets.env.template"));
         var checker = Path.Combine(repository, "helpers/check-vault-secrets.sh");
         var checkerSource = File.ReadAllText(checker);
+        var hardeningTemplate = File.ReadAllText(Path.Combine(
+            repository,
+            "helpers/hardening.env.template"));
 
         Assert.Contains(
             "EnvironmentFile=-/etc/sufficit/identity/vault-secrets.env",
@@ -109,6 +112,10 @@ public sealed class DeploymentHardeningTests
             checkerSource,
             StringComparison.Ordinal);
         Assert.DoesNotContain("echo \"${value}\"", checkerSource, StringComparison.Ordinal);
+        Assert.Contains(
+            "TenantAccess__SubjectTenants__<subject>__0=global",
+            hardeningTemplate,
+            StringComparison.Ordinal);
 
         var temporaryRoot = Directory.CreateTempSubdirectory("sufficit-identity-vault-env-");
         try
