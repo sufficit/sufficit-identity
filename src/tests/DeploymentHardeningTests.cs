@@ -93,6 +93,14 @@ public sealed class DeploymentHardeningTests
             "SUFFICIT_SECRET_DATABASE_CONNECTION_STRING",
             template,
             StringComparison.Ordinal);
+        Assert.Contains(
+            "SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD",
+            template,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD",
+            checkerSource,
+            StringComparison.Ordinal);
         Assert.DoesNotContain("echo \"${value}\"", checkerSource, StringComparison.Ordinal);
 
         var temporaryRoot = Directory.CreateTempSubdirectory("sufficit-identity-vault-env-");
@@ -101,12 +109,15 @@ public sealed class DeploymentHardeningTests
             var validFile = Path.Combine(temporaryRoot.FullName, "valid.env");
             await File.WriteAllTextAsync(
                 validFile,
-                "# test-only value\nSUFFICIT_SECRET_DATABASE_CONNECTION_STRING=test-value\n");
+                "# test-only value\n"
+                + "SUFFICIT_SECRET_DATABASE_CONNECTION_STRING=test-value\n"
+                + "SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD=vault-test-value\n");
             var valid = await RunScriptAsync(checker, validFile);
 
             Assert.Equal(0, valid.ExitCode);
-            Assert.Contains("1 configured entries", valid.Output, StringComparison.Ordinal);
+            Assert.Contains("2 configured entries", valid.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("test-value", valid.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("vault-test-value", valid.Output, StringComparison.Ordinal);
 
             var invalidFile = Path.Combine(temporaryRoot.FullName, "invalid.env");
             await File.WriteAllTextAsync(invalidFile, "UNSUPPORTED_SECRET=test-value\n");
