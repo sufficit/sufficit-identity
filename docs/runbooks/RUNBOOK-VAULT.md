@@ -54,6 +54,17 @@ implantação Sufficit mantém o PFX em
 esse volume no boot; em ambos os casos o arquivo deve ser `root:www-data` com
 modo `0640` e o mesmo material deve estar presente em todas as réplicas.
 
+### Reemissão para extensão de validade
+
+Quando a política operacional exigir um certificado mais longo sem trocar a
+chave RSA que já protege o key-ring, reemita o certificado preservando a mesma
+chave privada, valide a descriptografia em um canário e só então distribua o
+PFX para as demais réplicas. Mantenha temporariamente o PFX anterior como
+`vault-kek.previous.pfx`, com `root:www-data:0640`, para rollback. Essa operação
+estende a validade do certificado, mas não reduz o impacto de um vazamento da
+chave privada; comprometimento exige uma rotação de chave com migração explícita
+do Data Protection/Vault.
+
 `KeySource=dataprotection` é o caminho compatível para ambientes que já têm
 DEKs embrulhadas por Data Protection. `KeySource=certificate` usa o mesmo PFX
 dedicado para embrulhar DEKs diretamente. `KeySource=external` exige uma
