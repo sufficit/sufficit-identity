@@ -12,6 +12,15 @@
           "Microsoft.EntityFrameworkCore.Analyzers": "10.0.10"
         }
       },
+      "StackExchange.Redis": {
+        "type": "Direct",
+        "requested": "[2.7.27, )",
+        "resolved": "2.7.27",
+        "contentHash": "Uqc2OQHglqj9/FfGQ6RkKFkZfHySfZlfmbCl+hc+u2I/IqunfelQ7QJi7ZhvAJxUtu80pildVX6NPLdDaUffOw==",
+        "dependencies": {
+          "Pipelines.Sockets.Unofficial": "2.2.8"
+        }
+      },
       "Microsoft.Bcl.Cryptography": {
         "type": "Transitive",
         "resolved": "10.0.2",
@@ -82,6 +91,11 @@
         "type": "Transitive",
         "resolved": "7.6.0",
         "contentHash": "DrWB0dLfsg3mZhWABAlqSZKXin4Q4Pn8V4S7/1JxP5T/7Ncl0y45rM9L2EWv/zdydaiTOFKi4jRDBZAgBxUjaQ=="
+      },
+      "Pipelines.Sockets.Unofficial": {
+        "type": "Transitive",
+        "resolved": "2.2.8",
+        "contentHash": "zG2FApP5zxSx6OcdJQLbZDk2AVlN2BNQD6MorwIfV6gVj0RRxWPEp2LXAxqDGZqeNV1Zp0BNPcNaey/GXmTdvQ=="
       },
       "sufficit.identity.application.abstractions": {
         "type": "Project"

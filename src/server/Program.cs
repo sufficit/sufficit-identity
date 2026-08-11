@@ -42,6 +42,20 @@ SecretConfigurationExtensions.EnsureNoPlaintextSecrets(builder.Configuration);
 // bound. Every startup consumer receives the same vault-secrets.env value.
 builder.Configuration.AddSufficitSecretOverrides(startupSecretStore);
 
+// Use the shared Redis cache when a deployment supplies a Redis connection
+// through the secret boundary. AddSufficitIdentitySTS keeps the in-process
+// memory cache as the single-node fallback; registering Redis first means its
+// TryAdd registration wins for clustered production hosts.
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+if (!string.IsNullOrWhiteSpace(redisConnectionString))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnectionString;
+        options.InstanceName = "sufficit:identity:";
+    });
+}
+
 // ---- Forwarded headers (behind reverse proxy) ----
 // Allows the STS to honor X-Forwarded-Proto / X-Forwarded-Host so that
 // redirects, discovery document URLs and OpenIddict issuer match the

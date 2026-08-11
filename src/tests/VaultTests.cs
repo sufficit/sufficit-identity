@@ -1,12 +1,15 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Sufficit.Identity.Core.Entities;
@@ -532,6 +535,187 @@ public sealed class VaultTests
             StringComparison.Ordinal);
         Assert.True(await store.DeleteAsync(metadata.Name));
         Assert.Null(await store.GetSecretAsync(metadata.Name));
+    }
+
+    [Fact]
+    public async Task Vault_snapshot_serves_encrypted_rows_from_memory_until_invalidation()
+    {
+        var (vault, dbFactory) = CreateRealVault();
+        var cacheServices = new ServiceCollection();
+        cacheServices.AddDistributedMemoryCache();
+        using var cacheProvider = cacheServices.BuildServiceProvider();
+        var snapshots = new VaultSnapshotCache(
+            dbFactory,
+            new VaultSnapshotOptions
+            {
+                LocalLifetimeSeconds = 60,
+                DistributedLifetimeSeconds = 60,
+            },
+            NullLogger<VaultSnapshotCache>.Instance,
+            cacheProvider.GetRequiredService<IDistributedCache>());
+        var store = new VaultBackedSecretStore(
+            dbFactory,
+            vault,
+            new VaultOptions { Enabled = true },
+            snapshots);
+
+        const string name = "providers/google/client-secret";
+        const string context = "global";
+        await store.PutAsync(name, "first-value", "operator-1", context);
+        Assert.Equal("first-value", await store.GetSecretAsync(name, context));
+
+        var replacementAad = new Dictionary<string, string>
+        {
+            ["scope"] = "named-secrets",
+            ["name"] = name,
+            ["namespace"] = "providers",
+            ["context_id"] = context,
+        };
+        var replacementCiphertext = await vault.EncryptAsync(
+            "named-secrets",
+            "second-value",
+            replacementAad);
+        await using (var database = await dbFactory.CreateDbContextAsync())
+        {
+            var row = await database.VaultSecrets.SingleAsync(item =>
+                item.Name == name && item.ContextId == context);
+            row.Ciphertext = replacementCiphertext;
+            row.AadJson = JsonSerializer.Serialize(replacementAad);
+            await database.SaveChangesAsync();
+        }
+
+        // The request path remains memory-only while the snapshot is fresh.
+        Assert.Equal("first-value", await store.GetSecretAsync(name, context));
+
+        await snapshots.InvalidateSecretAsync(name, context);
+        Assert.Equal("second-value", await store.GetSecretAsync(name, context));
+    }
+
+    [Fact]
+    public async Task Vault_snapshot_reuses_public_signing_keys_without_reloading()
+    {
+        var (vault, dbFactory) = CreateRealVault();
+        var cache = new VaultSnapshotCache(
+            dbFactory,
+            new VaultSnapshotOptions
+            {
+                LocalLifetimeSeconds = 60,
+                DistributedLifetimeSeconds = 60,
+            },
+            NullLogger<VaultSnapshotCache>.Instance);
+        var loadCount = 0;
+
+        async Task<IReadOnlyList<VaultSigningKey>> Load(
+            CancellationToken cancellationToken)
+        {
+            loadCount++;
+            return await vault.GetSigningKeysAsync(
+                "snapshot-signing",
+                cancellationToken);
+        }
+
+        var first = await cache.GetSigningKeysAsync(
+            "snapshot-signing",
+            Load,
+            CancellationToken.None);
+        var second = await cache.GetSigningKeysAsync(
+            "snapshot-signing",
+            Load,
+            CancellationToken.None);
+
+        Assert.Single(first);
+        Assert.Equal(first.Single().KeyId, second.Single().KeyId);
+        Assert.Equal(1, loadCount);
+    }
+
+    [Fact]
+    public async Task Vault_snapshot_remote_invalidation_clears_another_replica_memory_entry()
+    {
+        var (vault, dbFactory) = CreateRealVault();
+        var bus = new RecordingVaultSnapshotInvalidationBus();
+        var writerSnapshots = new VaultSnapshotCache(
+            dbFactory,
+            new VaultSnapshotOptions { LocalLifetimeSeconds = 60 },
+            NullLogger<VaultSnapshotCache>.Instance,
+            distributedCache: null,
+            invalidationBus: bus);
+        var readerSnapshots = new VaultSnapshotCache(
+            dbFactory,
+            new VaultSnapshotOptions { LocalLifetimeSeconds = 60 },
+            NullLogger<VaultSnapshotCache>.Instance);
+        var writer = new VaultBackedSecretStore(
+            dbFactory,
+            vault,
+            new VaultOptions { Enabled = true },
+            writerSnapshots);
+        var reader = new VaultBackedSecretStore(
+            dbFactory,
+            vault,
+            new VaultOptions { Enabled = true },
+            readerSnapshots);
+
+        const string name = "providers/redis/client-secret";
+        const string context = "global";
+        await writer.PutAsync(name, "first-value", "operator-1", context);
+        Assert.Equal("first-value", await reader.GetSecretAsync(name, context));
+        bus.Messages.Clear();
+
+        var replacementAad = new Dictionary<string, string>
+        {
+            ["scope"] = "named-secrets",
+            ["name"] = name,
+            ["namespace"] = "providers",
+            ["context_id"] = context,
+        };
+        var replacementCiphertext = await vault.EncryptAsync(
+            "named-secrets",
+            "second-value",
+            replacementAad);
+        await using (var database = await dbFactory.CreateDbContextAsync())
+        {
+            var row = await database.VaultSecrets.SingleAsync(item =>
+                item.Name == name && item.ContextId == context);
+            row.Ciphertext = replacementCiphertext;
+            row.AadJson = JsonSerializer.Serialize(replacementAad);
+            await database.SaveChangesAsync();
+        }
+
+        await writerSnapshots.InvalidateSecretAsync(name, context);
+        var invalidation = Assert.Single(bus.Messages);
+        readerSnapshots.ApplyRemoteInvalidation(invalidation);
+
+        Assert.Equal("second-value", await reader.GetSecretAsync(name, context));
+    }
+
+    [Fact]
+    public async Task Managed_signing_keys_use_snapshot_until_lifecycle_invalidation()
+    {
+        var options = new VaultOptions
+        {
+            Enabled = true,
+            ManageSigningKeys = true,
+            SigningKeyOverlapSeconds = 300,
+        };
+        var (vault, dbFactory) = CreateRealVault(options, withSnapshots: true);
+
+        var first = await vault.GetSigningKeysAsync("managed-snapshot-signing");
+        Assert.Single(first);
+
+        await using (var database = await dbFactory.CreateDbContextAsync())
+        {
+            var row = await database.VaultKeys.SingleAsync(key =>
+                key.KeyName == "managed-snapshot-signing"
+                && key.Purpose == "signing");
+            row.SigningState = VaultSigningKeyState.Revoked;
+            await database.SaveChangesAsync();
+        }
+
+        // An out-of-band DB mutation is intentionally invisible until the
+        // snapshot is invalidated; normal lifecycle APIs publish invalidation.
+        Assert.Single(await vault.GetSigningKeysAsync("managed-snapshot-signing"));
+
+        Assert.IsType<KeyVault>(vault).FlushCache();
+        Assert.Empty(await vault.GetSigningKeysAsync("managed-snapshot-signing"));
     }
 
     [Fact]
@@ -1151,7 +1335,8 @@ public sealed class VaultTests
     private static (IKeyVault vault, IDbContextFactory<AppDbContext> dbFactory) CreateRealVault(
         VaultOptions? options = null,
         TimeProvider? timeProvider = null,
-        Func<IDataProtectionProvider, IVaultKeyEncryptionKeySource>? keySourceFactory = null)
+        Func<IDataProtectionProvider, IVaultKeyEncryptionKeySource>? keySourceFactory = null,
+        bool withSnapshots = false)
     {
         // Hold a single in-memory SQLite connection open for the lifetime of
         // the test so every DbContext created by the factory shares the same
@@ -1187,12 +1372,33 @@ public sealed class VaultTests
         var kek = keySourceFactory?.Invoke(dpProvider)
             ?? new DataProtectionKeySource(dpProvider, options);
         var logger = provider.GetRequiredService<ILogger<KeyVault>>();
-        IKeyVault vault = new KeyVault(
-            dbFactory,
-            kek,
-            logger,
-            options,
-            timeProvider);
+        IKeyVault vault;
+        if (withSnapshots)
+        {
+            var snapshots = new VaultSnapshotCache(
+                dbFactory,
+                options.Snapshot,
+                NullLogger<VaultSnapshotCache>.Instance);
+            vault = new KeyVault(
+                dbFactory,
+                kek,
+                logger,
+                options,
+                new VaultCryptographyTelemetry(
+                    options,
+                    NullLogger<VaultCryptographyTelemetry>.Instance),
+                timeProvider,
+                snapshots);
+        }
+        else
+        {
+            vault = new KeyVault(
+                dbFactory,
+                kek,
+                logger,
+                options,
+                timeProvider);
+        }
         return (vault, dbFactory);
     }
 
@@ -1203,6 +1409,28 @@ public sealed class VaultTests
         public override DateTimeOffset GetUtcNow() => _utcNow;
 
         public void Advance(TimeSpan duration) => _utcNow += duration;
+    }
+
+    private sealed class RecordingVaultSnapshotInvalidationBus
+        : IVaultSnapshotInvalidationBus
+    {
+        public List<VaultSnapshotInvalidation> Messages { get; } = [];
+
+        public Task PublishAsync(
+            VaultSnapshotInvalidation invalidation,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Messages.Add(invalidation);
+            return Task.CompletedTask;
+        }
+
+        public Task SubscribeAsync(
+            Func<VaultSnapshotInvalidation, Task> handler,
+            CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task UnsubscribeAsync(CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 
     private sealed class FailingKeySource(IVaultKeyEncryptionKeySource inner)

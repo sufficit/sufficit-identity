@@ -81,6 +81,13 @@ public sealed class VaultOptions
     /// </summary>
     public bool ManageSigningKeys { get; init; } = false;
 
+    /// <summary>
+    /// Read snapshot for VaultKeys/VaultSecrets. It caches only encrypted
+    /// ciphertext and public metadata; plaintext secret values are never
+    /// retained by this layer.
+    /// </summary>
+    public VaultSnapshotOptions Snapshot { get; init; } = new();
+
     /// <summary>Name of the versioned RSA key used for OpenIddict tokens.</summary>
     public string SigningKeyName { get; init; } = "oidc-signing";
 

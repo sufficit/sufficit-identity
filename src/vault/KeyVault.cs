@@ -30,6 +30,7 @@ internal sealed class KeyVault : IKeyVault
     private readonly VaultOptions _options;
     private readonly TimeProvider _timeProvider;
     private readonly VaultCryptographyTelemetry _cryptographyTelemetry;
+    private readonly VaultSnapshotCache? _snapshots;
 
     // Cache: (keyName, version) → unwrapped item key (256-bit).
     private readonly ConcurrentDictionary<(string Name, int Version), byte[]> _keyCache = new();
@@ -49,7 +50,8 @@ internal sealed class KeyVault : IKeyVault
                 options,
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<
                     VaultCryptographyTelemetry>.Instance),
-            timeProvider)
+            timeProvider,
+            snapshots: null)
     {
     }
 
@@ -59,7 +61,8 @@ internal sealed class KeyVault : IKeyVault
         ILogger<KeyVault> logger,
         VaultOptions options,
         VaultCryptographyTelemetry cryptographyTelemetry,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        VaultSnapshotCache? snapshots = null)
     {
         _dbFactory = dbFactory;
         _kek = kek;
@@ -67,6 +70,7 @@ internal sealed class KeyVault : IKeyVault
         _options = options;
         _cryptographyTelemetry = cryptographyTelemetry;
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _snapshots = snapshots;
     }
 
     /// <summary>
@@ -161,6 +165,10 @@ internal sealed class KeyVault : IKeyVault
         await db.SaveChangesAsync(cancellationToken);
 
         _keyCache[(keyName, nextVersion)] = itemKey;
+        if (_snapshots is not null)
+        {
+            await _snapshots.InvalidateSymmetricKeyAsync(keyName, cancellationToken);
+        }
         _logger.LogInformation("Rotated vault key '{KeyName}' to version {Version}.", keyName, nextVersion);
         return new KeyId(keyName, nextVersion);
     }
@@ -240,6 +248,27 @@ internal sealed class KeyVault : IKeyVault
         ArgumentNullException.ThrowIfNull(signature);
         try
         {
+            // The snapshot is invalidated locally and through Redis on every
+            // lifecycle mutation. Without Redis, the bounded TTL/background
+            // refresh is the documented convergence window.
+            if (_snapshots is not null)
+            {
+                var cachedKeys = await _snapshots.GetSigningKeysAsync(
+                    keyName,
+                    LoadCurrentSigningKeysAsync,
+                    cancellationToken);
+                var cached = cachedKeys.SingleOrDefault(
+                    key => key.KeyVersion == keyVersion);
+                if (cached is null) return false;
+
+                using var cachedRsa = CreatePublicRsa(cached.PublicJwk);
+                return cachedRsa.VerifyData(
+                    payload,
+                    signature,
+                    HashAlgorithmName.SHA256,
+                    RSASignaturePadding.Pkcs1);
+            }
+
             await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
             var row = await db.VaultKeys.AsNoTracking()
                 .SingleOrDefaultAsync(key => key.KeyName == keyName
@@ -258,6 +287,32 @@ internal sealed class KeyVault : IKeyVault
                 signature,
                 HashAlgorithmName.SHA256,
                 RSASignaturePadding.Pkcs1);
+
+            async Task<IReadOnlyList<VaultSigningKey>> LoadCurrentSigningKeysAsync(
+                CancellationToken ct)
+            {
+                await using var database = await _dbFactory.CreateDbContextAsync(ct);
+                var now = _timeProvider.GetUtcNow().UtcDateTime;
+                return await database.VaultKeys.AsNoTracking()
+                    .Where(key => key.KeyName == keyName
+                        && key.Purpose == "signing"
+                        && (key.SigningState == VaultSigningKeyState.Active
+                            || (key.SigningState == VaultSigningKeyState.Retiring
+                                && key.RetireAfterUtc > now)))
+                    .OrderBy(key => key.SigningState == VaultSigningKeyState.Active ? 0 : 1)
+                    .ThenByDescending(key => key.KeyVersion)
+                    .Where(key => key.PublicJwk != null)
+                    .Select(key => new VaultSigningKey(
+                        key.KeyName,
+                        key.KeyVersion,
+                        GetSigningKeyId(key.KeyName, key.KeyVersion),
+                        key.PublicJwk!,
+                        key.SigningState == VaultSigningKeyState.Retiring
+                            ? VaultSigningKeyStatus.Retiring
+                            : VaultSigningKeyStatus.Active,
+                        key.RetireAfterUtc))
+                    .ToArrayAsync(ct);
+            }
         }
         catch (CryptographicException)
         {
@@ -278,49 +333,65 @@ internal sealed class KeyVault : IKeyVault
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
-        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        var now = _timeProvider.GetUtcNow().UtcDateTime;
-        var rows = await db.VaultKeys.AsNoTracking()
-            .Where(key => key.KeyName == keyName
-                && key.Purpose == "signing"
-                && (key.SigningState == VaultSigningKeyState.Active
-                    || (key.SigningState == VaultSigningKeyState.Retiring
-                        && key.RetireAfterUtc > now)))
-            .OrderBy(key => key.SigningState == VaultSigningKeyState.Active ? 0 : 1)
-            .ThenByDescending(key => key.KeyVersion)
-            .ToListAsync(cancellationToken);
-        if (rows.Count == 0)
+        if (_snapshots is not null)
         {
-            var anySigningKey = await db.VaultKeys.AsNoTracking()
-                .AnyAsync(key => key.KeyName == keyName
-                    && key.Purpose == "signing", cancellationToken);
-            if (anySigningKey)
-            {
-                return [];
-            }
-
-            await EnsureSigningKeyInitializedAsync(keyName, cancellationToken);
-            rows = await db.VaultKeys.AsNoTracking()
-                .Where(key => key.KeyName == keyName
-                    && key.Purpose == "signing"
-                    && key.SigningState == VaultSigningKeyState.Active)
-                .OrderByDescending(key => key.KeyVersion)
-                .ToListAsync(cancellationToken);
-            _logger.LogInformation("Created vault signing key '{KeyName}' v1 for public-key discovery.", keyName);
+            return await _snapshots.GetSigningKeysAsync(
+                keyName,
+                LoadSigningKeysAsync,
+                cancellationToken);
         }
 
-        return rows
-            .Where(row => !string.IsNullOrWhiteSpace(row.PublicJwk))
-            .Select(row => new VaultSigningKey(
-                row.KeyName,
-                row.KeyVersion,
-                GetSigningKeyId(row.KeyName, row.KeyVersion),
-                row.PublicJwk!,
-                row.SigningState == VaultSigningKeyState.Retiring
-                    ? VaultSigningKeyStatus.Retiring
-                    : VaultSigningKeyStatus.Active,
-                row.RetireAfterUtc))
-            .ToArray();
+        return await LoadSigningKeysAsync(cancellationToken);
+
+        async Task<IReadOnlyList<VaultSigningKey>> LoadSigningKeysAsync(
+            CancellationToken ct)
+        {
+            await using var db = await _dbFactory.CreateDbContextAsync(ct);
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+            var rows = await db.VaultKeys.AsNoTracking()
+                .Where(key => key.KeyName == keyName
+                    && key.Purpose == "signing"
+                    && (key.SigningState == VaultSigningKeyState.Active
+                        || (key.SigningState == VaultSigningKeyState.Retiring
+                            && key.RetireAfterUtc > now)))
+                .OrderBy(key => key.SigningState == VaultSigningKeyState.Active ? 0 : 1)
+                .ThenByDescending(key => key.KeyVersion)
+                .ToListAsync(ct);
+            if (rows.Count == 0)
+            {
+                var anySigningKey = await db.VaultKeys.AsNoTracking()
+                    .AnyAsync(key => key.KeyName == keyName
+                        && key.Purpose == "signing", ct);
+                if (anySigningKey)
+                {
+                    return [];
+                }
+
+                await EnsureSigningKeyInitializedAsync(keyName, ct);
+                rows = await db.VaultKeys.AsNoTracking()
+                    .Where(key => key.KeyName == keyName
+                        && key.Purpose == "signing"
+                        && key.SigningState == VaultSigningKeyState.Active)
+                    .OrderByDescending(key => key.KeyVersion)
+                    .ToListAsync(ct);
+                _logger.LogInformation(
+                    "Created vault signing key '{KeyName}' v1 for public-key discovery.",
+                    keyName);
+            }
+
+            return rows
+                .Where(row => !string.IsNullOrWhiteSpace(row.PublicJwk))
+                .Select(row => new VaultSigningKey(
+                    row.KeyName,
+                    row.KeyVersion,
+                    GetSigningKeyId(row.KeyName, row.KeyVersion),
+                    row.PublicJwk!,
+                    row.SigningState == VaultSigningKeyState.Retiring
+                        ? VaultSigningKeyStatus.Retiring
+                        : VaultSigningKeyStatus.Active,
+                    row.RetireAfterUtc))
+                .ToArray();
+        }
     }
 
     public Task<KeyId> RotateSigningKeyAsync(
@@ -406,6 +477,10 @@ internal sealed class KeyVault : IKeyVault
             });
         await db.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+        if (_snapshots is not null)
+        {
+            await _snapshots.InvalidateSigningKeysAsync(keyName, cancellationToken);
+        }
         _logger.LogInformation(
             "Rotated vault signing key '{KeyName}' to version {Version}; previous version {PreviousVersion} retires at {RetireAfterUtc}.",
             keyName,
@@ -455,6 +530,10 @@ internal sealed class KeyVault : IKeyVault
         }
 
         await db.SaveChangesAsync(cancellationToken);
+        if (_snapshots is not null && elapsed.Count > 0)
+        {
+            await _snapshots.InvalidateSigningKeysAsync(keyName, cancellationToken);
+        }
         if (elapsed.Count > 0)
         {
             _logger.LogInformation(
@@ -528,6 +607,10 @@ internal sealed class KeyVault : IKeyVault
                 OccurredAtUtc = now,
             });
         await db.SaveChangesAsync(cancellationToken);
+        if (_snapshots is not null)
+        {
+            await _snapshots.InvalidateSigningKeysAsync(keyName, cancellationToken);
+        }
         _logger.LogCritical(
             "Emergency-revoked vault signing key '{KeyName}' version {Version}. Tokens signed by this kid are no longer accepted.",
             keyName,
@@ -536,44 +619,77 @@ internal sealed class KeyVault : IKeyVault
     }
 
     /// <summary>Clears the in-memory key cache (tests/admin).</summary>
-    public void FlushCache() => _keyCache.Clear();
+    public void FlushCache()
+    {
+        _keyCache.Clear();
+        _snapshots?.Flush();
+    }
 
     private async Task<(byte[] Key, int Version)> GetOrCreateLatestKeyAsync(
         string keyName,
         CancellationToken cancellationToken)
     {
-        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        var latest = await db.VaultKeys
-            .AsNoTracking()
-            .Where(k => k.KeyName == keyName
-                && k.Purpose == "symmetric"
-                && k.RetiredAtUtc == null)
-            .OrderByDescending(k => k.KeyVersion)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (latest is not null)
+        if (_snapshots is not null)
         {
-            var key = await UnwrapAndCacheAsync(keyName, latest.KeyVersion, latest.WrappedKey);
-            return (key, latest.KeyVersion);
+            var material = await _snapshots.GetLatestSymmetricKeyAsync(
+                keyName,
+                LoadLatestSymmetricKeyMaterialAsync,
+                cancellationToken);
+            var itemKey = await UnwrapAndCacheAsync(
+                keyName,
+                material.Version,
+                material.WrappedKey);
+            return (itemKey, material.Version);
         }
 
-        // First use of this key name — create v1.
-        var itemKey = EnvelopeCrypto.GenerateKey();
-        var wrappedKey = _kek.Wrap(itemKey);
+        return await LoadLatestSymmetricKeyAsync(cancellationToken);
 
-        db.VaultKeys.Add(new VaultKey
+        async Task<(byte[] Key, int Version)> LoadLatestSymmetricKeyAsync(
+            CancellationToken ct)
         {
-            KeyName = keyName,
-            KeyVersion = 1,
-            Purpose = "symmetric",
-            WrappedKey = wrappedKey,
-            CreatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
-        });
-        await db.SaveChangesAsync(cancellationToken);
+            var material = await LoadLatestSymmetricKeyMaterialAsync(ct);
+            var itemKey = await UnwrapAndCacheAsync(
+                keyName,
+                material.Version,
+                material.WrappedKey);
+            return (itemKey, material.Version);
+        }
 
-        _keyCache[(keyName, 1)] = itemKey;
-        _logger.LogInformation("Created vault key '{KeyName}' v1.", keyName);
-        return (itemKey, 1);
+        async Task<SymmetricKeySnapshot> LoadLatestSymmetricKeyMaterialAsync(
+            CancellationToken ct)
+        {
+            await using var db = await _dbFactory.CreateDbContextAsync(ct);
+            var latest = await db.VaultKeys
+                .AsNoTracking()
+                .Where(k => k.KeyName == keyName
+                    && k.Purpose == "symmetric"
+                    && k.RetiredAtUtc == null)
+                .OrderByDescending(k => k.KeyVersion)
+                .FirstOrDefaultAsync(ct);
+
+            if (latest is not null)
+            {
+                return new SymmetricKeySnapshot(
+                    latest.KeyVersion,
+                    latest.WrappedKey);
+            }
+
+            // First use of this key name — create v1.
+            var itemKey = EnvelopeCrypto.GenerateKey();
+            var wrappedKey = _kek.Wrap(itemKey);
+            db.VaultKeys.Add(new VaultKey
+            {
+                KeyName = keyName,
+                KeyVersion = 1,
+                Purpose = "symmetric",
+                WrappedKey = wrappedKey,
+                CreatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
+            });
+            await db.SaveChangesAsync(ct);
+            _keyCache[(keyName, 1)] = itemKey;
+            _logger.LogInformation("Created vault key '{KeyName}' v1.", keyName);
+            return new SymmetricKeySnapshot(1, wrappedKey);
+        }
     }
 
     private async Task<(RSA Key, int KeyVersion)> GetOrCreateLatestSigningKeyAsync(
@@ -637,25 +753,57 @@ internal sealed class KeyVault : IKeyVault
         int keyVersion,
         CancellationToken cancellationToken)
     {
-        await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
-        var row = await db.VaultKeys.AsNoTracking()
-            .SingleOrDefaultAsync(key => key.KeyName == keyName
-                && key.KeyVersion == keyVersion
-                && key.Purpose == "signing"
-                && key.SigningState == VaultSigningKeyState.Active,
-                cancellationToken)
-            ?? throw new CryptographicException(
-                $"Vault signing key '{keyName}' v{keyVersion} is not the active issuing key.");
-        var privateBytes = _kek.Unwrap(row.WrappedKey);
-        try
+        if (_snapshots is not null)
         {
-            var privateKey = RSA.Create();
-            privateKey.ImportPkcs8PrivateKey(privateBytes, out _);
-            return privateKey;
+            var wrappedKey = await _snapshots.GetSigningKeyMaterialAsync(
+                keyName,
+                keyVersion,
+                LoadSigningKeyMaterialAsync,
+                cancellationToken);
+            if (wrappedKey is null)
+            {
+                throw new CryptographicException(
+                    $"Vault signing key '{keyName}' v{keyVersion} is not the active issuing key.");
+            }
+
+            return ImportSigningPrivateKey(wrappedKey);
         }
-        finally
+
+        return await LoadSigningPrivateKeyAsync(cancellationToken);
+
+        async Task<byte[]?> LoadSigningKeyMaterialAsync(CancellationToken ct)
         {
-            CryptographicOperations.ZeroMemory(privateBytes);
+            await using var database = await _dbFactory.CreateDbContextAsync(ct);
+            return await database.VaultKeys.AsNoTracking()
+                .Where(key => key.KeyName == keyName
+                    && key.KeyVersion == keyVersion
+                    && key.Purpose == "signing"
+                    && key.SigningState == VaultSigningKeyState.Active)
+                .Select(key => key.WrappedKey)
+                .SingleOrDefaultAsync(ct);
+        }
+
+        async Task<RSA> LoadSigningPrivateKeyAsync(CancellationToken ct)
+        {
+            var wrappedKey = await LoadSigningKeyMaterialAsync(ct)
+                ?? throw new CryptographicException(
+                    $"Vault signing key '{keyName}' v{keyVersion} is not the active issuing key.");
+            return ImportSigningPrivateKey(wrappedKey);
+        }
+
+        RSA ImportSigningPrivateKey(byte[] wrappedKey)
+        {
+            var privateBytes = _kek.Unwrap(wrappedKey);
+            try
+            {
+                var privateKey = RSA.Create();
+                privateKey.ImportPkcs8PrivateKey(privateBytes, out _);
+                return privateKey;
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(privateBytes);
+            }
         }
     }
 
@@ -722,6 +870,10 @@ internal sealed class KeyVault : IKeyVault
             cancellationToken);
         AddInitializationJournal(db, keyName);
         await db.SaveChangesAsync(cancellationToken);
+        if (_snapshots is not null)
+        {
+            await _snapshots.InvalidateSigningKeysAsync(keyName, cancellationToken);
+        }
         _logger.LogInformation(
             "Created vault signing key '{KeyName}' v1 under the distributed lifecycle lease.",
             keyName);

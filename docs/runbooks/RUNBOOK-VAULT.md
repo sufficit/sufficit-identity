@@ -107,6 +107,7 @@ provedor de configuração:
 | Nome lógico | Variável | Chave substituída |
 |---|---|---|
 | `database/connection-string` | `SUFFICIT_SECRET_DATABASE_CONNECTION_STRING` | `ConnectionStrings:DefaultConnection` |
+| `distributed-cache/connection-string` | `SUFFICIT_SECRET_DISTRIBUTED_CACHE_CONNECTION_STRING` | `ConnectionStrings:Redis` |
 | `identity/certificates/signing-password` | `SUFFICIT_SECRET_IDENTITY_CERTIFICATES_SIGNING_PASSWORD` | `Sufficit:Identity:Certificates:SigningPassword` |
 | `identity/certificates/encryption-password` | `SUFFICIT_SECRET_IDENTITY_CERTIFICATES_ENCRYPTION_PASSWORD` | `Sufficit:Identity:Certificates:EncryptionPassword` |
 | `vault/kek-certificate-password` | `SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD` | `Sufficit:Vault:CertificatePassword` |
@@ -152,6 +153,52 @@ Se o vault estiver desabilitado fora de Development, o processo falha no
 startup mesmo que uma configuração legada defina
 `RequireEncryptionInProduction=false`. Isso evita downgrade silencioso.
 
+### Snapshot de leitura e Redis
+
+As leituras recorrentes de vaultkeys e vaultsecrets passam por
+VaultSnapshotCache. O processo mantém em memória:
+
+- a versão ativa das chaves simétricas e o material embrulhado;
+- os JWKs públicos e o material de assinatura embrulhado, inclusive quando o
+  Vault gerencia o ciclo de vida das chaves de emissão;
+- ciphertext, AAD e metadados dos segredos nomeados.
+
+O valor puro do segredo nunca é colocado no snapshot. A descriptografia ocorre
+somente depois que o registro foi localizado e autorizado. Em caso de miss, o
+cache tenta primeiro o IDistributedCache e só então consulta o banco. O
+serviço de background atualiza as entradas já utilizadas, mantendo o caminho de
+requisição em memória durante operação normal.
+
+Para um cluster, configure
+SUFFICIT_SECRET_DISTRIBUTED_CACHE_CONNECTION_STRING com uma conexão Redis
+privada e mantenha Sufficit:Identity:DistributedCache:RequireShared=true.
+O host registra AddStackExchangeRedisCache antes do STS; sem essa variável, o
+fallback é MemoryDistributedCache, adequado somente para uma réplica.
+
+Quando `Sufficit:Vault:ManageSigningKeys=true`, o banco continua sendo a fonte
+de verdade, mas o caminho normal usa o snapshot. As mutações de segredo,
+rotação e revogação invalidam o snapshot local, removem a entrada distribuída
+e publicam uma invalidação no Redis Pub/Sub. Com Redis ativo, as outras réplicas
+removem a entrada em memória imediatamente; sem Redis, a convergência ocorre
+pelo refresh/TTL configurado. Alterações diretas nas tabelas não publicam esse
+evento e devem ser seguidas de invalidação/restart controlado.
+
+Configuração recomendada:
+
+```json
+"Snapshot": {
+  "Enabled": true,
+  "LocalLifetimeSeconds": 10,
+  "DistributedLifetimeSeconds": 30,
+  "RefreshIntervalSeconds": 10,
+  "MaxEntries": 4096
+}
+```
+
+O snapshot é uma otimização de leitura, não uma fonte de verdade: falhas do
+Redis são tratadas como miss e retornam ao banco; falhas do banco não servem
+uma entrada expirada.
+
 ## Rotação
 
 `IKeyVault.RotateKeyAsync("nome-da-chave")` cria uma nova versão. Novas
@@ -174,6 +221,11 @@ versão e mantenha um backup testado do banco e do key-ring.
 
 ### Chaves de assinatura
 
+Esta seção se aplica somente quando
+`Sufficit:Vault:ManageSigningKeys=true`. No modo atual, com essa opção
+desligada, o STS continua assinando tokens com o PFX configurado e a tabela
+`vaultkeys` não participa da emissão nem da revogação desses tokens.
+
 `RotateSigningKeyAsync(nome, operationId, reason)` é idempotente e protegido por
 lease distribuído em `vaultsigningkeylocks`. A nova versão entra em `Active`; a
 anterior passa a `Retiring`, deixa de emitir imediatamente e continua no JWKS
@@ -183,11 +235,12 @@ grava `RetiredAtUtc` ao fim da janela e mantém um journal sem segredos em
 `vaultsigningkeyoperations`.
 
 Em comprometimento, `RevokeSigningKeyAsync` exige `operationId` e motivo. A
-versão vai para `Revoked`, sai imediatamente do JWKS e deixa de assinar ou
-verificar; tokens ainda dentro do TTL que usem esse `kid` também deixam de ser
-aceitos. Se a versão revogada era a ativa, emissão fica indisponível até uma
-rotação deliberada criar a substituta. Registre esse impacto na resposta ao
-incidente antes da revogação, quando o risco permitir.
+versão vai para `Revoked`, sai do JWKS e deixa de assinar ou verificar após a
+invalidação do snapshot. Com Redis Pub/Sub, essa propagação é imediata entre as
+réplicas conectadas; sem Redis, vale o refresh/TTL. Se a versão revogada era a
+ativa, emissão fica indisponível até uma rotação deliberada criar a substituta.
+Registre esse impacto na resposta ao incidente antes da revogação, quando o
+risco permitir.
 
 Para um segredo nomeado, use a API de gestão com uma capability de leitura ou
 gestão. O `PUT /api/vault/secrets/{name}?contextId=<contexto>` recebe
