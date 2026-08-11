@@ -170,7 +170,8 @@ public sealed class ManagementApplicationAuthorizationTests
     public async Task Sufficit_host_maps_only_administrator_to_provider_operator()
     {
         var resolver = new SufficitOperatorManagementEntitlementResolver(
-            Options.Create(new ManagementOptions()));
+            Options.Create(new ManagementOptions()),
+            new StubManagementTenantResolver("global"));
 
         var manager = await resolver.ResolveAsync(
             PrincipalWithRole(
@@ -183,6 +184,19 @@ public sealed class ManagementApplicationAuthorizationTests
         Assert.Equal(
             ManagementCapabilities.All.Order(StringComparer.Ordinal),
             administrator.Capabilities.Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public async Task Sufficit_administrator_without_tenant_is_not_an_operator()
+    {
+        var resolver = new SufficitOperatorManagementEntitlementResolver(
+            Options.Create(new ManagementOptions()),
+            new StubManagementTenantResolver());
+
+        var administrator = await resolver.ResolveAsync(
+            PrincipalWithRole("administrator"));
+
+        Assert.Empty(administrator.Capabilities);
     }
 
     [Fact]
@@ -200,7 +214,7 @@ public sealed class ManagementApplicationAuthorizationTests
         var evaluator = new CapabilityManagementAuthorizationEvaluator(
             resolver,
             accessPolicies,
-            new DefaultManagementObjectAccessPolicy());
+            new AllowingObjectAccessPolicy());
         var service = new ManagementOverviewService(
             resolver,
             accessPolicies,
@@ -300,7 +314,20 @@ public sealed class ManagementApplicationAuthorizationTests
     }
 
     [Fact]
-    public async Task Concrete_object_policy_enforces_context_and_item_identity()
+    public async Task Missing_tenant_policy_fails_closed()
+    {
+        var decision = await new DefaultManagementObjectAccessPolicy()
+            .EvaluateAsync(
+                PrincipalWithRole("identity-administrator"),
+                ManagementCapabilities.UsersRead,
+                new ManagementResource(ManagementResourceTypes.UserCollection));
+
+        Assert.Equal("tenant_policy_unavailable", decision.ReasonCode);
+        Assert.False(decision.IsAllowed);
+    }
+
+    [Fact]
+    public async Task Concrete_object_policy_enforces_tenant_and_item_identity()
     {
         var options = Options.Create(new ManagementOptions
         {
@@ -309,56 +336,84 @@ public sealed class ManagementApplicationAuthorizationTests
                 ObjectAccess = new ManagementObjectAccessOptions
                 {
                     Mode = ManagementPolicyEnforcementMode.Enforce,
-                    LegacyContextId = "legacy-global",
-                    ContextClaimType = "identity_context",
+                },
+                TenantAccess = new ManagementTenantAccessOptions
+                {
+                    ProviderTenantId = "legacy-global",
+                    SubjectTenants = new Dictionary<string, string[]>(
+                        StringComparer.Ordinal)
+                    {
+                        ["operator-a"] = ["tenant-a"],
+                        ["operator-b"] = ["tenant-b"],
+                        ["provider-operator"] = ["legacy-global"],
+                    },
                 },
             },
         });
+        var tenantResolver = new ConfigurationManagementTenantResolver(options);
         var policy = new ConfigurationManagementObjectAccessPolicy(
             options,
             new AllowProtectedPrincipalPolicy(),
+            tenantResolver,
             NullLogger<ConfigurationManagementObjectAccessPolicy>.Instance);
-        var wrongContext = PrincipalWithClaims(
-            new Claim("identity_context", "tenant-b"));
-        var rightContext = PrincipalWithClaims(
-            new Claim("identity_context", "tenant-a"));
+        var wrongTenant = PrincipalWithClaims(
+            new Claim("sub", "operator-b"),
+            new Claim("identity:tenant", "tenant-a"));
+        var rightTenant = PrincipalWithClaims(
+            new Claim("sub", "operator-a"));
 
         var denied = await policy.EvaluateAsync(
-            wrongContext,
+            wrongTenant,
             ManagementCapabilities.UsersRead,
             new ManagementResource(
                 ManagementResourceTypes.User,
                 "user-1",
                 "tenant-a"));
         var allowed = await policy.EvaluateAsync(
-            rightContext,
+            rightTenant,
             ManagementCapabilities.UsersRead,
             new ManagementResource(
                 ManagementResourceTypes.User,
                 "user-1",
                 "tenant-a"));
         var missingId = await policy.EvaluateAsync(
-            rightContext,
+            rightTenant,
             ManagementCapabilities.UsersRead,
             new ManagementResource(
                 ManagementResourceTypes.User,
-                ContextId: "tenant-a"));
+                TenantId: "tenant-a"));
 
-        Assert.Equal("context_not_accessible", denied.ReasonCode);
+        Assert.Equal("tenant_not_accessible", denied.ReasonCode);
         Assert.True(allowed.IsAllowed);
         Assert.Equal("resource_id_required", missingId.ReasonCode);
 
         var missingVaultSecretId = await policy.EvaluateAsync(
-            rightContext,
+            rightTenant,
             ManagementCapabilities.VaultSecretsRead,
             new ManagementResource(
                 ManagementResourceTypes.VaultSecrets,
-                ContextId: "tenant-a"));
+                TenantId: "tenant-a"));
         Assert.Equal("resource_id_required", missingVaultSecretId.ReasonCode);
+
+        var providerTenant = PrincipalWithClaims(
+            new Claim("sub", "provider-operator"));
+        var providerResourceAllowed = await policy.EvaluateAsync(
+            providerTenant,
+            ManagementCapabilities.ClientsRead,
+            new ManagementResource(ManagementResourceTypes.ClientCollection));
+        var tenantCannotReachProviderResource = await policy.EvaluateAsync(
+            rightTenant,
+            ManagementCapabilities.ClientsRead,
+            new ManagementResource(ManagementResourceTypes.ClientCollection));
+
+        Assert.True(providerResourceAllowed.IsAllowed);
+        Assert.Equal(
+            "tenant_not_accessible",
+            tenantCannotReachProviderResource.ReasonCode);
     }
 
     [Fact]
-    public async Task Vault_namespace_claims_are_context_bound_and_break_glass_requires_mfa()
+    public async Task Vault_break_glass_requires_mfa_and_never_bypasses_tenant()
     {
         var options = Options.Create(new ManagementOptions
         {
@@ -413,16 +468,17 @@ public sealed class ManagementApplicationAuthorizationTests
         var objectPolicy = new ConfigurationManagementObjectAccessPolicy(
             options,
             new AllowProtectedPrincipalPolicy(),
+            new StubManagementTenantResolver(),
             NullLogger<ConfigurationManagementObjectAccessPolicy>.Instance);
-        var contextBypass = await objectPolicy.EvaluateAsync(
+        var tenantBypass = await objectPolicy.EvaluateAsync(
             breakGlass,
             ManagementCapabilities.VaultSecretsRead,
             new ManagementResource(
                 ManagementResourceTypes.VaultSecrets,
                 "providers/google/client-secret",
                 "tenant-a"));
-        Assert.True(contextBypass.IsAllowed);
-        Assert.Equal("vault_break_glass", contextBypass.ReasonCode);
+        Assert.False(tenantBypass.IsAllowed);
+        Assert.Equal("tenant_not_accessible", tenantBypass.ReasonCode);
     }
 
     [Fact]
@@ -487,6 +543,17 @@ public sealed class ManagementApplicationAuthorizationTests
             => ValueTask.FromResult(ManagementAuthorizationDecision.Denied(reason));
     }
 
+    private sealed class AllowingObjectAccessPolicy
+        : IManagementObjectAccessPolicy
+    {
+        public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+            ClaimsPrincipal principal,
+            string capability,
+            ManagementResource resource,
+            CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(ManagementAuthorizationDecision.Allowed());
+    }
+
     /// <summary>Stub object policy that throws if ever called (proves short-circuit).</summary>
     private sealed class ThrowingObjectAccessPolicy : IManagementObjectAccessPolicy
     {
@@ -527,7 +594,7 @@ public sealed class ManagementApplicationAuthorizationTests
         return new CapabilityManagementAuthorizationEvaluator(
             new ScopeAndRoleManagementEntitlementResolver(options),
             new ConfigurationManagementAccessPolicyProvider(options),
-            objectAccess ?? new DefaultManagementObjectAccessPolicy());
+            objectAccess ?? new AllowingObjectAccessPolicy());
     }
 
     private static ClaimsPrincipal PrincipalWithRole(
@@ -546,6 +613,16 @@ public sealed class ManagementApplicationAuthorizationTests
             authenticationType: "test",
             nameType: ClaimTypes.Name,
             roleType: ClaimTypes.Role));
+
+    private sealed class StubManagementTenantResolver(params string[] tenants)
+        : IManagementTenantResolver
+    {
+        public ValueTask<ManagementTenantAccess> ResolveAsync(
+            ClaimsPrincipal principal,
+            CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(new ManagementTenantAccess(
+                tenants.ToHashSet(StringComparer.Ordinal)));
+    }
 
     private sealed class TestHostEnvironment : IHostEnvironment
     {

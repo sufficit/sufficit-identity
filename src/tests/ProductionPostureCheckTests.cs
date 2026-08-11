@@ -130,12 +130,44 @@ public sealed class ProductionPostureCheckTests
             "dpop-replay-cache-not-shared",
             "management-authorization-disabled",
             "management-object-access-observe",
+            "management-tenant-authority-empty",
             "management-protected-principal-observe",
             "scim-client-policy-observe",
             "vault-plaintext-compatibility",
         };
 
         Assert.Equal(expected, findings.Select(finding => finding.Id).ToHashSet());
+    }
+
+    [Fact]
+    public void Management_invalid_tenant_authority_is_a_distinct_finding()
+    {
+        var management = new ManagementLayerOptions
+        {
+            Enabled = true,
+            Authorization = new ManagementAuthorizationOptions
+            {
+                TenantAccess = new ManagementTenantAccessOptions
+                {
+                    SubjectTenants = new Dictionary<string, string[]>(
+                        StringComparer.Ordinal)
+                    {
+                        ["operator-1"] = ["tenant with spaces"],
+                    },
+                },
+            },
+        };
+
+        var findings = Evaluate(new ManagementProductionPostureContributor(
+            Options.Create(management)));
+
+        Assert.Contains(
+            findings,
+            finding => finding.Id ==
+                "management-tenant-configuration-invalid");
+        Assert.DoesNotContain(
+            findings,
+            finding => finding.Id == "management-tenant-authority-empty");
     }
 
     [Fact]
@@ -299,6 +331,14 @@ public sealed class ProductionPostureCheckTests
                 ObjectAccess = new ManagementObjectAccessOptions
                 {
                     Mode = ManagementPolicyEnforcementMode.Enforce,
+                },
+                TenantAccess = new ManagementTenantAccessOptions
+                {
+                    SubjectTenants = new Dictionary<string, string[]>(
+                        StringComparer.Ordinal)
+                    {
+                        ["operator-1"] = ["global"],
+                    },
                 },
                 ProtectedPrincipals = new ProtectedPrincipalAccessOptions
                 {

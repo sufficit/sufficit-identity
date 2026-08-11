@@ -176,6 +176,7 @@ public sealed class ClaimsControllerTests
     [InlineData("sub")]
     [InlineData("email")]
     [InlineData("role")]
+    [InlineData("identity:tenant")]
     [InlineData("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")]
     public async Task Create_rejects_reserved_claim_types(string type)
     {

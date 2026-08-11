@@ -145,7 +145,7 @@ public sealed record ManagementRequestContext(
 public sealed record ManagementResource(
     string Type,
     string? Id = null,
-    string? ContextId = null);
+    string? TenantId = null);
 
 public enum ManagementAuthorizationOutcome
 {
@@ -194,6 +194,28 @@ public interface IManagementEntitlementResolver
         CancellationToken cancellationToken = default);
 }
 
+public sealed record ManagementTenantAccess(
+    IReadOnlySet<string> TenantIds)
+{
+    public bool Contains(string tenantId) => TenantIds.Contains(tenantId);
+}
+
+public static class ManagementTenantClaims
+{
+    public const string Type = "identity:tenant";
+}
+
+/// <summary>
+/// Resolves tenant membership from a deployment-controlled authority. Roles,
+/// OAuth scopes and claims supplied by the caller are not tenant membership.
+/// </summary>
+public interface IManagementTenantResolver
+{
+    ValueTask<ManagementTenantAccess> ResolveAsync(
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default);
+}
+
 public sealed record ManagementAccessPolicy(bool RequireMfa);
 
 public interface IManagementAccessPolicyProvider
@@ -208,19 +230,14 @@ public interface IManagementAccessPolicyProvider
 /// the authorization evaluator AFTER the capability check and the MFA step-up
 /// check pass, to decide whether the operator may exercise <paramref name="capability"/>
 /// against this specific <paramref name="resource"/>. This is the seam that
-/// turns <see cref="ManagementResource"/> (Type/Id/ContextId) from dead audit
+/// turns <see cref="ManagementResource"/> (Type/Id/TenantId) from dead audit
 /// metadata into a real access decision — enabling per-object or per-tenant
 /// authorization ("can this operator delete *this* user / manage *this*
 /// client") once a deployment ships a non-permissive implementation.
 /// </summary>
 /// <remarks>
-/// The default implementation (<c>DefaultManagementObjectAccessPolicy</c>)
-/// returns <see cref="ManagementAuthorizationDecision.Allowed"/> for every
-/// resource, preserving the single-operator/trust-everything posture the STS
-/// ships with. A deployment that needs object/tenant boundaries replaces it
-/// via <c>services.Replace&lt;IManagementObjectAccessPolicy, ...&gt;()</c>,
-/// exactly as it can replace <see cref="IManagementEntitlementResolver"/>.
-/// The decision type is reused so the evaluator needs no translation.
+/// The default implementation fails closed. Hosts must register a concrete
+/// tenant-aware policy; missing composition can never become blanket access.
 /// </remarks>
 public interface IManagementObjectAccessPolicy
 {
@@ -251,10 +268,6 @@ public sealed class ManagementObjectAccessOptions
     public ManagementPolicyEnforcementMode Mode { get; set; } =
         ManagementPolicyEnforcementMode.Enforce;
 
-    public string ContextClaimType { get; set; } = "identity_context";
-
-    public string LegacyContextId { get; set; } = "global";
-
     /// <summary>
     /// Acknowledges that running this policy in <see cref="Mode"/> =
     /// <see cref="ManagementPolicyEnforcementMode.Observe"/> in production is a
@@ -264,6 +277,24 @@ public sealed class ManagementObjectAccessOptions
     /// only logs, it does not block.
     /// </summary>
     public bool AcknowledgeObserveInProduction { get; set; }
+}
+
+public sealed class ManagementTenantAccessOptions
+{
+    /// <summary>
+    /// Tenant that owns provider-wide resources which do not carry a more
+    /// specific tenant identifier. This value never grants membership by
+    /// itself; the operator must still have an explicit assignment below.
+    /// </summary>
+    public string ProviderTenantId { get; set; } = "global";
+
+    /// <summary>
+    /// Deployment-controlled mapping from the stable operator subject (`sub`)
+    /// to the exact tenants the operator may administer. Configuration files
+    /// containing this map must be writable only by the deployment authority.
+    /// </summary>
+    public Dictionary<string, string[]> SubjectTenants { get; set; } =
+        new(StringComparer.Ordinal);
 }
 
 public sealed class ProtectedPrincipalAccessOptions
@@ -297,6 +328,8 @@ public sealed class ProtectedPrincipalAccessOptions
 public sealed class ManagementAuthorizationOptions
 {
     public ManagementObjectAccessOptions ObjectAccess { get; set; } = new();
+
+    public ManagementTenantAccessOptions TenantAccess { get; set; } = new();
 
     public ProtectedPrincipalAccessOptions ProtectedPrincipals { get; set; } =
         new();
@@ -477,6 +510,54 @@ public sealed class ScopeAndRoleManagementEntitlementResolver(
     }
 }
 
+public sealed class ConfigurationManagementTenantResolver(
+    IOptions<ManagementOptions> options) : IManagementTenantResolver
+{
+    public ValueTask<ManagementTenantAccess> ResolveAsync(
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (principal.Identity?.IsAuthenticated is not true)
+        {
+            return ValueTask.FromResult(Empty());
+        }
+
+        var subject = principal.FindFirst("sub")?.Value
+            ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(subject))
+        {
+            return ValueTask.FromResult(Empty());
+        }
+
+        var assignments = options.Value.Authorization
+            .TenantAccess.SubjectTenants;
+        if (assignments is null
+            || !assignments.TryGetValue(subject, out var configuredTenants)
+            || configuredTenants is null)
+        {
+            return ValueTask.FromResult(Empty());
+        }
+
+        var tenants = configuredTenants
+            .Where(IsValidTenantId)
+            .Select(value => value.Trim())
+            .ToHashSet(StringComparer.Ordinal);
+
+        return ValueTask.FromResult(new ManagementTenantAccess(tenants));
+    }
+
+    internal static bool IsValidTenantId(string? value) =>
+        !string.IsNullOrWhiteSpace(value)
+        && value.Length <= 64
+        && !value.Any(character =>
+            char.IsWhiteSpace(character) || char.IsControl(character));
+
+    private static ManagementTenantAccess Empty() =>
+        new(new HashSet<string>(StringComparer.Ordinal));
+}
+
 public sealed class ConfigurationManagementAccessPolicyProvider(
     IOptions<ManagementOptions> options) : IManagementAccessPolicyProvider
 {
@@ -492,12 +573,8 @@ public sealed class ConfigurationManagementAccessPolicyProvider(
 }
 
 /// <summary>
-/// Permissive default <see cref="IManagementObjectAccessPolicy"/>: allows every
-/// resource. This preserves the single-operator/trust-everything posture the
-/// STS ships with (every operator with the capability may act on any object of
-/// that type). A deployment that needs object-level or tenant boundaries
-/// replaces this via
-/// <c>services.Replace&lt;IManagementObjectAccessPolicy, ...&gt;()</c>.
+/// Fail-closed default used only when a host did not compose a concrete tenant
+/// policy. A missing security dependency must deny rather than grant access.
 /// </summary>
 public sealed class DefaultManagementObjectAccessPolicy
     : IManagementObjectAccessPolicy
@@ -509,18 +586,21 @@ public sealed class DefaultManagementObjectAccessPolicy
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return ValueTask.FromResult(ManagementAuthorizationDecision.Allowed());
+        return ValueTask.FromResult(
+            ManagementAuthorizationDecision.Denied(
+                "tenant_policy_unavailable"));
     }
 }
 
 /// <summary>
-/// Concrete context boundary. Existing objects without a context are assigned
-/// to the explicit legacy/global context. Observe mode records mismatches while
-/// preserving a rolling deployment; Enforce changes the decision to deny.
+/// Concrete tenant boundary. Provider-wide objects without an explicit tenant
+/// belong to the configured provider tenant. Membership is never inferred from
+/// roles or scopes. Observe mode records mismatches; Enforce denies them.
 /// </summary>
 public sealed class ConfigurationManagementObjectAccessPolicy(
     IOptions<ManagementOptions> options,
     IProtectedPrincipalAccessPolicy protectedPrincipals,
+    IManagementTenantResolver tenantResolver,
     ILogger<ConfigurationManagementObjectAccessPolicy> logger)
     : IManagementObjectAccessPolicy
 {
@@ -565,44 +645,36 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
                 "resource_id_required");
         }
 
-        var policy = options.Value.Authorization.ObjectAccess;
-        var requiredContext = string.IsNullOrWhiteSpace(resource.ContextId)
-            ? policy.LegacyContextId
-            : resource.ContextId;
-        var contexts = principal.FindAll(policy.ContextClaimType)
-            .SelectMany(claim => claim.Value.Split(
-                ' ',
-                StringSplitOptions.RemoveEmptyEntries
-                | StringSplitOptions.TrimEntries));
-        var usedVaultBreakGlass = false;
-        if (!contexts.Contains(requiredContext, StringComparer.Ordinal))
+        var authorization = options.Value.Authorization;
+        var policy = authorization.ObjectAccess;
+        var tenantAccess = authorization.TenantAccess;
+        var requiredTenant = string.IsNullOrWhiteSpace(resource.TenantId)
+            ? tenantAccess.ProviderTenantId
+            : resource.TenantId;
+        if (!ConfigurationManagementTenantResolver.IsValidTenantId(
+                requiredTenant))
+        {
+            logger.LogError(
+                "Management tenant policy rejected resource type {ResourceType}: a valid tenant is required",
+                resource.Type);
+            return ManagementAuthorizationDecision.Denied("tenant_required");
+        }
+
+        var tenants = await tenantResolver.ResolveAsync(
+            principal,
+            cancellationToken);
+        if (!tenants.Contains(requiredTenant))
         {
             logger.LogWarning(
-                "Management object context policy {PolicyMode} rejected capability {Capability} on resource type {ResourceType} in context {ContextId}",
+                "Management object tenant policy {PolicyMode} rejected capability {Capability} on resource type {ResourceType} in tenant {TenantId}",
                 policy.Mode,
                 capability,
                 resource.Type,
-                requiredContext);
+                requiredTenant);
             if (policy.Mode is ManagementPolicyEnforcementMode.Enforce)
             {
-                if (IsVaultResource(resource.Type)
-                    && HasVaultBreakGlassEvidence(
-                        principal,
-                        options.Value.Authorization.VaultSecrets))
-                {
-                    usedVaultBreakGlass = true;
-                    logger.LogCritical(
-                        "Vault break-glass bypassed Management context policy for capability {Capability}, resource {ResourceType}/{ResourceId}, context {ContextId}",
-                        capability,
-                        resource.Type,
-                        resource.Id,
-                        requiredContext);
-                }
-                else
-                {
-                    return ManagementAuthorizationDecision.Denied(
-                        "context_not_accessible");
-                }
+                return ManagementAuthorizationDecision.Denied(
+                    "tenant_not_accessible");
             }
         }
 
@@ -617,13 +689,8 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
                 cancellationToken);
         }
 
-        return ManagementAuthorizationDecision.Allowed(
-            usedVaultBreakGlass ? "vault_break_glass" : "allowed");
+        return ManagementAuthorizationDecision.Allowed();
     }
-
-    private static bool IsVaultResource(string resourceType) =>
-        resourceType is ManagementResourceTypes.VaultSecrets
-            or ManagementResourceTypes.VaultSecretCollection;
 
     internal static bool HasVaultBreakGlassEvidence(
         ClaimsPrincipal principal,

@@ -56,7 +56,8 @@ public sealed class ManagementCapabilityRequirement(
 public sealed class ManagementUiAccessRequirement : IAuthorizationRequirement;
 
 internal sealed class ManagementUiAccessAuthorizationHandler(
-    IManagementEntitlementResolver entitlements)
+    IManagementEntitlementResolver entitlements,
+    IManagementTenantResolver tenants)
     : AuthorizationHandler<ManagementUiAccessRequirement>
 {
     protected override async Task HandleRequirementAsync(
@@ -64,7 +65,9 @@ internal sealed class ManagementUiAccessAuthorizationHandler(
         ManagementUiAccessRequirement requirement)
     {
         var resolved = await entitlements.ResolveAsync(context.User);
-        if (resolved.Capabilities.Count is not 0)
+        var tenantAccess = await tenants.ResolveAsync(context.User);
+        if (resolved.Capabilities.Count is not 0
+            && tenantAccess.TenantIds.Count is not 0)
         {
             context.Succeed(requirement);
         }
