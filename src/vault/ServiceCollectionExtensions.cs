@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using System.Security.Cryptography.X509Certificates;
+using StackExchange.Redis;
 using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Vault;
@@ -33,11 +34,24 @@ public static class ServiceCollectionExtensions
         // reported as disabled by a service resolving the options pattern.
         services.AddOptions<VaultOptions>().Bind(section);
         services.AddSingleton(options);
+        services.AddSingleton(options.Snapshot);
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<
                 IProductionPostureContributor,
                 VaultProductionPostureContributor>());
         services.TryAddSingleton(configuration);
+        var redisConnectionString = configuration.GetConnectionString("Redis");
+        if (!string.IsNullOrWhiteSpace(redisConnectionString))
+        {
+            services.TryAddSingleton<IConnectionMultiplexer>(_ =>
+            {
+                var redisOptions = ConfigurationOptions.Parse(redisConnectionString);
+                redisOptions.AbortOnConnectFail = false;
+                return ConnectionMultiplexer.Connect(redisOptions);
+            });
+            services.TryAddSingleton<IVaultSnapshotInvalidationBus,
+                RedisVaultSnapshotInvalidationBus>();
+        }
         var resolvedSecretStore = startupSecretStore
             ?? new EnvironmentSecretStore();
         if (options.EnableSecretStore)
@@ -77,6 +91,21 @@ public static class ServiceCollectionExtensions
                 CreateKeySource(sp, options, resolvedSecretStore));
             services.AddSingleton<IHostedService, VaultKekReadinessService>();
             services.AddSingleton<VaultCryptographyTelemetry>();
+            services.AddSingleton(sp => new VaultSnapshotCache(
+                sp.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<Sufficit.Identity.Core.Data.AppDbContext>>(),
+                sp.GetRequiredService<VaultSnapshotOptions>(),
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<VaultSnapshotCache>>(),
+                sp.GetService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(),
+                sp.GetService<IVaultSnapshotInvalidationBus>()));
+            if (options.Snapshot.Enabled)
+            {
+                services.AddSingleton<IHostedService, VaultSnapshotRefreshService>();
+                if (!string.IsNullOrWhiteSpace(redisConnectionString))
+                {
+                    services.AddSingleton<IHostedService,
+                        VaultSnapshotInvalidationService>();
+                }
+            }
             services.AddSingleton<KeyVault>();
             services.AddSingleton<IKeyVault>(sp => sp.GetRequiredService<KeyVault>());
             if (options.ManageSigningKeys)
@@ -147,6 +176,30 @@ public static class ServiceCollectionExtensions
         {
             throw new InvalidOperationException(
                 "Sufficit:Vault:AesGcmMessageBudgetPerKeyVersion must be between 1 and 4294967296.");
+        }
+
+        if (options.Snapshot.LocalLifetimeSeconds is < 1 or > 3_600)
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Vault:Snapshot:LocalLifetimeSeconds must be between 1 and 3600.");
+        }
+
+        if (options.Snapshot.DistributedLifetimeSeconds is < 1 or > 3_600)
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Vault:Snapshot:DistributedLifetimeSeconds must be between 1 and 3600.");
+        }
+
+        if (options.Snapshot.RefreshIntervalSeconds is < 1 or > 600)
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Vault:Snapshot:RefreshIntervalSeconds must be between 1 and 600.");
+        }
+
+        if (options.Snapshot.MaxEntries is < 1 or > 100_000)
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Vault:Snapshot:MaxEntries must be between 1 and 100000.");
         }
 
         var requiresDedicatedCertificate = !isDevelopment

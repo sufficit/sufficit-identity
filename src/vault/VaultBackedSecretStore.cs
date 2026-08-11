@@ -66,7 +66,8 @@ public interface IVaultNamedSecretStore
 public sealed class VaultBackedSecretStore(
     IDbContextFactory<AppDbContext> databaseFactory,
     IKeyVault keyVault,
-    VaultOptions options) : IVaultNamedSecretStore, ISecretStore
+    VaultOptions options,
+    VaultSnapshotCache? snapshots = null) : IVaultNamedSecretStore, ISecretStore
 {
     private const string KeyName = "named-secrets";
     public const string GlobalContextId = "global";
@@ -84,6 +85,20 @@ public sealed class VaultBackedSecretStore(
         EnsureEnabled();
         var normalized = NormalizeName(name);
         var normalizedContext = NormalizeContextId(contextId);
+        if (snapshots is not null)
+        {
+            var snapshot = await snapshots.GetSecretAsync(
+                normalized,
+                normalizedContext,
+                cancellationToken);
+            if (snapshot is null) return null;
+
+            return await keyVault.DecryptStringAsync(
+                snapshot.Ciphertext,
+                ReadAad(snapshot),
+                cancellationToken);
+        }
+
         await using var database = await databaseFactory.CreateDbContextAsync(
             cancellationToken);
         var item = await database.VaultSecrets.AsNoTracking()
@@ -113,6 +128,14 @@ public sealed class VaultBackedSecretStore(
             .Select(NormalizeNamespace)
             .ToHashSet(StringComparer.Ordinal);
         if (normalizedNamespaces is { Count: 0 }) return [];
+        if (snapshots is not null)
+        {
+            return await snapshots.ListSecretsAsync(
+                normalizedContext,
+                normalizedNamespaces,
+                cancellationToken);
+        }
+
         await using var database = await databaseFactory.CreateDbContextAsync(
             cancellationToken);
         var query = database.VaultSecrets.AsNoTracking()
@@ -196,6 +219,13 @@ public sealed class VaultBackedSecretStore(
         item.UpdatedAtUtc = now;
         item.UpdatedBy = NormalizeSubject(updatedBy);
         await database.SaveChangesAsync(cancellationToken);
+        if (snapshots is not null)
+        {
+            await snapshots.InvalidateSecretAsync(
+                normalized,
+                normalizedContext,
+                cancellationToken);
+        }
         return ToMetadata(item);
     }
 
@@ -218,6 +248,13 @@ public sealed class VaultBackedSecretStore(
             .Where(secret => secret.Name == normalized
                 && secret.ContextId == normalizedContext)
             .ExecuteDeleteAsync(cancellationToken);
+        if (deleted > 0 && snapshots is not null)
+        {
+            await snapshots.InvalidateSecretAsync(
+                normalized,
+                normalizedContext,
+                cancellationToken);
+        }
         return deleted > 0;
     }
 
@@ -318,7 +355,19 @@ public sealed class VaultBackedSecretStore(
             ["context_id"] = contextId,
         };
 
-    private static IReadOnlyDictionary<string, string> ReadAad(VaultSecret secret)
+    private static IReadOnlyDictionary<string, string> ReadAad(VaultSecret secret) =>
+        ReadAad(new VaultSecretSnapshotEntry(
+            secret.Name,
+            secret.Namespace,
+            secret.ContextId,
+            secret.OwnerSubject,
+            secret.Ciphertext,
+            secret.AadJson,
+            secret.UpdatedAtUtc,
+            secret.UpdatedBy));
+
+    private static IReadOnlyDictionary<string, string> ReadAad(
+        VaultSecretSnapshotEntry secret)
     {
         if (!string.IsNullOrWhiteSpace(secret.AadJson))
         {

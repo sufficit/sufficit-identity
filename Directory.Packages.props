@@ -37,6 +37,10 @@
     <!-- Health checks -->
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.10" />
 
+    <!-- Shared distributed cache (Redis) for clustered identity replicas. -->
+    <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.10" />
+    <PackageVersion Include="StackExchange.Redis" Version="2.7.27" />
+
     <!-- Logging / config -->
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
 

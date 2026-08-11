@@ -2,7 +2,9 @@
   "_": "Copy this file to appsettings.json for non-secret settings only. Startup secrets must come from vault-secrets.env (SUFFICIT_SECRET_*). NEVER commit real appsettings.json — it is gitignored.",
   "ConnectionStrings": {
     "_DefaultConnection": "Configure SUFFICIT_SECRET_DATABASE_CONNECTION_STRING in vault-secrets.env; this key must remain empty in appsettings.",
-    "DefaultConnection": ""
+    "DefaultConnection": "",
+    "_Redis": "Optional shared cache for clustered replicas. Configure SUFFICIT_SECRET_DISTRIBUTED_CACHE_CONNECTION_STRING; leave empty for the single-node memory fallback.",
+    "Redis": ""
   },
   "Logging": {
     "LogLevel": {
@@ -37,6 +39,14 @@
       "SigningKeyName": "oidc-signing",
       "SigningKeyOverlapSeconds": 1209600,
       "SigningKeyLockSeconds": 60,
+      "Snapshot": {
+        "_": "VaultKeys/VaultSecrets reads use an in-memory snapshot and, when Redis is configured, a shared encrypted-row snapshot. Plaintext secret values are never cached. Mutations invalidate local/distributed entries; external DB edits converge within the configured TTL.",
+        "Enabled": true,
+        "LocalLifetimeSeconds": 10,
+        "DistributedLifetimeSeconds": 30,
+        "RefreshIntervalSeconds": 10,
+        "MaxEntries": 4096
+      },
       "_AesGcmMessageBudgetPerKeyVersion": "Successful encryptions allowed operationally per symmetric key version before manual rotation. Default 250M keeps random 96-bit nonce collision risk below approximately 4e-13. Monitor sufficit.vault.aes_gcm.encryptions by key.name/key.version; automatic rotation remains disabled until production volume is characterized.",
       "AesGcmMessageBudgetPerKeyVersion": 250000000
     },
