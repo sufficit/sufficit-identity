@@ -92,6 +92,25 @@ public sealed class HumanVerificationTests
     }
 
     [Fact]
+    public async Task Provider_secret_is_not_read_from_options_when_store_is_missing()
+    {
+        var handler = new RecordingHandler(
+            "{\"success\":true,\"hostname\":\"identity.example.test\"}");
+        var service = CreateService(
+            handler,
+            EnabledOptions(),
+            useOptionsAsStore: false);
+
+        var result = await service.VerifyAsync(
+            HumanVerificationFlow.Registration,
+            "browser-proof");
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("provider-not-configured", result.ErrorCode);
+        Assert.Equal(0, handler.CallCount);
+    }
+
+    [Fact]
     public async Task Turnstile_requires_the_expected_flow_action()
     {
         var handler = new RecordingHandler(
@@ -166,9 +185,16 @@ public sealed class HumanVerificationTests
     private static RemoteHumanVerificationService CreateService(
         HttpMessageHandler handler,
         HumanVerificationOptions options,
-        ISecretStore? secretStore = null)
+        ISecretStore? secretStore = null,
+        bool useOptionsAsStore = true)
     {
         options.Validate();
+        if (secretStore is null && useOptionsAsStore)
+        {
+            secretStore = new DictionarySecretStore(
+                "identity/human-verification/secret-key",
+                options.SecretKey!);
+        }
         var context = new DefaultHttpContext();
         context.Connection.RemoteIpAddress = IPAddress.Parse("192.0.2.42");
         return new RemoteHumanVerificationService(

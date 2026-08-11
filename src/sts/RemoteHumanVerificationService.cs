@@ -52,10 +52,10 @@ public sealed class RemoteHumanVerificationService(
         }
 
         var secret = secretStore is null
-            ? options.SecretKey
+            ? null
             : await secretStore.GetSecretAsync(
                 "identity/human-verification/secret-key",
-                cancellationToken) ?? options.SecretKey;
+                cancellationToken);
         if (string.IsNullOrWhiteSpace(secret))
         {
             logger.LogError(

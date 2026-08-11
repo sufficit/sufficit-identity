@@ -74,8 +74,7 @@ internal sealed class SufficitIdentityRuntimeCapabilityCatalog
 
         if (options.Mcp.Dcr.Enabled &&
             (!options.Mcp.Dcr.RequireInitialAccessToken ||
-             dcrInitialAccessTokenConfigured
-             || !string.IsNullOrWhiteSpace(options.Mcp.Dcr.InitialAccessToken)))
+             dcrInitialAccessTokenConfigured))
         {
             features.Add(ManagementRuntimeCapabilities.DynamicClientRegistration);
         }

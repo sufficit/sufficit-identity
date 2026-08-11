@@ -114,7 +114,9 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
 
         builder.ConfigureServices((context, services) =>
         {
-            services.AddSufficitIdentitySTS(context.Configuration);
+            services.AddSufficitIdentitySTS(
+                context.Configuration,
+                secretStore: new TestSecretStore(context.Configuration));
             services.AddSufficitIdentityManagement(context.Configuration);
 
             // Swap the real ScopeHandler for a test-only one that always

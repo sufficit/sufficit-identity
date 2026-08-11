@@ -4,9 +4,9 @@ namespace Sufficit.Identity.Vault;
 
 /// <summary>
 /// Adds deployment-provided secret overrides before startup options are bound.
-/// This keeps configuration-time consumers compatible while allowing operators
-/// to remove secret values from machine-specific JSON files one setting at a
-/// time. Values are never logged or copied back into configuration files.
+/// Configuration-time consumers therefore receive values from the same
+/// <see cref="ISecretStore"/> boundary as runtime consumers. Values are never
+/// logged or copied back into configuration files.
 /// </summary>
 public static class SecretConfigurationExtensions
 {
@@ -79,20 +79,28 @@ public static class SecretConfigurationExtensions
             : configuration.AddInMemoryCollection(values);
     }
 
+    /// <summary>
+    /// Rejects plaintext startup secrets found in configuration providers.
+    /// Call this before adding environment overrides so stale appsettings
+    /// values cannot remain as an unnoticed compatibility fallback.
+    /// </summary>
+    public static void EnsureNoPlaintextSecrets(IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        foreach (var (_, configurationKey) in Overrides)
+        {
+            if (!string.IsNullOrWhiteSpace(configuration[configurationKey]))
+            {
+                throw new InvalidOperationException(
+                    $"Plaintext startup secret detected at '{configurationKey}'. " +
+                    "Remove it from appsettings/User Secrets and configure the corresponding SUFFICIT_SECRET_* variable in vault-secrets.env.");
+            }
+        }
+    }
+
     /// <summary>Returns the supported logical-to-configuration mappings.</summary>
     public static IReadOnlyList<(string LogicalName, string ConfigurationKey)>
         GetSufficitSecretOverrideMappings() => Overrides;
 
-    internal static string? GetConfigurationKey(string logicalName)
-    {
-        foreach (var (mappedName, configurationKey) in Overrides)
-        {
-            if (string.Equals(mappedName, logicalName, StringComparison.OrdinalIgnoreCase))
-            {
-                return configurationKey;
-            }
-        }
-
-        return null;
-    }
 }

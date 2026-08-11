@@ -41,7 +41,7 @@ public static class EmailSenderExtensions
         ISecretStore? secretStore = null)
     {
         var startupSecretStore = secretStore
-            ?? new EnvironmentSecretStore(configuration);
+            ?? new EnvironmentSecretStore();
         var hostName = configuration["Sufficit:Exchange:RabbitMQ:HostName"];
         if (string.IsNullOrWhiteSpace(hostName))
         {

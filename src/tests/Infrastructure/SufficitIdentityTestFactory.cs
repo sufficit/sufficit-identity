@@ -167,7 +167,9 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
 
         builder.ConfigureServices((context, services) =>
         {
-            services.AddSufficitIdentitySTS(context.Configuration);
+            services.AddSufficitIdentitySTS(
+                context.Configuration,
+                secretStore: new TestSecretStore(context.Configuration));
             services.AddSufficitCors(
                 context.Configuration.GetSection("Sufficit:Identity:Cors")
                     .Get<CorsOptions>() ?? new CorsOptions());

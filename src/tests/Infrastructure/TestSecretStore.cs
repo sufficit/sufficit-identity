@@ -1,0 +1,31 @@
+using Sufficit.Identity.Vault;
+using Microsoft.Extensions.Configuration;
+
+namespace Sufficit.Identity.Tests.Infrastructure;
+
+/// <summary>
+/// Explicit secret boundary for in-memory integration hosts. Production uses
+/// EnvironmentSecretStore, while tests must opt in to every startup secret
+/// they need instead of relying on appsettings fallback behavior.
+/// </summary>
+internal sealed class TestSecretStore : ISecretStore
+{
+    private readonly IConfiguration configuration;
+
+    public TestSecretStore(IConfiguration configuration) =>
+        this.configuration = configuration;
+
+    public Task<string?> GetSecretAsync(
+        string name,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return Task.FromResult<string?>(name switch
+        {
+            "database/connection-string" => "unused",
+            "identity/dcr/initial-access-token" =>
+                configuration["Sufficit:Identity:Mcp:Dcr:InitialAccessToken"],
+            _ => null,
+        });
+    }
+}

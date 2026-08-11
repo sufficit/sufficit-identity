@@ -26,46 +26,21 @@ var builder = WebApplication.CreateBuilder(args);
 var migrateOnly = args.Contains("--migrate-only", StringComparer.Ordinal);
 
 // Resolve configuration-time secrets through the same ISecretStore boundary
-// used by STS consumers. The default store reads SUFFICIT_SECRET_* and falls
-// back to the already-loaded configuration only during migration.
-var startupSecretStore = new EnvironmentSecretStore(
-    builder.Configuration,
-    Microsoft.Extensions.Logging.Abstractions.NullLogger<EnvironmentSecretStore>.Instance);
+// used by STS consumers. The store reads SUFFICIT_SECRET_* only.
+var startupSecretStore = new EnvironmentSecretStore();
 
 // WebApplication.CreateBuilder already loads appsettings.json followed by
 // appsettings.{Environment}.json. Add the machine-specific file after those
 // standard sources so each Sufficit server can override only its local values
 // (for example, the database endpoint) using a lowercase hostname filename.
 builder.Configuration.AddMachineSpecificJsonFile();
+// Reject plaintext startup secrets before adding the environment layer. This
+// makes a stale appsettings value a visible deployment failure instead of a
+// silent compatibility fallback.
+SecretConfigurationExtensions.EnsureNoPlaintextSecrets(builder.Configuration);
 // Resolve deployment-provided secret overrides before any startup options are
-// bound. The JSON layer remains a compatibility fallback during migration;
-// operators can move each secret to SUFFICIT_SECRET_* independently.
+// bound. Every startup consumer receives the same vault-secrets.env value.
 builder.Configuration.AddSufficitSecretOverrides(startupSecretStore);
-
-// Optional file-based certificate password ingress. The privileged bootstrap
-// uses this for randomly generated Development certificates and operators can
-// use it to keep production PFX passwords out of JSON/environment values. It
-// only fills missing values, preserving explicit deployment configuration.
-var certificatePasswordFile = Environment.GetEnvironmentVariable(
-        "SUFFICIT_IDENTITY_CERTIFICATE_PASSWORD_FILE")
-    ?? "/etc/sufficit/identity/certificate.password";
-if (File.Exists(certificatePasswordFile)
-    && string.IsNullOrWhiteSpace(startupSecretStore.GetSecretAsync(
-        "identity/certificates/signing-password").GetAwaiter().GetResult()))
-{
-    var certificatePassword = File.ReadAllText(certificatePasswordFile).Trim();
-    if (!string.IsNullOrEmpty(certificatePassword))
-    {
-        builder.Configuration.AddInMemoryCollection(
-            new Dictionary<string, string?>
-            {
-                ["Sufficit:Identity:Certificates:SigningPassword"] =
-                    certificatePassword,
-                ["Sufficit:Identity:Certificates:EncryptionPassword"] =
-                    certificatePassword,
-            });
-    }
-}
 
 // ---- Forwarded headers (behind reverse proxy) ----
 // Allows the STS to honor X-Forwarded-Proto / X-Forwarded-Host so that

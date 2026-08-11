@@ -111,7 +111,9 @@ provedor de configuração:
 | `identity/certificates/encryption-password` | `SUFFICIT_SECRET_IDENTITY_CERTIFICATES_ENCRYPTION_PASSWORD` | `Sufficit:Identity:Certificates:EncryptionPassword` |
 | `vault/kek-certificate-password` | `SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD` | `Sufficit:Vault:CertificatePassword` |
 | `identity/human-verification/secret-key` | `SUFFICIT_SECRET_IDENTITY_HUMAN_VERIFICATION_SECRET_KEY` | `Sufficit:Identity:HumanVerification:SecretKey` |
-| `identity/external-providers/{google,github,facebook}/client-secret` | `SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_*` | credencial do provedor |
+| `identity/dcr/initial-access-token` | `SUFFICIT_SECRET_IDENTITY_DCR_INITIAL_ACCESS_TOKEN` | `Sufficit:Identity:Mcp:Dcr:InitialAccessToken` |
+| `identity/external-providers/{google,github,facebook}/client-id` | `SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_*_CLIENT_ID` | credencial pública do provedor |
+| `identity/external-providers/{google,github,facebook}/client-secret` | `SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_*_CLIENT_SECRET` | credencial do provedor |
 | `identity/smtp/password` | `SUFFICIT_SECRET_IDENTITY_SMTP_PASSWORD` | `Sufficit:Identity:Smtp:Password` |
 | `exchange/rabbitmq/password` | `SUFFICIT_SECRET_EXCHANGE_RABBITMQ_PASSWORD` | `Sufficit:Exchange:RabbitMQ:Password` |
 
@@ -134,11 +136,11 @@ de qualquer alteração, use `systemctl daemon-reload` e reinicie apenas a
 instância validada. O arquivo precisa ser `root:www-data` com modo `0640`.
 
 As variáveis devem ser instaladas pelo supervisor/secret manager com permissões
-restritas. O JSON ainda é aceito como fallback de rolling deploy; depois de
-validar que cada override está presente em todas as réplicas, remova o valor
-legado e registre apenas a evidência redigida de rotação. O fallback em
-`ISecretStore` preserva a compatibilidade sem registrar o valor, permitindo
-medir quando a dependência de configuração plaintext chegou a zero.
+restritas. O JSON não é mais aceito como fallback: o startup rejeita qualquer
+valor não vazio em uma chave de segredo conhecida antes de aplicar os overrides
+do ambiente. Isso evita que uma credencial reapareça em `appsettings.*.json`
+durante um rolling deploy. O verificador de cada host deve ser executado antes
+da ativação e nunca imprime valores.
 
 O boundary é deliberadamente síncrono no startup: `Program.cs` cria o
 `EnvironmentSecretStore` antes do bind das opções e o STS usa a mesma instância

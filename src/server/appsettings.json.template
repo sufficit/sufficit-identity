@@ -1,7 +1,8 @@
 {
-  "_": "Copy this file to appsettings.json and fill in the real values, OR use User Secrets (dotnet user-secrets) / environment variables. NEVER commit real appsettings.json — it is gitignored.",
+  "_": "Copy this file to appsettings.json for non-secret settings only. Startup secrets must come from vault-secrets.env (SUFFICIT_SECRET_*). NEVER commit real appsettings.json — it is gitignored.",
   "ConnectionStrings": {
-    "DefaultConnection": "server=YOUR_MYSQL_HOST;port=3306;database=identity;user=YOUR_USER;password=YOUR_PASSWORD;keepalive=30;ConnectionIdleTimeout=180;ConnectionReset=false;Maximum Pool Size=150;Connection Lifetime=180"
+    "_DefaultConnection": "Configure SUFFICIT_SECRET_DATABASE_CONNECTION_STRING in vault-secrets.env; this key must remain empty in appsettings.",
+    "DefaultConnection": ""
   },
   "Logging": {
     "LogLevel": {
@@ -21,7 +22,7 @@
       "KeySource": "dataprotection",
       "DataProtectionPurpose": "Sufficit.Identity.Vault.Master.v1",
       "CertificatePath": "/run/secrets/sufficit-vault-kek.pfx",
-      "_CertificatePassword": "Supply through SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD; never commit the real value.",
+        "_CertificatePassword": "Supply through SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD in vault-secrets.env; never commit the real value.",
       "CertificatePassword": "",
       "_ExternalKeyIdentifier": "For KeySource=external, pin the immutable KMS/HSM key-version URI. Required outside Development.",
       "ExternalKeyIdentifier": "",
@@ -392,7 +393,7 @@
           "Enabled": false,
           "_RequireInitialAccessToken": "true (default) requires a valid bearer initial access token in the Authorization header for /connect/register. Without it, anyone can register a client.",
           "RequireInitialAccessToken": true,
-          "_InitialAccessToken": "The static initial access token accepted by /connect/register. Configure via User Secrets / env var — NEVER commit a real value. Empty = endpoint rejects all requests (even when Enabled).",
+        "_InitialAccessToken": "The static initial access token accepted by /connect/register. Configure via SUFFICIT_SECRET_IDENTITY_DCR_INITIAL_ACCESS_TOKEN in vault-secrets.env — NEVER commit a real value. Empty = endpoint rejects all requests (even when Enabled).",
           "InitialAccessToken": "",
           "InitialAccessTokenExpiresAtUtc": null,
           "InitialAccessTokenSingleUse": true,
@@ -441,7 +442,7 @@
         "_ReportUri": "Optional violation-report collector endpoint appended as 'report-uri <value>'. Empty = no report-uri directive.",
         "ReportUri": ""
       },
-      "_HumanVerification": "Provider-neutral CAPTCHA protection for public operations that create accounts or send email. Validation always occurs server-side before the operation. Keep SecretKey in the environment or machine-specific file, never in source control.",
+      "_HumanVerification": "Provider-neutral CAPTCHA protection for public operations that create accounts or send email. Validation always occurs server-side before the operation. Keep SecretKey in vault-secrets.env, never in source control.",
       "HumanVerification": {
         "Enabled": false,
         "_Provider": "GoogleRecaptchaV2 reuses a Google reCAPTCHA v2 checkbox key. Turnstile uses Cloudflare Turnstile and does not require the site to be proxied by Cloudflare.",
@@ -499,7 +500,7 @@
       }
     },
     "Exchange": {
-      "_RabbitMQ": "Sufficit production email pipeline. When HostName is set, the STS replaces the default IEmailSender with RabbitMQEmailQueue (publishes to Q-EMAIL queue). Move credentials to User Secrets or env vars in real environments.",
+      "_RabbitMQ": "Sufficit production email pipeline. When HostName is set, the STS replaces the default IEmailSender with RabbitMQEmailQueue (publishes to Q-EMAIL queue). Put Password only in SUFFICIT_SECRET_EXCHANGE_RABBITMQ_PASSWORD in vault-secrets.env.",
       "RabbitMQ": {
         "Persistent": true,
         "HostName": "",

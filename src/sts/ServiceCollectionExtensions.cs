@@ -67,7 +67,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IBrandingThemeProvider, BrandingThemeProvider>();
         services.TryAddSingleton<IUserAvatarUrlResolver, UserAvatarUrlResolver>();
 
-        var startupSecretStore = secretStore ?? new EnvironmentSecretStore(configuration);
+        var startupSecretStore = secretStore ?? new EnvironmentSecretStore();
         var options = configuration
             .GetSection(configurationSection)
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
