@@ -2,6 +2,8 @@
 
 **Data:** 2026-08-11 00:30 (America/Sao_Paulo)  
 **Release:** `1d0fb57`
+**Status:** Compatibilidade encerrada em 2026-08-11; ver
+`202608110345-management-context-enforce.md`.
 
 ## Sintoma e causa
 
@@ -29,5 +31,6 @@ existente e permite o acesso administrativo. Vault readiness, `/health` e
 `Observe` não deve ser usado como fronteira multi-tenant: ele não bloqueia uma
 operação por contexto. Antes de habilitar tenants/organizações, emitir o claim
 `identity_context` correto para os operadores e retornar `ObjectAccess=Enforce`.
-O acknowledgment atual é deliberado e deve permanecer documentado até essa
-migração.
+O acknowledgment foi removido após a emissão do contexto explícito e o retorno
+da política para `Enforce`. A implementação e a validação estão registradas em
+`202608110345-management-context-enforce.md`.
