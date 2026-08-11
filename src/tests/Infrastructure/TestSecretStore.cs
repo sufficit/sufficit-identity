@@ -22,7 +22,8 @@ internal sealed class TestSecretStore : ISecretStore
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult<string?>(name switch
         {
-            "database/connection-string" => "unused",
+            "database/connection-string" =>
+                configuration["ConnectionStrings:DefaultConnection"],
             "identity/dcr/initial-access-token" =>
                 configuration["Sufficit:Identity:Mcp:Dcr:InitialAccessToken"],
             _ => null,
