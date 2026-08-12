@@ -40,6 +40,8 @@ public static class ManagementUiPolicies
         "sufficit-identity-management-ui-database";
     public const string ManageProvisioning =
         "sufficit-identity-management-ui-provisioning";
+    public const string ManageProvisioningToken =
+        "sufficit-identity-management-ui-provisioning-token";
     public const string ManageMetrics = "sufficit-identity-management-ui-metrics";
 }
 
@@ -216,6 +218,16 @@ public static class ServiceCollectionExtensions
                             ManagementCapabilities.ProvisioningPreview,
                             ManagementResourceTypes.Provisioning));
                 });
+            authorization.AddPolicy(
+                ManagementUiPolicies.ManageProvisioningToken,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.Requirements.Add(
+                        new ManagementCapabilityRequirement(
+                            ManagementCapabilities.ProvisioningApply,
+                            ManagementResourceTypes.Provisioning));
+                });
             authorization.AddPolicy(ManagementUiPolicies.ManageMetrics, policy =>
             {
                 policy.RequireAuthenticatedUser();
@@ -241,6 +253,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<ManagementUserDataSource>();
         services.TryAddScoped<ManagementOverviewDataSource>();
         services.TryAddScoped<ManagementProvisioningDataSource>();
+        services.TryAddScoped<ManagementProvisioningTokenDataSource>();
         services.TryAddScoped<ManagementDatabaseDataSource>();
         services.TryAddScoped<ManagementMetricsDataSource>();
 

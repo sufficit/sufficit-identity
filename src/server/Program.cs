@@ -237,14 +237,16 @@ if (!builder.Environment.IsDevelopment())
     });
 }
 
-// ---- Rate limiting: protect token endpoint + interactive login surface ----
+// ---- Rate limiting: protect OAuth/OIDC + interactive credential surfaces ----
 // Finding #3: the original limiter covered only POST /connect/token. The
 // interactive login surface (POST /account/login, forgot-password, register)
 // was unthrottled — per-account lockout doesn't stop cross-account password
 // spraying. This limiter covers all credential-validation endpoints with
 // a per-IP fixed window. Tunables come from Sufficit:Identity:RateLimit.
 var rateLimit = identityOptions.RateLimit;
-var tokenEndpointWindow = TimeSpan.FromSeconds(rateLimit.WindowSeconds);
+var credentialWindow = TimeSpan.FromSeconds(Math.Max(1, rateLimit.WindowSeconds));
+var pushedAuthorizationWindow = TimeSpan.FromSeconds(
+    Math.Max(1, rateLimit.PushedAuthorizationWindowSeconds));
 
 // Interactive credential-validation endpoints (login, forgot-password,
 // register, reset-password, external-login callback). These accept POST
@@ -299,10 +301,30 @@ if (rateLimit.Enabled)
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-        options.OnRejected = (context, cancellationToken) =>
+        options.OnRejected = async (context, cancellationToken) =>
         {
-            context.HttpContext.Response.Headers.RetryAfter = ((int)tokenEndpointWindow.TotalSeconds).ToString();
-            return ValueTask.CompletedTask;
+            var httpContext = context.HttpContext;
+            var retryAfter = IdentityRateLimitPolicy.IsPushedAuthorizationEndpoint(
+                httpContext.Request.Path,
+                httpContext.Request.Method)
+                ? pushedAuthorizationWindow
+                : credentialWindow;
+            var retryAfterSeconds = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds));
+
+            httpContext.RequestServices
+                .GetRequiredService<ILoggerFactory>()
+                .CreateLogger("Sufficit.Identity.RateLimiting")
+                .LogWarning(
+                    "Rate limit exceeded for {Method} {Path} from {RemoteIp}; retry after {RetryAfterSeconds}s.",
+                    httpContext.Request.Method,
+                    httpContext.Request.Path,
+                    httpContext.Connection.RemoteIpAddress,
+                    retryAfterSeconds);
+
+            await IdentityRateLimitPolicy.WriteRejectionResponseAsync(
+                httpContext,
+                retryAfterSeconds,
+                cancellationToken);
         };
 
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
@@ -339,13 +361,37 @@ if (rateLimit.Enabled)
 
             var clientIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-            return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
+            if (IdentityRateLimitPolicy.IsPushedAuthorizationEndpoint(
+                httpContext.Request.Path,
+                httpContext.Request.Method))
             {
-                PermitLimit = rateLimit.PermitLimit,
-                Window = tokenEndpointWindow,
-                QueueLimit = 0,
-                AutoReplenishment = true
-            });
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    IdentityRateLimitPolicy.GetCredentialPartitionKey(
+                        httpContext.Request.Path,
+                        httpContext.Request.Method,
+                        clientIp),
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = Math.Max(
+                            1,
+                            rateLimit.PushedAuthorizationPermitLimit),
+                        Window = pushedAuthorizationWindow,
+                        QueueLimit = 0,
+                        AutoReplenishment = true,
+                    });
+            }
+
+            return RateLimitPartition.GetFixedWindowLimiter(
+                IdentityRateLimitPolicy.GetCredentialPartitionKey(
+                    httpContext.Request.Path,
+                    httpContext.Request.Method,
+                    clientIp), _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = Math.Max(1, rateLimit.PermitLimit),
+                        Window = credentialWindow,
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    });
         });
 
         options.AddPolicy("device-information", httpContext =>

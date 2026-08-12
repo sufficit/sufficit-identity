@@ -90,7 +90,7 @@ public static class ManagementModulePresentations
             40,
             20,
             "Provisionamento",
-            "Manifestos declarativos de clientes e scopes",
+            "Manifestos e tokens temporários de provisioning",
             "provisioning",
             "workflow"),
         new(

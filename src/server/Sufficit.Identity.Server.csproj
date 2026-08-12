@@ -34,6 +34,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Sufficit.Identity.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Real appsettings files are developer-local/ignored. Runtime startup
          secrets must come from vault-secrets.env — never from a build or
          publish artifact. -->

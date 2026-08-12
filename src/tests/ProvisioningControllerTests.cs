@@ -165,6 +165,51 @@ public sealed class ProvisioningControllerTests
         Assert.NotEmpty(problem.GetProperty("errors").EnumerateArray());
     }
 
+    [Fact]
+    public async Task Temporary_token_is_attenuated_and_audited_without_secret_value()
+    {
+        await using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/provisioning/token",
+            new ProvisioningTokenIssueRequest(60));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var issued = await response.Content
+            .ReadFromJsonAsync<ProvisioningTokenIssueResult>();
+        Assert.NotNull(issued);
+        Assert.False(string.IsNullOrWhiteSpace(issued.AccessToken));
+        Assert.Equal("Bearer", issued.TokenType);
+        Assert.Equal(["identity.management"], issued.Scopes);
+        Assert.Equal(
+            [
+                ManagementCapabilities.ProvisioningPreview,
+                ManagementCapabilities.ProvisioningApply
+            ],
+            issued.Capabilities);
+        Assert.InRange(
+            issued.ExpiresAtUtc,
+            DateTimeOffset.UtcNow.AddSeconds(45),
+            DateTimeOffset.UtcNow.AddSeconds(75));
+
+        using var scope = factory.Services.CreateScope();
+        var database = scope.ServiceProvider
+            .GetRequiredService<AppDbContext>();
+        var audit = Assert.Single(
+            await database.ManagementAuditEvents
+                .AsNoTracking()
+                .Where(entry => entry.ReasonCode ==
+                    "provisioning_temporary_token_issued")
+                .ToArrayAsync());
+        Assert.Equal("succeeded", audit.OperationOutcome);
+        Assert.DoesNotContain(
+            issued.AccessToken,
+            audit.ResourceId ?? string.Empty,
+            StringComparison.Ordinal);
+    }
+
     private static MutableManifestRequest EmptyManifest() =>
         new()
         {

@@ -102,6 +102,7 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
                 ["Sufficit:Identity:Management:Enabled"] = "true",
                 ["Sufficit:Identity:Management:RequireAuthorization"] = "true",
                 ["Sufficit:Identity:Management:RequireMfa"] = "false",
+                ["Sufficit:Identity:Management:TemporaryProvisioningToken:Enabled"] = "true",
             });
             if (!string.IsNullOrWhiteSpace(_routePrefix))
             {

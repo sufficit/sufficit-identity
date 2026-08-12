@@ -1007,7 +1007,6 @@ public static class ServiceCollectionExtensions
                       .EnableTokenEndpointPassthrough()
                       .EnableUserInfoEndpointPassthrough()
                       .EnableEndUserVerificationEndpointPassthrough()
-                      .EnableStatusCodePagesIntegration()
                       .SuppressJsonResponseIndentation();
 
                 // In Development with HTTPS (same port as the legacy STS:

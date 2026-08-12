@@ -19,6 +19,13 @@ public sealed class ManagementOptions
     public ManagementAuthorizationOptions Authorization { get; init; } = new();
 
     /// <summary>
+    /// Short-lived operator tokens used to run a provisioning command outside
+    /// the embedded console. The token is deliberately attenuated to the two
+    /// provisioning capabilities and never inherits administrator roles.
+    /// </summary>
+    public TemporaryProvisioningTokenOptions TemporaryProvisioningToken { get; init; } = new();
+
+    /// <summary>
     /// Requires multi-factor evidence for sensitive provider-management
     /// operations. Deployment configuration controls this policy.
     /// </summary>
@@ -43,4 +50,16 @@ public sealed class ManagementOptions
             "scim",
             RetiredIdentityScopes.SkorubaIdentityAdminApi
         ];
+}
+
+public sealed class TemporaryProvisioningTokenOptions
+{
+    /// <summary>Enables the short-lived provisioning-token action.</summary>
+    public bool Enabled { get; init; }
+
+    /// <summary>Default lifetime when the caller does not choose one.</summary>
+    public int DefaultLifetimeSeconds { get; init; } = 900;
+
+    /// <summary>Hard upper bound for every issued token.</summary>
+    public int MaximumLifetimeSeconds { get; init; } = 3600;
 }

@@ -106,6 +106,12 @@
         "RoutePrefix": "api",
         "RequireAuthorization": true,
         "RequiredScope": "identity.management",
+        "_TemporaryProvisioningToken": "Short-lived operator token for provisioning only. It requires the existing management MFA/capability checks, is attenuated to preview/apply and is never written to audit data. Keep Enabled=false until the Management UI is deployed and the operational flow is approved.",
+        "TemporaryProvisioningToken": {
+          "Enabled": false,
+          "DefaultLifetimeSeconds": 900,
+          "MaximumLifetimeSeconds": 3600
+        },
         "Authorization": {
           "ObjectAccess": {
             "Mode": "Enforce"
@@ -211,13 +217,16 @@
         "AllowedClientIds": [],
         "ProvenanceMode": "Enforce"
       },
-      "_RateLimit": "Fixed-window rate limit applied to POST /connect/token, per client IP, no queueing. Complements (never replaces) account lockout. Disable only if an upstream gateway already throttles the token endpoint.",
+      "_RateLimit": "Independent fixed-window limits for credential and OAuth/OIDC protocol endpoints, per client IP, without queueing. Complements (never replaces) account lockout.",
       "RateLimit": {
         "Enabled": true,
         "_PermitLimit": "Requests allowed per window, per client IP.",
         "PermitLimit": 30,
         "_WindowSeconds": "Window length in seconds; also sent as Retry-After on 429.",
         "WindowSeconds": 60,
+        "_PushedAuthorizationPermitLimit": "PAR requests allowed per window and source IP. Uses a separate bucket so token failures cannot block new logins.",
+        "PushedAuthorizationPermitLimit": 30,
+        "PushedAuthorizationWindowSeconds": 60,
         "DeviceInformationPermitLimit": 12,
         "DeviceInformationWindowSeconds": 60,
         "_FailOnUntrustedProxy": "true (item 5.1 [L4]) makes startup FAIL when TrustedProxies is empty outside Development, instead of only logging a warning. Without trusted proxies, the rate limiter shares ONE bucket for all traffic (the proxy's IP) → self-inflicted 429s. Default false (warning); flip to true in production so a missing TrustedProxies cannot silently turn the rate limiter into a self-DoS.",
