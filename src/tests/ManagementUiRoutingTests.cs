@@ -236,6 +236,8 @@ public sealed class ManagementUiRoutingTests
         Assert.Contains("Padrão global", detailHtml, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
         Assert.Contains("Editar aplicação", editHtml, StringComparison.Ordinal);
+        Assert.Contains("Test Client", editHtml, StringComparison.Ordinal);
+        Assert.Contains("Aplicação: test-client", editHtml, StringComparison.Ordinal);
         Assert.Contains("Segredo preservado", editHtml, StringComparison.Ordinal);
         Assert.Contains("Usar padrão global", editHtml, StringComparison.Ordinal);
         Assert.Contains("Salvar alterações", editHtml, StringComparison.Ordinal);
