@@ -11,7 +11,7 @@ namespace Sufficit.Identity.STS;
 /// boundary.
 /// </summary>
 public sealed class AspNetCoreIdentityExternalSignInService(
-    SignInManager<ApplicationUser> signInManager,
+    SufficitSignInManager signInManager,
     UserManager<ApplicationUser> userManager,
     IAccountExternalIdentityService externalIdentityService,
     IAccountOnboardingService onboardingService,
@@ -53,24 +53,38 @@ public sealed class AspNetCoreIdentityExternalSignInService(
             return new ExternalSignInResult(ExternalSignInStatus.Unavailable);
         }
 
-        if (forceMfa)
+        SetExternalAuthenticationContext(info.LoginProvider);
+        SignInResult signIn;
+        if (forceMfa && await userManager.FindByLoginAsync(
+                info.LoginProvider,
+                info.ProviderKey) is { } sensitiveUser)
         {
             // A remembered browser is allowed for ordinary interactive login,
             // but never for the sensitive Management return path. Clear the
-            // Identity remember-client cookie before evaluating the external
-            // sign-in so ExternalLoginSignInAsync must produce pending 2FA.
+            // Identity remember-client cookie before asking the canonical
+            // SignInManager flow to produce pending 2FA.
             await signInManager.ForgetTwoFactorClientAsync();
             logger.LogInformation(
                 "External sign-in through {Provider} requires fresh MFA for a sensitive return path.",
                 info.LoginProvider);
-        }
 
-        SetExternalAuthenticationContext(info.LoginProvider);
-        var signIn = await signInManager.ExternalLoginSignInAsync(
-            info.LoginProvider,
-            info.ProviderKey,
-            isPersistent: false,
-            bypassTwoFactor: false);
+            if (await userManager.IsLockedOutAsync(sensitiveUser))
+                return new ExternalSignInResult(ExternalSignInStatus.LockedOut);
+            if (!await signInManager.CanSignInAsync(sensitiveUser))
+                return new ExternalSignInResult(ExternalSignInStatus.NotAllowed);
+
+            signIn = await signInManager.SignInOrTwoFactorForExternalAsync(
+                sensitiveUser,
+                info.LoginProvider);
+        }
+        else
+        {
+            signIn = await signInManager.ExternalLoginSignInAsync(
+                info.LoginProvider,
+                info.ProviderKey,
+                isPersistent: false,
+                bypassTwoFactor: false);
+        }
         cancellationToken.ThrowIfCancellationRequested();
         if (signIn.Succeeded)
         {

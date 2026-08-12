@@ -33,6 +33,7 @@
            We forward the original endsession parameters back via hidden fields
            so the STS can apply post_logout_redirect_uri + state. *@
         <EditForm Method="post" Model="_empty" FormName="logout"
+                  data-enhance="false"
                   Action="/connect/endsession">
             @if (_idTokenHint is not null)
             {
