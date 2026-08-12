@@ -400,15 +400,30 @@
 }
 
 .users-field input[type="date"],
-.users-field select {
+.users-field .sui-field,
+.users-field .sui-select__trigger {
     width: 100%;
+}
+
+.users-field input[type="date"],
+.users-field .sui-select__trigger {
     min-height: 44px;
-    padding: 0 12px;
+    padding-inline: 12px;
     border: 1px solid var(--line-strong);
     border-radius: var(--radius);
     background: var(--surface);
     color: var(--ink);
     font-size: 12px;
+}
+
+.users-field .sui-select__trigger {
+    min-width: 0;
+}
+
+.users-field .sui-select__trigger:focus-visible {
+    border-color: var(--brand);
+    outline: 3px solid var(--brand-ring);
+    outline-offset: 0;
 }
 
 .users-field--search .search-field {
