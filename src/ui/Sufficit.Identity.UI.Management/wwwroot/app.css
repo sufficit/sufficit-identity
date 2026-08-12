@@ -3905,8 +3905,11 @@ h3 {
     width: min(100%, 1180px);
 }
 
-.client-detail-shell .detail-summary .status-badge {
+/* SUIStatusBadge owns its appearance in sufficit-blazor-ui; this rule only
+   prevents the summary grid from stretching the shared component. */
+.client-detail-shell .detail-summary .sui-status-badge {
     justify-self: start;
+    width: fit-content;
 }
 
 .client-detail-layout {
