@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Application.Accounts;
 
 namespace Sufficit.Identity.STS.Controllers;
@@ -15,7 +16,8 @@ namespace Sufficit.Identity.STS.Controllers;
 [AllowAnonymous]
 public sealed class TwoFactorLoginController(
     IInteractiveSignInService signInService,
-    IAntiforgery antiforgery) : ControllerBase
+    IAntiforgery antiforgery,
+    ILogger<TwoFactorLoginController> logger) : ControllerBase
 {
     [HttpPost("/account/login/2fa")]
     public async Task<IActionResult> Authenticator(
@@ -30,6 +32,10 @@ public sealed class TwoFactorLoginController(
         var rememberClient = ParseBoolean(request.RememberClient);
         if (!await ValidateAntiforgeryAsync())
         {
+            logger.LogWarning(
+                "MFA HTTP completion rejected by antiforgery validation. "
+                + "Flow=Authenticator; Outcome=RequestExpired; TraceId={TraceId}.",
+                AuthenticationFlowDiagnostics.TraceId);
             return RedirectToAuthenticator(
                 returnUrl,
                 rememberMe,
@@ -39,6 +45,11 @@ public sealed class TwoFactorLoginController(
         if (!await signInService.HasPendingTwoFactorSignInAsync(
                 cancellationToken))
         {
+            logger.LogInformation(
+                "MFA HTTP completion rejected because pending state is missing. "
+                + "Flow=Authenticator; Outcome=PendingStateMissing; "
+                + "TraceId={TraceId}.",
+                AuthenticationFlowDiagnostics.TraceId);
             return RedirectToAuthenticator(
                 returnUrl,
                 rememberMe,
@@ -74,12 +85,21 @@ public sealed class TwoFactorLoginController(
         var returnUrl = LocalUrlValidator.EnsureLocal(request.ReturnUrl);
         if (!await ValidateAntiforgeryAsync())
         {
+            logger.LogWarning(
+                "MFA HTTP completion rejected by antiforgery validation. "
+                + "Flow=RecoveryCode; Outcome=RequestExpired; TraceId={TraceId}.",
+                AuthenticationFlowDiagnostics.TraceId);
             return RedirectToRecoveryCode(returnUrl, "request_expired");
         }
 
         if (!await signInService.HasPendingTwoFactorSignInAsync(
                 cancellationToken))
         {
+            logger.LogInformation(
+                "MFA HTTP completion rejected because pending state is missing. "
+                + "Flow=RecoveryCode; Outcome=PendingStateMissing; "
+                + "TraceId={TraceId}.",
+                AuthenticationFlowDiagnostics.TraceId);
             return RedirectToRecoveryCode(
                 returnUrl,
                 "pending_state_missing");

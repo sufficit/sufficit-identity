@@ -52,8 +52,10 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
         if (mapped.Status == InteractiveSignInStatus.Succeeded)
         {
             logger.LogInformation(
-                "User {UserName} completed password sign-in.",
-                command.UserName);
+                "Password sign-in completed. User={UserName}; "
+                + "TraceId={TraceId}.",
+                command.UserName,
+                AuthenticationFlowDiagnostics.TraceId);
         }
 
         return mapped;
@@ -78,6 +80,10 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
             .GetTwoFactorAuthenticationUserAsync();
         if (pendingUser is null)
         {
+            logger.LogInformation(
+                "MFA authenticator completion rejected: pending state is "
+                + "missing. Outcome=PendingStateMissing; TraceId={TraceId}.",
+                AuthenticationFlowDiagnostics.TraceId);
             return new InteractiveSignInResult(
                 InteractiveSignInStatus.Failed);
         }
@@ -108,23 +114,26 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
         if (mapped.Status == InteractiveSignInStatus.Succeeded)
         {
             logger.LogInformation(
-                "User {UserId} completed authenticator sign-in with "
-                + "authentication methods {AuthenticationMethods} and "
-                + "context {AuthenticationContextClass}.",
+                "MFA completed. User={UserId}; Flow=Authenticator; "
+                + "Methods={AuthenticationMethods}; "
+                + "Context={AuthenticationContextClass}; TraceId={TraceId}.",
                 pendingUser.Id,
                 string.Join(
                     ' ',
                     authenticationContextAccessor.Current?.AuthenticationMethods
                         ?? []),
                 authenticationContextAccessor.Current?.AuthenticationContextClass
-                    ?? "missing");
+                    ?? "missing",
+                AuthenticationFlowDiagnostics.TraceId);
         }
         else
         {
             logger.LogWarning(
-                "Authenticator sign-in for user {UserId} ended with status {Status}.",
+                "MFA completion failed. User={UserId}; Flow=Authenticator; "
+                + "Outcome={Status}; TraceId={TraceId}.",
                 pendingUser.Id,
-                mapped.Status);
+                mapped.Status,
+                AuthenticationFlowDiagnostics.TraceId);
         }
 
         return mapped;
@@ -139,6 +148,10 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
             .GetTwoFactorAuthenticationUserAsync();
         if (pendingUser is null)
         {
+            logger.LogInformation(
+                "MFA recovery-code completion rejected: pending state is "
+                + "missing. Outcome=PendingStateMissing; TraceId={TraceId}.",
+                AuthenticationFlowDiagnostics.TraceId);
             return new InteractiveSignInResult(
                 InteractiveSignInStatus.Failed);
         }
@@ -159,8 +172,19 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
         if (mapped.Status == InteractiveSignInStatus.Succeeded)
         {
             logger.LogInformation(
-                "User {UserId} completed recovery-code sign-in.",
-                pendingUser.Id);
+                "MFA completed. User={UserId}; Flow=RecoveryCode; "
+                + "TraceId={TraceId}.",
+                pendingUser.Id,
+                AuthenticationFlowDiagnostics.TraceId);
+        }
+        else
+        {
+            logger.LogWarning(
+                "MFA completion failed. User={UserId}; Flow=RecoveryCode; "
+                + "Outcome={Status}; TraceId={TraceId}.",
+                pendingUser.Id,
+                mapped.Status,
+                AuthenticationFlowDiagnostics.TraceId);
         }
 
         return mapped;
