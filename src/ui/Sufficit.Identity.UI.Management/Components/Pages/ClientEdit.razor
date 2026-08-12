@@ -3,10 +3,10 @@
 @inject ManagementClientDataSource ClientData
 @inject NavigationManager Navigation
 
-<PageTitle>Editar aplicação | Sufficit Identity</PageTitle>
+<PageTitle>@PageTitleText</PageTitle>
 
-<SUIPageHeader Title="Editar aplicação"
-            Description="Altere qualquer seção e salve todas as mudanças de uma vez. O client secret existente nunca é alterado ou exibido.">
+<SUIPageHeader Title="@HeaderTitle"
+            Description="@HeaderDescription">
     <Actions>
         <a class="button button--secondary" href="@DetailHref">
             <SUIIcon Name="arrow-left" Size="17" />
@@ -333,6 +333,22 @@ else
     private bool backchannelLogoutSessionRequired;
 
     private string DetailHref => $"clients/{Uri.EscapeDataString(Id)}";
+    private string HeaderTitle =>
+        client is null
+            ? "Editar aplicação"
+            : $"Editar aplicação — {DisplayNameOrClientId}";
+
+    private string HeaderDescription => client is null
+        ? "Altere qualquer seção e salve todas as mudanças de uma vez."
+        : $"Aplicação: {client.ClientId}. Altere qualquer seção e salve todas as mudanças de uma vez. O client secret existente nunca é alterado ou exibido.";
+
+    private string PageTitleText => $"{DisplayNameOrClientId} — Editar aplicação | Sufficit Identity";
+
+    private string DisplayNameOrClientId =>
+        string.IsNullOrWhiteSpace(displayName)
+            ? client?.ClientId ?? "aplicação"
+            : displayName;
+
     private string SectionDescription => activeSection switch
     {
         0 => "Altere apenas os dados de apresentação e consentimento; o client ID permanece estável.",
