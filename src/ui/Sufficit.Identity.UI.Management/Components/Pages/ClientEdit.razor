@@ -128,30 +128,82 @@ else
             }
             else if (activeSection == 2)
             {
-                <div class="inline-notice inline-notice--info" role="status">
-                    <SUIIcon Name="clock" Size="19" />
-                    <div>
-                        <strong>Validade por aplicação</strong>
-                        <span>Deixe em branco para herdar o padrão global do servidor. Os limites protegem contra tokens excessivamente longos.</span>
+                <div class="lifetime-policy-editor">
+                    <div class="lifetime-policy-row">
+                        <div class="lifetime-policy-row__copy">
+                            <strong>Access token</strong>
+                            <span>Acesso às APIs da aplicação.</span>
+                        </div>
+                        <label class="lifetime-inherit-control">
+                            <input type="checkbox" @bind="inheritAccessTokenLifetime" />
+                            <span>Usar padrão global <small>@FormatMinutes(client.GlobalAccessTokenLifetimeMinutes)</small></span>
+                        </label>
+                        <label class="lifetime-value-control" for="edit-access-token-lifetime">
+                            <span>Valor personalizado</span>
+                            <span class="number-with-unit">
+                                <input id="edit-access-token-lifetime"
+                                       name="accessTokenLifetimeMinutes"
+                                       type="number"
+                                       min="1"
+                                       max="1440"
+                                       disabled="@inheritAccessTokenLifetime"
+                                       @bind="accessTokenLifetimeMinutes" />
+                                <span>min</span>
+                            </span>
+                        </label>
+                    </div>
+
+                    <div class="lifetime-policy-row">
+                        <div class="lifetime-policy-row__copy">
+                            <strong>ID token</strong>
+                            <span>Identidade entregue ao cliente OIDC.</span>
+                        </div>
+                        <label class="lifetime-inherit-control">
+                            <input type="checkbox" @bind="inheritIdentityTokenLifetime" />
+                            <span>Usar padrão global <small>@FormatMinutes(client.GlobalIdentityTokenLifetimeMinutes)</small></span>
+                        </label>
+                        <label class="lifetime-value-control" for="edit-identity-token-lifetime">
+                            <span>Valor personalizado</span>
+                            <span class="number-with-unit">
+                                <input id="edit-identity-token-lifetime"
+                                       name="identityTokenLifetimeMinutes"
+                                       type="number"
+                                       min="1"
+                                       max="120"
+                                       disabled="@inheritIdentityTokenLifetime"
+                                       @bind="identityTokenLifetimeMinutes" />
+                                <span>min</span>
+                            </span>
+                        </label>
+                    </div>
+
+                    <div class="lifetime-policy-row">
+                        <div class="lifetime-policy-row__copy">
+                            <strong>Refresh token</strong>
+                            <span>Janela máxima para renovar a sessão.</span>
+                        </div>
+                        <label class="lifetime-inherit-control">
+                            <input type="checkbox" @bind="inheritRefreshTokenLifetime" />
+                            <span>Usar padrão global <small>@FormatDays(client.GlobalRefreshTokenLifetimeDays)</small></span>
+                        </label>
+                        <label class="lifetime-value-control" for="edit-refresh-token-lifetime">
+                            <span>Valor personalizado</span>
+                            <span class="number-with-unit">
+                                <input id="edit-refresh-token-lifetime"
+                                       name="refreshTokenLifetimeDays"
+                                       type="number"
+                                       min="1"
+                                       max="365"
+                                       disabled="@inheritRefreshTokenLifetime"
+                                       @bind="refreshTokenLifetimeDays" />
+                                <span>dias</span>
+                            </span>
+                        </label>
                     </div>
                 </div>
-                <div class="form-grid form-grid--three">
-                    <div class="field-group">
-                        <label for="edit-access-token-lifetime">Access token (minutos)</label>
-                        <input id="edit-access-token-lifetime" name="accessTokenLifetimeMinutes" type="number" min="1" max="1440" class="form-control" @bind="accessTokenLifetimeMinutes" />
-                        <span class="field-hint">De 1 minuto a 24 horas.</span>
-                    </div>
-                    <div class="field-group">
-                        <label for="edit-identity-token-lifetime">ID token (minutos)</label>
-                        <input id="edit-identity-token-lifetime" name="identityTokenLifetimeMinutes" type="number" min="1" max="120" class="form-control" @bind="identityTokenLifetimeMinutes" />
-                        <span class="field-hint">De 1 a 120 minutos.</span>
-                    </div>
-                    <div class="field-group">
-                        <label for="edit-refresh-token-lifetime">Refresh token (dias)</label>
-                        <input id="edit-refresh-token-lifetime" name="refreshTokenLifetimeDays" type="number" min="1" max="365" class="form-control" @bind="refreshTokenLifetimeDays" />
-                        <span class="field-hint">De 1 a 365 dias.</span>
-                    </div>
-                </div>
+                <p class="field-hint lifetime-policy-editor__hint">
+                    Ao usar o padrão global, futuras mudanças do servidor passam a valer automaticamente para esta aplicação.
+                </p>
             }
             else
             {
@@ -211,6 +263,9 @@ else
 @code {
     [Parameter] public string Id { get; set; } = string.Empty;
 
+    [SupplyParameterFromQuery(Name = "section")]
+    public string? InitialSection { get; set; }
+
     private static readonly string[] Sections = ["Identidade", "Protocolos e scopes", "Tokens", "URLs e logout"];
     private ManagementClientDetail? client;
     private ManagementDataResult<ManagementClientDetail>? loadResult;
@@ -225,9 +280,12 @@ else
     private bool refreshToken;
     private bool clientCredentials;
     private bool deviceCode;
-    private int? accessTokenLifetimeMinutes;
-    private int? identityTokenLifetimeMinutes;
-    private int? refreshTokenLifetimeDays;
+    private bool inheritAccessTokenLifetime;
+    private bool inheritIdentityTokenLifetime;
+    private bool inheritRefreshTokenLifetime;
+    private int accessTokenLifetimeMinutes = 60;
+    private int identityTokenLifetimeMinutes = 20;
+    private int refreshTokenLifetimeDays = 14;
     private string scopesText = string.Empty;
     private string redirectUrisText = string.Empty;
     private string postLogoutRedirectUrisText = string.Empty;
@@ -251,6 +309,7 @@ else
         loadResult = await ClientData.GetClientAsync(Id);
         client = loadResult.Value;
         if (client is not null) Populate(client);
+        activeSection = SectionIndex(InitialSection);
         loading = false;
     }
 
@@ -263,9 +322,17 @@ else
         refreshToken = value.Permissions.Contains("gt:refresh_token", StringComparer.Ordinal);
         clientCredentials = value.Permissions.Contains("gt:client_credentials", StringComparer.Ordinal);
         deviceCode = value.Permissions.Contains("gt:device_code", StringComparer.Ordinal);
-        accessTokenLifetimeMinutes = value.AccessTokenLifetimeMinutes;
-        identityTokenLifetimeMinutes = value.IdentityTokenLifetimeMinutes;
-        refreshTokenLifetimeDays = value.RefreshTokenLifetimeDays;
+        inheritAccessTokenLifetime = value.AccessTokenLifetimeMinutes is null;
+        inheritIdentityTokenLifetime = value.IdentityTokenLifetimeMinutes is null;
+        inheritRefreshTokenLifetime = value.RefreshTokenLifetimeDays is null;
+        accessTokenLifetimeMinutes = value.AccessTokenLifetimeMinutes
+            ?? value.GlobalAccessTokenLifetimeMinutes;
+        identityTokenLifetimeMinutes = value.IdentityTokenLifetimeMinutes
+            ?? value.GlobalIdentityTokenLifetimeMinutes;
+        refreshTokenLifetimeDays = value.RefreshTokenLifetimeDays
+            ?? Math.Max(1, (int)Math.Round(
+                value.GlobalRefreshTokenLifetimeDays,
+                MidpointRounding.AwayFromZero));
         scopesText = string.Join(Environment.NewLine, value.Permissions.Where(p => p.StartsWith("scp:", StringComparison.Ordinal)).Select(p => p[4..]));
         redirectUrisText = string.Join(Environment.NewLine, value.RedirectUris);
         postLogoutRedirectUrisText = string.Join(Environment.NewLine, value.PostLogoutRedirectUris);
@@ -283,6 +350,15 @@ else
         if (client is null) return;
         saving = true;
         errorMessage = null;
+        int? accessLifetime = inheritAccessTokenLifetime
+            ? null
+            : accessTokenLifetimeMinutes;
+        int? identityLifetime = inheritIdentityTokenLifetime
+            ? null
+            : identityTokenLifetimeMinutes;
+        int? refreshLifetime = inheritRefreshTokenLifetime
+            ? null
+            : refreshTokenLifetimeDays;
         var result = await ClientData.UpdateClientAsync(new UpdateManagementClientCommand(
             client.ClientId,
             displayName,
@@ -298,12 +374,12 @@ else
             backchannelLogoutSessionRequired,
             client.Version,
             null,
-            accessTokenLifetimeMinutes,
-            identityTokenLifetimeMinutes,
-            refreshTokenLifetimeDays,
-            accessTokenLifetimeMinutes is null,
-            identityTokenLifetimeMinutes is null,
-            refreshTokenLifetimeDays is null));
+            accessLifetime,
+            identityLifetime,
+            refreshLifetime,
+            inheritAccessTokenLifetime,
+            inheritIdentityTokenLifetime,
+            inheritRefreshTokenLifetime));
         saving = false;
         if (result.IsSuccess)
         {
@@ -327,6 +403,25 @@ else
         .Split(['\r', '\n', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         .Distinct(StringComparer.Ordinal)
         .ToArray();
+
+    private static int SectionIndex(string? section) =>
+        section?.Trim().ToLowerInvariant() switch
+        {
+            "identity" => 0,
+            "protocols" or "scopes" => 1,
+            "tokens" => 2,
+            "urls" or "logout" => 3,
+            _ => 0,
+        };
+
+    private static string FormatMinutes(int minutes) =>
+        minutes is 1 ? "1 minuto" : $"{minutes} minutos";
+
+    private static string FormatDays(double days)
+    {
+        var value = days.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture);
+        return days is 1 ? "1 dia" : $"{value} dias";
+    }
 
     private static string ClientTypeLabel(string? type) => type?.ToLowerInvariant() switch
     {

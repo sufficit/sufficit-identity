@@ -1,5 +1,6 @@
 #if !APPLICATION_CONTRACTS
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using OpenIddict.EntityFrameworkCore.Models;
@@ -136,7 +137,10 @@ public sealed record ManagementClientDetail(
     string? JwksUri = null,
     int? AccessTokenLifetimeMinutes = null,
     int? IdentityTokenLifetimeMinutes = null,
-    int? RefreshTokenLifetimeDays = null);
+    int? RefreshTokenLifetimeDays = null,
+    int GlobalAccessTokenLifetimeMinutes = 60,
+    int GlobalIdentityTokenLifetimeMinutes = 20,
+    double GlobalRefreshTokenLifetimeDays = 14);
 
 public sealed record CreateManagementClientCommand(
     string ClientId,
@@ -189,6 +193,7 @@ internal sealed class ClientManagementService(
     IManagementAuthorizationEvaluator authorization,
     IReservedScopePolicy reservedScopePolicy,
     IClientDefinitionValidator clientDefinitionValidator,
+    IConfiguration configuration,
     ILogger<ClientManagementService> logger) : IClientManagementService
 {
     private const int MinimumAccessTokenLifetimeMinutes = 1;
@@ -1158,7 +1163,13 @@ internal sealed class ClientManagementService(
                 OpenIddictConstants.Settings.TokenLifetimes.IdentityToken),
             RefreshTokenLifetimeDays: GetLifetimeDays(
                 settings,
-                OpenIddictConstants.Settings.TokenLifetimes.RefreshToken));
+                OpenIddictConstants.Settings.TokenLifetimes.RefreshToken),
+            GlobalAccessTokenLifetimeMinutes: configuration.GetValue<int?>(
+                "Sufficit:Identity:Tokens:AccessTokenLifetimeMinutes") ?? 60,
+            GlobalIdentityTokenLifetimeMinutes: configuration.GetValue<int?>(
+                "Sufficit:Identity:Tokens:IdentityTokenLifetimeMinutes") ?? 20,
+            GlobalRefreshTokenLifetimeDays: configuration.GetValue<double?>(
+                "Sufficit:Identity:Tokens:RefreshTokenLifetimeDays") ?? 14);
     }
 
     private static void ValidateTokenLifetimes(

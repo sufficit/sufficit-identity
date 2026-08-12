@@ -39,6 +39,7 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
 {
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     private readonly bool _bypassAuthz;
+    private readonly IReadOnlyDictionary<string, string?>? _extraConfiguration;
     private string? _routePrefix;
 
     /// <summary>
@@ -60,9 +61,12 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
         return factory;
     }
 
-    public ManagementTestFactory(bool bypassAuthz = true)
+    public ManagementTestFactory(
+        bool bypassAuthz = true,
+        IReadOnlyDictionary<string, string?>? extraConfiguration = null)
     {
         _bypassAuthz = bypassAuthz;
+        _extraConfiguration = extraConfiguration;
         _connection.Open();
         // Same UTC_TIMESTAMP shim as SufficitIdentityTestFactory: the legacy
         // Timestamp default uses UTC_TIMESTAMP(), while CreatedAtUtc uses the
@@ -110,6 +114,10 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
                 {
                     ["Sufficit:Identity:Management:RoutePrefix"] = _routePrefix,
                 });
+            }
+            if (_extraConfiguration is { Count: > 0 })
+            {
+                config.AddInMemoryCollection(_extraConfiguration);
             }
         });
 

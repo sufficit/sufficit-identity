@@ -73,7 +73,7 @@
 }
 else if (result?.IsSuccess is true && result.Value is not null)
 {
-    <div class="detail-shell">
+    <div class="detail-shell client-detail-shell">
         <div class="detail-summary">
             <div>
                 <span class="detail-label">Client ID</span>
@@ -103,111 +103,190 @@ else if (result?.IsSuccess is true && result.Value is not null)
             </div>
         }
 
-        <div class="detail-columns">
-            <div aria-labelledby="redirect-heading">
-                <h2 id="redirect-heading">Redirect URIs</h2>
-                @if (client.RedirectUris.Count is 0)
-                {
-                    <p class="detail-empty">Nenhuma URI de redirecionamento registrada.</p>
-                }
-                else
-                {
-                    <ul class="technical-list">
-                        @foreach (var uri in client.RedirectUris)
-                        {
-                            <li><code>@uri</code></li>
-                        }
-                    </ul>
-                }
-            </div>
+        <div class="client-detail-layout">
+            <section class="client-detail-panel client-detail-panel--permissions"
+                     aria-labelledby="permission-heading">
+                <header class="client-detail-panel__heading">
+                    <div>
+                        <h2 id="permission-heading">Protocolos e permissões</h2>
+                        <p>@client.Permissions.Count permissões registradas</p>
+                    </div>
+                </header>
 
-            <div aria-labelledby="permission-heading">
-                <h2 id="permission-heading">Permissões</h2>
                 @if (client.Permissions.Count is 0)
                 {
                     <p class="detail-empty">Nenhuma permissão registrada.</p>
                 }
                 else
                 {
-                    <ul class="technical-list technical-list--tokens">
-                        @foreach (var permission in client.Permissions)
+                    <div class="permission-groups">
+                        @if (HasPermissionPrefix(client, "gt:"))
                         {
-                            <li><code>@PermissionLabel(permission)</code></li>
-                        }
-                    </ul>
-                }
-            </div>
-        </div>
-
-        <div class="detail-columns">
-            <div aria-labelledby="token-lifetime-heading">
-                <h2 id="token-lifetime-heading">Validade dos tokens</h2>
-                <dl class="technical-list">
-                    <div><dt>Access token</dt><dd>@FormatLifetime(client.AccessTokenLifetimeMinutes, "min", "default global")</dd></div>
-                    <div><dt>ID token</dt><dd>@FormatLifetime(client.IdentityTokenLifetimeMinutes, "min", "default global")</dd></div>
-                    <div><dt>Refresh token</dt><dd>@FormatLifetime(client.RefreshTokenLifetimeDays, "dias", "default global")</dd></div>
-                </dl>
-            </div>
-            <div aria-labelledby="post-logout-heading">
-                <h2 id="post-logout-heading">Redirecionamento após logout</h2>
-                @if (client.PostLogoutRedirectUris.Count is 0)
-                {
-                    <p class="detail-empty">Nenhum destino pós-logout registrado.</p>
-                }
-                else
-                {
-                    <ul class="technical-list">
-                        @foreach (var uri in client.PostLogoutRedirectUris)
-                        {
-                            <li><code>@uri</code></li>
-                        }
-                    </ul>
-                }
-            </div>
-
-            <div aria-labelledby="federated-logout-heading">
-                <h2 id="federated-logout-heading">Logout federado</h2>
-                @if (client.FrontchannelLogoutUri is null && client.BackchannelLogoutUri is null)
-                {
-                    <p class="detail-empty">Nenhum endpoint de logout federado registrado.</p>
-                }
-                else
-                {
-                    <dl class="technical-list">
-                        @if (client.FrontchannelLogoutUri is not null)
-                        {
-                            <div>
-                                <dt>Front-channel</dt>
-                                <dd><code>@client.FrontchannelLogoutUri</code></dd>
+                            <div class="permission-group">
+                                <span class="detail-label">Grants</span>
+                                <div class="permission-badges">
+                                    @foreach (var permission in PermissionsWithPrefix(client, "gt:"))
+                                    {
+                                        <code class="permission-badge permission-badge--grant">@PermissionValue(permission)</code>
+                                    }
+                                </div>
                             </div>
                         }
-                        @if (client.BackchannelLogoutUri is not null)
+                        @if (HasPermissionPrefix(client, "scp:"))
                         {
-                            <div>
-                                <dt>Back-channel</dt>
-                                <dd><code>@client.BackchannelLogoutUri</code></dd>
+                            <div class="permission-group">
+                                <span class="detail-label">Scopes</span>
+                                <div class="permission-badges">
+                                    @foreach (var permission in PermissionsWithPrefix(client, "scp:"))
+                                    {
+                                        <code class="permission-badge">@PermissionValue(permission)</code>
+                                    }
+                                </div>
                             </div>
                         }
-                    </dl>
+                        @if (HasOtherPermissions(client))
+                        {
+                            <div class="permission-group">
+                                <span class="detail-label">Endpoints e respostas</span>
+                                <div class="permission-badges">
+                                    @foreach (var permission in OtherPermissions(client))
+                                    {
+                                        <code class="permission-badge permission-badge--muted">@PermissionLabel(permission)</code>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
                 }
-            </div>
-        </div>
+            </section>
 
-        @if (client.Requirements.Count > 0)
-        {
-            <div class="requirements-line" aria-labelledby="requirements-heading">
-                <div>
-                    <h2 id="requirements-heading">Requisitos de segurança</h2>
-                    <p>Controles adicionais aplicados pelo servidor durante a autorização.</p>
-                </div>
-                <div class="token-row">
-                    @foreach (var requirement in client.Requirements)
+            <section class="client-detail-panel client-detail-panel--tokens"
+                     aria-labelledby="token-lifetime-heading">
+                <header class="client-detail-panel__heading client-detail-panel__heading--action">
+                    <div>
+                        <h2 id="token-lifetime-heading">Validade dos tokens</h2>
+                        <p>Valor efetivo e origem da política</p>
+                    </div>
+                    @if (!client.IsManifestManaged)
                     {
-                        <SUIStatusBadge Tone="info">@RequirementLabel(requirement)</SUIStatusBadge>
+                        <a class="compact-action" href="@EditTokensHref(client.Id)">Ajustar</a>
                     }
+                </header>
+                <dl class="token-policy-list">
+                    <div>
+                        <dt>Access token</dt>
+                        <dd>
+                            <strong>@FormatMinutes(client.AccessTokenLifetimeMinutes ?? client.GlobalAccessTokenLifetimeMinutes)</strong>
+                            <span>@PolicySource(client.AccessTokenLifetimeMinutes)</span>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>ID token</dt>
+                        <dd>
+                            <strong>@FormatMinutes(client.IdentityTokenLifetimeMinutes ?? client.GlobalIdentityTokenLifetimeMinutes)</strong>
+                            <span>@PolicySource(client.IdentityTokenLifetimeMinutes)</span>
+                        </dd>
+                    </div>
+                    <div>
+                        <dt>Refresh token</dt>
+                        <dd>
+                            <strong>@FormatDays(client.RefreshTokenLifetimeDays ?? client.GlobalRefreshTokenLifetimeDays)</strong>
+                            <span>@PolicySource(client.RefreshTokenLifetimeDays)</span>
+                        </dd>
+                    </div>
+                </dl>
+            </section>
+
+            <section class="client-detail-panel client-detail-panel--uris"
+                     aria-labelledby="redirect-heading">
+                <header class="client-detail-panel__heading">
+                    <div>
+                        <h2 id="redirect-heading">Destinos e logout</h2>
+                        <p>URLs utilizadas pelo navegador e pelos canais de encerramento</p>
+                    </div>
+                </header>
+                <div class="uri-groups">
+                    <div class="uri-group">
+                        <div class="uri-group__heading">
+                            <h3>Redirect URIs</h3>
+                            <span>@client.RedirectUris.Count</span>
+                        </div>
+                        @if (client.RedirectUris.Count is 0)
+                        {
+                            <p class="detail-empty">Nenhuma URI registrada.</p>
+                        }
+                        else
+                        {
+                            <ul class="compact-uri-list">
+                                @foreach (var uri in client.RedirectUris)
+                                {
+                                    <li><code>@uri</code></li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                    <div class="uri-group">
+                        <div class="uri-group__heading">
+                            <h3>Após logout</h3>
+                            <span>@client.PostLogoutRedirectUris.Count</span>
+                        </div>
+                        @if (client.PostLogoutRedirectUris.Count is 0)
+                        {
+                            <p class="detail-empty">Nenhum destino registrado.</p>
+                        }
+                        else
+                        {
+                            <ul class="compact-uri-list">
+                                @foreach (var uri in client.PostLogoutRedirectUris)
+                                {
+                                    <li><code>@uri</code></li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                    <div class="uri-group">
+                        <div class="uri-group__heading">
+                            <h3>Logout federado</h3>
+                            <span>@FederatedLogoutCount(client)</span>
+                        </div>
+                        @if (client.FrontchannelLogoutUri is null && client.BackchannelLogoutUri is null)
+                        {
+                            <p class="detail-empty">Nenhum endpoint registrado.</p>
+                        }
+                        else
+                        {
+                            <dl class="compact-uri-list compact-uri-list--definition">
+                                @if (client.FrontchannelLogoutUri is not null)
+                                {
+                                    <div><dt>Front-channel</dt><dd><code>@client.FrontchannelLogoutUri</code></dd></div>
+                                }
+                                @if (client.BackchannelLogoutUri is not null)
+                                {
+                                    <div><dt>Back-channel</dt><dd><code>@client.BackchannelLogoutUri</code></dd></div>
+                                }
+                            </dl>
+                        }
+                    </div>
                 </div>
-            </div>
-        }
+            </section>
+
+            @if (client.Requirements.Count > 0)
+            {
+                <section class="client-detail-panel client-detail-panel--requirements"
+                         aria-labelledby="requirements-heading">
+                    <div>
+                        <h2 id="requirements-heading">Requisitos de segurança</h2>
+                        <p>Controles adicionais aplicados durante a autorização.</p>
+                    </div>
+                    <div class="token-row">
+                        @foreach (var requirement in client.Requirements)
+                        {
+                            <SUIStatusBadge Tone="info">@RequirementLabel(requirement)</SUIStatusBadge>
+                        }
+                    </div>
+                </section>
+            }
+        </div>
     </div>
 
     <div class="danger-zone" aria-labelledby="delete-client-heading">
@@ -328,6 +407,9 @@ else
     private static string EditHref(string id) =>
         $"clients/{Uri.EscapeDataString(id)}/edit";
 
+    private static string EditTokensHref(string id) =>
+        $"clients/{Uri.EscapeDataString(id)}/edit?section=tokens";
+
     private bool CanDelete =>
         !deleting
         && result?.Value is not null
@@ -427,6 +509,52 @@ else
             _ => requirement
         };
 
-    private static string FormatLifetime(int? value, string unit, string fallback) =>
-        value is { } lifetime ? $"{lifetime} {unit}" : fallback;
+    private static bool HasPermissionPrefix(
+        ManagementClientDetail client,
+        string prefix) =>
+        client.Permissions.Any(permission => permission.StartsWith(
+            prefix,
+            StringComparison.Ordinal));
+
+    private static IEnumerable<string> PermissionsWithPrefix(
+        ManagementClientDetail client,
+        string prefix) =>
+        client.Permissions.Where(permission => permission.StartsWith(
+            prefix,
+            StringComparison.Ordinal));
+
+    private static bool HasOtherPermissions(ManagementClientDetail client) =>
+        client.Permissions.Any(permission =>
+            !permission.StartsWith("gt:", StringComparison.Ordinal)
+            && !permission.StartsWith("scp:", StringComparison.Ordinal));
+
+    private static IEnumerable<string> OtherPermissions(
+        ManagementClientDetail client) =>
+        client.Permissions.Where(permission =>
+            !permission.StartsWith("gt:", StringComparison.Ordinal)
+            && !permission.StartsWith("scp:", StringComparison.Ordinal));
+
+    private static string PermissionValue(string permission)
+    {
+        var separator = permission.IndexOf(':', StringComparison.Ordinal);
+        return separator >= 0 && separator < permission.Length - 1
+            ? permission[(separator + 1)..]
+            : permission;
+    }
+
+    private static int FederatedLogoutCount(ManagementClientDetail client) =>
+        (client.FrontchannelLogoutUri is null ? 0 : 1)
+        + (client.BackchannelLogoutUri is null ? 0 : 1);
+
+    private static string PolicySource(int? configuredValue) =>
+        configuredValue is null ? "Padrão global" : "Personalizado";
+
+    private static string FormatMinutes(int minutes) =>
+        minutes is 1 ? "1 minuto" : $"{minutes} minutos";
+
+    private static string FormatDays(double days)
+    {
+        var value = days.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture);
+        return days is 1 ? "1 dia" : $"{value} dias";
+    }
 }

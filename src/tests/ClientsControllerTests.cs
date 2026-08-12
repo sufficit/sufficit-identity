@@ -171,6 +171,35 @@ public sealed class ClientsControllerTests
         Assert.InRange(token.GetProperty("expires_in").GetInt32(), 17 * 60 - 2, 17 * 60);
     }
 
+    [Fact]
+    public async Task Detail_exposes_the_effective_global_token_lifetimes()
+    {
+        using var factory = new ManagementTestFactory(extraConfiguration:
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Tokens:AccessTokenLifetimeMinutes"] = "37",
+                ["Sufficit:Identity:Tokens:IdentityTokenLifetimeMinutes"] = "13",
+                ["Sufficit:Identity:Tokens:RefreshTokenLifetimeDays"] = "2.5",
+            });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        var request = ConfidentialClient(
+            $"cc-global-lifetime-{Guid.NewGuid():N}",
+            "https://client.tests.local/callback");
+
+        using var created = await client.PostAsJsonAsync("/api/clients", request);
+
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var body = await created.Content.ReadFromJsonAsync<ManagementClientDetail>();
+        Assert.NotNull(body);
+        Assert.Null(body.AccessTokenLifetimeMinutes);
+        Assert.Null(body.IdentityTokenLifetimeMinutes);
+        Assert.Null(body.RefreshTokenLifetimeDays);
+        Assert.Equal(37, body.GlobalAccessTokenLifetimeMinutes);
+        Assert.Equal(13, body.GlobalIdentityTokenLifetimeMinutes);
+        Assert.Equal(2.5, body.GlobalRefreshTokenLifetimeDays);
+    }
+
     [Theory]
     [InlineData(0, null, null)]
     [InlineData(null, 121, null)]
