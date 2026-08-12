@@ -68,10 +68,18 @@ else
                     <Actions>
                         @if (MfaIsPending)
                         {
-                            <a class="button button--primary"
-                               href="/account/logout"
+                            <form method="post"
+                                  action="/connect/endsession"
+                                  data-enhance="false">
+                                <AntiforgeryToken />
+                                <button class="button button--primary" type="submit">
+                                    Encerrar sessão e entrar com MFA
+                                </button>
+                            </form>
+                            <a class="button button--secondary"
+                               href="/management/"
                                data-enhance-nav="false">
-                                Sair e entrar com MFA
+                                Recarregar sessão
                             </a>
                             <a class="button button--secondary"
                                href="/manage/twofactor"
@@ -216,7 +224,7 @@ else
 
     private string NoAccessDescription =>
         MfaIsPending
-            ? "O autenticador já pode estar configurado, mas esta sessão ainda foi aberta somente com senha. Saia, entre novamente e informe o código de seis dígitos para liberar o Management."
+            ? "Esta sessão não contém evidência de MFA. Encerre-a, entre novamente e informe o código de seis dígitos; se o MFA foi concluído em outra aba, use Recarregar sessão."
             : "O runtime não concedeu acesso a nenhum módulo para esta sessão.";
 
     private bool MfaIsPending =>
