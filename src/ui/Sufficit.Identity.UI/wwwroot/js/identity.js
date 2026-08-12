@@ -187,13 +187,21 @@ document.addEventListener('change', function (event) {
             form.dataset.consentSubmitted = 'true';
             form.setAttribute('aria-busy', 'true');
 
-            var controls = form.querySelectorAll('button, input[type="checkbox"]');
-            for (var i = 0; i < controls.length; i++) {
-                controls[i].disabled = true;
-            }
-
             var completion = form.querySelector('[data-consent-submitted]');
             if (completion) completion.hidden = false;
+
+            // The submitter and checked scopes are part of the form data. A
+            // control disabled synchronously from this event is excluded by
+            // the browser before the POST body is built, which drops both
+            // `consent_decision` and `scope` and sends the user back to an
+            // empty consent page. Defer the visual lock until after the
+            // browser has captured the form data for navigation.
+            window.setTimeout(function () {
+                var controls = form.querySelectorAll('button, input[type="checkbox"]');
+                for (var i = 0; i < controls.length; i++) {
+                    controls[i].disabled = true;
+                }
+            }, 0);
         });
     }
 
