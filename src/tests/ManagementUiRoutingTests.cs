@@ -241,6 +241,15 @@ public sealed class ManagementUiRoutingTests
             html,
             StringComparison.Ordinal);
         Assert.Contains("Confirmar e gerar token", html, StringComparison.Ordinal);
+        Assert.Contains("2 de 24 capabilities", html, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "operator-token-capability-summary",
+            html,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "operator-token-selected",
+            html,
+            StringComparison.Ordinal);
         Assert.DoesNotContain("MFA obrigatório", html, StringComparison.Ordinal);
         Assert.DoesNotContain("token-value-from-server", html, StringComparison.Ordinal);
     }

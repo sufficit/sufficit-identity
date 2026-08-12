@@ -160,38 +160,6 @@ else
                 </label>
             </div>
 
-            <div class="operator-token-capability-summary">
-                <div>
-                    <strong>Escopo da credencial</strong>
-                    <span>@SelectedCapabilitySummary</span>
-                </div>
-                @if (selectedCapabilities.Count > 0)
-                {
-                    <button type="button"
-                            class="button button--ghost"
-                            disabled="@issuing"
-                            @onclick="ClearCapabilities">
-                        Limpar seleção
-                    </button>
-                }
-            </div>
-
-            @if (selectedCapabilities.Count > 0)
-            {
-                <div class="operator-token-selected" aria-label="Capabilities selecionadas">
-                    @foreach (var capability in selectedCapabilities.Order(StringComparer.Ordinal))
-                    {
-                        <button type="button"
-                                title="Remover @capability"
-                                disabled="@issuing"
-                                @onclick="() => RemoveCapability(capability)">
-                            <code>@capability</code>
-                            <span aria-hidden="true">×</span>
-                        </button>
-                    }
-                </div>
-            }
-
             <details class="operator-token-capability-picker" open="@capabilityPickerOpen">
                 <summary>Selecionar capabilities</summary>
                 <div class="operator-token-capability-picker__body">
@@ -484,13 +452,6 @@ else
         MfaSatisfied: false
     };
 
-    private string SelectedCapabilitySummary => selectedCapabilities.Count switch
-    {
-        0 => "Nenhum acesso selecionado",
-        1 => "1 capability selecionada",
-        _ => $"{selectedCapabilities.Count} capabilities selecionadas",
-    };
-
     private void ApplyQueryRequest()
     {
         queryPrepared = string.Equals(
@@ -653,18 +614,6 @@ else
             selectedCapabilities.Remove(capability);
         }
 
-        SynchronizeRequestUrl();
-    }
-
-    private void RemoveCapability(string capability)
-    {
-        selectedCapabilities.Remove(capability);
-        SynchronizeRequestUrl();
-    }
-
-    private void ClearCapabilities()
-    {
-        selectedCapabilities.Clear();
         SynchronizeRequestUrl();
     }
 
