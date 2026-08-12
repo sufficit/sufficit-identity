@@ -242,6 +242,7 @@ public sealed class ManagementUiRoutingTests
             StringComparison.Ordinal);
         Assert.Contains("Confirmar e gerar token", html, StringComparison.Ordinal);
         Assert.Contains("2 de 24 capabilities", html, StringComparison.Ordinal);
+        Assert.Contains("data-sui-align-row", html, StringComparison.Ordinal);
         Assert.DoesNotContain(
             "operator-token-capability-summary",
             html,

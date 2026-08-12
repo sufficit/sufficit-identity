@@ -1450,6 +1450,32 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Operator_token_fields_neutralize_vertical_sibling_rhythm()
+    {
+        var managementUi = ResolveManagementUiSource();
+        var page = File.ReadAllText(Path.Combine(
+            managementUi,
+            "Components",
+            "Pages",
+            "OperatorTokens.razor"));
+        var stylesheet = File.ReadAllText(Path.Combine(
+            managementUi,
+            "wwwroot",
+            "app.css"));
+
+        Assert.Contains("data-sui-align-row", page, StringComparison.Ordinal);
+        Assert.Contains(
+            ".operator-token-fields > .field-group {",
+            stylesheet,
+            StringComparison.Ordinal);
+        Assert.Contains("align-self: start;", stylesheet, StringComparison.Ordinal);
+        Assert.Contains(
+            "margin-block-start: 0;",
+            stylesheet,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Client_list_filters_use_shared_selects_and_responsive_grid()
     {
         var managementUi = ResolveManagementUiSource();
