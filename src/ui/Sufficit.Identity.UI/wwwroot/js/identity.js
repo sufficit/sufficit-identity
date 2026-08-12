@@ -90,10 +90,28 @@ document.addEventListener('change', function (event) {
             return false;
         }
 
+        // Keep both close strategies: window.close() works in browsers that
+        // honor the direct script-created context, while retargeting the
+        // current context before closing is required by other browsers. They
+        // are complementary, not interchangeable; removing either one can
+        // regress a browser-specific device-flow scenario. The opener gate
+        // above is equally important because manually opened tabs must not
+        // invoke either method and trigger a blocked-close warning.
         try {
             window.close();
         } catch (_) {
             // Some browsers throw when script closure is disallowed.
+        }
+
+        if (window.closed === true) {
+            return true;
+        }
+
+        try {
+            var currentWindow = window.open('', '_self');
+            if (currentWindow) currentWindow.close();
+        } catch (_) {
+            // The manual completion message below remains the safe fallback.
         }
 
         return window.closed === true;
