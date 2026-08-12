@@ -70,15 +70,15 @@
 }
 
 <div class="table-panel" aria-labelledby="clients-list-heading" aria-busy="@loading">
-    <div class="data-toolbar">
+    <div class="data-toolbar data-toolbar--clients">
         <div>
             <h2 id="clients-list-heading">Aplicações registradas</h2>
             <p>@ToolbarDescription</p>
         </div>
-        <div class="data-toolbar__actions">
+        <div class="data-toolbar__actions clients-filters">
             @if (CanFilter)
             {
-                <label class="search-field">
+                <label class="search-field clients-filter--search">
                     <span class="visually-hidden">Pesquisar aplicações</span>
                     <SUIIcon Name="search" Size="18" />
                     <input type="search"
@@ -88,40 +88,40 @@
                            value="@search"
                            @onchange="SearchChanged" />
                 </label>
-                <label class="compact-filter">
+                <div class="compact-filter clients-filter">
                     <span>Tipo</span>
-                    <select id="client-type-filter" name="type" class="form-control" value="@typeFilter" @onchange="TypeChanged">
-                        <option value="all">Todos</option>
-                        <option value="public">Públicos</option>
-                        <option value="confidential">Confidenciais</option>
-                    </select>
-                </label>
-                <label class="compact-filter">
+                    <SUISelect T="string" id="client-type-filter" name="type" aria-label="Tipo" Value="@typeFilter" ValueChanged="TypeSelected">
+                        <SUISelectItem Value="@("all")">Todos</SUISelectItem>
+                        <SUISelectItem Value="@("public")">Públicos</SUISelectItem>
+                        <SUISelectItem Value="@("confidential")">Confidenciais</SUISelectItem>
+                    </SUISelect>
+                </div>
+                <div class="compact-filter clients-filter">
                     <span>Fluxo</span>
-                    <select id="client-grant-filter" name="grant" class="form-control" value="@grantFilter" @onchange="GrantChanged">
-                        <option value="all">Todos os fluxos</option>
-                        <option value="authorization_code">Authorization Code</option>
-                        <option value="client_credentials">Client Credentials</option>
-                        <option value="device_code">Device Code</option>
-                        <option value="refresh_token">Refresh Token</option>
-                    </select>
-                </label>
-                <label class="compact-filter">
+                    <SUISelect T="string" id="client-grant-filter" name="grant" aria-label="Fluxo" Value="@grantFilter" ValueChanged="GrantSelected">
+                        <SUISelectItem Value="@("all")">Todos os fluxos</SUISelectItem>
+                        <SUISelectItem Value="@("authorization_code")">Authorization Code</SUISelectItem>
+                        <SUISelectItem Value="@("client_credentials")">Client Credentials</SUISelectItem>
+                        <SUISelectItem Value="@("device_code")">Device Code</SUISelectItem>
+                        <SUISelectItem Value="@("refresh_token")">Refresh Token</SUISelectItem>
+                    </SUISelect>
+                </div>
+                <div class="compact-filter clients-filter">
                     <span>Origem</span>
-                    <select id="client-origin-filter" name="origin" class="form-control" value="@originFilter" @onchange="OriginChanged">
-                        <option value="all">Todas</option>
-                        <option value="manual">Manual</option>
-                        <option value="manifest">Manifesto</option>
-                    </select>
-                </label>
-                <label class="compact-filter">
+                    <SUISelect T="string" id="client-origin-filter" name="origin" aria-label="Origem" Value="@originFilter" ValueChanged="OriginSelected">
+                        <SUISelectItem Value="@("all")">Todas</SUISelectItem>
+                        <SUISelectItem Value="@("manual")">Manual</SUISelectItem>
+                        <SUISelectItem Value="@("manifest")">Manifesto</SUISelectItem>
+                    </SUISelect>
+                </div>
+                <div class="compact-filter clients-filter">
                     <span>Estado</span>
-                    <select id="client-status-filter" name="status" class="form-control" value="@statusFilter" @onchange="StatusChanged">
-                        <option value="all">Todos</option>
-                        <option value="active">Ativos</option>
-                    </select>
-                </label>
-                <label class="compact-filter compact-filter--text">
+                    <SUISelect T="string" id="client-status-filter" name="status" aria-label="Estado" Value="@statusFilter" ValueChanged="StatusSelected">
+                        <SUISelectItem Value="@("all")">Todos</SUISelectItem>
+                        <SUISelectItem Value="@("active")">Ativos</SUISelectItem>
+                    </SUISelect>
+                </div>
+                <label class="compact-filter compact-filter--text clients-filter">
                     <span>Scope</span>
                     <input id="client-scope-filter" name="scope" class="form-control" value="@scopeFilter" placeholder="ex.: openid" @onchange="ScopeChanged" />
                 </label>
@@ -436,15 +436,15 @@
         SyncUrl(resetPage: true);
     }
 
-    private void TypeChanged(ChangeEventArgs args)
+    private void TypeSelected(string? value)
     {
-        typeFilter = NormalizeType(args.Value?.ToString());
+        typeFilter = NormalizeType(value);
         SyncUrl(resetPage: true);
     }
 
-    private void GrantChanged(ChangeEventArgs args)
+    private void GrantSelected(string? value)
     {
-        grantFilter = NormalizeGrant(args.Value?.ToString());
+        grantFilter = NormalizeGrant(value);
         SyncUrl(resetPage: true);
     }
 
@@ -454,15 +454,15 @@
         SyncUrl(resetPage: true);
     }
 
-    private void OriginChanged(ChangeEventArgs args)
+    private void OriginSelected(string? value)
     {
-        originFilter = NormalizeOrigin(args.Value?.ToString());
+        originFilter = NormalizeOrigin(value);
         SyncUrl(resetPage: true);
     }
 
-    private void StatusChanged(ChangeEventArgs args)
+    private void StatusSelected(string? value)
     {
-        statusFilter = NormalizeStatus(args.Value?.ToString());
+        statusFilter = NormalizeStatus(value);
         SyncUrl(resetPage: true);
     }
 
