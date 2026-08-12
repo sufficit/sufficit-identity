@@ -145,6 +145,10 @@ public sealed class InteractiveSignInServiceTests(
         Assert.Contains("pwd", methods);
         Assert.Contains("otp", methods);
         Assert.Contains("mfa", methods);
+        Assert.Equal("Loa2", ticket.Principal.FindFirst("aal")?.Value);
+        Assert.Equal(
+            "urn:sufficit:acr:loa2",
+            ticket.Principal.FindFirst("acr")?.Value);
     }
 
     [Fact]
