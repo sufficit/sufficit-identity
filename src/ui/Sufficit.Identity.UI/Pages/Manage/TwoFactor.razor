@@ -18,7 +18,7 @@
         {
             <div class="alert alert-error" role="alert">@_error</div>
         }
-        @if (_success is not null)
+        else if (_success is not null)
         {
             <div class="alert alert-success" role="status">@_success</div>
         }
@@ -173,6 +173,7 @@
         _loading = true;
         _loadFailed = false;
         _error = null;
+        _success = null;
         try
         {
             var principal = await _authTask.GetAuthenticatedPrincipalAsync();
@@ -192,6 +193,7 @@
             }
 
             ApplyState(overview);
+            _error = null;
         }
         catch (Exception exception)
         {
@@ -264,6 +266,14 @@
         Func<System.Security.Claims.ClaimsPrincipal, Task<AccountTwoFactorResult>> operation,
         string successMessage)
     {
+        // A browser retry can queue a second Blazor event while the first one
+        // is still in flight. The service also reports an already-enabled
+        // state, so keep this screen deterministic in both cases.
+        if (_busy)
+        {
+            return;
+        }
+
         _busy = true;
         _error = null;
         _success = null;
@@ -283,18 +293,28 @@
             }
             if (!result.Succeeded)
             {
+                if (IsAlreadyEnabled(result))
+                {
+                    _error = null;
+                    _recoveryCodes = result.RecoveryCodes;
+                    _success = "A autenticação em duas etapas já estava ativada. O estado da página foi atualizado.";
+                    return;
+                }
+
                 _error = string.Join(
                     " ",
                     result.Errors.Select(error => error.Description));
                 return;
             }
 
+            _error = null;
             _recoveryCodes = result.RecoveryCodes;
             _success = successMessage;
         }
         catch (Exception exception)
         {
             Logger.LogError(exception, "Two-factor account operation failed.");
+            _success = null;
             _error = "Não foi possível concluir a alteração de duas etapas. Tente novamente.";
         }
         finally
@@ -311,6 +331,10 @@
             : BuildQrCode(state.AuthenticatorSetup.AuthenticatorUri);
     }
 
+    private static bool IsAlreadyEnabled(AccountTwoFactorResult result) =>
+        result.State?.IsEnabled == true
+        && result.Errors.Any(error => error.Code == "two-factor-already-enabled");
+
     private async Task CopyRecoveryCodesAsync()
     {
         try
@@ -318,11 +342,13 @@
             await JS.InvokeVoidAsync(
                 "navigator.clipboard.writeText",
                 string.Join(Environment.NewLine, _recoveryCodes));
+            _error = null;
             _success = "Códigos copiados para a área de transferência.";
         }
         catch (JSException exception)
         {
             Logger.LogWarning(exception, "Recovery codes could not be copied.");
+            _success = null;
             _error = "O navegador não permitiu copiar os códigos. Selecione e copie manualmente.";
         }
     }
@@ -330,6 +356,7 @@
     private void DismissRecoveryCodes()
     {
         _recoveryCodes = [];
+        _error = null;
         _success = "Códigos de recuperação confirmados.";
     }
 
