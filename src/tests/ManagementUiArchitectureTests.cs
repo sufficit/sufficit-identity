@@ -1460,6 +1460,7 @@ public sealed class ManagementUiArchitectureTests
         {
             Path.Combine(components, "Sufficit.Identity.UI.Components.csproj"),
             Path.Combine(vault, "Sufficit.Identity.UI.Vault.csproj"),
+            Path.Combine(repository, "src", "server", "Sufficit.Identity.Server.csproj"),
         };
 
         foreach (var projectFile in projectFiles)
