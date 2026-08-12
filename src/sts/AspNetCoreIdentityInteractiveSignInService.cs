@@ -88,6 +88,15 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
             command.IsPersistent,
             command.RememberClient);
         cancellationToken.ThrowIfCancellationRequested();
+        if (result.Succeeded)
+        {
+            // Identity has just accepted the OTP and issued the application
+            // cookie. Renew it once more while the scoped authentication
+            // evidence still contains pwd+otp+mfa, ensuring the server-side
+            // session ticket persists the elevated claims as well.
+            await signInManager.RefreshSignInAsync(pendingUser);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
         var mapped = Map(result);
         if (mapped.Status == InteractiveSignInStatus.Succeeded)
         {
@@ -131,6 +140,11 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
         var result = await signInManager.TwoFactorRecoveryCodeSignInAsync(
             NormalizeRecoveryCode(code));
         cancellationToken.ThrowIfCancellationRequested();
+        if (result.Succeeded)
+        {
+            await signInManager.RefreshSignInAsync(pendingUser);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
         var mapped = Map(result);
         if (mapped.Status == InteractiveSignInStatus.Succeeded)
         {
