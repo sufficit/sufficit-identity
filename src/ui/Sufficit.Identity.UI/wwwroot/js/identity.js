@@ -51,17 +51,33 @@ document.addEventListener('change', function (event) {
 (function () {
     function showManualCompletion(result) {
         var fallback = document.querySelector('[data-device-close-fallback]');
-        if (fallback) fallback.hidden = false;
+        if (fallback) {
+            fallback.hidden = false;
+            fallback.tabIndex = -1;
+            // Move focus to the actionable explanation without stealing focus
+            // from a successful close (this function only runs when close was
+            // blocked).
+            if (typeof fallback.focus === 'function') fallback.focus();
+        }
 
         var button = document.querySelector('[data-device-flow-close]');
         if (button) {
-            button.hidden = false;
-            button.disabled = false;
+            // A user-created tab cannot become script-closable after the
+            // first attempt. Hide the control so it cannot produce repeated
+            // browser warnings or imply that another click may succeed.
+            button.hidden = true;
+            button.disabled = true;
+            button.setAttribute('aria-disabled', 'true');
         }
 
-        if (result) result.removeAttribute('aria-busy');
+        if (result) {
+            result.removeAttribute('aria-busy');
+            result.dataset.deviceCloseBlocked = 'true';
+        }
 
-        if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+        if (typeof console !== 'undefined' && typeof console.warn === 'function' &&
+            (!result || result.dataset.deviceCloseWarningShown !== 'true')) {
+            if (result) result.dataset.deviceCloseWarningShown = 'true';
             console.warn(
                 '[Sufficit Identity] O navegador bloqueou o fechamento desta aba. ' +
                 'Use o controle de abas para encerrá-la.',
@@ -94,6 +110,8 @@ document.addEventListener('change', function (event) {
     }
 
     function closeDeviceFlowTab(result) {
+        if (result && result.dataset.deviceCloseAttempted === 'true') return;
+        if (result) result.dataset.deviceCloseAttempted = 'true';
         if (result) result.setAttribute('aria-busy', 'true');
         var button = document.querySelector('[data-device-flow-close]');
         if (button) button.disabled = true;
@@ -119,6 +137,7 @@ document.addEventListener('change', function (event) {
         if (closeButton && closeButton.dataset.deviceCloseBound !== 'true') {
             closeButton.dataset.deviceCloseBound = 'true';
             closeButton.hidden = false;
+            closeButton.setAttribute('aria-describedby', 'device-close-fallback');
             closeButton.addEventListener('click', function () {
                 closeDeviceFlowTab(result);
             });
