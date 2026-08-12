@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -242,6 +243,36 @@ public sealed class ManagementUiRoutingTests
         Assert.Contains("Confirmar e gerar token", html, StringComparison.Ordinal);
         Assert.DoesNotContain("MFA obrigatório", html, StringComparison.Ordinal);
         Assert.DoesNotContain("token-value-from-server", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Capability_help_uses_the_requested_en_US_culture()
+    {
+        await using var app = await CreateHostAsync();
+        using var client = app.GetTestClient();
+
+        await SignInAsync(client, "administrator");
+
+        using var response = await client.GetAsync(
+            "/management/tokens?culture=en-US&ui-culture=en-US");
+        var html = WebUtility.HtmlDecode(
+            await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("<html lang=\"en-US\">", html, StringComparison.Ordinal);
+        Assert.Contains("OAuth and OIDC", html, StringComparison.Ordinal);
+        Assert.Contains(
+            "Information about View OAuth and OIDC applications",
+            html,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Used on the Applications and client detail screens",
+            html,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "Informações sobre Consultar aplicações",
+            html,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -730,6 +761,10 @@ public sealed class ManagementUiRoutingTests
         builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
 
         var app = builder.Build();
+        app.UseRequestLocalization(new RequestLocalizationOptions()
+            .SetDefaultCulture("pt-BR")
+            .AddSupportedCultures("pt-BR", "en-US")
+            .AddSupportedUICultures("pt-BR", "en-US"));
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseAntiforgery();

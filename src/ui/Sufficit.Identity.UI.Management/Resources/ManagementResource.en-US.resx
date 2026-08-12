@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+
+  <data name="Capability.Help.AriaLabel" xml:space="preserve"><value>Information about {0}</value></data>
+  <data name="Capability.Fallback.Label" xml:space="preserve"><value>Administrative access</value></data>
+  <data name="Capability.Fallback.Title" xml:space="preserve"><value>Capability {0}</value></data>
+  <data name="Capability.Fallback.Description" xml:space="preserve"><value>Authorizes the administrative operation identified by this capability. Review the module documentation before delegating it to an automation.</value></data>
+  <data name="Capability.Label.Read" xml:space="preserve"><value>View</value></data>
+  <data name="Capability.Label.Create" xml:space="preserve"><value>Create</value></data>
+  <data name="Capability.Label.Update" xml:space="preserve"><value>Update</value></data>
+  <data name="Capability.Label.Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Capability.Label.Manage" xml:space="preserve"><value>Manage</value></data>
+  <data name="Capability.Label.Disable" xml:space="preserve"><value>Disable</value></data>
+  <data name="Capability.Label.Revoke" xml:space="preserve"><value>Revoke</value></data>
+  <data name="Capability.Label.Apply" xml:space="preserve"><value>Apply</value></data>
+  <data name="Capability.Label.Preview" xml:space="preserve"><value>Generate preview</value></data>
+  <data name="Capability.Label.ResetPassword" xml:space="preserve"><value>Reset password</value></data>
+  <data name="Capability.Label.Issue" xml:space="preserve"><value>Issue</value></data>
+  <data name="Capability.Group.Identity" xml:space="preserve"><value>Identity</value></data>
+  <data name="Capability.Group.OAuthOidc" xml:space="preserve"><value>OAuth and OIDC</value></data>
+  <data name="Capability.Group.Operations" xml:space="preserve"><value>Operations</value></data>
+  <data name="Capability.Group.Experience" xml:space="preserve"><value>Experience</value></data>
+  <data name="Capability.Group.Secrets" xml:space="preserve"><value>Secrets</value></data>
+
+  <data name="Capability.identity.clients.read.Title" xml:space="preserve"><value>View OAuth and OIDC applications</value></data>
+  <data name="Capability.identity.clients.read.Description" xml:space="preserve"><value>Used on the Applications and client detail screens to read the Client ID, type, flows, URLs, permissions, and token policies. It does not allow changes to the registration.</value></data>
+  <data name="Capability.identity.clients.create.Title" xml:space="preserve"><value>Register OAuth and OIDC applications</value></data>
+  <data name="Capability.identity.clients.create.Description" xml:space="preserve"><value>Used in the new application wizard to create a client and its Client ID. It does not grant permission to edit or delete existing clients.</value></data>
+  <data name="Capability.identity.clients.update.Title" xml:space="preserve"><value>Edit OAuth and OIDC applications</value></data>
+  <data name="Capability.identity.clients.update.Description" xml:space="preserve"><value>Used to change a client's URLs, flows, scopes, consent, PKCE, and token policies. Changes affect subsequent authentications for that application.</value></data>
+  <data name="Capability.identity.clients.delete.Title" xml:space="preserve"><value>Delete OAuth and OIDC applications</value></data>
+  <data name="Capability.identity.clients.delete.Description" xml:space="preserve"><value>Used to remove a client registration from the provider. Reserve it for retiring an integration because it can prevent new application sign-ins.</value></data>
+
+  <data name="Capability.identity.branding.read.Title" xml:space="preserve"><value>View the visual identity</value></data>
+  <data name="Capability.identity.branding.read.Description" xml:space="preserve"><value>Used in Branding to view published themes, logos, colors, and other visual assets. It does not allow changes to the authentication experience.</value></data>
+  <data name="Capability.identity.branding.manage.Title" xml:space="preserve"><value>Manage the visual identity</value></data>
+  <data name="Capability.identity.branding.manage.Description" xml:space="preserve"><value>Used to create, update, publish, or remove Branding settings. Changes can alter the appearance of authentication screens for users.</value></data>
+
+  <data name="Capability.identity.users.read.Title" xml:space="preserve"><value>View users</value></data>
+  <data name="Capability.identity.users.read.Description" xml:space="preserve"><value>Used in the directory and user details to find accounts and view profiles, status, and access methods. It does not allow changes to data or credentials.</value></data>
+  <data name="Capability.identity.users.create.Title" xml:space="preserve"><value>Create users</value></data>
+  <data name="Capability.identity.users.create.Description" xml:space="preserve"><value>Used for the administrative registration of a new account in the provider. By itself, it does not allow claims to be assigned or other users to be changed.</value></data>
+  <data name="Capability.identity.users.update.Title" xml:space="preserve"><value>Edit users</value></data>
+  <data name="Capability.identity.users.update.Description" xml:space="preserve"><value>Used to change profile data such as name, email, and phone number on user administration screens. It does not reset passwords, block, or delete accounts.</value></data>
+  <data name="Capability.identity.users.disable.Title" xml:space="preserve"><value>Block or unblock users</value></data>
+  <data name="Capability.identity.users.disable.Description" xml:space="preserve"><value>Used in user details to prevent or restore account access. It is independent from profile editing and password resets.</value></data>
+  <data name="Capability.identity.users.delete.Title" xml:space="preserve"><value>Delete users</value></data>
+  <data name="Capability.identity.users.delete.Description" xml:space="preserve"><value>Used to remove an account from the provider through administration. It is a sensitive operation separate from permissions to block or edit the user.</value></data>
+  <data name="Capability.identity.users.reset.Title" xml:space="preserve"><value>Reset user passwords</value></data>
+  <data name="Capability.identity.users.reset.Description" xml:space="preserve"><value>Used in user details to set a new administrative password and signal the credential change. It does not allow profile or other access methods to be edited.</value></data>
+
+  <data name="Capability.identity.claims.read.Title" xml:space="preserve"><value>View user claims</value></data>
+  <data name="Capability.identity.claims.read.Description" xml:space="preserve"><value>Used in Claims to list custom attributes assigned to accounts. It supports identity diagnostics but does not change values.</value></data>
+  <data name="Capability.identity.claims.create.Title" xml:space="preserve"><value>Assign claims to users</value></data>
+  <data name="Capability.identity.claims.create.Description" xml:space="preserve"><value>Used to add a new custom attribute to an account. The claim may affect information and decisions consumed by integrated applications.</value></data>
+  <data name="Capability.identity.claims.update.Title" xml:space="preserve"><value>Edit user claims</value></data>
+  <data name="Capability.identity.claims.update.Description" xml:space="preserve"><value>Used to change the type or value of an assigned custom claim. The change may appear in tokens and sessions issued afterward.</value></data>
+  <data name="Capability.identity.claims.delete.Title" xml:space="preserve"><value>Remove user claims</value></data>
+  <data name="Capability.identity.claims.delete.Description" xml:space="preserve"><value>Used to remove a custom attribute from an account. Apply it carefully when applications depend on that claim for authorization.</value></data>
+
+  <data name="Capability.identity.scopes.read.Title" xml:space="preserve"><value>View OAuth and OIDC scopes</value></data>
+  <data name="Capability.identity.scopes.read.Description" xml:space="preserve"><value>Used to list and inspect scopes, resources, associated claims, and display properties. It does not change what clients can request.</value></data>
+  <data name="Capability.identity.scopes.create.Title" xml:space="preserve"><value>Create OAuth and OIDC scopes</value></data>
+  <data name="Capability.identity.scopes.create.Description" xml:space="preserve"><value>Used to register a new scope that applications can request in authorization flows. Assigning it to clients remains a separate configuration.</value></data>
+  <data name="Capability.identity.scopes.update.Title" xml:space="preserve"><value>Edit OAuth and OIDC scopes</value></data>
+  <data name="Capability.identity.scopes.update.Description" xml:space="preserve"><value>Used to change a scope's description, resources, claims, and other properties. The change can affect tokens later issued to authorized applications.</value></data>
+  <data name="Capability.identity.scopes.delete.Title" xml:space="preserve"><value>Delete OAuth and OIDC scopes</value></data>
+  <data name="Capability.identity.scopes.delete.Description" xml:space="preserve"><value>Used to remove a scope from the provider. It can break requests from applications that still depend on it and should follow an inventory review.</value></data>
+
+  <data name="Capability.identity.sessions.read.Title" xml:space="preserve"><value>View sessions</value></data>
+  <data name="Capability.identity.sessions.read.Description" xml:space="preserve"><value>Used in Sessions to find active sign-ins and inspect the client, user, dates, and state. It does not end any session.</value></data>
+  <data name="Capability.identity.sessions.revoke.Title" xml:space="preserve"><value>End sessions</value></data>
+  <data name="Capability.identity.sessions.revoke.Description" xml:space="preserve"><value>Used to revoke a selected session and prevent it from continuing. It is appropriate for administrative sign-out, lost devices, or security incidents.</value></data>
+
+  <data name="Capability.identity.authorizations.read.Title" xml:space="preserve"><value>View OAuth and OIDC authorizations</value></data>
+  <data name="Capability.identity.authorizations.read.Description" xml:space="preserve"><value>Used to list persisted consent and grants between users and applications. It allows granted access to be investigated without revoking it.</value></data>
+  <data name="Capability.identity.authorizations.revoke.Title" xml:space="preserve"><value>Revoke OAuth and OIDC authorizations</value></data>
+  <data name="Capability.identity.authorizations.revoke.Description" xml:space="preserve"><value>Used to withdraw a persisted grant or consent. The application must obtain a new authorization before it can use that access again.</value></data>
+
+  <data name="Capability.identity.audit.read.Title" xml:space="preserve"><value>View the audit trail</value></data>
+  <data name="Capability.identity.audit.read.Description" xml:space="preserve"><value>Used in Audit to investigate who performed an operation, which capability was used, the target, result, and correlation ID. It does not modify recorded events.</value></data>
+  <data name="Capability.identity.database.read.Title" xml:space="preserve"><value>View database health</value></data>
+  <data name="Capability.identity.database.read.Description" xml:space="preserve"><value>Used in the operational monitor to view connectivity, latency, queues, and connection pool state. It does not allow business records or SQL commands to be accessed.</value></data>
+  <data name="Capability.identity.metrics.read.Title" xml:space="preserve"><value>View usage metrics</value></data>
+  <data name="Capability.identity.metrics.read.Description" xml:space="preserve"><value>Used in Metrics to view volume, failures, active applications, and collector status. It does not allow retention or export settings to be changed.</value></data>
+  <data name="Capability.identity.metrics.manage.Title" xml:space="preserve"><value>Configure usage metrics</value></data>
+  <data name="Capability.identity.metrics.manage.Description" xml:space="preserve"><value>Used to enable collection and define retention, batch size, timeout, and metric export. The change modifies the collector's operational behavior.</value></data>
+
+  <data name="Capability.identity.vault.secrets.read.Title" xml:space="preserve"><value>View secret metadata</value></data>
+  <data name="Capability.identity.vault.secrets.read.Description" xml:space="preserve"><value>Used in Vault to list names, contexts, and metadata for secrets available to the operator. The interface does not reveal the stored value.</value></data>
+  <data name="Capability.identity.vault.secrets.manage.Title" xml:space="preserve"><value>Manage secrets</value></data>
+  <data name="Capability.identity.vault.secrets.manage.Description" xml:space="preserve"><value>Used in Vault to write, replace, or remove secret values in authorized namespaces. This is a sensitive capability, and every change is audited.</value></data>
+
+  <data name="Capability.identity.provisioning.preview.Title" xml:space="preserve"><value>Preview manifest impact</value></data>
+  <data name="Capability.identity.provisioning.preview.Description" xml:space="preserve"><value>Used in Provisioning to run inventory and preview and show differences before applying them. It does not modify clients, scopes, or other resources.</value></data>
+  <data name="Capability.identity.provisioning.apply.Title" xml:space="preserve"><value>Apply provisioning manifests</value></data>
+  <data name="Capability.identity.provisioning.apply.Description" xml:space="preserve"><value>Used in Enforce mode to create, update, or reconcile resources described by a manifest. The operation requires confirmation and produces auditable evidence.</value></data>
+
+  <data name="Capability.identity.management.tokens.read.Title" xml:space="preserve"><value>View temporary Management tokens</value></data>
+  <data name="Capability.identity.management.tokens.read.Description" xml:space="preserve"><value>Used in Tokens to open the workspace and list metadata for the authenticated administrator's temporary tokens. The Bearer value is never retrieved by the list.</value></data>
+  <data name="Capability.identity.management.tokens.issue.Title" xml:space="preserve"><value>Issue temporary Management tokens</value></data>
+  <data name="Capability.identity.management.tokens.issue.Description" xml:space="preserve"><value>Used to generate a temporary Bearer with a subset of capabilities already held by the administrator. This capability cannot be delegated to the token itself.</value></data>
+  <data name="Capability.identity.management.tokens.revoke.Title" xml:space="preserve"><value>Revoke temporary Management tokens</value></data>
+  <data name="Capability.identity.management.tokens.revoke.Description" xml:space="preserve"><value>Used to invalidate a temporary token before it expires. This capability cannot be included in another temporary token.</value></data>
+</root>

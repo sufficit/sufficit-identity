@@ -1,13 +1,15 @@
 @namespace Sufficit.Identity.UI.Management.Components
+@inject IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> L
 
 @{
-    var copy = ManagementCapabilityPresentation.Get(Capability);
+    var copy = ManagementCapabilityPresentation.Get(Capability, L);
 }
 
-<span class="management-capability-help">
+<span class="management-capability-help"
+      lang="@System.Globalization.CultureInfo.CurrentUICulture.Name">
     <button type="button"
             class="management-capability-help__trigger"
-            aria-label="Informações sobre @copy.HelpTitle"
+            aria-label="@L["Capability.Help.AriaLabel", copy.HelpTitle]"
             aria-describedby="@TooltipId">
         <SUIIcon Name="info" Size="17" />
     </button>
