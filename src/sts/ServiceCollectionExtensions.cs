@@ -1045,6 +1045,9 @@ public static class ServiceCollectionExtensions
             AspNetCoreIdentityAccountExternalIdentityService>();
         services.AddScoped<IAccountTwoFactorService,
             AspNetCoreIdentityAccountTwoFactorService>();
+        services.AddScoped<SufficitSignInManager>();
+        services.AddScoped<SignInManager<ApplicationUser>>(services =>
+            services.GetRequiredService<SufficitSignInManager>());
         services.AddScoped<IInteractiveSignInService,
             AspNetCoreIdentityInteractiveSignInService>();
         services.AddScoped<IAccountOnboardingService,
