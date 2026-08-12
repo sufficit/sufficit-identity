@@ -175,6 +175,29 @@
 .wizard-progress li.is-complete button > span { border-color: var(--success); color: var(--success); }
 .wizard-save-state { display: flex; min-height: 22px; gap: 7px; align-items: center; margin-top: 10px; color: var(--ink-muted); font-size: 12px; }
 
+.client-edit-shell .wizard-progress li button > .client-edit-tab__icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+}
+
+.client-edit-shell .wizard-progress li button:hover {
+    background: var(--surface);
+    color: var(--ink-strong);
+}
+
+.client-edit-shell .wizard-progress li button[aria-current="page"] {
+    border-color: var(--brand);
+    background: var(--surface);
+    color: var(--ink-strong);
+}
+
+.client-edit-shell .wizard-progress li button[aria-current="page"] > .client-edit-tab__icon {
+    border-color: var(--brand);
+    background: var(--brand);
+    color: #fff;
+}
+
 .wizard-stage { min-width: 0; padding: 20px 16px 12px; }
 .wizard-stage__heading { margin-bottom: 24px; }
 .wizard-stage__heading p { max-width: 720px; margin: 0; color: var(--ink-muted); }
@@ -3638,15 +3661,77 @@ h3 {
     gap: 2px;
 }
 
-.lifetime-policy-row__copy strong {
+.lifetime-policy-row__title {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.lifetime-policy-row__title > strong {
     color: var(--ink-strong);
     font-size: 13px;
 }
 
-.lifetime-policy-row__copy span,
+.lifetime-policy-row__copy > span,
 .lifetime-value-control > span:first-child {
     color: var(--ink-muted);
     font-size: 11px;
+}
+
+.token-help {
+    position: relative;
+    display: inline-flex;
+    color: var(--ink-muted);
+}
+
+.token-help__trigger {
+    display: grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: inherit;
+    cursor: help;
+}
+
+.token-help__trigger:hover,
+.token-help__trigger:focus-visible {
+    background: var(--brand-soft);
+    color: var(--brand);
+}
+
+.token-help__content {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 6px);
+    left: 0;
+    width: min(310px, calc(100vw - 64px));
+    padding: 10px 12px;
+    transform: translateY(-4px);
+    border-radius: 10px;
+    background: var(--ink-strong);
+    box-shadow: var(--shadow-float);
+    color: var(--surface);
+    font-size: 12px;
+    line-height: 1.5;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+        opacity var(--duration) var(--ease),
+        transform var(--duration) var(--ease),
+        visibility 0s linear var(--duration);
+}
+
+.token-help:hover .token-help__content,
+.token-help:focus-within .token-help__content {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+    transition-delay: 0s;
 }
 
 .lifetime-inherit-control {

@@ -6,7 +6,7 @@
 <PageTitle>Editar aplicação | Sufficit Identity</PageTitle>
 
 <SUIPageHeader Title="Editar aplicação"
-            Description="Revise a configuração em etapas curtas. O client secret existente nunca é alterado ou exibido.">
+            Description="Altere qualquer seção e salve todas as mudanças de uma vez. O client secret existente nunca é alterado ou exibido.">
     <Actions>
         <a class="button button--secondary" href="@DetailHref">
             <SUIIcon Name="arrow-left" Size="17" />
@@ -55,9 +55,11 @@ else
                 @foreach (var item in Sections.Select((value, index) => (value, index)))
                 {
                     <li class="@(item.index == activeSection ? "is-current" : null)">
-                        <button type="button" @onclick="() => activeSection = item.index">
-                            <span>@(item.index + 1)</span>
-                            <strong>@item.value</strong>
+                        <button type="button"
+                                aria-current="@(item.index == activeSection ? "page" : null)"
+                                @onclick="() => activeSection = item.index">
+                            <span class="client-edit-tab__icon"><SUIIcon Name="@item.value.Icon" Size="17" /></span>
+                            <strong>@item.value.Label</strong>
                         </button>
                     </li>
                 }
@@ -70,8 +72,7 @@ else
 
         <main class="wizard-stage" aria-labelledby="edit-stage-heading">
             <header class="wizard-stage__heading">
-                <span class="wizard-stage__eyebrow">Seção @(activeSection + 1) de @Sections.Length</span>
-                <h2 id="edit-stage-heading">@Sections[activeSection]</h2>
+                <h2 id="edit-stage-heading">@Sections[activeSection].Label</h2>
                 <p>@SectionDescription</p>
             </header>
 
@@ -131,7 +132,20 @@ else
                 <div class="lifetime-policy-editor">
                     <div class="lifetime-policy-row">
                         <div class="lifetime-policy-row__copy">
-                            <strong>Access token</strong>
+                            <div class="lifetime-policy-row__title">
+                                <strong>Access token</strong>
+                                <span class="token-help">
+                                    <button type="button"
+                                            class="token-help__trigger"
+                                            aria-label="Mais informações sobre Access token"
+                                            aria-describedby="access-token-help">
+                                        <SUIIcon Name="info" Size="16" />
+                                    </button>
+                                    <span id="access-token-help" class="token-help__content" role="tooltip">
+                                        Autoriza chamadas às APIs em nome do usuário ou da aplicação. É enviado ao servidor da API e não deve ser usado como comprovante de identidade.
+                                    </span>
+                                </span>
+                            </div>
                             <span>Acesso às APIs da aplicação.</span>
                         </div>
                         <label class="lifetime-inherit-control">
@@ -155,7 +169,20 @@ else
 
                     <div class="lifetime-policy-row">
                         <div class="lifetime-policy-row__copy">
-                            <strong>ID token</strong>
+                            <div class="lifetime-policy-row__title">
+                                <strong>ID token</strong>
+                                <span class="token-help">
+                                    <button type="button"
+                                            class="token-help__trigger"
+                                            aria-label="Mais informações sobre ID token"
+                                            aria-describedby="identity-token-help">
+                                        <SUIIcon Name="info" Size="16" />
+                                    </button>
+                                    <span id="identity-token-help" class="token-help__content" role="tooltip">
+                                        Informa à aplicação que o login OIDC foi concluído e pode transportar dados do usuário autenticado. Não deve ser enviado para autorizar chamadas às APIs.
+                                    </span>
+                                </span>
+                            </div>
                             <span>Identidade entregue ao cliente OIDC.</span>
                         </div>
                         <label class="lifetime-inherit-control">
@@ -179,7 +206,20 @@ else
 
                     <div class="lifetime-policy-row">
                         <div class="lifetime-policy-row__copy">
-                            <strong>Refresh token</strong>
+                            <div class="lifetime-policy-row__title">
+                                <strong>Refresh token</strong>
+                                <span class="token-help">
+                                    <button type="button"
+                                            class="token-help__trigger"
+                                            aria-label="Mais informações sobre Refresh token"
+                                            aria-describedby="refresh-token-help">
+                                        <SUIIcon Name="info" Size="16" />
+                                    </button>
+                                    <span id="refresh-token-help" class="token-help__content" role="tooltip">
+                                        Permite obter novos access tokens sem solicitar outro login. É uma credencial sensível e deve ficar armazenada somente em ambiente seguro.
+                                    </span>
+                                </span>
+                            </div>
                             <span>Janela máxima para renovar a sessão.</span>
                         </div>
                         <label class="lifetime-inherit-control">
@@ -242,17 +282,9 @@ else
 
             <div class="wizard-actions">
                 <div>
-                    <button class="button button--secondary" type="button" disabled="@(activeSection == 0 || saving)" @onclick="PreviousSection">Anterior</button>
-                    @if (activeSection < Sections.Length - 1)
-                    {
-                        <button class="button button--primary" type="button" disabled="@saving" @onclick="NextSection">Continuar</button>
-                    }
-                    else
-                    {
-                        <button class="button button--primary" type="button" disabled="@saving" @onclick="SaveAsync">
-                            @if (saving) { <span class="button-spinner" aria-hidden="true"></span><span>Salvando…</span> } else { <SUIIcon Name="check" Size="17" /><span>Salvar alterações</span> }
-                        </button>
-                    }
+                    <button class="button button--primary" type="button" disabled="@saving" @onclick="SaveAsync">
+                        @if (saving) { <span class="button-spinner" aria-hidden="true"></span><span>Salvando…</span> } else { <SUIIcon Name="check" Size="17" /><span>Salvar alterações</span> }
+                    </button>
                 </div>
                 <span class="field-hint">As alterações serão auditadas e usam a versão @client.Version.</span>
             </div>
@@ -266,7 +298,13 @@ else
     [SupplyParameterFromQuery(Name = "section")]
     public string? InitialSection { get; set; }
 
-    private static readonly string[] Sections = ["Identidade", "Protocolos e scopes", "Tokens", "URLs e logout"];
+    private static readonly EditorSection[] Sections =
+    [
+        new("Identidade", "settings"),
+        new("Protocolos e scopes", "workflow"),
+        new("Tokens", "key"),
+        new("URLs e logout", "browser"),
+    ];
     private ManagementClientDetail? client;
     private ManagementDataResult<ManagementClientDetail>? loadResult;
     private bool loading = true;
@@ -341,9 +379,6 @@ else
         backchannelLogoutUri = value.BackchannelLogoutUri;
         backchannelLogoutSessionRequired = value.BackchannelLogoutSessionRequired;
     }
-
-    private void PreviousSection() => activeSection = Math.Max(0, activeSection - 1);
-    private void NextSection() => activeSection = Math.Min(Sections.Length - 1, activeSection + 1);
 
     private async Task SaveAsync()
     {
@@ -429,4 +464,6 @@ else
         "public" => "público",
         _ => "não informado"
     };
+
+    private sealed record EditorSection(string Label, string Icon);
 }
