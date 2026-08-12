@@ -518,7 +518,7 @@ internal sealed class UserManagementService(
 
         var resetDecision = await authorization.EvaluateAsync(
             context.Operator,
-            ManagementCapabilities.UsersResetPassword,
+            ManagementCapabilities.UsersReset,
             resource,
             cancellationToken);
         var isLockedOut = user.LockoutEnd is { } lockoutEnd
@@ -917,7 +917,7 @@ internal sealed class UserManagementService(
             id);
         var decision = await DemandAsync(
             context,
-            ManagementCapabilities.UsersResetPassword,
+            ManagementCapabilities.UsersReset,
             auditResource,
             cancellationToken);
 
@@ -926,7 +926,7 @@ internal sealed class UserManagementService(
         {
             await TryWriteAuditAsync(
                 context,
-                ManagementCapabilities.UsersResetPassword,
+                ManagementCapabilities.UsersReset,
                 auditResource,
                 decision,
                 "not-found",
@@ -951,7 +951,7 @@ internal sealed class UserManagementService(
                 database.ManagementAuditEvents.Add(
                     ManagementAuditEventFactory.Create(
                         context,
-                        ManagementCapabilities.UsersResetPassword,
+                        ManagementCapabilities.UsersReset,
                         auditResource,
                         decision,
                         "failed",
@@ -966,7 +966,7 @@ internal sealed class UserManagementService(
             database.ManagementAuditEvents.Add(
                 ManagementAuditEventFactory.Create(
                     context,
-                    ManagementCapabilities.UsersResetPassword,
+                    ManagementCapabilities.UsersReset,
                     auditResource,
                     decision,
                     "succeeded",
@@ -989,7 +989,7 @@ internal sealed class UserManagementService(
                 context.CorrelationId);
             await TryWriteAuditAsync(
                 context,
-                ManagementCapabilities.UsersResetPassword,
+                ManagementCapabilities.UsersReset,
                 auditResource,
                 decision,
                 "failed",

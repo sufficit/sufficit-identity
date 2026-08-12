@@ -33,7 +33,7 @@ https://identity.sufficit.com.br/management/tokens?action=issue&purpose=Atualiza
 ```
 
 Abertura da URL não emite token. O operador precisa estar autenticado, cumprir
-MFA, possuir `identity.operator-tokens.issue` e confirmar em **Confirmar e gerar
+MFA, possuir `identity.management.tokens.issue` e confirmar em **Confirmar e gerar
 token**. Parâmetros inválidos ou capabilities não concedidas bloqueiam a ação e
 aparecem de forma explícita na tela.
 
@@ -43,7 +43,7 @@ aparecem de forma explícita na tela.
 - reference token de curta duração, com máximo rígido de uma hora;
 - somente capabilities que o operador já possui;
 - papel `administrator` não é incorporado ao token;
-- `identity.operator-tokens.issue` e `identity.operator-tokens.revoke` não são
+- `identity.management.tokens.issue` e `identity.management.tokens.revoke` não são
   delegáveis;
 - outro token temporário não pode emitir um novo token;
 - valor do Bearer é exibido somente na resposta de emissão;

@@ -249,7 +249,7 @@ public static class ServiceCollectionExtensions
                     policy.RequireAuthenticatedUser();
                     policy.Requirements.Add(
                         new ManagementCapabilityRequirement(
-                            ManagementCapabilities.OperatorTokensRead,
+                            ManagementCapabilities.ManagementTokensRead,
                             ManagementResourceTypes.OperatorTokenCollection));
                 });
             authorization.AddPolicy(
@@ -259,7 +259,7 @@ public static class ServiceCollectionExtensions
                     policy.RequireAuthenticatedUser();
                     policy.Requirements.Add(
                         new ManagementCapabilityRequirement(
-                            ManagementCapabilities.OperatorTokensIssue,
+                            ManagementCapabilities.ManagementTokensIssue,
                             ManagementResourceTypes.OperatorTokenCollection));
                 });
             authorization.AddPolicy(
@@ -269,7 +269,7 @@ public static class ServiceCollectionExtensions
                     policy.RequireAuthenticatedUser();
                     policy.Requirements.Add(
                         new ManagementCapabilityRequirement(
-                            ManagementCapabilities.OperatorTokensRevoke,
+                            ManagementCapabilities.ManagementTokensRevoke,
                             ManagementResourceTypes.OperatorTokenCollection));
                 });
         });

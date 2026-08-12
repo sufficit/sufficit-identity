@@ -134,6 +134,12 @@ without sharing one domain model.
 Authorization to operate the provider is separate from the authorities stored
 on a target user.
 
+Neste modelo, **operador** é apenas o administrador autenticado que executa uma
+ação no Management. Não é um tipo de usuário, papel ou entidade persistida
+separadamente. Para que esse termo interno não vaze para o contrato público, as
+capabilities de administração de tokens usam o namespace
+`identity.management.tokens.*`.
+
 The generic management application evaluates stable capabilities such as:
 
 - `identity.clients.read`
@@ -156,8 +162,16 @@ The generic management application evaluates stable capabilities such as:
 - `identity.users.update`
 - `identity.users.disable`
 - `identity.users.delete`
-- `identity.users.reset-password`
+- `identity.users.reset`
 - `identity.audit.read`
+- `identity.management.tokens.read`
+- `identity.management.tokens.issue`
+- `identity.management.tokens.revoke`
+
+Durante a migração, os identificadores antigos
+`identity.users.reset-password` e `identity.operator-tokens.*` são aceitos na
+entrada e normalizados. Eles não fazem parte do catálogo e não são emitidos em
+novos tokens, respostas ou configurações geradas.
 
 For an HTTP Management API, an access token must carry the management transport
 scope and the required operation capability. For the embedded UI, the host may

@@ -23,7 +23,7 @@ public static class ManagementCapabilities
     public const string UsersUpdate = "identity.users.update";
     public const string UsersDisable = "identity.users.disable";
     public const string UsersDelete = "identity.users.delete";
-    public const string UsersResetPassword = "identity.users.reset-password";
+    public const string UsersReset = "identity.users.reset";
     public const string ClaimsRead = "identity.claims.read";
     public const string ClaimsCreate = "identity.claims.create";
     public const string ClaimsUpdate = "identity.claims.update";
@@ -47,12 +47,24 @@ public static class ManagementCapabilities
         "identity.provisioning.preview";
     public const string ProvisioningApply =
         "identity.provisioning.apply";
-    public const string OperatorTokensRead =
-        "identity.operator-tokens.read";
-    public const string OperatorTokensIssue =
-        "identity.operator-tokens.issue";
-    public const string OperatorTokensRevoke =
-        "identity.operator-tokens.revoke";
+    public const string ManagementTokensRead =
+        "identity.management.tokens.read";
+    public const string ManagementTokensIssue =
+        "identity.management.tokens.issue";
+    public const string ManagementTokensRevoke =
+        "identity.management.tokens.revoke";
+
+    [Obsolete($"Use {nameof(UsersReset)}.")]
+    public const string UsersResetPassword = UsersReset;
+
+    [Obsolete($"Use {nameof(ManagementTokensRead)}.")]
+    public const string OperatorTokensRead = ManagementTokensRead;
+
+    [Obsolete($"Use {nameof(ManagementTokensIssue)}.")]
+    public const string OperatorTokensIssue = ManagementTokensIssue;
+
+    [Obsolete($"Use {nameof(ManagementTokensRevoke)}.")]
+    public const string OperatorTokensRevoke = ManagementTokensRevoke;
 
     public static IReadOnlySet<string> All { get; } =
         new HashSet<string>(
@@ -68,7 +80,7 @@ public static class ManagementCapabilities
                 UsersUpdate,
                 UsersDisable,
                 UsersDelete,
-                UsersResetPassword,
+                UsersReset,
                 ClaimsRead,
                 ClaimsCreate,
                 ClaimsUpdate,
@@ -89,11 +101,25 @@ public static class ManagementCapabilities
                 VaultSecretsManage,
                 ProvisioningPreview,
                 ProvisioningApply,
-                OperatorTokensRead,
-                OperatorTokensIssue,
-                OperatorTokensRevoke
+                ManagementTokensRead,
+                ManagementTokensIssue,
+                ManagementTokensRevoke
             ],
             StringComparer.Ordinal);
+
+    /// <summary>
+    /// Maps retired capability spellings to their canonical identifiers. This
+    /// bounded compatibility bridge protects already-issued short-lived tokens
+    /// and deployment role mappings while all new output uses <see cref="All"/>.
+    /// </summary>
+    public static string Normalize(string capability) => capability switch
+    {
+        "identity.users.reset-password" => UsersReset,
+        "identity.operator-tokens.read" => ManagementTokensRead,
+        "identity.operator-tokens.issue" => ManagementTokensIssue,
+        "identity.operator-tokens.revoke" => ManagementTokensRevoke,
+        _ => capability,
+    };
 }
 
 public static class ManagementResourceTypes
@@ -458,7 +484,7 @@ public sealed class ScopeAndRoleManagementEntitlementResolver(
                 .ToArray();
         }
 
-        foreach (var capability in principal.Claims
+        foreach (var rawCapability in principal.Claims
             .Where(claim => claimTypes.Contains(
                 claim.Type,
                 StringComparer.OrdinalIgnoreCase))
@@ -466,6 +492,7 @@ public sealed class ScopeAndRoleManagementEntitlementResolver(
                 ' ',
                 StringSplitOptions.RemoveEmptyEntries)))
         {
+            var capability = ManagementCapabilities.Normalize(rawCapability);
             if (ManagementCapabilities.All.Contains(capability))
             {
                 capabilities.Add(capability);
@@ -480,11 +507,13 @@ public sealed class ScopeAndRoleManagementEntitlementResolver(
             {
                 if (principal.IsInRole(role))
                 {
-                    foreach (var cap in mapped)
+                    foreach (var rawCapability in mapped)
                     {
-                        if (ManagementCapabilities.All.Contains(cap))
+                        var capability = ManagementCapabilities.Normalize(
+                            rawCapability);
+                        if (ManagementCapabilities.All.Contains(capability))
                         {
-                            capabilities.Add(cap);
+                            capabilities.Add(capability);
                         }
                     }
                 }
@@ -639,7 +668,7 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
             ManagementCapabilities.UsersUpdate,
             ManagementCapabilities.UsersDisable,
             ManagementCapabilities.UsersDelete,
-            ManagementCapabilities.UsersResetPassword,
+            ManagementCapabilities.UsersReset,
         };
 
     public async ValueTask<ManagementAuthorizationDecision> EvaluateAsync(

@@ -58,10 +58,10 @@ public sealed class OperatorTokensControllerTests
         Assert.Equal(issued.Token.Id, active.Id);
         Assert.Equal(requestedCapabilities, active.Capabilities);
         Assert.DoesNotContain(
-            ManagementCapabilities.OperatorTokensIssue,
+            ManagementCapabilities.ManagementTokensIssue,
             workspace.AvailableCapabilities);
         Assert.DoesNotContain(
-            ManagementCapabilities.OperatorTokensRevoke,
+            ManagementCapabilities.ManagementTokensRevoke,
             workspace.AvailableCapabilities);
 
         using (var scope = factory.Services.CreateScope())
@@ -76,7 +76,7 @@ public sealed class OperatorTokensControllerTests
                     .ToArrayAsync());
             Assert.Equal("succeeded", audit.OperationOutcome);
             Assert.Equal(
-                ManagementCapabilities.OperatorTokensIssue,
+                ManagementCapabilities.ManagementTokensIssue,
                 audit.Capability);
             Assert.DoesNotContain(
                 issued.AccessToken,
@@ -122,7 +122,7 @@ public sealed class OperatorTokensControllerTests
             new IssueOperatorTokenCommand(
                 "Tentar delegar emissão",
                 300,
-                [ManagementCapabilities.OperatorTokensIssue]));
+                [ManagementCapabilities.ManagementTokensIssue]));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -137,6 +137,32 @@ public sealed class OperatorTokensControllerTests
             entry => entry.ReasonCode ==
                 "operator_token_capability_not_delegable"
                 && entry.OperationOutcome == "rejected");
+    }
+
+    [Fact]
+    public async Task Issue_normalizes_legacy_capability_before_minting_token()
+    {
+        await using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/operator-tokens",
+            new IssueOperatorTokenCommand(
+                "Compatibilidade durante migração",
+                300,
+                ["identity.users.reset-password"]));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var issued = await response.Content
+            .ReadFromJsonAsync<OperatorTokenIssueResult>();
+        Assert.NotNull(issued);
+        Assert.Equal(
+            [ManagementCapabilities.UsersReset],
+            issued.Capabilities);
+        Assert.DoesNotContain(
+            "identity.users.reset-password",
+            issued.Capabilities);
     }
 
     [Fact]
