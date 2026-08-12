@@ -48,6 +48,16 @@ document.addEventListener('change', function (event) {
  * misleading close button and browser warnings in the console.
  */
 (function () {
+    function logDeviceFlow(event, details) {
+        if (typeof console === 'undefined' || typeof console.info !== 'function') {
+            return;
+        }
+
+        // Keep browser diagnostics useful without leaking device codes,
+        // tokens, user identifiers, redirect URIs, or authorization payloads.
+        console.info('[Sufficit Identity][DeviceFlow]', event, details || {});
+    }
+
     function canAttemptScriptClose() {
         try {
             return Boolean(window.opener && !window.opener.closed);
@@ -58,7 +68,7 @@ document.addEventListener('change', function (event) {
         }
     }
 
-    function showManualCompletion(result) {
+    function showManualCompletion(result, reason) {
         var fallback = document.querySelector('[data-device-close-fallback]');
         if (fallback) {
             fallback.hidden = false;
@@ -82,6 +92,16 @@ document.addEventListener('change', function (event) {
         if (result) {
             result.removeAttribute('aria-busy');
             result.dataset.deviceCloseBlocked = 'true';
+            if (result.dataset.deviceCloseManualLogged !== 'true') {
+                result.dataset.deviceCloseManualLogged = 'true';
+                logDeviceFlow('manual-close-instructions-shown', {
+                    reason: reason || 'close-blocked'
+                });
+            }
+        } else {
+            logDeviceFlow('manual-close-instructions-shown', {
+                reason: reason || 'close-blocked'
+            });
         }
     }
 
@@ -97,6 +117,7 @@ document.addEventListener('change', function (event) {
         // regress a browser-specific device-flow scenario. The opener gate
         // above is equally important because manually opened tabs must not
         // invoke either method and trigger a blocked-close warning.
+        logDeviceFlow('script-close-attempted', { strategy: 'direct' });
         try {
             window.close();
         } catch (_) {
@@ -104,9 +125,11 @@ document.addEventListener('change', function (event) {
         }
 
         if (window.closed === true) {
+            logDeviceFlow('script-close-succeeded', { strategy: 'direct' });
             return true;
         }
 
+        logDeviceFlow('script-close-attempted', { strategy: 'retargeted' });
         try {
             var currentWindow = window.open('', '_self');
             if (currentWindow) currentWindow.close();
@@ -114,12 +137,17 @@ document.addEventListener('change', function (event) {
             // The manual completion message below remains the safe fallback.
         }
 
-        return window.closed === true;
+        var closed = window.closed === true;
+        logDeviceFlow(closed ? 'script-close-succeeded' : 'script-close-blocked', {
+            strategy: 'retargeted'
+        });
+        return closed;
     }
 
     function closeDeviceFlowTab(result) {
         // The actual close request remains reachable only from the button.
         if (result && result.dataset.deviceCloseAttempted === 'true') return;
+        logDeviceFlow('close-requested', { source: 'user-gesture' });
         if (result) result.dataset.deviceCloseAttempted = 'true';
         if (result) result.setAttribute('aria-busy', 'true');
         var button = document.querySelector('[data-device-flow-close]');
@@ -132,7 +160,7 @@ document.addEventListener('change', function (event) {
         // If execution continues, the browser kept the tab open. Delay the
         // fallback just enough to avoid flashing it during a successful close.
         window.setTimeout(function () {
-            showManualCompletion(result);
+            showManualCompletion(result, 'close-blocked');
         }, 250);
     }
 
@@ -144,9 +172,12 @@ document.addEventListener('change', function (event) {
 
         var closeButton = document.querySelector('[data-device-flow-close]');
         if (!canAttemptScriptClose()) {
-            showManualCompletion(result);
+            logDeviceFlow('manual-close-required', { reason: 'tab-not-script-opened' });
+            showManualCompletion(result, 'tab-not-script-opened');
             return;
         }
+
+        logDeviceFlow('close-control-initialized', { scriptClosable: true });
 
         if (closeButton && closeButton.dataset.deviceCloseBound !== 'true') {
             closeButton.dataset.deviceCloseBound = 'true';

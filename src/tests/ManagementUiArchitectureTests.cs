@@ -1277,6 +1277,15 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("window.close();", script, StringComparison.Ordinal);
         Assert.Contains("Keep both close strategies", script, StringComparison.Ordinal);
         Assert.Contains("window.open('', '_self');", script, StringComparison.Ordinal);
+        Assert.Contains("function logDeviceFlow(event, details)", script, StringComparison.Ordinal);
+        Assert.Contains("console.info('[Sufficit Identity][DeviceFlow]'", script, StringComparison.Ordinal);
+        Assert.Contains("manual-close-required", script, StringComparison.Ordinal);
+        Assert.Contains("script-close-attempted", script, StringComparison.Ordinal);
+        Assert.Contains("script-close-succeeded", script, StringComparison.Ordinal);
+        Assert.Contains("script-close-blocked", script, StringComparison.Ordinal);
+        Assert.Contains("manual-close-instructions-shown", script, StringComparison.Ordinal);
+        Assert.Contains("deviceCloseManualLogged", script, StringComparison.Ordinal);
+        Assert.Contains("device codes", script, StringComparison.Ordinal);
         Assert.Contains("function canAttemptScriptClose()", script, StringComparison.Ordinal);
         Assert.Contains("if (!canAttemptScriptClose())", script, StringComparison.Ordinal);
         Assert.Contains("fallback.hidden = false", script, StringComparison.Ordinal);
