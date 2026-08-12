@@ -1570,6 +1570,7 @@ h3 {
 .select-field {
     display: grid;
     gap: 5px;
+    min-width: 190px;
     color: var(--ink-muted);
     font-size: 10px;
     font-weight: 650;
@@ -1577,24 +1578,24 @@ h3 {
     text-transform: uppercase;
 }
 
-.select-field select {
-    appearance: none;
+.select-field > .sui-field {
+    width: 190px;
+}
+
+.select-field .sui-select__trigger {
     min-height: 44px;
     min-width: 190px;
     padding: 0 40px 0 12px;
     border: 1px solid var(--line-strong);
     border-radius: var(--radius);
-    background-color: var(--surface);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='m3.5 5.25 3.5 3.5 3.5-3.5' stroke='%235e6673' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    background-position: right 12px center;
-    background-repeat: no-repeat;
+    background: var(--surface);
     color: var(--ink);
     font-size: 12px;
     letter-spacing: normal;
     text-transform: none;
 }
 
-.select-field select:focus-visible {
+.select-field .sui-select__trigger:focus-visible {
     border-color: var(--brand);
     outline: 3px solid var(--brand-ring);
     outline-offset: 0;
@@ -4584,7 +4585,7 @@ h3 {
         flex-direction: column;
     }
 
-    .select-field select,
+    .select-field .sui-select__trigger,
     .user-search,
     .user-search .search-field,
     .user-search .button {

@@ -1436,13 +1436,13 @@ public sealed class ManagementUiArchitectureTests
             ".user-search {\n    display: flex;\n    /* Align the actual controls, not the select's label, to one baseline. */\n    align-items: flex-end;",
             stylesheet,
             StringComparison.Ordinal);
-        Assert.Contains(".select-field select {\n    appearance: none;", stylesheet, StringComparison.Ordinal);
+        Assert.Contains(".select-field .sui-select__trigger {", stylesheet, StringComparison.Ordinal);
         Assert.Contains("padding: 0 40px 0 12px;", stylesheet, StringComparison.Ordinal);
-        Assert.Contains("background-position: right 12px center;", stylesheet, StringComparison.Ordinal);
+        Assert.Contains("min-width: 190px;", stylesheet, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Identity_ui_is_self_contained_and_serves_its_local_sui_assets()
+    public void Identity_ui_consumes_the_shared_sui_assets()
     {
         var repository = ResolveIdentityRepository();
         var components = Path.Combine(
@@ -1464,13 +1464,13 @@ public sealed class ManagementUiArchitectureTests
 
         foreach (var projectFile in projectFiles)
         {
-            Assert.DoesNotContain(
+            Assert.Contains(
                 "sufficit-blazor-ui",
                 File.ReadAllText(projectFile),
                 StringComparison.OrdinalIgnoreCase);
         }
 
-        Assert.True(File.Exists(Path.Combine(components, "wwwroot", "sufficit-ui.css")));
+        Assert.False(File.Exists(Path.Combine(components, "wwwroot", "sufficit-ui.css")));
 
         foreach (var app in new[]
                  {
@@ -1480,11 +1480,7 @@ public sealed class ManagementUiArchitectureTests
         {
             var source = File.ReadAllText(app);
             Assert.Contains(
-                "/_content/Sufficit.Identity.UI.Components/sufficit-ui.css",
-                source,
-                StringComparison.Ordinal);
-            Assert.DoesNotContain(
-                "/_content/Sufficit.Blazor.UI/",
+                "/_content/Sufficit.Blazor.UI/sufficit-ui.css",
                 source,
                 StringComparison.Ordinal);
         }
