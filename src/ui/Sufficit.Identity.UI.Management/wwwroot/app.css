@@ -4947,8 +4947,16 @@ h3 {
 .operator-token-fields {
     display: grid;
     grid-template-columns: minmax(0, 1.6fr) minmax(180px, 0.7fr);
+    align-items: start;
     gap: 16px;
     padding: 18px;
+}
+
+.operator-token-fields > .field-group {
+    /* A field-group normally gains block rhythm from its preceding sibling.
+       Inside this horizontal grid that margin would shift only later columns. */
+    align-self: start;
+    margin-block-start: 0;
 }
 
 .operator-token-fields .field-group > span {
