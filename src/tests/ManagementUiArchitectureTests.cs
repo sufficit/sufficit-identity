@@ -1280,6 +1280,7 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("function logDeviceFlow(event, details)", script, StringComparison.Ordinal);
         Assert.Contains("console.info('[Sufficit Identity][DeviceFlow]'", script, StringComparison.Ordinal);
         Assert.Contains("manual-close-required", script, StringComparison.Ordinal);
+        Assert.Contains("script-close-skipped", script, StringComparison.Ordinal);
         Assert.Contains("script-close-attempted", script, StringComparison.Ordinal);
         Assert.Contains("script-close-succeeded", script, StringComparison.Ordinal);
         Assert.Contains("script-close-blocked", script, StringComparison.Ordinal);
@@ -1288,6 +1289,7 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("device codes", script, StringComparison.Ordinal);
         Assert.Contains("function canAttemptScriptClose()", script, StringComparison.Ordinal);
         Assert.Contains("if (!canAttemptScriptClose())", script, StringComparison.Ordinal);
+        Assert.Contains("Initialization must not consume the close action", script, StringComparison.Ordinal);
         Assert.Contains("fallback.hidden = false", script, StringComparison.Ordinal);
         Assert.Contains("button.hidden = true", script, StringComparison.Ordinal);
         Assert.Contains("deviceCloseAttempted", script, StringComparison.Ordinal);
