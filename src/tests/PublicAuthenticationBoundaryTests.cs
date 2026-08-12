@@ -178,7 +178,8 @@ public sealed class PublicAuthenticationBoundaryTests(
             "TestProvider",
             "/account/externallogincallback?returnUrl=%2F");
         var result = await external.CompleteAsync(
-            new ClaimsPrincipal(new ClaimsIdentity()));
+            new ClaimsPrincipal(new ClaimsIdentity()),
+            forceMfa: false);
 
         Assert.Equal("TestProvider", challenge.AuthenticationScheme);
         Assert.Equal(
@@ -220,6 +221,20 @@ public sealed class PublicAuthenticationBoundaryTests(
             "offsite.example",
             redirect.Url,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task External_management_callback_requires_fresh_mfa()
+    {
+        var external = new StubExternalSignInService();
+        var controller = CreateController(external);
+
+        var action = await controller.Callback(
+            "/management/",
+            CancellationToken.None);
+
+        Assert.IsType<RedirectResult>(action);
+        Assert.True(external.ForceMfa);
     }
 
     [Fact]
@@ -288,6 +303,8 @@ public sealed class PublicAuthenticationBoundaryTests(
 
         public string? CallbackReturnUrl { get; private set; }
 
+        public bool ForceMfa { get; private set; }
+
         public Task<ExternalSignInChallenge> CreateChallengeAsync(
             string provider,
             string callbackUri,
@@ -301,7 +318,14 @@ public sealed class PublicAuthenticationBoundaryTests(
 
         public Task<ExternalSignInResult> CompleteAsync(
             ClaimsPrincipal currentPrincipal,
+            bool forceMfa,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult(Completion);
+            Task.FromResult(SetForceMfa(forceMfa));
+
+        private ExternalSignInResult SetForceMfa(bool forceMfa)
+        {
+            ForceMfa = forceMfa;
+            return Completion;
+        }
     }
 }

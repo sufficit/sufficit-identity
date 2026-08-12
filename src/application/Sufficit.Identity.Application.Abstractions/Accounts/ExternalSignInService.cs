@@ -41,5 +41,6 @@ public interface IExternalSignInService
 
     Task<ExternalSignInResult> CompleteAsync(
         ClaimsPrincipal currentPrincipal,
+        bool forceMfa,
         CancellationToken cancellationToken = default);
 }

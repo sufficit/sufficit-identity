@@ -54,7 +54,10 @@ public sealed class ExternalLoginController(
         var safeReturnUrl = LocalUrlValidator.EnsureLocal(returnUrl);
         var result = await externalSignInService.CompleteAsync(
             User,
-            cancellationToken);
+            forceMfa: safeReturnUrl.StartsWith(
+                "/management",
+                StringComparison.OrdinalIgnoreCase),
+            cancellationToken: cancellationToken);
         return result.Status switch
         {
             ExternalSignInStatus.Succeeded => Redirect(safeReturnUrl),
