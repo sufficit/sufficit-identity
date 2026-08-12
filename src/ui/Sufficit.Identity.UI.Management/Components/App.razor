@@ -1,7 +1,8 @@
 @inject Microsoft.Extensions.Options.IOptions<ManagementUiOptions> ManagementOptions
+@using System.Globalization
 
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="@CultureInfo.CurrentUICulture.Name">
 
 <head>
     <meta charset="utf-8" />

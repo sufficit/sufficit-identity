@@ -7,6 +7,7 @@
 @attribute [Authorize(Policy = ManagementUiPolicies.ManageOperatorTokens)]
 @inject ManagementOperatorTokenDataSource TokenData
 @inject IJSRuntime JS
+@inject IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> L
 
 <PageTitle>Tokens temporários | Sufficit Identity</PageTitle>
 
@@ -457,10 +458,10 @@ else
         ? []
         : workspace.AvailableCapabilities
             .Where(MatchesCapabilityFilter)
-            .GroupBy(CapabilityGroupName)
+            .GroupBy(CapabilityGroupKey)
             .OrderBy(group => CapabilityGroupOrder(group.Key))
             .Select(group => new CapabilityGroup(
-                group.Key,
+                L[$"Capability.Group.{group.Key}"],
                 group.Order(StringComparer.Ordinal).ToArray()))
             .ToArray();
 
@@ -660,37 +661,37 @@ else
     private bool MatchesCapabilityFilter(string capability) =>
         string.IsNullOrWhiteSpace(capabilityFilter)
         || capability.Contains(capabilityFilter.Trim(), StringComparison.OrdinalIgnoreCase)
-        || CapabilityGroupName(capability).Contains(
+        || L[$"Capability.Group.{CapabilityGroupKey(capability)}"].Value.Contains(
             capabilityFilter.Trim(),
             StringComparison.OrdinalIgnoreCase)
         || CapabilityLabel(capability).Contains(
             capabilityFilter.Trim(),
             StringComparison.OrdinalIgnoreCase);
 
-    private static string CapabilityGroupName(string capability) => capability switch
+    private static string CapabilityGroupKey(string capability) => capability switch
     {
         _ when capability.Contains(".users.", StringComparison.Ordinal)
-            || capability.Contains(".claims.", StringComparison.Ordinal) => "Identidade",
+            || capability.Contains(".claims.", StringComparison.Ordinal) => "Identity",
         _ when capability.Contains(".clients.", StringComparison.Ordinal)
             || capability.Contains(".scopes.", StringComparison.Ordinal)
-            || capability.Contains(".authorizations.", StringComparison.Ordinal) => "OAuth e OIDC",
-        _ when capability.Contains(".branding.", StringComparison.Ordinal) => "Experiência",
-        _ when capability.Contains(".vault.", StringComparison.Ordinal) => "Segredos",
-        _ => "Operações",
+            || capability.Contains(".authorizations.", StringComparison.Ordinal) => "OAuthOidc",
+        _ when capability.Contains(".branding.", StringComparison.Ordinal) => "Experience",
+        _ when capability.Contains(".vault.", StringComparison.Ordinal) => "Secrets",
+        _ => "Operations",
     };
 
     private static int CapabilityGroupOrder(string group) => group switch
     {
-        "Identidade" => 10,
-        "OAuth e OIDC" => 20,
-        "Operações" => 30,
-        "Experiência" => 40,
-        "Segredos" => 50,
+        "Identity" => 10,
+        "OAuthOidc" => 20,
+        "Operations" => 30,
+        "Experience" => 40,
+        "Secrets" => 50,
         _ => 100,
     };
 
-    private static string CapabilityLabel(string capability)
-        => ManagementCapabilityPresentation.Get(capability).Label;
+    private string CapabilityLabel(string capability) =>
+        ManagementCapabilityPresentation.Get(capability, L).Label;
 
     private static string FormatDuration(int seconds) => seconds switch
     {
