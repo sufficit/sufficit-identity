@@ -151,8 +151,8 @@
         "RequireAllowedClient": true,
         "ClientPolicyMode": "Enforce",
         "RequiredScope": "scim",
-        "_RequireMfa": "true requires every SCIM request to carry an amr claim proving MFA (RFC 8176), mirroring the management API. Default false — SCIM is typically driven by machine-to-machine provisioning (client_credentials), which cannot do MFA. Enable only when SCIM is exposed to delegated (human) flows; otherwise restrict the scim scope to a single dedicated provisioning client.",
-        "RequireMfa": false,
+        "_RequireMfa": "true requires every SCIM request to carry an amr claim proving MFA (RFC 8176). Default true because SCIM has full-directory trust, including password reset and account deletion. client_credentials integrations cannot satisfy MFA and require a separately reviewed exception while retaining the client allow-list.",
+        "RequireMfa": true,
         "_AllowedClientIds": "Allow-list of OAuth client_id values permitted to call SCIM (M4, eval). SCIM is FULL-DIRECTORY-TRUST: any allowed client can enumerate every user, read PII, reset any password and delete any account. Default empty = FAIL-CLOSED (SCIM stays inaccessible until at least one trusted provisioning client is listed). Add only dedicated, narrowly-scoped provisioning clients; never a general-purpose application client.",
         "AllowedClientIds": [],
         "MaxResults": 100
@@ -308,6 +308,8 @@
       "PersonalTokens": {
         "Mode": "Enforce",
         "RequiredScope": "personal_tokens.manage",
+        "_RequireMfa": "true requires the caller token to carry amr evidence of MFA before a durable personal token is issued. Default true.",
+        "RequireMfa": true,
         "RequireRecentAuthentication": true,
         "MaximumAuthenticationAgeMinutes": 15,
         "MaximumLifetimeDays": 90,
@@ -383,6 +385,8 @@
         "StreamManagementEnabled": false,
         "_RequiredScope": "OAuth scope required to call the stream-management and poll endpoints. Default ssf_transmitter. The scope must exist as an OpenIddict scope (create it via the management API or provisioning manifest).",
         "RequiredScope": "ssf_transmitter",
+        "_RequireMfa": "true requires the caller token to carry amr evidence of MFA for the sensitive transmitter scope. Default true.",
+        "RequireMfa": true,
         "_RequireExplicitSubject": "When true, stream creation must include subject explicitly; use ALL only as a deliberate subscription to every subject. Default false for compatibility. Omitted subjects still default to ALL and emit a warning.",
         "RequireExplicitSubject": false
       },

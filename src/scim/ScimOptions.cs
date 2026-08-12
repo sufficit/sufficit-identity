@@ -37,15 +37,15 @@ public sealed class ScimOptions
     /// <summary>
     /// When <c>true</c>, every SCIM request must carry an <c>amr</c> claim
     /// proving multi-factor authentication (RFC 8176), mirroring the management
-    /// API's <c>RequireMfa</c>. <b>Default <c>false</c></b>: SCIM is most often
-    /// driven by machine-to-machine provisioning integrations (client_credentials),
-    /// which by definition cannot perform MFA. Enable only when SCIM is exposed
-    /// to delegated (human) flows and the full-directory-trust surface of SCIM
-    /// (password reset, account delete) must require a second factor. When
-    /// false, restrict the <c>scim</c> scope to a single dedicated provisioning
-    /// client instead.
+    /// API's <c>RequireMfa</c>. <b>Default <c>true</c></b>: SCIM is a
+    /// full-directory-trust surface (including password reset and account
+    /// deletion), so a sensitive <c>scim</c> token requires MFA evidence.
+    /// Machine-to-machine provisioning integrations using
+    /// <c>client_credentials</c> cannot satisfy this requirement; they must be
+    /// migrated to a separately governed integration path or use an explicit,
+    /// reviewed exception with the allow-list still enabled.
     /// </summary>
-    public bool RequireMfa { get; init; } = false;
+    public bool RequireMfa { get; init; } = true;
 
     /// <summary>
     /// Allow-list of OAuth <c>client_id</c> values permitted to call the SCIM

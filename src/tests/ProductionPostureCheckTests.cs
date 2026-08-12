@@ -185,6 +185,21 @@ public sealed class ProductionPostureCheckTests
     }
 
     [Fact]
+    public void Enabled_scim_without_mfa_is_a_distinct_finding()
+    {
+        var contributor = new ScimProductionPostureContributor(
+            Options.Create(new ScimOptions
+            {
+                Enabled = true,
+                RequireMfa = false,
+            }));
+
+        Assert.Contains(
+            Evaluate(contributor),
+            finding => finding.Id == "scim-mfa-disabled");
+    }
+
+    [Fact]
     public void Valid_structured_acknowledgement_suppresses_one_finding()
     {
         var options = new SecurityPostureOptions

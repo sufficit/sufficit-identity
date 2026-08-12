@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -31,6 +32,22 @@ public sealed class SsfStreamsControllerTests
         Assert.Contains(
             "events_requested must list at least one event type",
             body.GetProperty("error_description").GetString());
+    }
+
+    [Fact]
+    public async Task Transmitter_mfa_requirement_accepts_mfa_amr_evidence()
+    {
+        var handler = new SsfMfaHandler();
+        var context = new AuthorizationHandlerContext(
+            [new SsfMfaRequirement()],
+            new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim("amr", "pwd mfa")],
+                authenticationType: "Test")),
+            resource: null);
+
+        await handler.HandleAsync(context);
+
+        Assert.True(context.HasSucceeded);
     }
 
     [Fact]

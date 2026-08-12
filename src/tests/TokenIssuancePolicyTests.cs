@@ -114,7 +114,8 @@ public sealed class TokenIssuancePolicyTests
             now.AddMinutes(-2),
             now,
             now.AddDays(7),
-            HasSenderConstraint: false));
+            HasSenderConstraint: false,
+            HasMfaEvidence: true));
         var rejected = policy.Evaluate(new PersonalTokenIssuanceContext(
             "subject",
             "eligible-client",
@@ -131,6 +132,33 @@ public sealed class TokenIssuancePolicyTests
         Assert.True(rejected.ShouldReject);
         Assert.Equal("invalid_scope", rejected.ErrorCode);
         Assert.Empty(rejected.EffectiveScopes);
+    }
+
+    [Fact]
+    public void Personal_token_issuance_requires_mfa_by_default()
+    {
+        var policy = CreatePersonalTokenPolicy(new PersonalTokenIssuanceOptions
+        {
+            RequiredScope = "personal_tokens.manage",
+            RequireRecentAuthentication = false,
+            MaximumLifetimeDays = 30,
+        });
+        var now = DateTimeOffset.UtcNow;
+        var context = new PersonalTokenIssuanceContext(
+            "subject",
+            "eligible-client",
+            ["personal_tokens.manage", Scopes.Profile],
+            [Scopes.Profile],
+            [Scopes.Profile, Scopes.Email],
+            null,
+            now,
+            now.AddDays(1),
+            HasSenderConstraint: false);
+
+        var denied = policy.Evaluate(context);
+
+        Assert.True(denied.ShouldReject);
+        Assert.Contains("mfa_required", denied.ReasonCodes);
     }
 
     [Fact]

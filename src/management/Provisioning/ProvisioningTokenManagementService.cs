@@ -328,8 +328,9 @@ internal sealed class ProvisioningTokenIssuer(
         var issuer = configuration["Sufficit:Identity:Issuer"];
         if (string.IsNullOrWhiteSpace(issuer))
         {
-            throw new InvalidOperationException(
-                "Sufficit:Identity:Issuer must be configured before issuing temporary tokens.");
+            throw new ManagementConflictException(
+                "temporary_provisioning_token_issuer_missing",
+                "O token temporário não pode ser emitido porque o issuer público do Identity não está configurado.");
         }
 
         return issuer.TrimEnd('/') + "/";

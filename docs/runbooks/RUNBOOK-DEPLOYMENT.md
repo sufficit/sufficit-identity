@@ -197,8 +197,11 @@ The initial state deliberately does the following:
   trusted proxy network is configured;
 - emits CSP in Report-Only mode and sends same-origin reports to
   `/security/csp-report`;
-- leaves administrative MFA enforcement off until administrators have enrolled
-  and completed a real two-factor login;
+- requires MFA evidence for the sensitive management, SCIM, personal-token and
+  SSF transmitter surfaces by default. Before enabling a surface, enroll the
+  operators, store recovery codes offline and verify that a real two-factor
+  session carries `amr=mfa`; machine-to-machine exceptions require separate
+  review and must retain their client allow-list;
 - keeps Management tenant access fail-closed until every operator has an
   explicit stable-subject assignment. Before enabling or upgrading Management,
   add one protected entry per tenant to `hardening.env`, for example
@@ -236,9 +239,9 @@ enable enforcement:
 /opt/sufficit-identity/helpers/activate-release.sh --current
 ```
 
-For administrative MFA, first enroll at least two operators, store recovery
-codes offline and verify that a real two-factor session carries `amr=mfa`.
-Then apply the explicit gate:
+To re-assert all sensitive-scope MFA gates after a configuration change, first
+enroll at least two operators, store recovery codes offline and verify that a
+real two-factor session carries `amr=mfa`. Then apply the explicit gate:
 
 ```bash
 /opt/sufficit-identity/helpers/security-rollout.sh enforce-mfa --confirmed
@@ -248,7 +251,7 @@ Then apply the explicit gate:
 Emergency rollback is explicit and does not affect CSP:
 
 ```bash
-/opt/sufficit-identity/helpers/security-rollout.sh disable-mfa
+/opt/sufficit-identity/helpers/security-rollout.sh disable-mfa --confirmed
 /opt/sufficit-identity/helpers/activate-release.sh --current
 ```
 

@@ -1205,6 +1205,7 @@ public static class ServiceCollectionExtensions
                 .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(7))
                 .UseSafeOutboundHttp(options.OutboundHttp);
             services.AddScoped<IAuthorizationHandler, Controllers.SsfScopeHandler>();
+            services.AddScoped<IAuthorizationHandler, Controllers.SsfMfaHandler>();
             services.AddAuthorizationBuilder()
                 .AddPolicy("sufficit-ssf-transmitter", policy =>
                 {
@@ -1213,6 +1214,10 @@ public static class ServiceCollectionExtensions
                     policy.RequireAuthenticatedUser();
                     policy.Requirements.Add(
                         new Controllers.SsfScopeRequirement(options.SharedSignals.RequiredScope));
+                    if (options.SharedSignals.RequireMfa)
+                    {
+                        policy.Requirements.Add(new Controllers.SsfMfaRequirement());
+                    }
                 });
         }
 

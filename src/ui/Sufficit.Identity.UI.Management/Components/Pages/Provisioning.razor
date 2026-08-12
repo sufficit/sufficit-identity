@@ -403,21 +403,23 @@ else if (applyResult?.IsSuccess is true)
     private string ErrorTitle =>
         OperationResult?.Outcome switch
         {
-            ManagementDataOutcome.Invalid => "Revise o manifesto",
-            ManagementDataOutcome.Forbidden => "Acesso ao provisionamento negado",
-            ManagementDataOutcome.StepUpRequired => "MFA exigido",
-            ManagementDataOutcome.Conflict => "O ambiente não está pronto para aplicar",
-            _ => "Não foi possível concluir a operação"
+            ManagementDataOutcome.Invalid => "Manifesto inválido — corrija os itens abaixo",
+            ManagementDataOutcome.Forbidden => "Capability de provisioning ausente",
+            ManagementDataOutcome.StepUpRequired => "MFA necessário para continuar",
+            ManagementDataOutcome.Conflict => "Configuração do Identity impede a operação",
+            ManagementDataOutcome.Unavailable => "Identity não respondeu à operação",
+            _ => "A operação não foi concluída"
         };
 
     private string TokenErrorTitle =>
         tokenResult?.Outcome switch
         {
-            ManagementDataOutcome.Forbidden => "Emissão de token não autorizada",
-            ManagementDataOutcome.StepUpRequired => "MFA exigido para emitir token",
-            ManagementDataOutcome.Conflict => "Emissão temporária desabilitada",
+            ManagementDataOutcome.Forbidden => "Capability de emissão ausente",
+            ManagementDataOutcome.StepUpRequired => "MFA necessário para emitir o token",
+            ManagementDataOutcome.Conflict => "Emissão temporária desabilitada ou incompleta",
             ManagementDataOutcome.Invalid => "Validade do token inválida",
-            _ => "Não foi possível emitir o token"
+            ManagementDataOutcome.Unavailable => "Identity não respondeu à emissão",
+            _ => "O token não foi emitido"
         };
 
     private string PlanSummary =>

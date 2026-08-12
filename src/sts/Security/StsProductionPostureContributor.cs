@@ -34,6 +34,24 @@ public sealed class StsProductionPostureContributor(
                 "Inventory current callers and set Sufficit:Identity:PersonalTokens:Mode=Enforce.");
         }
 
+        if (!options.PersonalTokens.RequireMfa)
+        {
+            yield return new(
+                "personal-tokens-mfa-disabled",
+                "Personal-token issuance accepts a password-only authentication context for the sensitive personal_tokens.manage scope.",
+                "Set Sufficit:Identity:PersonalTokens:RequireMfa=true, or document a time-bounded security exception.");
+        }
+
+        if (options.SharedSignals.Enabled
+            && options.SharedSignals.StreamManagementEnabled
+            && !options.SharedSignals.RequireMfa)
+        {
+            yield return new(
+                "ssf-transmitter-mfa-disabled",
+                "SSF stream management accepts a password-only authentication context for the sensitive ssf_transmitter scope.",
+                "Set Sufficit:Identity:SharedSignals:RequireMfa=true, or document a time-bounded security exception.");
+        }
+
         var tokenExchange = configuration
             .GetSection("Sufficit:Identity:TokenExchange")
             .Get<Controllers.TokenExchangeOptions>()

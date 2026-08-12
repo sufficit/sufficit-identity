@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using OpenIddict.Validation.AspNetCore;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.STS.Security;
 using Sufficit.Identity.STS.SharedSignals;
 
 namespace Sufficit.Identity.STS.Controllers;
@@ -31,6 +32,24 @@ internal sealed class SsfScopeHandler : AuthorizationHandler<SsfScopeRequirement
             c.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
         if (scopes.Contains(requirement.Scope))
+        {
+            context.Succeed(requirement);
+        }
+
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>Requires MFA evidence for the sensitive transmitter scope.</summary>
+internal sealed class SsfMfaRequirement : IAuthorizationRequirement;
+
+internal sealed class SsfMfaHandler : AuthorizationHandler<SsfMfaRequirement>
+{
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        SsfMfaRequirement requirement)
+    {
+        if (MfaEvidence.HasMfaEvidence(context.User))
         {
             context.Succeed(requirement);
         }

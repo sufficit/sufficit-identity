@@ -17,8 +17,8 @@ Commands:
   status                         Show the non-secret rollout switches.
   prepare-csp [report-uri]       Enable CSP in Report-Only mode.
   enforce-csp                    Change CSP from reporting to enforcement.
-  enforce-mfa --confirmed        Require MFA for administrative endpoints.
-  disable-mfa                    Emergency rollback for the MFA gate.
+  enforce-mfa --confirmed        Require MFA for every sensitive scope.
+  disable-mfa --confirmed        Emergency rollback for every MFA gate.
   enable-jarm                    Advertise and accept signed JARM responses.
   disable-jarm                   Disable JARM response modes.
 
@@ -76,6 +76,9 @@ show_status() {
         Sufficit__Identity__Csp__ReportOnly \
         Sufficit__Identity__Csp__ReportUri \
         Sufficit__Identity__Management__RequireMfa \
+        Sufficit__Identity__Scim__RequireMfa \
+        Sufficit__Identity__PersonalTokens__RequireMfa \
+        Sufficit__Identity__SharedSignals__RequireMfa \
         Sufficit__Identity__Dpop__Enabled \
         Sufficit__Identity__Ciba__Enabled \
         Sufficit__Identity__Fapi2__Enabled \
@@ -122,11 +125,21 @@ case ${1:-} in
             exit 1
         fi
         write_value Sufficit__Identity__Management__RequireMfa true
-        echo "[rollout] Administrative MFA requirement enabled."
+        write_value Sufficit__Identity__Scim__RequireMfa true
+        write_value Sufficit__Identity__PersonalTokens__RequireMfa true
+        write_value Sufficit__Identity__SharedSignals__RequireMfa true
+        echo "[rollout] MFA requirement enabled for every sensitive scope."
         ;;
     disable-mfa)
+        if [[ ${2:-} != --confirmed ]]; then
+            echo "[rollout] Refusing to disable sensitive-scope MFA without --confirmed." >&2
+            exit 1
+        fi
         write_value Sufficit__Identity__Management__RequireMfa false
-        echo "[rollout] Administrative MFA requirement disabled."
+        write_value Sufficit__Identity__Scim__RequireMfa false
+        write_value Sufficit__Identity__PersonalTokens__RequireMfa false
+        write_value Sufficit__Identity__SharedSignals__RequireMfa false
+        echo "[rollout] MFA requirement disabled for every sensitive scope."
         ;;
     enable-jarm)
         write_value Sufficit__Identity__Jarm__Enabled true

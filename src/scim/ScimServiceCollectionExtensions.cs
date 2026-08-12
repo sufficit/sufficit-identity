@@ -60,11 +60,11 @@ public static class ScimServiceCollectionExtensions
                             options.AllowedClientIds,
                             options.ClientPolicyMode));
                 }
-                // M2 fix (eval M2): opt-in MFA for the full SCIM surface. SCIM
-                // can reset any user's password and delete any account, so when
-                // it is exposed to delegated (human) flows, the second factor is
-                // required exactly as on the management API. Off by default
-                // because M2M provisioning (client_credentials) cannot do MFA.
+                // SCIM can reset any user's password and delete any account, so
+                // the second factor is required by the secure default exactly as
+                // on the management API. A client_credentials integration must
+                // use an explicit, reviewed exception; it must not silently
+                // inherit a password-only path.
                 if (options.RequireMfa)
                 {
                     policy.Requirements.Add(new ScimMfaRequirement());
@@ -140,7 +140,10 @@ public sealed class ScimMfaHandler : AuthorizationHandler<ScimMfaRequirement>
         AuthorizationHandlerContext context,
         ScimMfaRequirement requirement)
     {
-        var amrValues = context.User.FindAll(AmrClaimType).Select(c => c.Value);
+        var amrValues = context.User.FindAll(AmrClaimType)
+            .SelectMany(claim => claim.Value.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
         if (amrValues.Any(v => MfaValues.Contains(v)))
         {
             context.Succeed(requirement);

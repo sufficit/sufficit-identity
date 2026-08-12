@@ -12,6 +12,7 @@ using OpenIddict.Server;
 using OpenIddict.Validation.AspNetCore;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.STS.Security;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using static OpenIddict.Server.OpenIddictServerEvents;
 
@@ -298,7 +299,8 @@ public sealed class PersonalTokensController : ControllerBase
             ResolveAuthenticationTime(),
             now,
             expiration,
-            !string.IsNullOrWhiteSpace(User.GetClaim(Dpop.DpopProofValidator.ConfirmationClaimType))));
+            !string.IsNullOrWhiteSpace(User.GetClaim(Dpop.DpopProofValidator.ConfirmationClaimType)),
+            MfaEvidence.HasMfaEvidence(User)));
         if (issuanceDecision.ShouldReject)
         {
             return StatusCode(StatusCodes.Status403Forbidden, new

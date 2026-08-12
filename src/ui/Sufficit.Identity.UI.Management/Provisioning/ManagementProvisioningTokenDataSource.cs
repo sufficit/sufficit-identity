@@ -46,25 +46,23 @@ public sealed class ManagementProvisioningTokenDataSource(
             return ManagementDataResult<ProvisioningTokenIssueResult>.Failure(
                 ManagementDataOutcome.Invalid,
                 exception.Message,
-                exception.Field);
+                exception.Field,
+                errorDetails: [
+                    "Próximo passo: escolha uma validade entre 60 segundos e o limite configurado no Identity."
+                ]);
         }
         catch (ManagementConflictException exception)
         {
-            return ManagementDataResult<ProvisioningTokenIssueResult>.Failure(
-                ManagementDataOutcome.Conflict,
-                exception.Message);
+            return ProvisioningErrorMessages.ConflictFailure<ProvisioningTokenIssueResult>(
+                exception,
+                "emitir o token temporário");
         }
         catch (ManagementAccessException exception)
         {
-            var outcome = exception.Decision.Outcome is
-                ManagementAuthorizationOutcome.StepUpRequired
-                    ? ManagementDataOutcome.StepUpRequired
-                    : ManagementDataOutcome.Forbidden;
-            return ManagementDataResult<ProvisioningTokenIssueResult>.Failure(
-                outcome,
-                outcome is ManagementDataOutcome.StepUpRequired
-                    ? "Conclua a autenticação multifator para continuar."
-                    : "Sua conta não possui a capability necessária.");
+            return ProvisioningErrorMessages.AccessFailure<ProvisioningTokenIssueResult>(
+                exception.Decision,
+                "emitir o token temporário",
+                ManagementCapabilities.ProvisioningApply);
         }
         catch (OperationCanceledException)
             when (!cancellationToken.IsCancellationRequested)
@@ -72,7 +70,11 @@ public sealed class ManagementProvisioningTokenDataSource(
             logger.LogWarning("Temporary provisioning-token issuance timed out.");
             return ManagementDataResult<ProvisioningTokenIssueResult>.Failure(
                 ManagementDataOutcome.Unavailable,
-                "O serviço demorou mais que o esperado. Tente novamente.");
+                ProvisioningErrorMessages.TimeoutMessage(
+                    "emitir o token temporário"),
+                errorDetails: [
+                    "Próximo passo: confirme o estado do Identity em /health/ready e tente novamente."
+                ]);
         }
         catch (OperationCanceledException)
         {
@@ -85,7 +87,11 @@ public sealed class ManagementProvisioningTokenDataSource(
                 "Temporary provisioning-token issuance failed in the embedded management module.");
             return ManagementDataResult<ProvisioningTokenIssueResult>.Failure(
                 ManagementDataOutcome.Unavailable,
-                "O serviço de identidade não conseguiu emitir o token temporário.");
+                ProvisioningErrorMessages.DependencyMessage(
+                    "emitir o token temporário"),
+                errorDetails: [
+                    "Próximo passo: confirme que esta versão do Identity está implantada e que a emissão temporária foi habilitada pela infraestrutura."
+                ]);
         }
     }
 }
