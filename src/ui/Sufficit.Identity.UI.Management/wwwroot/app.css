@@ -1645,7 +1645,7 @@ h3 {
 .select-field .sui-select__trigger {
     min-height: 44px;
     min-width: 190px;
-    padding: 0 40px 0 12px;
+    padding-inline: 12px;
     border: 1px solid var(--line-strong);
     border-radius: var(--radius);
     background: var(--surface);

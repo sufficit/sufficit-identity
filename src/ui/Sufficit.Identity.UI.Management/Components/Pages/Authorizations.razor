@@ -47,7 +47,7 @@
                 </label>
                 <div class="select-field">
                     <span>Estado</span>
-                    <SUISelect T="string" @bind-Value="stateFilter">
+                    <SUISelect T="string" id="authorization-state-filter" name="state" aria-label="Estado" @bind-Value="stateFilter">
                         <SUISelectItem Value="@("active")">Ativas</SUISelectItem>
                         <SUISelectItem Value="@("all")">Todas</SUISelectItem>
                     </SUISelect>
