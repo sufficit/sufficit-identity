@@ -1,4 +1,5 @@
 using System.Security.Cryptography.X509Certificates;
+using System.Security.Claims;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -492,6 +493,54 @@ public static class ServiceCollectionExtensions
             // loses its local Identity session immediately instead of waiting
             // for the framework's default validation interval.
             options.ValidationInterval = TimeSpan.Zero;
+
+            // The validator rebuilds the principal through the claims factory.
+            // Authentication-method claims are session evidence, not durable
+            // user claims, so preserve them from the currently validated
+            // ticket when the security stamp is renewed. Without this hook a
+            // successful MFA ticket is immediately downgraded to Loa1 on the
+            // next request even though the security stamp itself is valid.
+            options.OnRefreshingPrincipal = context =>
+            {
+                var currentIdentity = context.CurrentPrincipal?.Identities
+                    .FirstOrDefault();
+                var newIdentity = context.NewPrincipal?.Identities
+                    .FirstOrDefault();
+                if (currentIdentity is null || newIdentity is null)
+                {
+                    return Task.CompletedTask;
+                }
+
+                foreach (var claimType in new[]
+                {
+                    AuthenticationContextProjector.AuthenticationMethodClaimType,
+                    AuthenticationContextProjector.AuthenticationTimeClaimType,
+                    OidcSessionClaimsPrincipalFactory.AssuranceLevelClaimType,
+                    AuthenticationContextProjector.AuthenticationContextClassClaimType,
+                })
+                {
+                    var currentClaims = currentIdentity
+                        .FindAll(claimType)
+                        .Select(claim => new Claim(claim.Type, claim.Value, claim.ValueType, claim.Issuer, claim.OriginalIssuer))
+                        .ToArray();
+                    if (currentClaims.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    foreach (var existing in newIdentity.FindAll(claimType).ToArray())
+                    {
+                        newIdentity.RemoveClaim(existing);
+                    }
+
+                    foreach (var claim in currentClaims)
+                    {
+                        newIdentity.AddClaim(claim);
+                    }
+                }
+
+                return Task.CompletedTask;
+            };
         });
 
         // ---- External login providers (Google, GitHub, etc) ----
