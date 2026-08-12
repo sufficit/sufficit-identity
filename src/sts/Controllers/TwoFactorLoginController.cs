@@ -23,11 +23,15 @@ public sealed class TwoFactorLoginController(
         CancellationToken cancellationToken)
     {
         var returnUrl = LocalUrlValidator.EnsureLocal(request.ReturnUrl);
+        // A hidden field can arrive empty when the page is rendered without
+        // the optional remember-me query parameter. Treat that as the secure
+        // default instead of letting ApiController return an opaque 400.
+        var rememberMe = ParseBoolean(request.RememberMe);
         if (!await ValidateAntiforgeryAsync())
         {
             return RedirectToAuthenticator(
                 returnUrl,
-                request.RememberMe,
+                rememberMe,
                 "request_expired");
         }
 
@@ -36,14 +40,14 @@ public sealed class TwoFactorLoginController(
         {
             return RedirectToAuthenticator(
                 returnUrl,
-                request.RememberMe,
+                rememberMe,
                 "pending_state_missing");
         }
 
         var result = await signInService.AuthenticatorSignInAsync(
             new AuthenticatorSignInCommand(
                 request.Code ?? string.Empty,
-                request.RememberMe,
+                rememberMe,
                 request.RememberClient),
             cancellationToken);
 
@@ -52,11 +56,11 @@ public sealed class TwoFactorLoginController(
             InteractiveSignInStatus.Succeeded => LocalRedirect(returnUrl),
             InteractiveSignInStatus.LockedOut => RedirectToAuthenticator(
                 returnUrl,
-                request.RememberMe,
+                rememberMe,
                 "locked_out"),
             _ => RedirectToAuthenticator(
                 returnUrl,
-                request.RememberMe,
+                rememberMe,
                 "invalid_code"),
         };
     }
@@ -107,6 +111,9 @@ public sealed class TwoFactorLoginController(
         }
     }
 
+    private static bool ParseBoolean(string? value) =>
+        bool.TryParse(value, out var parsed) && parsed;
+
     private RedirectResult RedirectToAuthenticator(
         string returnUrl,
         bool rememberMe,
@@ -134,7 +141,7 @@ public sealed class TwoFactorLoginController(
     public sealed class AuthenticatorRequest
     {
         public string? Code { get; init; }
-        public bool RememberMe { get; init; }
+        public string? RememberMe { get; init; }
         public bool RememberClient { get; init; }
         public string? ReturnUrl { get; init; }
     }

@@ -17,7 +17,10 @@
     <form method="post" action="/account/login/2fa" data-enhance="false">
         <AntiforgeryToken />
         <input type="hidden" name="ReturnUrl" value="@_returnUrl" />
-        <input type="hidden" name="RememberMe" value="@RememberMe" />
+        @if (RememberMe)
+        {
+            <input type="hidden" name="RememberMe" value="true" />
+        }
 
         <div class="form-group">
             <label for="code">@L["TwoFactor.VerificationCode"]</label>
