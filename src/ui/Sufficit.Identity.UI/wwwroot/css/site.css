@@ -799,6 +799,15 @@ a:hover { color: var(--brand-hover); text-decoration: underline; }
     color: var(--ink-muted);
     line-height: 1.45;
 }
+.consent-submitted {
+    margin: var(--space-5) 0 0;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-sunken);
+}
+.consent-submitted strong { display: block; margin-bottom: var(--space-1); }
+.consent-submitted p { margin: 0; }
 
 @media (max-width: 768px) {
     .scope-item {

@@ -46,7 +46,12 @@ else
                name="consent_decision" value="allow" to approve or "deny"
                to deny — matches what the STS AuthorizationController reads
                back off the POST body *@
-        <form method="post" action="/connect/authorize">
+        @* The authorization endpoint returns an OAuth redirect (often a
+           custom URI such as vscode://), not a Blazor document. Opt out of
+           enhanced form navigation so the browser owns the protocol redirect
+           and this page can show a terminal state if the external handler
+           leaves the tab visible. *@
+        <form method="post" action="/connect/authorize" data-enhance="false" data-consent-form>
             <AntiforgeryToken />
             @foreach (var (key, value) in _passthroughParams)
             {
@@ -72,6 +77,11 @@ else
                 <button type="submit" name="consent_decision" value="deny" class="btn btn-secondary">
                     @L["Consent.Deny"]
                 </button>
+            </div>
+
+            <div class="consent-submitted info" data-consent-submitted hidden role="status" aria-live="polite">
+                <strong>@L["Consent.Submitted"]</strong>
+                <p>@L["Consent.SubmittedHint"]</p>
             </div>
         </form>
     </div>
