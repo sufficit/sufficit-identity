@@ -56,13 +56,13 @@
                            autocomplete="off"
                            @bind="search" />
                 </label>
-                <label class="select-field">
+                <div class="select-field">
                     <span>Estado</span>
-                    <select @bind="stateFilter">
-                        <option value="active">Ativas</option>
-                        <option value="all">Todas</option>
-                    </select>
-                </label>
+                    <SUISelect T="string" @bind-Value="stateFilter">
+                        <SUISelectItem Value="@("active")">Ativas</SUISelectItem>
+                        <SUISelectItem Value="@("all")">Todas</SUISelectItem>
+                    </SUISelect>
+                </div>
                 <button class="button button--secondary" type="submit" disabled="@loading">Aplicar</button>
             </form>
         </div>

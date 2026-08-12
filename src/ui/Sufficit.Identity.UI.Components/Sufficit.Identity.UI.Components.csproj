@@ -12,4 +12,9 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Use the shared SUI implementation instead of keeping a local copy. -->
+    <ProjectReference Include="..\..\..\..\sufficit-blazor-ui\src\Sufficit.Blazor.UI\Sufficit.Blazor.UI.csproj" />
+  </ItemGroup>
+
 </Project>
