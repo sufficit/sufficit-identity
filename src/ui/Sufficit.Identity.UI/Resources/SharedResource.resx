@@ -123,8 +123,14 @@
   <data name="TwoFactor.UseRecoveryCode" xml:space="preserve"><value>Usar código de recuperação</value></data>
   <data name="TwoFactor.Error.InvalidCode" xml:space="preserve"><value>Código inválido. Tente novamente.</value></data>
   <data name="TwoFactor.Error.LockedOut" xml:space="preserve"><value>Conta bloqueada por muitas tentativas. Tente novamente mais tarde.</value></data>
+  <data name="TwoFactor.Error.SessionExpired" xml:space="preserve"><value>A etapa anterior de autenticação expirou ou não está mais disponível. Reinicie o login.</value></data>
+  <data name="TwoFactor.Error.RequestExpired" xml:space="preserve"><value>Esta solicitação expirou. Reabra o fluxo de login e tente novamente.</value></data>
   <data name="RecoveryCode.Title" xml:space="preserve"><value>Código de recuperação</value></data>
   <data name="RecoveryCode.EnterCode" xml:space="preserve"><value>Digite um código de recuperação.</value></data>
+  <data name="RecoveryCode.Error.InvalidCode" xml:space="preserve"><value>Código de recuperação inválido. Confira o código e tente novamente.</value></data>
+  <data name="RecoveryCode.Error.LockedOut" xml:space="preserve"><value>Conta bloqueada por muitas tentativas. Tente novamente mais tarde.</value></data>
+  <data name="RecoveryCode.Error.SessionExpired" xml:space="preserve"><value>A etapa anterior de autenticação expirou ou não está mais disponível. Reinicie o login.</value></data>
+  <data name="RecoveryCode.Error.RequestExpired" xml:space="preserve"><value>Esta solicitação expirou. Reabra o fluxo de login e tente novamente.</value></data>
 
   <!-- ===== Logout ===== -->
   <data name="Logout.Title" xml:space="preserve"><value>Sair da conta</value></data>

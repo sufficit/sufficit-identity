@@ -123,8 +123,14 @@
   <data name="TwoFactor.UseRecoveryCode" xml:space="preserve"><value>Use recovery code</value></data>
   <data name="TwoFactor.Error.InvalidCode" xml:space="preserve"><value>Invalid code. Please try again.</value></data>
   <data name="TwoFactor.Error.LockedOut" xml:space="preserve"><value>Account locked due to too many attempts. Try again later.</value></data>
+  <data name="TwoFactor.Error.SessionExpired" xml:space="preserve"><value>The previous authentication step expired or is no longer available. Restart sign-in.</value></data>
+  <data name="TwoFactor.Error.RequestExpired" xml:space="preserve"><value>This request expired. Reopen the sign-in flow and try again.</value></data>
   <data name="RecoveryCode.Title" xml:space="preserve"><value>Recovery code</value></data>
   <data name="RecoveryCode.EnterCode" xml:space="preserve"><value>Enter a recovery code.</value></data>
+  <data name="RecoveryCode.Error.InvalidCode" xml:space="preserve"><value>Invalid recovery code. Check the code and try again.</value></data>
+  <data name="RecoveryCode.Error.LockedOut" xml:space="preserve"><value>Account locked due to too many attempts. Try again later.</value></data>
+  <data name="RecoveryCode.Error.SessionExpired" xml:space="preserve"><value>The previous authentication step expired or is no longer available. Restart sign-in.</value></data>
+  <data name="RecoveryCode.Error.RequestExpired" xml:space="preserve"><value>This request expired. Reopen the sign-in flow and try again.</value></data>
 
   <!-- ===== Logout ===== -->
   <data name="Logout.Title" xml:space="preserve"><value>Sign out</value></data>

@@ -9,28 +9,29 @@
     <h1>@L["TwoFactor.Title"]</h1>
     <p class="info">@L["TwoFactor.EnterCode"]</p>
 
-    @if (_error is not null)
+    @if (ErrorMessage is { } errorMessage)
     {
-        <div class="alert alert-error" role="alert">@_error</div>
+        <div class="alert alert-error" role="alert">@errorMessage</div>
     }
 
-    <EditForm Model="_model" Method="post" OnValidSubmit="VerifyCodeAsync" FormName="login-2fa">
-        <DataAnnotationsValidator />
+    <form method="post" action="/account/login/2fa" data-enhance="false">
+        <AntiforgeryToken />
+        <input type="hidden" name="ReturnUrl" value="@_returnUrl" />
+        <input type="hidden" name="RememberMe" value="@RememberMe" />
 
         <div class="form-group">
             <label for="code">@L["TwoFactor.VerificationCode"]</label>
-            <InputText id="code" @bind-Value="_model.TwoFactorCode" class="form-control"
-                       placeholder="123456" autocomplete="one-time-code" autofocus />
-            <ValidationMessage For="@(() => _model.TwoFactorCode)" />
+            <input id="code" name="Code" class="form-control" placeholder="123456"
+                   autocomplete="one-time-code" autofocus required minlength="6" maxlength="7" />
         </div>
 
         <div class="form-check">
-            <InputCheckbox id="rememberMachine" @bind-Value="_model.RememberMachine" />
+            <input id="rememberMachine" name="RememberClient" type="checkbox" value="true" />
             <label for="rememberMachine">@L["TwoFactor.RememberDevice"]</label>
         </div>
 
         <button type="submit" class="btn btn-primary btn-block">@L["TwoFactor.Submit"]</button>
-    </EditForm>
+    </form>
 
     <div class="auth-links">
         <a href="/account/loginwithrecoverycode?returnUrl=@Uri.EscapeDataString(_returnUrl ?? "/")">
@@ -44,16 +45,17 @@
 @code {
     [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
     [SupplyParameterFromQuery] private bool RememberMe { get; set; }
-
-    private TwoFactorInput? _boundModel;
-    [SupplyParameterFromForm(FormName = "login-2fa")]
-    private TwoFactorInput _model
-    {
-        get => _boundModel ??= new();
-        set => _boundModel = value;
-    }
+    [SupplyParameterFromQuery] private string? Error { get; set; }
     private string? _returnUrl;
-    private string? _error;
+
+    private string? ErrorMessage => Error switch
+    {
+        "locked_out" => L["TwoFactor.Error.LockedOut"].Value,
+        "pending_state_missing" => L["TwoFactor.Error.SessionExpired"].Value,
+        "request_expired" => L["TwoFactor.Error.RequestExpired"].Value,
+        "invalid_code" => L["TwoFactor.Error.InvalidCode"].Value,
+        _ => null,
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -68,35 +70,4 @@
         }
     }
 
-    private async Task VerifyCodeAsync()
-    {
-        var result = await SignInService.AuthenticatorSignInAsync(
-            new AuthenticatorSignInCommand(
-                _model.TwoFactorCode,
-                RememberMe,
-                _model.RememberMachine));
-
-        if (result.Status == InteractiveSignInStatus.Succeeded)
-        {
-            Navigation.NavigateTo(_returnUrl ?? "/", forceLoad: true);
-            return;
-        }
-
-        if (result.Status == InteractiveSignInStatus.LockedOut)
-        {
-            _error = L["TwoFactor.Error.LockedOut"];
-            return;
-        }
-
-        _error = L["TwoFactor.Error.InvalidCode"];
-    }
-
-    private sealed class TwoFactorInput
-    {
-        [Required(ErrorMessage = "O código é obrigatório.")]
-        [StringLength(7, ErrorMessage = "O código deve ter 6 dígitos.", MinimumLength = 6)]
-        public string TwoFactorCode { get; set; } = string.Empty;
-
-        public bool RememberMachine { get; set; }
-    }
 }

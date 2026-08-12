@@ -9,23 +9,23 @@
     <h1>@L["RecoveryCode.Title"]</h1>
     <p class="info">@L["RecoveryCode.EnterCode"]</p>
 
-    @if (_error is not null)
+    @if (ErrorMessage is { } errorMessage)
     {
-        <div class="alert alert-error" role="alert">@_error</div>
+        <div class="alert alert-error" role="alert">@errorMessage</div>
     }
 
-    <EditForm Model="_model" Method="post" OnValidSubmit="VerifyCodeAsync" FormName="recovery-code">
-        <DataAnnotationsValidator />
+    <form method="post" action="/account/login/recoverycode" data-enhance="false">
+        <AntiforgeryToken />
+        <input type="hidden" name="ReturnUrl" value="@_returnUrl" />
 
         <div class="form-group">
             <label for="code">@L["RecoveryCode.CodeLabel"]</label>
-            <InputText id="code" @bind-Value="_model.RecoveryCode" class="form-control"
-                       placeholder="abc-defg" autocomplete="one-time-code" autofocus />
-            <ValidationMessage For="@(() => _model.RecoveryCode)" />
+            <input id="code" name="Code" class="form-control" placeholder="abc-defg"
+                   autocomplete="one-time-code" autofocus required />
         </div>
 
         <button type="submit" class="btn btn-primary btn-block">@L["Login.Submit"]</button>
-    </EditForm>
+    </form>
 
     <div class="auth-links">
         <a href="/account/loginwith2fa?returnUrl=@Uri.EscapeDataString(_returnUrl ?? "/")">
@@ -37,15 +37,17 @@
 @code {
     [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
 
-    private RecoveryInput? _boundModel;
-    [SupplyParameterFromForm(FormName = "recovery-code")]
-    private RecoveryInput _model
-    {
-        get => _boundModel ??= new();
-        set => _boundModel = value;
-    }
+    [SupplyParameterFromQuery] private string? Error { get; set; }
     private string? _returnUrl;
-    private string? _error;
+
+    private string? ErrorMessage => Error switch
+    {
+        "locked_out" => L["RecoveryCode.Error.LockedOut"].Value,
+        "pending_state_missing" => L["RecoveryCode.Error.SessionExpired"].Value,
+        "request_expired" => L["RecoveryCode.Error.RequestExpired"].Value,
+        "invalid_code" => L["RecoveryCode.Error.InvalidCode"].Value,
+        _ => null,
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -58,29 +60,4 @@
         }
     }
 
-    private async Task VerifyCodeAsync()
-    {
-        var result = await SignInService.RecoveryCodeSignInAsync(
-            _model.RecoveryCode);
-
-        if (result.Status == InteractiveSignInStatus.Succeeded)
-        {
-            Navigation.NavigateTo(_returnUrl ?? "/", forceLoad: true);
-            return;
-        }
-
-        if (result.Status == InteractiveSignInStatus.LockedOut)
-        {
-            _error = "Conta bloqueada por muitas tentativas.";
-            return;
-        }
-
-        _error = "Código de recuperação inválido.";
-    }
-
-    private sealed class RecoveryInput
-    {
-        [Required(ErrorMessage = "O código é obrigatório.")]
-        public string RecoveryCode { get; set; } = string.Empty;
-    }
 }
