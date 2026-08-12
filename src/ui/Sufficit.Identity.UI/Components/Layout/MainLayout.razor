@@ -1,5 +1,6 @@
 @inject IBrandingThemeProvider BrandingProvider
 @inject IStringLocalizer<SharedResource> L
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment HostingEnvironment
 @inject Microsoft.Extensions.Configuration.IConfiguration Configuration
 @inherits LayoutComponentBase
 
@@ -52,8 +53,15 @@
             <code>@ServerHostName</code>
         </span>
         <span class="footer-links">
-            <a href="/.well-known/openid-configuration">Discovery</a> ·
-            <a href="/swagger">API Swagger</a>
+            <a href="/.well-known/openid-configuration">Discovery</a>
+            @if (string.Equals(
+                HostingEnvironment.EnvironmentName,
+                "Development",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                <text> · </text>
+                <a href="/swagger">API Swagger</a>
+            }
         </span>
     </footer>
 </div>

@@ -62,6 +62,29 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Public_layout_only_links_to_swagger_when_the_endpoint_is_available()
+    {
+        var layout = File.ReadAllText(Path.Combine(
+            ResolvePublicUiSource(),
+            "Components",
+            "Layout",
+            "MainLayout.razor"));
+
+        Assert.Contains(
+            "IWebHostEnvironment HostingEnvironment",
+            layout,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "HostingEnvironment.EnvironmentName",
+            layout,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "<a href=\"/swagger\">API Swagger</a>",
+            layout,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Management_ui_source_uses_only_application_contracts()
     {
         var sourceRoot = ResolveManagementUiSource();
