@@ -223,6 +223,22 @@ public sealed class ManagementUiRoutingTests
         Assert.Contains("Atualizar clientes Hermes", html, StringComparison.Ordinal);
         Assert.Contains(ManagementCapabilities.ClientsRead, html, StringComparison.Ordinal);
         Assert.Contains(ManagementCapabilities.ClientsUpdate, html, StringComparison.Ordinal);
+        Assert.Contains(
+            "Informações sobre Consultar aplicações OAuth e OIDC",
+            html,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Usada nas telas de Aplicações e detalhes do cliente",
+            html,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "role=\"tooltip\"",
+            html,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "aria-describedby=\"capability-help-identity-clients-read\"",
+            html,
+            StringComparison.Ordinal);
         Assert.Contains("Confirmar e gerar token", html, StringComparison.Ordinal);
         Assert.DoesNotContain("MFA obrigatório", html, StringComparison.Ordinal);
         Assert.DoesNotContain("token-value-from-server", html, StringComparison.Ordinal);
