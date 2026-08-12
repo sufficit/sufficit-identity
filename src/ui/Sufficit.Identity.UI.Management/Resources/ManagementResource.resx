@@ -6,6 +6,9 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
 
   <data name="Capability.Help.AriaLabel" xml:space="preserve"><value>Informações sobre {0}</value></data>
+  <data name="OperatorTokens.Validation.PurposeLength" xml:space="preserve"><value>A finalidade deve ter no máximo {0} caracteres.</value></data>
+  <data name="OperatorTokens.Validation.LifetimeRange" xml:space="preserve"><value>A validade deve ficar entre {0} e {1} segundos.</value></data>
+  <data name="OperatorTokens.Validation.CapabilityLimit" xml:space="preserve"><value>A solicitação contém {0} capabilities; o limite é {1}.</value></data>
   <data name="Capability.Fallback.Label" xml:space="preserve"><value>Acesso administrativo</value></data>
   <data name="Capability.Fallback.Title" xml:space="preserve"><value>Capability {0}</value></data>
   <data name="Capability.Fallback.Description" xml:space="preserve"><value>Autoriza a operação administrativa identificada por esta capability. Consulte a documentação do módulo antes de delegá-la a uma automação.</value></data>

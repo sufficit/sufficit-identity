@@ -60,6 +60,24 @@ public sealed class ManagementCapabilityPresentationTests
             Required("Capability.Help.AriaLabel", culture));
     }
 
+    [Theory]
+    [InlineData("pt-BR")]
+    [InlineData("en-US")]
+    public void Operator_token_url_validation_is_localized(string cultureName)
+    {
+        var culture = CultureInfo.GetCultureInfo(cultureName);
+
+        Assert.NotEmpty(Required(
+            "OperatorTokens.Validation.PurposeLength",
+            culture));
+        Assert.NotEmpty(Required(
+            "OperatorTokens.Validation.LifetimeRange",
+            culture));
+        Assert.NotEmpty(Required(
+            "OperatorTokens.Validation.CapabilityLimit",
+            culture));
+    }
+
     private static string Required(string key, CultureInfo culture) =>
         Resources.GetString(key, culture)
         ?? throw new InvalidOperationException(

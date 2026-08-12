@@ -182,6 +182,13 @@ Parâmetros aceitos:
 - `capability`: pode ser repetido para cada capability;
 - `capabilities`: alternativa em lista separada por vírgulas.
 
+Durante a edição, finalidade, validade e cada capability marcada ou desmarcada
+são refletidas imediatamente na URL sem recarregar a página. A navegação
+substitui a entrada atual do histórico, preserva parâmetros alheios ao
+formulário (inclusive cultura) e normaliza a seleção para parâmetros
+`capability` repetidos. Assim, copiar a URL reproduz o estado atual sem fazer o
+botão Voltar percorrer cada clique intermediário.
+
 Valores inválidos ou capabilities indisponíveis bloqueiam a confirmação e são
 mostrados ao operador. O valor emitido aparece somente uma vez; a listagem
 mantém metadados para auditoria e revogação. Habilitação explícita:

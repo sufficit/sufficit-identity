@@ -7,6 +7,7 @@
 @attribute [Authorize(Policy = ManagementUiPolicies.ManageOperatorTokens)]
 @inject ManagementOperatorTokenDataSource TokenData
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 @inject IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> L
 
 <PageTitle>Tokens temporários | Sufficit Identity</PageTitle>
@@ -139,7 +140,8 @@ else
                            autocomplete="off"
                            placeholder="Ex.: atualizar clientes Hermes e Symposium"
                            disabled="@issuing"
-                           @bind="purpose" />
+                           @bind="purpose"
+                           @bind:after="SynchronizeRequestUrl" />
                     <small>Esta descrição aparece na lista e na auditoria; não inclua segredos.</small>
                 </label>
 
@@ -147,7 +149,8 @@ else
                     <span>Validade</span>
                     <select class="form-control"
                             disabled="@issuing"
-                            @bind="tokenLifetimeSeconds">
+                            @bind="tokenLifetimeSeconds"
+                            @bind:after="SynchronizeRequestUrl">
                         @foreach (var lifetime in LifetimeOptions)
                         {
                             <option value="@lifetime">@FormatDuration(lifetime)</option>
@@ -505,7 +508,8 @@ else
             : requestedPurpose[..Math.Min(requestedPurpose.Length, 120)];
         if (requestedPurpose?.Length > 120)
         {
-            queryValidationErrors.Add("A finalidade deve ter no máximo 120 caracteres.");
+            queryValidationErrors.Add(
+                L["OperatorTokens.Validation.PurposeLength", 120]);
         }
 
         if (RequestedLifetimeSeconds is { } requestedLifetime)
@@ -518,7 +522,10 @@ else
             else
             {
                 queryValidationErrors.Add(
-                    $"A validade deve ficar entre 60 e {workspace!.MaximumLifetimeSeconds} segundos.");
+                    L[
+                        "OperatorTokens.Validation.LifetimeRange",
+                        60,
+                        workspace!.MaximumLifetimeSeconds]);
             }
         }
 
@@ -544,7 +551,10 @@ else
         if (requestedCapabilities.Length > workspace!.MaximumCapabilities)
         {
             queryValidationErrors.Add(
-                $"O link solicita {requestedCapabilities.Length} capabilities; o limite é {workspace.MaximumCapabilities}.");
+                L[
+                    "OperatorTokens.Validation.CapabilityLimit",
+                    requestedCapabilities.Length,
+                    workspace.MaximumCapabilities]);
         }
         capabilityPickerOpen = !queryPrepared || selectedCapabilities.Count is 0;
     }
@@ -642,12 +652,76 @@ else
         {
             selectedCapabilities.Remove(capability);
         }
+
+        SynchronizeRequestUrl();
     }
 
-    private void RemoveCapability(string capability) =>
+    private void RemoveCapability(string capability)
+    {
         selectedCapabilities.Remove(capability);
+        SynchronizeRequestUrl();
+    }
 
-    private void ClearCapabilities() => selectedCapabilities.Clear();
+    private void ClearCapabilities()
+    {
+        selectedCapabilities.Clear();
+        SynchronizeRequestUrl();
+    }
+
+    private void SynchronizeRequestUrl()
+    {
+        if (workspace is null)
+        {
+            return;
+        }
+
+        // The query string is the shareable draft of this request. Replace the
+        // current history entry so checking several capabilities does not make
+        // the browser Back button walk through every intermediate checkbox
+        // state. Keep all mutation paths above synchronized: removing one of
+        // them would make a copied URL silently restore stale permissions.
+        var uri = OperatorTokenRequestUrl.Build(
+            Navigation,
+            purpose,
+            tokenLifetimeSeconds,
+            selectedCapabilities);
+        queryPrepared = true;
+        queryUnavailableCapabilities.Clear();
+        RevalidateCurrentRequest();
+        Navigation.NavigateTo(uri, replace: true);
+    }
+
+    private void RevalidateCurrentRequest()
+    {
+        if (workspace is not { } currentWorkspace)
+        {
+            return;
+        }
+
+        queryValidationErrors.Clear();
+        if (purpose.Trim().Length > 120)
+        {
+            queryValidationErrors.Add(
+                L["OperatorTokens.Validation.PurposeLength", 120]);
+        }
+        if (tokenLifetimeSeconds < 60
+            || tokenLifetimeSeconds > currentWorkspace.MaximumLifetimeSeconds)
+        {
+            queryValidationErrors.Add(
+                L[
+                    "OperatorTokens.Validation.LifetimeRange",
+                    60,
+                    currentWorkspace.MaximumLifetimeSeconds]);
+        }
+        if (selectedCapabilities.Count > currentWorkspace.MaximumCapabilities)
+        {
+            queryValidationErrors.Add(
+                L[
+                    "OperatorTokens.Validation.CapabilityLimit",
+                    selectedCapabilities.Count,
+                    currentWorkspace.MaximumCapabilities]);
+        }
+    }
 
     private void PrepareRevoke(string id)
     {
