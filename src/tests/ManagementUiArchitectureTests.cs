@@ -351,9 +351,23 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("QueryHelpers.ParseQuery", login, StringComparison.Ordinal);
         Assert.Contains("HttpContextAccessor.HttpContext", login, StringComparison.Ordinal);
         Assert.Contains("IInteractiveSignInService", twoFactor, StringComparison.Ordinal);
-        Assert.Contains("AuthenticatorSignInCommand", twoFactor, StringComparison.Ordinal);
+        Assert.Contains(
+            "action=\"/account/login/2fa\"",
+            twoFactor,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "AuthenticatorSignInCommand",
+            twoFactor,
+            StringComparison.Ordinal);
         Assert.Contains("IInteractiveSignInService", recovery, StringComparison.Ordinal);
-        Assert.Contains("RecoveryCodeSignInAsync", recovery, StringComparison.Ordinal);
+        Assert.Contains(
+            "action=\"/account/login/recoverycode\"",
+            recovery,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "RecoveryCodeSignInAsync",
+            recovery,
+            StringComparison.Ordinal);
         Assert.DoesNotContain("AuthenticationScheme", login, StringComparison.Ordinal);
         foreach (var forbidden in ForbiddenUiDependencies)
         {
@@ -378,6 +392,25 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains(
             "ValidateRequestAsync",
             passwordLoginController,
+            StringComparison.Ordinal);
+
+        var twoFactorLoginController = File.ReadAllText(Path.Combine(
+            repository,
+            "src",
+            "sts",
+            "Controllers",
+            "TwoFactorLoginController.cs"));
+        Assert.Contains(
+            "AuthenticatorSignInCommand",
+            twoFactorLoginController,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "RecoveryCodeSignInAsync",
+            twoFactorLoginController,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "ValidateRequestAsync",
+            twoFactorLoginController,
             StringComparison.Ordinal);
 
         var contract = File.ReadAllText(Path.Combine(
