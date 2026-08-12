@@ -238,6 +238,14 @@ public sealed class ManagementUiRoutingTests
         Assert.Contains("Editar aplicação", editHtml, StringComparison.Ordinal);
         Assert.Contains("Segredo preservado", editHtml, StringComparison.Ordinal);
         Assert.Contains("Usar padrão global", editHtml, StringComparison.Ordinal);
+        Assert.Contains("Salvar alterações", editHtml, StringComparison.Ordinal);
+        Assert.Contains("Mais informações sobre Access token", editHtml, StringComparison.Ordinal);
+        Assert.Contains("Mais informações sobre ID token", editHtml, StringComparison.Ordinal);
+        Assert.Contains("Mais informações sobre Refresh token", editHtml, StringComparison.Ordinal);
+        Assert.Contains("aria-current=\"page\"", editHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("Seção 3 de 4", editHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain(">Anterior<", editHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain(">Continuar<", editHtml, StringComparison.Ordinal);
     }
 
     [Fact]
