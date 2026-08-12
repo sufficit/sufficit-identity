@@ -1437,8 +1437,16 @@ public sealed class ManagementUiArchitectureTests
             stylesheet,
             StringComparison.Ordinal);
         Assert.Contains(".select-field .sui-select__trigger {", stylesheet, StringComparison.Ordinal);
-        Assert.Contains("padding: 0 40px 0 12px;", stylesheet, StringComparison.Ordinal);
+        Assert.Contains("padding-inline: 12px;", stylesheet, StringComparison.Ordinal);
         Assert.Contains("min-width: 190px;", stylesheet, StringComparison.Ordinal);
+
+        var page = File.ReadAllText(Path.Combine(
+            ResolveManagementUiSource(),
+            "Components",
+            "Pages",
+            "Authorizations.razor"));
+        Assert.Contains("authorization-state-filter", page, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"Estado\"", page, StringComparison.Ordinal);
     }
 
     [Fact]
