@@ -412,6 +412,10 @@ public sealed class ManagementUiArchitectureTests
             "ValidateRequestAsync",
             twoFactorLoginController,
             StringComparison.Ordinal);
+        Assert.Contains(
+            "ParseBoolean",
+            twoFactorLoginController,
+            StringComparison.Ordinal);
 
         var contract = File.ReadAllText(Path.Combine(
             repository,
