@@ -112,6 +112,50 @@ public sealed class ManagementApplicationAuthorizationTests
     }
 
     [Fact]
+    public async Task Legacy_capabilities_are_accepted_but_resolve_to_canonical_names()
+    {
+        var options = Options.Create(new ManagementOptions
+        {
+            Authorization = new ManagementAuthorizationOptions
+            {
+                CapabilityClaimTypes = ["permission"],
+                RoleCapabilities = new(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["token-manager"] =
+                        ["identity.operator-tokens.read"],
+                },
+            },
+        });
+        var resolver = new ScopeAndRoleManagementEntitlementResolver(options);
+
+        var entitlements = await resolver.ResolveAsync(
+            PrincipalWithRole(
+                "token-manager",
+                new Claim(
+                    "permission",
+                    "identity.users.reset-password")));
+
+        Assert.Contains(
+            ManagementCapabilities.UsersReset,
+            entitlements.Capabilities);
+        Assert.Contains(
+            ManagementCapabilities.ManagementTokensRead,
+            entitlements.Capabilities);
+        Assert.DoesNotContain(
+            "identity.users.reset-password",
+            entitlements.Capabilities);
+        Assert.DoesNotContain(
+            "identity.operator-tokens.read",
+            entitlements.Capabilities);
+        Assert.DoesNotContain(
+            "identity.users.reset-password",
+            ManagementCapabilities.All);
+        Assert.DoesNotContain(
+            "identity.operator-tokens.read",
+            ManagementCapabilities.All);
+    }
+
+    [Fact]
     public async Task Vault_secret_read_does_not_grant_secret_mutation()
     {
         var evaluator = CreateEvaluator();
@@ -512,18 +556,18 @@ public sealed class ManagementApplicationAuthorizationTests
 
         var equalTier = await policy.EvaluateAsync(
             PrincipalWithClaims(new Claim("identity_principal_tier", "2")),
-            ManagementCapabilities.UsersResetPassword,
+            ManagementCapabilities.UsersReset,
             target.Id);
         var higherTier = await policy.EvaluateAsync(
             PrincipalWithClaims(new Claim("identity_principal_tier", "3")),
-            ManagementCapabilities.UsersResetPassword,
+            ManagementCapabilities.UsersReset,
             target.Id);
         var breakGlass = await policy.EvaluateAsync(
             PrincipalWithClaims(
                 new Claim("identity_principal_tier", "1"),
                 new Claim("identity_break_glass", "identity.management"),
                 new Claim("amr", "pwd mfa")),
-            ManagementCapabilities.UsersResetPassword,
+            ManagementCapabilities.UsersReset,
             target.Id);
 
         Assert.Equal("protected_principal_higher_or_equal", equalTier.ReasonCode);

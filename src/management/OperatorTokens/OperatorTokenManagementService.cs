@@ -108,8 +108,8 @@ internal sealed class OperatorTokenManagementService(
     private static readonly HashSet<string> NonDelegableCapabilities =
         new(StringComparer.Ordinal)
         {
-            ManagementCapabilities.OperatorTokensIssue,
-            ManagementCapabilities.OperatorTokensRevoke,
+            ManagementCapabilities.ManagementTokensIssue,
+            ManagementCapabilities.ManagementTokensRevoke,
         };
 
     private static readonly HashSet<string> MfaMethods =
@@ -125,7 +125,7 @@ internal sealed class OperatorTokenManagementService(
         ArgumentNullException.ThrowIfNull(context);
         await DemandAsync(
             context,
-            ManagementCapabilities.OperatorTokensRead,
+            ManagementCapabilities.ManagementTokensRead,
             CollectionResource,
             cancellationToken);
 
@@ -170,7 +170,7 @@ internal sealed class OperatorTokenManagementService(
 
         var issueDecision = await DemandAsync(
             context,
-            ManagementCapabilities.OperatorTokensIssue,
+            ManagementCapabilities.ManagementTokensIssue,
             CollectionResource,
             cancellationToken,
             auditDenial: true);
@@ -183,7 +183,7 @@ internal sealed class OperatorTokenManagementService(
                 "temporary_token_cannot_mint");
             await TryWriteAuditAsync(
                 context,
-                ManagementCapabilities.OperatorTokensIssue,
+                ManagementCapabilities.ManagementTokensIssue,
                 CollectionResource,
                 nested,
                 "denied",
@@ -307,7 +307,7 @@ internal sealed class OperatorTokenManagementService(
             database.ManagementAuditEvents.Add(
                 ManagementAuditEventFactory.Create(
                     context,
-                    ManagementCapabilities.OperatorTokensIssue,
+                    ManagementCapabilities.ManagementTokensIssue,
                     resource,
                     issueDecision,
                     "succeeded",
@@ -355,7 +355,7 @@ internal sealed class OperatorTokenManagementService(
                 context.CorrelationId);
             await TryWriteAuditAsync(
                 context,
-                ManagementCapabilities.OperatorTokensIssue,
+                ManagementCapabilities.ManagementTokensIssue,
                 CollectionResource,
                 issueDecision,
                 "failed",
@@ -385,7 +385,7 @@ internal sealed class OperatorTokenManagementService(
             normalizedId);
         var decision = await DemandAsync(
             context,
-            ManagementCapabilities.OperatorTokensRevoke,
+            ManagementCapabilities.ManagementTokensRevoke,
             resource,
             cancellationToken,
             auditDenial: true);
@@ -414,7 +414,7 @@ internal sealed class OperatorTokenManagementService(
             database.ManagementAuditEvents.Add(
                 ManagementAuditEventFactory.Create(
                     context,
-                    ManagementCapabilities.OperatorTokensRevoke,
+                    ManagementCapabilities.ManagementTokensRevoke,
                     resource,
                     decision,
                     "succeeded",
@@ -535,7 +535,8 @@ internal sealed class OperatorTokenManagementService(
     {
         var normalized = (requested ?? [])
             .Where(capability => !string.IsNullOrWhiteSpace(capability))
-            .Select(capability => capability.Trim())
+            .Select(capability => ManagementCapabilities.Normalize(
+                capability.Trim()))
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ToArray();
@@ -748,7 +749,7 @@ internal sealed class OperatorTokenManagementService(
     {
         await TryWriteAuditAsync(
             context,
-            ManagementCapabilities.OperatorTokensIssue,
+            ManagementCapabilities.ManagementTokensIssue,
             CollectionResource,
             decision,
             outcome,

@@ -158,8 +158,13 @@ sem armazenar o Bearer.
 de capabilities além do provisionamento. O token é um Bearer de referência,
 tem no máximo uma hora, recebe somente o scope OAuth `identity.management` e
 não incorpora o papel global de administrador. O operador escolhe um subconjunto
-das próprias capabilities; `identity.operator-tokens.issue` e
-`identity.operator-tokens.revoke` nunca podem ser delegadas.
+das próprias capabilities; `identity.management.tokens.issue` e
+`identity.management.tokens.revoke` nunca podem ser delegadas.
+
+Aqui, “operador” significa somente o administrador autenticado que está usando
+o Management; não é um tipo de usuário separado. O contrato público usa
+`identity.management.tokens.*`. Identificadores legados são aceitos apenas na
+entrada para migração e sempre são normalizados antes da emissão.
 
 A tela aceita parâmetros de query string para preparar uma solicitação. Eles
 preenchem o formulário, mas não emitem credenciais e não ignoram MFA ou

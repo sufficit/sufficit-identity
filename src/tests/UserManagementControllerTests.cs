@@ -268,7 +268,7 @@ public sealed class UserManagementControllerTests
             audit,
             entry =>
                 entry.Capability
-                    == ManagementCapabilities.UsersResetPassword
+                    == ManagementCapabilities.UsersReset
                 && entry.ReasonCode == "user_password_reset");
         Assert.Contains(
             audit,
