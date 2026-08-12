@@ -1,7 +1,11 @@
 using System.Security.Cryptography;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Tests.Infrastructure;
@@ -112,7 +116,9 @@ public sealed class InteractiveSignInServiceTests(
             InteractiveSignInStatus.RequiresTwoFactor,
             password.Status);
 
-        SetHttpContext(services, ExtractCookies(passwordContext));
+        SetHttpContext(
+            services,
+            ExtractCookies(passwordContext));
         Assert.True(await service.HasPendingTwoFactorSignInAsync());
         var code = CurrentAuthenticatorCode(key!);
         var result = await service.AuthenticatorSignInAsync(
@@ -122,6 +128,23 @@ public sealed class InteractiveSignInServiceTests(
                 false));
 
         Assert.Equal(InteractiveSignInStatus.Succeeded, result.Status);
+
+        var databaseFactory = services.GetRequiredService<IDbContextFactory<AppDbContext>>();
+        await using var database = await databaseFactory.CreateDbContextAsync();
+        var session = await database.OidcUserSessions
+            .SingleAsync(session => session.Subject == user.Id);
+        var protector = services.GetRequiredService<IDataProtectionProvider>()
+            .CreateProtector("Sufficit.Identity.OidcUserSessionTicketStore.v1");
+        var ticket = TicketSerializer.Default.Deserialize(
+            protector.Unprotect(session.ProtectedTicket));
+        Assert.NotNull(ticket);
+        var methods = ticket!.Principal
+            .FindAll("amr")
+            .SelectMany(claim => claim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+            .ToHashSet(StringComparer.Ordinal);
+        Assert.Contains("pwd", methods);
+        Assert.Contains("otp", methods);
+        Assert.Contains("mfa", methods);
     }
 
     [Fact]
