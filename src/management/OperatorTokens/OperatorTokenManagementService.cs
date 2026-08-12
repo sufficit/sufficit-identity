@@ -34,6 +34,8 @@ public sealed record OperatorTokenSummary(
 
 public sealed record OperatorTokenWorkspace(
     bool IssuanceEnabled,
+    bool MfaRequired,
+    bool MfaSatisfied,
     int DefaultLifetimeSeconds,
     int MaximumLifetimeSeconds,
     int MaximumCapabilities,
@@ -110,6 +112,12 @@ internal sealed class OperatorTokenManagementService(
             ManagementCapabilities.OperatorTokensRevoke,
         };
 
+    private static readonly HashSet<string> MfaMethods =
+        new(StringComparer.Ordinal)
+        {
+            "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina"
+        };
+
     public async Task<OperatorTokenWorkspace> GetWorkspaceAsync(
         ManagementRequestContext context,
         CancellationToken cancellationToken = default)
@@ -143,6 +151,8 @@ internal sealed class OperatorTokenManagementService(
 
         return new OperatorTokenWorkspace(
             policy.Enabled,
+            options.Value.RequireMfa,
+            HasMfaEvidence(context.Operator),
             ResolveDefaultLifetime(policy),
             ResolveMaximumLifetime(policy),
             ResolveMaximumCapabilities(policy),
@@ -783,6 +793,13 @@ internal sealed class OperatorTokenManagementService(
         }
         return normalized;
     }
+
+    private static bool HasMfaEvidence(ClaimsPrincipal principal) =>
+        principal.FindAll("amr")
+            .SelectMany(claim => claim.Value.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries))
+            .Any(MfaMethods.Contains);
 
     private static int ResolveLifetime(
         int? requested,

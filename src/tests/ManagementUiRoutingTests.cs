@@ -224,6 +224,7 @@ public sealed class ManagementUiRoutingTests
         Assert.Contains(ManagementCapabilities.ClientsRead, html, StringComparison.Ordinal);
         Assert.Contains(ManagementCapabilities.ClientsUpdate, html, StringComparison.Ordinal);
         Assert.Contains("Confirmar e gerar token", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("MFA obrigatório", html, StringComparison.Ordinal);
         Assert.DoesNotContain("token-value-from-server", html, StringComparison.Ordinal);
     }
 
@@ -725,7 +726,8 @@ public sealed class ManagementUiRoutingTests
                         ClaimTypes.NameIdentifier,
                         $"operator-{role}"),
                     new Claim(ClaimTypes.Name, $"{role}@tests.local"),
-                    new Claim(ClaimTypes.Role, role)
+                    new Claim(ClaimTypes.Role, role),
+                    new Claim("amr", "pwd mfa")
                 ],
                 CookieAuthenticationDefaults.AuthenticationScheme);
 
@@ -1182,6 +1184,8 @@ public sealed class ManagementUiRoutingTests
             Task.FromResult(
                 new OperatorTokenWorkspace(
                     IssuanceEnabled: true,
+                    MfaRequired: true,
+                    MfaSatisfied: true,
                     DefaultLifetimeSeconds: 900,
                     MaximumLifetimeSeconds: 3600,
                     MaximumCapabilities: 24,
