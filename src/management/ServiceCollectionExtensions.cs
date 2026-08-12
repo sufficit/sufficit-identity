@@ -90,6 +90,10 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<OpenIddictManifestProvisioner>();
         services.TryAddScoped<IProvisioningManagementService,
             ProvisioningManagementService>();
+        services.TryAddScoped<IProvisioningTokenManagementService,
+            ProvisioningTokenManagementService>();
+        services.TryAddScoped<IProvisioningTokenIssuer,
+            ProvisioningTokenIssuer>();
         services.TryAddScoped<IManagementEntitlementResolver,
             ScopeAndRoleManagementEntitlementResolver>();
         services.TryAddScoped<IManagementTenantResolver,

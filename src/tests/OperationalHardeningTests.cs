@@ -109,10 +109,27 @@ public sealed class OperationalOptionsTests
     }
 
     [Fact]
+    public void Pushed_authorization_has_a_separate_conservative_rate_limit()
+    {
+        var options = new Sufficit.Identity.STS.RateLimitOptions();
+
+        Assert.Equal(30, options.PushedAuthorizationPermitLimit);
+        Assert.Equal(60, options.PushedAuthorizationWindowSeconds);
+    }
+
+    [Fact]
     public void Management_RequireMfa_defaults_to_true()
     {
         var options = new ManagementOptions();
         Assert.True(options.RequireMfa);
     }
-}
 
+    [Fact]
+    public void Temporary_provisioning_tokens_are_disabled_by_default()
+    {
+        var options = new ManagementOptions();
+        Assert.False(options.TemporaryProvisioningToken.Enabled);
+        Assert.Equal(900, options.TemporaryProvisioningToken.DefaultLifetimeSeconds);
+        Assert.Equal(3600, options.TemporaryProvisioningToken.MaximumLifetimeSeconds);
+    }
+}

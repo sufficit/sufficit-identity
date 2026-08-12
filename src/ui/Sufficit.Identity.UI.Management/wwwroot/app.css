@@ -2844,6 +2844,173 @@ h3 {
     text-underline-offset: 3px;
 }
 
+.temporary-token-panel {
+    display: grid;
+    gap: 18px;
+    margin: 20px 0;
+    padding: 22px;
+    border: 1px solid rgba(23, 92, 211, 0.2);
+    border-radius: var(--radius-lg);
+    background: var(--info-soft);
+}
+
+.temporary-token-panel__copy,
+.temporary-token-panel__heading,
+.temporary-token-panel__reveal-heading,
+.temporary-token-panel__actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.temporary-token-panel__heading {
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+.temporary-token-panel__icon {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    place-items: center;
+    border-radius: var(--radius);
+    background: rgba(23, 92, 211, 0.1);
+    color: var(--info);
+}
+
+.temporary-token-panel h2 {
+    margin-bottom: 5px;
+    color: #164a9f;
+    font-size: 15px;
+}
+
+.temporary-token-panel p {
+    max-width: 72ch;
+    margin: 0;
+    color: #3f5e8e;
+    font-size: 11px;
+    line-height: 1.55;
+}
+
+.temporary-token-panel__controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.temporary-token-field {
+    display: grid;
+    min-width: 142px;
+    gap: 5px;
+}
+
+.temporary-token-field span {
+    color: #3f5e8e;
+    font-size: 10px;
+    font-weight: 650;
+}
+
+.temporary-token-field select {
+    min-height: 44px;
+    padding: 8px 30px 8px 11px;
+    border: 1px solid rgba(23, 92, 211, 0.25);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: 12px;
+}
+
+.temporary-token-field select:focus,
+.temporary-token-value:focus {
+    outline: 2px solid var(--info);
+    outline-offset: 2px;
+}
+
+.temporary-token-panel__reveal {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid rgba(23, 92, 211, 0.2);
+    border-radius: var(--radius);
+    background: var(--surface);
+}
+
+.temporary-token-panel__reveal-heading {
+    align-items: flex-start;
+}
+
+.temporary-token-panel__reveal-heading > div {
+    display: grid;
+    gap: 3px;
+}
+
+.temporary-token-panel__reveal-heading strong {
+    color: var(--ink-strong);
+    font-size: 12px;
+}
+
+.temporary-token-panel__reveal-heading span {
+    color: var(--ink-muted);
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+.temporary-token-value {
+    width: 100%;
+    min-height: 88px;
+    resize: vertical;
+    padding: 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-sm);
+    background: var(--surface-sunken);
+    color: var(--ink-strong);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.temporary-token-panel__actions {
+    align-items: flex-end;
+}
+
+.temporary-token-panel__actions > div {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.temporary-token-panel__hint,
+.temporary-token-panel__clipboard-note {
+    color: var(--ink-muted);
+    font-size: 10px;
+    line-height: 1.45;
+}
+
+.temporary-token-panel__hint code {
+    color: var(--info);
+    font-family: var(--font-mono);
+}
+
+.temporary-token-panel__clipboard-note {
+    color: var(--warning);
+}
+
+.button--ghost {
+    border-color: transparent;
+    background: transparent;
+    color: var(--ink-muted);
+}
+
+.button--ghost:hover {
+    background: var(--surface-sunken);
+    color: var(--ink-strong);
+}
+
 .provisioning-errors {
     display: grid;
     gap: 4px;
@@ -4735,6 +4902,31 @@ h3 {
 
     .provisioning-grid {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    .temporary-token-panel__copy,
+    .temporary-token-panel__actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .temporary-token-panel__controls {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .temporary-token-field,
+    .temporary-token-panel__controls .button,
+    .temporary-token-panel__actions > div {
+        width: 100%;
+    }
+
+    .temporary-token-panel__actions > div {
+        justify-content: stretch;
+    }
+
+    .temporary-token-panel__actions > div .button {
+        flex: 1 1 auto;
     }
 
     .manifest-editor {

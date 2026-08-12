@@ -37,6 +37,9 @@ Implementado:
   tokens e autorizações antes da exclusão permanente;
 - preview e aplicação transacional de manifestos declarativos por contrato
   compartilhado, com confirmação explícita e erros estruturados;
+- emissão opcional de token temporário de provisioning na própria tela, visível
+  uma única vez, limitado às capabilities de preview/apply, com MFA,
+  expiração curta e auditoria sem o valor secreto;
 - overview canônico de ambiente, transporte HTTP, política MFA, capabilities e
   disponibilidade de módulos, compartilhado com a Management API;
 - estados de loading, erro, vazio, pesquisa e composição responsiva.
@@ -112,6 +115,42 @@ um escopo DI curto e chama o mesmo use case utilizado pelo controller HTTP.
 provedor. Não é um catálogo de roles oferecido aos usuários administrados.
 Tokens da Management API também podem receber capabilities exatas em claims
 configurados.
+
+### Token temporário de provisioning
+
+O bloco aparece em `/management/provisioning` somente para um operador
+autenticado que tenha `identity.provisioning.apply`; a política geral do
+Management continua exigindo o scope e a evidência MFA configurados no host.
+O botão emite, por padrão, 15 minutos de validade e aceita no máximo 60
+minutos. O token recebe apenas `identity.management` como scope e as
+capabilities `identity.provisioning.preview` e `identity.provisioning.apply`.
+
+O valor é retornado somente na resposta de emissão e fica na memória da tela
+enquanto é revelado; a camada de Management não o copia para a auditoria ou
+logs. O OpenIddict mantém apenas o registro necessário do reference token para
+validá-lo e fazê-lo expirar. Ocultar o valor remove a recuperação pela
+interface; o token já emitido continua válido até expirar. Por isso, habilite a opção somente quando a aplicação estiver
+pronta para consumo e trate o valor como um segredo operacional de curta vida:
+
+```json
+{
+  "Sufficit": {
+    "Identity": {
+      "Management": {
+        "TemporaryProvisioningToken": {
+          "Enabled": true,
+          "DefaultLifetimeSeconds": 900,
+          "MaximumLifetimeSeconds": 3600
+        }
+      }
+    }
+  }
+}
+```
+
+Não existe token `super-admin` permanente nesse fluxo. A emissão é negada a
+outro token temporário e cada emissão, recusa ou falha gera evento auditável
+sem armazenar o Bearer.
 
 ## Desenvolvimento
 

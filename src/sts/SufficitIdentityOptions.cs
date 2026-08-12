@@ -415,16 +415,16 @@ public sealed class AccountPasskeyOptions
 }
 
 /// <summary>
-/// Rate limiting applied by the STS host to <c>POST /connect/token</c>
-/// (fixed window per client IP, no queueing). Complements — never replaces —
-/// the account lockout policy: rate limiting throttles a single source,
-/// lockout protects a single account from distributed attempts.
+/// Rate limiting applied by the STS host to credential and OAuth/OIDC protocol
+/// endpoints (fixed windows per client IP, no queueing). Complements — never
+/// replaces — the account lockout policy: rate limiting throttles a single
+/// source, lockout protects a single account from distributed attempts.
 /// </summary>
 public sealed class RateLimitOptions
 {
     /// <summary>
     /// Master switch. Disable only when an upstream gateway already
-    /// throttles the token endpoint.
+    /// throttles the same credential and protocol endpoints.
     /// </summary>
     public bool Enabled { get; init; } = true;
 
@@ -438,6 +438,16 @@ public sealed class RateLimitOptions
     /// on 429 responses.
     /// </summary>
     public int WindowSeconds { get; init; } = 60;
+
+    /// <summary>
+    /// Pushed authorization requests allowed per window and source IP. PAR
+    /// has an independent bucket so a failing token-refresh loop cannot block
+    /// a new interactive login. Keeping the same conservative default as the
+    /// credential bucket preserves the existing anti-abuse strength.
+    /// </summary>
+    public int PushedAuthorizationPermitLimit { get; init; } = 30;
+
+    public int PushedAuthorizationWindowSeconds { get; init; } = 60;
 
     /// <summary>
     /// Anonymous lookups allowed per client/IP for
@@ -616,14 +626,14 @@ public sealed class TokenLifetimeOptions
     /// precedence when a token has a mapped audience.
     /// </summary>
     public Dictionary<string, AccessTokenStorageMode> AccessTokenFormatsByClient
-        { get; init; } = new(StringComparer.Ordinal);
+    { get; init; } = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Exact resource/audience to format. All mapped resources in one token
     /// must agree; conflicting formats fail issuance closed.
     /// </summary>
     public Dictionary<string, AccessTokenStorageMode> AccessTokenFormatsByResource
-        { get; init; } = new(StringComparer.Ordinal);
+    { get; init; } = new(StringComparer.Ordinal);
 }
 
 public enum AccessTokenStorageMode

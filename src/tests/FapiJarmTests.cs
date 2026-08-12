@@ -19,6 +19,29 @@ namespace Sufficit.Identity.Tests;
 public sealed class FapiJarmTests
 {
     [Fact]
+    public async Task Invalid_par_request_returns_an_oauth_json_error()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+        using var content = new FormUrlEncodedContent(
+            Array.Empty<KeyValuePair<string, string>>());
+
+        using var response = await client.PostAsync("/connect/par", content);
+        var payload = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+        Assert.True(payload.TryGetProperty("error", out var error));
+        Assert.False(string.IsNullOrWhiteSpace(error.GetString()));
+    }
+
+    [Fact]
     public async Task Jarm_response_signature_issuer_audience_and_lifetime_validate()
     {
         using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);

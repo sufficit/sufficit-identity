@@ -1,6 +1,9 @@
 @page "/provisioning"
+@using Microsoft.JSInterop
 @attribute [Authorize(Policy = ManagementUiPolicies.ManageProvisioning)]
 @inject ManagementProvisioningDataSource ProvisioningData
+@inject ManagementProvisioningTokenDataSource TokenData
+@inject IJSRuntime JS
 
 <PageTitle>Provisionamento | Sufficit Identity</PageTitle>
 
@@ -15,6 +18,108 @@
     </div>
     <SUIStatusBadge Tone="success">Ativo</SUIStatusBadge>
 </div>
+
+<AuthorizeView Policy="@ManagementUiPolicies.ManageProvisioningToken">
+    <Authorized>
+        <section class="temporary-token-panel" aria-labelledby="temporary-token-heading">
+            <div class="temporary-token-panel__copy">
+                <div class="temporary-token-panel__heading">
+                    <span class="temporary-token-panel__icon">
+                        <SUIIcon Name="key" Size="20" />
+                    </span>
+                    <div>
+                        <h2 id="temporary-token-heading">Token temporário para provisioning</h2>
+                        <p>Gere uma credencial curta para usar no terminal ou em uma aplicação. Ela recebe somente preview e apply, exige MFA e nunca é registrada na auditoria.</p>
+                    </div>
+                </div>
+                <div class="temporary-token-panel__controls">
+                    <label class="temporary-token-field">
+                        <span>Validade</span>
+                        <select @bind="tokenLifetimeSeconds" disabled="@tokenIssuing">
+                            <option value="600">10 minutos</option>
+                            <option value="900">15 minutos</option>
+                            <option value="1800">30 minutos</option>
+                            <option value="3600">60 minutos</option>
+                        </select>
+                    </label>
+                    <button class="button button--secondary"
+                            type="button"
+                            disabled="@tokenIssuing"
+                            @onclick="IssueTemporaryTokenAsync">
+                        @if (tokenIssuing)
+                        {
+                            <span class="button-spinner" aria-hidden="true"></span>
+                            <span>Emitindo</span>
+                        }
+                        else
+                        {
+                            <SUIIcon Name="key" Size="17" />
+                            <span>Gerar token temporário</span>
+                        }
+                    </button>
+                </div>
+            </div>
+
+            @if (tokenResult?.IsSuccess is true && temporaryToken is not null)
+            {
+                <div class="temporary-token-panel__reveal" role="status">
+                    <div class="temporary-token-panel__reveal-heading">
+                        <div>
+                            <strong>Token emitido uma única vez</strong>
+                            <span>Copie agora. Depois de ocultar este valor, ele não poderá ser recuperado pela interface.</span>
+                        </div>
+                        <SUIStatusBadge Tone="warning">Expira @TokenExpirationLabel</SUIStatusBadge>
+                    </div>
+                    <textarea class="temporary-token-value"
+                              aria-label="Token temporário de provisioning"
+                              readonly
+                              spellcheck="false"
+                              autocomplete="off">@temporaryToken</textarea>
+                    <div class="temporary-token-panel__actions">
+                        <span class="temporary-token-panel__hint">Capacidades: <code>identity.provisioning.preview</code> e <code>identity.provisioning.apply</code></span>
+                        <div>
+                            <button class="button button--secondary"
+                                    type="button"
+                                    @onclick="CopyTemporaryTokenAsync">
+                                <SUIIcon Name="copy" Size="17" />
+                                @(tokenCopied ? "Copiado" : "Copiar token")
+                            </button>
+                            <button class="button button--ghost"
+                                    type="button"
+                                    @onclick="HideTemporaryToken">
+                                Ocultar token
+                            </button>
+                        </div>
+                    </div>
+                    @if (clipboardUnavailable)
+                    {
+                        <span class="temporary-token-panel__clipboard-note">A cópia automática não está disponível neste navegador; selecione o valor acima e use Ctrl+C.</span>
+                    }
+                </div>
+            }
+            else if (tokenResult?.IsSuccess is true)
+            {
+                <div class="inline-notice inline-notice--success" role="status">
+                    <SUIIcon Name="check" Size="19" />
+                    <div>
+                        <strong>Token ocultado</strong>
+                        <span>O valor não pode ser recuperado pela interface. Emita outro somente se necessário.</span>
+                    </div>
+                </div>
+            }
+            else if (tokenResult?.IsSuccess is false)
+            {
+                <div class="inline-notice inline-notice--danger" role="alert">
+                    <SUIIcon Name="alert" Size="19" />
+                    <div>
+                        <strong>@TokenErrorTitle</strong>
+                        <span>@tokenResult.ErrorMessage</span>
+                    </div>
+                </div>
+            }
+        </section>
+    </Authorized>
+</AuthorizeView>
 
 <ol class="workflow-steps" aria-label="Etapas do provisionamento">
     <li class="@StepClass(1)">
@@ -226,6 +331,13 @@ else if (applyResult?.IsSuccess is true)
     private bool previewing;
     private bool applying;
     private bool confirmed;
+    private int tokenLifetimeSeconds = 900;
+    private bool tokenIssuing;
+    private string? temporaryToken;
+    private DateTimeOffset? temporaryTokenExpiresAt;
+    private bool tokenCopied;
+    private bool clipboardUnavailable;
+    private ManagementDataResult<ProvisioningTokenIssueResult>? tokenResult;
 
     private string ManifestJson
     {
@@ -245,7 +357,11 @@ else if (applyResult?.IsSuccess is true)
         }
     }
 
-    private bool IsBusy => previewing || applying;
+    private bool IsBusy => previewing || applying || tokenIssuing;
+
+    private string TokenExpirationLabel =>
+        temporaryTokenExpiresAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")
+        ?? "em breve";
 
     private bool HasFreshPreview =>
         previewResult?.IsSuccess is true
@@ -294,6 +410,16 @@ else if (applyResult?.IsSuccess is true)
             _ => "Não foi possível concluir a operação"
         };
 
+    private string TokenErrorTitle =>
+        tokenResult?.Outcome switch
+        {
+            ManagementDataOutcome.Forbidden => "Emissão de token não autorizada",
+            ManagementDataOutcome.StepUpRequired => "MFA exigido para emitir token",
+            ManagementDataOutcome.Conflict => "Emissão temporária desabilitada",
+            ManagementDataOutcome.Invalid => "Validade do token inválida",
+            _ => "Não foi possível emitir o token"
+        };
+
     private string PlanSummary =>
         Plan?.HasChanges is true
             ? $"{Plan.Changes.Count(change => change.Kind is not IdentityManifestChangeKind.Unchanged)} mudança(s) efetiva(s) encontrada(s)."
@@ -322,6 +448,58 @@ else if (applyResult?.IsSuccess is true)
         applyResult = await ProvisioningData.ApplyAsync(manifestJson);
         confirmed = false;
         applying = false;
+    }
+
+    private async Task IssueTemporaryTokenAsync()
+    {
+        if (tokenIssuing)
+        {
+            return;
+        }
+
+        tokenIssuing = true;
+        temporaryToken = null;
+        temporaryTokenExpiresAt = null;
+        tokenCopied = false;
+        clipboardUnavailable = false;
+        tokenResult = await TokenData.IssueAsync(tokenLifetimeSeconds);
+        if (tokenResult.IsSuccess && tokenResult.Value is { } issued)
+        {
+            temporaryToken = issued.AccessToken;
+            temporaryTokenExpiresAt = issued.ExpiresAtUtc;
+        }
+
+        tokenIssuing = false;
+    }
+
+    private async Task CopyTemporaryTokenAsync()
+    {
+        if (string.IsNullOrWhiteSpace(temporaryToken))
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "navigator.clipboard.writeText",
+                temporaryToken);
+            tokenCopied = true;
+            clipboardUnavailable = false;
+        }
+        catch (JSException)
+        {
+            tokenCopied = false;
+            clipboardUnavailable = true;
+        }
+    }
+
+    private void HideTemporaryToken()
+    {
+        temporaryToken = null;
+        temporaryTokenExpiresAt = null;
+        tokenCopied = false;
+        clipboardUnavailable = false;
     }
 
     private string StepClass(int step)
