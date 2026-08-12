@@ -102,7 +102,8 @@ public sealed record PersonalTokenIssuanceContext(
     DateTimeOffset? AuthenticationTime,
     DateTimeOffset Now,
     DateTimeOffset Expiration,
-    bool HasSenderConstraint);
+    bool HasSenderConstraint,
+    bool HasMfaEvidence = false);
 
 public sealed record PersonalTokenIssuanceDecision(
     bool ShouldReject,
@@ -136,6 +137,10 @@ internal sealed class PersonalTokenIssuancePolicy(
             && !context.CallerScopes.Contains(options.RequiredScope, StringComparer.Ordinal))
         {
             reasons.Add("required_scope_missing");
+        }
+        if (options.RequireMfa && !context.HasMfaEvidence)
+        {
+            reasons.Add("mfa_required");
         }
         if (options.EligibleClientIds.Count > 0
             && (string.IsNullOrWhiteSpace(context.CallerClientId)

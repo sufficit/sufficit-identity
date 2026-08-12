@@ -21,7 +21,6 @@ public sealed class ScimProductionPostureContributor(
                 "scim-client-allow-list-disabled",
                 "SCIM client allow-list enforcement is disabled for a full-directory-trust surface.",
                 "Set Sufficit:Identity:Scim:RequireAllowedClient=true and provision dedicated clients.");
-            yield break;
         }
 
         if (options.ClientPolicyMode == ScimClientPolicyMode.Observe)
@@ -30,6 +29,14 @@ public sealed class ScimProductionPostureContributor(
                 "scim-client-policy-observe",
                 "SCIM client allow-list is in Observe mode and unlisted clients are permitted.",
                 "Inventory provisioning callers and set Scim:ClientPolicyMode=Enforce.");
+        }
+
+        if (!options.RequireMfa)
+        {
+            yield return new(
+                "scim-mfa-disabled",
+                "SCIM accepts a password-only authentication context for the sensitive scim scope.",
+                "Set Sufficit:Identity:Scim:RequireMfa=true, or document a time-bounded security exception.");
         }
     }
 }

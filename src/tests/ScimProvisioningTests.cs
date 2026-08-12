@@ -336,6 +336,10 @@ public sealed class ScimProvisioningTests
                         ["Sufficit:Identity:Scim:RequireAuthorization"] =
                             requireAuthorization.ToString(),
                         ["Sufficit:Identity:Scim:RequireAllowedClient"] = "false",
+                        // These tests exercise the SCIM contract without
+                        // minting a delegated MFA token. Production defaults
+                        // remain RequireMfa=true.
+                        ["Sufficit:Identity:Scim:RequireMfa"] = "false",
                         ["Sufficit:Identity:Scim:RequiredScope"] = "scim"
                     });
             });

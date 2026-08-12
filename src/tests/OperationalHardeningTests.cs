@@ -2,6 +2,7 @@ using System.Net;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Sufficit.Identity.Management;
+using Sufficit.Identity.Scim;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 
@@ -122,6 +123,14 @@ public sealed class OperationalOptionsTests
     {
         var options = new ManagementOptions();
         Assert.True(options.RequireMfa);
+    }
+
+    [Fact]
+    public void Sensitive_scope_options_require_mfa_by_default()
+    {
+        Assert.True(new ScimOptions().RequireMfa);
+        Assert.True(new Sufficit.Identity.STS.PersonalTokenIssuanceOptions().RequireMfa);
+        Assert.True(new Sufficit.Identity.STS.SharedSignalsOptions().RequireMfa);
     }
 
     [Fact]

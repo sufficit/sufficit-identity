@@ -15,8 +15,8 @@ internal sealed class ManagementExceptionFilter : IExceptionFilter
             var manifestDetails = new ProblemDetails
             {
                 Status = StatusCodes.Status400BadRequest,
-                Title = "Invalid identity provisioning manifest",
-                Detail = "No database changes were made.",
+                Title = "Manifesto de provisioning inválido",
+                Detail = "Corrija os campos listados em errors. Nenhuma alteração foi feita no banco.",
                 Instance = context.HttpContext.Request.Path
             };
             manifestDetails.Extensions["reasonCode"] =
@@ -36,19 +36,19 @@ internal sealed class ManagementExceptionFilter : IExceptionFilter
         {
             ManagementValidationException validation =>
                 (StatusCodes.Status400BadRequest,
-                    "Invalid management request",
+                    "Requisição de Management inválida",
                     validation.Message,
                     validation.ReasonCode,
                     validation.Field),
             ManagementConflictException conflict =>
                 (StatusCodes.Status409Conflict,
-                    "Management resource conflict",
+                    "Configuração impede a operação",
                     conflict.Message,
                     conflict.ReasonCode,
                     (string?)null),
             ManagementNotFoundException notFound =>
                 (StatusCodes.Status404NotFound,
-                    "Management resource not found",
+                    "Recurso de Management não encontrado",
                     notFound.Message,
                     notFound.ReasonCode,
                     (string?)null),
@@ -56,14 +56,14 @@ internal sealed class ManagementExceptionFilter : IExceptionFilter
                 when access.Decision.Outcome is
                     ManagementAuthorizationOutcome.StepUpRequired =>
                 (StatusCodes.Status403Forbidden,
-                    "Additional authentication required",
-                    "Multi-factor authentication is required for this operation.",
+                    "MFA necessário para continuar",
+                    "A sessão está autenticada, mas ainda não comprovou MFA. Conclua o segundo fator e repita a operação.",
                     access.Decision.ReasonCode,
                     (string?)null),
             ManagementAccessException access =>
                 (StatusCodes.Status403Forbidden,
-                    "Management operation forbidden",
-                    "The operator does not have the required capability.",
+                    "Capability necessária ausente",
+                    AccessDetail(access.Decision),
                     access.Decision.ReasonCode,
                     (string?)null),
             _ => default
@@ -95,4 +95,19 @@ internal sealed class ManagementExceptionFilter : IExceptionFilter
         };
         context.ExceptionHandled = true;
     }
+
+    private static string AccessDetail(
+        ManagementAuthorizationDecision decision) =>
+        decision.ReasonCode switch
+        {
+            "operator_not_authenticated" =>
+                "Não há uma sessão autenticada. Faça login no Management e repita a operação.",
+            "capability_not_granted" =>
+                "A sessão está autenticada, mas o operador não recebeu a capability exigida pela operação.",
+            "tenant_not_accessible" =>
+                "O operador possui a capability, mas não está associado ao tenant do recurso.",
+            "tenant_policy_unavailable" =>
+                "A política de acesso do tenant não está disponível; o Identity bloqueou a operação por segurança.",
+            _ => "A operação foi bloqueada por uma regra de autorização do Identity. Consulte reasonCode e correlationId para diagnóstico."
+        };
 }

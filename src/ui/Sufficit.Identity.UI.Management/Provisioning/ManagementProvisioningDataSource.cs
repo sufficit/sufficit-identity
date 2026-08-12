@@ -118,21 +118,18 @@ public sealed class ManagementProvisioningDataSource(
         }
         catch (ManagementConflictException exception)
         {
-            return ManagementDataResult<IdentityProvisioningPlan>.Failure(
-                ManagementDataOutcome.Conflict,
-                exception.Message);
+            return ProvisioningErrorMessages.ConflictFailure<IdentityProvisioningPlan>(
+                exception,
+                operationName);
         }
         catch (ManagementAccessException exception)
         {
-            var outcome = exception.Decision.Outcome is
-                ManagementAuthorizationOutcome.StepUpRequired
-                    ? ManagementDataOutcome.StepUpRequired
-                    : ManagementDataOutcome.Forbidden;
-            return ManagementDataResult<IdentityProvisioningPlan>.Failure(
-                outcome,
-                outcome is ManagementDataOutcome.StepUpRequired
-                    ? "Conclua a autenticação multifator para continuar."
-                    : "Sua conta não possui a capability necessária.");
+            return ProvisioningErrorMessages.AccessFailure<IdentityProvisioningPlan>(
+                exception.Decision,
+                operationName,
+                operationName is "Provisioning apply"
+                    ? ManagementCapabilities.ProvisioningApply
+                    : ManagementCapabilities.ProvisioningPreview);
         }
         catch (OperationCanceledException)
             when (!cancellationToken.IsCancellationRequested)
@@ -140,7 +137,13 @@ public sealed class ManagementProvisioningDataSource(
             logger.LogWarning("{OperationName} timed out.", operationName);
             return ManagementDataResult<IdentityProvisioningPlan>.Failure(
                 ManagementDataOutcome.Unavailable,
-                "O serviço demorou mais que o esperado. Tente novamente.");
+                ProvisioningErrorMessages.TimeoutMessage(
+                    operationName is "Provisioning apply"
+                        ? "aplicar o manifesto"
+                        : "gerar o preview"),
+                errorDetails: [
+                    "Próximo passo: confirme o estado do Identity em /health/ready e tente novamente."
+                ]);
         }
         catch (OperationCanceledException)
         {
@@ -154,7 +157,13 @@ public sealed class ManagementProvisioningDataSource(
                 operationName);
             return ManagementDataResult<IdentityProvisioningPlan>.Failure(
                 ManagementDataOutcome.Unavailable,
-                "O serviço de identidade não conseguiu concluir a operação.");
+                ProvisioningErrorMessages.DependencyMessage(
+                    operationName is "Provisioning apply"
+                        ? "aplicar o manifesto"
+                        : "gerar o preview"),
+                errorDetails: [
+                    "Se o problema persistir, encaminhe o horário e o ID de correlação ao administrador do serviço."
+                ]);
         }
     }
 

@@ -975,6 +975,13 @@ public sealed class PersonalTokenIssuanceOptions
 
     public string RequiredScope { get; init; } = "personal_tokens.manage";
 
+    /// <summary>
+    /// Requires MFA evidence in the caller's <c>amr</c> claim before issuing
+    /// a new personal token. Personal tokens are durable credentials, so a
+    /// recent password-only authentication is not sufficient.
+    /// </summary>
+    public bool RequireMfa { get; init; } = true;
+
     public bool RequireRecentAuthentication { get; init; } = true;
 
     public int MaximumAuthenticationAgeMinutes { get; init; } = 15;
@@ -1397,6 +1404,14 @@ public sealed class SharedSignalsOptions
     /// scope (create it via the management API or provisioning manifest).
     /// </summary>
     public string RequiredScope { get; init; } = "ssf_transmitter";
+
+    /// <summary>
+    /// Requires MFA evidence for the dynamic stream-management and poll
+    /// endpoints. These endpoints can subscribe to every subject and expose
+    /// security events, so the sensitive transmitter scope is MFA-protected
+    /// by default.
+    /// </summary>
+    public bool RequireMfa { get; init; } = true;
 
     /// <summary>
     /// Requires <c>subject</c> to be supplied explicitly when a stream is
