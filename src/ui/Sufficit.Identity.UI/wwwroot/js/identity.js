@@ -107,6 +107,9 @@ document.addEventListener('change', function (event) {
 
     function tryCloseWindow() {
         if (!canAttemptScriptClose()) {
+            logDeviceFlow('script-close-skipped', {
+                reason: 'tab-not-script-opened'
+            });
             return false;
         }
 
@@ -173,11 +176,13 @@ document.addEventListener('change', function (event) {
         var closeButton = document.querySelector('[data-device-flow-close]');
         if (!canAttemptScriptClose()) {
             logDeviceFlow('manual-close-required', { reason: 'tab-not-script-opened' });
-            showManualCompletion(result, 'tab-not-script-opened');
-            return;
+            // Initialization must not consume the close action. The browser
+            // may report no opener before the explicit user gesture, and
+            // showManualCompletion() disables the button after a real failed
+            // attempt. Keep the control available until that click occurs.
+        } else {
+            logDeviceFlow('close-control-initialized', { scriptClosable: true });
         }
-
-        logDeviceFlow('close-control-initialized', { scriptClosable: true });
 
         if (closeButton && closeButton.dataset.deviceCloseBound !== 'true') {
             closeButton.dataset.deviceCloseBound = 'true';
