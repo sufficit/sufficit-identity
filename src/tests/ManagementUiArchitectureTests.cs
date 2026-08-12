@@ -1442,6 +1442,30 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Client_list_filters_use_shared_selects_and_responsive_grid()
+    {
+        var managementUi = ResolveManagementUiSource();
+        var page = File.ReadAllText(Path.Combine(
+            managementUi,
+            "Components",
+            "Pages",
+            "Clients.razor"));
+        var stylesheet = File.ReadAllText(Path.Combine(
+            managementUi,
+            "wwwroot",
+            "app.css"));
+
+        Assert.Contains("data-toolbar--clients", page, StringComparison.Ordinal);
+        Assert.Contains("clients-filters", page, StringComparison.Ordinal);
+        Assert.Equal(4, page.Split("<SUISelect T=\"string\" id=\"client-", StringSplitOptions.None).Length - 1);
+        Assert.DoesNotContain("<select id=\"client-", page, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: minmax(220px, 1.45fr)", stylesheet, StringComparison.Ordinal);
+        Assert.Contains(".clients-filter--search", stylesheet, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: repeat(3, minmax(0, 1fr));", stylesheet, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: minmax(0, 1fr);", stylesheet, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Identity_ui_consumes_the_shared_sui_assets()
     {
         var repository = ResolveIdentityRepository();
