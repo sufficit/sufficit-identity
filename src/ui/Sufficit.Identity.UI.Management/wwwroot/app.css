@@ -3900,6 +3900,15 @@ h3 {
     padding: 13px 18px;
 }
 
+.client-detail-shell,
+.client-detail-shell + .danger-zone {
+    width: min(100%, 1180px);
+}
+
+.client-detail-shell .detail-summary .status-badge {
+    justify-self: start;
+}
+
 .client-detail-layout {
     display: grid;
     grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
