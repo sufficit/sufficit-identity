@@ -52,6 +52,8 @@ public sealed class OperatorTokensControllerTests
             .ReadFromJsonAsync<OperatorTokenWorkspace>();
         Assert.NotNull(workspace);
         Assert.True(workspace.IssuanceEnabled);
+        Assert.False(workspace.MfaRequired);
+        Assert.False(workspace.MfaSatisfied);
         var active = Assert.Single(workspace.ActiveTokens);
         Assert.Equal(issued.Token.Id, active.Id);
         Assert.Equal(requestedCapabilities, active.Capabilities);

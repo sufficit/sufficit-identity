@@ -13,13 +13,16 @@
 <SUIPageHeader Title="Tokens temporários"
                Description="Emita credenciais curtas e atenuadas para automações administrativas em nome do operador autenticado." />
 
-<div class="contract-strip contract-strip--warning">
+<div class="contract-strip @(ShowMfaWarning ? "contract-strip--warning" : "contract-strip--info")">
     <SUIIcon Name="shield" Size="20" />
     <div>
         <strong>O link prepara; somente você autoriza</strong>
         <span>Parâmetros da URL preenchem a solicitação, mas nunca emitem o token nem ampliam as capabilities do operador.</span>
     </div>
-    <SUIStatusBadge Tone="warning">MFA obrigatório</SUIStatusBadge>
+    @if (ShowMfaWarning)
+    {
+        <SUIStatusBadge Tone="warning">MFA obrigatório</SUIStatusBadge>
+    }
 </div>
 
 @if (workspaceResult is null)
@@ -467,6 +470,12 @@ else
         && selectedCapabilities.Count <= workspace.MaximumCapabilities
         && queryUnavailableCapabilities.Count is 0
         && queryValidationErrors.Count is 0;
+
+    private bool ShowMfaWarning => workspace is
+    {
+        MfaRequired: true,
+        MfaSatisfied: false
+    };
 
     private string SelectedCapabilitySummary => selectedCapabilities.Count switch
     {
