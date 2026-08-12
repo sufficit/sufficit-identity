@@ -39,6 +39,7 @@ public sealed class AspNetCoreIdentityExternalSignInService(
 
     public async Task<ExternalSignInResult> CompleteAsync(
         ClaimsPrincipal currentPrincipal,
+        bool forceMfa,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(currentPrincipal);
@@ -50,6 +51,18 @@ public sealed class AspNetCoreIdentityExternalSignInService(
             logger.LogWarning(
                 "External login callback has no protected provider state.");
             return new ExternalSignInResult(ExternalSignInStatus.Unavailable);
+        }
+
+        if (forceMfa)
+        {
+            // A remembered browser is allowed for ordinary interactive login,
+            // but never for the sensitive Management return path. Clear the
+            // Identity remember-client cookie before evaluating the external
+            // sign-in so ExternalLoginSignInAsync must produce pending 2FA.
+            await signInManager.ForgetTwoFactorClientAsync();
+            logger.LogInformation(
+                "External sign-in through {Provider} requires fresh MFA for a sensitive return path.",
+                info.LoginProvider);
         }
 
         SetExternalAuthenticationContext(info.LoginProvider);
