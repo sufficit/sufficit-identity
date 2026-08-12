@@ -36,6 +36,11 @@ public sealed class ManagementOverviewDataSource(
         }
         catch (ManagementAccessException exception)
         {
+            logger.LogWarning(
+                "Management overview authorization denied: outcome={Outcome}; "
+                + "reason={ReasonCode}.",
+                exception.Decision.Outcome,
+                exception.Decision.ReasonCode);
             var outcome = exception.Decision.Outcome is
                 ManagementAuthorizationOutcome.StepUpRequired
                     ? ManagementDataOutcome.StepUpRequired

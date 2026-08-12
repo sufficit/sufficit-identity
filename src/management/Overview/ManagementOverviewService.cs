@@ -1,5 +1,6 @@
 #if !APPLICATION_CONTRACTS
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 #endif
 using Sufficit.Identity.Management.Authorization;
@@ -55,7 +56,8 @@ public sealed class ManagementOverviewService(
     IManagementAccessPolicyProvider accessPolicies,
     IManagementAuthorizationEvaluator authorization,
     IOptions<ManagementOptions> options,
-    IHostEnvironment hostEnvironment) : IManagementOverviewService
+    IHostEnvironment hostEnvironment,
+    ILogger<ManagementOverviewService>? logger = null) : IManagementOverviewService
 {
     private static readonly ManagementResource OverviewResource =
         new(ManagementResourceTypes.Overview);
@@ -80,6 +82,23 @@ public sealed class ManagementOverviewService(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
+
+        var authenticationMethods = context.Operator.FindAll("amr")
+            .SelectMany(claim => claim.Value.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        logger?.LogInformation(
+            "Management overview evaluation started for subject {Subject}; "
+            + "authenticated={Authenticated}; amr={AuthenticationMethods}; "
+            + "aal={AssuranceLevel}; correlation={CorrelationId}.",
+            context.OperatorSubject,
+            context.Operator.Identity?.IsAuthenticated == true,
+            string.Join(' ', authenticationMethods),
+            context.Operator.FindFirst("aal")?.Value ?? "missing",
+            context.CorrelationId);
 
         if (context.Operator.Identity?.IsAuthenticated is not true)
         {
@@ -110,6 +129,18 @@ public sealed class ManagementOverviewService(
             capabilities[0],
             OverviewResource,
             cancellationToken);
+        logger?.LogInformation(
+            "Management overview authorization for subject {Subject}: "
+            + "capabilities={Capabilities}; requireMfa={RequireMfa}; "
+            + "mfaSatisfied={MfaSatisfied}; outcome={Outcome}; "
+            + "reason={ReasonCode}; correlation={CorrelationId}.",
+            context.OperatorSubject,
+            string.Join(',', capabilities),
+            accessPolicy.RequireMfa,
+            !accessPolicy.RequireMfa || sessionDecision.IsAllowed,
+            sessionDecision.Outcome,
+            sessionDecision.ReasonCode,
+            context.CorrelationId);
         var modules = new List<ManagementModuleDescriptor>(
             ModuleCatalog.Length);
 

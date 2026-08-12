@@ -92,8 +92,23 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
         if (mapped.Status == InteractiveSignInStatus.Succeeded)
         {
             logger.LogInformation(
-                "User {UserId} completed authenticator sign-in.",
-                pendingUser.Id);
+                "User {UserId} completed authenticator sign-in with "
+                + "authentication methods {AuthenticationMethods} and "
+                + "context {AuthenticationContextClass}.",
+                pendingUser.Id,
+                string.Join(
+                    ' ',
+                    authenticationContextAccessor.Current?.AuthenticationMethods
+                        ?? []),
+                authenticationContextAccessor.Current?.AuthenticationContextClass
+                    ?? "missing");
+        }
+        else
+        {
+            logger.LogWarning(
+                "Authenticator sign-in for user {UserId} ended with status {Status}.",
+                pendingUser.Id,
+                mapped.Status);
         }
 
         return mapped;

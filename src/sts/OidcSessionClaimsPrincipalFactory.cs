@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Sufficit.Identity.Core.Data;
@@ -23,7 +24,8 @@ internal sealed class OidcSessionClaimsPrincipalFactory(
     IHttpContextAccessor httpContextAccessor,
     IAuthenticationContextAccessor authenticationContextAccessor,
     IDbContextFactory<AppDbContext> databaseFactory,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ILogger<OidcSessionClaimsPrincipalFactory> logger)
     : UserClaimsPrincipalFactory<ApplicationUser, ApplicationRole>(
         userManager,
         roleManager,
@@ -116,6 +118,16 @@ internal sealed class OidcSessionClaimsPrincipalFactory(
             identity,
             AuthenticationContextProjector.AuthenticationContextClassClaimType,
             evidence?.AuthenticationContextClass ?? "urn:sufficit:acr:loa" + aal);
+
+        logger.LogInformation(
+            "Session claims projected for user {UserId}: amr={AuthenticationMethods}; "
+            + "aal={AssuranceLevel}; acr={AuthenticationContextClass}.",
+            user.Id,
+            string.Join(' ', authenticationMethods),
+            aal,
+            identity.FindFirst(
+                AuthenticationContextProjector.AuthenticationContextClassClaimType)?.Value
+                ?? "missing");
 
         return identity;
     }
