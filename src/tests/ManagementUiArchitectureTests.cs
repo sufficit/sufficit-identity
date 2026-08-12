@@ -829,6 +829,36 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Pending_mfa_recovery_clears_remembered_device_and_returns_to_login()
+    {
+        var home = File.ReadAllText(Path.Combine(
+            ResolveManagementUiSource(),
+            "Components",
+            "Pages",
+            "Home.razor"));
+        var controller = File.ReadAllText(Path.Combine(
+            ResolveIdentityRepository(),
+            "src",
+            "sts",
+            "Controllers",
+            "AuthorizationController.cs"));
+
+        Assert.Contains("name=\"force_mfa\"", home, StringComparison.Ordinal);
+        Assert.Contains(
+            "ForgetTwoFactorClientAsync",
+            controller,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "\"/account/login\"",
+            controller,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "\"/management/\"",
+            controller,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Client_controller_is_only_an_http_adapter()
     {
         var repositoryRoot = ResolveIdentityRepository();

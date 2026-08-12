@@ -1097,6 +1097,20 @@ public class AuthorizationController : Controller
             return BadRequest(new { error = "invalid_request", error_description = ex.Message });
         }
 
+        // The Management recovery action must not immediately reuse the
+        // browser's 30-day "remember this device" decision. Clear that
+        // client cookie before signing out, then send the operator to the
+        // login page so the next password sign-in reaches the TOTP step.
+        var forceMfa = Request.HasFormContentType &&
+            string.Equals(
+                Request.Form["force_mfa"].ToString(),
+                "true",
+                StringComparison.OrdinalIgnoreCase);
+        if (forceMfa)
+        {
+            await _signInManager.ForgetTwoFactorClientAsync();
+        }
+
         // Capture the subject BEFORE SignOutAsync clears the cookie principal —
         // we need it to enumerate the RPs whose sessions to terminate via
         // back-channel logout (item 3.2 [L1]). The distributor is a no-op when
@@ -1171,7 +1185,12 @@ public class AuthorizationController : Controller
             }
         }
 
-        var redirectUri = frontchannelContext is null
+        var redirectUri = forceMfa
+            ? QueryHelpers.AddQueryString(
+                "/account/login",
+                "returnUrl",
+                "/management/")
+            : frontchannelContext is null
             ? "/"
             : QueryHelpers.AddQueryString(
                 "/connect/frontchannel-logout",
