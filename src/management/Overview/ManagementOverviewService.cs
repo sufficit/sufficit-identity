@@ -90,7 +90,7 @@ public sealed class ManagementOverviewService(
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal)
             .ToArray();
-        logger?.LogInformation(
+        logger?.LogDebug(
             "Management overview evaluation started for subject {Subject}; "
             + "authenticated={Authenticated}; amr={AuthenticationMethods}; "
             + "aal={AssuranceLevel}; correlation={CorrelationId}.",

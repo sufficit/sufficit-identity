@@ -119,15 +119,20 @@ internal sealed class OidcSessionClaimsPrincipalFactory(
             AuthenticationContextProjector.AuthenticationContextClassClaimType,
             evidence?.AuthenticationContextClass ?? "urn:sufficit:acr:loa" + aal);
 
-        logger.LogInformation(
+        // This factory runs during security-stamp validation and cookie
+        // renewal. Keep the full claim projection at Debug so normal traffic
+        // does not produce one Information line per authenticated request.
+        logger.LogDebug(
             "Session claims projected for user {UserId}: amr={AuthenticationMethods}; "
-            + "aal={AssuranceLevel}; acr={AuthenticationContextClass}.",
+            + "aal={AssuranceLevel}; acr={AuthenticationContextClass}; "
+            + "TraceId={TraceId}.",
             user.Id,
             string.Join(' ', authenticationMethods),
             aal,
             identity.FindFirst(
                 AuthenticationContextProjector.AuthenticationContextClassClaimType)?.Value
-                ?? "missing");
+                ?? "missing",
+            AuthenticationFlowDiagnostics.TraceId);
 
         return identity;
     }

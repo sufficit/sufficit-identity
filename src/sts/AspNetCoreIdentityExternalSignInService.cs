@@ -65,8 +65,10 @@ public sealed class AspNetCoreIdentityExternalSignInService(
             // SignInManager flow to produce pending 2FA.
             await signInManager.ForgetTwoFactorClientAsync();
             logger.LogInformation(
-                "External sign-in through {Provider} requires fresh MFA for a sensitive return path.",
-                info.LoginProvider);
+                "External sign-in through {Provider} requires fresh MFA for a "
+                + "sensitive return path. TraceId={TraceId}.",
+                info.LoginProvider,
+                AuthenticationFlowDiagnostics.TraceId);
 
             if (await userManager.IsLockedOutAsync(sensitiveUser))
                 return new ExternalSignInResult(ExternalSignInStatus.LockedOut);
@@ -89,8 +91,10 @@ public sealed class AspNetCoreIdentityExternalSignInService(
         if (signIn.Succeeded)
         {
             logger.LogInformation(
-                "User completed external sign-in through {Provider}.",
-                info.LoginProvider);
+                "User completed external sign-in through {Provider}. "
+                + "TraceId={TraceId}.",
+                info.LoginProvider,
+                AuthenticationFlowDiagnostics.TraceId);
             return new ExternalSignInResult(ExternalSignInStatus.Succeeded);
         }
 
