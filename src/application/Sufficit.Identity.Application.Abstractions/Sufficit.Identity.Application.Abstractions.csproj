@@ -41,6 +41,8 @@
              Link="Management\Provisioning\ProvisioningManagementContracts.cs" />
     <Compile Include="..\..\management\Provisioning\ProvisioningTokenManagementService.cs"
              Link="Management\Provisioning\ProvisioningTokenManagementContracts.cs" />
+    <Compile Include="..\..\management\OperatorTokens\OperatorTokenManagementService.cs"
+             Link="Management\OperatorTokens\OperatorTokenManagementContracts.cs" />
     <Compile Include="..\..\management\Scopes\ScopeManagementService.cs"
              Link="Management\Scopes\ScopeManagementContracts.cs" />
     <Compile Include="..\..\management\Sessions\SessionManagementService.cs"

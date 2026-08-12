@@ -1,0 +1,734 @@
+@page "/tokens"
+@using Microsoft.JSInterop
+@using Sufficit.Identity.Management.Authorization
+@using Sufficit.Identity.Management.OperatorTokens
+@using Sufficit.Identity.UI.Management.Clients
+@using Sufficit.Identity.UI.Management.OperatorTokens
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageOperatorTokens)]
+@inject ManagementOperatorTokenDataSource TokenData
+@inject IJSRuntime JS
+
+<PageTitle>Tokens temporários | Sufficit Identity</PageTitle>
+
+<SUIPageHeader Title="Tokens temporários"
+               Description="Emita credenciais curtas e atenuadas para automações administrativas em nome do operador autenticado." />
+
+<div class="contract-strip contract-strip--warning">
+    <SUIIcon Name="shield" Size="20" />
+    <div>
+        <strong>O link prepara; somente você autoriza</strong>
+        <span>Parâmetros da URL preenchem a solicitação, mas nunca emitem o token nem ampliam as capabilities do operador.</span>
+    </div>
+    <SUIStatusBadge Tone="warning">MFA obrigatório</SUIStatusBadge>
+</div>
+
+@if (workspaceResult is null)
+{
+    <div class="operator-token-loading" aria-live="polite">
+        <span class="button-spinner" aria-hidden="true"></span>
+        <span>Consultando tokens do operador…</span>
+    </div>
+}
+else if (workspaceResult.IsSuccess is false || workspace is null)
+{
+    <div class="inline-notice inline-notice--danger" role="alert">
+        <SUIIcon Name="alert" Size="19" />
+        <div>
+            <strong>@ErrorTitle(workspaceResult)</strong>
+            <span>@workspaceResult.ErrorMessage</span>
+        </div>
+    </div>
+}
+else
+{
+    @if (queryPrepared)
+    {
+        <section class="operator-token-request" aria-labelledby="prepared-request-heading">
+            <span class="operator-token-request__icon"><SUIIcon Name="external" Size="20" /></span>
+            <div>
+                <h2 id="prepared-request-heading">Solicitação preparada pelo link</h2>
+                <p>Confira finalidade, duração e acessos. Nenhuma operação foi executada.</p>
+                <dl>
+                    <div><dt>Finalidade</dt><dd>@purpose</dd></div>
+                    <div><dt>Validade</dt><dd>@FormatDuration(tokenLifetimeSeconds)</dd></div>
+                    <div><dt>Capabilities</dt><dd>@selectedCapabilities.Count selecionada(s)</dd></div>
+                </dl>
+            </div>
+            <SUIStatusBadge Tone="neutral">Aguardando confirmação</SUIStatusBadge>
+        </section>
+    }
+
+    @if (queryUnavailableCapabilities.Count > 0)
+    {
+        <div class="inline-notice inline-notice--danger" role="alert">
+            <SUIIcon Name="alert" Size="19" />
+            <div>
+                <strong>O link solicitou acessos indisponíveis</strong>
+                <span>Remova da URL ou obtenha autorização para: @string.Join(", ", queryUnavailableCapabilities).</span>
+            </div>
+        </div>
+    }
+
+    @if (queryValidationErrors.Count > 0)
+    {
+        <div class="inline-notice inline-notice--danger" role="alert">
+            <SUIIcon Name="alert" Size="19" />
+            <div>
+                <strong>O link contém parâmetros inválidos</strong>
+                <ul>
+                    @foreach (var error in queryValidationErrors)
+                    {
+                        <li>@error</li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+
+    @if (operationResult?.IsSuccess is false)
+    {
+        <div class="inline-notice inline-notice--danger" role="alert">
+            <SUIIcon Name="alert" Size="19" />
+            <div>
+                <strong>@ErrorTitle(operationResult)</strong>
+                <span>@operationResult.ErrorMessage</span>
+                @if (operationResult.ErrorDetails?.Count > 0)
+                {
+                    <ul>
+                        @foreach (var detail in operationResult.ErrorDetails)
+                        {
+                            <li>@detail</li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    }
+    else if (revokedPurpose is not null)
+    {
+        <div class="inline-notice inline-notice--success" role="status">
+            <SUIIcon Name="check" Size="19" />
+            <div>
+                <strong>Token revogado</strong>
+                <span>“@revokedPurpose” deixou de autorizar novas requisições.</span>
+            </div>
+        </div>
+    }
+
+    <div class="operator-token-layout">
+        <section class="operator-token-issuer" aria-labelledby="operator-token-issuer-heading">
+            <header>
+                <div>
+                    <h2 id="operator-token-issuer-heading">Preparar credencial</h2>
+                    <p>O token terá somente os acessos selecionados e expirará automaticamente.</p>
+                </div>
+                <SUIStatusBadge Tone="@(workspace.IssuanceEnabled ? "success" : "danger")">
+                    @(workspace.IssuanceEnabled ? "Emissão habilitada" : "Emissão desabilitada")
+                </SUIStatusBadge>
+            </header>
+
+            <div class="operator-token-fields">
+                <label class="field-group">
+                    <span>Finalidade</span>
+                    <input class="form-control"
+                           maxlength="120"
+                           autocomplete="off"
+                           placeholder="Ex.: atualizar clientes Hermes e Symposium"
+                           disabled="@issuing"
+                           @bind="purpose" />
+                    <small>Esta descrição aparece na lista e na auditoria; não inclua segredos.</small>
+                </label>
+
+                <label class="field-group">
+                    <span>Validade</span>
+                    <select class="form-control"
+                            disabled="@issuing"
+                            @bind="tokenLifetimeSeconds">
+                        @foreach (var lifetime in LifetimeOptions)
+                        {
+                            <option value="@lifetime">@FormatDuration(lifetime)</option>
+                        }
+                    </select>
+                    <small>Limite deste ambiente: @FormatDuration(workspace.MaximumLifetimeSeconds).</small>
+                </label>
+            </div>
+
+            <div class="operator-token-capability-summary">
+                <div>
+                    <strong>Escopo da credencial</strong>
+                    <span>@SelectedCapabilitySummary</span>
+                </div>
+                @if (selectedCapabilities.Count > 0)
+                {
+                    <button type="button"
+                            class="button button--ghost"
+                            disabled="@issuing"
+                            @onclick="ClearCapabilities">
+                        Limpar seleção
+                    </button>
+                }
+            </div>
+
+            @if (selectedCapabilities.Count > 0)
+            {
+                <div class="operator-token-selected" aria-label="Capabilities selecionadas">
+                    @foreach (var capability in selectedCapabilities.Order(StringComparer.Ordinal))
+                    {
+                        <button type="button"
+                                title="Remover @capability"
+                                disabled="@issuing"
+                                @onclick="() => RemoveCapability(capability)">
+                            <code>@capability</code>
+                            <span aria-hidden="true">×</span>
+                        </button>
+                    }
+                </div>
+            }
+
+            <details class="operator-token-capability-picker" open="@capabilityPickerOpen">
+                <summary>Selecionar capabilities</summary>
+                <div class="operator-token-capability-picker__body">
+                    <label class="visually-hidden" for="capability-filter">Filtrar capabilities</label>
+                    <input id="capability-filter"
+                           class="form-control"
+                           placeholder="Filtrar por nome ou área"
+                           autocomplete="off"
+                           disabled="@issuing"
+                           @bind="capabilityFilter"
+                           @bind:event="oninput" />
+
+                    @foreach (var group in CapabilityGroups)
+                    {
+                        <fieldset>
+                            <legend>@group.Name</legend>
+                            <div class="operator-token-capability-grid">
+                                @foreach (var capability in group.Capabilities)
+                                {
+                                    <label class="operator-token-capability">
+                                        <input type="checkbox"
+                                               checked="@selectedCapabilities.Contains(capability)"
+                                               disabled="@issuing"
+                                               @onchange="eventArgs => ToggleCapability(capability, eventArgs)" />
+                                        <span>
+                                            <strong>@CapabilityLabel(capability)</strong>
+                                            <code>@capability</code>
+                                        </span>
+                                    </label>
+                                }
+                            </div>
+                        </fieldset>
+                    }
+
+                    @if (CapabilityGroups.Count is 0)
+                    {
+                        <p class="operator-token-capability-picker__empty">Nenhuma capability corresponde ao filtro atual.</p>
+                    }
+                </div>
+            </details>
+
+            <footer class="operator-token-issue-actions">
+                <div>
+                    <strong>@FormatDuration(tokenLifetimeSeconds)</strong>
+                    <span>· @selectedCapabilities.Count de @workspace.MaximumCapabilities capabilities</span>
+                </div>
+                <AuthorizeView Policy="@ManagementUiPolicies.IssueOperatorTokens">
+                    <Authorized>
+                        <button type="button"
+                                class="button button--primary"
+                                disabled="@(!CanIssue)"
+                                @onclick="IssueAsync">
+                            @if (issuing)
+                            {
+                                <span class="button-spinner" aria-hidden="true"></span>
+                                <span>Emitindo</span>
+                            }
+                            else
+                            {
+                                <SUIIcon Name="key" Size="17" />
+                                <span>@(queryPrepared ? "Confirmar e gerar token" : "Gerar token temporário")</span>
+                            }
+                        </button>
+                    </Authorized>
+                    <NotAuthorized>
+                        <span class="operator-token-unauthorized">Seu usuário não possui <code>identity.operator-tokens.issue</code>.</span>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </footer>
+        </section>
+
+        <aside class="operator-token-safety" aria-labelledby="operator-token-safety-heading">
+            <span class="operator-token-safety__icon"><SUIIcon Name="shield" Size="24" /></span>
+            <h2 id="operator-token-safety-heading">Limites aplicados</h2>
+            <ul class="plain-check-list">
+                <li><SUIIcon Name="check" Size="16" /> Escopo OAuth fixo em <code>identity.management</code></li>
+                <li><SUIIcon Name="check" Size="16" /> Sem papel de administrador incorporado</li>
+                <li><SUIIcon Name="check" Size="16" /> MFA e autenticação atual preservados</li>
+                <li><SUIIcon Name="check" Size="16" /> Emissão e revogação auditadas</li>
+                <li><SUIIcon Name="check" Size="16" /> Um token temporário não emite outro</li>
+            </ul>
+            <p>A URL pode solicitar somente valores de formulário. O servidor recalcula todas as permissões no momento da emissão.</p>
+        </aside>
+    </div>
+
+    @if (issuedToken is not null)
+    {
+        <section class="operator-token-reveal" aria-labelledby="operator-token-reveal-heading" role="status">
+            <header>
+                <div>
+                    <h2 id="operator-token-reveal-heading">Token disponível uma única vez</h2>
+                    <p>Copie agora. A lista abaixo mantém somente metadados para revogação e auditoria.</p>
+                </div>
+                <SUIStatusBadge Tone="warning">Expira @issuedExpiresAt.ToLocalTime().ToString("dd/MM HH:mm:ss")</SUIStatusBadge>
+            </header>
+            <textarea class="operator-token-value"
+                      aria-label="Token temporário de Management"
+                      readonly
+                      spellcheck="false"
+                      autocomplete="off">@issuedToken</textarea>
+            <footer>
+                <span>Bearer · @issuedCapabilities.Count capability(s)</span>
+                <div>
+                    <button class="button button--secondary"
+                            type="button"
+                            @onclick="CopyIssuedTokenAsync">
+                        <SUIIcon Name="code" Size="17" />
+                        @(tokenCopied ? "Copiado" : "Copiar token")
+                    </button>
+                    <button class="button button--ghost"
+                            type="button"
+                            @onclick="HideIssuedToken">
+                        Ocultar
+                    </button>
+                </div>
+            </footer>
+            @if (clipboardUnavailable)
+            {
+                <span class="operator-token-clipboard-note">A cópia automática foi bloqueada; selecione o valor e use Ctrl+C.</span>
+            }
+        </section>
+    }
+
+    <section class="operator-token-active" aria-labelledby="operator-token-active-heading">
+        <header>
+            <div>
+                <h2 id="operator-token-active-heading">Tokens ativos</h2>
+                <p>Somente credenciais temporárias emitidas para este operador são exibidas.</p>
+            </div>
+            <SUIStatusBadge Tone="neutral">@workspace.ActiveTokens.Count ativo(s)</SUIStatusBadge>
+        </header>
+
+        @if (workspace.ActiveTokens.Count is 0)
+        {
+            <SUIEmptyState Icon="key"
+                           Title="Nenhum token temporário ativo"
+                           Description="Prepare uma credencial acima ou abra um link parametrizado enviado para uma tarefa específica." />
+        }
+        else
+        {
+            <div class="operator-token-list">
+                @foreach (var token in workspace.ActiveTokens)
+                {
+                    <article>
+                        <div class="operator-token-list__main">
+                            <div>
+                                <strong>@token.Purpose</strong>
+                                <span>Emitido @token.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm") · expira @token.ExpiresAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                            </div>
+                            <SUIStatusBadge Tone="success">Ativo</SUIStatusBadge>
+                        </div>
+                        <div class="operator-token-list__capabilities">
+                            @foreach (var capability in token.Capabilities)
+                            {
+                                <code>@capability</code>
+                            }
+                        </div>
+                        <footer>
+                            <code title="Identificador auditável">@ShortId(token.Id)</code>
+                            <AuthorizeView Policy="@ManagementUiPolicies.RevokeOperatorTokens">
+                                <Authorized>
+                                    @if (pendingRevokeId == token.Id)
+                                    {
+                                        <div class="operator-token-revoke-confirmation">
+                                            <span>Revogar agora?</span>
+                                            <button type="button"
+                                                    class="button button--danger"
+                                                    disabled="@revoking"
+                                                    @onclick="() => RevokeAsync(token)">
+                                                @(revoking ? "Revogando" : "Confirmar")
+                                            </button>
+                                            <button type="button"
+                                                    class="button button--ghost"
+                                                    disabled="@revoking"
+                                                    @onclick="CancelRevoke">
+                                                Cancelar
+                                            </button>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="button button--ghost button--danger-text"
+                                                @onclick="() => PrepareRevoke(token.Id)">
+                                            Revogar
+                                        </button>
+                                    }
+                                </Authorized>
+                            </AuthorizeView>
+                        </footer>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+}
+
+@code {
+    [Parameter, SupplyParameterFromQuery(Name = "action")]
+    public string? RequestedAction { get; set; }
+
+    [Parameter, SupplyParameterFromQuery(Name = "purpose")]
+    public string? RequestedPurpose { get; set; }
+
+    [Parameter, SupplyParameterFromQuery(Name = "lifetimeSeconds")]
+    public int? RequestedLifetimeSeconds { get; set; }
+
+    [Parameter, SupplyParameterFromQuery(Name = "capability")]
+    public string[]? RequestedCapabilities { get; set; }
+
+    [Parameter, SupplyParameterFromQuery(Name = "capabilities")]
+    public string? RequestedCapabilitiesCsv { get; set; }
+
+    private ManagementDataResult<OperatorTokenWorkspace>? workspaceResult;
+    private ManagementDataResult<object>? operationResult;
+    private OperatorTokenWorkspace? workspace;
+    private string purpose = "";
+    private int tokenLifetimeSeconds = 900;
+    private readonly HashSet<string> selectedCapabilities = new(StringComparer.Ordinal);
+    private readonly List<string> queryUnavailableCapabilities = [];
+    private readonly List<string> queryValidationErrors = [];
+    private bool queryPrepared;
+    private bool capabilityPickerOpen;
+    private string capabilityFilter = "";
+    private bool issuing;
+    private bool revoking;
+    private string? pendingRevokeId;
+    private string? revokedPurpose;
+    private string? issuedToken;
+    private DateTimeOffset issuedExpiresAt;
+    private IReadOnlyList<string> issuedCapabilities = [];
+    private bool tokenCopied;
+    private bool clipboardUnavailable;
+
+    protected override async Task OnInitializedAsync()
+    {
+        workspaceResult = await TokenData.GetAsync();
+        workspace = workspaceResult.Value;
+        if (workspace is null)
+        {
+            return;
+        }
+
+        tokenLifetimeSeconds = workspace.DefaultLifetimeSeconds;
+        ApplyQueryRequest();
+    }
+
+    private IReadOnlyList<int> LifetimeOptions
+    {
+        get
+        {
+            var values = new[] { 300, 600, 900, 1800, 3600 }
+                .Where(value => value <= workspace!.MaximumLifetimeSeconds)
+                .Append(tokenLifetimeSeconds)
+                .Where(value => value >= 60)
+                .Distinct()
+                .Order()
+                .ToArray();
+            return values;
+        }
+    }
+
+    private IReadOnlyList<CapabilityGroup> CapabilityGroups => workspace is null
+        ? []
+        : workspace.AvailableCapabilities
+            .Where(MatchesCapabilityFilter)
+            .GroupBy(CapabilityGroupName)
+            .OrderBy(group => CapabilityGroupOrder(group.Key))
+            .Select(group => new CapabilityGroup(
+                group.Key,
+                group.Order(StringComparer.Ordinal).ToArray()))
+            .ToArray();
+
+    private bool CanIssue =>
+        workspace?.IssuanceEnabled is true
+        && !issuing
+        && !string.IsNullOrWhiteSpace(purpose)
+        && purpose.Trim().Length <= 120
+        && selectedCapabilities.Count is > 0
+        && selectedCapabilities.Count <= workspace.MaximumCapabilities
+        && queryUnavailableCapabilities.Count is 0
+        && queryValidationErrors.Count is 0;
+
+    private string SelectedCapabilitySummary => selectedCapabilities.Count switch
+    {
+        0 => "Nenhum acesso selecionado",
+        1 => "1 capability selecionada",
+        _ => $"{selectedCapabilities.Count} capabilities selecionadas",
+    };
+
+    private void ApplyQueryRequest()
+    {
+        queryPrepared = string.Equals(
+                RequestedAction,
+                "issue",
+                StringComparison.OrdinalIgnoreCase)
+            || !string.IsNullOrWhiteSpace(RequestedPurpose)
+            || RequestedLifetimeSeconds is not null
+            || RequestedCapabilities?.Length > 0
+            || !string.IsNullOrWhiteSpace(RequestedCapabilitiesCsv);
+
+        var requestedPurpose = RequestedPurpose?.Trim();
+        purpose = string.IsNullOrWhiteSpace(requestedPurpose)
+            ? "Operação administrativa temporária"
+            : requestedPurpose[..Math.Min(requestedPurpose.Length, 120)];
+        if (requestedPurpose?.Length > 120)
+        {
+            queryValidationErrors.Add("A finalidade deve ter no máximo 120 caracteres.");
+        }
+
+        if (RequestedLifetimeSeconds is { } requestedLifetime)
+        {
+            if (requestedLifetime >= 60
+                && requestedLifetime <= workspace!.MaximumLifetimeSeconds)
+            {
+                tokenLifetimeSeconds = requestedLifetime;
+            }
+            else
+            {
+                queryValidationErrors.Add(
+                    $"A validade deve ficar entre 60 e {workspace!.MaximumLifetimeSeconds} segundos.");
+            }
+        }
+
+        var requestedCapabilities = (RequestedCapabilities ?? [])
+            .Concat((RequestedCapabilitiesCsv ?? "")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        foreach (var capability in requestedCapabilities)
+        {
+            if (workspace!.AvailableCapabilities.Contains(
+                capability,
+                StringComparer.Ordinal))
+            {
+                selectedCapabilities.Add(capability);
+            }
+            else
+            {
+                queryUnavailableCapabilities.Add(capability);
+            }
+        }
+        if (requestedCapabilities.Length > workspace!.MaximumCapabilities)
+        {
+            queryValidationErrors.Add(
+                $"O link solicita {requestedCapabilities.Length} capabilities; o limite é {workspace.MaximumCapabilities}.");
+        }
+        capabilityPickerOpen = !queryPrepared || selectedCapabilities.Count is 0;
+    }
+
+    private async Task IssueAsync()
+    {
+        if (!CanIssue || workspace is null)
+        {
+            return;
+        }
+
+        issuing = true;
+        revokedPurpose = null;
+        issuedToken = null;
+        tokenCopied = false;
+        clipboardUnavailable = false;
+        var result = await TokenData.IssueAsync(
+            new IssueOperatorTokenCommand(
+                purpose,
+                tokenLifetimeSeconds,
+                selectedCapabilities.Order(StringComparer.Ordinal).ToArray()));
+        operationResult = ToObjectResult(result);
+        if (result.IsSuccess && result.Value is { } issued)
+        {
+            issuedToken = issued.AccessToken;
+            issuedExpiresAt = issued.ExpiresAtUtc;
+            issuedCapabilities = issued.Capabilities;
+            workspace = workspace with
+            {
+                ActiveTokens = [
+                    issued.Token,
+                    .. workspace.ActiveTokens.Where(token => token.Id != issued.Token.Id)
+                ]
+            };
+        }
+        issuing = false;
+    }
+
+    private async Task RevokeAsync(OperatorTokenSummary token)
+    {
+        if (revoking || workspace is null)
+        {
+            return;
+        }
+
+        revoking = true;
+        var result = await TokenData.RevokeAsync(token.Id);
+        operationResult = ToObjectResult(result);
+        if (result.IsSuccess)
+        {
+            revokedPurpose = token.Purpose;
+            workspace = workspace with
+            {
+                ActiveTokens = workspace.ActiveTokens
+                    .Where(item => item.Id != token.Id)
+                    .ToArray()
+            };
+            pendingRevokeId = null;
+        }
+        revoking = false;
+    }
+
+    private async Task CopyIssuedTokenAsync()
+    {
+        if (string.IsNullOrWhiteSpace(issuedToken))
+        {
+            return;
+        }
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", issuedToken);
+            tokenCopied = true;
+            clipboardUnavailable = false;
+        }
+        catch (JSException)
+        {
+            clipboardUnavailable = true;
+        }
+    }
+
+    private void HideIssuedToken()
+    {
+        issuedToken = null;
+        tokenCopied = false;
+        clipboardUnavailable = false;
+    }
+
+    private void ToggleCapability(string capability, ChangeEventArgs eventArgs)
+    {
+        if (eventArgs.Value is true)
+        {
+            selectedCapabilities.Add(capability);
+        }
+        else
+        {
+            selectedCapabilities.Remove(capability);
+        }
+    }
+
+    private void RemoveCapability(string capability) =>
+        selectedCapabilities.Remove(capability);
+
+    private void ClearCapabilities() => selectedCapabilities.Clear();
+
+    private void PrepareRevoke(string id)
+    {
+        pendingRevokeId = id;
+        revokedPurpose = null;
+        operationResult = null;
+    }
+
+    private void CancelRevoke() => pendingRevokeId = null;
+
+    private bool MatchesCapabilityFilter(string capability) =>
+        string.IsNullOrWhiteSpace(capabilityFilter)
+        || capability.Contains(capabilityFilter.Trim(), StringComparison.OrdinalIgnoreCase)
+        || CapabilityGroupName(capability).Contains(
+            capabilityFilter.Trim(),
+            StringComparison.OrdinalIgnoreCase)
+        || CapabilityLabel(capability).Contains(
+            capabilityFilter.Trim(),
+            StringComparison.OrdinalIgnoreCase);
+
+    private static string CapabilityGroupName(string capability) => capability switch
+    {
+        _ when capability.Contains(".users.", StringComparison.Ordinal)
+            || capability.Contains(".claims.", StringComparison.Ordinal) => "Identidade",
+        _ when capability.Contains(".clients.", StringComparison.Ordinal)
+            || capability.Contains(".scopes.", StringComparison.Ordinal)
+            || capability.Contains(".authorizations.", StringComparison.Ordinal) => "OAuth e OIDC",
+        _ when capability.Contains(".branding.", StringComparison.Ordinal) => "Experiência",
+        _ when capability.Contains(".vault.", StringComparison.Ordinal) => "Segredos",
+        _ => "Operações",
+    };
+
+    private static int CapabilityGroupOrder(string group) => group switch
+    {
+        "Identidade" => 10,
+        "OAuth e OIDC" => 20,
+        "Operações" => 30,
+        "Experiência" => 40,
+        "Segredos" => 50,
+        _ => 100,
+    };
+
+    private static string CapabilityLabel(string capability)
+    {
+        var operation = capability.Split('.').LastOrDefault() ?? capability;
+        return operation switch
+        {
+            "read" => "Consultar",
+            "create" => "Criar",
+            "update" => "Atualizar",
+            "delete" => "Excluir",
+            "manage" => "Administrar",
+            "disable" => "Desabilitar",
+            "revoke" => "Revogar",
+            "apply" => "Aplicar",
+            "preview" => "Gerar preview",
+            "reset-password" => "Redefinir senha",
+            _ => operation,
+        };
+    }
+
+    private static string FormatDuration(int seconds) => seconds switch
+    {
+        3600 => "1 hora",
+        _ when seconds % 60 is 0 => $"{seconds / 60} minutos",
+        _ => $"{seconds} segundos",
+    };
+
+    private static string ShortId(string id) => id.Length <= 12
+        ? id
+        : $"{id[..8]}…{id[^4..]}";
+
+    private static string ErrorTitle<T>(ManagementDataResult<T> result) =>
+        result.Outcome switch
+        {
+            ManagementDataOutcome.Invalid => "Revise os dados da solicitação",
+            ManagementDataOutcome.Conflict => "A emissão não está disponível neste ambiente",
+            ManagementDataOutcome.NotFound => "Token não encontrado",
+            ManagementDataOutcome.Forbidden => "Capability administrativa ausente",
+            ManagementDataOutcome.StepUpRequired => "Autenticação multifator necessária",
+            ManagementDataOutcome.Unavailable => "Identity não concluiu a operação",
+            _ => "A operação não foi concluída",
+        };
+
+    private static ManagementDataResult<object> ToObjectResult<T>(
+        ManagementDataResult<T> result) => result.IsSuccess
+            ? ManagementDataResult<object>.Success(new object())
+            : ManagementDataResult<object>.Failure(
+                result.Outcome,
+                result.ErrorMessage,
+                result.ErrorField,
+                result.ErrorDetails);
+
+    private sealed record CapabilityGroup(
+        string Name,
+        IReadOnlyList<string> Capabilities);
+}

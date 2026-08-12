@@ -21,6 +21,7 @@ using Sufficit.Identity.UI.Management.Scopes;
 using Sufficit.Identity.UI.Management.Sessions;
 using Sufficit.Identity.UI.Management.Users;
 using Sufficit.Identity.UI.Management.Metrics;
+using Sufficit.Identity.UI.Management.OperatorTokens;
 
 namespace Sufficit.Identity.UI.Management;
 
@@ -43,6 +44,12 @@ public static class ManagementUiPolicies
     public const string ManageProvisioningToken =
         "sufficit-identity-management-ui-provisioning-token";
     public const string ManageMetrics = "sufficit-identity-management-ui-metrics";
+    public const string ManageOperatorTokens =
+        "sufficit-identity-management-ui-operator-tokens";
+    public const string IssueOperatorTokens =
+        "sufficit-identity-management-ui-operator-tokens-issue";
+    public const string RevokeOperatorTokens =
+        "sufficit-identity-management-ui-operator-tokens-revoke";
 }
 
 public sealed class ManagementCapabilityRequirement(
@@ -235,6 +242,36 @@ public static class ServiceCollectionExtensions
                     ManagementCapabilities.MetricsRead,
                     ManagementResourceTypes.Metrics));
             });
+            authorization.AddPolicy(
+                ManagementUiPolicies.ManageOperatorTokens,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.Requirements.Add(
+                        new ManagementCapabilityRequirement(
+                            ManagementCapabilities.OperatorTokensRead,
+                            ManagementResourceTypes.OperatorTokenCollection));
+                });
+            authorization.AddPolicy(
+                ManagementUiPolicies.IssueOperatorTokens,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.Requirements.Add(
+                        new ManagementCapabilityRequirement(
+                            ManagementCapabilities.OperatorTokensIssue,
+                            ManagementResourceTypes.OperatorTokenCollection));
+                });
+            authorization.AddPolicy(
+                ManagementUiPolicies.RevokeOperatorTokens,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.Requirements.Add(
+                        new ManagementCapabilityRequirement(
+                            ManagementCapabilities.OperatorTokensRevoke,
+                            ManagementResourceTypes.OperatorTokenCollection));
+                });
         });
 
         services.TryAddEnumerable(
@@ -256,6 +293,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<ManagementProvisioningTokenDataSource>();
         services.TryAddScoped<ManagementDatabaseDataSource>();
         services.TryAddScoped<ManagementMetricsDataSource>();
+        services.TryAddScoped<ManagementOperatorTokenDataSource>();
 
         services.AddCascadingAuthenticationState();
         // i18n: IStringLocalizer for Management UI strings.

@@ -74,6 +74,7 @@ public sealed class ManagementOverviewService(
         new("audit", ManagementCapabilities.AuditRead),
         new("database", ManagementCapabilities.DatabaseRead),
         new("metrics", ManagementCapabilities.MetricsRead),
+        new("operator-tokens", ManagementCapabilities.OperatorTokensRead),
         new("provisioning", ManagementCapabilities.ProvisioningPreview)
     ];
 
