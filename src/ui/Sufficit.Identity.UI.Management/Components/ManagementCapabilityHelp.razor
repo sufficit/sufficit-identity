@@ -1,0 +1,28 @@
+@namespace Sufficit.Identity.UI.Management.Components
+
+@{
+    var copy = ManagementCapabilityPresentation.Get(Capability);
+}
+
+<span class="management-capability-help">
+    <button type="button"
+            class="management-capability-help__trigger"
+            aria-label="Informações sobre @copy.HelpTitle"
+            aria-describedby="@TooltipId">
+        <SUIIcon Name="info" Size="17" />
+    </button>
+    <span id="@TooltipId"
+          class="management-capability-help__tooltip"
+          role="tooltip">
+        <strong>@copy.HelpTitle</strong>
+        <span>@copy.HelpText</span>
+    </span>
+</span>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Capability { get; set; } = string.Empty;
+
+    private string TooltipId =>
+        $"capability-help-{Capability.Replace('.', '-')}";
+}

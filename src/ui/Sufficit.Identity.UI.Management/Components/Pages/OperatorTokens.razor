@@ -207,16 +207,19 @@ else
                             <div class="operator-token-capability-grid">
                                 @foreach (var capability in group.Capabilities)
                                 {
-                                    <label class="operator-token-capability">
-                                        <input type="checkbox"
-                                               checked="@selectedCapabilities.Contains(capability)"
-                                               disabled="@issuing"
-                                               @onchange="eventArgs => ToggleCapability(capability, eventArgs)" />
-                                        <span>
-                                            <strong>@CapabilityLabel(capability)</strong>
-                                            <code>@capability</code>
-                                        </span>
-                                    </label>
+                                    <div class="operator-token-capability">
+                                        <label class="operator-token-capability__selection">
+                                            <input type="checkbox"
+                                                   checked="@selectedCapabilities.Contains(capability)"
+                                                   disabled="@issuing"
+                                                   @onchange="eventArgs => ToggleCapability(capability, eventArgs)" />
+                                            <span>
+                                                <strong>@CapabilityLabel(capability)</strong>
+                                                <code>@capability</code>
+                                            </span>
+                                        </label>
+                                        <ManagementCapabilityHelp Capability="@capability" />
+                                    </div>
                                 }
                             </div>
                         </fieldset>
@@ -687,23 +690,7 @@ else
     };
 
     private static string CapabilityLabel(string capability)
-    {
-        var operation = capability.Split('.').LastOrDefault() ?? capability;
-        return operation switch
-        {
-            "read" => "Consultar",
-            "create" => "Criar",
-            "update" => "Atualizar",
-            "delete" => "Excluir",
-            "manage" => "Administrar",
-            "disable" => "Desabilitar",
-            "revoke" => "Revogar",
-            "apply" => "Aplicar",
-            "preview" => "Gerar preview",
-            "reset-password" => "Redefinir senha",
-            _ => operation,
-        };
-    }
+        => ManagementCapabilityPresentation.Get(capability).Label;
 
     private static string FormatDuration(int seconds) => seconds switch
     {
