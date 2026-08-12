@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
@@ -60,6 +61,7 @@ public class AuthorizationController : Controller
     private readonly IAntiforgery _antiforgery;
     private readonly ISubjectTokenProvenancePolicy _subjectTokenProvenancePolicy;
     private readonly IAuthenticationContextProjector _authenticationContextProjector;
+    private readonly ILogger<AuthorizationController> _logger;
 
     public AuthorizationController(
         IOpenIddictApplicationManager applicationManager,
@@ -77,7 +79,8 @@ public class AuthorizationController : Controller
         Dpop.DpopProofValidator dpopProofValidator,
         Dpop.IDpopNonceStore dpopNonceStore,
         ISubjectTokenProvenancePolicy subjectTokenProvenancePolicy,
-        IAuthenticationContextProjector authenticationContextProjector)
+        IAuthenticationContextProjector authenticationContextProjector,
+        ILogger<AuthorizationController> logger)
     {
         _applicationManager = applicationManager;
         _authorizationManager = authorizationManager;
@@ -96,6 +99,7 @@ public class AuthorizationController : Controller
         _dpopNonceStore = dpopNonceStore;
         _subjectTokenProvenancePolicy = subjectTokenProvenancePolicy;
         _authenticationContextProjector = authenticationContextProjector;
+        _logger = logger;
         // DPoP options (item 3.1, RFC 9449).
         var rootOptions = configuration.GetSection("Sufficit:Identity")
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
@@ -229,6 +233,12 @@ public class AuthorizationController : Controller
 
             if (string.Equals(decision, "allow", StringComparison.OrdinalIgnoreCase))
             {
+                _logger.LogInformation(
+                    "OAuth consent approved. ClientId={ClientId}; ScopeCount={ScopeCount}; "
+                    + "TraceId={TraceId}.",
+                    request.ClientId,
+                    requestedScopes.Length,
+                    HttpContext.TraceIdentifier);
                 // Fall through to the grant below — no further consent check.
             }
             else
@@ -246,6 +256,17 @@ public class AuthorizationController : Controller
         }
         else
         {
+            if (Request.HasFormContentType
+                && Request.Form.ContainsKey("__RequestVerificationToken"))
+            {
+                _logger.LogWarning(
+                    "OAuth consent POST arrived without consent_decision. "
+                    + "ClientId={ClientId}; ScopeCount={ScopeCount}; TraceId={TraceId}.",
+                    request.ClientId,
+                    requestedScopes.Length,
+                    HttpContext.TraceIdentifier);
+            }
+
             // No decision attached to this request: apply the OpenIddict
             // consent-type policy (mirrors the canonical AuthorizationController
             // pattern from the OpenIddict samples — ConsentTypes.Implicit never

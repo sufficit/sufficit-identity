@@ -544,6 +544,21 @@ public sealed class ManagementUiArchitectureTests
             "form.dataset.consentSubmitted",
             identityScript,
             StringComparison.Ordinal);
+        var submitListener = identityScript.IndexOf(
+            "form.addEventListener('submit'",
+            StringComparison.Ordinal);
+        var deferredLock = identityScript.IndexOf(
+            "window.setTimeout(function ()",
+            submitListener,
+            StringComparison.Ordinal);
+        var controlLock = identityScript.IndexOf(
+            "controls[i].disabled = true;",
+            submitListener,
+            StringComparison.Ordinal);
+        Assert.True(submitListener >= 0);
+        Assert.True(
+            deferredLock >= 0 && controlLock > deferredLock,
+            "Consent controls must be locked only after the browser captures the submit payload.");
         Assert.Contains(
             ".consent-card {\n    max-width: 800px;",
             styles,
