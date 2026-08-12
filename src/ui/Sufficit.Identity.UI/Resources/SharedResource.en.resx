@@ -154,6 +154,8 @@
   <data name="Consent.RequestedScopes" xml:space="preserve"><value>Requested permissions:</value></data>
   <data name="Consent.Authorize" xml:space="preserve"><value>Authorize</value></data>
   <data name="Consent.Deny" xml:space="preserve"><value>Deny</value></data>
+  <data name="Consent.Submitted" xml:space="preserve"><value>Decision sent</value></data>
+  <data name="Consent.SubmittedHint" xml:space="preserve"><value>The application will continue automatically. If the browser opened an external application, return to it and close this tab when you are done.</value></data>
 
   <!-- ===== Device ===== -->
   <data name="Device.Activate" xml:space="preserve"><value>Activate device</value></data>

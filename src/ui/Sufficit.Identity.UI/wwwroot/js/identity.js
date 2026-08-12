@@ -169,6 +169,55 @@ document.addEventListener('change', function (event) {
 })();
 
 /**
+ * Keeps the OAuth consent screen honest when the authorization response is
+ * handed to an external protocol handler (for example vscode://). Browsers
+ * can leave the current tab visible after launching that handler, so the
+ * explicit submit gesture gets an immediate, accessible terminal state. The
+ * form still performs a normal navigation and remains fully functional with
+ * JavaScript disabled.
+ */
+(function () {
+    function initializeConsentSubmit() {
+        var form = document.querySelector('[data-consent-form]');
+        if (!form || form.dataset.consentSubmitBound === 'true') return;
+
+        form.dataset.consentSubmitBound = 'true';
+        form.addEventListener('submit', function () {
+            if (form.dataset.consentSubmitted === 'true') return;
+            form.dataset.consentSubmitted = 'true';
+            form.setAttribute('aria-busy', 'true');
+
+            var controls = form.querySelectorAll('button, input[type="checkbox"]');
+            for (var i = 0; i < controls.length; i++) {
+                controls[i].disabled = true;
+            }
+
+            var completion = form.querySelector('[data-consent-submitted]');
+            if (completion) completion.hidden = false;
+        });
+    }
+
+    function subscribeToEnhancedLoads() {
+        if (!window.Blazor || typeof window.Blazor.addEventListener !== 'function') {
+            return false;
+        }
+
+        window.Blazor.addEventListener('enhancedload', initializeConsentSubmit);
+        return true;
+    }
+
+    initializeConsentSubmit();
+    document.addEventListener('DOMContentLoaded', initializeConsentSubmit, { once: true });
+    window.addEventListener('load', initializeConsentSubmit, { once: true });
+    if (!subscribeToEnhancedLoads()) {
+        window.addEventListener('load', function () {
+            initializeConsentSubmit();
+            subscribeToEnhancedLoads();
+        }, { once: true });
+    }
+})();
+
+/**
  * External-login redirect overlay.
  * Shows a full-page "connecting…" overlay when the user clicks an
  * external-login link (Google/Facebook). Pages are statically rendered

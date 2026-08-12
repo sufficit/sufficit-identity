@@ -487,6 +487,27 @@ public sealed class ManagementUiArchitectureTests
             consent,
             StringComparison.Ordinal);
         Assert.Contains(
+            "data-enhance=\"false\" data-consent-form",
+            consent,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "data-consent-submitted hidden",
+            consent,
+            StringComparison.Ordinal);
+        var identityScript = File.ReadAllText(Path.Combine(
+            publicUi,
+            "wwwroot",
+            "js",
+            "identity.js"));
+        Assert.Contains(
+            "initializeConsentSubmit",
+            identityScript,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "form.dataset.consentSubmitted",
+            identityScript,
+            StringComparison.Ordinal);
+        Assert.Contains(
             ".consent-card {\n    max-width: 800px;",
             styles,
             StringComparison.Ordinal);
