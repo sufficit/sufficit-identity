@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
+using System.Security.Claims;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Application.Accounts;
 
@@ -91,10 +92,16 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
         if (result.Succeeded)
         {
             // Identity has just accepted the OTP and issued the application
-            // cookie. Renew it once more while the scoped authentication
-            // evidence still contains pwd+otp+mfa, ensuring the server-side
-            // session ticket persists the elevated claims as well.
-            await signInManager.RefreshSignInAsync(pendingUser);
+            // cookie. Its normal RefreshSignInAsync path reconstructs the
+            // principal through a new claims-factory invocation; with the
+            // production security-stamp validator running on every request,
+            // that invocation can lose the request-scoped MFA evidence. Issue
+            // the replacement ticket with the elevated claims explicitly so
+            // the server-side session cannot fall back to Loa1 at this point.
+            await signInManager.SignInWithClaimsAsync(
+                pendingUser,
+                command.IsPersistent,
+                MfaClaims("otp"));
             cancellationToken.ThrowIfCancellationRequested();
         }
         var mapped = Map(result);
@@ -142,7 +149,10 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
         cancellationToken.ThrowIfCancellationRequested();
         if (result.Succeeded)
         {
-            await signInManager.RefreshSignInAsync(pendingUser);
+            await signInManager.SignInWithClaimsAsync(
+                pendingUser,
+                isPersistent: false,
+                MfaClaims("rc"));
             cancellationToken.ThrowIfCancellationRequested();
         }
         var mapped = Map(result);
@@ -175,6 +185,15 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
     private static string NormalizeRecoveryCode(string? code) =>
         (code ?? string.Empty)
             .Replace(" ", string.Empty, StringComparison.Ordinal);
+
+    private static IReadOnlyCollection<Claim> MfaClaims(string secondFactor) =>
+    [
+        new("amr", "pwd"),
+        new("amr", secondFactor),
+        new("amr", "mfa"),
+        new("aal", "Loa2"),
+        new("acr", "urn:sufficit:acr:loa2"),
+    ];
 
     private void SetAuthenticationContext(
         IReadOnlyCollection<string> methods,
