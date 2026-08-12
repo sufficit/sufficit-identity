@@ -771,13 +771,11 @@ static async Task ApplyMigrationsWithAdvisoryLockAsync(
 }
 
 // ---- Swagger (#5) ----
-// Development only: keeping the API description out of production avoids
-// publishing the management surface and its security-sensitive schemas.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// This Identity server intentionally publishes its complete controller
+// contract in every environment, including Production. Keep this aligned
+// with the public layout link; if this policy changes, change both together.
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseAuthentication();
 app.UseAuthorization();

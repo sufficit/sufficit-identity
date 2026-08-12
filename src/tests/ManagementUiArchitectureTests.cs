@@ -62,7 +62,7 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
-    public void Public_layout_only_links_to_swagger_when_the_endpoint_is_available()
+    public void Public_layout_links_to_the_enabled_swagger_endpoint()
     {
         var layout = File.ReadAllText(Path.Combine(
             ResolvePublicUiSource(),
@@ -71,16 +71,33 @@ public sealed class ManagementUiArchitectureTests
             "MainLayout.razor"));
 
         Assert.Contains(
-            "IWebHostEnvironment HostingEnvironment",
+            "<a href=\"/swagger\">API Swagger</a>",
             layout,
             StringComparison.Ordinal);
-        Assert.Contains(
+        Assert.DoesNotContain(
             "HostingEnvironment.EnvironmentName",
             layout,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Swagger_pipeline_is_enabled_for_the_identity_server_in_all_environments()
+    {
+        var program = File.ReadAllText(Path.Combine(
+            ResolveIdentityRepository(),
+            "src",
+            "server",
+            "Program.cs"));
+
+        Assert.Contains("app.UseSwagger();", program, StringComparison.Ordinal);
+        Assert.Contains("app.UseSwaggerUI();", program, StringComparison.Ordinal);
         Assert.Contains(
-            "<a href=\"/swagger\">API Swagger</a>",
-            layout,
+            "including Production",
+            program,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "if (app.Environment.IsDevelopment())\n{\n    app.UseSwagger();",
+            program,
             StringComparison.Ordinal);
     }
 
