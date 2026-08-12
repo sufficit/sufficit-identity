@@ -1275,13 +1275,13 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("data-device-close-fallback hidden", page, StringComparison.Ordinal);
         Assert.Contains("data-enhance=\"false\"", page, StringComparison.Ordinal);
         Assert.Contains("window.close();", script, StringComparison.Ordinal);
-        Assert.Contains("window.open('', '_self');", script, StringComparison.Ordinal);
+        Assert.Contains("function canAttemptScriptClose()", script, StringComparison.Ordinal);
+        Assert.Contains("if (!canAttemptScriptClose())", script, StringComparison.Ordinal);
         Assert.Contains("fallback.hidden = false", script, StringComparison.Ordinal);
         Assert.Contains("button.hidden = true", script, StringComparison.Ordinal);
         Assert.Contains("deviceCloseAttempted", script, StringComparison.Ordinal);
         Assert.Contains("deviceCloseBlocked", script, StringComparison.Ordinal);
         Assert.Contains("window.opener", script, StringComparison.Ordinal);
-        Assert.Contains("console.warn", script, StringComparison.Ordinal);
         Assert.Contains("initializeDeviceFlowClose", script, StringComparison.Ordinal);
         Assert.Contains("enhancedload", script, StringComparison.Ordinal);
         Assert.Contains("deviceCloseInitialized", script, StringComparison.Ordinal);
@@ -1290,6 +1290,8 @@ public sealed class ManagementUiArchitectureTests
             "window.history.length <= 1",
             script,
             StringComparison.Ordinal);
+        Assert.DoesNotContain("window.open('', '_self');", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("console.warn", script, StringComparison.Ordinal);
         Assert.DoesNotContain("closeDeviceFlowTab(result, false)", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Tentar fechar novamente", script, StringComparison.Ordinal);
         Assert.Contains(

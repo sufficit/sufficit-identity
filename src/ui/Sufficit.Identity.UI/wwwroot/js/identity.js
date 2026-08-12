@@ -42,13 +42,22 @@ document.addEventListener('change', function (event) {
 });
 
 /**
- * Ends the browser side of an RFC 8628 device flow. The close request is made
- * only from the explicit button gesture: browsers reject automatic close
- * attempts for user-created tabs and those attempts cannot be upgraded later.
- * When closing is blocked, the terminal page remains visible and explains the
- * manual action.
+ * Ends the browser side of an RFC 8628 device flow. Browsers only allow a
+ * script to close a tab when it was opened by script, so a tab without an
+ * opener goes straight to the manual completion state. This avoids both a
+ * misleading close button and browser warnings in the console.
  */
 (function () {
+    function canAttemptScriptClose() {
+        try {
+            return Boolean(window.opener && !window.opener.closed);
+        } catch (_) {
+            // A cross-origin or otherwise inaccessible opener is not a safe
+            // signal that this tab may be closed by script.
+            return false;
+        }
+    }
+
     function showManualCompletion(result) {
         var fallback = document.querySelector('[data-device-close-fallback]');
         if (fallback) {
@@ -74,42 +83,24 @@ document.addEventListener('change', function (event) {
             result.removeAttribute('aria-busy');
             result.dataset.deviceCloseBlocked = 'true';
         }
-
-        if (typeof console !== 'undefined' && typeof console.warn === 'function' &&
-            (!result || result.dataset.deviceCloseWarningShown !== 'true')) {
-            if (result) result.dataset.deviceCloseWarningShown = 'true';
-            console.warn(
-                '[Sufficit Identity] O navegador bloqueou o fechamento desta aba. ' +
-                'Use o controle de abas para encerrá-la.',
-                { hasOpener: Boolean(window.opener && !window.opener.closed) });
-        }
     }
 
     function tryCloseWindow() {
+        if (!canAttemptScriptClose()) {
+            return false;
+        }
+
         try {
             window.close();
         } catch (_) {
             // Some browsers throw when script closure is disallowed.
         }
 
-        if (window.closed) {
-            return window.closed;
-        }
-
-        // Firefox and some Chromium versions require the current browsing
-        // context to be retargeted before accepting a close requested by a
-        // direct user gesture. This path is reached only from the button.
-        try {
-            var currentWindow = window.open('', '_self');
-            if (currentWindow) currentWindow.close();
-        } catch (_) {
-            // The manual completion message below remains the safe fallback.
-        }
-
-        return window.closed;
+        return window.closed === true;
     }
 
     function closeDeviceFlowTab(result) {
+        // The actual close request remains reachable only from the button.
         if (result && result.dataset.deviceCloseAttempted === 'true') return;
         if (result) result.dataset.deviceCloseAttempted = 'true';
         if (result) result.setAttribute('aria-busy', 'true');
@@ -134,6 +125,11 @@ document.addEventListener('change', function (event) {
         result.dataset.deviceCloseInitialized = 'true';
 
         var closeButton = document.querySelector('[data-device-flow-close]');
+        if (!canAttemptScriptClose()) {
+            showManualCompletion(result);
+            return;
+        }
+
         if (closeButton && closeButton.dataset.deviceCloseBound !== 'true') {
             closeButton.dataset.deviceCloseBound = 'true';
             closeButton.hidden = false;
