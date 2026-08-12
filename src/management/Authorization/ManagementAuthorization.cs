@@ -47,6 +47,12 @@ public static class ManagementCapabilities
         "identity.provisioning.preview";
     public const string ProvisioningApply =
         "identity.provisioning.apply";
+    public const string OperatorTokensRead =
+        "identity.operator-tokens.read";
+    public const string OperatorTokensIssue =
+        "identity.operator-tokens.issue";
+    public const string OperatorTokensRevoke =
+        "identity.operator-tokens.revoke";
 
     public static IReadOnlySet<string> All { get; } =
         new HashSet<string>(
@@ -82,7 +88,10 @@ public static class ManagementCapabilities
                 VaultSecretsRead,
                 VaultSecretsManage,
                 ProvisioningPreview,
-                ProvisioningApply
+                ProvisioningApply,
+                OperatorTokensRead,
+                OperatorTokensIssue,
+                OperatorTokensRevoke
             ],
             StringComparer.Ordinal);
 }
@@ -110,6 +119,8 @@ public static class ManagementResourceTypes
     public const string VaultSecrets = "vault-secrets";
     public const string VaultSecretCollection = "vault-secret-collection";
     public const string Provisioning = "provisioning";
+    public const string OperatorToken = "operator-token";
+    public const string OperatorTokenCollection = "operator-token-collection";
 }
 
 public sealed record ManagementRequestContext(

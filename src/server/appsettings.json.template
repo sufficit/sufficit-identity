@@ -112,6 +112,13 @@
           "DefaultLifetimeSeconds": 900,
           "MaximumLifetimeSeconds": 3600
         },
+        "_TemporaryOperatorToken": "Short-lived Management bearer issued after MFA and explicit confirmation. Query strings can prefill purpose, lifetime and capabilities, but never trigger issuance or bypass authorization.",
+        "TemporaryOperatorToken": {
+          "Enabled": false,
+          "DefaultLifetimeSeconds": 900,
+          "MaximumLifetimeSeconds": 3600,
+          "MaximumCapabilities": 24
+        },
         "Authorization": {
           "ObjectAccess": {
             "Mode": "Enforce"

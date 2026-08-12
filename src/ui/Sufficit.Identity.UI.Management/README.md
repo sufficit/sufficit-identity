@@ -152,6 +152,52 @@ Não existe token `super-admin` permanente nesse fluxo. A emissão é negada a
 outro token temporário e cada emissão, recusa ou falha gera evento auditável
 sem armazenar o Bearer.
 
+## Tokens temporários de Management
+
+`/management/tokens` atende automações administrativas ocasionais que precisam
+de capabilities além do provisionamento. O token é um Bearer de referência,
+tem no máximo uma hora, recebe somente o scope OAuth `identity.management` e
+não incorpora o papel global de administrador. O operador escolhe um subconjunto
+das próprias capabilities; `identity.operator-tokens.issue` e
+`identity.operator-tokens.revoke` nunca podem ser delegadas.
+
+A tela aceita parâmetros de query string para preparar uma solicitação. Eles
+preenchem o formulário, mas não emitem credenciais e não ignoram MFA ou
+autorização. Exemplo:
+
+```text
+/management/tokens?action=issue&purpose=Atualizar%20clientes%20Hermes&lifetimeSeconds=900&capability=identity.clients.read&capability=identity.clients.update
+```
+
+Parâmetros aceitos:
+
+- `action=issue`: identifica o fluxo de emissão;
+- `purpose`: finalidade auditável, com até 120 caracteres;
+- `lifetimeSeconds`: duração entre 60 segundos e o limite do ambiente;
+- `capability`: pode ser repetido para cada capability;
+- `capabilities`: alternativa em lista separada por vírgulas.
+
+Valores inválidos ou capabilities indisponíveis bloqueiam a confirmação e são
+mostrados ao operador. O valor emitido aparece somente uma vez; a listagem
+mantém metadados para auditoria e revogação. Habilitação explícita:
+
+```json
+{
+  "Sufficit": {
+    "Identity": {
+      "Management": {
+        "TemporaryOperatorToken": {
+          "Enabled": true,
+          "DefaultLifetimeSeconds": 900,
+          "MaximumLifetimeSeconds": 3600,
+          "MaximumCapabilities": 24
+        }
+      }
+    }
+  }
+}
+```
+
 ## Desenvolvimento
 
 O módulo não roda de forma independente. Compile a biblioteca ou execute o

@@ -32,7 +32,7 @@
     <ProjectReference Include="..\ui\Sufficit.Identity.UI.Management\Sufficit.Identity.UI.Management.csproj" />
     <ProjectReference Include="..\ui\Sufficit.Identity.UI.Vault\Sufficit.Identity.UI.Vault.csproj" />
     <!-- Direct reference keeps the shared SUI static web assets in publish output. -->
-    <ProjectReference Include="..\..\..\sufficit-blazor-ui\src\Sufficit.Blazor.UI\Sufficit.Blazor.UI.csproj" />
+    <ProjectReference Include="..\..\..\sufficit-blazor-ui\src\Sufficit.Blazor.UI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

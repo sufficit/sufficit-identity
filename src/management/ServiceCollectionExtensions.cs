@@ -22,6 +22,7 @@ using Sufficit.Identity.Management.Controllers;
 using Sufficit.Identity.Management.Database;
 using Sufficit.Identity.Management.Overview;
 using Sufficit.Identity.Management.Metrics;
+using Sufficit.Identity.Management.OperatorTokens;
 using Sufficit.Identity.Core.Metrics;
 using Sufficit.Identity.Management.Provisioning;
 using Sufficit.Identity.Management.Scopes;
@@ -94,6 +95,8 @@ public static class ServiceCollectionExtensions
             ProvisioningTokenManagementService>();
         services.TryAddScoped<IProvisioningTokenIssuer,
             ProvisioningTokenIssuer>();
+        services.TryAddScoped<IOperatorTokenManagementService,
+            OperatorTokenManagementService>();
         services.TryAddScoped<IManagementEntitlementResolver,
             ScopeAndRoleManagementEntitlementResolver>();
         services.TryAddScoped<IManagementTenantResolver,

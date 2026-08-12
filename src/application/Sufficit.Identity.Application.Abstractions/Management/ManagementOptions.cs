@@ -26,6 +26,14 @@ public sealed class ManagementOptions
     public TemporaryProvisioningTokenOptions TemporaryProvisioningToken { get; init; } = new();
 
     /// <summary>
+    /// Short-lived, explicitly attenuated bearer tokens issued by an
+    /// authenticated Management operator. Query-string values in the UI may
+    /// prepare an issuance request, but this policy and the canonical service
+    /// remain the authorization boundary.
+    /// </summary>
+    public TemporaryOperatorTokenOptions TemporaryOperatorToken { get; init; } = new();
+
+    /// <summary>
     /// Requires multi-factor evidence for sensitive provider-management
     /// operations. Deployment configuration controls this policy.
     /// </summary>
@@ -62,4 +70,19 @@ public sealed class TemporaryProvisioningTokenOptions
 
     /// <summary>Hard upper bound for every issued token.</summary>
     public int MaximumLifetimeSeconds { get; init; } = 3600;
+}
+
+public sealed class TemporaryOperatorTokenOptions
+{
+    /// <summary>Enables the temporary Management-token action.</summary>
+    public bool Enabled { get; init; }
+
+    /// <summary>Default lifetime when the caller does not choose one.</summary>
+    public int DefaultLifetimeSeconds { get; init; } = 900;
+
+    /// <summary>Hard upper bound for every issued token.</summary>
+    public int MaximumLifetimeSeconds { get; init; } = 3600;
+
+    /// <summary>Maximum number of capabilities carried by one token.</summary>
+    public int MaximumCapabilities { get; init; } = 24;
 }

@@ -20,6 +20,7 @@ using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Authorizations;
 using Sufficit.Identity.Management.Database;
 using Sufficit.Identity.Management.Overview;
+using Sufficit.Identity.Management.OperatorTokens;
 using Sufficit.Identity.Management.Provisioning;
 using Sufficit.Identity.Management.Scopes;
 using Sufficit.Identity.Management.Sessions;
@@ -198,6 +199,32 @@ public sealed class ManagementUiRoutingTests
             "aplicação ficará desabilitada",
             html,
             StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Administrator_can_open_a_prefilled_operator_token_request_without_issuing_it()
+    {
+        await using var app = await CreateHostAsync();
+        using var client = app.GetTestClient();
+
+        await SignInAsync(client, "administrator");
+
+        using var response = await client.GetAsync(
+            "/management/tokens?action=issue"
+            + "&purpose=Atualizar%20clientes%20Hermes"
+            + "&lifetimeSeconds=900"
+            + $"&capability={ManagementCapabilities.ClientsRead}"
+            + $"&capability={ManagementCapabilities.ClientsUpdate}");
+        var html = WebUtility.HtmlDecode(
+            await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Solicitação preparada pelo link", html, StringComparison.Ordinal);
+        Assert.Contains("Atualizar clientes Hermes", html, StringComparison.Ordinal);
+        Assert.Contains(ManagementCapabilities.ClientsRead, html, StringComparison.Ordinal);
+        Assert.Contains(ManagementCapabilities.ClientsUpdate, html, StringComparison.Ordinal);
+        Assert.Contains("Confirmar e gerar token", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("token-value-from-server", html, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -656,6 +683,9 @@ public sealed class ManagementUiRoutingTests
         builder.Services.AddSingleton<
             IProvisioningManagementService,
             StubProvisioningManagementService>();
+        builder.Services.AddSingleton<
+            IOperatorTokenManagementService,
+            StubOperatorTokenManagementService>();
         builder.Services.AddSingleton<IManagementAuditService, StubManagementAuditService>();
         builder.Services.AddSingleton<
             IDatabaseMonitoringService,
@@ -1141,6 +1171,40 @@ public sealed class ManagementUiRoutingTests
                         "test-client",
                         IdentityManifestChangeKind.Create)
                 ]);
+    }
+
+    private sealed class StubOperatorTokenManagementService
+        : IOperatorTokenManagementService
+    {
+        public Task<OperatorTokenWorkspace> GetWorkspaceAsync(
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(
+                new OperatorTokenWorkspace(
+                    IssuanceEnabled: true,
+                    DefaultLifetimeSeconds: 900,
+                    MaximumLifetimeSeconds: 3600,
+                    MaximumCapabilities: 24,
+                    AvailableCapabilities:
+                    [
+                        ManagementCapabilities.ClientsRead,
+                        ManagementCapabilities.ClientsUpdate,
+                        ManagementCapabilities.ScopesRead,
+                    ],
+                    ActiveTokens: []));
+
+        public Task<OperatorTokenIssueResult> IssueAsync(
+            IssueOperatorTokenCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException(
+                "A renderização GET não deve emitir credenciais.");
+
+        public Task RevokeAsync(
+            string id,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class StubBrandingManagementService

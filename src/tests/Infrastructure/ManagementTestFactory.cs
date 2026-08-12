@@ -107,6 +107,7 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
                 ["Sufficit:Identity:Management:RequireAuthorization"] = "true",
                 ["Sufficit:Identity:Management:RequireMfa"] = "false",
                 ["Sufficit:Identity:Management:TemporaryProvisioningToken:Enabled"] = "true",
+                ["Sufficit:Identity:Management:TemporaryOperatorToken:Enabled"] = "true",
             });
             if (!string.IsNullOrWhiteSpace(_routePrefix))
             {
@@ -140,6 +141,9 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
                 services.RemoveAll<IManagementAuthorizationEvaluator>();
                 services.AddSingleton<IManagementAuthorizationEvaluator,
                     AlwaysAllowManagementAuthorizationEvaluator>();
+                services.RemoveAll<IManagementEntitlementResolver>();
+                services.AddSingleton<IManagementEntitlementResolver,
+                    AllManagementEntitlementsResolver>();
             }
 
             ReplaceDatabaseWithSqlite(services, _connection);
@@ -235,4 +239,14 @@ file sealed class AlwaysAllowManagementAuthorizationEvaluator
         ManagementResource resource,
         CancellationToken cancellationToken = default) =>
         ValueTask.FromResult(ManagementAuthorizationDecision.Allowed());
+}
+
+file sealed class AllManagementEntitlementsResolver
+    : IManagementEntitlementResolver
+{
+    public ValueTask<ManagementEntitlements> ResolveAsync(
+        System.Security.Claims.ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default) =>
+        ValueTask.FromResult(
+            new ManagementEntitlements(ManagementCapabilities.All));
 }

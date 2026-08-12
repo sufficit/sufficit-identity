@@ -141,4 +141,14 @@ public sealed class OperationalOptionsTests
         Assert.Equal(900, options.TemporaryProvisioningToken.DefaultLifetimeSeconds);
         Assert.Equal(3600, options.TemporaryProvisioningToken.MaximumLifetimeSeconds);
     }
+
+    [Fact]
+    public void Temporary_operator_tokens_are_disabled_and_bounded_by_default()
+    {
+        var options = new ManagementOptions();
+        Assert.False(options.TemporaryOperatorToken.Enabled);
+        Assert.Equal(900, options.TemporaryOperatorToken.DefaultLifetimeSeconds);
+        Assert.Equal(3600, options.TemporaryOperatorToken.MaximumLifetimeSeconds);
+        Assert.Equal(24, options.TemporaryOperatorToken.MaximumCapabilities);
+    }
 }
