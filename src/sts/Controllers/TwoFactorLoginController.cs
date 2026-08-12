@@ -27,6 +27,7 @@ public sealed class TwoFactorLoginController(
         // the optional remember-me query parameter. Treat that as the secure
         // default instead of letting ApiController return an opaque 400.
         var rememberMe = ParseBoolean(request.RememberMe);
+        var rememberClient = ParseBoolean(request.RememberClient);
         if (!await ValidateAntiforgeryAsync())
         {
             return RedirectToAuthenticator(
@@ -48,7 +49,7 @@ public sealed class TwoFactorLoginController(
             new AuthenticatorSignInCommand(
                 request.Code ?? string.Empty,
                 rememberMe,
-                request.RememberClient),
+                rememberClient),
             cancellationToken);
 
         return result.Status switch
@@ -142,7 +143,7 @@ public sealed class TwoFactorLoginController(
     {
         public string? Code { get; init; }
         public string? RememberMe { get; init; }
-        public bool RememberClient { get; init; }
+        public string? RememberClient { get; init; }
         public string? ReturnUrl { get; init; }
     }
 
