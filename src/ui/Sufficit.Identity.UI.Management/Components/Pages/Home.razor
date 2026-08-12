@@ -64,7 +64,23 @@ else
             {
                 <SUIEmptyState Icon="lock"
                             Title="@NoAccessTitle"
-                            Description="@NoAccessDescription" />
+                            Description="@NoAccessDescription">
+                    <Actions>
+                        @if (MfaIsPending)
+                        {
+                            <a class="button button--primary"
+                               href="/account/logout"
+                               data-enhance-nav="false">
+                                Sair e entrar com MFA
+                            </a>
+                            <a class="button button--secondary"
+                               href="/manage/twofactor"
+                               data-enhance-nav="false">
+                                Ver configuração de MFA
+                            </a>
+                        }
+                    </Actions>
+                </SUIEmptyState>
             }
             else
             {
@@ -199,10 +215,13 @@ else
             : "Nenhuma área liberada";
 
     private string NoAccessDescription =>
-        Overview.Operator is
-            { RequiresMfa: true, MeetsMfaRequirement: false }
-            ? "Conclua o MFA da sua sessão para acessar os módulos administrativos."
+        MfaIsPending
+            ? "O autenticador já pode estar configurado, mas esta sessão ainda foi aberta somente com senha. Saia, entre novamente e informe o código de seis dígitos para liberar o Management."
             : "O runtime não concedeu acesso a nenhum módulo para esta sessão.";
+
+    private bool MfaIsPending =>
+        Overview.Operator is
+            { RequiresMfa: true, MeetsMfaRequirement: false };
 
     protected override async Task OnParametersSetAsync()
     {
