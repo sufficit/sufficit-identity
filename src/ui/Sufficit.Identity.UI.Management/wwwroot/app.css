@@ -1562,7 +1562,8 @@ h3 {
 
 .user-search {
     display: flex;
-    align-items: center;
+    /* Align the actual controls, not the select's label, to one baseline. */
+    align-items: flex-end;
     gap: 8px;
 }
 
@@ -1577,12 +1578,16 @@ h3 {
 }
 
 .select-field select {
+    appearance: none;
     min-height: 44px;
     min-width: 190px;
-    padding: 0 34px 0 12px;
+    padding: 0 40px 0 12px;
     border: 1px solid var(--line-strong);
     border-radius: var(--radius);
-    background: var(--surface);
+    background-color: var(--surface);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14' fill='none'%3E%3Cpath d='m3.5 5.25 3.5 3.5 3.5-3.5' stroke='%235e6673' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-position: right 12px center;
+    background-repeat: no-repeat;
     color: var(--ink);
     font-size: 12px;
     letter-spacing: normal;

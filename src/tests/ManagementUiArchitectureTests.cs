@@ -1425,6 +1425,23 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Authorization_filter_controls_share_a_baseline_and_consistent_select_inset()
+    {
+        var stylesheet = File.ReadAllText(Path.Combine(
+            ResolveManagementUiSource(),
+            "wwwroot",
+            "app.css"));
+
+        Assert.Contains(
+            ".user-search {\n    display: flex;\n    /* Align the actual controls, not the select's label, to one baseline. */\n    align-items: flex-end;",
+            stylesheet,
+            StringComparison.Ordinal);
+        Assert.Contains(".select-field select {\n    appearance: none;", stylesheet, StringComparison.Ordinal);
+        Assert.Contains("padding: 0 40px 0 12px;", stylesheet, StringComparison.Ordinal);
+        Assert.Contains("background-position: right 12px center;", stylesheet, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Identity_ui_is_self_contained_and_serves_its_local_sui_assets()
     {
         var repository = ResolveIdentityRepository();
