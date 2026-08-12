@@ -125,7 +125,7 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         {
             return AccountTwoFactorResult.Failure(
                 "authenticator-code-invalid",
-                "Informe o código de seis dígitos exibido pelo aplicativo autenticador.",
+                "Informe o código atual de seis dígitos do aplicativo. Se ele ainda falhar, ative data e hora automáticas no celular e aguarde o próximo código.",
                 state);
         }
 
@@ -146,7 +146,7 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         {
             return AccountTwoFactorResult.Failure(
                 "authenticator-code-invalid",
-                "O código informado é inválido ou expirou. Use o código atual do aplicativo.",
+                "O código informado é inválido ou expirou. Ative data e hora automáticas no celular, aguarde o próximo código e tente novamente.",
                 state);
         }
 

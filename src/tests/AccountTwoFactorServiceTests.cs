@@ -97,8 +97,38 @@ public sealed class AccountTwoFactorServiceTests(
         Assert.Contains(
             result.Errors,
             error => error.Code == "authenticator-code-invalid");
+        Assert.Contains(
+            "data e hora automáticas",
+            Assert.Single(result.Errors).Description,
+            StringComparison.OrdinalIgnoreCase);
         Assert.False(await users.GetTwoFactorEnabledAsync(user));
         Assert.Equal(0, await users.CountRecoveryCodesAsync(user));
+    }
+
+    [Fact]
+    public async Task Repeated_enable_after_success_reports_the_authoritative_enabled_state()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var users = scope.ServiceProvider
+            .GetRequiredService<UserManager<ApplicationUser>>();
+        var service = scope.ServiceProvider
+            .GetRequiredService<IAccountTwoFactorService>();
+        var user = await CreateUserAsync(users);
+        var principal = PrincipalFor(user);
+        var started = await service.BeginSetupAsync(principal);
+        var key = Assert.IsType<AccountAuthenticatorSetup>(
+            started.State?.AuthenticatorSetup).SharedKey;
+        var code = CurrentAuthenticatorCode(key);
+
+        Assert.True((await service.EnableAsync(principal, code)).Succeeded);
+
+        var repeated = await service.EnableAsync(principal, code);
+
+        Assert.False(repeated.Succeeded);
+        Assert.True(repeated.State?.IsEnabled);
+        Assert.Contains(
+            repeated.Errors,
+            error => error.Code == "two-factor-already-enabled");
     }
 
     [Fact]
