@@ -1474,6 +1474,33 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void User_directory_filters_use_shared_selects_and_keep_native_date_inputs()
+    {
+        var managementUi = ResolveManagementUiSource();
+        var page = File.ReadAllText(Path.Combine(
+            managementUi,
+            "Components",
+            "Pages",
+            "Users.razor"));
+        var stylesheet = File.ReadAllText(Path.Combine(
+            managementUi,
+            "wwwroot",
+            "users.css"));
+
+        Assert.Equal(6, page.Split("<SUISelect T=", StringSplitOptions.None).Length - 1);
+        Assert.DoesNotContain("<select", page, StringComparison.Ordinal);
+        Assert.Contains("users-review-filter", page, StringComparison.Ordinal);
+        Assert.Contains("users-state-filter", page, StringComparison.Ordinal);
+        Assert.Contains("users-email-filter", page, StringComparison.Ordinal);
+        Assert.Contains("users-mfa-filter", page, StringComparison.Ordinal);
+        Assert.Contains("users-sort-filter", page, StringComparison.Ordinal);
+        Assert.Contains("users-analytics-filter", page, StringComparison.Ordinal);
+        Assert.Contains("users-field .sui-select__trigger", stylesheet, StringComparison.Ordinal);
+        Assert.Contains("padding-inline: 12px;", stylesheet, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 767px)", stylesheet, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Identity_ui_consumes_the_shared_sui_assets()
     {
         var repository = ResolveIdentityRepository();
