@@ -76,6 +76,7 @@ public sealed class DeploymentHardeningTests
         Assert.Contains("appsettings*.json", package, StringComparison.Ordinal);
         Assert.Contains("certificate*.pfx", package, StringComparison.Ordinal);
         Assert.Contains("REVISION", package, StringComparison.Ordinal);
+        Assert.Contains("-o \"${release_directory}\" >&2", package, StringComparison.Ordinal);
         Assert.Contains("preserve-release-configuration.sh", prepare, StringComparison.Ordinal);
         Assert.Contains("sha256sum -c", prepare, StringComparison.Ordinal);
         Assert.Contains("configuration inherited", prepare, StringComparison.Ordinal);

@@ -53,7 +53,7 @@ mkdir -p -- "${release_directory}"
 
 dotnet publish \
     "${repository}/src/server/Sufficit.Identity.Server.csproj" \
-    -c Release --no-restore -o "${release_directory}"
+    -c Release --no-restore -o "${release_directory}" >&2
 cp -a -- "${repository}/helpers" "${release_directory}/helpers"
 printf '%s\n' "${revision}" > "${release_directory}/REVISION"
 
