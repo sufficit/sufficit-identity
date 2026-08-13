@@ -59,6 +59,143 @@ public sealed class DeploymentHardeningTests
     }
 
     [Fact]
+    public void Cluster_packaging_preserves_runtime_configuration_outside_the_archive()
+    {
+        var repository = ResolveRepository();
+        var package = File.ReadAllText(Path.Combine(
+            repository,
+            "helpers/package-release.sh"));
+        var prepare = File.ReadAllText(Path.Combine(
+            repository,
+            "helpers/prepare-cluster-release.sh"));
+        var activate = File.ReadAllText(Path.Combine(
+            repository,
+            "helpers/activate-cluster-release.sh"));
+
+        Assert.Contains("Refusing to package a dirty worktree", package, StringComparison.Ordinal);
+        Assert.Contains("appsettings*.json", package, StringComparison.Ordinal);
+        Assert.Contains("certificate*.pfx", package, StringComparison.Ordinal);
+        Assert.Contains("REVISION", package, StringComparison.Ordinal);
+        Assert.Contains("preserve-release-configuration.sh", prepare, StringComparison.Ordinal);
+        Assert.Contains("sha256sum -c", prepare, StringComparison.Ordinal);
+        Assert.Contains("configuration inherited", prepare, StringComparison.Ordinal);
+        Assert.Contains("candidate-configuration-drift", activate, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Candidate_configuration_is_an_exact_copy_of_the_active_release()
+    {
+        var repository = ResolveRepository();
+        var script = Path.Combine(
+            repository,
+            "helpers/preserve-release-configuration.sh");
+        var temporaryRoot = Directory.CreateTempSubdirectory(
+            "sufficit-identity-release-config-");
+        var releases = Directory.CreateDirectory(Path.Combine(
+            temporaryRoot.FullName,
+            "releases"));
+        var active = Directory.CreateDirectory(Path.Combine(releases.FullName, "active"));
+        var candidate = Directory.CreateDirectory(Path.Combine(releases.FullName, "candidate"));
+
+        try
+        {
+            await File.WriteAllTextAsync(
+                Path.Combine(active.FullName, "appsettings.Production.json"),
+                "{\"Authority\":\"active-production-value\"}");
+            await File.WriteAllTextAsync(
+                Path.Combine(active.FullName, "appsettings.test-node.json"),
+                "{\"Node\":\"active-machine-value\"}");
+            await File.WriteAllTextAsync(
+                Path.Combine(candidate.FullName, "appsettings.Production.json"),
+                "{\"Authority\":\"stale-value\"}");
+            await File.WriteAllTextAsync(
+                Path.Combine(candidate.FullName, "appsettings.obsolete.json"),
+                "{\"Obsolete\":true}");
+
+            var result = await RunScriptAsync(
+                script,
+                [active.FullName, candidate.FullName, "test-node"],
+                new Dictionary<string, string?>
+                {
+                    ["IDENTITY_RELEASES_ROOT"] = releases.FullName,
+                });
+
+            Assert.Equal(0, result.ExitCode);
+            Assert.Equal(
+                await File.ReadAllTextAsync(Path.Combine(
+                    active.FullName,
+                    "appsettings.Production.json")),
+                await File.ReadAllTextAsync(Path.Combine(
+                    candidate.FullName,
+                    "appsettings.Production.json")));
+            Assert.Equal(
+                await File.ReadAllTextAsync(Path.Combine(
+                    active.FullName,
+                    "appsettings.test-node.json")),
+                await File.ReadAllTextAsync(Path.Combine(
+                    candidate.FullName,
+                    "appsettings.test-node.json")));
+            Assert.False(File.Exists(Path.Combine(
+                candidate.FullName,
+                "appsettings.obsolete.json")));
+            Assert.DoesNotContain("active-production-value", result.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("active-machine-value", result.Output, StringComparison.Ordinal);
+        }
+        finally
+        {
+            temporaryRoot.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Missing_machine_configuration_fails_before_candidate_is_changed()
+    {
+        var repository = ResolveRepository();
+        var script = Path.Combine(
+            repository,
+            "helpers/preserve-release-configuration.sh");
+        var temporaryRoot = Directory.CreateTempSubdirectory(
+            "sufficit-identity-release-config-failure-");
+        var releases = Directory.CreateDirectory(Path.Combine(
+            temporaryRoot.FullName,
+            "releases"));
+        var active = Directory.CreateDirectory(Path.Combine(releases.FullName, "active"));
+        var candidate = Directory.CreateDirectory(Path.Combine(releases.FullName, "candidate"));
+        var candidateConfiguration = Path.Combine(
+            candidate.FullName,
+            "appsettings.Production.json");
+
+        try
+        {
+            await File.WriteAllTextAsync(
+                Path.Combine(active.FullName, "appsettings.Production.json"),
+                "{\"Authority\":\"active\"}");
+            await File.WriteAllTextAsync(candidateConfiguration, "{\"Candidate\":\"unchanged\"}");
+
+            var result = await RunScriptAsync(
+                script,
+                [active.FullName, candidate.FullName, "missing-node"],
+                new Dictionary<string, string?>
+                {
+                    ["IDENTITY_RELEASES_ROOT"] = releases.FullName,
+                });
+
+            Assert.NotEqual(0, result.ExitCode);
+            Assert.Contains(
+                "Required active configuration is missing",
+                result.Error,
+                StringComparison.Ordinal);
+            Assert.Equal(
+                "{\"Candidate\":\"unchanged\"}",
+                await File.ReadAllTextAsync(candidateConfiguration));
+        }
+        finally
+        {
+            temporaryRoot.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Vault_environment_file_is_wired_and_checked_without_echoing_values()
     {
         var repository = ResolveRepository();
@@ -208,6 +345,12 @@ public sealed class DeploymentHardeningTests
     private static async Task<(int ExitCode, string Output, string Error)> RunScriptAsync(
         string script,
         string configFile)
+        => await RunScriptAsync(script, [configFile]);
+
+    private static async Task<(int ExitCode, string Output, string Error)> RunScriptAsync(
+        string script,
+        IReadOnlyList<string> arguments,
+        IReadOnlyDictionary<string, string?>? environment = null)
     {
         using var process = new Process
         {
@@ -220,7 +363,17 @@ public sealed class DeploymentHardeningTests
             },
         };
         process.StartInfo.ArgumentList.Add(script);
-        process.StartInfo.ArgumentList.Add(configFile);
+        foreach (var argument in arguments)
+        {
+            process.StartInfo.ArgumentList.Add(argument);
+        }
+        if (environment is not null)
+        {
+            foreach (var (name, value) in environment)
+            {
+                process.StartInfo.Environment[name] = value;
+            }
+        }
 
         Assert.True(process.Start());
         var outputTask = process.StandardOutput.ReadToEndAsync();
