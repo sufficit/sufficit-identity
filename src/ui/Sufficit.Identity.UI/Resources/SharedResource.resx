@@ -377,6 +377,30 @@
   <data name="ManagePasskeys.DeviceNameHint" xml:space="preserve"><value>Use um nome que ajude a reconhecer o dispositivo.</value></data>
   <data name="ManagePasskeys.WaitingDevice" xml:space="preserve"><value>Aguardando o dispositivo...</value></data>
   <data name="ManagePasskeys.Register" xml:space="preserve"><value>Registrar passkey</value></data>
+  <data name="ManagePasskeys.Rename" xml:space="preserve"><value>Renomear</value></data>
+  <data name="ManagePasskeys.Remove" xml:space="preserve"><value>Remover</value></data>
+  <data name="ManagePasskeys.RenameAria" xml:space="preserve"><value>Renomear {0}</value></data>
+  <data name="ManagePasskeys.RemoveAria" xml:space="preserve"><value>Remover {0}</value></data>
+  <data name="ManagePasskeys.SessionExpired" xml:space="preserve"><value>Sua sessão expirou. Entre novamente para gerenciar passkeys.</value></data>
+  <data name="ManagePasskeys.RegisterSuccess" xml:space="preserve"><value>Passkey registrada com sucesso.</value></data>
+  <data name="ManagePasskeys.RegisterFailed" xml:space="preserve"><value>Não foi possível registrar a passkey.</value></data>
+  <data name="ManagePasskeys.RegisterInteractionFailed" xml:space="preserve"><value>Não foi possível concluir o registro. Recarregue a página e tente novamente.</value></data>
+  <data name="ManagePasskeys.NameRemovedSuccess" xml:space="preserve"><value>Nome da passkey removido.</value></data>
+  <data name="ManagePasskeys.NameUpdatedSuccess" xml:space="preserve"><value>Nome da passkey atualizado.</value></data>
+  <data name="ManagePasskeys.RenameFailed" xml:space="preserve"><value>Não foi possível atualizar o nome da passkey.</value></data>
+  <data name="ManagePasskeys.RenameRetryFailed" xml:space="preserve"><value>Não foi possível atualizar o nome da passkey. Tente novamente.</value></data>
+  <data name="ManagePasskeys.RemoveConfirm" xml:space="preserve"><value>Remover esta passkey? Ela deixará de funcionar para entrar nesta conta.</value></data>
+  <data name="ManagePasskeys.RemoveSuccess" xml:space="preserve"><value>Passkey removida.</value></data>
+  <data name="ManagePasskeys.RemoveFailed" xml:space="preserve"><value>Não foi possível remover a passkey.</value></data>
+  <data name="ManagePasskeys.RemoveRetryFailed" xml:space="preserve"><value>Não foi possível remover a passkey. Tente novamente.</value></data>
+  <data name="ManagePasskeys.Error.Unauthenticated" xml:space="preserve"><value>A sessão não está autenticada. Entre novamente.</value></data>
+  <data name="ManagePasskeys.Error.StepUpRequired" xml:space="preserve"><value>Confirme sua identidade entrando novamente antes de alterar suas passkeys.</value></data>
+  <data name="ManagePasskeys.Error.CredentialRequired" xml:space="preserve"><value>A passkey que será alterada não foi informada.</value></data>
+  <data name="ManagePasskeys.Error.CredentialTooLarge" xml:space="preserve"><value>A credencial recebida excede o tamanho permitido.</value></data>
+  <data name="ManagePasskeys.Error.NameTooLong" xml:space="preserve"><value>O nome deve ter no máximo {0} caracteres.</value></data>
+  <data name="ManagePasskeys.Error.CeremonyInvalid" xml:space="preserve"><value>A solicitação da passkey expirou ou é inválida. Inicie novamente.</value></data>
+  <data name="ManagePasskeys.Error.AttestationFailed" xml:space="preserve"><value>A passkey não pôde ser validada. Tente registrá-la novamente.</value></data>
+  <data name="ManagePasskeys.Error.NotFound" xml:space="preserve"><value>A passkey não foi encontrada. Atualize a página e tente novamente.</value></data>
   <data name="Sessions.Loading" xml:space="preserve"><value>Carregando sessões…</value></data>
   <data name="Sessions.RevokeAllDescription" xml:space="preserve"><value>Encerra todas as credenciais e autorizações da conta, inclusive em outros dispositivos.</value></data>
   <data name="ManageTwoFactor.Description" xml:space="preserve"><value>Use um aplicativo autenticador para proteger sua conta com um segundo fator.</value></data>

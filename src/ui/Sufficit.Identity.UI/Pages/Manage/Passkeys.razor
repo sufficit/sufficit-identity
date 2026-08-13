@@ -1,6 +1,7 @@
 @page "/manage/passkeys"
 @attribute [Authorize]
 @rendermode @(RenderMode.InteractiveServer)
+@using System.Globalization
 @using Sufficit.Identity.UI.Services
 @inject IAccountPasskeyService PasskeyService
 @inject IJSRuntime JS
@@ -69,7 +70,7 @@
                     {
                         <div class="passkey-item-info">
                             <span class="passkey-name">@(passkey.Name ?? L["ManagePasskeys.Unnamed"])</span>
-                            <span class="passkey-meta">@L["ManagePasskeys.CreatedAt", passkey.CreatedAt.LocalDateTime.ToString("dd/MM/yyyy HH:mm")]</span>
+                            <span class="passkey-meta">@L["ManagePasskeys.CreatedAt", passkey.CreatedAt.LocalDateTime.ToString("g", CultureInfo.CurrentCulture)]</span>
                             @if (passkey.IsBackedUp)
                             {
                                 <span class="badge badge-success">@L["ManagePasskeys.Synced"]</span>
@@ -77,14 +78,14 @@
                         </div>
                         <div class="passkey-item-actions">
                             <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
-                                    aria-label="Renomear @(passkey.Name ?? "passkey sem nome")"
+                                    aria-label="@L["ManagePasskeys.RenameAria", passkey.Name ?? L["ManagePasskeys.Unnamed"]]"
                                     @onclick="@(() => StartRenaming(passkey))">
-                                Renomear
+                                @L["ManagePasskeys.Rename"]
                             </button>
                             <button type="button" class="btn btn-danger btn-sm" disabled="@_busy"
-                                    aria-label="Remover @(passkey.Name ?? "passkey sem nome")"
+                                    aria-label="@L["ManagePasskeys.RemoveAria", passkey.Name ?? L["ManagePasskeys.Unnamed"]]"
                                     @onclick="@(async () => await RemovePasskeyAsync(passkey.CredentialId))">
-                                Remover
+                                @L["ManagePasskeys.Remove"]
                             </button>
                         </div>
                     }
@@ -191,7 +192,7 @@
             var principal = await _authTask.GetAuthenticatedPrincipalAsync();
             if (principal is null)
             {
-                _error = "Sua sessão expirou. Entre novamente para gerenciar passkeys.";
+                _error = L["ManagePasskeys.SessionExpired"];
                 _overview = null;
                 return;
             }
@@ -199,7 +200,7 @@
             _overview = await PasskeyService.GetOverviewAsync(principal);
             if (_overview is null)
             {
-                _error = "Sua sessão expirou. Entre novamente para gerenciar passkeys.";
+                _error = L["ManagePasskeys.SessionExpired"];
             }
         }
         catch (Exception exception)
@@ -234,17 +235,19 @@
             if (result.Succeeded)
             {
                 _passkeyName = null;
-                _success = "Passkey registrada com sucesso.";
+                _success = L["ManagePasskeys.RegisterSuccess"];
             }
             else
             {
-                _error = DescribeErrors(result.Errors, "Não foi possível registrar a passkey.");
+                _error = DescribeErrors(
+                    result.Errors,
+                    L["ManagePasskeys.RegisterFailed"]);
             }
         }
         catch (JSException exception)
         {
             Logger.LogWarning(exception, "Passkey registration interaction failed.");
-            _error = "Não foi possível concluir o registro. Recarregue a página e tente novamente.";
+            _error = L["ManagePasskeys.RegisterInteractionFailed"];
         }
         finally
         {
@@ -298,7 +301,7 @@
             var principal = await _authTask.GetAuthenticatedPrincipalAsync();
             if (principal is null)
             {
-                _error = "Sua sessão expirou. Entre novamente para gerenciar passkeys.";
+                _error = L["ManagePasskeys.SessionExpired"];
                 return;
             }
 
@@ -315,18 +318,20 @@
             {
                 CancelRenaming();
                 _success = nameWasRemoved
-                    ? "Nome da passkey removido."
-                    : "Nome da passkey atualizado.";
+                    ? L["ManagePasskeys.NameRemovedSuccess"]
+                    : L["ManagePasskeys.NameUpdatedSuccess"];
             }
             else
             {
-                _error = DescribeErrors(result.Errors, "Não foi possível atualizar o nome da passkey.");
+                _error = DescribeErrors(
+                    result.Errors,
+                    L["ManagePasskeys.RenameFailed"]);
             }
         }
         catch (Exception exception)
         {
             Logger.LogError(exception, "Failed to rename account passkey {CredentialId}.", credentialId);
-            _error = "Não foi possível atualizar o nome da passkey. Tente novamente.";
+            _error = L["ManagePasskeys.RenameRetryFailed"];
         }
         finally
         {
@@ -344,7 +349,7 @@
         {
             var confirmed = await JS.InvokeAsync<bool>(
                 "confirm",
-                "Remover esta passkey? Ela deixará de funcionar para entrar nesta conta.");
+                L["ManagePasskeys.RemoveConfirm"]);
             if (!confirmed)
             {
                 return;
@@ -353,7 +358,7 @@
             var principal = await _authTask.GetAuthenticatedPrincipalAsync();
             if (principal is null)
             {
-                _error = "Sua sessão expirou. Entre novamente para gerenciar passkeys.";
+                _error = L["ManagePasskeys.SessionExpired"];
                 return;
             }
 
@@ -365,17 +370,19 @@
 
             if (result.Succeeded)
             {
-                _success = "Passkey removida.";
+                _success = L["ManagePasskeys.RemoveSuccess"];
             }
             else
             {
-                _error = DescribeErrors(result.Errors, "Não foi possível remover a passkey.");
+                _error = DescribeErrors(
+                    result.Errors,
+                    L["ManagePasskeys.RemoveFailed"]);
             }
         }
         catch (Exception exception)
         {
             Logger.LogError(exception, "Failed to remove account passkey {CredentialId}.", credentialId);
-            _error = "Não foi possível remover a passkey. Tente novamente.";
+            _error = L["ManagePasskeys.RemoveRetryFailed"];
         }
         finally
         {
@@ -383,10 +390,41 @@
         }
     }
 
-    private static string DescribeErrors(
+    private string DescribeErrors(
         IReadOnlyList<AccountSelfServiceError> errors,
-        string fallback) =>
-        errors.Count == 0
+        string fallback)
+    {
+        if (errors.Count == 0)
+        {
+            return fallback;
+        }
+
+        var localized = errors
+            .Select(error => LocalizeError(error.Code))
+            .Where(message => message is not null)
+            .Select(message => message!)
+            .ToArray();
+        return localized.Length == 0
             ? fallback
-            : string.Join(" ", errors.Select(error => error.Description));
+            : string.Join(" ", localized);
+    }
+
+    private string? LocalizeError(string code) =>
+        (code switch
+        {
+            "unauthenticated" => L["ManagePasskeys.Error.Unauthenticated"],
+            "step-up-required" => L["ManagePasskeys.Error.StepUpRequired"],
+            "passkey-limit-reached" => L[
+                "ManagePasskeys.LimitReached",
+                _overview?.MaximumCredentials ?? 0],
+            "passkey-credential-required" => L["ManagePasskeys.Error.CredentialRequired"],
+            "passkey-credential-too-large" => L["ManagePasskeys.Error.CredentialTooLarge"],
+            "passkey-name-too-long" => L[
+                "ManagePasskeys.Error.NameTooLong",
+                _overview?.MaximumNameLength ?? 0],
+            "passkey-ceremony-invalid" => L["ManagePasskeys.Error.CeremonyInvalid"],
+            "passkey-attestation-failed" => L["ManagePasskeys.Error.AttestationFailed"],
+            "passkey-not-found" => L["ManagePasskeys.Error.NotFound"],
+            _ => null,
+        })?.Value;
 }
