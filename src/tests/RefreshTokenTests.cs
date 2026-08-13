@@ -77,6 +77,88 @@ public sealed class RefreshTokenTests
         Assert.NotEqual(originalRefreshToken, rotatedRefreshToken);
     }
 
+    [Fact]
+    public async Task Refresh_preserves_management_scope_and_mfa_evidence()
+    {
+        var username = $"refresh-management-{Guid.NewGuid():N}";
+        const string password = "Str0ng!Passw0rd#Mfa";
+        const string requestedScopes =
+            "openid roles offline_access identity.management";
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            var roleManager = scope.ServiceProvider
+                .GetRequiredService<RoleManager<ApplicationRole>>();
+            var user = await TestDataSeeder.CreateUserAsync(
+                userManager,
+                username,
+                password);
+            await TestDataSeeder.AddToRoleAsync(
+                roleManager,
+                userManager,
+                user,
+                "manager");
+        }
+
+        var client = _factory.CreateClient(
+            new WebApplicationFactoryClientOptions
+            {
+                AllowAutoRedirect = false
+            });
+        await TestOnlyEndpoints.SignInAsync(
+            client,
+            username,
+            withMfa: true);
+
+        var (verifier, challenge) = Pkce.CreatePair();
+        var code = await AuthorizationCodeFlowTests.AuthorizeAsync(
+            client,
+            challenge,
+            requestedScopes);
+
+        var (initialStatus, initialBody) = await client.PostFormAsync(
+            "/connect/token",
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "authorization_code",
+                ["code"] = code,
+                ["redirect_uri"] =
+                    TestDataSeeder.AuthorizationCodeRedirectUri,
+                ["client_id"] =
+                    TestDataSeeder.AuthorizationCodeClientId,
+                ["code_verifier"] = verifier,
+            });
+        Assert.Equal(HttpStatusCode.OK, initialStatus);
+        Assert.Contains("mfa", AuthenticationMethods(initialBody));
+        await AssertManagementAccessAsync(
+            client,
+            initialBody.GetProperty("access_token").GetString());
+
+        var refreshToken = initialBody
+            .GetProperty("refresh_token")
+            .GetString();
+        Assert.False(string.IsNullOrWhiteSpace(refreshToken));
+
+        var (refreshStatus, refreshBody) = await client.PostFormAsync(
+            "/connect/token",
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "refresh_token",
+                ["refresh_token"] = refreshToken!,
+                ["client_id"] =
+                    TestDataSeeder.AuthorizationCodeClientId,
+                ["scope"] = requestedScopes,
+            });
+
+        Assert.Equal(HttpStatusCode.OK, refreshStatus);
+        Assert.Contains("mfa", AuthenticationMethods(refreshBody));
+        await AssertManagementAccessAsync(
+            client,
+            refreshBody.GetProperty("access_token").GetString());
+    }
+
     private static string SessionId(string? idToken)
     {
         Assert.False(string.IsNullOrWhiteSpace(idToken));
@@ -86,6 +168,35 @@ public sealed class RefreshTokenTests
             .Value;
         Assert.False(string.IsNullOrWhiteSpace(value));
         return value;
+    }
+
+    private static string[] AuthenticationMethods(
+        System.Text.Json.JsonElement body)
+    {
+        var token = new JsonWebTokenHandler().ReadJsonWebToken(
+            body.GetProperty("id_token").GetString());
+        return token.Claims
+            .Where(claim => claim.Type == "amr")
+            .SelectMany(claim => claim.Value.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries))
+            .ToArray();
+    }
+
+    private static async Task AssertManagementAccessAsync(
+        HttpClient client,
+        string? accessToken)
+    {
+        Assert.False(string.IsNullOrWhiteSpace(accessToken));
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/test-only/management-access");
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue(
+                "Bearer",
+                accessToken);
+        using var response = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
     [Fact]

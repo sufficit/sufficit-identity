@@ -257,6 +257,47 @@
   <data name="ManageTwoFactor.Disabled" xml:space="preserve"><value>2FA desativada</value></data>
   <data name="ManageTwoFactor.RecoveryCodes" xml:space="preserve"><value>Códigos de recuperação</value></data>
   <data name="ManageTwoFactor.EachCodeOnce" xml:space="preserve"><value>Cada código funciona uma única vez.</value></data>
+  <data name="ManageTwoFactor.Loading" xml:space="preserve"><value>Carregando configuração de segurança…</value></data>
+  <data name="ManageTwoFactor.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="ManageTwoFactor.RecoveryCodesWarning" xml:space="preserve"><value>Guarde estes códigos em um local seguro. Eles não serão exibidos novamente.</value></data>
+  <data name="ManageTwoFactor.CopyRecoveryCodes" xml:space="preserve"><value>Copiar códigos</value></data>
+  <data name="ManageTwoFactor.RecoveryCodesSaved" xml:space="preserve"><value>Já guardei os códigos</value></data>
+  <data name="ManageTwoFactor.ResetAuthenticator" xml:space="preserve"><value>Reconfigurar autenticador</value></data>
+  <data name="ManageTwoFactor.GenerateRecoveryCodes" xml:space="preserve"><value>Gerar novos códigos</value></data>
+  <data name="ManageTwoFactor.Disable" xml:space="preserve"><value>Desativar duas etapas</value></data>
+  <data name="ManageTwoFactor.SetupInstructions" xml:space="preserve"><value>Leia o QR code no aplicativo autenticador e confirme com o código atual.</value></data>
+  <data name="ManageTwoFactor.ManualKeyHint" xml:space="preserve"><value>Se não puder ler o QR code, digite esta chave:</value></data>
+  <data name="ManageTwoFactor.VerificationCode" xml:space="preserve"><value>Código de verificação</value></data>
+  <data name="ManageTwoFactor.Confirming" xml:space="preserve"><value>Confirmando…</value></data>
+  <data name="ManageTwoFactor.Enable" xml:space="preserve"><value>Ativar duas etapas</value></data>
+  <data name="ManageTwoFactor.Preparing" xml:space="preserve"><value>Preparando…</value></data>
+  <data name="ManageTwoFactor.ConfigureAuthenticator" xml:space="preserve"><value>Configurar aplicativo autenticador</value></data>
+  <data name="ManageTwoFactor.RecoveryCodesNone" xml:space="preserve"><value>Você não possui códigos de recuperação disponíveis.</value></data>
+  <data name="ManageTwoFactor.RecoveryCodesOne" xml:space="preserve"><value>Você possui 1 código de recuperação disponível.</value></data>
+  <data name="ManageTwoFactor.RecoveryCodesMany" xml:space="preserve"><value>Você possui {0} códigos de recuperação disponíveis.</value></data>
+  <data name="ManageTwoFactor.LoadError" xml:space="preserve"><value>Não foi possível carregar a configuração de duas etapas.</value></data>
+  <data name="ManageTwoFactor.BeginSetupSuccess" xml:space="preserve"><value>Leia o QR code e confirme com o código atual do aplicativo.</value></data>
+  <data name="ManageTwoFactor.VerificationCodeRequired" xml:space="preserve"><value>Informe o código de verificação.</value></data>
+  <data name="ManageTwoFactor.EnableSuccess" xml:space="preserve"><value>Autenticação em duas etapas ativada. Guarde os códigos de recuperação.</value></data>
+  <data name="ManageTwoFactor.GenerateRecoveryCodesConfirm" xml:space="preserve"><value>Gerar novos códigos e invalidar todos os códigos de recuperação anteriores?</value></data>
+  <data name="ManageTwoFactor.GenerateRecoveryCodesSuccess" xml:space="preserve"><value>Novos códigos gerados. Os códigos anteriores foram invalidados.</value></data>
+  <data name="ManageTwoFactor.ResetAuthenticatorConfirm" xml:space="preserve"><value>Reconfigurar o autenticador? A chave atual deixará de funcionar e duas etapas será desativada até a nova confirmação.</value></data>
+  <data name="ManageTwoFactor.ResetAuthenticatorSuccess" xml:space="preserve"><value>Chave reconfigurada. Leia o novo QR code e confirme para reativar duas etapas.</value></data>
+  <data name="ManageTwoFactor.DisableConfirm" xml:space="preserve"><value>Desativar a autenticação em duas etapas desta conta?</value></data>
+  <data name="ManageTwoFactor.DisableSuccess" xml:space="preserve"><value>Autenticação em duas etapas desativada.</value></data>
+  <data name="ManageTwoFactor.AlreadyEnabled" xml:space="preserve"><value>A autenticação em duas etapas já estava ativada. O estado da página foi atualizado.</value></data>
+  <data name="ManageTwoFactor.OperationError" xml:space="preserve"><value>Não foi possível concluir a alteração de duas etapas. Tente novamente.</value></data>
+  <data name="ManageTwoFactor.CopySuccess" xml:space="preserve"><value>Códigos copiados para a área de transferência.</value></data>
+  <data name="ManageTwoFactor.CopyError" xml:space="preserve"><value>O navegador não permitiu copiar os códigos. Selecione e copie manualmente.</value></data>
+  <data name="ManageTwoFactor.RecoveryCodesConfirmed" xml:space="preserve"><value>Códigos de recuperação confirmados.</value></data>
+  <data name="ManageTwoFactor.Error.Unauthenticated" xml:space="preserve"><value>Sua sessão expirou. Entre novamente para continuar.</value></data>
+  <data name="ManageTwoFactor.Error.StepUpRequired" xml:space="preserve"><value>Confirme sua identidade entrando novamente antes de alterar credenciais de acesso.</value></data>
+  <data name="ManageTwoFactor.Error.AlreadyEnabled" xml:space="preserve"><value>A autenticação em duas etapas já está ativada.</value></data>
+  <data name="ManageTwoFactor.Error.NotEnabled" xml:space="preserve"><value>Ative a autenticação em duas etapas antes de gerar códigos de recuperação.</value></data>
+  <data name="ManageTwoFactor.Error.KeyUnavailable" xml:space="preserve"><value>Não foi possível preparar a chave do autenticador.</value></data>
+  <data name="ManageTwoFactor.Error.InvalidCode" xml:space="preserve"><value>O código é inválido ou expirou. Ative data e hora automáticas no celular, aguarde o próximo código e tente novamente.</value></data>
+  <data name="ManageTwoFactor.Error.SetupRequired" xml:space="preserve"><value>Inicie a configuração do aplicativo autenticador antes de confirmar o código.</value></data>
+  <data name="ManageTwoFactor.Error.RecoveryCodes" xml:space="preserve"><value>A alteração foi salva, mas não foi possível gerar os códigos de recuperação. Gere novos códigos antes de sair.</value></data>
 
   <!-- ===== Scope display names (consent screen) ===== -->
   <data name="Scope.openid.Name" xml:space="preserve"><value>Seu identificador</value></data>

@@ -204,47 +204,76 @@ a:hover { color: var(--brand-hover); text-decoration: underline; }
 }
 .topbar-nav { display: flex; gap: var(--space-2); align-items: center; }
 .culture-selector {
-    position: relative;
     display: inline-flex;
     align-items: center;
+    --sui-color-primary: var(--brand);
+    --sui-color-primary-soft: var(--brand-ring);
+    --sui-surface: var(--surface);
+    --sui-surface-2: var(--surface-sunken);
+    --sui-text-primary: var(--ink);
+    --sui-text-secondary: var(--ink-muted);
+    --sui-border: var(--line);
+    --sui-border-strong: var(--line-strong);
 }
-.culture-selector::after {
-    content: "";
-    position: absolute;
-    right: 10px;
-    width: 6px;
-    height: 6px;
-    border-right: 1.5px solid currentColor;
-    border-bottom: 1.5px solid currentColor;
-    color: var(--ink-muted);
-    pointer-events: none;
-    transform: translateY(-2px) rotate(45deg);
+.culture-selector .sui-field {
+    width: auto;
+    gap: 0;
 }
-.culture-selector select {
-    min-width: 64px;
+.culture-selector .sui-field__label {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+.culture-selector .sui-select__trigger,
+.culture-selector__fallback select {
+    min-width: 104px;
     min-height: 44px;
-    padding: 0 28px 0 12px;
+    height: 44px;
+    padding-inline: 14px;
     border: 1px solid var(--line-strong);
     border-radius: var(--radius-pill);
-    appearance: none;
     background: var(--surface);
     color: var(--ink-muted);
-    font: 600 0.75rem/1 var(--font-sans);
-    letter-spacing: 0.04em;
+    font: 600 0.78rem/1 var(--font-sans);
     cursor: pointer;
     transition: border-color var(--dur-fast) var(--ease),
                 background var(--dur-fast) var(--ease),
                 color var(--dur-fast) var(--ease);
 }
-.culture-selector select:hover {
+.culture-selector .sui-select__trigger:hover,
+.culture-selector__fallback select:hover {
     border-color: var(--ink-subtle);
     background: var(--surface-sunken);
     color: var(--ink);
 }
-.culture-selector select:focus-visible {
+.culture-selector .sui-select__trigger:focus-visible,
+.culture-selector__fallback select:focus-visible {
     border-color: var(--brand);
     outline: 2px solid var(--brand-ring);
     outline-offset: 2px;
+}
+.culture-selector .sui-select__menu {
+    padding: 6px;
+    border-color: var(--line-strong);
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--surface) 97%, transparent);
+    box-shadow: 0 14px 36px rgba(28, 23, 25, 0.16);
+    backdrop-filter: blur(12px);
+}
+.culture-selector .sui-select__option {
+    min-height: 40px;
+    border-radius: calc(var(--radius-lg) - 4px);
+    font: 600 0.82rem/1.2 var(--font-sans);
+}
+.culture-selector__fallback {
+    display: inline-flex;
+    align-items: center;
 }
 .culture-selector__submit {
     min-height: 44px;

@@ -18,11 +18,15 @@ internal static class TestOnlyEndpoints
     /// on the SAME <paramref name="client"/> (e.g. GET /connect/authorize,
     /// POST ~/connect/device) are treated as an authenticated browser session.
     /// </summary>
-    public static async Task SignInAsync(HttpClient client, string username)
+    public static async Task SignInAsync(
+        HttpClient client,
+        string username,
+        bool withMfa = false)
     {
         var (status, _) = await client.PostFormAsync("/test-only/signin", new Dictionary<string, string>
         {
             ["username"] = username,
+            ["mfa"] = withMfa ? "true" : "false",
         });
         Assert.Equal(HttpStatusCode.OK, status);
     }

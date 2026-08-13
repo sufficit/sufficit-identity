@@ -84,6 +84,13 @@ internal sealed class ManagementExceptionFilter : IExceptionFilter
         details.Extensions["reasonCode"] = mapping.Item4;
         details.Extensions["correlationId"] =
             context.HttpContext.TraceIdentifier;
+        if (context.Exception is ManagementAccessException accessException
+            && !string.IsNullOrWhiteSpace(
+                accessException.Decision.RequiredCapability))
+        {
+            details.Extensions["requiredPermission"] =
+                accessException.Decision.RequiredCapability;
+        }
         if (mapping.Item5 is not null)
         {
             details.Extensions["field"] = mapping.Item5;

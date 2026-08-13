@@ -210,6 +210,18 @@ if (scimEnabled)
     builder.Services.AddSufficitIdentityScim(builder.Configuration);
 }
 
+// Management and SCIM both customize authorization failures. When both
+// modules are enabled, preserve the actionable Management Problem Details
+// response and the SCIM denial audit instead of letting the last registration
+// silently replace the first one.
+if (mgmtEnabled && scimEnabled)
+{
+    builder.Services.Replace(
+        ServiceDescriptor.Singleton<
+            Microsoft.AspNetCore.Authorization.IAuthorizationMiddlewareResultHandler,
+            SufficitIdentityAuthorizationMiddlewareResultHandler>());
+}
+
 // ---- MVC (for the /connect/* passthrough controllers) ----
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

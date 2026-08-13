@@ -187,8 +187,10 @@ public static class TestDataSeeder
                 Permissions.ResponseTypes.Code,
                 Permissions.Prefixes.Scope + Scopes.OpenId,
                 Permissions.Prefixes.Scope + Scopes.Profile,
+                Permissions.Prefixes.Scope + Scopes.Roles,
                 Permissions.Prefixes.Scope + Scopes.OfflineAccess,
                 Permissions.Prefixes.Scope + ScopeName,
+                Permissions.Prefixes.Scope + "identity.management",
             },
             Requirements =
             {

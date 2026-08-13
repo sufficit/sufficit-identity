@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Resources;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using Sufficit.Identity.UI.Resources;
 using Xunit;
 
@@ -33,6 +34,36 @@ public sealed class UiLocalizationTests
 
         Assert.Equal(expected, translated);
     }
+
+    [Fact]
+    public void Two_factor_resources_have_matching_portuguese_and_english_keys()
+    {
+        var resources = Path.Combine(
+            FindUiRoot(),
+            "Sufficit.Identity.UI",
+            "Resources");
+        var portuguese = ResourceKeys(Path.Combine(resources, "SharedResource.resx"));
+        var english = ResourceKeys(Path.Combine(resources, "SharedResource.en.resx"));
+
+        var portugueseTwoFactor = portuguese
+            .Where(key => key.StartsWith("ManageTwoFactor.", StringComparison.Ordinal))
+            .ToHashSet(StringComparer.Ordinal);
+        var englishTwoFactor = english
+            .Where(key => key.StartsWith("ManageTwoFactor.", StringComparison.Ordinal))
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.Equal(
+            portugueseTwoFactor.OrderBy(key => key, StringComparer.Ordinal),
+            englishTwoFactor.OrderBy(key => key, StringComparer.Ordinal));
+    }
+
+    private static IEnumerable<string> ResourceKeys(string path) =>
+        XDocument.Load(path)
+            .Root!
+            .Elements("data")
+            .Select(element => (string?)element.Attribute("name"))
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Select(name => name!);
 
     /// <summary>
     /// High-signal Portuguese words that indicate a hardcoded string in visible
