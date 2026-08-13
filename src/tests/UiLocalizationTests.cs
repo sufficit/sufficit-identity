@@ -35,6 +35,24 @@ public sealed class UiLocalizationTests
         Assert.Equal(expected, translated);
     }
 
+    [Theory]
+    [InlineData("pt-BR", "ManagePasskeys.Rename", "Renomear")]
+    [InlineData("pt-BR", "ManagePasskeys.Remove", "Remover")]
+    [InlineData("en-US", "ManagePasskeys.Rename", "Rename")]
+    [InlineData("en-US", "ManagePasskeys.Remove", "Remove")]
+    public void Passkey_actions_resolve_in_the_selected_culture(
+        string cultureName,
+        string resourceKey,
+        string expected)
+    {
+        var resources = new ResourceManager(typeof(SharedResource));
+        var translated = resources.GetString(
+            resourceKey,
+            CultureInfo.GetCultureInfo(cultureName));
+
+        Assert.Equal(expected, translated);
+    }
+
     [Fact]
     public void Two_factor_resources_have_matching_portuguese_and_english_keys()
     {
@@ -55,6 +73,28 @@ public sealed class UiLocalizationTests
         Assert.Equal(
             portugueseTwoFactor.OrderBy(key => key, StringComparer.Ordinal),
             englishTwoFactor.OrderBy(key => key, StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void Passkey_resources_have_matching_portuguese_and_english_keys()
+    {
+        var resources = Path.Combine(
+            FindUiRoot(),
+            "Sufficit.Identity.UI",
+            "Resources");
+        var portuguese = ResourceKeys(Path.Combine(resources, "SharedResource.resx"));
+        var english = ResourceKeys(Path.Combine(resources, "SharedResource.en.resx"));
+
+        var portuguesePasskeys = portuguese
+            .Where(key => key.StartsWith("ManagePasskeys.", StringComparison.Ordinal))
+            .ToHashSet(StringComparer.Ordinal);
+        var englishPasskeys = english
+            .Where(key => key.StartsWith("ManagePasskeys.", StringComparison.Ordinal))
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.Equal(
+            portuguesePasskeys.OrderBy(key => key, StringComparer.Ordinal),
+            englishPasskeys.OrderBy(key => key, StringComparer.Ordinal));
     }
 
     private static IEnumerable<string> ResourceKeys(string path) =>
