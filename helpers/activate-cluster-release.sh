@@ -7,10 +7,10 @@ usage() {
 usage: activate-cluster-release.sh <release-name> <expected-revision> [host ...]
 
 The release must already be prepared under /opt/sufficit-identity.releases on
-every host. The script acquires a cluster-wide lease on the first host, then
-activates hosts one at a time through activate-release.sh. If a later host
-fails, hosts already changed by this invocation are rolled back to their
-previous release.
+every host by prepare-cluster-release.sh. The script acquires a cluster-wide
+lease on the first host, then activates hosts one at a time through
+activate-release.sh. If a later host fails, hosts already changed by this
+invocation are rolled back to their previous release.
 
 The default hosts come from IDENTITY_PRODUCTION_HOSTS (comma-separated), or
 eveo-apps, apoint-apps and castrum-apps when the variable is not set. Set
@@ -156,6 +156,30 @@ case "${active}/" in
         exit 1
         ;;
 esac
+
+configuration_manifest() {
+    local root=$1 file
+    while IFS= read -r -d '' file; do
+        printf '%s  %s\n' \
+            "$(sha256sum "${file}" | awk '{print $1}')" \
+            "$(basename -- "${file}")"
+    done < <(find "${root}" -maxdepth 1 -type f \
+        -name 'appsettings*.json' -print0 | sort -z)
+}
+
+if find "${active}" "${candidate}" -maxdepth 1 -type l \
+    -name 'appsettings*.json' -print -quit | grep -q .
+then
+    printf 'candidate-configuration-symlink-rejected\n' >&2
+    exit 1
+fi
+active_configuration=$(configuration_manifest "${active}")
+candidate_configuration=$(configuration_manifest "${candidate}")
+if [[ -z ${active_configuration} || \
+    ${candidate_configuration} != "${active_configuration}" ]]; then
+    printf 'candidate-configuration-drift: run prepare-cluster-release.sh again\n' >&2
+    exit 1
+fi
 printf '%s\n' "${active}"
 REMOTE_PREFLIGHT
     ); then
