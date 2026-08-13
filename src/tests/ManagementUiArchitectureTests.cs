@@ -360,6 +360,83 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Public_identity_language_selector_uses_the_shared_sui_component()
+    {
+        var publicUi = ResolvePublicUiSource();
+        var selector = File.ReadAllText(Path.Combine(
+            publicUi,
+            "Components",
+            "CultureSelector.razor"));
+        var app = File.ReadAllText(Path.Combine(
+            publicUi,
+            "Components",
+            "App.razor"));
+        var project = File.ReadAllText(Path.Combine(
+            publicUi,
+            "Sufficit.Identity.UI.csproj"));
+
+        Assert.Contains("<SUISelect", selector, StringComparison.Ordinal);
+        Assert.Contains("<SUISelectItem", selector, StringComparison.Ordinal);
+        Assert.Contains(
+            "@rendermode @(RenderMode.InteractiveServer)",
+            selector,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "culture-selector__fallback",
+            selector,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "_content/Sufficit.Blazor.UI/sufficit-ui.css",
+            app,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "sufficit-blazor-ui",
+            project,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Two_factor_page_localizes_all_actions_and_feedback()
+    {
+        var page = File.ReadAllText(Path.Combine(
+            ResolvePublicUiSource(),
+            "Pages",
+            "Manage",
+            "TwoFactor.razor"));
+
+        var hardcodedCopy = new[]
+        {
+            "Carregando configuração",
+            "Tentar novamente",
+            "Copiar códigos",
+            "Já guardei os códigos",
+            "Reconfigurar autenticador",
+            "Gerar novos códigos",
+            "Desativar duas etapas",
+            "Código de verificação",
+            "Ativar duas etapas",
+            "Configurar aplicativo autenticador",
+            "Não foi possível concluir",
+        };
+
+        Assert.All(
+            hardcodedCopy,
+            text => Assert.DoesNotContain(text, page, StringComparison.Ordinal));
+        Assert.Contains(
+            "ManageTwoFactor.ConfigureAuthenticator",
+            page,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "ManageTwoFactor.GenerateRecoveryCodesConfirm",
+            page,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "ManageTwoFactor.Error.InvalidCode",
+            page,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Interactive_sign_in_pages_use_only_the_canonical_contract()
     {
         var publicUi = ResolvePublicUiSource();

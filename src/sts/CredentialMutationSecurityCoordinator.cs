@@ -123,9 +123,22 @@ public sealed class CredentialMutationSecurityCoordinator(
             currentSessionId,
             cancellationToken);
 
-        if (httpContextAccessor.HttpContext is not null)
+        var httpContext = httpContextAccessor.HttpContext;
+        if (httpContext is not null && !httpContext.Response.HasStarted)
         {
             await signInManager.RefreshSignInAsync(user);
+        }
+        else if (httpContext?.Response.HasStarted == true)
+        {
+            // Interactive Server component events run after the initial HTTP
+            // response has completed. At that point ASP.NET cannot append a
+            // replacement authentication cookie. The updated security stamp
+            // deliberately invalidates the old ticket on its next request;
+            // skipping only the impossible refresh keeps the mutation,
+            // revocation and CAEP notification authoritative.
+            logger.LogInformation(
+                "Authentication cookie refresh skipped for user {UserId} because the response had already started.",
+                user.Id);
         }
 
         await securityEvents.CredentialChangedAsync(

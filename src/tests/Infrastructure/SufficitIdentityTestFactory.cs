@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
@@ -16,9 +17,11 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading.RateLimiting;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.Management;
 using Sufficit.Identity.Server;
 using Sufficit.Identity.STS;
 using Sufficit.Identity.STS.Controllers;
+using OpenIddict.Validation.AspNetCore;
 using Xunit;
 
 namespace Sufficit.Identity.Tests.Infrastructure;
@@ -198,6 +201,22 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
             // harmless no-op if Program.cs's real wiring already added it.
             services.AddAntiforgery();
 
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy("test-management-access", policy =>
+                {
+                    policy.AuthenticationSchemes.Add(
+                        OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+                    policy.RequireAuthenticatedUser();
+                    policy.Requirements.Add(
+                        new ScopeRequirement("identity.management"));
+                    policy.Requirements.Add(new MfaRequirement());
+                    policy.RequireRole("manager");
+                });
+            });
+            services.AddSingleton<IAuthorizationHandler, ScopeHandler>();
+            services.AddSingleton<IAuthorizationHandler, MfaHandler>();
+
             var rateLimit = context.Configuration
                 .GetSection("Sufficit:Identity:RateLimit")
                 .Get<RateLimitOptions>() ?? new RateLimitOptions();
@@ -297,7 +316,7 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                 // needing the embedded UI project at all.
                 // -------------------------------------------------------------
 
-                // POST /test-only/signin  (form field: username)
+                // POST /test-only/signin  (form fields: username, mfa)
                 // Signs the named user into the SAME cookie authentication
                 // scheme (Identity.Application) that AuthorizationController
                 // and DeviceController check via HttpContext.AuthenticateAsync().
@@ -312,7 +331,29 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                     var user = await userManager.FindByNameAsync(username) ??
                         throw new InvalidOperationException($"Test user '{username}' not found.");
 
-                    await signInManager.SignInAsync(user, isPersistent: false);
+                    var additionalClaims = string.Equals(
+                        form["mfa"].ToString(),
+                        "true",
+                        StringComparison.OrdinalIgnoreCase)
+                            ? new[]
+                            {
+                                new System.Security.Claims.Claim("amr", "pwd"),
+                                new System.Security.Claims.Claim("amr", "otp"),
+                                new System.Security.Claims.Claim("amr", "mfa"),
+                                new System.Security.Claims.Claim(
+                                    "auth_time",
+                                    DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                                        .ToString(System.Globalization.CultureInfo.InvariantCulture)),
+                                new System.Security.Claims.Claim(
+                                    "acr",
+                                    "urn:sufficit:acr:loa2"),
+                            }
+                            : [];
+
+                    await signInManager.SignInWithClaimsAsync(
+                        user,
+                        isPersistent: false,
+                        additionalClaims);
                     context.Response.StatusCode = StatusCodes.Status200OK;
                 });
 
@@ -327,6 +368,11 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                     var tokens = antiforgery.GetAndStoreTokens(context);
                     return Results.Json(new { requestToken = tokens.RequestToken });
                 });
+
+                endpoints.MapGet(
+                        "/test-only/management-access",
+                        () => Results.NoContent())
+                    .RequireAuthorization("test-management-access");
             });
         });
     }

@@ -29,6 +29,17 @@ public sealed class ScimAuthorizationAuditHandler
     {
         await fallback.HandleAsync(next, context, policy, authorizeResult);
 
+        await AuditAsync(context, authorizeResult);
+    }
+
+    /// <summary>
+    /// Persists the SCIM authorization audit after another composed result
+    /// handler has produced the HTTP response.
+    /// </summary>
+    public async Task AuditAsync(
+        HttpContext context,
+        PolicyAuthorizationResult authorizeResult)
+    {
         if ((!authorizeResult.Challenged && !authorizeResult.Forbidden)
             || !context.Request.Path.StartsWithSegments(
                 "/scim/v2",

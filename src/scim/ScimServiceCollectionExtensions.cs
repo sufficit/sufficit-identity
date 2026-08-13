@@ -35,8 +35,9 @@ public static class ScimServiceCollectionExtensions
         services.TryAddSingleton<IScimPublicOriginResolver,
             ScimPublicOriginResolver>();
         services.TryAddScoped<ScimExceptionFilter>();
-        services.AddSingleton<IAuthorizationMiddlewareResultHandler,
-            ScimAuthorizationAuditHandler>();
+        services.TryAddSingleton<ScimAuthorizationAuditHandler>();
+        services.AddSingleton<IAuthorizationMiddlewareResultHandler>(provider =>
+            provider.GetRequiredService<ScimAuthorizationAuditHandler>());
 
         services.AddAuthorization(builder =>
         {

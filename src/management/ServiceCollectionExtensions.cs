@@ -1,5 +1,6 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
@@ -109,6 +110,10 @@ public static class ServiceCollectionExtensions
             ConfigurationManagementObjectAccessPolicy>();
         services.TryAddScoped<IManagementAuthorizationEvaluator,
             CapabilityManagementAuthorizationEvaluator>();
+        services.TryAddSingleton<ManagementAuthorizationMiddlewareResultHandler>();
+        services.TryAddSingleton<IAuthorizationMiddlewareResultHandler>(provider =>
+            provider.GetRequiredService<
+                ManagementAuthorizationMiddlewareResultHandler>());
         services.TryAddScoped<IManagementAuditService, ManagementAuditService>();
         services.TryAddScoped<IClientManagementService, ClientManagementService>();
         services.TryAddScoped<IClientConfigurationDraftService,

@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Sufficit.Identity.Core.Entities;
@@ -77,6 +79,37 @@ public sealed class AccountTwoFactorServiceTests(
         Assert.Equal(10, enabled.RecoveryCodes.Distinct(StringComparer.Ordinal).Count());
         Assert.True(await users.GetTwoFactorEnabledAsync(user));
         Assert.Equal(10, await users.CountRecoveryCodesAsync(user));
+    }
+
+    [Fact]
+    public async Task Enable_succeeds_after_the_interactive_response_has_started()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        var users = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var service = services.GetRequiredService<IAccountTwoFactorService>();
+        var user = await CreateUserAsync(users);
+        var principal = PrincipalFor(user);
+        var context = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = principal,
+        };
+        context.Features.Set<IHttpResponseFeature>(new StartedHttpResponseFeature());
+        services.GetRequiredService<IHttpContextAccessor>().HttpContext = context;
+        var started = await service.BeginSetupAsync(principal);
+        var key = Assert.IsType<AccountAuthenticatorSetup>(
+            started.State?.AuthenticatorSetup).SharedKey;
+
+        var enabled = await service.EnableAsync(
+            principal,
+            CurrentAuthenticatorCode(key));
+
+        Assert.True(context.Response.HasStarted);
+        Assert.True(enabled.Succeeded);
+        Assert.True(enabled.State?.IsEnabled);
+        Assert.Equal(10, enabled.RecoveryCodes.Count);
+        Assert.True(await users.GetTwoFactorEnabledAsync(user));
     }
 
     [Fact]
@@ -267,5 +300,26 @@ public sealed class AccountTwoFactorServiceTests(
         }
 
         return output.ToArray();
+    }
+
+    private sealed class StartedHttpResponseFeature : IHttpResponseFeature
+    {
+        public int StatusCode { get; set; } = StatusCodes.Status200OK;
+
+        public string? ReasonPhrase { get; set; }
+
+        public IHeaderDictionary Headers { get; set; } = new HeaderDictionary();
+
+        public Stream Body { get; set; } = Stream.Null;
+
+        public bool HasStarted => true;
+
+        public void OnStarting(Func<object, Task> callback, object state)
+        {
+        }
+
+        public void OnCompleted(Func<object, Task> callback, object state)
+        {
+        }
     }
 }

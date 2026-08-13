@@ -1,30 +1,46 @@
 @using System.Globalization
+@rendermode @(RenderMode.InteractiveServer)
 @inject NavigationManager Nav
 @inject IStringLocalizer<SharedResource> L
 
 @if (_cultures.Length > 1)
 {
-    <form class="culture-selector"
-          action="/culture/set"
-          method="get"
-          data-enhance="false"
-          data-culture-selector>
-        <label class="visually-hidden" for="identity-culture">@L["Culture.Selector"]</label>
-        <input type="hidden" name="returnUrl" value="@CurrentReturnUrl" />
-        <select id="identity-culture"
-                name="culture"
-                aria-label="@L["Culture.Selector"]">
+    <div class="culture-selector" data-culture-selector>
+        <SUISelect T="string"
+                   Value="@_currentCulture.Name"
+                   ValueChanged="ChangeCulture"
+                   Label="@L["Culture.Selector"]"
+                   MenuWidth="10rem"
+                   MenuMaxWidth="calc(100vw - 1.5rem)"
+                   Class="culture-selector__select">
             @foreach (var culture in _cultures)
             {
-                <option value="@culture.Name" selected="@(culture.Name == _currentCulture.Name)">
+                <SUISelectItem Value="@culture.Name">
                     @GetCultureLabel(culture)
-                </option>
+                </SUISelectItem>
             }
-        </select>
+        </SUISelect>
+
         <noscript>
+            <form class="culture-selector__fallback"
+                  action="/culture/set"
+                  method="get">
+                <label class="visually-hidden" for="identity-culture-fallback">@L["Culture.Selector"]</label>
+                <input type="hidden" name="returnUrl" value="@CurrentReturnUrl" />
+                <select id="identity-culture-fallback"
+                        name="culture"
+                        aria-label="@L["Culture.Selector"]">
+                    @foreach (var culture in _cultures)
+                    {
+                        <option value="@culture.Name" selected="@(culture.Name == _currentCulture.Name)">
+                            @GetCultureLabel(culture)
+                        </option>
+                    }
+                </select>
             <button type="submit" class="culture-selector__submit">@L["Common.Confirm"]</button>
+            </form>
         </noscript>
-    </form>
+    </div>
 }
 
 @code {
@@ -45,12 +61,30 @@
         }
     }
 
+    private void ChangeCulture(string? culture)
+    {
+        if (string.IsNullOrWhiteSpace(culture)
+            || string.Equals(culture, _currentCulture.Name, StringComparison.OrdinalIgnoreCase)
+            || !_cultures.Any(item => string.Equals(
+                item.Name,
+                culture,
+                StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        var destination = "/culture/set?culture="
+            + Uri.EscapeDataString(culture)
+            + "&returnUrl="
+            + Uri.EscapeDataString(CurrentReturnUrl);
+        Nav.NavigateTo(destination, forceLoad: true);
+    }
+
     private static string GetCultureLabel(CultureInfo culture) =>
         culture.Name switch
         {
-            "pt-BR" => "PT",
-            "en-US" => "EN",
+            "pt-BR" => "Português",
+            "en-US" => "English",
             _ => culture.TwoLetterISOLanguageName.ToUpperInvariant(),
         };
-
 }

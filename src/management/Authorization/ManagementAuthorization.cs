@@ -193,7 +193,8 @@ public enum ManagementAuthorizationOutcome
 
 public sealed record ManagementAuthorizationDecision(
     ManagementAuthorizationOutcome Outcome,
-    string ReasonCode)
+    string ReasonCode,
+    string? RequiredCapability = null)
 {
     public bool IsAllowed => Outcome is ManagementAuthorizationOutcome.Allowed;
 
@@ -201,11 +202,21 @@ public sealed record ManagementAuthorizationDecision(
         string reasonCode = "allowed") =>
         new(ManagementAuthorizationOutcome.Allowed, reasonCode);
 
-    public static ManagementAuthorizationDecision Denied(string reasonCode) =>
-        new(ManagementAuthorizationOutcome.Denied, reasonCode);
+    public static ManagementAuthorizationDecision Denied(
+        string reasonCode,
+        string? requiredCapability = null) =>
+        new(
+            ManagementAuthorizationOutcome.Denied,
+            reasonCode,
+            requiredCapability);
 
-    public static ManagementAuthorizationDecision StepUpRequired(string reasonCode) =>
-        new(ManagementAuthorizationOutcome.StepUpRequired, reasonCode);
+    public static ManagementAuthorizationDecision StepUpRequired(
+        string reasonCode,
+        string? requiredCapability = null) =>
+        new(
+            ManagementAuthorizationOutcome.StepUpRequired,
+            reasonCode,
+            requiredCapability);
 }
 
 public interface IManagementAuthorizationEvaluator
@@ -911,13 +922,17 @@ public sealed class CapabilityManagementAuthorizationEvaluator
         if (principal.Identity?.IsAuthenticated is not true)
         {
             return ValueTask.FromResult(
-                ManagementAuthorizationDecision.Denied("operator_not_authenticated"));
+                ManagementAuthorizationDecision.Denied(
+                    "operator_not_authenticated",
+                    capability));
         }
 
         if (!ManagementCapabilities.All.Contains(capability))
         {
             return ValueTask.FromResult(
-                ManagementAuthorizationDecision.Denied("capability_not_granted"));
+                ManagementAuthorizationDecision.Denied(
+                    "capability_not_granted",
+                    capability));
         }
 
         return EvaluateKnownCapabilityAsync(
@@ -940,7 +955,8 @@ public sealed class CapabilityManagementAuthorizationEvaluator
         if (!grants.Contains(capability))
         {
             return ManagementAuthorizationDecision.Denied(
-                "capability_not_granted");
+                "capability_not_granted",
+                capability);
         }
 
         var policy = await accessPolicies.GetAsync(
@@ -949,7 +965,8 @@ public sealed class CapabilityManagementAuthorizationEvaluator
         if (policy.RequireMfa && !HasMfaEvidence(principal))
         {
             return ManagementAuthorizationDecision.StepUpRequired(
-                "mfa_required");
+                "mfa_required",
+                capability);
         }
 
         // H3 (eval): object-level authorization boundary. Consulted LAST
@@ -963,7 +980,9 @@ public sealed class CapabilityManagementAuthorizationEvaluator
             principal, capability, resource, cancellationToken);
         if (!objectDecision.IsAllowed)
         {
-            return objectDecision;
+            return objectDecision.RequiredCapability is null
+                ? objectDecision with { RequiredCapability = capability }
+                : objectDecision;
         }
 
         return ManagementAuthorizationDecision.Allowed();

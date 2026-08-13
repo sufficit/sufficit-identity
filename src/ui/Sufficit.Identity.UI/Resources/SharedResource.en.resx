@@ -257,6 +257,47 @@
   <data name="ManageTwoFactor.Disabled" xml:space="preserve"><value>2FA disabled</value></data>
   <data name="ManageTwoFactor.RecoveryCodes" xml:space="preserve"><value>Recovery codes</value></data>
   <data name="ManageTwoFactor.EachCodeOnce" xml:space="preserve"><value>Each code works only once.</value></data>
+  <data name="ManageTwoFactor.Loading" xml:space="preserve"><value>Loading security settings…</value></data>
+  <data name="ManageTwoFactor.Retry" xml:space="preserve"><value>Try again</value></data>
+  <data name="ManageTwoFactor.RecoveryCodesWarning" xml:space="preserve"><value>Store these codes in a safe place. They will not be shown again.</value></data>
+  <data name="ManageTwoFactor.CopyRecoveryCodes" xml:space="preserve"><value>Copy codes</value></data>
+  <data name="ManageTwoFactor.RecoveryCodesSaved" xml:space="preserve"><value>I saved the codes</value></data>
+  <data name="ManageTwoFactor.ResetAuthenticator" xml:space="preserve"><value>Reset authenticator</value></data>
+  <data name="ManageTwoFactor.GenerateRecoveryCodes" xml:space="preserve"><value>Generate new codes</value></data>
+  <data name="ManageTwoFactor.Disable" xml:space="preserve"><value>Disable two-step verification</value></data>
+  <data name="ManageTwoFactor.SetupInstructions" xml:space="preserve"><value>Scan the QR code with your authenticator app and confirm with its current code.</value></data>
+  <data name="ManageTwoFactor.ManualKeyHint" xml:space="preserve"><value>If you cannot scan the QR code, enter this key:</value></data>
+  <data name="ManageTwoFactor.VerificationCode" xml:space="preserve"><value>Verification code</value></data>
+  <data name="ManageTwoFactor.Confirming" xml:space="preserve"><value>Confirming…</value></data>
+  <data name="ManageTwoFactor.Enable" xml:space="preserve"><value>Enable two-step verification</value></data>
+  <data name="ManageTwoFactor.Preparing" xml:space="preserve"><value>Preparing…</value></data>
+  <data name="ManageTwoFactor.ConfigureAuthenticator" xml:space="preserve"><value>Set up authenticator app</value></data>
+  <data name="ManageTwoFactor.RecoveryCodesNone" xml:space="preserve"><value>You have no recovery codes available.</value></data>
+  <data name="ManageTwoFactor.RecoveryCodesOne" xml:space="preserve"><value>You have 1 recovery code available.</value></data>
+  <data name="ManageTwoFactor.RecoveryCodesMany" xml:space="preserve"><value>You have {0} recovery codes available.</value></data>
+  <data name="ManageTwoFactor.LoadError" xml:space="preserve"><value>Two-step verification settings could not be loaded.</value></data>
+  <data name="ManageTwoFactor.BeginSetupSuccess" xml:space="preserve"><value>Scan the QR code and confirm with the current code from your app.</value></data>
+  <data name="ManageTwoFactor.VerificationCodeRequired" xml:space="preserve"><value>Enter the verification code.</value></data>
+  <data name="ManageTwoFactor.EnableSuccess" xml:space="preserve"><value>Two-step verification is enabled. Store your recovery codes safely.</value></data>
+  <data name="ManageTwoFactor.GenerateRecoveryCodesConfirm" xml:space="preserve"><value>Generate new codes and invalidate all previous recovery codes?</value></data>
+  <data name="ManageTwoFactor.GenerateRecoveryCodesSuccess" xml:space="preserve"><value>New codes generated. The previous codes are no longer valid.</value></data>
+  <data name="ManageTwoFactor.ResetAuthenticatorConfirm" xml:space="preserve"><value>Reset the authenticator? The current key will stop working and two-step verification will be disabled until you confirm the new key.</value></data>
+  <data name="ManageTwoFactor.ResetAuthenticatorSuccess" xml:space="preserve"><value>Authenticator reset. Scan the new QR code and confirm it to enable two-step verification again.</value></data>
+  <data name="ManageTwoFactor.DisableConfirm" xml:space="preserve"><value>Disable two-step verification for this account?</value></data>
+  <data name="ManageTwoFactor.DisableSuccess" xml:space="preserve"><value>Two-step verification is disabled.</value></data>
+  <data name="ManageTwoFactor.AlreadyEnabled" xml:space="preserve"><value>Two-step verification was already enabled. The page now shows the current state.</value></data>
+  <data name="ManageTwoFactor.OperationError" xml:space="preserve"><value>The two-step verification change could not be completed. Try again.</value></data>
+  <data name="ManageTwoFactor.CopySuccess" xml:space="preserve"><value>Codes copied to the clipboard.</value></data>
+  <data name="ManageTwoFactor.CopyError" xml:space="preserve"><value>The browser could not copy the codes. Select and copy them manually.</value></data>
+  <data name="ManageTwoFactor.RecoveryCodesConfirmed" xml:space="preserve"><value>Recovery codes confirmed.</value></data>
+  <data name="ManageTwoFactor.Error.Unauthenticated" xml:space="preserve"><value>Your session has expired. Sign in again to continue.</value></data>
+  <data name="ManageTwoFactor.Error.StepUpRequired" xml:space="preserve"><value>Confirm your identity by signing in again before changing sign-in credentials.</value></data>
+  <data name="ManageTwoFactor.Error.AlreadyEnabled" xml:space="preserve"><value>Two-step verification is already enabled.</value></data>
+  <data name="ManageTwoFactor.Error.NotEnabled" xml:space="preserve"><value>Enable two-step verification before generating recovery codes.</value></data>
+  <data name="ManageTwoFactor.Error.KeyUnavailable" xml:space="preserve"><value>The authenticator key could not be prepared.</value></data>
+  <data name="ManageTwoFactor.Error.InvalidCode" xml:space="preserve"><value>The code is invalid or has expired. Enable automatic date and time on your phone, wait for the next code, and try again.</value></data>
+  <data name="ManageTwoFactor.Error.SetupRequired" xml:space="preserve"><value>Start setting up the authenticator app before confirming the code.</value></data>
+  <data name="ManageTwoFactor.Error.RecoveryCodes" xml:space="preserve"><value>The change was saved, but recovery codes could not be generated. Generate new codes before leaving.</value></data>
 
   <!-- ===== Scope display names (consent screen) ===== -->
   <data name="Scope.openid.Name" xml:space="preserve"><value>Your identifier</value></data>
