@@ -428,7 +428,12 @@ public sealed class VaultTests
         var legacy = await compatibility.EncryptAsync(
             "ssf-stream-authz",
             "Bearer legacy-token");
-        var (vault, _) = CreateRealVault();
+        // F-2 (eval 2026-08-14): reading pt1 values through the real vault
+        // now requires the bounded compatibility window; by default the
+        // marker is rejected (see VaultPlaintextCompatibilityTests).
+        var (vault, _) = CreateRealVault(
+            allowPlaintextRead: true,
+            plaintextReadDeadline: DateTimeOffset.UtcNow.AddDays(1));
 
         var decrypted = await vault.DecryptStringAsync(
             legacy,
@@ -1336,7 +1341,9 @@ public sealed class VaultTests
         VaultOptions? options = null,
         TimeProvider? timeProvider = null,
         Func<IDataProtectionProvider, IVaultKeyEncryptionKeySource>? keySourceFactory = null,
-        bool withSnapshots = false)
+        bool withSnapshots = false,
+        bool allowPlaintextRead = false,
+        DateTimeOffset? plaintextReadDeadline = null)
     {
         // Hold a single in-memory SQLite connection open for the lifetime of
         // the test so every DbContext created by the factory shares the same
@@ -1388,7 +1395,9 @@ public sealed class VaultTests
                     options,
                     NullLogger<VaultCryptographyTelemetry>.Instance),
                 timeProvider,
-                snapshots);
+                snapshots,
+                allowPlaintextRead,
+                plaintextReadDeadline);
         }
         else
         {
@@ -1397,7 +1406,13 @@ public sealed class VaultTests
                 kek,
                 logger,
                 options,
-                timeProvider);
+                new VaultCryptographyTelemetry(
+                    options,
+                    NullLogger<VaultCryptographyTelemetry>.Instance),
+                timeProvider,
+                snapshots: null,
+                allowPlaintextReadCompatibility: allowPlaintextRead,
+                plaintextReadCompatibilityExpiresAtUtc: plaintextReadDeadline);
         }
         return (vault, dbFactory);
     }

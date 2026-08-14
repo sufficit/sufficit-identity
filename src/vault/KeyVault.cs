@@ -31,6 +31,8 @@ internal sealed class KeyVault : IKeyVault
     private readonly TimeProvider _timeProvider;
     private readonly VaultCryptographyTelemetry _cryptographyTelemetry;
     private readonly VaultSnapshotCache? _snapshots;
+    private readonly bool _allowPlaintextReadCompatibility;
+    private readonly DateTimeOffset? _plaintextReadCompatibilityExpiresAtUtc;
 
     // Cache: (keyName, version) → unwrapped item key (256-bit).
     private readonly ConcurrentDictionary<(string Name, int Version), byte[]> _keyCache = new();
@@ -62,7 +64,9 @@ internal sealed class KeyVault : IKeyVault
         VaultOptions options,
         VaultCryptographyTelemetry cryptographyTelemetry,
         TimeProvider? timeProvider = null,
-        VaultSnapshotCache? snapshots = null)
+        VaultSnapshotCache? snapshots = null,
+        bool allowPlaintextReadCompatibility = false,
+        DateTimeOffset? plaintextReadCompatibilityExpiresAtUtc = null)
     {
         _dbFactory = dbFactory;
         _kek = kek;
@@ -71,6 +75,9 @@ internal sealed class KeyVault : IKeyVault
         _cryptographyTelemetry = cryptographyTelemetry;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _snapshots = snapshots;
+        _allowPlaintextReadCompatibility = allowPlaintextReadCompatibility;
+        _plaintextReadCompatibilityExpiresAtUtc =
+            plaintextReadCompatibilityExpiresAtUtc;
     }
 
     /// <summary>
@@ -111,6 +118,30 @@ internal sealed class KeyVault : IKeyVault
                 StringComparison.Ordinal))
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            // F-2 (eval 2026-08-14): the pt1 pass-through is a compatibility
+            // read for values written by the Development-only
+            // PassThroughKeyVault. Accepting it unconditionally removes the
+            // fail-closed property for tampered rows: an attacker with a
+            // database or Redis write could swap a ciphertext for
+            // pt1.<base64url> and have the vault resolve attacker-chosen
+            // plaintext (e.g. a client-secret reference). Outside Development
+            // the marker is only readable through a bounded, attributed
+            // Sufficit:Vault:PlaintextReadCompatibility window whose expiry is
+            // enforced here, at read time.
+            var withinCompatibilityWindow = _allowPlaintextReadCompatibility
+                && (_plaintextReadCompatibilityExpiresAtUtc is not { } deadline
+                    || _timeProvider.GetUtcNow() <= deadline);
+            if (!withinCompatibilityWindow)
+            {
+                throw new CryptographicException(
+                    "Vault ciphertext carries the legacy pt1 plaintext pass-through marker, " +
+                    "which is only readable in Development or through a bounded " +
+                    "Sufficit:Vault:PlaintextReadCompatibility window. The row was not written " +
+                    "by the encrypted vault — treat it as tampered and rewrite it with " +
+                    "envelope encryption.");
+            }
+
             _logger.LogWarning(
                 "Vault read a legacy plaintext compatibility value. Rewrite or rotate the owning record to migrate it to envelope encryption.");
             var encoded = ciphertext[

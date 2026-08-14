@@ -62,6 +62,19 @@ public sealed class VaultOptions
         LegacyDataProtectionCertificateMigration { get; init; } = new();
 
     /// <summary>
+    /// Bounded compatibility window for reading legacy <c>pt1.</c> plaintext
+    /// pass-through values through the real vault (eval 2026-08-14, F-2).
+    /// Outside Development the decrypt path rejects <c>pt1.</c> ciphertext by
+    /// default — a tampered database/Redis row swapped for
+    /// <c>pt1.&lt;base64url&gt;</c> would otherwise resolve to attacker-chosen
+    /// plaintext. Configure Owner, Reason and a future ExpiresAtUtc (max 180
+    /// days) only while legacy rows are being rewritten with envelope
+    /// encryption; reads stop accepting the marker once the window expires.
+    /// </summary>
+    public VaultPlaintextReadCompatibilityOptions
+        PlaintextReadCompatibility { get; init; } = new();
+
+    /// <summary>
     /// Stable, non-secret identifier expected from the external KMS/HSM
     /// adapter. A mismatch fails startup and prevents accidentally switching
     /// to a different remote KEK.
@@ -111,6 +124,17 @@ public sealed class VaultOptions
 }
 
 public sealed class VaultLegacyCertificateMigrationOptions
+{
+    public string? Owner { get; init; }
+    public string? Reason { get; init; }
+    public DateTimeOffset? ExpiresAtUtc { get; init; }
+
+    public bool IsConfigured => ExpiresAtUtc is not null
+        || !string.IsNullOrWhiteSpace(Owner)
+        || !string.IsNullOrWhiteSpace(Reason);
+}
+
+public sealed class VaultPlaintextReadCompatibilityOptions
 {
     public string? Owner { get; init; }
     public string? Reason { get; init; }
