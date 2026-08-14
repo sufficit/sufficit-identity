@@ -41,11 +41,29 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
     {
         ArgumentNullException.ThrowIfNull(command);
         cancellationToken.ThrowIfCancellationRequested();
-        SetAuthenticationContext(["pwd"], "urn:sufficit:acr:loa1");
+
+        // The trusted-device cookie is itself the durable proof that this
+        // browser completed MFA previously. ASP.NET Identity uses it to skip
+        // the OTP challenge, but it does not add amr=mfa to the newly-issued
+        // application ticket. Project that evidence explicitly so a successful
+        // remembered-device login is not immediately rejected by Management.
+        var user = await signInManager.UserManager.FindByNameAsync(
+            command.UserName);
+        cancellationToken.ThrowIfCancellationRequested();
+        var rememberedMfa = user is not null
+            && await signInManager.UserManager.GetTwoFactorEnabledAsync(user)
+            && await signInManager.IsTwoFactorClientRememberedAsync(user);
+        cancellationToken.ThrowIfCancellationRequested();
+        var isPersistent = command.IsPersistent || rememberedMfa;
+        SetAuthenticationContext(
+            rememberedMfa ? ["pwd", "mfa"] : ["pwd"],
+            rememberedMfa
+                ? "urn:sufficit:acr:loa2"
+                : "urn:sufficit:acr:loa1");
         var result = await signInManager.PasswordSignInAsync(
             command.UserName,
             command.Password,
-            command.IsPersistent,
+            isPersistent,
             lockoutOnFailure: true);
         cancellationToken.ThrowIfCancellationRequested();
         var mapped = Map(result);
@@ -53,8 +71,11 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
         {
             logger.LogInformation(
                 "Password sign-in completed. User={UserName}; "
+                + "Persistent={Persistent}; RememberedMfa={RememberedMfa}; "
                 + "TraceId={TraceId}.",
                 command.UserName,
+                isPersistent,
+                rememberedMfa,
                 AuthenticationFlowDiagnostics.TraceId);
         }
 
@@ -90,9 +111,14 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
 
         var code = NormalizeAuthenticatorCode(command.Code);
         SetAuthenticationContext(["pwd", "otp", "mfa"], "urn:sufficit:acr:loa2");
+        // Remembering MFA also keeps this browser session alive for the same
+        // bounded lifetime. Otherwise the trusted-device cookie survives a
+        // browser restart while the application cookie disappears, producing
+        // a confusing password-only login on the next visit.
+        var isPersistent = command.IsPersistent || command.RememberClient;
         var result = await signInManager.TwoFactorAuthenticatorSignInAsync(
             code,
-            command.IsPersistent,
+            isPersistent,
             command.RememberClient);
         cancellationToken.ThrowIfCancellationRequested();
         if (result.Succeeded)
@@ -106,7 +132,7 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
             // the server-side session cannot fall back to Loa1 at this point.
             await signInManager.SignInWithClaimsAsync(
                 pendingUser,
-                command.IsPersistent,
+                isPersistent,
                 MfaClaims("otp"));
             cancellationToken.ThrowIfCancellationRequested();
         }
@@ -116,12 +142,15 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
             logger.LogInformation(
                 "MFA completed. User={UserId}; Flow=Authenticator; "
                 + "Methods={AuthenticationMethods}; "
+                + "Persistent={Persistent}; RememberClient={RememberClient}; "
                 + "Context={AuthenticationContextClass}; TraceId={TraceId}.",
                 pendingUser.Id,
                 string.Join(
                     ' ',
                     authenticationContextAccessor.Current?.AuthenticationMethods
                         ?? []),
+                isPersistent,
+                command.RememberClient,
                 authenticationContextAccessor.Current?.AuthenticationContextClass
                     ?? "missing",
                 AuthenticationFlowDiagnostics.TraceId);

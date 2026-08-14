@@ -349,6 +349,7 @@ public sealed class SharedSignalsTests
 
     [Theory]
     [InlineData(new[] { "pwd" }, CaepAssuranceLevel.Loa1)]
+    [InlineData(new[] { "pwd", "mfa" }, CaepAssuranceLevel.Loa2)]
     [InlineData(new[] { "pwd", "otp" }, CaepAssuranceLevel.Loa2)]
     [InlineData(new[] { "pwd", "hwk" }, CaepAssuranceLevel.PhishingResistant)]
     [InlineData(new[] { "passkey" }, CaepAssuranceLevel.PhishingResistant)]

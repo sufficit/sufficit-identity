@@ -485,7 +485,28 @@ public static class ServiceCollectionExtensions
                 ? CookieSecurePolicy.SameAsRequest
                 : CookieSecurePolicy.Always;
 
+            // Keep the browser and server-side ticket on one explicit policy.
+            // A remembered MFA device makes the application cookie persistent
+            // in the sign-in adapter below; active persistent sessions renew
+            // within this bounded window instead of depending on framework
+            // defaults that can change invisibly between runtime upgrades.
+            o.ExpireTimeSpan = TimeSpan.FromDays(Math.Clamp(
+                options.UserSessions.AuthenticationLifetimeDays,
+                1,
+                90));
+            o.SlidingExpiration = options.UserSessions.SlidingExpiration;
+
         });
+        services.Configure<CookieAuthenticationOptions>(
+            IdentityConstants.TwoFactorRememberMeScheme,
+            cookie =>
+            {
+                cookie.ExpireTimeSpan = TimeSpan.FromDays(Math.Clamp(
+                    options.UserSessions.RememberedMfaLifetimeDays,
+                    1,
+                    90));
+                cookie.SlidingExpiration = options.UserSessions.SlidingExpiration;
+            });
         services.Configure<SecurityStampValidatorOptions>(options =>
         {
             // Administrative lockout updates the user's security stamp. Check

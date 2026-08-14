@@ -1,10 +1,12 @@
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Application.Accounts;
@@ -111,7 +113,7 @@ public sealed class InteractiveSignInServiceTests(
             new PasswordSignInCommand(
                 user.UserName!,
                 TestDataSeeder.DefaultPassword,
-                true));
+                false));
         Assert.Equal(
             InteractiveSignInStatus.RequiresTwoFactor,
             password.Status);
@@ -124,8 +126,8 @@ public sealed class InteractiveSignInServiceTests(
         var result = await service.AuthenticatorSignInAsync(
             new AuthenticatorSignInCommand(
                 $"{code[..3]}-{code[3..]}",
-                true,
-                false));
+                false,
+                true));
 
         Assert.Equal(InteractiveSignInStatus.Succeeded, result.Status);
 
@@ -149,6 +151,93 @@ public sealed class InteractiveSignInServiceTests(
         Assert.Equal(
             "urn:sufficit:acr:loa2",
             ticket.Principal.FindFirst("acr")?.Value);
+        Assert.True(ticket.Properties.IsPersistent);
+    }
+
+    [Fact]
+    public async Task Remembered_mfa_device_projects_loa2_and_persists_the_session()
+    {
+        var username = $"sign-in-remembered-mfa-{Guid.NewGuid():N}";
+        string userId;
+        string rememberedDeviceCookie;
+        await using (var rememberScope = factory.Services.CreateAsyncScope())
+        {
+            var services = rememberScope.ServiceProvider;
+            var users = services.GetRequiredService<UserManager<ApplicationUser>>();
+            var rememberedUser = await TestDataSeeder.CreateUserAsync(
+                users,
+                username,
+                TestDataSeeder.DefaultPassword);
+            userId = rememberedUser.Id;
+            Assert.True((await users.SetTwoFactorEnabledAsync(
+                rememberedUser,
+                true)).Succeeded);
+
+            var rememberContext = SetHttpContext(services);
+            var rememberSignIns = services
+                .GetRequiredService<SignInManager<ApplicationUser>>();
+            await rememberSignIns.RememberTwoFactorClientAsync(rememberedUser);
+            rememberedDeviceCookie = ExtractCookies(rememberContext);
+        }
+        Assert.False(string.IsNullOrWhiteSpace(rememberedDeviceCookie));
+
+        await using var loginScope = factory.Services.CreateAsyncScope();
+        var loginServices = loginScope.ServiceProvider;
+        SetHttpContext(loginServices, rememberedDeviceCookie);
+        var loginUsers = loginServices
+            .GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await loginUsers.FindByIdAsync(userId)
+            ?? throw new InvalidOperationException("Remembered MFA user not found.");
+        var signIns = loginServices
+            .GetRequiredService<SignInManager<ApplicationUser>>();
+        Assert.True(await signIns.IsTwoFactorClientRememberedAsync(user));
+        var service = loginServices
+            .GetRequiredService<IInteractiveSignInService>();
+        var result = await service.PasswordSignInAsync(
+            new PasswordSignInCommand(
+                username,
+                TestDataSeeder.DefaultPassword,
+                IsPersistent: false));
+
+        Assert.Equal(InteractiveSignInStatus.Succeeded, result.Status);
+
+        var databaseFactory = loginServices
+            .GetRequiredService<IDbContextFactory<AppDbContext>>();
+        await using var database = await databaseFactory.CreateDbContextAsync();
+        var session = await database.OidcUserSessions
+            .SingleAsync(session => session.Subject == userId);
+        var protector = loginServices.GetRequiredService<IDataProtectionProvider>()
+            .CreateProtector("Sufficit.Identity.OidcUserSessionTicketStore.v1");
+        var ticket = TicketSerializer.Default.Deserialize(
+            protector.Unprotect(session.ProtectedTicket));
+
+        Assert.NotNull(ticket);
+        var methods = ticket!.Principal.FindAll("amr")
+            .Select(claim => claim.Value)
+            .ToHashSet(StringComparer.Ordinal);
+        Assert.Contains("pwd", methods);
+        Assert.Contains("mfa", methods);
+        Assert.DoesNotContain("otp", methods);
+        Assert.Equal("Loa2", ticket.Principal.FindFirst("aal")?.Value);
+        Assert.Equal(
+            "urn:sufficit:acr:loa2",
+            ticket.Principal.FindFirst("acr")?.Value);
+        Assert.True(ticket.Properties.IsPersistent);
+    }
+
+    [Fact]
+    public void Interactive_cookie_lifetimes_are_explicit_and_sliding()
+    {
+        var options = factory.Services
+            .GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>();
+        var application = options.Get(IdentityConstants.ApplicationScheme);
+        var rememberedMfa = options.Get(
+            IdentityConstants.TwoFactorRememberMeScheme);
+
+        Assert.Equal(TimeSpan.FromDays(30), application.ExpireTimeSpan);
+        Assert.True(application.SlidingExpiration);
+        Assert.Equal(TimeSpan.FromDays(30), rememberedMfa.ExpireTimeSpan);
+        Assert.True(rememberedMfa.SlidingExpiration);
     }
 
     [Fact]

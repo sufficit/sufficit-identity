@@ -240,6 +240,12 @@
         "FailOnUntrustedProxy": false
       },
       "UserSessions": {
+        "_AuthenticationLifetimeDays": "Lifetime of a persistent interactive Identity session and its server-side ticket. Session cookies still close with the browser. Default 30 days; active persistent sessions renew when SlidingExpiration is true.",
+        "AuthenticationLifetimeDays": 30,
+        "_RememberedMfaLifetimeDays": "Lifetime of the trusted-device cookie created by 'remember this device'. A valid trusted device projects amr=mfa into the next login instead of silently downgrading Management to Loa1.",
+        "RememberedMfaLifetimeDays": 30,
+        "_SlidingExpiration": "Renews active application and trusted-device cookies after half of their lifetime has elapsed. Abandoned sessions still expire at the configured boundary.",
+        "SlidingExpiration": true,
         "CacheLifetimeSeconds": 60,
         "ActivityUpdateIntervalSeconds": 300
       },

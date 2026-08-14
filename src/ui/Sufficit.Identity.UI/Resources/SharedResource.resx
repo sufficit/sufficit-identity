@@ -119,7 +119,7 @@
   <data name="TwoFactor.Title" xml:space="preserve"><value>Autenticação em duas etapas</value></data>
   <data name="TwoFactor.EnterCode" xml:space="preserve"><value>Digite o código de 6 dígitos do seu app autenticador.</value></data>
   <data name="TwoFactor.VerificationCode" xml:space="preserve"><value>Código de verificação</value></data>
-  <data name="TwoFactor.RememberDevice" xml:space="preserve"><value>Lembrar este dispositivo (30 dias)</value></data>
+  <data name="TwoFactor.RememberDevice" xml:space="preserve"><value>Lembrar este dispositivo e manter a sessão por 30 dias</value></data>
   <data name="TwoFactor.UseRecoveryCode" xml:space="preserve"><value>Usar código de recuperação</value></data>
   <data name="TwoFactor.Error.InvalidCode" xml:space="preserve"><value>Código inválido. Tente novamente.</value></data>
   <data name="TwoFactor.Error.LockedOut" xml:space="preserve"><value>Conta bloqueada por muitas tentativas. Tente novamente mais tarde.</value></data>

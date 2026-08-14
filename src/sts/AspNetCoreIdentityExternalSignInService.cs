@@ -53,11 +53,18 @@ public sealed class AspNetCoreIdentityExternalSignInService(
             return new ExternalSignInResult(ExternalSignInStatus.Unavailable);
         }
 
-        SetExternalAuthenticationContext(info.LoginProvider);
+        var linkedUser = await userManager.FindByLoginAsync(
+            info.LoginProvider,
+            info.ProviderKey);
+        cancellationToken.ThrowIfCancellationRequested();
+        var rememberedMfa = !forceMfa
+            && linkedUser is not null
+            && await userManager.GetTwoFactorEnabledAsync(linkedUser)
+            && await signInManager.IsTwoFactorClientRememberedAsync(linkedUser);
+        cancellationToken.ThrowIfCancellationRequested();
+        SetExternalAuthenticationContext(info.LoginProvider, rememberedMfa);
         SignInResult signIn;
-        if (forceMfa && await userManager.FindByLoginAsync(
-                info.LoginProvider,
-                info.ProviderKey) is { } sensitiveUser)
+        if (forceMfa && linkedUser is { } sensitiveUser)
         {
             // A remembered browser is allowed for ordinary interactive login,
             // but never for the sensitive Management return path. Clear the
@@ -84,7 +91,7 @@ public sealed class AspNetCoreIdentityExternalSignInService(
             signIn = await signInManager.ExternalLoginSignInAsync(
                 info.LoginProvider,
                 info.ProviderKey,
-                isPersistent: false,
+                isPersistent: rememberedMfa,
                 bypassTwoFactor: false);
         }
         cancellationToken.ThrowIfCancellationRequested();
@@ -92,8 +99,11 @@ public sealed class AspNetCoreIdentityExternalSignInService(
         {
             logger.LogInformation(
                 "User completed external sign-in through {Provider}. "
+                + "Persistent={Persistent}; RememberedMfa={RememberedMfa}; "
                 + "TraceId={TraceId}.",
                 info.LoginProvider,
+                rememberedMfa,
+                rememberedMfa,
                 AuthenticationFlowDiagnostics.TraceId);
             return new ExternalSignInResult(ExternalSignInStatus.Succeeded);
         }
@@ -228,7 +238,7 @@ public sealed class AspNetCoreIdentityExternalSignInService(
             return new ExternalSignInResult(ExternalSignInStatus.NotAllowed);
         }
 
-        SetExternalAuthenticationContext(info.LoginProvider);
+        SetExternalAuthenticationContext(info.LoginProvider, rememberedMfa: false);
         await signInManager.SignInAsync(user, isPersistent: false);
         cancellationToken.ThrowIfCancellationRequested();
         logger.LogInformation(
@@ -240,9 +250,15 @@ public sealed class AspNetCoreIdentityExternalSignInService(
         return new ExternalSignInResult(ExternalSignInStatus.Succeeded);
     }
 
-    private void SetExternalAuthenticationContext(string provider) =>
+    private void SetExternalAuthenticationContext(
+        string provider,
+        bool rememberedMfa) =>
         authenticationContextAccessor.Set(new AuthenticationContextEvidence(
-            ["federated", provider.ToLowerInvariant()],
+            rememberedMfa
+                ? ["federated", provider.ToLowerInvariant(), "mfa"]
+                : ["federated", provider.ToLowerInvariant()],
             timeProvider.GetUtcNow(),
-            "urn:sufficit:acr:loa1"));
+            rememberedMfa
+                ? "urn:sufficit:acr:loa2"
+                : "urn:sufficit:acr:loa1"));
 }

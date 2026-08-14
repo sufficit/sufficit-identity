@@ -26,7 +26,7 @@ internal sealed class AmrBasedAssuranceLevelResolver : IAssuranceLevelResolver
     private static readonly HashSet<string> PhishingResistantAmrs =
         new(StringComparer.Ordinal) { "passkey", "fido", "webauthn", "face", "geo", "hwk" };
     private static readonly HashSet<string> TwoFactorAmrs =
-        new(StringComparer.Ordinal) { "otp", "totp", "sms" };
+        new(StringComparer.Ordinal) { "mfa", "otp", "totp", "sms" };
 
     public CaepAssuranceLevel Resolve(ClaimsPrincipal principal)
     {
@@ -62,7 +62,7 @@ internal sealed class AmrBasedAssuranceLevelResolver : IAssuranceLevelResolver
             return CaepAssuranceLevel.Loa2;
         }
 
-        if (amrs.Contains("pwd") || amrs.Contains("kba") || amrs.Contains("mfa"))
+        if (amrs.Contains("pwd") || amrs.Contains("kba"))
         {
             return CaepAssuranceLevel.Loa1;
         }
