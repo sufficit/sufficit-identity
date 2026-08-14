@@ -34,6 +34,12 @@
         "Reason": "",
         "ExpiresAtUtc": null
       },
+      "_PlaintextReadCompatibility": "Bounded window (max 180 days) that lets the REAL vault read legacy pt1. plaintext pass-through values outside Development. Default: absent = pt1 is rejected at decrypt (fail-closed against tampered rows swapped into the database/Redis). Set Owner/Reason/future ExpiresAtUtc ONLY while rewriting legacy rows with envelope encryption; reads stop accepting the marker once the window expires.",
+      "PlaintextReadCompatibility": {
+        "Owner": "",
+        "Reason": "",
+        "ExpiresAtUtc": null
+      },
       "EnableSecretStore": false,
       "ManageSigningKeys": false,
       "SigningKeyName": "oidc-signing",

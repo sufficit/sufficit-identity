@@ -106,7 +106,19 @@ public static class ServiceCollectionExtensions
                         VaultSnapshotInvalidationService>();
                 }
             }
-            services.AddSingleton<KeyVault>();
+            services.AddSingleton<KeyVault>(sp => new KeyVault(
+                sp.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<Sufficit.Identity.Core.Data.AppDbContext>>(),
+                sp.GetRequiredService<IVaultKeyEncryptionKeySource>(),
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<KeyVault>>(),
+                options,
+                sp.GetRequiredService<VaultCryptographyTelemetry>(),
+                sp.GetService<TimeProvider>(),
+                sp.GetService<VaultSnapshotCache>(),
+                allowPlaintextReadCompatibility: isDevelopment
+                    || options.PlaintextReadCompatibility.IsConfigured,
+                plaintextReadCompatibilityExpiresAtUtc: isDevelopment
+                    ? null
+                    : options.PlaintextReadCompatibility.ExpiresAtUtc));
             services.AddSingleton<IKeyVault>(sp => sp.GetRequiredService<KeyVault>());
             if (options.ManageSigningKeys)
             {
@@ -261,6 +273,10 @@ public static class ServiceCollectionExtensions
             options.LegacyDataProtectionCertificateMigration,
             now: DateTimeOffset.UtcNow);
 
+        ValidatePlaintextReadCompatibility(
+            options.PlaintextReadCompatibility,
+            now: DateTimeOffset.UtcNow);
+
         if (!isDevelopment
             && source == "external"
             && string.IsNullOrWhiteSpace(options.ExternalKeyIdentifier))
@@ -307,6 +323,43 @@ public static class ServiceCollectionExtensions
         {
             throw new InvalidOperationException(
                 "LegacyDataProtectionCertificateMigration cannot exceed 180 days.");
+        }
+    }
+
+    /// <summary>
+    /// F-2 (eval 2026-08-14): the bounded acknowledgement window that permits
+    /// the real vault to read legacy <c>pt1.</c> plaintext values outside
+    /// Development. Same shape as the legacy certificate migration: Owner,
+    /// Reason and a future ExpiresAtUtc, capped at 180 days. KeyVault enforces
+    /// the deadline again at read time, so a process that outlives the window
+    /// stops accepting the marker without a restart.
+    /// </summary>
+    internal static void ValidatePlaintextReadCompatibility(
+        VaultPlaintextReadCompatibilityOptions compatibility,
+        DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(compatibility);
+        if (!compatibility.IsConfigured) return;
+
+        if (string.IsNullOrWhiteSpace(compatibility.Owner)
+            || string.IsNullOrWhiteSpace(compatibility.Reason)
+            || compatibility.ExpiresAtUtc is null)
+        {
+            throw new InvalidOperationException(
+                "PlaintextReadCompatibility requires Owner, Reason and ExpiresAtUtc together.");
+        }
+
+        if (compatibility.ExpiresAtUtc <= now)
+        {
+            throw new InvalidOperationException(
+                "PlaintextReadCompatibility has expired; remove the window and rewrite the " +
+                "remaining pt1 rows with envelope encryption.");
+        }
+
+        if (compatibility.ExpiresAtUtc > now.AddDays(180))
+        {
+            throw new InvalidOperationException(
+                "PlaintextReadCompatibility cannot exceed 180 days.");
         }
     }
 }
