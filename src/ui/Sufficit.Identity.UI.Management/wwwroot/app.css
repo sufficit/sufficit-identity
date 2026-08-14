@@ -1226,6 +1226,16 @@ h3 {
     gap: 12px;
 }
 
+.metrics-filter__controls > .sui-field,
+.metrics-settings__fields > .sui-field {
+    min-width: 0;
+    align-self: start;
+}
+
+.metrics-filter__apply {
+    align-self: end;
+}
+
 .metrics-summary {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1294,11 +1304,12 @@ h3 {
 
 .metrics-settings { margin-top: 20px; }
 .metrics-toggle-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
-.metrics-toggle-row .switch-control { padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); font-family: var(--font); font-size: 13px; }
-.metrics-toggle-row .switch-control span { display: grid; gap: 4px; }
-.metrics-toggle-row .switch-control small { color: var(--ink-muted); font-size: 11px; font-weight: 400; }
-.form-feedback { margin: 16px 0 0; color: var(--ink-muted); font-size: 12px; }
-.metrics-clear-secret { margin-top: 16px; font-family: var(--font); font-size: 12px; }
+.metrics-toggle-card { display: grid; align-content: start; gap: 6px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); transition: border-color var(--duration) var(--ease), background-color var(--duration) var(--ease); }
+.metrics-toggle-card:hover { border-color: var(--line-strong); background: #fafafa; }
+.metrics-toggle-card:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-ring); }
+.metrics-toggle-card p { margin: 0 0 0 52px; color: var(--ink-muted); font-size: 11px; line-height: 1.45; }
+.metrics-clear-secret,
+.metrics-configuration-feedback { margin-top: 16px; }
 
 .panel {
     min-width: 0;
@@ -5623,7 +5634,7 @@ h3 {
 
     .metrics-filter { padding: 16px; gap: 18px; }
     .metrics-filter__controls { grid-template-columns: minmax(0, 1fr); }
-    .metrics-filter__controls .button { width: 100%; }
+    .metrics-filter__controls .sui-btn { width: 100%; }
     .metrics-summary { grid-template-columns: minmax(0, 1fr); }
     .metrics-summary > div { border-inline-end: 0; border-bottom: 1px solid var(--line); padding-inline: 4px; }
     .metrics-summary > div:last-child { border-bottom: 0; }
@@ -6108,6 +6119,10 @@ h3 {
     }
 
     .form-actions .button {
+        width: 100%;
+    }
+
+    .metrics-settings .form-actions .sui-btn {
         width: 100%;
     }
 
