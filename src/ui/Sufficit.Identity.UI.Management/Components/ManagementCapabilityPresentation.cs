@@ -28,6 +28,10 @@ public static class ManagementCapabilityPresentation
             [ManagementCapabilities.UsersDisable] = "Capability.Label.Disable",
             [ManagementCapabilities.UsersDelete] = "Capability.Label.Delete",
             [ManagementCapabilities.UsersReset] = "Capability.Label.ResetPassword",
+            // F-8 (eval 2026-08-14): dedicated gate for the outbound
+            // confirmation-email action (see UsersResendConfirmation).
+            [ManagementCapabilities.UsersResendConfirmation] =
+                "Capability.Label.ResendConfirmation",
             [ManagementCapabilities.ClaimsRead] = "Capability.Label.Read",
             [ManagementCapabilities.ClaimsCreate] = "Capability.Label.Create",
             [ManagementCapabilities.ClaimsUpdate] = "Capability.Label.Update",

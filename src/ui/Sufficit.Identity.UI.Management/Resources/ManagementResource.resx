@@ -53,6 +53,9 @@
   <data name="Capability.identity.users.disable.Description" xml:space="preserve"><value>Usada nos detalhes do usuário para impedir ou restaurar o acesso da conta. É independente da edição de perfil e da redefinição de senha.</value></data>
   <data name="Capability.identity.users.delete.Title" xml:space="preserve"><value>Excluir usuários</value></data>
   <data name="Capability.identity.users.delete.Description" xml:space="preserve"><value>Usada para remover uma conta do provedor pela administração. É uma operação sensível e separada das permissões de bloquear ou editar o usuário.</value></data>
+  <data name="Capability.Label.ResendConfirmation" xml:space="preserve"><value>Reenviar confirmação</value></data>
+  <data name="Capability.identity.users.resend_confirmation.Title" xml:space="preserve"><value>Reenviar e-mails de confirmação</value></data>
+  <data name="Capability.identity.users.resend_confirmation.Description" xml:space="preserve"><value>Permite disparar o envio de um novo e-mail de confirmação de conta para qualquer usuário a partir do console. É uma ação de e-mail de saída, auditada individualmente; operadores somente leitura não a recebem, o que impede o uso do console para bombardear contas com mensagens.</value></data>
   <data name="Capability.identity.users.reset.Title" xml:space="preserve"><value>Redefinir a senha de usuários</value></data>
   <data name="Capability.identity.users.reset.Description" xml:space="preserve"><value>Usada nos detalhes do usuário para definir uma nova senha administrativa e sinalizar a mudança de credencial. Não permite editar o perfil ou outras formas de acesso.</value></data>
 

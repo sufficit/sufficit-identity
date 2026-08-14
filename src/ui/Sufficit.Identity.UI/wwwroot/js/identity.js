@@ -288,12 +288,21 @@ document.addEventListener('change', function (event) {
         if (!el || document.querySelector('.redirect-overlay')) return;
         var overlay = document.createElement('div');
         overlay.className = 'redirect-overlay';
-        overlay.innerHTML =
-            '<div class="redirect-overlay-box">' +
+        // F-8 (eval 2026-08-14): the provider display name reaches this
+        // attribute from server configuration; building the box with
+        // innerHTML re-interpreted it as HTML. The static skeleton is inert
+        // markup and the name is injected as a text node, so no future
+        // attribute value can become markup.
+        var box = document.createElement('div');
+        box.className = 'redirect-overlay-box';
+        box.innerHTML =
             '<div class="spinner"></div>' +
-            '<p>Conectando a ' + el.getAttribute('data-redirect-overlay') + '…</p>' +
-            '<p class="redirect-overlay-hint">Você será redirecionado automaticamente.</p>' +
-            '</div>';
+            '<p class="redirect-overlay-hint">Você será redirecionado automaticamente.</p>';
+        var caption = document.createElement('p');
+        caption.textContent = 'Conectando a ' +
+            (el.getAttribute('data-redirect-overlay') || '') + '…';
+        box.insertBefore(caption, box.querySelector('.redirect-overlay-hint'));
+        overlay.appendChild(box);
         document.body.appendChild(overlay);
     });
 })();

@@ -26,10 +26,15 @@ public sealed class VaultOptions
     public bool RequireEncryptionInProduction { get; init; } = true;
 
     /// <summary>
-    /// KEK source: <c>dataprotection</c> (development compatibility only),
-    /// <c>certificate</c> (dedicated RSA certificate) or <c>external</c>
-    /// (KMS/HSM adapter). Production rejects <c>dataprotection</c> so a
-    /// database/key-ring dump cannot also recover the vault KEK.
+    /// KEK source: <c>dataprotection</c>, <c>certificate</c> (dedicated RSA
+    /// certificate) or <c>external</c> (KMS/HSM adapter).
+    /// <c>dataprotection</c> is NOT rejected outright outside Development:
+    /// <see cref="AddSufficitVault"/>'s key-encryption policy instead REQUIRES
+    /// a dedicated <see cref="CertificatePath"/> protecting the Data
+    /// Protection key ring, distinct from every token-signing certificate —
+    /// so a database dump alone still cannot recover the vault KEK, but the
+    /// ring must genuinely be certificate-protected for that property to
+    /// hold (doc/code drift corrected per eval 2026-08-14; code wins).
     /// </summary>
     public string KeySource { get; init; } = "dataprotection";
 

@@ -425,6 +425,19 @@ public sealed class AspNetCoreIdentityPasskeyService(
                 "O login não está permitido para esta conta.");
         }
 
+        // F-8 (eval 2026-08-14): a user with TOTP enabled still needs the
+        // second step after a successful passkey ceremony. Signal it with a
+        // structured code instead of falling into the generic failure — the
+        // login page branches on the CODE, never on localized prose (the old
+        // UI matched a "duas etapas" substring that no current error string
+        // even contained, so the affordance was silently dead).
+        if (result.RequiresTwoFactor)
+        {
+            return PasskeyAuthenticationResult.Failure(
+                "two-factor-required",
+                "Esta conta exige uma segunda etapa de autenticação.");
+        }
+
         return PasskeyAuthenticationResult.Failure(
             "passkey-authentication-failed",
             "A passkey não pôde ser autenticada.");
