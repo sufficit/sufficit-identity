@@ -37,6 +37,12 @@ internal sealed class KeyVault : IKeyVault
     // Cache: (keyName, version) → unwrapped item key (256-bit).
     private readonly ConcurrentDictionary<(string Name, int Version), byte[]> _keyCache = new();
 
+    // Cold-start lease contention retry bounds. The winner of a first-use
+    // race creates v1 within milliseconds; five 100 ms attempts absorb any
+    // realistic replica race without turning a cold encrypt into a failure.
+    private const int ColdStartLeaseRetryLimit = 5;
+    private static readonly TimeSpan ColdStartLeaseRetryDelay = TimeSpan.FromMilliseconds(100);
+
     public KeyVault(
         IDbContextFactory<AppDbContext> dbFactory,
         IVaultKeyEncryptionKeySource kek,
@@ -179,6 +185,13 @@ internal sealed class KeyVault : IKeyVault
         string keyName,
         CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
+
+        // F-7 (eval 2026-08-14): serialize version allocation across replicas.
+        // Without the lease, two concurrent rotations race maxVersion+1 and
+        // one fails with an opaque unique-index DbUpdateException.
+        await using var lease = await AcquireKeyOperationLeaseAsync(
+            keyName, cancellationToken);
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
         var nextVersion = await GetNextVersionAsync(db, keyName, cancellationToken);
 
@@ -451,7 +464,7 @@ internal sealed class KeyVault : IKeyVault
             return new KeyId(existing.KeyName, existing.KeyVersion);
         }
 
-        await using var lease = await AcquireSigningKeyLeaseAsync(
+        await using var lease = await AcquireKeyOperationLeaseAsync(
             keyName,
             cancellationToken);
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
@@ -526,7 +539,7 @@ internal sealed class KeyVault : IKeyVault
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
-        await using var lease = await AcquireSigningKeyLeaseAsync(
+        await using var lease = await AcquireKeyOperationLeaseAsync(
             keyName,
             cancellationToken);
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
@@ -602,7 +615,7 @@ internal sealed class KeyVault : IKeyVault
             return true;
         }
 
-        await using var lease = await AcquireSigningKeyLeaseAsync(
+        await using var lease = await AcquireKeyOperationLeaseAsync(
             keyName,
             cancellationToken);
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
@@ -705,21 +718,55 @@ internal sealed class KeyVault : IKeyVault
                     latest.WrappedKey);
             }
 
-            // First use of this key name — create v1.
-            var itemKey = EnvelopeCrypto.GenerateKey();
-            var wrappedKey = _kek.Wrap(itemKey);
-            db.VaultKeys.Add(new VaultKey
+            // First use of this key name — create v1 under the distributed
+            // operation lease (F-7, eval 2026-08-14): two replicas hitting a
+            // cold key concurrently would otherwise race duplicate v1 inserts.
+            // Losing the lease is normal under concurrency, so the loser
+            // retries with a bounded re-read until the winner's v1 becomes
+            // visible (or the lease frees and the loser creates it itself).
+            for (var attempt = 0; ; attempt++)
             {
-                KeyName = keyName,
-                KeyVersion = 1,
-                Purpose = "symmetric",
-                WrappedKey = wrappedKey,
-                CreatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
-            });
-            await db.SaveChangesAsync(ct);
-            _keyCache[(keyName, 1)] = itemKey;
-            _logger.LogInformation("Created vault key '{KeyName}' v1.", keyName);
-            return new SymmetricKeySnapshot(1, wrappedKey);
+                try
+                {
+                    await using (await AcquireKeyOperationLeaseAsync(keyName, ct))
+                    {
+                        // Re-read under the lease: the previous holder may
+                        // have created v1 while we were waiting to acquire.
+                        var raced = await db.VaultKeys
+                            .AsNoTracking()
+                            .Where(k => k.KeyName == keyName
+                                && k.Purpose == "symmetric"
+                                && k.RetiredAtUtc == null)
+                            .OrderByDescending(k => k.KeyVersion)
+                            .FirstOrDefaultAsync(ct);
+                        if (raced is not null)
+                        {
+                            return new SymmetricKeySnapshot(
+                                raced.KeyVersion,
+                                raced.WrappedKey);
+                        }
+
+                        var itemKey = EnvelopeCrypto.GenerateKey();
+                        var wrappedKey = _kek.Wrap(itemKey);
+                        db.VaultKeys.Add(new VaultKey
+                        {
+                            KeyName = keyName,
+                            KeyVersion = 1,
+                            Purpose = "symmetric",
+                            WrappedKey = wrappedKey,
+                            CreatedAtUtc = _timeProvider.GetUtcNow().UtcDateTime,
+                        });
+                        await db.SaveChangesAsync(ct);
+                        _keyCache[(keyName, 1)] = itemKey;
+                        _logger.LogInformation("Created vault key '{KeyName}' v1.", keyName);
+                        return new SymmetricKeySnapshot(1, wrappedKey);
+                    }
+                }
+                catch (KeyOperationLeaseConflictException) when (attempt < ColdStartLeaseRetryLimit)
+                {
+                    await Task.Delay(ColdStartLeaseRetryDelay, ct);
+                }
+            }
         }
     }
 
@@ -882,7 +929,7 @@ internal sealed class KeyVault : IKeyVault
         string keyName,
         CancellationToken cancellationToken)
     {
-        await using var lease = await AcquireSigningKeyLeaseAsync(
+        await using var lease = await AcquireKeyOperationLeaseAsync(
             keyName,
             cancellationToken);
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
@@ -999,7 +1046,15 @@ internal sealed class KeyVault : IKeyVault
             });
     }
 
-    private async Task<SigningKeyLease> AcquireSigningKeyLeaseAsync(
+    /// <summary>
+    /// Acquires the per-key-name distributed operation lease
+    /// (vaultsigningkeylocks). Used by the signing-key lifecycle AND, since
+    /// F-7 (eval 2026-08-14), by symmetric DEK first-use creation and
+    /// rotation: concurrent replicas racing maxVersion+1 would otherwise
+    /// collide on the (KeyName, KeyVersion) unique index with an opaque
+    /// DbUpdateException.
+    /// </summary>
+    private async Task<KeyOperationLease> AcquireKeyOperationLeaseAsync(
         string keyName,
         CancellationToken cancellationToken)
     {
@@ -1018,7 +1073,7 @@ internal sealed class KeyVault : IKeyVault
             try
             {
                 await insertDb.SaveChangesAsync(cancellationToken);
-                return new SigningKeyLease(this, keyName, ownerId);
+                return new KeyOperationLease(this, keyName, ownerId);
             }
             catch (DbUpdateException)
             {
@@ -1038,13 +1093,12 @@ internal sealed class KeyVault : IKeyVault
                 cancellationToken);
         if (recovered != 1)
         {
-            throw new InvalidOperationException(
-                $"Signing-key lifecycle operation for '{keyName}' is already running on another replica.");
+            throw new KeyOperationLeaseConflictException(keyName);
         }
-        return new SigningKeyLease(this, keyName, ownerId);
+        return new KeyOperationLease(this, keyName, ownerId);
     }
 
-    private async ValueTask ReleaseSigningKeyLeaseAsync(
+    private async ValueTask ReleaseKeyOperationLeaseAsync(
         string keyName,
         string ownerId)
     {
@@ -1054,13 +1108,13 @@ internal sealed class KeyVault : IKeyVault
             .ExecuteDeleteAsync();
     }
 
-    private sealed class SigningKeyLease(
+    private sealed class KeyOperationLease(
         KeyVault owner,
         string keyName,
         string ownerId) : IAsyncDisposable
     {
         public ValueTask DisposeAsync() =>
-            owner.ReleaseSigningKeyLeaseAsync(keyName, ownerId);
+            owner.ReleaseKeyOperationLeaseAsync(keyName, ownerId);
     }
 
     private static RSA CreatePublicRsa(string publicJwk)
