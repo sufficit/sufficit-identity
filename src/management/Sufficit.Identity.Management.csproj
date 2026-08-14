@@ -22,4 +22,8 @@
     <ProjectReference Include="..\vault\Sufficit.Identity.Vault.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sufficit.Identity.Tests" />
+  </ItemGroup>
+
 </Project>

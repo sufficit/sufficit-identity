@@ -133,13 +133,15 @@ internal sealed class MetricsManagementService(
             Success = group.LongCount(item => item.Outcome == "succeeded"),
             Failed = group.LongCount(item => item.Outcome != "succeeded"),
             Applications = group.Select(item => item.ClientId).Distinct().Count()
-        }).FirstOrDefaultAsync(cancellationToken);
+        }).SingleOrDefaultAsync(cancellationToken);
 
-        var daily = await query
-            .GroupBy(item => item.OccurredAtUtc.Date)
-            .Select(group => new ManagementMetricsDailyPoint(group.Key, group.LongCount()))
-            .OrderBy(item => item.DateUtc)
+        var dailyRows = await BuildDailyAggregationQuery(query)
             .ToArrayAsync(cancellationToken);
+        var daily = dailyRows
+            .Select(item => new ManagementMetricsDailyPoint(
+                new DateTime(item.Year, item.Month, item.Day, 0, 0, 0, DateTimeKind.Utc),
+                item.Count))
+            .ToArray();
 
         var top = await query
             .GroupBy(item => item.ClientId)
@@ -158,12 +160,11 @@ internal sealed class MetricsManagementService(
             topApplications.Add(new(item.ClientId, displayName, item.Count, item.LastUsed));
         }
 
-        var grants = await query
-            .GroupBy(item => item.GrantType ?? "não informado")
-            .Select(group => new ManagementMetricsDimension(group.Key, group.LongCount()))
-            .OrderByDescending(item => item.Count)
-            .Take(12)
+        var grantRows = await BuildGrantAggregationQuery(query)
             .ToArrayAsync(cancellationToken);
+        var grants = grantRows
+            .Select(item => new ManagementMetricsDimension(item.Name, item.Count))
+            .ToArray();
 
         return new(from, to, summary?.Total ?? 0, summary?.Success ?? 0,
             summary?.Failed ?? 0, summary?.Applications ?? 0, daily,
@@ -265,5 +266,51 @@ internal sealed class MetricsManagementService(
 
     private static string? NullIfWhiteSpace(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    internal static IQueryable<MetricsDailyAggregate> BuildDailyAggregationQuery(
+        IQueryable<IdentityApplicationUsageEvent> query) =>
+        query
+            .GroupBy(item => new
+            {
+                item.OccurredAtUtc.Year,
+                item.OccurredAtUtc.Month,
+                item.OccurredAtUtc.Day,
+            })
+            .Select(group => new MetricsDailyAggregate
+            {
+                Year = group.Key.Year,
+                Month = group.Key.Month,
+                Day = group.Key.Day,
+                Count = group.LongCount(),
+            })
+            .OrderBy(item => item.Year)
+            .ThenBy(item => item.Month)
+            .ThenBy(item => item.Day);
+
+    internal static IQueryable<MetricsDimensionAggregate> BuildGrantAggregationQuery(
+        IQueryable<IdentityApplicationUsageEvent> query) =>
+        query
+            .GroupBy(item => item.GrantType ?? "não informado")
+            .Select(group => new MetricsDimensionAggregate
+            {
+                Name = group.Key,
+                Count = group.LongCount(),
+            })
+            .OrderByDescending(item => item.Count)
+            .Take(12);
+}
+
+internal sealed class MetricsDailyAggregate
+{
+    public int Year { get; init; }
+    public int Month { get; init; }
+    public int Day { get; init; }
+    public long Count { get; init; }
+}
+
+internal sealed class MetricsDimensionAggregate
+{
+    public string Name { get; init; } = string.Empty;
+    public long Count { get; init; }
 }
 #endif
