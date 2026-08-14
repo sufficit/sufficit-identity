@@ -420,7 +420,8 @@ namespace Sufficit.Identity.Core.Migrations
                     b.Property<string>("ReferenceId")
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)")
-                        .HasColumnName("reference_id");
+                        .HasColumnName("reference_id")
+                        .UseCollation("utf8mb4_bin");
 
                     b.Property<string>("Status")
                         .HasMaxLength(50)
@@ -678,7 +679,8 @@ namespace Sufficit.Identity.Core.Migrations
                     b.Property<string>("AuthReqId")
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)")
-                        .HasColumnName("authreqid");
+                        .HasColumnName("authreqid")
+                        .UseCollation("utf8mb4_bin");
 
                     b.Property<string>("ApprovedSubject")
                         .HasMaxLength(400)
@@ -699,7 +701,8 @@ namespace Sufficit.Identity.Core.Migrations
                     b.Property<string>("ConsumptionId")
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)")
-                        .HasColumnName("consumptionid");
+                        .HasColumnName("consumptionid")
+                        .UseCollation("utf8mb4_bin");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime(6)")
@@ -748,7 +751,8 @@ namespace Sufficit.Identity.Core.Migrations
                     b.Property<string>("Key")
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)")
-                        .HasColumnName("key");
+                        .HasColumnName("key")
+                        .UseCollation("utf8mb4_bin");
 
                     b.Property<DateTime>("ExpiresAtUtc")
                         .HasColumnType("datetime(6)")
@@ -978,7 +982,8 @@ namespace Sufficit.Identity.Core.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)")
-                        .HasColumnName("id");
+                        .HasColumnName("id")
+                        .UseCollation("ascii_bin");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime(6)")
@@ -1079,7 +1084,8 @@ namespace Sufficit.Identity.Core.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)")
-                        .HasColumnName("sessionid");
+                        .HasColumnName("sessionid")
+                        .UseCollation("utf8mb4_bin");
 
                     b.Property<string>("Subject")
                         .IsRequired()
@@ -1298,7 +1304,8 @@ namespace Sufficit.Identity.Core.Migrations
                     b.Property<string>("DeliveryKey")
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)")
-                        .HasColumnName("deliverykey");
+                        .HasColumnName("deliverykey")
+                        .UseCollation("utf8mb4_bin");
 
                     b.Property<string>("Jti")
                         .IsRequired()
@@ -1315,7 +1322,8 @@ namespace Sufficit.Identity.Core.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)")
-                        .HasColumnName("streamid");
+                        .HasColumnName("streamid")
+                        .UseCollation("utf8mb4_bin");
 
                     b.HasKey("Id");
 
@@ -1390,7 +1398,8 @@ namespace Sufficit.Identity.Core.Migrations
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)")
-                        .HasColumnName("streamid");
+                        .HasColumnName("streamid")
+                        .UseCollation("utf8mb4_bin");
 
                     b.Property<string>("SubjectScope")
                         .IsRequired()
@@ -1405,7 +1414,8 @@ namespace Sufficit.Identity.Core.Migrations
                     b.Property<string>("VerificationChallengeHash")
                         .HasMaxLength(43)
                         .HasColumnType("varchar(43)")
-                        .HasColumnName("verificationchallengehash");
+                        .HasColumnName("verificationchallengehash")
+                        .UseCollation("utf8mb4_bin");
 
                     b.Property<DateTime?>("VerificationExpiresAtUtc")
                         .HasColumnType("datetime(6)")
