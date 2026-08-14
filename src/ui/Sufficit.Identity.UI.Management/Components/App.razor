@@ -1,5 +1,6 @@
 @inject Microsoft.Extensions.Options.IOptions<ManagementUiOptions> ManagementOptions
 @using System.Globalization
+@using Sufficit.Identity.UI.Management.Configuration
 
 <!DOCTYPE html>
 <html lang="@CultureInfo.CurrentUICulture.Name">
@@ -17,7 +18,7 @@
 </head>
 
 <body>
-    <SUIThemeProvider>
+    <SUIThemeProvider Theme="@ManagementTheme">
         <Routes @rendermode="InteractiveServer" />
         <div id="blazor-error-ui" role="alert">
             <span>Não foi possível manter a conexão com o painel.</span>
@@ -29,3 +30,10 @@
 </body>
 
 </html>
+
+@code {
+    // Management and Vault can share one host process and register different
+    // SUI themes. Keep this surface explicit so registration order cannot make
+    // operational controls inherit the Vault library-default blue palette.
+    private static readonly IdentitySUITheme ManagementTheme = new();
+}
