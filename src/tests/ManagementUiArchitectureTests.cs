@@ -1618,6 +1618,34 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Provisioning_page_uses_shared_sui_select_and_action_buttons()
+    {
+        var managementUi = ResolveManagementUiSource();
+        var page = File.ReadAllText(Path.Combine(
+            managementUi,
+            "Components",
+            "Pages",
+            "Provisioning.razor"));
+        var stylesheet = File.ReadAllText(Path.Combine(
+            managementUi,
+            "wwwroot",
+            "app.css"));
+
+        Assert.Contains("data-sui-align-row", page, StringComparison.Ordinal);
+        Assert.Contains("<SUISelect T=\"int\"", page, StringComparison.Ordinal);
+        Assert.Contains("<SUISelectItem", page, StringComparison.Ordinal);
+        Assert.Equal(
+            3,
+            page.Split("<SUILoadingButton", StringSplitOptions.None).Length - 1);
+        Assert.Equal(
+            2,
+            page.Split("<SUIButton", StringSplitOptions.None).Length - 1);
+        Assert.DoesNotContain("<select", page, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("class=\"button ", page, StringComparison.Ordinal);
+        Assert.DoesNotContain(".temporary-token-field select", stylesheet, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Client_list_filters_use_shared_selects_and_responsive_grid()
     {
         var managementUi = ResolveManagementUiSource();

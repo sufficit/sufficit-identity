@@ -32,31 +32,29 @@
                         <p>Gere uma credencial curta para usar no terminal ou em uma aplicação. Ela recebe somente preview e apply, exige MFA e nunca é registrada na auditoria.</p>
                     </div>
                 </div>
-                <div class="temporary-token-panel__controls">
-                    <label class="temporary-token-field">
-                        <span>Validade</span>
-                        <select @bind="tokenLifetimeSeconds" disabled="@tokenIssuing">
-                            <option value="600">10 minutos</option>
-                            <option value="900">15 minutos</option>
-                            <option value="1800">30 minutos</option>
-                            <option value="3600">60 minutos</option>
-                        </select>
-                    </label>
-                    <button class="button button--secondary"
-                            type="button"
-                            disabled="@tokenIssuing"
-                            @onclick="IssueTemporaryTokenAsync">
-                        @if (tokenIssuing)
-                        {
-                            <span class="button-spinner" aria-hidden="true"></span>
-                            <span>Emitindo</span>
-                        }
-                        else
-                        {
-                            <SUIIcon Name="key" Size="17" />
-                            <span>Gerar token temporário</span>
-                        }
-                    </button>
+                <div class="temporary-token-panel__controls" data-sui-align-row>
+                    <SUISelect T="int"
+                               id="provisioning-token-lifetime"
+                               aria-label="Validade"
+                               Label="Validade"
+                               Class="temporary-token-field"
+                               Disabled="@tokenIssuing"
+                               Value="@tokenLifetimeSeconds"
+                               ValueChanged="TokenLifetimeChanged">
+                        <SUISelectItem Value="@(600)">10 minutos</SUISelectItem>
+                        <SUISelectItem Value="@(900)">15 minutos</SUISelectItem>
+                        <SUISelectItem Value="@(1800)">30 minutos</SUISelectItem>
+                        <SUISelectItem Value="@(3600)">60 minutos</SUISelectItem>
+                    </SUISelect>
+                    <SUILoadingButton IsLoading="@tokenIssuing"
+                                      Disabled="@tokenIssuing"
+                                      Variant="SUIVariant.Outlined"
+                                      Color="SUIColor.Primary"
+                                      OnClick="IssueTemporaryTokenAsync"
+                                      aria-busy="@tokenIssuing">
+                        <SUIIcon Name="key" Size="17" />
+                        <span>Gerar token temporário</span>
+                    </SUILoadingButton>
                 </div>
             </div>
 
@@ -78,17 +76,17 @@
                     <div class="temporary-token-panel__actions">
                         <span class="temporary-token-panel__hint">Capacidades: <code>identity.provisioning.preview</code> e <code>identity.provisioning.apply</code></span>
                         <div>
-                            <button class="button button--secondary"
-                                    type="button"
-                                    @onclick="CopyTemporaryTokenAsync">
+                            <SUIButton Variant="SUIVariant.Outlined"
+                                       Color="SUIColor.Primary"
+                                       OnClick="CopyTemporaryTokenAsync">
                                 <SUIIcon Name="copy" Size="17" />
                                 @(tokenCopied ? "Copiado" : "Copiar token")
-                            </button>
-                            <button class="button button--ghost"
-                                    type="button"
-                                    @onclick="HideTemporaryToken">
+                            </SUIButton>
+                            <SUIButton Variant="SUIVariant.Text"
+                                       Color="SUIColor.Default"
+                                       OnClick="HideTemporaryToken">
                                 Ocultar token
-                            </button>
+                            </SUIButton>
                         </div>
                     </div>
                     @if (clipboardUnavailable)
@@ -191,21 +189,14 @@ else if (applyResult?.IsSuccess is true)
                 <span id="manifest-guidance">Use somente referências externas para segredos.</span>
                 <span id="manifest-count">@ManifestJson.Length.ToString("N0") de @ManagementProvisioningDataSource.MaxManifestLength.ToString("N0") caracteres</span>
             </div>
-            <button class="button button--primary"
-                    type="button"
-                    disabled="@IsBusy"
-                    @onclick="PreviewAsync">
-                @if (previewing)
-                {
-                    <span class="button-spinner" aria-hidden="true"></span>
-                    <span>Validando</span>
-                }
-                else
-                {
-                    <SUIIcon Name="search" Size="17" />
-                    <span>Gerar preview</span>
-                }
-            </button>
+            <SUILoadingButton IsLoading="@previewing"
+                              Disabled="@IsBusy"
+                              Color="SUIColor.Primary"
+                              OnClick="PreviewAsync"
+                              aria-busy="@previewing">
+                <SUIIcon Name="search" Size="17" />
+                <span>Gerar preview</span>
+            </SUILoadingButton>
         </footer>
     </div>
 
@@ -286,21 +277,14 @@ else if (applyResult?.IsSuccess is true)
                             <small>Somente os itens marcados como criar ou atualizar serão modificados.</small>
                         </span>
                     </label>
-                    <button class="button button--danger"
-                            type="button"
-                            disabled="@(!CanApply)"
-                            @onclick="ApplyAsync">
-                        @if (applying)
-                        {
-                            <span class="button-spinner" aria-hidden="true"></span>
-                            <span>Aplicando</span>
-                        }
-                        else
-                        {
-                            <SUIIcon Name="workflow" Size="17" />
-                            <span>Aplicar manifesto</span>
-                        }
-                    </button>
+                    <SUILoadingButton IsLoading="@applying"
+                                      Disabled="@(!CanApply)"
+                                      Color="SUIColor.Error"
+                                      OnClick="ApplyAsync"
+                                      aria-busy="@applying">
+                        <SUIIcon Name="workflow" Size="17" />
+                        <span>Aplicar manifesto</span>
+                    </SUILoadingButton>
                 }
                 else
                 {
@@ -472,6 +456,12 @@ else if (applyResult?.IsSuccess is true)
         }
 
         tokenIssuing = false;
+    }
+
+    private Task TokenLifetimeChanged(int value)
+    {
+        tokenLifetimeSeconds = value;
+        return Task.CompletedTask;
     }
 
     private async Task CopyTemporaryTokenAsync()

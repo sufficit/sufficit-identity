@@ -3001,29 +3001,10 @@ h3 {
 }
 
 .temporary-token-field {
-    display: grid;
-    min-width: 142px;
-    gap: 5px;
+    width: 172px;
+    min-width: 172px;
 }
 
-.temporary-token-field span {
-    color: #3f5e8e;
-    font-size: 10px;
-    font-weight: 650;
-}
-
-.temporary-token-field select {
-    min-height: 44px;
-    padding: 8px 30px 8px 11px;
-    border: 1px solid rgba(23, 92, 211, 0.25);
-    border-radius: var(--radius);
-    background: var(--surface);
-    color: var(--ink);
-    font: inherit;
-    font-size: 12px;
-}
-
-.temporary-token-field select:focus,
 .temporary-token-value:focus {
     outline: 2px solid var(--info);
     outline-offset: 2px;
@@ -3098,17 +3079,6 @@ h3 {
 
 .temporary-token-panel__clipboard-note {
     color: var(--warning);
-}
-
-.button--ghost {
-    border-color: transparent;
-    background: transparent;
-    color: var(--ink-muted);
-}
-
-.button--ghost:hover {
-    background: var(--surface-sunken);
-    color: var(--ink-strong);
 }
 
 .provisioning-errors {
@@ -6043,7 +6013,7 @@ h3 {
     }
 
     .temporary-token-field,
-    .temporary-token-panel__controls .button,
+    .temporary-token-panel__controls .sui-btn,
     .temporary-token-panel__actions > div {
         width: 100%;
     }
@@ -6052,7 +6022,7 @@ h3 {
         justify-content: stretch;
     }
 
-    .temporary-token-panel__actions > div .button {
+    .temporary-token-panel__actions > div .sui-btn {
         flex: 1 1 auto;
     }
 
@@ -6071,7 +6041,8 @@ h3 {
         flex-direction: column;
     }
 
-    .manifest-actions .button {
+    .manifest-actions .sui-btn,
+    .provisioning-apply > .sui-btn {
         width: 100%;
     }
 
