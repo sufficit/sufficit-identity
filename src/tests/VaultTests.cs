@@ -1059,7 +1059,8 @@ public sealed class VaultTests
             await database.SaveChangesAsync();
         }
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<
+                Sufficit.Identity.Vault.KeyOperationLeaseConflictException>(() =>
             vault.RotateSigningKeyAsync("lease-signing", "lease-conflict"));
         clock.Advance(TimeSpan.FromSeconds(6));
         var rotated = await vault.RotateSigningKeyAsync(
