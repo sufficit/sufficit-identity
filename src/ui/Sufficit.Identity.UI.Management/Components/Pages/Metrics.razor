@@ -25,22 +25,34 @@
         <h2 id="metrics-filter-heading">Período analisado</h2>
         <p>Os filtros ficam na URL para preservar e compartilhar a investigação.</p>
     </div>
-    <div class="metrics-filter__controls">
-        <div class="field-group">
-            <label for="metrics-days">Período</label>
-            <select id="metrics-days" class="form-control" @bind="selectedDays">
-                <option value="7">Últimos 7 dias</option>
-                <option value="30">Últimos 30 dias</option>
-                <option value="90">Últimos 90 dias</option>
-                <option value="365">Últimos 12 meses</option>
-            </select>
-        </div>
-        <div class="field-group metrics-filter__client">
-            <label for="metrics-client">Client ID <span class="label-optional">opcional</span></label>
-            <input id="metrics-client" name="client" class="form-control" type="search"
-                   autocomplete="off" placeholder="Todas as aplicações" @bind="selectedClient" />
-        </div>
-        <button class="button button--primary" type="button" @onclick="ApplyFilters">Aplicar filtros</button>
+    <div class="metrics-filter__controls" data-sui-align-row>
+        <SUISelect T="int"
+                   id="metrics-days"
+                   name="days"
+                   aria-label="Período"
+                   Label="Período"
+                   Value="@selectedDays"
+                   ValueChanged="SelectedDaysChanged">
+            <SUISelectItem Value="@(7)">Últimos 7 dias</SUISelectItem>
+            <SUISelectItem Value="@(30)">Últimos 30 dias</SUISelectItem>
+            <SUISelectItem Value="@(90)">Últimos 90 dias</SUISelectItem>
+            <SUISelectItem Value="@(365)">Últimos 12 meses</SUISelectItem>
+        </SUISelect>
+        <SUITextField T="string"
+                      id="metrics-client"
+                      name="client"
+                      aria-label="Client ID opcional"
+                      Label="Client ID (opcional)"
+                      InputType="search"
+                      Placeholder="Todas as aplicações"
+                      Value="@selectedClient"
+                      ValueChanged="SelectedClientChanged"
+                      autocomplete="off" />
+        <SUIButton Color="SUIColor.Primary"
+                   Class="metrics-filter__apply"
+                   OnClick="ApplyFilters">
+            Aplicar filtros
+        </SUIButton>
     </div>
 </div>
 
@@ -56,7 +68,9 @@ else if (overviewResult?.IsSuccess is not true || overviewResult.Value is null)
     <div>
         <SUIEmptyState Icon="alert" Title="Não foi possível consultar as métricas"
                     Description="@(overviewResult?.ErrorMessage ?? "O coletor não informou seu estado.")">
-            <Actions><button class="button button--primary" type="button" @onclick="LoadAsync">Tentar novamente</button></Actions>
+            <Actions>
+                <SUIButton Color="SUIColor.Primary" OnClick="LoadAsync">Tentar novamente</SUIButton>
+            </Actions>
         </SUIEmptyState>
     </div>
 }
@@ -142,29 +156,105 @@ else
         <EditForm Model="configuration" OnValidSubmit="SaveConfigurationAsync" FormName="metrics-configuration">
             <DataAnnotationsValidator />
             <div class="metrics-toggle-row">
-                <label class="switch-control" for="metrics-enabled"><InputCheckbox id="metrics-enabled" @bind-Value="configuration.Enabled" /><span><strong>Coleta local</strong><small>Registra uso por aplicação no banco.</small></span></label>
-                <label class="switch-control" for="metrics-export"><InputCheckbox id="metrics-export" @bind-Value="configuration.ExportEnabled" /><span><strong>Exportação externa</strong><small>Envia lotes sem afetar autenticações.</small></span></label>
+                <div class="metrics-toggle-card">
+                    <SUISwitch @bind-Value="configuration.Enabled" Label="Coleta local" />
+                    <p>Registra uso por aplicação no banco.</p>
+                </div>
+                <div class="metrics-toggle-card">
+                    <SUISwitch @bind-Value="configuration.ExportEnabled" Label="Exportação externa" />
+                    <p>Envia lotes sem afetar autenticações.</p>
+                </div>
             </div>
-            <div class="form-grid form-grid--two">
-                <div class="field-group"><label for="metrics-provider">Provedor</label><InputSelect id="metrics-provider" class="form-control" @bind-Value="configuration.Provider"><option value="internal">Somente banco local</option><option value="victoria_metrics">VictoriaMetrics</option></InputSelect></div>
-                <div class="field-group"><label for="metrics-retention">Retenção em dias</label><InputNumber id="metrics-retention" class="form-control" @bind-Value="configuration.RetentionDays" /></div>
-                <div class="field-group"><label for="metrics-endpoint">Endpoint</label><InputText id="metrics-endpoint" class="form-control" @bind-Value="configuration.Endpoint" placeholder="https://metrics.example.com" /></div>
-                <div class="field-group"><label for="metrics-database">Banco lógico</label><InputText id="metrics-database" class="form-control" @bind-Value="configuration.Database" placeholder="identity" /></div>
-                <div class="field-group"><label for="metrics-auth">Esquema de autorização</label><InputSelect id="metrics-auth" class="form-control" @bind-Value="configuration.AuthorizationScheme"><option value="">Sem autenticação</option><option value="Bearer">Bearer</option><option value="Basic">Basic</option></InputSelect></div>
-                <div class="field-group"><label for="metrics-username">Usuário <span class="label-optional">Basic</span></label><InputText id="metrics-username" class="form-control" @bind-Value="configuration.Username" autocomplete="username" /></div>
-                <div class="field-group"><label for="metrics-secret">Novo segredo <span class="label-optional">opcional</span></label><InputText id="metrics-secret" class="form-control" type="password" @bind-Value="configuration.Secret" autocomplete="new-password" /><span class="field-hint">@(configuration.HasSecret ? "Já existe um segredo protegido; deixe vazio para mantê-lo." : "Nenhum segredo armazenado.")</span></div>
-                <div class="field-group"><label for="metrics-batch">Eventos por lote</label><InputNumber id="metrics-batch" class="form-control" @bind-Value="configuration.BatchSize" /></div>
-                <div class="field-group"><label for="metrics-timeout">Timeout do exportador em segundos</label><InputNumber id="metrics-timeout" class="form-control" @bind-Value="configuration.TimeoutSeconds" /></div>
+            <div class="form-grid form-grid--two metrics-settings__fields" data-sui-align-row>
+                <SUISelect T="string"
+                           id="metrics-provider"
+                           aria-label="Provedor"
+                           Label="Provedor"
+                           @bind-Value="configuration.Provider">
+                    <SUISelectItem Value="@("internal")">Somente banco local</SUISelectItem>
+                    <SUISelectItem Value="@("victoria_metrics")">VictoriaMetrics</SUISelectItem>
+                </SUISelect>
+                <SUINumericField T="int"
+                                 id="metrics-retention"
+                                 aria-label="Retenção em dias"
+                                 Label="Retenção em dias"
+                                 Min="@(1)"
+                                 Max="@(3650)"
+                                 @bind-Value="configuration.RetentionDays" />
+                <SUITextField T="string"
+                              id="metrics-endpoint"
+                              aria-label="Endpoint"
+                              Label="Endpoint"
+                              InputType="url"
+                              Placeholder="https://metrics.example.com"
+                              @bind-Value="configuration.Endpoint" />
+                <SUITextField T="string"
+                              id="metrics-database"
+                              aria-label="Banco lógico"
+                              Label="Banco lógico"
+                              Placeholder="identity"
+                              @bind-Value="configuration.Database" />
+                <SUISelect T="string"
+                           id="metrics-auth"
+                           aria-label="Esquema de autorização"
+                           Label="Esquema de autorização"
+                           Value="@AuthorizationSchemeValue"
+                           ValueChanged="AuthorizationSchemeChanged">
+                    <SUISelectItem Value="@string.Empty">Sem autenticação</SUISelectItem>
+                    <SUISelectItem Value="@("Bearer")">Bearer</SUISelectItem>
+                    <SUISelectItem Value="@("Basic")">Basic</SUISelectItem>
+                </SUISelect>
+                <SUITextField T="string"
+                              id="metrics-username"
+                              aria-label="Usuário Basic"
+                              Label="Usuário (Basic)"
+                              @bind-Value="configuration.Username"
+                              autocomplete="username" />
+                <SUITextField T="string"
+                              id="metrics-secret"
+                              aria-label="Novo segredo opcional"
+                              Label="Novo segredo (opcional)"
+                              InputType="password"
+                              HelperText="@SecretHelperText"
+                              @bind-Value="configuration.Secret"
+                              autocomplete="new-password" />
+                <SUINumericField T="int"
+                                 id="metrics-batch"
+                                 aria-label="Eventos por lote"
+                                 Label="Eventos por lote"
+                                 Min="@(1)"
+                                 Max="@(2000)"
+                                 @bind-Value="configuration.BatchSize" />
+                <SUINumericField T="int"
+                                 id="metrics-timeout"
+                                 aria-label="Timeout do exportador em segundos"
+                                 Label="Timeout do exportador em segundos"
+                                 Min="@(1)"
+                                 Max="@(120)"
+                                 @bind-Value="configuration.TimeoutSeconds" />
             </div>
             @if (configuration.HasSecret)
             {
-                <label class="switch-control metrics-clear-secret" for="metrics-clear-secret"><InputCheckbox id="metrics-clear-secret" @bind-Value="configuration.ClearSecret" /><span>Remover a credencial protegida ao salvar</span></label>
+                <div class="metrics-clear-secret">
+                    <SUISwitch @bind-Value="configuration.ClearSecret"
+                               Label="Remover a credencial protegida ao salvar" />
+                </div>
             }
             @if (!string.IsNullOrWhiteSpace(configurationMessage))
             {
-                <p class="form-feedback" role="status">@configurationMessage</p>
+                <SUIAlert Severity="@(configurationMessageIsError ? "danger" : "success")"
+                          Icon="@(configurationMessageIsError ? "alert" : "check")"
+                          Class="metrics-configuration-feedback">
+                    @configurationMessage
+                </SUIAlert>
             }
-            <div class="form-actions"><button class="button button--primary" type="submit" disabled="@savingConfiguration">@(savingConfiguration ? "Salvando…" : "Salvar configuração")</button></div>
+            <div class="form-actions">
+                <SUIButton ButtonType="SUIButtonType.Submit"
+                           Color="SUIColor.Primary"
+                           Disabled="@savingConfiguration">
+                    @(savingConfiguration ? "Salvando…" : "Salvar configuração")
+                </SUIButton>
+            </div>
         </EditForm>
     }
 </div>
@@ -178,6 +268,12 @@ else
     private ManagementDataResult<ManagementMetricsOverview>? overviewResult;
     private MetricsConfigurationModel? configuration;
     private string? configurationMessage;
+    private bool configurationMessageIsError;
+
+    private string AuthorizationSchemeValue => configuration?.AuthorizationScheme ?? string.Empty;
+    private string SecretHelperText => configuration?.HasSecret is true
+        ? "Já existe um segredo protegido; deixe vazio para mantê-lo."
+        : "Nenhum segredo armazenado.";
 
     protected override async Task OnParametersSetAsync()
     {
@@ -200,8 +296,31 @@ else
         configurationLoading = true;
         var result = await MetricsData.GetConfigurationAsync();
         if (result.IsSuccess && result.Value is not null) configuration = MetricsConfigurationModel.From(result.Value);
-        else configurationMessage = result.ErrorMessage;
+        else
+        {
+            configurationMessage = result.ErrorMessage;
+            configurationMessageIsError = true;
+        }
         configurationLoading = false;
+    }
+
+    private Task SelectedDaysChanged(int value)
+    {
+        selectedDays = value;
+        return Task.CompletedTask;
+    }
+
+    private Task SelectedClientChanged(string? value)
+    {
+        selectedClient = value;
+        return Task.CompletedTask;
+    }
+
+    private Task AuthorizationSchemeChanged(string? value)
+    {
+        if (configuration is not null)
+            configuration.AuthorizationScheme = string.IsNullOrWhiteSpace(value) ? null : value;
+        return Task.CompletedTask;
     }
 
     private void ApplyFilters()
@@ -220,6 +339,7 @@ else
         savingConfiguration = true; configurationMessage = null;
         var result = await MetricsData.UpdateConfigurationAsync(configuration.ToCommand());
         configurationMessage = result.IsSuccess ? "Configuração salva e disponível para o coletor." : result.ErrorMessage;
+        configurationMessageIsError = !result.IsSuccess;
         if (result.IsSuccess && result.Value is not null) configuration = MetricsConfigurationModel.From(result.Value);
         savingConfiguration = false;
     }

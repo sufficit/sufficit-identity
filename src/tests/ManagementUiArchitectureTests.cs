@@ -1589,6 +1589,35 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Metrics_page_uses_shared_sui_controls_for_filters_and_configuration()
+    {
+        var managementUi = ResolveManagementUiSource();
+        var page = File.ReadAllText(Path.Combine(
+            managementUi,
+            "Components",
+            "Pages",
+            "Metrics.razor"));
+
+        Assert.Contains("<SUISelect T=\"int\"", page, StringComparison.Ordinal);
+        Assert.Contains("<SUISelect T=\"string\"", page, StringComparison.Ordinal);
+        Assert.Contains("<SUITextField T=\"string\"", page, StringComparison.Ordinal);
+        Assert.Contains("<SUINumericField T=\"int\"", page, StringComparison.Ordinal);
+        Assert.Contains("<SUISwitch", page, StringComparison.Ordinal);
+        Assert.Contains("<SUIButton", page, StringComparison.Ordinal);
+        Assert.Contains("<SUIAlert", page, StringComparison.Ordinal);
+        Assert.Contains("data-sui-align-row", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<select", page, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("<input", page, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("<InputSelect", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<InputText", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<InputNumber", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<InputCheckbox", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"button ", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"form-control", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("switch-control", page, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Client_list_filters_use_shared_selects_and_responsive_grid()
     {
         var managementUi = ResolveManagementUiSource();
