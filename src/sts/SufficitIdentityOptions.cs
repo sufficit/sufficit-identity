@@ -906,13 +906,16 @@ public sealed class SignInPolicyOptions
     /// <c>AspNetCoreIdentityExternalSignInService</c> are only marked
     /// <c>EmailConfirmed=true</c>
     /// when the provider asserts <c>email_verified</c>. The STS wires that
-    /// <c>ClaimAction</c> for Google (<c>ServiceCollectionExtensions.
-    /// AddExternalProviders</c>) but NOT yet for Facebook/GitHub. Flipping this
-    /// to <c>true</c> in production therefore REQUIRES first ensuring every
-    /// configured external provider emits (and the UI consumes) the
-    /// <c>email_verified</c> claim — otherwise provider users get locked out.
-    /// See <c>docs/runbooks/RUNBOOK-CONFIRMED-EMAIL.md</c> for the production
-    /// rollout steps, including the legacy-user migration query.
+    /// <c>ClaimAction</c> for all three providers (<c>ServiceCollectionExtensions.
+    /// AddExternalProviders</c>: Google and GitHub map <c>email_verified</c>
+    /// directly; Facebook maps the Graph API's <c>verified</c> boolean onto the
+    /// same claim). This remark previously stated Facebook/GitHub were not yet
+    /// wired — corrected per eval 2026-08-14 (doc/code drift, code wins).
+    /// Flipping this to <c>true</c> in production still REQUIRES confirming
+    /// every newly configured provider emits an equivalent assertion, or its
+    /// users will be locked out. See <c>docs/runbooks/RUNBOOK-CONFIRMED-EMAIL.md</c>
+    /// for the production rollout steps, including the legacy-user migration
+    /// query.
     /// </remarks>
     public bool RequireConfirmedEmail { get; init; } = true;
 }
@@ -1598,12 +1601,17 @@ public sealed class DcrOptions
     public bool InitialAccessTokenSingleUse { get; init; } = true;
 
     /// <summary>
-    /// Deprecated migration adapters. Secure registrations use server-issued
-    /// identifiers and one-time plaintext secrets.
+    /// Deprecated migration adapters, <b>secure-by-default since eval
+    /// 2026-08-14 (F-8)</b>: the class previously defaulted both to true and
+    /// only the shipped appsettings template overrode them to false, so any
+    /// deployment composing the options without that template silently
+    /// accepted caller-chosen client ids and secrets. Secure registrations
+    /// use server-issued identifiers and one-time plaintext secrets; flip
+    /// these only for a bounded, documented legacy-registration window.
     /// </summary>
-    public bool AllowCallerSuppliedClientIds { get; init; } = true;
+    public bool AllowCallerSuppliedClientIds { get; init; } = false;
 
-    public bool AllowCallerSuppliedSecrets { get; init; } = true;
+    public bool AllowCallerSuppliedSecrets { get; init; } = false;
 
     /// <summary>
     /// Grant types that a dynamically registered client may request. Defaults

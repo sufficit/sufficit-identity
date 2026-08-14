@@ -60,6 +60,13 @@ public interface IUserManagementService
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Resends the account-confirmation email to the user identified by
+    /// <paramref name="id"/>. Requires the dedicated
+    /// <c>identity.users.resend_confirmation</c> capability (an outbound mail
+    /// action, not a read) and audits every outcome — see the implementation
+    /// for the F-8 rationale.
+    /// </summary>
     Task RequestEmailConfirmationAsync(
         string id,
         ManagementRequestContext context,
@@ -571,9 +578,88 @@ internal sealed class UserManagementService(
         ManagementRequestContext context,
         CancellationToken cancellationToken = default)
     {
-        var user = await GetAsync(id, context, cancellationToken);
-        if (!string.IsNullOrWhiteSpace(user.Email))
-            await accountOnboarding.RequestEmailConfirmationAsync(user.Email, cancellationToken);
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+
+        // F-8 (eval 2026-08-14): resending a confirmation email is an
+        // outbound mail action against an arbitrary account, not a read.
+        // The old implementation rode on GetAsync's identity.users.read
+        // capability, so a read-only operator could trigger unlimited
+        // account emails (mail-bombing vector) and the send itself produced
+        // no audit row — only GetAsync's incidental user_read did, under the
+        // wrong capability. This method now demands its own capability
+        // (identity.users.resend_confirmation) and journals every outcome:
+        // sent, skipped (no address) and failed alike.
+        var auditResource = new ManagementResource(
+            ManagementResourceTypes.User,
+            id);
+        var decision = await DemandAsync(
+            context,
+            ManagementCapabilities.UsersResendConfirmation,
+            auditResource,
+            cancellationToken);
+
+        var user = await userManager.FindByIdAsync(id);
+        if (user is null)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.UsersResendConfirmation,
+                auditResource,
+                decision,
+                "failed",
+                "user_not_found",
+                cancellationToken);
+            throw new ManagementNotFoundException(
+                "user_not_found",
+                "O usuário não foi encontrado.");
+        }
+
+        if (string.IsNullOrWhiteSpace(user.Email))
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.UsersResendConfirmation,
+                auditResource,
+                decision,
+                "skipped",
+                "user_email_missing",
+                cancellationToken);
+            return;
+        }
+
+        try
+        {
+            await accountOnboarding.RequestEmailConfirmationAsync(
+                user.Email,
+                cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogError(
+                exception,
+                "Unable to resend the account confirmation email. CorrelationId={CorrelationId}",
+                context.CorrelationId);
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.UsersResendConfirmation,
+                auditResource,
+                decision,
+                "failed",
+                "user_confirmation_resend_failed",
+                cancellationToken);
+            throw new ManagementConflictException(
+                "user_confirmation_resend_failed",
+                "Não foi possível reenviar a confirmação de e-mail.");
+        }
+
+        await TryWriteAuditAsync(
+            context,
+            ManagementCapabilities.UsersResendConfirmation,
+            auditResource,
+            decision,
+            "succeeded",
+            "user_confirmation_resent",
+            cancellationToken);
     }
 
     public async Task<ManagementUserDetail> CreateAsync(

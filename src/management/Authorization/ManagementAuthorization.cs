@@ -24,6 +24,16 @@ public static class ManagementCapabilities
     public const string UsersDisable = "identity.users.disable";
     public const string UsersDelete = "identity.users.delete";
     public const string UsersReset = "identity.users.reset";
+
+    /// <summary>
+    /// Resends the account-confirmation email to an arbitrary user. Gated by
+    /// its own capability (eval 2026-08-14, F-8) because it is an outbound
+    /// mail action, not a read: riding on <see cref="UsersRead"/> let a
+    /// read-only operator trigger unlimited account emails (mail-bombing
+    /// vector) with no audit row of its own.
+    /// </summary>
+    public const string UsersResendConfirmation =
+        "identity.users.resend_confirmation";
     public const string ClaimsRead = "identity.claims.read";
     public const string ClaimsCreate = "identity.claims.create";
     public const string ClaimsUpdate = "identity.claims.update";
@@ -81,6 +91,7 @@ public static class ManagementCapabilities
                 UsersDisable,
                 UsersDelete,
                 UsersReset,
+                UsersResendConfirmation,
                 ClaimsRead,
                 ClaimsCreate,
                 ClaimsUpdate,

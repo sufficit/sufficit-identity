@@ -46,9 +46,13 @@
                 <div class="alert alert-error" role="alert">@_errorMessage</div>
             }
 
-            @if (_errorMessage is not null && _errorMessage.Contains("duas etapas"))
+            @* F-8 (eval 2026-08-14): branch on the structured passkey error
+               CODE, never on localized prose — the previous
+               _errorMessage.Contains("duas etapas") matched a substring no
+               current error string contained (dead affordance) and would
+               break with any copy or locale change. *@
+            @if (_requiresTwoFactor)
             {
-                // Handled via redirect in OnValidSubmit; show fallback link in case redirect fails.
                 <p class="info">@L["Login.Requires2FA"]</p>
                 <a href="/account/loginwith2fa?returnUrl=@Uri.EscapeDataString(_returnUrl ?? "/")" class="btn btn-primary">
                     @L["Login.Continue2FA"]
@@ -173,6 +177,10 @@
     private ElementReference _passkeyForm;
     private bool _passkeySupported;
     private bool _passkeyBusy;
+
+    // Set when the passkey ceremony succeeded but the account still needs
+    // the second factor (structured code "two-factor-required").
+    private bool _requiresTwoFactor;
     private string _logoUrl = "_content/Sufficit.Identity.UI/img/logo-full.png";
     private bool IsExternalCorrelationFailure =>
         string.Equals(
@@ -269,6 +277,8 @@
             }
             else
             {
+                _requiresTwoFactor = result.Errors.Any(error =>
+                    string.Equals(error.Code, "two-factor-required", StringComparison.Ordinal));
                 _errorMessage = result.Errors.Count == 0
                     ? L["Login.Error.PasskeyFailed"]
                     : string.Join(" ", result.Errors.Select(error => error.Description));
