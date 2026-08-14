@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Text.RegularExpressions;
 using Sufficit.Identity.Application.Branding;
 using Sufficit.Identity.Core.Data;
 using BrandingThemeEntity = Sufficit.Identity.Core.Entities.BrandingTheme;
@@ -104,44 +103,22 @@ public sealed class BrandingThemeProvider : IBrandingThemeProvider
         }
     }
 
+    // Render-safety is enforced by the BrandingTheme contract itself (its
+    // constructor sanitizes every URL/color field), so this mapping is a plain
+    // field copy — see BrandingContracts.cs remarks (eval 2026-08-14, A1).
     private static BrandingTheme ToContract(BrandingThemeEntity theme) =>
         new(
             theme.Name,
             theme.LogoUrl,
             theme.FaviconUrl,
             theme.HeaderIconUrl,
-            SafeCssUrl(theme.BackgroundImageUrl),
-            SafeColor(theme.BrandColor),
-            SafeColor(theme.BrandHoverColor),
-            SafeColor(theme.BrandSoftColor),
-            SafeColor(theme.ThemeColor),
+            theme.BackgroundImageUrl,
+            theme.BrandColor,
+            theme.BrandHoverColor,
+            theme.BrandSoftColor,
+            theme.ThemeColor,
             theme.Title,
             theme.BrandName,
             theme.BrandSubtitle,
             theme.AvatarUrlTemplate);
-
-    private static string? SafeColor(string? value) =>
-        !string.IsNullOrWhiteSpace(value)
-        && Regex.IsMatch(value, "^#[0-9a-fA-F]{6}$", RegexOptions.CultureInvariant)
-            ? value
-            : null;
-
-    private static string? SafeCssUrl(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value)
-            || value.IndexOfAny(['"', '\'', '\\', '\r', '\n', '(', ')']) >= 0)
-        {
-            return null;
-        }
-
-        if (Uri.TryCreate(value, UriKind.Absolute, out var absolute))
-        {
-            return absolute.Scheme == Uri.UriSchemeHttps ? absolute.AbsoluteUri : null;
-        }
-
-        return value.StartsWith("/", StringComparison.Ordinal)
-            && !value.StartsWith("//", StringComparison.Ordinal)
-                ? value
-                : null;
-    }
 }
