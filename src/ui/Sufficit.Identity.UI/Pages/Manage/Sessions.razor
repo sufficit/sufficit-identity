@@ -1,6 +1,7 @@
 @page "/manage/sessions"
 @rendermode @(RenderMode.InteractiveServer)
 @attribute [Authorize]
+@using System.Globalization
 @inject IAccountAccessService AccountAccessService
 @inject IJSRuntime JS
 @inject ILogger<Sessions> Logger
@@ -17,7 +18,7 @@
         </div>
         @if (!_loading && _sessions.Count > 0)
         {
-            <span class="badge badge-outline">@_sessions.Count credencial(ões)</span>
+            <span class="badge badge-outline">@L["Sessions.CredentialCount", _sessions.Count]</span>
         }
     </header>
 
@@ -54,7 +55,7 @@
                                 <span class="access-client-id">@group.ClientId</span>
                             }
                         </div>
-                        <span class="badge">@group.Sessions.Count credencial(ões)</span>
+                        <span class="badge">@L["Sessions.CredentialCount", group.Sessions.Count]</span>
                     </header>
                     <ul class="session-credential-list">
                         @foreach (var session in group.Sessions)
@@ -62,24 +63,26 @@
                             <li class="session-credential">
                                 <dl class="access-metadata">
                                     <div>
-                                        <dt>Tipo</dt>
+                                        <dt>@L["Sessions.Type"]</dt>
                                         <dd>@FormatTokenType(session.Type)</dd>
                                     </div>
                                     <div>
-                                        <dt>Emitida</dt>
+                                        <dt>@L["Sessions.Issued"]</dt>
                                         <dd>@FormatDate(session.CreatedAt)</dd>
                                     </div>
                                     <div>
-                                        <dt>Expira</dt>
-                                        <dd>@FormatDate(session.ExpiresAt, "Sem expiração informada")</dd>
+                                        <dt>@L["Sessions.Expires"]</dt>
+                                        <dd>@FormatDate(session.ExpiresAt, L["Sessions.NoExpiration"])</dd>
                                     </div>
                                 </dl>
                                 <button type="button"
                                         class="btn btn-danger btn-sm access-item-action"
-                                        aria-label="Revogar credencial de @group.DisplayName"
+                                        aria-label="@L["Sessions.RevokeAria", group.DisplayName]"
                                         disabled="@IsBusy"
                                         @onclick="() => RevokeAsync(session)">
-                                    @(_busySessionId == session.Id ? "Revogando…" : "Revogar credencial")
+                                    @(_busySessionId == session.Id
+                                        ? L["Sessions.Revoking"]
+                                        : L["Sessions.RevokeCredential"])
                                 </button>
                             </li>
                         }
@@ -96,7 +99,7 @@
                     class="btn btn-danger"
                     disabled="@IsBusy"
                     @onclick="RevokeAllAsync">
-                @(_revokingAll ? "Encerrando…" : @L["Sessions.RevokeAll"])
+                @(_revokingAll ? L["Sessions.RevokingAll"] : L["Sessions.RevokeAll"])
             </button>
         </div>
     }
@@ -137,7 +140,7 @@
         catch (Exception exception)
         {
             Logger.LogError(exception, "Active sessions could not be loaded.");
-            _error = "Não foi possível carregar as sessões ativas. Tente novamente.";
+            _error = L["Sessions.LoadFailed"];
         }
         finally
         {
@@ -164,16 +167,16 @@
                 session.Id);
             if (!result.Succeeded)
             {
-                _error = string.Join(
-                    " ",
-                    result.Errors.Select(error => error.Description));
+                _error = result.Errors.Any(error => error.Code == "session-not-found")
+                    ? L["Sessions.NotFound"]
+                    : L["Sessions.RevokeFailed"];
                 return;
             }
 
             _sessions = _sessions
                 .Where(item => item.Id != session.Id)
                 .ToArray();
-            _success = "A sessão selecionada foi encerrada.";
+            _success = L["Sessions.RevokeSuccess"];
         }
         catch (Exception exception)
         {
@@ -181,7 +184,7 @@
                 exception,
                 "Session credential {SessionId} could not be revoked.",
                 session.Id);
-            _error = "Não foi possível encerrar a sessão. Tente novamente.";
+            _error = L["Sessions.RevokeFailed"];
         }
         finally
         {
@@ -193,7 +196,7 @@
     {
         var confirmed = await JS.InvokeAsync<bool>(
             "confirm",
-            "Encerrar todas as sessões e revogar todos os acessos da sua conta?");
+            L["Sessions.RevokeAllConfirm"].Value);
         if (!confirmed)
         {
             return;
@@ -221,12 +224,12 @@
             }
 
             _sessions = [];
-            _success = "Todas as sessões e autorizações foram encerradas. Entre novamente quando necessário.";
+            _success = L["Sessions.RevokeAllSuccess"];
         }
         catch (Exception exception)
         {
             Logger.LogError(exception, "All account sessions could not be revoked.");
-            _error = "Não foi possível encerrar todas as sessões. Tente novamente.";
+            _error = L["Sessions.RevokeAllFailed"];
         }
         finally
         {
@@ -242,9 +245,9 @@
 
         return value switch
         {
-            "access_token" => "Token de acesso",
+            "access_token" => L["Sessions.AccessToken"],
             "refresh_token" => L["Sessions.RefreshToken"],
-            "identity_token" => "Token de identidade",
+            "identity_token" => L["Sessions.IdentityToken"],
             "authorization_code" => L["Sessions.AuthCode"],
             "device_code" => L["Sessions.DeviceCode"],
             "user_code" => L["Sessions.UserCode"],
@@ -252,10 +255,12 @@
         };
     }
 
-    private static string FormatDate(
+    private string FormatDate(
         DateTimeOffset? value,
-        string fallback = "Não informada") =>
-        value?.UtcDateTime.ToString("dd/MM/yyyy HH:mm 'UTC'") ?? fallback;
+        string? fallback = null) =>
+        value is null
+            ? fallback ?? L["Common.NotProvided"]
+            : $"{value.Value.UtcDateTime.ToString("g", CultureInfo.CurrentCulture)} UTC";
 
     private sealed record SessionGroup(
         string? ClientId,

@@ -1,6 +1,7 @@
 @using Sufficit.Identity.UI.Components.Layout
 @using Sufficit.Identity.UI.Components
 @using System.Reflection
+@inject IStringLocalizer<SharedResource> L
 
 @code {
     private static readonly IReadOnlyList<Assembly> RouteAssemblies =
@@ -27,7 +28,7 @@
                 {
                     <LayoutView Layout="typeof(MainLayout)">
                         <p class="access-denied">
-                            Você não tem permissão para acessar esta página.
+                            @L["AccessDenied.Message"]
                         </p>
                     </LayoutView>
                 }

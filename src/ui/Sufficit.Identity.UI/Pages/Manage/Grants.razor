@@ -1,6 +1,7 @@
 @page "/manage/grants"
 @rendermode @(RenderMode.InteractiveServer)
 @attribute [Authorize]
+@using System.Globalization
 @inject IAccountAccessService AccountAccessService
 @inject IJSRuntime JS
 @inject ILogger<Grants> Logger
@@ -17,7 +18,7 @@
         </div>
         @if (!_loading && _applications.Count > 0)
         {
-            <span class="badge badge-outline">@_applications.Count conexão(ões)</span>
+            <span class="badge badge-outline">@L["Grants.ApplicationCount", _applications.Count]</span>
         }
     </header>
 
@@ -34,11 +35,11 @@
 
     @if (_loading)
     {
-        <p class="muted">Carregando aplicações…</p>
+        <p class="muted">@L["Grants.Loading"]</p>
     }
     else if (_applications.Count == 0)
     {
-        <p class="muted">Nenhuma aplicação conectada.</p>
+        <p class="muted">@L["Grants.None"]</p>
     }
     else
     {
@@ -62,7 +63,7 @@
                                     }
                                     else
                                     {
-                                        <span class="scope-list-inline" aria-label="Escopos autorizados">
+                                        <span class="scope-list-inline" aria-label="@L["Grants.ScopesAria"]">
                                             @foreach (var scope in application.Scopes)
                                             {
                                                 <code class="scope-chip">@scope</code>
@@ -83,12 +84,12 @@
                     </div>
                     <button type="button"
                             class="btn btn-danger btn-sm access-item-action"
-                            aria-label="Revogar acesso de @application.DisplayName"
+                            aria-label="@L["Grants.RevokeAria", application.DisplayName]"
                             disabled="@IsBusy"
                             @onclick="() => RevokeAsync(application)">
                         @(_busyApplicationId == application.ApplicationId
-                            ? "Revogando…"
-                            : "Revogar acesso")
+                            ? L["Grants.Revoking"]
+                            : L["Grants.Revoke"])
                     </button>
                 </li>
             }
@@ -123,7 +124,7 @@
         catch (Exception exception)
         {
             Logger.LogError(exception, "Connected applications could not be loaded.");
-            _error = "Não foi possível carregar as aplicações conectadas. Tente novamente.";
+            _error = L["Grants.LoadFailed"];
         }
         finally
         {
@@ -135,7 +136,7 @@
     {
         var confirmed = await JS.InvokeAsync<bool>(
             "confirm",
-            $"Revogar todo o acesso concedido a {application.DisplayName}?");
+            L["Grants.RevokeConfirm", application.DisplayName].Value);
         if (!confirmed)
         {
             return;
@@ -159,16 +160,17 @@
                     application.ApplicationId);
             if (!result.Succeeded)
             {
-                _error = string.Join(
-                    " ",
-                    result.Errors.Select(error => error.Description));
+                _error = result.Errors.Any(error =>
+                    error.Code == "connected-application-not-found")
+                    ? L["Grants.NotFound"]
+                    : L["Grants.RevokeFailed"];
                 return;
             }
 
             _applications = _applications
                 .Where(item => item.ApplicationId != application.ApplicationId)
                 .ToArray();
-            _success = $"O acesso de {application.DisplayName} foi revogado.";
+            _success = L["Grants.RevokeSuccess", application.DisplayName];
         }
         catch (Exception exception)
         {
@@ -176,7 +178,7 @@
                 exception,
                 "Connected application {ApplicationId} could not be revoked.",
                 application.ApplicationId);
-            _error = "Não foi possível revogar o acesso da aplicação. Tente novamente.";
+            _error = L["Grants.RevokeFailed"];
         }
         finally
         {
@@ -184,6 +186,8 @@
         }
     }
 
-    private static string FormatDate(DateTimeOffset? value) =>
-        value?.UtcDateTime.ToString("dd/MM/yyyy HH:mm 'UTC'") ?? "Não informada";
+    private string FormatDate(DateTimeOffset? value) =>
+        value is null
+            ? L["Common.NotProvided"]
+            : $"{value.Value.UtcDateTime.ToString("g", CultureInfo.CurrentCulture)} UTC";
 }

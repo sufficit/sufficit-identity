@@ -42,7 +42,7 @@
         var export = await AccountSelfService.ExportPersonalDataAsync(principal);
         if (export is null)
         {
-            _error = "Não foi possível carregar os dados da conta.";
+            _error = L["PersonalData.LoadFailed"];
             return;
         }
 
