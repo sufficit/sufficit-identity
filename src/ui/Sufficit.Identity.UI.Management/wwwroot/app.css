@@ -4842,6 +4842,20 @@ h3 {
     font-size: 12px;
 }
 
+.operator-token-alert {
+    margin-bottom: 16px;
+}
+
+.operator-token-alert__copy {
+    display: grid;
+    gap: 3px;
+}
+
+.operator-token-alert__copy ul {
+    margin: 6px 0 0;
+    padding-inline-start: 18px;
+}
+
 .operator-token-request {
     display: grid;
     grid-template-columns: 40px minmax(0, 1fr) auto;
@@ -4952,22 +4966,11 @@ h3 {
     padding: 18px;
 }
 
-.operator-token-fields > .field-group {
-    /* A field-group normally gains block rhythm from its preceding sibling.
-       Inside this horizontal grid that margin would shift only later columns. */
+.operator-token-fields > .sui-field {
+    /* SUI fields own their internal label/control/helper rhythm. Keep both
+       columns anchored to the same row without inheriting local form margins. */
     align-self: start;
-    margin-block-start: 0;
-}
-
-.operator-token-fields .field-group > span {
-    color: var(--ink-strong);
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.operator-token-fields .field-group > small {
-    color: var(--ink-subtle);
-    font-size: 10px;
+    min-width: 0;
 }
 
 .operator-token-issue-actions > div {
@@ -5395,10 +5398,8 @@ h3 {
     font-weight: 600;
 }
 
-.operator-token-revoke-confirmation .button {
+.operator-token-revoke-confirmation .sui-btn {
     min-height: 34px;
-    padding: 7px 10px;
-    font-size: 11px;
 }
 
 @media (max-width: 960px) {
@@ -6383,9 +6384,9 @@ h3 {
     .operator-token-issue-actions,
     .operator-token-reveal > footer,
     .operator-token-list article > footer { align-items: flex-start; flex-direction: column; }
-    .operator-token-issue-actions .button,
+    .operator-token-issue-actions .sui-btn,
     .operator-token-reveal > footer > div,
-    .operator-token-reveal > footer .button { width: 100%; }
+    .operator-token-reveal > footer .sui-btn { width: 100%; }
     .operator-token-reveal > footer > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .operator-token-revoke-confirmation { width: 100%; flex-wrap: wrap; }
 }

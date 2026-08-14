@@ -1536,7 +1536,7 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
-    public void Operator_token_fields_neutralize_vertical_sibling_rhythm()
+    public void Operator_token_form_uses_shared_sui_controls_and_aligned_fields()
     {
         var managementUi = ResolveManagementUiSource();
         var page = File.ReadAllText(Path.Combine(
@@ -1550,15 +1550,20 @@ public sealed class ManagementUiArchitectureTests
             "app.css"));
 
         Assert.Contains("data-sui-align-row", page, StringComparison.Ordinal);
+        Assert.Contains("<SUITextField T=\"string\"", page, StringComparison.Ordinal);
+        Assert.Contains("<SUISelect T=\"int\"", page, StringComparison.Ordinal);
+        Assert.Contains("<SUISelectItem", page, StringComparison.Ordinal);
+        Assert.Contains("<SUILoadingButton", page, StringComparison.Ordinal);
+        Assert.Contains("<SUIButton", page, StringComparison.Ordinal);
+        Assert.Contains("<SUIAlert", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("<select class=\"form-control\"", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("class=\"button ", page, StringComparison.Ordinal);
         Assert.Contains(
-            ".operator-token-fields > .field-group {",
+            ".operator-token-fields > .sui-field {",
             stylesheet,
             StringComparison.Ordinal);
         Assert.Contains("align-self: start;", stylesheet, StringComparison.Ordinal);
-        Assert.Contains(
-            "margin-block-start: 0;",
-            stylesheet,
-            StringComparison.Ordinal);
+        Assert.Contains("min-width: 0;", stylesheet, StringComparison.Ordinal);
     }
 
     [Fact]
