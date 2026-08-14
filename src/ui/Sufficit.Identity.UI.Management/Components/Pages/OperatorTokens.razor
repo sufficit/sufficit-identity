@@ -36,13 +36,12 @@
 }
 else if (workspaceResult.IsSuccess is false || workspace is null)
 {
-    <div class="inline-notice inline-notice--danger" role="alert">
-        <SUIIcon Name="alert" Size="19" />
-        <div>
+    <SUIAlert Severity="danger" Icon="alert" Class="operator-token-alert">
+        <div class="operator-token-alert__copy">
             <strong>@ErrorTitle(workspaceResult)</strong>
             <span>@workspaceResult.ErrorMessage</span>
         </div>
-    </div>
+    </SUIAlert>
 }
 else
 {
@@ -65,20 +64,18 @@ else
 
     @if (queryUnavailableCapabilities.Count > 0)
     {
-        <div class="inline-notice inline-notice--danger" role="alert">
-            <SUIIcon Name="alert" Size="19" />
-            <div>
+        <SUIAlert Severity="danger" Icon="alert" Class="operator-token-alert">
+            <div class="operator-token-alert__copy">
                 <strong>O link solicitou acessos indisponíveis</strong>
                 <span>Remova da URL ou obtenha autorização para: @string.Join(", ", queryUnavailableCapabilities).</span>
             </div>
-        </div>
+        </SUIAlert>
     }
 
     @if (queryValidationErrors.Count > 0)
     {
-        <div class="inline-notice inline-notice--danger" role="alert">
-            <SUIIcon Name="alert" Size="19" />
-            <div>
+        <SUIAlert Severity="danger" Icon="alert" Class="operator-token-alert">
+            <div class="operator-token-alert__copy">
                 <strong>O link contém parâmetros inválidos</strong>
                 <ul>
                     @foreach (var error in queryValidationErrors)
@@ -87,14 +84,13 @@ else
                     }
                 </ul>
             </div>
-        </div>
+        </SUIAlert>
     }
 
     @if (operationResult?.IsSuccess is false)
     {
-        <div class="inline-notice inline-notice--danger" role="alert">
-            <SUIIcon Name="alert" Size="19" />
-            <div>
+        <SUIAlert Severity="danger" Icon="alert" Class="operator-token-alert">
+            <div class="operator-token-alert__copy">
                 <strong>@ErrorTitle(operationResult)</strong>
                 <span>@operationResult.ErrorMessage</span>
                 @if (operationResult.ErrorDetails?.Count > 0)
@@ -107,7 +103,7 @@ else
                     </ul>
                 }
             </div>
-        </div>
+        </SUIAlert>
     }
     else if (revokedPurpose is not null)
     {
@@ -133,44 +129,46 @@ else
             </header>
 
             <div class="operator-token-fields" data-sui-align-row>
-                <label class="field-group">
-                    <span>Finalidade</span>
-                    <input class="form-control"
-                           maxlength="120"
-                           autocomplete="off"
-                           placeholder="Ex.: atualizar clientes Hermes e Symposium"
-                           disabled="@issuing"
-                           @bind="purpose"
-                           @bind:after="SynchronizeRequestUrl" />
-                    <small>Esta descrição aparece na lista e na auditoria; não inclua segredos.</small>
-                </label>
+                <SUITextField T="string"
+                              id="operator-token-purpose"
+                              aria-label="Finalidade"
+                              Label="Finalidade"
+                              HelperText="Esta descrição aparece na lista e na auditoria; não inclua segredos."
+                              Placeholder="Ex.: atualizar clientes Hermes e Symposium"
+                              MaxLength="120"
+                              Disabled="@issuing"
+                              Value="@purpose"
+                              ValueChanged="PurposeChanged"
+                              autocomplete="off" />
 
-                <label class="field-group">
-                    <span>Validade</span>
-                    <select class="form-control"
-                            disabled="@issuing"
-                            @bind="tokenLifetimeSeconds"
-                            @bind:after="SynchronizeRequestUrl">
+                <SUISelect T="int"
+                           id="operator-token-lifetime"
+                           aria-label="Validade"
+                           Label="Validade"
+                           HelperText="@LifetimeHelperText"
+                           Disabled="@issuing"
+                           Value="@tokenLifetimeSeconds"
+                           ValueChanged="LifetimeChanged">
                         @foreach (var lifetime in LifetimeOptions)
                         {
-                            <option value="@lifetime">@FormatDuration(lifetime)</option>
+                            <SUISelectItem Value="@lifetime">@FormatDuration(lifetime)</SUISelectItem>
                         }
-                    </select>
-                    <small>Limite deste ambiente: @FormatDuration(workspace.MaximumLifetimeSeconds).</small>
-                </label>
+                </SUISelect>
             </div>
 
             <details class="operator-token-capability-picker" open="@capabilityPickerOpen">
                 <summary>Selecionar capabilities</summary>
                 <div class="operator-token-capability-picker__body">
-                    <label class="visually-hidden" for="capability-filter">Filtrar capabilities</label>
-                    <input id="capability-filter"
-                           class="form-control"
-                           placeholder="Filtrar por nome ou área"
-                           autocomplete="off"
-                           disabled="@issuing"
-                           @bind="capabilityFilter"
-                           @bind:event="oninput" />
+                    <SUITextField T="string"
+                                  id="capability-filter"
+                                  aria-label="Filtrar capabilities"
+                                  Label="Filtrar capabilities"
+                                  Placeholder="Nome ou área"
+                                  Immediate
+                                  Disabled="@issuing"
+                                  Value="@capabilityFilter"
+                                  ValueChanged="CapabilityFilterChanged"
+                                  autocomplete="off" />
 
                     @foreach (var group in CapabilityGroups)
                     {
@@ -211,21 +209,14 @@ else
                 </div>
                 <AuthorizeView Policy="@ManagementUiPolicies.IssueOperatorTokens">
                     <Authorized>
-                        <button type="button"
-                                class="button button--primary"
-                                disabled="@(!CanIssue)"
-                                @onclick="IssueAsync">
-                            @if (issuing)
-                            {
-                                <span class="button-spinner" aria-hidden="true"></span>
-                                <span>Emitindo</span>
-                            }
-                            else
-                            {
-                                <SUIIcon Name="key" Size="17" />
-                                <span>@(queryPrepared ? "Confirmar e gerar token" : "Gerar token temporário")</span>
-                            }
-                        </button>
+                        <SUILoadingButton IsLoading="@issuing"
+                                          Disabled="@(!CanIssue)"
+                                          Color="SUIColor.Primary"
+                                          OnClick="IssueAsync"
+                                          aria-busy="@issuing">
+                            <SUIIcon Name="key" Size="17" />
+                            <span>@(queryPrepared ? "Confirmar e gerar token" : "Gerar token temporário")</span>
+                        </SUILoadingButton>
                     </Authorized>
                     <NotAuthorized>
                         <span class="operator-token-unauthorized">Seu usuário não possui <code>identity.management.tokens.issue</code>.</span>
@@ -266,17 +257,17 @@ else
             <footer>
                 <span>Bearer · @issuedCapabilities.Count capability(s)</span>
                 <div>
-                    <button class="button button--secondary"
-                            type="button"
-                            @onclick="CopyIssuedTokenAsync">
+                    <SUIButton Variant="SUIVariant.Outlined"
+                               Color="SUIColor.Primary"
+                               OnClick="CopyIssuedTokenAsync">
                         <SUIIcon Name="code" Size="17" />
                         @(tokenCopied ? "Copiado" : "Copiar token")
-                    </button>
-                    <button class="button button--ghost"
-                            type="button"
-                            @onclick="HideIssuedToken">
+                    </SUIButton>
+                    <SUIButton Variant="SUIVariant.Text"
+                               Color="SUIColor.Default"
+                               OnClick="HideIssuedToken">
                         Ocultar
-                    </button>
+                    </SUIButton>
                 </div>
             </footer>
             @if (clipboardUnavailable)
@@ -328,27 +319,30 @@ else
                                     {
                                         <div class="operator-token-revoke-confirmation">
                                             <span>Revogar agora?</span>
-                                            <button type="button"
-                                                    class="button button--danger"
-                                                    disabled="@revoking"
-                                                    @onclick="() => RevokeAsync(token)">
-                                                @(revoking ? "Revogando" : "Confirmar")
-                                            </button>
-                                            <button type="button"
-                                                    class="button button--ghost"
-                                                    disabled="@revoking"
-                                                    @onclick="CancelRevoke">
+                                            <SUILoadingButton IsLoading="@revoking"
+                                                              Disabled="@revoking"
+                                                              Size="SUISize.Small"
+                                                              Color="SUIColor.Error"
+                                                              OnClick="async _ => await RevokeAsync(token)">
+                                                Confirmar
+                                            </SUILoadingButton>
+                                            <SUIButton Variant="SUIVariant.Text"
+                                                       Color="SUIColor.Default"
+                                                       Size="SUISize.Small"
+                                                       Disabled="@revoking"
+                                                       OnClick="CancelRevoke">
                                                 Cancelar
-                                            </button>
+                                            </SUIButton>
                                         </div>
                                     }
                                     else
                                     {
-                                        <button type="button"
-                                                class="button button--ghost button--danger-text"
-                                                @onclick="() => PrepareRevoke(token.Id)">
+                                        <SUIButton Variant="SUIVariant.Text"
+                                                   Color="SUIColor.Error"
+                                                   Size="SUISize.Small"
+                                                   OnClick="_ => PrepareRevoke(token.Id)">
                                             Revogar
-                                        </button>
+                                        </SUIButton>
                                     }
                                 </Authorized>
                             </AuthorizeView>
@@ -601,6 +595,30 @@ else
         issuedToken = null;
         tokenCopied = false;
         clipboardUnavailable = false;
+    }
+
+    private Task PurposeChanged(string? value)
+    {
+        purpose = value ?? string.Empty;
+        SynchronizeRequestUrl();
+        return Task.CompletedTask;
+    }
+
+    private string LifetimeHelperText => workspace is null
+        ? string.Empty
+        : $"Limite deste ambiente: {FormatDuration(workspace.MaximumLifetimeSeconds)}.";
+
+    private Task LifetimeChanged(int value)
+    {
+        tokenLifetimeSeconds = value;
+        SynchronizeRequestUrl();
+        return Task.CompletedTask;
+    }
+
+    private Task CapabilityFilterChanged(string? value)
+    {
+        capabilityFilter = value ?? string.Empty;
+        return Task.CompletedTask;
     }
 
     private void ToggleCapability(string capability, ChangeEventArgs eventArgs)
