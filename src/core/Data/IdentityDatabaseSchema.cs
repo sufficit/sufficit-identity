@@ -34,6 +34,19 @@ public static class IdentityDatabaseSchema
     public const string SsfStreamSecurityMigrationId = "20260807135147_HardenSsfStreams";
     public const string AtomicProtocolStateMigrationId = "20260807140821_AddAtomicProtocolState";
     public const string ManagementClientDraftsMigrationId = "20260807161036_AddManagementClientDrafts";
+    public const string BinaryIdentifierCollationMigrationId = "20260814202136_UseBinaryCollationForOpaqueIdentifiers";
+
+    /// <summary>
+    /// Binary collation for opaque, case-sensitive utf8mb4 identifiers
+    /// (reference tokens, session/stream ids, CIBA auth_req_ids, DPoP replay
+    /// keys) — see AppDbContext.ApplyOpaqueIdentifierCollations (F-3, eval
+    /// 2026-08-14). Same charset as the rest of the schema, so the ALTER only
+    /// changes the collation, never the encoding.
+    /// </summary>
+    public const string BinaryIdentifierCollation = "utf8mb4_bin";
+
+    /// <summary>Binary collation for ascii-keyed identifiers (draft GUIDs).</summary>
+    public const string AsciiBinaryCollation = "ascii_bin";
 
     /// <summary>
     /// Migration history owned by the new Sufficit Identity model.
