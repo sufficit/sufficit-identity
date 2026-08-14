@@ -147,6 +147,84 @@ public sealed class SecurityHardeningTests
             r => r.GetType().Name.Contains("Assertion", StringComparison.Ordinal));
     }
 
+    // ---- Management RequireAuthorization=false safety (eval F-4) ----
+
+    [Fact]
+    public void Management_authorization_disabled_is_rejected_outside_development()
+    {
+        // F-4: the anonymous-management switch must fail composition outside
+        // Development instead of remaining a working configuration that only
+        // the production posture check would report after startup.
+        var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Management:RequireAuthorization"] = "false",
+            })
+            .Build();
+
+        var previous = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        try
+        {
+            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
+
+            var services = new ServiceCollection();
+            services.AddLogging();
+
+            var exception = Assert.Throws<InvalidOperationException>(() =>
+                Sufficit.Identity.Management.ServiceCollectionExtensions
+                    .AddSufficitIdentityManagement(services, config));
+
+            Assert.Contains("RequireAuthorization", exception.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", previous);
+        }
+    }
+
+    [Fact]
+    public void Management_authorization_disabled_remains_composable_in_development()
+    {
+        // The anonymous mode stays available as a deliberate Development-only
+        // migration scenario: composition succeeds and the policy degrades to
+        // a permissive assertion rather than an unresolvable-policy 500.
+        var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Management:RequireAuthorization"] = "false",
+            })
+            .Build();
+
+        var previous = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        try
+        {
+            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
+
+            var services = new ServiceCollection();
+            services.AddLogging();
+            Sufficit.Identity.Management.ServiceCollectionExtensions
+                .AddSufficitIdentityManagement(services, config);
+            services.AddAuthorization();
+
+            using var provider = services.BuildServiceProvider();
+            var policyProvider = provider.GetRequiredService<
+                Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider>();
+            var policy = policyProvider.GetPolicyAsync("sufficit-identity-management").Result;
+
+            Assert.NotNull(policy);
+            // Development-only degradation: permissive assertion, no auth schemes.
+            Assert.Contains(
+                policy!.Requirements,
+                requirement => requirement.GetType().Name.Contains(
+                    "Assertion", StringComparison.Ordinal));
+            Assert.Empty(policy.AuthenticationSchemes);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", previous);
+        }
+    }
+
     private sealed class StubHandler : HttpMessageHandler
     {
         private readonly HttpStatusCode _status;
