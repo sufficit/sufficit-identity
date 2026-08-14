@@ -547,6 +547,14 @@ Sufficit.Identity.STS.Security.ProductionPostureCheck.Enforce(
     app.Environment.IsDevelopment(),
     app.Logger);
 
+app.Logger.LogInformation(
+    "Interactive session policy active: AuthenticationLifetimeDays={AuthenticationLifetimeDays}; "
+    + "RememberedMfaLifetimeDays={RememberedMfaLifetimeDays}; "
+    + "SlidingExpiration={SlidingExpiration}.",
+    Math.Clamp(identityOptions.UserSessions.AuthenticationLifetimeDays, 1, 90),
+    Math.Clamp(identityOptions.UserSessions.RememberedMfaLifetimeDays, 1, 90),
+    identityOptions.UserSessions.SlidingExpiration);
+
 // ---- mTLS (mutual TLS, RFC 8705) host configuration reminder ----
 // When Sufficit:Identity:Mtls:Enabled is true, the STS registers the MTLS-
 // aliased endpoint paths and advertises tls_client_certificate_bound_access_tokens

@@ -8,10 +8,12 @@
 <SUIPageHeader Title="Visão geral"
             Description="Consulte as áreas liberadas para sua sessão e a política efetiva do serviço de identidade.">
     <Actions>
-        <a class="button button--secondary" href="settings">
+        <SUIButton Href="settings"
+                   Variant="SUIVariant.Outlined"
+                   Color="SUIColor.Default">
             <SUIIcon Name="settings" Size="17" />
             Ver configuração
-        </a>
+        </SUIButton>
     </Actions>
 </SUIPageHeader>
 
@@ -31,11 +33,10 @@ else if (result?.IsSuccess is not true || result.Value is null)
                     Title="Não foi possível consultar o runtime"
                     Description="@(result?.ErrorMessage ?? "O serviço de identidade não informou seu estado administrativo.")">
             <Actions>
-                <button class="button button--primary"
-                        type="button"
-                        @onclick="RefreshAsync">
+                <SUIButton Color="SUIColor.Primary"
+                           OnClick="RefreshAsync">
                     Tentar novamente
-                </button>
+                </SUIButton>
             </Actions>
         </SUIEmptyState>
     </div>
@@ -73,20 +74,23 @@ else
                                   data-enhance="false">
                                 <AntiforgeryToken />
                                 <input type="hidden" name="force_mfa" value="true" />
-                                <button class="button button--primary" type="submit">
+                                <SUIButton ButtonType="SUIButtonType.Submit"
+                                           Color="SUIColor.Error">
                                     Encerrar sessão e entrar com MFA
-                                </button>
+                                </SUIButton>
                             </form>
-                            <a class="button button--secondary"
-                               href="/management/"
-                               data-enhance-nav="false">
+                            <SUIButton Href="/management/"
+                                       Variant="SUIVariant.Outlined"
+                                       Color="SUIColor.Default"
+                                       data-enhance-nav="false">
                                 Recarregar sessão
-                            </a>
-                            <a class="button button--secondary"
-                               href="/manage/twofactor"
-                               data-enhance-nav="false">
+                            </SUIButton>
+                            <SUIButton Href="/manage/twofactor"
+                                       Variant="SUIVariant.Outlined"
+                                       Color="SUIColor.Default"
+                                       data-enhance-nav="false">
                                 Ver configuração de MFA
-                            </a>
+                            </SUIButton>
                         }
                     </Actions>
                 </SUIEmptyState>

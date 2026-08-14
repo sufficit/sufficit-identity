@@ -1022,6 +1022,14 @@ public sealed class ManagementUiArchitectureTests
             "AuthorizationController.cs"));
 
         Assert.Contains("name=\"force_mfa\"", home, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "class=\"button button--",
+            home,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "<SUIButton ButtonType=\"SUIButtonType.Submit\"",
+            home,
+            StringComparison.Ordinal);
         Assert.Contains(
             "ForgetTwoFactorClientAsync",
             controller,
