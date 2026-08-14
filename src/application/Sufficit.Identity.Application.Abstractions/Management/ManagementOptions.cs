@@ -11,6 +11,13 @@ public sealed class ManagementOptions
 
     public string RoutePrefix { get; init; } = "api";
 
+    /// <summary>
+    /// When true (default), the management endpoints require an access token
+    /// carrying the configured scope. Setting false makes the whole management
+    /// API anonymous and is <b>rejected at composition time outside
+    /// Development</b> (eval 2026-08-14, F-4) — use a dedicated Development
+    /// environment for that migration scenario instead.
+    /// </summary>
     public bool RequireAuthorization { get; init; } = true;
 
     public string RequiredScope { get; init; } =

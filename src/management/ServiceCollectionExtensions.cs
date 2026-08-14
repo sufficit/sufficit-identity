@@ -63,6 +63,28 @@ public static class ServiceCollectionExtensions
             .Get<ManagementOptions>() ?? new ManagementOptions();
         var configurationRoot = configuration.GetSection(configurationSection);
 
+        // F-4 (eval 2026-08-14): RequireAuthorization=false turns the entire
+        // management surface — directory, clients, vault metadata, provisioning
+        // — into an anonymous API. Outside Development this is now rejected at
+        // composition time instead of remaining a working switch that only the
+        // production posture check would report after startup. The posture
+        // finding (management-authorization-disabled) stays registered as a
+        // second layer for hosts that compose the policy by other means.
+        // The environment is read from the raw variable because this DI
+        // extension has no IHostEnvironment — the same pattern the STS
+        // extension uses for its Development-only behavior.
+        if (!options.RequireAuthorization
+            && Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+                != "Development")
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Identity:Management:RequireAuthorization=false is only supported in " +
+                "Development. Outside Development it would expose the full management API " +
+                "(users, clients, scopes, sessions, vault metadata, provisioning) without " +
+                "authentication. Remove the setting, or run a dedicated Development " +
+                "environment for the anonymous migration scenario.");
+        }
+
         services.AddOptions<ManagementOptions>()
             .Bind(configurationRoot);
         services.TryAddEnumerable(
@@ -146,8 +168,10 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IClientSecretResolver, MissingClientSecretResolver>();
 
         // The named policy is always registered because controllers reference
-        // it unconditionally. RequireAuthorization=false remains an explicit
-        // compatibility mode instead of producing an unresolvable-policy 500.
+        // it unconditionally. The RequireAuthorization=false branch below is
+        // reachable only in Development — the guard at the top of this method
+        // rejects the setting everywhere else — and exists so a Development
+        // host never faces an unresolvable-policy 500.
         services.AddAuthorization(builder =>
         {
             builder.AddPolicy("sufficit-identity-management", policy =>
