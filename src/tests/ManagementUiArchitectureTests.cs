@@ -1558,12 +1558,34 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("<SUIAlert", page, StringComparison.Ordinal);
         Assert.DoesNotContain("<select class=\"form-control\"", page, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"button ", page, StringComparison.Ordinal);
+        Assert.Contains("class=\"operator-token-issue-summary\"", page, StringComparison.Ordinal);
+        Assert.DoesNotContain(".operator-token-issue-actions span", stylesheet, StringComparison.Ordinal);
+        Assert.Contains(".operator-token-issue-summary span {", stylesheet, StringComparison.Ordinal);
         Assert.Contains(
             ".operator-token-fields > .sui-field {",
             stylesheet,
             StringComparison.Ordinal);
         Assert.Contains("align-self: start;", stylesheet, StringComparison.Ordinal);
         Assert.Contains("min-width: 0;", stylesheet, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Management_surface_pins_its_sui_theme_independently_of_module_registration_order()
+    {
+        var managementUi = ResolveManagementUiSource();
+        var app = File.ReadAllText(Path.Combine(
+            managementUi,
+            "Components",
+            "App.razor"));
+        var theme = File.ReadAllText(Path.Combine(
+            managementUi,
+            "Configuration",
+            "IdentitySuiTheme.cs"));
+
+        Assert.Contains("<SUIThemeProvider Theme=\"@ManagementTheme\">", app, StringComparison.Ordinal);
+        Assert.Contains("IdentitySUITheme ManagementTheme", app, StringComparison.Ordinal);
+        Assert.Contains("Primary = \"#cc0000\"", theme, StringComparison.Ordinal);
+        Assert.Contains("PrimaryContrast = \"#ffffff\"", theme, StringComparison.Ordinal);
     }
 
     [Fact]

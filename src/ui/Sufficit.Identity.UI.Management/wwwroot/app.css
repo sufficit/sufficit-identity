@@ -4973,19 +4973,19 @@ h3 {
     min-width: 0;
 }
 
-.operator-token-issue-actions > div {
+.operator-token-issue-summary {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: 5px;
 }
 
-.operator-token-issue-actions strong {
+.operator-token-issue-summary strong {
     color: var(--ink-strong);
     font-size: 11px;
 }
 
-.operator-token-issue-actions span {
+.operator-token-issue-summary span {
     color: var(--ink-muted);
     font-size: 10px;
 }
