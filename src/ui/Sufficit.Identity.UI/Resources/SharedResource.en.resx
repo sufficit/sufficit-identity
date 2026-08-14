@@ -153,6 +153,7 @@
   <data name="ResendEmail.Submit" xml:space="preserve"><value>Resend</value></data>
 
   <!-- ===== Consent ===== -->
+  <data name="Consent.PageTitle" xml:space="preserve"><value>Authorization — Sufficit Identity</value></data>
   <data name="Consent.InvalidRequest" xml:space="preserve"><value>Invalid request</value></data>
   <data name="Consent.NoPendingRequest" xml:space="preserve"><value>No pending authorization request.</value></data>
   <data name="Consent.Title" xml:space="preserve"><value>Authorize application</value></data>
@@ -179,6 +180,20 @@
   <data name="Device.InvalidCode" xml:space="preserve"><value>Invalid or expired code.</value></data>
   <data name="Device.TryAgain" xml:space="preserve"><value>Try again</value></data>
   <data name="Device.Done" xml:space="preserve"><value>Done</value></data>
+  <data name="Device.TokenValidity" xml:space="preserve"><value>Token validity</value></data>
+  <data name="Device.ValidUntil" xml:space="preserve"><value>Until</value></data>
+  <data name="Device.IssuedAfter" xml:space="preserve"><value>{0} after issuance.</value></data>
+  <data name="Device.NoExpirationTitle" xml:space="preserve"><value>No expiration</value></data>
+  <data name="Device.NoExpirationDescription" xml:space="preserve"><value>This token has no configured expiration.</value></data>
+  <data name="Device.Renewal" xml:space="preserve"><value>Renewal</value></data>
+  <data name="Device.ContinuousAccess" xml:space="preserve"><value>Continuous access requested</value></data>
+  <data name="Device.ContinuousAccessDescription" xml:space="preserve"><value>The application can renew the token until you revoke this authorization.</value></data>
+  <data name="Device.Duration.Day" xml:space="preserve"><value>1 day</value></data>
+  <data name="Device.Duration.Days" xml:space="preserve"><value>{0} days</value></data>
+  <data name="Device.Duration.Hour" xml:space="preserve"><value>1 hour</value></data>
+  <data name="Device.Duration.Hours" xml:space="preserve"><value>{0} hours</value></data>
+  <data name="Device.Duration.Minute" xml:space="preserve"><value>1 minute</value></data>
+  <data name="Device.Duration.Minutes" xml:space="preserve"><value>{0} minutes</value></data>
 
   <!-- ===== Manage: Index ===== -->
   <data name="Manage.Title" xml:space="preserve"><value>My account</value></data>
@@ -198,6 +213,7 @@
   <data name="ChangePassword.Current" xml:space="preserve"><value>Current password</value></data>
   <data name="ChangePassword.New" xml:space="preserve"><value>New password</value></data>
   <data name="ChangePassword.Confirm" xml:space="preserve"><value>Confirm new password</value></data>
+  <data name="ChangePassword.Submit" xml:space="preserve"><value>Change</value></data>
   <data name="ChangePassword.SessionExpired" xml:space="preserve"><value>Your session has expired. Please sign in again.</value></data>
 
   <!-- ===== Manage: Delete Account ===== -->
@@ -213,6 +229,23 @@
   <data name="ExternalLogins.Linked" xml:space="preserve"><value>Linked</value></data>
   <data name="ExternalLogins.Available" xml:space="preserve"><value>Available</value></data>
   <data name="ExternalLogins.None" xml:space="preserve"><value>No external identity linked.</value></data>
+  <data name="ExternalLogins.Loading" xml:space="preserve"><value>Loading external identities…</value></data>
+  <data name="ExternalLogins.Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="ExternalLogins.Removing" xml:space="preserve"><value>Removing…</value></data>
+  <data name="ExternalLogins.Link" xml:space="preserve"><value>Link {0}</value></data>
+  <data name="ExternalLogins.LastSignInMethod" xml:space="preserve"><value>Add a password, passkey, or another identity before removing this sign-in method.</value></data>
+  <data name="ExternalLogins.LoadFailed" xml:space="preserve"><value>Could not load external identities. Try again.</value></data>
+  <data name="ExternalLogins.RemoveConfirm" xml:space="preserve"><value>Remove {0} from your account sign-in methods?</value></data>
+  <data name="ExternalLogins.RemoveSuccess" xml:space="preserve"><value>{0} was removed from your sign-in methods.</value></data>
+  <data name="ExternalLogins.RemoveFailed" xml:space="preserve"><value>Could not remove the external identity. Try again.</value></data>
+  <data name="ExternalLogins.LinkedSuccess" xml:space="preserve"><value>The external identity was linked.</value></data>
+  <data name="ExternalLogins.ProviderLinkedSuccess" xml:space="preserve"><value>{0} was linked to your account.</value></data>
+  <data name="ExternalLogins.Error.InUse" xml:space="preserve"><value>This external identity is already linked to another account.</value></data>
+  <data name="ExternalLogins.Error.ProviderUnavailable" xml:space="preserve"><value>The external provider is no longer available.</value></data>
+  <data name="ExternalLogins.Error.InvalidIdentity" xml:space="preserve"><value>The provider returned an invalid identity. Try again.</value></data>
+  <data name="ExternalLogins.Error.LinkFailed" xml:space="preserve"><value>Could not link the external identity. Try again.</value></data>
+  <data name="ExternalLogins.Error.StepUpRequired" xml:space="preserve"><value>Confirm your identity by signing in again before changing sign-in methods.</value></data>
+  <data name="ExternalLogins.Error.NotFound" xml:space="preserve"><value>The external identity was not found. Refresh the page and try again.</value></data>
 
   <!-- ===== Manage: Grants ===== -->
   <data name="Grants.Title" xml:space="preserve"><value>Connected applications</value></data>
@@ -221,6 +254,18 @@
   <data name="Grants.NoScopes" xml:space="preserve"><value>No scopes specified</value></data>
   <data name="Grants.LastAuth" xml:space="preserve"><value>Last authorization</value></data>
   <data name="Grants.ActiveCredentials" xml:space="preserve"><value>Active credentials</value></data>
+  <data name="Grants.ApplicationCount" xml:space="preserve"><value>Applications: {0}</value></data>
+  <data name="Grants.Loading" xml:space="preserve"><value>Loading applications…</value></data>
+  <data name="Grants.None" xml:space="preserve"><value>No connected applications.</value></data>
+  <data name="Grants.ScopesAria" xml:space="preserve"><value>Authorized scopes</value></data>
+  <data name="Grants.RevokeAria" xml:space="preserve"><value>Revoke access for {0}</value></data>
+  <data name="Grants.Revoking" xml:space="preserve"><value>Revoking…</value></data>
+  <data name="Grants.Revoke" xml:space="preserve"><value>Revoke access</value></data>
+  <data name="Grants.LoadFailed" xml:space="preserve"><value>Could not load connected applications. Try again.</value></data>
+  <data name="Grants.RevokeConfirm" xml:space="preserve"><value>Revoke all access granted to {0}?</value></data>
+  <data name="Grants.RevokeSuccess" xml:space="preserve"><value>Access for {0} was revoked.</value></data>
+  <data name="Grants.RevokeFailed" xml:space="preserve"><value>Could not revoke application access. Try again.</value></data>
+  <data name="Grants.NotFound" xml:space="preserve"><value>The connected application was not found. Refresh the page and try again.</value></data>
 
   <!-- ===== Manage: Passkeys ===== -->
   <data name="ManagePasskeys.Title" xml:space="preserve"><value>Passkeys (WebAuthn)</value></data>
@@ -240,6 +285,7 @@
   <data name="PersonalData.Description" xml:space="preserve"><value>Download or delete your personal data in accordance with data protection regulations.</value></data>
   <data name="PersonalData.Download" xml:space="preserve"><value>Download my data (JSON)</value></data>
   <data name="PersonalData.DeleteAccount" xml:space="preserve"><value>Delete my account</value></data>
+  <data name="PersonalData.LoadFailed" xml:space="preserve"><value>Could not load account data.</value></data>
 
   <!-- ===== Manage: Sessions ===== -->
   <data name="Sessions.Title" xml:space="preserve"><value>Active sessions</value></data>
@@ -250,6 +296,24 @@
   <data name="Sessions.AuthCode" xml:space="preserve"><value>Authorization code</value></data>
   <data name="Sessions.DeviceCode" xml:space="preserve"><value>Device code</value></data>
   <data name="Sessions.UserCode" xml:space="preserve"><value>User code</value></data>
+  <data name="Sessions.CredentialCount" xml:space="preserve"><value>Credentials: {0}</value></data>
+  <data name="Sessions.Type" xml:space="preserve"><value>Type</value></data>
+  <data name="Sessions.Issued" xml:space="preserve"><value>Issued</value></data>
+  <data name="Sessions.Expires" xml:space="preserve"><value>Expires</value></data>
+  <data name="Sessions.NoExpiration" xml:space="preserve"><value>No expiration provided</value></data>
+  <data name="Sessions.RevokeAria" xml:space="preserve"><value>Revoke credential for {0}</value></data>
+  <data name="Sessions.Revoking" xml:space="preserve"><value>Revoking…</value></data>
+  <data name="Sessions.RevokeCredential" xml:space="preserve"><value>Revoke credential</value></data>
+  <data name="Sessions.RevokingAll" xml:space="preserve"><value>Revoking…</value></data>
+  <data name="Sessions.LoadFailed" xml:space="preserve"><value>Could not load active sessions. Try again.</value></data>
+  <data name="Sessions.NotFound" xml:space="preserve"><value>The issued credential was not found. Refresh the page and try again.</value></data>
+  <data name="Sessions.RevokeSuccess" xml:space="preserve"><value>The selected session was revoked.</value></data>
+  <data name="Sessions.RevokeFailed" xml:space="preserve"><value>Could not revoke the session. Try again.</value></data>
+  <data name="Sessions.RevokeAllConfirm" xml:space="preserve"><value>Revoke all sessions and all access for your account?</value></data>
+  <data name="Sessions.RevokeAllSuccess" xml:space="preserve"><value>All sessions and authorizations were revoked. Sign in again when needed.</value></data>
+  <data name="Sessions.RevokeAllFailed" xml:space="preserve"><value>Could not revoke all sessions. Try again.</value></data>
+  <data name="Sessions.AccessToken" xml:space="preserve"><value>Access token</value></data>
+  <data name="Sessions.IdentityToken" xml:space="preserve"><value>Identity token</value></data>
 
   <!-- ===== Manage: Two Factor ===== -->
   <data name="ManageTwoFactor.Title" xml:space="preserve"><value>Two-step verification</value></data>
@@ -335,6 +399,20 @@
   <data name="Common.Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="Common.BackHome" xml:space="preserve"><value>Back to home</value></data>
   <data name="Common.TryAgain" xml:space="preserve"><value>Try again</value></data>
+  <data name="Common.NotProvided" xml:space="preserve"><value>Not provided</value></data>
+  <data name="Validation.UserNameLength" xml:space="preserve"><value>The username must be between {2} and {1} characters.</value></data>
+  <data name="Validation.UserNameRequired" xml:space="preserve"><value>Username is required.</value></data>
+  <data name="Validation.EmailRequired" xml:space="preserve"><value>Email is required.</value></data>
+  <data name="Validation.EmailInvalid" xml:space="preserve"><value>Enter a valid email address.</value></data>
+  <data name="Validation.PasswordRequired" xml:space="preserve"><value>Password is required.</value></data>
+  <data name="Validation.PasswordLength" xml:space="preserve"><value>The password must be at least {2} characters long.</value></data>
+  <data name="Validation.ConfirmPasswordRequired" xml:space="preserve"><value>Confirm your password.</value></data>
+  <data name="Validation.PasswordMismatch" xml:space="preserve"><value>The passwords do not match.</value></data>
+  <data name="Validation.LoginIdentifierRequired" xml:space="preserve"><value>Enter your email or username.</value></data>
+  <data name="Validation.LoginIdentifier" xml:space="preserve"><value>Email or username</value></data>
+  <data name="Validation.LoginPasswordRequired" xml:space="preserve"><value>Enter your password.</value></data>
+  <data name="Validation.LoginPassword" xml:space="preserve"><value>Password</value></data>
+  <data name="Validation.LoginRememberMe" xml:space="preserve"><value>Keep me signed in</value></data>
   <data name="HumanVerification.Label" xml:space="preserve"><value>Security verification</value></data>
   <data name="HumanVerification.Hint" xml:space="preserve"><value>This step helps prevent automated registrations and messages.</value></data>
   <data name="HumanVerification.Required" xml:space="preserve"><value>Complete the security verification again to continue.</value></data>

@@ -130,29 +130,29 @@
 
         <dl class="device-validity" aria-label="@L["Device.ValidityLabel"]">
             <div class="device-validity__row">
-                <dt>Validade do token</dt>
+                <dt>@L["Device.TokenValidity"]</dt>
                 <dd>
                     @if (_estimatedAccessTokenExpiresAt is { } expiresAt)
                     {
                         <strong>
-                            Até <time datetime="@expiresAt.ToString("O", CultureInfo.InvariantCulture)">@FormatExpiration(expiresAt)</time>
+                            @L["Device.ValidUntil"] <time datetime="@expiresAt.ToString("O", CultureInfo.InvariantCulture)">@FormatExpiration(expiresAt)</time>
                         </strong>
-                        <span>@FormatLifetime(_accessTokenLifetime!.Value) após a emissão.</span>
+                        <span>@L["Device.IssuedAfter", FormatLifetime(_accessTokenLifetime!.Value)]</span>
                     }
                     else
                     {
-                        <strong>Prazo indeterminado</strong>
-                        <span>Este token não tem uma expiração configurada.</span>
+                        <strong>@L["Device.NoExpirationTitle"]</strong>
+                        <span>@L["Device.NoExpirationDescription"]</span>
                     }
                 </dd>
             </div>
             @if (_allowsRefreshAccess)
             {
                 <div class="device-validity__row">
-                    <dt>Renovação</dt>
+                    <dt>@L["Device.Renewal"]</dt>
                     <dd>
-                        <strong>Acesso contínuo solicitado</strong>
-                        <span>A aplicação poderá renovar o token até você revogar esta autorização.</span>
+                        <strong>@L["Device.ContinuousAccess"]</strong>
+                        <span>@L["Device.ContinuousAccessDescription"]</span>
                     </dd>
                 </div>
             }
@@ -256,25 +256,29 @@
     }
 
     private static string FormatExpiration(DateTimeOffset value) =>
-        value.UtcDateTime.ToString(
-            "dd/MM/yyyy 'às' HH:mm 'UTC'",
-            CultureInfo.GetCultureInfo("pt-BR"));
+        $"{value.UtcDateTime.ToString("g", CultureInfo.CurrentCulture)} UTC";
 
-    private static string FormatLifetime(TimeSpan value)
+    private string FormatLifetime(TimeSpan value)
     {
         if (value.TotalDays >= 1 && value.TotalDays == Math.Truncate(value.TotalDays))
         {
             var days = (int)value.TotalDays;
-            return days == 1 ? "1 dia" : $"{days} dias";
+            return days == 1
+                ? L["Device.Duration.Day"]
+                : L["Device.Duration.Days", days];
         }
 
         if (value.TotalHours >= 1 && value.TotalHours == Math.Truncate(value.TotalHours))
         {
             var hours = (int)value.TotalHours;
-            return hours == 1 ? "1 hora" : $"{hours} horas";
+            return hours == 1
+                ? L["Device.Duration.Hour"]
+                : L["Device.Duration.Hours", hours];
         }
 
         var minutes = Math.Max(1, (int)Math.Round(value.TotalMinutes));
-        return minutes == 1 ? "1 minuto" : $"{minutes} minutos";
+        return minutes == 1
+            ? L["Device.Duration.Minute"]
+            : L["Device.Duration.Minutes", minutes];
     }
 }

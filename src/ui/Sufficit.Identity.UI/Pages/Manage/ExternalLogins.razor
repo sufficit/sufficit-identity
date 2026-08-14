@@ -26,12 +26,12 @@
 
     @if (_loading)
     {
-        <p class="muted">Carregando identidades externas…</p>
+        <p class="muted">@L["ExternalLogins.Loading"]</p>
     }
     else if (_loadFailed)
     {
         <button type="button" class="btn btn-secondary" @onclick="LoadAsync">
-            Tentar novamente
+            @L["Common.TryAgain"]
         </button>
     }
     else
@@ -49,7 +49,7 @@
                                 @if (!identity.CanRemove)
                                 {
                                     <span class="external-item-reason">
-                                        @identity.RemovalBlockedReason
+                                        @L["ExternalLogins.LastSignInMethod"]
                                     </span>
                                 }
                             </span>
@@ -60,8 +60,8 @@
                                         disabled="@IsBusy"
                                         @onclick="() => RemoveAsync(identity)">
                                     @(_busyIdentity == IdentityKey(identity)
-                                        ? "Removendo…"
-                                        : "Remover")
+                                        ? L["ExternalLogins.Removing"]
+                                        : L["ExternalLogins.Remove"])
                                 </button>
                             }
                         </li>
@@ -85,7 +85,7 @@
                            class="btn btn-block @ProviderClass(provider.AuthenticationScheme)"
                            data-enhance-nav="false"
                            data-redirect-overlay="@provider.DisplayName">
-                            Vincular @provider.DisplayName
+                            @L["ExternalLogins.Link", provider.DisplayName]
                         </a>
                     }
                 </div>
@@ -146,7 +146,7 @@
         catch (Exception exception)
         {
             Logger.LogError(exception, "External identities could not be loaded.");
-            _error = "Não foi possível carregar as identidades externas.";
+            _error = L["ExternalLogins.LoadFailed"];
             _loadFailed = true;
         }
         finally
@@ -159,7 +159,7 @@
     {
         var confirmed = await JS.InvokeAsync<bool>(
             "confirm",
-            $"Remover {identity.DisplayName} das formas de entrada da sua conta?");
+            L["ExternalLogins.RemoveConfirm", identity.DisplayName].Value);
         if (!confirmed)
         {
             return;
@@ -183,13 +183,11 @@
                 identity.ProviderKey);
             if (!result.Succeeded)
             {
-                _error = string.Join(
-                    " ",
-                    result.Errors.Select(error => error.Description));
+                _error = LocalizeErrors(result.Errors);
                 return;
             }
 
-            _success = $"{identity.DisplayName} foi removido das suas formas de entrada.";
+            _success = L["ExternalLogins.RemoveSuccess", identity.DisplayName];
             var overview = await ExternalIdentityService.GetOverviewAsync(principal);
             if (overview is not null)
             {
@@ -202,7 +200,7 @@
                 exception,
                 "External identity provider {Provider} could not be removed.",
                 identity.LoginProvider);
-            _error = "Não foi possível remover a identidade externa. Tente novamente.";
+            _error = L["ExternalLogins.RemoveFailed"];
         }
         finally
         {
@@ -215,21 +213,40 @@
         if (string.Equals(Status, "linked", StringComparison.Ordinal))
         {
             _success = string.IsNullOrWhiteSpace(Provider)
-                ? "A identidade externa foi vinculada."
-                : $"{Provider} foi vinculado à sua conta.";
+                ? L["ExternalLogins.LinkedSuccess"].Value
+                : L["ExternalLogins.ProviderLinkedSuccess", Provider].Value;
         }
 
         _error = CallbackError switch
         {
             "external-identity-in-use" =>
-                "Esta identidade externa já está vinculada a outra conta.",
+                L["ExternalLogins.Error.InUse"].Value,
             "external-provider-unavailable" =>
-                "O provedor externo não está mais disponível.",
+                L["ExternalLogins.Error.ProviderUnavailable"].Value,
             "external-identity-invalid" =>
-                "O provedor retornou uma identidade inválida. Tente novamente.",
+                L["ExternalLogins.Error.InvalidIdentity"].Value,
             null => _error,
-            _ => "Não foi possível vincular a identidade externa. Tente novamente.",
+            _ => L["ExternalLogins.Error.LinkFailed"].Value,
         };
+    }
+
+    private string LocalizeErrors(IReadOnlyList<AccountSelfServiceError> errors)
+    {
+        var messages = errors
+            .Select(error => error.Code switch
+            {
+                "unauthenticated" => L["ChangePassword.SessionExpired"].Value,
+                "step-up-required" => L["ExternalLogins.Error.StepUpRequired"].Value,
+                "external-identity-not-found" => L["ExternalLogins.Error.NotFound"].Value,
+                "last-sign-in-method" => L["ExternalLogins.LastSignInMethod"].Value,
+                _ => L["ExternalLogins.RemoveFailed"].Value,
+            })
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        return messages.Length == 0
+            ? L["ExternalLogins.RemoveFailed"]
+            : string.Join(" ", messages);
     }
 
     private static string BuildChallengeUrl(AccountExternalProvider provider) =>

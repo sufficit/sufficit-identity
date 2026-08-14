@@ -8,15 +8,12 @@ using Xunit;
 namespace Sufficit.Identity.Tests;
 
 /// <summary>
-/// Architecture test: enforces that no hardcoded pt-BR strings remain in the
-/// public UI .razor files after the i18n migration. Every visible Portuguese
-/// text node should be replaced by a @L["Key"] call.
+/// Architecture tests for the public UI localization contract.
 /// </summary>
 /// <remarks>
-/// This test catches regressions: if someone adds a new page or component with
-/// hardcoded pt-BR, the test fails until the string is extracted to the resx.
-/// It does NOT apply to the Management UI (separate i18n phase) or to code-
-/// only files (.cs) — only to .razor markup in the public UI.
+/// These tests catch regressions when a page, component, view model, validation
+/// message, action label, or feedback message bypasses the shared resources.
+/// The Management UI remains a separate localization boundary.
 /// </remarks>
 public sealed class UiLocalizationTests
 {
@@ -51,6 +48,39 @@ public sealed class UiLocalizationTests
             CultureInfo.GetCultureInfo(cultureName));
 
         Assert.Equal(expected, translated);
+    }
+
+    [Theory]
+    [InlineData("pt-BR", "ExternalLogins.Remove", "Remover")]
+    [InlineData("en-US", "ExternalLogins.Remove", "Remove")]
+    [InlineData("pt-BR", "ChangePassword.Submit", "Alterar")]
+    [InlineData("en-US", "ChangePassword.Submit", "Change")]
+    public void Public_ui_actions_resolve_in_the_selected_culture(
+        string cultureName,
+        string resourceKey,
+        string expected)
+    {
+        var resources = new ResourceManager(typeof(SharedResource));
+        var translated = resources.GetString(
+            resourceKey,
+            CultureInfo.GetCultureInfo(cultureName));
+
+        Assert.Equal(expected, translated);
+    }
+
+    [Fact]
+    public void Shared_resources_have_matching_portuguese_and_english_keys()
+    {
+        var resources = Path.Combine(
+            FindUiRoot(),
+            "Sufficit.Identity.UI",
+            "Resources");
+        var portuguese = ResourceKeys(Path.Combine(resources, "SharedResource.resx"));
+        var english = ResourceKeys(Path.Combine(resources, "SharedResource.en.resx"));
+
+        Assert.Equal(
+            portuguese.OrderBy(key => key, StringComparer.Ordinal),
+            english.OrderBy(key => key, StringComparer.Ordinal));
     }
 
     [Fact]
@@ -105,114 +135,71 @@ public sealed class UiLocalizationTests
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .Select(name => name!);
 
-    /// <summary>
-    /// High-signal Portuguese words that indicate a hardcoded string in visible
-    /// HTML markup (titles, labels, buttons). These are checked only in markup
-    /// context (between HTML tags or in label/placeholder attributes), NOT in
-    /// @code blocks, validation attributes, or string literals in C# code.
-    /// </summary>
-    private static readonly string[] PtBrMarkupIndicators =
-    [
-        "Entrar", "Senha", "Conta", "Cancelar", "Confirmar",
-        "Voltar", "Continuar", "Autorizar", "Negar", "Concluir",
-        "Esqueceu", "Redefinir", "Criar", "Dispositivo",
-        "Permissões", "Sessões", "Sair", "Minha conta",
-        "Autenticação em", "Código do dispositivo", "Ativar dispositivo",
-    ];
+    private static readonly Regex PtBrLiteral = new(
+        "[áàâãéêíóôõúç]"
+        + @"|\b(?:entrar|senha|conta|cancelar|confirmar|voltar|continuar|autorizar|"
+        + "negar|concluir|esqueceu|redefinir|criar|dispositivo|permissões|sessões|"
+        + "sessão|sair|remover|removendo|vincular|vinculado|carregando|alterar|"
+        + "aplicações|aplicação|encerrar|emitida|expira|tipo|validade|renovação|"
+        + "prazo|provedor|identidade|dados|revogar|revogando|credencial|usuário|"
+        + @"obrigatório|inválido)\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
-    /// <summary>
-    /// Directories excluded from the check (Management UI is a separate phase;
-    /// bin/obj are build artifacts).
-    /// </summary>
-    private static readonly string[] ExcludedDirs = ["bin", "obj", "Sufficit.Identity.UI.Management"];
-
-    [Fact(Skip = "Incremental: ~26 strings remain for extraction (descriptive texts, secondary buttons). Tracked for gradual migration.")]
-    public void No_hardcoded_ptBR_strings_in_public_ui_razor_markup()
+    [Fact]
+    public void No_hardcoded_ptBR_strings_in_public_ui_sources()
     {
-        var uiRoot = FindUiRoot();
-        var razorFiles = Directory.GetFiles(uiRoot, "*.razor", SearchOption.AllDirectories)
-            .Where(f => !ExcludedDirs.Any(d => f.Contains(d, StringComparison.OrdinalIgnoreCase)))
-            .ToList();
+        var uiRoot = Path.Combine(FindUiRoot(), "Sufficit.Identity.UI");
+        var sourceFiles = Directory
+            .EnumerateFiles(uiRoot, "*.*", SearchOption.AllDirectories)
+            .Where(path => path.EndsWith(".razor", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains(
+                $"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}",
+                StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.Contains(
+                $"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
+                StringComparison.OrdinalIgnoreCase));
 
         var violations = new List<string>();
 
-        foreach (var file in razorFiles)
+        foreach (var file in sourceFiles)
         {
             var relativePath = Path.GetRelativePath(uiRoot, file);
-            var lines = File.ReadAllLines(file);
-            var inCodeBlock = false;
-            var codeBraceDepth = 0;
+            var source = StripComments(File.ReadAllText(file))
+                // Language names are intentionally shown as autonyms.
+                .Replace("\"pt-BR\" => \"Português\"", string.Empty, StringComparison.Ordinal);
+            var lines = source.Split('\n');
 
             for (var i = 0; i < lines.Length; i++)
             {
                 var line = lines[i];
-                var trimmed = line.Trim();
-
-                // Track @code blocks with brace depth counting — more robust
-                // than checking for a lone "}" which matches inner scopes too.
-                if (line.Contains("@code"))
+                if (PtBrLiteral.IsMatch(line))
                 {
-                    inCodeBlock = true;
-                    // Count braces on the @code line itself.
-                    codeBraceDepth = line.Count(c => c == '{') - line.Count(c => c == '}');
-                    if (codeBraceDepth <= 0) inCodeBlock = false; // one-liner @code {}
-                    continue;
-                }
-                if (inCodeBlock)
-                {
-                    codeBraceDepth += line.Count(c => c == '{') - line.Count(c => c == '}');
-                    if (codeBraceDepth <= 0) inCodeBlock = false;
-                    continue;
-                }
-
-                // Skip comments.
-                if (trimmed.StartsWith("//") ||
-                    trimmed.StartsWith("@*") ||
-                    trimmed.StartsWith("<!--"))
-                    continue;
-
-                // Skip lines that already use localization.
-                if (line.Contains("@L["))
-                    continue;
-
-                // Skip validation attribute lines (they need compile-time constants).
-                if (line.Contains("ErrorMessage") || line.Contains("Display("))
-                    continue;
-
-                // Skip lines that are string-switch keys or pure C# (no HTML tags).
-                if (line.Contains("=>") && !line.Contains("<"))
-                    continue;
-
-                foreach (var indicator in PtBrMarkupIndicators)
-                {
-                    if (ContainsVisibleMarkupString(line, indicator))
-                    {
-                        violations.Add($"{relativePath}:{i + 1} → \"{indicator}\" in: {line.Trim()}");
-                        break; // one violation per line is enough
-                    }
+                    violations.Add($"{relativePath}:{i + 1} → {line.Trim()}");
                 }
             }
         }
 
         Assert.True(violations.Count == 0,
-            $"Found {violations.Count} hardcoded pt-BR string(s) in public UI .razor markup.\n" +
-            "Every visible text must use @L[\"Key\"] from the SharedResource resx.\n" +
+            $"Found {violations.Count} hardcoded pt-BR string(s) in public UI sources.\n" +
+            "Move user-facing text to SharedResource.resx and SharedResource.en.resx.\n" +
             "Violations:\n" + string.Join("\n", violations));
     }
 
-    /// <summary>
-    /// Checks if a line contains the indicator as visible HTML markup text
-    /// (between > and <, or in a label/title/placeholder/value attribute).
-    /// Excludes string literals inside C# code blocks, enum values, and
-    /// other non-markup contexts.
-    /// </summary>
-    private static bool ContainsVisibleMarkupString(string line, string indicator)
-    {
-        // Must be in an HTML context: look for the indicator as text content
-        // between tags (e.g. >Entrar<) or in a visible attribute (label="...").
-        var pattern = $@"(?<!\w){Regex.Escape(indicator)}(?!\w)";
-        return Regex.IsMatch(line, pattern, RegexOptions.IgnoreCase);
-    }
+    private static string StripComments(string source) =>
+        Regex.Replace(
+            Regex.Replace(
+                Regex.Replace(
+                    Regex.Replace(source, @"@\*.*?\*@", string.Empty, RegexOptions.Singleline),
+                    @"<!--.*?-->",
+                    string.Empty,
+                    RegexOptions.Singleline),
+                @"/\*.*?\*/",
+                string.Empty,
+                RegexOptions.Singleline),
+            @"//.*$",
+            string.Empty,
+            RegexOptions.Multiline);
 
     private static string FindUiRoot()
     {
