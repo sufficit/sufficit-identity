@@ -653,3 +653,29 @@ VALUES ('20260809230136_AddVaultSecretNamespaces', '10.0.10');
 
 COMMIT;
 
+START TRANSACTION;
+ALTER TABLE `tokens` MODIFY COLUMN `reference_id` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL;
+
+ALTER TABLE `ssfstreams` MODIFY COLUMN `verificationchallengehash` varchar(43) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL;
+
+ALTER TABLE `ssfstreams` MODIFY COLUMN `streamid` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+
+ALTER TABLE `ssfsetdeliveries` MODIFY COLUMN `streamid` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+
+ALTER TABLE `ssfsetdeliveries` MODIFY COLUMN `deliverykey` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL;
+
+ALTER TABLE `oidcusersessions` MODIFY COLUMN `sessionid` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+
+ALTER TABLE `managementclientdrafts` MODIFY COLUMN `id` char(36) COLLATE ascii_bin NOT NULL;
+
+ALTER TABLE `dpopreplayentries` MODIFY COLUMN `key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+
+ALTER TABLE `cibapendingstates` MODIFY COLUMN `consumptionid` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NULL;
+
+ALTER TABLE `cibapendingstates` MODIFY COLUMN `authreqid` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260814202136_UseBinaryCollationForOpaqueIdentifiers', '10.0.10');
+
+COMMIT;
+

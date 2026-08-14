@@ -189,6 +189,7 @@ public sealed class DatabaseSchemaContractTests
             IdentityDatabaseSchema.VaultPersonalSecretsMigrationId,
             IdentityDatabaseSchema.VaultSigningKeyLifecycleMigrationId,
             IdentityDatabaseSchema.VaultSecretNamespacesMigrationId,
+            IdentityDatabaseSchema.BinaryIdentifierCollationMigrationId,
         ], context.Database.GetMigrations());
 
         var history = context.GetService<IHistoryRepository>().GetCreateScript();

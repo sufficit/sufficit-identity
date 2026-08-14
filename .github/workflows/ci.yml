@@ -136,7 +136,8 @@ jobs:
           for _ in 1 2; do
             for script in \
               docs/migration/sql/082-add-security-hardening-state.sql \
-              docs/migration/sql/083-enforce-normalized-email-uniqueness.sql; do
+              docs/migration/sql/083-enforce-normalized-email-uniqueness.sql \
+              docs/migration/sql/084-binary-collation-opaque-identifiers.sql; do
               docker exec -i "${mariadb_containers[0]}" \
                 mysql --user=root identity_contract \
                 < "${script}"
