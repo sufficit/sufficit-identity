@@ -70,20 +70,13 @@ public static class ServiceCollectionExtensions
         // production posture check would report after startup. The posture
         // finding (management-authorization-disabled) stays registered as a
         // second layer for hosts that compose the policy by other means.
-        // The environment is read from the raw variable because this DI
-        // extension has no IHostEnvironment — the same pattern the STS
-        // extension uses for its Development-only behavior.
-        if (!options.RequireAuthorization
-            && Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
-                != "Development")
-        {
-            throw new InvalidOperationException(
-                "Sufficit:Identity:Management:RequireAuthorization=false is only supported in " +
-                "Development. Outside Development it would expose the full management API " +
-                "(users, clients, scopes, sessions, vault metadata, provisioning) without " +
-                "authentication. Remove the setting, or run a dedicated Development " +
-                "environment for the anonymous migration scenario.");
-        }
+        // The environment prefers the configuration value (tests inject it)
+        // and falls back to the raw variable because this DI extension has no
+        // IHostEnvironment — the same pattern the vault extension uses.
+        ValidateManagementAuthorizationMode(
+            options,
+            configuration["ASPNETCORE_ENVIRONMENT"]
+                ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"));
 
         services.AddOptions<ManagementOptions>()
             .Bind(configurationRoot);
@@ -206,6 +199,29 @@ public static class ServiceCollectionExtensions
         }
 
         return services;
+    }
+
+    /// <summary>
+    /// F-4 (eval 2026-08-14): anonymous management is a Development-only
+    /// migration scenario. Kept as a pure function so the mode contract is
+    /// unit-testable without mutating the process environment.
+    /// </summary>
+    internal static void ValidateManagementAuthorizationMode(
+        ManagementOptions options,
+        string? environment)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        if (!options.RequireAuthorization
+            && !string.Equals(environment, "Development", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Identity:Management:RequireAuthorization=false is only supported in " +
+                "Development. Outside Development it would expose the full management API " +
+                "(users, clients, scopes, sessions, vault metadata, provisioning) without " +
+                "authentication. Remove the setting, or run a dedicated Development " +
+                "environment for the anonymous migration scenario.");
+        }
     }
 
     private static string NormalizeRoutePrefix(string? value)

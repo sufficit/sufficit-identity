@@ -149,80 +149,85 @@ public sealed class SecurityHardeningTests
 
     // ---- Management RequireAuthorization=false safety (eval F-4) ----
 
-    [Fact]
-    public void Management_authorization_disabled_is_rejected_outside_development()
+    public static TheoryData<string?> NonDevelopmentEnvironments => new()
+    {
+        "Production",
+        "Staging",
+        null,
+    };
+
+    [Theory]
+    [MemberData(nameof(NonDevelopmentEnvironments))]
+    public void Management_authorization_disabled_is_rejected_outside_development(
+        string? environment)
     {
         // F-4: the anonymous-management switch must fail composition outside
         // Development instead of remaining a working configuration that only
-        // the production posture check would report after startup.
+        // the production posture check would report after startup. The mode
+        // contract is a pure validator so the test never mutates the process
+        // environment (the integration factories set it concurrently).
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            Sufficit.Identity.Management.ServiceCollectionExtensions
+                .ValidateManagementAuthorizationMode(
+                    new Sufficit.Identity.Management.ManagementOptions
+                    {
+                        RequireAuthorization = false,
+                    },
+                    environment));
+
+        Assert.Contains("RequireAuthorization", exception.Message, StringComparison.Ordinal);
+
+        // Composition itself rejects the setting when the environment arrives
+        // through configuration. "Production" is injected explicitly because
+        // the process variable is mutated concurrently by the integration
+        // factories; the null fallback path is covered by the pure validator
+        // assertion above.
         var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Sufficit:Identity:Management:RequireAuthorization"] = "false",
+                ["ASPNETCORE_ENVIRONMENT"] = "Production",
             })
             .Build();
 
-        var previous = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-        try
-        {
-            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Production");
-
-            var services = new ServiceCollection();
-            services.AddLogging();
-
-            var exception = Assert.Throws<InvalidOperationException>(() =>
-                Sufficit.Identity.Management.ServiceCollectionExtensions
-                    .AddSufficitIdentityManagement(services, config));
-
-            Assert.Contains("RequireAuthorization", exception.Message, StringComparison.Ordinal);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", previous);
-        }
+        Assert.Throws<InvalidOperationException>(() =>
+            Sufficit.Identity.Management.ServiceCollectionExtensions
+                .AddSufficitIdentityManagement(new ServiceCollection(), config));
     }
 
     [Fact]
     public void Management_authorization_disabled_remains_composable_in_development()
     {
         // The anonymous mode stays available as a deliberate Development-only
-        // migration scenario: composition succeeds and the policy degrades to
+        // migration scenario: composition succeeds (environment supplied via
+        // configuration, not the process variable) and the policy degrades to
         // a permissive assertion rather than an unresolvable-policy 500.
         var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Sufficit:Identity:Management:RequireAuthorization"] = "false",
+                ["ASPNETCORE_ENVIRONMENT"] = "Development",
             })
             .Build();
 
-        var previous = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-        try
-        {
-            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
+        var services = new ServiceCollection();
+        services.AddLogging();
+        Sufficit.Identity.Management.ServiceCollectionExtensions
+            .AddSufficitIdentityManagement(services, config);
+        services.AddAuthorization();
 
-            var services = new ServiceCollection();
-            services.AddLogging();
-            Sufficit.Identity.Management.ServiceCollectionExtensions
-                .AddSufficitIdentityManagement(services, config);
-            services.AddAuthorization();
+        using var provider = services.BuildServiceProvider();
+        var policyProvider = provider.GetRequiredService<
+            Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider>();
+        var policy = policyProvider.GetPolicyAsync("sufficit-identity-management").Result;
 
-            using var provider = services.BuildServiceProvider();
-            var policyProvider = provider.GetRequiredService<
-                Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider>();
-            var policy = policyProvider.GetPolicyAsync("sufficit-identity-management").Result;
-
-            Assert.NotNull(policy);
-            // Development-only degradation: permissive assertion, no auth schemes.
-            Assert.Contains(
-                policy!.Requirements,
-                requirement => requirement.GetType().Name.Contains(
-                    "Assertion", StringComparison.Ordinal));
-            Assert.Empty(policy.AuthenticationSchemes);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", previous);
-        }
+        Assert.NotNull(policy);
+        // Development-only degradation: permissive assertion, no auth schemes.
+        Assert.Contains(
+            policy!.Requirements,
+            requirement => requirement.GetType().Name.Contains(
+                "Assertion", StringComparison.Ordinal));
+        Assert.Empty(policy.AuthenticationSchemes);
     }
 
     private sealed class StubHandler : HttpMessageHandler
