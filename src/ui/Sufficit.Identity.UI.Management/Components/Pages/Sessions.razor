@@ -15,7 +15,7 @@
         <strong>Fonte canônica: runtime de autorização</strong>
         <span>Esta tela não exibe conteúdo, referência ou payload de tokens. Cookies só são invalidados no encerramento total da conta.</span>
     </div>
-    <SUIStatusBadge Tone="info">Metadados seguros</SUIStatusBadge>
+    <SUIStatusBadge ToneValue="SUITone.Info">Metadados seguros</SUIStatusBadge>
 </div>
 
 @if (revoked)
@@ -137,7 +137,7 @@
                                         </span>
                                     </td>
                                     <td data-label="Estado">
-                                        <SUIStatusBadge Tone="@(session.IsActive ? "success" : "neutral")">
+                                        <SUIStatusBadge ToneValue="@(session.IsActive ? SUITone.Success : SUITone.Neutral)">
                                             @StatusLabel(session.Status)
                                         </SUIStatusBadge>
                                     </td>

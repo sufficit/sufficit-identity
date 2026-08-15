@@ -66,7 +66,7 @@ else
             <strong>@WatchdogTitle</strong>
             <span>@WatchdogDescription</span>
         </div>
-        <SUIStatusBadge Tone="@WatchdogTone">@WatchdogBadge</SUIStatusBadge>
+        <SUIStatusBadge ToneValue="@IdentitySuiTone.From(WatchdogTone)">@WatchdogBadge</SUIStatusBadge>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(refreshError))
@@ -89,7 +89,7 @@ else
                         <h2 id="@PoolHeadingId(pool)">@pool.Provider</h2>
                         <p>Pool <code>@pool.Name</code></p>
                     </div>
-                    <SUIStatusBadge Tone="@PoolTone(pool)">@PoolStatus(pool)</SUIStatusBadge>
+                    <SUIStatusBadge ToneValue="@IdentitySuiTone.From(PoolTone(pool))">@PoolStatus(pool)</SUIStatusBadge>
                 </div>
 
                 <div class="database-capacity__pressure">
@@ -214,7 +214,7 @@ else
                                     </span>
                                 </td>
                                 <td data-label="Estado">
-                                    <SUIStatusBadge Tone="@(connection.ActiveCommands > 0 ? "info" : "neutral")">
+                                    <SUIStatusBadge ToneValue="@(connection.ActiveCommands > 0 ? SUITone.Info : SUITone.Neutral)">
                                         @(connection.ActiveCommands > 0
                                             ? $"{connection.ActiveCommands} em execução"
                                             : "Locada")

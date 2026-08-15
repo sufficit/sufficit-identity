@@ -23,7 +23,7 @@
     </div>
     @if (ShowMfaWarning)
     {
-        <SUIStatusBadge Tone="warning">MFA obrigatório</SUIStatusBadge>
+        <SUIStatusBadge ToneValue="SUITone.Warning">MFA obrigatório</SUIStatusBadge>
     }
 </div>
 
@@ -36,7 +36,7 @@
 }
 else if (workspaceResult.IsSuccess is false || workspace is null)
 {
-    <SUIAlert Severity="danger" Icon="alert" Class="operator-token-alert">
+    <SUIAlert ToneValue="SUITone.Danger" Icon="alert" Class="operator-token-alert">
         <div class="operator-token-alert__copy">
             <strong>@ErrorTitle(workspaceResult)</strong>
             <span>@workspaceResult.ErrorMessage</span>
@@ -58,13 +58,13 @@ else
                     <div><dt>Capabilities</dt><dd>@selectedCapabilities.Count selecionada(s)</dd></div>
                 </dl>
             </div>
-            <SUIStatusBadge Tone="neutral">Aguardando confirmação</SUIStatusBadge>
+            <SUIStatusBadge ToneValue="SUITone.Neutral">Aguardando confirmação</SUIStatusBadge>
         </section>
     }
 
     @if (queryUnavailableCapabilities.Count > 0)
     {
-        <SUIAlert Severity="danger" Icon="alert" Class="operator-token-alert">
+        <SUIAlert ToneValue="SUITone.Danger" Icon="alert" Class="operator-token-alert">
             <div class="operator-token-alert__copy">
                 <strong>O link solicitou acessos indisponíveis</strong>
                 <span>Remova da URL ou obtenha autorização para: @string.Join(", ", queryUnavailableCapabilities).</span>
@@ -74,7 +74,7 @@ else
 
     @if (queryValidationErrors.Count > 0)
     {
-        <SUIAlert Severity="danger" Icon="alert" Class="operator-token-alert">
+        <SUIAlert ToneValue="SUITone.Danger" Icon="alert" Class="operator-token-alert">
             <div class="operator-token-alert__copy">
                 <strong>O link contém parâmetros inválidos</strong>
                 <ul>
@@ -89,7 +89,7 @@ else
 
     @if (operationResult?.IsSuccess is false)
     {
-        <SUIAlert Severity="danger" Icon="alert" Class="operator-token-alert">
+        <SUIAlert ToneValue="SUITone.Danger" Icon="alert" Class="operator-token-alert">
             <div class="operator-token-alert__copy">
                 <strong>@ErrorTitle(operationResult)</strong>
                 <span>@operationResult.ErrorMessage</span>
@@ -123,7 +123,7 @@ else
                     <h2 id="operator-token-issuer-heading">Preparar credencial</h2>
                     <p>O token terá somente os acessos selecionados e expirará automaticamente.</p>
                 </div>
-                <SUIStatusBadge Tone="@(workspace.IssuanceEnabled ? "success" : "danger")">
+                <SUIStatusBadge ToneValue="@(workspace.IssuanceEnabled ? SUITone.Success : SUITone.Danger)">
                     @(workspace.IssuanceEnabled ? "Emissão habilitada" : "Emissão desabilitada")
                 </SUIStatusBadge>
             </header>
@@ -211,7 +211,7 @@ else
                     <Authorized>
                         <SUILoadingButton IsLoading="@issuing"
                                           Disabled="@(!CanIssue)"
-                                          Color="SUIColor.Primary"
+                                          ColorValue="SUIColor.Primary"
                                           OnClick="IssueAsync"
                                           aria-busy="@issuing">
                             <SUIIcon Name="key" Size="17" />
@@ -247,7 +247,7 @@ else
                     <h2 id="operator-token-reveal-heading">Token disponível uma única vez</h2>
                     <p>Copie agora. A lista abaixo mantém somente metadados para revogação e auditoria.</p>
                 </div>
-                <SUIStatusBadge Tone="warning">Expira @issuedExpiresAt.ToLocalTime().ToString("dd/MM HH:mm:ss")</SUIStatusBadge>
+                <SUIStatusBadge ToneValue="SUITone.Warning">Expira @issuedExpiresAt.ToLocalTime().ToString("dd/MM HH:mm:ss")</SUIStatusBadge>
             </header>
             <textarea class="operator-token-value"
                       aria-label="Token temporário de Management"
@@ -257,14 +257,14 @@ else
             <footer>
                 <span>Bearer · @issuedCapabilities.Count capability(s)</span>
                 <div>
-                    <SUIButton Variant="SUIVariant.Outlined"
-                               Color="SUIColor.Primary"
+                    <SUIButton VariantValue="SUIVariant.Outlined"
+                               ColorValue="SUIColor.Primary"
                                OnClick="CopyIssuedTokenAsync">
                         <SUIIcon Name="code" Size="17" />
                         @(tokenCopied ? "Copiado" : "Copiar token")
                     </SUIButton>
-                    <SUIButton Variant="SUIVariant.Text"
-                               Color="SUIColor.Default"
+                    <SUIButton VariantValue="SUIVariant.Text"
+                               ColorValue="SUIColor.Default"
                                OnClick="HideIssuedToken">
                         Ocultar
                     </SUIButton>
@@ -283,7 +283,7 @@ else
                 <h2 id="operator-token-active-heading">Tokens ativos</h2>
                 <p>Somente credenciais temporárias emitidas para este operador são exibidas.</p>
             </div>
-            <SUIStatusBadge Tone="neutral">@workspace.ActiveTokens.Count ativo(s)</SUIStatusBadge>
+            <SUIStatusBadge ToneValue="SUITone.Neutral">@workspace.ActiveTokens.Count ativo(s)</SUIStatusBadge>
         </header>
 
         @if (workspace.ActiveTokens.Count is 0)
@@ -303,7 +303,7 @@ else
                                 <strong>@token.Purpose</strong>
                                 <span>Emitido @token.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm") · expira @token.ExpiresAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
                             </div>
-                            <SUIStatusBadge Tone="success">Ativo</SUIStatusBadge>
+                            <SUIStatusBadge ToneValue="SUITone.Success">Ativo</SUIStatusBadge>
                         </div>
                         <div class="operator-token-list__capabilities">
                             @foreach (var capability in token.Capabilities)
@@ -321,14 +321,14 @@ else
                                             <span>Revogar agora?</span>
                                             <SUILoadingButton IsLoading="@revoking"
                                                               Disabled="@revoking"
-                                                              Size="SUISize.Small"
-                                                              Color="SUIColor.Error"
+                                                              SizeValue="SUISize.Small"
+                                                              ColorValue="SUIColor.Error"
                                                               OnClick="async _ => await RevokeAsync(token)">
                                                 Confirmar
                                             </SUILoadingButton>
-                                            <SUIButton Variant="SUIVariant.Text"
-                                                       Color="SUIColor.Default"
-                                                       Size="SUISize.Small"
+                                            <SUIButton VariantValue="SUIVariant.Text"
+                                                       ColorValue="SUIColor.Default"
+                                                       SizeValue="SUISize.Small"
                                                        Disabled="@revoking"
                                                        OnClick="CancelRevoke">
                                                 Cancelar
@@ -337,9 +337,9 @@ else
                                     }
                                     else
                                     {
-                                        <SUIButton Variant="SUIVariant.Text"
-                                                   Color="SUIColor.Error"
-                                                   Size="SUISize.Small"
+                                        <SUIButton VariantValue="SUIVariant.Text"
+                                                   ColorValue="SUIColor.Error"
+                                                   SizeValue="SUISize.Small"
                                                    OnClick="_ => PrepareRevoke(token.Id)">
                                             Revogar
                                         </SUIButton>

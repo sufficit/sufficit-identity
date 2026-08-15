@@ -16,7 +16,7 @@
         <strong>Operação centralizada e auditável</strong>
         <span>Preview e aplicação passam pela autorização do Management; nenhum segredo é recebido em texto puro.</span>
     </div>
-    <SUIStatusBadge Tone="success">Ativo</SUIStatusBadge>
+    <SUIStatusBadge ToneValue="SUITone.Success">Ativo</SUIStatusBadge>
 </div>
 
 <AuthorizeView Policy="@ManagementUiPolicies.ManageProvisioningToken">
@@ -48,8 +48,8 @@
                     </SUISelect>
                     <SUILoadingButton IsLoading="@tokenIssuing"
                                       Disabled="@tokenIssuing"
-                                      Variant="SUIVariant.Outlined"
-                                      Color="SUIColor.Primary"
+                                      VariantValue="SUIVariant.Outlined"
+                                      ColorValue="SUIColor.Primary"
                                       OnClick="IssueTemporaryTokenAsync"
                                       aria-busy="@tokenIssuing">
                         <SUIIcon Name="key" Size="17" />
@@ -66,7 +66,7 @@
                             <strong>Token emitido uma única vez</strong>
                             <span>Copie agora. Depois de ocultar este valor, ele não poderá ser recuperado pela interface.</span>
                         </div>
-                        <SUIStatusBadge Tone="warning">Expira @TokenExpirationLabel</SUIStatusBadge>
+                        <SUIStatusBadge ToneValue="SUITone.Warning">Expira @TokenExpirationLabel</SUIStatusBadge>
                     </div>
                     <textarea class="temporary-token-value"
                               aria-label="Token temporário de provisioning"
@@ -76,14 +76,14 @@
                     <div class="temporary-token-panel__actions">
                         <span class="temporary-token-panel__hint">Capacidades: <code>identity.provisioning.preview</code> e <code>identity.provisioning.apply</code></span>
                         <div>
-                            <SUIButton Variant="SUIVariant.Outlined"
-                                       Color="SUIColor.Primary"
+                            <SUIButton VariantValue="SUIVariant.Outlined"
+                                       ColorValue="SUIColor.Primary"
                                        OnClick="CopyTemporaryTokenAsync">
                                 <SUIIcon Name="copy" Size="17" />
                                 @(tokenCopied ? "Copiado" : "Copiar token")
                             </SUIButton>
-                            <SUIButton Variant="SUIVariant.Text"
-                                       Color="SUIColor.Default"
+                            <SUIButton VariantValue="SUIVariant.Text"
+                                       ColorValue="SUIColor.Default"
                                        OnClick="HideTemporaryToken">
                                 Ocultar token
                             </SUIButton>
@@ -173,7 +173,7 @@ else if (applyResult?.IsSuccess is true)
                 <h2 id="manifest-heading">Manifesto JSON</h2>
                 <p>Edite ou cole o contrato declarativo completo antes de gerar o preview.</p>
             </div>
-            <SUIStatusBadge Tone="neutral">Schema v1</SUIStatusBadge>
+            <SUIStatusBadge ToneValue="SUITone.Neutral">Schema v1</SUIStatusBadge>
         </div>
         <label class="manifest-editor">
             <span class="visually-hidden">Conteúdo do manifesto JSON</span>
@@ -191,7 +191,7 @@ else if (applyResult?.IsSuccess is true)
             </div>
             <SUILoadingButton IsLoading="@previewing"
                               Disabled="@IsBusy"
-                              Color="SUIColor.Primary"
+                              ColorValue="SUIColor.Primary"
                               OnClick="PreviewAsync"
                               aria-busy="@previewing">
                 <SUIIcon Name="search" Size="17" />
@@ -252,7 +252,7 @@ else if (applyResult?.IsSuccess is true)
                                 <td data-label="Recurso">@ResourceLabel(change.ResourceType)</td>
                                 <td data-label="Identificador"><code>@change.Identifier</code></td>
                                 <td data-label="Resultado">
-                                    <SUIStatusBadge Tone="@ChangeTone(change.Kind)">
+                                    <SUIStatusBadge ToneValue="@IdentitySuiTone.From(ChangeTone(change.Kind))">
                                         @ChangeLabel(change.Kind)
                                     </SUIStatusBadge>
                                 </td>
@@ -279,7 +279,7 @@ else if (applyResult?.IsSuccess is true)
                     </label>
                     <SUILoadingButton IsLoading="@applying"
                                       Disabled="@(!CanApply)"
-                                      Color="SUIColor.Error"
+                                      ColorValue="SUIColor.Error"
                                       OnClick="ApplyAsync"
                                       aria-busy="@applying">
                         <SUIIcon Name="workflow" Size="17" />

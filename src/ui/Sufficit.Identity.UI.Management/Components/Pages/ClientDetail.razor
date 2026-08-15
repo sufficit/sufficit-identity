@@ -81,7 +81,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
             </div>
             <div>
                 <span class="detail-label">Tipo</span>
-                <SUIStatusBadge Tone="@ClientTypeTone(client.Type)">
+                <SUIStatusBadge ToneValue="@IdentitySuiTone.From(ClientTypeTone(client.Type))">
                     @ClientTypeLabel(client.Type)
                 </SUIStatusBadge>
             </div>
@@ -281,7 +281,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     <div class="token-row">
                         @foreach (var requirement in client.Requirements)
                         {
-                            <SUIStatusBadge Tone="info">@RequirementLabel(requirement)</SUIStatusBadge>
+                            <SUIStatusBadge ToneValue="SUITone.Info">@RequirementLabel(requirement)</SUIStatusBadge>
                         }
                     </div>
                 </section>

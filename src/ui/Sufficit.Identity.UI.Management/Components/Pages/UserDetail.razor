@@ -117,7 +117,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
             </div>
             <div>
                 <span class="detail-label">Confirmação</span>
-                <SUIStatusBadge Tone="@(user.EmailConfirmed ? "success" : "neutral")">
+                <SUIStatusBadge ToneValue="@(user.EmailConfirmed ? SUITone.Success : SUITone.Neutral)">
                     @(user.EmailConfirmed ? "E-mail confirmado" : "Pendente")
                 </SUIStatusBadge>
             </div>
@@ -134,7 +134,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     <div>
                         <dt>Autenticação multifator</dt>
                         <dd>
-                            <SUIStatusBadge Tone="@(user.TwoFactorEnabled ? "success" : "neutral")">
+                            <SUIStatusBadge ToneValue="@(user.TwoFactorEnabled ? SUITone.Success : SUITone.Neutral)">
                                 @(user.TwoFactorEnabled ? "Ativa" : "Inativa")
                             </SUIStatusBadge>
                         </dd>
@@ -182,7 +182,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                 <h2 id="user-audit-heading">Consulta auditada</h2>
                 <p>O operador, o usuário, a decisão e a correlação foram registrados sem claims ou credenciais.</p>
             </div>
-            <SUIStatusBadge Tone="success" Icon="audit">Registrada</SUIStatusBadge>
+            <SUIStatusBadge ToneValue="SUITone.Success" Icon="audit">Registrada</SUIStatusBadge>
         </div>
     </div>
 
@@ -204,7 +204,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                             : "Interrompe novas autenticações e revoga sessões, tokens e autorizações desta conta.")
                     </p>
                 </div>
-                <SUIStatusBadge Tone="@(currentlyLocked ? "warning" : "danger")">
+                <SUIStatusBadge ToneValue="@(currentlyLocked ? SUITone.Warning : SUITone.Danger)">
                     @(currentlyLocked ? "Conta bloqueada" : "Conta ativa")
                 </SUIStatusBadge>
             </div>
@@ -299,7 +299,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     <h2>Redefinir senha</h2>
                     <p>A nova credencial substitui a senha atual e invalida os tokens afetados.</p>
                 </div>
-                <SUIStatusBadge Tone="info">Conta do provedor</SUIStatusBadge>
+                <SUIStatusBadge ToneValue="SUITone.Info">Conta do provedor</SUIStatusBadge>
             </div>
 
             @if (resetResult?.IsSuccess is false)

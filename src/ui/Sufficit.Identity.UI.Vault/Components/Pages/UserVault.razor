@@ -7,7 +7,7 @@
 <PageTitle>Meu Vault | Sufficit Identity</PageTitle>
 <SUIPageHeader Title="Meu Vault"
             Description="Guarde referências privadas de integração sem expor valores na interface.">
-    <Actions><SUIStatusBadge Tone="success" Icon="shield">Criptografado</SUIStatusBadge></Actions>
+    <Actions><SUIStatusBadge ToneValue="SUITone.Success" Icon="shield">Criptografado</SUIStatusBadge></Actions>
 </SUIPageHeader>
 
 <div class="vault-note" role="note">
@@ -16,7 +16,7 @@
 </div>
 
 <section class="vault-panel" aria-labelledby="personal-secret-heading">
-    <div class="vault-panel__heading"><div><h2 id="personal-secret-heading">Adicionar ou substituir segredo</h2><p>Use um nome lógico, como <code>openai/api-key</code>.</p></div><SUIStatusBadge Tone="neutral">namespace: pessoal</SUIStatusBadge></div>
+    <div class="vault-panel__heading"><div><h2 id="personal-secret-heading">Adicionar ou substituir segredo</h2><p>Use um nome lógico, como <code>openai/api-key</code>.</p></div><SUIStatusBadge ToneValue="SUITone.Neutral">namespace: pessoal</SUIStatusBadge></div>
     <EditForm Model="form" OnValidSubmit="SaveAsync" class="vault-form">
         <DataAnnotationsValidator />
         <div class="vault-form__grid">
@@ -29,7 +29,7 @@
 </section>
 
 <section class="vault-panel" aria-labelledby="personal-list-heading">
-    <div class="vault-panel__heading"><div><h2 id="personal-list-heading">Segredos pessoais</h2><p>Metadados para confirmar existência e última rotação.</p></div><SUIStatusBadge Tone="info">@items.Count @(items.Count == 1 ? "item" : "itens")</SUIStatusBadge></div>
+    <div class="vault-panel__heading"><div><h2 id="personal-list-heading">Segredos pessoais</h2><p>Metadados para confirmar existência e última rotação.</p></div><SUIStatusBadge ToneValue="SUITone.Info">@items.Count @(items.Count == 1 ? "item" : "itens")</SUIStatusBadge></div>
     @if (loading) { <div class="vault-loading" aria-label="Carregando segredos"></div> }
     else if (items.Count == 0) { <SUIEmptyState Icon="key" Title="Nenhum segredo pessoal" Description="Salve o primeiro valor para uma integração que você controla." /> }
     else

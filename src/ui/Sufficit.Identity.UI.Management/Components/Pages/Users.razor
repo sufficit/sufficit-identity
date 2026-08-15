@@ -17,7 +17,7 @@
                 Novo usuário
             </a>
         }
-        <SUIStatusBadge Tone="info" Icon="shield">Diretório global</SUIStatusBadge>
+        <SUIStatusBadge ToneValue="SUITone.Info" Icon="shield">Diretório global</SUIStatusBadge>
     </Actions>
 </SUIPageHeader>
 
@@ -252,8 +252,8 @@ else
                                         </span>
                                     </td>
                                     <td data-label="Cadastro"><time datetime="@user.CreatedAtUtc.ToString("O")"><strong>@user.CreatedAtUtc.ToString("dd/MM/yyyy", PtBr)</strong><span>@user.CreatedAtUtc.ToString("HH:mm", PtBr) UTC</span></time></td>
-                                    <td data-label="Acesso externo"><SUIStatusBadge Tone="@(user.HasExternalLogin ? "info" : "warning")">@(user.HasExternalLogin ? "Vinculado" : "Ausente")</SUIStatusBadge></td>
-                                    <td data-label="MFA"><SUIStatusBadge Tone="@(user.TwoFactorEnabled ? "success" : "neutral")">@(user.TwoFactorEnabled ? "Ativo" : "Inativo")</SUIStatusBadge></td>
+                                    <td data-label="Acesso externo"><SUIStatusBadge ToneValue="@(user.HasExternalLogin ? SUITone.Info : SUITone.Warning)">@(user.HasExternalLogin ? "Vinculado" : "Ausente")</SUIStatusBadge></td>
+                                    <td data-label="MFA"><SUIStatusBadge ToneValue="@(user.TwoFactorEnabled ? SUITone.Success : SUITone.Neutral)">@(user.TwoFactorEnabled ? "Ativo" : "Inativo")</SUIStatusBadge></td>
                                     <td data-label="Estado"><span class="registration-state"><span class="status-dot @(user.IsLockedOut ? "status-dot--danger" : "status-dot--success")" aria-hidden="true"></span>@(user.IsLockedOut ? "Bloqueado" : "Ativo")</span></td>
                                     <td data-label="Ações"><a class="row-action" href="@UserHref(user.Id)" aria-label="@($"Abrir detalhes de {DisplayUserName(user)}")">Detalhes<SUIIcon Name="arrow-right" Size="15" /></a></td>
                                 </tr>

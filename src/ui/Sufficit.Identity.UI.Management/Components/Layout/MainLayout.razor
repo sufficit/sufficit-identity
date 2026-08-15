@@ -51,7 +51,7 @@
             </div>
 
             <div class="topbar-actions">
-                <SUIStatusBadge Tone="@RuntimeStatusTone" Icon="@RuntimeStatusIcon">
+                <SUIStatusBadge ToneValue="@IdentitySuiTone.From(RuntimeStatusTone)" Icon="@RuntimeStatusIcon">
                     <span class="topbar-status-full">@RuntimeStatusLabel</span>
                     <span class="topbar-status-short">@RuntimeStatusShortLabel</span>
                 </SUIStatusBadge>

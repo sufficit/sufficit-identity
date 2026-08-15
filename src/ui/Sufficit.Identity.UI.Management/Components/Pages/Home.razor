@@ -10,8 +10,8 @@
             Description="Consulte as áreas liberadas para sua sessão e a política efetiva do serviço de identidade.">
     <Actions>
         <SUIButton Href="settings"
-                   Variant="SUIVariant.Outlined"
-                   Color="SUIColor.Default">
+                   VariantValue="SUIVariant.Outlined"
+                   ColorValue="SUIColor.Default">
             <SUIIcon Name="settings" Size="17" />
             Ver configuração
         </SUIButton>
@@ -34,7 +34,7 @@ else if (result?.IsSuccess is not true || result.Value is null)
                     Title="Não foi possível consultar o runtime"
                     Description="@(result?.ErrorMessage ?? "O serviço de identidade não informou seu estado administrativo.")">
             <Actions>
-                <SUIButton Color="SUIColor.Primary"
+                <SUIButton ColorValue="SUIColor.Primary"
                            OnClick="RefreshAsync">
                     Tentar novamente
                 </SUIButton>
@@ -50,7 +50,7 @@ else
             <strong>Estado fornecido pelo runtime</strong>
             <span>Ambiente @overview.EnvironmentName · @overview.Operator.Capabilities.Count capabilities efetivas</span>
         </div>
-        <SUIStatusBadge Tone="success">Atual</SUIStatusBadge>
+        <SUIStatusBadge ToneValue="SUITone.Success">Atual</SUIStatusBadge>
     </div>
 
     <div class="dashboard-grid">
@@ -75,20 +75,20 @@ else
                                   data-enhance="false">
                                 <AntiforgeryToken />
                                 <input type="hidden" name="force_mfa" value="true" />
-                                <SUIButton ButtonType="SUIButtonType.Submit"
-                                           Color="SUIColor.Error">
+                                <SUIButton ButtonTypeValue="SUIButtonType.Submit"
+                                           ColorValue="SUIColor.Error">
                                     Encerrar sessão e entrar com MFA
                                 </SUIButton>
                             </form>
                             <SUIButton Href="/management/"
-                                       Variant="SUIVariant.Outlined"
-                                       Color="SUIColor.Default"
+                                       VariantValue="SUIVariant.Outlined"
+                                       ColorValue="SUIColor.Default"
                                        data-enhance-nav="false">
                                 Recarregar sessão
                             </SUIButton>
                             <SUIButton Href="/manage/twofactor"
-                                       Variant="SUIVariant.Outlined"
-                                       Color="SUIColor.Default"
+                                       VariantValue="SUIVariant.Outlined"
+                                       ColorValue="SUIColor.Default"
                                        data-enhance-nav="false">
                                 Ver configuração de MFA
                             </SUIButton>
@@ -109,7 +109,7 @@ else
                                 <strong>@module.Presentation.Title</strong>
                                 <span>@module.Presentation.Description</span>
                             </span>
-                            <SUIStatusBadge Tone="success">Permitido</SUIStatusBadge>
+                            <SUIStatusBadge ToneValue="SUITone.Success">Permitido</SUIStatusBadge>
                             <SUIIcon Name="arrow-right"
                                      Size="17"
                                      CssClass="capability-row__arrow" />
@@ -133,7 +133,7 @@ else
                     </dt>
                     <dd>
                         <span class="config-value">@overview.EnvironmentName</span>
-                        <SUIStatusBadge Tone="neutral">Runtime</SUIStatusBadge>
+                        <SUIStatusBadge ToneValue="SUITone.Neutral">Runtime</SUIStatusBadge>
                     </dd>
                 </div>
                 <div>
@@ -143,7 +143,7 @@ else
                     </dt>
                     <dd>
                         <span class="config-value">@MfaPolicyLabel</span>
-                        <SUIStatusBadge Tone="@MfaTone">@MfaSessionLabel</SUIStatusBadge>
+                        <SUIStatusBadge ToneValue="@IdentitySuiTone.From(MfaTone)">@MfaSessionLabel</SUIStatusBadge>
                     </dd>
                 </div>
                 <div>
@@ -155,7 +155,7 @@ else
                         <span class="config-value">
                             <code>@overview.Api.RequiredScope</code>
                         </span>
-                        <SUIStatusBadge Tone="info">OAuth</SUIStatusBadge>
+                        <SUIStatusBadge ToneValue="SUITone.Info">OAuth</SUIStatusBadge>
                     </dd>
                 </div>
             </dl>

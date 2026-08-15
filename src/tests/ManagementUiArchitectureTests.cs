@@ -390,6 +390,10 @@ public sealed class ManagementUiArchitectureTests
             app,
             StringComparison.Ordinal);
         Assert.Contains(
+            "Sufficit.Identity.Server.styles.css",
+            app,
+            StringComparison.Ordinal);
+        Assert.Contains(
             "sufficit-blazor-ui",
             project,
             StringComparison.OrdinalIgnoreCase);
@@ -1027,7 +1031,7 @@ public sealed class ManagementUiArchitectureTests
             home,
             StringComparison.Ordinal);
         Assert.Contains(
-            "<SUIButton ButtonType=\"SUIButtonType.Submit\"",
+            "<SUIButton ButtonTypeValue=\"SUIButtonType.Submit\"",
             home,
             StringComparison.Ordinal);
         Assert.Contains(
@@ -1745,6 +1749,10 @@ public sealed class ManagementUiArchitectureTests
             var source = File.ReadAllText(app);
             Assert.Contains(
                 "/_content/Sufficit.Blazor.UI/sufficit-ui.css",
+                source,
+                StringComparison.Ordinal);
+            Assert.Contains(
+                "/Sufficit.Identity.Server.styles.css",
                 source,
                 StringComparison.Ordinal);
         }

@@ -42,7 +42,7 @@ else
             <strong>Configuração fornecida pelo serviço</strong>
             <span>Os valores abaixo são a mesma projeção publicada pelo adaptador HTTP.</span>
         </div>
-        <SUIStatusBadge Tone="info">@overview.EnvironmentName</SUIStatusBadge>
+        <SUIStatusBadge ToneValue="SUITone.Info">@overview.EnvironmentName</SUIStatusBadge>
     </div>
 
     <div class="settings-grid">
@@ -60,7 +60,7 @@ else
                     </dt>
                     <dd>
                         <span class="config-value">@overview.Operator.Capabilities.Count</span>
-                        <SUIStatusBadge Tone="success">Calculadas</SUIStatusBadge>
+                        <SUIStatusBadge ToneValue="SUITone.Success">Calculadas</SUIStatusBadge>
                     </dd>
                 </div>
                 <div>
@@ -72,7 +72,7 @@ else
                         <span class="config-value">
                             @(overview.Operator.RequiresMfa ? "Obrigatória" : "Opcional")
                         </span>
-                        <SUIStatusBadge Tone="@MfaTone">@MfaStatus</SUIStatusBadge>
+                        <SUIStatusBadge ToneValue="@IdentitySuiTone.From(MfaTone)">@MfaStatus</SUIStatusBadge>
                     </dd>
                 </div>
                 <div>
@@ -82,7 +82,7 @@ else
                     </dt>
                     <dd>
                         <span class="config-value">@AccessibleModuleCount de @overview.Modules.Count</span>
-                        <SUIStatusBadge Tone="neutral">Nesta sessão</SUIStatusBadge>
+                        <SUIStatusBadge ToneValue="SUITone.Neutral">Nesta sessão</SUIStatusBadge>
                     </dd>
                 </div>
             </dl>
@@ -102,7 +102,7 @@ else
                     </dt>
                     <dd>
                         <span class="config-value"><code>/@overview.Api.RoutePrefix</code></span>
-                        <SUIStatusBadge Tone="neutral">Rota</SUIStatusBadge>
+                        <SUIStatusBadge ToneValue="SUITone.Neutral">Rota</SUIStatusBadge>
                     </dd>
                 </div>
                 <div>
@@ -114,7 +114,7 @@ else
                         <span class="config-value">
                             @(overview.Api.RequiresAuthorization ? "Obrigatória" : "Desabilitada")
                         </span>
-                        <SUIStatusBadge Tone="@(overview.Api.RequiresAuthorization ? "success" : "warning")">
+                        <SUIStatusBadge ToneValue="@(overview.Api.RequiresAuthorization ? SUITone.Success : SUITone.Warning)">
                             @(overview.Api.RequiresAuthorization ? "Protegido" : "Revisar")
                         </SUIStatusBadge>
                     </dd>
@@ -126,7 +126,7 @@ else
                     </dt>
                     <dd>
                         <span class="config-value"><code>@overview.Api.RequiredScope</code></span>
-                        <SUIStatusBadge Tone="info">OAuth</SUIStatusBadge>
+                        <SUIStatusBadge ToneValue="SUITone.Info">OAuth</SUIStatusBadge>
                     </dd>
                 </div>
             </dl>
@@ -150,7 +150,7 @@ else
                     </dt>
                     <dd>
                         <span class="config-value">@ModuleDescription(module.Contract)</span>
-                        <SUIStatusBadge Tone="@ModuleTone(module.Contract)">
+                        <SUIStatusBadge ToneValue="@IdentitySuiTone.From(ModuleTone(module.Contract))">
                             @ModuleStatus(module.Contract)
                         </SUIStatusBadge>
                     </dd>

@@ -14,7 +14,7 @@
         <strong>Eventos persistentes e sem segredos</strong>
         <span>Operador, capability, alvo, resultado e correlation ID são registrados pela camada de aplicação.</span>
     </div>
-    <SUIStatusBadge Tone="success">Ativa</SUIStatusBadge>
+    <SUIStatusBadge ToneValue="SUITone.Success">Ativa</SUIStatusBadge>
 </div>
 
 <div class="table-panel" aria-labelledby="audit-list-heading" aria-busy="@loading">
@@ -118,7 +118,7 @@
                                         }
                                     </td>
                                     <td data-label="Resultado">
-                                        <SUIStatusBadge Tone="@OutcomeTone(entry.OperationOutcome)">
+                                        <SUIStatusBadge ToneValue="@IdentitySuiTone.From(OutcomeTone(entry.OperationOutcome))">
                                             @OutcomeLabel(entry.OperationOutcome)
                                         </SUIStatusBadge>
                                     </td>
