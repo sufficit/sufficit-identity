@@ -224,9 +224,9 @@ internal sealed class KeyVault : IKeyVault
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
         ArgumentNullException.ThrowIfNull(payload);
-        var key = await GetOrCreateLatestSigningKeyAsync(keyName, cancellationToken);
-        key.Key.Dispose();
-        return await SignAsync(keyName, key.KeyVersion, payload, cancellationToken);
+        var keyVersion = await GetOrCreateLatestSigningKeyAsync(
+            keyName, cancellationToken);
+        return await SignAsync(keyName, keyVersion, payload, cancellationToken);
     }
 
     public async Task<string> SignAsync(
@@ -238,15 +238,46 @@ internal sealed class KeyVault : IKeyVault
         ArgumentException.ThrowIfNullOrWhiteSpace(keyName);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(keyVersion);
         ArgumentNullException.ThrowIfNull(payload);
-        var privateKey = await GetSigningPrivateKeyAsync(keyName, keyVersion, cancellationToken);
+        var algorithm = await ResolveSigningAlgorithmAsync(
+            keyName, keyVersion, cancellationToken);
+        var privateKey = await GetSigningPrivateKeyAsync(
+            keyName, keyVersion, algorithm, cancellationToken);
         using (privateKey)
         {
-            var signature = privateKey.SignData(
-                payload,
-                HashAlgorithmName.SHA256,
-                RSASignaturePadding.Pkcs1);
+            var signature = algorithm switch
+            {
+                SigningAlgorithms.RsaPssSha256 => ((RSA)privateKey).SignData(
+                    payload,
+                    HashAlgorithmName.SHA256,
+                    RSASignaturePadding.Pss),
+                SigningAlgorithms.EcdsaSha256 => ((ECDsa)privateKey).SignData(
+                    payload,
+                    HashAlgorithmName.SHA256,
+                    DSASignatureFormat.IeeeP1363FixedFieldConcatenation),
+                _ => ((RSA)privateKey).SignData(
+                    payload,
+                    HashAlgorithmName.SHA256,
+                    RSASignaturePadding.Pkcs1),
+            };
             return VaultSignature.Format(keyName, keyVersion, signature);
         }
+    }
+
+    /// <summary>
+    /// Resolves the algorithm a key VERSION was created with, from the
+    /// version's stored public JWK (never from current configuration, so a
+    /// post-rotation in-flight version still signs with its own family).
+    /// </summary>
+    private async Task<string> ResolveSigningAlgorithmAsync(
+        string keyName,
+        int keyVersion,
+        CancellationToken cancellationToken)
+    {
+        var keys = await GetSigningKeysAsync(keyName, cancellationToken);
+        return keys.FirstOrDefault(key => key.KeyVersion == keyVersion)
+            is { PublicJwk: { } jwk }
+                ? SigningAlgorithms.FromJwk(jwk)
+                : SigningAlgorithms.RsaSha256;
     }
 
     public async Task<bool> VerifyAsync(
@@ -325,12 +356,7 @@ internal sealed class KeyVault : IKeyVault
                     cancellationToken);
             if (row is null || string.IsNullOrWhiteSpace(row.PublicJwk)) return false;
 
-            using var rsa = CreatePublicRsa(row.PublicJwk);
-            return rsa.VerifyData(
-                payload,
-                signature,
-                HashAlgorithmName.SHA256,
-                RSASignaturePadding.Pkcs1);
+            return VerifyWithJwk(row.PublicJwk, payload, signature);
 
             async Task<IReadOnlyList<VaultSigningKey>> LoadCurrentSigningKeysAsync(
                 CancellationToken ct)
@@ -770,7 +796,13 @@ internal sealed class KeyVault : IKeyVault
         }
     }
 
-    private async Task<(RSA Key, int KeyVersion)> GetOrCreateLatestSigningKeyAsync(
+    /// <summary>
+    /// Resolves (creating on first use) the ACTIVE signing-key version. Since
+    /// A6 the version's own algorithm drives signing, this returns only the
+    /// version number — the previous RSA re-import of the wrapped private key
+    /// was discarded by every caller and broke for EC keys.
+    /// </summary>
+    private async Task<int> GetOrCreateLatestSigningKeyAsync(
         string keyName,
         CancellationToken cancellationToken)
     {
@@ -780,20 +812,11 @@ internal sealed class KeyVault : IKeyVault
             .Where(key => key.KeyName == keyName
                 && key.Purpose == "signing"
                 && key.SigningState == VaultSigningKeyState.Active)
+            .Select(key => (int?)key.KeyVersion)
             .SingleOrDefaultAsync(cancellationToken);
         if (latest is not null)
         {
-            var privateBytes = _kek.Unwrap(latest.WrappedKey);
-            try
-            {
-                var existingKey = RSA.Create();
-                existingKey.ImportPkcs8PrivateKey(privateBytes, out _);
-                return (existingKey, latest.KeyVersion);
-            }
-            finally
-            {
-                CryptographicOperations.ZeroMemory(privateBytes);
-            }
+            return latest.Value;
         }
 
         var anySigningKey = await db.VaultKeys.AsNoTracking()
@@ -806,29 +829,14 @@ internal sealed class KeyVault : IKeyVault
         }
 
         await EnsureSigningKeyInitializedAsync(keyName, cancellationToken);
-        var created = await db.VaultKeys.AsNoTracking()
-            .SingleAsync(key => key.KeyName == keyName
-                && key.KeyVersion == 1
-                && key.Purpose == "signing"
-                && key.SigningState == VaultSigningKeyState.Active,
-                cancellationToken);
-        var privateKey = RSA.Create();
-        var createdPrivateBytes = _kek.Unwrap(created.WrappedKey);
-        try
-        {
-            privateKey.ImportPkcs8PrivateKey(createdPrivateBytes, out _);
-        }
-        finally
-        {
-            CryptographicOperations.ZeroMemory(createdPrivateBytes);
-        }
         _logger.LogInformation("Created vault signing key '{KeyName}' v1.", keyName);
-        return (privateKey, 1);
+        return 1;
     }
 
-    private async Task<RSA> GetSigningPrivateKeyAsync(
+    private async Task<AsymmetricAlgorithm> GetSigningPrivateKeyAsync(
         string keyName,
         int keyVersion,
+        string algorithm,
         CancellationToken cancellationToken)
     {
         if (_snapshots is not null)
@@ -844,7 +852,7 @@ internal sealed class KeyVault : IKeyVault
                     $"Vault signing key '{keyName}' v{keyVersion} is not the active issuing key.");
             }
 
-            return ImportSigningPrivateKey(wrappedKey);
+            return ImportSigningPrivateKey(wrappedKey, algorithm);
         }
 
         return await LoadSigningPrivateKeyAsync(cancellationToken);
@@ -861,19 +869,28 @@ internal sealed class KeyVault : IKeyVault
                 .SingleOrDefaultAsync(ct);
         }
 
-        async Task<RSA> LoadSigningPrivateKeyAsync(CancellationToken ct)
+        async Task<AsymmetricAlgorithm> LoadSigningPrivateKeyAsync(CancellationToken ct)
         {
             var wrappedKey = await LoadSigningKeyMaterialAsync(ct)
                 ?? throw new CryptographicException(
                     $"Vault signing key '{keyName}' v{keyVersion} is not the active issuing key.");
-            return ImportSigningPrivateKey(wrappedKey);
+            return ImportSigningPrivateKey(wrappedKey, algorithm);
         }
 
-        RSA ImportSigningPrivateKey(byte[] wrappedKey)
+        AsymmetricAlgorithm ImportSigningPrivateKey(
+            byte[] wrappedKey,
+            string importAlgorithm)
         {
             var privateBytes = _kek.Unwrap(wrappedKey);
             try
             {
+                if (importAlgorithm == SigningAlgorithms.EcdsaSha256)
+                {
+                    var ec = ECDsa.Create();
+                    ec.ImportPkcs8PrivateKey(privateBytes, out _);
+                    return ec;
+                }
+
                 var privateKey = RSA.Create();
                 privateKey.ImportPkcs8PrivateKey(privateBytes, out _);
                 return privateKey;
@@ -893,18 +910,46 @@ internal sealed class KeyVault : IKeyVault
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        using var rsa = RSA.Create(3072);
-        var privateBytes = rsa.ExportPkcs8PrivateKey();
-        var parameters = rsa.ExportParameters(false);
-        var publicJwk = JsonSerializer.Serialize(new
+
+        // A6 (eval 2026-08-14): the configured algorithm decides the key
+        // FAMILY of this version; it is embedded in the stored public JWK so
+        // signing, verification and JWKS publication always follow the
+        // version's own algorithm, never the current configuration.
+        string publicJwk;
+        byte[] privateBytes;
+        var algorithm = _options.SigningAlgorithm;
+        if (algorithm == SigningAlgorithms.EcdsaSha256)
         {
-            kty = "RSA",
-            n = WebEncoders.Base64UrlEncode(parameters.Modulus!),
-            e = WebEncoders.Base64UrlEncode(parameters.Exponent!),
-            alg = "RS256",
-            use = "sig",
-            kid = GetSigningKeyId(keyName, version),
-        });
+            using var ecdsa = ECDsa.Create(
+                System.Security.Cryptography.ECCurve.NamedCurves.nistP256);
+            privateBytes = ecdsa.ExportPkcs8PrivateKey();
+            var parameters = ecdsa.ExportParameters(false);
+            publicJwk = JsonSerializer.Serialize(new
+            {
+                kty = "EC",
+                crv = "P-256",
+                x = WebEncoders.Base64UrlEncode(parameters.Q.X!),
+                y = WebEncoders.Base64UrlEncode(parameters.Q.Y!),
+                alg = SigningAlgorithms.EcdsaSha256,
+                use = "sig",
+                kid = GetSigningKeyId(keyName, version),
+            });
+        }
+        else
+        {
+            using var rsa = RSA.Create(3072);
+            privateBytes = rsa.ExportPkcs8PrivateKey();
+            var parameters = rsa.ExportParameters(false);
+            publicJwk = JsonSerializer.Serialize(new
+            {
+                kty = "RSA",
+                n = WebEncoders.Base64UrlEncode(parameters.Modulus!),
+                e = WebEncoders.Base64UrlEncode(parameters.Exponent!),
+                alg = algorithm,
+                use = "sig",
+                kid = GetSigningKeyId(keyName, version),
+            });
+        }
         try
         {
             db.VaultKeys.Add(new VaultKey
@@ -1115,6 +1160,61 @@ internal sealed class KeyVault : IKeyVault
     {
         public ValueTask DisposeAsync() =>
             owner.ReleaseKeyOperationLeaseAsync(keyName, ownerId);
+    }
+
+    /// <summary>
+    /// Verifies with the algorithm embedded in the version's JWK: RSA with
+    /// PKCS#1 v1.5 (RS256) or PSS (PS256) padding, or ECDSA P-256 with the
+    /// JOSE R||S (P-1363) signature format — never the current
+    /// configuration's algorithm.
+    /// </summary>
+    private static bool VerifyWithJwk(
+        string publicJwk,
+        byte[] payload,
+        byte[] signature)
+    {
+        var algorithm = SigningAlgorithms.FromJwk(publicJwk);
+        if (algorithm == SigningAlgorithms.EcdsaSha256)
+        {
+            using var ec = CreatePublicEcdsa(publicJwk);
+            return ec.VerifyData(
+                payload,
+                signature,
+                HashAlgorithmName.SHA256,
+                DSASignatureFormat.IeeeP1363FixedFieldConcatenation);
+        }
+
+        using var rsa = CreatePublicRsa(publicJwk);
+        return rsa.VerifyData(
+            payload,
+            signature,
+            HashAlgorithmName.SHA256,
+            algorithm == SigningAlgorithms.RsaPssSha256
+                ? RSASignaturePadding.Pss
+                : RSASignaturePadding.Pkcs1);
+    }
+
+    private static ECDsa CreatePublicEcdsa(string publicJwk)
+    {
+        using var document = JsonDocument.Parse(publicJwk);
+        var root = document.RootElement;
+        if (!root.TryGetProperty("x", out var x)
+            || !root.TryGetProperty("y", out var y))
+        {
+            throw new FormatException("Signing JWK is missing EC coordinates.");
+        }
+
+        var ec = ECDsa.Create();
+        ec.ImportParameters(new ECParameters
+        {
+            Curve = System.Security.Cryptography.ECCurve.NamedCurves.nistP256,
+            Q = new ECPoint
+            {
+                X = WebEncoders.Base64UrlDecode(x.GetString() ?? ""),
+                Y = WebEncoders.Base64UrlDecode(y.GetString() ?? ""),
+            },
+        });
+        return ec;
     }
 
     private static RSA CreatePublicRsa(string publicJwk)

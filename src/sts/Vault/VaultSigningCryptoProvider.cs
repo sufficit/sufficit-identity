@@ -37,7 +37,9 @@ public sealed class VaultSigningSecurityKey : AsymmetricSecurityKey
 
     public string PublicJwk { get; }
 
-    public override int KeySize => 3072;
+    /// <summary>RSA-3072 or P-256, by the version's key family (A6).</summary>
+    public override int KeySize =>
+        Sufficit.Identity.Vault.SigningAlgorithms.IsEc(PublicJwk) ? 256 : 3072;
 
     [Obsolete("Use PrivateKeyStatus instead.")]
     public override bool HasPrivateKey => true;
@@ -55,7 +57,12 @@ internal sealed class VaultCryptoProvider : ICryptoProvider
 
     public bool IsSupportedAlgorithm(string algorithm, params object[] args)
     {
-        return string.Equals(algorithm, SecurityAlgorithms.RsaSha256, StringComparison.Ordinal)
+        // A6: every algorithm a vault signing version can carry (RS256, PS256,
+        // ES256). The signature bytes themselves always come from the vault's
+        // SignAsync, which follows the version's embedded algorithm.
+        return (string.Equals(algorithm, SecurityAlgorithms.RsaSha256, StringComparison.Ordinal)
+                || string.Equals(algorithm, SecurityAlgorithms.RsaSsaPssSha256, StringComparison.Ordinal)
+                || string.Equals(algorithm, SecurityAlgorithms.EcdsaSha256, StringComparison.Ordinal))
             && args is not null
             && args.OfType<VaultSigningSecurityKey>().Any();
     }
