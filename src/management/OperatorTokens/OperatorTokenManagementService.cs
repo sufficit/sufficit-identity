@@ -76,10 +76,8 @@ public interface IOperatorTokenManagementService
 
 internal sealed class OperatorTokenManagementService(
     AppDbContext database,
-    IOpenIddictScopeManager scopeManager,
     IOpenIddictTokenManager tokenManager,
-    IOpenIddictServerDispatcher dispatcher,
-    IOpenIddictServerFactory factory,
+    Sufficit.Identity.Application.Security.IPrivilegedTokenMintingService minting,
     IManagementAuthorizationEvaluator authorization,
     IManagementEntitlementResolver entitlements,
     IOptions<ManagementOptions> options,
@@ -255,26 +253,29 @@ internal sealed class OperatorTokenManagementService(
             .BeginTransactionAsync(cancellationToken);
         try
         {
-            var identity = BuildIdentity(
-                context,
-                now,
-                expiration,
-                scopes,
-                capabilities);
-            var resources = await ToListAsync(
-                scopeManager.ListResourcesAsync(
-                    identity.GetScopes(),
-                    cancellationToken),
+            // A3 (eval 2026-08-14): minting mechanics (identity scaffolding,
+            // resources-from-scopes, reference+persist dispatch) live in the
+            // shared minting service; this issuer keeps its POLICY and its
+            // missing-issuer error contract.
+            var mint = await minting.MintAsync(
+                new Sufficit.Identity.Application.Security.PrivilegedTokenMintRequest(
+                    AuthenticationType: "TemporaryOperatorToken",
+                    Subject: context.OperatorSubject,
+                    ClientId: TemporaryClientId,
+                    DisplayName: context.OperatorDisplayName ?? context.OperatorSubject,
+                    CreatedAtUtc: now,
+                    ExpiresAtUtc: expiration,
+                    Scopes: scopes,
+                    Resources: null,
+                    StringClaims: new Dictionary<string, string>(StringComparer.Ordinal)
+                    {
+                        [TemporaryTokenMarker] = "true",
+                        [PermissionClaimType] = string.Join(' ', capabilities),
+                    },
+                    EvidenceClaims: EvidenceClaims(context),
+                    Issuer: ResolveIssuer()),
                 cancellationToken);
-            identity.SetResources(resources);
-            identity.SetClaims(OidcClaims.Audience, [.. resources]);
-            identity.SetDestinations(_ => [Destinations.AccessToken]);
-
-            var principal = new ClaimsPrincipal(identity);
-            var tokenContext = await GenerateAsync(principal);
-            var tokenId = tokenContext.Principal.GetTokenId()
-                ?? throw new InvalidOperationException(
-                    "OpenIddict não retornou o identificador do token temporário.");
+            var tokenId = mint.TokenId;
             var token = await tokenManager.FindByIdAsync(
                     tokenId,
                     cancellationToken)
@@ -331,7 +332,7 @@ internal sealed class OperatorTokenManagementService(
                 Statuses.Valid,
                 capabilities);
             return new OperatorTokenIssueResult(
-                tokenContext.Token!,
+                mint.Token!,
                 "Bearer",
                 expiration,
                 scopes,
@@ -593,71 +594,6 @@ internal sealed class OperatorTokenManagementService(
         return normalized;
     }
 
-    private ClaimsIdentity BuildIdentity(
-        ManagementRequestContext context,
-        DateTimeOffset now,
-        DateTimeOffset expiration,
-        IReadOnlyList<string> scopes,
-        IReadOnlyList<string> capabilities)
-    {
-        var identity = new ClaimsIdentity(
-            authenticationType: "TemporaryOperatorToken",
-            nameType: OidcClaims.Name,
-            roleType: OidcClaims.Role);
-        identity.SetClaim(OidcClaims.Subject, context.OperatorSubject);
-        identity.SetClaim(OidcClaims.ClientId, TemporaryClientId);
-        identity.SetClaim(
-            OidcClaims.Name,
-            context.OperatorDisplayName ?? context.OperatorSubject);
-        identity.SetClaim(OidcClaims.Scope, string.Join(' ', scopes));
-        identity.SetScopes(scopes);
-        identity.SetCreationDate(now);
-        identity.SetExpirationDate(expiration);
-        identity.SetClaim(OidcClaims.Private.Issuer, ResolveIssuer());
-        identity.SetClaim(TemporaryTokenMarker, "true");
-        identity.SetClaim(
-            PermissionClaimType,
-            string.Join(' ', capabilities));
-
-        foreach (var claimType in new[]
-        {
-            "amr", "auth_time", "acr", "aal"
-        })
-        {
-            foreach (var claim in context.Operator.FindAll(claimType))
-            {
-                identity.AddClaim(new Claim(claimType, claim.Value));
-            }
-        }
-
-        return identity;
-    }
-
-    private async Task<GenerateTokenContext> GenerateAsync(
-        ClaimsPrincipal principal)
-    {
-        var transaction = await factory.CreateTransactionAsync();
-        var tokenContext = new GenerateTokenContext(transaction)
-        {
-            CreateTokenEntry = true,
-            IsReferenceToken = true,
-            PersistTokenPayload = true,
-            Principal = principal,
-            TokenFormat = TokenFormats.Private.JsonWebToken,
-            TokenType = TokenTypeIdentifiers.AccessToken,
-        };
-        await dispatcher.DispatchAsync(tokenContext);
-        if (tokenContext.IsRejected
-            || string.IsNullOrWhiteSpace(tokenContext.Token))
-        {
-            throw new InvalidOperationException(
-                tokenContext.ErrorDescription
-                ?? "OpenIddict não conseguiu emitir o token temporário.");
-        }
-
-        return tokenContext;
-    }
-
     private async Task PersistPropertiesAsync(
         string id,
         IReadOnlyDictionary<string, JsonElement> properties,
@@ -761,6 +697,18 @@ internal sealed class OperatorTokenManagementService(
             outcome,
             reasonCode,
             context.CorrelationId);
+    }
+
+    /// <summary>Authentication evidence projected from the operator principal.</summary>
+    private static IEnumerable<Claim> EvidenceClaims(ManagementRequestContext context)
+    {
+        foreach (var claimType in new[] { "amr", "auth_time", "acr", "aal" })
+        {
+            foreach (var claim in context.Operator.FindAll(claimType))
+            {
+                yield return new Claim(claimType, claim.Value);
+            }
+        }
     }
 
     private string ResolveIssuer()

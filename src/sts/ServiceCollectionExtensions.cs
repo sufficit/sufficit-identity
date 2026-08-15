@@ -1119,6 +1119,10 @@ public static class ServiceCollectionExtensions
         // Each grant is an ITokenGrantHandler; TokenGrantDispatcher owns the
         // DPoP preamble and resolves the handler by grant type. New grants
         // plug in here without touching AuthorizationController.
+        // A3 (eval 2026-08-14): the single privileged-token minting boundary
+        // (personal, provisioning and operator reference tokens).
+        services.AddScoped<Application.Security.IPrivilegedTokenMintingService,
+            PrivilegedTokenMintingService>();
         services.AddScoped<Grants.GrantOperations>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.UserTokenGrantsHandler>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.DeviceCodeGrantHandler>();
