@@ -8,11 +8,12 @@ namespace Sufficit.Identity.Server.Management;
 /// <summary>
 /// Sufficit host adapter for provider-operator access. The company-specific
 /// administrator role is mapped at composition time and never becomes part of
-/// the generic managed-user model.
+/// the generic managed-user model. The former tenant-membership condition was
+/// removed with the internal multi-tenant system (2026-08 decision): the
+/// administrator role alone grants every capability.
 /// </summary>
 public sealed class SufficitOperatorManagementEntitlementResolver(
-    IOptions<ManagementOptions> options,
-    IManagementTenantResolver tenantResolver) : IManagementEntitlementResolver
+    IOptions<ManagementOptions> options) : IManagementEntitlementResolver
 {
     private const string SufficitAdministratorRole = "administrator";
     private readonly ScopeAndRoleManagementEntitlementResolver generic =
@@ -26,14 +27,6 @@ public sealed class SufficitOperatorManagementEntitlementResolver(
             principal,
             cancellationToken);
         if (!principal.IsInRole(SufficitAdministratorRole))
-        {
-            return resolved;
-        }
-
-        var tenantAccess = await tenantResolver.ResolveAsync(
-            principal,
-            cancellationToken);
-        if (tenantAccess.TenantIds.Count is 0)
         {
             return resolved;
         }

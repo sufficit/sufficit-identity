@@ -65,18 +65,18 @@ public sealed class ManagementCapabilityRequirement(
 public sealed class ManagementUiAccessRequirement : IAuthorizationRequirement;
 
 internal sealed class ManagementUiAccessAuthorizationHandler(
-    IManagementEntitlementResolver entitlements,
-    IManagementTenantResolver tenants)
+    IManagementEntitlementResolver entitlements)
     : AuthorizationHandler<ManagementUiAccessRequirement>
 {
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         ManagementUiAccessRequirement requirement)
     {
+        // Access = authenticated + at least one management capability. The
+        // tenant-membership half was removed with the internal multi-tenant
+        // system (2026-08 decision): isolation is per deployment.
         var resolved = await entitlements.ResolveAsync(context.User);
-        var tenantAccess = await tenants.ResolveAsync(context.User);
-        if (resolved.Capabilities.Count is not 0
-            && tenantAccess.TenantIds.Count is not 0)
+        if (resolved.Capabilities.Count is not 0)
         {
             context.Succeed(requirement);
         }

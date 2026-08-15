@@ -25,7 +25,7 @@ public sealed record ManagementAuditRecord(
     string Capability,
     string ResourceType,
     string? ResourceId,
-    string? TenantId,
+    string? ContextId,
     string AuthorizationOutcome,
     string OperationOutcome,
     string? ReasonCode,
@@ -96,7 +96,10 @@ internal static class ManagementAuditEventFactory
             Capability = TruncateRequired(capability, 150),
             ResourceType = TruncateRequired(resource.Type, 100),
             ResourceId = Truncate(resource.Id, 255),
-            ContextId = Truncate(resource.TenantId, 255),
+            // ContextId carried the tenant identifier of the removed
+            // multi-tenant system (2026-08 decision). The column stays for
+            // legacy rows; new events record the provider context only.
+            ContextId = null,
             AuthorizationOutcome = authorization.Outcome.ToString().ToLowerInvariant(),
             OperationOutcome = TruncateRequired(operationOutcome, 50),
             ReasonCode = Truncate(reasonCode ?? authorization.ReasonCode, 100),

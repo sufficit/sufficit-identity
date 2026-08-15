@@ -102,8 +102,7 @@ internal sealed class SessionManagementService(
         var clientId = NullIfWhiteSpace(query.ClientId);
         var resource = new ManagementResource(
             ManagementResourceTypes.SessionCollection,
-            userId,
-            clientId);
+            userId);
         var decision = await DemandAsync(
             context,
             ManagementCapabilities.SessionsRead,

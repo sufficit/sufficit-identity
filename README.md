@@ -34,6 +34,10 @@ A self-hostable, .NET-native identity provider that goes well beyond stock OpenI
 | MCP Authorization (resource metadata + DCR) | RFC 9728 + RFC 7591 | ✅ |
 | Dynamic Client Registration | RFC 7591 | ✅ Opt-in, token-gated |
 
+## Multi-tenancy
+
+There is **no internal multi-tenant system**, by design. Because spinning up a complete new application (e.g. a Docker container with its own database) and sharing hardware resources is trivially cheap today, an in-process tenant boundary adds complexity without adding safety: **external isolation (one deployment per tenant) is far more secure and more viable** than row-level separation inside a shared database. The tenant machinery that existed in early builds (subject-to-tenant mappings, tenant-scoped object authorization, tenant claims projection) was removed accordingly. Object-level authorization protects principals; vault-secret contexts/namespaces remain as pure data organization.
+
 ## Architecture
 
 10 projects, ~46k LOC, clean layering enforced by CI tests:

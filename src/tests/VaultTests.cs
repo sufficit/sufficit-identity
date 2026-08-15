@@ -811,17 +811,21 @@ public sealed class VaultTests
         Assert.Equal(expected, VaultBackedSecretStore.NormalizeName(input));
 
     [Fact]
-    public async Task Management_named_secrets_filter_namespaces_and_audit_break_glass()
+    public async Task Vault_contexts_are_pure_organization_and_break_glass_audits()
     {
-        var vaultOptions = new VaultOptions { Enabled = true };
-        var (vault, dbFactory) = CreateRealVault(vaultOptions);
+        // After the multi-tenant removal (2026-08 decision), vault contexts
+        // and namespaces are pure data organization: capability + MFA gate
+        // access, every operator sees every context, and break-glass (claim +
+        // MFA evidence) remains an unmissable audit marker rather than an
+        // access bypass.
+        var (vault, dbFactory) = CreateRealVault();
         var store = new VaultBackedSecretStore(
             dbFactory,
             vault,
-            vaultOptions);
+            new VaultOptions { Enabled = true });
         await store.PutAsync(
             "providers/google/client-secret",
-            "provider-secret",
+            "google-secret",
             "seed",
             "global");
         await store.PutAsync(
@@ -835,39 +839,25 @@ public sealed class VaultTests
         {
             Authorization = new ManagementAuthorizationOptions(),
         });
-        var namespacePolicy =
-            new ConfigurationVaultSecretNamespaceAccessPolicy(
-                managementOptions);
         await using var database = await dbFactory.CreateDbContextAsync();
         var service = new VaultSecretsManagementService(
             database,
             store,
             new AllowingManagementAuthorizationEvaluator(),
-            namespacePolicy,
-            Options.Create(vaultOptions));
-        var scopedPrincipal = new ClaimsPrincipal(new ClaimsIdentity(
-            [
-                new Claim("sub", "operator-1"),
-                new Claim("identity_vault_namespace", "global:providers"),
-            ],
-            "test"));
-        var scopedContext = new ManagementRequestContext(
-            scopedPrincipal,
-            "namespace-filter-test");
+            Options.Create(new VaultOptions { Enabled = true }),
+            managementOptions);
 
-        var visible = await service.ListAsync("global", scopedContext);
-        Assert.Equal(
-            "providers/google/client-secret",
-            Assert.Single(visible).Name);
-        var guessed = await Assert.ThrowsAsync<ManagementAccessException>(() =>
-            service.GetAsync(
-                "billing/gateway/api-key",
-                "global",
-                scopedContext));
-        Assert.Equal(
-            "vault_namespace_not_accessible",
-            guessed.Decision.ReasonCode);
+        // An operator with NO namespace claims sees every namespace: the
+        // contexts are folders, not boundaries.
+        var plainContext = new ManagementRequestContext(
+            new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim("sub", "operator-1")],
+                "test")),
+            "organization-test");
+        var visible = await service.ListAsync("global", plainContext);
+        Assert.Equal(2, visible.Count);
 
+        // Break-glass (dedicated claim + MFA evidence) marks the audit trail.
         var breakGlassPrincipal = new ClaimsPrincipal(new ClaimsIdentity(
             [
                 new Claim("sub", "incident-operator"),
@@ -887,11 +877,11 @@ public sealed class VaultTests
         var audit = await database.ManagementAuditEvents.AsNoTracking()
             .SingleAsync(item => item.CorrelationId == "break-glass-test");
         Assert.Equal("vault_break_glass", audit.ReasonCode);
-        Assert.Equal("global", audit.ContextId);
         Assert.Equal(
             ManagementResourceTypes.VaultSecretCollection,
             audit.ResourceType);
     }
+
 
     [Fact]
     public async Task Vault_signatures_verify_across_rotation_without_exposing_private_key()

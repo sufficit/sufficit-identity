@@ -49,91 +49,12 @@ public sealed record SaveManagementVaultSecret(string Value);
 
 #else
 
-public sealed record VaultSecretNamespaceDecision(
-    ManagementAuthorizationDecision Authorization,
-    IReadOnlySet<string>? Namespaces);
-
-public interface IVaultSecretNamespaceAccessPolicy
-{
-    ValueTask<VaultSecretNamespaceDecision> ResolveAsync(
-        System.Security.Claims.ClaimsPrincipal principal,
-        string contextId,
-        string? requiredNamespace,
-        CancellationToken cancellationToken = default);
-}
-
-public sealed class ConfigurationVaultSecretNamespaceAccessPolicy(
-    IOptions<Sufficit.Identity.Management.ManagementOptions> options)
-    : IVaultSecretNamespaceAccessPolicy
-{
-    public ValueTask<VaultSecretNamespaceDecision> ResolveAsync(
-        System.Security.Claims.ClaimsPrincipal principal,
-        string contextId,
-        string? requiredNamespace,
-        CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        var policy = options.Value.Authorization.VaultSecrets;
-        if (ConfigurationManagementObjectAccessPolicy
-            .HasVaultBreakGlassEvidence(principal, policy))
-        {
-            return ValueTask.FromResult(new VaultSecretNamespaceDecision(
-                ManagementAuthorizationDecision.Allowed("vault_break_glass"),
-                Namespaces: null));
-        }
-
-        var normalizedContext = VaultBackedSecretStore.NormalizeContextId(
-            contextId);
-        var prefix = normalizedContext + ":";
-        var namespaces = principal.FindAll(policy.NamespaceClaimType)
-            .SelectMany(claim => claim.Value.Split(
-                ' ',
-                StringSplitOptions.RemoveEmptyEntries
-                | StringSplitOptions.TrimEntries))
-            .Where(value => value.StartsWith(prefix, StringComparison.Ordinal))
-            .Select(value => value[prefix.Length..])
-            .Select(TryNormalizeNamespace)
-            .Where(value => value is not null)
-            .Select(value => value!)
-            .ToHashSet(StringComparer.Ordinal);
-
-        if (requiredNamespace is not null
-            && !namespaces.Contains(
-                VaultBackedSecretStore.NormalizeNamespace(requiredNamespace)))
-        {
-            return ValueTask.FromResult(new VaultSecretNamespaceDecision(
-                ManagementAuthorizationDecision.Denied(
-                    "vault_namespace_not_accessible"),
-                namespaces));
-        }
-
-        return ValueTask.FromResult(new VaultSecretNamespaceDecision(
-            namespaces.Count > 0
-                ? ManagementAuthorizationDecision.Allowed()
-                : ManagementAuthorizationDecision.Denied(
-                    "vault_namespace_not_accessible"),
-            namespaces));
-    }
-
-    private static string? TryNormalizeNamespace(string value)
-    {
-        try
-        {
-            return VaultBackedSecretStore.NormalizeNamespace(value);
-        }
-        catch (ArgumentException)
-        {
-            return null;
-        }
-    }
-}
-
 public sealed class VaultSecretsManagementService(
     AppDbContext database,
     IVaultNamedSecretStore store,
     IManagementAuthorizationEvaluator authorization,
-    IVaultSecretNamespaceAccessPolicy namespaceAccess,
-    IOptions<VaultOptions> options)
+    IOptions<VaultOptions> options,
+    IOptions<ManagementOptions> managementOptions)
     : IVaultSecretsManagementService
 {
     public async Task<IReadOnlyList<ManagementVaultSecret>> ListAsync(
@@ -143,28 +64,25 @@ public sealed class VaultSecretsManagementService(
     {
         var normalizedContext = VaultBackedSecretStore.NormalizeContextId(
             contextId);
+        // Vault secret contexts (contextId/namespaces) remain as pure data
+        // organization after the multi-tenant removal (2026-08 decision);
+        // access is gated by the vault capability + MFA, not by tenant.
         var resource = new ManagementResource(
-            ManagementResourceTypes.VaultSecretCollection,
-            TenantId: normalizedContext);
+            ManagementResourceTypes.VaultSecretCollection);
         var objectDecision = await DemandAsync(
             context,
             ManagementCapabilities.VaultSecretsRead,
             resource,
             cancellationToken);
-        var namespaceDecision = await DemandNamespaceAsync(
-            context,
-            normalizedContext,
-            requiredNamespace: null,
-            cancellationToken);
         EnsureEnabled();
         var items = await store.ListAsync(
             normalizedContext,
-            namespaceDecision.Namespaces,
+            namespaces: null,
             cancellationToken);
         await AuditBreakGlassReadAsync(
             context,
             resource,
-            EffectiveDecision(objectDecision, namespaceDecision.Authorization),
+            ResolveDecision(context, objectDecision),
             cancellationToken);
         return items.Select(ToContract).ToArray();
     }
@@ -178,28 +96,23 @@ public sealed class VaultSecretsManagementService(
         var normalized = VaultBackedSecretStore.NormalizeName(name);
         var normalizedContext = VaultBackedSecretStore.NormalizeContextId(
             contextId);
-        var resource = ItemResource(normalized, normalizedContext);
+        var resource = ItemResource(normalized);
         var objectDecision = await DemandAsync(
             context,
             ManagementCapabilities.VaultSecretsRead,
             resource,
             cancellationToken);
-        var namespaceDecision = await DemandNamespaceAsync(
-            context,
-            normalizedContext,
-            VaultBackedSecretStore.GetNamespace(normalized),
-            cancellationToken);
         EnsureEnabled();
         var items = await store.ListAsync(
             normalizedContext,
-            namespaceDecision.Namespaces,
+            namespaces: null,
             cancellationToken);
         var result = items.FirstOrDefault(item => item.Name == normalized)
             is { } item ? ToContract(item) : null;
         await AuditBreakGlassReadAsync(
             context,
             resource,
-            EffectiveDecision(objectDecision, namespaceDecision.Authorization),
+            ResolveDecision(context, objectDecision),
             cancellationToken);
         return result;
     }
@@ -215,20 +128,13 @@ public sealed class VaultSecretsManagementService(
         var normalized = VaultBackedSecretStore.NormalizeName(name);
         var normalizedContext = VaultBackedSecretStore.NormalizeContextId(
             contextId);
-        var resource = ItemResource(normalized, normalizedContext);
+        var resource = ItemResource(normalized);
         var objectDecision = await DemandAsync(
             context,
             ManagementCapabilities.VaultSecretsManage,
             resource,
             cancellationToken);
-        var namespaceDecision = await DemandNamespaceAsync(
-            context,
-            normalizedContext,
-            VaultBackedSecretStore.GetNamespace(normalized),
-            cancellationToken);
-        var decision = EffectiveDecision(
-            objectDecision,
-            namespaceDecision.Authorization);
+        var decision = ResolveDecision(context, objectDecision);
         EnsureEnabled();
         if (string.IsNullOrWhiteSpace(command.Value))
             throw new ManagementValidationException(
@@ -263,20 +169,13 @@ public sealed class VaultSecretsManagementService(
         var normalized = VaultBackedSecretStore.NormalizeName(name);
         var normalizedContext = VaultBackedSecretStore.NormalizeContextId(
             contextId);
-        var resource = ItemResource(normalized, normalizedContext);
+        var resource = ItemResource(normalized);
         var objectDecision = await DemandAsync(
             context,
             ManagementCapabilities.VaultSecretsManage,
             resource,
             cancellationToken);
-        var namespaceDecision = await DemandNamespaceAsync(
-            context,
-            normalizedContext,
-            VaultBackedSecretStore.GetNamespace(normalized),
-            cancellationToken);
-        var decision = EffectiveDecision(
-            objectDecision,
-            namespaceDecision.Authorization);
+        var decision = ResolveDecision(context, objectDecision);
         EnsureEnabled();
         if (!await store.DeleteAsync(
                 normalized,
@@ -297,23 +196,22 @@ public sealed class VaultSecretsManagementService(
         await database.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task<VaultSecretNamespaceDecision> DemandNamespaceAsync(
+    /// <summary>
+    /// Decorates the object decision with the break-glass reason when the
+    /// operator carries the dedicated emergency claim AND MFA evidence. With
+    /// the tenant boundary removed, break-glass grants no extra access — it
+    /// exists so emergency sessions are unmissable in the audit trail (every
+    /// vault operation performed under it is journaled with the
+    /// vault_break_glass reason).
+    /// </summary>
+    private ManagementAuthorizationDecision ResolveDecision(
         ManagementRequestContext context,
-        string contextId,
-        string? requiredNamespace,
-        CancellationToken cancellationToken)
-    {
-        var decision = await namespaceAccess.ResolveAsync(
+        ManagementAuthorizationDecision objectDecision) =>
+        ConfigurationManagementObjectAccessPolicy.HasVaultBreakGlassEvidence(
             context.Operator,
-            contextId,
-            requiredNamespace,
-            cancellationToken);
-        if (!decision.Authorization.IsAllowed)
-        {
-            throw new ManagementAccessException(decision.Authorization);
-        }
-        return decision;
-    }
+            managementOptions.Value.Authorization.VaultSecrets)
+            ? ManagementAuthorizationDecision.Allowed("vault_break_glass")
+            : objectDecision;
 
     private async Task AuditBreakGlassReadAsync(
         ManagementRequestContext context,
@@ -340,21 +238,11 @@ public sealed class VaultSecretsManagementService(
         await database.SaveChangesAsync(cancellationToken);
     }
 
-    private static ManagementAuthorizationDecision EffectiveDecision(
-        ManagementAuthorizationDecision objectDecision,
-        ManagementAuthorizationDecision namespaceDecision) =>
-        objectDecision.ReasonCode == "vault_break_glass"
-            || namespaceDecision.ReasonCode == "vault_break_glass"
-            ? ManagementAuthorizationDecision.Allowed("vault_break_glass")
-            : objectDecision;
-
     private static ManagementResource ItemResource(
-        string normalizedName,
-        string normalizedContext) =>
+        string normalizedName) =>
         new(
             ManagementResourceTypes.VaultSecrets,
-            normalizedName,
-            normalizedContext);
+            normalizedName);
 
     private async Task<ManagementAuthorizationDecision> DemandAsync(
         ManagementRequestContext context,

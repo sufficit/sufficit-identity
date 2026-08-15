@@ -716,9 +716,7 @@ public sealed class ManagementUiRoutingTests
             ["Sufficit:Identity:ManagementUI:PathBase"] = "management",
             ["Sufficit:Identity:Management:RequireMfa"] = "false",
             ["Sufficit:Identity:Management:Authorization:FullAdministratorRoles:0"] =
-                "administrator",
-            ["Sufficit:Identity:Management:Authorization:TenantAccess:SubjectTenants:operator-administrator:0"] =
-                "global"
+                "administrator"
         });
 
         builder.Services
@@ -756,8 +754,6 @@ public sealed class ManagementUiRoutingTests
                 "Sufficit:Identity:Management"));
         builder.Services.AddScoped<IManagementEntitlementResolver,
             ScopeAndRoleManagementEntitlementResolver>();
-        builder.Services.AddScoped<IManagementTenantResolver,
-            ConfigurationManagementTenantResolver>();
         builder.Services.AddScoped<IProtectedPrincipalAccessPolicy,
             TestAllowProtectedPrincipalAccessPolicy>();
         builder.Services.AddScoped<IManagementObjectAccessPolicy,
@@ -1364,7 +1360,7 @@ public sealed class ManagementUiRoutingTests
                         Capability: ManagementCapabilities.ClientsCreate,
                         ResourceType: ManagementResourceTypes.Client,
                         ResourceId: "test-client",
-                        TenantId: null,
+                        ContextId: null,
                         AuthorizationOutcome: "allowed",
                         OperationOutcome: "succeeded",
                         ReasonCode: "allowed",

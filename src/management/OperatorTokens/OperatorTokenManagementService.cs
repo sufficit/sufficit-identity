@@ -621,7 +621,7 @@ internal sealed class OperatorTokenManagementService(
 
         foreach (var claimType in new[]
         {
-            "amr", "auth_time", "acr", "aal", ManagementTenantClaims.Type
+            "amr", "auth_time", "acr", "aal"
         })
         {
             foreach (var claim in context.Operator.FindAll(claimType))
