@@ -196,7 +196,7 @@ public sealed class SecurityHardeningTests
     }
 
     [Fact]
-    public void Management_authorization_disabled_remains_composable_in_development()
+    public async Task Management_authorization_disabled_remains_composable_in_development()
     {
         // The anonymous mode stays available as a deliberate Development-only
         // migration scenario: composition succeeds (environment supplied via
@@ -219,7 +219,8 @@ public sealed class SecurityHardeningTests
         using var provider = services.BuildServiceProvider();
         var policyProvider = provider.GetRequiredService<
             Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider>();
-        var policy = policyProvider.GetPolicyAsync("sufficit-identity-management").Result;
+        var policy = await policyProvider.GetPolicyAsync(
+            "sufficit-identity-management");
 
         Assert.NotNull(policy);
         // Development-only degradation: permissive assertion, no auth schemes.
