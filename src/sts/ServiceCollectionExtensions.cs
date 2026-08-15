@@ -1115,6 +1115,17 @@ public static class ServiceCollectionExtensions
             AspNetCoreIdentityAccountExternalIdentityService>();
         services.AddScoped<IAccountTwoFactorService,
             AspNetCoreIdentityAccountTwoFactorService>();
+        // ---- Token-endpoint grant pipeline (A2, eval 2026-08-14) ----
+        // Each grant is an ITokenGrantHandler; TokenGrantDispatcher owns the
+        // DPoP preamble and resolves the handler by grant type. New grants
+        // plug in here without touching AuthorizationController.
+        services.AddScoped<Grants.GrantOperations>();
+        services.AddScoped<Grants.ITokenGrantHandler, Grants.UserTokenGrantsHandler>();
+        services.AddScoped<Grants.ITokenGrantHandler, Grants.DeviceCodeGrantHandler>();
+        services.AddScoped<Grants.ITokenGrantHandler, Grants.ClientCredentialsGrantHandler>();
+        services.AddScoped<Grants.ITokenGrantHandler, Grants.PasswordGrantHandler>();
+        services.AddScoped<Grants.ITokenGrantHandler, Grants.TokenExchangeGrantHandler>();
+        services.AddScoped<Grants.TokenGrantDispatcher>();
         services.AddScoped<SufficitSignInManager>();
         services.AddScoped<SignInManager<ApplicationUser>>(services =>
             services.GetRequiredService<SufficitSignInManager>());

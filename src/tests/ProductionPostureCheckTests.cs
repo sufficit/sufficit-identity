@@ -9,6 +9,7 @@ using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Scim;
 using Sufficit.Identity.STS;
+using Sufficit.Identity.STS.Grants;
 using Sufficit.Identity.STS.Controllers;
 using Sufficit.Identity.STS.Security;
 using Sufficit.Identity.Vault;

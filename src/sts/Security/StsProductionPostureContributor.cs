@@ -54,8 +54,8 @@ public sealed class StsProductionPostureContributor(
 
         var tokenExchange = configuration
             .GetSection("Sufficit:Identity:TokenExchange")
-            .Get<Controllers.TokenExchangeOptions>()
-            ?? new Controllers.TokenExchangeOptions();
+            .Get<Grants.TokenExchangeOptions>()
+            ?? new Grants.TokenExchangeOptions();
         if (tokenExchange.Enabled
             && tokenExchange.AllowedClientIds.Count > 0
             && tokenExchange.ProvenanceMode
