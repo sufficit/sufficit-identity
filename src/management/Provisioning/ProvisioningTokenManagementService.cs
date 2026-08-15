@@ -227,9 +227,7 @@ internal sealed class ProvisioningTokenManagementService(
 /// same issuance boundary.
 /// </summary>
 internal sealed class ProvisioningTokenIssuer(
-    IOpenIddictScopeManager scopeManager,
-    IOpenIddictServerDispatcher dispatcher,
-    IOpenIddictServerFactory factory,
+    Sufficit.Identity.Application.Security.IPrivilegedTokenMintingService minting,
     IConfiguration configuration)
     : IProvisioningTokenIssuer
 {
@@ -249,78 +247,53 @@ internal sealed class ProvisioningTokenIssuer(
         var now = DateTimeOffset.UtcNow;
         var expiration = now.AddSeconds(lifetimeSeconds);
         var scopes = new[] { managementScope };
-        var issuer = ResolveIssuer();
-        var identity = new ClaimsIdentity(
-            authenticationType: "TemporaryProvisioningToken",
-            nameType: OidcClaims.Name,
-            roleType: OidcClaims.Role);
 
-        identity.SetClaim(OidcClaims.Subject, context.OperatorSubject);
-        identity.SetClaim(OidcClaims.ClientId, TemporaryClientId);
-        identity.SetClaim(
-            OidcClaims.Name,
-            context.OperatorDisplayName ?? context.OperatorSubject);
-        identity.SetClaim(OidcClaims.Scope, string.Join(' ', scopes));
-        identity.SetScopes(scopes);
-        identity.SetCreationDate(now);
-        identity.SetExpirationDate(expiration);
-        identity.SetClaim(
-            OidcClaims.Private.Issuer,
-            issuer);
-        identity.SetClaim(TemporaryTokenMarker, "true");
-        identity.SetClaim(
-            PermissionClaimType,
-            string.Join(' ', capabilities));
+        // A3 (eval 2026-08-14): minting mechanics live in the shared
+        // IPrivilegedTokenMintingService; this issuer keeps only its POLICY
+        // (who may mint, which capabilities, which lifetime) and its
+        // missing-issuer error contract.
+        var mint = await minting.MintAsync(
+            new Sufficit.Identity.Application.Security.PrivilegedTokenMintRequest(
+                AuthenticationType: "TemporaryProvisioningToken",
+                Subject: context.OperatorSubject,
+                ClientId: TemporaryClientId,
+                DisplayName: context.OperatorDisplayName ?? context.OperatorSubject,
+                CreatedAtUtc: now,
+                ExpiresAtUtc: expiration,
+                Scopes: scopes,
+                Resources: null,
+                StringClaims: new Dictionary<string, string>(StringComparer.Ordinal)
+                {
+                    [TemporaryTokenMarker] = "true",
+                    [PermissionClaimType] = string.Join(' ', capabilities),
+                },
+                EvidenceClaims: EvidenceClaims(context),
+                Issuer: ResolveIssuer()),
+            cancellationToken);
 
+        return new ProvisioningTokenIssueResult(
+            mint.Token,
+            "Bearer",
+            expiration,
+            scopes,
+            capabilities);
+    }
+
+    /// <summary>Authentication evidence projected from the operator principal.</summary>
+    private static IEnumerable<Claim> EvidenceClaims(ManagementRequestContext context)
+    {
         foreach (var claim in context.Operator.FindAll("amr"))
         {
-            identity.AddClaim(new Claim("amr", claim.Value));
+            yield return new Claim("amr", claim.Value);
         }
 
         foreach (var claimType in new[] { "auth_time", "acr" })
         {
             foreach (var claim in context.Operator.FindAll(claimType))
             {
-                identity.AddClaim(new Claim(claimType, claim.Value));
+                yield return new Claim(claimType, claim.Value);
             }
         }
-
-        var resources = await ToListAsync(
-            scopeManager.ListResourcesAsync(
-                identity.GetScopes(),
-                cancellationToken),
-            cancellationToken);
-        identity.SetResources(resources);
-        identity.SetClaims(OidcClaims.Audience, [.. resources]);
-        identity.SetDestinations(_ => [Destinations.AccessToken]);
-
-        var principal = new ClaimsPrincipal(identity);
-        var transaction = await factory.CreateTransactionAsync();
-        var tokenContext = new GenerateTokenContext(transaction)
-        {
-            CreateTokenEntry = true,
-            IsReferenceToken = true,
-            PersistTokenPayload = true,
-            Principal = principal,
-            TokenFormat = TokenFormats.Private.JsonWebToken,
-            TokenType = TokenTypeIdentifiers.AccessToken,
-        };
-
-        await dispatcher.DispatchAsync(tokenContext);
-        if (tokenContext.IsRejected
-            || string.IsNullOrWhiteSpace(tokenContext.Token))
-        {
-            throw new InvalidOperationException(
-                tokenContext.ErrorDescription
-                ?? "OpenIddict não conseguiu emitir o token temporário.");
-        }
-
-        return new ProvisioningTokenIssueResult(
-            tokenContext.Token,
-            "Bearer",
-            expiration,
-            scopes,
-            capabilities);
     }
 
     private string ResolveIssuer()

@@ -66,9 +66,13 @@ public sealed class PersonalTokensController : ControllerBase
     };
 
     private readonly IOpenIddictScopeManager _scopeManager;
+    private readonly Application.Security.IPrivilegedTokenMintingService _minting;
+    private readonly IOpenIddictTokenManager _tokenManager;
+    // Validation-only dependencies: minting moved to the shared service, but
+    // re-validating a stored payload on expiration updates still dispatches
+    // a ValidateTokenContext directly.
     private readonly IOpenIddictServerDispatcher _dispatcher;
     private readonly IOpenIddictServerFactory _factory;
-    private readonly IOpenIddictTokenManager _tokenManager;
     private readonly AppDbContext _database;
     private readonly SufficitIdentityOptions _options;
     private readonly UserManager<ApplicationUser> _userManager;
@@ -78,9 +82,10 @@ public sealed class PersonalTokensController : ControllerBase
 
     public PersonalTokensController(
         IOpenIddictScopeManager scopeManager,
+        Application.Security.IPrivilegedTokenMintingService minting,
+        IOpenIddictTokenManager tokenManager,
         IOpenIddictServerDispatcher dispatcher,
         IOpenIddictServerFactory factory,
-        IOpenIddictTokenManager tokenManager,
         AppDbContext database,
         SufficitIdentityOptions options,
         UserManager<ApplicationUser> userManager,
@@ -89,9 +94,10 @@ public sealed class PersonalTokensController : ControllerBase
         IPersonalTokenIssuancePolicy issuancePolicy)
     {
         _scopeManager = scopeManager;
+        _minting = minting;
+        _tokenManager = tokenManager;
         _dispatcher = dispatcher;
         _factory = factory;
-        _tokenManager = tokenManager;
         _database = database;
         _options = options;
         _userManager = userManager;
@@ -332,7 +338,7 @@ public sealed class PersonalTokensController : ControllerBase
             referenceToken: true,
             persistPayload: true);
 
-        var id = context.Principal.GetTokenId();
+        var id = context.TokenId;
         if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(context.Token))
         {
             throw new InvalidOperationException("OpenIddict did not create the personal access token.");
@@ -606,32 +612,19 @@ public sealed class PersonalTokensController : ControllerBase
         await _database.SaveChangesAsync(cancellationToken);
     }
 
-    private async Task<GenerateTokenContext> GenerateAsync(
+    private Task<Application.Security.PrivilegedTokenMint> GenerateAsync(
         ClaimsPrincipal principal,
         bool createEntry,
         bool referenceToken,
-        bool persistPayload)
-    {
-        var transaction = await _factory.CreateTransactionAsync();
-        var context = new GenerateTokenContext(transaction)
-        {
-            CreateTokenEntry = createEntry,
-            IsReferenceToken = referenceToken,
-            PersistTokenPayload = persistPayload,
-            Principal = principal,
-            TokenFormat = TokenFormats.Private.JsonWebToken,
-            TokenType = TokenTypeIdentifiers.AccessToken,
-        };
-
-        await _dispatcher.DispatchAsync(context);
-        if (context.IsRejected)
-        {
-            throw new InvalidOperationException(
-                context.ErrorDescription ?? "OpenIddict rejected token generation.");
-        }
-
-        return context;
-    }
+        bool persistPayload) =>
+        // A3 (eval 2026-08-14): the dispatch contract lives in the shared
+        // minting service — this controller keeps only the personal-token
+        // policy (issuance decision, scope attenuation, lifetime bounds).
+        _minting.MintPrincipalAsync(
+            principal,
+            createEntry,
+            referenceToken,
+            persistPayload);
 
     private async Task<ClaimsPrincipal?> ValidateAsync(
         string token,
