@@ -190,10 +190,17 @@ public sealed record ManagementRequestContext(
     }
 }
 
+/// <summary>
+/// Object-level authorization target. The former <c>TenantId</c> parameter was
+/// removed with the internal multi-tenant system (2026-08 decision, eval F-6):
+/// spawning a complete new application (docker) and sharing hardware is cheap,
+/// and external isolation per deployment is both stronger and simpler than a
+/// row-level tenant boundary. Object-level authorization now means protected
+/// principals; vault secret contexts remain as pure data organization.
+/// </summary>
 public sealed record ManagementResource(
     string Type,
-    string? Id = null,
-    string? TenantId = null);
+    string? Id = null);
 
 public enum ManagementAuthorizationOutcome
 {
@@ -253,28 +260,6 @@ public interface IManagementEntitlementResolver
         CancellationToken cancellationToken = default);
 }
 
-public sealed record ManagementTenantAccess(
-    IReadOnlySet<string> TenantIds)
-{
-    public bool Contains(string tenantId) => TenantIds.Contains(tenantId);
-}
-
-public static class ManagementTenantClaims
-{
-    public const string Type = "identity:tenant";
-}
-
-/// <summary>
-/// Resolves tenant membership from a deployment-controlled authority. Roles,
-/// OAuth scopes and claims supplied by the caller are not tenant membership.
-/// </summary>
-public interface IManagementTenantResolver
-{
-    ValueTask<ManagementTenantAccess> ResolveAsync(
-        ClaimsPrincipal principal,
-        CancellationToken cancellationToken = default);
-}
-
 public sealed record ManagementAccessPolicy(bool RequireMfa);
 
 public interface IManagementAccessPolicyProvider
@@ -285,18 +270,17 @@ public interface IManagementAccessPolicyProvider
 }
 
 /// <summary>
-/// Object-level authorization boundary (BOLA / tenant scoping). Consulted by
-/// the authorization evaluator AFTER the capability check and the MFA step-up
-/// check pass, to decide whether the operator may exercise <paramref name="capability"/>
-/// against this specific <paramref name="resource"/>. This is the seam that
-/// turns <see cref="ManagementResource"/> (Type/Id/TenantId) from dead audit
-/// metadata into a real access decision — enabling per-object or per-tenant
-/// authorization ("can this operator delete *this* user / manage *this*
-/// client") once a deployment ships a non-permissive implementation.
+/// Object-level authorization boundary (BOLA). Consulted by the authorization
+/// evaluator AFTER the capability check and the MFA step-up check pass, to
+/// decide whether the operator may exercise <paramref name="capability"/>
+/// against this specific <paramref name="resource"/> — e.g. protected
+/// principals ("can this operator disable *this* user"). The tenant-scoping
+/// half of this seam was removed with the internal multi-tenant system
+/// (2026-08 decision): isolation is per deployment, externally.
 /// </summary>
 /// <remarks>
 /// The default implementation fails closed. Hosts must register a concrete
-/// tenant-aware policy; missing composition can never become blanket access.
+/// policy; missing composition can never become blanket access.
 /// </remarks>
 public interface IManagementObjectAccessPolicy
 {
@@ -320,40 +304,6 @@ public enum ManagementPolicyEnforcementMode
 {
     Observe,
     Enforce,
-}
-
-public sealed class ManagementObjectAccessOptions
-{
-    public ManagementPolicyEnforcementMode Mode { get; set; } =
-        ManagementPolicyEnforcementMode.Enforce;
-
-    /// <summary>
-    /// Acknowledges that running this policy in <see cref="Mode"/> =
-    /// <see cref="ManagementPolicyEnforcementMode.Observe"/> in production is a
-    /// deliberate choice (e.g. a single-context deployment that needs no
-    /// tenant boundary). When false (default), the production posture check
-    /// flags Observe mode as an unresolved permissive default — the boundary
-    /// only logs, it does not block.
-    /// </summary>
-    public bool AcknowledgeObserveInProduction { get; set; }
-}
-
-public sealed class ManagementTenantAccessOptions
-{
-    /// <summary>
-    /// Tenant that owns provider-wide resources which do not carry a more
-    /// specific tenant identifier. This value never grants membership by
-    /// itself; the operator must still have an explicit assignment below.
-    /// </summary>
-    public string ProviderTenantId { get; set; } = "global";
-
-    /// <summary>
-    /// Deployment-controlled mapping from the stable operator subject (`sub`)
-    /// to the exact tenants the operator may administer. Configuration files
-    /// containing this map must be writable only by the deployment authority.
-    /// </summary>
-    public Dictionary<string, string[]> SubjectTenants { get; set; } =
-        new(StringComparer.Ordinal);
 }
 
 public sealed class ProtectedPrincipalAccessOptions
@@ -386,10 +336,6 @@ public sealed class ProtectedPrincipalAccessOptions
 
 public sealed class ManagementAuthorizationOptions
 {
-    public ManagementObjectAccessOptions ObjectAccess { get; set; } = new();
-
-    public ManagementTenantAccessOptions TenantAccess { get; set; } = new();
-
     public ProtectedPrincipalAccessOptions ProtectedPrincipals { get; set; } =
         new();
 
@@ -572,54 +518,6 @@ public sealed class ScopeAndRoleManagementEntitlementResolver(
     }
 }
 
-public sealed class ConfigurationManagementTenantResolver(
-    IOptions<ManagementOptions> options) : IManagementTenantResolver
-{
-    public ValueTask<ManagementTenantAccess> ResolveAsync(
-        ClaimsPrincipal principal,
-        CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (principal.Identity?.IsAuthenticated is not true)
-        {
-            return ValueTask.FromResult(Empty());
-        }
-
-        var subject = principal.FindFirst("sub")?.Value
-            ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (string.IsNullOrWhiteSpace(subject))
-        {
-            return ValueTask.FromResult(Empty());
-        }
-
-        var assignments = options.Value.Authorization
-            .TenantAccess.SubjectTenants;
-        if (assignments is null
-            || !assignments.TryGetValue(subject, out var configuredTenants)
-            || configuredTenants is null)
-        {
-            return ValueTask.FromResult(Empty());
-        }
-
-        var tenants = configuredTenants
-            .Where(IsValidTenantId)
-            .Select(value => value.Trim())
-            .ToHashSet(StringComparer.Ordinal);
-
-        return ValueTask.FromResult(new ManagementTenantAccess(tenants));
-    }
-
-    internal static bool IsValidTenantId(string? value) =>
-        !string.IsNullOrWhiteSpace(value)
-        && value.Length <= 64
-        && !value.Any(character =>
-            char.IsWhiteSpace(character) || char.IsControl(character));
-
-    private static ManagementTenantAccess Empty() =>
-        new(new HashSet<string>(StringComparer.Ordinal));
-}
-
 public sealed class ConfigurationManagementAccessPolicyProvider(
     IOptions<ManagementOptions> options) : IManagementAccessPolicyProvider
 {
@@ -635,8 +533,9 @@ public sealed class ConfigurationManagementAccessPolicyProvider(
 }
 
 /// <summary>
-/// Fail-closed default used only when a host did not compose a concrete tenant
-/// policy. A missing security dependency must deny rather than grant access.
+/// Fail-closed default used only when a host did not compose a concrete
+/// object-access policy. A missing security dependency must deny rather than
+/// grant access.
 /// </summary>
 public sealed class DefaultManagementObjectAccessPolicy
     : IManagementObjectAccessPolicy
@@ -650,20 +549,20 @@ public sealed class DefaultManagementObjectAccessPolicy
         cancellationToken.ThrowIfCancellationRequested();
         return ValueTask.FromResult(
             ManagementAuthorizationDecision.Denied(
-                "tenant_policy_unavailable"));
+                "object_policy_unavailable"));
     }
 }
 
 /// <summary>
-/// Concrete tenant boundary. Provider-wide objects without an explicit tenant
-/// belong to the configured provider tenant. Membership is never inferred from
-/// roles or scopes. Observe mode records mismatches; Enforce denies them.
+/// Concrete object-level boundary: item resources require an id and user
+/// mutations consult the protected-principal policy. The tenant-membership
+/// check that used to live here was removed with the internal multi-tenant
+/// system (2026-08 decision): isolation is per deployment (see the
+/// ManagementResource remarks), so capability + MFA + protected principals
+/// are the complete object-level contract.
 /// </summary>
 public sealed class ConfigurationManagementObjectAccessPolicy(
-    IOptions<ManagementOptions> options,
-    IProtectedPrincipalAccessPolicy protectedPrincipals,
-    IManagementTenantResolver tenantResolver,
-    ILogger<ConfigurationManagementObjectAccessPolicy> logger)
+    IProtectedPrincipalAccessPolicy protectedPrincipals)
     : IManagementObjectAccessPolicy
 {
     private static readonly HashSet<string> ItemResourceTypes =
@@ -705,39 +604,6 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
         {
             return ManagementAuthorizationDecision.Denied(
                 "resource_id_required");
-        }
-
-        var authorization = options.Value.Authorization;
-        var policy = authorization.ObjectAccess;
-        var tenantAccess = authorization.TenantAccess;
-        var requiredTenant = string.IsNullOrWhiteSpace(resource.TenantId)
-            ? tenantAccess.ProviderTenantId
-            : resource.TenantId;
-        if (!ConfigurationManagementTenantResolver.IsValidTenantId(
-                requiredTenant))
-        {
-            logger.LogError(
-                "Management tenant policy rejected resource type {ResourceType}: a valid tenant is required",
-                resource.Type);
-            return ManagementAuthorizationDecision.Denied("tenant_required");
-        }
-
-        var tenants = await tenantResolver.ResolveAsync(
-            principal,
-            cancellationToken);
-        if (!tenants.Contains(requiredTenant))
-        {
-            logger.LogWarning(
-                "Management object tenant policy {PolicyMode} rejected capability {Capability} on resource type {ResourceType} in tenant {TenantId}",
-                policy.Mode,
-                capability,
-                resource.Type,
-                requiredTenant);
-            if (policy.Mode is ManagementPolicyEnforcementMode.Enforce)
-            {
-                return ManagementAuthorizationDecision.Denied(
-                    "tenant_not_accessible");
-            }
         }
 
         if (resource.Type == ManagementResourceTypes.User

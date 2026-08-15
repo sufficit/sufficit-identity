@@ -250,8 +250,10 @@ public sealed class DeploymentHardeningTests
             checkerSource,
             StringComparison.Ordinal);
         Assert.DoesNotContain("echo \"${value}\"", checkerSource, StringComparison.Ordinal);
-        Assert.Contains(
-            "TenantAccess__SubjectTenants__<subject>__0=global",
+        // The tenant mapping seed was removed with the multi-tenant system
+        // (2026-08 decision); the template must not reintroduce it.
+        Assert.DoesNotContain(
+            "TenantAccess__SubjectTenants",
             hardeningTemplate,
             StringComparison.Ordinal);
 

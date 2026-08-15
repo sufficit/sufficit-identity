@@ -84,8 +84,7 @@ internal sealed class AuthorizationManagementService(
         var clientId = NullIfWhiteSpace(query.ClientId);
         var resource = new ManagementResource(
             ManagementResourceTypes.AuthorizationCollection,
-            userId,
-            clientId);
+            userId);
         var decision = await DemandAsync(
             context,
             ManagementCapabilities.AuthorizationsRead,

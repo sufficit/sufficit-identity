@@ -179,8 +179,6 @@ if (mgmtEnabled)
         ServiceDescriptor.Scoped<
             IManagementEntitlementResolver,
             SufficitOperatorManagementEntitlementResolver>());
-    builder.Services.AddScoped<IClaimsTransformation,
-        SufficitManagementTenantClaimsTransformation>();
     // M1 fix (eval): replace the MissingClientSecretResolver stub with a
     // vault-backed resolver so provisioning of confidential clients works.
     // The vault is already registered by AddSufficitIdentitySTS above; the

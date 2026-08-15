@@ -115,8 +115,6 @@ public static class ServiceCollectionExtensions
             OperatorTokenManagementService>();
         services.TryAddScoped<IManagementEntitlementResolver,
             ScopeAndRoleManagementEntitlementResolver>();
-        services.TryAddScoped<IManagementTenantResolver,
-            ConfigurationManagementTenantResolver>();
         services.TryAddScoped<IManagementAccessPolicyProvider,
             ConfigurationManagementAccessPolicyProvider>();
         services.TryAddScoped<IProtectedPrincipalAccessPolicy,
@@ -151,8 +149,6 @@ public static class ServiceCollectionExtensions
             MetricsManagementService>();
         services.TryAddScoped<IVaultSecretsManagementService,
             VaultSecretsManagementService>();
-        services.TryAddScoped<IVaultSecretNamespaceAccessPolicy,
-            ConfigurationVaultSecretNamespaceAccessPolicy>();
         services.TryAddSingleton<IdentityMetricsRuntimeState>();
         services.TryAddSingleton<IBrandingThemeProvider,
             BrandingThemeProvider>();

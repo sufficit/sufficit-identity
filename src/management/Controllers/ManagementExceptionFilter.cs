@@ -111,10 +111,6 @@ internal sealed class ManagementExceptionFilter : IExceptionFilter
                 "Não há uma sessão autenticada. Faça login no Management e repita a operação.",
             "capability_not_granted" =>
                 "A sessão está autenticada, mas o operador não recebeu a capability exigida pela operação.",
-            "tenant_not_accessible" =>
-                "O operador possui a capability, mas não está associado ao tenant do recurso.",
-            "tenant_policy_unavailable" =>
-                "A política de acesso do tenant não está disponível; o Identity bloqueou a operação por segurança.",
             _ => "A operação foi bloqueada por uma regra de autorização do Identity. Consulte reasonCode e correlationId para diagnóstico."
         };
 }

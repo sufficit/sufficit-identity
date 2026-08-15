@@ -732,10 +732,6 @@ internal sealed class ClaimManagementService(
         var authorization = managementOptions.Value.Authorization;
         return string.Equals(
                 type,
-                ManagementTenantClaims.Type,
-                StringComparison.OrdinalIgnoreCase)
-            || string.Equals(
-                type,
                 authorization.ProtectedPrincipals.TierClaimType,
                 StringComparison.OrdinalIgnoreCase)
             || string.Equals(

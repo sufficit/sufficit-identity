@@ -125,17 +125,8 @@
           "MaximumLifetimeSeconds": 3600,
           "MaximumCapabilities": 24
         },
+        "_Authorization": "The internal multi-tenant system was removed (2026-08): isolation is per deployment, externally. Object-level authorization covers protected principals; vault secret contexts/namespaces remain as pure data organization.",
         "Authorization": {
-          "ObjectAccess": {
-            "Mode": "Enforce"
-          },
-          "TenantAccess": {
-            "_ClaimType": "The canonical claim is identity:tenant and is not configurable. It is projected only after a server-side subject-to-tenant lookup.",
-            "_ProviderTenantId": "Tenant that owns provider-wide resources without a specific tenant. This value does not grant access by itself.",
-            "ProviderTenantId": "global",
-            "_SubjectTenants": "Required when Management is enabled. Keys are stable operator sub values; values are exact tenant IDs. Keep this mapping in protected deployment configuration.",
-            "SubjectTenants": {}
-          },
           "ProtectedPrincipals": {
             "Mode": "Enforce",
             "TierClaimType": "identity_principal_tier",
@@ -145,8 +136,6 @@
             "BreakGlassClaimValue": "identity.management"
           },
           "VaultSecrets": {
-            "_NamespaceClaimType": "Each value is '<contextId>:<namespace>' (for example 'global:providers'). Capability alone never grants a namespace.",
-            "NamespaceClaimType": "identity_vault_namespace",
             "_BreakGlass": "Issued only by the deployment emergency-access process. The generic Claims Management API reserves this type; MFA is also mandatory and every use is audited.",
             "BreakGlassClaimType": "identity_vault_break_glass",
             "BreakGlassClaimValue": "identity.vault.secrets"

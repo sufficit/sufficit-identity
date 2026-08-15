@@ -32,10 +32,9 @@ public sealed class ManagementUiAuthorizationTests
             PrincipalWithRole("manager"),
             resource: null,
             ManagementUiPolicies.Access)).Succeeded);
-        Assert.False((await authorization.AuthorizeAsync(
-            PrincipalWithRole("identity-administrator", "unassigned-operator"),
-            resource: null,
-            ManagementUiPolicies.Access)).Succeeded);
+        // The former "administrator subject without a tenant mapping is
+        // locked out" case was removed with the multi-tenant system
+        // (2026-08 decision): the role alone defines operator access.
     }
 
     [Fact]
@@ -83,8 +82,7 @@ public sealed class ManagementUiAuthorizationTests
             {
                 ["Sufficit:Identity:Management:RequireMfa"] = "false",
                 ["Sufficit:Identity:Management:Authorization:FullAdministratorRoles:0"] = "identity-administrator",
-                ["Sufficit:Identity:Management:Authorization:CapabilityClaimTypes:0"] = "permission",
-                ["Sufficit:Identity:Management:Authorization:TenantAccess:SubjectTenants:operator-1:0"] = "global"
+                ["Sufficit:Identity:Management:Authorization:CapabilityClaimTypes:0"] = "permission"
             })
             .Build();
         var collection = new ServiceCollection();
@@ -93,8 +91,6 @@ public sealed class ManagementUiAuthorizationTests
             .Bind(configuration.GetSection("Sufficit:Identity:Management"));
         collection.AddScoped<IManagementEntitlementResolver,
             ScopeAndRoleManagementEntitlementResolver>();
-        collection.AddScoped<IManagementTenantResolver,
-            ConfigurationManagementTenantResolver>();
         collection.AddScoped<IProtectedPrincipalAccessPolicy,
             TestAllowProtectedPrincipalAccessPolicy>();
         collection.AddScoped<IManagementObjectAccessPolicy,

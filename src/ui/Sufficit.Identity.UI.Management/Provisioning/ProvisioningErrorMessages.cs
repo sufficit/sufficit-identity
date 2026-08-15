@@ -52,10 +52,6 @@ internal static class ProvisioningErrorMessages
                 $"A sessão está autenticada, mas falta a capability {capability} para {operation}.",
             "mfa_required" =>
                 $"A sessão está autenticada, mas o MFA ainda não foi comprovado para {operation}.",
-            "tenant_not_accessible" =>
-                $"A conta possui a capability, mas não tem acesso ao tenant usado por {operation}.",
-            "tenant_policy_unavailable" =>
-                "A política de acesso do tenant não está disponível; a operação foi bloqueada por segurança.",
             "temporary_token_cannot_mint" =>
                 "Um token temporário não pode emitir outro token temporário.",
             _ =>
@@ -73,10 +69,6 @@ internal static class ProvisioningErrorMessages
                 $"Próximo passo: peça a um administrador para atribuir {capability} ao seu operador.",
             "mfa_required" =>
                 "Próximo passo: conclua o segundo fator e retorne ao Management; senha isolada não basta.",
-            "tenant_not_accessible" =>
-                "Próximo passo: peça a associação do seu operador ao tenant correto.",
-            "tenant_policy_unavailable" =>
-                "Próximo passo: peça à equipe de infraestrutura para configurar a política de tenant antes de tentar novamente.",
             "temporary_token_cannot_mint" =>
                 "Próximo passo: autentique-se novamente como operador humano para emitir um novo token.",
             _ => $"Código de suporte: {decision.ReasonCode}."

@@ -30,7 +30,7 @@ public sealed class VaultSnapshotOptions
 
     /// <summary>
     /// Upper bound for the number of per-secret entries retained by one
-    /// process. This prevents an unbounded tenant/name cardinality from
+    /// process. This prevents an unbounded context/name cardinality from
     /// becoming a memory leak.
     /// </summary>
     public int MaxEntries { get; init; } = 4096;

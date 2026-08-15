@@ -61,10 +61,6 @@ public sealed class UsersResendConfirmationAuthorizationTests
 
     private static CapabilityManagementAuthorizationEvaluator CreateEvaluator()
     {
-        // Deployment-shaped authorization options: the operator is mapped to
-        // the provider tenant, so the fail-closed object/tenant policy (empty
-        // SubjectTenants would deny every item resource with
-        // tenant_policy_unavailable) can evaluate normally.
         var options = Options.Create(new ManagementOptions
         {
             // MFA step-up is orthogonal to the capability split under test;
@@ -73,14 +69,6 @@ public sealed class UsersResendConfirmationAuthorizationTests
             Authorization = new ManagementAuthorizationOptions
             {
                 CapabilityClaimTypes = ["permission"],
-                TenantAccess = new ManagementTenantAccessOptions
-                {
-                    SubjectTenants = new Dictionary<string, string[]>(
-                        StringComparer.Ordinal)
-                    {
-                        ["operator-1"] = ["global"],
-                    },
-                },
             }
         });
         return new CapabilityManagementAuthorizationEvaluator(
