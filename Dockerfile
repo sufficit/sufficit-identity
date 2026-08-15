@@ -39,7 +39,12 @@ WORKDIR /src
 
 # The complete source graph, including both embedded UI projects, is contained
 # in this repository and uses the root build and package configuration.
-COPY . /src/sufficit-identity/
+# Build context is the PARENT directory of the sufficit-identity checkout so
+# both trees are available: the UI projects reference the shared
+# Sufficit.Blazor.UI components via a sibling project reference.
+#   docker build --file sufficit-identity/Dockerfile <parent-of-checkouts>
+COPY sufficit-identity/ /src/sufficit-identity/
+COPY sufficit-blazor-ui/ /src/sufficit-blazor-ui/
 
 # Defense in depth on top of .dockerignore — see the SECRETS note above.
 RUN rm -f /src/sufficit-identity/src/server/appsettings.json \

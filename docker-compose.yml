@@ -39,8 +39,10 @@ services:
   # ---- STS (the app) ----
   sts:
     build:
-      context: .
-      dockerfile: Dockerfile
+      # Parent context: the UI projects reference the sibling
+      # sufficit-blazor-ui checkout as a project (see Dockerfile note).
+      context: ..
+      dockerfile: sufficit-identity/Dockerfile
     restart: "on-failure:5"
     depends_on:
       db:
