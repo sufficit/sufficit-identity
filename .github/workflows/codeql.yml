@@ -37,8 +37,14 @@ jobs:
     timeout-minutes: 45
 
     steps:
+      # Layout mirrors ci.yml: the identity checkout lives at
+      # sufficit-identity/ with the sibling sufficit-blazor-ui/ beside it,
+      # which is exactly where the ../../../../sufficit-blazor-ui project
+      # references resolve from src/ui/* and src/server.
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: sufficit-identity
 
       # Sibling checkout: the UI projects reference the shared
       # Sufficit.Blazor.UI components as a project (see ci.yml note).
@@ -69,12 +75,14 @@ jobs:
       # Mirrors ci.yml: the EF Core provider is a deliberately fixed internal
       # build, restored from the in-repo feed rather than nuget.org.
       - name: Restore
+        working-directory: sufficit-identity
         # --locked-mode mirrors ci.yml: the repo commits packages.lock.json, so
         # analysis must resolve exactly the audited dependency graph rather than
         # silently floating to newer versions.
         run: dotnet restore Sufficit.Identity.sln --locked-mode
 
       - name: Build
+        working-directory: sufficit-identity
         # No -warnaserror here: ci.yml already enforces that gate. This build
         # exists only to give CodeQL a complete compilation to analyze, and
         # failing it on style warnings would mask real security findings.
