@@ -63,7 +63,10 @@ public sealed class VaultPlaintextCompatibilityTests
             timeProvider: time);
 
         var ciphertext = Marker + Encode("legacy-value");
-        Assert.NotNull(await harness.Vault.DecryptAsync(ciphertext));
+        // DecryptAsync returns ReadOnlyMemory<byte> (a value type) — assert
+        // its length rather than a null check on a value (xUnit2002).
+        var inWindow = await harness.Vault.DecryptAsync(ciphertext);
+        Assert.Equal("legacy-value".Length, inWindow.Length);
 
         time.Advance(TimeSpan.FromMinutes(6));
 
