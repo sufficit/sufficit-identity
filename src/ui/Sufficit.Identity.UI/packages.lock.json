@@ -24,6 +24,9 @@
           "Microsoft.Win32.SystemEvents": "6.0.0"
         }
       },
+      "sufficit.blazor.ui": {
+        "type": "Project"
+      },
       "sufficit.identity.application.abstractions": {
         "type": "Project"
       },
