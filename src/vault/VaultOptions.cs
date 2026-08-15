@@ -106,8 +106,18 @@ public sealed class VaultOptions
     /// </summary>
     public VaultSnapshotOptions Snapshot { get; init; } = new();
 
-    /// <summary>Name of the versioned RSA key used for OpenIddict tokens.</summary>
+    /// <summary>Name of the versioned key used for OpenIddict tokens.</summary>
     public string SigningKeyName { get; init; } = "oidc-signing";
+
+    /// <summary>
+    /// JWS algorithm for the NEXT created/rotated signing-key version (A6,
+    /// eval 2026-08-14): <c>RS256</c> (default), <c>PS256</c> or
+    /// <c>ES256</c>. Each stored version embeds its own algorithm in the
+    /// public JWK, so verification and rotation overlap keep using what the
+    /// version was created with. FAPI-leaning deployments should prefer
+    /// PS256/ES256 — the profile's JWS baseline.
+    /// </summary>
+    public string SigningAlgorithm { get; init; } = SigningAlgorithms.RsaSha256;
 
     /// <summary>
     /// Minimum time that a previous signing key remains published after a

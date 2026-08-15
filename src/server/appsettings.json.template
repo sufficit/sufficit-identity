@@ -43,6 +43,8 @@
       "EnableSecretStore": false,
       "ManageSigningKeys": false,
       "SigningKeyName": "oidc-signing",
+      "_SigningAlgorithm": "JWS algorithm for the NEXT created/rotated signing-key version (A6): RS256 (default), PS256 or ES256. Each stored version embeds its own algorithm in the public JWK, so verification and rotation overlap keep using what the version was created with. FAPI-leaning deployments should prefer PS256/ES256 — the profile's JWS baseline.",
+      "SigningAlgorithm": "RS256",
       "SigningKeyOverlapSeconds": 1209600,
       "SigningKeyLockSeconds": 60,
       "Snapshot": {

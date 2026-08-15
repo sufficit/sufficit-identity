@@ -285,6 +285,14 @@ public static class ServiceCollectionExtensions
                 "Sufficit:Vault:ExternalKeyIdentifier is required in production to pin the KMS/HSM KEK version.");
         }
 
+        if (!SigningAlgorithms.Supported.Contains(
+                options.SigningAlgorithm))
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Vault:SigningAlgorithm must be one of: "
+                + string.Join(", ", SigningAlgorithms.Supported) + ".");
+        }
+
         if (options.SigningKeyOverlapSeconds < 1)
         {
             throw new InvalidOperationException(

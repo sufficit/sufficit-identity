@@ -4,6 +4,20 @@ using Sufficit.Identity.Vault;
 
 namespace Sufficit.Identity.STS.Vault;
 
+/// <summary>Maps a stored signing JWK's algorithm to IdentityModel ids.</summary>
+internal static class VaultSigningAlgorithmMap
+{
+    public static string AlgorithmForJwk(string publicJwk) =>
+        Sufficit.Identity.Vault.SigningAlgorithms.FromJwk(publicJwk) switch
+        {
+            Sufficit.Identity.Vault.SigningAlgorithms.RsaPssSha256 =>
+                Microsoft.IdentityModel.Tokens.SecurityAlgorithms.RsaSsaPssSha256,
+            Sufficit.Identity.Vault.SigningAlgorithms.EcdsaSha256 =>
+                Microsoft.IdentityModel.Tokens.SecurityAlgorithms.EcdsaSha256,
+            _ => Microsoft.IdentityModel.Tokens.SecurityAlgorithms.RsaSha256,
+        };
+}
+
 /// <summary>Injects a vault-backed signing key into OpenIddict token issuance.</summary>
 public sealed class VaultSigningCredentialsHandler : IOpenIddictServerHandler<
     OpenIddictServerEvents.GenerateTokenContext>
@@ -35,9 +49,14 @@ public sealed class VaultSigningCredentialsHandler : IOpenIddictServerHandler<
             ?? throw new InvalidOperationException(
                 $"Vault signing key '{_options.SigningKeyName}' is not available.");
         var securityKey = new VaultSigningSecurityKey(current, _keyVault);
+
+        // A6 (eval 2026-08-14): sign with the algorithm embedded in THIS
+        // key version's JWK (RS256/PS256/ES256), never a global constant —
+        // rotation can move between families and in-flight versions keep
+        // their own.
         var credentials = new SigningCredentials(
             securityKey,
-            SecurityAlgorithms.RsaSha256);
+            VaultSigningAlgorithmMap.AlgorithmForJwk(current.PublicJwk));
         context.SigningCredentials = credentials;
         // AttachTokenMetadata may already have materialized the descriptor;
         // update it as well so IdentityModel cannot retain the bootstrap key.
@@ -77,7 +96,7 @@ public sealed class VaultJsonWebKeySetHandler : IOpenIddictServerHandler<
             var jwk = new JsonWebKey(key.PublicJwk)
             {
                 KeyId = key.KeyId,
-                Alg = SecurityAlgorithms.RsaSha256,
+                Alg = VaultSigningAlgorithmMap.AlgorithmForJwk(key.PublicJwk),
                 Use = "sig",
             };
             context.Keys.Add(jwk);
