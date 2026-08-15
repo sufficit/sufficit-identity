@@ -65,7 +65,7 @@ else
             <strong>@AccountLabel</strong>
             <span>@AccountDescription</span>
         </div>
-        <SUIStatusBadge Tone="info">Conta selecionada</SUIStatusBadge>
+        <SUIStatusBadge ToneValue="SUITone.Info">Conta selecionada</SUIStatusBadge>
     </div>
 
     <div class="table-panel" aria-labelledby="claims-list-heading" aria-busy="@loading">
@@ -149,7 +149,7 @@ else
                                     <tr>
                                         <td data-label="Tipo"><code class="client-id">@claim.Type</code></td>
                                         <td data-label="Valor"><span class="claim-value">@claim.Value</span></td>
-                                        <td data-label="Estado"><SUIStatusBadge Tone="success">Atribuída</SUIStatusBadge></td>
+                                        <td data-label="Estado"><SUIStatusBadge ToneValue="SUITone.Success">Atribuída</SUIStatusBadge></td>
                                         <td data-label="Ações">
                                             <a class="row-action" href="@ClaimHref(claim.Id)">
                                                 Editar

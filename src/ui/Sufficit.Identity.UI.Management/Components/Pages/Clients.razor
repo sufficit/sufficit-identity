@@ -41,7 +41,7 @@
         <strong>Uma única fonte de verdade</strong>
         <span>A interface e a API usam as mesmas validações, permissões e trilha de auditoria.</span>
     </div>
-    <SUIStatusBadge Tone="info">Capability</SUIStatusBadge>
+    <SUIStatusBadge ToneValue="SUITone.Info">Capability</SUIStatusBadge>
 </div>
 
 @if (!loading && Drafts.Count > 0)
@@ -49,7 +49,7 @@
     <div class="draft-panel" aria-labelledby="drafts-heading">
         <div class="data-toolbar">
             <div><h2 id="drafts-heading">Continuar configuração</h2><p>Rascunhos protegidos e disponíveis somente para sua conta administrativa.</p></div>
-            <SUIStatusBadge Tone="info">@Drafts.Count @(Drafts.Count == 1 ? "rascunho" : "rascunhos")</SUIStatusBadge>
+            <SUIStatusBadge ToneValue="SUITone.Info">@Drafts.Count @(Drafts.Count == 1 ? "rascunho" : "rascunhos")</SUIStatusBadge>
         </div>
         <div class="draft-list">
             @foreach (var item in Drafts)
@@ -61,7 +61,7 @@
                         <span>@item.ProfileDisplayName · Etapa @DraftStepLabel(item.CurrentStep)</span>
                         <small>Atualizado @FormatRelative(item.UpdatedAt) · expira em @item.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy")</small>
                     </span>
-                    <SUIStatusBadge Tone="@(item.IsReady ? "success" : "neutral")">@(item.IsReady ? "Pronto" : "Em andamento")</SUIStatusBadge>
+                    <SUIStatusBadge ToneValue="@(item.IsReady ? SUITone.Success : SUITone.Neutral)">@(item.IsReady ? "Pronto" : "Em andamento")</SUIStatusBadge>
                     <SUIIcon Name="arrow-right" Size="17" />
                 </a>
             }
@@ -192,7 +192,7 @@
                                         <code class="client-id">@client.ClientId</code>
                                     </td>
                                     <td data-label="Tipo">
-                                        <SUIStatusBadge Tone="@ClientTypeTone(client.Type)">
+                                        <SUIStatusBadge ToneValue="@IdentitySuiTone.From(ClientTypeTone(client.Type))">
                                             @ClientTypeLabel(client.Type)
                                         </SUIStatusBadge>
                                     </td>

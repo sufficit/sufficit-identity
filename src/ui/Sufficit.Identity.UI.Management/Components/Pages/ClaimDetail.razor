@@ -56,7 +56,7 @@ else if (result?.IsSuccess is true && result.Value is not null
             <strong>Atualização com invalidação</strong>
             <span>Salvar gira o selo de segurança e revoga as credenciais emitidas para @AccountLabel(claim).</span>
         </div>
-        <SUIStatusBadge Tone="warning">Impacta credenciais</SUIStatusBadge>
+        <SUIStatusBadge ToneValue="SUITone.Warning">Impacta credenciais</SUIStatusBadge>
     </div>
 
     @if (submission?.IsSuccess is false)

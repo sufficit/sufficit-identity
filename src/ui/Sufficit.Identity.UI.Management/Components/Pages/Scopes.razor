@@ -32,7 +32,7 @@
         <strong>Definições personalizadas OAuth/OIDC</strong>
         <span>Scopes padrão como <code>openid</code>, <code>profile</code> e <code>offline_access</code> pertencem ao protocolo e não são duplicados aqui.</span>
     </div>
-    <SUIStatusBadge Tone="info">OAuth 2.0</SUIStatusBadge>
+    <SUIStatusBadge ToneValue="SUITone.Info">OAuth 2.0</SUIStatusBadge>
 </div>
 
 <div class="table-panel" aria-labelledby="scopes-list-heading" aria-busy="@loading">
@@ -110,7 +110,7 @@
                                         </a>
                                     </td>
                                     <td data-label="Origem">
-                                        <SUIStatusBadge Tone="@(scope.IsManifestManaged ? "info" : "neutral")">
+                                        <SUIStatusBadge ToneValue="@(scope.IsManifestManaged ? SUITone.Info : SUITone.Neutral)">
                                             @(scope.IsManifestManaged ? "Manifesto" : "Manual")
                                         </SUIStatusBadge>
                                     </td>

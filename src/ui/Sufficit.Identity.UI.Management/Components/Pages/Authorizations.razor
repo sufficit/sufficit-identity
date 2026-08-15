@@ -15,7 +15,7 @@
         <strong>Autorizações persistidas</strong>
         <span>Revogar uma autorização também invalida todas as credenciais associadas a ela.</span>
     </div>
-    <SUIStatusBadge Tone="info">OAuth &amp; OIDC</SUIStatusBadge>
+    <SUIStatusBadge ToneValue="SUITone.Info">OAuth &amp; OIDC</SUIStatusBadge>
 </div>
 
 @if (revoked)
@@ -123,11 +123,11 @@
                                             {
                                                 @foreach (var scope in grant.Scopes.Take(4))
                                                 {
-                                                    <SUIStatusBadge Tone="neutral">@scope</SUIStatusBadge>
+                                                    <SUIStatusBadge ToneValue="SUITone.Neutral">@scope</SUIStatusBadge>
                                                 }
                                                 @if (grant.Scopes.Count > 4)
                                                 {
-                                                    <SUIStatusBadge Tone="neutral">+@(grant.Scopes.Count - 4)</SUIStatusBadge>
+                                                    <SUIStatusBadge ToneValue="SUITone.Neutral">+@(grant.Scopes.Count - 4)</SUIStatusBadge>
                                                 }
                                             }
                                         </span>
@@ -140,7 +140,7 @@
                                     </td>
                                     <td data-label="Credenciais">@grant.CredentialCount</td>
                                     <td data-label="Estado">
-                                        <SUIStatusBadge Tone="@(grant.IsActive ? "success" : "neutral")">
+                                        <SUIStatusBadge ToneValue="@(grant.IsActive ? SUITone.Success : SUITone.Neutral)">
                                             @StatusLabel(grant.Status)
                                         </SUIStatusBadge>
                                     </td>
