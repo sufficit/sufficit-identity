@@ -32,6 +32,7 @@ A self-hostable, .NET-native identity provider that goes well beyond stock OpenI
 | SCIM 2.0 (user/group provisioning) | RFC 7643/7644 | ✅ |
 | WebAuthn / Passkeys (.NET 10 native) | FIDO2 | ✅ |
 | MCP Authorization (resource metadata + DCR) | RFC 9728 + RFC 7591 | ✅ |
+| Identity MCP tools (Vault + user self-service) | MCP streamable HTTP / JSON-RPC | ✅ Opt-in with Management |
 | Dynamic Client Registration | RFC 7591 | ✅ Opt-in, token-gated |
 
 ## Multi-tenancy
@@ -105,7 +106,8 @@ Every option is documented in [`src/server/appsettings.json.template`](src/serve
 - **TrustedProxies** — CIDR list for reverse-proxy forwarded headers
 - **SSF/CAEP** — stream management, push/poll delivery, event types
 - **PAR / JAR / JARM / FAPI 2.0** — opt-in protocol enforcement
-- **Management / SCIM** — optional REST surfaces with scope-gated authorization
+- **Management / SCIM / Identity MCP** — optional REST and agent surfaces with
+  Bearer, scope and capability-gated authorization
 
 ## Testing
 

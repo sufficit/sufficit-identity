@@ -25,7 +25,7 @@
 ## 3. Plano de aprofundamento (fase 2 — read-only)
 
 - [ ] Health real: `curl --unix-socket /run/sufficit-identity/identity.sock /health` (+ variantes); nginx `:26501` 200/502.
-- [ ] Redis cluster: `redis-cli cluster info` no mestre local, latência, `connected_clients`, hits/misses do cache de vault;Reachability dos outros 2 masters (172.19.1.113, 172.19.3.101).
+- [ ] Redis cluster: `redis-cli cluster info` no mestre local, latência, `connected_clients`, hits/misses do cache de vault; reachability dos outros 2 masters (172.19.1.113, 172.19.3.101).
 - [ ] Mapear os 48 eventos: cadência de deploy vs recorrência de problema (correlacionar com `identity.log.2/3` grandes de 06–07/08).
 - [ ] Verificar `sufficit-identity-restart.service` (static — o que dispara? timer? path?).
 - [ ] TFM/runtimeconfig × csproj; drift de código (data binário × git log).
