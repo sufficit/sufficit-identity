@@ -98,6 +98,8 @@ Log/
 # environment-sensitive observations. The tracked prompt lives in
 # docs/evaluations/.
 docs/archive/evaluations/
+docs/evaluations/
 
 # Local deployment data
 deploy/local/
+**/publish*/
