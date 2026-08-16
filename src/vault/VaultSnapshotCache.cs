@@ -548,7 +548,8 @@ public sealed class VaultSnapshotCache
                 secret.OwnerSubject,
                 secret.UpdatedAtUtc,
                 secret.UpdatedBy,
-                true))
+                true,
+                secret.ExpiresAtUtc))
             .ToArrayAsync(cancellationToken);
     }
 
@@ -671,7 +672,8 @@ public sealed class VaultSnapshotCache
             secret.Ciphertext,
             secret.AadJson,
             secret.UpdatedAtUtc,
-            secret.UpdatedBy);
+            secret.UpdatedBy,
+            secret.ExpiresAtUtc);
 
     private static string SigningCacheKey(string keyName) =>
         CachePrefix + "signing:" + Hash(keyName);
@@ -714,7 +716,8 @@ internal sealed record VaultSecretSnapshotEntry(
     string Ciphertext,
     string? AadJson,
     DateTime UpdatedAtUtc,
-    string UpdatedBy);
+    string UpdatedBy,
+    DateTime? ExpiresAtUtc = null);
 
 internal sealed class VaultSnapshotRefreshService(
     VaultSnapshotCache snapshots,

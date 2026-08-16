@@ -310,3 +310,36 @@ Limitação atual: a implantação ainda deve fornecer o PFX de signing separado
 continuam usando esse certificado.
 O provider do vault é a fonte de assinatura dos tokens OpenIddict; a migração
 dessas superfícies auxiliares para o vault é uma etapa posterior.
+
+## Consumo remoto (consolidação 2026-08)
+
+O vault do Identity é o cofre central da Sufficit. O `sufficit-ai` retirou o
+vault próprio (`arin_secrets` + Data Protection) e consome este via REST.
+
+Superfície para consumidores remotos:
+
+- `GET /api/vault/secrets/resolve?name=<nome>&contextId=<ctx>` — devolve o
+  valor em claro. `404` = inexistente; `410 Gone` = expirado (o valor nunca é
+  devolvido depois da expiração). Exige a capability dedicada
+  `identity.vault.secrets.resolve` (separada de `read`/`manage` de propósito:
+  metadados ≠ texto claro). Toda resolução — inclusive a recusa por expiração —
+  é registrada na auditoria de management.
+- `PUT /api/vault/secrets/{nome}` agora aceita `expiresAtUtc` opcional; o
+  status (`Active`/`ExpiringSoon` janela de 7 dias/`Expired`) aparece nos
+  metadados de `GET`/listagem. Expiração no passado é rejeitada.
+- Pacote cliente: `Sufficit.Identity.Vault.Client` (`IVaultSecretsClient`) —
+  REST fino, sem material de chave, com cache de resolução (TTL curto) e
+  fallback stale limitado quando o Identity está indisponível. O host anexa o
+  próprio handler de client-credentials ao `IHttpClientBuilder` retornado por
+  `AddSufficitVaultSecretsClient`.
+
+Para autorizar um serviço (ex.: `SufficitAIServer`): conceda o scope
+`identity.management` e as capabilities de vault via claims `permission`
+(`identity.vault.secrets.read`, `.manage`, `.resolve`). Atenção ao
+`RequireMfa` do management: principais de serviço não carregam `amr`, então a
+implantação precisa de política compatível para esses clientes.
+
+Os segredos do sufficit-ai vivem no namespace `ai/` (nome = `ai/<referência>`;
+contexto = GUID do tenant ou `global`). A cópia one-shot roda no sufficit-ai
+com `Sufficit:AI:Vault:MigrateLegacySecrets=true`; a tabela legada
+`arin_secrets` só é removida manualmente após a validação.

@@ -673,6 +673,8 @@ public sealed class AppDbContext
                 .HasColumnType("longtext")
                 .IsRequired();
             b.Property(x => x.AadJson).HasColumnType("longtext");
+            b.Property(x => x.ExpiresAtUtc)
+                .HasColumnType("datetime(6)");
             b.Property(x => x.UpdatedAtUtc)
                 .HasColumnType("datetime(6)")
                 .IsRequired();
@@ -693,6 +695,7 @@ public sealed class AppDbContext
                 ("OwnerSubject", "ownersubject"),
                 ("Ciphertext", "ciphertext"),
                 ("AadJson", "aadjson"),
+                ("ExpiresAtUtc", "expiresatutc"),
                 ("UpdatedAtUtc", "updatedatutc"),
                 ("UpdatedBy", "updatedby"),
             ]);

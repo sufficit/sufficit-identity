@@ -543,6 +543,84 @@ public sealed class VaultTests
     }
 
     [Fact]
+    public async Task Named_secret_expiration_blocks_resolution_and_reports_metadata()
+    {
+        var (vault, dbFactory) = CreateRealVault();
+        var store = new VaultBackedSecretStore(
+            dbFactory,
+            vault,
+            new VaultOptions { Enabled = true });
+
+        const string name = "providers/asaas/api-token";
+        var expiresAtUtc = DateTime.UtcNow.AddDays(3);
+        var metadata = await store.PutAsync(
+            name, "expiring-value", "operator-1", "global", expiresAtUtc);
+        Assert.Equal(expiresAtUtc, metadata.ExpiresAtUtc);
+
+        // Still valid: resolves normally and metadata carries the deadline.
+        var resolution = await store.ResolveAsync(name, "global");
+        Assert.NotNull(resolution);
+        Assert.Equal("expiring-value", resolution.Value);
+        Assert.Contains(
+            await store.ListAsync(),
+            item => item.Name == name && item.ExpiresAtUtc == expiresAtUtc);
+
+        // Force expiry directly in the database (Put refuses past deadlines).
+        await using (var database = await dbFactory.CreateDbContextAsync())
+        {
+            var row = await database.VaultSecrets.SingleAsync(
+                item => item.Name == name);
+            row.ExpiresAtUtc = DateTime.UtcNow.AddSeconds(-1);
+            await database.SaveChangesAsync();
+        }
+
+        // Expired: metadata still visible, plaintext never leaves the vault.
+        Assert.Null(await store.GetSecretAsync(name));
+        var expired = await store.ResolveAsync(name, "global");
+        Assert.NotNull(expired);
+        Assert.Null(expired.Value);
+        Assert.NotNull(expired.Metadata.ExpiresAtUtc);
+
+        // Absent secrets remain distinguishable from expired ones.
+        Assert.Null(await store.ResolveAsync("providers/asaas/other", "global"));
+    }
+
+    [Fact]
+    public async Task Named_secret_put_rejects_past_expiration()
+    {
+        var (vault, dbFactory) = CreateRealVault();
+        var store = new VaultBackedSecretStore(
+            dbFactory,
+            vault,
+            new VaultOptions { Enabled = true });
+
+        await Assert.ThrowsAsync<ArgumentException>(() => store.PutAsync(
+            "providers/asaas/api-token",
+            "value",
+            "operator-1",
+            "global",
+            DateTime.UtcNow.AddMinutes(-1)));
+    }
+
+    [Fact]
+    public void Secret_expiration_status_uses_seven_day_warning_window()
+    {
+        var now = new DateTime(2026, 8, 16, 12, 0, 0, DateTimeKind.Utc);
+        Assert.Equal(
+            Management.Vault.VaultSecretStatus.Active,
+            Management.Vault.VaultSecretExpiration.GetStatus(null, now));
+        Assert.Equal(
+            Management.Vault.VaultSecretStatus.Active,
+            Management.Vault.VaultSecretExpiration.GetStatus(now.AddDays(8), now));
+        Assert.Equal(
+            Management.Vault.VaultSecretStatus.ExpiringSoon,
+            Management.Vault.VaultSecretExpiration.GetStatus(now.AddDays(6), now));
+        Assert.Equal(
+            Management.Vault.VaultSecretStatus.Expired,
+            Management.Vault.VaultSecretExpiration.GetStatus(now, now));
+    }
+
+    [Fact]
     public async Task Vault_snapshot_serves_encrypted_rows_from_memory_until_invalidation()
     {
         var (vault, dbFactory) = CreateRealVault();

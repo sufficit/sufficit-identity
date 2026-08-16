@@ -527,8 +527,10 @@ signing continues through the existing OpenIddict certificate path.
 - Multi-recipient / Shamir key sharing.
 - Convergent / deterministic encryption.
 - Replacing the existing DP keyring (vault sits *on top of* it as the KEK).
-- Migrating sufficit-ai to this vault (separate plan; the module is shareable
-  because it's a standalone library project).
+- ~~Migrating sufficit-ai to this vault~~ — DONE 2026-08-16: sufficit-ai
+  retired its local vault and consumes this one through
+  `Sufficit.Identity.Vault.Client` (resolve endpoint + `expiresAtUtc` parity
+  added here; see RUNBOOK-VAULT.md "Consumo remoto").
 
 ## 13. Open questions (to resolve before Phase 1 build)
 

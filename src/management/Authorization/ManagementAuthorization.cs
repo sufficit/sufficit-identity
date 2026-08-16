@@ -53,6 +53,10 @@ public static class ManagementCapabilities
     public const string MetricsManage = "identity.metrics.manage";
     public const string VaultSecretsRead = "identity.vault.secrets.read";
     public const string VaultSecretsManage = "identity.vault.secrets.manage";
+    /// <summary>Plaintext disclosure of a named secret. Deliberately separate
+    /// from <see cref="VaultSecretsRead"/> (metadata only) so service
+    /// principals that resolve secrets need an explicit grant.</summary>
+    public const string VaultSecretsResolve = "identity.vault.secrets.resolve";
     public const string ProvisioningPreview =
         "identity.provisioning.preview";
     public const string ProvisioningApply =
@@ -110,6 +114,7 @@ public static class ManagementCapabilities
                 MetricsManage,
                 VaultSecretsRead,
                 VaultSecretsManage,
+                VaultSecretsResolve,
                 ProvisioningPreview,
                 ProvisioningApply,
                 ManagementTokensRead,

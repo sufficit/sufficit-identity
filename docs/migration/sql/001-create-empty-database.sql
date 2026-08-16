@@ -679,3 +679,11 @@ VALUES ('20260814202136_UseBinaryCollationForOpaqueIdentifiers', '10.0.10');
 
 COMMIT;
 
+START TRANSACTION;
+ALTER TABLE `vaultsecrets` ADD `expiresatutc` datetime(6) NULL;
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260816221816_AddVaultSecretExpiration', '10.0.10');
+
+COMMIT;
+

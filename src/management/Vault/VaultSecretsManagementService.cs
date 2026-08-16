@@ -22,6 +22,16 @@ public interface IVaultSecretsManagementService
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Plaintext disclosure. Requires the dedicated resolve
+    /// capability and journals every call. Returns null when the secret does
+    /// not exist; an expired secret is returned with a null value and
+    /// <see cref="VaultSecretStatus.Expired"/> so the API can answer 410.</summary>
+    Task<ResolvedManagementVaultSecret?> ResolveAsync(
+        string name,
+        string contextId,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
     Task<ManagementVaultSecret> PutAsync(
         string name,
         string contextId,
@@ -36,6 +46,34 @@ public interface IVaultSecretsManagementService
         CancellationToken cancellationToken = default);
 }
 
+public enum VaultSecretStatus
+{
+    Active,
+    ExpiringSoon,
+    Expired,
+}
+
+/// <summary>Shared expiration semantics so every surface (management API,
+/// clients, UI) reports the same status for the same instant.</summary>
+public static class VaultSecretExpiration
+{
+    /// <summary>Secrets expiring within this window report
+    /// <see cref="VaultSecretStatus.ExpiringSoon"/> so operators can rotate
+    /// before resolution starts failing.</summary>
+    public static readonly TimeSpan ExpiringSoonWindow = TimeSpan.FromDays(7);
+
+    public static VaultSecretStatus GetStatus(
+        DateTime? expiresAtUtc,
+        DateTime nowUtc)
+    {
+        if (expiresAtUtc is not { } expiration) return VaultSecretStatus.Active;
+        if (expiration <= nowUtc) return VaultSecretStatus.Expired;
+        return expiration - nowUtc <= ExpiringSoonWindow
+            ? VaultSecretStatus.ExpiringSoon
+            : VaultSecretStatus.Active;
+    }
+}
+
 public sealed record ManagementVaultSecret(
     string Name,
     string Namespace,
@@ -43,9 +81,22 @@ public sealed record ManagementVaultSecret(
     string OwnerSubject,
     DateTime UpdatedAtUtc,
     string UpdatedBy,
-    bool HasValue);
+    bool HasValue,
+    DateTime? ExpiresAtUtc = null,
+    VaultSecretStatus Status = VaultSecretStatus.Active);
 
-public sealed record SaveManagementVaultSecret(string Value);
+public sealed record ResolvedManagementVaultSecret(
+    string Name,
+    string Namespace,
+    string ContextId,
+    string? Value,
+    VaultSecretStatus Status,
+    DateTime? ExpiresAtUtc,
+    DateTime UpdatedAtUtc);
+
+public sealed record SaveManagementVaultSecret(
+    string Value,
+    DateTime? ExpiresAtUtc = null);
 
 #else
 
@@ -139,12 +190,19 @@ public sealed class VaultSecretsManagementService(
         if (string.IsNullOrWhiteSpace(command.Value))
             throw new ManagementValidationException(
                 "secret_value_required", "O valor do segredo é obrigatório.", "value");
+        if (command.ExpiresAtUtc is { } expiration
+            && expiration <= DateTime.UtcNow)
+            throw new ManagementValidationException(
+                "secret_expiration_invalid",
+                "A expiração do segredo deve estar no futuro.",
+                "expiresAtUtc");
 
         var metadata = await store.PutAsync(
             normalized,
             command.Value,
             context.OperatorSubject,
             normalizedContext,
+            command.ExpiresAtUtc,
             cancellationToken);
         database.ManagementAuditEvents.Add(
             Sufficit.Identity.Management.Audit.ManagementAuditEventFactory.Create(
@@ -158,6 +216,57 @@ public sealed class VaultSecretsManagementService(
                     : "vault_secret_updated"));
         await database.SaveChangesAsync(cancellationToken);
         return ToContract(metadata);
+    }
+
+    public async Task<ResolvedManagementVaultSecret?> ResolveAsync(
+        string name,
+        string contextId,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = VaultBackedSecretStore.NormalizeName(name);
+        var normalizedContext = VaultBackedSecretStore.NormalizeContextId(
+            contextId);
+        var resource = ItemResource(normalized);
+        var objectDecision = await DemandAsync(
+            context,
+            ManagementCapabilities.VaultSecretsResolve,
+            resource,
+            cancellationToken);
+        var decision = ResolveDecision(context, objectDecision);
+        EnsureEnabled();
+        var resolution = await store.ResolveAsync(
+            normalized,
+            normalizedContext,
+            cancellationToken);
+        // Plaintext disclosure (and the expired refusal) is always journaled,
+        // unlike metadata reads which only journal under break-glass.
+        var status = VaultSecretExpiration.GetStatus(
+            resolution?.Metadata.ExpiresAtUtc,
+            DateTime.UtcNow);
+        database.ManagementAuditEvents.Add(
+            Sufficit.Identity.Management.Audit.ManagementAuditEventFactory.Create(
+                context,
+                ManagementCapabilities.VaultSecretsResolve,
+                resource,
+                decision,
+                "succeeded",
+                resolution is null
+                    ? "vault_secret_resolve_missing"
+                    : status == VaultSecretStatus.Expired
+                        ? "vault_secret_resolve_expired"
+                        : "vault_secret_resolved"));
+        await database.SaveChangesAsync(cancellationToken);
+        if (resolution is null) return null;
+
+        return new ResolvedManagementVaultSecret(
+            resolution.Metadata.Name,
+            resolution.Metadata.Namespace,
+            resolution.Metadata.ContextId,
+            resolution.Value,
+            status,
+            resolution.Metadata.ExpiresAtUtc,
+            resolution.Metadata.UpdatedAtUtc);
     }
 
     public async Task DeleteAsync(
@@ -273,7 +382,11 @@ public sealed class VaultSecretsManagementService(
             item.OwnerSubject,
             item.UpdatedAtUtc,
             item.UpdatedBy,
-            item.HasValue);
+            item.HasValue,
+            item.ExpiresAtUtc,
+            VaultSecretExpiration.GetStatus(
+                item.ExpiresAtUtc,
+                DateTime.UtcNow));
 }
 
 #endif

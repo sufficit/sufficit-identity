@@ -35,6 +35,7 @@ public static class IdentityDatabaseSchema
     public const string AtomicProtocolStateMigrationId = "20260807140821_AddAtomicProtocolState";
     public const string ManagementClientDraftsMigrationId = "20260807161036_AddManagementClientDrafts";
     public const string BinaryIdentifierCollationMigrationId = "20260814202136_UseBinaryCollationForOpaqueIdentifiers";
+    public const string VaultSecretExpirationMigrationId = "20260816221816_AddVaultSecretExpiration"; // gitleaks:allow
 
     /// <summary>
     /// Binary collation for opaque, case-sensitive utf8mb4 identifiers

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Vault;
@@ -20,6 +21,29 @@ public sealed class VaultSecretsController(
         [FromQuery] string contextId = "global",
         CancellationToken cancellationToken = default) =>
         Ok(await secrets.ListAsync(contextId, RequestContext(), cancellationToken));
+
+    /// <summary>
+    /// Plaintext resolution for authorized service principals. Querystring on
+    /// purpose: the literal segment keeps it out of the catch-all metadata
+    /// route ("resolve" can never be a secret name — names require a '/').
+    /// 404 = absent, 410 = present but expired (value withheld).
+    /// </summary>
+    [HttpGet("resolve")]
+    public async Task<ActionResult<ResolvedManagementVaultSecret>> Resolve(
+        [FromQuery] string name,
+        [FromQuery] string contextId = "global",
+        CancellationToken cancellationToken = default)
+    {
+        var result = await secrets.ResolveAsync(
+            name,
+            contextId,
+            RequestContext(),
+            cancellationToken);
+        if (result is null) return NotFound();
+        return result.Status == VaultSecretStatus.Expired
+            ? StatusCode(StatusCodes.Status410Gone, result)
+            : Ok(result);
+    }
 
     [HttpGet("{*name}")]
     public async Task<ActionResult<ManagementVaultSecret>> Get(

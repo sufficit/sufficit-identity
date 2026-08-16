@@ -11,12 +11,6 @@
           "System.Drawing.Common": "6.0.0"
         }
       },
-      "Sufficit.Blazor.UI": {
-        "type": "Direct",
-        "requested": "[1.26.814.1643, )",
-        "resolved": "1.26.814.1643",
-        "contentHash": "EuDUqA4Tpd/euiirjSYj7rSVRp3UDxfdwrGXG0z6mRNAFoQNuCPbLvtCxcElAOEROVC3mur+xMjdKIonwglW/g=="
-      },
       "Microsoft.Win32.SystemEvents": {
         "type": "Transitive",
         "resolved": "6.0.0",
@@ -29,6 +23,9 @@
         "dependencies": {
           "Microsoft.Win32.SystemEvents": "6.0.0"
         }
+      },
+      "sufficit.blazor.ui": {
+        "type": "Project"
       },
       "sufficit.identity.application.abstractions": {
         "type": "Project"

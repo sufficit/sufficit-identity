@@ -45,6 +45,10 @@
     <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.10" />
     <PackageVersion Include="StackExchange.Redis" Version="2.7.27" />
 
+    <!-- Vault REST client (Sufficit.Identity.Vault.Client) -->
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.10" />
+
     <!-- Logging / config -->
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
 
