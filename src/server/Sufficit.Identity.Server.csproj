@@ -32,8 +32,20 @@
     <ProjectReference Include="..\ui\Sufficit.Identity.UI.Management\Sufficit.Identity.UI.Management.csproj" />
     <ProjectReference Include="..\ui\Sufficit.Identity.UI.Vault\Sufficit.Identity.UI.Vault.csproj" />
     <!-- Direct reference keeps the shared SUI static web assets in publish output. -->
-    <PackageReference Include="Sufficit.Blazor.UI" />
+    <!-- Local sibling checkout wins when present (fast inner loop);
+         CI/Docker/fresh clones consume the published NuGet package. See
+         SufficitUseLocalSui in Directory.Build.props. -->
   </ItemGroup>
+
+  <!-- Local sibling checkout wins when present (fast inner loop);
+       CI/Docker/fresh clones consume the published NuGet package.
+       See SufficitUseLocalSui in Directory.Build.props. -->
+    <ItemGroup Condition="'$(SufficitUseLocalSui)' == 'true'">
+      <ProjectReference Include="..\..\..\sufficit-blazor-ui\src\Sufficit.Blazor.UI.csproj" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(SufficitUseLocalSui)' != 'true'">
+      <PackageReference Include="Sufficit.Blazor.UI" />
+    </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Sufficit.Identity.Tests" />

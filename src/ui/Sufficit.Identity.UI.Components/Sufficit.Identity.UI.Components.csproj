@@ -13,8 +13,19 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Use the shared SUI implementation instead of keeping a local copy. -->
+     </ItemGroup>
+
+  <!-- Use the shared SUI implementation instead of keeping a local copy.
+       Local sibling checkout wins when present (fast inner loop);
+       CI/Docker/fresh clones consume the published NuGet package. See
+       SufficitUseLocalSui in Directory.Build.props. -->
+  <ItemGroup Condition="'$(SufficitUseLocalSui)' == 'true'">
+    <ProjectReference Include="..\..\..\..\sufficit-blazor-ui\src\Sufficit.Blazor.UI.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(SufficitUseLocalSui)' != 'true'">
     <PackageReference Include="Sufficit.Blazor.UI" />
   </ItemGroup>
+
+  <ItemGroup>  </ItemGroup>
 
 </Project>

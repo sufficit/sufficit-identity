@@ -17,6 +17,21 @@
     <!-- Central package management -->
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+
+    <!-- Shared SUI components: local sibling checkout OR published package.
+         When the sufficit-blazor-ui repository is checked out BESIDE this
+         repository, projects reference it directly for a fast inner loop
+         against unreleased component changes; otherwise (CI, Docker, fresh
+         clones) they consume the published Sufficit.Blazor.UI NuGet package.
+         IMPORTANT: the committed packages.lock.json must stay in PACKAGE
+         mode (CI restores in locked mode and has no sibling). After local
+         work with the sibling, regenerate the locks for commit by forcing
+         package mode (restore with force-evaluate and the property
+         SufficitUseLocalSui=false: dotnet restore with
+         "-p:SufficitUseLocalSui=false"). -->
+      <!-- (Note: XML comments cannot contain double hyphens, so the exact
+           CLI flags are spelled out in words here.) -->
+    <SufficitUseLocalSui Condition="'$(SufficitUseLocalSui)' == '' and Exists('$(MSBuildThisFileDirectory)../sufficit-blazor-ui/src/Sufficit.Blazor.UI.csproj')">true</SufficitUseLocalSui>
   </PropertyGroup>
 
 </Project>
