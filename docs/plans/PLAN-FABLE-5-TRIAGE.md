@@ -20,16 +20,17 @@ O `deploy/local/appsettings.json` está desatualizado e induz em erro.
 
 ### Ação imediata
 
-- [ ] `LegacyGrants:None: false` nos 3 servers + `deploy/local/appsettings.json` corrigido
+- [x] `LegacyGrants:None: false` nos 3 servers + `deploy/local/appsettings.json` corrigido
+  *(executado 2026-08-16; verificado: `"None": false` + `"Password": false` nos 3 servers)*
 - [ ] **A-1 (ver abaixo)** teria barrado no boot
 
 ## 2. Config de produção confirmada problemática (verificada por SSH)
 
-| Achado | Estado nos 3 | Ação |
-|---|---|---|
-| **M-4** mesmo `certificate.pfx` signing+encryption | ⚠️ Confirmado | Gerar cert dedicado → trocar em janela |
-| **M-5** CSP `connect-src wss: ws:` | ⚠️ Confirmado | Remover (o SignalR same-origin = `'self'`) |
-| **M-3** KEK `dataprotection` compartilha ring com cookies/antiforgery | ⚠️ Confirmado | Migrar p/ `certificate` (KEK dedicado) |
+| Achado | Estado nos 3 | Ação | Status |
+|---|---|---|---|
+| **M-4** mesmo `certificate.pfx` signing+encryption | ⚠️ Confirmado | Gerar cert dedicado → trocar em janela | ⏳ **Bloqueado** — [runtime .NET rejeita PFX novo](../activities/202608161930-pfx-encryption-cert-investigation.md); cert 10y RSA-3072 já nos servers |
+| **M-5** CSP `connect-src wss: ws:` | ~~Confirmado~~ | Remover (o SignalR same-origin = `'self'`) | ✅ **Corrigido** 2026-08-16 — `connect-src 'self'` nos 3 servers |
+| **M-3** KEK `dataprotection` compartilha ring com cookies/antiforgery | ⚠️ Confirmado | Migrar p/ `certificate` (KEK dedicado) | ⏳ Pendente — `vault-kek.pfx` já existe (10 anos) em `/etc/sufficit/identity/` |
 
 ## 3. Já corrigidos pelo trabalho GLM-5.3 (avaliador não viu)
 
@@ -65,8 +66,8 @@ O `deploy/local/appsettings.json` está desatualizado e induz em erro.
 
 - [ ] **M-2 — Token exchange default-on, proveniência condicional.** Ou default `Enabled=false`, ou proveniência incondicional (exigir `azp` no subject_token sempre). + Posture finding.
 - [ ] **M-8 — Remembered-MFA `amr=mfa` por até 90d.** No step-up do Management, não honrar remembered-MFA (o caminho `force_mfa` já faz isso — aplicar a toda projeção de dispositivo lembrado onde step-up é exigido). Encurtar default. Vincular cookie ao security stamp.
-- [ ] **M-5 (config) — CSP `wss: ws:` removido** nos 3 servers. SignalR same-origin é `'self'`.
-- [ ] **H-1 (config) — `None: false`** nos 3 servers + deploy/local corrigido.
+- [x] **M-5 (config) — CSP `wss: ws:` removido** nos 3 servers. SignalR same-origin é `'self'`. ✅ 2026-08-16
+- [x] **H-1 (config) — `None: false`** nos 3 servers + deploy/local corrigido. ✅ 2026-08-16
 - [ ] **L-1 — Enumeração interativa:** `locked_out`/`not_allowed` distinguíveis. Colapsar em erro genérico.
 - [ ] **L-5 — Validador anuncia `implicit`/`password`:** remover `implicit`; gatear `password` em `LegacyGrants.Password`.
 - [ ] **L-6 — Default interface method bug:** `IIdentityUserSessionRevoker.RevokeAsync` default descarta `exceptBrowserSessionId`. Tornar abstrato ou lançar.
@@ -74,6 +75,7 @@ O `deploy/local/appsettings.json` está desatualizado e induz em erro.
 ### P2 — médio prazo
 
 - [ ] **M-4 (config) — Separar cert signing/encryption.** Gerar cert dedicado, trocar `EncryptionPath` em janela com rotação de tokens. Setar `RequirePurposeSeparation=true`.
+  *⏳ Bloqueado: o runtime .NET 10.0.10 do server rejeita qualquer PFX que não o original (nem OpenSSL, nem .NET SDK). Ver [investigação completa](../activities/202608161930-pfx-encryption-cert-investigation.md). O cert `certificate-encryption.pfx` (RSA-3072, 10 anos, CN=sufficit-identity-token-encryption) já está deployado nos 3 servers. Solução recomendada: gerar o cert NO server via comando CLI do próprio Server.dll (`--generate-encryption-cert`).*
 - [ ] **M-3 (config) — KEK `certificate` dedicado** em vez de `dataprotection`. Já provisionado no vault (`vault-kek.pfx` existe em deploy/local/).
 - [ ] **M-7 — Lockout 5/5min →** backoff exponencial ou janela ≥15min; `HumanVerificationFlow.Login` com CAPTCHA após N falhas por conta/IP; partição por-conta no rate limiter.
 - [ ] **M-6 — Claims unmapped →** inventariar resource servers, depois `IncludeUnmappedClaimsInAccessTokens=false` (allow-list estrita).
