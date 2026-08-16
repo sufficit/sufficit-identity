@@ -44,6 +44,7 @@ public class AuthorizationController : Controller
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly Grants.TokenGrantDispatcher _grantDispatcher;
+    private readonly Cimd.CimdApplicationProvisioner _cimdApplications;
     private readonly Grants.GrantOperations _grants;
     private readonly IApplicationClaimDestinationPolicy _applicationClaimPolicy;
     private readonly Logout.IBackchannelLogoutDispatcher _backchannelLogoutDispatcher;
@@ -68,6 +69,7 @@ public class AuthorizationController : Controller
         SharedSignals.ISharedSignalsDispatcher sharedSignalsDispatcher,
         Grants.TokenGrantDispatcher grantDispatcher,
         Grants.GrantOperations grants,
+        Cimd.CimdApplicationProvisioner cimdApplications,
         ILogger<AuthorizationController> logger)
     {
         _applicationManager = applicationManager;
@@ -78,6 +80,7 @@ public class AuthorizationController : Controller
         _userManager = userManager;
         _grantDispatcher = grantDispatcher;
         _grants = grants;
+        _cimdApplications = cimdApplications;
         _applicationClaimPolicy = applicationClaimPolicy;
         _antiforgery = antiforgery;
         _backchannelLogoutDispatcher = backchannelLogoutDispatcher;
@@ -127,8 +130,16 @@ public class AuthorizationController : Controller
         var user = await _userManager.GetUserAsync(result.Principal) ??
             throw new InvalidOperationException("The user details cannot be retrieved.");
 
-        var application = await _applicationManager.FindByClientIdAsync(request.ClientId!) ??
-            throw new InvalidOperationException(
+        var application = await _applicationManager.FindByClientIdAsync(request.ClientId!)
+            // CIMD (A10, eval 2026-08-14): an unknown client_id with the
+            // metadata-document URL shape is provisioned on first use from
+            // the document served AT the identifier URL (draft-ietf-oauth-
+            // client-id-metadata-document-02). Null falls through to the
+            // normal unknown-client failure.
+            ?? await _cimdApplications.TryProvisionAsync(
+                request.ClientId!,
+                HttpContext.RequestAborted)
+            ?? throw new InvalidOperationException(
                 "Details concerning the calling client application cannot be found.");
 
         var requestedScopes = await GetRequestedScopesAsync(request, application);

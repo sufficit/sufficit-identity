@@ -1005,6 +1005,12 @@ public static class ServiceCollectionExtensions
                         context.Metadata["authorization_response_iss_parameter_supported"] =
                             JsonValue.Create(true);
 
+                        // CIMD (draft-ietf-oauth-client-id-metadata-document):
+                        // advertise support only when the feature is on.
+                        context.Metadata["client_id_metadata_document_supported"] =
+                            JsonValue.Create(
+                                options.Mcp.ClientIdMetadataDocuments.Enabled);
+
                         // Note: request_uri_parameter_supported and
                         // require_pushed_authorization_requests are published
                         // by OpenIddict itself based on the server options
@@ -1115,6 +1121,27 @@ public static class ServiceCollectionExtensions
             AspNetCoreIdentityAccountExternalIdentityService>();
         services.AddScoped<IAccountTwoFactorService,
             AspNetCoreIdentityAccountTwoFactorService>();
+        // ---- Client ID Metadata Documents (CIMD, A10, eval 2026-08-14) ----
+        // draft-ietf-oauth-client-id-metadata-document-02: the client_id IS
+        // an HTTPS URL serving its metadata; fetched on first use and
+        // provisioned as a public PKCE client. Fetches never follow
+        // redirects (the draft forbids them), respect the shared SSRF
+        // policy through the safe outbound transport, and only successful
+        // validations are cached.
+        services.AddMemoryCache();
+        services.AddSingleton(options.Mcp.ClientIdMetadataDocuments);
+        services.AddHttpClient(Cimd.ClientIdMetadataResolver.HttpClientName)
+            .ConfigurePrimaryHttpMessageHandler(() =>
+                new System.Net.Http.SocketsHttpHandler
+                {
+                    AllowAutoRedirect = false,
+                    UseCookies = false,
+                    AutomaticDecompression = System.Net.DecompressionMethods.None,
+                })
+            .UseSafeOutboundHttp(options.OutboundHttp);
+        services.AddSingleton<Cimd.ClientIdMetadataResolver>();
+        services.AddScoped<Cimd.CimdApplicationProvisioner>();
+
         // ---- Token-endpoint grant pipeline (A2, eval 2026-08-14) ----
         // Each grant is an ITokenGrantHandler; TokenGrantDispatcher owns the
         // DPoP preamble and resolves the handler by grant type. New grants
