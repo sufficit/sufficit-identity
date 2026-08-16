@@ -23,23 +23,33 @@ public sealed class VaultCryptographyTelemetryTests
                 }
             },
         };
+        // The vault telemetry meter is a process-wide static shared by every
+        // test using IKeyVault (e.g. the DPoP nonce store). Measurements from
+        // concurrently-completed tests may arrive on this listener too, so the
+        // assertions below consider only THIS test's key name.
+        const string keyName = "dpop-nonce";
         listener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
         {
             Assert.Equal(1, value);
-            measurements.Add(tags.ToArray().ToDictionary(
+            var tagDictionary = tags.ToArray().ToDictionary(
                 tag => tag.Key,
                 tag => tag.Value,
-                StringComparer.Ordinal));
+                StringComparer.Ordinal);
+            if (tagDictionary.TryGetValue("key.name", out var name)
+                && string.Equals(name?.ToString(), keyName, StringComparison.Ordinal))
+            {
+                measurements.Add(tagDictionary);
+            }
         });
         listener.Start();
         var telemetry = new VaultCryptographyTelemetry(
             new VaultOptions { AesGcmMessageBudgetPerKeyVersion = 10 },
             NullLogger<VaultCryptographyTelemetry>.Instance);
 
-        telemetry.RecordEncryption("dpop-nonce", 3);
+        telemetry.RecordEncryption(keyName, 3);
 
         var measurement = Assert.Single(measurements);
-        Assert.Equal("dpop-nonce", measurement["key.name"]);
+        Assert.Equal(keyName, measurement["key.name"]);
         Assert.Equal(3, measurement["key.version"]);
         Assert.DoesNotContain("plaintext", measurement.Keys);
         Assert.DoesNotContain("ciphertext", measurement.Keys);
