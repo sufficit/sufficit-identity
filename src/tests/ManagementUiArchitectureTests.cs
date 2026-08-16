@@ -393,10 +393,12 @@ public sealed class ManagementUiArchitectureTests
             "Sufficit.Identity.Server.styles.css",
             app,
             StringComparison.Ordinal);
+        // Since the shared components ship as the Sufficit.Blazor.UI NuGet
+        // package, the reference is the package id (no sibling checkout).
         Assert.Contains(
-            "sufficit-blazor-ui",
+            "Sufficit.Blazor.UI",
             project,
-            StringComparison.OrdinalIgnoreCase);
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -1732,10 +1734,12 @@ public sealed class ManagementUiArchitectureTests
 
         foreach (var projectFile in projectFiles)
         {
+            // The shared components ship as the Sufficit.Blazor.UI NuGet
+            // package (no sibling checkout).
             Assert.Contains(
-                "sufficit-blazor-ui",
+                "Sufficit.Blazor.UI",
                 File.ReadAllText(projectFile),
-                StringComparison.OrdinalIgnoreCase);
+                StringComparison.Ordinal);
         }
 
         Assert.False(File.Exists(Path.Combine(components, "wwwroot", "sufficit-ui.css")));

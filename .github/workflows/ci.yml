@@ -48,20 +48,6 @@ jobs:
         with:
           path: sufficit-identity
 
-      # The UI projects reference the shared Sufficit.Blazor.UI components via
-      # a sibling project reference (../../../../sufficit-blazor-ui), matching
-      # the local multi-repo checkout layout. The repo is public, so the
-      # default token can clone it. NOTE: tracking main couples CI to
-      # unreviewed sibling commits; the durable fix is publishing
-      # Sufficit.Blazor.UI as a (private) NuGet package and consuming the
-      # package instead of the project reference.
-      - name: Checkout sufficit-blazor-ui (shared UI components)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: sufficit/sufficit-blazor-ui
-          ref: main
-          path: sufficit-blazor-ui
-
       - name: Setup .NET
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
@@ -103,12 +89,9 @@ jobs:
       # Exercise the production container recipe in CI.  The Dockerfile uses
       # the same committed lock files and package-source mapping as the host
       # build, so a container-only restore drift cannot reach deployment.
-      # The Dockerfile expects the PARENT directory as build context so the
-      # sibling sufficit-blazor-ui tree is COPY-able (the UI projects
-      # reference it as a project, not a package).
       - name: Build production container
         working-directory: sufficit-identity
-        run: docker build --file Dockerfile --tag sufficit-identity:ci ..
+        run: docker build --file Dockerfile --tag sufficit-identity:ci .
 
       # Oracle's EF Core 10 migration lock implementation casts MariaDB
       # GET_LOCK() NULL to Int64 and fails before executing any DDL. Apply the

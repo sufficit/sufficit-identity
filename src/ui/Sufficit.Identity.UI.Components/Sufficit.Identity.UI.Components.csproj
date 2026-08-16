@@ -14,7 +14,7 @@
 
   <ItemGroup>
     <!-- Use the shared SUI implementation instead of keeping a local copy. -->
-    <ProjectReference Include="..\..\..\..\sufficit-blazor-ui\src\Sufficit.Blazor.UI.csproj" />
+    <PackageReference Include="Sufficit.Blazor.UI" />
   </ItemGroup>
 
 </Project>
