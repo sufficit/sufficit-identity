@@ -6,15 +6,19 @@
 @code {
     protected BrandingTheme? _theme;
 
-    // F-8 (eval 2026-08-14): the server chip is displayed ONLY when the
-    // deployment explicitly configures a display name. The previous
-    // Environment.MachineName fallback disclosed an internal host name to
-    // every anonymous visitor of the public UI.
+    // The server chip tells operators WHICH replica of the round-robin
+    // (eveo/apoint/castrum) is serving the page. Precedence: an explicit
+    // Sufficit:Runtime:ServerDisplayName (deployments that consider the raw
+    // host name sensitive can show a nickname instead), then the configured
+    // ServerHostName, then Environment.MachineName as the situate-me default.
     private string? ServerHostName =>
-        Configuration["Sufficit:Runtime:ServerHostName"]?.Trim()
-        is { Length: > 0 } configured
-            ? configured
-            : null;
+        (Configuration["Sufficit:Runtime:ServerDisplayName"]?.Trim()
+            is { Length: > 0 } display)
+            ? display
+            : Configuration["Sufficit:Runtime:ServerHostName"]?.Trim()
+                is { Length: > 0 } configured
+                ? configured
+                : Environment.MachineName;
 
     protected override async Task OnInitializedAsync()
     {

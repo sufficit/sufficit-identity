@@ -14,6 +14,10 @@
       "OpenIddict": "Warning"
     }
   },
+  "_Runtime": "ServerDisplayName overrides the hostname shown in the public UI footer (operators use it to see which replica of a round-robin serves the page — e.g. eveo/apoint/castrum). Falls back to ServerHostName, then to the machine name. Set to an empty-friendly nickname when the raw host name is considered sensitive.",
+  "Runtime": {
+    "ServerDisplayName": ""
+  },
   "_AllowedHosts": "Kestrel's Host-header allowlist, semicolon-separated (e.g. \"your-identity-host;www.your-identity-host\"). '*' accepts ANY Host header — combined with a reverse proxy that forwards the client's original Host unchecked, this enables host-header poisoning (spoofed password-reset links, cache-poisoning). Set this to the real production host(s); it does not need to match Issuer's scheme, only its host.",
   "AllowedHosts": "your-identity-host",
   "Sufficit": {
