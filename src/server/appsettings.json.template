@@ -420,6 +420,13 @@
         "Resources": [],
         "_ProtectedResourceMetadataEnabled": "true (default) exposes /.well-known/oauth-protected-resource (RFC 9728) pointing resource servers (MCP) to this STS as their authorization server. Disable only if the STS is never an MCP/agent AS.",
         "ProtectedResourceMetadataEnabled": true,
+        "_ClientIdMetadataDocuments": "CIMD (draft-ietf-oauth-client-id-metadata-document-02, the registration mechanism the MCP spec adopted in place of DCR) — opt-in. The client_id IS an HTTPS URL serving its JSON metadata; the STS fetches it directly on first use (200-only, no redirects, 5KB cap, public clients only) and provisions a public PKCE client. Discovery advertises client_id_metadata_document_supported when enabled.",
+        "ClientIdMetadataDocuments": {
+          "Enabled": false,
+          "FetchTimeoutSeconds": 3,
+          "MaxDocumentBytes": 5120,
+          "CacheTtlSeconds": 300
+        },
         "_Dcr": "Dynamic Client Registration (RFC 7591, item 4.3) — opt-in. When enabled, exposes /connect/register for clients (incl. MCP clients) to self-register. Gated: requires an initial access token by default. HIGH-RISK open-registration surface — enable deliberately.",
         "Dcr": {
           "_Enabled": "true exposes /connect/register. Default false (secure-by-default).",

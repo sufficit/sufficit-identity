@@ -1561,6 +1561,19 @@ public sealed class McpOptions
     /// high-risk surface if open; enable deliberately.
     /// </summary>
     public DcrOptions Dcr { get; init; } = new();
+
+    /// <summary>
+    /// Client ID Metadata Documents (draft-ietf-oauth-client-id-metadata-
+    /// document, the registration mechanism the MCP authorization spec of
+    /// 2025-11-25+ relies on) — opt-in (default <c>false</c>). The client_id
+    /// IS an HTTPS URL; the STS fetches the metadata document from that URL
+    /// directly on first use and provisions a public PKCE client. See
+    /// <see cref="ClientIdMetadataDocumentOptions"/>.
+    /// </summary>
+    public ClientIdMetadataDocumentOptions ClientIdMetadataDocuments
+    {
+        get; init;
+    } = new();
 }
 
 /// <summary>
@@ -1635,6 +1648,39 @@ public sealed class DcrOptions
         OpenIddict.Abstractions.OpenIddictConstants.Scopes.Email,
         OpenIddict.Abstractions.OpenIddictConstants.Scopes.OfflineAccess,
     };
+}
+
+
+/// <summary>
+/// Client ID Metadata Documents (CIMD,
+/// draft-ietf-oauth-client-id-metadata-document-02). The client_id is an
+/// HTTPS URL serving a JSON metadata document; the authorization server
+/// fetches it directly (no well-known path), enforcing the draft's security
+/// rules: exact client_id string match, public clients only (shared secrets
+/// are forbidden), 200-only responses without redirects, a bounded document
+/// size, and no caching of failed fetches. This replaces DCR for MCP-style
+/// clients (the MCP authorization spec deprecated DCR in favor of CIMD) and
+/// removes the registration endpoint + initial-access-token ceremony.
+/// </summary>
+public sealed class ClientIdMetadataDocumentOptions
+{
+    public bool Enabled { get; init; } = false;
+
+    /// <summary>Per-fetch timeout. Documents are small; keep it tight.</summary>
+    public int FetchTimeoutSeconds { get; init; } = 3;
+
+    /// <summary>
+    /// Hard cap on bytes read from the document (spec recommends a 5 KB
+    /// maximum). Larger responses are rejected, never truncated-then-parsed.
+    /// </summary>
+    public int MaxDocumentBytes { get; init; } = 5120;
+
+    /// <summary>
+    /// How long a successfully resolved document is cached before the next
+    /// first-use re-fetches it (RFC 9111 honoring is a bounded fixed TTL in
+    /// this implementation; documents are client-controlled content).
+    /// </summary>
+    public int CacheTtlSeconds { get; init; } = 300;
 }
 
 /// <summary>
