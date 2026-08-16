@@ -30,7 +30,7 @@
         "castrum-apps"
       ],
       "notes": {
-        "policy": "Identity is the security backbone: every deploy is manual, one server at a time, with the 084 collation migration applied per-server DB BEFORE the swap."
+        "policy": "Identity is the security backbone: every deploy is manual, one server at a time. The database is MULTIMASTER-replicated across the three servers: the migrator (static unit sufficit-identity-migrator.service) is started BY HAND on ONE server only, before the first swap; replication carries the schema to the others."
       }
     },
     "notes": {

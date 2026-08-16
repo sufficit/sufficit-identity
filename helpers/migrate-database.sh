@@ -5,6 +5,15 @@ set -euo pipefail
 readonly app_link="/opt/sufficit-identity"
 readonly preflight="/usr/libexec/sufficit-identity/prestart.sh"
 
+# MULTIMASTER: the identity database replicates across eveo-apps,
+# apoint-apps and castrum-apps. Run this migrator manually on ONE node
+# only; the others receive the schema via replication. The EF migrator's
+# MariaDB GET_LOCK serializes a concurrent second node, but a second run
+# is redundant work, not a requirement.
+echo "[migrator] NOTE: database is multimaster-replicated. This node applies" >&2
+echo "[migrator] pending migrations ONCE; verify replication lag on the other" >&2
+echo "[migrator] nodes before rolling their binaries if a migration ran." >&2
+
 if [[ ! -x ${preflight} ]]; then
     echo "[migrator] ERROR: installed runtime preflight is missing" >&2
     exit 1

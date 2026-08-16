@@ -1,5 +1,21 @@
+# =============================================================================
+# Sufficit Identity database migrator — MANUAL, ONE SERVER ONLY.
+#
+# The identity database is MULTIMASTER-REPLICATED across eveo-apps,
+# apoint-apps and castrum-apps: applying a migration on any ONE node
+# replicates it to the others. The migrator must therefore be started BY
+# HAND, once, on a single node — never enabled (no [Install] section:
+# "static" unit, cannot be auto-started at boot).
+#
+#   systemctl start sufficit-identity-migrator
+#   journalctl -u sufficit-identity-migrator -n 20
+#
+# The EF migrator itself takes a MariaDB GET_LOCK advisory lock, so a second
+# node starting concurrently blocks until the first finishes — but do not
+# rely on that: replication makes the second run redundant.
+# =============================================================================
 [Unit]
-Description=Sufficit Identity database migrator
+Description=Sufficit Identity database migrator (manual, one node only - multimaster)
 After=network-online.target
 Requires=network-online.target
 
@@ -33,5 +49,6 @@ Environment=DOTNET_ROOT=/opt/dotnet-10
 EnvironmentFile=-/etc/sufficit/identity/hardening.env
 EnvironmentFile=-/etc/sufficit/identity/vault-secrets.env
 
-[Install]
-WantedBy=multi-user.target
+# NO [Install] section on purpose: the unit is STATIC (cannot be enabled,
+# never starts at boot) — database migrations run manually, on one node of
+# the multimaster replication group only.

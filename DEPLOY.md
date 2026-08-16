@@ -24,8 +24,13 @@ dotnet publish src/server/Sufficit.Identity.Server.csproj \
     -c Release -p:SufficitUseLocalSui=false \
     -o publish-net10.0
 
-# Aplicar migrations pendentes NO BANCO DAQUELE SERVER (antes do swap!):
-#    helpers/migrate-database.sh <server>   (ver cabeçalho do script)
+# MIGRATIONS: o banco é MULTIMASTER replicado entre os 3 servers —
+# rode o migrator UMA vez, em UM único server, ANTES do primeiro swap:
+#    ssh <server> systemctl start sufficit-identity-migrator
+#    ssh <server> journalctl -u sufficit-identity-migrator -n 5
+# A replicação leva o schema aos demais; confira o lag antes de rolar os
+# outros binários. A unit é estática (sem [Install]): nunca é habilitada
+# em boot, sempre manual.
 
 # Deploy staged (upload → stop → swap atômico → start → health):
 python3 deploy.py eveo-apps
@@ -35,10 +40,13 @@ python3 deploy.py castrum-apps
 
 ## 🔒 Regras específicas do Identity
 
-1. **Migrations ANTES do swap** — o binário novo assume o schema novo;
-   o binário velho ignora adições. O script `084` (collation binária) é
-   idempotente, por tabela e retomável, mas faz `MODIFY COLUMN` (rebuild
-   de índices): em `tokens` grande, janela de manutenção.
+1. **Migrations ANTES do swap, em UM único server** — o banco é
+   multimaster (eveo/apoint/castrum replicam): `systemctl start
+   sufficit-identity-migrator` uma vez em qualquer nó e a replicação
+   propaga. O migrator é manual por design (unit estática, sem
+   `[Install]`); o advisory lock `GET_LOCK` protege contra duas nodes
+   rodando simultaneamente. Migrations com `MODIFY COLUMN` (rebuild de
+   índices, como o 084) ainda pedem janela em tabelas grandes.
 2. **Um servidor por vez** — o Identity é a espinha dorsal de SSO;
    nunca trocar os três simultaneamente.
 3. **Segredos ficam fora do swap** — `SUFFICIT_SECRET_*` vêm de

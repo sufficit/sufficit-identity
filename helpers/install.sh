@@ -120,5 +120,10 @@ install -o root -g root -m 0644 \
     /etc/systemd/system/${APPTITLE}-migrator.service
 systemctl daemon-reload
 systemctl enable "${APPTITLE}"
+# The migrator stays STATIC on every node (no enable): multimaster database
+# means one manual run on one node replicates everywhere.
+if systemctl is-enabled "${APPTITLE}-migrator" >/dev/null 2>&1; then
+    systemctl disable "${APPTITLE}-migrator" || true
+fi
 
 echo "[install] Service installed. Run: systemctl start ${APPTITLE}"
