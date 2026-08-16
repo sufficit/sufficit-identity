@@ -1,0 +1,51 @@
+{
+  "servers": [
+    "eveo-apps",
+    "apoint-apps",
+    "castrum-apps"
+  ],
+  "details": "sufficit-servers/{server_name}",
+  "folders": {
+    "local": "/mnt/sufficit/sufficit-identity",
+    "remote": "/opt/sufficit-identity"
+  },
+  "systemd_service": "sufficit-identity.service",
+  "deployment": {
+    "excluded_folders": [
+      "helpers"
+    ],
+    "excluded_files": [
+      "appsettings.Production.json",
+      "appsettings.eveo-apps.json",
+      "appsettings.apoint-apps.json",
+      "appsettings.castrum-apps.json",
+      "certificate.pfx",
+      "certificate-old.pfx"
+    ],
+    "auto_deploy": {
+      "enabled_servers": [],
+      "manual_only_servers": [
+        "eveo-apps",
+        "apoint-apps",
+        "castrum-apps"
+      ],
+      "notes": {
+        "policy": "Identity is the security backbone: every deploy is manual, one server at a time, with the 084 collation migration applied per-server DB BEFORE the swap."
+      }
+    },
+    "notes": {
+      "helpers": "Server-side helper scripts (activate-release etc.) managed per host",
+      "appsettings": "Machine-specific + Production configuration kept on the server (secrets arrive via /etc/sufficit/identity/vault-secrets.env)",
+      "certificates": "Token signing/encryption PFX plus the retained previous certificate"
+    },
+    "source_folder": "publish-net10.0"
+  },
+  "testing": {
+    "note": "Nginx terminates TLS per server and proxies to the unix socket /run/sufficit-identity/identity.sock (port 26501).",
+    "examples": {
+      "socket_health": "ssh <server> curl -s --unix-socket /run/sufficit-identity/identity.sock http://localhost/health",
+      "external_discovery": "curl -s https://<server>.sufficit.com.br:26501/.well-known/openid-configuration"
+    }
+  },
+  "project_file": "src/server/Sufficit.Identity.Server.csproj"
+}
