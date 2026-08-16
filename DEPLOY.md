@@ -18,10 +18,10 @@ sufficit-identity/
 ## 🚀 Como usar
 
 ```bash
-# Publicar localmente em MODO PACOTE (production parity — nunca publique
-# contra o checkout irmão do SUI):
+# Publicar localmente (o irmão local do SUI é detectado e usado
+# automaticamente — SEMPRE a versão mais recente):
 dotnet publish src/server/Sufficit.Identity.Server.csproj \
-    -c Release -p:SufficitUseLocalSui=false \
+    -c Release \
     -o publish-net10.0
 
 # MIGRATIONS: o banco é MULTIMASTER replicado entre os 3 servers —
@@ -56,5 +56,7 @@ python3 deploy.py castrum-apps
 4. **Health** — socket unix `/run/sufficit-identity/identity.sock`
    (`/health` liveness, `/health/ready` com banco) e discovery externo em
    `https://<server>.sufficit.com.br:26501/.well-known/openid-configuration`.
-5. **Publicar sempre com `-p:SufficitUseLocalSui=false`** — publica a
-   mesma graph de pacotes que a CI audita (locks em modo pacote).
+5. **Do seu PC, NUNCA use `-p:SufficitUseLocalSui=false`** — o irmão local
+   é detectado automaticamente e fornece os componentes SUI mais recentes.
+   A flag só é necessária para regenerar `packages.lock.json` antes de
+   commitar (a CI valida em modo pacote, sem o irmão).
