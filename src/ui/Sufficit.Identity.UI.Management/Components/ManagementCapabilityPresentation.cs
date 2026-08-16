@@ -50,6 +50,7 @@ public static class ManagementCapabilityPresentation
             [ManagementCapabilities.MetricsManage] = "Capability.Label.Manage",
             [ManagementCapabilities.VaultSecretsRead] = "Capability.Label.Read",
             [ManagementCapabilities.VaultSecretsManage] = "Capability.Label.Manage",
+            [ManagementCapabilities.VaultSecretsResolve] = "Capability.Label.Resolve",
             [ManagementCapabilities.ProvisioningPreview] = "Capability.Label.Preview",
             [ManagementCapabilities.ProvisioningApply] = "Capability.Label.Apply",
             [ManagementCapabilities.ManagementTokensRead] = "Capability.Label.Read",

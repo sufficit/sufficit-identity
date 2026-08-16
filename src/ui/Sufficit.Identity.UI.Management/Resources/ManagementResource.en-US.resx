@@ -20,6 +20,7 @@
   <data name="Capability.Label.Disable" xml:space="preserve"><value>Disable</value></data>
   <data name="Capability.Label.Revoke" xml:space="preserve"><value>Revoke</value></data>
   <data name="Capability.Label.Apply" xml:space="preserve"><value>Apply</value></data>
+  <data name="Capability.Label.Resolve" xml:space="preserve"><value>Resolve</value></data>
   <data name="Capability.Label.Preview" xml:space="preserve"><value>Generate preview</value></data>
   <data name="Capability.Label.ResetPassword" xml:space="preserve"><value>Reset password</value></data>
   <data name="Capability.Label.Issue" xml:space="preserve"><value>Issue</value></data>
@@ -100,6 +101,9 @@
   <data name="Capability.identity.vault.secrets.read.Description" xml:space="preserve"><value>Used in Vault to list names, contexts, and metadata for secrets available to the operator. The interface does not reveal the stored value.</value></data>
   <data name="Capability.identity.vault.secrets.manage.Title" xml:space="preserve"><value>Manage secrets</value></data>
   <data name="Capability.identity.vault.secrets.manage.Description" xml:space="preserve"><value>Used in Vault to write, replace, or remove secret values in authorized namespaces. This is a sensitive capability, and every change is audited.</value></data>
+
+  <data name="Capability.identity.vault.secrets.resolve.Title" xml:space="preserve"><value>Resolve secrets</value></data>
+  <data name="Capability.identity.vault.secrets.resolve.Description" xml:space="preserve"><value>Used in Vault to obtain the plaintext value of a named secret. This is the most sensitive Vault capability: intended for authorized service principals, and every resolution is audited.</value></data>
 
   <data name="Capability.identity.provisioning.preview.Title" xml:space="preserve"><value>Preview manifest impact</value></data>
   <data name="Capability.identity.provisioning.preview.Description" xml:space="preserve"><value>Used in Provisioning to run inventory and preview and show differences before applying them. It does not modify clients, scopes, or other resources.</value></data>

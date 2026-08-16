@@ -20,6 +20,7 @@
   <data name="Capability.Label.Disable" xml:space="preserve"><value>Desabilitar</value></data>
   <data name="Capability.Label.Revoke" xml:space="preserve"><value>Revogar</value></data>
   <data name="Capability.Label.Apply" xml:space="preserve"><value>Aplicar</value></data>
+  <data name="Capability.Label.Resolve" xml:space="preserve"><value>Resolver</value></data>
   <data name="Capability.Label.Preview" xml:space="preserve"><value>Gerar preview</value></data>
   <data name="Capability.Label.ResetPassword" xml:space="preserve"><value>Redefinir senha</value></data>
   <data name="Capability.Label.Issue" xml:space="preserve"><value>Emitir</value></data>
@@ -100,6 +101,9 @@
   <data name="Capability.identity.vault.secrets.read.Description" xml:space="preserve"><value>Usada no Vault para listar nomes, contextos e metadados dos segredos permitidos ao operador. A interface não revela o valor armazenado.</value></data>
   <data name="Capability.identity.vault.secrets.manage.Title" xml:space="preserve"><value>Administrar segredos</value></data>
   <data name="Capability.identity.vault.secrets.manage.Description" xml:space="preserve"><value>Usada no Vault para gravar, substituir ou remover valores secretos nos namespaces autorizados. É uma capability sensível e cada alteração fica auditada.</value></data>
+
+  <data name="Capability.identity.vault.secrets.resolve.Title" xml:space="preserve"><value>Resolver segredos</value></data>
+  <data name="Capability.identity.vault.secrets.resolve.Description" xml:space="preserve"><value>Usada no Vault para obter o valor em texto claro de um segredo nomeado. É a capability mais sensível do Vault: destinada a principais de serviço autorizados, e cada resolução fica auditada.</value></data>
 
   <data name="Capability.identity.provisioning.preview.Title" xml:space="preserve"><value>Visualizar o impacto de um manifesto</value></data>
   <data name="Capability.identity.provisioning.preview.Description" xml:space="preserve"><value>Usada no Provisionamento para executar inventory e preview, mostrando diferenças antes da aplicação. Não modifica clientes, scopes ou outros recursos.</value></data>

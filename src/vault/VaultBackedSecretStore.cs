@@ -14,7 +14,17 @@ public sealed record VaultSecretMetadata(
     string OwnerSubject,
     DateTime UpdatedAtUtc,
     string UpdatedBy,
-    bool HasValue);
+    bool HasValue,
+    DateTime? ExpiresAtUtc = null);
+
+/// <summary>
+/// Explicit resolution outcome so callers can distinguish "absent" (null
+/// resolution) from "expired" (metadata present, <see cref="Value"/> null).
+/// Expired secrets are never decrypted.
+/// </summary>
+public sealed record VaultNamedSecretResolution(
+    VaultSecretMetadata Metadata,
+    string? Value);
 
 /// <summary>
 /// Database-backed named-secret store. Only ciphertext is persisted; the
@@ -40,6 +50,14 @@ public interface IVaultNamedSecretStore
         string contextId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Resolves a secret with its metadata. Returns null when the
+    /// secret does not exist; an expired secret returns metadata with a null
+    /// value so the caller can report the distinction (e.g. 410 vs 404).</summary>
+    Task<VaultNamedSecretResolution?> ResolveAsync(
+        string name,
+        string contextId,
+        CancellationToken cancellationToken = default);
+
     Task<VaultSecretMetadata> PutAsync(
         string name,
         string value,
@@ -51,6 +69,14 @@ public interface IVaultNamedSecretStore
         string value,
         string updatedBy,
         string contextId,
+        CancellationToken cancellationToken = default);
+
+    Task<VaultSecretMetadata> PutAsync(
+        string name,
+        string value,
+        string updatedBy,
+        string contextId,
+        DateTime? expiresAtUtc,
         CancellationToken cancellationToken = default);
 
     Task<bool> DeleteAsync(
@@ -82,6 +108,15 @@ public sealed class VaultBackedSecretStore(
         string contextId,
         CancellationToken cancellationToken = default)
     {
+        var resolution = await ResolveAsync(name, contextId, cancellationToken);
+        return resolution?.Value;
+    }
+
+    public async Task<VaultNamedSecretResolution?> ResolveAsync(
+        string name,
+        string contextId,
+        CancellationToken cancellationToken = default)
+    {
         EnsureEnabled();
         var normalized = NormalizeName(name);
         var normalizedContext = NormalizeContextId(contextId);
@@ -93,9 +128,10 @@ public sealed class VaultBackedSecretStore(
                 cancellationToken);
             if (snapshot is null) return null;
 
-            return await keyVault.DecryptStringAsync(
+            return await ResolveEntryAsync(
+                ToMetadata(snapshot),
                 snapshot.Ciphertext,
-                ReadAad(snapshot),
+                () => ReadAad(snapshot),
                 cancellationToken);
         }
 
@@ -107,10 +143,31 @@ public sealed class VaultBackedSecretStore(
                 cancellationToken);
         if (item is null) return null;
 
-        return await keyVault.DecryptStringAsync(
+        return await ResolveEntryAsync(
+            ToMetadata(item),
             item.Ciphertext,
-            ReadAad(item),
+            () => ReadAad(item),
             cancellationToken);
+    }
+
+    /// <summary>Expired entries are reported, never decrypted.</summary>
+    private async Task<VaultNamedSecretResolution> ResolveEntryAsync(
+        VaultSecretMetadata metadata,
+        string ciphertext,
+        Func<IReadOnlyDictionary<string, string>> aad,
+        CancellationToken cancellationToken)
+    {
+        if (metadata.ExpiresAtUtc is { } expiresAtUtc
+            && expiresAtUtc <= DateTime.UtcNow)
+        {
+            return new VaultNamedSecretResolution(metadata, Value: null);
+        }
+
+        var value = await keyVault.DecryptStringAsync(
+            ciphertext,
+            aad(),
+            cancellationToken);
+        return new VaultNamedSecretResolution(metadata, value);
     }
 
     public async Task<IReadOnlyList<VaultSecretMetadata>> ListAsync(
@@ -154,7 +211,8 @@ public sealed class VaultBackedSecretStore(
                 secret.OwnerSubject,
                 secret.UpdatedAtUtc,
                 secret.UpdatedBy,
-                true))
+                true,
+                secret.ExpiresAtUtc))
             .ToArrayAsync(cancellationToken);
     }
 
@@ -175,6 +233,21 @@ public sealed class VaultBackedSecretStore(
         string value,
         string updatedBy,
         string contextId,
+        CancellationToken cancellationToken = default) =>
+        await PutAsync(
+            name,
+            value,
+            updatedBy,
+            contextId,
+            expiresAtUtc: null,
+            cancellationToken);
+
+    public async Task<VaultSecretMetadata> PutAsync(
+        string name,
+        string value,
+        string updatedBy,
+        string contextId,
+        DateTime? expiresAtUtc,
         CancellationToken cancellationToken = default)
     {
         EnsureEnabled();
@@ -187,6 +260,9 @@ public sealed class VaultBackedSecretStore(
             throw new ArgumentException("Secret value exceeds the 16 KiB limit.", nameof(value));
         if (string.IsNullOrWhiteSpace(updatedBy))
             throw new ArgumentException("Updated-by is required.", nameof(updatedBy));
+        if (expiresAtUtc is { } expiration && expiration <= DateTime.UtcNow)
+            throw new ArgumentException(
+                "Secret expiration must be in the future.", nameof(expiresAtUtc));
 
         await using var database = await databaseFactory.CreateDbContextAsync(
             cancellationToken);
@@ -216,6 +292,7 @@ public sealed class VaultBackedSecretStore(
 
         item.Ciphertext = ciphertext;
         item.AadJson = JsonSerializer.Serialize(aad);
+        item.ExpiresAtUtc = expiresAtUtc;
         item.UpdatedAtUtc = now;
         item.UpdatedBy = NormalizeSubject(updatedBy);
         await database.SaveChangesAsync(cancellationToken);
@@ -341,7 +418,19 @@ public sealed class VaultBackedSecretStore(
             secret.OwnerSubject,
             secret.UpdatedAtUtc,
             secret.UpdatedBy,
-            true);
+            true,
+            secret.ExpiresAtUtc);
+
+    private static VaultSecretMetadata ToMetadata(VaultSecretSnapshotEntry entry) =>
+        new(
+            entry.Name,
+            entry.Namespace,
+            entry.ContextId,
+            entry.OwnerSubject,
+            entry.UpdatedAtUtc,
+            entry.UpdatedBy,
+            true,
+            entry.ExpiresAtUtc);
 
     private static IReadOnlyDictionary<string, string> Aad(
         string name,
@@ -364,7 +453,8 @@ public sealed class VaultBackedSecretStore(
             secret.Ciphertext,
             secret.AadJson,
             secret.UpdatedAtUtc,
-            secret.UpdatedBy));
+            secret.UpdatedBy,
+            secret.ExpiresAtUtc));
 
     private static IReadOnlyDictionary<string, string> ReadAad(
         VaultSecretSnapshotEntry secret)

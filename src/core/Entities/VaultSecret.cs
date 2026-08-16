@@ -18,6 +18,9 @@ public sealed class VaultSecret
     public string Name { get; set; } = string.Empty;
     public string Ciphertext { get; set; } = string.Empty;
     public string? AadJson { get; set; }
+    /// <summary>Optional expiration. Expired secrets stop resolving but remain
+    /// listed so operators can audit and rotate them.</summary>
+    public DateTime? ExpiresAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
     public string UpdatedBy { get; set; } = string.Empty;
 }
