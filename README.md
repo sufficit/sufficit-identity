@@ -22,7 +22,7 @@ A self-hostable, .NET-native identity provider that goes well beyond stock OpenI
 | PAR (Pushed Authorization Request) | RFC 9126 | ✅ |
 | JAR (JWT-Secured Authorization Request) | RFC 9101 | ✅ Hand-implemented |
 | JARM (JWT response mode, signed + encrypted) | JARM | ✅ |
-| FAPI 2.0 Security Profile enforcement | FAPI 2.0 Final | ✅ Opt-in boundary |
+| FAPI 2.0 Security Profile enforcement | FAPI 2.0 Final | ✅ Opt-in boundary — [OIDF certification pending sponsorship](#fapi-20-certification--seeking-sponsorship) |
 | mTLS (client auth + sender-constrained tokens) | RFC 8705 | ✅ |
 | Token Exchange (delegation) | RFC 8693 | ✅ |
 | Device Authorization Grant | RFC 8628 | ✅ |
@@ -70,6 +70,16 @@ Tests ─────────────────────  318 integ
 - **Breached-password validator** (HIBP k-anonymity range API, opt-in)
 - **Distributed stores** for CIBA, DPoP nonce, DPoP jti replay (IDistributedCache / Redis-ready)
 - **Non-root Docker**, digest-pinned images, multi-stage build, separate liveness/readiness probes
+
+## FAPI 2.0 certification — seeking sponsorship
+
+All the TECHNICAL prerequisites for the [FAPI 2.0 Security Profile](https://openid.net/specs/fapi-security-profile-2_0-final.html) are already enforced in code: mandatory PAR, DPoP sender-constrained tokens (with the RFC 9449 nonce dance), JAR request objects, mTLS sender constraining, and PS256/ES256 signing agility for vault-managed keys.
+
+The one missing step is the **official OpenID Foundation certification** — an external, paid conformance process (submission fees + the formal run against the OIDF test suite). We are **seeking sponsorship** to fund it. If this project is useful to you or your organization, you can support the certification effort:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_A_Coffee-support_the_FAPI_certification-FFDD00?style=flat-square&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/sufficit)
+
+Every contribution goes straight to the certification submission — and sponsors will be credited here once the profile is certified.
 
 ## Quick start
 
