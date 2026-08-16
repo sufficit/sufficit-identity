@@ -2,8 +2,11 @@
   "version": 2,
   "dependencies": {
     "net10.0": {
-      "sufficit.blazor.ui": {
-        "type": "Project"
+      "Sufficit.Blazor.UI": {
+        "type": "Direct",
+        "requested": "[1.26.814.1643, )",
+        "resolved": "1.26.814.1643",
+        "contentHash": "EuDUqA4Tpd/euiirjSYj7rSVRp3UDxfdwrGXG0z6mRNAFoQNuCPbLvtCxcElAOEROVC3mur+xMjdKIonwglW/g=="
       },
       "sufficit.identity.application.abstractions": {
         "type": "Project"
@@ -14,7 +17,7 @@
       "sufficit.identity.ui.components": {
         "type": "Project",
         "dependencies": {
-          "Sufficit.Blazor.UI": "[0.0.0-local, )"
+          "Sufficit.Blazor.UI": "[1.26.814.1643, )"
         }
       }
     }

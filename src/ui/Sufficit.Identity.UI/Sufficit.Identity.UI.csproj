@@ -27,7 +27,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\application\Sufficit.Identity.Application.Abstractions\Sufficit.Identity.Application.Abstractions.csproj" />
     <ProjectReference Include="..\Sufficit.Identity.UI.Abstractions\Sufficit.Identity.UI.Abstractions.csproj" />
-    <ProjectReference Include="..\..\..\..\sufficit-blazor-ui\src\Sufficit.Blazor.UI.csproj" />
+    <PackageReference Include="Sufficit.Blazor.UI" />
   </ItemGroup>
 
 </Project>
