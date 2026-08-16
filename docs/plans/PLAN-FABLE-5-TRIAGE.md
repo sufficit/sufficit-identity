@@ -3,7 +3,7 @@
 > **Status:** ACTIVE. Reconciled on 2026-08-16 by GLM-5.3 against `719ce33`.
 > Avaliador alvo: `e6a76d5` (F-8 batch) — **não viu** A2/A3/A4/A6/A10,
 > remoção do multi-tenant, tooling de deploy e migração SUI-pacote.
-> Fonte: [`EVALUATION-2026-08-15-claude-fable-5.md`](../evaluations/EVALUATION-2026-08-15-claude-fable-5.md)
+> Fonte: [`EVALUATION-2026-08-15-CLAUDE-FABLE-5.md`](../evaluations/EVALUATION-2026-08-15-CLAUDE-FABLE-5.md)
 
 ## 1. H-1 (ALTO) — parcialmente FALSO para produção
 

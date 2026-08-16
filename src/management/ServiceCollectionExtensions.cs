@@ -23,6 +23,7 @@ using Sufficit.Identity.Management.Controllers;
 using Sufficit.Identity.Management.Database;
 using Sufficit.Identity.Management.Overview;
 using Sufficit.Identity.Management.Metrics;
+using Sufficit.Identity.Management.Mcp;
 using Sufficit.Identity.Management.OperatorTokens;
 using Sufficit.Identity.Core.Metrics;
 using Sufficit.Identity.Management.Provisioning;
@@ -149,6 +150,10 @@ public static class ServiceCollectionExtensions
             MetricsManagementService>();
         services.TryAddScoped<IVaultSecretsManagementService,
             VaultSecretsManagementService>();
+        services.TryAddSingleton<McpSessionManager>();
+        services.TryAddScoped<VaultMcpTools>();
+        services.TryAddScoped<SelfServiceMcpTools>();
+        services.TryAddScoped<IdentityMcpToolRegistry>();
         services.TryAddSingleton<IdentityMetricsRuntimeState>();
         services.TryAddSingleton<IBrandingThemeProvider,
             BrandingThemeProvider>();
@@ -181,6 +186,12 @@ public static class ServiceCollectionExtensions
                 {
                     policy.RequireAssertion(_ => true);
                 }
+            });
+            builder.AddPolicy("sufficit-identity-mcp", policy =>
+            {
+                policy.AuthenticationSchemes.Add(
+                    OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+                policy.RequireAuthenticatedUser();
             });
         });
 

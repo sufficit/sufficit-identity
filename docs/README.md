@@ -32,6 +32,7 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Completed work (activities/)
 
+- [Identity MCP — Vault and self-service](activities/202608162300-identity-mcp-vault-self-service.md)
 - [Reconciliação do plano de autorização, SCIM e segredos](activities/202608092130-security-plan-reconciliation.md)
 - [Normalização de nomes e resumos das atividades](activities/202608092120-activity-documentation-normalization.md)
 - [Implementação e encerramento do plano de segurança](activities/202608092110-implementation-plan-closure.md)
@@ -79,6 +80,7 @@ Dated evaluations that are useful only as historical evidence live under
 ## Usage
 
 - [Embedded public and Management UIs](usage/USAGE-EMBEDDED-UI.md)
+- [Identity MCP — Vault and self-service](usage/USAGE-IDENTITY-MCP.md)
 - [SCIM 2.0](usage/USAGE-SCIM.md)
 - [Database migration assets](migration/README.md)
 
@@ -92,10 +94,6 @@ Dated evaluations that are useful only as historical evidence live under
 RUNBOOK-CSP-CALIBRATION.md)
 - [Confirmed-email rollout](runbooks/RUNBOOK-CONFIRMED-EMAIL.md)
 - [Internal vault](runbooks/RUNBOOK-VAULT.md)
-
-## Investigations
-
-- [Production-readiness assessment](investigations/INVESTIGATION-PRODUCTION-READINESS.md)
 
 ## Evaluations
 
