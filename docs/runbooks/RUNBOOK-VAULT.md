@@ -339,7 +339,12 @@ Para autorizar um serviço (ex.: `SufficitAIServer`): conceda o scope
 `RequireMfa` do management: principais de serviço não carregam `amr`, então a
 implantação precisa de política compatível para esses clientes.
 
-Os segredos do sufficit-ai vivem no namespace `ai/` (nome = `ai/<referência>`;
-contexto = GUID do tenant ou `global`). A cópia one-shot roda no sufficit-ai
-com `Sufficit:AI:Vault:MigrateLegacySecrets=true`; a tabela legada
-`arin_secrets` só é removida manualmente após a validação.
+Os segredos do sufficit-ai vivem no namespace `ai/` (nome = `ai/<referência>`).
+Contextos usados pelo AI: `<guid>` do tenant para segredos compartilhados no
+tenant, e `user-<guid>` para segredos pessoais (contexto nulo/vazio no AI
+significa "somente do usuário proprietário" — não existe tier global
+compartilhado). A cópia one-shot roda no sufficit-ai com
+`Sufficit:AI:Vault:MigrateLegacySecrets=true`; linhas globais legadas migram
+para o contexto pessoal do dono, e as sem dono para `legacy-unassigned`
+(reatribuir manualmente). A tabela legada `arin_secrets` só é removida
+manualmente após a validação.
