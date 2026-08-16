@@ -88,7 +88,8 @@ Dated evaluations that are useful only as historical evidence live under
 - [Distributed cache and snapshot](runbooks/RUNBOOK-DISTRIBUTED-CACHE.md)
 - [Production evidence and release gates](runbooks/RUNBOOK-PRODUCTION-EVIDENCE.md)
 - [Database connection resilience and monitoring](runbooks/RUNBOOK-DATABASE-CONNECTION-RESILIENCE.md)
-- [CSP calibration](runbooks/RUNBOOK-CSP-CALIBRATION.md)
+- [CSP calibration](runbooks/RUNBOOK-CERTIFICATES — Geração, deploy, rotação e troubleshooting dos certificados de token (assinatura/encriptação/KEK). **CRÍTICO**: o runtime .NET 10.0.10 em produção rejeita PFX gerado por OpenSSL/SDK — ver runbook.
+RUNBOOK-CSP-CALIBRATION.md)
 - [Confirmed-email rollout](runbooks/RUNBOOK-CONFIRMED-EMAIL.md)
 - [Internal vault](runbooks/RUNBOOK-VAULT.md)
 
