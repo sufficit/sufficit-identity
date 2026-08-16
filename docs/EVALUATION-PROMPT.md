@@ -79,6 +79,6 @@ search the web, and use parallel agents to speed up investigation and market
 research. Do not ask before acting — decide and execute.
 
 Save the result to
-/mnt/sufficit/sufficit-identity/docs/archive/evaluations/EVALUATION-<date>-<model-name>.md
+/mnt/sufficit/sufficit-identity/docs/evaluations/EVALUATION-<date>-<model-name>.md
 (name of the model used for this evaluation in the file name). Do not commit
 anything.
