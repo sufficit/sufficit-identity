@@ -30,7 +30,7 @@ O `deploy/local/appsettings.json` está desatualizado e induz em erro.
 |---|---|---|---|
 | **M-4** mesmo `certificate.pfx` signing+encryption | ⚠️ Confirmado | Gerar cert dedicado → trocar em janela | ⏳ **Bloqueado** — [runtime .NET rejeita PFX novo](../activities/202608161930-pfx-encryption-cert-investigation.md); cert 10y RSA-3072 já nos servers |
 | **M-5** CSP `connect-src wss: ws:` | ~~Confirmado~~ | Remover (o SignalR same-origin = `'self'`) | ✅ **Corrigido** 2026-08-16 — `connect-src 'self'` nos 3 servers |
-| **M-3** KEK `dataprotection` compartilha ring com cookies/antiforgery | ⚠️ Confirmado | Migrar p/ `certificate` (KEK dedicado) | ⏳ Pendente — `vault-kek.pfx` já existe (10 anos) em `/etc/sufficit/identity/` |
+| **M-3** KEK `dataprotection` compartilha ring com cookies/antiforgery | ~~Confirmado~~ | Migrar p/ `certificate` (KEK dedicado) | ✅ **Corrigido** 2026-08-16 — `KeySource=certificate` + KEK dedicado nos 3 servers |
 
 ## 3. Já corrigidos pelo trabalho GLM-5.3 (avaliador não viu)
 
@@ -76,7 +76,7 @@ O `deploy/local/appsettings.json` está desatualizado e induz em erro.
 
 - [ ] **M-4 (config) — Separar cert signing/encryption.** Gerar cert dedicado, trocar `EncryptionPath` em janela com rotação de tokens. Setar `RequirePurposeSeparation=true`.
   *⏳ Bloqueado: o runtime .NET 10.0.10 do server rejeita qualquer PFX que não o original (nem OpenSSL, nem .NET SDK). Ver [investigação completa](../activities/202608161930-pfx-encryption-cert-investigation.md). O cert `certificate-encryption.pfx` (RSA-3072, 10 anos, CN=sufficit-identity-token-encryption) já está deployado nos 3 servers. Solução recomendada: gerar o cert NO server via comando CLI do próprio Server.dll (`--generate-encryption-cert`).*
-- [ ] **M-3 (config) — KEK `certificate` dedicado** em vez de `dataprotection`. Já provisionado no vault (`vault-kek.pfx` existe em deploy/local/).
+- [x] **M-3 (config) — KEK `certificate` dedicado** em vez de `dataprotection`. ✅ 2026-08-16 — `KeySource=certificate` com `/etc/sufficit/identity/vault-kek.pfx` (10 anos). O vault-kek.pfx (gerado anteriormente) carregou sem problemas no runtime — não atingido pela incompatibilidade PFX do cert de token.
 - [ ] **M-7 — Lockout 5/5min →** backoff exponencial ou janela ≥15min; `HumanVerificationFlow.Login` com CAPTCHA após N falhas por conta/IP; partição por-conta no rate limiter.
 - [ ] **M-6 — Claims unmapped →** inventariar resource servers, depois `IncludeUnmappedClaimsInAccessTokens=false` (allow-list estrita).
 - [ ] **L-2 — Swagger** gatear atrás de `!IsDevelopment()` ou policy.
