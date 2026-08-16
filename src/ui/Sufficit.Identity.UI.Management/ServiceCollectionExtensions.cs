@@ -364,6 +364,12 @@ public static class ServiceCollectionExtensions
         // both SSR and interactive navigation see the same relative templates.
         app.Map(pathBase, management =>
         {
+            // Blazor JS isolation inside a PathBase branch resolves module
+            // imports against the branch base (e.g. /management/_content/...).
+            // The main pipeline's UseStaticFiles only serves /_content/ from
+            // the root, so the branch needs its own static file middleware to
+            // serve Razor Class Library assets (SUI components' .razor.js).
+            management.UseStaticFiles();
             management.UseRouting();
             management.UseAuthentication();
             management.UseAuthorization();
