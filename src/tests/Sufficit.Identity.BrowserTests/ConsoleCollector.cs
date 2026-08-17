@@ -68,10 +68,20 @@ public static class DomHealthChecks
             "(()=>{const l=document.querySelector(\"link[rel='stylesheet'][href*='" + frag + "']\");" +
             "if(!l||!l.sheet)return 0;try{return l.sheet.cssRules.length;}catch{return 0;}})()");
 
+    /// <summary>
+    /// Inputs/selects inside the container that render with browser defaults.
+    /// An element counts as styled when it has its own border/min-height OR
+    /// sits inside a wrapper that carries them (pill-search pattern: the
+    /// wrapper draws the border, the inner input is transparent on purpose).
+    /// </summary>
     public static async Task<string[]> GetUnstyledFormControlsAsync(IPage page, string sel) =>
         await Eval(page,
             "Array.from(document.querySelectorAll('" + sel + " input," + sel + " select'))" +
-            ".filter(el=>{const s=getComputedStyle(el);" +
-            "return s.borderStyle==='none'||s.minHeight==='0px';})" +
+            ".filter(el=>{" +
+            "const own=getComputedStyle(el);" +
+            "if(own.borderStyle!=='none'&&own.minHeight!=='0px')return false;" +
+            "const w=el.closest('[class]');if(!w)return true;" +
+            "const ws=getComputedStyle(w);" +
+            "return ws.borderStyle==='none'||ws.minHeight==='0px';})" +
             ".map(el=>el.tagName+' '+el.type+' unstyled')");
 }

@@ -145,7 +145,7 @@ else
             <form class="users-filter-form" @onsubmit="ApplyFilters" @onsubmit:preventDefault>
                 <label class="users-field users-field--search">
                     <span>Nome ou e-mail</span>
-                    <div class="search-field"><SUIIcon Name="search" Size="18" /><input type="search" autocomplete="off" placeholder="Buscar no diretório" @bind="search" @bind:event="oninput" /></div>
+                    <div class="search-field"><SUIIcon Name="search" Size="18" /><input type="search" id="users-search" name="search" autocomplete="off" placeholder="Buscar no diretório" @bind="search" @bind:event="oninput" /></div>
                 </label>
                 <div class="users-field users-field--review">
                     <span>Investigação</span>
@@ -178,8 +178,8 @@ else
                         <SUISelectItem Value="@ManagementUserBooleanFilter.Disabled">Inativo</SUISelectItem>
                     </SUISelect>
                 </div>
-                <label class="users-field"><span>Cadastro inicial</span><input type="date" @bind="registeredFrom" /></label>
-                <label class="users-field"><span>Cadastro final</span><input type="date" @bind="registeredTo" /></label>
+                <label class="users-field"><span>Cadastro inicial</span><input type="date" id="users-registered-from" name="registeredFrom" @bind="registeredFrom" /></label>
+                <label class="users-field"><span>Cadastro final</span><input type="date" id="users-registered-to" name="registeredTo" @bind="registeredTo" /></label>
                 <div class="users-field">
                     <span>Ordenar por</span>
                     <SUISelect T="ManagementUserSort" id="users-sort-filter" name="sort" aria-label="Ordenar por" Value="@sort" ValueChanged="SortSelected">
