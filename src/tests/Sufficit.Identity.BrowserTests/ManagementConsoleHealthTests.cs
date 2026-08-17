@@ -30,6 +30,7 @@ public class ManagementConsoleHealthTests : PageTest
     [SetUp]
     public async Task AuthenticateAsync()
     {
+        TestServerProbe.EnsureServerAvailable();
         _console = new ConsoleCollector(Page);
         await Page.GotoAsync($"{BaseUrl}/account/login");
         var userInput = Page.Locator(

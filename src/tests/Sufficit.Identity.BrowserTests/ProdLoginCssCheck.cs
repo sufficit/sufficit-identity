@@ -20,6 +20,7 @@ public class ProdLoginCssCheck : PageTest
     [Test]
     public async Task Login_page_applies_sui_styles()
     {
+        TestServerProbe.EnsureServerAvailable();
         await Page.GotoAsync($"{BaseUrl}/account/login");
         await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
         await Page.WaitForTimeoutAsync(1500);

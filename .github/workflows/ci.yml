@@ -146,7 +146,12 @@ jobs:
 
       - name: Test
         working-directory: sufficit-identity
-        run: dotnet test Sufficit.Identity.sln --configuration Release --no-build
+        # BrowserTests need a live Identity server and an installed Playwright
+        # browser; they are a deployment-verification suite (run locally or
+        # against a live environment via SUFFICIT_TEST_BASE_URL), not CI unit
+        # tests. They self-skip without a server, but the Playwright fixture
+        # itself would still fail on a runner without browsers installed.
+        run: dotnet test Sufficit.Identity.sln --configuration Release --no-build --filter "FullyQualifiedName!~Sufficit.Identity.BrowserTests"
 
       # Exercise the real composition executable without either presentation
       # assembly registered or mapped. This is intentionally stronger than the
