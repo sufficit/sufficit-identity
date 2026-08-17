@@ -466,6 +466,27 @@ public sealed class ManagementUiRoutingTests
     }
 
     [Fact]
+    public async Task Portuguese_user_directory_keeps_date_fields_in_pt_BR_when_request_is_en_US()
+    {
+        await using var app = await CreateHostAsync();
+        using var client = app.GetTestClient();
+
+        await SignInAsync(client, "administrator");
+
+        using var response = await client.GetAsync(
+            "/management/users?culture=en-US&ui-culture=en-US");
+        var html = WebUtility.HtmlDecode(
+            await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("<html lang=\"en-US\">", html, StringComparison.Ordinal);
+        Assert.Equal(2, html.Split("lang=\"pt-BR\"", StringSplitOptions.None).Length - 1);
+        Assert.Equal(2, html.Split("dd/mm/aaaa", StringSplitOptions.None).Length - 1);
+        Assert.DoesNotContain("mm/dd/yyyy", html, StringComparison.Ordinal);
+        Assert.Contains("Filtros e ordenação", html, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Stale_unverified_investigation_is_deep_linkable()
     {
         await using var app = await CreateHostAsync();
