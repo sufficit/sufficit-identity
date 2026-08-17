@@ -1415,26 +1415,40 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("data-device-close-fallback hidden", page, StringComparison.Ordinal);
         Assert.Contains("data-enhance=\"false\"", page, StringComparison.Ordinal);
         Assert.Contains("window.close();", script, StringComparison.Ordinal);
-        Assert.Contains("Keep both close strategies", script, StringComparison.Ordinal);
+        Assert.Contains("var strategies = [", script, StringComparison.Ordinal);
+        Assert.Contains("name: 'direct'", script, StringComparison.Ordinal);
+        Assert.Contains("name: 'top'", script, StringComparison.Ordinal);
+        Assert.Contains("name: 'retargeted'", script, StringComparison.Ordinal);
+        Assert.True(
+            script.IndexOf("name: 'direct'", StringComparison.Ordinal)
+            < script.IndexOf("name: 'top'", StringComparison.Ordinal));
+        Assert.True(
+            script.IndexOf("name: 'top'", StringComparison.Ordinal)
+            < script.IndexOf("name: 'retargeted'", StringComparison.Ordinal));
         Assert.Contains("window.open('', '_self');", script, StringComparison.Ordinal);
         Assert.Contains("function logDeviceFlow(event, details)", script, StringComparison.Ordinal);
         Assert.Contains("console.info('[Sufficit Identity][DeviceFlow]'", script, StringComparison.Ordinal);
         Assert.Contains("manual-close-required", script, StringComparison.Ordinal);
-        Assert.Contains("script-close-skipped", script, StringComparison.Ordinal);
         Assert.Contains("script-close-attempted", script, StringComparison.Ordinal);
         Assert.Contains("script-close-succeeded", script, StringComparison.Ordinal);
         Assert.Contains("script-close-blocked", script, StringComparison.Ordinal);
+        Assert.Contains("script-close-error", script, StringComparison.Ordinal);
+        Assert.Contains("close-pagehide-observed", script, StringComparison.Ordinal);
         Assert.Contains("manual-close-instructions-shown", script, StringComparison.Ordinal);
         Assert.Contains("deviceCloseManualLogged", script, StringComparison.Ordinal);
         Assert.Contains("device codes", script, StringComparison.Ordinal);
         Assert.Contains("function canAttemptScriptClose()", script, StringComparison.Ordinal);
         Assert.Contains("if (!canAttemptScriptClose())", script, StringComparison.Ordinal);
-        Assert.Contains("Initialization must not consume the close action", script, StringComparison.Ordinal);
+        Assert.Contains("Missing opener is diagnostic only", script, StringComparison.Ordinal);
         Assert.Contains("fallback.hidden = false", script, StringComparison.Ordinal);
         Assert.Contains("button.hidden = true", script, StringComparison.Ordinal);
         Assert.Contains("deviceCloseAttempted", script, StringComparison.Ordinal);
         Assert.Contains("deviceCloseBlocked", script, StringComparison.Ordinal);
         Assert.Contains("window.opener", script, StringComparison.Ordinal);
+        Assert.Contains("window.navigator.sendBeacon", script, StringComparison.Ordinal);
+        Assert.Contains("keepalive: true", script, StringComparison.Ordinal);
+        Assert.Contains("/security/device-flow-close-report", script, StringComparison.Ordinal);
+        Assert.Contains("COOP can remove opener", script, StringComparison.Ordinal);
         Assert.Contains("initializeDeviceFlowClose", script, StringComparison.Ordinal);
         Assert.Contains("enhancedload", script, StringComparison.Ordinal);
         Assert.Contains("deviceCloseInitialized", script, StringComparison.Ordinal);
