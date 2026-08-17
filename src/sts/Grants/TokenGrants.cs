@@ -204,6 +204,23 @@ public sealed class UserTokenGrantsHandler : ITokenGrantHandler
                 "The token is no longer valid or the user is no longer allowed to sign in.");
         }
 
+        var grantedScopes = request.IsRefreshTokenGrantType()
+            ? await RefreshGrantScopeResolver.ResolveAsync(
+                result.Principal!,
+                httpContext.RequestServices.GetRequiredService<IOpenIddictAuthorizationManager>(),
+                httpContext.RequestAborted)
+            : result.Principal!.GetScopes();
+        var entitlementResult = await ops.ProvisionScopeEntitlementsAsync(
+            user,
+            grantedScopes,
+            httpContext.RequestAborted);
+        if (!entitlementResult.Succeeded)
+        {
+            return TokenGrantDispatcher.ForbidError(
+                "temporarily_unavailable",
+                "The requested product access could not be activated. Please retry.");
+        }
+
         ClaimsIdentity identity;
         if (request.IsRefreshTokenGrantType())
         {
@@ -225,10 +242,7 @@ public sealed class UserTokenGrantsHandler : ITokenGrantHandler
 
             // Restore granted scopes/resources: BuildIdentityAsync starts from
             // current user state and does NOT inherit oi_scp/oi_resrc.
-            identity.SetScopes(await RefreshGrantScopeResolver.ResolveAsync(
-                result.Principal!,
-                httpContext.RequestServices.GetRequiredService<IOpenIddictAuthorizationManager>(),
-                httpContext.RequestAborted));
+            identity.SetScopes(grantedScopes);
             identity.SetResources(await ops.ResolveResourcesAsync(identity, request));
         }
         else
@@ -311,11 +325,23 @@ public sealed class DeviceCodeGrantHandler : ITokenGrantHandler
                 "The user is no longer allowed to sign in.");
         }
 
+        var grantedScopes = result.Principal.GetScopes();
+        var entitlementResult = await ops.ProvisionScopeEntitlementsAsync(
+            user,
+            grantedScopes,
+            httpContext.RequestAborted);
+        if (!entitlementResult.Succeeded)
+        {
+            return TokenGrantDispatcher.ForbidError(
+                "temporarily_unavailable",
+                "The requested product access could not be activated. Please retry.");
+        }
+
         // Fresh claims from current user state (roles/persisted claims may
         // have changed since the device_code was approved).
         var identity = await ops.BuildIdentityAsync(
             user, result.Principal, httpContext.User);
-        identity.SetScopes(result.Principal.GetScopes());
+        identity.SetScopes(grantedScopes);
         identity.SetResources(await ops.ResolveResourcesAsync(identity, request));
         GrantOperations.ApplyDpopBinding(identity, proof);
         identity.SetDestinations(ops.GetDestinations);

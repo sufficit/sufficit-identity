@@ -216,6 +216,8 @@ public static class TestDataSeeder
                 Permissions.Prefixes.Scope + Scopes.Email,
                 Permissions.Prefixes.Scope + Scopes.OfflineAccess,
                 Permissions.Prefixes.Scope + ScopeName,
+                Permissions.Prefixes.Scope + "directives",
+                Permissions.Prefixes.Scope + "sufficit_ai_openai_bridge",
             },
         };
         deviceApplication.SetAccessTokenLifetime(TimeSpan.FromMinutes(45));
