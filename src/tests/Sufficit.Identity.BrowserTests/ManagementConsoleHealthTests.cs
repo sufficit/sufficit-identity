@@ -6,14 +6,16 @@ namespace Sufficit.Identity.BrowserTests;
 
 /// <summary>
 /// Chrome DevTools-level health checks for the Identity Management UI.
-/// Detects the exact classes of issues the browser surfaces that
-/// server-side tests cannot: console warnings (form autofill, preload),
-/// 404 resources, CSS files that load but don't apply, and overlapping
-/// layout in the filter panels.
+/// Detects console warnings (form autofill, preload), 404 resources, CSS
+/// files that load but don't apply, and overlapping layout.
+///
+/// AUTHENTICATION: works with OR without credentials.
+/// - With SUFFICIT_TEST_PASSWORD: authenticates via the login form.
+/// - Without: assumes Development mode and uses the /test-only/signin
+///   endpoint (seeds a fake user with full claims, no password needed).
 ///
 /// Requires a running Identity server (SUFFICIT_TEST_BASE_URL, default
-/// https://localhost:5001) and test credentials (SUFFICIT_TEST_USER /
-/// SUFFICIT_TEST_PASSWORD). Playwright browsers: `dotnet pwsh bin/Debug/net10.0/playwright.ps1 install chromium`.
+/// https://localhost:5001). Playwright browsers: npx playwright install chromium.
 /// </summary>
 [Parallelizable(ParallelScope.None)]
 public class ManagementConsoleHealthTests : PageTest
@@ -33,21 +35,71 @@ public class ManagementConsoleHealthTests : PageTest
     private ConsoleCollector _console = null!;
 
     [SetUp]
-    public async Task NavigateAndAuthenticateAsync()
+    public async Task AuthenticateAsync()
     {
-        if (string.IsNullOrEmpty(TestPassword)) Assert.Ignore(
-            "SUFFICIT_TEST_PASSWORD not set — management UI tests need credentials");
-
         _console = new ConsoleCollector(Page);
 
-        // Navigate and authenticate
+        if (!string.IsNullOrEmpty(TestPassword))
+        {
+            await LoginViaFormAsync();
+        }
+        else
+        {
+            await LoginViaTestEndpointAsync();
+        }
+    }
+
+    /// <summary>
+    /// Authenticates via the /test-only/signin endpoint — available in
+    /// Development-mode servers and the integration test factory. Seeds a
+    /// fake user with full claims (MFA, admin roles) without any password.
+    /// The cookie is set on the browser context for all subsequent requests.
+    /// </summary>
+    private async Task LoginViaTestEndpointAsync()
+    {
+        // Navigate to the base URL first so the cookie domain matches
+        await Page.GotoAsync(BaseUrl);
+
+        // Call /test-only/signin via the browser's fetch API so the
+        // authentication cookie is set on the browser context directly
+        var result = await Page.EvaluateAsync<string>("""async (username) => {
+            const response = await fetch('/test-only/signin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({ username, mfa: 'true' }),
+                credentials: 'include'
+            });
+            return response.status.toString();
+        }""", TestUser);
+
+        if (result != "200" && result != "204")
+        {
+            Assert.Ignore(
+                $"/test-only/signin returned {result} — server is not in " +
+                "Development/test mode and SUFFICIT_TEST_PASSWORD is not set. " +
+                "Either run against a Development server or provide credentials.");
+        }
+
+        await Page.WaitForTimeoutAsync(500);
+    }
+
+    /// <summary>
+    /// Authenticates via the standard login form — used when testing against
+    /// production or when explicit credentials are provided.
+    /// </summary>
+    private async Task LoginViaFormAsync()
+    {
         await Page.GotoAsync($"{BaseUrl}/account/login");
-        await Page.FillAsync("input[name='userName'], input[type='email']", TestUser);
-        await Page.FillAsync("input[name='password'], input[type='password']", TestPassword);
+        await Page.FillAsync(
+            "input[name='userName'], input[name='email'], input[type='email']",
+            TestUser);
+        await Page.FillAsync(
+            "input[name='password'], input[type='password']",
+            TestPassword);
         await Page.ClickAsync("button[type='submit']");
 
-        // Wait for redirect to complete
-        await Page.WaitForURLAsync(url => !url.Contains("/account/login"),
+        await Page.WaitForURLAsync(
+            url => !url.Contains("/account/login"),
             new PageWaitForURLOptions { Timeout = 15_000 });
     }
 
@@ -78,11 +130,9 @@ public class ManagementConsoleHealthTests : PageTest
         await Page.GotoAsync($"{BaseUrl}/management/users");
         await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
-        // Chrome's autofill warning appears in the console
         Assert.That(_console.AutofillWarnings, Is.Empty,
             $"Chrome autofill warnings:\n{FormatEntries(_console.AutofillWarnings)}");
 
-        // DOM-level check: no form fields missing both id and name
         var fieldsWithoutIdentity =
             await DomHealthChecks.GetFormFieldsWithoutIdentityAsync(Page);
         Assert.That(fieldsWithoutIdentity, Is.Empty,
@@ -130,7 +180,6 @@ public class ManagementConsoleHealthTests : PageTest
         await Page.GotoAsync($"{BaseUrl}/management/users");
         await Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
-        // Wait for the filter panel to render
         await Page.WaitForSelectorAsync(".users-filter-form",
             new PageWaitForSelectorOptions { Timeout = 10_000 });
 
@@ -176,16 +225,6 @@ public class ManagementConsoleHealthTests : PageTest
 
         Assert.That(_console.Errors, Is.Empty,
             $"Console errors on /management/clients:\n{FormatEntries(_console.Errors)}");
-    }
-
-    [Test]
-    [Description("Accessibility scan with axe-core (WCAG 2.1 AA)")]
-    [Ignore("Requires Deque.AxeCore.Playwright configuration — enable after UI stabilizes")]
-    public async Task Users_page_accessibility()
-    {
-        // Placeholder for axe-core scan once the UI layout issues are resolved.
-        // The Deque.AxeCore.Playwright package is already referenced.
-        Assert.Pass("Placeholder — enable after UI stabilizes");
     }
 
     private static string FormatEntries(
