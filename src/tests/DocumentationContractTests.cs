@@ -112,9 +112,15 @@ public sealed partial class DocumentationContractTests
         EnumerateCanonicalMarkdown(docsRoot)
             .Append(Path.Combine(repositoryRoot, "README.md"))
             .Concat(Directory.EnumerateFiles(
-                Path.Combine(repositoryRoot, "src"),
-                "*.md",
-                SearchOption.AllDirectories));
+                    Path.Combine(repositoryRoot, "src"),
+                    "*.md",
+                    SearchOption.AllDirectories)
+                // Build output (including vendored tool caches such as the
+                // Playwright browser packages) is not repository documentation
+                // and varies by machine; scanning it turns third-party assets
+                // into link-contract failures.
+                .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
+                    && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")));
 
     private static bool ShouldIgnore(string target) =>
         target.StartsWith('#')
