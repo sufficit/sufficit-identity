@@ -1420,7 +1420,7 @@
         "type": "CentralTransitive",
         "requested": "[1.28.0, )",
         "resolved": "1.28.0",
-        "contentHash": "OMlCqcXgU4d853cRrx02mf8e610RQZJb3OKc/or1YKqkX/C+nIeSAEZ2DmBGlaKC/Yv8KpqY+h3A35fjB5kW+A==",
+        "contentHash": "KbXyptYZiVINZH8dTGOFAbVSrbLkE6AwtEN51CNlg5SiqaJ1XoQTpHqRXbPLEax57i5jm08kRTb61L+injMBSw==",
         "dependencies": {
           "Microsoft.AspNetCore.Components": "10.0.11",
           "Microsoft.AspNetCore.Components.Web": "10.0.11"
