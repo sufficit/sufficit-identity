@@ -1684,7 +1684,7 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
-    public void User_directory_filters_use_shared_selects_and_keep_native_date_inputs()
+    public void User_directory_filters_use_shared_sui_fields_and_portuguese_dates()
     {
         var managementUi = ResolveManagementUiSource();
         var page = File.ReadAllText(Path.Combine(
@@ -1705,6 +1705,9 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("users-mfa-filter", page, StringComparison.Ordinal);
         Assert.Contains("users-sort-filter", page, StringComparison.Ordinal);
         Assert.Contains("users-analytics-filter", page, StringComparison.Ordinal);
+        Assert.Equal(2, page.Split("<SUIDateField", StringSplitOptions.None).Length - 1);
+        Assert.Equal(2, page.Split("Culture=\"@PtBr\"", StringSplitOptions.None).Length - 1);
+        Assert.DoesNotContain("InputType=\"date\"", page, StringComparison.Ordinal);
         Assert.Contains("users-field .sui-select__trigger", stylesheet, StringComparison.Ordinal);
         Assert.Contains("padding-inline: 12px;", stylesheet, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 767px)", stylesheet, StringComparison.Ordinal);
