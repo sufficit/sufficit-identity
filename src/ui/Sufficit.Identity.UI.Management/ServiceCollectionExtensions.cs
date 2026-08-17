@@ -362,6 +362,30 @@ public static class ServiceCollectionExtensions
         // while the component Router knows the pages as "/" and "/clients".
         // A PathBase branch removes "/management" before endpoint matching, so
         // both SSR and interactive navigation see the same relative templates.
+        //
+        // The branch's endpoints are registered with branch-relative routes
+        // ("/users", "/_blazor/negotiate"), so the ROOT pipeline's UseRouting
+        // can never match them for a /management/* URL. Instead the root
+        // matcher may select a root-space endpoint first — notably the
+        // MapStaticAssets development fallback ({**path:file}, GET/HEAD only),
+        // whose HTTP-method policy converts every POST under /management/
+        // (circuit negotiate, filter forms, Save buttons) into a terminal
+        // "405 HTTP Method Not Supported" endpoint before the branch's own
+        // routing can run. Clear whatever the root matcher selected so the
+        // branch below performs the authoritative match on the stripped path.
+        // Root-space routes never live under /management, so nothing that the
+        // root matcher could legitimately select is lost.
+        app.Use((context, next) =>
+        {
+            if (context.Request.Path.StartsWithSegments(pathBase)
+                && context.GetEndpoint() is not null)
+            {
+                context.SetEndpoint(null);
+            }
+
+            return next();
+        });
+
         app.Map(pathBase, management =>
         {
             // Blazor JS isolation inside a PathBase branch resolves module

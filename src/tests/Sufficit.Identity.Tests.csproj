@@ -35,4 +35,13 @@
     <ProjectReference Include="..\ui\Sufficit.Identity.UI.Abstractions\Sufficit.Identity.UI.Abstractions.csproj" />
   </ItemGroup>
 
+  <!-- Sufficit.Identity.BrowserTests nests inside this project's directory,
+       so its obj/bin generated sources would otherwise be picked up by the
+       default Compile glob here (duplicate AssemblyInfo build errors once
+       both projects have been built, e.g. after a Release publish). -->
+  <ItemGroup>
+    <Compile Remove="Sufficit.Identity.BrowserTests\**" />
+    <None Remove="Sufficit.Identity.BrowserTests\**" />
+  </ItemGroup>
+
 </Project>

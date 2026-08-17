@@ -436,6 +436,17 @@ if (app.Environment.IsDevelopment())
 {
     app.Logger.LogInformation("REGISTERING __test__ endpoints");
     app.MapGet("/__test__/ping", () => "pong");
+    // Lists every registered endpoint (route template, HTTP methods, auth
+    // metadata), optionally filtered by ?path=. invaluable when debugging
+    // route collisions between the root pipeline and the /management branch.
+    app.MapGet("/__test__/endpoints", (string? path) =>
+        string.Join("\n",
+            app.Services.GetRequiredService<Microsoft.AspNetCore.Routing.EndpointDataSource>()
+                .Endpoints
+                .Select(e => e is RouteEndpoint re
+                    ? $"{re.RoutePattern.RawText} [{string.Join(",", re.Metadata.GetMetadata<Microsoft.AspNetCore.Routing.HttpMethodMetadata>()?.HttpMethods ?? new[] { "?" })}] {string.Join(",", re.Metadata.OfType<Microsoft.AspNetCore.Authorization.IAuthorizeData>().Select(a => a.Policy ?? a.Roles ?? "auth"))}"
+                    : $"{e.DisplayName} [no-route]")
+                .Where(l => path is null || l.Contains(path, StringComparison.OrdinalIgnoreCase))));
     app.MapPost("/__test__/signin", async (
         Microsoft.AspNetCore.Http.HttpContext context,
         Microsoft.AspNetCore.Identity.UserManager<Sufficit.Identity.Core.Entities.ApplicationUser> userManager,
