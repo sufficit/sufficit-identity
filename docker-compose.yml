@@ -25,7 +25,7 @@ services:
       MARIADB_USER: identity
       MARIADB_PASSWORD: identity
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - db-data:/var/lib/mysql
       # Apply the canonical schema on first boot (checked-in SQL).
