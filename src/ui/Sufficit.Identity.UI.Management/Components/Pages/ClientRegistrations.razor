@@ -1,0 +1,230 @@
+@page "/clients/registrations"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageClients)]
+@attribute [StreamRendering]
+@inject ManagementClientDataSource ClientData
+@inject NavigationManager Navigation
+
+<PageTitle>Registros automáticos | Sufficit Identity</PageTitle>
+
+<SUIPageHeader Title="Registros automáticos"
+            Description="Aplicações que se registraram sozinhas via Dynamic Client Registration (RFC 7591). Registros anônimos ficam limitados ao perfil de login interativo — sem escopos de API.">
+    <Actions>
+        <a class="button button--secondary" href="clients">
+            <SUIIcon Name="key" Size="17" />
+            Todas as aplicações
+        </a>
+    </Actions>
+</SUIPageHeader>
+
+@if (!string.IsNullOrWhiteSpace(RevokedClientId))
+{
+    <div class="inline-notice inline-notice--success" role="status">
+        <SUIIcon Name="check" Size="19" />
+        <div>
+            <strong>Registro revogado</strong>
+            <span>O cliente <code>@RevokedClientId</code> foi removido junto com seus tokens e consentimentos. A operação foi auditada.</span>
+        </div>
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(RevokeError))
+{
+    <div class="inline-notice inline-notice--danger" role="alert">
+        <SUIIcon Name="alert-triangle" Size="19" />
+        <div>
+            <strong>Não foi possível revogar</strong>
+            <span>@RevokeError</span>
+        </div>
+    </div>
+}
+
+<section class="table-card">
+    <div class="table-card__body">
+        @if (Page is null)
+        {
+            <SUILoading Label="Carregando registros" />
+        }
+        else if (Page.Items.Count == 0)
+        {
+            <SUIEmptyState Icon="key"
+                        Title="Nenhum registro automático"
+                        Description="Nenhuma aplicação se registrou sozinha até agora. Quando um cliente MCP fizer login pela primeira vez, ele aparece aqui." />
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data-table data-table--clients">
+                    <thead>
+                        <tr>
+                            <th scope="col">Aplicação</th>
+                            <th scope="col">Client ID</th>
+                            <th scope="col">Registrado em</th>
+                            <th scope="col">Origem da chamada</th>
+                            <th scope="col">Gate</th>
+                            <th scope="col"><span class="visually-hidden">Ações</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var client in Page.Items)
+                        {
+                            <tr>
+                                <td data-label="Aplicação">
+                                    <a class="client-name client-link" href="@ClientHref(client.Id)">
+                                        @(string.IsNullOrWhiteSpace(client.DisplayName)
+                                            ? client.ClientId
+                                            : client.DisplayName)
+                                    </a>
+                                </td>
+                                <td data-label="Client ID">
+                                    <code class="client-id">@client.ClientId</code>
+                                </td>
+                                <td data-label="Registrado em">
+                                    @(client.RegisteredAtUtc is { } instant
+                                        ? instant.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                        : "—")
+                                </td>
+                                <td data-label="Origem da chamada">
+                                    <span class="registration-state">
+                                        <code>@(client.RegisteredFromAddress ?? "—")</code>
+                                    </span>
+                                    @if (!string.IsNullOrWhiteSpace(client.RegisteredUserAgent))
+                                    {
+                                        <span class="registration-hint" title="@client.RegisteredUserAgent">
+                                            @Truncate(client.RegisteredUserAgent!, 48)
+                                        </span>
+                                    }
+                                </td>
+                                <td data-label="Gate">
+                                    <SUIStatusBadge ToneValue="@IdentitySuiTone.From(
+                                        client.RegisteredAnonymously ? "warning" : "success")">
+                                        @(client.RegisteredAnonymously
+                                            ? "Anônimo (perfil MCP)"
+                                            : "Token inicial")
+                                    </SUIStatusBadge>
+                                </td>
+                                <td data-label="Ações">
+                                    <a class="row-action" href="@ClientHref(client.Id)">
+                                        Detalhes
+                                        <SUIIcon Name="arrow-right" Size="15" />
+                                    </a>
+                                    <button class="row-action row-action--danger"
+                                            type="button"
+                                            disabled="@(RevokingClientId == client.ClientId)"
+                                            @onclick="() => RevokeAsync(client.ClientId)">
+                                        @(RevokingClientId == client.ClientId ? "Revogando…" : "Revogar")
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <footer class="table-footer table-footer--paginated">
+        <span aria-live="polite" aria-atomic="true">@ResultCountLabel</span>
+        @if (Page is { PageCount: > 1 })
+        {
+            <div class="pagination">
+                <button class="button button--ghost"
+                        type="button"
+                        disabled="@(CurrentPage <= 1)"
+                        @onclick="() => GoToPageAsync(CurrentPage - 1)">
+                    Anterior
+                </button>
+                <span>Página @Page.Page de @Page.PageCount</span>
+                <button class="button button--ghost"
+                        type="button"
+                        disabled="@(CurrentPage >= Page.PageCount)"
+                        @onclick="() => GoToPageAsync(CurrentPage + 1)">
+                    Próxima
+                </button>
+            </div>
+        }
+    </footer>
+</section>
+
+@code {
+    private ManagementDataResult<ManagementClientPage>? result;
+    private string? loadedFingerprint;
+
+    [SupplyParameterFromQuery(Name = "page")]
+    public int QueryPage { get; set; } = 1;
+
+    [SupplyParameterFromQuery(Name = "revoked")]
+    public string? RevokedClientId { get; set; }
+
+    private string? RevokeError { get; set; }
+
+    private string? RevokingClientId { get; set; }
+
+    private int CurrentPage => QueryPage < 1 ? 1 : QueryPage;
+
+    private ManagementClientPage? Page => result?.IsSuccess is true
+        ? result.Value
+        : null;
+
+    private string ResultCountLabel => Page is null
+        ? "Carregando registros"
+        : Page.TotalCount == 0
+            ? "Nenhum registro automático"
+            : $"{Page.TotalCount} registro(s) automático(s)";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var fingerprint = CurrentPage.ToString();
+        if (fingerprint == loadedFingerprint)
+        {
+            return;
+        }
+        loadedFingerprint = fingerprint;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        // Origin filter is applied by the management service; this console only
+        // ever shows self-registered clients.
+        result = await ClientData.SearchClientsAsync(new ManagementClientQuery(
+            Search: null,
+            Type: "all",
+            Grant: "all",
+            Scope: null,
+            Origin: "dcr",
+            Status: "all",
+            Page: CurrentPage,
+            PageSize: 25));
+    }
+
+    private async Task GoToPageAsync(int target)
+    {
+        Navigation.NavigateTo($"clients/registrations?page={target}");
+        await Task.CompletedTask;
+    }
+
+    private async Task RevokeAsync(string clientId)
+    {
+        RevokeError = null;
+        RevokingClientId = clientId;
+        var outcome = await ClientData.DeleteClientAsync(clientId);
+        RevokingClientId = null;
+        if (outcome.IsSuccess)
+        {
+            Navigation.NavigateTo(
+                $"clients/registrations?revoked={Uri.EscapeDataString(clientId)}",
+                forceLoad: false);
+            loadedFingerprint = null;
+            await LoadAsync();
+            return;
+        }
+
+        RevokeError = outcome.ErrorMessage
+            ?? "O serviço de identidade recusou a remoção.";
+    }
+
+    private static string ClientHref(string id) => $"clients/{id}";
+
+    private static string Truncate(string value, int length) =>
+        value.Length <= length ? value : value[..length] + "…";
+}

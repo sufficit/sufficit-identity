@@ -130,3 +130,49 @@ Para validar a composição local:
 ```sh
 dotnet test src/tests/Sufficit.Identity.Tests.csproj --filter FullyQualifiedName~IdentityMcpTests
 ```
+
+## Auto-registro (DCR) e o console de registros
+
+Habilitar o auto-registro:
+
+```json
+{
+  "Sufficit": {
+    "Identity": {
+      "Mcp": {
+        "Dcr": {
+          "Enabled": true,
+          "RequireInitialAccessToken": false
+        }
+      }
+    }
+  }
+}
+```
+
+Com `RequireInitialAccessToken=false` qualquer cliente MCP se registra sozinho,
+mas o registro é **anônimo** e o cliente nasce restrito ao perfil de login
+interativo — imposto no servidor, não por configuração:
+
+- público (sem client secret) e obrigatoriamente PKCE;
+- grants apenas `authorization_code` e `refresh_token`
+  (`Sufficit:Identity:Mcp:Dcr:AnonymousGrantTypes`);
+- escopos apenas `openid`, `profile`, `offline_access`
+  (`Sufficit:Identity:Mcp:Dcr:AnonymousScopes`) — nenhum escopo de API ou
+  administrativo, portanto o client não alcança o Management;
+- pedidos fora desse perfil são **recusados** (400), nunca reduzidos em
+  silêncio.
+
+Mantendo `RequireInitialAccessToken=true`, o registro segue exigindo o token
+inicial e pode receber o que a allowlist geral (`AllowedGrantTypes` /
+`AllowedScopes`) permitir.
+
+Todo cliente criado por DCR é carimbado com sua procedência (origem, instante,
+endereço de origem e user-agent). Consulte em:
+
+- **UI:** *Aplicações → Registros automáticos* (`/clients/registrations`) —
+  lista, mostra de onde veio cada registro e permite revogar (remove tokens e
+  consentimentos junto, com auditoria).
+- **API:** `GET /api/clients?origin=dcr` — a listagem traz `origin`,
+  `registeredAtUtc`, `registeredAnonymously`, `registeredFromAddress` e
+  `registeredUserAgent`. Revogação: `DELETE /api/clients/{clientId}`.

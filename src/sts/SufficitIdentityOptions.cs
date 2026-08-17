@@ -1648,6 +1648,37 @@ public sealed class DcrOptions
         OpenIddict.Abstractions.OpenIddictConstants.Scopes.Email,
         OpenIddict.Abstractions.OpenIddictConstants.Scopes.OfflineAccess,
     };
+
+    /// <summary>
+    /// Scopes granted to an anonymous registration (one made without an
+    /// initial access token). This is deliberately a second, tighter allowlist
+    /// than <see cref="AllowedScopes"/>: open registration is acceptable for an
+    /// agent that only signs the user in and talks to MCP, and unacceptable for
+    /// anything that reaches an API scope. A request asking for a scope outside
+    /// this set is rejected rather than silently narrowed, so the client learns
+    /// what it actually got.
+    ///
+    /// Anonymous registrations are additionally forced to be public
+    /// (PKCE, no client secret) and limited to the interactive grants — see
+    /// <see cref="AnonymousGrantTypes"/>.
+    /// </summary>
+    public HashSet<string> AnonymousScopes { get; init; } = new(StringComparer.Ordinal)
+    {
+        OpenIddict.Abstractions.OpenIddictConstants.Scopes.OpenId,
+        OpenIddict.Abstractions.OpenIddictConstants.Scopes.Profile,
+        OpenIddict.Abstractions.OpenIddictConstants.Scopes.OfflineAccess,
+    };
+
+    /// <summary>
+    /// Grants an anonymous registration may request. Interactive only: an
+    /// unauthenticated caller must never obtain a client that can mint tokens
+    /// on its own (client_credentials) or handle user passwords.
+    /// </summary>
+    public HashSet<string> AnonymousGrantTypes { get; init; } = new(StringComparer.Ordinal)
+    {
+        OpenIddict.Abstractions.OpenIddictConstants.GrantTypes.AuthorizationCode,
+        OpenIddict.Abstractions.OpenIddictConstants.GrantTypes.RefreshToken,
+    };
 }
 
 
