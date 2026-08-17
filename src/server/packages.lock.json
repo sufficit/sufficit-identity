@@ -62,6 +62,12 @@
           "Serilog.Sinks.File": "7.0.0"
         }
       },
+      "Sufficit.Blazor.UI": {
+        "type": "Direct",
+        "requested": "[1.27.0, )",
+        "resolved": "1.27.0",
+        "contentHash": "tQeBpM9puEhAAPgEHqpmAvWexNPSDAb8s0/rwhUBmbu1HfOZifAKerkLXAxZ1PDbOTNCkHvaeWDUqYa04o+TXA=="
+      },
       "Swashbuckle.AspNetCore": {
         "type": "Direct",
         "requested": "[10.2.3, )",
@@ -668,9 +674,6 @@
           "Microsoft.Win32.SystemEvents": "6.0.0"
         }
       },
-      "sufficit.blazor.ui": {
-        "type": "Project"
-      },
       "sufficit.identity.application.abstractions": {
         "type": "Project"
       },
@@ -721,7 +724,7 @@
         "type": "Project",
         "dependencies": {
           "QRCoder": "[1.8.0, )",
-          "Sufficit.Blazor.UI": "[0.0.0-local, )",
+          "Sufficit.Blazor.UI": "[1.27.0, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )"
         }
@@ -732,13 +735,13 @@
       "sufficit.identity.ui.components": {
         "type": "Project",
         "dependencies": {
-          "Sufficit.Blazor.UI": "[0.0.0-local, )"
+          "Sufficit.Blazor.UI": "[1.27.0, )"
         }
       },
       "sufficit.identity.ui.management": {
         "type": "Project",
         "dependencies": {
-          "Sufficit.Blazor.UI": "[0.0.0-local, )",
+          "Sufficit.Blazor.UI": "[1.27.0, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Components": "[0.4.0-alpha, )"
@@ -747,7 +750,7 @@
       "sufficit.identity.ui.vault": {
         "type": "Project",
         "dependencies": {
-          "Sufficit.Blazor.UI": "[0.0.0-local, )",
+          "Sufficit.Blazor.UI": "[1.27.0, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Components": "[0.4.0-alpha, )"
