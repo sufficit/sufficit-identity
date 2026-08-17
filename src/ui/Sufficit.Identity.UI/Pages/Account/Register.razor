@@ -1,5 +1,6 @@
 @page "/account/register"
 @rendermode @(RenderMode.InteractiveServer)
+@using Microsoft.AspNetCore.WebUtilities
 @inject IAccountOnboardingService AccountOnboarding
 @inject IHumanVerificationService HumanVerification
 @inject IBrandingThemeProvider BrandingProvider
@@ -14,7 +15,7 @@
         <div class="alert alert-error" role="alert">
             @L["Register.Disabled"]
         </div>
-        <a href="/account/login" class="btn btn-primary">@L["Common.BackToLogin"]</a>
+        <a href="@LoginUrl" class="btn btn-primary">@L["Common.BackToLogin"]</a>
     </div>
 }
 else
@@ -45,7 +46,7 @@ else
                     }
                 </div>
             </div>
-            <a href="/account/login" class="btn btn-primary btn-block">@L["Common.BackToLogin"]</a>
+            <a href="@LoginUrl" class="btn btn-primary btn-block">@L["Common.BackToLogin"]</a>
         }
         else
         {
@@ -100,13 +101,19 @@ else
             </EditForm>
 
             <div class="auth-links">
-                <a href="/account/login">@L["Register.HasAccount"]</a>
+                <a href="@LoginUrl">@L["Register.HasAccount"]</a>
             </div>
         }
     </div>
 }
 
 @code {
+    [SupplyParameterFromQuery(Name = "ReturnUrl")]
+    private string? ReturnUrlPascal { get; set; }
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    private string? ReturnUrl { get; set; }
+
     private RegisterInput? _boundModel;
     [SupplyParameterFromForm(FormName = "register")]
     private RegisterInput _model
@@ -123,9 +130,16 @@ else
     private HumanVerification? _verificationControl;
     private AccountRegistrationPolicy _registrationPolicy = new(false, false);
     private string _logoUrl = "_content/Sufficit.Identity.UI/img/logo-full.png";
+    private string _returnUrl = "/";
+    private string LoginUrl => QueryHelpers.AddQueryString(
+        "/account/login",
+        "returnUrl",
+        _returnUrl);
 
     protected override async Task OnInitializedAsync()
     {
+        _returnUrl = LocalUrlValidator.EnsureLocal(
+            ReturnUrlPascal ?? ReturnUrl);
         _registrationPolicy = await AccountOnboarding
             .GetRegistrationPolicyAsync();
         _model.RequiresUserName = _registrationPolicy.RequiresUserName;
@@ -164,7 +178,8 @@ else
                 new AccountRegistrationCommand(
                     _model.UserName,
                     _model.Email,
-                    _model.Password));
+                    _model.Password,
+                    _returnUrl));
             if (!result.Succeeded)
             {
                 _error = string.Join(

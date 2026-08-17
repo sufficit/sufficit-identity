@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -6,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.STS;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 
@@ -275,6 +277,100 @@ public sealed class DeviceFlowTests
         using var userInfoResponse = await client.SendAsync(userInfoRequest);
 
         Assert.Equal(HttpStatusCode.OK, userInfoResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Approving_the_ai_scope_provisions_personal_ai_access_once()
+    {
+        var username = $"device-ai-{Guid.NewGuid():N}";
+        const string password = "Str0ng!Passw0rd#13";
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            await TestDataSeeder.CreateUserAsync(userManager, username, password);
+        }
+
+        var client = _factory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var (authStatus, authBody) = await client.PostFormAsync(
+            "/connect/deviceauthorization",
+            new Dictionary<string, string>
+            {
+                ["client_id"] = TestDataSeeder.DeviceClientId,
+                ["client_secret"] = TestDataSeeder.DeviceClientSecret,
+                ["scope"] = "openid offline_access directives sufficit_ai_openai_bridge",
+            });
+        Assert.Equal(HttpStatusCode.OK, authStatus);
+
+        await TestOnlyEndpoints.SignInAsync(client, username);
+        var antiforgeryToken = await TestOnlyEndpoints.GetAntiforgeryTokenAsync(client);
+        using var approveResponse = await client.PostAsync(
+            "/connect/device",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["user_code"] = authBody.GetProperty("user_code").GetString()!,
+                ["approved"] = "true",
+                ["__RequestVerificationToken"] = antiforgeryToken,
+            }));
+        Assert.Equal(HttpStatusCode.Redirect, approveResponse.StatusCode);
+
+        var (pollStatus, pollBody) = await client.PostFormAsync(
+            "/connect/token",
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "urn:ietf:params:oauth:grant-type:device_code",
+                ["device_code"] = authBody.GetProperty("device_code").GetString()!,
+                ["client_id"] = TestDataSeeder.DeviceClientId,
+                ["client_secret"] = TestDataSeeder.DeviceClientSecret,
+            });
+        Assert.Equal(HttpStatusCode.OK, pollStatus);
+        var refreshToken = pollBody.GetProperty("refresh_token").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(refreshToken));
+
+        var personalDirective = new Claim(
+            "directive",
+            "aiuser:00000000-0000-0000-0000-000000000000");
+        using (var verificationScope = _factory.Services.CreateScope())
+        {
+            var verificationUserManager = verificationScope.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await verificationUserManager.FindByNameAsync(username);
+            Assert.NotNull(user);
+            var claims = await verificationUserManager.GetClaimsAsync(user!);
+            Assert.Single(claims, claim =>
+                claim.Type == personalDirective.Type
+                && claim.Value == personalDirective.Value);
+
+            // Simulate a refresh token issued before scope-based entitlement
+            // provisioning existed. Redemption must repair the user's access.
+            var removal = await verificationUserManager.RemoveClaimAsync(
+                user!,
+                personalDirective);
+            Assert.True(removal.Succeeded);
+        }
+
+        var (refreshStatus, _) = await client.PostFormAsync(
+            "/connect/token",
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "refresh_token",
+                ["refresh_token"] = refreshToken!,
+                ["client_id"] = TestDataSeeder.DeviceClientId,
+                ["client_secret"] = TestDataSeeder.DeviceClientSecret,
+            });
+        Assert.Equal(HttpStatusCode.OK, refreshStatus);
+
+        using var repairedScope = _factory.Services.CreateScope();
+        var repairedUserManager = repairedScope.ServiceProvider
+            .GetRequiredService<UserManager<ApplicationUser>>();
+        var repairedUser = await repairedUserManager.FindByNameAsync(username);
+        Assert.NotNull(repairedUser);
+        var repairedClaims = await repairedUserManager.GetClaimsAsync(repairedUser!);
+        Assert.Single(repairedClaims, claim =>
+            claim.Type == personalDirective.Type
+            && claim.Value == personalDirective.Value);
     }
 
     [Fact]

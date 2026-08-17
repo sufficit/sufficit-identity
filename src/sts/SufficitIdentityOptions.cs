@@ -178,6 +178,12 @@ public sealed class SufficitIdentityOptions
     public ClaimScopeMapOptions ClaimScopeMap { get; init; } = new();
 
     /// <summary>
+    /// Persisted claims granted when a user approves an application scope.
+    /// Grants are idempotent and become visible in the token being approved.
+    /// </summary>
+    public ScopeEntitlementOptions ScopeEntitlements { get; init; } = new();
+
+    /// <summary>
     /// Compatibility rollout policy for personal access-token issuance.
     /// Observe mode computes and records the strict decision while preserving
     /// existing callers; Enforce applies the attenuated decision.
@@ -977,6 +983,33 @@ public sealed class ClaimScopeMapOptions
         "authenticator_key",
         "recovery_codes",
     };
+}
+
+/// <summary>
+/// Maps approved OAuth scopes to persisted user claims. This keeps product
+/// onboarding policy configurable while the STS remains claim-type agnostic.
+/// </summary>
+public sealed class ScopeEntitlementOptions
+{
+    public Dictionary<string, List<PersistedEntitlementClaimOptions>> Grants { get; init; } =
+        new(StringComparer.Ordinal)
+        {
+            ["sufficit_ai_openai_bridge"] =
+            [
+                new()
+                {
+                    Type = "directive",
+                    Value = "aiuser:00000000-0000-0000-0000-000000000000",
+                },
+            ],
+        };
+}
+
+public sealed class PersistedEntitlementClaimOptions
+{
+    public string Type { get; init; } = string.Empty;
+
+    public string Value { get; init; } = string.Empty;
 }
 
 public enum SecurityPolicyEnforcementMode
