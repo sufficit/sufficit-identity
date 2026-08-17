@@ -22,7 +22,7 @@
     <!-- Shared SUI component library (published from the sufficit-blazor-ui
          repository; consumed as a PACKAGE so builds and CI no longer depend
          on a sibling checkout). -->
-    <PackageVersion Include="Sufficit.Blazor.UI" Version="1.26.814.1643" />
+    <PackageVersion Include="Sufficit.Blazor.UI" Version="1.27.0" />
 
     <!-- ASP.NET Core Data Protection key-ring persistence (P0 #B4) -->
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.10" />
@@ -83,6 +83,14 @@
          SQLitePCLRaw.bundle_e_sqlite3 so ONLY that project's resolution is
          forced onto this version — see the comment there. -->
     <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
+
+    <!-- Browser tests (Playwright + axe-core) -->
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="Deque.AxeCore.Playwright" Version="4.13.0" />
+    <PackageVersion Include="Microsoft.Playwright.NUnit" Version="1.62.0" />
+    <PackageVersion Include="NUnit" Version="4.3.2" />
+    <PackageVersion Include="NUnit.Analyzers" Version="4.7.0" />
+    <PackageVersion Include="NUnit3TestAdapter" Version="5.0.0" />
   </ItemGroup>
 
 </Project>
