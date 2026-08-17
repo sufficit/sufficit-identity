@@ -1180,6 +1180,7 @@ public static class ServiceCollectionExtensions
             AspNetCoreIdentityInteractiveSignInService>();
         services.AddScoped<IAccountOnboardingService,
             AspNetCoreIdentityAccountOnboardingService>();
+        services.AddScoped<ScopeEntitlementProvisioner>();
         services.AddScoped<IAuthorizationConsentService,
             OpenIddictAuthorizationConsentService>();
         services.AddScoped<OpenIddictDeviceAuthorizationContextService>();
