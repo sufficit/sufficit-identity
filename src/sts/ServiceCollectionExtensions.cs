@@ -999,6 +999,22 @@ public static class ServiceCollectionExtensions
                         context.Metadata["tls_client_certificate_bound_access_tokens"] =
                             JsonValue.Create(options.Mtls.Enabled);
 
+                        // Dynamic Client Registration (RFC 7591 §2 / OIDC
+                        // Discovery). OpenIddict ships no DCR, so it never
+                        // advertises the endpoint this STS implements. Without
+                        // this entry an MCP client reads the discovery
+                        // document, finds no registration_endpoint and gives up
+                        // on self-registration — the flow works only for
+                        // clients that already exist. Advertised strictly when
+                        // the endpoint is actually enabled.
+                        if (options.Mcp.Dcr.Enabled)
+                        {
+                            context.Metadata["registration_endpoint"] =
+                                JsonValue.Create(new Uri(
+                                    context.Issuer ?? new Uri("/", UriKind.Relative),
+                                    "connect/register").AbsoluteUri);
+                        }
+
                         // OpenIddict attaches `iss` to every redirectable
                         // authorization response (RFC 9207). Publish the
                         // matching capability bit explicitly for FAPI clients.

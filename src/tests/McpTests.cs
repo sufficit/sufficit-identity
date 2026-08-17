@@ -159,6 +159,34 @@ public sealed class DcrTests
     }
 
     [Fact]
+    public async Task Discovery_advertises_the_registration_endpoint_only_when_dcr_is_enabled()
+    {
+        using (var disabled = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>()))
+        {
+            await ((IAsyncLifetime)disabled).InitializeAsync();
+            var document = await disabled.CreateClient()
+                .GetFromJsonAsync<JsonElement>("/.well-known/openid-configuration");
+            Assert.False(document.TryGetProperty("registration_endpoint", out _));
+        }
+
+        using var enabled = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Mcp:Dcr:Enabled"] = "true",
+                ["Sufficit:Identity:Mcp:Dcr:RequireInitialAccessToken"] = "false",
+            });
+        await ((IAsyncLifetime)enabled).InitializeAsync();
+        var advertised = await enabled.CreateClient()
+            .GetFromJsonAsync<JsonElement>("/.well-known/openid-configuration");
+        // Without this entry an MCP client never attempts self-registration.
+        Assert.EndsWith(
+            "/connect/register",
+            advertised.GetProperty("registration_endpoint").GetString(),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Dcr_anonymous_registration_is_limited_to_the_interactive_profile()
     {
         using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
