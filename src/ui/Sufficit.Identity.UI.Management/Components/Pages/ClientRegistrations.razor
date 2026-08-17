@@ -42,7 +42,12 @@
     <div class="table-card__body">
         @if (Page is null)
         {
-            <SUILoading Label="Carregando registros" />
+            <div class="table-skeleton" aria-label="Carregando registros">
+                @for (var index = 0; index < 4; index++)
+                {
+                    <span></span>
+                }
+            </div>
         }
         else if (Page.Items.Count == 0)
         {
