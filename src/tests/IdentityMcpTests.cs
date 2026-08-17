@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Sufficit.Identity.Management.Mcp;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
@@ -32,6 +34,13 @@ public sealed class IdentityMcpTests
             new { jsonrpc = "2.0", id = 1, method = "initialize" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        // RFC 9728 §5.1: the challenge must point at the metadata document so
+        // an MCP client can discover the authorization server on its own.
+        var challenge = Assert.Single(response.Headers.WwwAuthenticate);
+        Assert.Equal("Bearer", challenge.Scheme);
+        Assert.Contains(
+            "resource_metadata=\"http://localhost/.well-known/oauth-protected-resource\"",
+            challenge.Parameter);
     }
 
     [Fact]
@@ -100,6 +109,31 @@ public sealed class IdentityMcpTests
             JsonDocument.Parse(profileText!).RootElement
                 .GetProperty("userName")
                 .GetString());
+    }
+
+    [Fact]
+    public void Challenge_pointer_merges_into_an_existing_bearer_header()
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Scheme = "https";
+        context.Request.Host = new HostString("identity.sufficit.com.br");
+        context.SetEndpoint(new Endpoint(
+            _ => Task.CompletedTask,
+            new EndpointMetadataCollection(
+                new AuthorizeAttribute(McpResourceMetadataChallenge.PolicyName)),
+            "mcp"));
+        Assert.True(McpResourceMetadataChallenge.TargetsMcpEndpoint(context));
+
+        context.Response.StatusCode = 401;
+        context.Response.Headers["WWW-Authenticate"] =
+            "Bearer error=\"invalid_token\"";
+        McpResourceMetadataChallenge.Advertise(context);
+
+        var header = context.Response.Headers["WWW-Authenticate"].ToString();
+        Assert.Contains("error=\"invalid_token\"", header);
+        Assert.Contains(
+            "resource_metadata=\"https://identity.sufficit.com.br/.well-known/oauth-protected-resource\"",
+            header);
     }
 
     private static async Task AuthenticateAsync(HttpClient client)

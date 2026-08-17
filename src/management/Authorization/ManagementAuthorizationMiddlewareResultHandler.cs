@@ -32,6 +32,20 @@ public sealed class ManagementAuthorizationMiddlewareResultHandler
                 context,
                 policy,
                 authorizeResult);
+
+            // MCP clients bootstrap their OAuth flow from the 401 challenge;
+            // point them at the Protected Resource Metadata document the
+            // authentication handler's challenge does not mention
+            // (RFC 9728 §5.1). Headers are still buffered at this point.
+            if (authorizeResult.Challenged
+                && context.Response.StatusCode
+                    is StatusCodes.Status401Unauthorized
+                && !context.Response.HasStarted
+                && Mcp.McpResourceMetadataChallenge.TargetsMcpEndpoint(context))
+            {
+                Mcp.McpResourceMetadataChallenge.Advertise(context);
+            }
+
             return;
         }
 

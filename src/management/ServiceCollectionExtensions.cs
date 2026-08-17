@@ -125,9 +125,14 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IManagementAuthorizationEvaluator,
             CapabilityManagementAuthorizationEvaluator>();
         services.TryAddSingleton<ManagementAuthorizationMiddlewareResultHandler>();
-        services.TryAddSingleton<IAuthorizationMiddlewareResultHandler>(provider =>
-            provider.GetRequiredService<
-                ManagementAuthorizationMiddlewareResultHandler>());
+        // Replace, not TryAdd: AddSufficitIdentitySTS runs first and its
+        // AddAuthorization already registered the framework handler, so a
+        // TryAdd here would silently lose and neither the management problem
+        // details nor the MCP discovery pointer would ever be emitted.
+        services.Replace(
+            ServiceDescriptor.Singleton<IAuthorizationMiddlewareResultHandler>(
+                provider => provider.GetRequiredService<
+                    ManagementAuthorizationMiddlewareResultHandler>()));
         services.TryAddScoped<IManagementAuditService, ManagementAuditService>();
         services.TryAddScoped<IClientManagementService, ClientManagementService>();
         services.TryAddScoped<IClientConfigurationDraftService,
