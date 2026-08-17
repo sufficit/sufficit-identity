@@ -431,6 +431,57 @@ if (rateLimit.Enabled)
 
 var app = builder.Build();
 
+// ---- Development-only test authentication (MUST be before middleware) ----
+if (app.Environment.IsDevelopment())
+{
+    app.Logger.LogInformation("REGISTERING __test__ endpoints");
+    app.MapGet("/__test__/ping", () => "pong");
+    app.MapPost("/__test__/signin", async (
+        Microsoft.AspNetCore.Http.HttpContext context,
+        Microsoft.AspNetCore.Identity.UserManager<Sufficit.Identity.Core.Entities.ApplicationUser> userManager,
+        Microsoft.AspNetCore.Identity.SignInManager<Sufficit.Identity.Core.Entities.ApplicationUser> signInManager) =>
+    {
+        var form = await context.Request.ReadFormAsync();
+        var username = form["username"].ToString();
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            context.Response.StatusCode = 400;
+            await context.Response.WriteAsync("username required");
+            return;
+        }
+        var user = await userManager.FindByNameAsync(username)
+            ?? await userManager.FindByEmailAsync(username);
+        if (user is null)
+        {
+            user = new Sufficit.Identity.Core.Entities.ApplicationUser
+            {
+                UserName = username,
+                Email = username,
+                EmailConfirmed = true,
+            };
+            await userManager.CreateAsync(user, "Test123!@Test");
+            await userManager.AddToRoleAsync(user, "administrator");
+        }
+        var claims = new List<System.Security.Claims.Claim>
+        {
+            new("amr", "pwd"),
+            new("auth_time",
+                DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
+                System.Security.Claims.ClaimValueTypes.Integer64),
+        };
+        if (string.Equals(form["mfa"].ToString(), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            claims.Add(new System.Security.Claims.Claim("amr", "otp"));
+            claims.Add(new System.Security.Claims.Claim("amr", "mfa"));
+            claims.Add(new System.Security.Claims.Claim("acr", "urn:sufficit:acr:loa2"));
+        }
+        await signInManager.SignInWithClaimsAsync(user, null, claims);
+        context.Response.StatusCode = 200;
+        await context.Response.WriteAsync("ok");
+    });
+}
+
+
 // ---- Validate UI module composition (Phase 2) ----
 // Catches: duplicate modules, incompatible versions, surface requested
 // without a module, management UI without management API. All fail-fast
