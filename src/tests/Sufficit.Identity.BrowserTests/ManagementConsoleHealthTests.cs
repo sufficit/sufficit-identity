@@ -62,15 +62,7 @@ public class ManagementConsoleHealthTests : PageTest
 
         // Call /test-only/signin via the browser's fetch API so the
         // authentication cookie is set on the browser context directly
-        var result = await Page.EvaluateAsync<string>("""async (username) => {
-            const response = await fetch('/test-only/signin', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: new URLSearchParams({ username, mfa: 'true' }),
-                credentials: 'include'
-            });
-            return response.status.toString();
-        }""", TestUser);
+        var result = await Page.EvaluateAsync<string>(@"async (username) => { const response = await fetch('/test-only/signin', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ username, mfa: 'true' }), credentials: 'include' }); return response.status.toString(); }", TestUser);
 
         if (result != "200" && result != "204")
         {
