@@ -23,6 +23,7 @@ public sealed class GrantOperations(
     IOpenIddictScopeManager scopeManager,
     IApplicationClaimDestinationPolicy applicationClaimPolicy,
     IAuthenticationContextProjector authenticationContextProjector,
+    ScopeEntitlementProvisioner scopeEntitlementProvisioner,
     IConfiguration configuration)
 {
     internal const string SessionIdClaimType =
@@ -41,6 +42,15 @@ public sealed class GrantOperations(
     public IOpenIddictApplicationManager ApplicationManager => applicationManager;
     public IOpenIddictScopeManager ScopeManager => scopeManager;
     public IApplicationClaimDestinationPolicy ApplicationClaimPolicy => applicationClaimPolicy;
+
+    public Task<IdentityResult> ProvisionScopeEntitlementsAsync(
+        ApplicationUser user,
+        IEnumerable<string> approvedScopes,
+        CancellationToken cancellationToken = default) =>
+        scopeEntitlementProvisioner.ProvisionAsync(
+            user,
+            approvedScopes,
+            cancellationToken);
 
     public TokenExchangeOptions TokenExchangeOptions { get; } =
         configuration.GetSection("Sufficit:Identity:TokenExchange")
