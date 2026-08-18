@@ -178,6 +178,12 @@ public sealed class SufficitIdentityOptions
     public ClaimScopeMapOptions ClaimScopeMap { get; init; } = new();
 
     /// <summary>
+    /// Persisted claims granted when a user approves an application scope.
+    /// Grants are idempotent and become visible in the token being approved.
+    /// </summary>
+    public ScopeEntitlementOptions ScopeEntitlements { get; init; } = new();
+
+    /// <summary>
     /// Compatibility rollout policy for personal access-token issuance.
     /// Observe mode computes and records the strict decision while preserving
     /// existing callers; Enforce applies the attenuated decision.
@@ -979,6 +985,33 @@ public sealed class ClaimScopeMapOptions
     };
 }
 
+/// <summary>
+/// Maps approved OAuth scopes to persisted user claims. This keeps product
+/// onboarding policy configurable while the STS remains claim-type agnostic.
+/// </summary>
+public sealed class ScopeEntitlementOptions
+{
+    public Dictionary<string, List<PersistedEntitlementClaimOptions>> Grants { get; init; } =
+        new(StringComparer.Ordinal)
+        {
+            ["sufficit_ai_openai_bridge"] =
+            [
+                new()
+                {
+                    Type = "directive",
+                    Value = "aiuser:00000000-0000-0000-0000-000000000000",
+                },
+            ],
+        };
+}
+
+public sealed class PersistedEntitlementClaimOptions
+{
+    public string Type { get; init; } = string.Empty;
+
+    public string Value { get; init; } = string.Empty;
+}
+
 public enum SecurityPolicyEnforcementMode
 {
     Observe,
@@ -1647,6 +1680,37 @@ public sealed class DcrOptions
         OpenIddict.Abstractions.OpenIddictConstants.Scopes.Profile,
         OpenIddict.Abstractions.OpenIddictConstants.Scopes.Email,
         OpenIddict.Abstractions.OpenIddictConstants.Scopes.OfflineAccess,
+    };
+
+    /// <summary>
+    /// Scopes granted to an anonymous registration (one made without an
+    /// initial access token). This is deliberately a second, tighter allowlist
+    /// than <see cref="AllowedScopes"/>: open registration is acceptable for an
+    /// agent that only signs the user in and talks to MCP, and unacceptable for
+    /// anything that reaches an API scope. A request asking for a scope outside
+    /// this set is rejected rather than silently narrowed, so the client learns
+    /// what it actually got.
+    ///
+    /// Anonymous registrations are additionally forced to be public
+    /// (PKCE, no client secret) and limited to the interactive grants — see
+    /// <see cref="AnonymousGrantTypes"/>.
+    /// </summary>
+    public HashSet<string> AnonymousScopes { get; init; } = new(StringComparer.Ordinal)
+    {
+        OpenIddict.Abstractions.OpenIddictConstants.Scopes.OpenId,
+        OpenIddict.Abstractions.OpenIddictConstants.Scopes.Profile,
+        OpenIddict.Abstractions.OpenIddictConstants.Scopes.OfflineAccess,
+    };
+
+    /// <summary>
+    /// Grants an anonymous registration may request. Interactive only: an
+    /// unauthenticated caller must never obtain a client that can mint tokens
+    /// on its own (client_credentials) or handle user passwords.
+    /// </summary>
+    public HashSet<string> AnonymousGrantTypes { get; init; } = new(StringComparer.Ordinal)
+    {
+        OpenIddict.Abstractions.OpenIddictConstants.GrantTypes.AuthorizationCode,
+        OpenIddict.Abstractions.OpenIddictConstants.GrantTypes.RefreshToken,
     };
 }
 

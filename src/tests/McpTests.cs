@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
+using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Management.Controllers;
 using Sufficit.Identity.STS.Controllers;
 using Sufficit.Identity.Tests.Infrastructure;
@@ -155,6 +156,104 @@ public sealed class DcrTests
                 Scopes = new() { "test.scope" },
             });
         Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
+    }
+
+    [Fact]
+    public async Task Discovery_advertises_the_registration_endpoint_only_when_dcr_is_enabled()
+    {
+        using (var disabled = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>()))
+        {
+            await ((IAsyncLifetime)disabled).InitializeAsync();
+            var document = await disabled.CreateClient()
+                .GetFromJsonAsync<JsonElement>("/.well-known/openid-configuration");
+            Assert.False(document.TryGetProperty("registration_endpoint", out _));
+        }
+
+        using var enabled = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Mcp:Dcr:Enabled"] = "true",
+                ["Sufficit:Identity:Mcp:Dcr:RequireInitialAccessToken"] = "false",
+            });
+        await ((IAsyncLifetime)enabled).InitializeAsync();
+        var advertised = await enabled.CreateClient()
+            .GetFromJsonAsync<JsonElement>("/.well-known/openid-configuration");
+        // Without this entry an MCP client never attempts self-registration.
+        Assert.EndsWith(
+            "/connect/register",
+            advertised.GetProperty("registration_endpoint").GetString(),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Dcr_anonymous_registration_is_limited_to_the_interactive_profile()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
+        {
+            ["Sufficit:Identity:Mcp:Dcr:Enabled"] = "true",
+            ["Sufficit:Identity:Mcp:Dcr:RequireInitialAccessToken"] = "false",
+        });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+
+        // An MCP client registering itself: public, PKCE, loopback redirect.
+        using var accepted = await client.PostAsJsonAsync("/connect/register", new DcrRequest
+        {
+            ClientName = "Probe MCP client",
+            GrantTypes = new() { "authorization_code", "refresh_token" },
+            Scopes = new() { "openid", "profile", "offline_access" },
+            RedirectUris = new() { new Uri("http://127.0.0.1:33418/callback") },
+        });
+        Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
+        var body = await accepted.Content.ReadFromJsonAsync<JsonElement>();
+        var clientId = body.GetProperty("client_id").GetString()!;
+        Assert.Equal(JsonValueKind.Null, body.GetProperty("client_secret").ValueKind);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var applications = scope.ServiceProvider
+                .GetRequiredService<IOpenIddictApplicationManager>();
+            var application = await applications.FindByClientIdAsync(clientId);
+            Assert.NotNull(application);
+            Assert.Contains(
+                OpenIddictConstants.Requirements.Features.ProofKeyForCodeExchange,
+                await applications.GetRequirementsAsync(application!));
+            var properties = await applications.GetPropertiesAsync(application!);
+            Assert.Equal(
+                DynamicClientRegistrationProperties.OriginValue,
+                properties[DynamicClientRegistrationProperties.Origin].GetString());
+            Assert.True(
+                properties[DynamicClientRegistrationProperties.Anonymous].GetBoolean());
+            Assert.True(properties.ContainsKey(
+                DynamicClientRegistrationProperties.RegisteredAt));
+        }
+
+        // Anything beyond signing the user in is refused, not silently narrowed.
+        using var deniedScope = await client.PostAsJsonAsync("/connect/register", new DcrRequest
+        {
+            GrantTypes = new() { "authorization_code" },
+            Scopes = new() { "identity.management" },
+            RedirectUris = new() { new Uri("http://127.0.0.1:33418/callback") },
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, deniedScope.StatusCode);
+
+        using var deniedGrant = await client.PostAsJsonAsync("/connect/register", new DcrRequest
+        {
+            GrantTypes = new() { "client_credentials" },
+            Scopes = new() { "openid" },
+            RedirectUris = new() { new Uri("http://127.0.0.1:33418/callback") },
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, deniedGrant.StatusCode);
+
+        using var deniedSecret = await client.PostAsJsonAsync("/connect/register", new DcrRequest
+        {
+            TokenEndpointAuthMethod = "client_secret_basic",
+            GrantTypes = new() { "authorization_code" },
+            Scopes = new() { "openid" },
+            RedirectUris = new() { new Uri("http://127.0.0.1:33418/callback") },
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, deniedSecret.StatusCode);
     }
 
     [Fact]

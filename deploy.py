@@ -315,7 +315,7 @@ def build_ssh_command(server_name, remote_command, timeout_seconds=None):
     return f'ssh -i "{ssh_key}" -p {ssh_port} {_SSH_OPTS} root@{server_name}.sufficit.com.br "{remote_command}"'
 
 def fix_helpers_permissions(config, server_name, target_path=None):
-    """Fix permissions for helpers scripts after copying.
+    """Harden release contents and fix permissions for helper scripts.
 
     target_path defaults to the live remote directory; pass the staging path
     when calling this before an atomic swap so permissions are correct at swap time.
@@ -326,8 +326,11 @@ def fix_helpers_permissions(config, server_name, target_path=None):
         target_path = _get_remote_path(config)
 
     commands = [
+        f"find {target_path} -xdev \\( -type d -o -type f \\) -exec chmod go-w {{}} +",
         f"chmod +x {target_path}/helpers/*.sh 2>/dev/null || true",
         f"chown dotnetuser:dotnetuser -R {target_path}/",
+        f"find {target_path} -maxdepth 1 -type f -name 'certificate*.pfx' -exec chown root:www-data {{}} +",
+        f"find {target_path} -maxdepth 1 -type f -name 'certificate*.pfx' -exec chmod 640 {{}} +",
     ]
 
     # Syslog symlink is installed from the live dir, not the staging dir, so only
@@ -342,9 +345,12 @@ def fix_helpers_permissions(config, server_name, target_path=None):
 
     for cmd in commands:
         ssh_cmd = build_ssh_command(server_name, cmd)
-        run_command_with_progress(ssh_cmd, f"Executing: {cmd}")
+        if not run_command_with_progress(ssh_cmd, f"Executing: {cmd}"):
+            print_progress("Release permission hardening failed", "❌")
+            return False
 
     print_progress("✅ Helpers permissions configured", "✅")
+    return True
 
 def cleanup_remote_binaries(config, server_name, target_path=None):
     """Remove only DLL/PDB files from a remote directory before upload."""
@@ -590,11 +596,7 @@ def deploy_to_server(config, server_name, source_path, hot=False, clean_binaries
             return False
         print()
 
-        # Step 4: Fix permissions on staging before the swap
-        fix_helpers_permissions(config, server_name, target_path=staging_path)
-        print()
-
-        # Step 4b: Verify the staging upload landed completely BEFORE any downtime.
+        # Step 4: Verify the staging upload landed completely BEFORE any downtime.
         # Aborting here keeps the live service untouched (zero downtime on failure).
         if not verify_remote_upload(config, server_name, source_path, staging_path):
             print_progress(
@@ -624,14 +626,20 @@ def deploy_to_server(config, server_name, source_path, hot=False, clean_binaries
             run_command_with_progress(carry_cmd, f"Carrying persistent folders/files to staging on {server_name}")
             print()
 
-        # Step 5: Stop service — downtime window starts here
+        # Step 5: Harden every release path after persistent files are carried over.
+        # The prestart gate rejects group/other-writable files and directories.
+        if not fix_helpers_permissions(config, server_name, target_path=staging_path):
+            return False
+        print()
+
+        # Step 6: Stop service — downtime window starts here
         if service_exists:
             stop_cmd = build_ssh_command(server_name, f"systemctl stop {config['systemd_service']}")
             if not run_command_with_progress(stop_cmd, f"Stopping service on {server_name}"):
                 return False
             print()
 
-        # Step 6: Atomic swap (instant — just renames on the same filesystem)
+        # Step 7: Atomic swap (instant — just renames on the same filesystem)
         if not atomic_swap_with_backup(config, server_name):
             print_progress(
                 f"Swap failed — backup preserved at {_get_backup_path(config)}; "
@@ -642,9 +650,10 @@ def deploy_to_server(config, server_name, source_path, hot=False, clean_binaries
             return False
         print()
 
-        # Step 7: Apply syslog symlink from live dir now that swap is done
+        # Step 8: Apply syslog symlink from live dir now that swap is done
         if 'syslog' in config and service_exists:
-            fix_helpers_permissions(config, server_name, target_path=target_path)
+            if not fix_helpers_permissions(config, server_name, target_path=target_path):
+                return False
             print()
 
     # ── HOT FLOW ───────────────────────────────────────────────────────────────
@@ -670,7 +679,8 @@ def deploy_to_server(config, server_name, source_path, hot=False, clean_binaries
             return False
         print()
 
-        fix_helpers_permissions(config, server_name, target_path=target_path)
+        if not fix_helpers_permissions(config, server_name, target_path=target_path):
+            return False
         print()
 
     print_progress("✅ Server-specific folders preserved (not overwritten)", "💾")

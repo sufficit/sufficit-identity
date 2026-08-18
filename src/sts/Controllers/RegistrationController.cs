@@ -8,6 +8,7 @@ using Sufficit.Identity.STS.Dpop;
 using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Vault;
 using OpenIddict.Abstractions;
+using System.Text.Json;
 using Sufficit.Identity.STS.Jar;
 
 namespace Sufficit.Identity.STS.Controllers;
@@ -32,6 +33,23 @@ namespace Sufficit.Identity.STS.Controllers;
 [Route("connect/register")]
 public sealed class RegistrationController : ControllerBase
 {
+    /// <summary>Provenance markers written to the application's Properties so
+    /// the management console can tell self-registered clients apart from
+    /// operator-created ones. Shared with the management assembly through
+    /// <c>DynamicClientRegistrationProperties</c>.</summary>
+    internal const string OriginProperty =
+        DynamicClientRegistrationProperties.Origin;
+    internal const string OriginValue =
+        DynamicClientRegistrationProperties.OriginValue;
+    internal const string RegisteredAtProperty =
+        DynamicClientRegistrationProperties.RegisteredAt;
+    internal const string AnonymousProperty =
+        DynamicClientRegistrationProperties.Anonymous;
+    internal const string RemoteAddressProperty =
+        DynamicClientRegistrationProperties.RemoteAddress;
+    internal const string UserAgentProperty =
+        DynamicClientRegistrationProperties.UserAgent;
+
     private readonly IOpenIddictApplicationManager _applications;
     private readonly DcrOptions _options;
     private readonly IClientDefinitionValidator _validator;
@@ -136,10 +154,24 @@ public sealed class RegistrationController : ControllerBase
             return Conflict(new { error = "invalid_client_metadata", error_description = "The requested client identifier already exists." });
         }
 
-        var authenticationMethod = string.IsNullOrWhiteSpace(
-            request.TokenEndpointAuthMethod)
+        // An anonymous registration (no initial access token) is only
+        // acceptable because the resulting client is powerless beyond signing
+        // the user in: public, PKCE-bound, interactive grants, and a scope
+        // allowlist that excludes every API/administrative scope. Enforced
+        // here rather than trusted to configuration so turning the gate off
+        // cannot silently widen what an unauthenticated caller may create.
+        var anonymous = !_options.RequireInitialAccessToken;
+        if (anonymous
+            && ValidateAnonymousProfile(request) is { } anonymousIssue)
+        {
+            return BadRequest(anonymousIssue);
+        }
+
+        var authenticationMethod = anonymous
             ? "none"
-            : request.TokenEndpointAuthMethod;
+            : string.IsNullOrWhiteSpace(request.TokenEndpointAuthMethod)
+                ? "none"
+                : request.TokenEndpointAuthMethod;
         var confidential = authenticationMethod != "none";
         var clientSecret = confidential
             ? (_options.AllowCallerSuppliedSecrets
@@ -200,6 +232,28 @@ public sealed class RegistrationController : ControllerBase
             descriptor.Settings["jwks_uri"] = request.JwksUri.AbsoluteUri;
         }
 
+        // Provenance for the operator console: which clients appeared on their
+        // own, when, from where. Without this every DCR client is
+        // indistinguishable from one an operator created by hand.
+        descriptor.Properties[OriginProperty] =
+            JsonSerializer.SerializeToElement(OriginValue);
+        descriptor.Properties[RegisteredAtProperty] =
+            JsonSerializer.SerializeToElement(
+                DateTimeOffset.UtcNow.ToString("O"));
+        descriptor.Properties[AnonymousProperty] =
+            JsonSerializer.SerializeToElement(anonymous);
+        if (ResolveRemoteAddress() is { } remoteAddress)
+        {
+            descriptor.Properties[RemoteAddressProperty] =
+                JsonSerializer.SerializeToElement(remoteAddress);
+        }
+        if (Request.Headers.UserAgent.ToString() is { Length: > 0 } userAgent)
+        {
+            descriptor.Properties[UserAgentProperty] =
+                JsonSerializer.SerializeToElement(
+                    userAgent[..Math.Min(userAgent.Length, 256)]);
+        }
+
         var requestedGrants = request.GrantTypes ?? new List<string>();
         var requestedScopes = request.Scopes ?? new List<string>();
 
@@ -248,6 +302,73 @@ public sealed class RegistrationController : ControllerBase
             jwks_uri = request.JwksUri?.AbsoluteUri,
             client_id_issued_at = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
         });
+    }
+
+    /// <summary>
+    /// Rejects an anonymous registration that asks for more than the
+    /// interactive sign-in profile. Rejecting (instead of narrowing) keeps the
+    /// client honest about what it received.
+    /// </summary>
+    private object? ValidateAnonymousProfile(DcrRequest request)
+    {
+        if (!string.IsNullOrWhiteSpace(request.TokenEndpointAuthMethod)
+            && !string.Equals(
+                request.TokenEndpointAuthMethod, "none", StringComparison.Ordinal))
+        {
+            return new
+            {
+                error = "invalid_client_metadata",
+                error_description =
+                    "Anonymous registration issues public clients only; omit token_endpoint_auth_method or send \"none\".",
+            };
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.ClientSecret))
+        {
+            return new
+            {
+                error = "invalid_client_metadata",
+                error_description =
+                    "Anonymous registration cannot carry a client secret.",
+            };
+        }
+
+        var deniedGrant = (request.GrantTypes ?? [])
+            .Select(NormalizeGrantTypeName)
+            .FirstOrDefault(grant => !_options.AnonymousGrantTypes.Contains(grant));
+        if (deniedGrant is not null)
+        {
+            return new
+            {
+                error = "invalid_client_metadata",
+                error_description =
+                    $"Anonymous registration does not allow the '{deniedGrant}' grant type.",
+            };
+        }
+
+        var deniedScope = (request.Scopes ?? [])
+            .FirstOrDefault(scope => !_options.AnonymousScopes.Contains(scope));
+        if (deniedScope is not null)
+        {
+            return new
+            {
+                error = "invalid_client_metadata",
+                error_description =
+                    $"Anonymous registration does not allow the '{deniedScope}' scope.",
+            };
+        }
+
+        return null;
+    }
+
+    /// <summary>Maps the RFC 7591 spelling to the value the allowlists use.</summary>
+    private static string NormalizeGrantTypeName(string grantType) =>
+        grantType.Trim();
+
+    private string? ResolveRemoteAddress()
+    {
+        var address = HttpContext.Connection.RemoteIpAddress;
+        return address is null ? null : address.ToString();
     }
 
     private async Task<string?> ResolveInitialAccessTokenAsync(

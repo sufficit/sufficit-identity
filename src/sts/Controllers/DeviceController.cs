@@ -111,6 +111,7 @@ public class DeviceController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAntiforgery _antiforgery;
     private readonly OpenIddictDeviceAuthorizationContextService _deviceContextService;
+    private readonly ScopeEntitlementProvisioner _entitlementProvisioner;
 
     public DeviceController(
         IOpenIddictTokenManager tokenManager,
@@ -118,7 +119,8 @@ public class DeviceController : Controller
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         IAntiforgery antiforgery,
-        OpenIddictDeviceAuthorizationContextService deviceContextService)
+        OpenIddictDeviceAuthorizationContextService deviceContextService,
+        ScopeEntitlementProvisioner entitlementProvisioner)
     {
         _tokenManager = tokenManager;
         _applicationManager = applicationManager;
@@ -126,6 +128,7 @@ public class DeviceController : Controller
         _userManager = userManager;
         _antiforgery = antiforgery;
         _deviceContextService = deviceContextService;
+        _entitlementProvisioner = entitlementProvisioner;
     }
 
     // -----------------------------------------------------------------------
@@ -322,6 +325,23 @@ public class DeviceController : Controller
                 }));
         }
 
+        var approvedScopes = authorization.Principal.GetScopes();
+        var entitlementResult = await _entitlementProvisioner.ProvisionAsync(
+            user,
+            approvedScopes,
+            HttpContext.RequestAborted);
+        if (!entitlementResult.Succeeded)
+        {
+            return StatusCode(
+                StatusCodes.Status503ServiceUnavailable,
+                new
+                {
+                    error = "temporarily_unavailable",
+                    error_description =
+                        "The approved application access could not be prepared. Please try again."
+                });
+        }
+
         // Deliberately minimal: only Subject + Scopes need to survive onto the
         // device_code's attached principal. AuthorizationController.
         // ExchangeForDeviceCodeAsync re-derives the FULL identity
@@ -336,7 +356,7 @@ public class DeviceController : Controller
             roleType: Claims.Role);
 
         identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user));
-        identity.SetScopes(authorization.Principal.GetScopes());
+        identity.SetScopes(approvedScopes);
         identity.SetResources(authorization.Principal.GetResources());
 
         return SignIn(

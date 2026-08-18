@@ -142,67 +142,67 @@ else
                 <span><SUIIcon Name="search" Size="18" /> Filtros e ordenação</span>
                 <span class="users-filter-count">@ActiveFilterLabel</span>
             </summary>
-            <form class="users-filter-form" @onsubmit="ApplyFilters" @onsubmit:preventDefault>
-                <label class="users-field users-field--search">
-                    <span>Nome ou e-mail</span>
-                    <div class="search-field"><SUIIcon Name="search" Size="18" /><input type="search" id="users-search" name="search" autocomplete="off" placeholder="Buscar no diretório" @bind="search" @bind:event="oninput" /></div>
-                </label>
-                <div class="users-field users-field--review">
-                    <span>Investigação</span>
-                    <SUISelect T="ManagementUserReviewFilter" id="users-review-filter" name="review" aria-label="Investigação" Value="@review" ValueChanged="ReviewSelected">
-                        <SUISelectItem Value="@ManagementUserReviewFilter.All">Diretório completo</SUISelectItem>
-                        <SUISelectItem Value="@ManagementUserReviewFilter.StaleUnverifiedWithoutExternal">Pendentes há mais de 15 dias</SUISelectItem>
-                    </SUISelect>
-                </div>
-                <div class="users-field">
-                    <span>Estado</span>
-                    <SUISelect T="ManagementUserStateFilter" id="users-state-filter" name="state" aria-label="Estado" Value="@state" ValueChanged="StateSelected">
-                        <SUISelectItem Value="@ManagementUserStateFilter.All">Todos</SUISelectItem>
-                        <SUISelectItem Value="@ManagementUserStateFilter.Active">Ativos</SUISelectItem>
-                        <SUISelectItem Value="@ManagementUserStateFilter.Locked">Bloqueados</SUISelectItem>
-                    </SUISelect>
-                </div>
-                <div class="users-field">
-                    <span>E-mail</span>
-                    <SUISelect T="ManagementUserBooleanFilter" id="users-email-filter" name="email" aria-label="E-mail" Value="@emailConfirmed" ValueChanged="EmailSelected">
-                        <SUISelectItem Value="@ManagementUserBooleanFilter.All">Todos</SUISelectItem>
-                        <SUISelectItem Value="@ManagementUserBooleanFilter.Enabled">Confirmado</SUISelectItem>
-                        <SUISelectItem Value="@ManagementUserBooleanFilter.Disabled">Não confirmado</SUISelectItem>
-                    </SUISelect>
-                </div>
-                <div class="users-field">
-                    <span>MFA</span>
-                    <SUISelect T="ManagementUserBooleanFilter" id="users-mfa-filter" name="mfa" aria-label="MFA" Value="@mfa" ValueChanged="MfaSelected">
-                        <SUISelectItem Value="@ManagementUserBooleanFilter.All">Todos</SUISelectItem>
-                        <SUISelectItem Value="@ManagementUserBooleanFilter.Enabled">Ativo</SUISelectItem>
-                        <SUISelectItem Value="@ManagementUserBooleanFilter.Disabled">Inativo</SUISelectItem>
-                    </SUISelect>
-                </div>
-                <label class="users-field"><span>Cadastro inicial</span><input type="date" id="users-registered-from" name="registeredFrom" @bind="registeredFrom" /></label>
-                <label class="users-field"><span>Cadastro final</span><input type="date" id="users-registered-to" name="registeredTo" @bind="registeredTo" /></label>
-                <div class="users-field">
-                    <span>Ordenar por</span>
-                    <SUISelect T="ManagementUserSort" id="users-sort-filter" name="sort" aria-label="Ordenar por" Value="@sort" ValueChanged="SortSelected">
-                        <SUISelectItem Value="@ManagementUserSort.CreatedNewest">Cadastro mais recente</SUISelectItem>
-                        <SUISelectItem Value="@ManagementUserSort.CreatedOldest">Cadastro mais antigo</SUISelectItem>
-                        <SUISelectItem Value="@ManagementUserSort.NameAscending">Nome A–Z</SUISelectItem>
-                        <SUISelectItem Value="@ManagementUserSort.NameDescending">Nome Z–A</SUISelectItem>
-                        <SUISelectItem Value="@ManagementUserSort.EmailAscending">E-mail A–Z</SUISelectItem>
-                        <SUISelectItem Value="@ManagementUserSort.EmailDescending">E-mail Z–A</SUISelectItem>
-                    </SUISelect>
-                </div>
-                <div class="users-field">
-                    <span>Histórico do gráfico</span>
-                    <SUISelect T="int" id="users-analytics-filter" name="range" aria-label="Histórico do gráfico" Value="@analyticsDays" ValueChanged="AnalyticsDaysSelected">
-                        <SUISelectItem Value="@(14)">14 dias</SUISelectItem>
-                        <SUISelectItem Value="@(30)">30 dias</SUISelectItem>
-                        <SUISelectItem Value="@(60)">60 dias</SUISelectItem>
-                        <SUISelectItem Value="@(90)">90 dias</SUISelectItem>
-                    </SUISelect>
-                </div>
+            <form class="users-filter-form" data-sui-align-row @onsubmit="ApplyFilters" @onsubmit:preventDefault>
+                <SUITextField T="string" Class="users-field users-field--search"
+                              Id="users-search" name="search" autocomplete="off"
+                              Label="Nome ou e-mail" InputType="search" Placeholder="Buscar no diretório"
+                              Value="@search" ValueChanged="SearchSelected" Immediate />
+                <SUISelect T="ManagementUserReviewFilter" Class="users-field users-field--review"
+                           Label="Investigação" id="users-review-filter" name="review"
+                           Value="@review" ValueChanged="ReviewSelected">
+                    <SUISelectItem Value="@ManagementUserReviewFilter.All">Diretório completo</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserReviewFilter.StaleUnverifiedWithoutExternal">Pendentes há mais de 15 dias</SUISelectItem>
+                </SUISelect>
+                <SUISelect T="ManagementUserStateFilter" Class="users-field"
+                           Label="Estado" id="users-state-filter" name="state"
+                           Value="@state" ValueChanged="StateSelected">
+                    <SUISelectItem Value="@ManagementUserStateFilter.All">Todos</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserStateFilter.Active">Ativos</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserStateFilter.Locked">Bloqueados</SUISelectItem>
+                </SUISelect>
+                <SUISelect T="ManagementUserBooleanFilter" Class="users-field"
+                           Label="E-mail" id="users-email-filter" name="email"
+                           Value="@emailConfirmed" ValueChanged="EmailSelected">
+                    <SUISelectItem Value="@ManagementUserBooleanFilter.All">Todos</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserBooleanFilter.Enabled">Confirmado</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserBooleanFilter.Disabled">Não confirmado</SUISelectItem>
+                </SUISelect>
+                <SUISelect T="ManagementUserBooleanFilter" Class="users-field"
+                           Label="MFA" id="users-mfa-filter" name="mfa"
+                           Value="@mfa" ValueChanged="MfaSelected">
+                    <SUISelectItem Value="@ManagementUserBooleanFilter.All">Todos</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserBooleanFilter.Enabled">Ativo</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserBooleanFilter.Disabled">Inativo</SUISelectItem>
+                </SUISelect>
+                <SUIDateField Class="users-field"
+                              Id="users-registered-from" Name="registeredFrom"
+                              Label="Cadastro inicial" Culture="@PtBr"
+                              Value="@registeredFrom" ValueChanged="RegisteredFromSelected" />
+                <SUIDateField Class="users-field"
+                              Id="users-registered-to" Name="registeredTo"
+                              Label="Cadastro final" Culture="@PtBr"
+                              Value="@registeredTo" ValueChanged="RegisteredToSelected" />
+                <SUISelect T="ManagementUserSort" Class="users-field"
+                           Label="Ordenar por" id="users-sort-filter" name="sort"
+                           Value="@sort" ValueChanged="SortSelected">
+                    <SUISelectItem Value="@ManagementUserSort.CreatedNewest">Cadastro mais recente</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserSort.CreatedOldest">Cadastro mais antigo</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserSort.NameAscending">Nome A–Z</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserSort.NameDescending">Nome Z–A</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserSort.EmailAscending">E-mail A–Z</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserSort.EmailDescending">E-mail Z–A</SUISelectItem>
+                </SUISelect>
+                <SUISelect T="int" Class="users-field"
+                           Label="Histórico do gráfico" id="users-analytics-filter" name="range"
+                           Value="@analyticsDays" ValueChanged="AnalyticsDaysSelected">
+                    <SUISelectItem Value="@(14)">14 dias</SUISelectItem>
+                    <SUISelectItem Value="@(30)">30 dias</SUISelectItem>
+                    <SUISelectItem Value="@(60)">60 dias</SUISelectItem>
+                    <SUISelectItem Value="@(90)">90 dias</SUISelectItem>
+                </SUISelect>
                 <div class="users-filter-actions">
-                    <button class="button button--primary" type="submit" disabled="@usersLoading">@(usersLoading ? "Aplicando…" : "Aplicar filtros")</button>
-                    <button class="button button--secondary" type="button" @onclick="ClearFilters" disabled="@usersLoading">Limpar</button>
+                    <SUIButton ColorValue="SUIColor.Primary" ButtonTypeValue="SUIButtonType.Submit" Disabled="@usersLoading">@(usersLoading ? "Aplicando…" : "Aplicar filtros")</SUIButton>
+                    <SUIButton ColorValue="SUIColor.Default" VariantValue="SUIVariant.Outlined" Disabled="@usersLoading" OnClick="ClearFilters">Limpar</SUIButton>
                 </div>
             </form>
         </details>
@@ -361,6 +361,9 @@ else
     }
 
     private void SyncDraftsFromQuery() { search = QuerySearch ?? string.Empty; registeredFrom = QueryFrom; registeredTo = QueryTo; state = QueryState; emailConfirmed = QueryEmail; mfa = QueryMfa; sort = QuerySort; analyticsDays = NormalizeRange(QueryAnalyticsDays); review = QueryReview; }
+    private void SearchSelected(string? value) => search = value ?? string.Empty;
+    private void RegisteredFromSelected(DateOnly? value) => registeredFrom = value;
+    private void RegisteredToSelected(DateOnly? value) => registeredTo = value;
     private void ReviewSelected(ManagementUserReviewFilter value) => review = value;
     private void StateSelected(ManagementUserStateFilter value) => state = value;
     private void EmailSelected(ManagementUserBooleanFilter value) => emailConfirmed = value;
