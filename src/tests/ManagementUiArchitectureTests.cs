@@ -1456,6 +1456,13 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("deviceCloseInProgress", script, StringComparison.Ordinal);
         Assert.Contains("deviceCloseBlocked", script, StringComparison.Ordinal);
         Assert.Contains("window.opener", script, StringComparison.Ordinal);
+        Assert.Contains("data-device-launch-mode", page, StringComparison.Ordinal);
+        Assert.Contains("launch_mode", page, StringComparison.Ordinal);
+        Assert.Contains("function notifyPopupOpener(result)", script, StringComparison.Ordinal);
+        Assert.Contains("sufficit-auth-complete", script, StringComparison.Ordinal);
+        Assert.Contains("popup-completion-notified", script, StringComparison.Ordinal);
+        Assert.Contains("window.opener.postMessage", script, StringComparison.Ordinal);
+        Assert.Contains("result.dataset.deviceLaunchMode === 'popup'", script, StringComparison.Ordinal);
         Assert.Contains("window.navigator.sendBeacon", script, StringComparison.Ordinal);
         Assert.Contains("keepalive: true", script, StringComparison.Ordinal);
         Assert.Contains("/security/device-flow-close-report", script, StringComparison.Ordinal);
@@ -1471,10 +1478,8 @@ public sealed class ManagementUiArchitectureTests
         Assert.DoesNotContain("console.warn", script, StringComparison.Ordinal);
         Assert.DoesNotContain("closeDeviceFlowTab(result, false)", script, StringComparison.Ordinal);
         Assert.DoesNotContain("Tentar fechar novamente", script, StringComparison.Ordinal);
-        Assert.Contains(
-            "only from the button",
-            script,
-            StringComparison.Ordinal);
+        Assert.Contains("from the button", script, StringComparison.Ordinal);
+        Assert.Contains("same guarded close strategies", script, StringComparison.Ordinal);
     }
 
     [Fact]

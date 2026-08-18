@@ -118,6 +118,37 @@ document.addEventListener('change', function (event) {
         }
     }
 
+    function isPopupLaunch(result) {
+        return Boolean(
+            result
+            && result.dataset.deviceLaunchMode === 'popup');
+    }
+
+    function notifyPopupOpener(result) {
+        if (!isPopupLaunch(result) || !canAttemptScriptClose()) return false;
+
+        try {
+            // This payload contains only a terminal status — never a code,
+            // token, account identifier, or redirect URI. The opener must
+            // still validate event.origin and event.source before acting.
+            window.opener.postMessage({
+                type: 'sufficit-auth-complete',
+                flow: 'device',
+                result: result.dataset.deviceFlowResult || 'completed'
+            }, '*');
+            logDeviceFlow('popup-completion-notified', {
+                result: result.dataset.deviceFlowResult || 'completed'
+            });
+            result.dataset.devicePopupNotified = 'true';
+            return true;
+        } catch (_) {
+            logDeviceFlow('popup-completion-notify-failed', {
+                reason: 'opener-unavailable'
+            });
+            return false;
+        }
+    }
+
     function showManualCompletion(result, reason, keepCloseButton) {
         var fallback = document.querySelector('[data-device-close-fallback]');
         if (fallback) {
@@ -235,7 +266,9 @@ document.addEventListener('change', function (event) {
     }
 
     function closeDeviceFlowTab(result) {
-        // The actual close request remains reachable only from the button.
+        // Explicit close requests remain reachable from the button. Popup
+        // completion uses the same guarded strategies after notifying the
+        // opener.
         if (result && result.dataset.deviceCloseInProgress === 'true') return;
         logDeviceFlow('close-requested', { source: 'user-gesture' });
         if (result) {
@@ -279,6 +312,22 @@ document.addEventListener('change', function (event) {
             closeButton.addEventListener('click', function () {
                 closeDeviceFlowTab(result);
             });
+        }
+
+        // A popup opened by the caller can complete without an extra click:
+        // notify the owner first, then use the same guarded close strategies
+        // as the explicit fallback button. Browsers that reject the automatic
+        // close receive the existing manual instruction instead.
+        if (isPopupLaunch(result)
+            && scriptCloseAvailable
+            && result.dataset.devicePopupNotified !== 'true') {
+            notifyPopupOpener(result);
+            result.dataset.deviceCloseInProgress = 'true';
+            result.setAttribute('aria-busy', 'true');
+            window.setTimeout(function () {
+                if (window.closed === true) return;
+                tryCloseWindow(result);
+            }, 0);
         }
     }
 

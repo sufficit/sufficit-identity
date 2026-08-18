@@ -148,12 +148,16 @@ public sealed class DeviceFlowTests
             });
         Assert.Equal(HttpStatusCode.OK, authStatus);
         var userCode = authBody.GetProperty("user_code").GetString()!;
-        var verificationPath = $"/connect/device?user_code={Uri.EscapeDataString(userCode)}";
+        var verificationPath = $"/connect/device?user_code={Uri.EscapeDataString(userCode)}&launch_mode=popup";
 
         using var anonymousResponse = await client.GetAsync(verificationPath);
         Assert.Equal(HttpStatusCode.Redirect, anonymousResponse.StatusCode);
         Assert.Contains(
             "/account/login?ReturnUrl=",
+            anonymousResponse.Headers.Location?.OriginalString,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "launch_mode",
             anonymousResponse.Headers.Location?.OriginalString,
             StringComparison.Ordinal);
 
@@ -165,6 +169,7 @@ public sealed class DeviceFlowTests
         Assert.NotNull(confirmationPath);
         Assert.StartsWith("/device?", confirmationPath);
         Assert.Contains("device_context=", confirmationPath);
+        Assert.Contains("launch_mode=popup", confirmationPath);
 
         using var scope = _factory.Services.CreateScope();
         var accessor = scope.ServiceProvider.GetRequiredService<IHttpContextAccessor>();
@@ -239,12 +244,13 @@ public sealed class DeviceFlowTests
             {
                 ["user_code"] = userCode,
                 ["approved"] = "true",
+                ["launch_mode"] = "popup",
                 ["__RequestVerificationToken"] = antiforgeryToken,
             }));
 
         Assert.Equal(HttpStatusCode.Redirect, approveResponse.StatusCode);
         Assert.Equal(
-            "/device?result=approved",
+            "/device?result=approved&launch_mode=popup",
             approveResponse.Headers.Location?.OriginalString);
 
         // --- Device side: poll again, now expecting a token. ---

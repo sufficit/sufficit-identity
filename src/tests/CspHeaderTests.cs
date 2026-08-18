@@ -84,6 +84,31 @@ public sealed class CspHeaderTests
     }
 
     [Fact]
+    public async Task Popup_marker_uses_a_COOP_policy_that_preserves_the_opener()
+    {
+        var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync("/health?launch_mode=popup");
+
+        Assert.Equal(
+            "same-origin-allow-popups",
+            response.Headers.GetValues("Cross-Origin-Opener-Policy").Single());
+    }
+
+    [Fact]
+    public async Task Popup_marker_inside_a_login_return_url_preserves_the_opener()
+    {
+        var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync(
+            "/health?ReturnUrl=%2Fconnect%2Fauthorize%3Flaunch_mode%3Dpopup");
+
+        Assert.Equal(
+            "same-origin-allow-popups",
+            response.Headers.GetValues("Cross-Origin-Opener-Policy").Single());
+    }
+
+    [Fact]
     public async Task Report_uri_is_appended_when_configured()
     {
         // Isolated factory: overlay a ReportUri and assert it is appended as a

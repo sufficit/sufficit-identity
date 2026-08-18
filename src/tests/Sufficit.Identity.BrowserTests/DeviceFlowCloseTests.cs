@@ -1,12 +1,46 @@
 using Microsoft.Playwright;
 using Microsoft.Playwright.NUnit;
 using NUnit.Framework;
+using System.Text.Json;
 
 namespace Sufficit.Identity.BrowserTests;
 
 [Parallelizable(ParallelScope.None)]
 public sealed class DeviceFlowCloseTests : PageTest
 {
+    [Test]
+    public async Task Popup_completion_notifies_the_opener_and_closes_automatically()
+    {
+        await Page.EvaluateAsync("window.__deviceMessages = []; window.addEventListener('message', event => window.__deviceMessages.push(event.data));");
+        var popup = await Page.RunAndWaitForPopupAsync(async () =>
+            await Page.EvaluateAsync("window.open('about:blank', '_blank')"));
+        var closed = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        popup.Close += (_, _) => closed.TrySetResult(true);
+
+        await popup.SetContentAsync("""
+            <main data-device-flow-result="approved" data-device-launch-mode="popup">
+                <button type="button" class="btn btn-primary btn-block" data-device-flow-close hidden>Fechar esta aba</button>
+                <p data-device-close-fallback hidden>Fechamento manual</p>
+            </main>
+            """);
+        await popup.AddScriptTagAsync(new PageAddScriptTagOptions
+        {
+            Path = ResolveIdentityScript()
+        });
+
+        Assert.That(
+            await closed.Task.WaitAsync(TimeSpan.FromSeconds(3)),
+            Is.True);
+        var messagesJson = await Page.EvaluateAsync<string>("JSON.stringify(window.__deviceMessages)");
+        using var messages = JsonDocument.Parse(messagesJson);
+        Assert.That(messages.RootElement.GetArrayLength(), Is.EqualTo(1));
+        var message = messages.RootElement[0];
+        Assert.That(message.GetProperty("type").GetString(), Is.EqualTo("sufficit-auth-complete"));
+        Assert.That(message.GetProperty("flow").GetString(), Is.EqualTo("device"));
+        Assert.That(message.GetProperty("result").GetString(), Is.EqualTo("approved"));
+    }
+
     [Test]
     public async Task Script_opened_popup_closes_after_the_opener_reference_is_removed()
     {

@@ -13,7 +13,7 @@
     {
         @if (_resultApproved == true)
         {
-            <div class="device-result" role="status" data-device-flow-result>
+            <div class="device-result" role="status" data-device-flow-result="approved" data-device-launch-mode="@(IsPopup ? "popup" : null)">
                 <span class="device-result__icon" aria-hidden="true">✓</span>
                 <h1>@L["Device.ApprovedTitle"]</h1>
                 <p>@L["Device.Approved"]</p>
@@ -21,7 +21,7 @@
         }
         else
         {
-            <div class="device-result" role="status" data-device-flow-result>
+            <div class="device-result" role="status" data-device-flow-result="denied" data-device-launch-mode="@(IsPopup ? "popup" : null)">
                 <span class="device-result__icon device-result__icon--denied" aria-hidden="true">×</span>
                 <h1>@L["Device.DeniedTitle"]</h1>
                 <p>@L["Device.Denied"]</p>
@@ -165,6 +165,10 @@
         <form method="post" action="/connect/device" data-enhance="false">
             <AntiforgeryToken />
             <input type="hidden" name="user_code" value="@_userCode" />
+            @if (IsPopup)
+            {
+                <input type="hidden" name="launch_mode" value="popup" />
+            }
 
             <div class="btn-group device-authorization-actions">
                 <button type="submit" name="approved" value="true" class="btn btn-primary btn-block">
@@ -182,6 +186,7 @@
     [SupplyParameterFromQuery(Name = "user_code")] private string? UserCodeQuery { get; set; }
     [SupplyParameterFromQuery(Name = "code")] private string? LegacyCodeQuery { get; set; }
     [SupplyParameterFromQuery(Name = "result")] private string? Result { get; set; }
+    [SupplyParameterFromQuery(Name = "launch_mode")] private string? LaunchModeQuery { get; set; }
 
     private string? _userCode;
     private string? _displayCode;
@@ -194,6 +199,9 @@
     private bool _allowsRefreshAccess;
     private string? _error;
     private bool? _resultApproved;
+
+    private bool IsPopup =>
+        string.Equals(LaunchModeQuery, "popup", StringComparison.OrdinalIgnoreCase);
 
     private string ClientInitial => string.IsNullOrWhiteSpace(_clientName)
         ? "A"
