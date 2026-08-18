@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Sufficit.Identity.Application.Security;
 
@@ -79,9 +80,14 @@ public static class SecurityHeadersMiddlewareExtensions
             // a page that needs a specific permission can override via config.
             context.Response.Headers["Permissions-Policy"] = PermissionsPolicyDefault;
 
-            // Cross-Origin-Opener-Policy: same-origin isolates the browsing
-            // context, preventing cross-origin windows from script access.
-            context.Response.Headers["Cross-Origin-Opener-Policy"] = "same-origin";
+            // Cross-Origin-Opener-Policy: same-origin isolates normal pages.
+            // An explicitly requested popup flow uses the compatible policy
+            // so the caller can retain its WindowProxy through the Identity
+            // login/consent redirects and receive the terminal postMessage.
+            context.Response.Headers["Cross-Origin-Opener-Policy"] =
+                IsPopupLaunchRequest(context.Request)
+                    ? "same-origin-allow-popups"
+                    : "same-origin";
 
             // Cross-Origin-Resource-Policy: same-origin prevents the STS's
             // static resources from being loaded cross-origin (noauth images,
@@ -112,6 +118,39 @@ public static class SecurityHeadersMiddlewareExtensions
 
         return app;
     }
+
+    private static bool IsPopupLaunchRequest(HttpRequest request)
+    {
+        if (IsPopupLaunchMode(request.Query["launch_mode"]))
+        {
+            return true;
+        }
+
+        // Login and external-provider pages carry the original protocol URL
+        // in ReturnUrl/returnUrl. Preserve the popup capability while that
+        // nested URL is being followed; otherwise COOP would sever opener
+        // before the callback can return to the original window.
+        foreach (var name in new[] { "ReturnUrl", "returnUrl" })
+        {
+            var returnUrl = request.Query[name].ToString();
+            var separator = returnUrl.IndexOf('?');
+            if (separator < 0)
+            {
+                continue;
+            }
+
+            var query = QueryHelpers.ParseQuery(returnUrl[separator..]);
+            if (IsPopupLaunchMode(query["launch_mode"]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsPopupLaunchMode(string? value) =>
+        string.Equals(value, "popup", StringComparison.OrdinalIgnoreCase);
 
     private static string AddHumanVerificationSources(
         string policy,

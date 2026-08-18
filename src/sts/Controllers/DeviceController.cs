@@ -188,6 +188,14 @@ public class DeviceController : Controller
             [OpenIddictDeviceAuthorizationContextService.TicketParameterName] = ticket,
         });
 
+        // The popup marker belongs to the browser-facing part of the device
+        // flow. Keep it out of the protocol ticket, but carry it to the final
+        // UI page so that the page can notify its opener and close itself.
+        if (IsPopupLaunchMode(Request.Query["launch_mode"]))
+        {
+            target = QueryHelpers.AddQueryString(target, "launch_mode", "popup");
+        }
+
         return Redirect(target);
     }
 
@@ -306,7 +314,7 @@ public class DeviceController : Controller
                         "The end user refused to authorize the device."
                 })
                 {
-                    RedirectUri = "/device?result=denied"
+                    RedirectUri = BuildDeviceResultUri("denied", Request.Form["launch_mode"])
                 });
         }
 
@@ -363,10 +371,21 @@ public class DeviceController : Controller
             new ClaimsPrincipal(identity),
             new AuthenticationProperties
             {
-                RedirectUri = "/device?result=approved"
+                RedirectUri = BuildDeviceResultUri("approved", Request.Form["launch_mode"])
             },
             OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
+
+    private static string BuildDeviceResultUri(string result, string? launchMode)
+    {
+        var target = QueryHelpers.AddQueryString("/device", "result", result);
+        return IsPopupLaunchMode(launchMode)
+            ? QueryHelpers.AddQueryString(target, "launch_mode", "popup")
+            : target;
+    }
+
+    private static bool IsPopupLaunchMode(string? launchMode) =>
+        string.Equals(launchMode, "popup", StringComparison.OrdinalIgnoreCase);
 
     private static string NormalizeUserCode(string code) =>
         code.Trim().ToUpperInvariant().Replace("-", string.Empty).Replace(" ", string.Empty);
