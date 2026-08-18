@@ -197,7 +197,7 @@ CREATE INDEX `EmailIndex` ON `users` (`normalizedemail`);
 CREATE UNIQUE INDEX `UserNameIndex` ON `users` (`normalizedusername`);
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260726213918_Initial', '10.0.10');
+VALUES ('20260726213918_Initial', '10.0.11');
 
 COMMIT;
 
@@ -225,7 +225,7 @@ CREATE TABLE `brandingthemes` (
 CREATE INDEX `IX_brandingthemes_isactive` ON `brandingthemes` (`isactive`);
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260729025623_AddBrandingThemes', '10.0.10');
+VALUES ('20260729025623_AddBrandingThemes', '10.0.11');
 
 COMMIT;
 
@@ -254,7 +254,7 @@ CREATE INDEX `IX_managementauditevents_occurredatutc` ON `managementauditevents`
 CREATE INDEX `IX_managementauditevents_resource` ON `managementauditevents` (`resourcetype`, `resourceid`);
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260729221512_AddManagementAuditEvents', '10.0.10');
+VALUES ('20260729221512_AddManagementAuditEvents', '10.0.11');
 
 COMMIT;
 
@@ -317,7 +317,7 @@ CREATE INDEX `IX_scimgroupusermembers_userid` ON `scimgroupusermembers` (`userid
 CREATE INDEX `IX_scimuserprofiles_externalid` ON `scimuserprofiles` (`externalid`);
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260730220100_AddScimProvisioning', '10.0.10');
+VALUES ('20260730220100_AddScimProvisioning', '10.0.11');
 
 COMMIT;
 
@@ -331,7 +331,7 @@ ALTER TABLE `users` MODIFY COLUMN `createdatutc` datetime(6) NOT NULL DEFAULT (U
 CREATE INDEX `IX_users_createdatutc` ON `users` (`createdatutc`);
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260804020337_AddUserCreatedAtUtc', '10.0.10');
+VALUES ('20260804020337_AddUserCreatedAtUtc', '10.0.11');
 
 COMMIT;
 
@@ -372,7 +372,7 @@ CREATE UNIQUE INDEX `AK_ssfstreams_streamid` ON `ssfstreams` (`streamid`);
 CREATE INDEX `IX_ssfstreams_status` ON `ssfstreams` (`status`);
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260805202819_AddSsfStreams', '10.0.10');
+VALUES ('20260805202819_AddSsfStreams', '10.0.11');
 
 COMMIT;
 
@@ -397,7 +397,7 @@ CREATE INDEX `IX_oidcusersessions_expiresutc` ON `oidcusersessions` (`expiresutc
 CREATE INDEX `IX_oidcusersessions_subject` ON `oidcusersessions` (`subject`);
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260806131249_AddOidcUserSessions', '10.0.10');
+VALUES ('20260806131249_AddOidcUserSessions', '10.0.11');
 
 COMMIT;
 
@@ -418,7 +418,7 @@ CREATE TABLE `vaultkeys` (
 CREATE UNIQUE INDEX `AK_vaultkeys_keyname_keyversion` ON `vaultkeys` (`keyname`, `keyversion`);
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260806162913_AddVaultKeys', '10.0.10');
+VALUES ('20260806162913_AddVaultKeys', '10.0.11');
 
 COMMIT;
 
@@ -462,7 +462,7 @@ INSERT INTO `identitymetricsconfiguration` (`id`, `enabled`, `retentiondays`, `e
 VALUES (1, TRUE, 90, FALSE, 'internal', 10, 250, TIMESTAMP '2026-08-07 02:08:59');
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260807020859_AddIdentityApplicationMetrics', '10.0.10');
+VALUES ('20260807020859_AddIdentityApplicationMetrics', '10.0.11');
 
 COMMIT;
 
@@ -484,7 +484,7 @@ CREATE INDEX `IX_ssfstreams_ownerclientid_status` ON `ssfstreams` (`ownerclienti
 CREATE UNIQUE INDEX `AK_ssfsetdeliveries_deliverykey` ON `ssfsetdeliveries` (`deliverykey`);
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260807135147_HardenSsfStreams', '10.0.10');
+VALUES ('20260807135147_HardenSsfStreams', '10.0.11');
 
 COMMIT;
 
@@ -517,7 +517,7 @@ CREATE INDEX `IX_cibapendingstates_state_expiresatutc` ON `cibapendingstates` (`
 CREATE INDEX `IX_dpopreplayentries_expiresatutc` ON `dpopreplayentries` (`expiresatutc`);
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260807140821_AddAtomicProtocolState', '10.0.10');
+VALUES ('20260807140821_AddAtomicProtocolState', '10.0.11');
 
 COMMIT;
 
@@ -542,7 +542,7 @@ CREATE INDEX `IX_managementclientdrafts_expiresatutc` ON `managementclientdrafts
 CREATE INDEX `IX_managementclientdrafts_owner_status_updated` ON `managementclientdrafts` (`ownersubject`, `status`, `updatedatutc`);
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260807161036_AddManagementClientDrafts', '10.0.10');
+VALUES ('20260807161036_AddManagementClientDrafts', '10.0.11');
 
 COMMIT;
 
@@ -560,7 +560,7 @@ CREATE TABLE `vaultsecrets` (
 CREATE UNIQUE INDEX `AK_vaultsecrets_name` ON `vaultsecrets` (`name`);
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260808173938_AddVaultSecrets', '10.0.10');
+VALUES ('20260808173938_AddVaultSecrets', '10.0.11');
 
 COMMIT;
 
@@ -568,7 +568,7 @@ START TRANSACTION;
 ALTER TABLE `vaultkeys` ADD `publicjwk` longtext CHARACTER SET utf8mb4 NULL;
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260808174200_AddVaultSigningKeyJwk', '10.0.10');
+VALUES ('20260808174200_AddVaultSigningKeyJwk', '10.0.11');
 
 COMMIT;
 
@@ -590,7 +590,7 @@ CREATE UNIQUE INDEX `AK_vaultpersonalsecrets_owner_namespace_name` ON `vaultpers
 CREATE INDEX `IX_vaultpersonalsecrets_owner_namespace` ON `vaultpersonalsecrets` (`ownersubject`, `namespace`);
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260808191220_AddVaultPersonalSecrets', '10.0.10');
+VALUES ('20260808191220_AddVaultPersonalSecrets', '10.0.11');
 
 COMMIT;
 
@@ -629,7 +629,7 @@ CREATE TABLE `vaultsigningkeyoperations` (
 CREATE INDEX `IX_vaultsigningkeyoperations_keyname_occurred` ON `vaultsigningkeyoperations` (`keyname`, `occurredatutc`);
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260809224037_AddVaultSigningKeyLifecycle', '10.0.10');
+VALUES ('20260809224037_AddVaultSigningKeyLifecycle', '10.0.11');
 
 COMMIT;
 
@@ -649,7 +649,7 @@ CREATE UNIQUE INDEX `AK_vaultsecrets_context_name` ON `vaultsecrets` (`contextid
 CREATE INDEX `IX_vaultsecrets_context_namespace` ON `vaultsecrets` (`contextid`, `namespace`);
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260809230136_AddVaultSecretNamespaces', '10.0.10');
+VALUES ('20260809230136_AddVaultSecretNamespaces', '10.0.11');
 
 COMMIT;
 
@@ -675,7 +675,7 @@ ALTER TABLE `cibapendingstates` MODIFY COLUMN `consumptionid` varchar(64) CHARAC
 ALTER TABLE `cibapendingstates` MODIFY COLUMN `authreqid` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL;
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260814202136_UseBinaryCollationForOpaqueIdentifiers', '10.0.10');
+VALUES ('20260814202136_UseBinaryCollationForOpaqueIdentifiers', '10.0.11');
 
 COMMIT;
 
@@ -683,7 +683,7 @@ START TRANSACTION;
 ALTER TABLE `vaultsecrets` ADD `expiresatutc` datetime(6) NULL;
 
 INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
-VALUES ('20260816221816_AddVaultSecretExpiration', '10.0.10');
+VALUES ('20260816221816_AddVaultSecretExpiration', '10.0.11');
 
 COMMIT;
 
