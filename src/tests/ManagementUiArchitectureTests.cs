@@ -1444,11 +1444,16 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("deviceCloseManualLogged", script, StringComparison.Ordinal);
         Assert.Contains("device codes", script, StringComparison.Ordinal);
         Assert.Contains("function canAttemptScriptClose()", script, StringComparison.Ordinal);
-        Assert.Contains("if (!canAttemptScriptClose())", script, StringComparison.Ordinal);
-        Assert.Contains("Missing opener is diagnostic only", script, StringComparison.Ordinal);
+        Assert.Contains(
+            "showManualCompletion(result, 'tab-not-script-opened', false)",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains("var scriptCloseAvailable = canAttemptScriptClose();", script, StringComparison.Ordinal);
+        Assert.Contains("closeButton.hidden = !scriptCloseAvailable", script, StringComparison.Ordinal);
         Assert.Contains("fallback.hidden = false", script, StringComparison.Ordinal);
-        Assert.Contains("button.hidden = true", script, StringComparison.Ordinal);
+        Assert.Contains("button.hidden = keepCloseButton !== true", script, StringComparison.Ordinal);
         Assert.Contains("deviceCloseAttempted", script, StringComparison.Ordinal);
+        Assert.Contains("deviceCloseInProgress", script, StringComparison.Ordinal);
         Assert.Contains("deviceCloseBlocked", script, StringComparison.Ordinal);
         Assert.Contains("window.opener", script, StringComparison.Ordinal);
         Assert.Contains("window.navigator.sendBeacon", script, StringComparison.Ordinal);

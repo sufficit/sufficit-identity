@@ -42,10 +42,12 @@ document.addEventListener('change', function (event) {
 });
 
 /**
- * Ends the browser side of an RFC 8628 device flow. `window.opener` is only a
- * hint: Cross-Origin-Opener-Policy can deliberately sever it while the tab
- * remains script-closable. Every close strategy therefore runs from the
- * explicit button gesture before the honest manual fallback is shown.
+ * Ends the browser side of an RFC 8628 device flow. A live `window.opener` at
+ * initialization is the capability signal available to this page that it was
+ * opened by script. Without that signal, show only the honest manual fallback.
+ * Cross-Origin-Opener-Policy can sever the reference after a popup is opened,
+ * so an eligible popup still runs every close strategy from the explicit
+ * button gesture before keeping the control available as a fallback.
  */
 (function () {
     var closeReportEndpoint = '/security/device-flow-close-report';
@@ -116,7 +118,7 @@ document.addEventListener('change', function (event) {
         }
     }
 
-    function showManualCompletion(result, reason) {
+    function showManualCompletion(result, reason, keepCloseButton) {
         var fallback = document.querySelector('[data-device-close-fallback]');
         if (fallback) {
             fallback.hidden = false;
@@ -129,16 +131,22 @@ document.addEventListener('change', function (event) {
 
         var button = document.querySelector('[data-device-flow-close]');
         if (button) {
-            // A user-created tab cannot become script-closable after the
-            // first attempt. Hide the control so it cannot produce repeated
-            // browser warnings or imply that another click may succeed.
-            button.hidden = true;
-            button.disabled = true;
-            button.setAttribute('aria-disabled', 'true');
+            // A tab without a script-close capability must not advertise a
+            // control that the browser will reject. An eligible popup keeps
+            // the control available as a fallback if every close strategy is
+            // blocked by the browser.
+            button.hidden = keepCloseButton !== true;
+            button.disabled = keepCloseButton !== true;
+            if (keepCloseButton === true) {
+                button.removeAttribute('aria-disabled');
+            } else {
+                button.setAttribute('aria-disabled', 'true');
+            }
         }
 
         if (result) {
             result.removeAttribute('aria-busy');
+            result.dataset.deviceCloseInProgress = 'false';
             result.dataset.deviceCloseBlocked = 'true';
             if (result.dataset.deviceCloseManualLogged !== 'true') {
                 result.dataset.deviceCloseManualLogged = 'true';
@@ -183,7 +191,7 @@ document.addEventListener('change', function (event) {
                     strategy: 'all',
                     reason: 'close-blocked'
                 });
-                showManualCompletion(result, 'close-blocked');
+                showManualCompletion(result, 'close-blocked', true);
                 return;
             }
 
@@ -228,9 +236,14 @@ document.addEventListener('change', function (event) {
 
     function closeDeviceFlowTab(result) {
         // The actual close request remains reachable only from the button.
-        if (result && result.dataset.deviceCloseAttempted === 'true') return;
+        if (result && result.dataset.deviceCloseInProgress === 'true') return;
         logDeviceFlow('close-requested', { source: 'user-gesture' });
-        if (result) result.dataset.deviceCloseAttempted = 'true';
+        if (result) {
+            // Keep this marker for diagnostics, but only block concurrent
+            // attempts. A blocked eligible popup may be tried again.
+            result.dataset.deviceCloseAttempted = 'true';
+            result.dataset.deviceCloseInProgress = 'true';
+        }
         if (result) result.setAttribute('aria-busy', 'true');
         var button = document.querySelector('[data-device-flow-close]');
         if (button) button.disabled = true;
@@ -245,18 +258,23 @@ document.addEventListener('change', function (event) {
         result.dataset.deviceCloseInitialized = 'true';
 
         var closeButton = document.querySelector('[data-device-flow-close]');
-        if (!canAttemptScriptClose()) {
+        var scriptCloseAvailable = canAttemptScriptClose();
+        if (!scriptCloseAvailable) {
             logDeviceFlow('manual-close-required', { reason: 'tab-not-script-opened' });
-            // Missing opener is diagnostic only. COOP may have severed it even
-            // when the tab is script-closable, so the button remains available
-            // and the direct strategy still runs first under the user gesture.
+            showManualCompletion(result, 'tab-not-script-opened', false);
         } else {
             logDeviceFlow('close-control-initialized', { scriptClosable: true });
         }
 
         if (closeButton && closeButton.dataset.deviceCloseBound !== 'true') {
             closeButton.dataset.deviceCloseBound = 'true';
-            closeButton.hidden = false;
+            closeButton.hidden = !scriptCloseAvailable;
+            closeButton.disabled = !scriptCloseAvailable;
+            if (scriptCloseAvailable) {
+                closeButton.removeAttribute('aria-disabled');
+            } else {
+                closeButton.setAttribute('aria-disabled', 'true');
+            }
             closeButton.setAttribute('aria-describedby', 'device-close-fallback');
             closeButton.addEventListener('click', function () {
                 closeDeviceFlowTab(result);
