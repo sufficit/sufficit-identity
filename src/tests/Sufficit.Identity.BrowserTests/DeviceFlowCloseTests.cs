@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.Playwright;
 using Microsoft.Playwright.NUnit;
 using NUnit.Framework;
@@ -23,11 +22,11 @@ public sealed class DeviceFlowCloseTests : PageTest
         {
             Path = ResolveIdentityStylesheet()
         });
-        await popup.EvaluateAsync("window.opener = null");
         await popup.AddScriptTagAsync(new PageAddScriptTagOptions
         {
             Path = ResolveIdentityScript()
         });
+        await popup.EvaluateAsync("window.opener = null");
 
         Assert.That(await popup.EvaluateAsync<bool>("window.opener === null"), Is.True);
         var closed = new TaskCompletionSource<bool>(
@@ -50,7 +49,53 @@ public sealed class DeviceFlowCloseTests : PageTest
     }
 
     [Test]
-    public async Task Missing_opener_still_runs_every_close_strategy_before_manual_fallback()
+    public async Task Eligible_popup_keeps_close_control_after_all_strategies_are_blocked()
+    {
+        var popup = await Page.RunAndWaitForPopupAsync(async () =>
+            await Page.EvaluateAsync("window.open('about:blank', '_blank')"));
+        await popup.SetContentAsync("""
+            <main data-device-flow-result>
+                <button type="button" class="btn btn-primary btn-block" data-device-flow-close hidden>Fechar esta aba</button>
+                <p data-device-close-fallback hidden>Fechamento manual</p>
+            </main>
+            """);
+        await popup.AddStyleTagAsync(new PageAddStyleTagOptions
+        {
+            Path = ResolveIdentityStylesheet()
+        });
+        await popup.AddScriptTagAsync(new PageAddScriptTagOptions
+        {
+            Path = ResolveIdentityScript()
+        });
+        await popup.EvaluateAsync("""
+            () => {
+                window.__closeCalls = [];
+                window.close = () => window.__closeCalls.push('window');
+                window.open = () => ({
+                    close: () => window.__closeCalls.push('retargeted')
+                });
+                window.opener = null;
+            }
+            """);
+
+        await popup.Locator("[data-device-flow-close]").ClickAsync();
+        await popup.Locator("[data-device-close-fallback]").WaitForAsync(
+            new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
+
+        var closeCalls = await popup.EvaluateAsync<string[]>("window.__closeCalls");
+        Assert.That(closeCalls, Is.EqualTo(new[] { "window", "window", "retargeted" }));
+        Assert.That(
+            await popup.Locator("[data-device-flow-close]").IsVisibleAsync(),
+            Is.True);
+        Assert.That(
+            await popup.Locator("[data-device-flow-close]").IsEnabledAsync(),
+            Is.True);
+
+        await popup.CloseAsync();
+    }
+
+    [Test]
+    public async Task Missing_opener_shows_manual_fallback_without_close_control()
     {
         await Page.SetContentAsync("""
             <main data-device-flow-result>
@@ -86,27 +131,11 @@ public sealed class DeviceFlowCloseTests : PageTest
         });
 
         Assert.That(await Page.EvaluateAsync<bool>("window.opener === null"), Is.True);
-        await Page.Locator("[data-device-flow-close]").ClickAsync();
         await Page.Locator("[data-device-close-fallback]").WaitForAsync(
             new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
-        await Page.WaitForFunctionAsync("window.__closeReports.length >= 8");
 
         var closeCalls = await Page.EvaluateAsync<string[]>("window.__closeCalls");
-        Assert.That(closeCalls, Is.EqualTo(new[] { "window", "window", "retargeted" }));
-
-        var reportsJson = await Page.EvaluateAsync<string>(
-            "JSON.stringify(window.__closeReports)");
-        var reports = JsonSerializer.Deserialize<List<CloseReport>>(
-            reportsJson,
-            new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? [];
-        var attemptedStrategies = reports
-            .Where(report => report.Event == "script-close-attempted")
-            .Select(report => report.Strategy)
-            .ToArray();
-
-        Assert.That(
-            attemptedStrategies,
-            Is.EqualTo(new[] { "direct", "top", "retargeted" }));
+        Assert.That(closeCalls, Is.Empty);
         Assert.That(
             await Page.Locator("[data-device-flow-close]").IsHiddenAsync(),
             Is.True);
@@ -159,6 +188,4 @@ public sealed class DeviceFlowCloseTests : PageTest
 
         throw new FileNotFoundException("Unable to locate site.css from the test directory.");
     }
-
-    private sealed record CloseReport(string Event, string? Strategy);
 }
