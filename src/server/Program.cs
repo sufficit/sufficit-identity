@@ -671,7 +671,15 @@ if (!app.Environment.IsDevelopment())
     // that already arrived as https at the edge (X-Forwarded-Proto: https,
     // downgraded to http by the time it reaches Kestrel) is correctly seen
     // as https here and NOT redirected again into a loop.
-    app.UseHttpsRedirection();
+    // Liveness/readiness probes intentionally use the private HTTP Unix
+    // socket. Sending them through HttpsRedirectionMiddleware cannot produce
+    // a useful redirect because Kestrel has no HTTPS listener in production,
+    // and it emits "Failed to determine the https port" on every probe.
+    app.UseWhen(
+        context => !context.Request.Path.StartsWithSegments(
+            "/health",
+            StringComparison.OrdinalIgnoreCase),
+        branch => branch.UseHttpsRedirection());
 }
 
 // ---- Baseline security headers (X-Content-Type-Options, Referrer-Policy,

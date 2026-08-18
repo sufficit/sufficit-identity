@@ -138,7 +138,7 @@
                     <br />
                     @if (_registrationPolicy.Enabled)
                     {
-                        <a href="/account/register">@L["Login.CreateAccount"]</a>
+                        <a href="@RegisterUrl">@L["Login.CreateAccount"]</a>
                         <br />
                     }
                     <a href="/account/resendemailconfirmation">@L["Login.ResendConfirmation"]</a>
@@ -187,6 +187,10 @@
             _externalError,
             "external_correlation_failed",
             StringComparison.Ordinal);
+    private string RegisterUrl => QueryHelpers.AddQueryString(
+        "/account/register",
+        "returnUrl",
+        _returnUrl ?? "/");
 
     protected override async Task OnInitializedAsync()
     {

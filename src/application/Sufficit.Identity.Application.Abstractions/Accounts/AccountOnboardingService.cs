@@ -10,7 +10,8 @@ public sealed record AccountRegistrationPolicy(
 public sealed record AccountRegistrationCommand(
     string? UserName,
     string Email,
-    string Password);
+    string Password,
+    string? ReturnUrl = null);
 
 public sealed record AccountLifecycleError(
     string Code,

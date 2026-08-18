@@ -1,4 +1,5 @@
 #if !APPLICATION_CONTRACTS
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -96,7 +97,14 @@ public sealed record ManagementClientSummary(
     string? DisplayName,
     string? Type,
     string? Status = null,
-    string? Origin = null);
+    string? Origin = null,
+    /// <summary>Provenance of a self-registered (DCR) client. Carried on the
+    /// summary so the registrations console lists them without a detail
+    /// round-trip per row.</summary>
+    DateTimeOffset? RegisteredAtUtc = null,
+    bool RegisteredAnonymously = false,
+    string? RegisteredFromAddress = null,
+    string? RegisteredUserAgent = null);
 
 public sealed record ManagementClientQuery(
     string? Search = null,
@@ -140,7 +148,16 @@ public sealed record ManagementClientDetail(
     int? RefreshTokenLifetimeDays = null,
     int GlobalAccessTokenLifetimeMinutes = 60,
     int GlobalIdentityTokenLifetimeMinutes = 20,
-    double GlobalRefreshTokenLifetimeDays = 14);
+    double GlobalRefreshTokenLifetimeDays = 14,
+    /// <summary>"manual", "manifest" or "dcr".</summary>
+    string Origin = "manual",
+    /// <summary>Provenance of a self-registered (DCR) client: when it appeared,
+    /// whether it registered without an initial access token, and where the
+    /// call came from. Null for clients an operator created.</summary>
+    DateTimeOffset? RegisteredAtUtc = null,
+    bool RegisteredAnonymously = false,
+    string? RegisteredFromAddress = null,
+    string? RegisteredUserAgent = null);
 
 public sealed record CreateManagementClientCommand(
     string ClientId,
@@ -295,12 +312,24 @@ internal sealed class ClientManagementService(
                 application.Properties.Contains(
                     OpenIddictManifestProvisioner.SchemaVersionProperty));
         }
-        else if (normalized.Origin is "manual")
+        else if (normalized.Origin is "dcr")
         {
             applicationsQuery = applicationsQuery.Where(application =>
-                application.Properties == null ||
-                !application.Properties.Contains(
-                    OpenIddictManifestProvisioner.SchemaVersionProperty));
+                application.Properties != null &&
+                application.Properties.Contains(
+                    DynamicClientRegistrationProperties.Origin));
+        }
+        else if (normalized.Origin is "manual")
+        {
+            // "Manual" means neither provisioned by a manifest nor
+            // self-registered: what an operator created by hand.
+            applicationsQuery = applicationsQuery.Where(application =>
+                (application.Properties == null
+                    || !application.Properties.Contains(
+                        OpenIddictManifestProvisioner.SchemaVersionProperty))
+                && (application.Properties == null
+                    || !application.Properties.Contains(
+                        DynamicClientRegistrationProperties.Origin)));
         }
 
         var totalCount = await applicationsQuery.CountAsync(cancellationToken);
@@ -312,13 +341,22 @@ internal sealed class ClientManagementService(
             .ToArrayAsync(cancellationToken);
 
         var items = rows
-            .Select(application => new ManagementClientSummary(
-                application.Id ?? string.Empty,
-                application.ClientId ?? string.Empty,
-                application.DisplayName,
-                application.ClientType,
-                null,
-                IsManifestManaged(application.Properties) ? "manifest" : "manual"))
+            .Select(application =>
+            {
+                var registration = ReadRegistrationProvenance(
+                    application.Properties);
+                return new ManagementClientSummary(
+                    application.Id ?? string.Empty,
+                    application.ClientId ?? string.Empty,
+                    application.DisplayName,
+                    application.ClientType,
+                    null,
+                    ResolveOrigin(application.Properties),
+                    registration.RegisteredAtUtc,
+                    registration.Anonymous,
+                    registration.RemoteAddress,
+                    registration.UserAgent);
+            })
             .ToArray();
 
         return new ManagementClientPage(
@@ -1169,8 +1207,54 @@ internal sealed class ClientManagementService(
             GlobalIdentityTokenLifetimeMinutes: configuration.GetValue<int?>(
                 "Sufficit:Identity:Tokens:IdentityTokenLifetimeMinutes") ?? 20,
             GlobalRefreshTokenLifetimeDays: configuration.GetValue<double?>(
-                "Sufficit:Identity:Tokens:RefreshTokenLifetimeDays") ?? 14);
+                "Sufficit:Identity:Tokens:RefreshTokenLifetimeDays") ?? 14,
+            Origin: descriptor.Properties.ContainsKey(
+                    OpenIddictManifestProvisioner.SchemaVersionProperty)
+                ? "manifest"
+                : descriptor.Properties.ContainsKey(
+                    DynamicClientRegistrationProperties.Origin)
+                    ? DynamicClientRegistrationProperties.OriginValue
+                    : "manual",
+            RegisteredAtUtc: GetInstantProperty(
+                descriptor.Properties,
+                DynamicClientRegistrationProperties.RegisteredAt),
+            RegisteredAnonymously: GetBooleanProperty(
+                descriptor.Properties,
+                DynamicClientRegistrationProperties.Anonymous),
+            RegisteredFromAddress: GetStringProperty(
+                descriptor.Properties,
+                DynamicClientRegistrationProperties.RemoteAddress),
+            RegisteredUserAgent: GetStringProperty(
+                descriptor.Properties,
+                DynamicClientRegistrationProperties.UserAgent));
     }
+
+    private static string? GetStringProperty(
+        IReadOnlyDictionary<string, JsonElement> properties,
+        string key) =>
+        properties.TryGetValue(key, out var value)
+        && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
+
+    private static bool GetBooleanProperty(
+        IReadOnlyDictionary<string, JsonElement> properties,
+        string key) =>
+        properties.TryGetValue(key, out var value)
+        && value.ValueKind == JsonValueKind.True;
+
+    private static DateTimeOffset? GetInstantProperty(
+        IReadOnlyDictionary<string, JsonElement> properties,
+        string key) =>
+        GetStringProperty(properties, key) is { } raw
+        && DateTimeOffset.TryParse(
+            raw,
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AdjustToUniversal
+                | System.Globalization.DateTimeStyles.AssumeUniversal,
+            out var parsed)
+            ? parsed
+            : null;
 
     private static void ValidateTokenLifetimes(
         int? accessTokenLifetimeMinutes,
@@ -1484,11 +1568,11 @@ internal sealed class ClientManagementService(
         var grant = Normalize(query.Grant);
         var scope = Normalize(query.Scope);
         var origin = Normalize(query.Origin);
-        if (origin is not ("all" or "manual" or "manifest"))
+        if (origin is not ("all" or "manual" or "manifest" or "dcr"))
         {
             throw new ManagementValidationException(
                 "client_query_origin_invalid",
-                "origin deve ser all, manual ou manifest.",
+                "origin deve ser all, manual, manifest ou dcr.",
                 "origin");
         }
 
@@ -1504,6 +1588,69 @@ internal sealed class ClientManagementService(
         return (string.IsNullOrWhiteSpace(query.Search) ? null : query.Search.Trim(),
             type, grant, scope, origin, status, query.Page, query.PageSize);
     }
+
+    /// <summary>
+    /// Reads the DCR provenance stamps from the raw Properties JSON column.
+    /// Returns empty values for clients that were not self-registered.
+    /// </summary>
+    private static (DateTimeOffset? RegisteredAtUtc, bool Anonymous,
+        string? RemoteAddress, string? UserAgent)
+        ReadRegistrationProvenance(string? properties)
+    {
+        if (string.IsNullOrWhiteSpace(properties)) return (null, false, null, null);
+        try
+        {
+            using var document = JsonDocument.Parse(properties);
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+                return (null, false, null, null);
+
+            var root = document.RootElement;
+            return (
+                root.TryGetProperty(
+                    DynamicClientRegistrationProperties.RegisteredAt,
+                    out var registeredAt)
+                && registeredAt.ValueKind == JsonValueKind.String
+                && DateTimeOffset.TryParse(
+                    registeredAt.GetString(),
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.AdjustToUniversal
+                        | System.Globalization.DateTimeStyles.AssumeUniversal,
+                    out var parsed)
+                    ? parsed
+                    : null,
+                root.TryGetProperty(
+                    DynamicClientRegistrationProperties.Anonymous,
+                    out var anonymous)
+                    && anonymous.ValueKind == JsonValueKind.True,
+                root.TryGetProperty(
+                    DynamicClientRegistrationProperties.RemoteAddress,
+                    out var address)
+                && address.ValueKind == JsonValueKind.String
+                    ? address.GetString()
+                    : null,
+                root.TryGetProperty(
+                    DynamicClientRegistrationProperties.UserAgent,
+                    out var userAgent)
+                && userAgent.ValueKind == JsonValueKind.String
+                    ? userAgent.GetString()
+                    : null);
+        }
+        catch (JsonException)
+        {
+            // A malformed Properties blob must not break the console listing.
+            return (null, false, null, null);
+        }
+    }
+
+    private static string ResolveOrigin(string? properties) =>
+        IsManifestManaged(properties) ? "manifest"
+        : IsSelfRegistered(properties) ? "dcr"
+        : "manual";
+
+    private static bool IsSelfRegistered(string? properties) =>
+        properties?.Contains(
+            DynamicClientRegistrationProperties.Origin,
+            StringComparison.Ordinal) is true;
 
     private static bool IsManifestManaged(string? properties) =>
         properties?.Contains(

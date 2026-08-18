@@ -42,20 +42,68 @@ document.addEventListener('change', function (event) {
 });
 
 /**
- * Ends the browser side of an RFC 8628 device flow. Browsers only allow a
- * script to close a tab when it was opened by script, so a tab without an
- * opener goes straight to the manual completion state. This avoids both a
- * misleading close button and browser warnings in the console.
+ * Ends the browser side of an RFC 8628 device flow. `window.opener` is only a
+ * hint: Cross-Origin-Opener-Policy can deliberately sever it while the tab
+ * remains script-closable. Every close strategy therefore runs from the
+ * explicit button gesture before the honest manual fallback is shown.
  */
 (function () {
-    function logDeviceFlow(event, details) {
-        if (typeof console === 'undefined' || typeof console.info !== 'function') {
-            return;
+    var closeReportEndpoint = '/security/device-flow-close-report';
+    var activeCloseStrategy = null;
+
+    function reportDeviceFlow(event, details) {
+        details = details || {};
+        var historyLength = Number(window.history && window.history.length) || 0;
+        var payload = JSON.stringify({
+            event: event,
+            strategy: details.strategy || null,
+            reason: details.reason || null,
+            hasOpener: canAttemptScriptClose(),
+            historyLength: Math.min(100, Math.max(0, historyLength)),
+            userActivation: Boolean(
+                window.navigator
+                && window.navigator.userActivation
+                && window.navigator.userActivation.isActive),
+            visibility: document.visibilityState || 'unknown',
+            persisted: typeof details.persisted === 'boolean'
+                ? details.persisted
+                : null
+        });
+
+        try {
+            if (window.navigator
+                && typeof window.navigator.sendBeacon === 'function'
+                && window.navigator.sendBeacon(
+                    closeReportEndpoint,
+                    new Blob([payload], { type: 'application/json' }))) {
+                return;
+            }
+        } catch (_) {
+            // The keepalive request below is the compatible fallback.
         }
 
-        // Keep browser diagnostics useful without leaking device codes,
-        // tokens, user identifiers, redirect URIs, or authorization payloads.
-        console.info('[Sufficit Identity][DeviceFlow]', event, details || {});
+        if (typeof window.fetch === 'function') {
+            window.fetch(closeReportEndpoint, {
+                method: 'POST',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                keepalive: true,
+                headers: { 'content-type': 'application/json' },
+                body: payload
+            }).catch(function () {
+                // Diagnostics must never interfere with the close action.
+            });
+        }
+    }
+
+    function logDeviceFlow(event, details) {
+        if (typeof console !== 'undefined' && typeof console.info === 'function') {
+            // Keep browser diagnostics useful without leaking device codes,
+            // tokens, user identifiers, redirect URIs, or authorization payloads.
+            console.info('[Sufficit Identity][DeviceFlow]', event, details || {});
+        }
+
+        reportDeviceFlow(event, details);
     }
 
     function canAttemptScriptClose() {
@@ -105,46 +153,77 @@ document.addEventListener('change', function (event) {
         }
     }
 
-    function tryCloseWindow() {
-        if (!canAttemptScriptClose()) {
-            logDeviceFlow('script-close-skipped', {
-                reason: 'tab-not-script-opened'
+    function tryCloseWindow(result) {
+        // Order matters. The direct close is now always the first operation
+        // under the user's click; COOP can remove opener without removing the
+        // browser's internal "script-opened" flag. The top-context and
+        // retargeted forms remain browser-specific fallbacks.
+        var strategies = [
+            {
+                name: 'direct',
+                execute: function () { window.close(); }
+            },
+            {
+                name: 'top',
+                execute: function () { window.top.close(); }
+            },
+            {
+                name: 'retargeted',
+                execute: function () {
+                    var currentWindow = window.open('', '_self');
+                    if (currentWindow) currentWindow.close();
+                }
+            }
+        ];
+        var strategyIndex = 0;
+
+        function attemptNextStrategy() {
+            if (strategyIndex >= strategies.length) {
+                logDeviceFlow('script-close-blocked', {
+                    strategy: 'all',
+                    reason: 'close-blocked'
+                });
+                showManualCompletion(result, 'close-blocked');
+                return;
+            }
+
+            var strategy = strategies[strategyIndex++];
+            activeCloseStrategy = strategy.name;
+            logDeviceFlow('script-close-attempted', {
+                strategy: strategy.name
             });
-            return false;
+
+            try {
+                strategy.execute();
+            } catch (_) {
+                logDeviceFlow('script-close-error', {
+                    strategy: strategy.name,
+                    reason: 'exception'
+                });
+                window.setTimeout(attemptNextStrategy, 0);
+                return;
+            }
+
+            // Closing is asynchronous in Chromium/WebKit. If it succeeds this
+            // callback never runs; when it does run, advance to the next
+            // strategy instead of trusting a synchronous window.closed read.
+            window.setTimeout(function () {
+                if (window.closed === true) {
+                    logDeviceFlow('script-close-succeeded', {
+                        strategy: strategy.name
+                    });
+                    return;
+                }
+
+                logDeviceFlow('script-close-blocked', {
+                    strategy: strategy.name,
+                    reason: 'close-blocked'
+                });
+                attemptNextStrategy();
+            }, 160);
         }
 
-        // Keep both close strategies: window.close() works in browsers that
-        // honor the direct script-created context, while retargeting the
-        // current context before closing is required by other browsers. They
-        // are complementary, not interchangeable; removing either one can
-        // regress a browser-specific device-flow scenario. The opener gate
-        // above is equally important because manually opened tabs must not
-        // invoke either method and trigger a blocked-close warning.
-        logDeviceFlow('script-close-attempted', { strategy: 'direct' });
-        try {
-            window.close();
-        } catch (_) {
-            // Some browsers throw when script closure is disallowed.
-        }
-
-        if (window.closed === true) {
-            logDeviceFlow('script-close-succeeded', { strategy: 'direct' });
-            return true;
-        }
-
-        logDeviceFlow('script-close-attempted', { strategy: 'retargeted' });
-        try {
-            var currentWindow = window.open('', '_self');
-            if (currentWindow) currentWindow.close();
-        } catch (_) {
-            // The manual completion message below remains the safe fallback.
-        }
-
-        var closed = window.closed === true;
-        logDeviceFlow(closed ? 'script-close-succeeded' : 'script-close-blocked', {
-            strategy: 'retargeted'
-        });
-        return closed;
+        attemptNextStrategy();
     }
 
     function closeDeviceFlowTab(result) {
@@ -156,15 +235,7 @@ document.addEventListener('change', function (event) {
         var button = document.querySelector('[data-device-flow-close]');
         if (button) button.disabled = true;
 
-        if (tryCloseWindow()) {
-            return;
-        }
-
-        // If execution continues, the browser kept the tab open. Delay the
-        // fallback just enough to avoid flashing it during a successful close.
-        window.setTimeout(function () {
-            showManualCompletion(result, 'close-blocked');
-        }, 250);
+        tryCloseWindow(result);
     }
 
     function initializeDeviceFlowClose() {
@@ -176,10 +247,9 @@ document.addEventListener('change', function (event) {
         var closeButton = document.querySelector('[data-device-flow-close]');
         if (!canAttemptScriptClose()) {
             logDeviceFlow('manual-close-required', { reason: 'tab-not-script-opened' });
-            // Initialization must not consume the close action. The browser
-            // may report no opener before the explicit user gesture, and
-            // showManualCompletion() disables the button after a real failed
-            // attempt. Keep the control available until that click occurs.
+            // Missing opener is diagnostic only. COOP may have severed it even
+            // when the tab is script-closable, so the button remains available
+            // and the direct strategy still runs first under the user gesture.
         } else {
             logDeviceFlow('close-control-initialized', { scriptClosable: true });
         }
@@ -206,6 +276,13 @@ document.addEventListener('change', function (event) {
     initializeDeviceFlowClose();
     document.addEventListener('DOMContentLoaded', initializeDeviceFlowClose, { once: true });
     window.addEventListener('load', initializeDeviceFlowClose, { once: true });
+    window.addEventListener('pagehide', function (event) {
+        if (!activeCloseStrategy) return;
+        logDeviceFlow('close-pagehide-observed', {
+            strategy: activeCloseStrategy,
+            persisted: Boolean(event.persisted)
+        });
+    });
 
     // identity.js is loaded before blazor.web.js. Subscribe as soon as Blazor
     // exposes its enhanced navigation events so a replaced terminal page gets

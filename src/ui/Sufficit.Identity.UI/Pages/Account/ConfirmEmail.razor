@@ -1,4 +1,5 @@
 @page "/account/confirmemail"
+@using Microsoft.AspNetCore.WebUtilities
 @inject IAccountOnboardingService AccountOnboarding
 @inject IStringLocalizer<SharedResource> L
 
@@ -12,15 +13,20 @@
         <div class="@(_success ? "alert alert-success" : "alert alert-error")">@_status</div>
     }
 
-    <a href="/account/login" class="btn btn-primary">@L["Common.BackToLogin"]</a>
+    <a href="@LoginUrl" class="btn btn-primary">@L["Common.BackToLogin"]</a>
 </div>
 
 @code {
     [SupplyParameterFromQuery] private string? UserId { get; set; }
     [SupplyParameterFromQuery(Name = "code")] private string? Token { get; set; }
+    [SupplyParameterFromQuery(Name = "returnUrl")] private string? ReturnUrl { get; set; }
 
     private string? _status;
     private bool _success;
+    private string LoginUrl => QueryHelpers.AddQueryString(
+        "/account/login",
+        "returnUrl",
+        LocalUrlValidator.EnsureLocal(ReturnUrl));
 
     protected override async Task OnInitializedAsync()
     {

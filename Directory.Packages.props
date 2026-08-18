@@ -22,7 +22,7 @@
     <!-- Shared SUI component library (published from the sufficit-blazor-ui
          repository; consumed as a PACKAGE so builds and CI no longer depend
          on a sibling checkout). -->
-    <PackageVersion Include="Sufficit.Blazor.UI" Version="1.27.0" />
+    <PackageVersion Include="Sufficit.Blazor.UI" Version="1.28.0" />
 
     <!-- ASP.NET Core Data Protection key-ring persistence (P0 #B4) -->
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.10" />
@@ -60,9 +60,9 @@
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.3" />
 
     <!-- Test project (src/tests) -->
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.10" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
 
@@ -85,10 +85,10 @@
     <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.12" />
 
     <!-- Browser tests (Playwright + axe-core) -->
-    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <PackageVersion Include="Deque.AxeCore.Playwright" Version="4.13.0" />
     <PackageVersion Include="Microsoft.Playwright.NUnit" Version="1.62.0" />
-    <PackageVersion Include="NUnit" Version="4.3.2" />
+    <PackageVersion Include="NUnit" Version="4.6.1" />
     <PackageVersion Include="NUnit.Analyzers" Version="4.14.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="5.0.0" />
   </ItemGroup>

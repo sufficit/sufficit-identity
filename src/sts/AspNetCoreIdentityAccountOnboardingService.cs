@@ -92,6 +92,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
         var delivered = await SendConfirmationMessageAsync(
             user,
             command.Email,
+            command.ReturnUrl,
             cancellationToken);
         return new AccountRegistrationResult(true, delivered, []);
     }
@@ -109,6 +110,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
             await SendConfirmationMessageAsync(
                 user,
                 email,
+                null,
                 cancellationToken);
         }
 
@@ -416,6 +418,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
     private async Task<bool> SendConfirmationMessageAsync(
         ApplicationUser user,
         string email,
+        string? returnUrl,
         CancellationToken cancellationToken)
     {
         try
@@ -428,6 +431,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
                 {
                     ["userId"] = user.Id,
                     ["code"] = EncodeToken(token),
+                    ["returnUrl"] = LocalUrlValidator.EnsureLocal(returnUrl),
                 });
             var body = $"Confirme sua conta <a href=\"{HtmlEncoder.Default.Encode(callbackUrl)}\">clicando aqui</a>.";
             await emailSender.SendEmailAsync(
