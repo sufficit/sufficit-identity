@@ -122,8 +122,14 @@ public sealed class VaultSymmetricKeyLeaseTests
 
         public static VaultLeaseHarness Create()
         {
+            var connectionString = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+            {
+                DataSource = $"vault-lease-{Guid.NewGuid():N}",
+                Mode = Microsoft.Data.Sqlite.SqliteOpenMode.Memory,
+                Cache = Microsoft.Data.Sqlite.SqliteCacheMode.Shared,
+            }.ToString();
             var connection = new Microsoft.Data.Sqlite.SqliteConnection(
-                "DataSource=:memory:");
+                connectionString);
             connection.Open();
 
             var services = new ServiceCollection();
@@ -131,7 +137,11 @@ public sealed class VaultSymmetricKeyLeaseTests
             services.AddDataProtection().UseEphemeralDataProtectionProvider();
             services.AddDbContextFactory<AppDbContext>(db =>
             {
-                db.UseSqlite(connection);
+                // Keep one connection open so the in-memory database survives,
+                // but let every DbContext own a separate physical connection.
+                // Sharing one SqliteConnection across the concurrent replicas
+                // makes EF race while registering SQLite functions.
+                db.UseSqlite(connectionString);
                 db.UseOpenIddict();
             });
             var provider = services.BuildServiceProvider();
