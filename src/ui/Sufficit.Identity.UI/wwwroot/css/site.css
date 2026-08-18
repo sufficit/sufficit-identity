@@ -101,6 +101,10 @@
 /* --- Reset ---------------------------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; }
 
+/* Keep the HTML hidden state authoritative even when a component class sets
+   an explicit display value (for example .btn uses inline-flex). */
+[hidden] { display: none !important; }
+
 html, body {
     margin: 0;
     padding: 0;
