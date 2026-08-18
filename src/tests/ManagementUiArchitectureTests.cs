@@ -1407,12 +1407,18 @@ public sealed class ManagementUiArchitectureTests
             "wwwroot",
             "js",
             "identity.js"));
+        var stylesheet = File.ReadAllText(Path.Combine(
+            publicUi,
+            "wwwroot",
+            "css",
+            "site.css"));
 
         Assert.DoesNotContain("<a href=\"/\"", page, StringComparison.Ordinal);
         Assert.Contains("data-device-flow-result", page, StringComparison.Ordinal);
         Assert.Contains("data-device-flow-close", page, StringComparison.Ordinal);
         Assert.Contains("data-device-close-fallback", page, StringComparison.Ordinal);
         Assert.Contains("data-device-close-fallback hidden", page, StringComparison.Ordinal);
+        Assert.Contains("[hidden] { display: none !important; }", stylesheet, StringComparison.Ordinal);
         Assert.Contains("data-enhance=\"false\"", page, StringComparison.Ordinal);
         Assert.Contains("window.close();", script, StringComparison.Ordinal);
         Assert.Contains("var strategies = [", script, StringComparison.Ordinal);

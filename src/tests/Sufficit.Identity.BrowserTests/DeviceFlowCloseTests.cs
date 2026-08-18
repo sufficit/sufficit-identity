@@ -15,10 +15,14 @@ public sealed class DeviceFlowCloseTests : PageTest
             await Page.EvaluateAsync("window.open('about:blank', '_blank')"));
         await popup.SetContentAsync("""
             <main data-device-flow-result>
-                <button type="button" data-device-flow-close hidden>Fechar esta aba</button>
+                <button type="button" class="btn btn-primary btn-block" data-device-flow-close hidden>Fechar esta aba</button>
                 <p data-device-close-fallback hidden>Fechamento manual</p>
             </main>
             """);
+        await popup.AddStyleTagAsync(new PageAddStyleTagOptions
+        {
+            Path = ResolveIdentityStylesheet()
+        });
         await popup.EvaluateAsync("window.opener = null");
         await popup.AddScriptTagAsync(new PageAddScriptTagOptions
         {
@@ -50,10 +54,14 @@ public sealed class DeviceFlowCloseTests : PageTest
     {
         await Page.SetContentAsync("""
             <main data-device-flow-result>
-                <button type="button" data-device-flow-close hidden>Fechar esta aba</button>
+                <button type="button" class="btn btn-primary btn-block" data-device-flow-close hidden>Fechar esta aba</button>
                 <p data-device-close-fallback hidden>Fechamento manual</p>
             </main>
             """);
+        await Page.AddStyleTagAsync(new PageAddStyleTagOptions
+        {
+            Path = ResolveIdentityStylesheet()
+        });
         await Page.EvaluateAsync("""
             () => {
                 window.__closeCalls = [];
@@ -126,6 +134,30 @@ public sealed class DeviceFlowCloseTests : PageTest
         }
 
         throw new FileNotFoundException("Unable to locate identity.js from the test directory.");
+    }
+
+    private static string ResolveIdentityStylesheet()
+    {
+        var current = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
+        while (current is not null)
+        {
+            var candidate = Path.Combine(
+                current.FullName,
+                "src",
+                "ui",
+                "Sufficit.Identity.UI",
+                "wwwroot",
+                "css",
+                "site.css");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new FileNotFoundException("Unable to locate site.css from the test directory.");
     }
 
     private sealed record CloseReport(string Event, string? Strategy);
