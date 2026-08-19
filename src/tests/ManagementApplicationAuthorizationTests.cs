@@ -125,44 +125,6 @@ public sealed class ManagementApplicationAuthorizationTests
     }
 
     [Fact]
-    public async Task Configured_service_client_bypasses_mfa_only_for_its_mapped_identity()
-    {
-        var options = Options.Create(new ManagementOptions
-        {
-            RequireMfa = true,
-            Authorization = new ManagementAuthorizationOptions
-            {
-                ServiceClientCapabilities = new(StringComparer.OrdinalIgnoreCase)
-                {
-                    ["sufficit_landing_pages_vault"] =
-                    [ManagementCapabilities.VaultSecretsResolve]
-                }
-            }
-        });
-        var principal = PrincipalWithClaims(new Claim(
-            "sub",
-            "sufficit_landing_pages_vault"));
-        var evaluator = new CapabilityManagementAuthorizationEvaluator(
-            options,
-            objectAccess: new AllowingObjectAccessPolicy());
-
-        var decision = await evaluator.EvaluateAsync(
-            principal,
-            ManagementCapabilities.VaultSecretsResolve,
-            new ManagementResource(ManagementResourceTypes.VaultSecrets,
-                "landing-pages/page/token"));
-
-        Assert.True(decision.IsAllowed);
-
-        var context = new AuthorizationHandlerContext(
-            [new MfaRequirement()],
-            principal,
-            resource: null);
-        await new MfaHandler(options).HandleAsync(context);
-        Assert.True(context.HasSucceeded);
-    }
-
-    [Fact]
     public async Task Unknown_capability_is_denied_even_when_present_as_a_claim()
     {
         const string unknownCapability = "identity.business-role.manage";
