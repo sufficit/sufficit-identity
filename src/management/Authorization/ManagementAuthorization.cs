@@ -373,6 +373,23 @@ public sealed class ManagementAuthorizationOptions
     public Dictionary<string, string[]> ServiceClientCapabilities { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
 
+    public bool IsConfiguredServiceClient(ClaimsPrincipal principal)
+    {
+        if (ServiceClientCapabilities.Count is 0)
+        {
+            return false;
+        }
+
+        var identifiers = principal.Claims
+            .Where(claim => claim.Type is "sub" or "client_id" or "azp")
+            .Select(claim => claim.Value)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return ServiceClientCapabilities.Keys.Any(
+            clientId => identifiers.Contains(clientId));
+    }
+
     /// <summary>
     /// Claim types that carry exact management capability names (e.g.
     /// <c>identity.users.read</c>). <b>Must NOT include <c>"scope"</c></b>:
@@ -488,16 +505,15 @@ public sealed class ScopeAndRoleManagementEntitlementResolver(
         // OAuth scope alone can never grant a management capability.
         if (authorization.ServiceClientCapabilities.Count > 0)
         {
-            var serviceClientIds = principal.Claims
-                .Where(claim => claim.Type is "sub" or "client_id" or "azp")
-                .Select(claim => claim.Value)
-                .Where(value => !string.IsNullOrWhiteSpace(value))
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
             foreach (var (clientId, mapped) in authorization.ServiceClientCapabilities)
             {
                 if (string.IsNullOrWhiteSpace(clientId)
-                    || !serviceClientIds.Contains(clientId))
+                    || !principal.Claims.Any(claim =>
+                        (claim.Type is "sub" or "client_id" or "azp")
+                        && string.Equals(
+                            claim.Value,
+                            clientId,
+                            StringComparison.OrdinalIgnoreCase)))
                 {
                     continue;
                 }
@@ -800,6 +816,7 @@ public sealed class CapabilityManagementAuthorizationEvaluator
     private readonly IManagementEntitlementResolver entitlements;
     private readonly IManagementAccessPolicyProvider accessPolicies;
     private readonly IManagementObjectAccessPolicy objectAccess;
+    private readonly ManagementAuthorizationOptions? authorization;
 
     private static readonly HashSet<string> MfaMethods =
         new(StringComparer.Ordinal)
@@ -815,6 +832,7 @@ public sealed class CapabilityManagementAuthorizationEvaluator
         this.entitlements = entitlements;
         this.accessPolicies = accessPolicies;
         this.objectAccess = objectAccess;
+        authorization = null;
     }
 
     // Source-compatible fallback for an embedded UI compiled against the preceding
@@ -832,6 +850,7 @@ public sealed class CapabilityManagementAuthorizationEvaluator
             ?? new ConfigurationManagementAccessPolicyProvider(options);
         this.objectAccess = objectAccess
             ?? new DefaultManagementObjectAccessPolicy();
+        authorization = options.Value.Authorization;
     }
 
     public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
@@ -885,7 +904,9 @@ public sealed class CapabilityManagementAuthorizationEvaluator
         var policy = await accessPolicies.GetAsync(
             resource,
             cancellationToken);
-        if (policy.RequireMfa && !HasMfaEvidence(principal))
+        if (policy.RequireMfa
+            && !(authorization?.IsConfiguredServiceClient(principal) ?? false)
+            && !HasMfaEvidence(principal))
         {
             return ManagementAuthorizationDecision.StepUpRequired(
                 "mfa_required",
