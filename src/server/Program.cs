@@ -184,8 +184,12 @@ if (mgmtEnabled)
     // The vault is already registered by AddSufficitIdentitySTS above; the
     // resolver consumes IKeyVault (pass-through by default, real crypto when
     // Sufficit:Vault:Enabled=true).
+    // The resolver reads logical client-secret paths from the central named
+    // Vault. It is scoped because IVaultNamedSecretStore is scoped to the
+    // request/database context; ciphertext references remain supported by the
+    // same resolver for compatibility with older manifests.
     builder.Services.Replace(
-        ServiceDescriptor.Singleton<
+        ServiceDescriptor.Scoped<
             Sufficit.Identity.Management.Provisioning.IClientSecretResolver,
             Sufficit.Identity.Vault.VaultBackedClientSecretResolver>());
     if (uiHostingOptions.Management.IsEmbedded)
