@@ -29,25 +29,6 @@ public sealed class ClientDefinitionPolicyTests
             issue.Code is "client_credentials_requires_confidential");
     }
 
-    [Fact]
-    public void Provisioning_can_authorize_a_reserved_service_scope_explicitly()
-    {
-        var result = CreateValidator().Validate(new ClientDefinitionRequest(
-            ClientDefinitionSource.Provisioning,
-            "sufficit_landing_pages_vault",
-            "confidential",
-            ["client_credentials"],
-            ["identity.management"],
-            [],
-            RequirePkce: false,
-            HasClientSecret: true,
-            ActorSubject: "operator-1",
-            AuthorizeSensitiveTransitions: true));
-
-        Assert.DoesNotContain(result.Issues, issue => issue.Code is "scope_reserved");
-        Assert.True(result.IsValid);
-    }
-
     [Theory]
     [InlineData("public", "authorization_code", true)]
     [InlineData("confidential", "authorization_code", true)]

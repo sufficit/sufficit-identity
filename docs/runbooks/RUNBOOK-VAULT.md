@@ -334,13 +334,10 @@ Superfície para consumidores remotos:
   `AddSufficitVaultSecretsClient`.
 
 Para autorizar um serviço (ex.: `SufficitAIServer`): conceda o scope
-`identity.management` e mapeie o `client_id` exato em
-`Management:Authorization:ServiceClientCapabilities` com as capabilities de
-vault necessárias (`identity.vault.secrets.read`, `.manage`, `.resolve`). O
-resolver também aceita `sub`/`azp` equivalentes do token, mas nunca transforma
-o escopo OAuth em capability. Atenção ao `RequireMfa` do management: principais
-de serviço não carregam `amr`, então a implantação precisa de política
-compatível para esses clientes.
+`identity.management` e as capabilities de vault via claims `permission`
+(`identity.vault.secrets.read`, `.manage`, `.resolve`). Atenção ao
+`RequireMfa` do management: principais de serviço não carregam `amr`, então a
+implantação precisa de política compatível para esses clientes.
 
 Os segredos do sufficit-ai vivem no namespace `ai/` (nome = `ai/<referência>`).
 Contextos usados pelo AI: `<guid>` do tenant para segredos compartilhados no

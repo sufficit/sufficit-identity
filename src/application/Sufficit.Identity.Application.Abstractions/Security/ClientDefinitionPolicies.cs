@@ -303,11 +303,7 @@ public sealed class ClientDefinitionValidator(
 
         foreach (var scope in scopes)
         {
-            var reservedScopeAuthorized =
-                request.Source is ClientDefinitionSource.Provisioning
-                && request.AuthorizeSensitiveTransitions
-                && !string.IsNullOrWhiteSpace(request.ActorSubject);
-            if (reservedScopes.IsReserved(scope) && !reservedScopeAuthorized)
+            if (reservedScopes.IsReserved(scope))
             {
                 issues.Add(new(
                     "scope_reserved",
