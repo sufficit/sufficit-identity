@@ -365,15 +365,6 @@ public sealed class ManagementAuthorizationOptions
     public Dictionary<string, string[]> RoleCapabilities { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// Maps an OAuth service-client identifier to the narrow set of management
-    /// capabilities it may use. This is intentionally separate from roles:
-    /// client-credentials tokens have no user role, and their subject is the
-    /// registered <c>client_id</c>. Keep this list explicit and minimal.
-    /// </summary>
-    public Dictionary<string, string[]> ServiceClientCapabilities { get; set; } =
-        new(StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>
     /// Claim types that carry exact management capability names (e.g.
     /// <c>identity.users.read</c>). <b>Must NOT include <c>"scope"</c></b>:
     /// the OAuth <c>scope</c> claim carries OAuth scope values (like
@@ -478,38 +469,6 @@ public sealed class ScopeAndRoleManagementEntitlementResolver(
             if (ManagementCapabilities.All.Contains(capability))
             {
                 capabilities.Add(capability);
-            }
-        }
-
-        // --- Capabilities for client-credentials service principals ---
-        // Client credentials tokens do not carry user roles. OpenIddict uses
-        // the registered client id as the subject; some validators also retain
-        // it as client_id/azp. Match only exact configured identifiers so an
-        // OAuth scope alone can never grant a management capability.
-        if (authorization.ServiceClientCapabilities.Count > 0)
-        {
-            var serviceClientIds = principal.Claims
-                .Where(claim => claim.Type is "sub" or "client_id" or "azp")
-                .Select(claim => claim.Value)
-                .Where(value => !string.IsNullOrWhiteSpace(value))
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var (clientId, mapped) in authorization.ServiceClientCapabilities)
-            {
-                if (string.IsNullOrWhiteSpace(clientId)
-                    || !serviceClientIds.Contains(clientId))
-                {
-                    continue;
-                }
-
-                foreach (var rawCapability in mapped)
-                {
-                    var capability = ManagementCapabilities.Normalize(rawCapability);
-                    if (ManagementCapabilities.All.Contains(capability))
-                    {
-                        capabilities.Add(capability);
-                    }
-                }
             }
         }
 
