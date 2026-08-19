@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
 using OpenIddict.Validation.AspNetCore;
 using Sufficit.Identity.Application.Branding;
@@ -333,7 +334,9 @@ public sealed class MfaRequirement : IAuthorizationRequirement;
 /// <c>amr</c> claim with at least one MFA-indicating value. Succeeds only then;
 /// otherwise leaves the requirement unsatisfied (the policy then denies).
 /// </summary>
-public sealed class MfaHandler : AuthorizationHandler<MfaRequirement>
+public sealed class MfaHandler(
+    IOptions<ManagementOptions>? options = null)
+    : AuthorizationHandler<MfaRequirement>
 {
     private const string AmrClaimType = "amr";
 
@@ -346,6 +349,13 @@ public sealed class MfaHandler : AuthorizationHandler<MfaRequirement>
     protected override Task HandleRequirementAsync(
         AuthorizationHandlerContext context, MfaRequirement requirement)
     {
+        if (options?.Value.Authorization.IsConfiguredServiceClient(
+                context.User) is true)
+        {
+            context.Succeed(requirement);
+            return Task.CompletedTask;
+        }
+
         var amrValues = context.User.FindAll(AmrClaimType).Select(c => c.Value);
         if (amrValues.Any(v => MfaValues.Contains(v)))
         {
