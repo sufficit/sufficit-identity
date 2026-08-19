@@ -308,7 +308,9 @@ public static partial class IdentityProvisioningManifestValidator
 
             foreach (var scope in client.Scopes ?? [])
             {
-                if (!StandardScopes.Contains(scope) && !declaredScopes.Contains(scope))
+                if (!StandardScopes.Contains(scope)
+                    && !declaredScopes.Contains(scope)
+                    && !(reservedScopePolicy?.IsReserved(scope) ?? false))
                 {
                     errors.Add(
                         $"{path}.scopes references undeclared custom scope '{scope}'.");

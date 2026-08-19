@@ -94,6 +94,37 @@ public sealed class ManagementApplicationAuthorizationTests
     }
 
     [Fact]
+    public async Task Configured_service_client_receives_only_mapped_vault_capabilities()
+    {
+        var options = Options.Create(new ManagementOptions
+        {
+            Authorization = new ManagementAuthorizationOptions
+            {
+                ServiceClientCapabilities = new(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["sufficit_landing_pages_vault"] =
+                    [
+                        ManagementCapabilities.VaultSecretsRead,
+                        ManagementCapabilities.VaultSecretsManage,
+                        ManagementCapabilities.VaultSecretsResolve
+                    ]
+                }
+            }
+        });
+        var resolver = new ScopeAndRoleManagementEntitlementResolver(options);
+
+        var entitlements = await resolver.ResolveAsync(
+            PrincipalWithClaims(new Claim(
+                "sub",
+                "sufficit_landing_pages_vault")));
+
+        Assert.Contains(ManagementCapabilities.VaultSecretsRead, entitlements.Capabilities);
+        Assert.Contains(ManagementCapabilities.VaultSecretsManage, entitlements.Capabilities);
+        Assert.Contains(ManagementCapabilities.VaultSecretsResolve, entitlements.Capabilities);
+        Assert.DoesNotContain(ManagementCapabilities.UsersRead, entitlements.Capabilities);
+    }
+
+    [Fact]
     public async Task Unknown_capability_is_denied_even_when_present_as_a_claim()
     {
         const string unknownCapability = "identity.business-role.manage";
