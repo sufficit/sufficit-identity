@@ -143,6 +143,78 @@ public sealed class ManagementClientDataSource(
             "Client update",
             cancellationToken);
 
+    public Task<ManagementDataResult<RotateManagementClientSecretResult>>
+        RotateClientSecretAsync(
+            RotateManagementClientSecretCommand command,
+            CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (clients, context) => clients.RotateSecretAsync(
+                command,
+                context,
+                cancellationToken),
+            "Client secret rotation",
+            cancellationToken);
+
+    public Task<ManagementDataResult<ManagementClientCredentialsOverview>>
+        GetClientCredentialsAsync(
+            string clientId,
+            CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (clients, context) => clients.GetCredentialsAsync(
+                clientId,
+                context,
+                cancellationToken),
+            "Client credential listing",
+            cancellationToken);
+
+    public Task<ManagementDataResult<CreateManagementClientCredentialResult>>
+        CreateClientCredentialAsync(
+            CreateManagementClientCredentialCommand command,
+            CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (clients, context) => clients.CreateCredentialAsync(
+                command,
+                context,
+                cancellationToken),
+            "Client credential creation",
+            cancellationToken);
+
+    public Task<ManagementDataResult<ManagementClientCredentialsOverview>>
+        RevokeClientCredentialAsync(
+            RevokeManagementClientCredentialCommand command,
+            CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (clients, context) => clients.RevokeCredentialAsync(
+                command,
+                context,
+                cancellationToken),
+            "Client credential revocation",
+            cancellationToken);
+
+    public Task<ManagementDataResult<ManagementClientCredentialsOverview>>
+        RegisterClientTlsCertificateAsync(
+            RegisterManagementClientTlsCertificateCommand command,
+            CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (clients, context) => clients.RegisterTlsCertificateAsync(
+                command,
+                context,
+                cancellationToken),
+            "TLS client certificate registration",
+            cancellationToken);
+
+    public Task<ManagementDataResult<ManagementClientCredentialsOverview>>
+        RevokeClientTlsCertificateAsync(
+            RevokeManagementClientTlsCertificateCommand command,
+            CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (clients, context) => clients.RevokeTlsCertificateAsync(
+                command,
+                context,
+                cancellationToken),
+            "TLS client certificate revocation",
+            cancellationToken);
+
     public Task<ManagementDataResult<bool>> DeleteClientAsync(
         string clientId,
         CancellationToken cancellationToken = default) =>

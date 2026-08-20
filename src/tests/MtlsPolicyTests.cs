@@ -286,6 +286,59 @@ public sealed class MtlsPolicyTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Trusted_certificate_authority_loader_rejects_private_key_material()
+    {
+        using var certificate = CreateCertificate();
+        using var privateKey = certificate.GetRSAPrivateKey();
+        Assert.NotNull(privateKey);
+        var path = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(
+                path,
+                certificate.ExportCertificatePem()
+                    + privateKey.ExportPkcs8PrivateKeyPem());
+
+            var exception = Assert.Throws<InvalidOperationException>(
+                () => MtlsCertificateAuthorityLoader.Load([path]));
+
+            Assert.Contains("private key material", exception.Message,
+                StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Trusted_certificate_authority_policy_maps_revocation_controls()
+    {
+        var policy = new X509ChainPolicy();
+
+        MtlsCertificateAuthorityLoader.ConfigurePolicy(
+            policy,
+            new MtlsOptions
+            {
+                RevocationMode = MtlsCertificateRevocationMode.Offline,
+                RevocationFailureMode =
+                    MtlsRevocationFailureMode.AllowWhenUnavailable,
+                RevocationTimeoutSeconds = 7,
+            });
+
+        Assert.Equal(X509RevocationMode.Offline, policy.RevocationMode);
+        Assert.Equal(X509RevocationFlag.EntireChain, policy.RevocationFlag);
+        Assert.Equal(TimeSpan.FromSeconds(7), policy.UrlRetrievalTimeout);
+        Assert.True(policy.DisableCertificateDownloads);
+        Assert.True(policy.VerificationFlags.HasFlag(
+            X509VerificationFlags.IgnoreEndRevocationUnknown));
+        Assert.True(policy.VerificationFlags.HasFlag(
+            X509VerificationFlags.IgnoreCertificateAuthorityRevocationUnknown));
+        Assert.True(policy.VerificationFlags.HasFlag(
+            X509VerificationFlags.IgnoreRootRevocationUnknown));
+    }
+
     private static MtlsClientCertificatePolicy CreatePolicy(
         X509Certificate2 certificate,
         MtlsRevocationFailureMode failureMode,

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using System.Security.Cryptography.X509Certificates;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
@@ -151,6 +153,35 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
 
         builder.Configure(app =>
         {
+            // TestServer has no TLS handshake. Project a DER certificate from
+            // a test-only header onto the connection so OpenIddict exercises
+            // its real mTLS extraction and validation handlers.
+            app.Use(async (context, next) =>
+            {
+                const string headerName =
+                    "X-Sufficit-Test-Client-Certificate";
+                if (context.Request.Headers.TryGetValue(
+                        headerName,
+                        out var encodedCertificate)
+                    && !string.IsNullOrWhiteSpace(encodedCertificate))
+                {
+                    try
+                    {
+                        context.Connection.ClientCertificate =
+                            X509CertificateLoader.LoadCertificate(
+                                Convert.FromBase64String(encodedCertificate!));
+                    }
+                    catch (FormatException)
+                    {
+                        context.Response.StatusCode =
+                            StatusCodes.Status400BadRequest;
+                        return;
+                    }
+                }
+
+                await next();
+            });
+
             var configuration = app.ApplicationServices.GetRequiredService<IConfiguration>();
             app.UseSufficitSecurityHeaders(configuration);
 

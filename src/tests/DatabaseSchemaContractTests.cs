@@ -103,6 +103,26 @@ public sealed class DatabaseSchemaContractTests
             "ResourceType",
             "ResourceId");
 
+        var clientCredential = RequiredEntity<OAuthClientCredential>(model);
+        Assert.Equal("oauthclientcredentials", clientCredential.GetTableName());
+        AssertProperty(clientCredential, "Id", "id", "char(36)", null,
+            nullable: false);
+        AssertProperty(clientCredential, "ClientId", "clientid", "varchar(100)",
+            100, nullable: false);
+        AssertProperty(clientCredential, "Kind", "kind", "varchar(32)", 32,
+            nullable: false);
+        AssertProperty(clientCredential, "Label", "label", "varchar(100)", 100,
+            nullable: false);
+        AssertProperty(clientCredential, "SecretHash", "secrethash", "varchar(1024)",
+            1024, nullable: false);
+        AssertProperty(clientCredential, "ConcurrencyToken", "concurrencytoken",
+            "varchar(32)", 32, nullable: false);
+        Assert.True(clientCredential.FindProperty("ConcurrencyToken")!.IsConcurrencyToken);
+        AssertIndex(clientCredential,
+            "IX_oauthclientcredentials_client_kind_status",
+            unique: false,
+            "ClientId", "Kind", "RevokedAtUtc", "ExpiresAtUtc");
+
         var scimProfile = RequiredEntity<ScimUserProfile>(model);
         Assert.Equal("scimuserprofiles", scimProfile.GetTableName());
         AssertProperty(
@@ -191,6 +211,7 @@ public sealed class DatabaseSchemaContractTests
             IdentityDatabaseSchema.VaultSecretNamespacesMigrationId,
             IdentityDatabaseSchema.BinaryIdentifierCollationMigrationId,
             IdentityDatabaseSchema.VaultSecretExpirationMigrationId,
+            IdentityDatabaseSchema.OAuthClientCredentialsMigrationId,
         ], context.Database.GetMigrations());
 
         var history = context.GetService<IHistoryRepository>().GetCreateScript();

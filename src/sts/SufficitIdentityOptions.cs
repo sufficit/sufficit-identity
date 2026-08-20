@@ -1088,11 +1088,22 @@ public sealed class MtlsOptions
         MtlsDeploymentMode.Unattested;
 
     /// <summary>
-    /// SHA-256 certificate thumbprints allowed for each OAuth client. Multiple
-    /// entries permit bounded rollover overlap.
+    /// Legacy configuration-only SHA-256 pins. New deployments must register
+    /// public certificates through the client JWKS/management API so the same
+    /// binding is used by native client authentication and sender constraint.
+    /// Kept temporarily so older configuration files continue to bind.
     /// </summary>
     public Dictionary<string, HashSet<string>> ClientCertificateThumbprints { get; init; } =
         new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Public PEM/DER files containing the root and optional intermediate
+    /// certificate authorities trusted for RFC 8705 <c>tls_client_auth</c>.
+    /// The files must never contain private keys. When this collection is
+    /// empty, the recommended <c>self_signed_tls_client_auth</c> method remains
+    /// available but PKI-based client authentication is not advertised.
+    /// </summary>
+    public string[] TrustedCertificateAuthorityPaths { get; init; } = [];
 
     /// <summary>
     /// Builds the platform X.509 chain in addition to the explicit client pin.

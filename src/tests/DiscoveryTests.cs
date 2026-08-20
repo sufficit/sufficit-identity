@@ -122,7 +122,7 @@ public sealed class DiscoveryTests
     }
 
     // ----------------------------------------------------------------------
-    // Item 3.4 (partial) — mTLS sender-constrained tokens (RFC 8705).
+    // Item 3.4 — mTLS sender-constrained tokens (RFC 8705).
     // Discovery must advertise tls_client_certificate_bound_access_tokens ONLY
     // when Sufficit:Identity:Mtls:Enabled is true (the host must be configured
     // for client certificates first — see MtlsOptions XML doc).
@@ -146,11 +146,8 @@ public sealed class DiscoveryTests
     public async Task Discovery_advertises_mtls_and_mtls_endpoint_aliases_when_enabled()
     {
         // Isolated factory with Mtls.Enabled=true: discovery must publish the
-        // capability flag AND the MTLS-aliased endpoint paths so clients know
-        // where to target for certificate-based authentication. (A full mTLS
-        // handshake test requires real client certs + TLS config at the host
-        // layer — out of scope for TestServer; this asserts the discovery
-        // contract, which is what code under test controls.)
+        // capability flag, native authentication method and aliased endpoint
+        // paths so clients know where to target certificate authentication.
         using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
         {
             ["Sufficit:Identity:Mtls:Enabled"] = "true",
@@ -164,6 +161,15 @@ public sealed class DiscoveryTests
 
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(json.GetProperty("tls_client_certificate_bound_access_tokens").GetBoolean());
+        var authenticationMethods = json
+            .GetProperty("token_endpoint_auth_methods_supported")
+            .EnumerateArray()
+            .Select(value => value.GetString())
+            .ToArray();
+        Assert.Contains(
+            "self_signed_tls_client_auth",
+            authenticationMethods);
+        Assert.DoesNotContain("tls_client_auth", authenticationMethods);
 
         // The MTLS token endpoint alias is the primary one clients use for
         // certificate-based client auth. Its presence proves the aliased paths

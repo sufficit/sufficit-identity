@@ -327,6 +327,7 @@ public class AuthorizationController : Controller
     // /connect/token
     // -----------------------------------------------------------------------
     [HttpPost("~/connect/token")]
+    [HttpPost("~/connect/token/mtls")]
     [IgnoreAntiforgeryToken]
     [Produces("application/json")]
     public async Task<IActionResult> Exchange()
@@ -346,7 +347,9 @@ public class AuthorizationController : Controller
     // -----------------------------------------------------------------------
     [Authorize(AuthenticationSchemes = OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)]
     [HttpGet("~/connect/userinfo")]
+    [HttpGet("~/connect/userinfo/mtls")]
     [HttpPost("~/connect/userinfo")]
+    [HttpPost("~/connect/userinfo/mtls")]
     public async Task<IActionResult> Userinfo()
     {
         // NOT _userManager.GetUserAsync(User): that overload resolves the

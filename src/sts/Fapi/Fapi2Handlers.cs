@@ -141,7 +141,10 @@ internal sealed class ValidateFapiPushedAuthorizationRequest :
         var httpContext = context.Transaction.GetHttpRequest()?.HttpContext;
         var mtls = httpContext is null
             ? new Mtls.MtlsClientCertificateDecision(false)
-            : _mtlsPolicy.Evaluate(httpContext, context.Request.ClientId);
+            : await _mtlsPolicy.EvaluateAsync(
+                httpContext,
+                context.Request.ClientId,
+                context.CancellationToken);
         if (!Fapi2Policy.UsesPrivateKeyJwt(context, _issuer) && !mtls.Allowed)
         {
             context.Reject(Errors.InvalidClient,
@@ -200,20 +203,23 @@ internal sealed class ValidateFapiTokenRequest :
     public static OpenIddictServerHandlerDescriptor Descriptor { get; } =
         OpenIddictServerHandlerDescriptor
             .CreateBuilder<ValidateTokenRequestContext>()
-            .UseSingletonHandler<ValidateFapiTokenRequest>()
+            .UseScopedHandler<ValidateFapiTokenRequest>()
             .SetOrder(Exchange.ValidateAuthentication.Descriptor.Order + 500)
             .SetType(OpenIddictServerHandlerType.Custom)
             .Build();
 
-    public ValueTask HandleAsync(ValidateTokenRequestContext context)
+    public async ValueTask HandleAsync(ValidateTokenRequestContext context)
     {
         if (!Fapi2Policy.Applies(_options, context.Request.ClientId))
-            return ValueTask.CompletedTask;
+            return;
 
         var httpContext = context.Transaction.GetHttpRequest()?.HttpContext;
         var mtls = httpContext is null
             ? new Mtls.MtlsClientCertificateDecision(false)
-            : _mtlsPolicy.Evaluate(httpContext, context.Request.ClientId);
+            : await _mtlsPolicy.EvaluateAsync(
+                httpContext,
+                context.Request.ClientId,
+                context.CancellationToken);
         if (!Fapi2Policy.UsesPrivateKeyJwt(context, _issuer) && !mtls.Allowed)
         {
             context.Reject(Errors.InvalidClient,
@@ -226,6 +232,5 @@ internal sealed class ValidateFapiTokenRequest :
                 "This FAPI 2.0 client requires mutual-TLS sender-constrained tokens.");
         }
 
-        return ValueTask.CompletedTask;
     }
 }
