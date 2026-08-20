@@ -1081,6 +1081,14 @@ public sealed class MtlsOptions
     public bool Enabled { get; init; } = false;
 
     /// <summary>
+    /// Optional public base URL used for the RFC 8705 endpoint aliases in
+    /// discovery. This is useful when the mTLS terminator is isolated on a
+    /// dedicated host or port, while the ordinary issuer remains unchanged.
+    /// When empty, the configured issuer is used.
+    /// </summary>
+    public string? EndpointBaseUrl { get; init; }
+
+    /// <summary>
     /// Explicit statement of where client-certificate validation occurs.
     /// Enabling mTLS with Unattested is rejected during startup.
     /// </summary>
