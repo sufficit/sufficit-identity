@@ -554,10 +554,10 @@
         "HostName": "",
         "UserName": "",
         "Password": "",
-        "Port": 5672,
-        "UseTls": false,
-        "RequireTls": false,
-        "TlsServerName": "",
+        "Port": 5671,
+        "UseTls": true,
+        "RequireTls": true,
+        "TlsServerName": "exchange.sufficit.com.br",
         "CheckCertificateRevocation": true,
         "Heartbeat": null
       }
