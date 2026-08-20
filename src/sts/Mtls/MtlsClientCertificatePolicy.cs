@@ -1,6 +1,9 @@
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
+using OpenIddict.Abstractions;
+using OpenIddict.Server;
 
 namespace Sufficit.Identity.STS.Mtls;
 
@@ -11,9 +14,10 @@ public sealed record MtlsClientCertificateDecision(
 
 public interface IMtlsClientCertificatePolicy
 {
-    MtlsClientCertificateDecision Evaluate(
+    ValueTask<MtlsClientCertificateDecision> EvaluateAsync(
         HttpContext httpContext,
-        string? clientId);
+        string? clientId,
+        CancellationToken cancellationToken = default);
 }
 
 internal sealed record MtlsCertificateChainResult(
@@ -52,12 +56,12 @@ internal sealed class SystemMtlsCertificateChainValidator
 
     internal static X509RevocationMode ToPlatformMode(
         MtlsCertificateRevocationMode mode) => mode switch
-    {
-        MtlsCertificateRevocationMode.NoCheck => X509RevocationMode.NoCheck,
-        MtlsCertificateRevocationMode.Online => X509RevocationMode.Online,
-        MtlsCertificateRevocationMode.Offline => X509RevocationMode.Offline,
-        _ => throw new ArgumentOutOfRangeException(nameof(mode)),
-    };
+        {
+            MtlsCertificateRevocationMode.NoCheck => X509RevocationMode.NoCheck,
+            MtlsCertificateRevocationMode.Online => X509RevocationMode.Online,
+            MtlsCertificateRevocationMode.Offline => X509RevocationMode.Offline,
+            _ => throw new ArgumentOutOfRangeException(nameof(mode)),
+        };
 }
 
 internal sealed class MtlsClientCertificatePolicy : IMtlsClientCertificatePolicy
@@ -67,6 +71,20 @@ internal sealed class MtlsClientCertificatePolicy : IMtlsClientCertificatePolicy
         | X509ChainStatusFlags.OfflineRevocation;
     private readonly MtlsOptions _options;
     private readonly IMtlsCertificateChainValidator _chainValidator;
+    private readonly IOpenIddictApplicationManager? _applications;
+    private readonly IOptionsMonitor<OpenIddictServerOptions>? _serverOptions;
+
+    public MtlsClientCertificatePolicy(
+        MtlsOptions options,
+        IMtlsCertificateChainValidator chainValidator,
+        IOpenIddictApplicationManager applications,
+        IOptionsMonitor<OpenIddictServerOptions> serverOptions)
+    {
+        _options = options;
+        _chainValidator = chainValidator;
+        _applications = applications;
+        _serverOptions = serverOptions;
+    }
 
     public MtlsClientCertificatePolicy(
         MtlsOptions options,
@@ -146,6 +164,88 @@ internal sealed class MtlsClientCertificatePolicy : IMtlsClientCertificatePolicy
 
                 return new(false, thumbprint, "certificate_chain_invalid");
             }
+        }
+
+        return new(true, thumbprint);
+    }
+
+    public async ValueTask<MtlsClientCertificateDecision> EvaluateAsync(
+        HttpContext httpContext,
+        string? clientId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(httpContext);
+        if (_applications is null || _serverOptions is null)
+        {
+            return Evaluate(httpContext, clientId);
+        }
+        if (!_options.Enabled)
+            return new(false, ReasonCode: "mtls_disabled");
+        if (_options.DeploymentMode == MtlsDeploymentMode.Unattested)
+            return new(false, ReasonCode: "deployment_unattested");
+        if (string.IsNullOrWhiteSpace(clientId))
+            return new(false, ReasonCode: "client_id_missing");
+
+        var certificate = httpContext.Connection.ClientCertificate;
+        if (certificate is null)
+            return new(false, ReasonCode: "certificate_missing");
+
+        var thumbprint = NormalizeThumbprint(
+            certificate.GetCertHashString(HashAlgorithmName.SHA256));
+        var application = await _applications.FindByClientIdAsync(
+            clientId,
+            cancellationToken);
+        if (application is null)
+            return new(false, thumbprint, "client_not_found");
+
+        var options = _serverOptions.CurrentValue;
+        var selfIssued = certificate.SubjectName.RawData.AsSpan()
+            .SequenceEqual(certificate.IssuerName.RawData);
+        if (selfIssued)
+        {
+            if (options.SelfSignedTlsClientAuthenticationPolicy is not
+                X509ChainPolicy basePolicy)
+            {
+                return new(false, thumbprint, "self_signed_authentication_disabled");
+            }
+
+            var policy = await _applications
+                .GetSelfSignedTlsClientAuthenticationPolicyAsync(
+                    application,
+                    basePolicy,
+                    cancellationToken);
+            if (policy is null || !await _applications
+                .ValidateSelfSignedTlsClientCertificateAsync(
+                    application,
+                    certificate,
+                    policy,
+                    cancellationToken))
+            {
+                return new(false, thumbprint, "certificate_not_bound_to_client");
+            }
+
+            return new(true, thumbprint);
+        }
+
+        if (options.PublicKeyInfrastructureTlsClientAuthenticationPolicy is not
+            X509ChainPolicy pkiBasePolicy)
+        {
+            return new(false, thumbprint, "pki_authentication_disabled");
+        }
+
+        var pkiPolicy = await _applications
+            .GetPublicKeyInfrastructureTlsClientAuthenticationPolicyAsync(
+                application,
+                pkiBasePolicy,
+                cancellationToken);
+        if (pkiPolicy is null || !await _applications
+            .ValidatePublicKeyInfrastructureTlsClientCertificateAsync(
+                application,
+                certificate,
+                pkiPolicy,
+                cancellationToken))
+        {
+            return new(false, thumbprint, "certificate_not_bound_to_client");
         }
 
         return new(true, thumbprint);

@@ -67,6 +67,8 @@ public static class ServiceCollectionExtensions
         // still replace either service before this registration.
         services.TryAddSingleton<IBrandingThemeProvider, BrandingThemeProvider>();
         services.TryAddSingleton<IUserAvatarUrlResolver, UserAvatarUrlResolver>();
+        services.TryAddSingleton<IClientCredentialSecretHasher,
+            ClientCredentialSecretHasher>();
 
         var startupSecretStore = secretStore ?? new EnvironmentSecretStore();
         var options = configuration
@@ -147,7 +149,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAuthenticationContextProjector, AuthenticationContextProjector>();
         services.AddSingleton<Mtls.IMtlsCertificateChainValidator,
             Mtls.SystemMtlsCertificateChainValidator>();
-        services.AddSingleton<Mtls.IMtlsClientCertificatePolicy,
+        services.AddScoped<Mtls.IMtlsClientCertificatePolicy,
             Mtls.MtlsClientCertificatePolicy>();
         services.AddSingleton<IdentityMetricsRuntimeState>();
         services.AddSingleton<IdentityUsageMetricChannel>();
@@ -578,6 +580,9 @@ public static class ServiceCollectionExtensions
             {
                 core.UseEntityFrameworkCore()
                     .UseDbContext<AppDbContext>();
+                core.ReplaceApplicationManager<
+                    OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication,
+                    SufficitOpenIddictApplicationManager>();
             })
             .AddServer(server =>
             {
@@ -599,15 +604,57 @@ public static class ServiceCollectionExtensions
                 // Mutual TLS (mTLS) endpoint aliases (RFC 8705, item 3.4).
                 // Opt-in via Sufficit:Identity:Mtls:Enabled — mTLS requires the
                 // HOST to request/validate client certificates at the TLS layer,
-                // so this just registers the aliased paths (distinct from the
-                // plain endpoints) so clients can target them for certificate-
-                // based authentication. The discovery metadata flag below
-                // advertises the capability only when Enabled. private_key_jwt
+                // so the aliased paths must be registered as real protocol
+                // endpoints in addition to being published in discovery.
+                // private_key_jwt
                 // (RFC 7523) is enabled by OpenIddict unconditionally and is
                 // NOT gated here — it is the OTHER strong client-auth method.
                 // -------------------------------------------------------------------
                 if (options.Mtls.Enabled)
                 {
+                    // Alias metadata alone does not map an ASP.NET endpoint.
+                    // Keep the original endpoints for compatible clients and
+                    // explicitly add the RFC 8705 aliases to OpenIddict's
+                    // endpoint matcher.
+                    server.SetTokenEndpointUris(
+                              "connect/token",
+                              "connect/token/mtls")
+                          .SetIntrospectionEndpointUris(
+                              "connect/introspect",
+                              "connect/introspect/mtls")
+                          .SetRevocationEndpointUris(
+                              "connect/revocation",
+                              "connect/revocation/mtls")
+                          .SetDeviceAuthorizationEndpointUris(
+                              "connect/deviceauthorization",
+                              "connect/deviceauthorization/mtls")
+                          .SetUserInfoEndpointUris(
+                              "connect/userinfo",
+                              "connect/userinfo/mtls")
+                          .SetPushedAuthorizationEndpointUris(
+                              "connect/par",
+                              "connect/par/mtls");
+
+                    // OpenIddict 7.6 implements both RFC 8705 client
+                    // authentication methods itself. Enabling the native
+                    // validators is essential: aliases and a cnf claim alone
+                    // do not authenticate a confidential client.
+                    server.EnableSelfSignedTlsClientAuthentication();
+                    var certificateAuthorities =
+                        Mtls.MtlsCertificateAuthorityLoader.Load(
+                            options.Mtls.TrustedCertificateAuthorityPaths);
+                    if (certificateAuthorities.Count > 0)
+                    {
+                        server.EnablePublicKeyInfrastructureTlsClientAuthentication(
+                            certificateAuthorities,
+                            policy => Mtls.MtlsCertificateAuthorityLoader
+                                .ConfigurePolicy(policy, options.Mtls));
+                    }
+
+                    // Let OpenIddict create and enforce RFC 8705 cnf claims
+                    // for access tokens and introspection responses.
+                    server.UseClientCertificateBoundAccessTokens();
+
                     // MTLS alias setters require ABSOLUTE URI strings (unlike
                     // SetTokenEndpointUris, which accepts relative paths and
                     // resolves them against the issuer). Build absolute URIs
@@ -802,7 +849,8 @@ public static class ServiceCollectionExtensions
 
                 if (options.Mtls.Enabled)
                 {
-                    server.AddEventHandler(Mtls.AttachMtlsConfirmation.Descriptor);
+                    server.AddEventHandler(Mtls
+                        .RejectCombinedDpopAndMtlsSenderConstraints.Descriptor);
                 }
 
                 // -------------------------------------------------------------------
@@ -994,10 +1042,9 @@ public static class ServiceCollectionExtensions
                         // 3.4). Advertised ONLY when Mtls.Enabled — the host
                         // must be configured for client certificates at the TLS
                         // layer for this to be true (see MtlsOptions XML doc).
-                        // OpenIddict 7.6 does not advertise this automatically,
-                        // so we publish it here to match the actual capability.
-                        context.Metadata["tls_client_certificate_bound_access_tokens"] =
-                            JsonValue.Create(options.Mtls.Enabled);
+                        // OpenIddict 7.6 publishes the RFC 8705 client
+                        // authentication methods, aliases and certificate-bound
+                        // token flag from the native mTLS configuration above.
 
                         // Dynamic Client Registration (RFC 7591 §2 / OIDC
                         // Discovery). OpenIddict ships no DCR, so it never
@@ -1449,20 +1496,10 @@ public static class ServiceCollectionExtensions
                 !options.Mtls.Enabled)
                 throw new InvalidOperationException(
                     "FAPI 2.0 SenderConstraint=mTLS requires Sufficit:Identity:Mtls:Enabled=true.");
-            if (options.Fapi2.SenderConstraint == Fapi2SenderConstraint.Mtls)
-            {
-                var missingBindings = options.Fapi2.ClientIds
-                    .Where(clientId =>
-                        !options.Mtls.ClientCertificateThumbprints.TryGetValue(
-                            clientId,
-                            out var thumbprints)
-                        || thumbprints.Count == 0)
-                    .ToArray();
-                if (missingBindings.Length > 0)
-                    throw new InvalidOperationException(
-                        "FAPI mTLS clients require certificate bindings: "
-                        + string.Join(", ", missingBindings));
-            }
+            // Per-client mTLS bindings are persisted as public X.509 JWKs and
+            // validated at request time. Startup cannot require them from the
+            // legacy configuration dictionary because operators rotate and
+            // revoke those bindings through the management API.
         }
 
         if (options.Jarm.Enabled)

@@ -13,6 +13,7 @@ using OpenIddict.Validation.AspNetCore;
 using Sufficit.Identity.Application.Branding;
 using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Core.Branding;
+using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorizations;
 using Sufficit.Identity.Management.Authorization;
@@ -164,6 +165,8 @@ public static class ServiceCollectionExtensions
             BrandingThemeProvider>();
         services.TryAddSingleton<IUserAvatarUrlResolver,
             UserAvatarUrlResolver>();
+        services.TryAddSingleton<IClientCredentialSecretHasher,
+            ClientCredentialSecretHasher>();
         services.TryAddSingleton<IClientSecretResolver, MissingClientSecretResolver>();
 
         // The named policy is always registered because controllers reference

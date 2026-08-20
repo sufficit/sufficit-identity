@@ -26,7 +26,10 @@ public sealed class SenderConstraintTests
             certificate,
             TestDataSeeder.ClientCredentialsClientId);
         await ((IAsyncLifetime)factory).InitializeAsync();
-        var client = factory.CreateClient();
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://sts.tests.local"),
+        });
         AddCertificate(client, certificate);
 
         var (status, body) = await client.PostFormAsync(
@@ -44,6 +47,7 @@ public sealed class SenderConstraintTests
         var accessToken = body.GetProperty("access_token").GetString();
         Assert.False(string.IsNullOrWhiteSpace(accessToken));
 
+        client.DefaultRequestHeaders.Remove(CertificateHeader);
         client.DefaultRequestHeaders.Authorization =
             IntrospectionTests.BasicAuthFor(
                 TestDataSeeder.IntrospectionClientId,
@@ -72,6 +76,7 @@ public sealed class SenderConstraintTests
         var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://sts.tests.local"),
         });
         var tokenUrl = new Uri(client.BaseAddress!, "connect/token").AbsoluteUri;
 
@@ -186,6 +191,7 @@ public sealed class SenderConstraintTests
         var client = factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
+            BaseAddress = new Uri("https://sts.tests.local"),
         });
         var tokenUrl = new Uri(client.BaseAddress!, "connect/token").AbsoluteUri;
         await TestOnlyEndpoints.SignInAsync(
@@ -306,6 +312,17 @@ public sealed class SenderConstraintTests
             key,
             HashAlgorithmName.SHA256,
             RSASignaturePadding.Pkcs1);
+        request.CertificateExtensions.Add(
+            new X509KeyUsageExtension(
+                X509KeyUsageFlags.DigitalSignature,
+                critical: true));
+        request.CertificateExtensions.Add(
+            new X509EnhancedKeyUsageExtension(
+                new OidCollection
+                {
+                    new Oid("1.3.6.1.5.5.7.3.2"),
+                },
+                critical: true));
         return request.CreateSelfSigned(
             DateTimeOffset.UtcNow.AddMinutes(-1),
             DateTimeOffset.UtcNow.AddHours(1));

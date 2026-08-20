@@ -197,6 +197,47 @@ else if (result?.IsSuccess is true && result.Value is not null)
                 </dl>
             </section>
 
+            @if (client.HasClientSecret
+                || client.AuthenticationMethods?.Count is > 0
+                || UsesClientCredentials(client))
+            {
+                <section class="client-detail-panel client-detail-panel--credentials"
+                         aria-labelledby="client-secret-heading">
+                    <header class="client-detail-panel__heading client-detail-panel__heading--action">
+                        <div>
+                            <h2 id="client-secret-heading">Autenticação da aplicação</h2>
+                            <p>Credenciais compartilhadas e chaves públicas aceitas nos endpoints OAuth</p>
+                        </div>
+                        @if (!client.IsManifestManaged)
+                        {
+                            <a class="compact-action" href="@EditCredentialsHref(client.Id)">
+                                Gerenciar
+                            </a>
+                        }
+                    </header>
+                    <div class="client-secret-summary">
+                        <span class="client-secret-summary__icon">
+                            <SUIIcon Name="@(HasAuthenticationMethod(client) ? "lock" : "alert")" Size="20" />
+                        </span>
+                        <div>
+                            <strong>
+                                @(HasAuthenticationMethod(client)
+                                    ? AuthenticationSummaryTitle(client)
+                                    : "Autenticação de cliente ainda não configurada")
+                            </strong>
+                            <span>
+                                @(HasAuthenticationMethod(client)
+                                    ? AuthenticationMethodsDescription(client)
+                                    : "Adicione um segredo ou uma chave pública antes de usar fluxos de cliente confidencial.")
+                            </span>
+                        </div>
+                        <SUIStatusBadge ToneValue="@(HasAuthenticationMethod(client) ? SUITone.Success : SUITone.Warning)">
+                            @(HasAuthenticationMethod(client) ? "Configurada" : "Ação necessária")
+                        </SUIStatusBadge>
+                    </div>
+                </section>
+            }
+
             <section class="client-detail-panel client-detail-panel--uris"
                      aria-labelledby="redirect-heading">
                 <header class="client-detail-panel__heading">
@@ -410,6 +451,9 @@ else
     private static string EditTokensHref(string id) =>
         $"clients/{Uri.EscapeDataString(id)}/edit?section=tokens";
 
+    private static string EditCredentialsHref(string id) =>
+        $"clients/{Uri.EscapeDataString(id)}/edit?section=credentials";
+
     private bool CanDelete =>
         !deleting
         && result?.Value is not null
@@ -515,6 +559,45 @@ else
         client.Permissions.Any(permission => permission.StartsWith(
             prefix,
             StringComparison.Ordinal));
+
+    private static bool UsesClientCredentials(ManagementClientDetail client) =>
+        client.Permissions.Contains("gt:client_credentials", StringComparer.Ordinal);
+
+    private static bool HasAuthenticationMethod(ManagementClientDetail client) =>
+        client.AuthenticationMethods?.Count is > 0;
+
+    private static string AuthenticationMethodsDescription(
+        ManagementClientDetail client)
+    {
+        var methods = client.AuthenticationMethods ?? [];
+        var labels = methods
+            .Select(method => method switch
+            {
+                "client_secret_basic" => "segredo no cabeçalho",
+                "client_secret_post" => "segredo no corpo",
+                "private_key_jwt" => "JWT assinado",
+                "tls_client_auth" => "certificado mTLS",
+                "self_signed_tls_client_auth" => "certificado mTLS autoassinado",
+                _ => method,
+            })
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        return labels.Length is 0
+            ? "Nenhum método disponível."
+            : $"Métodos disponíveis: {string.Join(", ", labels)}. Cada requisição usa somente um método.";
+    }
+
+    private static string AuthenticationSummaryTitle(
+        ManagementClientDetail client) =>
+        client.ActiveCredentialCount switch
+        {
+            > 1 => $"{client.ActiveCredentialCount} credenciais compartilhadas ativas",
+            1 => "1 credencial compartilhada ativa",
+            _ when client.AuthenticationMethods?.Contains(
+                "private_key_jwt",
+                StringComparer.Ordinal) is true => "Autenticação por chave pública ativa",
+            _ => "Autenticação de cliente configurada",
+        };
 
     private static IEnumerable<string> PermissionsWithPrefix(
         ManagementClientDetail client,

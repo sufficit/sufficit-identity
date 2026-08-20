@@ -1,11 +1,17 @@
 #if !APPLICATION_CONTRACTS
+using System.Data;
+using System.Security.Cryptography;
 using System.Text.Json;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using OpenIddict.EntityFrameworkCore.Models;
 using Sufficit.Identity.Core.Data;
+using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Provisioning;
 #endif
@@ -85,6 +91,49 @@ public interface IClientManagementService
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 
+    Task<RotateManagementClientSecretResult> RotateSecretAsync(
+        RotateManagementClientSecretCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
+    Task<ManagementClientCredentialsOverview> GetCredentialsAsync(
+        string clientId,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new ManagementClientCredentialsOverview(
+            clientId,
+            [],
+            [],
+            0));
+
+    Task<CreateManagementClientCredentialResult> CreateCredentialAsync(
+        CreateManagementClientCredentialCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "This client management adapter does not support multiple credentials.");
+
+    Task<ManagementClientCredentialsOverview> RevokeCredentialAsync(
+        RevokeManagementClientCredentialCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "This client management adapter does not support credential revocation.");
+
+    Task<ManagementClientCredentialsOverview> RegisterTlsCertificateAsync(
+        RegisterManagementClientTlsCertificateCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "This client management adapter does not support TLS client certificates.");
+
+    Task<ManagementClientCredentialsOverview> RevokeTlsCertificateAsync(
+        RevokeManagementClientTlsCertificateCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException(
+            "This client management adapter does not support TLS client certificates.");
+
     Task DeleteAsync(
         string clientId,
         ManagementRequestContext context,
@@ -157,7 +206,11 @@ public sealed record ManagementClientDetail(
     DateTimeOffset? RegisteredAtUtc = null,
     bool RegisteredAnonymously = false,
     string? RegisteredFromAddress = null,
-    string? RegisteredUserAgent = null);
+    string? RegisteredUserAgent = null,
+    bool HasClientSecret = false,
+    string? JwksJson = null,
+    IReadOnlyList<string>? AuthenticationMethods = null,
+    int ActiveCredentialCount = 0);
 
 public sealed record CreateManagementClientCommand(
     string ClientId,
@@ -176,7 +229,8 @@ public sealed record CreateManagementClientCommand(
     string? JwksUri = null,
     int? AccessTokenLifetimeMinutes = null,
     int? IdentityTokenLifetimeMinutes = null,
-    int? RefreshTokenLifetimeDays = null);
+    int? RefreshTokenLifetimeDays = null,
+    string? JwksJson = null);
 
 public sealed record UpdateManagementClientCommand(
     string ClientId,
@@ -198,7 +252,88 @@ public sealed record UpdateManagementClientCommand(
     int? RefreshTokenLifetimeDays = null,
     bool ClearAccessTokenLifetime = false,
     bool ClearIdentityTokenLifetime = false,
-    bool ClearRefreshTokenLifetime = false);
+    bool ClearRefreshTokenLifetime = false,
+    string? JwksJson = null);
+
+public sealed record RotateManagementClientSecretCommand(
+    string ClientId,
+    string? ExpectedVersion,
+    bool Generate,
+    string? ClientSecret = null);
+
+public sealed record RotateManagementClientSecretResult(
+    ManagementClientDetail Client,
+    string OneTimeSecret,
+    bool Generated);
+
+public sealed record ManagementClientCredentialSummary(
+    Guid? Id,
+    string Label,
+    string Kind,
+    string SecretHint,
+    string Status,
+    bool IsPrimary,
+    DateTimeOffset? CreatedAtUtc = null,
+    DateTimeOffset? NotBeforeUtc = null,
+    DateTimeOffset? ExpiresAtUtc = null,
+    DateTimeOffset? RevokedAtUtc = null,
+    string? Version = null);
+
+public sealed record ManagementClientCredentialsOverview(
+    string ClientId,
+    IReadOnlyList<string> AuthenticationMethods,
+    IReadOnlyList<ManagementClientCredentialSummary> Credentials,
+    int MaximumActiveAdditionalSharedSecrets,
+    string? PublicJwksJson = null,
+    IReadOnlyList<ManagementClientTlsCertificateSummary>? TlsCertificates = null,
+    bool MtlsRuntimeEnabled = false,
+    bool PkiAuthenticationEnabled = false,
+    int MaximumTlsCertificates = 10,
+    string? ClientVersion = null);
+
+public sealed record ManagementClientTlsCertificateSummary(
+    string KeyId,
+    string AuthenticationMethod,
+    string Subject,
+    string Issuer,
+    string Sha256Thumbprint,
+    DateTimeOffset NotBeforeUtc,
+    DateTimeOffset ExpiresAtUtc,
+    string Status,
+    bool IsCertificateAuthority = false);
+
+public sealed record CreateManagementClientCredentialCommand(
+    string ClientId,
+    string? ExpectedClientVersion,
+    string? Label,
+    bool Generate,
+    string? ClientSecret = null,
+    DateTimeOffset? NotBeforeUtc = null,
+    DateTimeOffset? ExpiresAtUtc = null);
+
+public sealed record CreateManagementClientCredentialResult(
+    ManagementClientCredentialsOverview Overview,
+    string OneTimeSecret,
+    bool Generated,
+    bool CreatedAsPrimary);
+
+public sealed record RevokeManagementClientCredentialCommand(
+    string ClientId,
+    Guid CredentialId,
+    string? ExpectedCredentialVersion,
+    string? Reason = null);
+
+public sealed record RegisterManagementClientTlsCertificateCommand(
+    string ClientId,
+    string? ExpectedClientVersion,
+    string? KeyId,
+    string AuthenticationMethod,
+    string CertificatePem);
+
+public sealed record RevokeManagementClientTlsCertificateCommand(
+    string ClientId,
+    string? ExpectedClientVersion,
+    string KeyId);
 
 #else
 
@@ -210,6 +345,7 @@ internal sealed class ClientManagementService(
     IManagementAuthorizationEvaluator authorization,
     IReservedScopePolicy reservedScopePolicy,
     IClientDefinitionValidator clientDefinitionValidator,
+    IClientCredentialSecretHasher credentialSecretHasher,
     IConfiguration configuration,
     ILogger<ClientManagementService> logger) : IClientManagementService
 {
@@ -219,6 +355,11 @@ internal sealed class ClientManagementService(
     private const int MaximumIdentityTokenLifetimeMinutes = 120;
     private const int MinimumRefreshTokenLifetimeDays = 1;
     private const int MaximumRefreshTokenLifetimeDays = 365;
+    private const int GeneratedClientSecretBytes = 32;
+    private const int MinimumClientSecretLength = 32;
+    private const int MaximumClientSecretLength = 512;
+    private const int MaximumActiveAdditionalSharedSecrets = 5;
+    private const int MaximumClientCredentialLifetimeDays = 730;
 
     public async Task<IReadOnlyList<ManagementClientSummary>> ListAsync(
         ManagementRequestContext context,
@@ -449,6 +590,7 @@ internal sealed class ClientManagementService(
                 command.BackchannelLogoutUri,
                 "backchannelLogoutUri");
             var jwksUri = ValidateJwksUri(command.JwksUri);
+            var publicJwks = ValidatePublicJwks(command.JwksJson);
             ValidateTokenLifetimes(
                 command.AccessTokenLifetimeMinutes,
                 command.IdentityTokenLifetimeMinutes,
@@ -509,8 +651,10 @@ internal sealed class ClientManagementService(
                 DisplayName = NullIfWhiteSpace(command.DisplayName),
                 ConsentType = consentType,
                 ClientType = string.IsNullOrEmpty(command.ClientSecret)
+                    && publicJwks is null
                     ? OpenIddictConstants.ClientTypes.Public
                     : OpenIddictConstants.ClientTypes.Confidential,
+                JsonWebKeySet = publicJwks,
             };
 
             var grantTypes = NormalizeGrantTypes(command.GrantTypes);
@@ -546,6 +690,7 @@ internal sealed class ClientManagementService(
                     ClientDefinitionSource.Management,
                     clientId,
                     string.IsNullOrEmpty(command.ClientSecret)
+                        && publicJwks is null
                         ? OpenIddictConstants.ClientTypes.Public
                         : OpenIddictConstants.ClientTypes.Confidential,
                     grantTypes,
@@ -732,6 +877,7 @@ internal sealed class ClientManagementService(
             }
 
             var applicationId = entity.Id;
+            var canonicalClientId = entity.ClientId ?? clientId;
             // OpenIddict's EF bulk-delete query joins each dependent table
             // back to itself through the application navigation. MariaDB
             // rejects that shape with error 1093, so delete by the mapped
@@ -746,6 +892,9 @@ internal sealed class ClientManagementService(
                 .Where(authorization =>
                     EF.Property<string?>(authorization, "ApplicationId") ==
                     applicationId)
+                .ExecuteDeleteAsync(cancellationToken);
+            await database.OAuthClientCredentials
+                .Where(credential => credential.ClientId == canonicalClientId)
                 .ExecuteDeleteAsync(cancellationToken);
             var deleted = await database
                 .Set<OpenIddictEntityFrameworkCoreApplication>()
@@ -868,6 +1017,9 @@ internal sealed class ClientManagementService(
                 command.BackchannelLogoutUri,
                 "backchannelLogoutUri");
             var jwksUri = ValidateJwksUri(command.JwksUri);
+            var publicJwks = command.JwksJson is null
+                ? null
+                : ValidatePublicJwks(command.JwksJson);
             ValidateTokenLifetimes(
                 command.AccessTokenLifetimeMinutes,
                 command.IdentityTokenLifetimeMinutes,
@@ -981,6 +1133,15 @@ internal sealed class ClientManagementService(
                     descriptor.Settings["jwks_uri"] = jwksUri.AbsoluteUri;
                 }
             }
+            // Null means “not managed by this caller”; an explicit empty
+            // value removes the embedded public key set.
+            if (command.JwksJson is not null)
+            {
+                descriptor.JsonWebKeySet =
+                    ClientTlsCertificateCredential.MergePrivateKeyJwtKeys(
+                        publicJwks,
+                        entity.JsonWebKeySet);
+            }
             ApplyTokenLifetimes(
                 descriptor,
                 command.AccessTokenLifetimeMinutes,
@@ -1067,6 +1228,940 @@ internal sealed class ClientManagementService(
         }
     }
 
+    public async Task<RotateManagementClientSecretResult> RotateSecretAsync(
+        RotateManagementClientSecretCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        var clientId = command.ClientId?.Trim() ?? string.Empty;
+        var resource = new ManagementResource(
+            ManagementResourceTypes.Client,
+            clientId);
+        var decision = await DemandAsync(
+            context,
+            ManagementCapabilities.ClientsUpdate,
+            resource,
+            cancellationToken);
+
+        var application = await applications.FindByClientIdAsync(
+            clientId,
+            cancellationToken);
+        if (application is null)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "not-found",
+                "client_not_found",
+                cancellationToken);
+            throw new ManagementNotFoundException(
+                "client_not_found",
+                $"Client '{clientId}' was not found.");
+        }
+
+        try
+        {
+            if (application is not OpenIddictEntityFrameworkCoreApplication entity)
+            {
+                throw new InvalidOperationException(
+                    "The configured OpenIddict application entity is unsupported.");
+            }
+
+            if (string.IsNullOrWhiteSpace(command.ExpectedVersion))
+            {
+                throw new ManagementValidationException(
+                    "client_version_required",
+                    "Recarregue a aplicação antes de substituir a credencial.",
+                    "expectedVersion");
+            }
+
+            if (!string.Equals(
+                    command.ExpectedVersion,
+                    entity.ConcurrencyToken,
+                    StringComparison.Ordinal))
+            {
+                throw new ManagementConflictException(
+                    "client_changed",
+                    "O cliente foi alterado por outra operação. Recarregue os dados antes de substituir a credencial.");
+            }
+
+            var descriptor = new OpenIddictApplicationDescriptor();
+            await applications.PopulateAsync(
+                descriptor,
+                application,
+                cancellationToken);
+            if (descriptor.Properties.ContainsKey(
+                    OpenIddictManifestProvisioner.SchemaVersionProperty))
+            {
+                throw new ManagementConflictException(
+                    "client_manifest_managed",
+                    "Este cliente é gerenciado por manifesto declarativo. Altere a referência do segredo no manifesto e aplique o provisionamento.");
+            }
+
+            var generated = command.Generate;
+            var oneTimeSecret = generated
+                ? WebEncoders.Base64UrlEncode(
+                    RandomNumberGenerator.GetBytes(GeneratedClientSecretBytes))
+                : ValidateReplacementClientSecret(command.ClientSecret);
+
+            await using var transaction = await database.Database
+                .BeginTransactionAsync(cancellationToken);
+
+            // OpenIddict accepts a shared secret only for confidential clients.
+            // Mutating the tracked entity here lets the manager validate and
+            // persist the type transition together with the newly hashed secret.
+            entity.ClientType = OpenIddictConstants.ClientTypes.Confidential;
+            await applications.UpdateAsync(
+                application,
+                oneTimeSecret,
+                cancellationToken);
+
+            var detail = await ToDetailAsync(application, cancellationToken);
+            database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "succeeded",
+                "client_secret_rotated"));
+            await database.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return new RotateManagementClientSecretResult(
+                detail,
+                oneTimeSecret,
+                generated);
+        }
+        catch (ManagementValidationException exception)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "rejected",
+                exception.ReasonCode,
+                cancellationToken);
+            throw;
+        }
+        catch (ManagementConflictException exception)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "rejected",
+                exception.ReasonCode,
+                cancellationToken);
+            throw;
+        }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            logger.LogWarning(
+                exception,
+                "OAuth client secret rotation lost a concurrency race. ClientId={ClientId} CorrelationId={CorrelationId}",
+                clientId,
+                context.CorrelationId);
+            throw new ManagementConflictException(
+                "client_changed",
+                "O cliente foi alterado por outra operação. Recarregue os dados antes de substituir a credencial.");
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(
+                exception,
+                "OAuth client secret rotation failed. ClientId={ClientId} CorrelationId={CorrelationId}",
+                clientId,
+                context.CorrelationId);
+            throw;
+        }
+    }
+
+    public async Task<ManagementClientCredentialsOverview> GetCredentialsAsync(
+        string clientId,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
+        clientId = clientId.Trim();
+
+        await DemandAsync(
+            context,
+            ManagementCapabilities.ClientsRead,
+            new ManagementResource(ManagementResourceTypes.Client, clientId),
+            cancellationToken);
+
+        var application = await applications.FindByClientIdAsync(
+            clientId,
+            cancellationToken);
+        if (application is not OpenIddictEntityFrameworkCoreApplication entity)
+        {
+            throw new ManagementNotFoundException(
+                "client_not_found",
+                $"Client '{clientId}' was not found.");
+        }
+
+        return await BuildCredentialsOverviewAsync(entity, cancellationToken);
+    }
+
+    public async Task<CreateManagementClientCredentialResult> CreateCredentialAsync(
+        CreateManagementClientCredentialCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        var clientId = command.ClientId?.Trim() ?? string.Empty;
+        var resource = new ManagementResource(
+            ManagementResourceTypes.Client,
+            clientId);
+        var decision = await DemandAsync(
+            context,
+            ManagementCapabilities.ClientsUpdate,
+            resource,
+            cancellationToken);
+
+        var application = await applications.FindByClientIdAsync(
+            clientId,
+            cancellationToken);
+        if (application is not OpenIddictEntityFrameworkCoreApplication entity)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "not-found",
+                "client_not_found",
+                cancellationToken);
+            throw new ManagementNotFoundException(
+                "client_not_found",
+                $"Client '{clientId}' was not found.");
+        }
+
+        // Always persist and query against the canonical client_id returned by
+        // the application store. Some legacy MariaDB deployments still use a
+        // case-insensitive collation for applications.client_id, while this
+        // credential registry is deliberately case-sensitive.
+        clientId = entity.ClientId ?? clientId;
+
+        try
+        {
+            EnsureExpectedClientVersion(command.ExpectedClientVersion, entity);
+            await EnsureClientIsManuallyManagedAsync(application, cancellationToken);
+
+            var label = ValidateCredentialLabel(command.Label);
+            var generated = command.Generate;
+            var oneTimeSecret = generated
+                ? WebEncoders.Base64UrlEncode(
+                    RandomNumberGenerator.GetBytes(GeneratedClientSecretBytes))
+                : ValidateReplacementClientSecret(command.ClientSecret);
+            var now = DateTime.UtcNow;
+            var notBeforeUtc = command.NotBeforeUtc?.UtcDateTime;
+            var expiresAtUtc = command.ExpiresAtUtc?.UtcDateTime;
+            ValidateCredentialLifetime(now, notBeforeUtc, expiresAtUtc);
+
+            await using var transaction = await database.Database
+                .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+
+            if (await applications.ValidateClientSecretAsync(
+                    application,
+                    oneTimeSecret,
+                    cancellationToken))
+            {
+                throw new ManagementConflictException(
+                    "client_credential_duplicate",
+                    "A credencial informada já está ativa para esta aplicação.");
+            }
+
+            var createdAsPrimary = string.Equals(
+                entity.ClientType,
+                OpenIddictConstants.ClientTypes.Public,
+                StringComparison.Ordinal);
+            if (createdAsPrimary)
+            {
+                if (notBeforeUtc is not null || expiresAtUtc is not null)
+                {
+                    throw new ManagementValidationException(
+                        "primary_credential_lifetime_unsupported",
+                        "A primeira credencial torna-se a credencial principal de compatibilidade e não aceita agendamento ou expiração. Adicione outra credencial depois para usar esse ciclo de vida.",
+                        "expiresAtUtc");
+                }
+
+                entity.ClientType = OpenIddictConstants.ClientTypes.Confidential;
+                await applications.UpdateAsync(
+                    application,
+                    oneTimeSecret,
+                    cancellationToken);
+            }
+            else
+            {
+                var activeCount = await database.OAuthClientCredentials
+                    .Where(credential =>
+                        credential.ClientId == clientId
+                        && credential.Kind == OAuthClientCredentialKinds.SharedSecret
+                        && credential.RevokedAtUtc == null
+                        && (credential.ExpiresAtUtc == null || credential.ExpiresAtUtc > now))
+                    .CountAsync(cancellationToken);
+                if (activeCount >= MaximumActiveAdditionalSharedSecrets)
+                {
+                    throw new ManagementConflictException(
+                        "client_credential_limit_reached",
+                        $"Cada aplicação pode manter até {MaximumActiveAdditionalSharedSecrets} credenciais compartilhadas adicionais ativas.");
+                }
+
+                var duplicateLabel = await database.OAuthClientCredentials
+                    .AnyAsync(credential =>
+                        credential.ClientId == clientId
+                        && credential.RevokedAtUtc == null
+                        && credential.Label == label,
+                        cancellationToken);
+                if (duplicateLabel)
+                {
+                    throw new ManagementConflictException(
+                        "client_credential_label_duplicate",
+                        "Já existe uma credencial ativa com esse nome.");
+                }
+
+                database.OAuthClientCredentials.Add(new OAuthClientCredential
+                {
+                    Id = Guid.NewGuid(),
+                    ClientId = clientId,
+                    Kind = OAuthClientCredentialKinds.SharedSecret,
+                    Label = label,
+                    SecretHash = credentialSecretHasher.Hash(oneTimeSecret),
+                    SecretHint = CreateSecretHint(oneTimeSecret),
+                    CreatedAtUtc = now,
+                    NotBeforeUtc = notBeforeUtc,
+                    ExpiresAtUtc = expiresAtUtc,
+                    ConcurrencyToken = NewConcurrencyToken(),
+                });
+            }
+
+            database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "succeeded",
+                createdAsPrimary
+                    ? "client_primary_credential_created"
+                    : "client_credential_created"));
+            await database.SaveChangesAsync(cancellationToken);
+            var overview = await BuildCredentialsOverviewAsync(
+                entity,
+                cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return new CreateManagementClientCredentialResult(
+                overview,
+                oneTimeSecret,
+                generated,
+                createdAsPrimary);
+        }
+        catch (ManagementValidationException exception)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "rejected",
+                exception.ReasonCode,
+                cancellationToken);
+            throw;
+        }
+        catch (ManagementConflictException exception)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "rejected",
+                exception.ReasonCode,
+                cancellationToken);
+            throw;
+        }
+        catch (DbUpdateException exception)
+        {
+            logger.LogWarning(
+                exception,
+                "OAuth client credential creation lost a persistence race. ClientId={ClientId} CorrelationId={CorrelationId}",
+                clientId,
+                context.CorrelationId);
+            throw new ManagementConflictException(
+                "client_credential_changed",
+                "As credenciais foram alteradas por outra operação. Recarregue os dados.");
+        }
+    }
+
+    public async Task<ManagementClientCredentialsOverview> RevokeCredentialAsync(
+        RevokeManagementClientCredentialCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        var clientId = command.ClientId?.Trim() ?? string.Empty;
+        var resource = new ManagementResource(
+            ManagementResourceTypes.Client,
+            clientId);
+        var decision = await DemandAsync(
+            context,
+            ManagementCapabilities.ClientsUpdate,
+            resource,
+            cancellationToken);
+
+        var application = await applications.FindByClientIdAsync(
+            clientId,
+            cancellationToken);
+        if (application is not OpenIddictEntityFrameworkCoreApplication entity)
+        {
+            throw new ManagementNotFoundException(
+                "client_not_found",
+                $"Client '{clientId}' was not found.");
+        }
+
+        clientId = entity.ClientId ?? clientId;
+
+        try
+        {
+            await EnsureClientIsManuallyManagedAsync(application, cancellationToken);
+            if (string.IsNullOrWhiteSpace(command.ExpectedCredentialVersion))
+            {
+                throw new ManagementValidationException(
+                    "client_credential_version_required",
+                    "Recarregue as credenciais antes de revogar.",
+                    "expectedCredentialVersion");
+            }
+
+            var credential = await database.OAuthClientCredentials
+                .SingleOrDefaultAsync(candidate =>
+                    candidate.Id == command.CredentialId
+                    && candidate.ClientId == clientId,
+                    cancellationToken);
+            if (credential is null)
+            {
+                throw new ManagementNotFoundException(
+                    "client_credential_not_found",
+                    "A credencial não foi encontrada.");
+            }
+            if (!string.Equals(
+                    credential.ConcurrencyToken,
+                    command.ExpectedCredentialVersion,
+                    StringComparison.Ordinal))
+            {
+                throw new ManagementConflictException(
+                    "client_credential_changed",
+                    "A credencial foi alterada por outra operação. Recarregue os dados.");
+            }
+            if (credential.RevokedAtUtc is not null)
+            {
+                throw new ManagementConflictException(
+                    "client_credential_already_revoked",
+                    "A credencial já foi revogada.");
+            }
+
+            var revocationReason = ValidateRevocationReason(command.Reason);
+            credential.RevokedAtUtc = DateTime.UtcNow;
+            credential.RevocationReason = revocationReason;
+            credential.ConcurrencyToken = NewConcurrencyToken();
+            database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "succeeded",
+                "client_credential_revoked"));
+            await database.SaveChangesAsync(cancellationToken);
+
+            return await BuildCredentialsOverviewAsync(entity, cancellationToken);
+        }
+        catch (ManagementValidationException exception)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "rejected",
+                exception.ReasonCode,
+                cancellationToken);
+            throw;
+        }
+        catch (ManagementConflictException exception)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "rejected",
+                exception.ReasonCode,
+                cancellationToken);
+            throw;
+        }
+        catch (ManagementNotFoundException exception)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "not-found",
+                exception.ReasonCode,
+                cancellationToken);
+            throw;
+        }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            logger.LogWarning(
+                exception,
+                "OAuth client credential revocation lost a concurrency race. ClientId={ClientId} CredentialId={CredentialId}",
+                clientId,
+                command.CredentialId);
+            throw new ManagementConflictException(
+                "client_credential_changed",
+                "A credencial foi alterada por outra operação. Recarregue os dados.");
+        }
+    }
+
+    public async Task<ManagementClientCredentialsOverview>
+        RegisterTlsCertificateAsync(
+            RegisterManagementClientTlsCertificateCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        var clientId = command.ClientId?.Trim() ?? string.Empty;
+        var resource = new ManagementResource(
+            ManagementResourceTypes.Client,
+            clientId);
+        var decision = await DemandAsync(
+            context,
+            ManagementCapabilities.ClientsUpdate,
+            resource,
+            cancellationToken);
+        var application = await applications.FindByClientIdAsync(
+            clientId,
+            cancellationToken);
+        if (application is not OpenIddictEntityFrameworkCoreApplication entity)
+        {
+            throw new ManagementNotFoundException(
+                "client_not_found",
+                $"Client '{clientId}' was not found.");
+        }
+
+        clientId = entity.ClientId ?? clientId;
+        try
+        {
+            EnsureExpectedClientVersion(command.ExpectedClientVersion, entity);
+            await EnsureClientIsManuallyManagedAsync(
+                application,
+                cancellationToken);
+            var certificate = ClientTlsCertificateCredential.Create(
+                command.CertificatePem,
+                command.KeyId,
+                command.AuthenticationMethod);
+
+            await using var transaction = await database.Database
+                .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+            var descriptor = new OpenIddictApplicationDescriptor();
+            await applications.PopulateAsync(
+                descriptor,
+                application,
+                cancellationToken);
+            descriptor.JsonWebKeySet =
+                ClientTlsCertificateCredential.AddCertificate(
+                    entity.JsonWebKeySet,
+                    certificate);
+            descriptor.ClientType = OpenIddictConstants.ClientTypes.Confidential;
+            await applications.UpdateAsync(
+                application,
+                descriptor,
+                cancellationToken);
+            database.ManagementAuditEvents.Add(
+                ManagementAuditEventFactory.Create(
+                    context,
+                    ManagementCapabilities.ClientsUpdate,
+                    resource,
+                    decision,
+                    "succeeded",
+                    "client_mtls_certificate_registered"));
+            await database.SaveChangesAsync(cancellationToken);
+            var overview = await BuildCredentialsOverviewAsync(
+                entity,
+                cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return overview;
+        }
+        catch (ManagementValidationException exception)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "rejected",
+                exception.ReasonCode,
+                cancellationToken);
+            throw;
+        }
+        catch (ManagementConflictException exception)
+        {
+            await TryWriteAuditAsync(
+                context,
+                ManagementCapabilities.ClientsUpdate,
+                resource,
+                decision,
+                "rejected",
+                exception.ReasonCode,
+                cancellationToken);
+            throw;
+        }
+    }
+
+    public async Task<ManagementClientCredentialsOverview>
+        RevokeTlsCertificateAsync(
+            RevokeManagementClientTlsCertificateCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        var clientId = command.ClientId?.Trim() ?? string.Empty;
+        var resource = new ManagementResource(
+            ManagementResourceTypes.Client,
+            clientId);
+        var decision = await DemandAsync(
+            context,
+            ManagementCapabilities.ClientsUpdate,
+            resource,
+            cancellationToken);
+        var application = await applications.FindByClientIdAsync(
+            clientId,
+            cancellationToken);
+        if (application is not OpenIddictEntityFrameworkCoreApplication entity)
+        {
+            throw new ManagementNotFoundException(
+                "client_not_found",
+                $"Client '{clientId}' was not found.");
+        }
+
+        clientId = entity.ClientId ?? clientId;
+        EnsureExpectedClientVersion(command.ExpectedClientVersion, entity);
+        await EnsureClientIsManuallyManagedAsync(application, cancellationToken);
+        if (string.IsNullOrWhiteSpace(command.KeyId))
+        {
+            throw new ManagementValidationException(
+                "mtls_certificate_kid_required",
+                "Informe o identificador do certificado que será revogado.",
+                "keyId");
+        }
+
+        await using var transaction = await database.Database
+            .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        var descriptor = new OpenIddictApplicationDescriptor();
+        await applications.PopulateAsync(
+            descriptor,
+            application,
+            cancellationToken);
+        descriptor.JsonWebKeySet =
+            ClientTlsCertificateCredential.RemoveCertificate(
+                entity.JsonWebKeySet,
+                command.KeyId);
+        await applications.UpdateAsync(application, descriptor, cancellationToken);
+        database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
+            context,
+            ManagementCapabilities.ClientsUpdate,
+            resource,
+            decision,
+            "succeeded",
+            "client_mtls_certificate_revoked"));
+        await database.SaveChangesAsync(cancellationToken);
+        var overview = await BuildCredentialsOverviewAsync(
+            entity,
+            cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return overview;
+    }
+
+    private async Task<ManagementClientCredentialsOverview>
+        BuildCredentialsOverviewAsync(
+            OpenIddictEntityFrameworkCoreApplication application,
+            CancellationToken cancellationToken)
+    {
+        var clientId = application.ClientId
+            ?? throw new InvalidOperationException(
+                "The OpenIddict application has no client_id.");
+        var now = DateTime.UtcNow;
+        var additional = await database.OAuthClientCredentials
+            .AsNoTracking()
+            .Where(credential => credential.ClientId == clientId)
+            .OrderByDescending(credential => credential.CreatedAtUtc)
+            .ToArrayAsync(cancellationToken);
+
+        var hasPrimary = !string.IsNullOrWhiteSpace(application.ClientSecret);
+        var hasActiveAdditional = additional.Any(credential =>
+            GetCredentialStatus(credential, now) == "active");
+        var tlsCertificates = ClientTlsCertificateCredential.Read(
+            application.JsonWebKeySet,
+            new DateTimeOffset(now, TimeSpan.Zero));
+        var mtlsRuntimeEnabled = configuration.GetValue<bool>(
+            "Sufficit:Identity:Mtls:Enabled");
+        var pkiAuthenticationEnabled = mtlsRuntimeEnabled
+            && configuration
+                .GetSection(
+                    "Sufficit:Identity:Mtls:TrustedCertificateAuthorityPaths")
+                .Get<string[]>() is { Length: > 0 };
+        var methods = GetAuthenticationMethods(
+            hasPrimary || hasActiveAdditional,
+            application.JsonWebKeySet,
+            tlsCertificates);
+
+        var credentials = new List<ManagementClientCredentialSummary>(
+            additional.Length + (hasPrimary ? 1 : 0));
+        if (hasPrimary)
+        {
+            credentials.Add(new ManagementClientCredentialSummary(
+                Id: null,
+                Label: "Credencial principal (compatibilidade)",
+                Kind: OAuthClientCredentialKinds.SharedSecret,
+                SecretHint: string.Empty,
+                Status: "active",
+                IsPrimary: true));
+        }
+
+        credentials.AddRange(additional.Select(credential =>
+            new ManagementClientCredentialSummary(
+                credential.Id,
+                credential.Label,
+                credential.Kind,
+                credential.SecretHint,
+                GetCredentialStatus(credential, now),
+                IsPrimary: false,
+                ToDateTimeOffset(credential.CreatedAtUtc),
+                ToDateTimeOffset(credential.NotBeforeUtc),
+                ToDateTimeOffset(credential.ExpiresAtUtc),
+                ToDateTimeOffset(credential.RevokedAtUtc),
+                credential.ConcurrencyToken)));
+
+        return new ManagementClientCredentialsOverview(
+            clientId,
+            methods,
+            credentials,
+            MaximumActiveAdditionalSharedSecrets,
+            ClientTlsCertificateCredential
+                .ExtractPrivateKeyJwtKeys(application.JsonWebKeySet)?.ToString(),
+            tlsCertificates,
+            mtlsRuntimeEnabled,
+            pkiAuthenticationEnabled,
+            ClientTlsCertificateCredential.MaximumCertificates,
+            application.ConcurrencyToken);
+    }
+
+    private async Task EnsureClientIsManuallyManagedAsync(
+        object application,
+        CancellationToken cancellationToken)
+    {
+        var descriptor = new OpenIddictApplicationDescriptor();
+        await applications.PopulateAsync(
+            descriptor,
+            application,
+            cancellationToken);
+        if (descriptor.Properties.ContainsKey(
+                OpenIddictManifestProvisioner.SchemaVersionProperty))
+        {
+            throw new ManagementConflictException(
+                "client_manifest_managed",
+                "Este cliente é gerenciado por manifesto declarativo. Altere suas credenciais no manifesto e aplique o provisionamento.");
+        }
+    }
+
+    private static void EnsureExpectedClientVersion(
+        string? expectedVersion,
+        OpenIddictEntityFrameworkCoreApplication application)
+    {
+        if (string.IsNullOrWhiteSpace(expectedVersion))
+        {
+            throw new ManagementValidationException(
+                "client_version_required",
+                "Recarregue a aplicação antes de adicionar uma credencial.",
+                "expectedClientVersion");
+        }
+        if (!string.Equals(
+                expectedVersion,
+                application.ConcurrencyToken,
+                StringComparison.Ordinal))
+        {
+            throw new ManagementConflictException(
+                "client_changed",
+                "A aplicação foi alterada por outra operação. Recarregue os dados.");
+        }
+    }
+
+    private static IReadOnlyList<string> GetAuthenticationMethods(
+        bool hasActiveSharedSecret,
+        string? publicJwksJson,
+        IReadOnlyList<ManagementClientTlsCertificateSummary>? tlsCertificates = null)
+    {
+        var methods = new List<string>(3);
+        if (hasActiveSharedSecret)
+        {
+            methods.Add("client_secret_basic");
+            methods.Add("client_secret_post");
+        }
+        if (HasPublicSigningKeys(publicJwksJson))
+        {
+            methods.Add("private_key_jwt");
+        }
+        foreach (var method in (tlsCertificates ?? [])
+            .Where(certificate => certificate.Status == "active")
+            .Select(certificate => certificate.AuthenticationMethod)
+            .Distinct(StringComparer.Ordinal))
+        {
+            methods.Add(method);
+        }
+
+        return methods;
+    }
+
+    private static bool HasPublicSigningKeys(string? publicJwksJson)
+    {
+        if (string.IsNullOrWhiteSpace(publicJwksJson))
+        {
+            return false;
+        }
+
+        try
+        {
+            var set = new JsonWebKeySet(publicJwksJson);
+            return set.Keys.Any(key =>
+                key.X5c is not { Count: > 0 }
+                &&
+                key.Kty is JsonWebAlgorithmsKeyTypes.RSA
+                    or JsonWebAlgorithmsKeyTypes.EllipticCurve
+                && key.Use is null or JsonWebKeyUseNames.Sig);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    private static string GetCredentialStatus(
+        OAuthClientCredential credential,
+        DateTime now)
+    {
+        if (credential.RevokedAtUtc is not null)
+        {
+            return "revoked";
+        }
+        if (credential.ExpiresAtUtc is { } expiresAt && expiresAt <= now)
+        {
+            return "expired";
+        }
+        if (credential.NotBeforeUtc is { } notBefore && notBefore > now)
+        {
+            return "scheduled";
+        }
+
+        return "active";
+    }
+
+    private static DateTimeOffset? ToDateTimeOffset(DateTime? value) =>
+        value is null
+            ? null
+            : new DateTimeOffset(
+                DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
+
+    private static string ValidateCredentialLabel(string? value)
+    {
+        var label = value?.Trim() ?? string.Empty;
+        if (label.Length is < 1 or > IdentityDatabaseSchema.OAuthClientCredentialLabelLength)
+        {
+            throw new ManagementValidationException(
+                "client_credential_label_invalid",
+                $"O nome deve ter entre 1 e {IdentityDatabaseSchema.OAuthClientCredentialLabelLength} caracteres.",
+                "label");
+        }
+        if (label.Any(char.IsControl))
+        {
+            throw new ManagementValidationException(
+                "client_credential_label_invalid",
+                "O nome da credencial não pode conter caracteres de controle.",
+                "label");
+        }
+
+        return label;
+    }
+
+    private static void ValidateCredentialLifetime(
+        DateTime now,
+        DateTime? notBeforeUtc,
+        DateTime? expiresAtUtc)
+    {
+        if (expiresAtUtc is { } expiresAt && expiresAt <= now)
+        {
+            throw new ManagementValidationException(
+                "client_credential_expiration_invalid",
+                "A expiração deve estar no futuro.",
+                "expiresAtUtc");
+        }
+        if (expiresAtUtc is { } boundedExpiry
+            && boundedExpiry > now.AddDays(MaximumClientCredentialLifetimeDays))
+        {
+            throw new ManagementValidationException(
+                "client_credential_expiration_too_distant",
+                $"A expiração não pode ultrapassar {MaximumClientCredentialLifetimeDays} dias.",
+                "expiresAtUtc");
+        }
+        if (notBeforeUtc is { } notBefore
+            && expiresAtUtc is { } expiry
+            && notBefore >= expiry)
+        {
+            throw new ManagementValidationException(
+                "client_credential_window_invalid",
+                "O início da validade deve ser anterior à expiração.",
+                "notBeforeUtc");
+        }
+    }
+
+    private static string? ValidateRevocationReason(string? value)
+    {
+        var reason = value?.Trim();
+        if (string.IsNullOrEmpty(reason))
+        {
+            return null;
+        }
+        if (reason.Length > IdentityDatabaseSchema.OAuthClientCredentialReasonLength
+            || reason.Any(char.IsControl))
+        {
+            throw new ManagementValidationException(
+                "client_credential_revocation_reason_invalid",
+                $"O motivo deve ter até {IdentityDatabaseSchema.OAuthClientCredentialReasonLength} caracteres e não pode conter caracteres de controle.",
+                "reason");
+        }
+
+        return reason;
+    }
+
+    private static string CreateSecretHint(string secret)
+    {
+        const int visibleCharacters = 6;
+        return secret.Length <= visibleCharacters
+            ? secret
+            : secret[^visibleCharacters..];
+    }
+
+    private static string NewConcurrencyToken() =>
+        Guid.NewGuid().ToString("N");
+
     private async Task<ManagementAuthorizationDecision> DemandAsync(
         ManagementRequestContext context,
         string capability,
@@ -1152,6 +2247,28 @@ internal sealed class ClientManagementService(
             application,
             cancellationToken);
 
+        var entity = application as OpenIddictEntityFrameworkCoreApplication;
+        var now = DateTime.UtcNow;
+        var activeAdditionalCredentials = entity?.ClientId is { } clientId
+            ? await database.OAuthClientCredentials
+                .AsNoTracking()
+                .CountAsync(credential =>
+                    credential.ClientId == clientId
+                    && credential.Kind == OAuthClientCredentialKinds.SharedSecret
+                    && credential.RevokedAtUtc == null
+                    && (credential.NotBeforeUtc == null || credential.NotBeforeUtc <= now)
+                    && (credential.ExpiresAtUtc == null || credential.ExpiresAtUtc > now),
+                    cancellationToken)
+            : 0;
+        var hasPrimarySecret = !string.IsNullOrWhiteSpace(entity?.ClientSecret);
+        var tlsCertificates = ClientTlsCertificateCredential.Read(
+            entity?.JsonWebKeySet,
+            DateTimeOffset.UtcNow);
+        var authenticationMethods = GetAuthenticationMethods(
+            hasPrimarySecret || activeAdditionalCredentials > 0,
+            entity?.JsonWebKeySet,
+            tlsCertificates);
+
         return new ManagementClientDetail(
             Id: (string)(await applications.GetIdAsync(
                 application,
@@ -1188,8 +2305,7 @@ internal sealed class ClientManagementService(
             BackchannelLogoutSessionRequired: GetBooleanSetting(
                 settings,
                 "backchannel_logout_session_required"),
-            Version: (application as OpenIddictEntityFrameworkCoreApplication)
-                ?.ConcurrencyToken,
+            Version: entity?.ConcurrencyToken,
             IsManifestManaged: descriptor.Properties.ContainsKey(
                 OpenIddictManifestProvisioner.SchemaVersionProperty),
             JwksUri: GetSetting(settings, "jwks_uri"),
@@ -1226,7 +2342,13 @@ internal sealed class ClientManagementService(
                 DynamicClientRegistrationProperties.RemoteAddress),
             RegisteredUserAgent: GetStringProperty(
                 descriptor.Properties,
-                DynamicClientRegistrationProperties.UserAgent));
+                DynamicClientRegistrationProperties.UserAgent),
+            HasClientSecret: hasPrimarySecret || activeAdditionalCredentials > 0,
+            JwksJson: ClientTlsCertificateCredential
+                .ExtractPrivateKeyJwtKeys(entity?.JsonWebKeySet)?.ToString(),
+            AuthenticationMethods: authenticationMethods,
+            ActiveCredentialCount:
+                activeAdditionalCredentials + (hasPrimarySecret ? 1 : 0));
     }
 
     private static string? GetStringProperty(
@@ -1386,6 +2508,36 @@ internal sealed class ClientManagementService(
         }
     }
 
+    private static string ValidateReplacementClientSecret(string? clientSecret)
+    {
+        if (string.IsNullOrWhiteSpace(clientSecret))
+        {
+            throw new ManagementValidationException(
+                "client_secret_required",
+                "Informe uma credencial ou escolha a geração automática.",
+                "clientSecret");
+        }
+
+        if (clientSecret.Length is < MinimumClientSecretLength or > MaximumClientSecretLength)
+        {
+            throw new ManagementValidationException(
+                "client_secret_length_invalid",
+                $"A credencial deve ter entre {MinimumClientSecretLength} e {MaximumClientSecretLength} caracteres.",
+                "clientSecret");
+        }
+
+        if (!string.Equals(clientSecret, clientSecret.Trim(), StringComparison.Ordinal)
+            || clientSecret.Any(char.IsControl))
+        {
+            throw new ManagementValidationException(
+                "client_secret_format_invalid",
+                "A credencial não pode começar ou terminar com espaços nem conter caracteres de controle.",
+                "clientSecret");
+        }
+
+        return clientSecret;
+    }
+
     private static IReadOnlyList<Uri> ValidateRedirectUris(
         IReadOnlyList<string>? values,
         string field)
@@ -1467,6 +2619,218 @@ internal sealed class ClientManagementService(
         }
 
         return uri;
+    }
+
+    private static JsonWebKeySet? ValidatePublicJwks(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+        if (value.Length > 64 * 1024)
+        {
+            throw new ManagementValidationException(
+                "jwks_too_large",
+                "O conjunto JWKS não pode ultrapassar 64 KiB.",
+                "jwksJson");
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(value, new JsonDocumentOptions
+            {
+                AllowTrailingCommas = false,
+                CommentHandling = JsonCommentHandling.Disallow,
+                MaxDepth = 16,
+            });
+            if (document.RootElement.ValueKind != JsonValueKind.Object
+                || !document.RootElement.TryGetProperty("keys", out var keys)
+                || keys.ValueKind != JsonValueKind.Array
+                || keys.GetArrayLength() is < 1 or > 10)
+            {
+                throw new ManagementValidationException(
+                    "jwks_keys_invalid",
+                    "O JWKS deve conter entre 1 e 10 chaves públicas em 'keys'.",
+                    "jwksJson");
+            }
+
+            var keyIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var key in keys.EnumerateArray())
+            {
+                if (key.ValueKind != JsonValueKind.Object)
+                {
+                    throw new ManagementValidationException(
+                        "jwks_key_invalid",
+                        "Cada item de 'keys' deve ser uma chave JWK pública.",
+                        "jwksJson");
+                }
+
+                foreach (var privateParameter in new[]
+                {
+                    "d", "p", "q", "dp", "dq", "qi", "oth", "k",
+                })
+                {
+                    if (key.TryGetProperty(privateParameter, out _))
+                    {
+                        throw new ManagementValidationException(
+                            "jwks_private_material_forbidden",
+                            "O Identity aceita apenas chaves públicas. Remova parâmetros privados ou simétricos do JWKS.",
+                            "jwksJson");
+                    }
+                }
+
+                var kty = RequiredJwkString(key, "kty");
+                if (kty is not (JsonWebAlgorithmsKeyTypes.RSA
+                    or JsonWebAlgorithmsKeyTypes.EllipticCurve))
+                {
+                    throw new ManagementValidationException(
+                        "jwks_key_type_unsupported",
+                        "Use somente chaves públicas RSA ou EC para private_key_jwt.",
+                        "jwksJson");
+                }
+
+                var kid = RequiredJwkString(key, "kid");
+                if (!keyIds.Add(kid))
+                {
+                    throw new ManagementValidationException(
+                        "jwks_kid_duplicate",
+                        "Cada chave pública deve possuir um kid único.",
+                        "jwksJson");
+                }
+
+                if (key.TryGetProperty("use", out var use)
+                    && (use.ValueKind != JsonValueKind.String
+                        || !string.Equals(
+                            use.GetString(),
+                            JsonWebKeyUseNames.Sig,
+                            StringComparison.Ordinal)))
+                {
+                    throw new ManagementValidationException(
+                        "jwks_use_invalid",
+                        "Chaves de autenticação devem usar 'use': 'sig' ou omitir o campo.",
+                        "jwksJson");
+                }
+
+                if (kty == JsonWebAlgorithmsKeyTypes.RSA)
+                {
+                    var modulus = RequiredJwkString(key, "n");
+                    var exponent = RequiredJwkString(key, "e");
+                    if (!TryGetBase64UrlByteLength(modulus, out var modulusBytes)
+                        || modulusBytes < 256
+                        || !TryGetBase64UrlByteLength(exponent, out var exponentBytes)
+                        || exponentBytes is < 1 or > 8)
+                    {
+                        throw new ManagementValidationException(
+                            "jwks_rsa_key_too_small",
+                            "Chaves RSA devem possuir pelo menos 2048 bits.",
+                            "jwksJson");
+                    }
+                }
+                else
+                {
+                    var curve = RequiredJwkString(key, "crv");
+                    if (curve is not ("P-256" or "P-384" or "P-521"))
+                    {
+                        throw new ManagementValidationException(
+                            "jwks_curve_unsupported",
+                            "Use curvas P-256, P-384 ou P-521.",
+                            "jwksJson");
+                    }
+                    var x = RequiredJwkString(key, "x");
+                    var y = RequiredJwkString(key, "y");
+                    var coordinateBytes = curve switch
+                    {
+                        "P-256" => 32,
+                        "P-384" => 48,
+                        _ => 66,
+                    };
+                    if (!TryGetBase64UrlByteLength(x, out var xBytes)
+                        || !TryGetBase64UrlByteLength(y, out var yBytes)
+                        || xBytes != coordinateBytes
+                        || yBytes != coordinateBytes)
+                    {
+                        throw new ManagementValidationException(
+                            "jwks_ec_coordinates_invalid",
+                            "As coordenadas EC não correspondem à curva informada.",
+                            "jwksJson");
+                    }
+                }
+
+                if (key.TryGetProperty("alg", out var algorithm))
+                {
+                    var alg = algorithm.ValueKind == JsonValueKind.String
+                        ? algorithm.GetString()
+                        : null;
+                    if (alg is not ("RS256" or "RS384" or "RS512"
+                        or "PS256" or "PS384" or "PS512"
+                        or "ES256" or "ES384" or "ES512"))
+                    {
+                        throw new ManagementValidationException(
+                            "jwks_algorithm_unsupported",
+                            "O algoritmo da chave deve ser RS*, PS* ou ES* com SHA-256/384/512.",
+                            "jwksJson");
+                    }
+                    if ((kty == JsonWebAlgorithmsKeyTypes.RSA
+                            && !alg.StartsWith("RS", StringComparison.Ordinal)
+                            && !alg.StartsWith("PS", StringComparison.Ordinal))
+                        || (kty == JsonWebAlgorithmsKeyTypes.EllipticCurve
+                            && !alg.StartsWith("ES", StringComparison.Ordinal)))
+                    {
+                        throw new ManagementValidationException(
+                            "jwks_algorithm_key_type_mismatch",
+                            "O algoritmo informado não corresponde ao tipo da chave pública.",
+                            "jwksJson");
+                    }
+                }
+            }
+
+            return new JsonWebKeySet(document.RootElement.GetRawText());
+        }
+        catch (JsonException exception)
+        {
+            throw new ManagementValidationException(
+                "jwks_json_invalid",
+                $"O JWKS não é um JSON válido: {exception.Message}",
+                "jwksJson");
+        }
+        catch (ArgumentException exception)
+        {
+            throw new ManagementValidationException(
+                "jwks_json_invalid",
+                $"O JWKS não pôde ser interpretado: {exception.Message}",
+                "jwksJson");
+        }
+    }
+
+    private static string RequiredJwkString(JsonElement key, string property)
+    {
+        if (!key.TryGetProperty(property, out var value)
+            || value.ValueKind != JsonValueKind.String
+            || string.IsNullOrWhiteSpace(value.GetString()))
+        {
+            throw new ManagementValidationException(
+                "jwks_key_parameter_required",
+                $"Cada chave pública deve informar '{property}'.",
+                "jwksJson");
+        }
+
+        return value.GetString()!;
+    }
+
+    private static bool TryGetBase64UrlByteLength(
+        string value,
+        out int length)
+    {
+        try
+        {
+            length = WebEncoders.Base64UrlDecode(value).Length;
+            return true;
+        }
+        catch (FormatException)
+        {
+            length = 0;
+            return false;
+        }
     }
 
     private static bool SameOrigin(Uri left, Uri right) =>

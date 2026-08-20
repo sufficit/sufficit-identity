@@ -330,7 +330,7 @@
         "RequireSenderConstraint": false,
         "EligibleClientIds": []
       },
-      "_Mtls": "Mutual TLS (mTLS) client authentication and sender-constrained access tokens (RFC 8705, item 3.4). Opt-in (default false): enabling registers the MTLS-aliased endpoint paths (e.g. /connect/token/mtls) and advertises tls_client_certificate_bound_access_tokens=true in discovery. mTLS requires the HOST (Kestrel/nginx) to request and validate client certificates at the TLS handshake — that is DEPLOYMENT configuration (see Program.cs comments), not something this flag alone does. private_key_jwt (RFC 7523) is enabled by OpenIddict unconditionally and is the OTHER strong client-auth method (not gated here). Together with PAR (item 3.3) and DPoP (item 3.1), these are the FAPI 2.0 prerequisites.",
+      "_Mtls": "Mutual TLS (mTLS) client authentication and sender-constrained access tokens (RFC 8705). Enabling activates OpenIddict's native self_signed_tls_client_auth validator, optional PKI tls_client_auth, MTLS endpoint aliases and certificate-bound access tokens. The HOST must request the certificate directly or forward it only from an explicitly trusted proxy.",
       "Mtls": {
         "_Enabled": "true registers MTLS endpoint aliases and advertises mTLS support in discovery. Default false — enable only after the host is configured for client certificates.",
         "Enabled": false,
@@ -347,8 +347,10 @@
         "ForwardedCertificateHeader": "X-Sufficit-Client-Certificate",
         "_TrustedProxyNetworks": "Dedicated CIDRs allowed to assert the client certificate. Required in TrustedProxy mode and intentionally separate from general TrustedProxies.",
         "TrustedProxyNetworks": [],
-        "_ClientCertificateThumbprints": "Map of OAuth client_id to one or more SHA-256 certificate thumbprints. Multiple pins provide bounded rollover overlap.",
-        "ClientCertificateThumbprints": {}
+        "_ClientCertificateThumbprints": "Legacy compatibility only. Register public certificates through Management; new bindings must not be added here.",
+        "ClientCertificateThumbprints": {},
+        "_TrustedCertificateAuthorityPaths": "Public PEM/DER files containing the root and optional intermediate CAs trusted for tls_client_auth. Never include a private key. Empty keeps the recommended self_signed_tls_client_auth method and disables PKI authentication.",
+        "TrustedCertificateAuthorityPaths": []
       },
       "_BackchannelLogout": "OIDC Back-Channel Logout 1.0. The STS signs and POSTs a short-lived logout_token to every RP that registered a backchannel_logout_uri. Enabled by default; clients without metadata are skipped. The OP session sid is included when the RP requires session-specific logout.",
       "BackchannelLogout": {

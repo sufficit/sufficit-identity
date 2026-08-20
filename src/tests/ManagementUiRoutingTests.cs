@@ -303,6 +303,10 @@ public sealed class ManagementUiRoutingTests
             "/management/clients/test-id/edit?section=tokens");
         var editHtml = WebUtility.HtmlDecode(
             await edit.Content.ReadAsStringAsync());
+        using var credentials = await client.GetAsync(
+            "/management/clients/test-id/edit?section=credentials");
+        var credentialsHtml = WebUtility.HtmlDecode(
+            await credentials.Content.ReadAsStringAsync());
 
         Assert.Equal(HttpStatusCode.OK, create.StatusCode);
         Assert.Contains("Nova aplicação", createHtml, StringComparison.Ordinal);
@@ -319,11 +323,13 @@ public sealed class ManagementUiRoutingTests
         Assert.Contains("Protocolos e permissões", detailHtml, StringComparison.Ordinal);
         Assert.Contains("60 minutos", detailHtml, StringComparison.Ordinal);
         Assert.Contains("Padrão global", detailHtml, StringComparison.Ordinal);
+        Assert.Contains("Autenticação da aplicação", detailHtml, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
         Assert.Contains("Editar aplicação", editHtml, StringComparison.Ordinal);
         Assert.Contains("Test Client", editHtml, StringComparison.Ordinal);
         Assert.Contains("Aplicação: test-client", editHtml, StringComparison.Ordinal);
-        Assert.Contains("Segredo preservado", editHtml, StringComparison.Ordinal);
+        Assert.Contains("Credencial protegida", editHtml, StringComparison.Ordinal);
+        Assert.Contains("Credenciais", editHtml, StringComparison.Ordinal);
         Assert.Contains("Usar padrão global", editHtml, StringComparison.Ordinal);
         Assert.Contains("Salvar alterações", editHtml, StringComparison.Ordinal);
         Assert.Contains("Mais informações sobre Access token", editHtml, StringComparison.Ordinal);
@@ -333,6 +339,15 @@ public sealed class ManagementUiRoutingTests
         Assert.DoesNotContain("Seção 3 de 4", editHtml, StringComparison.Ordinal);
         Assert.DoesNotContain(">Anterior<", editHtml, StringComparison.Ordinal);
         Assert.DoesNotContain(">Continuar<", editHtml, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, credentials.StatusCode);
+        Assert.Contains("Autenticação da aplicação", credentialsHtml,
+            StringComparison.Ordinal);
+        Assert.Contains("Adicionar credencial", credentialsHtml,
+            StringComparison.Ordinal);
+        Assert.Contains("private_key_jwt", credentialsHtml,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("Salvar alterações", credentialsHtml,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -872,7 +887,9 @@ public sealed class ManagementUiRoutingTests
                 [],
                 [],
                 ["https://client.tests.local/callback"],
-                []));
+                [],
+                Version: "test-version",
+                HasClientSecret: true));
 
         public Task<ManagementClientDetail> GetByClientIdAsync(
             string clientId,
@@ -891,6 +908,18 @@ public sealed class ManagementUiRoutingTests
             ManagementRequestContext context,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+
+        public async Task<RotateManagementClientSecretResult> RotateSecretAsync(
+            RotateManagementClientSecretCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            new(
+                await GetByClientIdAsync(
+                    command.ClientId,
+                    context,
+                    cancellationToken),
+                "generated-test-client-secret-1234567890",
+                command.Generate);
 
         public Task DeleteAsync(
             string clientId,
