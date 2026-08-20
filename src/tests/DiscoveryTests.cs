@@ -178,4 +178,25 @@ public sealed class DiscoveryTests
         Assert.True(aliases.TryGetProperty("token_endpoint", out var mtlsTokenEndpoint));
         Assert.EndsWith("/connect/token/mtls", mtlsTokenEndpoint.GetString(), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public async Task Discovery_uses_the_configured_mtls_endpoint_base_url()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
+        {
+            ["Sufficit:Identity:Mtls:Enabled"] = "true",
+            ["Sufficit:Identity:Mtls:DeploymentMode"] = "DirectTls",
+            ["Sufficit:Identity:Mtls:EndpointBaseUrl"] =
+                "https://mtls.example.test:26501/",
+        });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        var json = await factory.CreateClient()
+            .GetFromJsonAsync<JsonElement>("/.well-known/openid-configuration");
+        var aliases = json.GetProperty("mtls_endpoint_aliases");
+
+        Assert.Equal(
+            "https://mtls.example.test:26501/connect/token/mtls",
+            aliases.GetProperty("token_endpoint").GetString());
+    }
 }

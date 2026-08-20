@@ -658,13 +658,17 @@ public static class ServiceCollectionExtensions
                     // MTLS alias setters require ABSOLUTE URI strings (unlike
                     // SetTokenEndpointUris, which accepts relative paths and
                     // resolves them against the issuer). Build absolute URIs
-                    // from the configured issuer so they parse cleanly; the
-                    // discovery handler re-roots them to the real request
-                    // issuer at runtime.
+                    // from the dedicated public mTLS base when configured;
+                    // otherwise fall back to the issuer. This lets a proxy
+                    // isolate certificate handshakes on a dedicated port
+                    // without changing the ordinary issuer or clients.
                     var mtlsIssuer = string.IsNullOrWhiteSpace(options.Issuer)
                         ? "https://localhost/"
                         : options.Issuer;
-                    var mtlsBase = new Uri(mtlsIssuer, UriKind.Absolute);
+                    var mtlsBase = string.IsNullOrWhiteSpace(
+                        options.Mtls.EndpointBaseUrl)
+                        ? new Uri(mtlsIssuer, UriKind.Absolute)
+                        : new Uri(options.Mtls.EndpointBaseUrl, UriKind.Absolute);
 
                     server.SetMtlsTokenEndpointAliasUri(new Uri(mtlsBase, "connect/token/mtls").AbsoluteUri)
                           .SetMtlsIntrospectionEndpointAliasUri(new Uri(mtlsBase, "connect/introspect/mtls").AbsoluteUri)
@@ -1451,6 +1455,21 @@ public static class ServiceCollectionExtensions
         }
         if (options.Mtls.Enabled)
         {
+            if (!string.IsNullOrWhiteSpace(options.Mtls.EndpointBaseUrl)
+                && (!Uri.TryCreate(
+                        options.Mtls.EndpointBaseUrl,
+                        UriKind.Absolute,
+                        out var endpointBase)
+                    || endpointBase is null
+                    || (endpointBase.Scheme != Uri.UriSchemeHttps
+                        && endpointBase.Scheme != Uri.UriSchemeHttp)
+                    || !string.IsNullOrEmpty(endpointBase.UserInfo)
+                    || !string.IsNullOrEmpty(endpointBase.Query)
+                    || !string.IsNullOrEmpty(endpointBase.Fragment)))
+            {
+                throw new InvalidOperationException(
+                    "mTLS EndpointBaseUrl must be an absolute HTTP(S) URL without user information, query or fragment.");
+            }
             if (options.Mtls.RevocationTimeoutSeconds is < 1 or > 30)
             {
                 throw new InvalidOperationException(

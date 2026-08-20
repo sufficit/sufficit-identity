@@ -83,6 +83,24 @@ public sealed class MtlsPolicyTests
         Assert.Contains("DeploymentMode", exception.ToString(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Mtls_endpoint_base_url_must_be_an_absolute_http_url()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Mtls:Enabled"] = "true",
+                ["Sufficit:Identity:Mtls:DeploymentMode"] = "TrustedProxy",
+                ["Sufficit:Identity:Mtls:TrustedProxyNetworks:0"] = "127.0.0.1/32",
+                ["Sufficit:Identity:Mtls:EndpointBaseUrl"] = "not-a-url",
+            });
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => ((IAsyncLifetime)factory).InitializeAsync());
+
+        Assert.Contains("EndpointBaseUrl", exception.ToString(), StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(MtlsCertificateRevocationMode.NoCheck, X509RevocationMode.NoCheck)]
     [InlineData(MtlsCertificateRevocationMode.Online, X509RevocationMode.Online)]

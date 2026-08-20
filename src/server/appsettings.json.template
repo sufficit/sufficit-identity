@@ -334,6 +334,8 @@
       "Mtls": {
         "_Enabled": "true registers MTLS endpoint aliases and advertises mTLS support in discovery. Default false — enable only after the host is configured for client certificates.",
         "Enabled": false,
+        "_EndpointBaseUrl": "Optional absolute HTTP(S) public base URL for the MTLS aliases. Leave empty to use the issuer; set this to a dedicated mTLS host/port when the proxy isolates certificate handshakes.",
+        "EndpointBaseUrl": "",
         "_DeploymentMode": "Must be DirectTls or TrustedProxy before Enabled=true; Unattested fails startup.",
         "DeploymentMode": "Unattested",
         "_RequireValidCertificateChain": "Build the platform X.509 chain after the per-client SHA-256 thumbprint pin. Keep true in production.",
