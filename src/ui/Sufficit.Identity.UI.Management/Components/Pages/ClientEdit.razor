@@ -82,35 +82,43 @@ else
 
             @if (activeSection == 0)
             {
-                <div class="form-grid form-grid--two">
-                    <div class="field-group">
-                        <label for="edit-display-name">Nome da aplicação</label>
-                        <input id="edit-display-name" name="displayName" class="form-control"
-                               autocomplete="organization" @bind="displayName" />
-                        <span class="field-hint">Nome exibido no consentimento e na auditoria.</span>
+                <SUIFormGrid Class="client-edit-form-grid" Columns="2" Spacing="4" LabelLines="2">
+                    <SUITextField T="string"
+                                  id="edit-display-name"
+                                  name="displayName"
+                                  Label="Nome da aplicação"
+                                  HelperText="Nome exibido no consentimento e na auditoria."
+                                  autocomplete="organization"
+                                  @bind-Value="displayName" />
+                    <SUITextField T="string"
+                                  id="edit-client-id"
+                                  name="clientId"
+                                  Class="client-edit-technical-field"
+                                  Label="Client ID"
+                                  HelperText="O identificador é imutável para não quebrar integrações existentes."
+                                  Value="@client.ClientId"
+                                  readonly />
+                </SUIFormGrid>
+                <SUIFormGrid Class="client-edit-form-grid client-edit-form-grid--consent" Columns="2" Spacing="4" LabelLines="2">
+                    <SUISelect T="string"
+                               id="edit-consent"
+                               name="consentType"
+                               Label="Consentimento"
+                               @bind-Value="consentType"
+                               MenuMaxWidth="min(30rem, calc(100vw - 24px))">
+                        <SUISelectItem Value="@("explicit")">Explícito — o usuário confirma</SUISelectItem>
+                        <SUISelectItem Value="@("implicit")">Implícito — aplicação confiável</SUISelectItem>
+                        <SUISelectItem Value="@("external")">Externo — decisão fora do fluxo</SUISelectItem>
+                        <SUISelectItem Value="@("systematic")">Sistemático — confirmação recorrente</SUISelectItem>
+                    </SUISelect>
+                    <div class="client-edit-choice-field" data-sui-align-field>
+                        <span class="client-edit-choice-field__label" data-sui-field-label aria-hidden="true"></span>
+                        <label class="choice-control client-edit-par-choice">
+                            <input id="edit-require-par" name="requirePar" type="checkbox" @bind="requirePar" />
+                            <span><strong>Exigir PAR</strong><small>Protege parâmetros antes de abrir o navegador.</small></span>
+                        </label>
                     </div>
-                    <div class="field-group">
-                        <label for="edit-client-id">Client ID</label>
-                        <input id="edit-client-id" name="clientId" class="form-control technical-value"
-                               value="@client.ClientId" readonly />
-                        <span class="field-hint">O identificador é imutável para não quebrar integrações existentes.</span>
-                    </div>
-                </div>
-                <div class="form-grid form-grid--two">
-                    <div class="field-group">
-                        <label for="edit-consent">Consentimento</label>
-                        <select id="edit-consent" name="consentType" class="form-control" @bind="consentType">
-                            <option value="explicit">Explícito — o usuário confirma</option>
-                            <option value="implicit">Implícito — aplicação confiável</option>
-                            <option value="external">Externo — decisão fora do fluxo</option>
-                            <option value="systematic">Sistemático — confirmação recorrente</option>
-                        </select>
-                    </div>
-                    <label class="choice-control choice-control--single">
-                        <input id="edit-require-par" name="requirePar" type="checkbox" @bind="requirePar" />
-                        <span><strong>Exigir PAR</strong><small>Protege parâmetros antes de abrir o navegador.</small></span>
-                    </label>
-                </div>
+                </SUIFormGrid>
             }
             else if (activeSection == 1)
             {

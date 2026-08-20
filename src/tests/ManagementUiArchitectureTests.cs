@@ -1140,6 +1140,38 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Client_edit_overview_uses_shared_vw_fields_and_form_grid()
+    {
+        var managementUi = ResolveManagementUiSource();
+        var editor = File.ReadAllText(Path.Combine(
+            managementUi,
+            "Components",
+            "Pages",
+            "ClientEdit.razor"));
+        var styles = File.ReadAllText(Path.Combine(
+            managementUi,
+            "wwwroot",
+            "app.css"));
+
+        Assert.Contains(
+            "<SUIFormGrid Class=\"client-edit-form-grid\"",
+            editor,
+            StringComparison.Ordinal);
+        Assert.Contains("<SUITextField T=\"string\"", editor,
+            StringComparison.Ordinal);
+        Assert.Contains("<SUISelect T=\"string\"", editor,
+            StringComparison.Ordinal);
+        Assert.Contains("data-sui-align-field", editor,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("<select id=\"edit-consent\"", editor,
+            StringComparison.Ordinal);
+        Assert.Contains(".client-edit-form-grid--consent", styles,
+            StringComparison.Ordinal);
+        Assert.Contains(".client-edit-par-choice", styles,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Branding_controller_is_only_an_http_adapter()
     {
         var repositoryRoot = ResolveIdentityRepository();
