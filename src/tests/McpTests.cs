@@ -202,7 +202,7 @@ public sealed class DcrTests
         {
             ClientName = "Probe MCP client",
             GrantTypes = new() { "authorization_code", "refresh_token" },
-            Scopes = new() { "openid", "profile", "offline_access" },
+            Scopes = new() { "openid", "profile", "email", "offline_access" },
             RedirectUris = new() { new Uri("http://127.0.0.1:33418/callback") },
         });
         Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
