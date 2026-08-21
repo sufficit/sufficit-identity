@@ -203,7 +203,73 @@
 .wizard-stage__heading p { max-width: 720px; margin: 0; color: var(--ink-muted); }
 .wizard-stage__eyebrow { display: block; margin-bottom: 5px; color: var(--brand); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 .choice-grid--two { grid-template-columns: minmax(0, 1fr); }
-.choice-control--single { margin-top: 22px; }
+.client-edit-form-grid {
+    align-items: stretch;
+}
+
+.client-edit-form-grid--consent {
+    margin-top: 20px;
+}
+
+.client-edit-form-grid > .sui-field,
+.client-edit-form-grid > .client-edit-choice-field {
+    min-width: 0;
+}
+
+.client-edit-form-grid .sui-field__label,
+.client-edit-form-grid [data-sui-field-label] {
+    color: var(--ink-strong);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.client-edit-form-grid .sui-field__input,
+.client-edit-form-grid .sui-select__trigger {
+    min-height: 44px;
+    border-color: var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink);
+}
+
+.client-edit-form-grid .sui-field__input {
+    padding: 9px 12px;
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.client-edit-form-grid .sui-select__trigger {
+    font-size: 16px;
+}
+
+.client-edit-form-grid .sui-field__input:focus,
+.client-edit-form-grid .sui-select__trigger:focus-visible {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px var(--brand-ring);
+}
+
+.client-edit-form-grid .sui-field__helper {
+    color: var(--ink-muted);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.client-edit-technical-field .sui-field__input {
+    font-family: var(--font-mono);
+    font-size: 13px;
+}
+
+.client-edit-choice-field {
+    display: grid;
+    min-width: 0;
+    gap: 7px;
+}
+
+.client-edit-par-choice {
+    align-self: end;
+    min-height: 72px;
+}
 .profile-context { margin-top: 22px; padding: 14px; border-left: 3px solid var(--brand); background: var(--brand-soft); }
 .profile-context div { display: grid; gap: 3px; }
 .scope-search { width: 100%; max-width: 520px; margin-bottom: 16px; }
@@ -300,6 +366,387 @@
 .completion-panel h2, .completion-panel p { margin-bottom: 2px; }
 .one-time-secret { display: grid; width: 100%; gap: 12px; padding: 14px; border: 1px solid var(--warning); border-radius: var(--radius); background: var(--warning-soft); }
 .one-time-secret > div { display: grid; gap: 2px; }
+
+.client-credential-editor {
+    display: grid;
+    min-width: 0;
+    gap: 22px;
+}
+
+.client-credential-editor__status {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 14px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+}
+
+.client-credential-editor__icon,
+.client-secret-summary__icon {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    border-radius: var(--radius);
+    background: var(--brand-soft);
+    color: var(--brand);
+}
+
+.client-credential-editor__status h3 {
+    margin: 1px 0 4px;
+    color: var(--ink-strong);
+    font-size: 15px;
+}
+
+.client-credential-editor__status p,
+.client-credential-editor__summary span,
+.client-credential-confirmation span,
+.client-credential-reveal > div span,
+.client-secret-summary > div span,
+.client-credential-catalog__heading p,
+.client-credential-empty span,
+.client-credential-revoke span,
+.client-credential-form-heading span {
+    display: block;
+    max-width: 70ch;
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+.client-credential-editor__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.client-credential-editor__summary--actions > div:last-child {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.client-auth-methods {
+    display: grid;
+    grid-template-columns: minmax(150px, .35fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 12px 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+}
+
+.client-auth-methods > strong {
+    padding-top: 4px;
+    color: var(--ink-strong);
+    font-size: 12px;
+}
+
+.client-auth-methods > div {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.protocol-chip {
+    display: inline-flex;
+    min-height: 26px;
+    align-items: center;
+    padding: 4px 9px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-pill);
+    background: var(--surface-sunken);
+    color: var(--ink);
+    font-size: 10px;
+    font-weight: 650;
+    line-height: 1.25;
+}
+
+.client-credential-loading {
+    display: flex;
+    min-height: 84px;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    color: var(--ink-muted);
+    font-size: 12px;
+}
+
+.client-credential-catalog {
+    display: grid;
+    min-width: 0;
+    gap: 12px;
+}
+
+.client-credential-catalog__heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.client-credential-catalog__heading > div {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+}
+
+.client-credential-catalog__heading h4 {
+    margin: 0;
+    color: var(--ink-strong);
+    font-size: 13px;
+}
+
+.client-credential-catalog__heading > span {
+    flex: 0 0 auto;
+    color: var(--ink-muted);
+    font-size: 11px;
+}
+
+.client-credential-empty {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 70px;
+    padding: 14px 0;
+    border-block: 1px solid var(--line);
+    color: var(--ink-muted);
+}
+
+.client-credential-empty > div {
+    display: grid;
+    gap: 3px;
+}
+
+.client-credential-empty strong {
+    color: var(--ink-strong);
+    font-size: 12px;
+}
+
+.client-credential-list {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--line);
+    list-style: none;
+}
+
+.client-credential-list > li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 10px 16px;
+    min-width: 0;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--line);
+}
+
+.client-credential-list__identity {
+    display: grid;
+    min-width: 0;
+    gap: 5px;
+}
+
+.client-credential-list__identity > strong {
+    color: var(--ink-strong);
+    font-size: 12px;
+}
+
+.client-credential-list__identity > span {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    color: var(--ink-muted);
+    font-size: 11px;
+}
+
+.client-credential-list__identity code {
+    overflow-wrap: anywhere;
+}
+
+.client-certificate-list .client-credential-list__identity > strong {
+    overflow-wrap: anywhere;
+}
+
+.client-certificate-thumbprint {
+    display: block;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    color: var(--ink-muted);
+    font-size: 10px;
+    line-height: 1.5;
+}
+
+.client-credential-list__primary {
+    justify-self: end;
+    color: var(--ink-muted);
+    font-size: 11px;
+}
+
+.client-credential-revoke {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr) minmax(220px, .65fr) auto;
+    align-items: center;
+    gap: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+}
+
+.client-credential-revoke > div:first-child {
+    display: grid;
+    gap: 3px;
+}
+
+.client-credential-revoke > div:last-child {
+    display: flex;
+    gap: 7px;
+}
+
+.client-certificate-revoke {
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.client-credential-form-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.client-credential-form-heading > div {
+    display: grid;
+    gap: 4px;
+}
+
+.client-key-method {
+    min-width: 0;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+}
+
+.client-key-method > summary {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    list-style: none;
+}
+
+.client-key-method > summary::-webkit-details-marker {
+    display: none;
+}
+
+.client-key-method > summary:focus-visible {
+    border-radius: var(--radius-sm);
+    outline: 2px solid var(--brand);
+    outline-offset: 4px;
+}
+
+.client-key-method__icon {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border-radius: var(--radius);
+    background: var(--surface-sunken);
+    color: var(--brand);
+}
+
+.client-key-method > summary > span:nth-child(2) {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+}
+
+.client-key-method > summary strong {
+    color: var(--ink-strong);
+    font-size: 12px;
+}
+
+.client-key-method > summary small {
+    color: var(--ink-muted);
+    font-size: 11px;
+}
+
+.client-key-method__body {
+    display: grid;
+    min-width: 0;
+    gap: 16px;
+    padding-top: 18px;
+}
+
+.client-certificate-form {
+    padding-top: 4px;
+}
+
+.client-key-method__textarea {
+    min-height: 170px;
+    resize: vertical;
+}
+
+.client-key-method__actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.client-credential-editor__summary > div,
+.client-credential-confirmation > div,
+.client-credential-reveal > div,
+.client-secret-summary > div {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+}
+
+.client-credential-editor__form {
+    display: grid;
+    min-width: 0;
+    gap: 22px;
+}
+
+.client-credential-confirmation {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, .8fr);
+    align-items: center;
+    gap: 24px;
+    padding-block: 20px;
+    border-block: 1px solid var(--line);
+}
+
+.client-credential-confirmation .field-group {
+    min-width: 0;
+}
+
+.client-credential-editor__actions,
+.client-credential-reveal__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.client-credential-reveal {
+    display: grid;
+    min-width: 0;
+    gap: 14px;
+    padding: 18px;
+    border: 1px solid var(--warning);
+    border-radius: var(--radius);
+    background: var(--warning-soft);
+}
+
+.client-credential-reveal input {
+    min-width: 0;
+    background: var(--surface);
+}
 
 @media (min-width: 768px) {
     .profile-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -3996,8 +4443,28 @@ h3 {
 }
 
 .client-detail-panel--uris,
+.client-detail-panel--credentials,
 .client-detail-panel--requirements {
     grid-column: 1 / -1;
+}
+
+.client-secret-summary {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+    padding-top: 2px;
+}
+
+.client-secret-summary__icon {
+    width: 40px;
+    height: 40px;
+}
+
+.client-secret-summary > div strong {
+    color: var(--ink-strong);
+    font-size: 13px;
 }
 
 .client-detail-panel__heading {
@@ -6142,6 +6609,66 @@ h3 {
 
     .client-detail-panel {
         padding: 16px;
+    }
+
+    .client-credential-editor__status,
+    .client-secret-summary {
+        grid-template-columns: 44px minmax(0, 1fr);
+    }
+
+    .client-credential-editor__status > .status-badge,
+    .client-secret-summary > .sui-status-badge {
+        grid-column: 2;
+        justify-self: start;
+    }
+
+    .client-credential-editor__summary,
+    .client-credential-confirmation {
+        align-items: stretch;
+        grid-template-columns: minmax(0, 1fr);
+        flex-direction: column;
+    }
+
+    .client-auth-methods,
+    .client-credential-revoke {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .client-credential-list > li {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .client-credential-list > li > .button,
+    .client-credential-list__primary {
+        grid-column: 1 / -1;
+        justify-self: start;
+    }
+
+    .client-credential-revoke > div:last-child,
+    .client-credential-editor__summary--actions > div:last-child,
+    .client-key-method__actions {
+        justify-content: stretch;
+    }
+
+    .client-credential-revoke > div:last-child > .button,
+    .client-credential-editor__summary--actions > div:last-child > .button,
+    .client-key-method__actions > .button {
+        width: 100%;
+    }
+
+    .client-key-method > summary {
+        grid-template-columns: 40px minmax(0, 1fr);
+    }
+
+    .client-key-method > summary > .status-badge {
+        grid-column: 2;
+        justify-self: start;
+    }
+
+    .client-credential-editor__summary .button,
+    .client-credential-editor__actions .button,
+    .client-credential-reveal__actions .button {
+        width: 100%;
     }
 
     .permission-group {

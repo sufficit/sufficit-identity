@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using OpenIddict.Abstractions;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Clients;
 
@@ -74,7 +75,8 @@ public sealed class ClientsController(IClientManagementService clients)
                 request.JwksUri,
                 request.AccessTokenLifetimeMinutes,
                 request.IdentityTokenLifetimeMinutes,
-                request.RefreshTokenLifetimeDays),
+                request.RefreshTokenLifetimeDays,
+                request.JwksJson),
             RequestContext(),
             cancellationToken);
 
@@ -112,7 +114,136 @@ public sealed class ClientsController(IClientManagementService clients)
                 request.RefreshTokenLifetimeDays,
                 request.ClearAccessTokenLifetime,
                 request.ClearIdentityTokenLifetime,
-                request.ClearRefreshTokenLifetime),
+                request.ClearRefreshTokenLifetime,
+                request.JwksJson),
+            RequestContext(),
+            cancellationToken);
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Lists the client's authentication methods and every independently
+    /// managed shared credential. Secret values are never returned.
+    /// </summary>
+    [HttpGet("{clientId}/credentials")]
+    public async Task<ActionResult<ManagementClientCredentialsOverview>>
+        GetCredentials(
+            string clientId,
+            CancellationToken cancellationToken) =>
+        Ok(await clients.GetCredentialsAsync(
+            clientId,
+            RequestContext(),
+            cancellationToken));
+
+    /// <summary>
+    /// Adds a shared credential. The plaintext is returned exactly once in
+    /// this response and is never persisted or logged.
+    /// </summary>
+    [HttpPost("{clientId}/credentials")]
+    public async Task<ActionResult<CreateManagementClientCredentialResult>>
+        CreateCredential(
+            string clientId,
+            [FromBody] CreateClientCredentialRequest request,
+            CancellationToken cancellationToken)
+    {
+        var result = await clients.CreateCredentialAsync(
+            new CreateManagementClientCredentialCommand(
+                clientId,
+                request.ExpectedClientVersion,
+                request.Label,
+                request.Generate,
+                request.ClientSecret,
+                request.NotBeforeUtc,
+                request.ExpiresAtUtc),
+            RequestContext(),
+            cancellationToken);
+
+        return CreatedAtAction(
+            nameof(GetCredentials),
+            new { clientId },
+            result);
+    }
+
+    /// <summary>Immediately revokes an additional shared credential.</summary>
+    [HttpPost("{clientId}/credentials/{credentialId:guid}/revoke")]
+    public async Task<ActionResult<ManagementClientCredentialsOverview>>
+        RevokeCredential(
+            string clientId,
+            Guid credentialId,
+            [FromBody] RevokeClientCredentialRequest request,
+            CancellationToken cancellationToken) =>
+        Ok(await clients.RevokeCredentialAsync(
+            new RevokeManagementClientCredentialCommand(
+                clientId,
+                credentialId,
+                request.ExpectedCredentialVersion,
+                request.Reason),
+            RequestContext(),
+            cancellationToken));
+
+    /// <summary>
+    /// Registers public X.509 material for RFC 8705 client authentication.
+    /// Private keys are rejected and never persisted.
+    /// </summary>
+    [HttpPost("{clientId}/certificates")]
+    public async Task<ActionResult<ManagementClientCredentialsOverview>>
+        RegisterTlsCertificate(
+            string clientId,
+            [FromBody] RegisterClientTlsCertificateRequest request,
+            CancellationToken cancellationToken)
+    {
+        var result = await clients.RegisterTlsCertificateAsync(
+            new RegisterManagementClientTlsCertificateCommand(
+                clientId,
+                request.ExpectedClientVersion,
+                request.KeyId,
+                request.AuthenticationMethod,
+                request.CertificatePem),
+            RequestContext(),
+            cancellationToken);
+
+        return CreatedAtAction(
+            nameof(GetCredentials),
+            new { clientId },
+            result);
+    }
+
+    /// <summary>
+    /// Immediately removes a registered mTLS certificate or subordinate CA.
+    /// New authentications using the removed material are rejected.
+    /// </summary>
+    [HttpPost("{clientId}/certificates/{keyId}/revoke")]
+    public async Task<ActionResult<ManagementClientCredentialsOverview>>
+        RevokeTlsCertificate(
+            string clientId,
+            string keyId,
+            [FromBody] RevokeClientTlsCertificateRequest request,
+            CancellationToken cancellationToken) =>
+        Ok(await clients.RevokeTlsCertificateAsync(
+            new RevokeManagementClientTlsCertificateCommand(
+                clientId,
+                request.ExpectedClientVersion,
+                keyId),
+            RequestContext(),
+            cancellationToken));
+
+    /// <summary>
+    /// Replaces the shared credential of a manually managed client. The
+    /// plaintext value is returned only in this response.
+    /// </summary>
+    [HttpPost("{clientId}/secret/rotate")]
+    public async Task<ActionResult<RotateManagementClientSecretResult>> RotateSecret(
+        string clientId,
+        [FromBody] RotateClientSecretRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await clients.RotateSecretAsync(
+            new RotateManagementClientSecretCommand(
+                clientId,
+                request.ExpectedVersion,
+                request.Generate,
+                request.ClientSecret),
             RequestContext(),
             cancellationToken);
 
@@ -173,6 +304,9 @@ public sealed class CreateClientRequest
 
     public string? JwksUri { get; set; }
 
+    /// <summary>Embedded public JWKS used for private_key_jwt.</summary>
+    public string? JwksJson { get; set; }
+
     /// <summary>Optional per-application access token lifetime in minutes.</summary>
     public int? AccessTokenLifetimeMinutes { get; set; }
 
@@ -198,10 +332,55 @@ public sealed class UpdateClientRequest
     public bool BackchannelLogoutSessionRequired { get; set; }
     public string? ExpectedVersion { get; set; }
     public string? JwksUri { get; set; }
+    public string? JwksJson { get; set; }
     public int? AccessTokenLifetimeMinutes { get; set; }
     public int? IdentityTokenLifetimeMinutes { get; set; }
     public int? RefreshTokenLifetimeDays { get; set; }
     public bool ClearAccessTokenLifetime { get; set; }
     public bool ClearIdentityTokenLifetime { get; set; }
     public bool ClearRefreshTokenLifetime { get; set; }
+}
+
+public sealed class RotateClientSecretRequest
+{
+    public string? ExpectedVersion { get; set; }
+    public bool Generate { get; set; } = true;
+    public string? ClientSecret { get; set; }
+}
+
+public sealed class RegisterClientTlsCertificateRequest
+{
+    [Required]
+    public string ExpectedClientVersion { get; set; } = string.Empty;
+
+    public string? KeyId { get; set; }
+
+    [Required]
+    public string AuthenticationMethod { get; set; } =
+        OpenIddictConstants.ClientAuthenticationMethods.SelfSignedTlsClientAuth;
+
+    [Required]
+    public string CertificatePem { get; set; } = string.Empty;
+}
+
+public sealed class RevokeClientTlsCertificateRequest
+{
+    [Required]
+    public string ExpectedClientVersion { get; set; } = string.Empty;
+}
+
+public sealed class CreateClientCredentialRequest
+{
+    public string? ExpectedClientVersion { get; set; }
+    public string? Label { get; set; }
+    public bool Generate { get; set; } = true;
+    public string? ClientSecret { get; set; }
+    public DateTimeOffset? NotBeforeUtc { get; set; }
+    public DateTimeOffset? ExpiresAtUtc { get; set; }
+}
+
+public sealed class RevokeClientCredentialRequest
+{
+    public string? ExpectedCredentialVersion { get; set; }
+    public string? Reason { get; set; }
 }

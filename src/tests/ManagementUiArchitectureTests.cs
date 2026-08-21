@@ -1068,6 +1068,110 @@ public sealed class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Client_credentials_have_a_conditional_one_time_rotation_workflow()
+    {
+        var repositoryRoot = ResolveIdentityRepository();
+        var uiRoot = ResolveManagementUiSource();
+        var editor = File.ReadAllText(Path.Combine(
+            uiRoot,
+            "Components",
+            "Pages",
+            "ClientEdit.razor"));
+        var detail = File.ReadAllText(Path.Combine(
+            uiRoot,
+            "Components",
+            "Pages",
+            "ClientDetail.razor"));
+        var dataSource = File.ReadAllText(Path.Combine(
+            uiRoot,
+            "Clients",
+            "ManagementClientDataSource.cs"));
+        var controller = File.ReadAllText(Path.Combine(
+            repositoryRoot,
+            "src",
+            "management",
+            "Controllers",
+            "ClientsController.cs"));
+        var styles = File.ReadAllText(Path.Combine(
+            uiRoot,
+            "wwwroot",
+            "app.css"));
+
+        Assert.Contains("new(\"Credenciais\", \"lock\")", editor,
+            StringComparison.Ordinal);
+        Assert.Contains("type=\"password\"", editor, StringComparison.Ordinal);
+        Assert.Contains("credentialClientIdConfirmation", editor,
+            StringComparison.Ordinal);
+        Assert.Contains("navigator.clipboard.writeText", editor,
+            StringComparison.Ordinal);
+        Assert.Contains("RotateClientSecretAsync", dataSource,
+            StringComparison.Ordinal);
+        Assert.Contains("CreateClientCredentialAsync", dataSource,
+            StringComparison.Ordinal);
+        Assert.Contains("RevokeClientCredentialAsync", dataSource,
+            StringComparison.Ordinal);
+        Assert.Contains("OneTimeSecret", editor, StringComparison.Ordinal);
+        Assert.Contains("private_key_jwt", editor, StringComparison.Ordinal);
+        Assert.Contains("self_signed_tls_client_auth", editor,
+            StringComparison.Ordinal);
+        Assert.Contains("tls_client_auth", editor, StringComparison.Ordinal);
+        Assert.Contains("MtlsRuntimeEnabled", editor, StringComparison.Ordinal);
+        Assert.Contains("RegisterTlsCertificateAsync", dataSource,
+            StringComparison.Ordinal);
+        Assert.Contains("RevokeTlsCertificateAsync", dataSource,
+            StringComparison.Ordinal);
+        Assert.Contains("client-credential-list", editor, StringComparison.Ordinal);
+        Assert.Contains("UsesClientCredentials", detail, StringComparison.Ordinal);
+        Assert.Contains("HasClientSecret", detail, StringComparison.Ordinal);
+        Assert.Contains("{clientId}/secret/rotate", controller,
+            StringComparison.Ordinal);
+        Assert.Contains("{clientId}/credentials", controller,
+            StringComparison.Ordinal);
+        Assert.Contains("{clientId}/certificates", controller,
+            StringComparison.Ordinal);
+        Assert.Contains("{keyId}/revoke", controller,
+            StringComparison.Ordinal);
+        Assert.Contains("{credentialId:guid}/revoke", controller,
+            StringComparison.Ordinal);
+        Assert.Contains("client-credential-editor", styles,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("localStorage", editor, StringComparison.Ordinal);
+        Assert.DoesNotContain("sessionStorage", editor, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Client_edit_overview_uses_shared_vw_fields_and_form_grid()
+    {
+        var managementUi = ResolveManagementUiSource();
+        var editor = File.ReadAllText(Path.Combine(
+            managementUi,
+            "Components",
+            "Pages",
+            "ClientEdit.razor"));
+        var styles = File.ReadAllText(Path.Combine(
+            managementUi,
+            "wwwroot",
+            "app.css"));
+
+        Assert.Contains(
+            "<SUIFormGrid Class=\"client-edit-form-grid\"",
+            editor,
+            StringComparison.Ordinal);
+        Assert.Contains("<SUITextField T=\"string\"", editor,
+            StringComparison.Ordinal);
+        Assert.Contains("<SUISelect T=\"string\"", editor,
+            StringComparison.Ordinal);
+        Assert.Contains("data-sui-align-field", editor,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("<select id=\"edit-consent\"", editor,
+            StringComparison.Ordinal);
+        Assert.Contains(".client-edit-form-grid--consent", styles,
+            StringComparison.Ordinal);
+        Assert.Contains(".client-edit-par-choice", styles,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Branding_controller_is_only_an_http_adapter()
     {
         var repositoryRoot = ResolveIdentityRepository();

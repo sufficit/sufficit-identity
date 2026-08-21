@@ -687,3 +687,29 @@ VALUES ('20260816221816_AddVaultSecretExpiration', '10.0.11');
 
 COMMIT;
 
+START TRANSACTION;
+CREATE TABLE `oauthclientcredentials` (
+    `id` char(36) COLLATE ascii_general_ci NOT NULL,
+    `clientid` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    `kind` varchar(32) CHARACTER SET utf8mb4 NOT NULL,
+    `label` varchar(100) CHARACTER SET utf8mb4 NOT NULL,
+    `secrethash` varchar(1024) CHARACTER SET utf8mb4 NOT NULL,
+    `secrethint` varchar(12) CHARACTER SET utf8mb4 NOT NULL,
+    `createdatutc` datetime(6) NOT NULL,
+    `notbeforeutc` datetime(6) NULL,
+    `expiresatutc` datetime(6) NULL,
+    `revokedatutc` datetime(6) NULL,
+    `revocationreason` varchar(256) CHARACTER SET utf8mb4 NULL,
+    `concurrencytoken` varchar(32) CHARACTER SET utf8mb4 NOT NULL,
+    CONSTRAINT `PK_oauthclientcredentials` PRIMARY KEY (`id`)
+) CHARACTER SET=utf8mb4;
+
+CREATE INDEX `IX_oauthclientcredentials_client_kind_status` ON `oauthclientcredentials` (`clientid`, `kind`, `revokedatutc`, `expiresatutc`);
+
+CREATE INDEX `IX_oauthclientcredentials_expiresatutc` ON `oauthclientcredentials` (`expiresatutc`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260820143602_AddOAuthClientCredentials', '10.0.11');
+
+COMMIT;
+

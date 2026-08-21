@@ -1,7 +1,9 @@
 @page "/clients/{Id}/edit"
+@using Microsoft.JSInterop
 @attribute [Authorize(Policy = ManagementUiPolicies.ManageClients)]
 @inject ManagementClientDataSource ClientData
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 
 <PageTitle>@PageTitleText</PageTitle>
 
@@ -52,7 +54,9 @@ else
                 <strong>Revisão segura</strong>
             </div>
             <ol>
-                @foreach (var item in Sections.Select((value, index) => (value, index)))
+                @foreach (var item in Sections
+                    .Select((value, index) => (value, index))
+                    .Where(item => item.index != 4 || ShowsCredentialsSection))
                 {
                     <li class="@(item.index == activeSection ? "is-current" : null)">
                         <button type="button"
@@ -66,7 +70,7 @@ else
             </ol>
             <div class="wizard-save-state">
                 <span class="wizard-save-state__icon"><SUIIcon Name="lock" Size="15" /></span>
-                <span>Segredo preservado</span>
+                <span>@(client.HasClientSecret ? "Credencial protegida" : "Sem credencial ativa")</span>
             </div>
         </nav>
 
@@ -78,35 +82,43 @@ else
 
             @if (activeSection == 0)
             {
-                <div class="form-grid form-grid--two">
-                    <div class="field-group">
-                        <label for="edit-display-name">Nome da aplicação</label>
-                        <input id="edit-display-name" name="displayName" class="form-control"
-                               autocomplete="organization" @bind="displayName" />
-                        <span class="field-hint">Nome exibido no consentimento e na auditoria.</span>
+                <SUIFormGrid Class="client-edit-form-grid" Columns="2" Spacing="4" LabelLines="2">
+                    <SUITextField T="string"
+                                  id="edit-display-name"
+                                  name="displayName"
+                                  Label="Nome da aplicação"
+                                  HelperText="Nome exibido no consentimento e na auditoria."
+                                  autocomplete="organization"
+                                  @bind-Value="displayName" />
+                    <SUITextField T="string"
+                                  id="edit-client-id"
+                                  name="clientId"
+                                  Class="client-edit-technical-field"
+                                  Label="Client ID"
+                                  HelperText="O identificador é imutável para não quebrar integrações existentes."
+                                  Value="@client.ClientId"
+                                  readonly />
+                </SUIFormGrid>
+                <SUIFormGrid Class="client-edit-form-grid client-edit-form-grid--consent" Columns="2" Spacing="4" LabelLines="2">
+                    <SUISelect T="string"
+                               id="edit-consent"
+                               name="consentType"
+                               Label="Consentimento"
+                               @bind-Value="consentType"
+                               MenuMaxWidth="min(30rem, calc(100vw - 24px))">
+                        <SUISelectItem Value="@("explicit")">Explícito — o usuário confirma</SUISelectItem>
+                        <SUISelectItem Value="@("implicit")">Implícito — aplicação confiável</SUISelectItem>
+                        <SUISelectItem Value="@("external")">Externo — decisão fora do fluxo</SUISelectItem>
+                        <SUISelectItem Value="@("systematic")">Sistemático — confirmação recorrente</SUISelectItem>
+                    </SUISelect>
+                    <div class="client-edit-choice-field" data-sui-align-field>
+                        <span class="client-edit-choice-field__label" data-sui-field-label aria-hidden="true"></span>
+                        <label class="choice-control client-edit-par-choice">
+                            <input id="edit-require-par" name="requirePar" type="checkbox" @bind="requirePar" />
+                            <span><strong>Exigir PAR</strong><small>Protege parâmetros antes de abrir o navegador.</small></span>
+                        </label>
                     </div>
-                    <div class="field-group">
-                        <label for="edit-client-id">Client ID</label>
-                        <input id="edit-client-id" name="clientId" class="form-control technical-value"
-                               value="@client.ClientId" readonly />
-                        <span class="field-hint">O identificador é imutável para não quebrar integrações existentes.</span>
-                    </div>
-                </div>
-                <div class="form-grid form-grid--two">
-                    <div class="field-group">
-                        <label for="edit-consent">Consentimento</label>
-                        <select id="edit-consent" name="consentType" class="form-control" @bind="consentType">
-                            <option value="explicit">Explícito — o usuário confirma</option>
-                            <option value="implicit">Implícito — aplicação confiável</option>
-                            <option value="external">Externo — decisão fora do fluxo</option>
-                            <option value="systematic">Sistemático — confirmação recorrente</option>
-                        </select>
-                    </div>
-                    <label class="choice-control choice-control--single">
-                        <input id="edit-require-par" name="requirePar" type="checkbox" @bind="requirePar" />
-                        <span><strong>Exigir PAR</strong><small>Protege parâmetros antes de abrir o navegador.</small></span>
-                    </label>
-                </div>
+                </SUIFormGrid>
             }
             else if (activeSection == 1)
             {
@@ -118,7 +130,7 @@ else
                         <label class="choice-control"><input id="edit-grant-client-credentials" name="grantClientCredentials" type="checkbox" @bind="clientCredentials" /><span><strong>Client Credentials</strong><small>Integração sem usuário.</small></span></label>
                         <label class="choice-control"><input id="edit-grant-device-code" name="grantDeviceCode" type="checkbox" @bind="deviceCode" /><span><strong>Device Code</strong><small>Autoriza em outro dispositivo.</small></span></label>
                     </div>
-                    <span class="field-hint">O tipo (@ClientTypeLabel(client.Type)) e o segredo são preservados.</span>
+                    <span class="field-hint">O tipo atual é @ClientTypeLabel(client.Type). A credencial é administrada em uma seção separada.</span>
                 </fieldset>
                 <div class="field-group edit-textarea-group">
                     <label for="edit-scopes">Scopes</label>
@@ -245,7 +257,7 @@ else
                     Ao usar o padrão global, futuras mudanças do servidor passam a valer automaticamente para esta aplicação.
                 </p>
             }
-            else
+            else if (activeSection == 3)
             {
                 <div class="field-group">
                     <label for="edit-redirects">Redirect URIs</label>
@@ -271,6 +283,576 @@ else
                     </div>
                 </div>
             }
+            else
+            {
+                <section class="client-credential-editor" aria-labelledby="client-credential-heading">
+                    <header class="client-credential-editor__status">
+                        <span class="client-credential-editor__icon">
+                            <SUIIcon Name="lock" Size="21" />
+                        </span>
+                        <div>
+                            <h3 id="client-credential-heading">Autenticação da aplicação</h3>
+                            <p>
+                                Cadastre credenciais simultâneas para rotação sem indisponibilidade ou use chaves públicas. Cada requisição OAuth deve usar apenas um método de autenticação.
+                            </p>
+                        </div>
+                        <span class="status-badge status-badge--@(HasConfiguredAuthentication ? "success" : "warning")">
+                            @(HasConfiguredAuthentication ? "Configurada" : "Pendente")
+                        </span>
+                    </header>
+
+                    <div class="client-auth-methods" aria-label="Métodos de autenticação disponíveis">
+                        <strong>Métodos disponíveis</strong>
+                        <div>
+                            @if (AuthenticationMethods.Count is 0)
+                            {
+                                <span class="status-badge status-badge--warning">Nenhum método</span>
+                            }
+                            else
+                            {
+                                @foreach (var method in AuthenticationMethods)
+                                {
+                                    <span class="protocol-chip">@AuthenticationMethodLabel(method)</span>
+                                }
+                            }
+                        </div>
+                    </div>
+
+                    @if (credentialsLoading)
+                    {
+                        <div class="client-credential-loading" aria-busy="true">
+                            <span class="button-spinner" aria-hidden="true"></span>
+                            <span>Carregando credenciais…</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="client-credential-catalog">
+                            <header class="client-credential-catalog__heading">
+                                <div>
+                                    <h4>Segredos compartilhados</h4>
+                                    <p>Somente o identificador final é exibido. O valor completo nunca é recuperável.</p>
+                                </div>
+                                <span>@ActiveSharedCredentialCount ativo(s)</span>
+                            </header>
+
+                            @if (credentialOverview?.Credentials.Count is not > 0)
+                            {
+                                <div class="client-credential-empty">
+                                    <SUIIcon Name="key" Size="20" />
+                                    <div>
+                                        <strong>Nenhum segredo compartilhado</strong>
+                                        <span>Adicione a primeira credencial ou configure private_key_jwt abaixo.</span>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <ul class="client-credential-list">
+                                    @foreach (var credential in credentialOverview.Credentials)
+                                    {
+                                        <li>
+                                            <div class="client-credential-list__identity">
+                                                <strong>@credential.Label</strong>
+                                                <span>
+                                                    @if (!string.IsNullOrWhiteSpace(credential.SecretHint))
+                                                    {
+                                                        <code>••••••@credential.SecretHint</code>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>Valor protegido</span>
+                                                    }
+                                                    @if (credential.ExpiresAtUtc is not null)
+                                                    {
+                                                        <span>Expira em @FormatCredentialDate(credential.ExpiresAtUtc)</span>
+                                                    }
+                                                </span>
+                                            </div>
+                                            <span class="status-badge status-badge--@CredentialStatusTone(credential.Status)">
+                                                @CredentialStatusLabel(credential.Status)
+                                            </span>
+                                            @if (!credential.IsPrimary && credential.Status is "active" or "scheduled")
+                                            {
+                                                <button class="button button--danger button--compact"
+                                                        type="button"
+                                                        disabled="@(revokingCredentialId is not null)"
+                                                        @onclick="() => BeginCredentialRevocation(credential)">
+                                                    Revogar
+                                                </button>
+                                            }
+                                            else if (credential.IsPrimary)
+                                            {
+                                                <span class="client-credential-list__primary">Principal</span>
+                                            }
+
+                                            @if (revokingCredentialId == credential.Id)
+                                            {
+                                                <div class="client-credential-revoke" role="group" aria-label="Confirmar revogação">
+                                                    <div>
+                                                        <strong>Revogar esta credencial agora?</strong>
+                                                        <span>Novas autenticações com esse valor serão recusadas imediatamente.</span>
+                                                    </div>
+                                                    <input class="form-control"
+                                                           name="credentialRevocationReason"
+                                                           maxlength="256"
+                                                           placeholder="Motivo opcional"
+                                                           aria-label="Motivo da revogação"
+                                                           @bind="credentialRevocationReason" />
+                                                    <div>
+                                                        <button class="button button--secondary button--compact" type="button" @onclick="CancelCredentialRevocation">Cancelar</button>
+                                                        <button class="button button--danger button--compact" type="button" disabled="@revokingCredential" @onclick="RevokeCredentialAsync">
+                                                            @(revokingCredential ? "Revogando…" : "Confirmar revogação")
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            }
+                        </div>
+                    }
+
+                    @if (!configuringCredential && !string.IsNullOrWhiteSpace(credentialErrorMessage))
+                    {
+                        <div class="inline-notice inline-notice--danger" role="alert">
+                            <SUIIcon Name="alert" Size="19" />
+                            <div><strong>Não foi possível atualizar as credenciais</strong><span>@credentialErrorMessage</span></div>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(rotatedClientSecret))
+                    {
+                        <div class="client-credential-reveal" role="alert">
+                            <div>
+                                <strong>Copie a credencial agora</strong>
+                                <span>Este é o único momento em que o valor completo será exibido. Salve-o no cofre da aplicação.</span>
+                            </div>
+                            <input id="rotated-client-secret"
+                                   name="rotated-client-secret"
+                                   class="form-control technical-value"
+                                   value="@rotatedClientSecret"
+                                   readonly
+                                   aria-label="Nova credencial da aplicação" />
+                            <div class="client-credential-reveal__actions">
+                                <button class="button button--primary" type="button" @onclick="CopyRotatedSecretAsync">
+                                    <SUIIcon Name="copy" Size="17" />
+                                    @(credentialCopied ? "Copiada" : "Copiar credencial")
+                                </button>
+                                <button class="button button--secondary" type="button" @onclick="HideRotatedSecret">
+                                    Ocultar valor
+                                </button>
+                            </div>
+                            @if (clipboardUnavailable)
+                            {
+                                <span class="field-error" role="status">A cópia automática não está disponível. Selecione e copie o valor acima.</span>
+                            }
+                        </div>
+                    }
+                    else if (!configuringCredential)
+                    {
+                        <div class="client-credential-editor__summary client-credential-editor__summary--actions">
+                            <div>
+                                <strong>Gerenciar rotação</strong>
+                                <span>Adicione primeiro a nova credencial, atualize a aplicação consumidora e só então revogue a anterior.</span>
+                            </div>
+                            <div>
+                                <button class="button button--primary" type="button" @onclick="BeginCredentialCreation">
+                                    <SUIIcon Name="plus" Size="17" />
+                                    Adicionar credencial
+                                </button>
+                                @if (HasPrimaryCredential)
+                                {
+                                    <button class="button button--secondary" type="button" @onclick="BeginCredentialRotation">
+                                        Substituir principal
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="client-credential-editor__form">
+                            <header class="client-credential-form-heading">
+                                <div>
+                                    <strong>@(credentialOperation == "add" ? "Adicionar credencial" : "Substituir credencial principal")</strong>
+                                    <span>
+                                        @(credentialOperation == "add"
+                                            ? "A credencial atual continua funcionando até você revogá-la."
+                                            : "A principal anterior deixa de funcionar assim que a substituição for confirmada.")
+                                    </span>
+                                </div>
+                            </header>
+
+                            @if (credentialOperation == "add")
+                            {
+                                <div class="form-grid form-grid--two">
+                                    <div class="field-group">
+                                        <label for="credential-label">Nome da credencial</label>
+                                        <input id="credential-label"
+                                               name="credentialLabel"
+                                               class="form-control"
+                                               maxlength="100"
+                                               placeholder="Ex.: produção — agosto 2026"
+                                               @bind="credentialLabel"
+                                               @bind:event="oninput" />
+                                        <span class="field-hint">Identifique ambiente, instância ou período de rotação.</span>
+                                    </div>
+                                    <div class="field-group">
+                                        <label for="credential-expiration">Expiração <span class="label-optional">opcional, UTC</span></label>
+                                        <input id="credential-expiration"
+                                               name="credentialExpiration"
+                                               class="form-control"
+                                               type="date"
+                                               min="@MinimumCredentialExpirationDate"
+                                               max="@MaximumCredentialExpirationDate"
+                                               @bind="credentialExpirationDate"
+                                               @bind:format="yyyy-MM-dd" />
+                                        <span class="field-hint">Sem data, permanece válida até ser revogada.</span>
+                                    </div>
+                                </div>
+                            }
+
+                            <fieldset class="choice-fieldset">
+                                <legend>Como definir o valor</legend>
+                                <div class="choice-grid choice-grid--two">
+                                    <label class="choice-control">
+                                        <input type="radio"
+                                               name="credentialMode"
+                                               value="generated"
+                                               checked="@(credentialMode == "generated")"
+                                               @onchange="SetGeneratedCredentialMode" />
+                                        <span><strong>Gerar automaticamente</strong><small>Recomendado. Usa 256 bits de aleatoriedade criptográfica.</small></span>
+                                    </label>
+                                    <label class="choice-control">
+                                        <input type="radio"
+                                               name="credentialMode"
+                                               value="custom"
+                                               checked="@(credentialMode == "custom")"
+                                               @onchange="SetCustomCredentialMode" />
+                                        <span><strong>Informar uma credencial</strong><small>Use um valor aleatório vindo do seu cofre de segredos.</small></span>
+                                    </label>
+                                </div>
+                            </fieldset>
+
+                            @if (credentialMode == "custom")
+                            {
+                                <div class="form-grid form-grid--two">
+                                    <div class="field-group">
+                                        <label for="custom-client-secret">Nova credencial</label>
+                                        <input id="custom-client-secret"
+                                               name="customClientSecret"
+                                               class="form-control technical-value"
+                                               type="password"
+                                               minlength="32"
+                                               maxlength="512"
+                                               autocomplete="new-password"
+                                               spellcheck="false"
+                                               @bind="customClientSecret"
+                                               @bind:event="oninput" />
+                                        <span class="field-hint">Entre 32 e 512 caracteres, sem espaços nas extremidades.</span>
+                                    </div>
+                                    <div class="field-group">
+                                        <label for="custom-client-secret-confirmation">Confirmar credencial</label>
+                                        <input id="custom-client-secret-confirmation"
+                                               name="customClientSecretConfirmation"
+                                               class="form-control technical-value"
+                                               type="password"
+                                               minlength="32"
+                                               maxlength="512"
+                                               autocomplete="new-password"
+                                               spellcheck="false"
+                                               @bind="customClientSecretConfirmation"
+                                               @bind:event="oninput" />
+                                        @if (!string.IsNullOrEmpty(customClientSecretConfirmation) && !CustomCredentialsMatch)
+                                        {
+                                            <span class="field-error">Os valores informados não coincidem.</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="client-credential-confirmation">
+                                <div>
+                                    <strong>Confirme a operação</strong>
+                                    <span>
+                                        @(credentialOperation == "add"
+                                            ? "O novo valor será mostrado uma única vez."
+                                            : "Tokens emitidos continuam válidos, mas a principal anterior será recusada em novas autenticações.")
+                                    </span>
+                                </div>
+                                <div class="field-group">
+                                    <label for="credential-client-id-confirmation">Digite <code>@client.ClientId</code> para confirmar</label>
+                                    <input id="credential-client-id-confirmation"
+                                           name="credentialClientIdConfirmation"
+                                           class="form-control technical-value"
+                                           autocomplete="off"
+                                           spellcheck="false"
+                                           @bind="credentialClientIdConfirmation"
+                                           @bind:event="oninput" />
+                                </div>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(credentialErrorMessage))
+                            {
+                                <div class="inline-notice inline-notice--danger" role="alert">
+                                    <SUIIcon Name="alert" Size="19" />
+                                    <div><strong>Não foi possível concluir a operação</strong><span>@credentialErrorMessage</span></div>
+                                </div>
+                            }
+
+                            <div class="client-credential-editor__actions">
+                                <button class="button button--secondary" type="button" disabled="@rotatingCredential" @onclick="CancelCredentialRotation">Cancelar</button>
+                                <button class="button button--primary" type="button" disabled="@(!CanSubmitCredential)" @onclick="SubmitCredentialAsync">
+                                    @if (rotatingCredential)
+                                    {
+                                        <span class="button-spinner" aria-hidden="true"></span><span>Salvando…</span>
+                                    }
+                                    else
+                                    {
+                                        <SUIIcon Name="key" Size="17" /><span>@(credentialOperation == "add" ? "Adicionar credencial" : "Confirmar substituição")</span>
+                                    }
+                                </button>
+                            </div>
+                        </div>
+                    }
+
+                    <details class="client-key-method" open="@(TlsCertificates.Count > 0 || configuringTlsCertificate)">
+                        <summary>
+                            <span class="client-key-method__icon"><SUIIcon Name="lock" Size="19" /></span>
+                            <span>
+                                <strong>Certificados — mTLS</strong>
+                                <small>Autenticação RFC 8705 sem segredo compartilhado; a chave privada permanece na aplicação.</small>
+                            </span>
+                            <span class="status-badge status-badge--@(HasActiveTlsCertificate ? "success" : "neutral")">
+                                @(HasActiveTlsCertificate ? "Ativo" : "Opcional")
+                            </span>
+                        </summary>
+                        <div class="client-key-method__body">
+                            @if (credentialOverview?.MtlsRuntimeEnabled is false)
+                            {
+                                <div class="inline-notice inline-notice--info" role="note">
+                                    <SUIIcon Name="info" Size="18" />
+                                    <div>
+                                        <strong>Transporte mTLS não ativado neste deployment</strong>
+                                        <span>Você pode preparar e rotacionar certificados agora. O método será aceito quando o domínio mTLS e a validação de certificado forem ativados na infraestrutura.</span>
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="client-credential-catalog">
+                                <header class="client-credential-catalog__heading">
+                                    <div>
+                                        <h4>Material público registrado</h4>
+                                        <p>Certificados autoassinados autenticam diretamente; CAs subordinadas habilitam certificados emitidos por uma PKI confiável.</p>
+                                    </div>
+                                    <span>@TlsCertificates.Count de @(credentialOverview?.MaximumTlsCertificates ?? 10)</span>
+                                </header>
+
+                                @if (TlsCertificates.Count == 0)
+                                {
+                                    <div class="client-credential-empty">
+                                        <SUIIcon Name="lock" Size="20" />
+                                        <div>
+                                            <strong>Nenhum certificado registrado</strong>
+                                            <span>Cadastre o certificado público autoassinado recomendado ou uma CA subordinada da PKI.</span>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <ul class="client-credential-list client-certificate-list">
+                                        @foreach (var certificate in TlsCertificates)
+                                        {
+                                            <li>
+                                                <div class="client-credential-list__identity">
+                                                    <strong>@certificate.Subject</strong>
+                                                    <span>
+                                                        <span>@AuthenticationMethodLabel(certificate.AuthenticationMethod)</span>
+                                                        <code>kid: @certificate.KeyId</code>
+                                                        <span>Expira em @FormatCredentialDate(certificate.ExpiresAtUtc)</span>
+                                                    </span>
+                                                    <code class="client-certificate-thumbprint">SHA-256 @FormatCertificateThumbprint(certificate.Sha256Thumbprint)</code>
+                                                </div>
+                                                <span class="status-badge status-badge--@CredentialStatusTone(certificate.Status)">
+                                                    @CredentialStatusLabel(certificate.Status)
+                                                </span>
+                                                @if (certificate.Status is "active" or "scheduled")
+                                                {
+                                                    <button class="button button--danger button--compact"
+                                                            type="button"
+                                                            disabled="@(revokingTlsKeyId is not null)"
+                                                            @onclick="() => BeginTlsCertificateRevocation(certificate.KeyId)">
+                                                        Revogar
+                                                    </button>
+                                                }
+
+                                                @if (revokingTlsKeyId == certificate.KeyId)
+                                                {
+                                                    <div class="client-credential-revoke client-certificate-revoke" role="group" aria-label="Confirmar revogação do certificado">
+                                                        <div>
+                                                            <strong>Revogar este certificado agora?</strong>
+                                                            <span>Novas autenticações mTLS com este material serão recusadas imediatamente.</span>
+                                                        </div>
+                                                        <div>
+                                                            <button class="button button--secondary button--compact" type="button" @onclick="CancelTlsCertificateRevocation">Cancelar</button>
+                                                            <button class="button button--danger button--compact" type="button" disabled="@revokingTlsCertificate" @onclick="RevokeTlsCertificateAsync">
+                                                                @(revokingTlsCertificate ? "Revogando…" : "Confirmar revogação")
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+
+                            @if (!configuringTlsCertificate)
+                            {
+                                <div class="client-key-method__actions">
+                                    <button class="button button--primary" type="button" @onclick="BeginTlsCertificateRegistration">
+                                        <SUIIcon Name="plus" Size="17" />
+                                        Adicionar certificado
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="client-credential-editor__form client-certificate-form">
+                                    <fieldset class="choice-fieldset">
+                                        <legend>Modelo de confiança</legend>
+                                        <div class="choice-grid choice-grid--two">
+                                            <label class="choice-control">
+                                                <input type="radio"
+                                                       name="tlsAuthenticationMethod"
+                                                       value="self_signed_tls_client_auth"
+                                                       checked="@(tlsAuthenticationMethod == "self_signed_tls_client_auth")"
+                                                       @onchange="UseSelfSignedTlsAuthentication" />
+                                                <span><strong>Certificado autoassinado</strong><small>Recomendado. O certificado exato fica vinculado a esta aplicação.</small></span>
+                                            </label>
+                                            <label class="choice-control">
+                                                <input type="radio"
+                                                       name="tlsAuthenticationMethod"
+                                                       value="tls_client_auth"
+                                                       checked="@(tlsAuthenticationMethod == "tls_client_auth")"
+                                                       @onchange="UsePkiTlsAuthentication" />
+                                                <span><strong>PKI confiável</strong><small>Avançado. Cadastre uma CA subordinada; a raiz deve estar na trust store do deployment.</small></span>
+                                            </label>
+                                        </div>
+                                    </fieldset>
+
+                                    @if (tlsAuthenticationMethod == "tls_client_auth" && credentialOverview?.PkiAuthenticationEnabled is false)
+                                    {
+                                        <div class="inline-notice inline-notice--info" role="note">
+                                            <SUIIcon Name="info" Size="18" />
+                                            <div>
+                                                <strong>PKI ainda sem raiz confiável</strong>
+                                                <span>A CA subordinada pode ser preparada, mas tls_client_auth só será aceito após uma raiz pública ser configurada no deployment.</span>
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <div class="form-grid form-grid--two">
+                                        <div class="field-group">
+                                            <label for="tls-certificate-kid">Identificador (kid) <span class="label-optional">opcional</span></label>
+                                            <input id="tls-certificate-kid"
+                                                   name="tlsCertificateKid"
+                                                   class="form-control technical-value"
+                                                   maxlength="100"
+                                                   placeholder="Ex.: producao-2026-08"
+                                                   spellcheck="false"
+                                                   @bind="tlsCertificateKeyId"
+                                                   @bind:event="oninput" />
+                                            <span class="field-hint">Se ficar vazio, será derivado da impressão digital do certificado.</span>
+                                        </div>
+                                        <div class="field-group">
+                                            <label for="tls-client-id-confirmation">Confirme o client ID</label>
+                                            <input id="tls-client-id-confirmation"
+                                                   name="tlsClientIdConfirmation"
+                                                   class="form-control technical-value"
+                                                   autocomplete="off"
+                                                   spellcheck="false"
+                                                   @bind="tlsClientIdConfirmation"
+                                                   @bind:event="oninput" />
+                                            <span class="field-hint">Digite <code>@client.ClientId</code> para vincular o material à aplicação correta.</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="field-group">
+                                        <label for="tls-certificate-pem">Certificado público PEM</label>
+                                        <textarea id="tls-certificate-pem"
+                                                  name="tlsCertificatePem"
+                                                  class="form-control form-control--textarea technical-value client-key-method__textarea"
+                                                  spellcheck="false"
+                                                  placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
+                                                  @bind="tlsCertificatePem"
+                                                  @bind:event="oninput"></textarea>
+                                        <span class="field-hint">Nunca cole PFX, senha ou bloco PRIVATE KEY. Para PKI, envie somente a CA subordinada não autoemitida.</span>
+                                    </div>
+
+                                    @if (!string.IsNullOrWhiteSpace(tlsCertificateErrorMessage))
+                                    {
+                                        <div class="inline-notice inline-notice--danger" role="alert">
+                                            <SUIIcon Name="alert" Size="19" />
+                                            <div><strong>Não foi possível registrar o certificado</strong><span>@tlsCertificateErrorMessage</span></div>
+                                        </div>
+                                    }
+
+                                    <div class="client-credential-editor__actions">
+                                        <button class="button button--secondary" type="button" disabled="@savingTlsCertificate" @onclick="CancelTlsCertificateRegistration">Cancelar</button>
+                                        <button class="button button--primary" type="button" disabled="@(!CanSubmitTlsCertificate)" @onclick="RegisterTlsCertificateAsync">
+                                            @(savingTlsCertificate ? "Registrando…" : "Registrar certificado")
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </details>
+
+                    <details class="client-key-method" open="@(!string.IsNullOrWhiteSpace(publicJwksJson))">
+                        <summary>
+                            <span class="client-key-method__icon"><SUIIcon Name="key" Size="19" /></span>
+                            <span>
+                                <strong>Chaves públicas — private_key_jwt</strong>
+                                <small>Recomendado para serviços capazes de assinar uma client assertion.</small>
+                            </span>
+                            <span class="status-badge status-badge--@(HasPrivateKeyJwt ? "success" : "neutral")">
+                                @(HasPrivateKeyJwt ? "Ativo" : "Opcional")
+                            </span>
+                        </summary>
+                        <div class="client-key-method__body">
+                            <div class="inline-notice" role="note">
+                                <SUIIcon Name="info" Size="18" />
+                                <div>
+                                    <strong>Envie somente material público</strong>
+                                    <span>O Identity rejeita parâmetros privados, chaves simétricas e kids duplicados. Até 10 chaves podem coexistir durante a rotação.</span>
+                                </div>
+                            </div>
+                            <div class="field-group">
+                                <label for="client-public-jwks">JWKS público</label>
+                                <textarea id="client-public-jwks"
+                                          name="clientPublicJwks"
+                                          class="form-control form-control--textarea technical-value client-key-method__textarea"
+                                          spellcheck="false"
+                                          placeholder='{"keys":[{"kty":"EC","kid":"...","use":"sig","crv":"P-256","x":"...","y":"..."}]}'
+                                          @bind="publicJwksJson"></textarea>
+                                <span class="field-hint">Deixe vazio e salve para remover o método. Nunca cole a chave privada.</span>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(jwksErrorMessage))
+                            {
+                                <span class="field-error" role="alert">@jwksErrorMessage</span>
+                            }
+                            <div class="client-key-method__actions">
+                                <button class="button button--primary" type="button" disabled="@savingJwks" @onclick="SavePublicJwksAsync">
+                                    @(savingJwks ? "Salvando…" : "Salvar chaves públicas")
+                                </button>
+                            </div>
+                        </div>
+                    </details>
+                </section>
+            }
 
             @if (!string.IsNullOrWhiteSpace(errorMessage))
             {
@@ -280,14 +862,17 @@ else
                 </div>
             }
 
-            <div class="wizard-actions">
-                <div>
-                    <button class="button button--primary" type="button" disabled="@saving" @onclick="SaveAsync">
-                        @if (saving) { <span class="button-spinner" aria-hidden="true"></span><span>Salvando…</span> } else { <SUIIcon Name="check" Size="17" /><span>Salvar alterações</span> }
-                    </button>
+            @if (activeSection != 4)
+            {
+                <div class="wizard-actions">
+                    <div>
+                        <button class="button button--primary" type="button" disabled="@saving" @onclick="SaveAsync">
+                            @if (saving) { <span class="button-spinner" aria-hidden="true"></span><span>Salvando…</span> } else { <SUIIcon Name="check" Size="17" /><span>Salvar alterações</span> }
+                        </button>
+                    </div>
+                    <span class="field-hint">As alterações serão auditadas e usam a versão @client.Version.</span>
                 </div>
-                <span class="field-hint">As alterações serão auditadas e usam a versão @client.Version.</span>
-            </div>
+            }
         </main>
     </div>
 }
@@ -304,13 +889,44 @@ else
         new("Protocolos e scopes", "workflow"),
         new("Tokens", "key"),
         new("URLs e logout", "browser"),
+        new("Credenciais", "lock"),
     ];
     private ManagementClientDetail? client;
     private ManagementDataResult<ManagementClientDetail>? loadResult;
+    private ManagementClientCredentialsOverview? credentialOverview;
     private bool loading = true;
+    private bool credentialsLoading = true;
     private bool saving;
+    private bool savingJwks;
+    private bool configuringTlsCertificate;
+    private bool savingTlsCertificate;
+    private bool revokingTlsCertificate;
+    private bool configuringCredential;
+    private bool rotatingCredential;
+    private bool revokingCredential;
+    private bool credentialCopied;
+    private bool clipboardUnavailable;
+    private Guid? revokingCredentialId;
+    private string? revokingCredentialVersion;
     private int activeSection;
     private string? errorMessage;
+    private string? credentialErrorMessage;
+    private string? jwksErrorMessage;
+    private string? tlsCertificateErrorMessage;
+    private string? revokingTlsKeyId;
+    private string? rotatedClientSecret;
+    private string credentialOperation = "add";
+    private string credentialMode = "generated";
+    private string credentialLabel = string.Empty;
+    private DateTime? credentialExpirationDate;
+    private string credentialRevocationReason = string.Empty;
+    private string customClientSecret = string.Empty;
+    private string customClientSecretConfirmation = string.Empty;
+    private string credentialClientIdConfirmation = string.Empty;
+    private string tlsAuthenticationMethod = "self_signed_tls_client_auth";
+    private string tlsCertificateKeyId = string.Empty;
+    private string tlsCertificatePem = string.Empty;
+    private string tlsClientIdConfirmation = string.Empty;
     private string displayName = string.Empty;
     private string consentType = "explicit";
     private bool requirePar;
@@ -331,6 +947,7 @@ else
     private bool frontchannelLogoutSessionRequired;
     private string? backchannelLogoutUri;
     private bool backchannelLogoutSessionRequired;
+    private string publicJwksJson = string.Empty;
 
     private string DetailHref => $"clients/{Uri.EscapeDataString(Id)}";
     private string HeaderTitle =>
@@ -340,7 +957,7 @@ else
 
     private string HeaderDescription => client is null
         ? "Altere qualquer seção e salve todas as mudanças de uma vez."
-        : $"Aplicação: {client.ClientId}. Altere qualquer seção e salve todas as mudanças de uma vez. O client secret existente nunca é alterado ou exibido.";
+        : $"Aplicação: {client.ClientId}. Ajustes gerais são salvos em conjunto; a credencial possui confirmação e auditoria próprias.";
 
     private string PageTitleText => $"{DisplayNameOrClientId} — Editar aplicação | Sufficit Identity";
 
@@ -349,12 +966,62 @@ else
             ? client?.ClientId ?? "aplicação"
             : displayName;
 
+    private bool ShowsCredentialsSection => client is not null;
+
+    private IReadOnlyList<string> AuthenticationMethods =>
+        credentialOverview?.AuthenticationMethods
+        ?? client?.AuthenticationMethods
+        ?? [];
+
+    private bool HasConfiguredAuthentication => AuthenticationMethods.Count > 0;
+
+    private bool HasPrivateKeyJwt => AuthenticationMethods.Contains(
+        "private_key_jwt",
+        StringComparer.Ordinal);
+
+    private IReadOnlyList<ManagementClientTlsCertificateSummary> TlsCertificates =>
+        credentialOverview?.TlsCertificates ?? [];
+
+    private bool HasActiveTlsCertificate => TlsCertificates.Any(
+        certificate => certificate.Status == "active");
+
+    private bool HasPrimaryCredential => credentialOverview?.Credentials.Any(
+        credential => credential.IsPrimary) is true;
+
+    private int ActiveSharedCredentialCount => credentialOverview?.Credentials.Count(
+        credential => credential.Status == "active") ?? 0;
+
+    private bool CanSubmitTlsCertificate =>
+        client is not null
+        && !savingTlsCertificate
+        && string.Equals(
+            tlsClientIdConfirmation,
+            client.ClientId,
+            StringComparison.Ordinal)
+        && tlsCertificatePem.Contains(
+            "-----BEGIN CERTIFICATE-----",
+            StringComparison.Ordinal)
+        && !tlsCertificatePem.Contains(
+            "PRIVATE KEY-----",
+            StringComparison.Ordinal)
+        && (string.IsNullOrWhiteSpace(tlsCertificateKeyId)
+            || tlsCertificateKeyId.Trim().Length <= 100);
+
+    private string MinimumCredentialExpirationDate =>
+        DateTime.UtcNow.AddDays(1).ToString("yyyy-MM-dd",
+            System.Globalization.CultureInfo.InvariantCulture);
+
+    private string MaximumCredentialExpirationDate =>
+        DateTime.UtcNow.AddDays(730).ToString("yyyy-MM-dd",
+            System.Globalization.CultureInfo.InvariantCulture);
+
     private string SectionDescription => activeSection switch
     {
         0 => "Altere apenas os dados de apresentação e consentimento; o client ID permanece estável.",
         1 => "Escolha somente os fluxos necessários e os scopes que a aplicação realmente consome.",
         2 => "Defina a validade padrão dos tokens emitidos para esta aplicação ou herde o valor global.",
-        _ => "Confira os destinos antes de salvar. Cada URI é validada no servidor.",
+        3 => "Confira os destinos antes de salvar. Cada URI é validada no servidor.",
+        _ => "Faça rotação sem indisponibilidade e prefira autenticação assimétrica quando a aplicação suportar.",
     };
 
     protected override async Task OnParametersSetAsync()
@@ -362,8 +1029,15 @@ else
         loading = true;
         loadResult = await ClientData.GetClientAsync(Id);
         client = loadResult.Value;
-        if (client is not null) Populate(client);
-        activeSection = SectionIndex(InitialSection);
+        if (client is not null)
+        {
+            Populate(client);
+            await LoadCredentialsAsync();
+        }
+        var requestedSection = SectionIndex(InitialSection);
+        activeSection = requestedSection == 4 && !ShowsCredentialsSection
+            ? 0
+            : requestedSection;
         loading = false;
     }
 
@@ -394,6 +1068,7 @@ else
         frontchannelLogoutSessionRequired = value.FrontchannelLogoutSessionRequired;
         backchannelLogoutUri = value.BackchannelLogoutUri;
         backchannelLogoutSessionRequired = value.BackchannelLogoutSessionRequired;
+        publicJwksJson = value.JwksJson ?? string.Empty;
     }
 
     private async Task SaveAsync()
@@ -401,6 +1076,25 @@ else
         if (client is null) return;
         saving = true;
         errorMessage = null;
+        var result = await ClientData.UpdateClientAsync(BuildUpdateCommand());
+        saving = false;
+        if (result.IsSuccess)
+        {
+            Navigation.NavigateTo($"{DetailHref}?updated=1");
+            return;
+        }
+        errorMessage = result.ErrorMessage ?? "Não foi possível salvar as alterações.";
+    }
+
+    private UpdateManagementClientCommand BuildUpdateCommand(
+        string? jwksJson = null)
+    {
+        if (client is null)
+        {
+            throw new InvalidOperationException(
+                "A aplicação precisa estar carregada antes de salvar.");
+        }
+
         int? accessLifetime = inheritAccessTokenLifetime
             ? null
             : accessTokenLifetimeMinutes;
@@ -410,7 +1104,7 @@ else
         int? refreshLifetime = inheritRefreshTokenLifetime
             ? null
             : refreshTokenLifetimeDays;
-        var result = await ClientData.UpdateClientAsync(new UpdateManagementClientCommand(
+        return new UpdateManagementClientCommand(
             client.ClientId,
             displayName,
             consentType,
@@ -430,14 +1124,450 @@ else
             refreshLifetime,
             inheritAccessTokenLifetime,
             inheritIdentityTokenLifetime,
-            inheritRefreshTokenLifetime));
-        saving = false;
-        if (result.IsSuccess)
+            inheritRefreshTokenLifetime,
+            jwksJson);
+    }
+
+    private bool CustomCredentialsMatch =>
+        string.Equals(
+            customClientSecret,
+            customClientSecretConfirmation,
+            StringComparison.Ordinal);
+
+    private bool CustomCredentialIsValid =>
+        customClientSecret.Length is >= 32 and <= 512
+        && CustomCredentialsMatch
+        && string.Equals(
+            customClientSecret,
+            customClientSecret.Trim(),
+            StringComparison.Ordinal)
+        && !customClientSecret.Any(char.IsControl);
+
+    private bool CanSubmitCredential =>
+        !rotatingCredential
+        && client is not null
+        && !string.IsNullOrWhiteSpace(client.Version)
+        && string.Equals(
+            credentialClientIdConfirmation,
+            client.ClientId,
+            StringComparison.Ordinal)
+        && (credentialOperation != "add"
+            || (!string.IsNullOrWhiteSpace(credentialLabel)
+                && credentialLabel.Trim().Length <= 100
+                && TryGetCredentialExpiration(out _)))
+        && (credentialMode == "generated" || CustomCredentialIsValid);
+
+    private void BeginCredentialCreation()
+    {
+        credentialOperation = "add";
+        configuringCredential = true;
+        credentialErrorMessage = null;
+        credentialLabel = string.Empty;
+        credentialExpirationDate = null;
+        credentialClientIdConfirmation = string.Empty;
+    }
+
+    private void BeginCredentialRotation()
+    {
+        credentialOperation = "replace";
+        configuringCredential = true;
+        credentialErrorMessage = null;
+        credentialClientIdConfirmation = string.Empty;
+    }
+
+    private void CancelCredentialRotation()
+    {
+        configuringCredential = false;
+        credentialErrorMessage = null;
+        credentialClientIdConfirmation = string.Empty;
+        credentialLabel = string.Empty;
+        credentialExpirationDate = null;
+        customClientSecret = string.Empty;
+        customClientSecretConfirmation = string.Empty;
+    }
+
+    private void SetCredentialMode(string mode)
+    {
+        credentialMode = mode;
+        credentialErrorMessage = null;
+        if (mode == "generated")
         {
-            Navigation.NavigateTo($"{DetailHref}?updated=1");
+            customClientSecret = string.Empty;
+            customClientSecretConfirmation = string.Empty;
+        }
+    }
+
+    private void SetGeneratedCredentialMode(ChangeEventArgs _) =>
+        SetCredentialMode("generated");
+
+    private void SetCustomCredentialMode(ChangeEventArgs _) =>
+        SetCredentialMode("custom");
+
+    private async Task SubmitCredentialAsync()
+    {
+        if (!CanSubmitCredential || client is null)
+        {
             return;
         }
-        errorMessage = result.ErrorMessage ?? "Não foi possível salvar as alterações.";
+
+        if (credentialOperation == "add")
+        {
+            await CreateCredentialAsync();
+        }
+        else
+        {
+            await RotateCredentialAsync();
+        }
+    }
+
+    private async Task CreateCredentialAsync()
+    {
+        if (client is null || !TryGetCredentialExpiration(out var expiration))
+        {
+            return;
+        }
+
+        rotatingCredential = true;
+        credentialErrorMessage = null;
+        var generated = credentialMode == "generated";
+        var result = await ClientData.CreateClientCredentialAsync(
+            new CreateManagementClientCredentialCommand(
+                client.ClientId,
+                client.Version,
+                credentialLabel,
+                generated,
+                generated ? null : customClientSecret,
+                ExpiresAtUtc: expiration));
+        rotatingCredential = false;
+
+        if (!result.IsSuccess || result.Value is null)
+        {
+            credentialErrorMessage = result.ErrorMessage
+                ?? "Não foi possível adicionar a credencial.";
+            return;
+        }
+
+        credentialOverview = result.Value.Overview;
+        rotatedClientSecret = result.Value.OneTimeSecret;
+        ResetCredentialForm();
+        await RefreshClientAsync();
+    }
+
+    private async Task RotateCredentialAsync()
+    {
+        if (client is null)
+        {
+            return;
+        }
+
+        rotatingCredential = true;
+        credentialErrorMessage = null;
+        var generated = credentialMode == "generated";
+        var result = await ClientData.RotateClientSecretAsync(
+            new RotateManagementClientSecretCommand(
+                client.ClientId,
+                client.Version,
+                generated,
+                generated ? null : customClientSecret));
+        rotatingCredential = false;
+
+        if (!result.IsSuccess || result.Value is null)
+        {
+            credentialErrorMessage = result.ErrorMessage
+                ?? "Não foi possível substituir a credencial.";
+            return;
+        }
+
+        client = result.Value.Client;
+        Populate(client);
+        rotatedClientSecret = result.Value.OneTimeSecret;
+        ResetCredentialForm();
+        await LoadCredentialsAsync();
+    }
+
+    private void ResetCredentialForm()
+    {
+        configuringCredential = false;
+        credentialCopied = false;
+        clipboardUnavailable = false;
+        credentialClientIdConfirmation = string.Empty;
+        credentialLabel = string.Empty;
+        credentialExpirationDate = null;
+        customClientSecret = string.Empty;
+        customClientSecretConfirmation = string.Empty;
+    }
+
+    private bool TryGetCredentialExpiration(out DateTimeOffset? expiration)
+    {
+        expiration = null;
+        if (credentialExpirationDate is null)
+        {
+            return true;
+        }
+
+        var date = DateOnly.FromDateTime(credentialExpirationDate.Value);
+
+        var minimum = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(1));
+        var maximum = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(730));
+        if (date < minimum || date > maximum)
+        {
+            return false;
+        }
+
+        expiration = new DateTimeOffset(
+            date.ToDateTime(new TimeOnly(23, 59, 59), DateTimeKind.Utc));
+        return true;
+    }
+
+    private async Task LoadCredentialsAsync()
+    {
+        if (client is null)
+        {
+            return;
+        }
+
+        credentialsLoading = true;
+        var result = await ClientData.GetClientCredentialsAsync(client.ClientId);
+        credentialsLoading = false;
+        if (result.IsSuccess && result.Value is not null)
+        {
+            credentialOverview = result.Value;
+            credentialErrorMessage = null;
+            return;
+        }
+
+        credentialErrorMessage = result.ErrorMessage
+            ?? "Não foi possível carregar as credenciais.";
+    }
+
+    private async Task RefreshClientAsync()
+    {
+        if (client is null)
+        {
+            return;
+        }
+
+        var result = await ClientData.GetClientAsync(client.Id);
+        if (result.IsSuccess && result.Value is not null)
+        {
+            client = result.Value;
+            Populate(client);
+        }
+    }
+
+    private void BeginCredentialRevocation(
+        ManagementClientCredentialSummary credential)
+    {
+        if (credential.Id is null)
+        {
+            return;
+        }
+
+        revokingCredentialId = credential.Id;
+        revokingCredentialVersion = credential.Version;
+        credentialRevocationReason = string.Empty;
+        credentialErrorMessage = null;
+    }
+
+    private void CancelCredentialRevocation()
+    {
+        revokingCredentialId = null;
+        revokingCredentialVersion = null;
+        credentialRevocationReason = string.Empty;
+    }
+
+    private async Task RevokeCredentialAsync()
+    {
+        if (client is null
+            || revokingCredentialId is not { } credentialId
+            || string.IsNullOrWhiteSpace(revokingCredentialVersion))
+        {
+            return;
+        }
+
+        revokingCredential = true;
+        var result = await ClientData.RevokeClientCredentialAsync(
+            new RevokeManagementClientCredentialCommand(
+                client.ClientId,
+                credentialId,
+                revokingCredentialVersion,
+                credentialRevocationReason));
+        revokingCredential = false;
+
+        if (!result.IsSuccess || result.Value is null)
+        {
+            credentialErrorMessage = result.ErrorMessage
+                ?? "Não foi possível revogar a credencial.";
+            return;
+        }
+
+        credentialOverview = result.Value;
+        CancelCredentialRevocation();
+        await RefreshClientAsync();
+    }
+
+    private void BeginTlsCertificateRegistration()
+    {
+        configuringTlsCertificate = true;
+        tlsCertificateErrorMessage = null;
+        tlsAuthenticationMethod = "self_signed_tls_client_auth";
+        tlsCertificateKeyId = string.Empty;
+        tlsCertificatePem = string.Empty;
+        tlsClientIdConfirmation = string.Empty;
+    }
+
+    private void CancelTlsCertificateRegistration()
+    {
+        configuringTlsCertificate = false;
+        savingTlsCertificate = false;
+        tlsCertificateErrorMessage = null;
+        tlsCertificateKeyId = string.Empty;
+        tlsCertificatePem = string.Empty;
+        tlsClientIdConfirmation = string.Empty;
+    }
+
+    private void UseSelfSignedTlsAuthentication(ChangeEventArgs _) =>
+        tlsAuthenticationMethod = "self_signed_tls_client_auth";
+
+    private void UsePkiTlsAuthentication(ChangeEventArgs _) =>
+        tlsAuthenticationMethod = "tls_client_auth";
+
+    private async Task RegisterTlsCertificateAsync()
+    {
+        if (client is null || !CanSubmitTlsCertificate)
+        {
+            return;
+        }
+
+        var expectedVersion = credentialOverview?.ClientVersion
+            ?? client.Version;
+        if (string.IsNullOrWhiteSpace(expectedVersion))
+        {
+            tlsCertificateErrorMessage =
+                "Recarregue a aplicação para confirmar a versão atual.";
+            return;
+        }
+
+        savingTlsCertificate = true;
+        tlsCertificateErrorMessage = null;
+        var result = await ClientData.RegisterClientTlsCertificateAsync(
+            new RegisterManagementClientTlsCertificateCommand(
+                client.ClientId,
+                expectedVersion,
+                tlsCertificateKeyId,
+                tlsAuthenticationMethod,
+                tlsCertificatePem));
+        savingTlsCertificate = false;
+        if (!result.IsSuccess || result.Value is null)
+        {
+            tlsCertificateErrorMessage = result.ErrorMessage
+                ?? "Não foi possível registrar o certificado.";
+            return;
+        }
+
+        credentialOverview = result.Value;
+        CancelTlsCertificateRegistration();
+        await RefreshClientAsync();
+    }
+
+    private void BeginTlsCertificateRevocation(string keyId)
+    {
+        revokingTlsKeyId = keyId;
+        tlsCertificateErrorMessage = null;
+    }
+
+    private void CancelTlsCertificateRevocation()
+    {
+        revokingTlsKeyId = null;
+        revokingTlsCertificate = false;
+    }
+
+    private async Task RevokeTlsCertificateAsync()
+    {
+        if (client is null || string.IsNullOrWhiteSpace(revokingTlsKeyId))
+        {
+            return;
+        }
+
+        var expectedVersion = credentialOverview?.ClientVersion
+            ?? client.Version;
+        if (string.IsNullOrWhiteSpace(expectedVersion))
+        {
+            tlsCertificateErrorMessage =
+                "Recarregue a aplicação para confirmar a versão atual.";
+            return;
+        }
+
+        revokingTlsCertificate = true;
+        var result = await ClientData.RevokeClientTlsCertificateAsync(
+            new RevokeManagementClientTlsCertificateCommand(
+                client.ClientId,
+                expectedVersion,
+                revokingTlsKeyId));
+        revokingTlsCertificate = false;
+        if (!result.IsSuccess || result.Value is null)
+        {
+            tlsCertificateErrorMessage = result.ErrorMessage
+                ?? "Não foi possível revogar o certificado.";
+            return;
+        }
+
+        credentialOverview = result.Value;
+        CancelTlsCertificateRevocation();
+        await RefreshClientAsync();
+    }
+
+    private async Task SavePublicJwksAsync()
+    {
+        if (client is null)
+        {
+            return;
+        }
+
+        savingJwks = true;
+        jwksErrorMessage = null;
+        var result = await ClientData.UpdateClientAsync(
+            BuildUpdateCommand(publicJwksJson));
+        savingJwks = false;
+
+        if (!result.IsSuccess || result.Value is null)
+        {
+            jwksErrorMessage = result.ErrorMessage
+                ?? "Não foi possível salvar as chaves públicas.";
+            return;
+        }
+
+        client = result.Value;
+        Populate(client);
+        await LoadCredentialsAsync();
+    }
+
+    private async Task CopyRotatedSecretAsync()
+    {
+        if (string.IsNullOrWhiteSpace(rotatedClientSecret))
+        {
+            return;
+        }
+
+        try
+        {
+            await JS.InvokeVoidAsync(
+                "navigator.clipboard.writeText",
+                rotatedClientSecret);
+            credentialCopied = true;
+            clipboardUnavailable = false;
+        }
+        catch (JSException)
+        {
+            clipboardUnavailable = true;
+        }
+    }
+
+    private void HideRotatedSecret()
+    {
+        rotatedClientSecret = null;
+        credentialCopied = false;
+        clipboardUnavailable = false;
     }
 
     private IReadOnlyList<string> GrantTypes()
@@ -462,6 +1592,7 @@ else
             "protocols" or "scopes" => 1,
             "tokens" => 2,
             "urls" or "logout" => 3,
+            "credentials" or "credential" or "secret" => 4,
             _ => 0,
         };
 
@@ -472,6 +1603,52 @@ else
     {
         var value = days.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture);
         return days is 1 ? "1 dia" : $"{value} dias";
+    }
+
+    private static string AuthenticationMethodLabel(string method) => method switch
+    {
+        "client_secret_basic" => "Segredo no cabeçalho (Basic)",
+        "client_secret_post" => "Segredo no corpo",
+        "private_key_jwt" => "JWT assinado (private_key_jwt)",
+        "tls_client_auth" => "Certificado mTLS",
+        "self_signed_tls_client_auth" => "Certificado mTLS autoassinado",
+        _ => method,
+    };
+
+    private static string CredentialStatusLabel(string status) => status switch
+    {
+        "active" => "Ativa",
+        "scheduled" => "Agendada",
+        "expired" => "Expirada",
+        "revoked" => "Revogada",
+        _ => status,
+    };
+
+    private static string CredentialStatusTone(string status) => status switch
+    {
+        "active" => "success",
+        "scheduled" => "info",
+        "expired" => "warning",
+        "revoked" => "danger",
+        _ => "neutral",
+    };
+
+    private static string FormatCredentialDate(DateTimeOffset? value) =>
+        value?.ToLocalTime().ToString("dd/MM/yyyy", System.Globalization.CultureInfo.CurrentCulture)
+        ?? "—";
+
+    private static string FormatCertificateThumbprint(string value)
+    {
+        var normalized = value
+            .Replace(":", string.Empty, StringComparison.Ordinal)
+            .Replace(" ", string.Empty, StringComparison.Ordinal)
+            .ToUpperInvariant();
+        return string.Join(
+            ":",
+            Enumerable.Range(0, (normalized.Length + 1) / 2)
+                .Select(index => normalized.Substring(
+                    index * 2,
+                    Math.Min(2, normalized.Length - index * 2))));
     }
 
     private static string ClientTypeLabel(string? type) => type?.ToLowerInvariant() switch
