@@ -109,6 +109,20 @@ public sealed class CspHeaderTests
     }
 
     [Fact]
+    public async Task Device_return_url_without_popup_marker_does_not_throw()
+    {
+        var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync(
+            "/health?ReturnUrl=%2Fconnect%2Fdevice%3Fuser_code%3D4765-2829-4247");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(
+            "same-origin",
+            response.Headers.GetValues("Cross-Origin-Opener-Policy").Single());
+    }
+
+    [Fact]
     public async Task Report_uri_is_appended_when_configured()
     {
         // Isolated factory: overlay a ReportUri and assert it is appended as a
