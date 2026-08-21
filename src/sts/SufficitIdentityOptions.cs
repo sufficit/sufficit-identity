@@ -1718,6 +1718,10 @@ public sealed class DcrOptions
     {
         OpenIddict.Abstractions.OpenIddictConstants.Scopes.OpenId,
         OpenIddict.Abstractions.OpenIddictConstants.Scopes.Profile,
+        // Interactive relying parties such as Forgejo need the standard email
+        // claim to create or link the local account. This remains identity
+        // metadata only; anonymous DCR still cannot request API scopes.
+        OpenIddict.Abstractions.OpenIddictConstants.Scopes.Email,
         OpenIddict.Abstractions.OpenIddictConstants.Scopes.OfflineAccess,
     };
 
