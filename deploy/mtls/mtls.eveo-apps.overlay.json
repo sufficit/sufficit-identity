@@ -1,0 +1,27 @@
+{
+  "Sufficit": {
+    "Identity": {
+      "Mtls": {
+        "Enabled": true,
+        "EndpointBaseUrl": "https://identity.sufficit.com.br:26502/",
+        "DeploymentMode": "TrustedProxy",
+        "RequireValidCertificateChain": true,
+        "RevocationMode": "Online",
+        "RevocationFailureMode": "FailClosed",
+        "RevocationTimeoutSeconds": 3,
+        "ForwardedCertificateHeader": "X-Sufficit-Client-Certificate",
+        "TrustedProxyNetworks": [
+          "127.0.0.1/32"
+        ],
+        "TrustedCertificateAuthorityPaths": []
+      }
+    }
+  },
+  "Kestrel": {
+    "Endpoints": {
+      "MtlsProxy": {
+        "Url": "http://127.0.0.1:26504"
+      }
+    }
+  }
+}

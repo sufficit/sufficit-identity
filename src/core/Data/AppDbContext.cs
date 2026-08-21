@@ -120,6 +120,14 @@ public sealed class AppDbContext
     public DbSet<Entities.CibaPendingState> CibaPendingStates =>
         Set<Entities.CibaPendingState>();
 
+    /// <summary>
+    /// Multiple independently revocable credentials for OAuth clients. This
+    /// store deliberately uses client_id instead of an OpenIddict foreign key
+    /// so the credential lifecycle survives a future protocol-engine swap.
+    /// </summary>
+    public DbSet<Entities.OAuthClientCredential> OAuthClientCredentials =>
+        Set<Entities.OAuthClientCredential>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -139,6 +147,7 @@ public sealed class AppDbContext
         MapVaultPersonalSecrets(builder);
         MapIdentityMetrics(builder);
         MapProtocolSecurityState(builder);
+        MapOAuthClientCredentials(builder);
 
         // F-3 (eval 2026-08-14): opaque CSPRNG identifiers are matched by
         // equality and must not fold case. Applied only under MySQL/MariaDB —
@@ -197,6 +206,10 @@ public sealed class AppDbContext
         builder.Entity<Entities.ManagementClientDraftRecord>()
             .Property(x => x.Id)
             .UseCollation(IdentityDatabaseSchema.AsciiBinaryCollation);
+
+        builder.Entity<Entities.OAuthClientCredential>()
+            .Property(x => x.ClientId)
+            .UseCollation(IdentityDatabaseSchema.BinaryIdentifierCollation);
     }
 
     private static void MapProtocolSecurityState(ModelBuilder builder)
@@ -257,6 +270,58 @@ public sealed class AppDbContext
                 ("ApprovedSubject", "approvedsubject"),
                 ("State", "state"),
                 ("ConsumptionId", "consumptionid"),
+            ]);
+        });
+    }
+
+    private static void MapOAuthClientCredentials(ModelBuilder builder)
+    {
+        builder.Entity<Entities.OAuthClientCredential>(b =>
+        {
+            b.ToTable("oauthclientcredentials");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.ClientId)
+                .HasMaxLength(IdentityDatabaseSchema.OpenIddictClientIdLength)
+                .IsRequired();
+            b.Property(x => x.Kind)
+                .HasMaxLength(IdentityDatabaseSchema.OAuthClientCredentialKindLength)
+                .IsRequired();
+            b.Property(x => x.Label)
+                .HasMaxLength(IdentityDatabaseSchema.OAuthClientCredentialLabelLength)
+                .IsRequired();
+            b.Property(x => x.SecretHash)
+                .HasMaxLength(IdentityDatabaseSchema.OAuthClientCredentialHashLength)
+                .IsRequired();
+            b.Property(x => x.SecretHint)
+                .HasMaxLength(IdentityDatabaseSchema.OAuthClientCredentialHintLength)
+                .IsRequired();
+            b.Property(x => x.RevocationReason)
+                .HasMaxLength(IdentityDatabaseSchema.OAuthClientCredentialReasonLength);
+            b.Property(x => x.ConcurrencyToken)
+                .HasMaxLength(IdentityDatabaseSchema.OAuthClientCredentialConcurrencyLength)
+                .IsConcurrencyToken()
+                .IsRequired();
+            b.Property(x => x.CreatedAtUtc).HasColumnType("datetime(6)").IsRequired();
+            b.Property(x => x.NotBeforeUtc).HasColumnType("datetime(6)");
+            b.Property(x => x.ExpiresAtUtc).HasColumnType("datetime(6)");
+            b.Property(x => x.RevokedAtUtc).HasColumnType("datetime(6)");
+            b.HasIndex(x => new { x.ClientId, x.Kind, x.RevokedAtUtc, x.ExpiresAtUtc })
+                .HasDatabaseName("IX_oauthclientcredentials_client_kind_status");
+            b.HasIndex(x => x.ExpiresAtUtc)
+                .HasDatabaseName("IX_oauthclientcredentials_expiresatutc");
+            SnakeCaseColumns(b, [
+                ("Id", "id"),
+                ("ClientId", "clientid"),
+                ("Kind", "kind"),
+                ("Label", "label"),
+                ("SecretHash", "secrethash"),
+                ("SecretHint", "secrethint"),
+                ("CreatedAtUtc", "createdatutc"),
+                ("NotBeforeUtc", "notbeforeutc"),
+                ("ExpiresAtUtc", "expiresatutc"),
+                ("RevokedAtUtc", "revokedatutc"),
+                ("RevocationReason", "revocationreason"),
+                ("ConcurrencyToken", "concurrencytoken"),
             ]);
         });
     }

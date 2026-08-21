@@ -24,6 +24,8 @@ using Sufficit.Identity.Vault;
 
 var builder = WebApplication.CreateBuilder(args);
 var migrateOnly = args.Contains("--migrate-only", StringComparer.Ordinal);
+var repairMetricsExportSecret = args.Contains(
+    "--repair-metrics-export-secret", StringComparer.Ordinal);
 
 // Resolve configuration-time secrets through the same ISecretStore boundary
 // used by STS consumers. The store reads SUFFICIT_SECRET_* only.
@@ -431,6 +433,17 @@ if (rateLimit.Enabled)
 
 var app = builder.Build();
 
+// One-shot maintenance path for a corrupted/legacy metrics credential. It is
+// deliberately a CLI mode (secret comes from stdin) rather than an HTTP
+// escape hatch: the command rotates only the metrics-export key and persists a
+// fresh ciphertext through the same IKeyVault implementation used by the
+// management service. It never prints or stores the plaintext secret.
+if (repairMetricsExportSecret)
+{
+    await RepairMetricsExportSecretAsync(app);
+    return;
+}
+
 // ---- Development-only test authentication (MUST be before middleware) ----
 if (app.Environment.IsDevelopment())
 {
@@ -812,6 +825,50 @@ static string? ParseDatabaseName(string? connectionString)
         }
     }
     return null;
+}
+
+static async Task RepairMetricsExportSecretAsync(WebApplication app)
+{
+    var secret = await Console.In.ReadToEndAsync();
+    secret = secret.TrimEnd('\r', '\n');
+    if (string.IsNullOrWhiteSpace(secret))
+    {
+        throw new InvalidOperationException(
+            "The metrics export secret must be supplied through standard input.");
+    }
+
+    using var scope = app.Services.CreateScope();
+    var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var configuration = await database.IdentityMetricsConfigurations
+        .SingleOrDefaultAsync(item =>
+            item.Id == Sufficit.Identity.Core.Entities.IdentityMetricsConfiguration.SingletonId);
+    if (configuration is null)
+    {
+        throw new InvalidOperationException(
+            "The identity metrics configuration row does not exist.");
+    }
+
+    if (!configuration.ExportEnabled
+        || !string.Equals(configuration.Provider, "victoria_metrics",
+            StringComparison.OrdinalIgnoreCase))
+    {
+        throw new InvalidOperationException(
+            "External VictoriaMetrics export is not enabled in the current configuration.");
+    }
+
+    var keyVault = scope.ServiceProvider.GetRequiredService<IKeyVault>();
+    var key = await keyVault.RotateKeyAsync("identity-metrics-export");
+    configuration.SecretCiphertext = await keyVault.EncryptAsync(
+        "identity-metrics-export",
+        secret,
+        new Dictionary<string, string> { ["configuration"] = "identity-metrics" });
+    configuration.UpdatedAtUtc = DateTime.UtcNow;
+    await database.SaveChangesAsync();
+
+    app.Logger.LogInformation(
+        "Repaired the Identity metrics export credential using vault key version {Version}; plaintext was not logged.",
+        key.Version);
+    Console.WriteLine($"metrics_export_secret_repaired key_version={key.Version}");
 }
 
 static async Task ApplyMigrationsWithAdvisoryLockAsync(

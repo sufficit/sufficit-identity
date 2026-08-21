@@ -36,6 +36,7 @@ public static class IdentityDatabaseSchema
     public const string ManagementClientDraftsMigrationId = "20260807161036_AddManagementClientDrafts";
     public const string BinaryIdentifierCollationMigrationId = "20260814202136_UseBinaryCollationForOpaqueIdentifiers";
     public const string VaultSecretExpirationMigrationId = "20260816221816_AddVaultSecretExpiration"; // gitleaks:allow
+    public const string OAuthClientCredentialsMigrationId = "20260820143602_AddOAuthClientCredentials";
 
     /// <summary>
     /// Binary collation for opaque, case-sensitive utf8mb4 identifiers
@@ -62,6 +63,14 @@ public static class IdentityDatabaseSchema
     public const int OpenIddictSubjectLength = 400;
     public const int OpenIddictTokenTypeLength = 150;
     public const int PasskeyCredentialIdLength = 1024;
+
+    // Provider-neutral OAuth client credentials.
+    public const int OAuthClientCredentialKindLength = 32;
+    public const int OAuthClientCredentialLabelLength = 100;
+    public const int OAuthClientCredentialHashLength = 1024;
+    public const int OAuthClientCredentialHintLength = 12;
+    public const int OAuthClientCredentialReasonLength = 256;
+    public const int OAuthClientCredentialConcurrencyLength = 32;
 
     // Branding
     public const int BrandingUrlLength = 512;

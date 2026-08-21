@@ -83,6 +83,24 @@ public sealed class MtlsPolicyTests
         Assert.Contains("DeploymentMode", exception.ToString(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Mtls_endpoint_base_url_must_be_an_absolute_http_url()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Mtls:Enabled"] = "true",
+                ["Sufficit:Identity:Mtls:DeploymentMode"] = "TrustedProxy",
+                ["Sufficit:Identity:Mtls:TrustedProxyNetworks:0"] = "127.0.0.1/32",
+                ["Sufficit:Identity:Mtls:EndpointBaseUrl"] = "not-a-url",
+            });
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => ((IAsyncLifetime)factory).InitializeAsync());
+
+        Assert.Contains("EndpointBaseUrl", exception.ToString(), StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData(MtlsCertificateRevocationMode.NoCheck, X509RevocationMode.NoCheck)]
     [InlineData(MtlsCertificateRevocationMode.Online, X509RevocationMode.Online)]
@@ -284,6 +302,59 @@ public sealed class MtlsPolicyTests
 
         Assert.Contains("TrustedProxyNetworks", exception.ToString(),
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Trusted_certificate_authority_loader_rejects_private_key_material()
+    {
+        using var certificate = CreateCertificate();
+        using var privateKey = certificate.GetRSAPrivateKey();
+        Assert.NotNull(privateKey);
+        var path = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(
+                path,
+                certificate.ExportCertificatePem()
+                    + privateKey.ExportPkcs8PrivateKeyPem());
+
+            var exception = Assert.Throws<InvalidOperationException>(
+                () => MtlsCertificateAuthorityLoader.Load([path]));
+
+            Assert.Contains("private key material", exception.Message,
+                StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Trusted_certificate_authority_policy_maps_revocation_controls()
+    {
+        var policy = new X509ChainPolicy();
+
+        MtlsCertificateAuthorityLoader.ConfigurePolicy(
+            policy,
+            new MtlsOptions
+            {
+                RevocationMode = MtlsCertificateRevocationMode.Offline,
+                RevocationFailureMode =
+                    MtlsRevocationFailureMode.AllowWhenUnavailable,
+                RevocationTimeoutSeconds = 7,
+            });
+
+        Assert.Equal(X509RevocationMode.Offline, policy.RevocationMode);
+        Assert.Equal(X509RevocationFlag.EntireChain, policy.RevocationFlag);
+        Assert.Equal(TimeSpan.FromSeconds(7), policy.UrlRetrievalTimeout);
+        Assert.True(policy.DisableCertificateDownloads);
+        Assert.True(policy.VerificationFlags.HasFlag(
+            X509VerificationFlags.IgnoreEndRevocationUnknown));
+        Assert.True(policy.VerificationFlags.HasFlag(
+            X509VerificationFlags.IgnoreCertificateAuthorityRevocationUnknown));
+        Assert.True(policy.VerificationFlags.HasFlag(
+            X509VerificationFlags.IgnoreRootRevocationUnknown));
     }
 
     private static MtlsClientCertificatePolicy CreatePolicy(
