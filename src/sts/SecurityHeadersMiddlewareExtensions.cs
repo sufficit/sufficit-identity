@@ -140,7 +140,8 @@ public static class SecurityHeadersMiddlewareExtensions
             }
 
             var query = QueryHelpers.ParseQuery(returnUrl[separator..]);
-            if (IsPopupLaunchMode(query["launch_mode"]))
+            if (query.TryGetValue("launch_mode", out var launchMode)
+                && IsPopupLaunchMode(launchMode.ToString()))
             {
                 return true;
             }
