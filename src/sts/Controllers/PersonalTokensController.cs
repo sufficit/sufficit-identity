@@ -12,6 +12,7 @@ using OpenIddict.Server;
 using OpenIddict.Validation.AspNetCore;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.STS.Security;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using static OpenIddict.Server.OpenIddictServerEvents;
@@ -79,6 +80,7 @@ public sealed class PersonalTokensController : ControllerBase
     private readonly IApplicationClaimDestinationPolicy _applicationClaimPolicy;
     private readonly IPublicOriginResolver _publicOrigin;
     private readonly IPersonalTokenIssuancePolicy _issuancePolicy;
+    private readonly IReservedScopePolicy _reservedScopePolicy;
 
     public PersonalTokensController(
         IOpenIddictScopeManager scopeManager,
@@ -91,7 +93,8 @@ public sealed class PersonalTokensController : ControllerBase
         UserManager<ApplicationUser> userManager,
         IApplicationClaimDestinationPolicy applicationClaimPolicy,
         IPublicOriginResolver publicOrigin,
-        IPersonalTokenIssuancePolicy issuancePolicy)
+        IPersonalTokenIssuancePolicy issuancePolicy,
+        IReservedScopePolicy reservedScopePolicy)
     {
         _scopeManager = scopeManager;
         _minting = minting;
@@ -104,6 +107,7 @@ public sealed class PersonalTokensController : ControllerBase
         _applicationClaimPolicy = applicationClaimPolicy;
         _publicOrigin = publicOrigin;
         _issuancePolicy = issuancePolicy;
+        _reservedScopePolicy = reservedScopePolicy;
     }
 
     [HttpGet]
@@ -272,10 +276,24 @@ public sealed class PersonalTokensController : ControllerBase
 
         identity.SetCreationDate(now);
         identity.SetExpirationDate(expiration);
-        // Preserve any application-specific claim scopes configured by the
-        // host without baking a domain vocabulary into the generic STS.
-        var allowedApplicationScopes = _options.ClaimScopeMap.ClaimToScope
-            .Values
+        // Preserve application scopes without baking a product vocabulary
+        // into the generic STS. A scope is eligible when it is registered in
+        // OpenIddict and is not one of the reserved administrative scopes;
+        // the issuance policy still attenuates it to the caller's delegated
+        // scopes below. This lets a resource server provision its own scope
+        // record without adding that product name to Identity source/config.
+        var registeredScopes = new List<string>();
+        await foreach (var scope in _scopeManager.ListAsync(cancellationToken: cancellationToken))
+        {
+            var name = await _scopeManager.GetNameAsync(scope, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(name) && !_reservedScopePolicy.IsReserved(name))
+            {
+                registeredScopes.Add(name);
+            }
+        }
+
+        var allowedApplicationScopes = registeredScopes
+            .Concat(_options.ClaimScopeMap.ClaimToScope.Values)
             .Where(scope => !string.IsNullOrWhiteSpace(scope))
             .Append(Scopes.Roles)
             .Append(Scopes.Profile)

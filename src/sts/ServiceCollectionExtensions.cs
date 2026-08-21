@@ -727,6 +727,7 @@ public static class ServiceCollectionExtensions
                     Scopes.OfflineAccess,
                     Scopes.Address,
                     "identity.management",
+                    "personal_tokens.manage",
                     "sufficit_ai_openai_bridge",
                     .. applicationScopes]);
 
