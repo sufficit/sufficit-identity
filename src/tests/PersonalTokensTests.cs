@@ -93,6 +93,38 @@ public sealed class PersonalTokensTests
     }
 
     [Fact]
+    public async Task Personal_token_accepts_registered_non_reserved_application_scope()
+    {
+        var client = _factory.CreateClient();
+        var accessToken = await GetAccessTokenAsync(client);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var createResponse = await client.PostAsJsonAsync(
+            "/api/account/tokens",
+            new
+            {
+                description = "registered-resource-scope",
+                expiration = DateTimeOffset.UtcNow.AddDays(7),
+                scopes = new[] { TestDataSeeder.ScopeName },
+            });
+
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+        using var created = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        var personalToken = created.RootElement.GetProperty("accessToken").GetString();
+
+        using var introspectionResponse = await client.PostAsJsonAsync(
+            "/api/account/tokens/introspect",
+            new { token = personalToken });
+        Assert.Equal(HttpStatusCode.OK, introspectionResponse.StatusCode);
+        using var introspection = JsonDocument.Parse(
+            await introspectionResponse.Content.ReadAsStringAsync());
+        Assert.Equal(
+            TestDataSeeder.ScopeName,
+            introspection.RootElement.GetProperty("scope").GetString());
+    }
+
+    [Fact]
     public async Task Personal_token_lifecycle_is_self_contained_in_the_new_identity()
     {
         var client = _factory.CreateClient();
