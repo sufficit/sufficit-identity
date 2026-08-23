@@ -20,6 +20,20 @@
                 ? configured
                 : Environment.MachineName;
 
+    // Mirrors the host's Swagger gate (Sufficit:Identity:Swagger:Enabled,
+    // unset = Development only). Linking to /swagger when the host does not
+    // publish it would advertise a dead route and imply the contract is
+    // browsable when it is not.
+    private bool SwaggerPublished =>
+        bool.TryParse(
+            Configuration["Sufficit:Identity:Swagger:Enabled"],
+            out var configured)
+            ? configured
+            : string.Equals(
+                Configuration["ASPNETCORE_ENVIRONMENT"],
+                "Development",
+                StringComparison.OrdinalIgnoreCase);
+
     protected override async Task OnInitializedAsync()
     {
         _theme = await BrandingProvider.GetActiveAsync();
@@ -63,8 +77,12 @@
             </span>
         }
         <span class="footer-links">
-            <a href="/.well-known/openid-configuration">Discovery</a> ·
-            <a href="/swagger">API Swagger</a>
+            <a href="/.well-known/openid-configuration">Discovery</a>
+            @if (SwaggerPublished)
+            {
+                <text> · </text>
+                <a href="/swagger">API Swagger</a>
+            }
         </span>
     </footer>
 </div>

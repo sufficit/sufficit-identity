@@ -1,8 +1,6 @@
-using System.Reflection;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Sufficit.Identity.STS;
-using Sufficit.Identity.Vault;
 using Xunit;
 
 namespace Sufficit.Identity.Tests;
@@ -27,10 +25,11 @@ public sealed class CertificateRotationTests
                 EncryptionPassword = password,
             });
 
-            var signing = ReadCertificates(material, "Signing");
-            Assert.Equal(2, signing.Count);
-            Assert.Equal(active.Thumbprint, signing[0].Thumbprint);
-            Assert.Equal(retiring.Thumbprint, signing[1].Thumbprint);
+            Assert.Equal(2, material.Signing.Count);
+            Assert.Equal(active.Thumbprint, material.Signing[0].Thumbprint);
+            Assert.Equal(retiring.Thumbprint, material.Signing[1].Thumbprint);
+            // The first entry is the active certificate the STS signs with.
+            Assert.Equal(active.Thumbprint, material.PrimarySigning?.Thumbprint);
         }
         finally
         {
@@ -46,7 +45,7 @@ public sealed class CertificateRotationTests
         {
             const string password = "test-only-password";
             var certificate = WriteCertificate(directory.FullName, "shared", password);
-            var exception = Assert.Throws<TargetInvocationException>(() =>
+            var exception = Assert.Throws<InvalidOperationException>(() =>
                 Load(new CertificatesOptions
                 {
                     SigningPath = certificate.Path,
@@ -56,7 +55,10 @@ public sealed class CertificateRotationTests
                     RequirePurposeSeparation = true,
                 }));
 
-            Assert.IsType<InvalidOperationException>(exception.InnerException);
+            Assert.Contains(
+                "purpose separation",
+                exception.Message,
+                StringComparison.OrdinalIgnoreCase);
         }
         finally
         {
@@ -64,44 +66,16 @@ public sealed class CertificateRotationTests
         }
     }
 
-    private static object Load(CertificatesOptions options)
-    {
-        var method = typeof(Sufficit.Identity.STS.ServiceCollectionExtensions).GetMethod(
-            "LoadCertificateMaterial",
-            BindingFlags.NonPublic | BindingFlags.Static)
-            ?? throw new InvalidOperationException("Certificate loader not found.");
-        var store = new OptionsSecretStore(
+    // The loader used to be a private method reached by reflection through a
+    // stub ISecretStore. It is now a named internal type taking the resolved
+    // passwords directly, so the test calls it as the compiler sees it —
+    // no TargetInvocationException unwrapping, no string method name to rot.
+    private static CertificateMaterial Load(CertificatesOptions options) =>
+        IdentityCertificateMaterial.Load(
+            options,
+            isDevelopmentEnvironment: true,
             options.SigningPassword,
             options.EncryptionPassword);
-        return method.Invoke(null, [options, true, store])
-            ?? throw new InvalidOperationException("Certificate material was null.");
-    }
-
-    private sealed class OptionsSecretStore(
-        string? signingPassword,
-        string? encryptionPassword) : ISecretStore
-    {
-        public Task<string?> GetSecretAsync(
-            string name,
-            CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            return Task.FromResult<string?>(name switch
-            {
-                "identity/certificates/signing-password" => signingPassword,
-                "identity/certificates/encryption-password" => encryptionPassword,
-                _ => null,
-            });
-        }
-    }
-
-    private static IReadOnlyList<X509Certificate2> ReadCertificates(
-        object material,
-        string propertyName) =>
-        (IReadOnlyList<X509Certificate2>)(material.GetType().GetProperty(
-            propertyName)?.GetValue(material)
-            ?? throw new InvalidOperationException(
-                $"Certificate property {propertyName} not found."));
 
     private static (string Path, string Thumbprint) WriteCertificate(
         string directory,

@@ -118,6 +118,8 @@
         "RoutePrefix": "api",
         "RequireAuthorization": true,
         "RequiredScope": "identity.management",
+        "_AuditRetentionDays": "Days of management audit history kept before pruning. The table is append-only and is written on every privileged operation plus every refusal on the surfaces that record those; until eval 2026-08-23 (S-10) nothing ever removed a row and it grew for the life of the deployment. The default is deliberately short: this trail exists to DETECT wrong behavior, and an operator who has not noticed something within a fortnight will not notice it in month eleven — longer history buys storage and lock contention, not safety, and leaves more operator activity sitting around to be exfiltrated. Raise it, or set 0 to disable pruning, if your obligations differ — but note that breaches are often reported from OUTSIDE long after the fact, so a deployment expecting to investigate backwards should raise the window or archive these rows elsewhere before they are pruned.",
+        "AuditRetentionDays": 15,
         "_TemporaryProvisioningToken": "Short-lived operator token for provisioning only. It requires the existing management MFA/capability checks, is attenuated to preview/apply and is never written to audit data. Keep Enabled=false until the Management UI is deployed and the operational flow is approved.",
         "TemporaryProvisioningToken": {
           "Enabled": false,
@@ -237,6 +239,12 @@
         "PushedAuthorizationWindowSeconds": 60,
         "DeviceInformationPermitLimit": 12,
         "DeviceInformationWindowSeconds": 60,
+        "_AdministrativePermitLimit": "Requests per window and source IP on the administrative surfaces (management API under Management:RoutePrefix, and /scim). These were entirely unthrottled until eval 2026-08-23 (S-10): the limiter covered /connect/* and /account/* only, so a caller holding a valid operator token could drive unbounded database work — including the audit row a refusal writes. Deliberately generous: the management UI does NOT consume these endpoints (it is Blazor Server and calls its services through DI), so the traffic here is automation — provisioning scripts, migration tools, SCIM sync. A script creating two hundred clients one call at a time is doing exactly what it should; this bucket exists to bound a runaway loop, not to pace legitimate bulk work.",
+        "AdministrativePermitLimit": 600,
+        "AdministrativeWindowSeconds": 60,
+        "_AdministrativeBulkPermitLimit": "Whole-collection operations (provisioning manifest inventory/preview/apply, revoking every session of a user) per window and source IP. Separate bucket because the cost profile is inverted — one request, a great deal of server work — so the meaningful limit is how often it is attempted, not request volume. Keeping it apart is what lets both coexist: a provisioning run cannot exhaust the budget for ordinary calls, and a chatty tool cannot block a manifest apply.",
+        "AdministrativeBulkPermitLimit": 30,
+        "AdministrativeBulkWindowSeconds": 60,
         "_FailOnUntrustedProxy": "true (item 5.1 [L4]) makes startup FAIL when TrustedProxies is empty outside Development, instead of only logging a warning. Without trusted proxies, the rate limiter shares ONE bucket for all traffic (the proxy's IP) → self-inflicted 429s. Default false (warning); flip to true in production so a missing TrustedProxies cannot silently turn the rate limiter into a self-DoS.",
         "FailOnUntrustedProxy": false
       },
@@ -489,6 +497,11 @@
         "Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
         "_ReportUri": "Optional violation-report collector endpoint appended as 'report-uri <value>'. Empty = no report-uri directive.",
         "ReportUri": ""
+      },
+      "_Swagger": "Publication of the OpenAPI document and Swagger UI. Both endpoints are ANONYMOUS: publishing hands any unauthenticated caller the complete controller inventory (management, SCIM, provisioning, vault) — every route, verb and DTO — which is exactly the reconnaissance an attacker needs against the authorization-gated endpoints. Historically published in every environment including Production (eval 2026-08-23, S-1).",
+      "Swagger": {
+        "_Enabled": "Unset (null) = publish only in Development, the secure default. true = publish in every environment (a startup warning is logged outside Development). false = never publish.",
+        "Enabled": null
       },
       "_HumanVerification": "Provider-neutral CAPTCHA protection for public operations that create accounts or send email. Validation always occurs server-side before the operation. Keep SecretKey in vault-secrets.env, never in source control.",
       "HumanVerification": {

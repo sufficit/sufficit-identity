@@ -342,34 +342,57 @@ internal sealed class ClientManagementService(
     IOpenIddictApplicationCache<OpenIddictEntityFrameworkCoreApplication>
         applicationCache,
     AppDbContext database,
-    IManagementAuthorizationEvaluator authorization,
     IReservedScopePolicy reservedScopePolicy,
     IClientDefinitionValidator clientDefinitionValidator,
-    IClientCredentialSecretHasher credentialSecretHasher,
     IConfiguration configuration,
+    ManagementOperationGuard guard,
+    ClientCredentialRegistry credentials,
     ILogger<ClientManagementService> logger) : IClientManagementService
 {
-    private const int MinimumAccessTokenLifetimeMinutes = 1;
-    private const int MaximumAccessTokenLifetimeMinutes = 24 * 60;
-    private const int MinimumIdentityTokenLifetimeMinutes = 1;
-    private const int MaximumIdentityTokenLifetimeMinutes = 120;
-    private const int MinimumRefreshTokenLifetimeDays = 1;
-    private const int MaximumRefreshTokenLifetimeDays = 365;
-    private const int GeneratedClientSecretBytes = 32;
-    private const int MinimumClientSecretLength = 32;
-    private const int MaximumClientSecretLength = 512;
-    private const int MaximumActiveAdditionalSharedSecrets = 5;
-    private const int MaximumClientCredentialLifetimeDays = 730;
+    // Credential and mTLS certificate lifecycle lives in its own type; these
+    // stay on the interface so controllers and the embedded UI are unaffected
+    // by the split.
+    public Task<ManagementClientCredentialsOverview> GetCredentialsAsync(
+        string clientId,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default) =>
+        credentials.GetCredentialsAsync(clientId, context, cancellationToken);
+
+    public Task<CreateManagementClientCredentialResult> CreateCredentialAsync(
+        CreateManagementClientCredentialCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default) =>
+        credentials.CreateCredentialAsync(command, context, cancellationToken);
+
+    public Task<ManagementClientCredentialsOverview> RevokeCredentialAsync(
+        RevokeManagementClientCredentialCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default) =>
+        credentials.RevokeCredentialAsync(command, context, cancellationToken);
+
+    public Task<ManagementClientCredentialsOverview> RegisterTlsCertificateAsync(
+        RegisterManagementClientTlsCertificateCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default) =>
+        credentials.RegisterTlsCertificateAsync(command, context, cancellationToken);
+
+    public Task<ManagementClientCredentialsOverview> RevokeTlsCertificateAsync(
+        RevokeManagementClientTlsCertificateCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default) =>
+        credentials.RevokeTlsCertificateAsync(command, context, cancellationToken);
+
 
     public async Task<IReadOnlyList<ManagementClientSummary>> ListAsync(
         ManagementRequestContext context,
         CancellationToken cancellationToken = default)
     {
-        await DemandAsync(
+        await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsRead,
             new ManagementResource(ManagementResourceTypes.ClientCollection),
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var result = new List<ManagementClientSummary>();
 
@@ -404,11 +427,12 @@ internal sealed class ClientManagementService(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
-        await DemandAsync(
+        await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsRead,
             new ManagementResource(ManagementResourceTypes.ClientCollection),
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var normalized = NormalizeSearchQuery(query);
         var applicationsQuery = database.Set<OpenIddictEntityFrameworkCoreApplication>()
@@ -514,11 +538,12 @@ internal sealed class ClientManagementService(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
 
-        await DemandAsync(
+        await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsRead,
             new ManagementResource(ManagementResourceTypes.Client, id),
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var application = await applications.FindByIdAsync(id, cancellationToken);
         if (application is null)
@@ -538,11 +563,12 @@ internal sealed class ClientManagementService(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
 
-        await DemandAsync(
+        await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsRead,
             new ManagementResource(ManagementResourceTypes.Client, clientId),
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var application = await applications.FindByClientIdAsync(
             clientId,
@@ -568,30 +594,31 @@ internal sealed class ClientManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Client,
             clientId);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsCreate,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         try
         {
-            ValidateClientId(clientId);
-            var redirectUris = ValidateRedirectUris(
+            ClientCredentialPolicy.ValidateClientId(clientId);
+            var redirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.RedirectUris,
                 "redirectUris");
-            var postLogoutRedirectUris = ValidateRedirectUris(
+            var postLogoutRedirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.PostLogoutRedirectUris,
                 "postLogoutRedirectUris");
-            var frontchannelLogoutUri = ValidateLogoutUri(
+            var frontchannelLogoutUri = ClientUriPolicy.ValidateLogoutUri(
                 command.FrontchannelLogoutUri,
                 "frontchannelLogoutUri");
-            var backchannelLogoutUri = ValidateLogoutUri(
+            var backchannelLogoutUri = ClientUriPolicy.ValidateLogoutUri(
                 command.BackchannelLogoutUri,
                 "backchannelLogoutUri");
-            var jwksUri = ValidateJwksUri(command.JwksUri);
-            var publicJwks = ValidatePublicJwks(command.JwksJson);
-            ValidateTokenLifetimes(
+            var jwksUri = ClientJwksPolicy.ValidateJwksUri(command.JwksUri);
+            var publicJwks = ClientJwksPolicy.ValidatePublicJwks(command.JwksJson);
+            ClientTokenLifetimePolicy.ValidateTokenLifetimes(
                 command.AccessTokenLifetimeMinutes,
                 command.IdentityTokenLifetimeMinutes,
                 command.RefreshTokenLifetimeDays);
@@ -615,21 +642,21 @@ internal sealed class ClientManagementService(
             }
 
             if (frontchannelLogoutUri is not null &&
-                !redirectUris.Any(redirect => SameOrigin(redirect, frontchannelLogoutUri)))
+                !redirectUris.Any(redirect => ClientUriPolicy.SameOrigin(redirect, frontchannelLogoutUri)))
             {
                 throw new ManagementValidationException(
                     "frontchannel_logout_origin_mismatch",
                     "frontchannelLogoutUri must use the same scheme, host and port as a redirect URI.",
                     "frontchannelLogoutUri");
             }
-            var consentType = NormalizeConsentType(command.ConsentType)
+            var consentType = ClientPermissionPolicy.NormalizeConsentType(command.ConsentType)
                 ?? OpenIddictConstants.ConsentTypes.Explicit;
 
             if (await applications.FindByClientIdAsync(
                     clientId,
                     cancellationToken) is not null)
             {
-                await TryWriteAuditAsync(
+                await guard.TryWriteAuditAsync(
                     context,
                     ManagementCapabilities.ClientsCreate,
                     resource,
@@ -657,7 +684,7 @@ internal sealed class ClientManagementService(
                 JsonWebKeySet = publicJwks,
             };
 
-            var grantTypes = NormalizeGrantTypes(command.GrantTypes);
+            var grantTypes = ClientPermissionPolicy.NormalizeGrantTypes(command.GrantTypes);
 
             // Finding #8: reject insecure grant types (password, implicit) for
             // new client registrations. They are outside the current OAuth 2.1
@@ -682,9 +709,9 @@ internal sealed class ClientManagementService(
             {
                 descriptor.Permissions.Add(grantType);
             }
-            AddDerivedProtocolPermissions(descriptor, grantTypes);
+            ClientPermissionPolicy.AddDerivedProtocolPermissions(descriptor, grantTypes);
 
-            var normalizedScopes = NormalizeScopes(command.Scopes);
+            var normalizedScopes = ClientPermissionPolicy.NormalizeScopes(command.Scopes);
             var definitionValidation = clientDefinitionValidator.Validate(
                 new ClientDefinitionRequest(
                     ClientDefinitionSource.Management,
@@ -754,7 +781,7 @@ internal sealed class ClientManagementService(
             {
                 descriptor.Settings["jwks_uri"] = jwksUri.AbsoluteUri;
             }
-            ApplyTokenLifetimes(
+            ClientTokenLifetimePolicy.ApplyTokenLifetimes(
                 descriptor,
                 command.AccessTokenLifetimeMinutes,
                 command.IdentityTokenLifetimeMinutes,
@@ -798,7 +825,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementValidationException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsCreate,
                 resource,
@@ -810,7 +837,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementConflictException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsCreate,
                 resource,
@@ -841,18 +868,19 @@ internal sealed class ClientManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Client,
             clientId);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsDelete,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var application = await applications.FindByClientIdAsync(
             clientId,
             cancellationToken);
         if (application is null)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsDelete,
                 resource,
@@ -940,18 +968,19 @@ internal sealed class ClientManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Client,
             clientId);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsUpdate,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var application = await applications.FindByClientIdAsync(
             clientId,
             cancellationToken);
         if (application is null)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1004,37 +1033,37 @@ internal sealed class ClientManagementService(
                     "Este cliente é gerenciado por manifesto declarativo. Altere o manifesto e aplique o provisionamento.");
             }
 
-            var redirectUris = ValidateRedirectUris(
+            var redirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.RedirectUris,
                 "redirectUris");
-            var postLogoutRedirectUris = ValidateRedirectUris(
+            var postLogoutRedirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.PostLogoutRedirectUris,
                 "postLogoutRedirectUris");
-            var frontchannelLogoutUri = ValidateLogoutUri(
+            var frontchannelLogoutUri = ClientUriPolicy.ValidateLogoutUri(
                 command.FrontchannelLogoutUri,
                 "frontchannelLogoutUri");
-            var backchannelLogoutUri = ValidateLogoutUri(
+            var backchannelLogoutUri = ClientUriPolicy.ValidateLogoutUri(
                 command.BackchannelLogoutUri,
                 "backchannelLogoutUri");
-            var jwksUri = ValidateJwksUri(command.JwksUri);
+            var jwksUri = ClientJwksPolicy.ValidateJwksUri(command.JwksUri);
             var publicJwks = command.JwksJson is null
                 ? null
-                : ValidatePublicJwks(command.JwksJson);
-            ValidateTokenLifetimes(
+                : ClientJwksPolicy.ValidatePublicJwks(command.JwksJson);
+            ClientTokenLifetimePolicy.ValidateTokenLifetimes(
                 command.AccessTokenLifetimeMinutes,
                 command.IdentityTokenLifetimeMinutes,
                 command.RefreshTokenLifetimeDays);
 
-            ValidateLogoutConfiguration(
+            ClientUriPolicy.ValidateLogoutConfiguration(
                 redirectUris,
                 frontchannelLogoutUri,
                 command.FrontchannelLogoutSessionRequired,
                 backchannelLogoutUri,
                 command.BackchannelLogoutSessionRequired);
 
-            var consentType = NormalizeConsentType(command.ConsentType)
+            var consentType = ClientPermissionPolicy.NormalizeConsentType(command.ConsentType)
                 ?? OpenIddictConstants.ConsentTypes.Explicit;
-            var grantTypes = NormalizeGrantTypes(command.GrantTypes);
+            var grantTypes = ClientPermissionPolicy.NormalizeGrantTypes(command.GrantTypes);
             if (grantTypes.Any(grant =>
                     grant == OpenIddictConstants.Permissions.GrantTypes.Password ||
                     grant == OpenIddictConstants.Permissions.GrantTypes.Implicit))
@@ -1047,7 +1076,7 @@ internal sealed class ClientManagementService(
                     "grantTypes");
             }
 
-            var normalizedScopes = NormalizeScopes(command.Scopes);
+            var normalizedScopes = ClientPermissionPolicy.NormalizeScopes(command.Scopes);
             var clientType = descriptor.ClientType
                 ?? OpenIddictConstants.ClientTypes.Public;
             var definitionValidation = clientDefinitionValidator.Validate(
@@ -1087,7 +1116,7 @@ internal sealed class ClientManagementService(
 
             descriptor.DisplayName = NullIfWhiteSpace(command.DisplayName);
             descriptor.ConsentType = consentType;
-            RemoveManagedPermissions(descriptor);
+            ClientPermissionPolicy.RemoveManagedPermissions(descriptor);
             descriptor.Requirements.Remove(
                 OpenIddictConstants.Requirements.Features.ProofKeyForCodeExchange);
             descriptor.Requirements.Remove(
@@ -1098,7 +1127,7 @@ internal sealed class ClientManagementService(
             {
                 descriptor.Permissions.Add(grantType);
             }
-            AddDerivedProtocolPermissions(descriptor, grantTypes);
+            ClientPermissionPolicy.AddDerivedProtocolPermissions(descriptor, grantTypes);
             foreach (var scope in normalizedScopes)
             {
                 descriptor.Permissions.Add(scope);
@@ -1142,7 +1171,7 @@ internal sealed class ClientManagementService(
                         publicJwks,
                         entity.JsonWebKeySet);
             }
-            ApplyTokenLifetimes(
+            ClientTokenLifetimePolicy.ApplyTokenLifetimes(
                 descriptor,
                 command.AccessTokenLifetimeMinutes,
                 command.IdentityTokenLifetimeMinutes,
@@ -1184,7 +1213,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementValidationException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1196,7 +1225,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementConflictException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1239,18 +1268,19 @@ internal sealed class ClientManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Client,
             clientId);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsUpdate,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var application = await applications.FindByClientIdAsync(
             clientId,
             cancellationToken);
         if (application is null)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1305,8 +1335,8 @@ internal sealed class ClientManagementService(
             var generated = command.Generate;
             var oneTimeSecret = generated
                 ? WebEncoders.Base64UrlEncode(
-                    RandomNumberGenerator.GetBytes(GeneratedClientSecretBytes))
-                : ValidateReplacementClientSecret(command.ClientSecret);
+                    RandomNumberGenerator.GetBytes(ClientCredentialPolicy.GeneratedClientSecretBytes))
+                : ClientCredentialPolicy.ValidateReplacementClientSecret(command.ClientSecret);
 
             await using var transaction = await database.Database
                 .BeginTransactionAsync(cancellationToken);
@@ -1338,7 +1368,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementValidationException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1350,7 +1380,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementConflictException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1382,843 +1412,8 @@ internal sealed class ClientManagementService(
         }
     }
 
-    public async Task<ManagementClientCredentialsOverview> GetCredentialsAsync(
-        string clientId,
-        ManagementRequestContext context,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
-        clientId = clientId.Trim();
 
-        await DemandAsync(
-            context,
-            ManagementCapabilities.ClientsRead,
-            new ManagementResource(ManagementResourceTypes.Client, clientId),
-            cancellationToken);
 
-        var application = await applications.FindByClientIdAsync(
-            clientId,
-            cancellationToken);
-        if (application is not OpenIddictEntityFrameworkCoreApplication entity)
-        {
-            throw new ManagementNotFoundException(
-                "client_not_found",
-                $"Client '{clientId}' was not found.");
-        }
-
-        return await BuildCredentialsOverviewAsync(entity, cancellationToken);
-    }
-
-    public async Task<CreateManagementClientCredentialResult> CreateCredentialAsync(
-        CreateManagementClientCredentialCommand command,
-        ManagementRequestContext context,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(command);
-
-        var clientId = command.ClientId?.Trim() ?? string.Empty;
-        var resource = new ManagementResource(
-            ManagementResourceTypes.Client,
-            clientId);
-        var decision = await DemandAsync(
-            context,
-            ManagementCapabilities.ClientsUpdate,
-            resource,
-            cancellationToken);
-
-        var application = await applications.FindByClientIdAsync(
-            clientId,
-            cancellationToken);
-        if (application is not OpenIddictEntityFrameworkCoreApplication entity)
-        {
-            await TryWriteAuditAsync(
-                context,
-                ManagementCapabilities.ClientsUpdate,
-                resource,
-                decision,
-                "not-found",
-                "client_not_found",
-                cancellationToken);
-            throw new ManagementNotFoundException(
-                "client_not_found",
-                $"Client '{clientId}' was not found.");
-        }
-
-        // Always persist and query against the canonical client_id returned by
-        // the application store. Some legacy MariaDB deployments still use a
-        // case-insensitive collation for applications.client_id, while this
-        // credential registry is deliberately case-sensitive.
-        clientId = entity.ClientId ?? clientId;
-
-        try
-        {
-            EnsureExpectedClientVersion(command.ExpectedClientVersion, entity);
-            await EnsureClientIsManuallyManagedAsync(application, cancellationToken);
-
-            var label = ValidateCredentialLabel(command.Label);
-            var generated = command.Generate;
-            var oneTimeSecret = generated
-                ? WebEncoders.Base64UrlEncode(
-                    RandomNumberGenerator.GetBytes(GeneratedClientSecretBytes))
-                : ValidateReplacementClientSecret(command.ClientSecret);
-            var now = DateTime.UtcNow;
-            var notBeforeUtc = command.NotBeforeUtc?.UtcDateTime;
-            var expiresAtUtc = command.ExpiresAtUtc?.UtcDateTime;
-            ValidateCredentialLifetime(now, notBeforeUtc, expiresAtUtc);
-
-            await using var transaction = await database.Database
-                .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-
-            if (await applications.ValidateClientSecretAsync(
-                    application,
-                    oneTimeSecret,
-                    cancellationToken))
-            {
-                throw new ManagementConflictException(
-                    "client_credential_duplicate",
-                    "A credencial informada já está ativa para esta aplicação.");
-            }
-
-            var createdAsPrimary = string.Equals(
-                entity.ClientType,
-                OpenIddictConstants.ClientTypes.Public,
-                StringComparison.Ordinal);
-            if (createdAsPrimary)
-            {
-                if (notBeforeUtc is not null || expiresAtUtc is not null)
-                {
-                    throw new ManagementValidationException(
-                        "primary_credential_lifetime_unsupported",
-                        "A primeira credencial torna-se a credencial principal de compatibilidade e não aceita agendamento ou expiração. Adicione outra credencial depois para usar esse ciclo de vida.",
-                        "expiresAtUtc");
-                }
-
-                entity.ClientType = OpenIddictConstants.ClientTypes.Confidential;
-                await applications.UpdateAsync(
-                    application,
-                    oneTimeSecret,
-                    cancellationToken);
-            }
-            else
-            {
-                var activeCount = await database.OAuthClientCredentials
-                    .Where(credential =>
-                        credential.ClientId == clientId
-                        && credential.Kind == OAuthClientCredentialKinds.SharedSecret
-                        && credential.RevokedAtUtc == null
-                        && (credential.ExpiresAtUtc == null || credential.ExpiresAtUtc > now))
-                    .CountAsync(cancellationToken);
-                if (activeCount >= MaximumActiveAdditionalSharedSecrets)
-                {
-                    throw new ManagementConflictException(
-                        "client_credential_limit_reached",
-                        $"Cada aplicação pode manter até {MaximumActiveAdditionalSharedSecrets} credenciais compartilhadas adicionais ativas.");
-                }
-
-                var duplicateLabel = await database.OAuthClientCredentials
-                    .AnyAsync(credential =>
-                        credential.ClientId == clientId
-                        && credential.RevokedAtUtc == null
-                        && credential.Label == label,
-                        cancellationToken);
-                if (duplicateLabel)
-                {
-                    throw new ManagementConflictException(
-                        "client_credential_label_duplicate",
-                        "Já existe uma credencial ativa com esse nome.");
-                }
-
-                database.OAuthClientCredentials.Add(new OAuthClientCredential
-                {
-                    Id = Guid.NewGuid(),
-                    ClientId = clientId,
-                    Kind = OAuthClientCredentialKinds.SharedSecret,
-                    Label = label,
-                    SecretHash = credentialSecretHasher.Hash(oneTimeSecret),
-                    SecretHint = CreateSecretHint(oneTimeSecret),
-                    CreatedAtUtc = now,
-                    NotBeforeUtc = notBeforeUtc,
-                    ExpiresAtUtc = expiresAtUtc,
-                    ConcurrencyToken = NewConcurrencyToken(),
-                });
-            }
-
-            database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
-                context,
-                ManagementCapabilities.ClientsUpdate,
-                resource,
-                decision,
-                "succeeded",
-                createdAsPrimary
-                    ? "client_primary_credential_created"
-                    : "client_credential_created"));
-            await database.SaveChangesAsync(cancellationToken);
-            var overview = await BuildCredentialsOverviewAsync(
-                entity,
-                cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-
-            return new CreateManagementClientCredentialResult(
-                overview,
-                oneTimeSecret,
-                generated,
-                createdAsPrimary);
-        }
-        catch (ManagementValidationException exception)
-        {
-            await TryWriteAuditAsync(
-                context,
-                ManagementCapabilities.ClientsUpdate,
-                resource,
-                decision,
-                "rejected",
-                exception.ReasonCode,
-                cancellationToken);
-            throw;
-        }
-        catch (ManagementConflictException exception)
-        {
-            await TryWriteAuditAsync(
-                context,
-                ManagementCapabilities.ClientsUpdate,
-                resource,
-                decision,
-                "rejected",
-                exception.ReasonCode,
-                cancellationToken);
-            throw;
-        }
-        catch (DbUpdateException exception)
-        {
-            logger.LogWarning(
-                exception,
-                "OAuth client credential creation lost a persistence race. ClientId={ClientId} CorrelationId={CorrelationId}",
-                clientId,
-                context.CorrelationId);
-            throw new ManagementConflictException(
-                "client_credential_changed",
-                "As credenciais foram alteradas por outra operação. Recarregue os dados.");
-        }
-    }
-
-    public async Task<ManagementClientCredentialsOverview> RevokeCredentialAsync(
-        RevokeManagementClientCredentialCommand command,
-        ManagementRequestContext context,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(command);
-
-        var clientId = command.ClientId?.Trim() ?? string.Empty;
-        var resource = new ManagementResource(
-            ManagementResourceTypes.Client,
-            clientId);
-        var decision = await DemandAsync(
-            context,
-            ManagementCapabilities.ClientsUpdate,
-            resource,
-            cancellationToken);
-
-        var application = await applications.FindByClientIdAsync(
-            clientId,
-            cancellationToken);
-        if (application is not OpenIddictEntityFrameworkCoreApplication entity)
-        {
-            throw new ManagementNotFoundException(
-                "client_not_found",
-                $"Client '{clientId}' was not found.");
-        }
-
-        clientId = entity.ClientId ?? clientId;
-
-        try
-        {
-            await EnsureClientIsManuallyManagedAsync(application, cancellationToken);
-            if (string.IsNullOrWhiteSpace(command.ExpectedCredentialVersion))
-            {
-                throw new ManagementValidationException(
-                    "client_credential_version_required",
-                    "Recarregue as credenciais antes de revogar.",
-                    "expectedCredentialVersion");
-            }
-
-            var credential = await database.OAuthClientCredentials
-                .SingleOrDefaultAsync(candidate =>
-                    candidate.Id == command.CredentialId
-                    && candidate.ClientId == clientId,
-                    cancellationToken);
-            if (credential is null)
-            {
-                throw new ManagementNotFoundException(
-                    "client_credential_not_found",
-                    "A credencial não foi encontrada.");
-            }
-            if (!string.Equals(
-                    credential.ConcurrencyToken,
-                    command.ExpectedCredentialVersion,
-                    StringComparison.Ordinal))
-            {
-                throw new ManagementConflictException(
-                    "client_credential_changed",
-                    "A credencial foi alterada por outra operação. Recarregue os dados.");
-            }
-            if (credential.RevokedAtUtc is not null)
-            {
-                throw new ManagementConflictException(
-                    "client_credential_already_revoked",
-                    "A credencial já foi revogada.");
-            }
-
-            var revocationReason = ValidateRevocationReason(command.Reason);
-            credential.RevokedAtUtc = DateTime.UtcNow;
-            credential.RevocationReason = revocationReason;
-            credential.ConcurrencyToken = NewConcurrencyToken();
-            database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
-                context,
-                ManagementCapabilities.ClientsUpdate,
-                resource,
-                decision,
-                "succeeded",
-                "client_credential_revoked"));
-            await database.SaveChangesAsync(cancellationToken);
-
-            return await BuildCredentialsOverviewAsync(entity, cancellationToken);
-        }
-        catch (ManagementValidationException exception)
-        {
-            await TryWriteAuditAsync(
-                context,
-                ManagementCapabilities.ClientsUpdate,
-                resource,
-                decision,
-                "rejected",
-                exception.ReasonCode,
-                cancellationToken);
-            throw;
-        }
-        catch (ManagementConflictException exception)
-        {
-            await TryWriteAuditAsync(
-                context,
-                ManagementCapabilities.ClientsUpdate,
-                resource,
-                decision,
-                "rejected",
-                exception.ReasonCode,
-                cancellationToken);
-            throw;
-        }
-        catch (ManagementNotFoundException exception)
-        {
-            await TryWriteAuditAsync(
-                context,
-                ManagementCapabilities.ClientsUpdate,
-                resource,
-                decision,
-                "not-found",
-                exception.ReasonCode,
-                cancellationToken);
-            throw;
-        }
-        catch (DbUpdateConcurrencyException exception)
-        {
-            logger.LogWarning(
-                exception,
-                "OAuth client credential revocation lost a concurrency race. ClientId={ClientId} CredentialId={CredentialId}",
-                clientId,
-                command.CredentialId);
-            throw new ManagementConflictException(
-                "client_credential_changed",
-                "A credencial foi alterada por outra operação. Recarregue os dados.");
-        }
-    }
-
-    public async Task<ManagementClientCredentialsOverview>
-        RegisterTlsCertificateAsync(
-            RegisterManagementClientTlsCertificateCommand command,
-            ManagementRequestContext context,
-            CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(command);
-        var clientId = command.ClientId?.Trim() ?? string.Empty;
-        var resource = new ManagementResource(
-            ManagementResourceTypes.Client,
-            clientId);
-        var decision = await DemandAsync(
-            context,
-            ManagementCapabilities.ClientsUpdate,
-            resource,
-            cancellationToken);
-        var application = await applications.FindByClientIdAsync(
-            clientId,
-            cancellationToken);
-        if (application is not OpenIddictEntityFrameworkCoreApplication entity)
-        {
-            throw new ManagementNotFoundException(
-                "client_not_found",
-                $"Client '{clientId}' was not found.");
-        }
-
-        clientId = entity.ClientId ?? clientId;
-        try
-        {
-            EnsureExpectedClientVersion(command.ExpectedClientVersion, entity);
-            await EnsureClientIsManuallyManagedAsync(
-                application,
-                cancellationToken);
-            var certificate = ClientTlsCertificateCredential.Create(
-                command.CertificatePem,
-                command.KeyId,
-                command.AuthenticationMethod);
-
-            await using var transaction = await database.Database
-                .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-            var descriptor = new OpenIddictApplicationDescriptor();
-            await applications.PopulateAsync(
-                descriptor,
-                application,
-                cancellationToken);
-            descriptor.JsonWebKeySet =
-                ClientTlsCertificateCredential.AddCertificate(
-                    entity.JsonWebKeySet,
-                    certificate);
-            descriptor.ClientType = OpenIddictConstants.ClientTypes.Confidential;
-            await applications.UpdateAsync(
-                application,
-                descriptor,
-                cancellationToken);
-            database.ManagementAuditEvents.Add(
-                ManagementAuditEventFactory.Create(
-                    context,
-                    ManagementCapabilities.ClientsUpdate,
-                    resource,
-                    decision,
-                    "succeeded",
-                    "client_mtls_certificate_registered"));
-            await database.SaveChangesAsync(cancellationToken);
-            var overview = await BuildCredentialsOverviewAsync(
-                entity,
-                cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-            return overview;
-        }
-        catch (ManagementValidationException exception)
-        {
-            await TryWriteAuditAsync(
-                context,
-                ManagementCapabilities.ClientsUpdate,
-                resource,
-                decision,
-                "rejected",
-                exception.ReasonCode,
-                cancellationToken);
-            throw;
-        }
-        catch (ManagementConflictException exception)
-        {
-            await TryWriteAuditAsync(
-                context,
-                ManagementCapabilities.ClientsUpdate,
-                resource,
-                decision,
-                "rejected",
-                exception.ReasonCode,
-                cancellationToken);
-            throw;
-        }
-    }
-
-    public async Task<ManagementClientCredentialsOverview>
-        RevokeTlsCertificateAsync(
-            RevokeManagementClientTlsCertificateCommand command,
-            ManagementRequestContext context,
-            CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(command);
-        var clientId = command.ClientId?.Trim() ?? string.Empty;
-        var resource = new ManagementResource(
-            ManagementResourceTypes.Client,
-            clientId);
-        var decision = await DemandAsync(
-            context,
-            ManagementCapabilities.ClientsUpdate,
-            resource,
-            cancellationToken);
-        var application = await applications.FindByClientIdAsync(
-            clientId,
-            cancellationToken);
-        if (application is not OpenIddictEntityFrameworkCoreApplication entity)
-        {
-            throw new ManagementNotFoundException(
-                "client_not_found",
-                $"Client '{clientId}' was not found.");
-        }
-
-        clientId = entity.ClientId ?? clientId;
-        EnsureExpectedClientVersion(command.ExpectedClientVersion, entity);
-        await EnsureClientIsManuallyManagedAsync(application, cancellationToken);
-        if (string.IsNullOrWhiteSpace(command.KeyId))
-        {
-            throw new ManagementValidationException(
-                "mtls_certificate_kid_required",
-                "Informe o identificador do certificado que será revogado.",
-                "keyId");
-        }
-
-        await using var transaction = await database.Database
-            .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-        var descriptor = new OpenIddictApplicationDescriptor();
-        await applications.PopulateAsync(
-            descriptor,
-            application,
-            cancellationToken);
-        descriptor.JsonWebKeySet =
-            ClientTlsCertificateCredential.RemoveCertificate(
-                entity.JsonWebKeySet,
-                command.KeyId);
-        await applications.UpdateAsync(application, descriptor, cancellationToken);
-        database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
-            context,
-            ManagementCapabilities.ClientsUpdate,
-            resource,
-            decision,
-            "succeeded",
-            "client_mtls_certificate_revoked"));
-        await database.SaveChangesAsync(cancellationToken);
-        var overview = await BuildCredentialsOverviewAsync(
-            entity,
-            cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        return overview;
-    }
-
-    private async Task<ManagementClientCredentialsOverview>
-        BuildCredentialsOverviewAsync(
-            OpenIddictEntityFrameworkCoreApplication application,
-            CancellationToken cancellationToken)
-    {
-        var clientId = application.ClientId
-            ?? throw new InvalidOperationException(
-                "The OpenIddict application has no client_id.");
-        var now = DateTime.UtcNow;
-        var additional = await database.OAuthClientCredentials
-            .AsNoTracking()
-            .Where(credential => credential.ClientId == clientId)
-            .OrderByDescending(credential => credential.CreatedAtUtc)
-            .ToArrayAsync(cancellationToken);
-
-        var hasPrimary = !string.IsNullOrWhiteSpace(application.ClientSecret);
-        var hasActiveAdditional = additional.Any(credential =>
-            GetCredentialStatus(credential, now) == "active");
-        var tlsCertificates = ClientTlsCertificateCredential.Read(
-            application.JsonWebKeySet,
-            new DateTimeOffset(now, TimeSpan.Zero));
-        var mtlsRuntimeEnabled = configuration.GetValue<bool>(
-            "Sufficit:Identity:Mtls:Enabled");
-        var pkiAuthenticationEnabled = mtlsRuntimeEnabled
-            && configuration
-                .GetSection(
-                    "Sufficit:Identity:Mtls:TrustedCertificateAuthorityPaths")
-                .Get<string[]>() is { Length: > 0 };
-        var methods = GetAuthenticationMethods(
-            hasPrimary || hasActiveAdditional,
-            application.JsonWebKeySet,
-            tlsCertificates);
-
-        var credentials = new List<ManagementClientCredentialSummary>(
-            additional.Length + (hasPrimary ? 1 : 0));
-        if (hasPrimary)
-        {
-            credentials.Add(new ManagementClientCredentialSummary(
-                Id: null,
-                Label: "Credencial principal (compatibilidade)",
-                Kind: OAuthClientCredentialKinds.SharedSecret,
-                SecretHint: string.Empty,
-                Status: "active",
-                IsPrimary: true));
-        }
-
-        credentials.AddRange(additional.Select(credential =>
-            new ManagementClientCredentialSummary(
-                credential.Id,
-                credential.Label,
-                credential.Kind,
-                credential.SecretHint,
-                GetCredentialStatus(credential, now),
-                IsPrimary: false,
-                ToDateTimeOffset(credential.CreatedAtUtc),
-                ToDateTimeOffset(credential.NotBeforeUtc),
-                ToDateTimeOffset(credential.ExpiresAtUtc),
-                ToDateTimeOffset(credential.RevokedAtUtc),
-                credential.ConcurrencyToken)));
-
-        return new ManagementClientCredentialsOverview(
-            clientId,
-            methods,
-            credentials,
-            MaximumActiveAdditionalSharedSecrets,
-            ClientTlsCertificateCredential
-                .ExtractPrivateKeyJwtKeys(application.JsonWebKeySet)?.ToString(),
-            tlsCertificates,
-            mtlsRuntimeEnabled,
-            pkiAuthenticationEnabled,
-            ClientTlsCertificateCredential.MaximumCertificates,
-            application.ConcurrencyToken);
-    }
-
-    private async Task EnsureClientIsManuallyManagedAsync(
-        object application,
-        CancellationToken cancellationToken)
-    {
-        var descriptor = new OpenIddictApplicationDescriptor();
-        await applications.PopulateAsync(
-            descriptor,
-            application,
-            cancellationToken);
-        if (descriptor.Properties.ContainsKey(
-                OpenIddictManifestProvisioner.SchemaVersionProperty))
-        {
-            throw new ManagementConflictException(
-                "client_manifest_managed",
-                "Este cliente é gerenciado por manifesto declarativo. Altere suas credenciais no manifesto e aplique o provisionamento.");
-        }
-    }
-
-    private static void EnsureExpectedClientVersion(
-        string? expectedVersion,
-        OpenIddictEntityFrameworkCoreApplication application)
-    {
-        if (string.IsNullOrWhiteSpace(expectedVersion))
-        {
-            throw new ManagementValidationException(
-                "client_version_required",
-                "Recarregue a aplicação antes de adicionar uma credencial.",
-                "expectedClientVersion");
-        }
-        if (!string.Equals(
-                expectedVersion,
-                application.ConcurrencyToken,
-                StringComparison.Ordinal))
-        {
-            throw new ManagementConflictException(
-                "client_changed",
-                "A aplicação foi alterada por outra operação. Recarregue os dados.");
-        }
-    }
-
-    private static IReadOnlyList<string> GetAuthenticationMethods(
-        bool hasActiveSharedSecret,
-        string? publicJwksJson,
-        IReadOnlyList<ManagementClientTlsCertificateSummary>? tlsCertificates = null)
-    {
-        var methods = new List<string>(3);
-        if (hasActiveSharedSecret)
-        {
-            methods.Add("client_secret_basic");
-            methods.Add("client_secret_post");
-        }
-        if (HasPublicSigningKeys(publicJwksJson))
-        {
-            methods.Add("private_key_jwt");
-        }
-        foreach (var method in (tlsCertificates ?? [])
-            .Where(certificate => certificate.Status == "active")
-            .Select(certificate => certificate.AuthenticationMethod)
-            .Distinct(StringComparer.Ordinal))
-        {
-            methods.Add(method);
-        }
-
-        return methods;
-    }
-
-    private static bool HasPublicSigningKeys(string? publicJwksJson)
-    {
-        if (string.IsNullOrWhiteSpace(publicJwksJson))
-        {
-            return false;
-        }
-
-        try
-        {
-            var set = new JsonWebKeySet(publicJwksJson);
-            return set.Keys.Any(key =>
-                key.X5c is not { Count: > 0 }
-                &&
-                key.Kty is JsonWebAlgorithmsKeyTypes.RSA
-                    or JsonWebAlgorithmsKeyTypes.EllipticCurve
-                && key.Use is null or JsonWebKeyUseNames.Sig);
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-    }
-
-    private static string GetCredentialStatus(
-        OAuthClientCredential credential,
-        DateTime now)
-    {
-        if (credential.RevokedAtUtc is not null)
-        {
-            return "revoked";
-        }
-        if (credential.ExpiresAtUtc is { } expiresAt && expiresAt <= now)
-        {
-            return "expired";
-        }
-        if (credential.NotBeforeUtc is { } notBefore && notBefore > now)
-        {
-            return "scheduled";
-        }
-
-        return "active";
-    }
-
-    private static DateTimeOffset? ToDateTimeOffset(DateTime? value) =>
-        value is null
-            ? null
-            : new DateTimeOffset(
-                DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
-
-    private static string ValidateCredentialLabel(string? value)
-    {
-        var label = value?.Trim() ?? string.Empty;
-        if (label.Length is < 1 or > IdentityDatabaseSchema.OAuthClientCredentialLabelLength)
-        {
-            throw new ManagementValidationException(
-                "client_credential_label_invalid",
-                $"O nome deve ter entre 1 e {IdentityDatabaseSchema.OAuthClientCredentialLabelLength} caracteres.",
-                "label");
-        }
-        if (label.Any(char.IsControl))
-        {
-            throw new ManagementValidationException(
-                "client_credential_label_invalid",
-                "O nome da credencial não pode conter caracteres de controle.",
-                "label");
-        }
-
-        return label;
-    }
-
-    private static void ValidateCredentialLifetime(
-        DateTime now,
-        DateTime? notBeforeUtc,
-        DateTime? expiresAtUtc)
-    {
-        if (expiresAtUtc is { } expiresAt && expiresAt <= now)
-        {
-            throw new ManagementValidationException(
-                "client_credential_expiration_invalid",
-                "A expiração deve estar no futuro.",
-                "expiresAtUtc");
-        }
-        if (expiresAtUtc is { } boundedExpiry
-            && boundedExpiry > now.AddDays(MaximumClientCredentialLifetimeDays))
-        {
-            throw new ManagementValidationException(
-                "client_credential_expiration_too_distant",
-                $"A expiração não pode ultrapassar {MaximumClientCredentialLifetimeDays} dias.",
-                "expiresAtUtc");
-        }
-        if (notBeforeUtc is { } notBefore
-            && expiresAtUtc is { } expiry
-            && notBefore >= expiry)
-        {
-            throw new ManagementValidationException(
-                "client_credential_window_invalid",
-                "O início da validade deve ser anterior à expiração.",
-                "notBeforeUtc");
-        }
-    }
-
-    private static string? ValidateRevocationReason(string? value)
-    {
-        var reason = value?.Trim();
-        if (string.IsNullOrEmpty(reason))
-        {
-            return null;
-        }
-        if (reason.Length > IdentityDatabaseSchema.OAuthClientCredentialReasonLength
-            || reason.Any(char.IsControl))
-        {
-            throw new ManagementValidationException(
-                "client_credential_revocation_reason_invalid",
-                $"O motivo deve ter até {IdentityDatabaseSchema.OAuthClientCredentialReasonLength} caracteres e não pode conter caracteres de controle.",
-                "reason");
-        }
-
-        return reason;
-    }
-
-    private static string CreateSecretHint(string secret)
-    {
-        const int visibleCharacters = 6;
-        return secret.Length <= visibleCharacters
-            ? secret
-            : secret[^visibleCharacters..];
-    }
-
-    private static string NewConcurrencyToken() =>
-        Guid.NewGuid().ToString("N");
-
-    private async Task<ManagementAuthorizationDecision> DemandAsync(
-        ManagementRequestContext context,
-        string capability,
-        ManagementResource resource,
-        CancellationToken cancellationToken)
-    {
-        var decision = await authorization.EvaluateAsync(
-            context.Operator,
-            capability,
-            resource,
-            cancellationToken);
-
-        if (decision.IsAllowed)
-        {
-            return decision;
-        }
-
-        await TryWriteAuditAsync(
-            context,
-            capability,
-            resource,
-            decision,
-            "denied",
-            decision.ReasonCode,
-            cancellationToken);
-        throw new ManagementAccessException(decision);
-    }
-
-    private async Task TryWriteAuditAsync(
-        ManagementRequestContext context,
-        string capability,
-        ManagementResource resource,
-        ManagementAuthorizationDecision decision,
-        string operationOutcome,
-        string? reasonCode,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
-                context,
-                capability,
-                resource,
-                decision,
-                operationOutcome,
-                reasonCode));
-            await database.SaveChangesAsync(cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(
-                exception,
-                "Unable to persist management audit event. Capability={Capability} CorrelationId={CorrelationId}",
-                capability,
-                context.CorrelationId);
-        }
-    }
 
     private async Task<ManagementClientDetail> ToDetailAsync(
         object application,
@@ -2264,7 +1459,7 @@ internal sealed class ClientManagementService(
         var tlsCertificates = ClientTlsCertificateCredential.Read(
             entity?.JsonWebKeySet,
             DateTimeOffset.UtcNow);
-        var authenticationMethods = GetAuthenticationMethods(
+        var authenticationMethods = ClientCredentialPolicy.GetAuthenticationMethods(
             hasPrimarySecret || activeAdditionalCredentials > 0,
             entity?.JsonWebKeySet,
             tlsCertificates);
@@ -2309,13 +1504,13 @@ internal sealed class ClientManagementService(
             IsManifestManaged: descriptor.Properties.ContainsKey(
                 OpenIddictManifestProvisioner.SchemaVersionProperty),
             JwksUri: GetSetting(settings, "jwks_uri"),
-            AccessTokenLifetimeMinutes: GetLifetimeMinutes(
+            AccessTokenLifetimeMinutes: ClientTokenLifetimePolicy.GetLifetimeMinutes(
                 settings,
                 OpenIddictConstants.Settings.TokenLifetimes.AccessToken),
-            IdentityTokenLifetimeMinutes: GetLifetimeMinutes(
+            IdentityTokenLifetimeMinutes: ClientTokenLifetimePolicy.GetLifetimeMinutes(
                 settings,
                 OpenIddictConstants.Settings.TokenLifetimes.IdentityToken),
-            RefreshTokenLifetimeDays: GetLifetimeDays(
+            RefreshTokenLifetimeDays: ClientTokenLifetimePolicy.GetLifetimeDays(
                 settings,
                 OpenIddictConstants.Settings.TokenLifetimes.RefreshToken),
             GlobalAccessTokenLifetimeMinutes: configuration.GetValue<int?>(
@@ -2378,466 +1573,6 @@ internal sealed class ClientManagementService(
             ? parsed
             : null;
 
-    private static void ValidateTokenLifetimes(
-        int? accessTokenLifetimeMinutes,
-        int? identityTokenLifetimeMinutes,
-        int? refreshTokenLifetimeDays)
-    {
-        ValidateLifetime(
-            accessTokenLifetimeMinutes,
-            MinimumAccessTokenLifetimeMinutes,
-            MaximumAccessTokenLifetimeMinutes,
-            "accessTokenLifetimeMinutes",
-            "access_token_lifetime_invalid",
-            "Access token lifetime must be between 1 minute and 24 hours.");
-        ValidateLifetime(
-            identityTokenLifetimeMinutes,
-            MinimumIdentityTokenLifetimeMinutes,
-            MaximumIdentityTokenLifetimeMinutes,
-            "identityTokenLifetimeMinutes",
-            "identity_token_lifetime_invalid",
-            "Identity token lifetime must be between 1 and 120 minutes.");
-        ValidateLifetime(
-            refreshTokenLifetimeDays,
-            MinimumRefreshTokenLifetimeDays,
-            MaximumRefreshTokenLifetimeDays,
-            "refreshTokenLifetimeDays",
-            "refresh_token_lifetime_invalid",
-            "Refresh token lifetime must be between 1 and 365 days.");
-    }
-
-    private static void ValidateLifetime(
-        int? value,
-        int minimum,
-        int maximum,
-        string field,
-        string reasonCode,
-        string message)
-    {
-        if (value is not null && (value < minimum || value > maximum))
-        {
-            throw new ManagementValidationException(reasonCode, message, field);
-        }
-    }
-
-    private static void ApplyTokenLifetimes(
-        OpenIddictApplicationDescriptor descriptor,
-        int? accessTokenLifetimeMinutes,
-        int? identityTokenLifetimeMinutes,
-        int? refreshTokenLifetimeDays,
-        bool clearAccessTokenLifetime = false,
-        bool clearIdentityTokenLifetime = false,
-        bool clearRefreshTokenLifetime = false)
-    {
-        // A clear flag explicitly removes an override. Without it, null means
-        // the caller did not manage that field, preserving older clients.
-        if (clearAccessTokenLifetime)
-        {
-            descriptor.SetAccessTokenLifetime(null);
-        }
-        else if (accessTokenLifetimeMinutes is { } access)
-        {
-            descriptor.SetAccessTokenLifetime(TimeSpan.FromMinutes(access));
-        }
-        if (clearIdentityTokenLifetime)
-        {
-            descriptor.SetIdentityTokenLifetime(null);
-        }
-        else if (identityTokenLifetimeMinutes is { } identity)
-        {
-            descriptor.SetIdentityTokenLifetime(TimeSpan.FromMinutes(identity));
-        }
-        if (clearRefreshTokenLifetime)
-        {
-            descriptor.SetRefreshTokenLifetime(null);
-        }
-        else if (refreshTokenLifetimeDays is { } refresh)
-        {
-            descriptor.SetRefreshTokenLifetime(TimeSpan.FromDays(refresh));
-        }
-    }
-
-    private static int? GetLifetimeMinutes(
-        IReadOnlyDictionary<string, string> settings,
-        string key)
-    {
-        if (!settings.TryGetValue(key, out var value)
-            || !TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out var lifetime)
-            || lifetime <= TimeSpan.Zero)
-        {
-            return null;
-        }
-
-        var minutes = (int)Math.Round(lifetime.TotalMinutes,
-            MidpointRounding.AwayFromZero);
-        return minutes > 0 ? minutes : null;
-    }
-
-    private static int? GetLifetimeDays(
-        IReadOnlyDictionary<string, string> settings,
-        string key)
-    {
-        if (!settings.TryGetValue(key, out var value)
-            || !TimeSpan.TryParse(value, CultureInfo.InvariantCulture, out var lifetime)
-            || lifetime <= TimeSpan.Zero)
-        {
-            return null;
-        }
-
-        var days = (int)Math.Round(lifetime.TotalDays,
-            MidpointRounding.AwayFromZero);
-        return days > 0 ? days : null;
-    }
-
-    private static void ValidateClientId(string clientId)
-    {
-        if (string.IsNullOrWhiteSpace(clientId))
-        {
-            throw new ManagementValidationException(
-                "client_id_required",
-                "client_id is required.",
-                "clientId");
-        }
-
-        if (clientId.Length > IdentityDatabaseSchema.OpenIddictClientIdLength)
-        {
-            throw new ManagementValidationException(
-                "client_id_too_long",
-                $"client_id cannot exceed {IdentityDatabaseSchema.OpenIddictClientIdLength} characters.",
-                "clientId");
-        }
-    }
-
-    private static string ValidateReplacementClientSecret(string? clientSecret)
-    {
-        if (string.IsNullOrWhiteSpace(clientSecret))
-        {
-            throw new ManagementValidationException(
-                "client_secret_required",
-                "Informe uma credencial ou escolha a geração automática.",
-                "clientSecret");
-        }
-
-        if (clientSecret.Length is < MinimumClientSecretLength or > MaximumClientSecretLength)
-        {
-            throw new ManagementValidationException(
-                "client_secret_length_invalid",
-                $"A credencial deve ter entre {MinimumClientSecretLength} e {MaximumClientSecretLength} caracteres.",
-                "clientSecret");
-        }
-
-        if (!string.Equals(clientSecret, clientSecret.Trim(), StringComparison.Ordinal)
-            || clientSecret.Any(char.IsControl))
-        {
-            throw new ManagementValidationException(
-                "client_secret_format_invalid",
-                "A credencial não pode começar ou terminar com espaços nem conter caracteres de controle.",
-                "clientSecret");
-        }
-
-        return clientSecret;
-    }
-
-    private static IReadOnlyList<Uri> ValidateRedirectUris(
-        IReadOnlyList<string>? values,
-        string field)
-    {
-        var result = new List<Uri>();
-
-        foreach (var raw in values ?? [])
-        {
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                continue;
-            }
-
-            if (!Uri.TryCreate(raw.Trim(), UriKind.Absolute, out var redirect))
-            {
-                throw new ManagementValidationException(
-                    "redirect_uri_invalid",
-                    $"{field} must contain only absolute URIs: {raw}",
-                    field);
-            }
-
-            if (redirect.Fragment.Length > 0)
-            {
-                throw new ManagementValidationException(
-                    "redirect_uri_fragment",
-                    $"{field} cannot contain a fragment: {redirect}",
-                    field);
-            }
-
-            var isLoopback = redirect.IsLoopback
-                || string.Equals(
-                    redirect.Host,
-                    "localhost",
-                    StringComparison.OrdinalIgnoreCase);
-            if (!string.Equals(
-                    redirect.Scheme,
-                    Uri.UriSchemeHttps,
-                    StringComparison.OrdinalIgnoreCase)
-                && !isLoopback)
-            {
-                throw new ManagementValidationException(
-                    "redirect_uri_https_required",
-                    $"{field} must use https (http is only allowed for loopback): {redirect}",
-                    field);
-            }
-
-            result.Add(redirect);
-        }
-
-        return result
-            .DistinctBy(uri => uri.AbsoluteUri, StringComparer.Ordinal)
-            .ToArray();
-    }
-
-    private static Uri? ValidateLogoutUri(string? value, string field)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return ValidateRedirectUris([value], field)[0];
-    }
-
-    private static Uri? ValidateJwksUri(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri)
-            || !PublicHttpsUriPolicy.IsAllowed(uri))
-        {
-            throw new ManagementValidationException(
-                "jwks_uri_invalid",
-                "jwksUri must be a public absolute HTTPS URI without user-info or fragment.",
-                "jwksUri");
-        }
-
-        return uri;
-    }
-
-    private static JsonWebKeySet? ValidatePublicJwks(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-        if (value.Length > 64 * 1024)
-        {
-            throw new ManagementValidationException(
-                "jwks_too_large",
-                "O conjunto JWKS não pode ultrapassar 64 KiB.",
-                "jwksJson");
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(value, new JsonDocumentOptions
-            {
-                AllowTrailingCommas = false,
-                CommentHandling = JsonCommentHandling.Disallow,
-                MaxDepth = 16,
-            });
-            if (document.RootElement.ValueKind != JsonValueKind.Object
-                || !document.RootElement.TryGetProperty("keys", out var keys)
-                || keys.ValueKind != JsonValueKind.Array
-                || keys.GetArrayLength() is < 1 or > 10)
-            {
-                throw new ManagementValidationException(
-                    "jwks_keys_invalid",
-                    "O JWKS deve conter entre 1 e 10 chaves públicas em 'keys'.",
-                    "jwksJson");
-            }
-
-            var keyIds = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var key in keys.EnumerateArray())
-            {
-                if (key.ValueKind != JsonValueKind.Object)
-                {
-                    throw new ManagementValidationException(
-                        "jwks_key_invalid",
-                        "Cada item de 'keys' deve ser uma chave JWK pública.",
-                        "jwksJson");
-                }
-
-                foreach (var privateParameter in new[]
-                {
-                    "d", "p", "q", "dp", "dq", "qi", "oth", "k",
-                })
-                {
-                    if (key.TryGetProperty(privateParameter, out _))
-                    {
-                        throw new ManagementValidationException(
-                            "jwks_private_material_forbidden",
-                            "O Identity aceita apenas chaves públicas. Remova parâmetros privados ou simétricos do JWKS.",
-                            "jwksJson");
-                    }
-                }
-
-                var kty = RequiredJwkString(key, "kty");
-                if (kty is not (JsonWebAlgorithmsKeyTypes.RSA
-                    or JsonWebAlgorithmsKeyTypes.EllipticCurve))
-                {
-                    throw new ManagementValidationException(
-                        "jwks_key_type_unsupported",
-                        "Use somente chaves públicas RSA ou EC para private_key_jwt.",
-                        "jwksJson");
-                }
-
-                var kid = RequiredJwkString(key, "kid");
-                if (!keyIds.Add(kid))
-                {
-                    throw new ManagementValidationException(
-                        "jwks_kid_duplicate",
-                        "Cada chave pública deve possuir um kid único.",
-                        "jwksJson");
-                }
-
-                if (key.TryGetProperty("use", out var use)
-                    && (use.ValueKind != JsonValueKind.String
-                        || !string.Equals(
-                            use.GetString(),
-                            JsonWebKeyUseNames.Sig,
-                            StringComparison.Ordinal)))
-                {
-                    throw new ManagementValidationException(
-                        "jwks_use_invalid",
-                        "Chaves de autenticação devem usar 'use': 'sig' ou omitir o campo.",
-                        "jwksJson");
-                }
-
-                if (kty == JsonWebAlgorithmsKeyTypes.RSA)
-                {
-                    var modulus = RequiredJwkString(key, "n");
-                    var exponent = RequiredJwkString(key, "e");
-                    if (!TryGetBase64UrlByteLength(modulus, out var modulusBytes)
-                        || modulusBytes < 256
-                        || !TryGetBase64UrlByteLength(exponent, out var exponentBytes)
-                        || exponentBytes is < 1 or > 8)
-                    {
-                        throw new ManagementValidationException(
-                            "jwks_rsa_key_too_small",
-                            "Chaves RSA devem possuir pelo menos 2048 bits.",
-                            "jwksJson");
-                    }
-                }
-                else
-                {
-                    var curve = RequiredJwkString(key, "crv");
-                    if (curve is not ("P-256" or "P-384" or "P-521"))
-                    {
-                        throw new ManagementValidationException(
-                            "jwks_curve_unsupported",
-                            "Use curvas P-256, P-384 ou P-521.",
-                            "jwksJson");
-                    }
-                    var x = RequiredJwkString(key, "x");
-                    var y = RequiredJwkString(key, "y");
-                    var coordinateBytes = curve switch
-                    {
-                        "P-256" => 32,
-                        "P-384" => 48,
-                        _ => 66,
-                    };
-                    if (!TryGetBase64UrlByteLength(x, out var xBytes)
-                        || !TryGetBase64UrlByteLength(y, out var yBytes)
-                        || xBytes != coordinateBytes
-                        || yBytes != coordinateBytes)
-                    {
-                        throw new ManagementValidationException(
-                            "jwks_ec_coordinates_invalid",
-                            "As coordenadas EC não correspondem à curva informada.",
-                            "jwksJson");
-                    }
-                }
-
-                if (key.TryGetProperty("alg", out var algorithm))
-                {
-                    var alg = algorithm.ValueKind == JsonValueKind.String
-                        ? algorithm.GetString()
-                        : null;
-                    if (alg is not ("RS256" or "RS384" or "RS512"
-                        or "PS256" or "PS384" or "PS512"
-                        or "ES256" or "ES384" or "ES512"))
-                    {
-                        throw new ManagementValidationException(
-                            "jwks_algorithm_unsupported",
-                            "O algoritmo da chave deve ser RS*, PS* ou ES* com SHA-256/384/512.",
-                            "jwksJson");
-                    }
-                    if ((kty == JsonWebAlgorithmsKeyTypes.RSA
-                            && !alg.StartsWith("RS", StringComparison.Ordinal)
-                            && !alg.StartsWith("PS", StringComparison.Ordinal))
-                        || (kty == JsonWebAlgorithmsKeyTypes.EllipticCurve
-                            && !alg.StartsWith("ES", StringComparison.Ordinal)))
-                    {
-                        throw new ManagementValidationException(
-                            "jwks_algorithm_key_type_mismatch",
-                            "O algoritmo informado não corresponde ao tipo da chave pública.",
-                            "jwksJson");
-                    }
-                }
-            }
-
-            return new JsonWebKeySet(document.RootElement.GetRawText());
-        }
-        catch (JsonException exception)
-        {
-            throw new ManagementValidationException(
-                "jwks_json_invalid",
-                $"O JWKS não é um JSON válido: {exception.Message}",
-                "jwksJson");
-        }
-        catch (ArgumentException exception)
-        {
-            throw new ManagementValidationException(
-                "jwks_json_invalid",
-                $"O JWKS não pôde ser interpretado: {exception.Message}",
-                "jwksJson");
-        }
-    }
-
-    private static string RequiredJwkString(JsonElement key, string property)
-    {
-        if (!key.TryGetProperty(property, out var value)
-            || value.ValueKind != JsonValueKind.String
-            || string.IsNullOrWhiteSpace(value.GetString()))
-        {
-            throw new ManagementValidationException(
-                "jwks_key_parameter_required",
-                $"Cada chave pública deve informar '{property}'.",
-                "jwksJson");
-        }
-
-        return value.GetString()!;
-    }
-
-    private static bool TryGetBase64UrlByteLength(
-        string value,
-        out int length)
-    {
-        try
-        {
-            length = WebEncoders.Base64UrlDecode(value).Length;
-            return true;
-        }
-        catch (FormatException)
-        {
-            length = 0;
-            return false;
-        }
-    }
-
-    private static bool SameOrigin(Uri left, Uri right) =>
-        string.Equals(left.Scheme, right.Scheme, StringComparison.OrdinalIgnoreCase) &&
-        string.Equals(left.Host, right.Host, StringComparison.OrdinalIgnoreCase) &&
-        left.Port == right.Port;
-
     private static void AddLogoutSettings(
         IDictionary<string, string> settings,
         Uri? frontchannelLogoutUri,
@@ -2857,37 +1592,6 @@ internal sealed class ClientManagementService(
             settings["backchannel_logout_uri"] = backchannelLogoutUri.AbsoluteUri;
             settings["backchannel_logout_session_required"] =
                 backchannelSessionRequired ? "true" : "false";
-        }
-    }
-
-    private static void ValidateLogoutConfiguration(
-        IReadOnlyList<Uri> redirectUris,
-        Uri? frontchannelLogoutUri,
-        bool frontchannelSessionRequired,
-        Uri? backchannelLogoutUri,
-        bool backchannelSessionRequired)
-    {
-        if (frontchannelSessionRequired && frontchannelLogoutUri is null)
-        {
-            throw new ManagementValidationException(
-                "frontchannel_logout_uri_required",
-                "frontchannelLogoutUri is required when session-specific front-channel logout is requested.",
-                "frontchannelLogoutUri");
-        }
-        if (backchannelSessionRequired && backchannelLogoutUri is null)
-        {
-            throw new ManagementValidationException(
-                "backchannel_logout_uri_required",
-                "backchannelLogoutUri is required when session-specific back-channel logout is requested.",
-                "backchannelLogoutUri");
-        }
-        if (frontchannelLogoutUri is not null &&
-            !redirectUris.Any(redirect => SameOrigin(redirect, frontchannelLogoutUri)))
-        {
-            throw new ManagementValidationException(
-                "frontchannel_logout_origin_mismatch",
-                "frontchannelLogoutUri must use the same scheme, host and port as a redirect URI.",
-                "frontchannelLogoutUri");
         }
     }
 
@@ -3020,197 +1724,6 @@ internal sealed class ClientManagementService(
         properties?.Contains(
             OpenIddictManifestProvisioner.SchemaVersionProperty,
             StringComparison.Ordinal) is true;
-
-    private static IReadOnlyList<string> NormalizeGrantTypes(
-        IReadOnlyList<string>? values) =>
-        (values ?? [])
-            .Where(value => !string.IsNullOrWhiteSpace(value))
-            .Select(value => value.Trim())
-            .Select(value => value switch
-            {
-                "authorization_code" =>
-                    OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
-                OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode =>
-                    OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
-                "client_credentials" =>
-                    OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
-                OpenIddictConstants.Permissions.GrantTypes.ClientCredentials =>
-                    OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
-                "refresh_token" =>
-                    OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
-                OpenIddictConstants.Permissions.GrantTypes.RefreshToken =>
-                    OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
-                "device_code" =>
-                    OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
-                OpenIddictConstants.GrantTypes.DeviceCode =>
-                    OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
-                OpenIddictConstants.Permissions.GrantTypes.DeviceCode =>
-                    OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
-                OpenIddictConstants.GrantTypes.TokenExchange =>
-                    OpenIddictConstants.Permissions.GrantTypes.TokenExchange,
-                OpenIddictConstants.Permissions.GrantTypes.TokenExchange =>
-                    OpenIddictConstants.Permissions.GrantTypes.TokenExchange,
-                "password" =>
-                    OpenIddictConstants.Permissions.GrantTypes.Password,
-                OpenIddictConstants.Permissions.GrantTypes.Password =>
-                    OpenIddictConstants.Permissions.GrantTypes.Password,
-                "implicit" =>
-                    OpenIddictConstants.Permissions.GrantTypes.Implicit,
-                OpenIddictConstants.Permissions.GrantTypes.Implicit =>
-                    OpenIddictConstants.Permissions.GrantTypes.Implicit,
-                _ => throw new ManagementValidationException(
-                    "unsupported_grant_type",
-                    $"Grant type '{value}' is not supported by the Management API.",
-                    "grantTypes")
-            })
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-
-    private static IReadOnlyList<string> NormalizeScopes(
-        IReadOnlyList<string>? values) =>
-        (values ?? [])
-            .Where(value => !string.IsNullOrWhiteSpace(value))
-            .Select(value => value.Trim())
-            .Select(value => value.StartsWith(
-                    OpenIddictConstants.Permissions.Prefixes.Scope,
-                    StringComparison.Ordinal)
-                ? value
-                : OpenIddictConstants.Permissions.Prefixes.Scope + value)
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-
-    private static void AddDerivedProtocolPermissions(
-        OpenIddictApplicationDescriptor descriptor,
-        IReadOnlyCollection<string> grantTypes)
-    {
-        if (grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
-                StringComparer.Ordinal)
-            || grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.Implicit,
-                StringComparer.Ordinal))
-        {
-            descriptor.Permissions.Add(
-                OpenIddictConstants.Permissions.Endpoints.Authorization);
-        }
-
-        if (grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
-                StringComparer.Ordinal)
-            || grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
-                StringComparer.Ordinal)
-            || grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.Password,
-                StringComparer.Ordinal)
-            || grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
-                StringComparer.Ordinal)
-            || grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
-                StringComparer.Ordinal))
-        {
-            descriptor.Permissions.Add(
-                OpenIddictConstants.Permissions.Endpoints.Token);
-        }
-
-        if (grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
-                StringComparer.Ordinal))
-        {
-            descriptor.Permissions.Add(
-                OpenIddictConstants.Permissions.ResponseTypes.Code);
-        }
-
-        if (grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
-                StringComparer.Ordinal))
-        {
-            descriptor.Permissions.Add(
-                OpenIddictConstants.Permissions.Endpoints.DeviceAuthorization);
-        }
-    }
-
-    private static void RemoveManagedPermissions(
-        OpenIddictApplicationDescriptor descriptor)
-    {
-        // Keep protocol capabilities that this editor does not model (for
-        // example introspection or custom endpoints). Only remove values that
-        // are derived from the editable grants/scopes, otherwise a routine
-        // display-name/redirect edit could silently weaken or broaden a client.
-        var managed = descriptor.Permissions
-            .Where(permission =>
-                permission.StartsWith(
-                    "gt:",
-                    StringComparison.Ordinal)
-                || permission.StartsWith(
-                    OpenIddictConstants.Permissions.Prefixes.Scope,
-                    StringComparison.Ordinal)
-                || permission == OpenIddictConstants.Permissions.Endpoints.Authorization
-                || permission == OpenIddictConstants.Permissions.Endpoints.Token
-                || permission == OpenIddictConstants.Permissions.Endpoints.DeviceAuthorization
-                || permission == OpenIddictConstants.Permissions.Endpoints.PushedAuthorization
-                || permission == OpenIddictConstants.Permissions.ResponseTypes.Code)
-            .ToArray();
-
-        foreach (var permission in managed)
-        {
-            descriptor.Permissions.Remove(permission);
-        }
-    }
-
-    private static string? NormalizeConsentType(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return null;
-        }
-
-        return raw switch
-        {
-            var value when string.Equals(
-                    value,
-                    "explicit",
-                    StringComparison.OrdinalIgnoreCase)
-                || string.Equals(
-                    value,
-                    OpenIddictConstants.ConsentTypes.Explicit,
-                    StringComparison.OrdinalIgnoreCase)
-                => OpenIddictConstants.ConsentTypes.Explicit,
-            var value when string.Equals(
-                    value,
-                    "implicit",
-                    StringComparison.OrdinalIgnoreCase)
-                || string.Equals(
-                    value,
-                    OpenIddictConstants.ConsentTypes.Implicit,
-                    StringComparison.OrdinalIgnoreCase)
-                => OpenIddictConstants.ConsentTypes.Implicit,
-            var value when string.Equals(
-                    value,
-                    "external",
-                    StringComparison.OrdinalIgnoreCase)
-                || string.Equals(
-                    value,
-                    OpenIddictConstants.ConsentTypes.External,
-                    StringComparison.OrdinalIgnoreCase)
-                => OpenIddictConstants.ConsentTypes.External,
-            var value when string.Equals(
-                    value,
-                    "systematic",
-                    StringComparison.OrdinalIgnoreCase)
-                || string.Equals(
-                    value,
-                    OpenIddictConstants.ConsentTypes.Systematic,
-                    StringComparison.OrdinalIgnoreCase)
-                => OpenIddictConstants.ConsentTypes.Systematic,
-            _ => throw new ManagementValidationException(
-                "consent_type_invalid",
-                $"Unknown consent type: '{raw}'. Valid values: explicit, " +
-                "implicit, external, systematic.",
-                "consentType")
-        };
-    }
 
     private static string? NullIfWhiteSpace(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();

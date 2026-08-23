@@ -336,12 +336,12 @@ internal sealed class KeyVault : IKeyVault
                     key => key.KeyVersion == keyVersion);
                 if (cached is null) return false;
 
-                using var cachedRsa = CreatePublicRsa(cached.PublicJwk);
-                return cachedRsa.VerifyData(
-                    payload,
-                    signature,
-                    HashAlgorithmName.SHA256,
-                    RSASignaturePadding.Pkcs1);
+                // Same algorithm dispatch as the database path below: the
+                // version's own JWK decides RSA PKCS#1 / RSA-PSS / ECDSA.
+                // Hardcoding RSA+PKCS#1 here silently rejected every valid
+                // ES256 and PS256 signature whenever the snapshot cache was
+                // enabled (the default), while the database path accepted them.
+                return VerifyWithJwk(cached.PublicJwk, payload, signature);
             }
 
             await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
@@ -1247,9 +1247,18 @@ internal sealed class KeyVault : IKeyVault
         }
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        // Purpose is part of the lookup, not just a convention: the key name
+        // and version in a self-describing ciphertext are attacker-influenced
+        // input, so without this filter a crafted "v1.oidc-signing:1.…" blob
+        // would make the decrypt path unwrap a SIGNING private key and treat
+        // it as a symmetric DEK. Keeping the two key spaces disjoint at the
+        // query makes that structurally impossible rather than relying on the
+        // AES-GCM key-length check to reject it downstream.
         var row = await db.VaultKeys
             .AsNoTracking()
-            .Where(k => k.KeyName == keyName && k.KeyVersion == version)
+            .Where(k => k.KeyName == keyName
+                && k.KeyVersion == version
+                && k.Purpose == "symmetric")
             .FirstOrDefaultAsync(cancellationToken)
             ?? throw new CryptographicException(
                 $"Vault key '{keyName}' v{version} not found. It may have been retired and deleted.");

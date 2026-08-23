@@ -128,6 +128,12 @@ public sealed class SufficitIdentityOptions
     public CspOptions Csp { get; init; } = new();
 
     /// <summary>
+    /// Controls publication of the OpenAPI document and Swagger UI.
+    /// See <see cref="SwaggerOptions"/>.
+    /// </summary>
+    public SwaggerOptions Swagger { get; init; } = new();
+
+    /// <summary>
     /// Provider-neutral CAPTCHA/human-verification policy for public account
     /// flows that create users or send email.
     /// </summary>
@@ -465,6 +471,41 @@ public sealed class RateLimitOptions
     public int DeviceInformationWindowSeconds { get; init; } = 60;
 
     /// <summary>
+    /// Requests allowed per window and source IP on the administrative
+    /// surfaces (management API and SCIM), which were previously unthrottled
+    /// altogether.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately generous. These endpoints are not consumed by the
+    /// management UI — that is Blazor Server and calls its services through DI
+    /// — so the traffic here is automation: provisioning scripts, migration
+    /// tools, SCIM synchronisation. A script creating two hundred clients one
+    /// call at a time is doing exactly what it should, and throttling it would
+    /// be a bug, not a defence. The purpose of this bucket is to bound a
+    /// runaway loop, not to pace legitimate bulk work.
+    /// </remarks>
+    public int AdministrativePermitLimit { get; init; } = 600;
+
+    public int AdministrativeWindowSeconds { get; init; } = 60;
+
+    /// <summary>
+    /// Whole-collection operations (provisioning manifest apply/preview/
+    /// inventory, revoking every session of a user) allowed per window and
+    /// source IP.
+    /// </summary>
+    /// <remarks>
+    /// A separate, smaller bucket: one of these requests can rewrite every
+    /// client and scope a manifest declares, so the meaningful limit is on how
+    /// often that is attempted rather than on request volume. Keeping it apart
+    /// from <see cref="AdministrativePermitLimit"/> is what lets both coexist
+    /// — a provisioning run cannot exhaust the budget for ordinary calls, and
+    /// a chatty tool cannot block a manifest apply.
+    /// </remarks>
+    public int AdministrativeBulkPermitLimit { get; init; } = 30;
+
+    public int AdministrativeBulkWindowSeconds { get; init; } = 60;
+
+    /// <summary>
     /// When <c>true</c> AND <c>TrustedProxies</c> is empty outside Development,
     /// the STS fails to start (instead of only logging a warning). Without
     /// trusted proxies, every request's <c>RemoteIpAddress</c> is the proxy's
@@ -682,6 +723,29 @@ public sealed class LockoutOptions
     /// How long the account stays locked, in minutes.
     /// </summary>
     public double DurationMinutes { get; init; } = 5;
+}
+
+/// <summary>
+/// Publication policy for the OpenAPI document and Swagger UI.
+/// </summary>
+/// <remarks>
+/// The contract used to be published unconditionally, including in
+/// Production. Both endpoints are anonymous, so that handed any passer-by a
+/// complete inventory of the management, SCIM, provisioning and vault
+/// surfaces — every route, verb and DTO — which turns reconnaissance against
+/// the authorization-gated endpoints into a reading exercise. Publishing is
+/// still supported, but it is now a decision a deployment makes rather than
+/// the default.
+/// </remarks>
+public sealed class SwaggerOptions
+{
+    /// <summary>
+    /// Publishes the OpenAPI document and Swagger UI. When left unset
+    /// (default), the contract is published only in Development. Set to
+    /// <c>true</c> to publish in every environment, or <c>false</c> to never
+    /// publish it.
+    /// </summary>
+    public bool? Enabled { get; init; }
 }
 
 /// <summary>
