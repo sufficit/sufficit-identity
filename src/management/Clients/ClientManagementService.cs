@@ -347,6 +347,7 @@ internal sealed class ClientManagementService(
     IClientDefinitionValidator clientDefinitionValidator,
     IClientCredentialSecretHasher credentialSecretHasher,
     IConfiguration configuration,
+    ManagementOperationGuard guard,
     ILogger<ClientManagementService> logger) : IClientManagementService
 {
     private const int GeneratedClientSecretBytes = 32;
@@ -356,11 +357,12 @@ internal sealed class ClientManagementService(
         ManagementRequestContext context,
         CancellationToken cancellationToken = default)
     {
-        await DemandAsync(
+        await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsRead,
             new ManagementResource(ManagementResourceTypes.ClientCollection),
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var result = new List<ManagementClientSummary>();
 
@@ -395,11 +397,12 @@ internal sealed class ClientManagementService(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
-        await DemandAsync(
+        await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsRead,
             new ManagementResource(ManagementResourceTypes.ClientCollection),
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var normalized = NormalizeSearchQuery(query);
         var applicationsQuery = database.Set<OpenIddictEntityFrameworkCoreApplication>()
@@ -505,11 +508,12 @@ internal sealed class ClientManagementService(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
 
-        await DemandAsync(
+        await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsRead,
             new ManagementResource(ManagementResourceTypes.Client, id),
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var application = await applications.FindByIdAsync(id, cancellationToken);
         if (application is null)
@@ -529,11 +533,12 @@ internal sealed class ClientManagementService(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
 
-        await DemandAsync(
+        await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsRead,
             new ManagementResource(ManagementResourceTypes.Client, clientId),
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var application = await applications.FindByClientIdAsync(
             clientId,
@@ -559,11 +564,12 @@ internal sealed class ClientManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Client,
             clientId);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsCreate,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         try
         {
@@ -620,7 +626,7 @@ internal sealed class ClientManagementService(
                     clientId,
                     cancellationToken) is not null)
             {
-                await TryWriteAuditAsync(
+                await guard.TryWriteAuditAsync(
                     context,
                     ManagementCapabilities.ClientsCreate,
                     resource,
@@ -789,7 +795,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementValidationException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsCreate,
                 resource,
@@ -801,7 +807,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementConflictException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsCreate,
                 resource,
@@ -832,18 +838,19 @@ internal sealed class ClientManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Client,
             clientId);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsDelete,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var application = await applications.FindByClientIdAsync(
             clientId,
             cancellationToken);
         if (application is null)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsDelete,
                 resource,
@@ -931,18 +938,19 @@ internal sealed class ClientManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Client,
             clientId);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsUpdate,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var application = await applications.FindByClientIdAsync(
             clientId,
             cancellationToken);
         if (application is null)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1175,7 +1183,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementValidationException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1187,7 +1195,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementConflictException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1230,18 +1238,19 @@ internal sealed class ClientManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Client,
             clientId);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsUpdate,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var application = await applications.FindByClientIdAsync(
             clientId,
             cancellationToken);
         if (application is null)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1329,7 +1338,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementValidationException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1341,7 +1350,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementConflictException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1381,11 +1390,12 @@ internal sealed class ClientManagementService(
         ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
         clientId = clientId.Trim();
 
-        await DemandAsync(
+        await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsRead,
             new ManagementResource(ManagementResourceTypes.Client, clientId),
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var application = await applications.FindByClientIdAsync(
             clientId,
@@ -1411,18 +1421,19 @@ internal sealed class ClientManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Client,
             clientId);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsUpdate,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var application = await applications.FindByClientIdAsync(
             clientId,
             cancellationToken);
         if (application is not OpenIddictEntityFrameworkCoreApplication entity)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1558,7 +1569,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementValidationException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1570,7 +1581,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementConflictException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1604,11 +1615,12 @@ internal sealed class ClientManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Client,
             clientId);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsUpdate,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var application = await applications.FindByClientIdAsync(
             clientId,
@@ -1677,7 +1689,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementValidationException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1689,7 +1701,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementConflictException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1701,7 +1713,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementNotFoundException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1735,11 +1747,12 @@ internal sealed class ClientManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Client,
             clientId);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsUpdate,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
         var application = await applications.FindByClientIdAsync(
             clientId,
             cancellationToken);
@@ -1795,7 +1808,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementValidationException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1807,7 +1820,7 @@ internal sealed class ClientManagementService(
         }
         catch (ManagementConflictException exception)
         {
-            await TryWriteAuditAsync(
+            await guard.TryWriteAuditAsync(
                 context,
                 ManagementCapabilities.ClientsUpdate,
                 resource,
@@ -1830,11 +1843,12 @@ internal sealed class ClientManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Client,
             clientId);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsUpdate,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
         var application = await applications.FindByClientIdAsync(
             clientId,
             cancellationToken);
@@ -1978,63 +1992,7 @@ internal sealed class ClientManagementService(
     private static string NewConcurrencyToken() =>
         Guid.NewGuid().ToString("N");
 
-    private async Task<ManagementAuthorizationDecision> DemandAsync(
-        ManagementRequestContext context,
-        string capability,
-        ManagementResource resource,
-        CancellationToken cancellationToken)
-    {
-        var decision = await authorization.EvaluateAsync(
-            context.Operator,
-            capability,
-            resource,
-            cancellationToken);
 
-        if (decision.IsAllowed)
-        {
-            return decision;
-        }
-
-        await TryWriteAuditAsync(
-            context,
-            capability,
-            resource,
-            decision,
-            "denied",
-            decision.ReasonCode,
-            cancellationToken);
-        throw new ManagementAccessException(decision);
-    }
-
-    private async Task TryWriteAuditAsync(
-        ManagementRequestContext context,
-        string capability,
-        ManagementResource resource,
-        ManagementAuthorizationDecision decision,
-        string operationOutcome,
-        string? reasonCode,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
-                context,
-                capability,
-                resource,
-                decision,
-                operationOutcome,
-                reasonCode));
-            await database.SaveChangesAsync(cancellationToken);
-        }
-        catch (Exception exception)
-        {
-            logger.LogError(
-                exception,
-                "Unable to persist management audit event. Capability={Capability} CorrelationId={CorrelationId}",
-                capability,
-                context.CorrelationId);
-        }
-    }
 
     private async Task<ManagementClientDetail> ToDetailAsync(
         object application,
