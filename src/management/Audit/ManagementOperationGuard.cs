@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management.Authorization;
@@ -36,8 +37,17 @@ namespace Sufficit.Identity.Management.Audit;
 internal sealed class ManagementOperationGuard(
     IManagementAuthorizationEvaluator authorization,
     AppDbContext database,
+    IMemoryCache repeatedDenials,
     ILogger<ManagementOperationGuard> logger)
 {
+    /// <summary>
+    /// How long an identical refusal stays suppressed. Long enough that a
+    /// client looping on an endpoint it lacks the capability for cannot turn
+    /// each attempt into a database write; short enough that a genuine
+    /// probing pattern still leaves a visible trail over time.
+    /// </summary>
+    private static readonly TimeSpan RepeatedDenialWindow = TimeSpan.FromMinutes(5);
+
     /// <summary>
     /// Evaluates <paramref name="capability"/> against
     /// <paramref name="resource"/> and returns the decision, throwing
@@ -66,7 +76,7 @@ internal sealed class ManagementOperationGuard(
             return decision;
         }
 
-        if (auditDenial)
+        if (auditDenial && ShouldRecordDenial(context, capability, resource))
         {
             await TryWriteAuditAsync(
                 context,
@@ -79,6 +89,58 @@ internal sealed class ManagementOperationGuard(
         }
 
         throw new ManagementAccessException(decision);
+    }
+
+    /// <summary>
+    /// Collapses identical repeated refusals so a caller cannot turn a loop
+    /// into a write per request.
+    /// </summary>
+    /// <remarks>
+    /// A refusal reaches this code only after the caller passed
+    /// authentication, scope and MFA at the policy, so this is not an
+    /// anonymous attack surface. It is still a write driven by the caller's
+    /// request rate: an operator holding a valid token but lacking one
+    /// capability — or a misconfigured client polling in a loop — would
+    /// otherwise append a row and a <c>SaveChanges</c> to every attempt, on
+    /// the request path, into a table that has no upstream rate limit (the
+    /// limiter covers <c>/connect/*</c> and <c>/account/*</c>, not the
+    /// management API).
+    /// <para>
+    /// Suppression is per (operator, capability, resource), so a caller
+    /// probing DIFFERENT capabilities or resources still writes one row each —
+    /// which is exactly the pattern worth seeing. What gets collapsed is the
+    /// same wall hit repeatedly, where the second through thousandth rows add
+    /// volume rather than information.
+    /// </para>
+    /// <para>
+    /// The window is process-local. Across replicas that means up to one row
+    /// per replica per window rather than one globally — deliberately not
+    /// coordinated, because a distributed lock on the refusal path would put a
+    /// network round-trip in front of an error response.
+    /// </para>
+    /// </remarks>
+    private bool ShouldRecordDenial(
+        ManagementRequestContext context,
+        string capability,
+        ManagementResource resource)
+    {
+        var key = string.Concat(
+            "management-denial:",
+            context.OperatorSubject,
+            "\n",
+            capability,
+            "\n",
+            resource.Type,
+            "\n",
+            resource.Id ?? string.Empty);
+
+        if (repeatedDenials.TryGetValue(key, out _))
+        {
+            return false;
+        }
+
+        repeatedDenials.Set(key, true, RepeatedDenialWindow);
+        return true;
     }
 
     /// <summary>

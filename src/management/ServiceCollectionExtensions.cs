@@ -135,8 +135,12 @@ public static class ServiceCollectionExtensions
                 provider => provider.GetRequiredService<
                     ManagementAuthorizationMiddlewareResultHandler>()));
         services.TryAddScoped<IManagementAuditService, ManagementAuditService>();
+        // The audit table is append-only and had no retention; this prunes
+        // it past ManagementOptions.AuditRetentionDays.
+        services.AddHostedService<ManagementAuditRetentionWorker>();
         // Shared authorization+denial-audit boundary (see
         // ManagementOperationGuard for why the audit choice stays explicit).
+        services.AddMemoryCache();
         services.TryAddScoped<Audit.ManagementOperationGuard>();
         services.TryAddScoped<ClientCredentialRegistry>();
         services.TryAddScoped<IClientManagementService, ClientManagementService>();
