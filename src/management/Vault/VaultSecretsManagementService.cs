@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Vault;
 #endif
+using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Vault;
@@ -103,9 +104,9 @@ public sealed record SaveManagementVaultSecret(
 public sealed class VaultSecretsManagementService(
     AppDbContext database,
     IVaultNamedSecretStore store,
-    IManagementAuthorizationEvaluator authorization,
     IOptions<VaultOptions> options,
-    IOptions<ManagementOptions> managementOptions)
+    IOptions<ManagementOptions> managementOptions,
+    ManagementOperationGuard guard)
     : IVaultSecretsManagementService
 {
     public async Task<IReadOnlyList<ManagementVaultSecret>> ListAsync(
@@ -120,7 +121,7 @@ public sealed class VaultSecretsManagementService(
         // access is gated by the vault capability + MFA, not by tenant.
         var resource = new ManagementResource(
             ManagementResourceTypes.VaultSecretCollection);
-        var objectDecision = await DemandAsync(
+        var objectDecision = await guard.DemandAsync(
             context,
             ManagementCapabilities.VaultSecretsRead,
             resource,
@@ -148,7 +149,7 @@ public sealed class VaultSecretsManagementService(
         var normalizedContext = VaultBackedSecretStore.NormalizeContextId(
             contextId);
         var resource = ItemResource(normalized);
-        var objectDecision = await DemandAsync(
+        var objectDecision = await guard.DemandAsync(
             context,
             ManagementCapabilities.VaultSecretsRead,
             resource,
@@ -180,11 +181,12 @@ public sealed class VaultSecretsManagementService(
         var normalizedContext = VaultBackedSecretStore.NormalizeContextId(
             contextId);
         var resource = ItemResource(normalized);
-        var objectDecision = await DemandAsync(
+        var objectDecision = await guard.DemandAsync(
             context,
             ManagementCapabilities.VaultSecretsManage,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
         var decision = ResolveDecision(context, objectDecision);
         EnsureEnabled();
         if (string.IsNullOrWhiteSpace(command.Value))
@@ -228,11 +230,12 @@ public sealed class VaultSecretsManagementService(
         var normalizedContext = VaultBackedSecretStore.NormalizeContextId(
             contextId);
         var resource = ItemResource(normalized);
-        var objectDecision = await DemandAsync(
+        var objectDecision = await guard.DemandAsync(
             context,
             ManagementCapabilities.VaultSecretsResolve,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
         var decision = ResolveDecision(context, objectDecision);
         EnsureEnabled();
         var resolution = await store.ResolveAsync(
@@ -279,11 +282,12 @@ public sealed class VaultSecretsManagementService(
         var normalizedContext = VaultBackedSecretStore.NormalizeContextId(
             contextId);
         var resource = ItemResource(normalized);
-        var objectDecision = await DemandAsync(
+        var objectDecision = await guard.DemandAsync(
             context,
             ManagementCapabilities.VaultSecretsManage,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
         var decision = ResolveDecision(context, objectDecision);
         EnsureEnabled();
         if (!await store.DeleteAsync(
@@ -353,18 +357,6 @@ public sealed class VaultSecretsManagementService(
             ManagementResourceTypes.VaultSecrets,
             normalizedName);
 
-    private async Task<ManagementAuthorizationDecision> DemandAsync(
-        ManagementRequestContext context,
-        string capability,
-        ManagementResource resource,
-        CancellationToken cancellationToken)
-    {
-        var decision = await authorization.EvaluateAsync(
-            context.Operator, capability, resource, cancellationToken);
-        if (!decision.IsAllowed)
-            throw new ManagementAccessException(decision);
-        return decision;
-    }
 
     private void EnsureEnabled()
     {

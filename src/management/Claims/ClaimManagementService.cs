@@ -97,11 +97,11 @@ public sealed record UpdateManagementClaimCommand(
 internal sealed class ClaimManagementService(
     AppDbContext database,
     UserManager<ApplicationUser> userManager,
-    IManagementAuthorizationEvaluator authorization,
     IIdentityUserSessionRevoker sessionRevoker,
     ISecurityEventTrigger securityEvents,
     IOptions<Sufficit.Identity.Management.ManagementOptions> managementOptions,
-    ILogger<ClaimManagementService> logger) : IClaimManagementService
+    ILogger<ClaimManagementService> logger,
+    ManagementOperationGuard guard) : IClaimManagementService
 {
     private const int ClaimTypeMaxLength = 256;
     private const int ClaimValueMaxLength = 4096;
@@ -167,7 +167,7 @@ internal sealed class ClaimManagementService(
         ManagementRequestContext context,
         CancellationToken cancellationToken = default)
     {
-        await DemandAsync(
+        await guard.DemandAsync(
             context,
             ManagementCapabilities.ClaimsRead,
             new ManagementResource(
@@ -193,7 +193,7 @@ internal sealed class ClaimManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.ClaimCollection,
             userId);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClaimsRead,
             resource,
@@ -263,7 +263,7 @@ internal sealed class ClaimManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Claim,
             id.ToString());
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClaimsRead,
             resource,
@@ -297,11 +297,12 @@ internal sealed class ClaimManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.ClaimCollection,
             userId);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClaimsCreate,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
 
         var user = await userManager.FindByIdAsync(userId);
         if (user is null)
@@ -418,11 +419,12 @@ internal sealed class ClaimManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Claim,
             id.ToString());
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClaimsDelete,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
         var claim = await database.Set<IdentityUserClaim<string>>()
             .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (claim is null)
@@ -515,11 +517,12 @@ internal sealed class ClaimManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Claim,
             id.ToString());
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClaimsUpdate,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
         var claim = await database.Set<IdentityUserClaim<string>>()
             .SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (claim is null)
@@ -646,24 +649,6 @@ internal sealed class ClaimManagementService(
                 claim.ClaimValue ?? string.Empty))
             .SingleOrDefaultAsync(cancellationToken);
 
-    private async Task<ManagementAuthorizationDecision> DemandAsync(
-        ManagementRequestContext context,
-        string capability,
-        ManagementResource resource,
-        CancellationToken cancellationToken)
-    {
-        var decision = await authorization.EvaluateAsync(
-            context.Operator,
-            capability,
-            resource,
-            cancellationToken);
-        if (!decision.IsAllowed)
-        {
-            throw new ManagementAccessException(decision);
-        }
-
-        return decision;
-    }
 
     private async Task TryWriteFailureAuditAsync(
         ManagementRequestContext context,

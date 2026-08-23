@@ -1,8 +1,11 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
@@ -16,7 +19,9 @@ namespace Sufficit.Identity.Scim;
 /// short-circuits before the provisioning service runs. The filter runs
 /// AFTER authorization and inspects the response status code.
 /// </summary>
-public sealed class ScimAuthorizationAuditHandler
+public sealed class ScimAuthorizationAuditHandler(
+    IOptions<ScimOptions>? optionsAccessor = null,
+    ILogger<ScimAuthorizationAuditHandler>? logger = null)
     : IAuthorizationMiddlewareResultHandler
 {
     private readonly AuthorizationMiddlewareResultHandler fallback = new();
@@ -58,6 +63,9 @@ public sealed class ScimAuthorizationAuditHandler
                 ?? "anonymous";
             var operatorName = principal.Identity?.Name ?? subject;
             var statusCode = authorizeResult.Challenged ? 401 : 403;
+            var reasonCode = statusCode == 401
+                ? "not_authenticated"
+                : ResolveForbiddenReason(principal);
 
             database.ManagementAuditEvents.Add(new ManagementAuditEvent
             {
@@ -71,7 +79,7 @@ public sealed class ScimAuthorizationAuditHandler
                 ContextId = null,
                 AuthorizationOutcome = "denied",
                 OperationOutcome = statusCode == 401 ? "denied" : "forbidden",
-                ReasonCode = statusCode == 401 ? "not_authenticated" : "scope_denied",
+                ReasonCode = reasonCode,
                 CorrelationId = Truncate(
                     context.TraceIdentifier, 100),
                 AuthenticationMethods = null,
@@ -83,6 +91,58 @@ public sealed class ScimAuthorizationAuditHandler
         {
             // Audit failure must never block the response.
         }
+    }
+
+    /// <summary>
+    /// Every 403 used to be recorded as <c>scope_denied</c>, which actively
+    /// misleads whoever is debugging one: the most common cause on this
+    /// surface is the MFA requirement, not a missing scope. SCIM is
+    /// machine-to-machine, and a client-credentials token authenticates an
+    /// application — it has no <c>sub</c> and can never carry <c>amr</c>, so
+    /// <see cref="ScimOptions.RequireMfa"/> (true by default) rejects it no
+    /// matter how it is provisioned. Naming that in the audit trail, and
+    /// warning once per occurrence in the log, saves the operator from
+    /// re-granting a scope the token already has.
+    /// </summary>
+    private string ResolveForbiddenReason(ClaimsPrincipal principal)
+    {
+        var options = optionsAccessor?.Value;
+        if (options is null)
+        {
+            return "scope_denied";
+        }
+
+        var missingScope = options.EffectiveRequireScope
+            && !ScimAuthenticationContext.HasScope(principal, options.RequiredScope);
+        if (missingScope)
+        {
+            return "scope_denied";
+        }
+
+        if (options.RequireMfa
+            && !ScimAuthenticationContext.HasMfaEvidence(principal))
+        {
+            if (ScimAuthenticationContext.IsClientCredentialsToken(principal))
+            {
+                logger?.LogWarning(
+                    "SCIM denied a client-credentials token from client {ClientId}: "
+                    + "Sufficit:Identity:Scim:RequireMfa is true, but a "
+                    + "client-credentials token authenticates an application and "
+                    + "can never carry an amr claim, so this caller can never be "
+                    + "authorized. Provisioning clients should be constrained by "
+                    + "client authentication strength (mTLS or private_key_jwt) "
+                    + "instead; disabling RequireMfa weakens the interactive path "
+                    + "as well.",
+                    principal.FindFirst("client_id")?.Value
+                        ?? principal.FindFirst("azp")?.Value);
+
+                return "mfa_required_unsatisfiable_for_client_credentials";
+            }
+
+            return "mfa_required";
+        }
+
+        return "scope_denied";
     }
 
     private static string Truncate(string value, int maxLength) =>

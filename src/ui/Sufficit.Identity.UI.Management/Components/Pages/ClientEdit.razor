@@ -357,7 +357,9 @@ else
                                                 <span>
                                                     @if (!string.IsNullOrWhiteSpace(credential.SecretHint))
                                                     {
-                                                        <code>••••••@credential.SecretHint</code>
+                                                        @* Fingerprint of the stored hash, not a piece of
+                                                           the secret — do not render it as a suffix. *@
+                                                        <code title="Impressão digital da credencial">#@credential.SecretHint</code>
                                                     }
                                                     else
                                                     {

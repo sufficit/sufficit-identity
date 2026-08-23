@@ -23,6 +23,21 @@ public sealed class ManagementOptions
     public string RequiredScope { get; init; } =
         "identity.management";
 
+    /// <summary>
+    /// Scope required to reach the MCP agent surface (<c>api/mcp</c>). The
+    /// policy previously accepted ANY authenticated bearer this issuer had
+    /// minted, so holding a token for an unrelated client was enough to call
+    /// the self-service and personal-vault tools — agent access was an ambient
+    /// side effect of authentication rather than a deliberate grant. Requiring
+    /// a dedicated scope makes it explicit and auditable.
+    /// <para>
+    /// Existing MCP clients must be granted this scope before they can call
+    /// the surface again; set it to an empty string to restore the previous
+    /// authenticated-only behavior during a migration window.
+    /// </para>
+    /// </summary>
+    public string McpRequiredScope { get; init; } = "mcp";
+
     public ManagementAuthorizationOptions Authorization { get; init; } = new();
 
     /// <summary>
@@ -45,6 +60,31 @@ public sealed class ManagementOptions
     /// operations. Deployment configuration controls this policy.
     /// </summary>
     public bool RequireMfa { get; init; } = true;
+
+    /// <summary>
+    /// Days of management audit history to keep. The table is append-only and
+    /// had no retention at all, so it grew without bound for the life of the
+    /// deployment — and it is written on every privileged operation, plus
+    /// every refusal on the surfaces that record those.
+    /// <para>
+    /// The default is deliberately short. This trail exists to DETECT wrong
+    /// behavior on an identity service, and an operator who has not noticed
+    /// something wrong within a fortnight is not going to notice it in month
+    /// eleven — the extra history buys storage and lock contention, not
+    /// safety. Keeping the window tight also limits how much operator
+    /// activity sits around waiting to be exfiltrated.
+    /// </para>
+    /// <para>
+    /// Deployments whose obligations differ should say so explicitly: raise
+    /// this value, or set it to <c>0</c> to disable pruning entirely and keep
+    /// everything. Note that breaches are often discovered from OUTSIDE
+    /// (a credential surfaces in a dump, a customer reports it) long after
+    /// the fact, so a deployment that expects to investigate backwards should
+    /// either raise the window or ship these rows to its own archive before
+    /// they are pruned.
+    /// </para>
+    /// </summary>
+    public int AuditRetentionDays { get; init; } = 15;
 
     /// <summary>
     /// API-protection scopes that must NEVER be created via the runtime
