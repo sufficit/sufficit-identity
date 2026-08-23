@@ -89,7 +89,8 @@ internal sealed partial class ScimProvisioningService(
     IIdentityAccountLifecycleService accountLifecycle,
     ISecurityEventTrigger securityEvents,
     IOptions<ScimOptions> options,
-    ILogger<ScimProvisioningService> logger) : IScimProvisioningService
+    ILogger<ScimProvisioningService> logger,
+    IScimAuditQueue? auditQueue = null) : IScimProvisioningService
 {
     private static readonly JsonSerializerOptions PatchJsonOptions = new()
     {
@@ -132,14 +133,13 @@ internal sealed partial class ScimProvisioningService(
             resources.Add(await BuildUserAsync(user, cancellationToken));
         }
 
-        AddAudit(
+        EnqueueReadAudit(
             context,
             "scim.users.read",
             "scim-user-collection",
             null,
             "succeeded",
             "scim_users_listed");
-        await database.SaveChangesAsync(cancellationToken);
 
         return new ScimListResponse<ScimUserResource>
         {
@@ -162,14 +162,13 @@ internal sealed partial class ScimProvisioningService(
                 $"SCIM user '{id}' was not found.");
         var resource = await BuildUserAsync(user, cancellationToken);
 
-        AddAudit(
+        EnqueueReadAudit(
             context,
             "scim.users.read",
             "scim-user",
             id,
             "succeeded",
             "scim_user_read");
-        await database.SaveChangesAsync(cancellationToken);
         return resource;
     }
 
@@ -425,14 +424,13 @@ internal sealed partial class ScimProvisioningService(
             resources.Add(await BuildGroupAsync(group, cancellationToken));
         }
 
-        AddAudit(
+        EnqueueReadAudit(
             context,
             "scim.groups.read",
             "scim-group-collection",
             null,
             "succeeded",
             "scim_groups_listed");
-        await database.SaveChangesAsync(cancellationToken);
 
         return new ScimListResponse<ScimGroupResource>
         {
@@ -449,14 +447,13 @@ internal sealed partial class ScimProvisioningService(
         CancellationToken cancellationToken = default)
     {
         var resource = await GetGroupWithoutAuditAsync(id, cancellationToken);
-        AddAudit(
+        EnqueueReadAudit(
             context,
             "scim.groups.read",
             "scim-group",
             id,
             "succeeded",
             "scim_group_read");
-        await database.SaveChangesAsync(cancellationToken);
         return resource;
     }
 
@@ -1402,7 +1399,14 @@ internal sealed partial class ScimProvisioningService(
             normalizedCount);
     }
 
-    private void AddAudit(
+    /// <summary>
+    /// Queues a READ audit row instead of writing it inline. Reads are
+    /// observability, so the record does not have to be atomic with the
+    /// response — and making it atomic turned every SCIM GET into a database
+    /// write. Mutations keep <see cref="AddAudit"/>, where committing the
+    /// record together with the change is the whole point.
+    /// </summary>
+    private void EnqueueReadAudit(
         ScimRequestContext context,
         string capability,
         string resourceType,
@@ -1410,7 +1414,51 @@ internal sealed partial class ScimProvisioningService(
         string operationOutcome,
         string reasonCode)
     {
-        database.ManagementAuditEvents.Add(new ManagementAuditEvent
+        if (auditQueue is null)
+        {
+            AddAudit(
+                context,
+                capability,
+                resourceType,
+                resourceId,
+                operationOutcome,
+                reasonCode);
+            return;
+        }
+
+        auditQueue.Enqueue(BuildAudit(
+            context,
+            capability,
+            resourceType,
+            resourceId,
+            operationOutcome,
+            reasonCode));
+    }
+
+    private void AddAudit(
+        ScimRequestContext context,
+        string capability,
+        string resourceType,
+        string? resourceId,
+        string operationOutcome,
+        string reasonCode) =>
+        database.ManagementAuditEvents.Add(BuildAudit(
+            context,
+            capability,
+            resourceType,
+            resourceId,
+            operationOutcome,
+            reasonCode));
+
+    private static ManagementAuditEvent BuildAudit(
+        ScimRequestContext context,
+        string capability,
+        string resourceType,
+        string? resourceId,
+        string operationOutcome,
+        string reasonCode)
+    {
+        return new ManagementAuditEvent
         {
             OccurredAtUtc = DateTime.UtcNow,
             OperatorSubject = Truncate(context.Actor, 255),
@@ -1424,7 +1472,7 @@ internal sealed partial class ScimProvisioningService(
             AuthenticationMethods = TruncateOptional(
                 context.AuthenticationMethods,
                 255)
-        });
+        };
     }
 
     private async Task RollbackAsync(

@@ -323,6 +323,46 @@ public sealed class ScimProvisioningTests
     }
 
     /// <summary>
+    /// Regression (eval 2026-08-23, S-5): a SCIM read used to persist its
+    /// audit row and call SaveChanges inline, so every GET became a write and
+    /// a polling client could amplify a read-only workload into sustained
+    /// write load. The row is now queued and written by a background worker —
+    /// the trail must still arrive, just not on the request path.
+    /// </summary>
+    [Fact]
+    public async Task Read_audit_is_written_off_the_request_path()
+    {
+        using var parent = new ManagementTestFactory();
+        await ((IAsyncLifetime)parent).InitializeAsync();
+        using var factory = ScimFactory(parent, requireAuthorization: false);
+
+        using var response = await factory.CreateClient().GetAsync("/scim/v2/users");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        ManagementAuditEvent? audit = null;
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (DateTime.UtcNow < deadline)
+        {
+            await using var scope = factory.Services.CreateAsyncScope();
+            var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            audit = await database.ManagementAuditEvents
+                .OrderByDescending(item => item.Id)
+                .FirstOrDefaultAsync(item => item.ReasonCode == "scim_users_listed");
+            if (audit is not null)
+            {
+                break;
+            }
+
+            await Task.Delay(50);
+        }
+
+        Assert.NotNull(audit);
+        Assert.Equal("scim.users.read", audit.Capability);
+        Assert.Equal("scim-user-collection", audit.ResourceType);
+        Assert.Equal("allowed", audit.AuthorizationOutcome);
+    }
+
+    /// <summary>
     /// Regression (eval 2026-08-23, S-7): SCIM is a machine-to-machine
     /// surface, but RequireMfa (true by default) can never be satisfied by a
     /// client-credentials token — it authenticates an application, so it has
