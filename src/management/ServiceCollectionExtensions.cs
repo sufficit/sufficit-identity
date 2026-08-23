@@ -135,6 +135,9 @@ public static class ServiceCollectionExtensions
                 provider => provider.GetRequiredService<
                     ManagementAuthorizationMiddlewareResultHandler>()));
         services.TryAddScoped<IManagementAuditService, ManagementAuditService>();
+        // Shared authorization+denial-audit boundary (see
+        // ManagementOperationGuard for why the audit choice stays explicit).
+        services.TryAddScoped<Audit.ManagementOperationGuard>();
         services.TryAddScoped<IClientManagementService, ClientManagementService>();
         services.TryAddScoped<IClientConfigurationDraftService,
             ClientConfigurationDraftService>();
