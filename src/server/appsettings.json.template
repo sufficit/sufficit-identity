@@ -239,6 +239,12 @@
         "PushedAuthorizationWindowSeconds": 60,
         "DeviceInformationPermitLimit": 12,
         "DeviceInformationWindowSeconds": 60,
+        "_AdministrativePermitLimit": "Requests per window and source IP on the administrative surfaces (management API under Management:RoutePrefix, and /scim). These were entirely unthrottled until eval 2026-08-23 (S-10): the limiter covered /connect/* and /account/* only, so a caller holding a valid operator token could drive unbounded database work — including the audit row a refusal writes. Deliberately generous: the management UI does NOT consume these endpoints (it is Blazor Server and calls its services through DI), so the traffic here is automation — provisioning scripts, migration tools, SCIM sync. A script creating two hundred clients one call at a time is doing exactly what it should; this bucket exists to bound a runaway loop, not to pace legitimate bulk work.",
+        "AdministrativePermitLimit": 600,
+        "AdministrativeWindowSeconds": 60,
+        "_AdministrativeBulkPermitLimit": "Whole-collection operations (provisioning manifest inventory/preview/apply, revoking every session of a user) per window and source IP. Separate bucket because the cost profile is inverted — one request, a great deal of server work — so the meaningful limit is how often it is attempted, not request volume. Keeping it apart is what lets both coexist: a provisioning run cannot exhaust the budget for ordinary calls, and a chatty tool cannot block a manifest apply.",
+        "AdministrativeBulkPermitLimit": 30,
+        "AdministrativeBulkWindowSeconds": 60,
         "_FailOnUntrustedProxy": "true (item 5.1 [L4]) makes startup FAIL when TrustedProxies is empty outside Development, instead of only logging a warning. Without trusted proxies, the rate limiter shares ONE bucket for all traffic (the proxy's IP) → self-inflicted 429s. Default false (warning); flip to true in production so a missing TrustedProxies cannot silently turn the rate limiter into a self-DoS.",
         "FailOnUntrustedProxy": false
       },
