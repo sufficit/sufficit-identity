@@ -127,6 +127,9 @@ public static class TestDataSeeder
                 Permissions.Prefixes.Scope + ScopeName,
                 Permissions.Prefixes.Scope + Scopes.Roles,
                 Permissions.Prefixes.Scope + "directives",
+                // Lets the MCP scope-gate tests request "mcp" explicitly. No
+                // existing test asks for it, so this is additive.
+                Permissions.Prefixes.Scope + "mcp",
             },
         });
 

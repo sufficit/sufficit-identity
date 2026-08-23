@@ -23,6 +23,21 @@ public sealed class ManagementOptions
     public string RequiredScope { get; init; } =
         "identity.management";
 
+    /// <summary>
+    /// Scope required to reach the MCP agent surface (<c>api/mcp</c>). The
+    /// policy previously accepted ANY authenticated bearer this issuer had
+    /// minted, so holding a token for an unrelated client was enough to call
+    /// the self-service and personal-vault tools — agent access was an ambient
+    /// side effect of authentication rather than a deliberate grant. Requiring
+    /// a dedicated scope makes it explicit and auditable.
+    /// <para>
+    /// Existing MCP clients must be granted this scope before they can call
+    /// the surface again; set it to an empty string to restore the previous
+    /// authenticated-only behavior during a migration window.
+    /// </para>
+    /// </summary>
+    public string McpRequiredScope { get; init; } = "mcp";
+
     public ManagementAuthorizationOptions Authorization { get; init; } = new();
 
     /// <summary>

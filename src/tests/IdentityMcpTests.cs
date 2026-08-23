@@ -111,6 +111,49 @@ public sealed class IdentityMcpTests
                 .GetString());
     }
 
+    /// <summary>
+    /// Regression (eval 2026-08-23, S-6): the MCP policy used to require only
+    /// an authenticated bearer, so ANY token this issuer minted reached the
+    /// self-service and personal-vault tools — agent access came for free with
+    /// authentication instead of being granted. A token without the dedicated
+    /// scope must now be refused.
+    /// </summary>
+    [Fact]
+    public async Task Mcp_rejects_a_token_without_the_mcp_scope()
+    {
+        await using var factory = ManagementTestFactory.CreateWithRealAuthz();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient();
+        await AuthenticateAsync(client, TestDataSeeder.ScopeName);
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/mcp",
+            new { jsonrpc = "2.0", id = 1, method = "initialize" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Mcp_accepts_a_token_carrying_the_mcp_scope()
+    {
+        await using var factory = ManagementTestFactory.CreateWithRealAuthz();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient();
+        await AuthenticateAsync(client, "mcp");
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/mcp",
+            new
+            {
+                jsonrpc = "2.0",
+                id = 1,
+                method = "initialize",
+                @params = new { protocolVersion = "2025-06-18" }
+            });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     [Fact]
     public void Challenge_pointer_merges_into_an_existing_bearer_header()
     {
@@ -136,7 +179,9 @@ public sealed class IdentityMcpTests
             header);
     }
 
-    private static async Task AuthenticateAsync(HttpClient client)
+    private static async Task AuthenticateAsync(
+        HttpClient client,
+        string? scope = null)
     {
         using var response = await client.PostAsync(
             "/connect/token",
@@ -147,7 +192,7 @@ public sealed class IdentityMcpTests
                 ["client_secret"] = TestDataSeeder.PasswordClientSecret,
                 ["username"] = TestDataSeeder.DefaultUsername,
                 ["password"] = TestDataSeeder.DefaultPassword,
-                ["scope"] = TestDataSeeder.ScopeName
+                ["scope"] = scope ?? TestDataSeeder.ScopeName
             }));
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
