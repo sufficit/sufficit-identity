@@ -491,6 +491,36 @@ public sealed class VaultTests
             () => vault.DecryptStringAsync(malformed));
     }
 
+    /// <summary>
+    /// Regression (eval 2026-08-23, S-4): the key name and version inside a
+    /// self-describing ciphertext are attacker-influenced input. A blob naming
+    /// a SIGNING key must not reach that key's wrapped private material at
+    /// all — the decrypt lookup is restricted to symmetric keys, so the two
+    /// key spaces stay disjoint by construction instead of relying on the
+    /// AES-GCM key-length check to reject the unwrapped signing key later.
+    /// </summary>
+    [Fact]
+    public async Task Real_vault_refuses_to_decrypt_under_a_signing_key()
+    {
+        var (vault, _) = CreateRealVault();
+
+        // Materialize a signing key, then point a real ciphertext at it.
+        var signingKeys = await vault.GetSigningKeysAsync("oidc-signing");
+        var signing = Assert.Single(signingKeys);
+
+        var ciphertext = await vault.EncryptAsync("test-key", "secret");
+        var parts = ciphertext.Split('.', StringSplitOptions.None);
+        parts[1] = $"{signing.KeyName}:{signing.KeyVersion}";
+        var confused = string.Join('.', parts);
+
+        var error = await Assert.ThrowsAnyAsync<CryptographicException>(
+            () => vault.DecryptStringAsync(confused));
+
+        // "not found" proves the signing row was never a candidate, rather
+        // than the unwrap succeeding and failing downstream on key length.
+        Assert.Contains("not found", error.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Real_vault_old_ciphertext_decrypts_after_rotation()
     {

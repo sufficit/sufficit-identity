@@ -1247,9 +1247,18 @@ internal sealed class KeyVault : IKeyVault
         }
 
         await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
+        // Purpose is part of the lookup, not just a convention: the key name
+        // and version in a self-describing ciphertext are attacker-influenced
+        // input, so without this filter a crafted "v1.oidc-signing:1.…" blob
+        // would make the decrypt path unwrap a SIGNING private key and treat
+        // it as a symmetric DEK. Keeping the two key spaces disjoint at the
+        // query makes that structurally impossible rather than relying on the
+        // AES-GCM key-length check to reject it downstream.
         var row = await db.VaultKeys
             .AsNoTracking()
-            .Where(k => k.KeyName == keyName && k.KeyVersion == version)
+            .Where(k => k.KeyName == keyName
+                && k.KeyVersion == version
+                && k.Purpose == "symmetric")
             .FirstOrDefaultAsync(cancellationToken)
             ?? throw new CryptographicException(
                 $"Vault key '{keyName}' v{version} not found. It may have been retired and deleted.");
