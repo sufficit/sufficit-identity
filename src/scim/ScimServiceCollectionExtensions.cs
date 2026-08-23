@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
@@ -102,11 +103,7 @@ public sealed class ScimScopeHandler
         AuthorizationHandlerContext context,
         ScimScopeRequirement requirement)
     {
-        var scopes = context.User.FindAll("scope")
-            .SelectMany(claim => claim.Value.Split(
-                ' ',
-                StringSplitOptions.RemoveEmptyEntries));
-        if (scopes.Contains(requirement.Scope, StringComparer.Ordinal))
+        if (ScimAuthenticationContext.HasScope(context.User, requirement.Scope))
         {
             context.Succeed(requirement);
         }
@@ -129,6 +126,25 @@ public sealed class ScimMfaRequirement : IAuthorizationRequirement;
 /// </summary>
 public sealed class ScimMfaHandler : AuthorizationHandler<ScimMfaRequirement>
 {
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        ScimMfaRequirement requirement)
+    {
+        if (ScimAuthenticationContext.HasMfaEvidence(context.User))
+        {
+            context.Succeed(requirement);
+        }
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>
+/// Shared reading of the authentication context carried by a SCIM token, so
+/// the policy handler and the denial audit cannot drift apart on what counts
+/// as multi-factor evidence.
+/// </summary>
+internal static class ScimAuthenticationContext
+{
     private const string AmrClaimType = "amr";
 
     // amr values per RFC 8176 that prove a second factor was used.
@@ -137,19 +153,44 @@ public sealed class ScimMfaHandler : AuthorizationHandler<ScimMfaRequirement>
         "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina"
     };
 
-    protected override Task HandleRequirementAsync(
-        AuthorizationHandlerContext context,
-        ScimMfaRequirement requirement)
-    {
-        var amrValues = context.User.FindAll(AmrClaimType)
+    internal static bool HasMfaEvidence(ClaimsPrincipal principal) =>
+        principal.FindAll(AmrClaimType)
             .SelectMany(claim => claim.Value.Split(
                 ' ',
-                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-        if (amrValues.Any(v => MfaValues.Contains(v)))
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .Any(MfaValues.Contains);
+
+    internal static bool HasScope(ClaimsPrincipal principal, string scope) =>
+        principal.FindAll("scope")
+            .SelectMany(claim => claim.Value.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries))
+            .Contains(scope, StringComparer.Ordinal);
+
+    /// <summary>
+    /// A client-credentials token authenticates an application, not a person,
+    /// so it can never acquire an <c>amr</c> claim — which makes
+    /// <see cref="ScimOptions.RequireMfa"/> structurally unsatisfiable for it.
+    /// That matters because SCIM is a machine-to-machine surface.
+    /// <para>
+    /// Detection follows OpenIddict's convention of issuing these tokens with
+    /// the subject set to the client identifier: either there is no
+    /// <c>sub</c> at all, or <c>sub</c> is the client itself. A delegated user
+    /// token always carries a subject distinct from its client.
+    /// </para>
+    /// </summary>
+    internal static bool IsClientCredentialsToken(ClaimsPrincipal principal)
+    {
+        var client = principal.FindFirst("client_id")?.Value
+            ?? principal.FindFirst("azp")?.Value;
+        if (string.IsNullOrEmpty(client))
         {
-            context.Succeed(requirement);
+            return false;
         }
-        return Task.CompletedTask;
+
+        var subject = principal.FindFirst("sub")?.Value;
+        return string.IsNullOrEmpty(subject)
+            || string.Equals(subject, client, StringComparison.Ordinal);
     }
 }
 
