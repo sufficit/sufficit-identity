@@ -915,12 +915,28 @@ static async Task ApplyMigrationsWithAdvisoryLockAsync(
     }
 }
 
-// ---- Swagger (#5) ----
-// This Identity server intentionally publishes its complete controller
-// contract in every environment, including Production. Keep this aligned
-// with the public layout link; if this policy changes, change both together.
-app.UseSwagger();
-app.UseSwaggerUI();
+// ---- Swagger ----
+// Both endpoints are anonymous, so publishing the document hands anyone the
+// full controller inventory (management, SCIM, provisioning, vault). Default
+// is Development-only; a deployment can opt back in with
+// Sufficit:Identity:Swagger:Enabled. Keep this aligned with the public layout
+// link, which reads the same flag.
+var swaggerEnabled = identityOptions.Swagger.Enabled
+    ?? app.Environment.IsDevelopment();
+if (swaggerEnabled)
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+
+    if (!app.Environment.IsDevelopment())
+    {
+        app.Logger.LogWarning(
+            "Swagger is published outside Development: the complete controller "
+            + "contract (management, SCIM, provisioning, vault) is served "
+            + "anonymously at /swagger. Unset Sufficit:Identity:Swagger:Enabled "
+            + "to restrict it to Development.");
+    }
+}
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -490,6 +490,11 @@
         "_ReportUri": "Optional violation-report collector endpoint appended as 'report-uri <value>'. Empty = no report-uri directive.",
         "ReportUri": ""
       },
+      "_Swagger": "Publication of the OpenAPI document and Swagger UI. Both endpoints are ANONYMOUS: publishing hands any unauthenticated caller the complete controller inventory (management, SCIM, provisioning, vault) — every route, verb and DTO — which is exactly the reconnaissance an attacker needs against the authorization-gated endpoints. Historically published in every environment including Production (eval 2026-08-23, S-1).",
+      "Swagger": {
+        "_Enabled": "Unset (null) = publish only in Development, the secure default. true = publish in every environment (a startup warning is logged outside Development). false = never publish.",
+        "Enabled": null
+      },
       "_HumanVerification": "Provider-neutral CAPTCHA protection for public operations that create accounts or send email. Validation always occurs server-side before the operation. Keep SecretKey in vault-secrets.env, never in source control.",
       "HumanVerification": {
         "Enabled": false,
