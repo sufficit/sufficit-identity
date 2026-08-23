@@ -259,6 +259,20 @@ var rateLimit = identityOptions.RateLimit;
 var credentialWindow = TimeSpan.FromSeconds(Math.Max(1, rateLimit.WindowSeconds));
 var pushedAuthorizationWindow = TimeSpan.FromSeconds(
     Math.Max(1, rateLimit.PushedAuthorizationWindowSeconds));
+var administrativeWindow = TimeSpan.FromSeconds(
+    Math.Max(1, rateLimit.AdministrativeWindowSeconds));
+var administrativeBulkWindow = TimeSpan.FromSeconds(
+    Math.Max(1, rateLimit.AdministrativeBulkWindowSeconds));
+
+// The management API is mounted under a configurable prefix, so the limiter
+// has to read the same value rather than assume "api" — a deployment that
+// moved it would otherwise be silently unthrottled again.
+var managementRoutePrefix = builder.Configuration
+    .GetValue<string>("Sufficit:Identity:Management:RoutePrefix")
+    ?.Trim('/')
+    is { Length: > 0 } configuredPrefix
+    ? configuredPrefix
+    : "api";
 
 // Interactive credential-validation endpoints (login, forgot-password,
 // register, reset-password, external-login callback). These accept POST
@@ -316,11 +330,21 @@ if (rateLimit.Enabled)
         options.OnRejected = async (context, cancellationToken) =>
         {
             var httpContext = context.HttpContext;
-            var retryAfter = IdentityRateLimitPolicy.IsPushedAuthorizationEndpoint(
-                httpContext.Request.Path,
-                httpContext.Request.Method)
-                ? pushedAuthorizationWindow
-                : credentialWindow;
+            var retryAfter = httpContext switch
+            {
+                _ when IdentityRateLimitPolicy.IsPushedAuthorizationEndpoint(
+                    httpContext.Request.Path,
+                    httpContext.Request.Method) => pushedAuthorizationWindow,
+                _ when IdentityRateLimitPolicy.IsAdministrativeEndpoint(
+                    httpContext.Request.Path,
+                    managementRoutePrefix) =>
+                    IdentityRateLimitPolicy.IsBulkEndpoint(
+                        httpContext.Request.Path,
+                        managementRoutePrefix)
+                        ? administrativeBulkWindow
+                        : administrativeWindow,
+                _ => credentialWindow,
+            };
             var retryAfterSeconds = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds));
 
             httpContext.RequestServices
@@ -361,6 +385,39 @@ if (rateLimit.Enabled)
                         Window = TimeSpan.FromSeconds(Math.Max(
                             1,
                             rateLimit.DeviceInformationWindowSeconds)),
+                        QueueLimit = 0,
+                        AutoReplenishment = true,
+                    });
+            }
+
+            // Administrative surfaces (management API, SCIM) were entirely
+            // unthrottled: the limiter covered /connect/* and /account/* only.
+            // A caller holding a valid operator token could drive unbounded
+            // database work through them, including the audit row a refusal
+            // writes. Bulk endpoints get their own bucket so a provisioning run
+            // and ordinary calls cannot starve each other.
+            if (IdentityRateLimitPolicy.IsAdministrativeEndpoint(
+                httpContext.Request.Path,
+                managementRoutePrefix))
+            {
+                var administrativeIp =
+                    httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                var isBulk = IdentityRateLimitPolicy.IsBulkEndpoint(
+                    httpContext.Request.Path,
+                    managementRoutePrefix);
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    IdentityRateLimitPolicy.GetAdministrativePartitionKey(
+                        httpContext.Request.Path,
+                        managementRoutePrefix,
+                        administrativeIp),
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = Math.Max(1, isBulk
+                            ? rateLimit.AdministrativeBulkPermitLimit
+                            : rateLimit.AdministrativePermitLimit),
+                        Window = TimeSpan.FromSeconds(Math.Max(1, isBulk
+                            ? rateLimit.AdministrativeBulkWindowSeconds
+                            : rateLimit.AdministrativeWindowSeconds)),
                         QueueLimit = 0,
                         AutoReplenishment = true,
                     });

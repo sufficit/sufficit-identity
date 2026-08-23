@@ -471,6 +471,41 @@ public sealed class RateLimitOptions
     public int DeviceInformationWindowSeconds { get; init; } = 60;
 
     /// <summary>
+    /// Requests allowed per window and source IP on the administrative
+    /// surfaces (management API and SCIM), which were previously unthrottled
+    /// altogether.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately generous. These endpoints are not consumed by the
+    /// management UI — that is Blazor Server and calls its services through DI
+    /// — so the traffic here is automation: provisioning scripts, migration
+    /// tools, SCIM synchronisation. A script creating two hundred clients one
+    /// call at a time is doing exactly what it should, and throttling it would
+    /// be a bug, not a defence. The purpose of this bucket is to bound a
+    /// runaway loop, not to pace legitimate bulk work.
+    /// </remarks>
+    public int AdministrativePermitLimit { get; init; } = 600;
+
+    public int AdministrativeWindowSeconds { get; init; } = 60;
+
+    /// <summary>
+    /// Whole-collection operations (provisioning manifest apply/preview/
+    /// inventory, revoking every session of a user) allowed per window and
+    /// source IP.
+    /// </summary>
+    /// <remarks>
+    /// A separate, smaller bucket: one of these requests can rewrite every
+    /// client and scope a manifest declares, so the meaningful limit is on how
+    /// often that is attempted rather than on request volume. Keeping it apart
+    /// from <see cref="AdministrativePermitLimit"/> is what lets both coexist
+    /// — a provisioning run cannot exhaust the budget for ordinary calls, and
+    /// a chatty tool cannot block a manifest apply.
+    /// </remarks>
+    public int AdministrativeBulkPermitLimit { get; init; } = 30;
+
+    public int AdministrativeBulkWindowSeconds { get; init; } = 60;
+
+    /// <summary>
     /// When <c>true</c> AND <c>TrustedProxies</c> is empty outside Development,
     /// the STS fails to start (instead of only logging a warning). Without
     /// trusted proxies, every request's <c>RemoteIpAddress</c> is the proxy's
