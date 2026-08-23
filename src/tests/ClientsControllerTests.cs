@@ -879,7 +879,12 @@ public sealed class ClientsControllerTests
         var additional = Assert.Single(
             overview.Credentials,
             credential => !credential.IsPrimary);
-        Assert.EndsWith(additional.SecretHint, addition.OneTimeSecret,
+        // The hint is a non-reversible fingerprint of the stored hash, so it
+        // must NOT carry any slice of the plaintext secret (eval 2026-08-23,
+        // S-3). It still has to be present so operators can tell credentials
+        // apart in the management UI.
+        Assert.NotEmpty(additional.SecretHint);
+        Assert.DoesNotContain(additional.SecretHint, addition.OneTimeSecret,
             StringComparison.Ordinal);
 
         var primaryToken = await RequestClientCredentialsTokenAsync(
