@@ -61,8 +61,14 @@ public sealed class ManagementUiArchitectureTests
         }
     }
 
+    /// <summary>
+    /// The footer link must follow the host's publication gate rather than
+    /// being hardcoded (eval 2026-08-23, S-1): advertising /swagger where the
+    /// host does not serve it points operators at a dead route and implies the
+    /// contract is browsable when it is not.
+    /// </summary>
     [Fact]
-    public void Public_layout_links_to_the_enabled_swagger_endpoint()
+    public void Public_layout_links_to_swagger_only_when_it_is_published()
     {
         var layout = File.ReadAllText(Path.Combine(
             ResolvePublicUiSource(),
@@ -74,14 +80,25 @@ public sealed class ManagementUiArchitectureTests
             "<a href=\"/swagger\">API Swagger</a>",
             layout,
             StringComparison.Ordinal);
-        Assert.DoesNotContain(
-            "HostingEnvironment.EnvironmentName",
+        Assert.Contains(
+            "@if (SwaggerPublished)",
+            layout,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "Sufficit:Identity:Swagger:Enabled",
             layout,
             StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Swagger publication is a deployment decision, not a constant (eval
+    /// 2026-08-23, S-1). Both endpoints are anonymous, so publishing by
+    /// default exposed the full management/SCIM/provisioning/vault contract to
+    /// unauthenticated callers. The host must read the flag instead of calling
+    /// UseSwagger unconditionally.
+    /// </summary>
     [Fact]
-    public void Swagger_pipeline_is_enabled_for_the_identity_server_in_all_environments()
+    public void Swagger_pipeline_is_gated_behind_the_publication_flag()
     {
         var program = File.ReadAllText(Path.Combine(
             ResolveIdentityRepository(),
@@ -92,11 +109,15 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("app.UseSwagger();", program, StringComparison.Ordinal);
         Assert.Contains("app.UseSwaggerUI();", program, StringComparison.Ordinal);
         Assert.Contains(
-            "including Production",
+            "identityOptions.Swagger.Enabled",
+            program,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "?? app.Environment.IsDevelopment()",
             program,
             StringComparison.Ordinal);
         Assert.DoesNotContain(
-            "if (app.Environment.IsDevelopment())\n{\n    app.UseSwagger();",
+            "including Production",
             program,
             StringComparison.Ordinal);
     }

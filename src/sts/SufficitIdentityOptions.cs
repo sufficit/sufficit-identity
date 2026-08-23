@@ -128,6 +128,12 @@ public sealed class SufficitIdentityOptions
     public CspOptions Csp { get; init; } = new();
 
     /// <summary>
+    /// Controls publication of the OpenAPI document and Swagger UI.
+    /// See <see cref="SwaggerOptions"/>.
+    /// </summary>
+    public SwaggerOptions Swagger { get; init; } = new();
+
+    /// <summary>
     /// Provider-neutral CAPTCHA/human-verification policy for public account
     /// flows that create users or send email.
     /// </summary>
@@ -682,6 +688,29 @@ public sealed class LockoutOptions
     /// How long the account stays locked, in minutes.
     /// </summary>
     public double DurationMinutes { get; init; } = 5;
+}
+
+/// <summary>
+/// Publication policy for the OpenAPI document and Swagger UI.
+/// </summary>
+/// <remarks>
+/// The contract used to be published unconditionally, including in
+/// Production. Both endpoints are anonymous, so that handed any passer-by a
+/// complete inventory of the management, SCIM, provisioning and vault
+/// surfaces — every route, verb and DTO — which turns reconnaissance against
+/// the authorization-gated endpoints into a reading exercise. Publishing is
+/// still supported, but it is now a decision a deployment makes rather than
+/// the default.
+/// </remarks>
+public sealed class SwaggerOptions
+{
+    /// <summary>
+    /// Publishes the OpenAPI document and Swagger UI. When left unset
+    /// (default), the contract is published only in Development. Set to
+    /// <c>true</c> to publish in every environment, or <c>false</c> to never
+    /// publish it.
+    /// </summary>
+    public bool? Enabled { get; init; }
 }
 
 /// <summary>
