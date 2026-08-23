@@ -84,7 +84,8 @@ internal sealed class ScopeManagementService(
     AppDbContext database,
     IManagementAuthorizationEvaluator authorization,
     Microsoft.Extensions.Options.IOptions<ManagementOptions> managementOptions,
-    ILogger<ScopeManagementService> logger) : IScopeManagementService
+    ILogger<ScopeManagementService> logger,
+    ManagementOperationGuard guard) : IScopeManagementService
 {
     private string[] ReservedApiScopes => managementOptions.Value.ReservedApiScopes;
 
@@ -111,7 +112,7 @@ internal sealed class ScopeManagementService(
     {
         var resource = new ManagementResource(
             ManagementResourceTypes.ScopeCollection);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ScopesRead,
             resource,
@@ -175,7 +176,7 @@ internal sealed class ScopeManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Scope,
             id);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ScopesRead,
             resource,
@@ -212,11 +213,12 @@ internal sealed class ScopeManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Scope,
             name);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ScopesCreate,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
         if (await scopes.FindByNameAsync(name, cancellationToken) is not null)
         {
             throw new ManagementConflictException(
@@ -295,11 +297,12 @@ internal sealed class ScopeManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Scope,
             id);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ScopesUpdate,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
         var scope = await scopes.FindByIdAsync(id, cancellationToken);
         if (scope is null)
         {
@@ -377,11 +380,12 @@ internal sealed class ScopeManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.Scope,
             id);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ScopesDelete,
             resource,
-            cancellationToken);
+            cancellationToken,
+            auditDenial: true);
         var scope = await scopes.FindByIdAsync(id, cancellationToken);
         if (scope is null)
         {
@@ -533,24 +537,6 @@ internal sealed class ScopeManagementService(
         return result;
     }
 
-    private async Task<ManagementAuthorizationDecision> DemandAsync(
-        ManagementRequestContext context,
-        string capability,
-        ManagementResource resource,
-        CancellationToken cancellationToken)
-    {
-        var decision = await authorization.EvaluateAsync(
-            context.Operator,
-            capability,
-            resource,
-            cancellationToken);
-        if (!decision.IsAllowed)
-        {
-            throw new ManagementAccessException(decision);
-        }
-
-        return decision;
-    }
 
     private string ValidateName(string? value)
     {

@@ -34,7 +34,7 @@ namespace Sufficit.Identity.Management.Audit;
 /// never mask the authorization error the caller is owed.
 /// </para>
 /// </remarks>
-internal sealed class ManagementOperationGuard(
+public sealed class ManagementOperationGuard(
     IManagementAuthorizationEvaluator authorization,
     AppDbContext database,
     IMemoryCache repeatedDenials,

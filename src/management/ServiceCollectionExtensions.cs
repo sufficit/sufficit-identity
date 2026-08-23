@@ -141,7 +141,7 @@ public static class ServiceCollectionExtensions
         // Shared authorization+denial-audit boundary (see
         // ManagementOperationGuard for why the audit choice stays explicit).
         services.AddMemoryCache();
-        services.TryAddScoped<Audit.ManagementOperationGuard>();
+        services.TryAddScoped<ManagementOperationGuard>();
         services.TryAddScoped<ClientCredentialRegistry>();
         services.TryAddScoped<IClientManagementService, ClientManagementService>();
         services.TryAddScoped<IClientConfigurationDraftService,
