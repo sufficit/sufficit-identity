@@ -78,7 +78,6 @@ internal sealed class OperatorTokenManagementService(
     AppDbContext database,
     IOpenIddictTokenManager tokenManager,
     Sufficit.Identity.Application.Security.IPrivilegedTokenMintingService minting,
-    IManagementAuthorizationEvaluator authorization,
     IManagementEntitlementResolver entitlements,
     IOptions<ManagementOptions> options,
     IConfiguration configuration,

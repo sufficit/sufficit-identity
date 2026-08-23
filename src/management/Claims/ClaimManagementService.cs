@@ -97,7 +97,6 @@ public sealed record UpdateManagementClaimCommand(
 internal sealed class ClaimManagementService(
     AppDbContext database,
     UserManager<ApplicationUser> userManager,
-    IManagementAuthorizationEvaluator authorization,
     IIdentityUserSessionRevoker sessionRevoker,
     ISecurityEventTrigger securityEvents,
     IOptions<Sufficit.Identity.Management.ManagementOptions> managementOptions,
