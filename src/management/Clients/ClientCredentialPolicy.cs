@@ -31,6 +31,20 @@ internal static class ClientCredentialPolicy
     // forgotten credential does not outlive the system it guards.
     internal const int MaximumClientCredentialLifetimeDays = 730;
 
+    /// <summary>Entropy of a generated client secret: 32 bytes = 256 bits.</summary>
+    internal const int GeneratedClientSecretBytes = 32;
+
+    /// <summary>
+    /// Ceiling on additional live shared secrets per client. Overlap exists
+    /// to make rotation possible, not to let credentials accumulate
+    /// indefinitely — each extra one is another way in.
+    /// </summary>
+    internal const int MaximumActiveAdditionalSharedSecrets = 5;
+
+    /// <summary>Fresh optimistic-concurrency stamp for a client row.</summary>
+    internal static string NewConcurrencyToken() =>
+        Guid.NewGuid().ToString("N");
+
     internal static void EnsureExpectedClientVersion(
         string? expectedVersion,
         OpenIddictEntityFrameworkCoreApplication application)
