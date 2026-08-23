@@ -123,6 +123,88 @@ public sealed class ManagementAuditVolumeTests
         Assert.Equal(4, await harness.CountAuditAsync());
     }
 
+    /// <summary>
+    /// The rule for recording a refusal (eval 2026-08-23): audit it when
+    /// success would have CHANGED PRIVILEGE or EXPOSED A SECRET. Refused reads
+    /// are the highest-volume, lowest-signal case and stay silent — auditing
+    /// for its own sake buys rows, not safety.
+    /// </summary>
+    /// <remarks>
+    /// Pinned as source inspection because the choice lives at each call site
+    /// by design (see ManagementOperationGuard): that is what makes it
+    /// greppable, and this test is what keeps it from drifting back the way
+    /// the twelve hand-rolled copies did.
+    /// </remarks>
+    [Theory]
+    [InlineData("Vault/VaultSecretsManagementService.cs", "VaultSecretsResolve", true)]
+    [InlineData("Vault/VaultSecretsManagementService.cs", "VaultSecretsManage", true)]
+    [InlineData("Vault/VaultSecretsManagementService.cs", "VaultSecretsRead", false)]
+    [InlineData("Claims/ClaimManagementService.cs", "ClaimsCreate", true)]
+    [InlineData("Claims/ClaimManagementService.cs", "ClaimsDelete", true)]
+    [InlineData("Claims/ClaimManagementService.cs", "ClaimsRead", false)]
+    [InlineData("Scopes/ScopeManagementService.cs", "ScopesCreate", true)]
+    [InlineData("Scopes/ScopeManagementService.cs", "ScopesDelete", true)]
+    [InlineData("Scopes/ScopeManagementService.cs", "ScopesRead", false)]
+    [InlineData("OperatorTokens/OperatorTokenManagementService.cs", "ManagementTokensIssue", true)]
+    [InlineData("OperatorTokens/OperatorTokenManagementService.cs", "ManagementTokensRead", false)]
+    public void Refusals_are_audited_only_where_privilege_or_secrets_are_at_stake(
+        string relativePath,
+        string capability,
+        bool expectAudited)
+    {
+        var source = File.ReadAllText(Path.Combine(
+            ResolveManagementSource(),
+            relativePath.Replace('/', Path.DirectorySeparatorChar)));
+
+        // Scan the DemandAsync CALLS specifically: the capability name also
+        // appears in entitlement lists and non-delegable-capability checks,
+        // which are not authorization demands and carry no audit decision.
+        var marker = "ManagementCapabilities." + capability + ",";
+        var calls = new List<string>();
+        var cursor = 0;
+        while (true)
+        {
+            var start = source.IndexOf(
+                "guard.DemandAsync(",
+                cursor,
+                StringComparison.Ordinal);
+            if (start < 0)
+            {
+                break;
+            }
+
+            var end = source.IndexOf(");", start, StringComparison.Ordinal);
+            Assert.True(end > start);
+            var call = source[start..end];
+            if (call.Contains(marker, StringComparison.Ordinal))
+            {
+                calls.Add(call);
+            }
+
+            cursor = end;
+        }
+
+        Assert.True(
+            calls.Count > 0,
+            $"No guard.DemandAsync call for {capability} in {relativePath}");
+        Assert.All(calls, call => Assert.Equal(
+            expectAudited,
+            call.Contains("auditDenial: true", StringComparison.Ordinal)));
+    }
+
+    private static string ResolveManagementSource()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null
+            && !Directory.Exists(Path.Combine(directory.FullName, "src", "management")))
+        {
+            directory = directory.Parent;
+        }
+
+        Assert.NotNull(directory);
+        return Path.Combine(directory!.FullName, "src", "management");
+    }
+
     private sealed class Harness : IDisposable
     {
         private readonly ServiceProvider _provider;

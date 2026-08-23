@@ -83,7 +83,8 @@ internal sealed class OperatorTokenManagementService(
     IOptions<ManagementOptions> options,
     IConfiguration configuration,
     TimeProvider timeProvider,
-    ILogger<OperatorTokenManagementService> logger)
+    ILogger<OperatorTokenManagementService> logger,
+    ManagementOperationGuard guard)
     : IOperatorTokenManagementService
 {
     internal const string TemporaryTokenMarker =
@@ -121,7 +122,7 @@ internal sealed class OperatorTokenManagementService(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
-        await DemandAsync(
+        await guard.DemandAsync(
             context,
             ManagementCapabilities.ManagementTokensRead,
             CollectionResource,
@@ -166,7 +167,7 @@ internal sealed class OperatorTokenManagementService(
         ArgumentNullException.ThrowIfNull(command);
         ArgumentNullException.ThrowIfNull(context);
 
-        var issueDecision = await DemandAsync(
+        var issueDecision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ManagementTokensIssue,
             CollectionResource,
@@ -384,7 +385,7 @@ internal sealed class OperatorTokenManagementService(
         var resource = new ManagementResource(
             ManagementResourceTypes.OperatorToken,
             normalizedId);
-        var decision = await DemandAsync(
+        var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ManagementTokensRevoke,
             resource,
@@ -615,36 +616,6 @@ internal sealed class OperatorTokenManagementService(
         }
     }
 
-    private async Task<ManagementAuthorizationDecision> DemandAsync(
-        ManagementRequestContext context,
-        string capability,
-        ManagementResource resource,
-        CancellationToken cancellationToken,
-        bool auditDenial = false)
-    {
-        var decision = await authorization.EvaluateAsync(
-            context.Operator,
-            capability,
-            resource,
-            cancellationToken);
-        if (decision.IsAllowed)
-        {
-            return decision;
-        }
-
-        if (auditDenial)
-        {
-            await TryWriteAuditAsync(
-                context,
-                capability,
-                resource,
-                decision,
-                "denied",
-                decision.ReasonCode,
-                cancellationToken);
-        }
-        throw new ManagementAccessException(decision);
-    }
 
     private async Task TryWriteAuditAsync(
         ManagementRequestContext context,

@@ -953,7 +953,14 @@ public sealed class VaultTests
             store,
             new AllowingManagementAuthorizationEvaluator(),
             Options.Create(new VaultOptions { Enabled = true }),
-            managementOptions);
+            managementOptions,
+            new Sufficit.Identity.Management.Audit.ManagementOperationGuard(
+                new AllowingManagementAuthorizationEvaluator(),
+                database,
+                new Microsoft.Extensions.Caching.Memory.MemoryCache(
+                    new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<
+                    Sufficit.Identity.Management.Audit.ManagementOperationGuard>.Instance));
 
         // An operator with NO namespace claims sees every namespace: the
         // contexts are folders, not boundaries.
