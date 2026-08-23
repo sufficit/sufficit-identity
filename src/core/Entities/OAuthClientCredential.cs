@@ -3,8 +3,9 @@ namespace Sufficit.Identity.Core.Entities;
 /// <summary>
 /// Provider-neutral credential registered for an OAuth client. Plaintext
 /// credential material is never persisted: <see cref="SecretHash"/> contains
-/// only a one-way password hash and <see cref="SecretHint"/> is a short,
-/// non-sensitive suffix used to identify the credential in management UIs.
+/// only a one-way password hash and <see cref="SecretHint"/> is a short
+/// non-reversible fingerprint derived from that hash, used to tell credentials
+/// apart in management UIs.
 /// </summary>
 public sealed class OAuthClientCredential
 {

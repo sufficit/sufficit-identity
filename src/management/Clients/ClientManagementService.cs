@@ -1528,14 +1528,15 @@ internal sealed class ClientManagementService(
                         "Já existe uma credencial ativa com esse nome.");
                 }
 
+                var secretHash = credentialSecretHasher.Hash(oneTimeSecret);
                 database.OAuthClientCredentials.Add(new OAuthClientCredential
                 {
                     Id = Guid.NewGuid(),
                     ClientId = clientId,
                     Kind = OAuthClientCredentialKinds.SharedSecret,
                     Label = label,
-                    SecretHash = credentialSecretHasher.Hash(oneTimeSecret),
-                    SecretHint = CreateSecretHint(oneTimeSecret),
+                    SecretHash = secretHash,
+                    SecretHint = CreateSecretFingerprint(secretHash),
                     CreatedAtUtc = now,
                     NotBeforeUtc = notBeforeUtc,
                     ExpiresAtUtc = expiresAtUtc,
@@ -2151,12 +2152,22 @@ internal sealed class ClientManagementService(
         return reason;
     }
 
-    private static string CreateSecretHint(string secret)
+    /// <summary>
+    /// Builds the short marker shown next to a credential in management UIs.
+    /// It is derived from the STORED HASH, never from the plaintext secret:
+    /// a suffix of the secret would put real credential material at rest, and
+    /// hashing the secret directly with a fast digest would hand an attacker a
+    /// cheaper guessing oracle than the PBKDF2 hash it sits beside. Feeding the
+    /// (salted, 210k-iteration) hash into SHA-256 keeps the marker stable and
+    /// unique per credential while staying non-reversible.
+    /// </summary>
+    private static string CreateSecretFingerprint(string secretHash)
     {
-        const int visibleCharacters = 6;
-        return secret.Length <= visibleCharacters
-            ? secret
-            : secret[^visibleCharacters..];
+        const int fingerprintCharacters = 8;
+        var digest = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(secretHash));
+        return Microsoft.AspNetCore.WebUtilities.WebEncoders
+            .Base64UrlEncode(digest)[..fingerprintCharacters];
     }
 
     private static string NewConcurrencyToken() =>
