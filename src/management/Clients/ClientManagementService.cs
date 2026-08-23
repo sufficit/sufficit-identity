@@ -622,7 +622,7 @@ internal sealed class ClientManagementService(
                     "frontchannelLogoutUri must use the same scheme, host and port as a redirect URI.",
                     "frontchannelLogoutUri");
             }
-            var consentType = NormalizeConsentType(command.ConsentType)
+            var consentType = ClientPermissionPolicy.NormalizeConsentType(command.ConsentType)
                 ?? OpenIddictConstants.ConsentTypes.Explicit;
 
             if (await applications.FindByClientIdAsync(
@@ -657,7 +657,7 @@ internal sealed class ClientManagementService(
                 JsonWebKeySet = publicJwks,
             };
 
-            var grantTypes = NormalizeGrantTypes(command.GrantTypes);
+            var grantTypes = ClientPermissionPolicy.NormalizeGrantTypes(command.GrantTypes);
 
             // Finding #8: reject insecure grant types (password, implicit) for
             // new client registrations. They are outside the current OAuth 2.1
@@ -682,9 +682,9 @@ internal sealed class ClientManagementService(
             {
                 descriptor.Permissions.Add(grantType);
             }
-            AddDerivedProtocolPermissions(descriptor, grantTypes);
+            ClientPermissionPolicy.AddDerivedProtocolPermissions(descriptor, grantTypes);
 
-            var normalizedScopes = NormalizeScopes(command.Scopes);
+            var normalizedScopes = ClientPermissionPolicy.NormalizeScopes(command.Scopes);
             var definitionValidation = clientDefinitionValidator.Validate(
                 new ClientDefinitionRequest(
                     ClientDefinitionSource.Management,
@@ -1032,9 +1032,9 @@ internal sealed class ClientManagementService(
                 backchannelLogoutUri,
                 command.BackchannelLogoutSessionRequired);
 
-            var consentType = NormalizeConsentType(command.ConsentType)
+            var consentType = ClientPermissionPolicy.NormalizeConsentType(command.ConsentType)
                 ?? OpenIddictConstants.ConsentTypes.Explicit;
-            var grantTypes = NormalizeGrantTypes(command.GrantTypes);
+            var grantTypes = ClientPermissionPolicy.NormalizeGrantTypes(command.GrantTypes);
             if (grantTypes.Any(grant =>
                     grant == OpenIddictConstants.Permissions.GrantTypes.Password ||
                     grant == OpenIddictConstants.Permissions.GrantTypes.Implicit))
@@ -1047,7 +1047,7 @@ internal sealed class ClientManagementService(
                     "grantTypes");
             }
 
-            var normalizedScopes = NormalizeScopes(command.Scopes);
+            var normalizedScopes = ClientPermissionPolicy.NormalizeScopes(command.Scopes);
             var clientType = descriptor.ClientType
                 ?? OpenIddictConstants.ClientTypes.Public;
             var definitionValidation = clientDefinitionValidator.Validate(
@@ -1087,7 +1087,7 @@ internal sealed class ClientManagementService(
 
             descriptor.DisplayName = NullIfWhiteSpace(command.DisplayName);
             descriptor.ConsentType = consentType;
-            RemoveManagedPermissions(descriptor);
+            ClientPermissionPolicy.RemoveManagedPermissions(descriptor);
             descriptor.Requirements.Remove(
                 OpenIddictConstants.Requirements.Features.ProofKeyForCodeExchange);
             descriptor.Requirements.Remove(
@@ -1098,7 +1098,7 @@ internal sealed class ClientManagementService(
             {
                 descriptor.Permissions.Add(grantType);
             }
-            AddDerivedProtocolPermissions(descriptor, grantTypes);
+            ClientPermissionPolicy.AddDerivedProtocolPermissions(descriptor, grantTypes);
             foreach (var scope in normalizedScopes)
             {
                 descriptor.Permissions.Add(scope);
@@ -2700,197 +2700,6 @@ internal sealed class ClientManagementService(
         properties?.Contains(
             OpenIddictManifestProvisioner.SchemaVersionProperty,
             StringComparison.Ordinal) is true;
-
-    private static IReadOnlyList<string> NormalizeGrantTypes(
-        IReadOnlyList<string>? values) =>
-        (values ?? [])
-            .Where(value => !string.IsNullOrWhiteSpace(value))
-            .Select(value => value.Trim())
-            .Select(value => value switch
-            {
-                "authorization_code" =>
-                    OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
-                OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode =>
-                    OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
-                "client_credentials" =>
-                    OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
-                OpenIddictConstants.Permissions.GrantTypes.ClientCredentials =>
-                    OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
-                "refresh_token" =>
-                    OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
-                OpenIddictConstants.Permissions.GrantTypes.RefreshToken =>
-                    OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
-                "device_code" =>
-                    OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
-                OpenIddictConstants.GrantTypes.DeviceCode =>
-                    OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
-                OpenIddictConstants.Permissions.GrantTypes.DeviceCode =>
-                    OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
-                OpenIddictConstants.GrantTypes.TokenExchange =>
-                    OpenIddictConstants.Permissions.GrantTypes.TokenExchange,
-                OpenIddictConstants.Permissions.GrantTypes.TokenExchange =>
-                    OpenIddictConstants.Permissions.GrantTypes.TokenExchange,
-                "password" =>
-                    OpenIddictConstants.Permissions.GrantTypes.Password,
-                OpenIddictConstants.Permissions.GrantTypes.Password =>
-                    OpenIddictConstants.Permissions.GrantTypes.Password,
-                "implicit" =>
-                    OpenIddictConstants.Permissions.GrantTypes.Implicit,
-                OpenIddictConstants.Permissions.GrantTypes.Implicit =>
-                    OpenIddictConstants.Permissions.GrantTypes.Implicit,
-                _ => throw new ManagementValidationException(
-                    "unsupported_grant_type",
-                    $"Grant type '{value}' is not supported by the Management API.",
-                    "grantTypes")
-            })
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-
-    private static IReadOnlyList<string> NormalizeScopes(
-        IReadOnlyList<string>? values) =>
-        (values ?? [])
-            .Where(value => !string.IsNullOrWhiteSpace(value))
-            .Select(value => value.Trim())
-            .Select(value => value.StartsWith(
-                    OpenIddictConstants.Permissions.Prefixes.Scope,
-                    StringComparison.Ordinal)
-                ? value
-                : OpenIddictConstants.Permissions.Prefixes.Scope + value)
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-
-    private static void AddDerivedProtocolPermissions(
-        OpenIddictApplicationDescriptor descriptor,
-        IReadOnlyCollection<string> grantTypes)
-    {
-        if (grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
-                StringComparer.Ordinal)
-            || grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.Implicit,
-                StringComparer.Ordinal))
-        {
-            descriptor.Permissions.Add(
-                OpenIddictConstants.Permissions.Endpoints.Authorization);
-        }
-
-        if (grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
-                StringComparer.Ordinal)
-            || grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
-                StringComparer.Ordinal)
-            || grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.Password,
-                StringComparer.Ordinal)
-            || grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.RefreshToken,
-                StringComparer.Ordinal)
-            || grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
-                StringComparer.Ordinal))
-        {
-            descriptor.Permissions.Add(
-                OpenIddictConstants.Permissions.Endpoints.Token);
-        }
-
-        if (grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
-                StringComparer.Ordinal))
-        {
-            descriptor.Permissions.Add(
-                OpenIddictConstants.Permissions.ResponseTypes.Code);
-        }
-
-        if (grantTypes.Contains(
-                OpenIddictConstants.Permissions.GrantTypes.DeviceCode,
-                StringComparer.Ordinal))
-        {
-            descriptor.Permissions.Add(
-                OpenIddictConstants.Permissions.Endpoints.DeviceAuthorization);
-        }
-    }
-
-    private static void RemoveManagedPermissions(
-        OpenIddictApplicationDescriptor descriptor)
-    {
-        // Keep protocol capabilities that this editor does not model (for
-        // example introspection or custom endpoints). Only remove values that
-        // are derived from the editable grants/scopes, otherwise a routine
-        // display-name/redirect edit could silently weaken or broaden a client.
-        var managed = descriptor.Permissions
-            .Where(permission =>
-                permission.StartsWith(
-                    "gt:",
-                    StringComparison.Ordinal)
-                || permission.StartsWith(
-                    OpenIddictConstants.Permissions.Prefixes.Scope,
-                    StringComparison.Ordinal)
-                || permission == OpenIddictConstants.Permissions.Endpoints.Authorization
-                || permission == OpenIddictConstants.Permissions.Endpoints.Token
-                || permission == OpenIddictConstants.Permissions.Endpoints.DeviceAuthorization
-                || permission == OpenIddictConstants.Permissions.Endpoints.PushedAuthorization
-                || permission == OpenIddictConstants.Permissions.ResponseTypes.Code)
-            .ToArray();
-
-        foreach (var permission in managed)
-        {
-            descriptor.Permissions.Remove(permission);
-        }
-    }
-
-    private static string? NormalizeConsentType(string? raw)
-    {
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return null;
-        }
-
-        return raw switch
-        {
-            var value when string.Equals(
-                    value,
-                    "explicit",
-                    StringComparison.OrdinalIgnoreCase)
-                || string.Equals(
-                    value,
-                    OpenIddictConstants.ConsentTypes.Explicit,
-                    StringComparison.OrdinalIgnoreCase)
-                => OpenIddictConstants.ConsentTypes.Explicit,
-            var value when string.Equals(
-                    value,
-                    "implicit",
-                    StringComparison.OrdinalIgnoreCase)
-                || string.Equals(
-                    value,
-                    OpenIddictConstants.ConsentTypes.Implicit,
-                    StringComparison.OrdinalIgnoreCase)
-                => OpenIddictConstants.ConsentTypes.Implicit,
-            var value when string.Equals(
-                    value,
-                    "external",
-                    StringComparison.OrdinalIgnoreCase)
-                || string.Equals(
-                    value,
-                    OpenIddictConstants.ConsentTypes.External,
-                    StringComparison.OrdinalIgnoreCase)
-                => OpenIddictConstants.ConsentTypes.External,
-            var value when string.Equals(
-                    value,
-                    "systematic",
-                    StringComparison.OrdinalIgnoreCase)
-                || string.Equals(
-                    value,
-                    OpenIddictConstants.ConsentTypes.Systematic,
-                    StringComparison.OrdinalIgnoreCase)
-                => OpenIddictConstants.ConsentTypes.Systematic,
-            _ => throw new ManagementValidationException(
-                "consent_type_invalid",
-                $"Unknown consent type: '{raw}'. Valid values: explicit, " +
-                "implicit, external, systematic.",
-                "consentType")
-        };
-    }
 
     private static string? NullIfWhiteSpace(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
