@@ -118,6 +118,8 @@
         "RoutePrefix": "api",
         "RequireAuthorization": true,
         "RequiredScope": "identity.management",
+        "_AuditRetentionDays": "Days of management audit history kept before pruning. The table is append-only and is written on every privileged operation plus every refusal on the surfaces that record those; until eval 2026-08-23 (S-10) nothing ever removed a row and it grew for the life of the deployment. The default is deliberately short: this trail exists to DETECT wrong behavior, and an operator who has not noticed something within a fortnight will not notice it in month eleven — longer history buys storage and lock contention, not safety, and leaves more operator activity sitting around to be exfiltrated. Raise it, or set 0 to disable pruning, if your obligations differ — but note that breaches are often reported from OUTSIDE long after the fact, so a deployment expecting to investigate backwards should raise the window or archive these rows elsewhere before they are pruned.",
+        "AuditRetentionDays": 15,
         "_TemporaryProvisioningToken": "Short-lived operator token for provisioning only. It requires the existing management MFA/capability checks, is attenuated to preview/apply and is never written to audit data. Keep Enabled=false until the Management UI is deployed and the operational flow is approved.",
         "TemporaryProvisioningToken": {
           "Enabled": false,

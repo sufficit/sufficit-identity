@@ -67,14 +67,24 @@ public sealed class ManagementOptions
     /// deployment — and it is written on every privileged operation, plus
     /// every refusal on the surfaces that record those.
     /// <para>
-    /// One year is the default because audit history is evidence: it should
-    /// outlive an incident investigation, which is usually measured in months.
-    /// Set to <c>0</c> to disable pruning and keep everything, for deployments
-    /// whose compliance regime requires indefinite retention and which have
-    /// arranged their own archival.
+    /// The default is deliberately short. This trail exists to DETECT wrong
+    /// behavior on an identity service, and an operator who has not noticed
+    /// something wrong within a fortnight is not going to notice it in month
+    /// eleven — the extra history buys storage and lock contention, not
+    /// safety. Keeping the window tight also limits how much operator
+    /// activity sits around waiting to be exfiltrated.
+    /// </para>
+    /// <para>
+    /// Deployments whose obligations differ should say so explicitly: raise
+    /// this value, or set it to <c>0</c> to disable pruning entirely and keep
+    /// everything. Note that breaches are often discovered from OUTSIDE
+    /// (a credential surfaces in a dump, a customer reports it) long after
+    /// the fact, so a deployment that expects to investigate backwards should
+    /// either raise the window or ship these rows to its own archive before
+    /// they are pruned.
     /// </para>
     /// </summary>
-    public int AuditRetentionDays { get; init; } = 365;
+    public int AuditRetentionDays { get; init; } = 15;
 
     /// <summary>
     /// API-protection scopes that must NEVER be created via the runtime
