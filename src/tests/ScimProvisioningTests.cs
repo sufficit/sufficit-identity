@@ -322,9 +322,69 @@ public sealed class ScimProvisioningTests
         Assert.Equal("/scim/v2/users", audit.ResourceId);
     }
 
+    /// <summary>
+    /// Regression (eval 2026-08-23, S-7): SCIM is a machine-to-machine
+    /// surface, but RequireMfa (true by default) can never be satisfied by a
+    /// client-credentials token — it authenticates an application, so it has
+    /// no <c>sub</c> and never carries <c>amr</c>. Every denial used to be
+    /// audited as "scope_denied", sending operators to re-grant a scope the
+    /// token already held. The audit must name the real cause.
+    /// </summary>
+    [Fact]
+    public async Task Mfa_denial_of_a_client_credentials_token_is_diagnosed()
+    {
+        using var parent = ManagementTestFactory.CreateWithRealAuthz();
+        await ((IAsyncLifetime)parent).InitializeAsync();
+        // RequireMfa=true is the production default, and it is exactly what
+        // makes the M2M caller unauthorizable. RequiredScope is a scope the
+        // seeded client-credentials caller can actually request, so the token
+        // carries what the policy asks for and MFA is the only unmet
+        // requirement.
+        using var factory = ScimFactory(
+            parent,
+            requireAuthorization: true,
+            requireMfa: true,
+            requiredScope: TestDataSeeder.ScopeName);
+
+        using var client = factory.CreateClient();
+        using var token = await client.PostAsync(
+            "/connect/token",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["grant_type"] = "client_credentials",
+                ["client_id"] = TestDataSeeder.ClientCredentialsClientId,
+                ["client_secret"] = TestDataSeeder.ClientCredentialsClientSecret,
+                ["scope"] = TestDataSeeder.ScopeName,
+            }));
+        token.EnsureSuccessStatusCode();
+        var accessToken = (await token.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("access_token").GetString();
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue(
+                "Bearer", accessToken);
+
+        using var response = await client.GetAsync("/scim/v2/users");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var audit = await database.ManagementAuditEvents
+            .OrderByDescending(item => item.Id)
+            .FirstOrDefaultAsync(item => item.Capability == "scim.authorization");
+
+        Assert.NotNull(audit);
+        // Not "scope_denied": the token carries "scim".
+        Assert.Equal(
+            "mfa_required_unsatisfiable_for_client_credentials",
+            audit.ReasonCode);
+    }
+
     private static WebApplicationFactory<ManagementTestFactory> ScimFactory(
         ManagementTestFactory parent,
-        bool requireAuthorization) =>
+        bool requireAuthorization,
+        bool requireMfa = false,
+        string requiredScope = "scim") =>
         parent.WithWebHostBuilder(builder =>
         {
             builder.ConfigureAppConfiguration((_, configuration) =>
@@ -339,8 +399,9 @@ public sealed class ScimProvisioningTests
                         // These tests exercise the SCIM contract without
                         // minting a delegated MFA token. Production defaults
                         // remain RequireMfa=true.
-                        ["Sufficit:Identity:Scim:RequireMfa"] = "false",
-                        ["Sufficit:Identity:Scim:RequiredScope"] = "scim"
+                        ["Sufficit:Identity:Scim:RequireMfa"] =
+                            requireMfa.ToString(),
+                        ["Sufficit:Identity:Scim:RequiredScope"] = requiredScope
                     });
             });
             builder.ConfigureServices((context, services) =>
