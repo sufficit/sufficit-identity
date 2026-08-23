@@ -577,16 +577,16 @@ internal sealed class ClientManagementService(
         try
         {
             ValidateClientId(clientId);
-            var redirectUris = ValidateRedirectUris(
+            var redirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.RedirectUris,
                 "redirectUris");
-            var postLogoutRedirectUris = ValidateRedirectUris(
+            var postLogoutRedirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.PostLogoutRedirectUris,
                 "postLogoutRedirectUris");
-            var frontchannelLogoutUri = ValidateLogoutUri(
+            var frontchannelLogoutUri = ClientUriPolicy.ValidateLogoutUri(
                 command.FrontchannelLogoutUri,
                 "frontchannelLogoutUri");
-            var backchannelLogoutUri = ValidateLogoutUri(
+            var backchannelLogoutUri = ClientUriPolicy.ValidateLogoutUri(
                 command.BackchannelLogoutUri,
                 "backchannelLogoutUri");
             var jwksUri = ClientJwksPolicy.ValidateJwksUri(command.JwksUri);
@@ -615,7 +615,7 @@ internal sealed class ClientManagementService(
             }
 
             if (frontchannelLogoutUri is not null &&
-                !redirectUris.Any(redirect => SameOrigin(redirect, frontchannelLogoutUri)))
+                !redirectUris.Any(redirect => ClientUriPolicy.SameOrigin(redirect, frontchannelLogoutUri)))
             {
                 throw new ManagementValidationException(
                     "frontchannel_logout_origin_mismatch",
@@ -1004,16 +1004,16 @@ internal sealed class ClientManagementService(
                     "Este cliente é gerenciado por manifesto declarativo. Altere o manifesto e aplique o provisionamento.");
             }
 
-            var redirectUris = ValidateRedirectUris(
+            var redirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.RedirectUris,
                 "redirectUris");
-            var postLogoutRedirectUris = ValidateRedirectUris(
+            var postLogoutRedirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.PostLogoutRedirectUris,
                 "postLogoutRedirectUris");
-            var frontchannelLogoutUri = ValidateLogoutUri(
+            var frontchannelLogoutUri = ClientUriPolicy.ValidateLogoutUri(
                 command.FrontchannelLogoutUri,
                 "frontchannelLogoutUri");
-            var backchannelLogoutUri = ValidateLogoutUri(
+            var backchannelLogoutUri = ClientUriPolicy.ValidateLogoutUri(
                 command.BackchannelLogoutUri,
                 "backchannelLogoutUri");
             var jwksUri = ClientJwksPolicy.ValidateJwksUri(command.JwksUri);
@@ -1025,7 +1025,7 @@ internal sealed class ClientManagementService(
                 command.IdentityTokenLifetimeMinutes,
                 command.RefreshTokenLifetimeDays);
 
-            ValidateLogoutConfiguration(
+            ClientUriPolicy.ValidateLogoutConfiguration(
                 redirectUris,
                 frontchannelLogoutUri,
                 command.FrontchannelLogoutSessionRequired,
@@ -2549,75 +2549,6 @@ internal sealed class ClientManagementService(
         return clientSecret;
     }
 
-    private static IReadOnlyList<Uri> ValidateRedirectUris(
-        IReadOnlyList<string>? values,
-        string field)
-    {
-        var result = new List<Uri>();
-
-        foreach (var raw in values ?? [])
-        {
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                continue;
-            }
-
-            if (!Uri.TryCreate(raw.Trim(), UriKind.Absolute, out var redirect))
-            {
-                throw new ManagementValidationException(
-                    "redirect_uri_invalid",
-                    $"{field} must contain only absolute URIs: {raw}",
-                    field);
-            }
-
-            if (redirect.Fragment.Length > 0)
-            {
-                throw new ManagementValidationException(
-                    "redirect_uri_fragment",
-                    $"{field} cannot contain a fragment: {redirect}",
-                    field);
-            }
-
-            var isLoopback = redirect.IsLoopback
-                || string.Equals(
-                    redirect.Host,
-                    "localhost",
-                    StringComparison.OrdinalIgnoreCase);
-            if (!string.Equals(
-                    redirect.Scheme,
-                    Uri.UriSchemeHttps,
-                    StringComparison.OrdinalIgnoreCase)
-                && !isLoopback)
-            {
-                throw new ManagementValidationException(
-                    "redirect_uri_https_required",
-                    $"{field} must use https (http is only allowed for loopback): {redirect}",
-                    field);
-            }
-
-            result.Add(redirect);
-        }
-
-        return result
-            .DistinctBy(uri => uri.AbsoluteUri, StringComparer.Ordinal)
-            .ToArray();
-    }
-
-    private static Uri? ValidateLogoutUri(string? value, string field)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return ValidateRedirectUris([value], field)[0];
-    }
-
-    private static bool SameOrigin(Uri left, Uri right) =>
-        string.Equals(left.Scheme, right.Scheme, StringComparison.OrdinalIgnoreCase) &&
-        string.Equals(left.Host, right.Host, StringComparison.OrdinalIgnoreCase) &&
-        left.Port == right.Port;
-
     private static void AddLogoutSettings(
         IDictionary<string, string> settings,
         Uri? frontchannelLogoutUri,
@@ -2637,37 +2568,6 @@ internal sealed class ClientManagementService(
             settings["backchannel_logout_uri"] = backchannelLogoutUri.AbsoluteUri;
             settings["backchannel_logout_session_required"] =
                 backchannelSessionRequired ? "true" : "false";
-        }
-    }
-
-    private static void ValidateLogoutConfiguration(
-        IReadOnlyList<Uri> redirectUris,
-        Uri? frontchannelLogoutUri,
-        bool frontchannelSessionRequired,
-        Uri? backchannelLogoutUri,
-        bool backchannelSessionRequired)
-    {
-        if (frontchannelSessionRequired && frontchannelLogoutUri is null)
-        {
-            throw new ManagementValidationException(
-                "frontchannel_logout_uri_required",
-                "frontchannelLogoutUri is required when session-specific front-channel logout is requested.",
-                "frontchannelLogoutUri");
-        }
-        if (backchannelSessionRequired && backchannelLogoutUri is null)
-        {
-            throw new ManagementValidationException(
-                "backchannel_logout_uri_required",
-                "backchannelLogoutUri is required when session-specific back-channel logout is requested.",
-                "backchannelLogoutUri");
-        }
-        if (frontchannelLogoutUri is not null &&
-            !redirectUris.Any(redirect => SameOrigin(redirect, frontchannelLogoutUri)))
-        {
-            throw new ManagementValidationException(
-                "frontchannel_logout_origin_mismatch",
-                "frontchannelLogoutUri must use the same scheme, host and port as a redirect URI.",
-                "frontchannelLogoutUri");
         }
     }
 
