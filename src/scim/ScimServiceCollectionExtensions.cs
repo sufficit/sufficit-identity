@@ -36,6 +36,13 @@ public static class ScimServiceCollectionExtensions
         services.TryAddSingleton<IScimPublicOriginResolver,
             ScimPublicOriginResolver>();
         services.TryAddScoped<ScimExceptionFilter>();
+        // Read auditing is deferred so a SCIM GET stops paying for a database
+        // write before it can answer. Mutations keep their in-transaction
+        // audit — see ScimAuditQueue for why the two differ.
+        services.TryAddSingleton<ScimAuditQueue>();
+        services.TryAddSingleton<IScimAuditQueue>(provider =>
+            provider.GetRequiredService<ScimAuditQueue>());
+        services.AddHostedService<ScimAuditWorker>();
         services.TryAddSingleton<ScimAuthorizationAuditHandler>();
         services.AddSingleton<IAuthorizationMiddlewareResultHandler>(provider =>
             provider.GetRequiredService<ScimAuthorizationAuditHandler>());
