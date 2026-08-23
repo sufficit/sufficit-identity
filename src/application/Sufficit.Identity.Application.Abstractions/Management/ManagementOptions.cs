@@ -62,6 +62,21 @@ public sealed class ManagementOptions
     public bool RequireMfa { get; init; } = true;
 
     /// <summary>
+    /// Days of management audit history to keep. The table is append-only and
+    /// had no retention at all, so it grew without bound for the life of the
+    /// deployment — and it is written on every privileged operation, plus
+    /// every refusal on the surfaces that record those.
+    /// <para>
+    /// One year is the default because audit history is evidence: it should
+    /// outlive an incident investigation, which is usually measured in months.
+    /// Set to <c>0</c> to disable pruning and keep everything, for deployments
+    /// whose compliance regime requires indefinite retention and which have
+    /// arranged their own archival.
+    /// </para>
+    /// </summary>
+    public int AuditRetentionDays { get; init; } = 365;
+
+    /// <summary>
     /// API-protection scopes that must NEVER be created via the runtime
     /// scope-management CRUD API or assigned to a client via the management-API
     /// client-create path. These scopes gate administrative surfaces (the
