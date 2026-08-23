@@ -350,10 +350,7 @@ internal sealed class ClientManagementService(
     ILogger<ClientManagementService> logger) : IClientManagementService
 {
     private const int GeneratedClientSecretBytes = 32;
-    private const int MinimumClientSecretLength = 32;
-    private const int MaximumClientSecretLength = 512;
     private const int MaximumActiveAdditionalSharedSecrets = 5;
-    private const int MaximumClientCredentialLifetimeDays = 730;
 
     public async Task<IReadOnlyList<ManagementClientSummary>> ListAsync(
         ManagementRequestContext context,
@@ -570,7 +567,7 @@ internal sealed class ClientManagementService(
 
         try
         {
-            ValidateClientId(clientId);
+            ClientCredentialPolicy.ValidateClientId(clientId);
             var redirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.RedirectUris,
                 "redirectUris");
@@ -1300,7 +1297,7 @@ internal sealed class ClientManagementService(
             var oneTimeSecret = generated
                 ? WebEncoders.Base64UrlEncode(
                     RandomNumberGenerator.GetBytes(GeneratedClientSecretBytes))
-                : ValidateReplacementClientSecret(command.ClientSecret);
+                : ClientCredentialPolicy.ValidateReplacementClientSecret(command.ClientSecret);
 
             await using var transaction = await database.Database
                 .BeginTransactionAsync(cancellationToken);
@@ -1446,19 +1443,19 @@ internal sealed class ClientManagementService(
 
         try
         {
-            EnsureExpectedClientVersion(command.ExpectedClientVersion, entity);
+            ClientCredentialPolicy.EnsureExpectedClientVersion(command.ExpectedClientVersion, entity);
             await EnsureClientIsManuallyManagedAsync(application, cancellationToken);
 
-            var label = ValidateCredentialLabel(command.Label);
+            var label = ClientCredentialPolicy.ValidateCredentialLabel(command.Label);
             var generated = command.Generate;
             var oneTimeSecret = generated
                 ? WebEncoders.Base64UrlEncode(
                     RandomNumberGenerator.GetBytes(GeneratedClientSecretBytes))
-                : ValidateReplacementClientSecret(command.ClientSecret);
+                : ClientCredentialPolicy.ValidateReplacementClientSecret(command.ClientSecret);
             var now = DateTime.UtcNow;
             var notBeforeUtc = command.NotBeforeUtc?.UtcDateTime;
             var expiresAtUtc = command.ExpiresAtUtc?.UtcDateTime;
-            ValidateCredentialLifetime(now, notBeforeUtc, expiresAtUtc);
+            ClientCredentialPolicy.ValidateCredentialLifetime(now, notBeforeUtc, expiresAtUtc);
 
             await using var transaction = await database.Database
                 .BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
@@ -1530,7 +1527,7 @@ internal sealed class ClientManagementService(
                     Kind = OAuthClientCredentialKinds.SharedSecret,
                     Label = label,
                     SecretHash = secretHash,
-                    SecretHint = CreateSecretFingerprint(secretHash),
+                    SecretHint = ClientCredentialPolicy.CreateSecretFingerprint(secretHash),
                     CreatedAtUtc = now,
                     NotBeforeUtc = notBeforeUtc,
                     ExpiresAtUtc = expiresAtUtc,
@@ -1663,7 +1660,7 @@ internal sealed class ClientManagementService(
                     "A credencial já foi revogada.");
             }
 
-            var revocationReason = ValidateRevocationReason(command.Reason);
+            var revocationReason = ClientCredentialPolicy.ValidateRevocationReason(command.Reason);
             credential.RevokedAtUtc = DateTime.UtcNow;
             credential.RevocationReason = revocationReason;
             credential.ConcurrencyToken = NewConcurrencyToken();
@@ -1756,7 +1753,7 @@ internal sealed class ClientManagementService(
         clientId = entity.ClientId ?? clientId;
         try
         {
-            EnsureExpectedClientVersion(command.ExpectedClientVersion, entity);
+            ClientCredentialPolicy.EnsureExpectedClientVersion(command.ExpectedClientVersion, entity);
             await EnsureClientIsManuallyManagedAsync(
                 application,
                 cancellationToken);
@@ -1849,7 +1846,7 @@ internal sealed class ClientManagementService(
         }
 
         clientId = entity.ClientId ?? clientId;
-        EnsureExpectedClientVersion(command.ExpectedClientVersion, entity);
+        ClientCredentialPolicy.EnsureExpectedClientVersion(command.ExpectedClientVersion, entity);
         await EnsureClientIsManuallyManagedAsync(application, cancellationToken);
         if (string.IsNullOrWhiteSpace(command.KeyId))
         {
@@ -1903,7 +1900,7 @@ internal sealed class ClientManagementService(
 
         var hasPrimary = !string.IsNullOrWhiteSpace(application.ClientSecret);
         var hasActiveAdditional = additional.Any(credential =>
-            GetCredentialStatus(credential, now) == "active");
+            ClientCredentialPolicy.GetCredentialStatus(credential, now) == "active");
         var tlsCertificates = ClientTlsCertificateCredential.Read(
             application.JsonWebKeySet,
             new DateTimeOffset(now, TimeSpan.Zero));
@@ -1914,7 +1911,7 @@ internal sealed class ClientManagementService(
                 .GetSection(
                     "Sufficit:Identity:Mtls:TrustedCertificateAuthorityPaths")
                 .Get<string[]>() is { Length: > 0 };
-        var methods = GetAuthenticationMethods(
+        var methods = ClientCredentialPolicy.GetAuthenticationMethods(
             hasPrimary || hasActiveAdditional,
             application.JsonWebKeySet,
             tlsCertificates);
@@ -1938,12 +1935,12 @@ internal sealed class ClientManagementService(
                 credential.Label,
                 credential.Kind,
                 credential.SecretHint,
-                GetCredentialStatus(credential, now),
+                ClientCredentialPolicy.GetCredentialStatus(credential, now),
                 IsPrimary: false,
-                ToDateTimeOffset(credential.CreatedAtUtc),
-                ToDateTimeOffset(credential.NotBeforeUtc),
-                ToDateTimeOffset(credential.ExpiresAtUtc),
-                ToDateTimeOffset(credential.RevokedAtUtc),
+                ClientCredentialPolicy.ToDateTimeOffset(credential.CreatedAtUtc),
+                ClientCredentialPolicy.ToDateTimeOffset(credential.NotBeforeUtc),
+                ClientCredentialPolicy.ToDateTimeOffset(credential.ExpiresAtUtc),
+                ClientCredentialPolicy.ToDateTimeOffset(credential.RevokedAtUtc),
                 credential.ConcurrencyToken)));
 
         return new ManagementClientCredentialsOverview(
@@ -1976,192 +1973,6 @@ internal sealed class ClientManagementService(
                 "client_manifest_managed",
                 "Este cliente é gerenciado por manifesto declarativo. Altere suas credenciais no manifesto e aplique o provisionamento.");
         }
-    }
-
-    private static void EnsureExpectedClientVersion(
-        string? expectedVersion,
-        OpenIddictEntityFrameworkCoreApplication application)
-    {
-        if (string.IsNullOrWhiteSpace(expectedVersion))
-        {
-            throw new ManagementValidationException(
-                "client_version_required",
-                "Recarregue a aplicação antes de adicionar uma credencial.",
-                "expectedClientVersion");
-        }
-        if (!string.Equals(
-                expectedVersion,
-                application.ConcurrencyToken,
-                StringComparison.Ordinal))
-        {
-            throw new ManagementConflictException(
-                "client_changed",
-                "A aplicação foi alterada por outra operação. Recarregue os dados.");
-        }
-    }
-
-    private static IReadOnlyList<string> GetAuthenticationMethods(
-        bool hasActiveSharedSecret,
-        string? publicJwksJson,
-        IReadOnlyList<ManagementClientTlsCertificateSummary>? tlsCertificates = null)
-    {
-        var methods = new List<string>(3);
-        if (hasActiveSharedSecret)
-        {
-            methods.Add("client_secret_basic");
-            methods.Add("client_secret_post");
-        }
-        if (HasPublicSigningKeys(publicJwksJson))
-        {
-            methods.Add("private_key_jwt");
-        }
-        foreach (var method in (tlsCertificates ?? [])
-            .Where(certificate => certificate.Status == "active")
-            .Select(certificate => certificate.AuthenticationMethod)
-            .Distinct(StringComparer.Ordinal))
-        {
-            methods.Add(method);
-        }
-
-        return methods;
-    }
-
-    private static bool HasPublicSigningKeys(string? publicJwksJson)
-    {
-        if (string.IsNullOrWhiteSpace(publicJwksJson))
-        {
-            return false;
-        }
-
-        try
-        {
-            var set = new JsonWebKeySet(publicJwksJson);
-            return set.Keys.Any(key =>
-                key.X5c is not { Count: > 0 }
-                &&
-                key.Kty is JsonWebAlgorithmsKeyTypes.RSA
-                    or JsonWebAlgorithmsKeyTypes.EllipticCurve
-                && key.Use is null or JsonWebKeyUseNames.Sig);
-        }
-        catch (ArgumentException)
-        {
-            return false;
-        }
-    }
-
-    private static string GetCredentialStatus(
-        OAuthClientCredential credential,
-        DateTime now)
-    {
-        if (credential.RevokedAtUtc is not null)
-        {
-            return "revoked";
-        }
-        if (credential.ExpiresAtUtc is { } expiresAt && expiresAt <= now)
-        {
-            return "expired";
-        }
-        if (credential.NotBeforeUtc is { } notBefore && notBefore > now)
-        {
-            return "scheduled";
-        }
-
-        return "active";
-    }
-
-    private static DateTimeOffset? ToDateTimeOffset(DateTime? value) =>
-        value is null
-            ? null
-            : new DateTimeOffset(
-                DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
-
-    private static string ValidateCredentialLabel(string? value)
-    {
-        var label = value?.Trim() ?? string.Empty;
-        if (label.Length is < 1 or > IdentityDatabaseSchema.OAuthClientCredentialLabelLength)
-        {
-            throw new ManagementValidationException(
-                "client_credential_label_invalid",
-                $"O nome deve ter entre 1 e {IdentityDatabaseSchema.OAuthClientCredentialLabelLength} caracteres.",
-                "label");
-        }
-        if (label.Any(char.IsControl))
-        {
-            throw new ManagementValidationException(
-                "client_credential_label_invalid",
-                "O nome da credencial não pode conter caracteres de controle.",
-                "label");
-        }
-
-        return label;
-    }
-
-    private static void ValidateCredentialLifetime(
-        DateTime now,
-        DateTime? notBeforeUtc,
-        DateTime? expiresAtUtc)
-    {
-        if (expiresAtUtc is { } expiresAt && expiresAt <= now)
-        {
-            throw new ManagementValidationException(
-                "client_credential_expiration_invalid",
-                "A expiração deve estar no futuro.",
-                "expiresAtUtc");
-        }
-        if (expiresAtUtc is { } boundedExpiry
-            && boundedExpiry > now.AddDays(MaximumClientCredentialLifetimeDays))
-        {
-            throw new ManagementValidationException(
-                "client_credential_expiration_too_distant",
-                $"A expiração não pode ultrapassar {MaximumClientCredentialLifetimeDays} dias.",
-                "expiresAtUtc");
-        }
-        if (notBeforeUtc is { } notBefore
-            && expiresAtUtc is { } expiry
-            && notBefore >= expiry)
-        {
-            throw new ManagementValidationException(
-                "client_credential_window_invalid",
-                "O início da validade deve ser anterior à expiração.",
-                "notBeforeUtc");
-        }
-    }
-
-    private static string? ValidateRevocationReason(string? value)
-    {
-        var reason = value?.Trim();
-        if (string.IsNullOrEmpty(reason))
-        {
-            return null;
-        }
-        if (reason.Length > IdentityDatabaseSchema.OAuthClientCredentialReasonLength
-            || reason.Any(char.IsControl))
-        {
-            throw new ManagementValidationException(
-                "client_credential_revocation_reason_invalid",
-                $"O motivo deve ter até {IdentityDatabaseSchema.OAuthClientCredentialReasonLength} caracteres e não pode conter caracteres de controle.",
-                "reason");
-        }
-
-        return reason;
-    }
-
-    /// <summary>
-    /// Builds the short marker shown next to a credential in management UIs.
-    /// It is derived from the STORED HASH, never from the plaintext secret:
-    /// a suffix of the secret would put real credential material at rest, and
-    /// hashing the secret directly with a fast digest would hand an attacker a
-    /// cheaper guessing oracle than the PBKDF2 hash it sits beside. Feeding the
-    /// (salted, 210k-iteration) hash into SHA-256 keeps the marker stable and
-    /// unique per credential while staying non-reversible.
-    /// </summary>
-    private static string CreateSecretFingerprint(string secretHash)
-    {
-        const int fingerprintCharacters = 8;
-        var digest = System.Security.Cryptography.SHA256.HashData(
-            System.Text.Encoding.UTF8.GetBytes(secretHash));
-        return Microsoft.AspNetCore.WebUtilities.WebEncoders
-            .Base64UrlEncode(digest)[..fingerprintCharacters];
     }
 
     private static string NewConcurrencyToken() =>
@@ -2269,7 +2080,7 @@ internal sealed class ClientManagementService(
         var tlsCertificates = ClientTlsCertificateCredential.Read(
             entity?.JsonWebKeySet,
             DateTimeOffset.UtcNow);
-        var authenticationMethods = GetAuthenticationMethods(
+        var authenticationMethods = ClientCredentialPolicy.GetAuthenticationMethods(
             hasPrimarySecret || activeAdditionalCredentials > 0,
             entity?.JsonWebKeySet,
             tlsCertificates);
@@ -2382,55 +2193,6 @@ internal sealed class ClientManagementService(
             out var parsed)
             ? parsed
             : null;
-
-    private static void ValidateClientId(string clientId)
-    {
-        if (string.IsNullOrWhiteSpace(clientId))
-        {
-            throw new ManagementValidationException(
-                "client_id_required",
-                "client_id is required.",
-                "clientId");
-        }
-
-        if (clientId.Length > IdentityDatabaseSchema.OpenIddictClientIdLength)
-        {
-            throw new ManagementValidationException(
-                "client_id_too_long",
-                $"client_id cannot exceed {IdentityDatabaseSchema.OpenIddictClientIdLength} characters.",
-                "clientId");
-        }
-    }
-
-    private static string ValidateReplacementClientSecret(string? clientSecret)
-    {
-        if (string.IsNullOrWhiteSpace(clientSecret))
-        {
-            throw new ManagementValidationException(
-                "client_secret_required",
-                "Informe uma credencial ou escolha a geração automática.",
-                "clientSecret");
-        }
-
-        if (clientSecret.Length is < MinimumClientSecretLength or > MaximumClientSecretLength)
-        {
-            throw new ManagementValidationException(
-                "client_secret_length_invalid",
-                $"A credencial deve ter entre {MinimumClientSecretLength} e {MaximumClientSecretLength} caracteres.",
-                "clientSecret");
-        }
-
-        if (!string.Equals(clientSecret, clientSecret.Trim(), StringComparison.Ordinal)
-            || clientSecret.Any(char.IsControl))
-        {
-            throw new ManagementValidationException(
-                "client_secret_format_invalid",
-                "A credencial não pode começar ou terminar com espaços nem conter caracteres de controle.",
-                "clientSecret");
-        }
-
-        return clientSecret;
-    }
 
     private static void AddLogoutSettings(
         IDictionary<string, string> settings,
