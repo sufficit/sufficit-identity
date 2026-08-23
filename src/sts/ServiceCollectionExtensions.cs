@@ -728,6 +728,9 @@ public static class ServiceCollectionExtensions
                     Scopes.Address,
                     "identity.management",
                     "personal_tokens.manage",
+                    // Gates the MCP agent surface (api/mcp). Registered here so
+                    // it can be granted to a client like any other API scope.
+                    "mcp",
                     "sufficit_ai_openai_bridge",
                     .. applicationScopes]);
 
