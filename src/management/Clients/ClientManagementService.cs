@@ -589,8 +589,8 @@ internal sealed class ClientManagementService(
             var backchannelLogoutUri = ValidateLogoutUri(
                 command.BackchannelLogoutUri,
                 "backchannelLogoutUri");
-            var jwksUri = ValidateJwksUri(command.JwksUri);
-            var publicJwks = ValidatePublicJwks(command.JwksJson);
+            var jwksUri = ClientJwksPolicy.ValidateJwksUri(command.JwksUri);
+            var publicJwks = ClientJwksPolicy.ValidatePublicJwks(command.JwksJson);
             ValidateTokenLifetimes(
                 command.AccessTokenLifetimeMinutes,
                 command.IdentityTokenLifetimeMinutes,
@@ -1016,10 +1016,10 @@ internal sealed class ClientManagementService(
             var backchannelLogoutUri = ValidateLogoutUri(
                 command.BackchannelLogoutUri,
                 "backchannelLogoutUri");
-            var jwksUri = ValidateJwksUri(command.JwksUri);
+            var jwksUri = ClientJwksPolicy.ValidateJwksUri(command.JwksUri);
             var publicJwks = command.JwksJson is null
                 ? null
-                : ValidatePublicJwks(command.JwksJson);
+                : ClientJwksPolicy.ValidatePublicJwks(command.JwksJson);
             ValidateTokenLifetimes(
                 command.AccessTokenLifetimeMinutes,
                 command.IdentityTokenLifetimeMinutes,
@@ -2611,237 +2611,6 @@ internal sealed class ClientManagementService(
         }
 
         return ValidateRedirectUris([value], field)[0];
-    }
-
-    private static Uri? ValidateJwksUri(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri)
-            || !PublicHttpsUriPolicy.IsAllowed(uri))
-        {
-            throw new ManagementValidationException(
-                "jwks_uri_invalid",
-                "jwksUri must be a public absolute HTTPS URI without user-info or fragment.",
-                "jwksUri");
-        }
-
-        return uri;
-    }
-
-    private static JsonWebKeySet? ValidatePublicJwks(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-        if (value.Length > 64 * 1024)
-        {
-            throw new ManagementValidationException(
-                "jwks_too_large",
-                "O conjunto JWKS não pode ultrapassar 64 KiB.",
-                "jwksJson");
-        }
-
-        try
-        {
-            using var document = JsonDocument.Parse(value, new JsonDocumentOptions
-            {
-                AllowTrailingCommas = false,
-                CommentHandling = JsonCommentHandling.Disallow,
-                MaxDepth = 16,
-            });
-            if (document.RootElement.ValueKind != JsonValueKind.Object
-                || !document.RootElement.TryGetProperty("keys", out var keys)
-                || keys.ValueKind != JsonValueKind.Array
-                || keys.GetArrayLength() is < 1 or > 10)
-            {
-                throw new ManagementValidationException(
-                    "jwks_keys_invalid",
-                    "O JWKS deve conter entre 1 e 10 chaves públicas em 'keys'.",
-                    "jwksJson");
-            }
-
-            var keyIds = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var key in keys.EnumerateArray())
-            {
-                if (key.ValueKind != JsonValueKind.Object)
-                {
-                    throw new ManagementValidationException(
-                        "jwks_key_invalid",
-                        "Cada item de 'keys' deve ser uma chave JWK pública.",
-                        "jwksJson");
-                }
-
-                foreach (var privateParameter in new[]
-                {
-                    "d", "p", "q", "dp", "dq", "qi", "oth", "k",
-                })
-                {
-                    if (key.TryGetProperty(privateParameter, out _))
-                    {
-                        throw new ManagementValidationException(
-                            "jwks_private_material_forbidden",
-                            "O Identity aceita apenas chaves públicas. Remova parâmetros privados ou simétricos do JWKS.",
-                            "jwksJson");
-                    }
-                }
-
-                var kty = RequiredJwkString(key, "kty");
-                if (kty is not (JsonWebAlgorithmsKeyTypes.RSA
-                    or JsonWebAlgorithmsKeyTypes.EllipticCurve))
-                {
-                    throw new ManagementValidationException(
-                        "jwks_key_type_unsupported",
-                        "Use somente chaves públicas RSA ou EC para private_key_jwt.",
-                        "jwksJson");
-                }
-
-                var kid = RequiredJwkString(key, "kid");
-                if (!keyIds.Add(kid))
-                {
-                    throw new ManagementValidationException(
-                        "jwks_kid_duplicate",
-                        "Cada chave pública deve possuir um kid único.",
-                        "jwksJson");
-                }
-
-                if (key.TryGetProperty("use", out var use)
-                    && (use.ValueKind != JsonValueKind.String
-                        || !string.Equals(
-                            use.GetString(),
-                            JsonWebKeyUseNames.Sig,
-                            StringComparison.Ordinal)))
-                {
-                    throw new ManagementValidationException(
-                        "jwks_use_invalid",
-                        "Chaves de autenticação devem usar 'use': 'sig' ou omitir o campo.",
-                        "jwksJson");
-                }
-
-                if (kty == JsonWebAlgorithmsKeyTypes.RSA)
-                {
-                    var modulus = RequiredJwkString(key, "n");
-                    var exponent = RequiredJwkString(key, "e");
-                    if (!TryGetBase64UrlByteLength(modulus, out var modulusBytes)
-                        || modulusBytes < 256
-                        || !TryGetBase64UrlByteLength(exponent, out var exponentBytes)
-                        || exponentBytes is < 1 or > 8)
-                    {
-                        throw new ManagementValidationException(
-                            "jwks_rsa_key_too_small",
-                            "Chaves RSA devem possuir pelo menos 2048 bits.",
-                            "jwksJson");
-                    }
-                }
-                else
-                {
-                    var curve = RequiredJwkString(key, "crv");
-                    if (curve is not ("P-256" or "P-384" or "P-521"))
-                    {
-                        throw new ManagementValidationException(
-                            "jwks_curve_unsupported",
-                            "Use curvas P-256, P-384 ou P-521.",
-                            "jwksJson");
-                    }
-                    var x = RequiredJwkString(key, "x");
-                    var y = RequiredJwkString(key, "y");
-                    var coordinateBytes = curve switch
-                    {
-                        "P-256" => 32,
-                        "P-384" => 48,
-                        _ => 66,
-                    };
-                    if (!TryGetBase64UrlByteLength(x, out var xBytes)
-                        || !TryGetBase64UrlByteLength(y, out var yBytes)
-                        || xBytes != coordinateBytes
-                        || yBytes != coordinateBytes)
-                    {
-                        throw new ManagementValidationException(
-                            "jwks_ec_coordinates_invalid",
-                            "As coordenadas EC não correspondem à curva informada.",
-                            "jwksJson");
-                    }
-                }
-
-                if (key.TryGetProperty("alg", out var algorithm))
-                {
-                    var alg = algorithm.ValueKind == JsonValueKind.String
-                        ? algorithm.GetString()
-                        : null;
-                    if (alg is not ("RS256" or "RS384" or "RS512"
-                        or "PS256" or "PS384" or "PS512"
-                        or "ES256" or "ES384" or "ES512"))
-                    {
-                        throw new ManagementValidationException(
-                            "jwks_algorithm_unsupported",
-                            "O algoritmo da chave deve ser RS*, PS* ou ES* com SHA-256/384/512.",
-                            "jwksJson");
-                    }
-                    if ((kty == JsonWebAlgorithmsKeyTypes.RSA
-                            && !alg.StartsWith("RS", StringComparison.Ordinal)
-                            && !alg.StartsWith("PS", StringComparison.Ordinal))
-                        || (kty == JsonWebAlgorithmsKeyTypes.EllipticCurve
-                            && !alg.StartsWith("ES", StringComparison.Ordinal)))
-                    {
-                        throw new ManagementValidationException(
-                            "jwks_algorithm_key_type_mismatch",
-                            "O algoritmo informado não corresponde ao tipo da chave pública.",
-                            "jwksJson");
-                    }
-                }
-            }
-
-            return new JsonWebKeySet(document.RootElement.GetRawText());
-        }
-        catch (JsonException exception)
-        {
-            throw new ManagementValidationException(
-                "jwks_json_invalid",
-                $"O JWKS não é um JSON válido: {exception.Message}",
-                "jwksJson");
-        }
-        catch (ArgumentException exception)
-        {
-            throw new ManagementValidationException(
-                "jwks_json_invalid",
-                $"O JWKS não pôde ser interpretado: {exception.Message}",
-                "jwksJson");
-        }
-    }
-
-    private static string RequiredJwkString(JsonElement key, string property)
-    {
-        if (!key.TryGetProperty(property, out var value)
-            || value.ValueKind != JsonValueKind.String
-            || string.IsNullOrWhiteSpace(value.GetString()))
-        {
-            throw new ManagementValidationException(
-                "jwks_key_parameter_required",
-                $"Cada chave pública deve informar '{property}'.",
-                "jwksJson");
-        }
-
-        return value.GetString()!;
-    }
-
-    private static bool TryGetBase64UrlByteLength(
-        string value,
-        out int length)
-    {
-        try
-        {
-            length = WebEncoders.Base64UrlDecode(value).Length;
-            return true;
-        }
-        catch (FormatException)
-        {
-            length = 0;
-            return false;
-        }
     }
 
     private static bool SameOrigin(Uri left, Uri right) =>
