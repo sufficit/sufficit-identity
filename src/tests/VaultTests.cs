@@ -951,7 +951,6 @@ public sealed class VaultTests
         var service = new VaultSecretsManagementService(
             database,
             store,
-            new AllowingManagementAuthorizationEvaluator(),
             Options.Create(new VaultOptions { Enabled = true }),
             managementOptions,
             new Sufficit.Identity.Management.Audit.ManagementOperationGuard(

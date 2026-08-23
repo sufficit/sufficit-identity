@@ -104,7 +104,6 @@ public sealed record SaveManagementVaultSecret(
 public sealed class VaultSecretsManagementService(
     AppDbContext database,
     IVaultNamedSecretStore store,
-    IManagementAuthorizationEvaluator authorization,
     IOptions<VaultOptions> options,
     IOptions<ManagementOptions> managementOptions,
     ManagementOperationGuard guard)

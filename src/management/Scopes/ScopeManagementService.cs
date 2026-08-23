@@ -82,7 +82,6 @@ internal sealed class ScopeManagementService(
     IOpenIddictScopeManager scopes,
     IOpenIddictApplicationManager applications,
     AppDbContext database,
-    IManagementAuthorizationEvaluator authorization,
     Microsoft.Extensions.Options.IOptions<ManagementOptions> managementOptions,
     ILogger<ScopeManagementService> logger,
     ManagementOperationGuard guard) : IScopeManagementService

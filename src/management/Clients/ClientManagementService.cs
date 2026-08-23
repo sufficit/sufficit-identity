@@ -342,10 +342,8 @@ internal sealed class ClientManagementService(
     IOpenIddictApplicationCache<OpenIddictEntityFrameworkCoreApplication>
         applicationCache,
     AppDbContext database,
-    IManagementAuthorizationEvaluator authorization,
     IReservedScopePolicy reservedScopePolicy,
     IClientDefinitionValidator clientDefinitionValidator,
-    IClientCredentialSecretHasher credentialSecretHasher,
     IConfiguration configuration,
     ManagementOperationGuard guard,
     ClientCredentialRegistry credentials,
