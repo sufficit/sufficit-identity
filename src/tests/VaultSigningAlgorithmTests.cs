@@ -133,6 +133,34 @@ public sealed class VaultSigningAlgorithmTests
         Assert.Equal(64, signature.Length);
     }
 
+    /// <summary>
+    /// Regression (eval 2026-08-23, S-2): the snapshot cache is enabled by
+    /// default (<see cref="VaultSnapshotOptions.Enabled"/>), and the cached
+    /// verification path used to hardcode RSA with PKCS#1 v1.5 padding while
+    /// the database path dispatched on the version's own JWK. Every ES256 and
+    /// PS256 signature was therefore rejected as invalid in any deployment
+    /// running the default configuration — the algorithm-agility tests above
+    /// missed it because their harness has no snapshot cache attached.
+    /// </summary>
+    [Theory]
+    [InlineData(SigningAlgorithms.RsaSha256)]
+    [InlineData(SigningAlgorithms.RsaPssSha256)]
+    [InlineData(SigningAlgorithms.EcdsaSha256)]
+    public async Task Snapshot_verification_honors_the_version_algorithm(
+        string algorithm)
+    {
+        using var harness = Harness.Create(
+            new VaultOptions
+            {
+                Enabled = true,
+                SigningAlgorithm = algorithm,
+                SigningKeyOverlapSeconds = 300,
+            },
+            withSnapshots: true);
+
+        await AssertRoundTripsAsync(harness, "oidc-signing");
+    }
+
     [Fact]
     public void Unsupported_algorithm_is_rejected_at_validation_time()
     {
@@ -182,7 +210,9 @@ public sealed class VaultSigningAlgorithmTests
 
         public KeyVault Vault { get; }
 
-        public static Harness Create(VaultOptions? options = null)
+        public static Harness Create(
+            VaultOptions? options = null,
+            bool withSnapshots = false)
         {
             var connection = new Microsoft.Data.Sqlite.SqliteConnection(
                 "DataSource=:memory:");
@@ -214,6 +244,16 @@ public sealed class VaultSigningAlgorithmTests
                 provider.GetRequiredService<IDataProtectionProvider>(),
                 options);
 
+            // Production runs with the snapshot cache attached by default, so
+            // the cached read path must be exercised too — not only the
+            // database fallback the other tests here reach.
+            var snapshots = withSnapshots
+                ? new VaultSnapshotCache(
+                    dbFactory,
+                    new VaultSnapshotOptions(),
+                    provider.GetRequiredService<ILogger<VaultSnapshotCache>>())
+                : null;
+
             var vault = new KeyVault(
                 dbFactory,
                 kek,
@@ -221,7 +261,9 @@ public sealed class VaultSigningAlgorithmTests
                 options,
                 new VaultCryptographyTelemetry(
                     options,
-                    NullLogger<VaultCryptographyTelemetry>.Instance));
+                    NullLogger<VaultCryptographyTelemetry>.Instance),
+                timeProvider: null,
+                snapshots: snapshots);
 
             return new Harness(provider, connection, vault);
         }

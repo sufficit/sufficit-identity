@@ -336,12 +336,12 @@ internal sealed class KeyVault : IKeyVault
                     key => key.KeyVersion == keyVersion);
                 if (cached is null) return false;
 
-                using var cachedRsa = CreatePublicRsa(cached.PublicJwk);
-                return cachedRsa.VerifyData(
-                    payload,
-                    signature,
-                    HashAlgorithmName.SHA256,
-                    RSASignaturePadding.Pkcs1);
+                // Same algorithm dispatch as the database path below: the
+                // version's own JWK decides RSA PKCS#1 / RSA-PSS / ECDSA.
+                // Hardcoding RSA+PKCS#1 here silently rejected every valid
+                // ES256 and PS256 signature whenever the snapshot cache was
+                // enabled (the default), while the database path accepted them.
+                return VerifyWithJwk(cached.PublicJwk, payload, signature);
             }
 
             await using var db = await _dbFactory.CreateDbContextAsync(cancellationToken);
