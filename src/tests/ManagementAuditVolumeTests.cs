@@ -85,6 +85,32 @@ public sealed class ManagementAuditVolumeTests
         Assert.Equal(3, await harness.CountAuditAsync());
     }
 
+    /// <summary>
+    /// The short default is a deliberate product decision, not an oversight:
+    /// this trail exists to DETECT wrong behavior on an identity service, and
+    /// an operator who has not noticed something within a fortnight will not
+    /// notice it in month eleven. Pinned so raising it stays a conscious
+    /// choice with the trade-off in view (see AuditRetentionDays).
+    /// </summary>
+    [Fact]
+    public void Default_retention_window_is_a_fortnight()
+    {
+        Assert.Equal(15, new ManagementOptions().AuditRetentionDays);
+    }
+
+    [Fact]
+    public async Task Retention_at_the_default_window_prunes_older_history()
+    {
+        using var harness = Harness.Create();
+        var retentionDays = new ManagementOptions().AuditRetentionDays;
+        await harness.SeedAuditAsync(ageDays: retentionDays + 5, count: 6);
+        await harness.SeedAuditAsync(ageDays: 1, count: 2);
+
+        await harness.RunRetentionAsync(retentionDays);
+
+        Assert.Equal(2, await harness.CountAuditAsync());
+    }
+
     [Fact]
     public async Task Retention_disabled_keeps_everything()
     {
