@@ -210,6 +210,9 @@ public sealed class UserTokenGrantsHandler : ITokenGrantHandler
                 httpContext.RequestServices.GetRequiredService<IOpenIddictAuthorizationManager>(),
                 httpContext.RequestAborted)
             : result.Principal!.GetScopes();
+        grantedScopes = ops.ResolveImplicitMcpScopes(
+            request.ClientId,
+            grantedScopes);
         var entitlementResult = await ops.ProvisionScopeEntitlementsAsync(
             user,
             grantedScopes,
@@ -325,7 +328,9 @@ public sealed class DeviceCodeGrantHandler : ITokenGrantHandler
                 "The user is no longer allowed to sign in.");
         }
 
-        var grantedScopes = result.Principal.GetScopes();
+        var grantedScopes = ops.ResolveImplicitMcpScopes(
+            request.ClientId,
+            result.Principal.GetScopes());
         var entitlementResult = await ops.ProvisionScopeEntitlementsAsync(
             user,
             grantedScopes,

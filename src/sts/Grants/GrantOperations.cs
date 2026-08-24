@@ -24,6 +24,7 @@ public sealed class GrantOperations(
     IApplicationClaimDestinationPolicy applicationClaimPolicy,
     IAuthenticationContextProjector authenticationContextProjector,
     ScopeEntitlementProvisioner scopeEntitlementProvisioner,
+    McpScopeGrantPolicy mcpScopeGrantPolicy,
     IConfiguration configuration)
 {
     internal const string SessionIdClaimType =
@@ -51,6 +52,12 @@ public sealed class GrantOperations(
             user,
             approvedScopes,
             cancellationToken);
+
+    public System.Collections.Immutable.ImmutableArray<string>
+        ResolveImplicitMcpScopes(
+            string? clientId,
+            IEnumerable<string> grantedScopes) =>
+        mcpScopeGrantPolicy.Resolve(clientId, grantedScopes);
 
     public TokenExchangeOptions TokenExchangeOptions { get; } =
         configuration.GetSection("Sufficit:Identity:TokenExchange")
