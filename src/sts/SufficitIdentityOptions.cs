@@ -1648,6 +1648,27 @@ public sealed class CibaOptions
 public sealed class McpOptions
 {
     /// <summary>
+    /// OAuth scope required by the Identity MCP and the subject-bound personal
+    /// Vault HTTP surface. This is deliberately separate from
+    /// <c>identity.management</c>: it grants self-service access only and never
+    /// authorizes shared Vault contexts or operator capabilities.
+    /// </summary>
+    public string RequiredScope { get; init; } = "identity.mcp";
+
+    /// <summary>
+    /// First-party clients whose user tokens implicitly receive
+    /// <see cref="RequiredScope"/>. The server also provisions the matching
+    /// OpenIddict client permission at startup. Keep this allowlist narrow:
+    /// adding a client grants every signed-in user of that client access to
+    /// their own Identity MCP and personal Vault.
+    /// </summary>
+    public HashSet<string> ImplicitClientIds { get; init; } =
+        new(StringComparer.Ordinal)
+        {
+            "sufficit-ai-genius",
+        };
+
+    /// <summary>
     /// Resource/audience URIs the STS recognizes as valid <c>resource</c>
     /// indicator targets (RFC 8707, item 4.2). These are registered with
     /// OpenIddict so <c>resource</c> parameters are accepted (without this,

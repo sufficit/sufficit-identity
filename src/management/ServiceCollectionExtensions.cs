@@ -64,6 +64,14 @@ public static class ServiceCollectionExtensions
             .GetSection(configurationSection)
             .Get<ManagementOptions>() ?? new ManagementOptions();
         var configurationRoot = configuration.GetSection(configurationSection);
+        var mcpRequiredScope = configuration[
+                "Sufficit:Identity:Mcp:RequiredScope"]?.Trim()
+            ?? McpResourceMetadataChallenge.DefaultRequiredScope;
+        if (string.IsNullOrWhiteSpace(mcpRequiredScope))
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Identity:Mcp:RequiredScope must not be empty.");
+        }
 
         // F-4 (eval 2026-08-14): RequireAuthorization=false turns the entire
         // management surface — directory, clients, vault metadata, provisioning
@@ -208,26 +216,13 @@ public static class ServiceCollectionExtensions
                 policy.AuthenticationSchemes.Add(
                     OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
                 policy.RequireAuthenticatedUser();
-
-                // The MCP tools are subject-scoped, but "authenticated" alone
-                // let any token this issuer minted reach them. Gate on a
-                // dedicated scope so agent access is granted, not inherited.
-                // Guarded by RequireAuthorization for the same reason the
-                // management policy is: with anonymous Development management
-                // the ScopeHandler is not registered, and an unsatisfiable
-                // requirement would fail closed instead of staying open.
-                if (options.RequireAuthorization
-                    && !string.IsNullOrWhiteSpace(options.McpRequiredScope))
-                {
-                    policy.Requirements.Add(
-                        new ScopeRequirement(options.McpRequiredScope));
-                }
+                policy.Requirements.Add(new ScopeRequirement(mcpRequiredScope));
             });
         });
 
+        services.AddSingleton<IAuthorizationHandler, ScopeHandler>();
         if (options.RequireAuthorization)
         {
-            services.AddSingleton<IAuthorizationHandler, ScopeHandler>();
             // MfaHandler evaluates the MfaRequirement added to the policy when
             // RequireMfa is true. Without this registration the requirement is
             // never satisfied, causing fail-closed (every management request

@@ -9,11 +9,13 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using System.Security.Cryptography.X509Certificates;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.STS;
+using Sufficit.Identity.Vault;
 using Xunit;
 
 namespace Sufficit.Identity.Tests.Infrastructure;
@@ -42,6 +44,7 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
     private readonly SqliteConnection _connection = new("DataSource=:memory:");
     private readonly bool _bypassAuthz;
     private readonly IReadOnlyDictionary<string, string?>? _extraConfiguration;
+    private readonly bool _enablePersonalVaultTestSurface;
     private string? _routePrefix;
 
     /// <summary>
@@ -65,10 +68,12 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
 
     public ManagementTestFactory(
         bool bypassAuthz = true,
-        IReadOnlyDictionary<string, string?>? extraConfiguration = null)
+        IReadOnlyDictionary<string, string?>? extraConfiguration = null,
+        bool enablePersonalVaultTestSurface = false)
     {
         _bypassAuthz = bypassAuthz;
         _extraConfiguration = extraConfiguration;
+        _enablePersonalVaultTestSurface = enablePersonalVaultTestSurface;
         _connection.Open();
         // Same UTC_TIMESTAMP shim as SufficitIdentityTestFactory: the legacy
         // Timestamp default uses UTC_TIMESTAMP(), while CreatedAtUtc uses the
@@ -130,6 +135,17 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
                 context.Configuration,
                 secretStore: new TestSecretStore(context.Configuration));
             services.AddSufficitIdentityManagement(context.Configuration);
+
+            // Keep the test host on the Development pass-through key backend,
+            // whose database is created after host startup, while letting the
+            // personal Vault controller exercise its enabled-only contract.
+            // Production never uses this override.
+            if (_enablePersonalVaultTestSurface)
+            {
+                services.AddSingleton(new VaultOptions { Enabled = true });
+                services.AddSingleton<IOptions<VaultOptions>>(
+                    Options.Create(new VaultOptions { Enabled = true }));
+            }
 
             // Swap the real ScopeHandler for a test-only one that always
             // satisfies the sufficit-identity-management policy, so the

@@ -432,6 +432,10 @@
       },
       "_Mcp": "MCP (Model Context Protocol) / agent-AI resource-server configuration (Onda 4). Configures the STS to serve as the authorization server for MCP servers and other agent resource servers. Static resource validation remains active when only RFC 9728 metadata is enabled; it is disabled only when Mcp.Resources explicitly lists dynamic resource URIs, and those URIs still require per-client oi_rprm permissions.",
       "Mcp": {
+        "_RequiredScope": "Dedicated OAuth scope required by /api/mcp and /api/vault/personal/secrets. It grants only subject-bound self-service access, never Identity Management or shared Vault contexts.",
+        "RequiredScope": "identity.mcp",
+        "_ImplicitClientIds": "Narrow allowlist of trusted first-party clients whose user tokens receive RequiredScope automatically on device/code issuance and refresh. Startup also reconciles the matching OpenIddict client permission.",
+        "ImplicitClientIds": [ "sufficit-ai-genius" ],
         "_Resources": "Array of resource/audience URIs the STS recognizes as valid `resource` indicator targets (RFC 8707, item 4.2). Each typically points to an MCP server (e.g. https://mcp.example.com). A client must ALSO be granted the matching oi_rprm permission (Permissions.Prefixes.Resource + uri) to request one. The STS disables OpenIddict's static resource validation (trusting per-client oi_rprm) so dynamic MCP resources work without listing them all up front.",
         "Resources": [],
         "_ProtectedResourceMetadataEnabled": "true (default) exposes /.well-known/oauth-protected-resource (RFC 9728) pointing resource servers (MCP) to this STS as their authorization server. Disable only if the STS is never an MCP/agent AS.",

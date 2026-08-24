@@ -857,6 +857,17 @@ if (migrateOnly)
     return;
 }
 
+// The Identity MCP/personal Vault scope is a first-party product contract, not
+// an operator-maintained database tweak. Reconcile it and the trusted Genius
+// client permission on every startup so fresh and existing deployments converge
+// automatically before user traffic is accepted.
+using (var scope = app.Services.CreateScope())
+{
+    await scope.ServiceProvider
+        .GetRequiredService<McpScopeProvisioner>()
+        .ProvisionAsync();
+}
+
 // Parse the MySQL/MariaDB database name out of a connection string for the
 // allowed-database guard above. Returns null when it cannot be parsed. Hand-
 // rolled (no DbConnectionStringBuilder) so the host needs no extra package

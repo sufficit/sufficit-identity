@@ -179,10 +179,12 @@ public static partial class ServiceCollectionExtensions
             Scopes.Address,
             "identity.management",
             "personal_tokens.manage",
-            // Gates the MCP agent surface (api/mcp). Registered here so
-            // it can be granted to a client like any other API scope.
-            "mcp",
             "sufficit_ai_openai_bridge",
+            // Gates the MCP agent surface. The name comes from
+            // Sufficit:Identity:Mcp:RequiredScope so it stays in step with
+            // McpScopeProvisioner, which creates the scope and grants it to
+            // the trusted first-party clients at startup.
+            options.Mcp.RequiredScope,
             .. applicationScopes]);
 
         // MCP / agent-AI resource servers (RFC 8707, item 4.2). Every
