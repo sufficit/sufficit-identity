@@ -1541,6 +1541,7 @@ public sealed class ManagementUiArchitectureTests
         Assert.DoesNotContain("<a href=\"/\"", page, StringComparison.Ordinal);
         Assert.Contains("data-device-flow-result", page, StringComparison.Ordinal);
         Assert.Contains("data-device-flow-close", page, StringComparison.Ordinal);
+        Assert.Contains("data-device-flow-return", page, StringComparison.Ordinal);
         Assert.Contains("data-device-close-fallback", page, StringComparison.Ordinal);
         Assert.Contains("data-device-close-fallback hidden", page, StringComparison.Ordinal);
         Assert.Contains("[hidden] { display: none !important; }", stylesheet, StringComparison.Ordinal);
@@ -1584,6 +1585,8 @@ public sealed class ManagementUiArchitectureTests
         Assert.Contains("data-device-launch-mode", page, StringComparison.Ordinal);
         Assert.Contains("launch_mode", page, StringComparison.Ordinal);
         Assert.Contains("function notifyPopupOpener(result)", script, StringComparison.Ordinal);
+        Assert.Contains("function initializeNativeAppReturn(result)", script, StringComparison.Ordinal);
+        Assert.Contains("native-app-return-attempted", script, StringComparison.Ordinal);
         Assert.Contains("sufficit-auth-complete", script, StringComparison.Ordinal);
         Assert.Contains("popup-completion-notified", script, StringComparison.Ordinal);
         Assert.Contains("window.opener.postMessage", script, StringComparison.Ordinal);
