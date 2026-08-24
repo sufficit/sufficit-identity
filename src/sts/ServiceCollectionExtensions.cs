@@ -729,6 +729,7 @@ public static class ServiceCollectionExtensions
                     "identity.management",
                     "personal_tokens.manage",
                     "sufficit_ai_openai_bridge",
+                    options.Mcp.RequiredScope,
                     .. applicationScopes]);
 
                 // MCP / agent-AI resource servers (RFC 8707, item 4.2). Every
@@ -1219,6 +1220,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<Application.Security.IPrivilegedTokenMintingService,
             PrivilegedTokenMintingService>();
         services.AddScoped<Grants.GrantOperations>();
+        services.AddSingleton<McpScopeGrantPolicy>();
+        services.AddScoped<McpScopeProvisioner>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.UserTokenGrantsHandler>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.DeviceCodeGrantHandler>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.ClientCredentialsGrantHandler>();

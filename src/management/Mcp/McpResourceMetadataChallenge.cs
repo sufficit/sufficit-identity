@@ -18,6 +18,7 @@ namespace Sufficit.Identity.Management.Mcp;
 public static class McpResourceMetadataChallenge
 {
     public const string PolicyName = "sufficit-identity-mcp";
+    public const string DefaultRequiredScope = "identity.mcp";
     internal const string MetadataPath = "/.well-known/oauth-protected-resource";
     private const string Parameter = "resource_metadata";
 

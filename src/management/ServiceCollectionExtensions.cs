@@ -64,6 +64,14 @@ public static class ServiceCollectionExtensions
             .GetSection(configurationSection)
             .Get<ManagementOptions>() ?? new ManagementOptions();
         var configurationRoot = configuration.GetSection(configurationSection);
+        var mcpRequiredScope = configuration[
+                "Sufficit:Identity:Mcp:RequiredScope"]?.Trim()
+            ?? McpResourceMetadataChallenge.DefaultRequiredScope;
+        if (string.IsNullOrWhiteSpace(mcpRequiredScope))
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Identity:Mcp:RequiredScope must not be empty.");
+        }
 
         // F-4 (eval 2026-08-14): RequireAuthorization=false turns the entire
         // management surface — directory, clients, vault metadata, provisioning
@@ -200,12 +208,13 @@ public static class ServiceCollectionExtensions
                 policy.AuthenticationSchemes.Add(
                     OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
                 policy.RequireAuthenticatedUser();
+                policy.Requirements.Add(new ScopeRequirement(mcpRequiredScope));
             });
         });
 
+        services.AddSingleton<IAuthorizationHandler, ScopeHandler>();
         if (options.RequireAuthorization)
         {
-            services.AddSingleton<IAuthorizationHandler, ScopeHandler>();
             // MfaHandler evaluates the MfaRequirement added to the policy when
             // RequireMfa is true. Without this registration the requirement is
             // never satisfied, causing fail-closed (every management request
