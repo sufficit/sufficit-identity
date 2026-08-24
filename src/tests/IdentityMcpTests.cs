@@ -3,8 +3,14 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
+using OpenIddict.Abstractions;
+using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Management.Mcp;
+using Sufficit.Identity.STS;
 using Sufficit.Identity.Tests.Infrastructure;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 using Xunit;
 
 namespace Sufficit.Identity.Tests;
@@ -20,6 +26,26 @@ public sealed class IdentityMcpTests
 
         Assert.True(manager.Validate(session, "alice"));
         Assert.False(manager.Validate(session, "bob"));
+    }
+
+    [Fact]
+    public void Implicit_scope_policy_is_restricted_to_the_trusted_genius_client()
+    {
+        var policy = new McpScopeGrantPolicy(new SufficitIdentityOptions());
+
+        var geniusScopes = policy.Resolve(
+            "sufficit-ai-genius",
+            ["openid", "offline_access"]);
+        var unrelatedScopes = policy.Resolve(
+            "unrelated-client",
+            ["openid", "offline_access"]);
+
+        Assert.Contains(
+            McpResourceMetadataChallenge.DefaultRequiredScope,
+            geniusScopes);
+        Assert.DoesNotContain(
+            McpResourceMetadataChallenge.DefaultRequiredScope,
+            unrelatedScopes);
     }
 
     [Fact]
@@ -46,7 +72,7 @@ public sealed class IdentityMcpTests
     [Fact]
     public async Task Mcp_initialize_returns_a_session_and_lists_vault_and_self_service_tools()
     {
-        await using var factory = new ManagementTestFactory();
+        await using var factory = ManagementTestFactory.CreateWithRealAuthz();
         await ((IAsyncLifetime)factory).InitializeAsync();
         using var client = factory.CreateClient();
         await AuthenticateAsync(client);
@@ -112,6 +138,98 @@ public sealed class IdentityMcpTests
     }
 
     [Fact]
+    public async Task Mcp_rejects_an_authenticated_caller_without_the_dedicated_scope()
+    {
+        await using var factory = ManagementTestFactory.CreateWithRealAuthz();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient();
+        await AuthenticateAsync(client, includeMcpScope: false);
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/mcp",
+            new { jsonrpc = "2.0", id = 1, method = "initialize" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Personal_vault_http_surface_is_scope_gated_and_subject_isolated()
+    {
+        await using var factory = new ManagementTestFactory(
+            bypassAuthz: false,
+            enablePersonalVaultTestSurface: true);
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        using var alice = factory.CreateClient();
+        await AuthenticateAsync(alice);
+        const string path =
+            "/api/vault/personal/secrets/genius/device-1/external/github-token";
+        using var saved = await alice.PutAsJsonAsync(path, new
+        {
+            value = "alice-secret",
+        });
+        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+
+        using var resolved = await alice.GetAsync(path);
+        Assert.Equal(HttpStatusCode.OK, resolved.StatusCode);
+        var resolvedBody = await resolved.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("alice-secret", resolvedBody.GetProperty("value").GetString());
+
+        var bobName = $"bob-{Guid.NewGuid():N}";
+        const string bobPassword = "Str0ng!Passw0rd#Mcp";
+        using (var scope = factory.Services.CreateScope())
+        {
+            await TestDataSeeder.CreateUserAsync(
+                scope.ServiceProvider.GetRequiredService<
+                    UserManager<ApplicationUser>>(),
+                bobName,
+                bobPassword);
+        }
+
+        using var bob = factory.CreateClient();
+        await AuthenticateAsync(
+            bob,
+            username: bobName,
+            password: bobPassword);
+        using var isolated = await bob.GetAsync(path);
+        Assert.Equal(HttpStatusCode.NotFound, isolated.StatusCode);
+    }
+
+    [Fact]
+    public async Task Startup_provisioner_reconciles_the_scope_and_trusted_client_permission()
+    {
+        await using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        using var scope = factory.Services.CreateScope();
+        var applications = scope.ServiceProvider
+            .GetRequiredService<IOpenIddictApplicationManager>();
+        var application = await applications.FindByClientIdAsync(
+            TestDataSeeder.DeviceClientId);
+        Assert.NotNull(application);
+        var descriptor = new OpenIddictApplicationDescriptor();
+        await applications.PopulateAsync(descriptor, application!);
+        descriptor.Permissions.Remove(
+            Permissions.Prefixes.Scope + McpResourceMetadataChallenge.DefaultRequiredScope);
+        await applications.UpdateAsync(application!, descriptor);
+
+        await scope.ServiceProvider
+            .GetRequiredService<McpScopeProvisioner>()
+            .ProvisionAsync();
+        await scope.ServiceProvider
+            .GetRequiredService<McpScopeProvisioner>()
+            .ProvisionAsync();
+
+        Assert.NotNull(await scope.ServiceProvider
+            .GetRequiredService<IOpenIddictScopeManager>()
+            .FindByNameAsync(McpResourceMetadataChallenge.DefaultRequiredScope));
+        Assert.True(await applications.HasPermissionAsync(
+            application!,
+            Permissions.Prefixes.Scope
+                + McpResourceMetadataChallenge.DefaultRequiredScope));
+    }
+
+    [Fact]
     public void Challenge_pointer_merges_into_an_existing_bearer_header()
     {
         var context = new DefaultHttpContext();
@@ -136,7 +254,11 @@ public sealed class IdentityMcpTests
             header);
     }
 
-    private static async Task AuthenticateAsync(HttpClient client)
+    private static async Task AuthenticateAsync(
+        HttpClient client,
+        bool includeMcpScope = true,
+        string? username = null,
+        string? password = null)
     {
         using var response = await client.PostAsync(
             "/connect/token",
@@ -145,9 +267,11 @@ public sealed class IdentityMcpTests
                 ["grant_type"] = "password",
                 ["client_id"] = TestDataSeeder.PasswordClientId,
                 ["client_secret"] = TestDataSeeder.PasswordClientSecret,
-                ["username"] = TestDataSeeder.DefaultUsername,
-                ["password"] = TestDataSeeder.DefaultPassword,
-                ["scope"] = TestDataSeeder.ScopeName
+                ["username"] = username ?? TestDataSeeder.DefaultUsername,
+                ["password"] = password ?? TestDataSeeder.DefaultPassword,
+                ["scope"] = includeMcpScope
+                    ? $"{TestDataSeeder.ScopeName} {McpResourceMetadataChallenge.DefaultRequiredScope}"
+                    : TestDataSeeder.ScopeName
             }));
         response.EnsureSuccessStatusCode();
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();

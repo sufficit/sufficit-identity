@@ -22,9 +22,11 @@ O host precisa registrar o Management normalmente:
 }
 ```
 
-O MCP exige um access token Bearer autenticado. O token precisa conter `sub`;
-esse subject é a única identidade usada pelas ferramentas `me_*` e pelo
-contexto pessoal do Vault.
+O MCP exige um access token Bearer autenticado com o scope `identity.mcp`. O
+token também precisa conter `sub`; esse subject é a única identidade usada
+pelas ferramentas `me_*` e pelo contexto pessoal do Vault. O scope não concede
+`identity.management`, capabilities administrativas nem acesso a contextos
+compartilhados.
 
 ## Como as aplicações se conectam
 
@@ -48,7 +50,7 @@ O que acontece por baixo (não precisa configurar nada disso):
    Identity;
 3. lê `/.well-known/openid-configuration` e executa Authorization Code + PKCE
    no navegador;
-4. usa o access token resultante em todas as chamadas.
+4. solicita `identity.mcp` e usa o access token resultante em todas as chamadas.
 
 O `sub` desse token é **o seu usuário** — é ele que define o vault pessoal
 (`user-<sub>`) e o alvo das ferramentas `me_*`.
@@ -60,9 +62,24 @@ formas:
   `Sufficit:Identity:Mcp:Dcr:Enabled=true` (RFC 7591, `/connect/register`). É
   opt-in e, por padrão, exige um initial access token
   (`Sufficit:Identity:Mcp:Dcr:InitialAccessToken`, resolvido pelo vault) —
-  mantenha essa exigência ligada.
+  mantenha essa exigência ligada. Inclua `identity.mcp` em `AllowedScopes` para
+  esse fluxo privilegiado; o perfil anônimo deliberadamente não recebe scopes
+  de API.
 - **Client fixo:** registre um client público com PKCE e o redirect URI do
-  cliente MCP (Claude Code usa `http://localhost:<porta>/callback`).
+  cliente MCP (Claude Code usa `http://localhost:<porta>/callback`) e conceda a
+  permissão OpenIddict `scp:identity.mcp`.
+
+### Genius: concessão automática confiável
+
+`Sufficit:Identity:Mcp:ImplicitClientIds` contém `sufficit-ai-genius` por
+padrão. Na inicialização, o servidor cria o scope `identity.mcp` quando
+necessário e reconcilia a permissão do client. Em device-code,
+authorization-code e refresh, esse client recebe o scope implicitamente. Assim
+uma instalação antiga se corrige na próxima renovação do token, sem novo login.
+
+A allowlist é uma fronteira de segurança: não adicione clientes de terceiros.
+Mesmo com o scope, cada chamada de Vault continua presa ao contexto
+`user-<sub>`.
 
 ### Aplicações de serviço (sem usuário)
 
@@ -117,6 +134,28 @@ As ferramentas de self-service são `me_get`, `me_update`,
 subject autenticado. Troca de senha, e-mail e MFA permanece na UI com
 verificação de step-up e não é exposta ao agente.
 
+## Vault pessoal por HTTP
+
+Clientes first-party que precisam implementar um secret store, como o Genius,
+podem usar a superfície fina protegida pelo mesmo scope:
+
+```http
+PUT /api/vault/personal/secrets/genius/device-1/external/github-token
+Authorization: Bearer <token-com-identity.mcp>
+Content-Type: application/json
+
+{"value":"...","expiresAtUtc":null}
+```
+
+- `GET /api/vault/personal/secrets/{nome}` resolve o valor e audita a operação;
+- `PUT` cria ou rotaciona;
+- `DELETE` remove;
+- `404` significa ausente e `410` expirado.
+
+O cliente nunca envia `contextId`. O servidor deriva exclusivamente
+`user-<sub>`, impedindo leitura cruzada entre usuários e acesso a contextos
+compartilhados.
+
 ## Compatibilidade com o sufficit-ai
 
 O sufficit-ai continua podendo consumir seu endpoint MCP durante a transição,
@@ -157,7 +196,7 @@ interativo — imposto no servidor, não por configuração:
 - público (sem client secret) e obrigatoriamente PKCE;
 - grants apenas `authorization_code` e `refresh_token`
   (`Sufficit:Identity:Mcp:Dcr:AnonymousGrantTypes`);
-- escopos apenas `openid`, `profile`, `offline_access`
+- escopos apenas `openid`, `profile`, `email`, `offline_access`
   (`Sufficit:Identity:Mcp:Dcr:AnonymousScopes`) — nenhum escopo de API ou
   administrativo, portanto o client não alcança o Management;
 - pedidos fora desse perfil são **recusados** (400), nunca reduzidos em
