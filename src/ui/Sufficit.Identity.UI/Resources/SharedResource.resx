@@ -432,6 +432,8 @@
   <data name="Device.CloseTab" xml:space="preserve"><value>Fechar esta aba</value></data>
   <data name="Device.CloseFallback" xml:space="preserve"><value>O navegador não permitiu fechar esta aba automaticamente. Você pode fechá-la pelo controle de abas e voltar ao dispositivo que iniciou o acesso.</value></data>
   <data name="Device.CloseNoScript" xml:space="preserve"><value>Você pode fechar esta aba e voltar ao dispositivo que iniciou o acesso.</value></data>
+  <data name="Device.ReturnToGenius" xml:space="preserve"><value>Voltar ao Genius</value></data>
+  <data name="Device.ReturnToGeniusHint" xml:space="preserve"><value>Se o aplicativo não abrir automaticamente, toque no botão acima.</value></data>
   <data name="Device.CodeHint" xml:space="preserve"><value>O código identifica esta solicitação e expira em poucos minutos.</value></data>
   <data name="Device.ConfirmationFailed" xml:space="preserve"><value>Não foi possível confirmar</value></data>
   <data name="Device.ConfirmTitle" xml:space="preserve"><value>Confirmar acesso</value></data>

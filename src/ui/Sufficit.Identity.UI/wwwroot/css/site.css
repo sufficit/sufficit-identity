@@ -1486,6 +1486,13 @@ img.profile-avatar { background: var(--surface-sunken); }
     line-height: 1.5;
     text-align: center;
 }
+.device-return-hint {
+    margin: var(--space-3) 0 0;
+    color: var(--ink-muted);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    text-align: center;
+}
 
 @media (max-width: 520px) {
     .device-validity__row {

@@ -124,6 +124,32 @@ document.addEventListener('change', function (event) {
             && result.dataset.deviceLaunchMode === 'popup');
     }
 
+    function initializeNativeAppReturn(result) {
+        var returnLink = document.querySelector('[data-device-flow-return]');
+        if (!result
+            || result.dataset.deviceLaunchMode !== 'app'
+            || !returnLink) {
+            return false;
+        }
+
+        result.removeAttribute('aria-busy');
+        logDeviceFlow('native-app-return-available', {
+            result: result.dataset.deviceFlowResult || 'completed'
+        });
+
+        if (result.dataset.deviceAppReturnAttempted !== 'true') {
+            result.dataset.deviceAppReturnAttempted = 'true';
+            window.setTimeout(function () {
+                logDeviceFlow('native-app-return-attempted', {
+                    result: result.dataset.deviceFlowResult || 'completed'
+                });
+                returnLink.click();
+            }, 0);
+        }
+
+        return true;
+    }
+
     function notifyPopupOpener(result) {
         if (!isPopupLaunch(result) || !canAttemptScriptClose()) return false;
 
@@ -289,6 +315,11 @@ document.addEventListener('change', function (event) {
         if (!result || result.dataset.deviceCloseInitialized === 'true') return;
 
         result.dataset.deviceCloseInitialized = 'true';
+
+        // Native clients provide a fixed, allow-listed callback. Try it once
+        // after authorization and keep the real link visible so a browser that
+        // blocks automatic custom-scheme navigation still offers one clear tap.
+        if (initializeNativeAppReturn(result)) return;
 
         var closeButton = document.querySelector('[data-device-flow-close]');
         var scriptCloseAvailable = canAttemptScriptClose();

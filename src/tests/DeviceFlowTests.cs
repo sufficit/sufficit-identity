@@ -171,6 +171,19 @@ public sealed class DeviceFlowTests
         Assert.Contains("device_context=", confirmationPath);
         Assert.Contains("launch_mode=popup", confirmationPath);
 
+        var nativeVerificationPath = verificationPath
+            .Replace("launch_mode=popup", "launch_mode=app", StringComparison.Ordinal)
+            + "&return_uri="
+            + Uri.EscapeDataString(DeviceAuthorizationReturnTargets.Genius);
+        using var nativeVerificationResponse = await client.GetAsync(nativeVerificationPath);
+        Assert.Equal(HttpStatusCode.Redirect, nativeVerificationResponse.StatusCode);
+        var nativeConfirmationPath = nativeVerificationResponse.Headers.Location?.OriginalString;
+        Assert.NotNull(nativeConfirmationPath);
+        Assert.Contains("launch_mode=app", nativeConfirmationPath);
+        Assert.Contains(
+            "return_uri=sufficit-genius%3A%2F%2Fauth-complete",
+            nativeConfirmationPath);
+
         using var scope = _factory.Services.CreateScope();
         var accessor = scope.ServiceProvider.GetRequiredService<IHttpContextAccessor>();
         accessor.HttpContext = new DefaultHttpContext
@@ -244,13 +257,14 @@ public sealed class DeviceFlowTests
             {
                 ["user_code"] = userCode,
                 ["approved"] = "true",
-                ["launch_mode"] = "popup",
+                ["launch_mode"] = "app",
+                ["return_uri"] = DeviceAuthorizationReturnTargets.Genius,
                 ["__RequestVerificationToken"] = antiforgeryToken,
             }));
 
         Assert.Equal(HttpStatusCode.Redirect, approveResponse.StatusCode);
         Assert.Equal(
-            "/device?result=approved&launch_mode=popup",
+            "/device?result=approved&launch_mode=app&return_uri=sufficit-genius%3A%2F%2Fauth-complete",
             approveResponse.Headers.Location?.OriginalString);
 
         // --- Device side: poll again, now expecting a token. ---
