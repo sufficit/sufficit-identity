@@ -89,14 +89,32 @@ internal sealed class ManagementAuditRetentionWorker(
         {
             await using var database =
                 await databaseFactory.CreateDbContextAsync(cancellationToken);
-            var deleted = await database.ManagementAuditEvents
+
+            // Select the batch's ids first, then delete by that materialized
+            // list. Expressing the batch as Take(...).ExecuteDeleteAsync()
+            // instead makes EF emit DELETE ... WHERE id IN (SELECT ... LIMIT n),
+            // and MariaDB rejects that outright: "This version of MariaDB
+            // doesn't yet support 'LIMIT & IN/ALL/ANY/SOME subquery'". SQLite
+            // translates the same expression differently, so the test suite
+            // never saw it — only production did.
+            var batchIds = await database.ManagementAuditEvents
                 .Where(item => item.OccurredAtUtc < cutoff)
                 .OrderBy(item => item.Id)
                 .Take(BatchSize)
+                .Select(item => item.Id)
+                .ToListAsync(cancellationToken);
+
+            if (batchIds.Count == 0)
+            {
+                break;
+            }
+
+            var deleted = await database.ManagementAuditEvents
+                .Where(item => batchIds.Contains(item.Id))
                 .ExecuteDeleteAsync(cancellationToken);
 
             removed += deleted;
-            if (deleted < BatchSize)
+            if (batchIds.Count < BatchSize)
             {
                 break;
             }
