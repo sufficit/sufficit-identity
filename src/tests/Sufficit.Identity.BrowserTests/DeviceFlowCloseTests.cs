@@ -129,6 +129,40 @@ public sealed class DeviceFlowCloseTests : PageTest
     }
 
     [Test]
+    public async Task Native_app_completion_attempts_return_and_keeps_the_manual_action()
+    {
+        await Page.SetContentAsync("""
+            <main data-device-flow-result="approved" data-device-launch-mode="app">
+                <a href="sufficit-genius://auth-complete" data-device-flow-return>Voltar ao Genius</a>
+                <p data-device-close-fallback hidden>Fechamento manual</p>
+            </main>
+            """);
+        await Page.EvaluateAsync("""
+            () => {
+                window.__nativeReturnClicks = 0;
+                HTMLAnchorElement.prototype.click = function () {
+                    window.__nativeReturnClicks += 1;
+                };
+            }
+            """);
+        await Page.AddScriptTagAsync(new PageAddScriptTagOptions
+        {
+            Path = ResolveIdentityScript()
+        });
+
+        await Page.WaitForFunctionAsync("window.__nativeReturnClicks === 1");
+        Assert.That(
+            await Page.Locator("[data-device-flow-return]").IsVisibleAsync(),
+            Is.True);
+        Assert.That(
+            await Page.Locator("[data-device-flow-return]").GetAttributeAsync("href"),
+            Is.EqualTo("sufficit-genius://auth-complete"));
+        Assert.That(
+            await Page.Locator("[data-device-close-fallback]").IsHiddenAsync(),
+            Is.True);
+    }
+
+    [Test]
     public async Task Missing_opener_shows_manual_fallback_without_close_control()
     {
         await Page.SetContentAsync("""

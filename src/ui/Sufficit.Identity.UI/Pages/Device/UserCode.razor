@@ -13,7 +13,7 @@
     {
         @if (_resultApproved == true)
         {
-            <div class="device-result" role="status" data-device-flow-result="approved" data-device-launch-mode="@(IsPopup ? "popup" : null)">
+            <div class="device-result" role="status" data-device-flow-result="approved" data-device-launch-mode="@TerminalLaunchMode">
                 <span class="device-result__icon" aria-hidden="true">✓</span>
                 <h1>@L["Device.ApprovedTitle"]</h1>
                 <p>@L["Device.Approved"]</p>
@@ -21,23 +21,39 @@
         }
         else
         {
-            <div class="device-result" role="status" data-device-flow-result="denied" data-device-launch-mode="@(IsPopup ? "popup" : null)">
+            <div class="device-result" role="status" data-device-flow-result="denied" data-device-launch-mode="@TerminalLaunchMode">
                 <span class="device-result__icon device-result__icon--denied" aria-hidden="true">×</span>
                 <h1>@L["Device.DeniedTitle"]</h1>
                 <p>@L["Device.Denied"]</p>
             </div>
         }
-        <button type="button" class="btn btn-primary btn-block" data-device-flow-close>
-            @L["Device.CloseTab"]
-        </button>
-        <p id="device-close-fallback" class="device-close-fallback" data-device-close-fallback hidden role="status" aria-live="polite">
-            @L["Device.CloseFallback"]
-        </p>
-        <noscript>
-            <p class="device-close-fallback">
-                @L["Device.CloseNoScript"]
+        @if (NativeReturnUri is { } returnUri)
+        {
+            <a class="btn btn-primary btn-block" href="@returnUri"
+               data-device-flow-return aria-describedby="device-return-hint">
+                @L["Device.ReturnToGenius"]
+            </a>
+            <p id="device-return-hint" class="device-return-hint">
+                @L["Device.ReturnToGeniusHint"]
             </p>
-        </noscript>
+        }
+        else
+        {
+            <button type="button" class="btn btn-primary btn-block" data-device-flow-close>
+                @L["Device.CloseTab"]
+            </button>
+            <p id="device-close-fallback" class="device-close-fallback" data-device-close-fallback hidden role="status" aria-live="polite">
+                @L["Device.CloseFallback"]
+            </p>
+        }
+        @if (NativeReturnUri is null)
+        {
+            <noscript>
+                <p class="device-close-fallback">
+                    @L["Device.CloseNoScript"]
+                </p>
+            </noscript>
+        }
     }
     else if (string.IsNullOrEmpty(_userCode))
     {
@@ -169,6 +185,11 @@
             {
                 <input type="hidden" name="launch_mode" value="popup" />
             }
+            else if (NativeReturnUri is { } returnUri)
+            {
+                <input type="hidden" name="launch_mode" value="app" />
+                <input type="hidden" name="return_uri" value="@returnUri" />
+            }
 
             <div class="btn-group device-authorization-actions">
                 <button type="submit" name="approved" value="true" class="btn btn-primary btn-block">
@@ -187,6 +208,7 @@
     [SupplyParameterFromQuery(Name = "code")] private string? LegacyCodeQuery { get; set; }
     [SupplyParameterFromQuery(Name = "result")] private string? Result { get; set; }
     [SupplyParameterFromQuery(Name = "launch_mode")] private string? LaunchModeQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "return_uri")] private string? ReturnUriQuery { get; set; }
 
     private string? _userCode;
     private string? _displayCode;
@@ -202,6 +224,15 @@
 
     private bool IsPopup =>
         string.Equals(LaunchModeQuery, "popup", StringComparison.OrdinalIgnoreCase);
+
+    private string? NativeReturnUri =>
+        string.Equals(LaunchModeQuery, "app", StringComparison.OrdinalIgnoreCase)
+            ? DeviceAuthorizationReturnTargets.Normalize(ReturnUriQuery)
+            : null;
+
+    private string? TerminalLaunchMode => NativeReturnUri is not null
+        ? "app"
+        : IsPopup ? "popup" : null;
 
     private string ClientInitial => string.IsNullOrWhiteSpace(_clientName)
         ? "A"

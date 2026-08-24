@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
+using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Core.Entities;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -188,10 +189,21 @@ public class DeviceController : Controller
             [OpenIddictDeviceAuthorizationContextService.TicketParameterName] = ticket,
         });
 
-        // The popup marker belongs to the browser-facing part of the device
-        // flow. Keep it out of the protocol ticket, but carry it to the final
-        // UI page so that the page can notify its opener and close itself.
-        if (IsPopupLaunchMode(Request.Query["launch_mode"]))
+        // Browser launch context belongs to the presentation layer, not the
+        // protocol ticket. Native callbacks are reduced to a fixed allow-list
+        // before they cross either redirect boundary.
+        var nativeReturnUri = DeviceAuthorizationReturnTargets.Normalize(
+            Request.Query["return_uri"].ToString());
+        if (IsNativeAppLaunchMode(Request.Query["launch_mode"])
+            && nativeReturnUri is not null)
+        {
+            target = QueryHelpers.AddQueryString(target, new Dictionary<string, string?>
+            {
+                ["launch_mode"] = "app",
+                ["return_uri"] = nativeReturnUri,
+            });
+        }
+        else if (IsPopupLaunchMode(Request.Query["launch_mode"]))
         {
             target = QueryHelpers.AddQueryString(target, "launch_mode", "popup");
         }
@@ -314,7 +326,10 @@ public class DeviceController : Controller
                         "The end user refused to authorize the device."
                 })
                 {
-                    RedirectUri = BuildDeviceResultUri("denied", Request.Form["launch_mode"])
+                    RedirectUri = BuildDeviceResultUri(
+                        "denied",
+                        Request.Form["launch_mode"],
+                        Request.Form["return_uri"])
                 });
         }
 
@@ -371,14 +386,30 @@ public class DeviceController : Controller
             new ClaimsPrincipal(identity),
             new AuthenticationProperties
             {
-                RedirectUri = BuildDeviceResultUri("approved", Request.Form["launch_mode"])
+                RedirectUri = BuildDeviceResultUri(
+                    "approved",
+                    Request.Form["launch_mode"],
+                    Request.Form["return_uri"])
             },
             OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 
-    private static string BuildDeviceResultUri(string result, string? launchMode)
+    private static string BuildDeviceResultUri(
+        string result,
+        string? launchMode,
+        string? returnUri)
     {
         var target = QueryHelpers.AddQueryString("/device", "result", result);
+        var nativeReturnUri = DeviceAuthorizationReturnTargets.Normalize(returnUri);
+        if (IsNativeAppLaunchMode(launchMode) && nativeReturnUri is not null)
+        {
+            return QueryHelpers.AddQueryString(target, new Dictionary<string, string?>
+            {
+                ["launch_mode"] = "app",
+                ["return_uri"] = nativeReturnUri,
+            });
+        }
+
         return IsPopupLaunchMode(launchMode)
             ? QueryHelpers.AddQueryString(target, "launch_mode", "popup")
             : target;
@@ -386,6 +417,9 @@ public class DeviceController : Controller
 
     private static bool IsPopupLaunchMode(string? launchMode) =>
         string.Equals(launchMode, "popup", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsNativeAppLaunchMode(string? launchMode) =>
+        string.Equals(launchMode, "app", StringComparison.OrdinalIgnoreCase);
 
     private static string NormalizeUserCode(string code) =>
         code.Trim().ToUpperInvariant().Replace("-", string.Empty).Replace(" ", string.Empty);
