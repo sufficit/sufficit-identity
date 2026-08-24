@@ -40,7 +40,7 @@ public static class TestDataSeeder
         "https://client.tests.local/signout-callback-oidc";
 
     // Confidential client: RFC 8628 device authorization grant.
-    public const string DeviceClientId = "test-device";
+    public const string DeviceClientId = "sufficit-ai-genius";
     public const string DeviceClientSecret = "test-device-secret";
 
     // Confidential client carrying the OpenIddict-level
@@ -127,9 +127,7 @@ public static class TestDataSeeder
                 Permissions.Prefixes.Scope + ScopeName,
                 Permissions.Prefixes.Scope + Scopes.Roles,
                 Permissions.Prefixes.Scope + "directives",
-                // Lets the MCP scope-gate tests request "mcp" explicitly. No
-                // existing test asks for it, so this is additive.
-                Permissions.Prefixes.Scope + "mcp",
+                Permissions.Prefixes.Scope + "identity.mcp",
             },
         });
 
@@ -221,6 +219,7 @@ public static class TestDataSeeder
                 Permissions.Prefixes.Scope + ScopeName,
                 Permissions.Prefixes.Scope + "directives",
                 Permissions.Prefixes.Scope + "sufficit_ai_openai_bridge",
+                Permissions.Prefixes.Scope + "identity.mcp",
             },
         };
         deviceApplication.SetAccessTokenLifetime(TimeSpan.FromMinutes(45));

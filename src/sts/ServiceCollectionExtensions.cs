@@ -655,6 +655,8 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<Application.Security.IPrivilegedTokenMintingService,
             PrivilegedTokenMintingService>();
         services.AddScoped<Grants.GrantOperations>();
+        services.AddSingleton<McpScopeGrantPolicy>();
+        services.AddScoped<McpScopeProvisioner>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.UserTokenGrantsHandler>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.DeviceCodeGrantHandler>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.ClientCredentialsGrantHandler>();

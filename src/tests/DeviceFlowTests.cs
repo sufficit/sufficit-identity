@@ -276,6 +276,7 @@ public sealed class DeviceFlowTests
         Assert.Contains("email", grantedScopes);
         Assert.Contains("offline_access", grantedScopes);
         Assert.Contains(TestDataSeeder.ScopeName, grantedScopes);
+        Assert.Contains("identity.mcp", grantedScopes);
 
         using var userInfoRequest = new HttpRequestMessage(HttpMethod.Get, "/connect/userinfo");
         userInfoRequest.Headers.Authorization =
@@ -357,7 +358,7 @@ public sealed class DeviceFlowTests
             Assert.True(removal.Succeeded);
         }
 
-        var (refreshStatus, _) = await client.PostFormAsync(
+        var (refreshStatus, refreshBody) = await client.PostFormAsync(
             "/connect/token",
             new Dictionary<string, string>
             {
@@ -367,6 +368,10 @@ public sealed class DeviceFlowTests
                 ["client_secret"] = TestDataSeeder.DeviceClientSecret,
             });
         Assert.Equal(HttpStatusCode.OK, refreshStatus);
+        Assert.Contains(
+            "identity.mcp",
+            refreshBody.GetProperty("scope").GetString()!
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
         using var repairedScope = _factory.Services.CreateScope();
         var repairedUserManager = repairedScope.ServiceProvider
