@@ -2,8 +2,11 @@
   "version": 2,
   "dependencies": {
     "net10.0": {
-      "sufficit.blazor.ui": {
-        "type": "Project"
+      "Sufficit.Blazor.UI": {
+        "type": "Direct",
+        "requested": "[1.28.0, )",
+        "resolved": "1.28.0",
+        "contentHash": "KbXyptYZiVINZH8dTGOFAbVSrbLkE6AwtEN51CNlg5SiqaJ1XoQTpHqRXbPLEax57i5jm08kRTb61L+injMBSw=="
       }
     }
   }
