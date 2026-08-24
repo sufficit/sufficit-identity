@@ -68,7 +68,8 @@ public sealed class ProtectedResourceMetadataController : ControllerBase
             {
                 "openid", "profile", "email", "roles",
                 "identity.management",
-                "sufficit_ai_openai_bridge"
+                "sufficit_ai_openai_bridge",
+                _options.Mcp.RequiredScope
             }.Concat(applicationScopes).Distinct(StringComparer.Ordinal).ToArray(),
             // Introspection is the protected resource this host exposes for RSs.
             introspection_signing_alg_values_supported = new[] { "RS256" }
