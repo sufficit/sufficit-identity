@@ -108,9 +108,11 @@ Before deploying to production:
 
 - [ ] **Certificates** — generate two X.509 PFX files (signing + encryption) and configure `Certificates.SigningPath` / `EncryptionPath`
 - [ ] **Issuer** — set `Issuer` to the public HTTPS URL (e.g. `https://identity.example.com/`)
-- [ ] **TrustedProxies** — list the CIDR ranges of your reverse proxy network so forwarded headers work and rate limiting partitions by real client IP
+- [ ] **TrustedProxies** — list the CIDR ranges of your reverse proxy network so forwarded headers work and rate limiting partitions by real client IP. This now matters for the management API and SCIM too: without it every administrative caller shares the proxy's bucket
 - [ ] **Database** — run `dotnet ef database update` (or apply `docs/migration/sql/001-create-empty-database.sql`) against your MariaDB instance
-- [ ] **Rate limiting** — verify `RateLimit.Enabled=true` and `FailOnUntrustedProxy=true` so a missing proxy config fails fast instead of self-DoSing
+- [ ] **Rate limiting** — verify `RateLimit.Enabled=true` and `FailOnUntrustedProxy=true` so a missing proxy config fails fast instead of self-DoSing. `AdministrativePermitLimit` (600/min) covers the management API and SCIM; `AdministrativeBulkPermitLimit` (30/min) is a separate bucket for whole-collection commands — provisioning manifest inventory/preview/apply and revoking every session of a user — so one cannot exhaust the other's budget
+- [ ] **Swagger** — `Swagger.Enabled` is unset by default, which publishes the contract in Development only. Both endpoints are anonymous, so setting it `true` in production hands any caller the full management/SCIM/provisioning/vault route inventory; set it explicitly to `false` if you want that decision recorded rather than implied
+- [ ] **Audit retention** — `Management.AuditRetentionDays` defaults to 15. The table is append-only and nothing pruned it before this setting existed, so the first run after upgrading deletes everything older; export the history first if you need it, or set `0` to disable pruning
 - [ ] **CSP** — calibrate `Csp.ReportOnly` against the real UI, then flip to `false` (enforce)
 - [ ] **Secrets at rest** — deploy readers first, set `Sufficit__Vault__Enabled=true`, migrate os valores `pt1.` e prove zero leituras legadas; `RequireEncryptionInProduction` não desliga o guard e existe apenas por compatibilidade (see [`RUNBOOK-VAULT.md`](docs/runbooks/RUNBOOK-VAULT.md))
 - [ ] **Docker** — the included Dockerfile builds a non-root, digest-pinned image. Mount secrets via env vars or files.
