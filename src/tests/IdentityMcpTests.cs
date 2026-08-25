@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Core.Entities;
@@ -252,6 +253,99 @@ public sealed class IdentityMcpTests
         Assert.Contains(
             "resource_metadata=\"https://identity.sufficit.com.br/.well-known/oauth-protected-resource\"",
             header);
+    }
+
+    [Fact]
+    public async Task Integration_oauth_is_scope_gated_and_never_asks_for_a_provider_token()
+    {
+        await using var factory = new ManagementTestFactory(
+            bypassAuthz: false,
+            extraConfiguration: new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:ExternalProviders:Google:Enabled"] = "true",
+                ["Sufficit:Identity:ExternalProviders:Google:ClientId"] =
+                    "test-google-client.apps.googleusercontent.com",
+                ["Sufficit:Identity:ExternalProviders:Google:ClientSecret"] =
+                    "test-google-secret",
+                ["Sufficit:Identity:ExternalProviders:Google:ProjectId"] =
+                    "test-google-project",
+            },
+            enablePersonalVaultTestSurface: true);
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        using var anonymous = factory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        using var denied = await anonymous.PostAsync(
+            "/api/integrations/oauth/google-workspace/authorize",
+            content: null);
+        Assert.Equal(HttpStatusCode.Unauthorized, denied.StatusCode);
+
+        using var client = factory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        await AuthenticateAsync(client);
+        using var status = await client.GetAsync(
+            "/api/integrations/oauth/google-workspace/status");
+        Assert.Equal(HttpStatusCode.OK, status.StatusCode);
+        var statusBody = await status.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(statusBody.GetProperty("available").GetBoolean());
+        Assert.False(statusBody.GetProperty("connected").GetBoolean());
+
+        using var authorization = await client.PostAsync(
+            "/api/integrations/oauth/google-workspace/authorize",
+            content: null);
+        Assert.Equal(HttpStatusCode.OK, authorization.StatusCode);
+        var body = await authorization.Content.ReadFromJsonAsync<JsonElement>();
+        var authorizationUrl = body.GetProperty("authorizationUrl").GetString();
+        Assert.NotNull(authorizationUrl);
+        Assert.StartsWith(
+            "http://localhost/api/integrations/oauth/google-workspace/start?ticket=",
+            authorizationUrl,
+            StringComparison.Ordinal);
+        var serialized = body.GetRawText();
+        Assert.DoesNotContain("test-google-secret", serialized, StringComparison.Ordinal);
+        Assert.DoesNotContain("access_token", serialized, StringComparison.OrdinalIgnoreCase);
+
+        using var challenge = await client.GetAsync(authorizationUrl);
+        Assert.Equal(HttpStatusCode.Redirect, challenge.StatusCode);
+        var location = challenge.Headers.Location?.ToString();
+        Assert.NotNull(location);
+        Assert.StartsWith(
+            "https://accounts.google.com/o/oauth2/v2/auth",
+            location,
+            StringComparison.Ordinal);
+        Assert.Contains("gmail.modify", Uri.UnescapeDataString(location));
+        Assert.Contains("/auth/documents", Uri.UnescapeDataString(location));
+
+        using var malformed = await client.GetAsync(
+            "/api/integrations/oauth/google-workspace/start?ticket=invalid");
+        Assert.Equal(HttpStatusCode.BadRequest, malformed.StatusCode);
+    }
+
+    [Fact]
+    public async Task Unconfigured_static_provider_is_reported_without_manual_token_fallback()
+    {
+        await using var factory = new ManagementTestFactory(
+            bypassAuthz: false,
+            enablePersonalVaultTestSurface: true);
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient();
+        await AuthenticateAsync(client);
+
+        using var status = await client.GetAsync(
+            "/api/integrations/oauth/github/status");
+        Assert.Equal(HttpStatusCode.OK, status.StatusCode);
+        var statusBody = await status.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(statusBody.GetProperty("available").GetBoolean());
+        Assert.False(statusBody.GetProperty("connected").GetBoolean());
+
+        using var authorize = await client.PostAsync(
+            "/api/integrations/oauth/github/authorize",
+            content: null);
+        Assert.Equal(HttpStatusCode.Conflict, authorize.StatusCode);
+        Assert.DoesNotContain(
+            "token",
+            await authorize.Content.ReadAsStringAsync(),
+            StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task AuthenticateAsync(

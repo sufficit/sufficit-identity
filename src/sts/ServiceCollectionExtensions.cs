@@ -33,6 +33,7 @@ using Sufficit.Identity.STS.Email;
 using Sufficit.Identity.STS.Metrics;
 using Sufficit.Identity.Core.Metrics;
 using Sufficit.Identity.Management;
+using Sufficit.Identity.STS.Integrations;
 using Sufficit.Identity.Vault;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -577,6 +578,11 @@ public static partial class ServiceCollectionExtensions
         // Each provider is registered only if Enabled=true and credentials
         // are present. The UI (Login.razor) lists the registered schemes
         // automatically via SignInManager.GetExternalAuthenticationSchemesAsync().
+        services.AddSingleton(new IntegrationOAuthProviderRegistry(
+            configuration,
+            startupSecretStore));
+        services.AddHttpClient("identity-integration-oauth", client =>
+            client.Timeout = TimeSpan.FromSeconds(30));
         var externalBuilder = services.AddAuthentication();
         AddExternalProviders(externalBuilder, configuration, startupSecretStore);
 
@@ -1275,6 +1281,10 @@ public static partial class ServiceCollectionExtensions
     /// </summary>
     private static void ConfigureExternalProvider(OAuthOptions options)
     {
+        // The external cookie is also the short-lived handoff used by the
+        // integration broker. Tokens stay server-side and are immediately
+        // moved into the authenticated subject's personal Vault.
+        options.SaveTokens = true;
         options.CorrelationCookie.SameSite = SameSiteMode.None;
         options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.Always;
         options.CorrelationCookie.HttpOnly = true;
