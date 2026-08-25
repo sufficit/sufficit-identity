@@ -32,6 +32,7 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Completed work (activities/)
 
+- [Evaluation remediation and god-service decomposition](activities/202608240940-fable-5-evaluation-remediation.md) — vault signature verification, audit retention and volume, administrative rate limiting, refusal-audit rule
 - [Identity MCP — Vault and self-service](activities/202608162300-identity-mcp-vault-self-service.md)
 - [Reconciliação do plano de autorização, SCIM e segredos](activities/202608092130-security-plan-reconciliation.md)
 - [Normalização de nomes e resumos das atividades](activities/202608092120-activity-documentation-normalization.md)

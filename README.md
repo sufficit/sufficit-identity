@@ -64,7 +64,8 @@ Tests ─────────────────────  318 integ
 - **OAuth 2.1 secure-by-default**: PKCE mandatory for all code clients, `plain` removed, implicit/hybrid/password/none grants default-off, token exchange default-off with client allowlist, refresh-token rotation always on
 - **Production cert enforcement**: missing signing/encryption PFX is a fatal startup error outside Development
 - **Cookie `Secure=Always`**, issuer pinning, antiforgery on every state-changing endpoint
-- **Account lockout** on both interactive login and password grant, plus per-IP token-endpoint rate limiting
+- **Account lockout** on both interactive login and password grant, plus per-IP rate limiting across every credential surface (`POST /connect/*`, `/bc-authorize`, interactive `/account/*`) and the administrative APIs (management + SCIM), with whole-collection commands in their own bucket so a provisioning run and ordinary calls cannot starve each other
+- **Bounded audit growth**: management audit history is pruned past `Management.AuditRetentionDays` (15 by default), and repeated identical refusals collapse to one row per operator/capability/resource per window
 - **DCR** disabled by default, constant-time-compared initial access token, fail-closed
 - **CSP** (tightened `connect-src`, no ws/wss wildcard), Permissions-Policy (deny-all), COOP, CORP
 - **Data Protection keys** encrypted at rest with the signing certificate
