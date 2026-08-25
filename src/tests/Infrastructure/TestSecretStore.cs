@@ -26,6 +26,18 @@ internal sealed class TestSecretStore : ISecretStore
                 configuration["ConnectionStrings:DefaultConnection"],
             "identity/dcr/initial-access-token" =>
                 configuration["Sufficit:Identity:Mcp:Dcr:InitialAccessToken"],
+            "identity/external-providers/google/client-id" =>
+                configuration["Sufficit:Identity:ExternalProviders:Google:ClientId"],
+            "identity/external-providers/google/client-secret" =>
+                configuration["Sufficit:Identity:ExternalProviders:Google:ClientSecret"],
+            "identity/external-providers/github/client-id" =>
+                configuration["Sufficit:Identity:ExternalProviders:GitHub:ClientId"],
+            "identity/external-providers/github/client-secret" =>
+                configuration["Sufficit:Identity:ExternalProviders:GitHub:ClientSecret"],
+            "identity/external-providers/facebook/client-id" =>
+                configuration["Sufficit:Identity:ExternalProviders:Facebook:ClientId"],
+            "identity/external-providers/facebook/client-secret" =>
+                configuration["Sufficit:Identity:ExternalProviders:Facebook:ClientSecret"],
             _ => null,
         });
     }
