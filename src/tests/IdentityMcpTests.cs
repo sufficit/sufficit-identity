@@ -171,6 +171,16 @@ public sealed class IdentityMcpTests
         });
         Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
 
+        using var listed = await alice.GetAsync("/api/vault/personal/secrets");
+        Assert.Equal(HttpStatusCode.OK, listed.StatusCode);
+        var listedBody = await listed.Content.ReadFromJsonAsync<JsonElement>();
+        var listedSecret = Assert.Single(
+            listedBody.GetProperty("secrets").EnumerateArray());
+        Assert.Equal(
+            "genius/device-1/external/github-token",
+            listedSecret.GetProperty("name").GetString());
+        Assert.False(listedSecret.TryGetProperty("value", out _));
+
         using var resolved = await alice.GetAsync(path);
         Assert.Equal(HttpStatusCode.OK, resolved.StatusCode);
         var resolvedBody = await resolved.Content.ReadFromJsonAsync<JsonElement>();
@@ -194,6 +204,30 @@ public sealed class IdentityMcpTests
             password: bobPassword);
         using var isolated = await bob.GetAsync(path);
         Assert.Equal(HttpStatusCode.NotFound, isolated.StatusCode);
+
+        using var bobListed = await bob.GetAsync("/api/vault/personal/secrets");
+        Assert.Equal(HttpStatusCode.OK, bobListed.StatusCode);
+        var bobListBody = await bobListed.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Empty(bobListBody.GetProperty("secrets").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Personal_account_profile_is_subject_bound_and_includes_no_secrets()
+    {
+        await using var factory = ManagementTestFactory.CreateWithRealAuthz();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var client = factory.CreateClient();
+        await AuthenticateAsync(client);
+
+        using var response = await client.GetAsync("/api/account/personal");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(
+            TestDataSeeder.DefaultUsername,
+            body.GetProperty("userName").GetString());
+        Assert.True(body.TryGetProperty("avatarUrl", out _));
+        Assert.False(body.TryGetProperty("passwordHash", out _));
     }
 
     [Fact]

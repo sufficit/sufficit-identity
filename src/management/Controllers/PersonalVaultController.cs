@@ -27,6 +27,32 @@ public sealed class PersonalVaultController(
     AppDbContext database,
     IOptions<VaultOptions> options) : ControllerBase
 {
+    [HttpGet]
+    public async Task<IActionResult> List(
+        CancellationToken cancellationToken = default)
+    {
+        EnsureEnabled();
+        var items = await store.ListAsync(
+            PersonalContext(),
+            namespaces: null,
+            cancellationToken);
+        var now = DateTime.UtcNow;
+
+        return Ok(new
+        {
+            secrets = items.Select(item => new
+            {
+                name = item.Name,
+                @namespace = item.Namespace,
+                updatedAtUtc = item.UpdatedAtUtc,
+                expiresAtUtc = item.ExpiresAtUtc,
+                status = VaultSecretExpiration.GetStatus(
+                    item.ExpiresAtUtc,
+                    now).ToString(),
+            }),
+        });
+    }
+
     [HttpGet("{*name}")]
     public async Task<IActionResult> Resolve(
         string name,

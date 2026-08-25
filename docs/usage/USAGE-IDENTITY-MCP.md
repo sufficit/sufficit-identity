@@ -148,6 +148,7 @@ Content-Type: application/json
 ```
 
 - `GET /api/vault/personal/secrets/{nome}` resolve o valor e audita a operação;
+- `GET /api/vault/personal/secrets` lista somente metadados do cofre pessoal;
 - `PUT` cria ou rotaciona;
 - `DELETE` remove;
 - `404` significa ausente e `410` expirado.
@@ -155,6 +156,11 @@ Content-Type: application/json
 O cliente nunca envia `contextId`. O servidor deriva exclusivamente
 `user-<sub>`, impedindo leitura cruzada entre usuários e acesso a contextos
 compartilhados.
+
+O perfil próprio usado por clientes first-party fica em
+`GET /api/account/personal`, protegido pelo mesmo scope. A resposta contém os
+dados da conta e a URL de avatar resolvida pelo tema ativo. O subject vem
+exclusivamente do bearer; não há parâmetro para selecionar outro usuário.
 
 ## Compatibilidade com o sufficit-ai
 
