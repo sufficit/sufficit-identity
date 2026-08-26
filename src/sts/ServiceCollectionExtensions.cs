@@ -1289,6 +1289,19 @@ public static partial class ServiceCollectionExtensions
         options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.Always;
         options.CorrelationCookie.HttpOnly = true;
 
+        // OAuthHandler persists access/refresh tokens when SaveTokens is set,
+        // but it intentionally omits the token endpoint's `scope` field. The
+        // integration broker must retain that provider-authenticated value so
+        // /status and /access can enforce the complete required-scope set
+        // instead of treating every successful provider callback as usable.
+        options.Events.OnCreatingTicket = context =>
+        {
+            IntegrationOAuthProtocol.StoreGrantedScope(
+                context.Properties,
+                context.TokenResponse);
+            return Task.CompletedTask;
+        };
+
         options.Events.OnRemoteFailure = context =>
         {
             var logger = context.HttpContext.RequestServices

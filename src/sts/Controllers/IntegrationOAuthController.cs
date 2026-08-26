@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
+using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.STS.Integrations;
 using Sufficit.Identity.Vault;
 using WebBase64UrlTextEncoder = Microsoft.AspNetCore.WebUtilities.Base64UrlTextEncoder;
@@ -65,6 +66,7 @@ public sealed class IntegrationOAuthController(
     [HttpPost("{provider}/authorize")]
     public async Task<IActionResult> Authorize(
         string provider,
+        [FromQuery(Name = "return_uri")] string? returnUri,
         CancellationToken cancellationToken)
     {
         var definition = providers.Find(provider);
@@ -81,10 +83,12 @@ public sealed class IntegrationOAuthController(
         var subject = Subject();
         var nonce = WebBase64UrlTextEncoder.Encode(RandomNumberGenerator.GetBytes(24));
         var callbackUri = AbsoluteCallback(definition.Id);
+        var nativeReturnUri = DeviceAuthorizationReturnTargets.Normalize(returnUri)
+            ?? ReturnUri;
         var pending = definition.RegistrationEndpoint is null
             ? new PendingIntegrationOAuth(
                 definition.Id,
-                ReturnUri,
+                nativeReturnUri,
                 callbackUri,
                 CodeVerifier: null,
                 ClientId: null,
@@ -92,6 +96,7 @@ public sealed class IntegrationOAuthController(
             : await RegisterDynamicClientAsync(
                 definition,
                 callbackUri,
+                nativeReturnUri,
                 cancellationToken);
         await secrets.PutAsync(
             PendingName(nonce),
@@ -177,16 +182,16 @@ public sealed class IntegrationOAuthController(
         }
         catch (Exception exception) when (exception is CryptographicException or FormatException)
         {
-            return Redirect(ReturnLocation(definition.Id, "expired"));
+            return Redirect(ReturnLocation(ReturnUri, definition.Id, "expired"));
         }
 
         var pending = await ReadPendingAsync(flow, cancellationToken);
         if (pending is null)
-            return Redirect(ReturnLocation(definition.Id, "expired"));
+            return Redirect(ReturnLocation(ReturnUri, definition.Id, "expired"));
         if (!string.IsNullOrWhiteSpace(error))
         {
             await DeletePendingAsync(flow, cancellationToken);
-            return Redirect(ReturnLocation(definition.Id, "cancelled"));
+            return Redirect(ReturnLocation(pending.ReturnUri, definition.Id, "cancelled"));
         }
 
         try
@@ -197,7 +202,7 @@ public sealed class IntegrationOAuthController(
                 var authentication = await HttpContext.AuthenticateAsync(
                     IdentityConstants.ExternalScheme);
                 if (!authentication.Succeeded || authentication.Properties is null)
-                    return Redirect(ReturnLocation(definition.Id, "failed"));
+                    return Redirect(ReturnLocation(pending.ReturnUri, definition.Id, "failed"));
                 authentication.Properties.Items.TryGetValue(
                     "LoginProvider",
                     out var loginProvider);
@@ -205,13 +210,13 @@ public sealed class IntegrationOAuthController(
                         loginProvider,
                         definition.Scheme,
                         StringComparison.Ordinal))
-                    return Redirect(ReturnLocation(definition.Id, "failed"));
+                    return Redirect(ReturnLocation(pending.ReturnUri, definition.Id, "failed"));
                 token = FromAuthenticationProperties(authentication.Properties);
             }
             else
             {
                 if (string.IsNullOrWhiteSpace(code))
-                    return Redirect(ReturnLocation(definition.Id, "failed"));
+                    return Redirect(ReturnLocation(pending.ReturnUri, definition.Id, "failed"));
                 token = await ExchangeCodeAsync(
                     definition,
                     pending,
@@ -221,15 +226,15 @@ public sealed class IntegrationOAuthController(
 
             await SaveTokenAsync(flow.Subject, definition.Id, token, cancellationToken);
             await DeletePendingAsync(flow, cancellationToken);
-            return Redirect(ReturnLocation(definition.Id, "connected"));
+            return Redirect(ReturnLocation(pending.ReturnUri, definition.Id, "connected"));
         }
         catch (HttpRequestException)
         {
-            return Redirect(ReturnLocation(definition.Id, "failed"));
+            return Redirect(ReturnLocation(pending.ReturnUri, definition.Id, "failed"));
         }
         catch (Exception exception) when (exception is InvalidOperationException or JsonException)
         {
-            return Redirect(ReturnLocation(definition.Id, "failed"));
+            return Redirect(ReturnLocation(pending.ReturnUri, definition.Id, "failed"));
         }
         finally
         {
@@ -292,6 +297,7 @@ public sealed class IntegrationOAuthController(
     private async Task<PendingIntegrationOAuth> RegisterDynamicClientAsync(
         IntegrationOAuthProvider provider,
         string callbackUri,
+        string returnUri,
         CancellationToken cancellationToken)
     {
         using var response = await httpClients.CreateClient(HttpClientName)
@@ -307,7 +313,7 @@ public sealed class IntegrationOAuthController(
         var verifier = WebBase64UrlTextEncoder.Encode(RandomNumberGenerator.GetBytes(32));
         return new PendingIntegrationOAuth(
             provider.Id,
-            ReturnUri,
+            returnUri,
             callbackUri,
             verifier,
             clientId,
@@ -521,9 +527,12 @@ public sealed class IntegrationOAuthController(
     private string Absolute(string path) =>
         $"{Request.Scheme}://{Request.Host}{Request.PathBase}{path}";
 
-    private static string ReturnLocation(string provider, string status) =>
+    private static string ReturnLocation(
+        string returnUri,
+        string provider,
+        string status) =>
         QueryHelpers.AddQueryString(
-            ReturnUri,
+            DeviceAuthorizationReturnTargets.Normalize(returnUri) ?? ReturnUri,
             new Dictionary<string, string?>
             {
                 ["integration"] = provider,

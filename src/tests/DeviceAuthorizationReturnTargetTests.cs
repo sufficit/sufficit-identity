@@ -7,7 +7,9 @@ public sealed class DeviceAuthorizationReturnTargetTests
 {
     [Theory]
     [InlineData(DeviceAuthorizationReturnTargets.Genius, DeviceAuthorizationReturnTargets.Genius)]
+    [InlineData(DeviceAuthorizationReturnTargets.GeniusFull, DeviceAuthorizationReturnTargets.GeniusFull)]
     [InlineData("SUFFICIT-GENIUS://auth-complete", null)]
+    [InlineData("SUFFICIT-AIGENIUS://auth-complete", null)]
     [InlineData("sufficit-genius://auth-complete/extra", null)]
     [InlineData("javascript:alert(1)", null)]
     [InlineData("https://attacker.example/", null)]
