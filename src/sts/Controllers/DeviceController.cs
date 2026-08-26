@@ -311,6 +311,22 @@ public class DeviceController : Controller
             });
         }
 
+        // OpenIddict's ProcessSignIn pipeline needs the private device-code
+        // identifier to atomically update the reference device code. A stale
+        // or concurrently submitted verification can authenticate after the
+        // identifier has already been consumed; reject it as a protocol error
+        // instead of letting UpdateReferenceDeviceCodeEntry throw ID0008.
+        var deviceCodeId = authorization.Principal.GetClaim(
+            Claims.Private.DeviceCodeId);
+        if (string.IsNullOrWhiteSpace(deviceCodeId))
+        {
+            return BadRequest(new
+            {
+                error = Errors.InvalidGrant,
+                error_description = "The device authorization request is no longer valid."
+            });
+        }
+
         var result = await HttpContext.AuthenticateAsync();
         if (result is not { Succeeded: true })
         {
@@ -388,6 +404,7 @@ public class DeviceController : Controller
             roleType: Claims.Role);
 
         identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user));
+        identity.SetClaim(Claims.Private.DeviceCodeId, deviceCodeId);
         identity.SetScopes(approvedScopes);
         identity.SetResources(authorization.Principal.GetResources());
 

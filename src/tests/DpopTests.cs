@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using Sufficit.Identity.STS.Dpop;
@@ -20,6 +21,19 @@ namespace Sufficit.Identity.Tests;
 /// </summary>
 public sealed class DpopTests
 {
+    [Fact]
+    public void Distributed_replay_cache_constructor_does_not_emit_fallback_warning()
+    {
+        var logger = new RecordingLogger<DpopProofValidator>();
+
+        _ = new DpopProofValidator(
+            TimeProvider.System,
+            logger,
+            new RecordingReplayCache());
+
+        Assert.DoesNotContain(LogLevel.Warning, logger.Levels);
+    }
+
     [Fact]
     public void Rolling_replay_cache_keeps_an_atomic_authority_after_the_distributed_hint()
     {
@@ -571,5 +585,27 @@ public sealed class DpopTests
             InvocationCount++;
             return false;
         }
+    }
+
+    private sealed class RecordingReplayCache : IDpopReplayCache
+    {
+        public bool IsReplay(string jti, TimeSpan ttl) => false;
+    }
+
+    private sealed class RecordingLogger<T> : ILogger<T>
+    {
+        public List<LogLevel> Levels { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) => Levels.Add(logLevel);
     }
 }

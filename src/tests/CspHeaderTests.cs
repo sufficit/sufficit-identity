@@ -1,5 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.WebUtilities;
+using Sufficit.Identity.STS;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 
@@ -141,6 +143,79 @@ public sealed class CspHeaderTests
             "Content-Security-Policy-Report-Only", out var values));
         var csp = Assert.Single(values);
         Assert.Contains("report-uri https://collector.tests.local/csp", csp, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Form_post_policy_uses_a_script_hash_and_the_validated_callback()
+    {
+        var options = new SufficitIdentityOptions
+        {
+            Csp = new CspOptions
+            {
+                Enabled = true,
+                ReportOnly = false,
+                ReportUri = "/security/csp-report",
+            },
+        };
+
+        var policy = SecurityHeadersMiddlewareExtensions
+            .BuildFormPostContentSecurityPolicy(
+                options,
+                "https://client.example/callback?source=identity#ignored");
+        var scriptDirective = policy
+            .Split(';', StringSplitOptions.TrimEntries)
+            .Single(value => value.StartsWith("script-src ", StringComparison.Ordinal));
+
+        Assert.Contains(
+            SecurityHeadersMiddlewareExtensions.OpenIddictFormPostScriptHash,
+            scriptDirective,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("'unsafe-inline'", scriptDirective, StringComparison.Ordinal);
+        Assert.Contains(
+            "form-action 'self' https://client.example/callback",
+            policy,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("source=identity", policy, StringComparison.Ordinal);
+        Assert.Contains("report-uri /security/csp-report", policy, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Form_post_authorization_response_receives_the_tailored_policy()
+    {
+        var client = _factory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        await TestOnlyEndpoints.SignInAsync(client, TestDataSeeder.DefaultUsername);
+        var (_, challenge) = Pkce.CreatePair();
+        var query = new Dictionary<string, string?>
+        {
+            ["response_type"] = "code",
+            ["response_mode"] = "form_post",
+            ["client_id"] = TestDataSeeder.AuthorizationCodeClientId,
+            ["redirect_uri"] = TestDataSeeder.AuthorizationCodeRedirectUri,
+            ["scope"] = "openid profile",
+            ["state"] = Guid.NewGuid().ToString("N"),
+            ["code_challenge"] = challenge,
+            ["code_challenge_method"] = "S256",
+        };
+
+        using var response = await client.GetAsync(
+            QueryHelpers.AddQueryString("/connect/authorize", query));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var policy = Assert.Single(response.Headers.GetValues(
+            "Content-Security-Policy-Report-Only"));
+        Assert.Contains(
+            SecurityHeadersMiddlewareExtensions.OpenIddictFormPostScriptHash,
+            policy,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            $"form-action 'self' {TestDataSeeder.AuthorizationCodeRedirectUri}",
+            policy,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "<script>document.form.submit();</script>",
+            await response.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
     }
 
     [Fact]

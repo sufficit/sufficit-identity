@@ -49,24 +49,8 @@ public sealed class DpopProofValidator
     private readonly IDpopReplayCache? _replayCache;
 
     public DpopProofValidator(TimeProvider? timeProvider, ILogger<DpopProofValidator> logger)
+        : this(timeProvider, logger, replayCache: null)
     {
-        _timeProvider = timeProvider ?? TimeProvider.System;
-        _logger = logger;
-        _replayCache = null; // fallback: in-process ConcurrentDictionary
-
-        // The in-process jti cache is single-instance ONLY. In a multi-replica
-        // deployment it provides no cross-replica replay protection: a proof
-        // replayed against a different replica within its window would be
-        // accepted. This constructor must never be used in production behind a
-        // load balancer — the DI registration always supplies a shared
-        // (database-backed) IDpopReplayCache. We warn loudly so a
-        // misconfiguration surfaces in logs instead of silently weakening the
-        // sender-constraining guarantee.
-        _logger.LogWarning(
-            "DpopProofValidator constructed WITHOUT a distributed replay cache; "
-            + "jti replay protection is in-process only and is unsafe for "
-            + "multi-replica deployments. Ensure a shared IDpopReplayCache is "
-            + "registered in production.");
     }
 
     /// <summary>
@@ -78,9 +62,24 @@ public sealed class DpopProofValidator
         TimeProvider? timeProvider,
         ILogger<DpopProofValidator> logger,
         IDpopReplayCache? replayCache)
-        : this(timeProvider, logger)
     {
+        _timeProvider = timeProvider ?? TimeProvider.System;
+        _logger = logger;
         _replayCache = replayCache;
+
+        // The in-process jti cache is single-instance ONLY. In a multi-replica
+        // deployment it provides no cross-replica replay protection. Log this
+        // only for the actual fallback path: the old constructor chain emitted
+        // the warning before assigning the distributed cache and produced a
+        // false production finding even though DI supplied RollingDpopReplayCache.
+        if (replayCache is null)
+        {
+            _logger.LogWarning(
+                "DpopProofValidator constructed WITHOUT a distributed replay cache; "
+                + "jti replay protection is in-process only and is unsafe for "
+                + "multi-replica deployments. Ensure a shared IDpopReplayCache is "
+                + "registered in production.");
+        }
     }
 
     /// <summary>

@@ -18,6 +18,12 @@ namespace Sufficit.Identity.STS;
 /// </summary>
 public static class SecurityHeadersMiddlewareExtensions
 {
+    // OpenIddict 7.6 emits exactly this inline script for response_mode=form_post:
+    // document.form.submit();. A CSP hash authorizes that immutable script
+    // without enabling the much broader 'unsafe-inline' source expression.
+    internal const string OpenIddictFormPostScriptHash =
+        "'sha256-j7OoGArf6XW6YY4cAyS3riSSvrJRqpSi1fOF9vQ5SrI='";
+
     /// <summary>
     /// Default Permissions-Policy: deny every capability. The STS UI (login,
     /// consent, device, manage) needs none of the browser capabilities listed
@@ -105,12 +111,8 @@ public static class SecurityHeadersMiddlewareExtensions
                 var header = options.Csp.ReportOnly
                     ? "Content-Security-Policy-Report-Only"
                     : "Content-Security-Policy";
-                var value = AddHumanVerificationSources(
-                    options.Csp.Policy,
-                    options.HumanVerification);
-                if (!string.IsNullOrWhiteSpace(options.Csp.ReportUri))
-                    value += $"; report-uri {options.Csp.ReportUri}";
-                context.Response.Headers[header] = value;
+                context.Response.Headers[header] =
+                    BuildContentSecurityPolicy(options);
             }
 
             await next();
@@ -152,6 +154,46 @@ public static class SecurityHeadersMiddlewareExtensions
 
     private static bool IsPopupLaunchMode(string? value) =>
         string.Equals(value, "popup", StringComparison.OrdinalIgnoreCase);
+
+    internal static string BuildContentSecurityPolicy(
+        SufficitIdentityOptions options)
+    {
+        var value = AddHumanVerificationSources(
+            options.Csp.Policy,
+            options.HumanVerification);
+        if (!string.IsNullOrWhiteSpace(options.Csp.ReportUri))
+        {
+            value += $"; report-uri {options.Csp.ReportUri}";
+        }
+
+        return value;
+    }
+
+    internal static string BuildFormPostContentSecurityPolicy(
+        SufficitIdentityOptions options,
+        string redirectUri)
+    {
+        var policy = BuildContentSecurityPolicy(options);
+        if (!Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri)
+            || (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            || !string.IsNullOrEmpty(uri.UserInfo))
+        {
+            return policy;
+        }
+
+        // context.RedirectUri has already passed OpenIddict's registered URI
+        // validation when this method is called by the form-post handler. Strip
+        // query/fragment because they are not valid CSP source-expression data.
+        var action = uri.GetLeftPart(UriPartial.Path);
+        return AddSources(
+            AddSources(
+                policy,
+                "script-src",
+                OpenIddictFormPostScriptHash),
+            "form-action",
+            action);
+    }
 
     private static string AddHumanVerificationSources(
         string policy,
