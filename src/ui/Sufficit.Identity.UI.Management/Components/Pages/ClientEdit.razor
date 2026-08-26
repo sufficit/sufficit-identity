@@ -270,6 +270,17 @@ else
                     <textarea id="edit-post-logout" name="postLogoutRedirectUris" class="form-control form-control--textarea technical-value"
                               @bind="postLogoutRedirectUrisText"></textarea>
                 </div>
+                <div class="field-group">
+                    <label for="edit-native-returns">Retornos nativos <span class="label-optional">opcional</span></label>
+                    <textarea id="edit-native-returns" name="nativeReturnUris" class="form-control form-control--textarea technical-value"
+                              @bind="nativeReturnUrisText"></textarea>
+                    <span class="field-hint">
+                        Uma URI por linha. Para onde o navegador leva o usuário de volta ao aplicativo
+                        depois que a concessão termina — não recebe código nem token, por isso aceita
+                        esquema de uso privado (RFC 8252), por exemplo <code>meuapp://auth-complete</code>.
+                        A comparação é exata, sem curinga.
+                    </span>
+                </div>
                 <div class="form-grid form-grid--two">
                     <div class="field-group">
                         <label for="edit-frontchannel">Logout front-channel <span class="label-optional">opcional</span></label>
@@ -945,6 +956,7 @@ else
     private string scopesText = string.Empty;
     private string redirectUrisText = string.Empty;
     private string postLogoutRedirectUrisText = string.Empty;
+    private string nativeReturnUrisText = string.Empty;
     private string? frontchannelLogoutUri;
     private bool frontchannelLogoutSessionRequired;
     private string? backchannelLogoutUri;
@@ -1066,6 +1078,9 @@ else
         scopesText = string.Join(Environment.NewLine, value.Permissions.Where(p => p.StartsWith("scp:", StringComparison.Ordinal)).Select(p => p[4..]));
         redirectUrisText = string.Join(Environment.NewLine, value.RedirectUris);
         postLogoutRedirectUrisText = string.Join(Environment.NewLine, value.PostLogoutRedirectUris);
+        nativeReturnUrisText = string.Join(
+            Environment.NewLine,
+            value.NativeReturnUris ?? []);
         frontchannelLogoutUri = value.FrontchannelLogoutUri;
         frontchannelLogoutSessionRequired = value.FrontchannelLogoutSessionRequired;
         backchannelLogoutUri = value.BackchannelLogoutUri;
@@ -1127,7 +1142,8 @@ else
             inheritAccessTokenLifetime,
             inheritIdentityTokenLifetime,
             inheritRefreshTokenLifetime,
-            jwksJson);
+            jwksJson,
+            Lines(nativeReturnUrisText));
     }
 
     private bool CustomCredentialsMatch =>

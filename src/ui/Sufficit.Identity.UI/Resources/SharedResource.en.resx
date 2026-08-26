@@ -432,8 +432,8 @@
   <data name="Device.CloseTab" xml:space="preserve"><value>Close this tab</value></data>
   <data name="Device.CloseFallback" xml:space="preserve"><value>The browser could not close this tab automatically. You can close it using the tab controls and return to the device that started the access request.</value></data>
   <data name="Device.CloseNoScript" xml:space="preserve"><value>You can close this tab and return to the device that started the access request.</value></data>
-  <data name="Device.ReturnToGenius" xml:space="preserve"><value>Return to Genius</value></data>
-  <data name="Device.ReturnToGeniusHint" xml:space="preserve"><value>If the app does not open automatically, tap the button above.</value></data>
+  <data name="Device.ReturnToApp" xml:space="preserve"><value>Return to the app</value></data>
+  <data name="Device.ReturnToAppHint" xml:space="preserve"><value>If the app does not open automatically, tap the button above.</value></data>
   <data name="Device.CodeHint" xml:space="preserve"><value>The code identifies this request and expires in a few minutes.</value></data>
   <data name="Device.ConfirmationFailed" xml:space="preserve"><value>Could not confirm access</value></data>
   <data name="Device.ConfirmTitle" xml:space="preserve"><value>Confirm access</value></data>

@@ -3,6 +3,7 @@
 @attribute [Authorize]
 @using System.Globalization
 @inject IDeviceAuthorizationContextService DeviceContextService
+@inject INativeReturnUriTicketService NativeReturnTickets
 @inject ScopeViewModelProvider ScopeProvider
 @inject IStringLocalizer<SharedResource> L
 
@@ -31,10 +32,10 @@
         {
             <a class="btn btn-primary btn-block" href="@returnUri"
                data-device-flow-return aria-describedby="device-return-hint">
-                @L["Device.ReturnToGenius"]
+                @L["Device.ReturnToApp"]
             </a>
             <p id="device-return-hint" class="device-return-hint">
-                @L["Device.ReturnToGeniusHint"]
+                @L["Device.ReturnToAppHint"]
             </p>
         }
         else
@@ -185,10 +186,10 @@
             {
                 <input type="hidden" name="launch_mode" value="popup" />
             }
-            else if (NativeReturnUri is { } returnUri)
+            else if (NativeReturnUri is not null)
             {
                 <input type="hidden" name="launch_mode" value="app" />
-                <input type="hidden" name="return_uri" value="@returnUri" />
+                <input type="hidden" name="return_ticket" value="@ReturnTicketQuery" />
             }
 
             <div class="btn-group device-authorization-actions">
@@ -208,7 +209,7 @@
     [SupplyParameterFromQuery(Name = "code")] private string? LegacyCodeQuery { get; set; }
     [SupplyParameterFromQuery(Name = "result")] private string? Result { get; set; }
     [SupplyParameterFromQuery(Name = "launch_mode")] private string? LaunchModeQuery { get; set; }
-    [SupplyParameterFromQuery(Name = "return_uri")] private string? ReturnUriQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "return_ticket")] private string? ReturnTicketQuery { get; set; }
 
     private string? _userCode;
     private string? _displayCode;
@@ -225,9 +226,12 @@
     private bool IsPopup =>
         string.Equals(LaunchModeQuery, "popup", StringComparison.OrdinalIgnoreCase);
 
+    // The callback was already checked against the client's registration by
+    // the STS, which handed it back as an encrypted ticket. This page only
+    // opens the ticket: a query string edited in the browser produces nothing.
     private string? NativeReturnUri =>
         string.Equals(LaunchModeQuery, "app", StringComparison.OrdinalIgnoreCase)
-            ? DeviceAuthorizationReturnTargets.Normalize(ReturnUriQuery)
+            ? NativeReturnTickets.Unprotect(ReturnTicketQuery)
             : null;
 
     private string? TerminalLaunchMode => NativeReturnUri is not null

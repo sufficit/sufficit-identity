@@ -26,13 +26,21 @@ internal static class IntegrationOAuthProtocol
         properties.StoreTokens(tokens);
     }
 
+    /// <summary>
+    /// Builds an RFC 7591 registration payload for a provider that requires
+    /// one. <paramref name="clientName"/> is the display name of the client
+    /// this broker is acting for, read from its registration — the provider's
+    /// consent screen must name the application the user actually launched,
+    /// which no constant in this server can know.
+    /// </summary>
     public static IReadOnlyDictionary<string, object> DynamicRegistration(
         IntegrationOAuthProvider provider,
-        string callbackUri)
+        string callbackUri,
+        string clientName)
     {
         var payload = new Dictionary<string, object>
         {
-            ["client_name"] = "Sufficit AI Genius",
+            ["client_name"] = clientName,
             ["redirect_uris"] = new[] { callbackUri },
             ["scope"] = string.Join(' ', provider.Scopes),
         };

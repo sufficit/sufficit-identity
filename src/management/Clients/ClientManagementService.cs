@@ -16,6 +16,7 @@ using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Provisioning;
 #endif
 using System.Globalization;
+using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Management.Authorization;
 
@@ -210,7 +211,10 @@ public sealed record ManagementClientDetail(
     bool HasClientSecret = false,
     string? JwksJson = null,
     IReadOnlyList<string>? AuthenticationMethods = null,
-    int ActiveCredentialCount = 0);
+    int ActiveCredentialCount = 0,
+    /// <summary>Native callbacks registered under the <c>native_return_uris</c>
+    /// extension metadata (RFC 7591, section 2).</summary>
+    IReadOnlyList<string>? NativeReturnUris = null);
 
 public sealed record CreateManagementClientCommand(
     string ClientId,
@@ -230,7 +234,8 @@ public sealed record CreateManagementClientCommand(
     int? AccessTokenLifetimeMinutes = null,
     int? IdentityTokenLifetimeMinutes = null,
     int? RefreshTokenLifetimeDays = null,
-    string? JwksJson = null);
+    string? JwksJson = null,
+    IReadOnlyList<string>? NativeReturnUris = null);
 
 public sealed record UpdateManagementClientCommand(
     string ClientId,
@@ -253,7 +258,8 @@ public sealed record UpdateManagementClientCommand(
     bool ClearAccessTokenLifetime = false,
     bool ClearIdentityTokenLifetime = false,
     bool ClearRefreshTokenLifetime = false,
-    string? JwksJson = null);
+    string? JwksJson = null,
+    IReadOnlyList<string>? NativeReturnUris = null);
 
 public sealed record RotateManagementClientSecretCommand(
     string ClientId,
@@ -610,6 +616,9 @@ internal sealed class ClientManagementService(
             var postLogoutRedirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.PostLogoutRedirectUris,
                 "postLogoutRedirectUris");
+            var nativeReturnUris = ClientUriPolicy.ValidateNativeReturnUris(
+                command.NativeReturnUris,
+                "nativeReturnUris");
             var frontchannelLogoutUri = ClientUriPolicy.ValidateLogoutUri(
                 command.FrontchannelLogoutUri,
                 "frontchannelLogoutUri");
@@ -770,6 +779,8 @@ internal sealed class ClientManagementService(
             {
                 descriptor.PostLogoutRedirectUris.Add(postLogoutRedirectUri);
             }
+
+            SetNativeReturnUris(descriptor.Properties, nativeReturnUris);
 
             AddLogoutSettings(
                 descriptor.Settings,
@@ -1039,6 +1050,9 @@ internal sealed class ClientManagementService(
             var postLogoutRedirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.PostLogoutRedirectUris,
                 "postLogoutRedirectUris");
+            var nativeReturnUris = ClientUriPolicy.ValidateNativeReturnUris(
+                command.NativeReturnUris,
+                "nativeReturnUris");
             var frontchannelLogoutUri = ClientUriPolicy.ValidateLogoutUri(
                 command.FrontchannelLogoutUri,
                 "frontchannelLogoutUri");
@@ -1139,6 +1153,14 @@ internal sealed class ClientManagementService(
             foreach (var uri in postLogoutRedirectUris)
             {
                 descriptor.PostLogoutRedirectUris.Add(uri);
+            }
+
+            // Null means the caller did not manage this metadata, so an older
+            // API/UI client cannot silently unregister a callback it never
+            // knew about; an explicit empty list clears it.
+            if (command.NativeReturnUris is not null)
+            {
+                SetNativeReturnUris(descriptor.Properties, nativeReturnUris);
             }
 
             descriptor.Settings.Remove("frontchannel_logout_uri");
@@ -1543,8 +1565,41 @@ internal sealed class ClientManagementService(
                 .ExtractPrivateKeyJwtKeys(entity?.JsonWebKeySet)?.ToString(),
             AuthenticationMethods: authenticationMethods,
             ActiveCredentialCount:
-                activeAdditionalCredentials + (hasPrimarySecret ? 1 : 0));
+                activeAdditionalCredentials + (hasPrimarySecret ? 1 : 0),
+            NativeReturnUris: ReadNativeReturnUris(descriptor.Properties));
     }
+
+    /// <summary>
+    /// Writes the <c>native_return_uris</c> extension metadata into the client
+    /// property bag, removing the key entirely when nothing is registered so a
+    /// client that uses none carries no trace of the feature.
+    /// </summary>
+    private static void SetNativeReturnUris(
+        IDictionary<string, JsonElement> properties,
+        IReadOnlyList<string> values)
+    {
+        properties.Remove(NativeReturnUriPolicy.PropertyKey);
+        if (values.Count == 0)
+        {
+            return;
+        }
+
+        properties[NativeReturnUriPolicy.PropertyKey] =
+            JsonSerializer.SerializeToElement(values);
+    }
+
+    private static IReadOnlyList<string> ReadNativeReturnUris(
+        IReadOnlyDictionary<string, JsonElement> properties) =>
+        properties.TryGetValue(
+            NativeReturnUriPolicy.PropertyKey,
+            out var value)
+        && value.ValueKind == JsonValueKind.Array
+            ? value.EnumerateArray()
+                .Where(element => element.ValueKind == JsonValueKind.String)
+                .Select(element => element.GetString()!)
+                .Where(uri => !string.IsNullOrWhiteSpace(uri))
+                .ToArray()
+            : [];
 
     private static string? GetStringProperty(
         IReadOnlyDictionary<string, JsonElement> properties,

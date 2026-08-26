@@ -74,6 +74,14 @@ public sealed class IdentityClientManifest
     public List<string> Scopes { get; init; } = [];
     public List<Uri> RedirectUris { get; init; } = [];
     public List<Uri> PostLogoutRedirectUris { get; init; } = [];
+    /// <summary>
+    /// Native callbacks this client may be brought back to the foreground with
+    /// once a grant completes (<c>native_return_uris</c> extension metadata,
+    /// RFC 7591 section 2). Kept as strings, not <see cref="Uri"/>, because a
+    /// private-use URI scheme (RFC 8252, section 7.1) is matched verbatim and
+    /// would not survive canonicalization.
+    /// </summary>
+    public List<string> NativeReturnUris { get; init; } = [];
     public Uri? FrontchannelLogoutUri { get; init; }
     public bool FrontchannelLogoutSessionRequired { get; init; }
     public Uri? BackchannelLogoutUri { get; init; }

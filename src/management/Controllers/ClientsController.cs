@@ -76,7 +76,8 @@ public sealed class ClientsController(IClientManagementService clients)
                 request.AccessTokenLifetimeMinutes,
                 request.IdentityTokenLifetimeMinutes,
                 request.RefreshTokenLifetimeDays,
-                request.JwksJson),
+                request.JwksJson,
+                request.NativeReturnUris),
             RequestContext(),
             cancellationToken);
 
@@ -115,7 +116,8 @@ public sealed class ClientsController(IClientManagementService clients)
                 request.ClearAccessTokenLifetime,
                 request.ClearIdentityTokenLifetime,
                 request.ClearRefreshTokenLifetime,
-                request.JwksJson),
+                request.JwksJson,
+                request.NativeReturnUris),
             RequestContext(),
             cancellationToken);
 
@@ -315,6 +317,15 @@ public sealed class CreateClientRequest
 
     /// <summary>Optional per-application refresh token lifetime in days.</summary>
     public int? RefreshTokenLifetimeDays { get; set; }
+
+    /// <summary>
+    /// Native callbacks this client may be sent back to once a grant
+    /// completes (<c>native_return_uris</c> extension metadata, RFC 7591
+    /// section 2). Private-use URI schemes are accepted here — and only here —
+    /// because the callback carries no code and no token (RFC 8252,
+    /// section 7.1).
+    /// </summary>
+    public List<string> NativeReturnUris { get; set; } = [];
 }
 
 public sealed class UpdateClientRequest
@@ -339,6 +350,12 @@ public sealed class UpdateClientRequest
     public bool ClearAccessTokenLifetime { get; set; }
     public bool ClearIdentityTokenLifetime { get; set; }
     public bool ClearRefreshTokenLifetime { get; set; }
+
+    /// <summary>
+    /// Native callbacks this client may be sent back to. Null leaves the
+    /// current registration untouched; an empty list clears it.
+    /// </summary>
+    public List<string>? NativeReturnUris { get; set; }
 }
 
 public sealed class RotateClientSecretRequest

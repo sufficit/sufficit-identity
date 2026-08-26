@@ -11,17 +11,20 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
+using OpenIddict.Abstractions;
 using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.STS.Integrations;
 using Sufficit.Identity.Vault;
+using static OpenIddict.Abstractions.OpenIddictConstants;
 using WebBase64UrlTextEncoder = Microsoft.AspNetCore.WebUtilities.Base64UrlTextEncoder;
 
 namespace Sufficit.Identity.STS.Controllers;
 
 /// <summary>
-/// Subject-bound OAuth broker for optional Genius integrations. The bearer
-/// token selects the Vault owner; browser callbacks carry only a short-lived,
-/// encrypted ticket and never a Sufficit or provider token in their URL.
+/// Subject-bound OAuth broker for the optional third-party integrations a
+/// native client may connect on the user's behalf. The bearer token selects
+/// the Vault owner; browser callbacks carry only a short-lived, encrypted
+/// ticket and never an Identity or provider token in their URL.
 /// </summary>
 [ApiController]
 [Route("api/integrations/oauth")]
@@ -29,10 +32,11 @@ public sealed class IntegrationOAuthController(
     IntegrationOAuthProviderRegistry providers,
     IVaultNamedSecretStore secrets,
     IDataProtectionProvider dataProtection,
-    IHttpClientFactory httpClients) : ControllerBase
+    IHttpClientFactory httpClients,
+    IClientNativeReturnUriResolver nativeReturnUris,
+    IOpenIddictApplicationManager applications) : ControllerBase
 {
     private const string McpPolicy = "sufficit-identity-mcp";
-    private const string ReturnUri = "sufficit-genius://auth-complete";
     private const string HttpClientName = "identity-integration-oauth";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private readonly ITimeLimitedDataProtector tickets = dataProtection
@@ -83,8 +87,24 @@ public sealed class IntegrationOAuthController(
         var subject = Subject();
         var nonce = WebBase64UrlTextEncoder.Encode(RandomNumberGenerator.GetBytes(24));
         var callbackUri = AbsoluteCallback(definition.Id);
-        var nativeReturnUri = DeviceAuthorizationReturnTargets.Normalize(returnUri)
-            ?? ReturnUri;
+
+        // Where the browser goes when the provider is done is registration
+        // data belonging to the calling client, never a value this server
+        // knows in advance (RFC 8252, section 8.1).
+        var nativeReturnUri = await nativeReturnUris.ResolveAsync(
+            CallerClientId(),
+            returnUri,
+            cancellationToken);
+        if (nativeReturnUri is null)
+        {
+            return BadRequest(new
+            {
+                error = "return_uri_not_registered",
+                message =
+                    "O cliente chamador não possui um retorno nativo registrado para esta operação.",
+            });
+        }
+
         var pending = definition.RegistrationEndpoint is null
             ? new PendingIntegrationOAuth(
                 definition.Id,
@@ -97,6 +117,7 @@ public sealed class IntegrationOAuthController(
                 definition,
                 callbackUri,
                 nativeReturnUri,
+                await CallerDisplayNameAsync(cancellationToken),
                 cancellationToken);
         await secrets.PutAsync(
             PendingName(nonce),
@@ -108,7 +129,8 @@ public sealed class IntegrationOAuthController(
         var ticket = Protect(new IntegrationOAuthTicket(
             subject,
             definition.Id,
-            nonce));
+            nonce,
+            nativeReturnUri));
 
         var authorizationUrl = definition.Scheme is not null
             ? QueryHelpers.AddQueryString(
@@ -182,12 +204,19 @@ public sealed class IntegrationOAuthController(
         }
         catch (Exception exception) when (exception is CryptographicException or FormatException)
         {
-            return Redirect(ReturnLocation(ReturnUri, definition.Id, "expired"));
+            // Nothing here is trustworthy: an unreadable ticket names no
+            // client, so there is no registered callback to send the browser
+            // to and inventing one would be an open redirect.
+            return BadRequest(new
+            {
+                error = "authorization_expired",
+                message = "A autorização expirou. Reinicie a conexão pelo aplicativo.",
+            });
         }
 
         var pending = await ReadPendingAsync(flow, cancellationToken);
         if (pending is null)
-            return Redirect(ReturnLocation(ReturnUri, definition.Id, "expired"));
+            return Redirect(ReturnLocation(flow.ReturnUri, definition.Id, "expired"));
         if (!string.IsNullOrWhiteSpace(error))
         {
             await DeletePendingAsync(flow, cancellationToken);
@@ -298,12 +327,16 @@ public sealed class IntegrationOAuthController(
         IntegrationOAuthProvider provider,
         string callbackUri,
         string returnUri,
+        string clientName,
         CancellationToken cancellationToken)
     {
         using var response = await httpClients.CreateClient(HttpClientName)
             .PostAsJsonAsync(
                 provider.RegistrationEndpoint,
-                IntegrationOAuthProtocol.DynamicRegistration(provider, callbackUri),
+                IntegrationOAuthProtocol.DynamicRegistration(
+                    provider,
+                    callbackUri,
+                    clientName),
                 cancellationToken);
         response.EnsureSuccessStatusCode();
         var payload = await response.Content.ReadFromJsonAsync<JsonElement>(
@@ -527,12 +560,17 @@ public sealed class IntegrationOAuthController(
     private string Absolute(string path) =>
         $"{Request.Scheme}://{Request.Host}{Request.PathBase}{path}";
 
+    /// <summary>
+    /// Builds the redirect back to the client. The callback was resolved
+    /// against the client registration when the flow started and has been
+    /// held in server-side state ever since, so it is used as stored.
+    /// </summary>
     private static string ReturnLocation(
         string returnUri,
         string provider,
         string status) =>
         QueryHelpers.AddQueryString(
-            DeviceAuthorizationReturnTargets.Normalize(returnUri) ?? ReturnUri,
+            returnUri,
             new Dictionary<string, string?>
             {
                 ["integration"] = provider,
@@ -542,6 +580,39 @@ public sealed class IntegrationOAuthController(
     private string Subject() => User.FindFirst("sub")?.Value
         ?? throw new InvalidOperationException(
             "The authenticated integration caller has no subject.");
+
+    /// <summary>
+    /// The client the presented access token was issued to. OpenIddict records
+    /// it as the token's authorized presenter; the plain claim is accepted as
+    /// a fallback for tokens shaped by other validation stacks.
+    /// </summary>
+    private string? CallerClientId() =>
+        User.GetClaim(Claims.ClientId)
+        ?? User.GetPresenters().FirstOrDefault();
+
+    /// <summary>
+    /// Display name of the calling client, used on the provider's consent
+    /// screen. Falls back to the client identifier so a client that registered
+    /// without a display name still names itself rather than this server.
+    /// </summary>
+    private async Task<string> CallerDisplayNameAsync(
+        CancellationToken cancellationToken)
+    {
+        var clientId = CallerClientId();
+        if (string.IsNullOrWhiteSpace(clientId))
+        {
+            throw new InvalidOperationException(
+                "The authenticated integration caller has no client identifier.");
+        }
+
+        var application = await applications.FindByClientIdAsync(
+            clientId,
+            cancellationToken);
+        var displayName = application is null
+            ? null
+            : await applications.GetDisplayNameAsync(application, cancellationToken);
+        return string.IsNullOrWhiteSpace(displayName) ? clientId : displayName;
+    }
 
     private static string PersonalContext(string subject) =>
         VaultBackedSecretStore.NormalizeContextId(
@@ -581,7 +652,11 @@ public sealed record IntegrationOAuthAccess(
 internal sealed record IntegrationOAuthTicket(
     string Subject,
     string Provider,
-    string Nonce);
+    string Nonce,
+    // Carried in the encrypted ticket as well as in the pending record so the
+    // browser can still be sent home when the pending record has expired but
+    // the ticket itself is intact.
+    string ReturnUri);
 
 internal sealed record PendingIntegrationOAuth(
     string Provider,

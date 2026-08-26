@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Management.Provisioning;
@@ -325,6 +326,10 @@ public static partial class IdentityProvisioningManifestValidator
                 $"{path}.postLogoutRedirectUris",
                 client.ClientType,
                 errors);
+            ValidateNativeReturnUris(
+                client.NativeReturnUris,
+                $"{path}.nativeReturnUris",
+                errors);
 
             ValidateLogoutUri(
                 client.FrontchannelLogoutUri,
@@ -439,6 +444,50 @@ public static partial class IdentityProvisioningManifestValidator
             if (!string.IsNullOrWhiteSpace(value) && !unique.Add(value))
             {
                 errors.Add($"{path} contains duplicate value '{value}'.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Validates the native callbacks a manifest registers. These are not
+    /// redirection endpoints — they receive no code and no token — so a
+    /// private-use URI scheme (RFC 8252, section 7.1) is acceptable, and the
+    /// value is kept verbatim for the simple string comparison RFC 8252
+    /// section 8.1 prescribes.
+    /// </summary>
+    private static void ValidateNativeReturnUris(
+        IReadOnlyCollection<string>? values,
+        string path,
+        ICollection<string> errors)
+    {
+        if (values is null)
+        {
+            errors.Add($"{path} must be an array.");
+            return;
+        }
+
+        if (values.Count > NativeReturnUriPolicy.MaximumRegistrations)
+        {
+            errors.Add(
+                $"{path} accepts at most {NativeReturnUriPolicy.MaximumRegistrations} entries.");
+        }
+
+        var unique = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var value in values)
+        {
+            if (!NativeReturnUriPolicy.TryValidateRegistration(
+                    value,
+                    out var normalized,
+                    out _,
+                    out var reasonMessage))
+            {
+                errors.Add($"{path}: {reasonMessage}");
+                continue;
+            }
+
+            if (!unique.Add(normalized!))
+            {
+                errors.Add($"{path} contains duplicate URI '{normalized}'.");
             }
         }
     }

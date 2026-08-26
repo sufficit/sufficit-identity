@@ -857,10 +857,11 @@ if (migrateOnly)
     return;
 }
 
-// The Identity MCP/personal Vault scope is a first-party product contract, not
-// an operator-maintained database tweak. Reconcile it and the trusted Genius
-// client permission on every startup so fresh and existing deployments converge
-// automatically before user traffic is accepted.
+// The Identity MCP/personal Vault scope is part of the server's own contract,
+// not an operator-maintained database tweak. Reconcile it and the client
+// permissions the deployment configured as implicitly entitled on every startup
+// so fresh and existing deployments converge automatically before user traffic
+// is accepted.
 using (var scope = app.Services.CreateScope())
 {
     await scope.ServiceProvider

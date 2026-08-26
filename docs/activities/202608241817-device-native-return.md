@@ -12,8 +12,11 @@ autorização, a tela terminal só explicava como fechá-la manualmente.
 
 - O fluxo preserva `launch_mode=app` e um `return_uri` somente quando o endereço
   corresponde ao callback fixo `sufficit-genius://auth-complete`.
-- A página terminal tenta o callback uma vez e mantém **Voltar ao Genius** como
-  ação primária para navegadores que bloqueiam a abertura automática.
+  > Superado em 2026-08-26: o callback deixou de ser fixo e virou registro por
+  > cliente — ver
+  > [202608260133-native-return-uris-per-client](202608260133-native-return-uris-per-client.md).
+- A página terminal tenta o callback uma vez e mantém **Voltar ao aplicativo**
+  como ação primária para navegadores que bloqueiam a abertura automática.
 - O callback não recebe código, token, conta ou estado de autorização. O
   cliente continua resgatando credenciais exclusivamente pelo polling RFC 8628.
 - URLs arbitrárias, variações do callback e esquemas executáveis são recusados.

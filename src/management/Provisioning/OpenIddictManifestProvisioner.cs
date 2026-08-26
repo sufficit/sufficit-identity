@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using OpenIddict.Abstractions;
+using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Management.Provisioning;
@@ -538,6 +539,7 @@ public sealed class OpenIddictManifestProvisioner
 
         descriptor.RedirectUris.UnionWith(manifest.RedirectUris);
         descriptor.PostLogoutRedirectUris.UnionWith(manifest.PostLogoutRedirectUris);
+        SetNativeReturnUris(descriptor.Properties, manifest.NativeReturnUris);
         SetLogoutSettings(descriptor.Settings, manifest);
 
         if (_clientDefinitionValidator.RequiresProofKeyForCodeExchange(
@@ -704,7 +706,8 @@ public sealed class OpenIddictManifestProvisioner
         string.Equals(
             GetStringProperty(current, SecretReferenceProperty),
             GetStringProperty(desired, SecretReferenceProperty),
-            StringComparison.Ordinal);
+            StringComparison.Ordinal) &&
+        NativeReturnUrisEqual(current, desired);
 
     private static void SetManifestProperties(
         IDictionary<string, JsonElement> properties,
@@ -745,7 +748,56 @@ public sealed class OpenIddictManifestProvisioner
         {
             target.Remove(SecretReferenceProperty);
         }
+
+        if (source.TryGetValue(NativeReturnUriPolicy.PropertyKey, out var returnUris))
+        {
+            target[NativeReturnUriPolicy.PropertyKey] = returnUris;
+        }
+        else
+        {
+            target.Remove(NativeReturnUriPolicy.PropertyKey);
+        }
     }
+
+    /// <summary>
+    /// Writes the manifest's native callbacks into the client property bag,
+    /// removing the key when the manifest declares none.
+    /// </summary>
+    private static void SetNativeReturnUris(
+        IDictionary<string, JsonElement> properties,
+        IReadOnlyList<string> values)
+    {
+        var normalized = values
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (normalized.Length == 0)
+        {
+            properties.Remove(NativeReturnUriPolicy.PropertyKey);
+            return;
+        }
+
+        properties[NativeReturnUriPolicy.PropertyKey] =
+            JsonSerializer.SerializeToElement(normalized);
+    }
+
+    private static bool NativeReturnUrisEqual(
+        IDictionary<string, JsonElement> current,
+        IDictionary<string, JsonElement> desired) =>
+        ReadNativeReturnUris(current).SequenceEqual(
+            ReadNativeReturnUris(desired),
+            StringComparer.Ordinal);
+
+    private static IReadOnlyList<string> ReadNativeReturnUris(
+        IDictionary<string, JsonElement> properties) =>
+        properties.TryGetValue(NativeReturnUriPolicy.PropertyKey, out var value)
+        && value.ValueKind == JsonValueKind.Array
+            ? value.EnumerateArray()
+                .Where(element => element.ValueKind == JsonValueKind.String)
+                .Select(element => element.GetString()!)
+                .ToArray()
+            : [];
 
     private static int? GetInt32Property(
         IDictionary<string, JsonElement> properties,

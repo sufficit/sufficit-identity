@@ -113,6 +113,8 @@ public class DeviceController : Controller
     private readonly IAntiforgery _antiforgery;
     private readonly OpenIddictDeviceAuthorizationContextService _deviceContextService;
     private readonly ScopeEntitlementProvisioner _entitlementProvisioner;
+    private readonly IClientNativeReturnUriResolver _nativeReturnUris;
+    private readonly INativeReturnUriTicketService _nativeReturnTickets;
 
     public DeviceController(
         IOpenIddictTokenManager tokenManager,
@@ -121,7 +123,9 @@ public class DeviceController : Controller
         UserManager<ApplicationUser> userManager,
         IAntiforgery antiforgery,
         OpenIddictDeviceAuthorizationContextService deviceContextService,
-        ScopeEntitlementProvisioner entitlementProvisioner)
+        ScopeEntitlementProvisioner entitlementProvisioner,
+        IClientNativeReturnUriResolver nativeReturnUris,
+        INativeReturnUriTicketService nativeReturnTickets)
     {
         _tokenManager = tokenManager;
         _applicationManager = applicationManager;
@@ -130,6 +134,8 @@ public class DeviceController : Controller
         _antiforgery = antiforgery;
         _deviceContextService = deviceContextService;
         _entitlementProvisioner = entitlementProvisioner;
+        _nativeReturnUris = nativeReturnUris;
+        _nativeReturnTickets = nativeReturnTickets;
     }
 
     // -----------------------------------------------------------------------
@@ -190,17 +196,19 @@ public class DeviceController : Controller
         });
 
         // Browser launch context belongs to the presentation layer, not the
-        // protocol ticket. Native callbacks are reduced to a fixed allow-list
-        // before they cross either redirect boundary.
-        var nativeReturnUri = DeviceAuthorizationReturnTargets.Normalize(
-            Request.Query["return_uri"].ToString());
-        if (IsNativeAppLaunchMode(Request.Query["launch_mode"])
-            && nativeReturnUri is not null)
+        // protocol ticket. A native callback is resolved against what THIS
+        // client registered and then handed onward as a server-minted ticket,
+        // so the page never has to trust a query parameter the user can edit.
+        var nativeReturnUri = await ResolveNativeReturnUriAsync(
+            authorization.Principal.GetClaim(Claims.ClientId),
+            Request.Query["launch_mode"],
+            Request.Query["return_uri"]);
+        if (nativeReturnUri is not null)
         {
             target = QueryHelpers.AddQueryString(target, new Dictionary<string, string?>
             {
                 ["launch_mode"] = "app",
-                ["return_uri"] = nativeReturnUri,
+                ["return_ticket"] = _nativeReturnTickets.Protect(nativeReturnUri),
             });
         }
         else if (IsPopupLaunchMode(Request.Query["launch_mode"]))
@@ -326,10 +334,11 @@ public class DeviceController : Controller
                         "The end user refused to authorize the device."
                 })
                 {
-                    RedirectUri = BuildDeviceResultUri(
+                    RedirectUri = await BuildDeviceResultUriAsync(
                         "denied",
+                        authorization.Principal.GetClaim(Claims.ClientId),
                         Request.Form["launch_mode"],
-                        Request.Form["return_uri"])
+                        Request.Form["return_ticket"])
                 });
         }
 
@@ -386,33 +395,65 @@ public class DeviceController : Controller
             new ClaimsPrincipal(identity),
             new AuthenticationProperties
             {
-                RedirectUri = BuildDeviceResultUri(
+                RedirectUri = await BuildDeviceResultUriAsync(
                     "approved",
+                    authorization.Principal.GetClaim(Claims.ClientId),
                     Request.Form["launch_mode"],
-                    Request.Form["return_uri"])
+                    Request.Form["return_ticket"])
             },
             OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 
-    private static string BuildDeviceResultUri(
+    private async Task<string> BuildDeviceResultUriAsync(
         string result,
+        string? clientId,
         string? launchMode,
-        string? returnUri)
+        string? returnTicket)
     {
         var target = QueryHelpers.AddQueryString("/device", "result", result);
-        var nativeReturnUri = DeviceAuthorizationReturnTargets.Normalize(returnUri);
-        if (IsNativeAppLaunchMode(launchMode) && nativeReturnUri is not null)
+
+        // The page posts back the ticket this controller minted, never a raw
+        // URI. Unprotecting it proves the value came from here; resolving it
+        // again proves it still belongs to the client completing this
+        // transaction, so a ticket minted for another application cannot be
+        // replayed into this one.
+        var nativeReturnUri = await ResolveNativeReturnUriAsync(
+            clientId,
+            launchMode,
+            _nativeReturnTickets.Unprotect(returnTicket));
+        if (nativeReturnUri is not null)
         {
             return QueryHelpers.AddQueryString(target, new Dictionary<string, string?>
             {
                 ["launch_mode"] = "app",
-                ["return_uri"] = nativeReturnUri,
+                ["return_ticket"] = _nativeReturnTickets.Protect(nativeReturnUri),
             });
         }
 
         return IsPopupLaunchMode(launchMode)
             ? QueryHelpers.AddQueryString(target, "launch_mode", "popup")
             : target;
+    }
+
+    /// <summary>
+    /// Resolves the callback a native client asked to be sent back to. The
+    /// only acceptable values are the ones that client registered with this
+    /// deployment (RFC 8252, section 8.1); nothing is built in.
+    /// </summary>
+    private async Task<string?> ResolveNativeReturnUriAsync(
+        string? clientId,
+        string? launchMode,
+        string? candidate)
+    {
+        if (!IsNativeAppLaunchMode(launchMode))
+        {
+            return null;
+        }
+
+        return await _nativeReturnUris.ResolveAsync(
+            clientId,
+            candidate,
+            HttpContext.RequestAborted);
     }
 
     private static bool IsPopupLaunchMode(string? launchMode) =>

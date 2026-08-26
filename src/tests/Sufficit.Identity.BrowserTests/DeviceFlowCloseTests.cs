@@ -133,7 +133,7 @@ public sealed class DeviceFlowCloseTests : PageTest
     {
         await Page.SetContentAsync("""
             <main data-device-flow-result="approved" data-device-launch-mode="app">
-                <a href="sufficit-genius://auth-complete" data-device-flow-return>Voltar ao Genius</a>
+                <a href="example-app://auth-complete" data-device-flow-return>Voltar ao aplicativo</a>
                 <p data-device-close-fallback hidden>Fechamento manual</p>
             </main>
             """);
@@ -156,7 +156,7 @@ public sealed class DeviceFlowCloseTests : PageTest
             Is.True);
         Assert.That(
             await Page.Locator("[data-device-flow-return]").GetAttributeAsync("href"),
-            Is.EqualTo("sufficit-genius://auth-complete"));
+            Is.EqualTo("example-app://auth-complete"));
         Assert.That(
             await Page.Locator("[data-device-close-fallback]").IsHiddenAsync(),
             Is.True);

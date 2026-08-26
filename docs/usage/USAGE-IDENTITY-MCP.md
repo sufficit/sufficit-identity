@@ -69,13 +69,17 @@ formas:
   cliente MCP (Claude Code usa `http://localhost:<porta>/callback`) e conceda a
   permissão OpenIddict `scp:identity.mcp`.
 
-### Genius: concessão automática confiável
+### Concessão automática para clientes confiáveis
 
-`Sufficit:Identity:Mcp:ImplicitClientIds` contém `sufficit-ai-genius` por
-padrão. Na inicialização, o servidor cria o scope `identity.mcp` quando
-necessário e reconcilia a permissão do client. Em device-code,
-authorization-code e refresh, esse client recebe o scope implicitamente. Assim
-uma instalação antiga se corrige na próxima renovação do token, sem novo login.
+`Sufficit:Identity:Mcp:ImplicitClientIds` lista os clients que a implantação
+trata assim. Não há valor embutido: nem no código, nem no
+`appsettings.json.template` (que vem com a lista vazia). Cada implantação
+declara os seus no próprio `appsettings.json`, que não é versionado. Na
+inicialização, o servidor cria o scope `identity.mcp` quando necessário e
+reconcilia a permissão de cada client listado. Em device-code,
+authorization-code e refresh, esses clients recebem o scope implicitamente.
+Assim uma instalação antiga se corrige na próxima renovação do token, sem novo
+login.
 
 A allowlist é uma fronteira de segurança: não adicione clientes de terceiros.
 Mesmo com o scope, cada chamada de Vault continua presa ao contexto

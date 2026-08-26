@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Core.Entities;
@@ -174,15 +175,38 @@ public sealed class DeviceFlowTests
         var nativeVerificationPath = verificationPath
             .Replace("launch_mode=popup", "launch_mode=app", StringComparison.Ordinal)
             + "&return_uri="
-            + Uri.EscapeDataString(DeviceAuthorizationReturnTargets.Genius);
+            + Uri.EscapeDataString(TestDataSeeder.DeviceClientNativeReturnUri);
         using var nativeVerificationResponse = await client.GetAsync(nativeVerificationPath);
         Assert.Equal(HttpStatusCode.Redirect, nativeVerificationResponse.StatusCode);
         var nativeConfirmationPath = nativeVerificationResponse.Headers.Location?.OriginalString;
         Assert.NotNull(nativeConfirmationPath);
         Assert.Contains("launch_mode=app", nativeConfirmationPath);
-        Assert.Contains(
-            "return_uri=sufficit-genius%3A%2F%2Fauth-complete",
-            nativeConfirmationPath);
+        // The callback never travels in the clear: the STS hands the page an
+        // encrypted ticket it minted after checking the client registration.
+        Assert.DoesNotContain("return_uri=", nativeConfirmationPath);
+        Assert.Contains("return_ticket=", nativeConfirmationPath);
+        Assert.Equal(
+            TestDataSeeder.DeviceClientNativeReturnUri,
+            _factory.Services
+                .GetRequiredService<INativeReturnUriTicketService>()
+                .Unprotect(QueryHelpers.ParseQuery(
+                    new Uri("http://localhost" + nativeConfirmationPath).Query)
+                    ["return_ticket"]));
+
+        // A callback the client never registered is refused outright, so the
+        // page falls back to the neutral "you can close this tab" ending.
+        var foreignVerificationPath = verificationPath
+            .Replace("launch_mode=popup", "launch_mode=app", StringComparison.Ordinal)
+            + "&return_uri="
+            + Uri.EscapeDataString("attacker-app://auth-complete");
+        using var foreignVerificationResponse =
+            await client.GetAsync(foreignVerificationPath);
+        Assert.Equal(HttpStatusCode.Redirect, foreignVerificationResponse.StatusCode);
+        var foreignConfirmationPath =
+            foreignVerificationResponse.Headers.Location?.OriginalString;
+        Assert.NotNull(foreignConfirmationPath);
+        Assert.DoesNotContain("return_ticket=", foreignConfirmationPath);
+        Assert.DoesNotContain("launch_mode=app", foreignConfirmationPath);
 
         using var scope = _factory.Services.CreateScope();
         var accessor = scope.ServiceProvider.GetRequiredService<IHttpContextAccessor>();
@@ -252,20 +276,27 @@ public sealed class DeviceFlowTests
         await TestOnlyEndpoints.SignInAsync(client, username);
         var antiforgeryToken = await TestOnlyEndpoints.GetAntiforgeryTokenAsync(client);
 
+        var returnTickets = _factory.Services
+            .GetRequiredService<INativeReturnUriTicketService>();
         using var approveResponse = await client.PostAsync("/connect/device", new FormUrlEncodedContent(
             new Dictionary<string, string>
             {
                 ["user_code"] = userCode,
                 ["approved"] = "true",
                 ["launch_mode"] = "app",
-                ["return_uri"] = DeviceAuthorizationReturnTargets.Genius,
+                ["return_ticket"] = returnTickets.Protect(
+                    TestDataSeeder.DeviceClientNativeReturnUri),
                 ["__RequestVerificationToken"] = antiforgeryToken,
             }));
 
         Assert.Equal(HttpStatusCode.Redirect, approveResponse.StatusCode);
+        var approvedLocation = approveResponse.Headers.Location?.OriginalString;
+        Assert.NotNull(approvedLocation);
+        Assert.StartsWith("/device?result=approved&launch_mode=app&", approvedLocation);
         Assert.Equal(
-            "/device?result=approved&launch_mode=app&return_uri=sufficit-genius%3A%2F%2Fauth-complete",
-            approveResponse.Headers.Location?.OriginalString);
+            TestDataSeeder.DeviceClientNativeReturnUri,
+            returnTickets.Unprotect(QueryHelpers.ParseQuery(
+                new Uri("http://localhost" + approvedLocation).Query)["return_ticket"]));
 
         // --- Device side: poll again, now expecting a token. ---
         var (pollStatus, pollBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>

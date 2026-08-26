@@ -42,13 +42,15 @@ Callback URLs and logs never carry provider or Sufficit tokens.
   token remains isolated in that user's personal Vault.
 
 The `/access` endpoint refreshes an expiring provider token server-side and
-returns only the HTTP headers needed by the authenticated Genius transport.
+returns only the HTTP headers needed by the authenticated caller's transport.
 Provider client secrets never leave Identity.
 
 ## Return contract
 
-The only native return is
-`sufficit-genius://auth-complete?integration=<provider>&status=<status>`.
-Identity does not accept a caller-supplied return URL. This removes an open
-redirect boundary and lets Android/iOS resume the app without putting tokens in
-the custom URI.
+The browser is sent back to `<native return URI>?integration=<provider>&status=<status>`.
+The callback is not a value Identity knows: it is resolved against the
+`native_return_uris` the *calling client* registered, and a caller-supplied URL
+that matches no registration is refused with `400 return_uri_not_registered`.
+See [ARCHITECTURE-NATIVE-RETURN-URIS](ARCHITECTURE-NATIVE-RETURN-URIS.md). This
+keeps the open-redirect boundary closed and lets Android/iOS resume the app
+without putting tokens in the custom URI.

@@ -1,3 +1,4 @@
+using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Clients;
@@ -75,6 +76,56 @@ internal static class ClientUriPolicy
         return result
             .DistinctBy(uri => uri.AbsoluteUri, StringComparer.Ordinal)
             .ToArray();
+    }
+
+    /// <summary>
+    /// Validates the native callbacks a client registers to be brought back to
+    /// the foreground with once a grant completes. Unlike a redirect URI these
+    /// receive no code and no token, which is why a private-use URI scheme
+    /// (RFC 8252, section 7.1) is acceptable here and nowhere else. Values are
+    /// kept verbatim: RFC 8252 section 8.1 matches them by simple string
+    /// comparison, and canonicalization would break that.
+    /// </summary>
+    internal static IReadOnlyList<string> ValidateNativeReturnUris(
+        IReadOnlyList<string>? values,
+        string field)
+    {
+        var result = new List<string>();
+
+        foreach (var raw in values ?? [])
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                continue;
+            }
+
+            if (!NativeReturnUriPolicy.TryValidateRegistration(
+                    raw,
+                    out var normalized,
+                    out var reasonCode,
+                    out var reasonMessage))
+            {
+                throw new ManagementValidationException(
+                    reasonCode!,
+                    reasonMessage!,
+                    field);
+            }
+
+            result.Add(normalized!);
+        }
+
+        var distinct = result
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (distinct.Length > NativeReturnUriPolicy.MaximumRegistrations)
+        {
+            throw new ManagementValidationException(
+                "native_return_uri_limit",
+                $"{field} accepts at most {NativeReturnUriPolicy.MaximumRegistrations} entries.",
+                field);
+        }
+
+        return distinct;
     }
 
     internal static Uri? ValidateLogoutUri(string? value, string field)

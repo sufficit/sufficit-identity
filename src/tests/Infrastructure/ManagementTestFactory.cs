@@ -115,6 +115,10 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
                 ["Sufficit:Identity:Management:RequireMfa"] = "false",
                 ["Sufficit:Identity:Management:TemporaryProvisioningToken:Enabled"] = "true",
                 ["Sufficit:Identity:Management:TemporaryOperatorToken:Enabled"] = "true",
+                ["Sufficit:Identity:Mcp:ImplicitClientIds:0"] =
+                    TestDataSeeder.DeviceClientId,
+                ["Sufficit:Identity:Mcp:ImplicitClientIds:1"] =
+                    TestDataSeeder.PasswordClientId,
             });
             if (!string.IsNullOrWhiteSpace(_routePrefix))
             {
