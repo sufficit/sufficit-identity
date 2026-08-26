@@ -64,12 +64,11 @@ public sealed class IntegrationOAuthProviderRegistry
             new Uri("https://gitlab.com/oauth/authorize"),
             new Uri("https://gitlab.com/oauth/token"),
             new Uri("https://gitlab.com/oauth/register"),
-            ["mcp", "api"],
+            ["api"],
             ClientId: null,
             ClientSecret: null,
             ProjectId: null,
-            Available: true,
-            Resource: new Uri("https://gitlab.com/api/v4/mcp"));
+            Available: true);
 
         providers = new[] { google, github, gitlab }
             .ToDictionary(value => value.Id, StringComparer.Ordinal);
