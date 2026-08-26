@@ -1,7 +1,31 @@
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.OAuth;
+
 namespace Sufficit.Identity.STS.Integrations;
 
 internal static class IntegrationOAuthProtocol
 {
+    public static void StoreGrantedScope(
+        AuthenticationProperties properties,
+        OAuthTokenResponse response)
+    {
+        if (response.Response?.RootElement is not { } payload
+            || !payload.TryGetProperty("scope", out var scopeNode)
+            || scopeNode.ValueKind != System.Text.Json.JsonValueKind.String
+            || string.IsNullOrWhiteSpace(scopeNode.GetString()))
+            return;
+
+        var tokens = properties.GetTokens()
+            .Where(token => !string.Equals(token.Name, "scope", StringComparison.Ordinal))
+            .ToList();
+        tokens.Add(new AuthenticationToken
+        {
+            Name = "scope",
+            Value = scopeNode.GetString()!,
+        });
+        properties.StoreTokens(tokens);
+    }
+
     public static IReadOnlyDictionary<string, object> DynamicRegistration(
         IntegrationOAuthProvider provider,
         string callbackUri)

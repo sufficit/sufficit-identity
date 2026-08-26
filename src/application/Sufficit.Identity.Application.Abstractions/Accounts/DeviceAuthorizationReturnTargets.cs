@@ -8,9 +8,14 @@ namespace Sufficit.Identity.Application.Accounts;
 public static class DeviceAuthorizationReturnTargets
 {
     public const string Genius = "sufficit-genius://auth-complete";
+    public const string GeniusFull = "sufficit-aigenius://auth-complete";
 
-    public static string? Normalize(string? candidate) =>
-        string.Equals(candidate, Genius, StringComparison.Ordinal)
-            ? Genius
-            : null;
+    public static string? Normalize(string? candidate)
+    {
+        if (string.Equals(candidate, Genius, StringComparison.Ordinal))
+            return Genius;
+        if (string.Equals(candidate, GeniusFull, StringComparison.Ordinal))
+            return GeniusFull;
+        return null;
+    }
 }

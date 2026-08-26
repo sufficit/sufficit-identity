@@ -1,4 +1,6 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.Extensions.Configuration;
 using Sufficit.Identity.STS.Integrations;
 using Sufficit.Identity.Tests.Infrastructure;
@@ -66,6 +68,28 @@ public sealed class IntegrationOAuthProtocolTests
             required,
             "profile,calendar.events openid"));
         Assert.False(IntegrationOAuthProtocol.HasRequiredScopes(required, null));
+    }
+
+    [Fact]
+    public void Granted_scope_from_static_provider_token_response_is_persisted()
+    {
+        var properties = new AuthenticationProperties();
+        properties.StoreTokens(
+        [
+            new AuthenticationToken { Name = "access_token", Value = "access-1" },
+            new AuthenticationToken { Name = "scope", Value = "stale.scope" },
+        ]);
+        using var payload = JsonDocument.Parse(
+            """{"access_token":"access-1","scope":"openid calendar.events"}""");
+        using var response = OAuthTokenResponse.Success(payload);
+
+        IntegrationOAuthProtocol.StoreGrantedScope(properties, response);
+
+        Assert.Equal(
+            "openid calendar.events",
+            properties.GetTokenValue("scope"));
+        Assert.Equal("access-1", properties.GetTokenValue("access_token"));
+        Assert.Single(properties.GetTokens(), token => token.Name == "scope");
     }
 
     [Fact]
