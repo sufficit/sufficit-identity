@@ -1,4 +1,5 @@
 @page "/clients/drafts/{Id:guid}/{Step}"
+@using Sufficit.Identity.Application.Security
 @attribute [Authorize(Policy = ManagementUiPolicies.ManageClients)]
 @implements IAsyncDisposable
 @inject ManagementClientDataSource ClientData
@@ -224,7 +225,7 @@ else
                     <div class="form-grid form-grid--three">
                         <div class="field-group">
                             <label for="draft-access-token-lifetime">Access token (minutos)</label>
-                            <input id="draft-access-token-lifetime" name="accessTokenLifetimeMinutes" type="number" min="1" max="1440" class="form-control" value="@draft.Values.AccessTokenLifetimeMinutes" @oninput="AccessTokenLifetimeChangedAsync" />
+                            <input id="draft-access-token-lifetime" name="accessTokenLifetimeMinutes" type="number" min="1" max="@TokenLifetimeLimits.MaximumAccessTokenLifetimeMinutes" class="form-control" value="@draft.Values.AccessTokenLifetimeMinutes" @oninput="AccessTokenLifetimeChangedAsync" />
                         </div>
                         <div class="field-group">
                             <label for="draft-identity-token-lifetime">ID token (minutos)</label>

@@ -24,6 +24,8 @@ using Sufficit.Identity.Vault;
 
 var builder = WebApplication.CreateBuilder(args);
 var migrateOnly = args.Contains("--migrate-only", StringComparer.Ordinal);
+var reconcileClientTokenLifetimes = args.Contains(
+    "--reconcile-client-token-lifetimes", StringComparer.Ordinal);
 var repairMetricsExportSecret = args.Contains(
     "--repair-metrics-export-secret", StringComparer.Ordinal);
 
@@ -498,6 +500,18 @@ var app = builder.Build();
 if (repairMetricsExportSecret)
 {
     await RepairMetricsExportSecretAsync(app);
+    return;
+}
+
+if (reconcileClientTokenLifetimes)
+{
+    using var scope = app.Services.CreateScope();
+    var updated = await scope.ServiceProvider
+        .GetRequiredService<ClientTokenLifetimeReconciler>()
+        .ReconcileAsync();
+    app.Logger.LogInformation(
+        "Client token lifetime reconciliation completed; updatedClients={UpdatedClients}.",
+        updated);
     return;
 }
 

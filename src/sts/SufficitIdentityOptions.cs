@@ -680,6 +680,15 @@ public sealed class TokenLifetimeOptions
     public double RefreshTokenLifetimeDays { get; init; } = 14;
 
     /// <summary>
+    /// Client-specific values consumed only by the explicit
+    /// <c>--reconcile-client-token-lifetimes</c> maintenance command. Normal
+    /// server startup never reapplies this map, so the management database
+    /// remains the source of truth after reconciliation.
+    /// </summary>
+    public Dictionary<string, ClientTokenLifetimeOverrideOptions> ClientOverrides
+    { get; init; } = new(StringComparer.Ordinal);
+
+    /// <summary>
     /// Compatibility fallback when no per-resource or per-client rule exists.
     /// <c>true</c> preserves the historical opaque reference-token behavior;
     /// <c>false</c> uses self-contained JWT access tokens. New migrations
@@ -700,6 +709,14 @@ public sealed class TokenLifetimeOptions
     /// </summary>
     public Dictionary<string, AccessTokenStorageMode> AccessTokenFormatsByResource
     { get; init; } = new(StringComparer.Ordinal);
+}
+
+/// <summary>Optional token lifetime values for one registered client.</summary>
+public sealed class ClientTokenLifetimeOverrideOptions
+{
+    public int? AccessTokenLifetimeMinutes { get; init; }
+    public int? IdentityTokenLifetimeMinutes { get; init; }
+    public int? RefreshTokenLifetimeDays { get; init; }
 }
 
 public enum AccessTokenStorageMode

@@ -1,5 +1,6 @@
 using System.Globalization;
 using OpenIddict.Abstractions;
+using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Clients;
@@ -17,13 +18,6 @@ namespace Sufficit.Identity.Management.Clients;
 /// </remarks>
 internal static class ClientTokenLifetimePolicy
 {
-    private const int MinimumAccessTokenLifetimeMinutes = 1;
-    private const int MaximumAccessTokenLifetimeMinutes = 24 * 60;
-    private const int MinimumIdentityTokenLifetimeMinutes = 1;
-    private const int MaximumIdentityTokenLifetimeMinutes = 120;
-    private const int MinimumRefreshTokenLifetimeDays = 1;
-    private const int MaximumRefreshTokenLifetimeDays = 365;
-
     internal static void ValidateTokenLifetimes(
         int? accessTokenLifetimeMinutes,
         int? identityTokenLifetimeMinutes,
@@ -31,22 +25,22 @@ internal static class ClientTokenLifetimePolicy
     {
         ValidateLifetime(
             accessTokenLifetimeMinutes,
-            MinimumAccessTokenLifetimeMinutes,
-            MaximumAccessTokenLifetimeMinutes,
+            TokenLifetimeLimits.MinimumAccessTokenLifetimeMinutes,
+            TokenLifetimeLimits.MaximumAccessTokenLifetimeMinutes,
             "accessTokenLifetimeMinutes",
             "access_token_lifetime_invalid",
-            "Access token lifetime must be between 1 minute and 24 hours.");
+            "Access token lifetime must be between 1 minute and 7 days.");
         ValidateLifetime(
             identityTokenLifetimeMinutes,
-            MinimumIdentityTokenLifetimeMinutes,
-            MaximumIdentityTokenLifetimeMinutes,
+            TokenLifetimeLimits.MinimumIdentityTokenLifetimeMinutes,
+            TokenLifetimeLimits.MaximumIdentityTokenLifetimeMinutes,
             "identityTokenLifetimeMinutes",
             "identity_token_lifetime_invalid",
             "Identity token lifetime must be between 1 and 120 minutes.");
         ValidateLifetime(
             refreshTokenLifetimeDays,
-            MinimumRefreshTokenLifetimeDays,
-            MaximumRefreshTokenLifetimeDays,
+            TokenLifetimeLimits.MinimumRefreshTokenLifetimeDays,
+            TokenLifetimeLimits.MaximumRefreshTokenLifetimeDays,
             "refreshTokenLifetimeDays",
             "refresh_token_lifetime_invalid",
             "Refresh token lifetime must be between 1 and 365 days.");

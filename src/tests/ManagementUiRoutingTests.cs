@@ -321,7 +321,7 @@ public sealed class ManagementUiRoutingTests
             detailHtml,
             StringComparison.Ordinal);
         Assert.Contains("Protocolos e permissões", detailHtml, StringComparison.Ordinal);
-        Assert.Contains("60 minutos", detailHtml, StringComparison.Ordinal);
+        Assert.Contains("1 hora", detailHtml, StringComparison.Ordinal);
         Assert.Contains("Padrão global", detailHtml, StringComparison.Ordinal);
         Assert.Contains("Autenticação da aplicação", detailHtml, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
