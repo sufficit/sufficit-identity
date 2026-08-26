@@ -50,10 +50,14 @@ public sealed class IntegrationOAuthController(
             Subject(),
             definition.Id,
             cancellationToken);
+        var connected = token is not null
+            && IntegrationOAuthProtocol.HasRequiredScopes(
+                definition.Scopes,
+                token.Scope);
         return Ok(new IntegrationOAuthStatus(
             definition.Id,
             definition.Available,
-            token is not null,
+            connected,
             token?.ExpiresAtUtc));
     }
 
@@ -247,7 +251,10 @@ public sealed class IntegrationOAuthController(
 
         var subject = Subject();
         var token = await ReadTokenAsync(subject, definition.Id, cancellationToken);
-        if (token is null)
+        if (token is null
+            || !IntegrationOAuthProtocol.HasRequiredScopes(
+                definition.Scopes,
+                token.Scope))
             return Conflict(new { error = "authorization_required" });
         if (token.ExpiresAtUtc is { } expiration
             && expiration <= DateTimeOffset.UtcNow.AddMinutes(2))
@@ -290,21 +297,13 @@ public sealed class IntegrationOAuthController(
         using var response = await httpClients.CreateClient(HttpClientName)
             .PostAsJsonAsync(
                 provider.RegistrationEndpoint,
-                new
-                {
-                    client_name = "Sufficit AI Genius",
-                    redirect_uris = new[] { callbackUri },
-                    grant_types = new[] { "authorization_code", "refresh_token" },
-                    response_types = new[] { "code" },
-                    token_endpoint_auth_method = "client_secret_post",
-                    scope = string.Join(' ', provider.Scopes),
-                },
+                IntegrationOAuthProtocol.DynamicRegistration(provider, callbackUri),
                 cancellationToken);
         response.EnsureSuccessStatusCode();
         var payload = await response.Content.ReadFromJsonAsync<JsonElement>(
             cancellationToken: cancellationToken);
         var clientId = RequiredString(payload, "client_id");
-        var clientSecret = RequiredString(payload, "client_secret");
+        var clientSecret = String(payload, "client_secret");
         var verifier = WebBase64UrlTextEncoder.Encode(RandomNumberGenerator.GetBytes(32));
         return new PendingIntegrationOAuth(
             provider.Id,
@@ -342,21 +341,20 @@ public sealed class IntegrationOAuthController(
         string code,
         CancellationToken cancellationToken)
     {
-        var fields = new Dictionary<string, string>
-        {
-            ["grant_type"] = "authorization_code",
-            ["code"] = code,
-            ["redirect_uri"] = pending.CallbackUri,
-            ["client_id"] = pending.ClientId!,
-            ["client_secret"] = pending.ClientSecret!,
-            ["code_verifier"] = pending.CodeVerifier!,
-        };
+        var fields = IntegrationOAuthProtocol.AuthorizationCodeFields(
+            provider,
+            code,
+            pending.CallbackUri,
+            pending.ClientId!,
+            pending.ClientSecret,
+            pending.CodeVerifier!);
         return await RequestTokenAsync(
             provider,
             fields,
             pending.ClientId,
             pending.ClientSecret,
             previousRefreshToken: null,
+            previousScope: null,
             cancellationToken);
     }
 
@@ -367,21 +365,21 @@ public sealed class IntegrationOAuthController(
     {
         var clientId = token.ClientId ?? provider.ClientId;
         var clientSecret = token.ClientSecret ?? provider.ClientSecret;
-        if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
+        if (string.IsNullOrWhiteSpace(clientId)
+            || (provider.Scheme is not null && string.IsNullOrWhiteSpace(clientSecret)))
             throw new InvalidOperationException("OAuth client is unavailable for refresh.");
-        var fields = new Dictionary<string, string>
-        {
-            ["grant_type"] = "refresh_token",
-            ["refresh_token"] = token.RefreshToken!,
-            ["client_id"] = clientId,
-            ["client_secret"] = clientSecret,
-        };
+        var fields = IntegrationOAuthProtocol.RefreshFields(
+            provider,
+            token.RefreshToken!,
+            clientId,
+            clientSecret);
         return await RequestTokenAsync(
             provider,
             fields,
             token.ClientId,
             token.ClientSecret,
             token.RefreshToken,
+            token.Scope,
             cancellationToken);
     }
 
@@ -391,6 +389,7 @@ public sealed class IntegrationOAuthController(
         string? dynamicClientId,
         string? dynamicClientSecret,
         string? previousRefreshToken,
+        string? previousScope,
         CancellationToken cancellationToken)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, provider.TokenEndpoint)
@@ -407,7 +406,8 @@ public sealed class IntegrationOAuthController(
             payload,
             dynamicClientId,
             dynamicClientSecret,
-            previousRefreshToken);
+            previousRefreshToken,
+            previousScope);
     }
 
     private static IntegrationOAuthToken FromAuthenticationProperties(
@@ -434,7 +434,8 @@ public sealed class IntegrationOAuthController(
         JsonElement payload,
         string? clientId,
         string? clientSecret,
-        string? previousRefreshToken)
+        string? previousRefreshToken,
+        string? previousScope)
     {
         var accessToken = RequiredString(payload, "access_token");
         var refreshToken = String(payload, "refresh_token") ?? previousRefreshToken;
@@ -447,7 +448,7 @@ public sealed class IntegrationOAuthController(
             refreshToken,
             String(payload, "token_type") ?? "Bearer",
             expiresAt,
-            String(payload, "scope"),
+            String(payload, "scope") ?? previousScope,
             clientId,
             clientSecret);
     }

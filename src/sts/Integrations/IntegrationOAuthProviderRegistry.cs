@@ -36,6 +36,9 @@ public sealed class IntegrationOAuthProviderRegistry
                 "https://www.googleapis.com/auth/gmail.modify",
                 "https://www.googleapis.com/auth/drive",
                 "https://www.googleapis.com/auth/documents",
+                "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+                "https://www.googleapis.com/auth/calendar.events",
+                "https://www.googleapis.com/auth/calendar.events.freebusy",
             ]);
         var github = StaticProvider(
             configuration,
@@ -65,7 +68,8 @@ public sealed class IntegrationOAuthProviderRegistry
             ClientId: null,
             ClientSecret: null,
             ProjectId: null,
-            Available: true);
+            Available: true,
+            Resource: new Uri("https://gitlab.com/api/v4/mcp"));
 
         providers = new[] { google, github, gitlab }
             .ToDictionary(value => value.Id, StringComparer.Ordinal);
@@ -130,4 +134,5 @@ public sealed record IntegrationOAuthProvider(
     string? ClientId,
     string? ClientSecret,
     string? ProjectId,
-    bool Available);
+    bool Available,
+    Uri? Resource = null);

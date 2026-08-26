@@ -349,6 +349,10 @@ public sealed class IdentityMcpTests
             StringComparison.Ordinal);
         Assert.Contains("gmail.modify", Uri.UnescapeDataString(location));
         Assert.Contains("/auth/documents", Uri.UnescapeDataString(location));
+        Assert.Contains("/auth/calendar.events", Uri.UnescapeDataString(location));
+        Assert.Contains(
+            "/auth/calendar.calendarlist.readonly",
+            Uri.UnescapeDataString(location));
 
         using var malformed = await client.GetAsync(
             "/api/integrations/oauth/google-workspace/start?ticket=invalid");
