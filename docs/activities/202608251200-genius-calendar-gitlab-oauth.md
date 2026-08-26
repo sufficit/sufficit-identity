@@ -12,11 +12,16 @@ contain every required scope is reported as disconnected and access returns
 instead of failing a Calendar tool later.
 
 GitLab dynamic registration now follows its public-client contract: the broker
-registers the callback, `mcp` scope and MCP resource, uses PKCE, and accepts a
+registers the callback, `mcp` and `api` scopes and MCP resource, uses PKCE, and accepts a
 response without `client_secret`. Authorization-code and refresh requests omit
 that field for the public client while confidential static providers continue
 to send it. A refreshed token preserves the prior grant scope when the provider
 does not repeat it.
+
+The `api` scope lets Genius use GitLab's stable REST API when `/api/v4/mcp`
+returns the documented eligibility 404 for accounts without an enabled
+top-level group. Existing `mcp`-only grants are reported as incomplete and go
+through the normal provider authorization flow once; no PAT is requested.
 
 Evidence:
 
