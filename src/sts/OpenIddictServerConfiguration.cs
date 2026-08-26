@@ -236,6 +236,8 @@ public static partial class ServiceCollectionExtensions
         server.AddEventHandler(RecordIdentityUsage.Descriptor);
         server.AddEventHandler(RecordAuthorizationUsageFailure.Descriptor);
         server.AddEventHandler(RecordTokenUsageFailure.Descriptor);
+        server.AddEventHandler(Security
+            .AttachFormPostContentSecurityPolicy.Descriptor);
         server.AddEventHandler(Tokens.ApplyAccessTokenFormat.Descriptor);
         server.AddEventHandler(
             Tokens.PrepareSelfContainedAccessToken.Descriptor);

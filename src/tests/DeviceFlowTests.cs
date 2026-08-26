@@ -255,12 +255,12 @@ public sealed class DeviceFlowTests
             await TestDataSeeder.CreateUserAsync(userManager, username, password);
         }
 
-        // One shared client/cookie-jar: the "polling device" and the
-        // "approving browser" are different actors in RFC 8628, but nothing
-        // stops them from sharing an HttpClient/cookie-jar in this test —
-        // the device_code itself (not a session) is what ties the two
-        // requests together server-side.
+        // The browser and polling devices are separate actors in RFC 8628.
+        // Keep independent cookie jars so the race below exercises only the
+        // device-code transition, not concurrent renewal of a browser cookie.
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var firstPollingClient = _factory.CreateClient();
+        var secondPollingClient = _factory.CreateClient();
 
         var (authStatus, authBody) = await client.PostFormAsync("/connect/deviceauthorization", new Dictionary<string, string>
         {
@@ -298,16 +298,28 @@ public sealed class DeviceFlowTests
             returnTickets.Unprotect(QueryHelpers.ParseQuery(
                 new Uri("http://localhost" + approvedLocation).Query)["return_ticket"]));
 
-        // --- Device side: poll again, now expecting a token. ---
-        var (pollStatus, pollBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        // --- Device side: race two final polls. Mobile/desktop clients often
+        // have one timer tick already in flight when approval completes. One
+        // request must win and the other must receive invalid_grant; neither
+        // may escape the protocol pipeline as a Kestrel 500.
+        var redemption = new Dictionary<string, string>
         {
             ["grant_type"] = "urn:ietf:params:oauth:grant-type:device_code",
             ["device_code"] = deviceCode,
             ["client_id"] = TestDataSeeder.DeviceClientId,
             ["client_secret"] = TestDataSeeder.DeviceClientSecret,
-        });
+        };
+        var polls = await Task.WhenAll(
+            firstPollingClient.PostFormAsync("/connect/token", redemption),
+            secondPollingClient.PostFormAsync("/connect/token", redemption));
+
+        var (pollStatus, pollBody) = Assert.Single(
+            polls, result => result.Status == HttpStatusCode.OK);
+        var replay = Assert.Single(
+            polls, result => result.Status == HttpStatusCode.BadRequest);
 
         Assert.Equal(HttpStatusCode.OK, pollStatus);
+        Assert.Equal("invalid_grant", replay.Body.GetProperty("error").GetString());
         var accessToken = pollBody.GetProperty("access_token").GetString();
         Assert.False(string.IsNullOrEmpty(accessToken));
         Assert.False(string.IsNullOrEmpty(pollBody.GetProperty("refresh_token").GetString()));
@@ -326,9 +338,26 @@ public sealed class DeviceFlowTests
         using var userInfoRequest = new HttpRequestMessage(HttpMethod.Get, "/connect/userinfo");
         userInfoRequest.Headers.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-        using var userInfoResponse = await client.SendAsync(userInfoRequest);
+        using var userInfoResponse = await firstPollingClient.SendAsync(userInfoRequest);
 
         Assert.Equal(HttpStatusCode.OK, userInfoResponse.StatusCode);
+
+        // A device code is single-use. Real clients can race one final poll
+        // with the successful redemption, so replay must produce a protocol
+        // error instead of reaching the sign-in pipeline with a principal
+        // whose private device-code identifier has already been removed.
+        var (replayStatus, replayBody) = await firstPollingClient.PostFormAsync(
+            "/connect/token",
+            new Dictionary<string, string>
+            {
+                ["grant_type"] = "urn:ietf:params:oauth:grant-type:device_code",
+                ["device_code"] = deviceCode,
+                ["client_id"] = TestDataSeeder.DeviceClientId,
+                ["client_secret"] = TestDataSeeder.DeviceClientSecret,
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, replayStatus);
+        Assert.Equal("invalid_grant", replayBody.GetProperty("error").GetString());
     }
 
     [Fact]

@@ -116,6 +116,8 @@ case ${1:-} in
             exit 1
         fi
         write_value Sufficit__Identity__Csp__ReportOnly false
+        write_value Sufficit__Identity__Csp__AcknowledgeReportOnly false
+        write_value Sufficit__Identity__Security__AllowLegacyBooleanAcknowledgements false
         echo "[rollout] CSP enforcement enabled."
         ;;
     enforce-mfa)
