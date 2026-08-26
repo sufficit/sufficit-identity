@@ -4,9 +4,10 @@ using Sufficit.Identity.Vault;
 namespace Sufficit.Identity.STS.Integrations;
 
 /// <summary>
-/// Server-owned OAuth applications that can authorize optional Genius MCP
-/// integrations. Provider credentials never leave Identity; device clients
-/// only receive short-lived user access tokens after proving identity.mcp.
+/// Server-owned OAuth applications that can authorize the optional third-party
+/// integrations an MCP client offers. Provider credentials never leave
+/// Identity; device clients only receive short-lived user access tokens after
+/// proving identity.mcp.
 /// </summary>
 public sealed class IntegrationOAuthProviderRegistry
 {

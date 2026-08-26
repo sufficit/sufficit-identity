@@ -287,6 +287,25 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     </div>
                     <div class="uri-group">
                         <div class="uri-group__heading">
+                            <h3>Retornos nativos</h3>
+                            <span>@(client.NativeReturnUris?.Count ?? 0)</span>
+                        </div>
+                        @if ((client.NativeReturnUris?.Count ?? 0) is 0)
+                        {
+                            <p class="detail-empty">Nenhum retorno registrado.</p>
+                        }
+                        else
+                        {
+                            <ul class="compact-uri-list">
+                                @foreach (var uri in client.NativeReturnUris!)
+                                {
+                                    <li><code>@uri</code></li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                    <div class="uri-group">
+                        <div class="uri-group__heading">
                             <h3>Logout federado</h3>
                             <span>@FederatedLogoutCount(client)</span>
                         </div>

@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
+using System.Text.Json;
 using OpenIddict.Abstractions;
+using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Core.Entities;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -25,6 +27,12 @@ public static class TestDataSeeder
     public const string PasswordClientId = "test-ropc";
     public const string PasswordClientSecret = "test-ropc-secret";
 
+    /// <summary>
+    /// Native callback registered for <see cref="PasswordClientId"/>, which
+    /// stands in for a native app driving the integration OAuth broker.
+    /// </summary>
+    public const string PasswordClientNativeReturnUri = "test-ropc://auth-complete";
+
     public const string TokenExchangeClientId = "test-exchange";
     public const string TokenExchangeClientSecret = "test-exchange-secret";
 
@@ -40,8 +48,15 @@ public static class TestDataSeeder
         "https://client.tests.local/signout-callback-oidc";
 
     // Confidential client: RFC 8628 device authorization grant.
-    public const string DeviceClientId = "sufficit-ai-genius";
+    public const string DeviceClientId = "test-device-client";
     public const string DeviceClientSecret = "test-device-secret";
+
+    /// <summary>
+    /// Native callback registered for <see cref="DeviceClientId"/>. Nothing in
+    /// the server knows this value: it exists only because this client
+    /// registered it, which is the whole point of the registration check.
+    /// </summary>
+    public const string DeviceClientNativeReturnUri = "test-device://auth-complete";
 
     // Confidential client carrying the OpenIddict-level
     // Permissions.GrantTypes.TokenExchange permission (so it reaches
@@ -115,7 +130,7 @@ public static class TestDataSeeder
         // subject_token that actually carries a role claim (destinations-
         // gating negative test) — existing tests never request "roles", so
         // this is additive and does not change their behavior.
-        await CreateApplicationIfMissingAsync(appManager, new OpenIddictApplicationDescriptor
+        var passwordApplication = new OpenIddictApplicationDescriptor
         {
             ClientId = PasswordClientId,
             ClientSecret = PasswordClientSecret,
@@ -129,7 +144,11 @@ public static class TestDataSeeder
                 Permissions.Prefixes.Scope + "directives",
                 Permissions.Prefixes.Scope + "identity.mcp",
             },
-        });
+        };
+        passwordApplication.Properties[NativeReturnUriPolicy.PropertyKey] =
+            JsonSerializer.SerializeToElement(
+                new[] { PasswordClientNativeReturnUri });
+        await CreateApplicationIfMissingAsync(appManager, passwordApplication);
 
         // (c) confidential token-exchange (RFC 8693) caller. Carries the
         // "test.scope" scope permission (on top of the grant-type
@@ -222,6 +241,8 @@ public static class TestDataSeeder
                 Permissions.Prefixes.Scope + "identity.mcp",
             },
         };
+        deviceApplication.Properties[NativeReturnUriPolicy.PropertyKey] =
+            JsonSerializer.SerializeToElement(new[] { DeviceClientNativeReturnUri });
         deviceApplication.SetAccessTokenLifetime(TimeSpan.FromMinutes(45));
         await CreateApplicationIfMissingAsync(appManager, deviceApplication);
 

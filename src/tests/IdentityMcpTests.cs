@@ -30,12 +30,14 @@ public sealed class IdentityMcpTests
     }
 
     [Fact]
-    public void Implicit_scope_policy_is_restricted_to_the_trusted_genius_client()
+    public void Implicit_scope_policy_is_restricted_to_configured_clients()
     {
-        var policy = new McpScopeGrantPolicy(new SufficitIdentityOptions());
+        var options = new SufficitIdentityOptions();
+        options.Mcp.ImplicitClientIds.Add("trusted-client");
+        var policy = new McpScopeGrantPolicy(options);
 
-        var geniusScopes = policy.Resolve(
-            "sufficit-ai-genius",
+        var trustedScopes = policy.Resolve(
+            "trusted-client",
             ["openid", "offline_access"]);
         var unrelatedScopes = policy.Resolve(
             "unrelated-client",
@@ -43,10 +45,20 @@ public sealed class IdentityMcpTests
 
         Assert.Contains(
             McpResourceMetadataChallenge.DefaultRequiredScope,
-            geniusScopes);
+            trustedScopes);
         Assert.DoesNotContain(
             McpResourceMetadataChallenge.DefaultRequiredScope,
             unrelatedScopes);
+    }
+
+    [Fact]
+    public void Implicit_scope_policy_grants_nothing_without_configuration()
+    {
+        var policy = new McpScopeGrantPolicy(new SufficitIdentityOptions());
+
+        Assert.DoesNotContain(
+            McpResourceMetadataChallenge.DefaultRequiredScope,
+            policy.Resolve("any-client", ["openid", "offline_access"]));
     }
 
     [Fact]
@@ -164,7 +176,7 @@ public sealed class IdentityMcpTests
         using var alice = factory.CreateClient();
         await AuthenticateAsync(alice);
         const string path =
-            "/api/vault/personal/secrets/genius/device-1/external/github-token";
+            "/api/vault/personal/secrets/agent/device-1/external/github-token";
         using var saved = await alice.PutAsJsonAsync(path, new
         {
             value = "alice-secret",
@@ -177,7 +189,7 @@ public sealed class IdentityMcpTests
         var listedSecret = Assert.Single(
             listedBody.GetProperty("secrets").EnumerateArray());
         Assert.Equal(
-            "genius/device-1/external/github-token",
+            "agent/device-1/external/github-token",
             listedSecret.GetProperty("name").GetString());
         Assert.False(listedSecret.TryGetProperty("value", out _));
 

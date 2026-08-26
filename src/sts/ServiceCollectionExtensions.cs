@@ -682,6 +682,10 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<OpenIddictDeviceAuthorizationContextService>();
         services.AddScoped<IDeviceAuthorizationContextService>(provider =>
             provider.GetRequiredService<OpenIddictDeviceAuthorizationContextService>());
+        services.AddScoped<IClientNativeReturnUriResolver,
+            OpenIddictClientNativeReturnUriResolver>();
+        services.AddSingleton<INativeReturnUriTicketService,
+            DataProtectionNativeReturnUriTicketService>();
         services.AddScoped<IExternalSignInService,
             AspNetCoreIdentityExternalSignInService>();
         services.AddScoped<AspNetCoreIdentityPasskeyService>();
@@ -1102,10 +1106,10 @@ public static partial class ServiceCollectionExtensions
 
         // GitLab is broker-only: it deliberately has no display name, so it
         // is not offered as an Identity sign-in method. The confidential app
-        // gives each Genius user an `api` grant that Identity keeps in their
-        // personal Vault. GitLab's dynamic registration endpoint cannot be
-        // used here because it creates an MCP-only application even when the
-        // requested registration scope is `api`.
+        // gives each integration user an `api` grant that Identity keeps in
+        // their personal Vault. GitLab's dynamic registration endpoint cannot
+        // be used here because it creates an MCP-only application even when
+        // the requested registration scope is `api`.
         var gitlab = section.GetSection("GitLab");
         var gitlabClientId = ResolveSecret(
             secretStore,

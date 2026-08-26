@@ -157,6 +157,13 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                 ["Sufficit:Identity:PersonalTokens:Mode"] = "Observe",
                 ["Sufficit:Identity:PersonalTokens:RequiredScope"] = "",
                 ["Sufficit:Identity:PersonalTokens:RequireRecentAuthentication"] = "false",
+                // Which clients are implicitly entitled to identity.mcp is
+                // deployment configuration with no built-in default, so the
+                // fixture states it the way a real deployment would.
+                ["Sufficit:Identity:Mcp:ImplicitClientIds:0"] =
+                    TestDataSeeder.DeviceClientId,
+                ["Sufficit:Identity:Mcp:ImplicitClientIds:1"] =
+                    TestDataSeeder.PasswordClientId,
             });
 
             // Layered on top so a per-test override (e.g. a restricted

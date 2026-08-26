@@ -96,6 +96,63 @@ public sealed class ClientsControllerTests
         Assert.Equal(10, page.PageSize);
     }
 
+    [Fact]
+    public async Task Native_return_uris_round_trip_through_create_and_update()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+        var clientId = $"cc-native-{Guid.NewGuid():N}";
+
+        var createRequest = ConfidentialClient(
+            clientId,
+            "https://client.tests.local/callback");
+        createRequest.NativeReturnUris = ["example-app://auth-complete"];
+        using var created = await client.PostAsJsonAsync("/api/clients", createRequest);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var before = await created.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(
+            "example-app://auth-complete",
+            before.GetProperty("nativeReturnUris")[0].GetString());
+
+        using var updated = await client.PutAsJsonAsync(
+            $"/api/clients/{Uri.EscapeDataString(clientId)}",
+            new UpdateClientRequest
+            {
+                DisplayName = "Native client",
+                ConsentType = "explicit",
+                GrantTypes = [Permissions.GrantTypes.AuthorizationCode],
+                Scopes = ["profile"],
+                RedirectUris = ["https://client.tests.local/callback"],
+                ExpectedVersion = before.GetProperty("version").GetString(),
+                NativeReturnUris = [],
+            });
+        Assert.Equal(HttpStatusCode.OK, updated.StatusCode);
+        var after = await updated.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Empty(after.GetProperty("nativeReturnUris").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task Native_return_uris_reject_a_scheme_that_executes_in_the_browser()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+
+        var request = ConfidentialClient(
+            $"cc-native-bad-{Guid.NewGuid():N}",
+            "https://client.tests.local/callback");
+        request.NativeReturnUris = ["javascript:alert(1)"];
+
+        using var response = await client.PostAsJsonAsync("/api/clients", request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(
+            "native_return_uri_scheme_denied",
+            await response.Content.ReadAsStringAsync(),
+            StringComparison.Ordinal);
+    }
+
     private static CreateClientRequest ConfidentialClient(string clientId, params string[] redirectUris) => new()
     {
         ClientId = clientId,

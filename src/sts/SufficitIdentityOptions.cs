@@ -1656,17 +1656,16 @@ public sealed class McpOptions
     public string RequiredScope { get; init; } = "identity.mcp";
 
     /// <summary>
-    /// First-party clients whose user tokens implicitly receive
+    /// Clients whose user tokens implicitly receive
     /// <see cref="RequiredScope"/>. The server also provisions the matching
-    /// OpenIddict client permission at startup. Keep this allowlist narrow:
-    /// adding a client grants every signed-in user of that client access to
-    /// their own Identity MCP and personal Vault.
+    /// OpenIddict client permission at startup. Empty by default: which
+    /// applications a deployment trusts this far is deployment configuration,
+    /// never a built-in. Keep the allowlist narrow — adding a client grants
+    /// every signed-in user of that client access to their own Identity MCP
+    /// and personal Vault.
     /// </summary>
     public HashSet<string> ImplicitClientIds { get; init; } =
-        new(StringComparer.Ordinal)
-        {
-            "sufficit-ai-genius",
-        };
+        new(StringComparer.Ordinal);
 
     /// <summary>
     /// Resource/audience URIs the STS recognizes as valid <c>resource</c>
