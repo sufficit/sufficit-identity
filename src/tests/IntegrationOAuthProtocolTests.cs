@@ -31,30 +31,26 @@ public sealed class IntegrationOAuthProtocolTests
     }
 
     [Fact]
-    public void Gitlab_dynamic_registration_is_a_public_pkce_client()
+    public void Gitlab_uses_a_central_confidential_api_client()
     {
         var gitlab = Assert.IsType<IntegrationOAuthProvider>(
             Registry().Find("gitlab"));
 
-        var registration = IntegrationOAuthProtocol.DynamicRegistration(
-            gitlab,
-            "https://identity.example.test/api/integrations/oauth/callback/gitlab");
-        var serialized = JsonSerializer.Serialize(registration);
         var exchange = IntegrationOAuthProtocol.AuthorizationCodeFields(
             gitlab,
             "code-1",
             "https://identity.example.test/api/integrations/oauth/callback/gitlab",
-            "dynamic-client",
-            clientSecret: null,
+            "gitlab-client",
+            clientSecret: "gitlab-secret",
             codeVerifier: "verifier-1");
 
-        Assert.False(registration.ContainsKey("resource"));
+        Assert.True(gitlab.Available);
+        Assert.Equal("GitLabIntegration", gitlab.Scheme);
+        Assert.Null(gitlab.RegistrationEndpoint);
         Assert.Equal(["api"], gitlab.Scopes);
-        Assert.DoesNotContain("client_secret", serialized, StringComparison.Ordinal);
-        Assert.DoesNotContain("token_endpoint_auth_method", serialized, StringComparison.Ordinal);
-        Assert.Equal("dynamic-client", exchange["client_id"]);
+        Assert.Equal("gitlab-client", exchange["client_id"]);
+        Assert.Equal("gitlab-secret", exchange["client_secret"]);
         Assert.Equal("verifier-1", exchange["code_verifier"]);
-        Assert.False(exchange.ContainsKey("client_secret"));
         Assert.False(exchange.ContainsKey("resource"));
     }
 
@@ -146,6 +142,9 @@ public sealed class IntegrationOAuthProtocolTests
                 ["Sufficit:Identity:ExternalProviders:GitHub:Enabled"] = "true",
                 ["Sufficit:Identity:ExternalProviders:GitHub:ClientId"] = "github-client",
                 ["Sufficit:Identity:ExternalProviders:GitHub:ClientSecret"] = "github-secret",
+                ["Sufficit:Identity:ExternalProviders:GitLab:Enabled"] = "true",
+                ["Sufficit:Identity:ExternalProviders:GitLab:ClientId"] = "gitlab-client",
+                ["Sufficit:Identity:ExternalProviders:GitLab:ClientSecret"] = "gitlab-secret",
             })
             .Build();
         return new IntegrationOAuthProviderRegistry(
