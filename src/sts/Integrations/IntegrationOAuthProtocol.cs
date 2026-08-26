@@ -89,7 +89,26 @@ internal static class IntegrationOAuthProtocol
             [' ', ','],
             StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var set = new HashSet<string>(values, StringComparer.Ordinal);
-        return required.All(set.Contains);
+        return required.All(scope => Covers(set, scope));
+    }
+
+    private static bool Covers(IReadOnlySet<string> granted, string required)
+    {
+        if (granted.Contains(required)) return true;
+
+        // Google canonicalizes the short OpenID profile/email aliases in its
+        // token response. They are the same grants, not broader substitutes.
+        if (string.Equals(required, "profile", StringComparison.Ordinal))
+            return granted.Contains("https://www.googleapis.com/auth/userinfo.profile");
+        if (string.Equals(required, "email", StringComparison.Ordinal))
+            return granted.Contains("https://www.googleapis.com/auth/userinfo.email");
+
+        // A previously granted full Calendar scope is a strict superset of
+        // every Calendar API sub-scope requested by the broker.
+        return required.StartsWith(
+                "https://www.googleapis.com/auth/calendar.",
+                StringComparison.Ordinal)
+            && granted.Contains("https://www.googleapis.com/auth/calendar");
     }
 
     private static void AddOptional(
