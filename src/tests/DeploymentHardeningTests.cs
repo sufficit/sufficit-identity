@@ -249,6 +249,22 @@ public sealed class DeploymentHardeningTests
             "SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD",
             checkerSource,
             StringComparison.Ordinal);
+        Assert.Contains(
+            "SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_GITLAB_CLIENT_ID",
+            template,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_GITLAB_CLIENT_SECRET",
+            checkerSource,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "SUFFICIT_SECRET_DISTRIBUTED_CACHE_CONNECTION_STRING",
+            template,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "SUFFICIT_SECRET_DISTRIBUTED_CACHE_CONNECTION_STRING",
+            checkerSource,
+            StringComparison.Ordinal);
         Assert.DoesNotContain("echo \"${value}\"", checkerSource, StringComparison.Ordinal);
         // The tenant mapping seed was removed with the multi-tenant system
         // (2026-08 decision); the template must not reintroduce it.
@@ -265,13 +281,15 @@ public sealed class DeploymentHardeningTests
                 validFile,
                 "# test-only value\n"
                 + "SUFFICIT_SECRET_DATABASE_CONNECTION_STRING=test-value\n"
-                + "SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD=vault-test-value\n");
+                + "SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD=vault-test-value\n"
+                + "SUFFICIT_SECRET_DISTRIBUTED_CACHE_CONNECTION_STRING=redis-test-value\n");
             var valid = await RunScriptAsync(checker, validFile);
 
             Assert.Equal(0, valid.ExitCode);
-            Assert.Contains("2 configured entries", valid.Output, StringComparison.Ordinal);
+            Assert.Contains("3 configured entries", valid.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("test-value", valid.Output, StringComparison.Ordinal);
             Assert.DoesNotContain("vault-test-value", valid.Output, StringComparison.Ordinal);
+            Assert.DoesNotContain("redis-test-value", valid.Output, StringComparison.Ordinal);
 
             var invalidFile = Path.Combine(temporaryRoot.FullName, "invalid.env");
             await File.WriteAllTextAsync(invalidFile, "UNSUPPORTED_SECRET=test-value\n");
