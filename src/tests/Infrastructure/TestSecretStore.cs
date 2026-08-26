@@ -34,6 +34,10 @@ internal sealed class TestSecretStore : ISecretStore
                 configuration["Sufficit:Identity:ExternalProviders:GitHub:ClientId"],
             "identity/external-providers/github/client-secret" =>
                 configuration["Sufficit:Identity:ExternalProviders:GitHub:ClientSecret"],
+            "identity/external-providers/gitlab/client-id" =>
+                configuration["Sufficit:Identity:ExternalProviders:GitLab:ClientId"],
+            "identity/external-providers/gitlab/client-secret" =>
+                configuration["Sufficit:Identity:ExternalProviders:GitLab:ClientSecret"],
             "identity/external-providers/facebook/client-id" =>
                 configuration["Sufficit:Identity:ExternalProviders:Facebook:ClientId"],
             "identity/external-providers/facebook/client-secret" =>

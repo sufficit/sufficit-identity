@@ -30,12 +30,13 @@ Callback URLs and logs never carry provider or Sufficit tokens.
 - **GitHub** follows the same static-provider flow when a central GitHub OAuth
   app is enabled. Without that app the API reports `available=false`; clients
   must not offer a PAT fallback.
-- **GitLab** uses GitLab's advertised Dynamic Client Registration endpoint and
-  PKCE. The Genius contract requests only `api`, without the MCP resource
-  indicator, because the application uses GitLab's stable REST API for every
-  account. Mixing the group-gated MCP resource with `api` makes GitLab issue an
-  MCP-only token and leaves REST calls unauthorized. Per-user client material
-  is kept only in the pending/token Vault records and participates in refresh.
+- **GitLab** uses a central confidential OAuth application owned by Identity,
+  requests only `api`, and applies PKCE in addition to client authentication.
+  GitLab.com's advertised Dynamic Client Registration endpoint is unsuitable
+  for this REST integration: physical-device validation showed that it creates
+  an MCP-only application even when registration requests only `api`. The
+  central client credentials remain in the server secret boundary; each user
+  token remains isolated in that user's personal Vault.
 
 The `/access` endpoint refreshes an expiring provider token server-side and
 returns only the HTTP headers needed by the authenticated Genius transport.

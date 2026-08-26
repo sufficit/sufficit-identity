@@ -1100,6 +1100,36 @@ public static partial class ServiceCollectionExtensions
             });
         }
 
+        // GitLab is broker-only: it deliberately has no display name, so it
+        // is not offered as an Identity sign-in method. The confidential app
+        // gives each Genius user an `api` grant that Identity keeps in their
+        // personal Vault. GitLab's dynamic registration endpoint cannot be
+        // used here because it creates an MCP-only application even when the
+        // requested registration scope is `api`.
+        var gitlab = section.GetSection("GitLab");
+        var gitlabClientId = ResolveSecret(
+            secretStore,
+            "identity/external-providers/gitlab/client-id");
+        var gitlabClientSecret = ResolveSecret(
+            secretStore,
+            "identity/external-providers/gitlab/client-secret");
+        if (gitlab.GetValue<bool>("Enabled")
+            && !string.IsNullOrWhiteSpace(gitlabClientId)
+            && !string.IsNullOrWhiteSpace(gitlabClientSecret))
+        {
+            builder.AddOAuth("GitLabIntegration", string.Empty, options =>
+            {
+                ConfigureExternalProvider(options);
+                options.ClientId = gitlabClientId!;
+                options.ClientSecret = gitlabClientSecret!;
+                options.CallbackPath = "/signin-gitlab";
+                options.AuthorizationEndpoint = "https://gitlab.com/oauth/authorize";
+                options.TokenEndpoint = "https://gitlab.com/oauth/token";
+                options.UserInformationEndpoint = "https://gitlab.com/api/v4/user";
+                options.UsePkce = true;
+            });
+        }
+
         // Facebook
         var facebook = section.GetSection("Facebook");
         var facebookClientId = ResolveSecret(

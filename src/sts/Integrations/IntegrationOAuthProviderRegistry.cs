@@ -57,18 +57,16 @@ public sealed class IntegrationOAuthProviderRegistry
                 "user:email",
                 "workflow",
             ]);
-        var gitlab = new IntegrationOAuthProvider(
-            "gitlab",
-            "GitLab",
-            Scheme: null,
-            new Uri("https://gitlab.com/oauth/authorize"),
-            new Uri("https://gitlab.com/oauth/token"),
-            new Uri("https://gitlab.com/oauth/register"),
-            ["api"],
-            ClientId: null,
-            ClientSecret: null,
-            ProjectId: null,
-            Available: true);
+        var gitlab = StaticProvider(
+            configuration,
+            secretStore,
+            id: "gitlab",
+            displayName: "GitLab",
+            scheme: "GitLabIntegration",
+            configurationName: "GitLab",
+            authorizationEndpoint: "https://gitlab.com/oauth/authorize",
+            tokenEndpoint: "https://gitlab.com/oauth/token",
+            scopes: ["api"]);
 
         providers = new[] { google, github, gitlab }
             .ToDictionary(value => value.Id, StringComparer.Ordinal);

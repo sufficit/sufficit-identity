@@ -113,8 +113,8 @@ provedor de configuração:
 | `vault/kek-certificate-password` | `SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD` | `Sufficit:Vault:CertificatePassword` |
 | `identity/human-verification/secret-key` | `SUFFICIT_SECRET_IDENTITY_HUMAN_VERIFICATION_SECRET_KEY` | `Sufficit:Identity:HumanVerification:SecretKey` |
 | `identity/dcr/initial-access-token` | `SUFFICIT_SECRET_IDENTITY_DCR_INITIAL_ACCESS_TOKEN` | `Sufficit:Identity:Mcp:Dcr:InitialAccessToken` |
-| `identity/external-providers/{google,github,facebook}/client-id` | `SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_*_CLIENT_ID` | credencial pública do provedor |
-| `identity/external-providers/{google,github,facebook}/client-secret` | `SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_*_CLIENT_SECRET` | credencial do provedor |
+| `identity/external-providers/{google,github,gitlab,facebook}/client-id` | `SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_*_CLIENT_ID` | credencial pública do provedor |
+| `identity/external-providers/{google,github,gitlab,facebook}/client-secret` | `SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_*_CLIENT_SECRET` | credencial do provedor |
 | `identity/smtp/password` | `SUFFICIT_SECRET_IDENTITY_SMTP_PASSWORD` | `Sufficit:Identity:Smtp:Password` |
 | `exchange/rabbitmq/password` | `SUFFICIT_SECRET_EXCHANGE_RABBITMQ_PASSWORD` | `Sufficit:Exchange:RabbitMQ:Password` |
 
