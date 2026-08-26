@@ -30,4 +30,12 @@ Evidence:
 - GitLab production DCR returned HTTP 201 but the resulting application exposed
   only the `mcp` scope, proving it unusable for the REST fallback;
 - the central application callback is `https://identity.sufficit.com.br/signin-gitlab`;
-- focused and complete-suite counts are recorded by the release validation.
+- the complete Identity suite passed (875/875);
+- production release `20260826-gitlab-oauth-02d30c0` is uniform and healthy on
+  all three Identity nodes;
+- on the physical Lenovo tablet, the catalog reported GitLab connected with
+  eight tools, the model selected `mcp__gitlab__list_projects`, and the REST
+  fallback completed successfully; the tested account correctly returned an
+  empty project list;
+- the broker's authenticated `/gitlab/access` request returned HTTP 200. No
+  provider token or central client credential was exposed to the device.
