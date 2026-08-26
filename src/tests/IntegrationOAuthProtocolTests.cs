@@ -71,6 +71,33 @@ public sealed class IntegrationOAuthProtocolTests
     }
 
     [Fact]
+    public void Google_canonical_and_superset_scopes_satisfy_the_requested_grant()
+    {
+        var required = new[]
+        {
+            "openid",
+            "profile",
+            "email",
+            "https://www.googleapis.com/auth/gmail.modify",
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/documents",
+            "https://www.googleapis.com/auth/calendar.calendarlist.readonly",
+            "https://www.googleapis.com/auth/calendar.events",
+            "https://www.googleapis.com/auth/calendar.events.freebusy",
+        };
+        var granted = string.Join(' ',
+            "openid",
+            "https://www.googleapis.com/auth/userinfo.profile",
+            "https://www.googleapis.com/auth/userinfo.email",
+            "https://www.googleapis.com/auth/gmail.modify",
+            "https://www.googleapis.com/auth/drive",
+            "https://www.googleapis.com/auth/documents",
+            "https://www.googleapis.com/auth/calendar");
+
+        Assert.True(IntegrationOAuthProtocol.HasRequiredScopes(required, granted));
+    }
+
+    [Fact]
     public void Granted_scope_from_static_provider_token_response_is_persisted()
     {
         var properties = new AuthenticationProperties();
