@@ -49,6 +49,8 @@ public sealed class IntegrationOAuthProtocolTests
             codeVerifier: "verifier-1");
 
         Assert.Equal("https://gitlab.com/api/v4/mcp", registration["resource"]);
+        Assert.Contains("mcp", gitlab.Scopes);
+        Assert.Contains("api", gitlab.Scopes);
         Assert.DoesNotContain("client_secret", serialized, StringComparison.Ordinal);
         Assert.DoesNotContain("token_endpoint_auth_method", serialized, StringComparison.Ordinal);
         Assert.Equal("dynamic-client", exchange["client_id"]);

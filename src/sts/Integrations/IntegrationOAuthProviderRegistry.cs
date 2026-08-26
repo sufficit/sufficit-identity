@@ -64,7 +64,7 @@ public sealed class IntegrationOAuthProviderRegistry
             new Uri("https://gitlab.com/oauth/authorize"),
             new Uri("https://gitlab.com/oauth/token"),
             new Uri("https://gitlab.com/oauth/register"),
-            ["mcp"],
+            ["mcp", "api"],
             ClientId: null,
             ClientSecret: null,
             ProjectId: null,

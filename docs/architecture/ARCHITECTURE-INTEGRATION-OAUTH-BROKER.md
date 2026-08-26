@@ -31,7 +31,9 @@ Callback URLs and logs never carry provider or Sufficit tokens.
   app is enabled. Without that app the API reports `available=false`; clients
   must not offer a PAT fallback.
 - **GitLab** uses GitLab's advertised Dynamic Client Registration endpoint and
-  PKCE. Per-user client material is kept only in the pending/token Vault
+  PKCE. Its grant includes `mcp` for eligible hosted MCP accounts and `api` for
+  the stable REST fallback used when the account has no group with the MCP beta
+  enabled. Per-user client material is kept only in the pending/token Vault
   records and participates in refresh.
 
 The `/access` endpoint refreshes an expiring provider token server-side and
