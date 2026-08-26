@@ -651,8 +651,20 @@ else
     private static string PolicySource(int? configuredValue) =>
         configuredValue is null ? "Padrão global" : "Personalizado";
 
-    private static string FormatMinutes(int minutes) =>
-        minutes is 1 ? "1 minuto" : $"{minutes} minutos";
+    private static string FormatMinutes(int minutes)
+    {
+        if (minutes % (24 * 60) == 0)
+        {
+            var days = minutes / (24 * 60);
+            return days is 1 ? "1 dia" : $"{days} dias";
+        }
+        if (minutes % 60 == 0)
+        {
+            var hours = minutes / 60;
+            return hours is 1 ? "1 hora" : $"{hours} horas";
+        }
+        return minutes is 1 ? "1 minuto" : $"{minutes} minutos";
+    }
 
     private static string FormatDays(double days)
     {

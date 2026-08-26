@@ -208,7 +208,7 @@ public sealed class ClientsControllerTests
             ClientId = $"cc-lifetime-{Guid.NewGuid():N}",
             ClientSecret = "lifetime-secret",
             GrantTypes = [Permissions.GrantTypes.ClientCredentials],
-            AccessTokenLifetimeMinutes = 17,
+            AccessTokenLifetimeMinutes = 7 * 24 * 60,
             IdentityTokenLifetimeMinutes = 8,
             RefreshTokenLifetimeDays = 31,
         };
@@ -217,7 +217,7 @@ public sealed class ClientsControllerTests
 
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
         var body = await created.Content.ReadFromJsonAsync<ManagementClientDetail>();
-        Assert.Equal(17, body?.AccessTokenLifetimeMinutes);
+        Assert.Equal(7 * 24 * 60, body?.AccessTokenLifetimeMinutes);
         Assert.Equal(8, body?.IdentityTokenLifetimeMinutes);
         Assert.Equal(31, body?.RefreshTokenLifetimeDays);
 
@@ -230,7 +230,10 @@ public sealed class ClientsControllerTests
                 ["client_secret"] = request.ClientSecret!,
             });
         Assert.Equal(HttpStatusCode.OK, status);
-        Assert.InRange(token.GetProperty("expires_in").GetInt32(), 17 * 60 - 2, 17 * 60);
+        Assert.InRange(
+            token.GetProperty("expires_in").GetInt32(),
+            7 * 24 * 60 * 60 - 2,
+            7 * 24 * 60 * 60);
     }
 
     [Fact]
@@ -264,6 +267,7 @@ public sealed class ClientsControllerTests
 
     [Theory]
     [InlineData(0, null, null)]
+    [InlineData(10081, null, null)]
     [InlineData(null, 121, null)]
     [InlineData(null, null, 366)]
     public async Task Create_rejects_token_lifetimes_outside_safe_bounds(

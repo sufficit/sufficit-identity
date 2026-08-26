@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Management.Authorization;
 #if !APPLICATION_CONTRACTS
 using System.Text.Json;
@@ -583,11 +584,17 @@ internal sealed class ClientConfigurationDraftService(
                 "offline_access exige que Refresh Token esteja habilitado.");
         }
 
-        ValidateOptionalLifetime(issues, values.AccessTokenLifetimeMinutes, 1, 1440,
-            "accessTokenLifetimeMinutes", "Access token deve ficar entre 1 minuto e 24 horas.");
-        ValidateOptionalLifetime(issues, values.IdentityTokenLifetimeMinutes, 1, 120,
+        ValidateOptionalLifetime(issues, values.AccessTokenLifetimeMinutes,
+            TokenLifetimeLimits.MinimumAccessTokenLifetimeMinutes,
+            TokenLifetimeLimits.MaximumAccessTokenLifetimeMinutes,
+            "accessTokenLifetimeMinutes", "Access token deve ficar entre 1 minuto e 7 dias.");
+        ValidateOptionalLifetime(issues, values.IdentityTokenLifetimeMinutes,
+            TokenLifetimeLimits.MinimumIdentityTokenLifetimeMinutes,
+            TokenLifetimeLimits.MaximumIdentityTokenLifetimeMinutes,
             "identityTokenLifetimeMinutes", "ID token deve ficar entre 1 e 120 minutos.");
-        ValidateOptionalLifetime(issues, values.RefreshTokenLifetimeDays, 1, 365,
+        ValidateOptionalLifetime(issues, values.RefreshTokenLifetimeDays,
+            TokenLifetimeLimits.MinimumRefreshTokenLifetimeDays,
+            TokenLifetimeLimits.MaximumRefreshTokenLifetimeDays,
             "refreshTokenLifetimeDays", "Refresh token deve ficar entre 1 e 365 dias.");
 
         if (values.ClientCredentials && !values.AuthorizationCode && !values.DeviceCode)
