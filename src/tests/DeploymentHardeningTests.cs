@@ -272,6 +272,10 @@ public sealed class DeploymentHardeningTests
             "TenantAccess__SubjectTenants",
             hardeningTemplate,
             StringComparison.Ordinal);
+        Assert.Contains(
+            "Sufficit__Identity__ExternalProviders__GitHub__Enabled=true",
+            hardeningTemplate,
+            StringComparison.Ordinal);
 
         var temporaryRoot = Directory.CreateTempSubdirectory("sufficit-identity-vault-env-");
         try
