@@ -24,9 +24,12 @@ Callback URLs and logs never carry provider or Sufficit tokens.
 
 - **Google Workspace** reuses the Google external provider app already managed
   by Identity. The broker requests offline access and explicit consent for
-  Gmail modify, Drive, and Docs scopes, then moves the external-cookie tokens
-  into the personal Vault. `ProjectId` supplies `X-Goog-User-Project` to the
-  official Workspace MCP endpoints.
+  the scopes needed by all eight official Workspace MCP services (Gmail,
+  Drive, Docs, Sheets, Slides, Calendar, Chat and People), then moves the
+  external-cookie tokens into the personal Vault. `ProjectId` supplies
+  `X-Goog-User-Project` to the official Workspace MCP endpoints. Stored grants
+  missing any newly required scope are marked disconnected so the next normal
+  connect action renews them.
 - **GitHub** follows the same static-provider flow when a central GitHub OAuth
   app is enabled. Without that app the API reports `available=false`; clients
   must not offer a PAT fallback.

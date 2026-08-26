@@ -11,7 +11,7 @@ namespace Sufficit.Identity.Tests;
 public sealed class IntegrationOAuthProtocolTests
 {
     [Fact]
-    public void Google_workspace_grant_includes_calendar_without_manual_tokens()
+    public void Google_workspace_grant_includes_all_eight_mcp_services_without_manual_tokens()
     {
         var registry = Registry();
 
@@ -28,6 +28,20 @@ public sealed class IntegrationOAuthProtocolTests
         Assert.Contains(
             "https://www.googleapis.com/auth/calendar.events.freebusy",
             google.Scopes);
+        Assert.Contains("https://www.googleapis.com/auth/gmail.compose", google.Scopes);
+        Assert.Contains("https://www.googleapis.com/auth/drive", google.Scopes);
+        Assert.Contains("https://www.googleapis.com/auth/documents", google.Scopes);
+        Assert.Contains("https://www.googleapis.com/auth/spreadsheets", google.Scopes);
+        Assert.Contains("https://www.googleapis.com/auth/presentations", google.Scopes);
+        Assert.Contains("https://www.googleapis.com/auth/chat.spaces.readonly", google.Scopes);
+        Assert.Contains("https://www.googleapis.com/auth/chat.memberships.readonly", google.Scopes);
+        Assert.Contains("https://www.googleapis.com/auth/chat.messages.readonly", google.Scopes);
+        Assert.Contains("https://www.googleapis.com/auth/chat.messages.create", google.Scopes);
+        Assert.Contains(
+            "https://www.googleapis.com/auth/chat.users.readstate.readonly",
+            google.Scopes);
+        Assert.Contains("https://www.googleapis.com/auth/directory.readonly", google.Scopes);
+        Assert.Contains("https://www.googleapis.com/auth/contacts.readonly", google.Scopes);
     }
 
     [Fact]
