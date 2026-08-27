@@ -129,6 +129,38 @@ public sealed class DeviceFlowCloseTests : PageTest
     }
 
     [Test]
+    public async Task Approved_terminal_without_opener_redirects_the_tab_to_the_fallback()
+    {
+        // Desktop device flow: the OS opened this tab, so script close is
+        // impossible. The approved terminal must send the tab somewhere
+        // useful instead of sitting dead until the user closes it.
+        await Page.RouteAsync("**/obrigado", async route =>
+            await route.FulfillAsync(new RouteFulfillOptions
+            {
+                ContentType = "text/html",
+                Body = "<html><body>obrigado</body></html>"
+            }));
+
+        await Page.SetContentAsync("""
+            <main data-device-flow-result="approved" data-device-launch-mode="browser"
+                  data-device-close-fallback-url="https://fallback.test/obrigado">
+                <button type="button" class="btn btn-primary btn-block" data-device-flow-close hidden>Fechar esta aba</button>
+                <p data-device-close-fallback hidden>Fechamento manual</p>
+            </main>
+            """);
+        await Page.AddScriptTagAsync(new PageAddScriptTagOptions
+        {
+            Path = ResolveIdentityScript()
+        });
+
+        // Manual instructions first, then the redirect (~2.5s).
+        await Page.Locator("[data-device-close-fallback]").WaitForAsync(
+            new LocatorWaitForOptions { State = WaitForSelectorState.Visible });
+        await Page.WaitForURLAsync("**/obrigado",
+            new PageWaitForURLOptions { Timeout = 8000 });
+    }
+
+    [Test]
     public async Task Native_app_completion_attempts_return_and_keeps_the_manual_action()
     {
         await Page.SetContentAsync("""

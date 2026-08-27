@@ -218,6 +218,28 @@ document.addEventListener('change', function (event) {
         }
     }
 
+    // A tab the OS opened (device flow from a desktop app) can never be
+    // closed by script — the strategies below will exhaust and the terminal
+    // page would sit dead in the user's browser. When the page provides a
+    // fallback destination, an approved terminal redirects the tab there
+    // instead of waiting for a manual close. Denied stays: the user may retry.
+    function scheduleFallbackRedirect(result, reason) {
+        if (!result || result.dataset.deviceFallbackRedirect === 'true') return;
+        if (result.dataset.deviceFlowResult !== 'approved') return;
+        var fallbackUrl = result.dataset.deviceCloseFallbackUrl;
+        if (!fallbackUrl) return;
+
+        result.dataset.deviceFallbackRedirect = 'true';
+        logDeviceFlow('close-fallback-redirect-scheduled', {
+            reason: reason || 'close-blocked',
+            delayMs: 2500
+        });
+        window.setTimeout(function () {
+            if (window.closed === true) return;
+            window.location.replace(fallbackUrl);
+        }, 2500);
+    }
+
     function tryCloseWindow(result) {
         // Order matters. The direct close is now always the first operation
         // under the user's click; COOP can remove opener without removing the
@@ -249,6 +271,7 @@ document.addEventListener('change', function (event) {
                     reason: 'close-blocked'
                 });
                 showManualCompletion(result, 'close-blocked', true);
+                scheduleFallbackRedirect(result, 'close-blocked');
                 return;
             }
 
@@ -326,6 +349,7 @@ document.addEventListener('change', function (event) {
         if (!scriptCloseAvailable) {
             logDeviceFlow('manual-close-required', { reason: 'tab-not-script-opened' });
             showManualCompletion(result, 'tab-not-script-opened', false);
+            scheduleFallbackRedirect(result, 'tab-not-script-opened');
         } else {
             logDeviceFlow('close-control-initialized', { scriptClosable: true });
         }
