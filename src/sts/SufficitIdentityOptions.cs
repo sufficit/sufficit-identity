@@ -546,6 +546,14 @@ public sealed class UserSessionStoreOptions
     /// </summary>
     public int CacheLifetimeSeconds { get; init; } = 60;
 
+    /// <summary>
+    /// Maximum time an optional shared-cache operation may delay an
+    /// interactive browser-session request. The durable database remains the
+    /// source of truth, so reads fall back to it and writes keep the persisted
+    /// session when this timeout expires.
+    /// </summary>
+    public int CacheOperationTimeoutMilliseconds { get; init; } = 250;
+
     /// <summary>Minimum interval between durable activity updates.</summary>
     public int ActivityUpdateIntervalSeconds { get; init; } = 300;
 }
