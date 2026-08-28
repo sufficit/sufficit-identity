@@ -86,6 +86,36 @@ internal static class ClientUriPolicy
     /// kept verbatim: RFC 8252 section 8.1 matches them by simple string
     /// comparison, and canonicalization would break that.
     /// </summary>
+    /// <summary>
+    /// Validates the device close fallback URL a client wants to register.
+    /// Null (not provided) and an explicit empty string (clear) both map to
+    /// <c>null</c>; anything else must satisfy
+    /// <see cref="DeviceCloseFallbackPolicy.TryValidateRegistration"/>.
+    /// </summary>
+    internal static string? ValidateDeviceCloseFallback(
+        string? value,
+        string field)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        if (!DeviceCloseFallbackPolicy.TryValidateRegistration(
+                value,
+                out var normalized,
+                out var reasonCode,
+                out var reasonMessage))
+        {
+            throw new ManagementValidationException(
+                reasonCode!,
+                reasonMessage!,
+                field);
+        }
+
+        return normalized;
+    }
+
     internal static IReadOnlyList<string> ValidateNativeReturnUris(
         IReadOnlyList<string>? values,
         string field)

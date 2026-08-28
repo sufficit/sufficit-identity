@@ -243,6 +243,8 @@ public static class TestDataSeeder
         };
         deviceApplication.Properties[NativeReturnUriPolicy.PropertyKey] =
             JsonSerializer.SerializeToElement(new[] { DeviceClientNativeReturnUri });
+        deviceApplication.Properties[DeviceCloseFallbackPolicy.PropertyKey] =
+            JsonSerializer.SerializeToElement("https://device-client.example/done");
         deviceApplication.SetAccessTokenLifetime(TimeSpan.FromMinutes(45));
         await CreateApplicationIfMissingAsync(appManager, deviceApplication);
 

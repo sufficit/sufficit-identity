@@ -77,7 +77,8 @@ public sealed class ClientsController(IClientManagementService clients)
                 request.IdentityTokenLifetimeMinutes,
                 request.RefreshTokenLifetimeDays,
                 request.JwksJson,
-                request.NativeReturnUris),
+                request.NativeReturnUris,
+                request.DeviceCloseFallbackUrl),
             RequestContext(),
             cancellationToken);
 
@@ -117,7 +118,8 @@ public sealed class ClientsController(IClientManagementService clients)
                 request.ClearIdentityTokenLifetime,
                 request.ClearRefreshTokenLifetime,
                 request.JwksJson,
-                request.NativeReturnUris),
+                request.NativeReturnUris,
+                request.DeviceCloseFallbackUrl),
             RequestContext(),
             cancellationToken);
 
@@ -326,6 +328,13 @@ public sealed class CreateClientRequest
     /// section 7.1).
     /// </summary>
     public List<string> NativeReturnUris { get; set; } = [];
+
+    /// <summary>
+    /// Web destination for the browser tab that approves this client's
+    /// device flow when script cannot close it
+    /// (<c>device_close_fallback_url</c> extension metadata).
+    /// </summary>
+    public string? DeviceCloseFallbackUrl { get; set; }
 }
 
 public sealed class UpdateClientRequest
@@ -356,6 +365,12 @@ public sealed class UpdateClientRequest
     /// current registration untouched; an empty list clears it.
     /// </summary>
     public List<string>? NativeReturnUris { get; set; }
+
+    /// <summary>
+    /// Null leaves the registered fallback untouched; an explicit empty
+    /// string clears it (<c>device_close_fallback_url</c> extension metadata).
+    /// </summary>
+    public string? DeviceCloseFallbackUrl { get; set; }
 }
 
 public sealed class RotateClientSecretRequest
