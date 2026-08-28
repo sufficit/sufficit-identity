@@ -687,6 +687,10 @@ public static partial class ServiceCollectionExtensions
             OpenIddictClientNativeReturnUriResolver>();
         services.AddSingleton<INativeReturnUriTicketService,
             DataProtectionNativeReturnUriTicketService>();
+        services.AddScoped<IClientDeviceCloseFallbackResolver,
+            OpenIddictDeviceCloseFallbackResolver>();
+        services.AddSingleton<IDeviceCloseFallbackTicketService,
+            DataProtectionDeviceCloseFallbackTicketService>();
         services.AddScoped<IExternalSignInService,
             AspNetCoreIdentityExternalSignInService>();
         services.AddScoped<AspNetCoreIdentityPasskeyService>();

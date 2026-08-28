@@ -4,6 +4,7 @@
 @using System.Globalization
 @inject IDeviceAuthorizationContextService DeviceContextService
 @inject INativeReturnUriTicketService NativeReturnTickets
+@inject IDeviceCloseFallbackTicketService DeviceCloseTickets
 @inject ScopeViewModelProvider ScopeProvider
 @inject IStringLocalizer<SharedResource> L
 
@@ -15,7 +16,7 @@
         @if (_resultApproved == true)
         {
             <div class="device-result" role="status" data-device-flow-result="approved" data-device-launch-mode="@TerminalLaunchMode"
-                 data-device-close-fallback-url="https://sufficit.com.br/">
+                 data-device-close-fallback-url="@CloseFallbackUrl">
                 <span class="device-result__icon" aria-hidden="true">✓</span>
                 <h1>@L["Device.ApprovedTitle"]</h1>
                 <p>@L["Device.Approved"]</p>
@@ -211,6 +212,7 @@
     [SupplyParameterFromQuery(Name = "result")] private string? Result { get; set; }
     [SupplyParameterFromQuery(Name = "launch_mode")] private string? LaunchModeQuery { get; set; }
     [SupplyParameterFromQuery(Name = "return_ticket")] private string? ReturnTicketQuery { get; set; }
+    [SupplyParameterFromQuery(Name = "close_ticket")] private string? CloseTicketQuery { get; set; }
 
     private string? _userCode;
     private string? _displayCode;
@@ -234,6 +236,11 @@
         string.Equals(LaunchModeQuery, "app", StringComparison.OrdinalIgnoreCase)
             ? NativeReturnTickets.Unprotect(ReturnTicketQuery)
             : null;
+
+    // Where an approved tab that script cannot close redirects to — the
+    // client's OWN registered site (per-client registration data), handed
+    // over by the STS as a ticket for the same reason as the callback above.
+    private string? CloseFallbackUrl => DeviceCloseTickets.Unprotect(CloseTicketQuery);
 
     private string? TerminalLaunchMode => NativeReturnUri is not null
         ? "app"

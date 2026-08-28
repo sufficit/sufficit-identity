@@ -214,7 +214,12 @@ public sealed record ManagementClientDetail(
     int ActiveCredentialCount = 0,
     /// <summary>Native callbacks registered under the <c>native_return_uris</c>
     /// extension metadata (RFC 7591, section 2).</summary>
-    IReadOnlyList<string>? NativeReturnUris = null);
+    IReadOnlyList<string>? NativeReturnUris = null,
+    /// <summary>Web destination registered under the
+    /// <c>device_close_fallback_url</c> extension metadata — where the
+    /// browser tab that approved this client's device flow goes when script
+    /// cannot close it.</summary>
+    string? DeviceCloseFallbackUrl = null);
 
 public sealed record CreateManagementClientCommand(
     string ClientId,
@@ -235,7 +240,8 @@ public sealed record CreateManagementClientCommand(
     int? IdentityTokenLifetimeMinutes = null,
     int? RefreshTokenLifetimeDays = null,
     string? JwksJson = null,
-    IReadOnlyList<string>? NativeReturnUris = null);
+    IReadOnlyList<string>? NativeReturnUris = null,
+    string? DeviceCloseFallbackUrl = null);
 
 public sealed record UpdateManagementClientCommand(
     string ClientId,
@@ -259,7 +265,8 @@ public sealed record UpdateManagementClientCommand(
     bool ClearIdentityTokenLifetime = false,
     bool ClearRefreshTokenLifetime = false,
     string? JwksJson = null,
-    IReadOnlyList<string>? NativeReturnUris = null);
+    IReadOnlyList<string>? NativeReturnUris = null,
+    string? DeviceCloseFallbackUrl = null);
 
 public sealed record RotateManagementClientSecretCommand(
     string ClientId,
@@ -619,6 +626,9 @@ internal sealed class ClientManagementService(
             var nativeReturnUris = ClientUriPolicy.ValidateNativeReturnUris(
                 command.NativeReturnUris,
                 "nativeReturnUris");
+            var deviceCloseFallbackUrl = ClientUriPolicy.ValidateDeviceCloseFallback(
+                command.DeviceCloseFallbackUrl,
+                "deviceCloseFallbackUrl");
             var frontchannelLogoutUri = ClientUriPolicy.ValidateLogoutUri(
                 command.FrontchannelLogoutUri,
                 "frontchannelLogoutUri");
@@ -781,6 +791,7 @@ internal sealed class ClientManagementService(
             }
 
             SetNativeReturnUris(descriptor.Properties, nativeReturnUris);
+            SetDeviceCloseFallback(descriptor.Properties, deviceCloseFallbackUrl);
 
             AddLogoutSettings(
                 descriptor.Settings,
@@ -1053,6 +1064,9 @@ internal sealed class ClientManagementService(
             var nativeReturnUris = ClientUriPolicy.ValidateNativeReturnUris(
                 command.NativeReturnUris,
                 "nativeReturnUris");
+            var deviceCloseFallbackUrl = ClientUriPolicy.ValidateDeviceCloseFallback(
+                command.DeviceCloseFallbackUrl,
+                "deviceCloseFallbackUrl");
             var frontchannelLogoutUri = ClientUriPolicy.ValidateLogoutUri(
                 command.FrontchannelLogoutUri,
                 "frontchannelLogoutUri");
@@ -1161,6 +1175,14 @@ internal sealed class ClientManagementService(
             if (command.NativeReturnUris is not null)
             {
                 SetNativeReturnUris(descriptor.Properties, nativeReturnUris);
+            }
+
+            // Same null/empty contract as the native callbacks above: null
+            // leaves the registration untouched; an explicit empty string
+            // clears it.
+            if (command.DeviceCloseFallbackUrl is not null)
+            {
+                SetDeviceCloseFallback(descriptor.Properties, deviceCloseFallbackUrl);
             }
 
             descriptor.Settings.Remove("frontchannel_logout_uri");
@@ -1566,7 +1588,8 @@ internal sealed class ClientManagementService(
             AuthenticationMethods: authenticationMethods,
             ActiveCredentialCount:
                 activeAdditionalCredentials + (hasPrimarySecret ? 1 : 0),
-            NativeReturnUris: ReadNativeReturnUris(descriptor.Properties));
+            NativeReturnUris: ReadNativeReturnUris(descriptor.Properties),
+            DeviceCloseFallbackUrl: DeviceCloseFallbackPolicy.Read(descriptor.Properties));
     }
 
     /// <summary>
@@ -1586,6 +1609,25 @@ internal sealed class ClientManagementService(
 
         properties[NativeReturnUriPolicy.PropertyKey] =
             JsonSerializer.SerializeToElement(values);
+    }
+
+    /// <summary>
+    /// Writes the <c>device_close_fallback_url</c> extension metadata into the
+    /// client property bag, removing the key entirely when nothing is
+    /// registered — a client that uses no fallback carries no trace of it.
+    /// </summary>
+    private static void SetDeviceCloseFallback(
+        IDictionary<string, JsonElement> properties,
+        string? url)
+    {
+        properties.Remove(DeviceCloseFallbackPolicy.PropertyKey);
+        if (url is null)
+        {
+            return;
+        }
+
+        properties[DeviceCloseFallbackPolicy.PropertyKey] =
+            JsonSerializer.SerializeToElement(url);
     }
 
     private static IReadOnlyList<string> ReadNativeReturnUris(
