@@ -65,6 +65,8 @@ internal sealed class OidcUserSessionTicketStore(
         "Sufficit.Identity.OidcUserSessionTicketStore.v1");
     private readonly TimeSpan _cacheLifetime = TimeSpan.FromSeconds(
         Math.Clamp(options.UserSessions.CacheLifetimeSeconds, 5, 300));
+    private readonly TimeSpan _cacheOperationTimeout = TimeSpan.FromMilliseconds(
+        Math.Clamp(options.UserSessions.CacheOperationTimeoutMilliseconds, 50, 2000));
     private readonly TimeSpan _activityUpdateInterval = TimeSpan.FromSeconds(
         Math.Clamp(options.UserSessions.ActivityUpdateIntervalSeconds, 60, 3600));
 
@@ -323,11 +325,12 @@ internal sealed class OidcUserSessionTicketStore(
 
     private async Task<AuthenticationTicket?> TryGetCacheAsync(string key)
     {
+        using var timeout = new CancellationTokenSource(_cacheOperationTimeout);
         try
         {
             var protectedTicket = await cache.GetAsync(
                 CacheKey(key),
-                CancellationToken.None);
+                timeout.Token);
             if (protectedTicket is null)
             {
                 return null;
@@ -344,6 +347,13 @@ internal sealed class OidcUserSessionTicketStore(
 
             return ticket;
         }
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+        {
+            logger.LogWarning(
+                "Shared user-session cache read exceeded {TimeoutMilliseconds} ms; falling back to the database.",
+                _cacheOperationTimeout.TotalMilliseconds);
+            return null;
+        }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             logger.LogWarning(
@@ -357,6 +367,7 @@ internal sealed class OidcUserSessionTicketStore(
         string key,
         AuthenticationTicket ticket)
     {
+        using var timeout = new CancellationTokenSource(_cacheOperationTimeout);
         try
         {
             var lifetime = _cacheLifetime;
@@ -379,7 +390,13 @@ internal sealed class OidcUserSessionTicketStore(
                 {
                     AbsoluteExpirationRelativeToNow = lifetime,
                 },
-                CancellationToken.None);
+                timeout.Token);
+        }
+        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+        {
+            logger.LogWarning(
+                "Shared user-session cache write exceeded {TimeoutMilliseconds} ms; database persistence remains authoritative.",
+                _cacheOperationTimeout.TotalMilliseconds);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -393,9 +410,18 @@ internal sealed class OidcUserSessionTicketStore(
         string key,
         CancellationToken cancellationToken = default)
     {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(_cacheOperationTimeout);
         try
         {
-            await cache.RemoveAsync(CacheKey(key), cancellationToken);
+            await cache.RemoveAsync(CacheKey(key), timeout.Token);
+        }
+        catch (OperationCanceledException) when (
+            !cancellationToken.IsCancellationRequested && timeout.IsCancellationRequested)
+        {
+            logger.LogWarning(
+                "Shared user-session cache invalidation exceeded {TimeoutMilliseconds} ms; the entry remains bounded by its short TTL.",
+                _cacheOperationTimeout.TotalMilliseconds);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

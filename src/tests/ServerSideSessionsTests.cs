@@ -2,8 +2,10 @@ using System.Net;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Core.Data;
@@ -25,6 +27,43 @@ public sealed class ServerSideSessionsTests
     private readonly SufficitIdentityTestFactory _factory;
 
     public ServerSideSessionsTests(SufficitIdentityTestFactory factory) => _factory = factory;
+
+    [Fact]
+    public async Task Interactive_sign_in_falls_back_when_optional_session_cache_stalls()
+    {
+        using var parent = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:UserSessions:CacheOperationTimeoutMilliseconds"] = "50",
+            });
+        var cache = new CancellableSlowDistributedCache();
+        using var factory = parent.WithWebHostBuilder(builder =>
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IDistributedCache>();
+                services.AddSingleton<IDistributedCache>(cache);
+            }));
+
+        var username = $"slow-cache-{Guid.NewGuid():N}";
+        const string password = "Str0ng!Passw0rd#9";
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            await TestDataSeeder.CreateUserAsync(userManager, username, password);
+        }
+
+        var client = factory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        await TestOnlyEndpoints.SignInAsync(client, username)
+            .WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.True(cache.CanceledOperations > 0);
+        var subject = await ResolveSubjectAsync(factory.Services, username);
+        var sessions = await factory.Services
+            .GetRequiredService<ISessionManagement>()
+            .ListBySubjectAsync(subject);
+        Assert.Single(sessions);
+    }
 
     [Fact]
     public async Task Interactive_sign_in_creates_one_session_row_keyed_by_the_sid()
@@ -182,8 +221,13 @@ public sealed class ServerSideSessionsTests
     // -----------------------------------------------------------------------
 
     private async Task<string> ResolveSubjectAsync(string username)
+        => await ResolveSubjectAsync(_factory.Services, username);
+
+    private static async Task<string> ResolveSubjectAsync(
+        IServiceProvider services,
+        string username)
     {
-        using var scope = _factory.Services.CreateScope();
+        using var scope = services.CreateScope();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var user = await userManager.FindByNameAsync(username);
         return user!.Id;
@@ -230,5 +274,60 @@ public sealed class ServerSideSessionsTests
         }
         var jwt = new JsonWebToken(idToken);
         return jwt.TryGetPayloadValue("sid", out string sid) ? sid : null;
+    }
+
+    private sealed class CancellableSlowDistributedCache : IDistributedCache
+    {
+        private int _canceledOperations;
+
+        public int CanceledOperations => Volatile.Read(ref _canceledOperations);
+
+        public byte[]? Get(string key) =>
+            throw new NotSupportedException("Only asynchronous cache calls are expected.");
+
+        public Task RefreshAsync(string key, CancellationToken token = default) =>
+            StallAsync(token);
+
+        public void Refresh(string key) =>
+            throw new NotSupportedException("Only asynchronous cache calls are expected.");
+
+        public Task RemoveAsync(string key, CancellationToken token = default) =>
+            StallAsync(token);
+
+        public void Remove(string key) =>
+            throw new NotSupportedException("Only asynchronous cache calls are expected.");
+
+        public Task SetAsync(
+            string key,
+            byte[] value,
+            DistributedCacheEntryOptions options,
+            CancellationToken token = default) => StallAsync(token);
+
+        public void Set(
+            string key,
+            byte[] value,
+            DistributedCacheEntryOptions options) =>
+            throw new NotSupportedException("Only asynchronous cache calls are expected.");
+
+        public async Task<byte[]?> GetAsync(
+            string key,
+            CancellationToken token = default)
+        {
+            await StallAsync(token);
+            return null;
+        }
+
+        private async Task StallAsync(CancellationToken token)
+        {
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                Interlocked.Increment(ref _canceledOperations);
+                throw;
+            }
+        }
     }
 }
