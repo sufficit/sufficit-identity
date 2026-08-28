@@ -30,6 +30,12 @@ public sealed class IntegrationOAuthProtocolTests
             "https://www.googleapis.com/auth/calendar.events.freebusy",
             google.Scopes);
         Assert.Contains("https://www.googleapis.com/auth/gmail.compose", google.Scopes);
+        Assert.Contains(
+            "https://www.googleapis.com/auth/gmail.settings.basic",
+            google.Scopes);
+        Assert.DoesNotContain(
+            "https://www.googleapis.com/auth/gmail.settings.sharing",
+            google.Scopes);
         Assert.Contains("https://www.googleapis.com/auth/drive", google.Scopes);
         Assert.Contains("https://www.googleapis.com/auth/documents", google.Scopes);
         Assert.Contains("https://www.googleapis.com/auth/spreadsheets", google.Scopes);
