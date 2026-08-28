@@ -115,6 +115,8 @@ public class DeviceController : Controller
     private readonly ScopeEntitlementProvisioner _entitlementProvisioner;
     private readonly IClientNativeReturnUriResolver _nativeReturnUris;
     private readonly INativeReturnUriTicketService _nativeReturnTickets;
+    private readonly IClientDeviceCloseFallbackResolver _deviceCloseFallbacks;
+    private readonly IDeviceCloseFallbackTicketService _deviceCloseTickets;
 
     public DeviceController(
         IOpenIddictTokenManager tokenManager,
@@ -125,7 +127,9 @@ public class DeviceController : Controller
         OpenIddictDeviceAuthorizationContextService deviceContextService,
         ScopeEntitlementProvisioner entitlementProvisioner,
         IClientNativeReturnUriResolver nativeReturnUris,
-        INativeReturnUriTicketService nativeReturnTickets)
+        INativeReturnUriTicketService nativeReturnTickets,
+        IClientDeviceCloseFallbackResolver deviceCloseFallbacks,
+        IDeviceCloseFallbackTicketService deviceCloseTickets)
     {
         _tokenManager = tokenManager;
         _applicationManager = applicationManager;
@@ -136,6 +140,8 @@ public class DeviceController : Controller
         _entitlementProvisioner = entitlementProvisioner;
         _nativeReturnUris = nativeReturnUris;
         _nativeReturnTickets = nativeReturnTickets;
+        _deviceCloseFallbacks = deviceCloseFallbacks;
+        _deviceCloseTickets = deviceCloseTickets;
     }
 
     // -----------------------------------------------------------------------
@@ -440,16 +446,30 @@ public class DeviceController : Controller
             _nativeReturnTickets.Unprotect(returnTicket));
         if (nativeReturnUri is not null)
         {
-            return QueryHelpers.AddQueryString(target, new Dictionary<string, string?>
+            target = QueryHelpers.AddQueryString(target, new Dictionary<string, string?>
             {
                 ["launch_mode"] = "app",
                 ["return_ticket"] = _nativeReturnTickets.Protect(nativeReturnUri),
             });
         }
+        else if (IsPopupLaunchMode(launchMode))
+        {
+            target = QueryHelpers.AddQueryString(target, "launch_mode", "popup");
+        }
 
-        return IsPopupLaunchMode(launchMode)
-            ? QueryHelpers.AddQueryString(target, "launch_mode", "popup")
-            : target;
+        // The close fallback is the client's OWN registered site — per-client
+        // registration data, never a server default — handed onward as a
+        // server-minted ticket for the same reason as the native callback:
+        // the terminal page must never trust an editable query parameter.
+        // Approved only: a denied user may retry, so their tab stays put.
+        if (result == "approved"
+            && await _deviceCloseFallbacks.ResolveAsync(clientId) is { } closeFallback)
+        {
+            target = QueryHelpers.AddQueryString(target, "close_ticket",
+                _deviceCloseTickets.Protect(closeFallback));
+        }
+
+        return target;
     }
 
     /// <summary>
