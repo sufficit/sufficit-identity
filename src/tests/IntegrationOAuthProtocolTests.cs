@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Net;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using Microsoft.Extensions.Configuration;
@@ -143,6 +144,23 @@ public sealed class IntegrationOAuthProtocolTests
             "github-secret");
 
         Assert.Equal("github-secret", fields["client_secret"]);
+    }
+
+    [Theory]
+    [InlineData("{\"error\":\"invalid_grant\",\"error_description\":\"private\"}", true)]
+    [InlineData("{\"error\":\"temporarily_unavailable\"}", false)]
+    [InlineData("not-json", false)]
+    [InlineData("", false)]
+    public void Provider_refresh_failure_only_requires_reauthorization_for_invalid_grants(
+        string payload,
+        bool requiresReauthorization)
+    {
+        var failure = IntegrationOAuthProviderFailure.Parse(
+            HttpStatusCode.BadRequest,
+            payload);
+
+        Assert.Equal(requiresReauthorization, failure.RequiresReauthorization);
+        Assert.DoesNotContain("private", failure.ToString(), StringComparison.Ordinal);
     }
 
     private static IntegrationOAuthProviderRegistry Registry()

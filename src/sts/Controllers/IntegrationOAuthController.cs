@@ -295,8 +295,33 @@ public sealed class IntegrationOAuthController(
         {
             if (string.IsNullOrWhiteSpace(token.RefreshToken))
                 return Conflict(new { error = "authorization_expired" });
-            token = await RefreshAsync(definition, token, cancellationToken);
-            await SaveTokenAsync(subject, definition.Id, token, cancellationToken);
+            try
+            {
+                token = await RefreshAsync(definition, token, cancellationToken);
+                await SaveTokenAsync(subject, definition.Id, token, cancellationToken);
+            }
+            catch (IntegrationOAuthTokenRequestException exception)
+                when (exception.Failure.RequiresReauthorization)
+            {
+                await secrets.DeleteAsync(
+                    TokenName(definition.Id),
+                    PersonalContext(subject),
+                    cancellationToken);
+                return Conflict(new { error = "authorization_expired" });
+            }
+            catch (IntegrationOAuthTokenRequestException)
+            {
+                return StatusCode(
+                    (int)System.Net.HttpStatusCode.BadGateway,
+                    new { error = "provider_temporarily_unavailable" });
+            }
+            catch (Exception exception)
+                when (exception is HttpRequestException or JsonException or InvalidOperationException)
+            {
+                return StatusCode(
+                    (int)System.Net.HttpStatusCode.BadGateway,
+                    new { error = "provider_temporarily_unavailable" });
+            }
         }
 
         var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -438,9 +463,11 @@ public sealed class IntegrationOAuthController(
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         using var response = await httpClients.CreateClient(HttpClientName)
             .SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        var payload = await response.Content.ReadFromJsonAsync<JsonElement>(
-            cancellationToken: cancellationToken);
+        var body = await response.Content.ReadAsStringAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            throw new IntegrationOAuthTokenRequestException(
+                IntegrationOAuthProviderFailure.Parse(response.StatusCode, body));
+        var payload = JsonSerializer.Deserialize<JsonElement>(body);
         return FromTokenPayload(
             payload,
             dynamicClientId,
