@@ -517,10 +517,130 @@ public sealed class ManagementApplicationAuthorizationTests
             ValueTask.FromResult(ManagementAuthorizationDecision.Allowed());
     }
 
+
+    // --- Principal de máquina (client_credentials) -----------------------
+    //
+    // Um serviço não tem por onde receber capacidade: o claim `permission` só
+    // é emitido a partir de um operador autenticado, e ele não está em papel
+    // nenhum. Antes disto, dar acesso de gestão a um serviço só era possível
+    // pondo-o num papel de administrador — trocar "não consegue nada" por
+    // "consegue tudo".
+    //
+    // E mesmo com a capacidade, o MFA o barrava para sempre: a checagem exige
+    // claim `amr`, que um principal autenticado por segredo de cliente nunca
+    // carrega.
+
+    private const string ServiceClient = "sufficit_cloud_mobile_api";
+
+    private static ClaimsPrincipal MachinePrincipal(string clientId) =>
+        PrincipalWithClaims(new Claim("client_id", clientId));
+
+    [Fact]
+    public async Task Service_principal_receives_only_its_declared_capabilities()
+    {
+        var evaluator = CreateEvaluator(servicePrincipals: new()
+        {
+            [ServiceClient] = [ManagementCapabilities.VaultSecretsManage]
+        });
+
+        var concedida = await evaluator.EvaluateAsync(
+            MachinePrincipal(ServiceClient),
+            ManagementCapabilities.VaultSecretsManage,
+            new ManagementResource(ManagementResourceTypes.VaultSecrets));
+        var naoConcedida = await evaluator.EvaluateAsync(
+            MachinePrincipal(ServiceClient),
+            ManagementCapabilities.UsersDelete,
+            new ManagementResource(ManagementResourceTypes.User));
+
+        Assert.True(concedida.IsAllowed);
+        Assert.Equal(ManagementAuthorizationOutcome.Denied, naoConcedida.Outcome);
+    }
+
+    [Fact]
+    public async Task Service_principal_passes_mfa_only_for_the_declared_capability()
+    {
+        // O ponto todo: com RequireMfa ligado e sem `amr`, a capacidade
+        // declarada passa e QUALQUER outra continua barrada. A isenção é da
+        // concessão, não do principal.
+        var evaluator = CreateEvaluator(
+            requireMfa: true,
+            adminRoles: [],
+            servicePrincipals: new()
+            {
+                [ServiceClient] = [ManagementCapabilities.VaultSecretsManage]
+            });
+
+        var declarada = await evaluator.EvaluateAsync(
+            MachinePrincipal(ServiceClient),
+            ManagementCapabilities.VaultSecretsManage,
+            new ManagementResource(ManagementResourceTypes.VaultSecrets));
+
+        Assert.True(declarada.IsAllowed);
+    }
+
+    [Fact]
+    public async Task Another_client_gets_nothing_from_someone_elses_grant()
+    {
+        var evaluator = CreateEvaluator(
+            requireMfa: true,
+            servicePrincipals: new()
+            {
+                [ServiceClient] = [ManagementCapabilities.VaultSecretsManage]
+            });
+
+        var outro = await evaluator.EvaluateAsync(
+            MachinePrincipal("dcr_algum_cliente_anonimo"),
+            ManagementCapabilities.VaultSecretsManage,
+            new ManagementResource(ManagementResourceTypes.VaultSecrets));
+
+        Assert.Equal(ManagementAuthorizationOutcome.Denied, outro.Outcome);
+    }
+
+    [Fact]
+    public async Task A_human_holding_the_same_capability_still_needs_mfa()
+    {
+        // A isenção não pode vazar para operador. Ele recebeu a capacidade por
+        // claim `permission`, não pelo mapa de máquina, então continua tendo de
+        // apresentar segundo fator.
+        var evaluator = CreateEvaluator(
+            requireMfa: true,
+            adminRoles: [],
+            servicePrincipals: new()
+            {
+                [ServiceClient] = [ManagementCapabilities.VaultSecretsManage]
+            });
+
+        var humano = await evaluator.EvaluateAsync(
+            PrincipalWithClaims(
+                new Claim("permission", ManagementCapabilities.VaultSecretsManage)),
+            ManagementCapabilities.VaultSecretsManage,
+            new ManagementResource(ManagementResourceTypes.VaultSecrets));
+
+        Assert.Equal(
+            ManagementAuthorizationOutcome.StepUpRequired,
+            humano.Outcome);
+    }
+
+    [Fact]
+    public async Task Empty_map_changes_nothing()
+    {
+        // O padrão é vazio, e nesse estado o comportamento tem de ser
+        // exatamente o de antes desta mudança.
+        var evaluator = CreateEvaluator(requireMfa: true, adminRoles: []);
+
+        var maquina = await evaluator.EvaluateAsync(
+            MachinePrincipal(ServiceClient),
+            ManagementCapabilities.VaultSecretsManage,
+            new ManagementResource(ManagementResourceTypes.VaultSecrets));
+
+        Assert.Equal(ManagementAuthorizationOutcome.Denied, maquina.Outcome);
+    }
+
     private static CapabilityManagementAuthorizationEvaluator CreateEvaluator(
         bool requireMfa = false,
         string[]? adminRoles = null,
-        IManagementObjectAccessPolicy? objectAccess = null)
+        IManagementObjectAccessPolicy? objectAccess = null,
+        Dictionary<string, string[]>? servicePrincipals = null)
     {
         var options = Options.Create(new ManagementOptions
         {
@@ -528,7 +648,10 @@ public sealed class ManagementApplicationAuthorizationTests
             Authorization = new ManagementAuthorizationOptions
             {
                 FullAdministratorRoles = adminRoles ?? ["identity-administrator"],
-                CapabilityClaimTypes = ["permission"]
+                CapabilityClaimTypes = ["permission"],
+                ServicePrincipals = servicePrincipals is null
+                    ? new(StringComparer.OrdinalIgnoreCase)
+                    : new(servicePrincipals, StringComparer.OrdinalIgnoreCase)
             }
         });
         return new CapabilityManagementAuthorizationEvaluator(

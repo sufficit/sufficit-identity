@@ -252,10 +252,25 @@ public interface IManagementAuthorizationEvaluator
 }
 
 public sealed record ManagementEntitlements(
-    IReadOnlySet<string> Capabilities)
+    IReadOnlySet<string> Capabilities,
+    IReadOnlySet<string>? MultiFactorExempt = null)
 {
     public bool Contains(string capability) =>
         Capabilities.Contains(capability);
+
+    /// <summary>
+    /// Esta capacidade foi concedida a um principal de MÁQUINA, e por isso não
+    /// tem segundo fator a apresentar.
+    ///
+    /// Quem resolve a concessão é quem sabe COMO ela foi concedida, e por isso
+    /// a exceção mora aqui e não numa política por recurso: a política vê o
+    /// recurso, não a origem da capacidade.
+    ///
+    /// Vazio por padrão. Um principal humano nunca entra aqui, então a
+    /// exigência de MFA continua exatamente como estava para ele.
+    /// </summary>
+    public bool IsMultiFactorExempt(string capability) =>
+        MultiFactorExempt?.Contains(capability) is true;
 }
 
 public interface IManagementEntitlementResolver
@@ -374,6 +389,76 @@ public sealed class ManagementAuthorizationOptions
     /// </summary>
     public string[] CapabilityClaimTypes { get; set; } =
         ["permission"];
+
+    /// <summary>
+    /// Capacidades concedidas a um principal de MÁQUINA, por <c>client_id</c>.
+    ///
+    /// Existe porque um token de <c>client_credentials</c> não tem por onde
+    /// receber capacidade: os claims <c>permission</c> são emitidos a partir de
+    /// um operador autenticado (token de provisionamento ou de operador), e um
+    /// serviço não tem operador. Sem isto, a única forma de dar acesso de
+    /// gestão a um serviço era colocá-lo num papel de administrador — trocar
+    /// "não consegue nada" por "consegue tudo".
+    ///
+    /// O que este mapa concede é também o que fica ISENTO de MFA, e apenas
+    /// isso. Ver <c>ExemptFromMultiFactor</c>: exigir segundo fator de quem se
+    /// autenticou com segredo de cliente é exigir o impossível, e o efeito
+    /// prático não é segurança, é negar para sempre.
+    ///
+    /// Padrão vazio: nenhum serviço tem nada até a implantação declarar.
+    /// </summary>
+    public Dictionary<string, string[]> ServicePrincipals { get; set; } =
+        new(StringComparer.OrdinalIgnoreCase);
+}
+
+/// <summary>
+/// As capacidades que a implantação concedeu a um principal de máquina.
+/// </summary>
+public static class ManagementServicePrincipals
+{
+    /// <summary>
+    /// Onde o <c>client_id</c> aparece num principal vindo de um access token.
+    /// <c>azp</c> entra como alternativa porque é o que alguns emissores usam
+    /// quando o token é para outra audiência.
+    /// </summary>
+    private static readonly string[] ClientIdClaimTypes = ["client_id", "azp"];
+
+    public static IReadOnlySet<string> CapabilitiesFor(
+        ClaimsPrincipal principal,
+        ManagementAuthorizationOptions authorization)
+    {
+        var empty = (IReadOnlySet<string>)new HashSet<string>(StringComparer.Ordinal);
+        if (authorization.ServicePrincipals.Count == 0)
+        {
+            return empty;
+        }
+
+        var clientId = ClientIdClaimTypes
+            .Select(type => principal.FindFirst(type)?.Value)
+            .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
+
+        if (string.IsNullOrWhiteSpace(clientId)
+            || !authorization.ServicePrincipals.TryGetValue(clientId, out var granted))
+        {
+            return empty;
+        }
+
+        var capabilities = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var raw in granted ?? [])
+        {
+            var capability = ManagementCapabilities.Normalize(raw);
+            // Um nome desconhecido é ignorado em silêncio de propósito: ele já
+            // não abre nada, e derrubar a resolução por causa de um erro de
+            // digitação na configuração tiraria do ar as capacidades válidas
+            // do mesmo cliente.
+            if (ManagementCapabilities.All.Contains(capability))
+            {
+                capabilities.Add(capability);
+            }
+        }
+
+        return capabilities;
+    }
 }
 
 /// <summary>Independent namespace and break-glass claims for named secrets.
@@ -493,6 +578,13 @@ public sealed class ScopeAndRoleManagementEntitlementResolver(
             }
         }
 
+        // --- Capacidades de principal de máquina, por client_id ---
+        // Um token de client_credentials não passa por nenhuma das fontes
+        // acima: ele não carrega claim `permission` (só operador autenticado
+        // recebe) e não está em papel nenhum. Ver ServicePrincipals.
+        var machine = ManagementServicePrincipals.CapabilitiesFor(principal, authorization);
+        capabilities.UnionWith(machine);
+
         // --- Full administrator roles (god-mode) ---
         // Opt-in only: default is empty. Every principal in any of these roles
         // receives every capability. Use sparingly for break-glass access.
@@ -503,7 +595,7 @@ public sealed class ScopeAndRoleManagementEntitlementResolver(
         }
 
         return ValueTask.FromResult(
-            new ManagementEntitlements(capabilities));
+            new ManagementEntitlements(capabilities, machine));
     }
 
     private static ManagementEntitlements Empty() =>
@@ -844,7 +936,19 @@ public sealed class CapabilityManagementAuthorizationEvaluator
         var policy = await accessPolicies.GetAsync(
             resource,
             cancellationToken);
-        if (policy.RequireMfa && !HasMfaEvidence(principal))
+
+        // A isenção vale SÓ para a capacidade que a implantação concedeu
+        // explicitamente a este client_id em ServicePrincipals. Não é "serviço
+        // não faz MFA": é "esta concessão, para este cliente, foi declarada
+        // sem segundo fator". Qualquer outra capacidade do mesmo principal
+        // continua exigindo MFA e continua sendo negada, que é o certo.
+        //
+        // Existe porque exigir segundo fator de quem se autenticou com segredo
+        // de cliente é exigir o impossível: um principal de máquina nunca tem
+        // `amr`, e o efeito prático da exigência não é segurança, é negar para
+        // sempre. O controle dele é o segredo mais esta lista fechada.
+        var exempt = grants.IsMultiFactorExempt(capability);
+        if (policy.RequireMfa && !exempt && !HasMfaEvidence(principal))
         {
             return ManagementAuthorizationDecision.StepUpRequired(
                 "mfa_required",
