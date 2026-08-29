@@ -391,73 +391,54 @@ public sealed class ManagementAuthorizationOptions
         ["permission"];
 
     /// <summary>
-    /// Capacidades concedidas a um principal de MÁQUINA, por <c>client_id</c>.
+    /// Nome da propriedade, no registro do cliente, que lista os papéis dele.
     ///
-    /// Existe porque um token de <c>client_credentials</c> não tem por onde
-    /// receber capacidade: os claims <c>permission</c> são emitidos a partir de
-    /// um operador autenticado (token de provisionamento ou de operador), e um
-    /// serviço não tem operador. Sem isto, a única forma de dar acesso de
-    /// gestão a um serviço era colocá-lo num papel de administrador — trocar
-    /// "não consegue nada" por "consegue tudo".
+    /// A CONCESSÃO mora no banco, junto com o cliente, exatamente como a de um
+    /// humano mora em <c>userroles</c>. O que o papel SIGNIFICA continua em
+    /// <see cref="RoleCapabilities"/>, que é config revisada. É a mesma divisão
+    /// que já valia para gente: o banco diz quem é o quê, a configuração diz o
+    /// que isso permite.
     ///
-    /// O que este mapa concede é também o que fica ISENTO de MFA, e apenas
-    /// isso. Ver <c>ExemptFromMultiFactor</c>: exigir segundo fator de quem se
-    /// autenticou com segredo de cliente é exigir o impossível, e o efeito
-    /// prático não é segurança, é negar para sempre.
-    ///
-    /// Padrão vazio: nenhum serviço tem nada até a implantação declarar.
+    /// Pôr a concessão em configuração pareceu mais simples e não era: revogar
+    /// o acesso de um serviço comprometido passaria a exigir uma implantação,
+    /// e implantação é justamente o que quebra primeiro num dia ruim.
     /// </summary>
-    public Dictionary<string, string[]> ServicePrincipals { get; set; } =
-        new(StringComparer.OrdinalIgnoreCase);
+    public string ClientRolesPropertyName { get; set; } =
+        "identity:client:roles";
 }
 
 /// <summary>
-/// As capacidades que a implantação concedeu a um principal de máquina.
+/// Onde o <c>client_id</c> aparece num principal vindo de um access token.
+/// <c>azp</c> entra como alternativa porque é o que alguns emissores usam
+/// quando o token é para outra audiência.
 /// </summary>
-public static class ManagementServicePrincipals
+public static class ManagementPrincipal
 {
-    /// <summary>
-    /// Onde o <c>client_id</c> aparece num principal vindo de um access token.
-    /// <c>azp</c> entra como alternativa porque é o que alguns emissores usam
-    /// quando o token é para outra audiência.
-    /// </summary>
     private static readonly string[] ClientIdClaimTypes = ["client_id", "azp"];
 
-    public static IReadOnlySet<string> CapabilitiesFor(
-        ClaimsPrincipal principal,
-        ManagementAuthorizationOptions authorization)
-    {
-        var empty = (IReadOnlySet<string>)new HashSet<string>(StringComparer.Ordinal);
-        if (authorization.ServicePrincipals.Count == 0)
-        {
-            return empty;
-        }
-
-        var clientId = ClientIdClaimTypes
+    public static string? ClientId(ClaimsPrincipal principal) =>
+        ClientIdClaimTypes
             .Select(type => principal.FindFirst(type)?.Value)
             .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 
-        if (string.IsNullOrWhiteSpace(clientId)
-            || !authorization.ServicePrincipals.TryGetValue(clientId, out var granted))
+    /// <summary>
+    /// Um principal de MÁQUINA — autenticado por segredo de cliente, sem
+    /// usuário por trás. É o <c>sub</c> igual ao <c>client_id</c> que
+    /// distingue: o handler de client_credentials põe o próprio client_id como
+    /// subject, porque não há mais ninguém para pôr.
+    /// </summary>
+    public static bool IsService(ClaimsPrincipal principal)
+    {
+        var clientId = ClientId(principal);
+        if (string.IsNullOrWhiteSpace(clientId))
         {
-            return empty;
+            return false;
         }
 
-        var capabilities = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var raw in granted ?? [])
-        {
-            var capability = ManagementCapabilities.Normalize(raw);
-            // Um nome desconhecido é ignorado em silêncio de propósito: ele já
-            // não abre nada, e derrubar a resolução por causa de um erro de
-            // digitação na configuração tiraria do ar as capacidades válidas
-            // do mesmo cliente.
-            if (ManagementCapabilities.All.Contains(capability))
-            {
-                capabilities.Add(capability);
-            }
-        }
+        var subject = principal.FindFirst("sub")?.Value
+            ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-        return capabilities;
+        return string.Equals(subject, clientId, StringComparison.Ordinal);
     }
 }
 
@@ -578,13 +559,6 @@ public sealed class ScopeAndRoleManagementEntitlementResolver(
             }
         }
 
-        // --- Capacidades de principal de máquina, por client_id ---
-        // Um token de client_credentials não passa por nenhuma das fontes
-        // acima: ele não carrega claim `permission` (só operador autenticado
-        // recebe) e não está em papel nenhum. Ver ServicePrincipals.
-        var machine = ManagementServicePrincipals.CapabilitiesFor(principal, authorization);
-        capabilities.UnionWith(machine);
-
         // --- Full administrator roles (god-mode) ---
         // Opt-in only: default is empty. Every principal in any of these roles
         // receives every capability. Use sparingly for break-glass access.
@@ -595,7 +569,7 @@ public sealed class ScopeAndRoleManagementEntitlementResolver(
         }
 
         return ValueTask.FromResult(
-            new ManagementEntitlements(capabilities, machine));
+            new ManagementEntitlements(capabilities));
     }
 
     private static ManagementEntitlements Empty() =>

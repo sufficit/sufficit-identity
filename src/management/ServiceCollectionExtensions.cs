@@ -123,8 +123,19 @@ public static class ServiceCollectionExtensions
             ProvisioningTokenIssuer>();
         services.TryAddScoped<IOperatorTokenManagementService,
             OperatorTokenManagementService>();
-        services.TryAddScoped<IManagementEntitlementResolver,
-            ScopeAndRoleManagementEntitlementResolver>();
+        // O resolvedor de máquina DECORA o comum: um principal humano passa
+        // por ele sem alteração nenhuma, e um de serviço ganha os papéis que o
+        // registro do cliente declara no banco. Ver
+        // ServicePrincipalEntitlementResolver para por que a concessão mora lá
+        // e não em configuração.
+        services.TryAddScoped<IServicePrincipalRoleSource,
+            OpenIddictServicePrincipalRoleSource>();
+        services.TryAddScoped<ScopeAndRoleManagementEntitlementResolver>();
+        services.TryAddScoped<IManagementEntitlementResolver>(provider =>
+            new ServicePrincipalEntitlementResolver(
+                provider.GetRequiredService<ScopeAndRoleManagementEntitlementResolver>(),
+                provider.GetRequiredService<IServicePrincipalRoleSource>(),
+                provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<ManagementOptions>>()));
         services.TryAddScoped<IManagementAccessPolicyProvider,
             ConfigurationManagementAccessPolicyProvider>();
         services.TryAddScoped<IProtectedPrincipalAccessPolicy,
