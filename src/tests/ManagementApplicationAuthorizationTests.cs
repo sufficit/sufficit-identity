@@ -520,73 +520,78 @@ public sealed class ManagementApplicationAuthorizationTests
 
     // --- Principal de máquina (client_credentials) -----------------------
     //
-    // Um serviço não tem por onde receber capacidade: o claim `permission` só
-    // é emitido a partir de um operador autenticado, e ele não está em papel
-    // nenhum. Antes disto, dar acesso de gestão a um serviço só era possível
-    // pondo-o num papel de administrador — trocar "não consegue nada" por
-    // "consegue tudo".
+    // Um serviço não passa por nenhuma das fontes de capacidade do resolvedor
+    // comum: o claim `permission` só é emitido a partir de um operador
+    // autenticado, e o cliente não está em papel de usuário nenhum. Antes, a
+    // única forma de dar acesso de gestão a um serviço era pô-lo num papel de
+    // administrador — trocar "não consegue nada" por "consegue tudo".
     //
-    // E mesmo com a capacidade, o MFA o barrava para sempre: a checagem exige
-    // claim `amr`, que um principal autenticado por segredo de cliente nunca
-    // carrega.
+    // A concessão mora no banco (propriedade do cliente), o significado do
+    // papel continua em configuração. Mesma divisão que já valia para gente.
 
     private const string ServiceClient = "sufficit_cloud_mobile_api";
+    private const string VaultRole = "mobilecloudadministrator";
 
     private static ClaimsPrincipal MachinePrincipal(string clientId) =>
-        PrincipalWithClaims(new Claim("client_id", clientId));
+        new(new ClaimsIdentity(
+            [
+                // sub == client_id é o que marca a máquina: o handler de
+                // client_credentials põe o próprio cliente como subject porque
+                // não há mais ninguém para pôr.
+                new Claim("sub", clientId),
+                new Claim("client_id", clientId)
+            ],
+            authenticationType: "test",
+            nameType: ClaimTypes.Name,
+            roleType: ClaimTypes.Role));
 
     [Fact]
-    public async Task Service_principal_receives_only_its_declared_capabilities()
+    public async Task Service_principal_gets_what_its_role_maps_to()
     {
-        var evaluator = CreateEvaluator(servicePrincipals: new()
-        {
-            [ServiceClient] = [ManagementCapabilities.VaultSecretsManage]
-        });
+        var evaluator = CreateEvaluator(
+            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.VaultSecretsManage] },
+            clientRoles: [VaultRole]);
 
         var concedida = await evaluator.EvaluateAsync(
             MachinePrincipal(ServiceClient),
             ManagementCapabilities.VaultSecretsManage,
             new ManagementResource(ManagementResourceTypes.VaultSecrets));
-        var naoConcedida = await evaluator.EvaluateAsync(
+        var fora = await evaluator.EvaluateAsync(
             MachinePrincipal(ServiceClient),
             ManagementCapabilities.UsersDelete,
             new ManagementResource(ManagementResourceTypes.User));
 
         Assert.True(concedida.IsAllowed);
-        Assert.Equal(ManagementAuthorizationOutcome.Denied, naoConcedida.Outcome);
+        Assert.Equal(ManagementAuthorizationOutcome.Denied, fora.Outcome);
     }
 
     [Fact]
-    public async Task Service_principal_passes_mfa_only_for_the_declared_capability()
+    public async Task Service_principal_passes_mfa_for_what_its_role_grants()
     {
-        // O ponto todo: com RequireMfa ligado e sem `amr`, a capacidade
-        // declarada passa e QUALQUER outra continua barrada. A isenção é da
-        // concessão, não do principal.
+        // O ponto: com RequireMfa ligado e sem `amr`, a capacidade do papel
+        // passa. Exigir segundo fator de quem se autenticou com segredo de
+        // cliente não é uma trava, é negação permanente.
         var evaluator = CreateEvaluator(
             requireMfa: true,
             adminRoles: [],
-            servicePrincipals: new()
-            {
-                [ServiceClient] = [ManagementCapabilities.VaultSecretsManage]
-            });
+            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.VaultSecretsManage] },
+            clientRoles: [VaultRole]);
 
-        var declarada = await evaluator.EvaluateAsync(
+        var decisao = await evaluator.EvaluateAsync(
             MachinePrincipal(ServiceClient),
             ManagementCapabilities.VaultSecretsManage,
             new ManagementResource(ManagementResourceTypes.VaultSecrets));
 
-        Assert.True(declarada.IsAllowed);
+        Assert.True(decisao.IsAllowed);
     }
 
     [Fact]
-    public async Task Another_client_gets_nothing_from_someone_elses_grant()
+    public async Task Another_client_gets_nothing_from_someone_elses_roles()
     {
         var evaluator = CreateEvaluator(
             requireMfa: true,
-            servicePrincipals: new()
-            {
-                [ServiceClient] = [ManagementCapabilities.VaultSecretsManage]
-            });
+            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.VaultSecretsManage] },
+            clientRoles: [VaultRole]);
 
         var outro = await evaluator.EvaluateAsync(
             MachinePrincipal("dcr_algum_cliente_anonimo"),
@@ -599,16 +604,13 @@ public sealed class ManagementApplicationAuthorizationTests
     [Fact]
     public async Task A_human_holding_the_same_capability_still_needs_mfa()
     {
-        // A isenção não pode vazar para operador. Ele recebeu a capacidade por
-        // claim `permission`, não pelo mapa de máquina, então continua tendo de
-        // apresentar segundo fator.
+        // A isenção não pode vazar para operador: ele recebeu a capacidade por
+        // claim `permission`, não por ser máquina.
         var evaluator = CreateEvaluator(
             requireMfa: true,
             adminRoles: [],
-            servicePrincipals: new()
-            {
-                [ServiceClient] = [ManagementCapabilities.VaultSecretsManage]
-            });
+            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.VaultSecretsManage] },
+            clientRoles: [VaultRole]);
 
         var humano = await evaluator.EvaluateAsync(
             PrincipalWithClaims(
@@ -622,11 +624,15 @@ public sealed class ManagementApplicationAuthorizationTests
     }
 
     [Fact]
-    public async Task Empty_map_changes_nothing()
+    public async Task Client_without_declared_roles_changes_nothing()
     {
-        // O padrão é vazio, e nesse estado o comportamento tem de ser
-        // exatamente o de antes desta mudança.
-        var evaluator = CreateEvaluator(requireMfa: true, adminRoles: []);
+        // Estado padrão de todo cliente que existe hoje: sem a propriedade, o
+        // comportamento tem de ser exatamente o de antes desta mudança.
+        var evaluator = CreateEvaluator(
+            requireMfa: true,
+            adminRoles: [],
+            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.VaultSecretsManage] },
+            clientRoles: []);
 
         var maquina = await evaluator.EvaluateAsync(
             MachinePrincipal(ServiceClient),
@@ -640,7 +646,8 @@ public sealed class ManagementApplicationAuthorizationTests
         bool requireMfa = false,
         string[]? adminRoles = null,
         IManagementObjectAccessPolicy? objectAccess = null,
-        Dictionary<string, string[]>? servicePrincipals = null)
+        Dictionary<string, string[]>? roleCapabilities = null,
+        string[]? clientRoles = null)
     {
         var options = Options.Create(new ManagementOptions
         {
@@ -649,13 +656,21 @@ public sealed class ManagementApplicationAuthorizationTests
             {
                 FullAdministratorRoles = adminRoles ?? ["identity-administrator"],
                 CapabilityClaimTypes = ["permission"],
-                ServicePrincipals = servicePrincipals is null
+                RoleCapabilities = roleCapabilities is null
                     ? new(StringComparer.OrdinalIgnoreCase)
-                    : new(servicePrincipals, StringComparer.OrdinalIgnoreCase)
+                    : new(roleCapabilities, StringComparer.OrdinalIgnoreCase)
             }
         });
+        IManagementEntitlementResolver resolver =
+            new ScopeAndRoleManagementEntitlementResolver(options);
+        if (clientRoles is not null)
+        {
+            resolver = new ServicePrincipalEntitlementResolver(
+                resolver, new FakeRoleSource(ServiceClient, clientRoles), options);
+        }
+
         return new CapabilityManagementAuthorizationEvaluator(
-            new ScopeAndRoleManagementEntitlementResolver(options),
+            resolver,
             new ConfigurationManagementAccessPolicyProvider(options),
             objectAccess ?? new AllowingObjectAccessPolicy());
     }
@@ -676,6 +691,15 @@ public sealed class ManagementApplicationAuthorizationTests
             authenticationType: "test",
             nameType: ClaimTypes.Name,
             roleType: ClaimTypes.Role));
+
+    private sealed class FakeRoleSource(string clientId, string[] roles)
+        : IServicePrincipalRoleSource
+    {
+        public ValueTask<IReadOnlyCollection<string>> RolesAsync(
+            string requested, CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult<IReadOnlyCollection<string>>(
+                string.Equals(requested, clientId, StringComparison.Ordinal) ? roles : []);
+    }
 
     private sealed class TestHostEnvironment : IHostEnvironment
     {
