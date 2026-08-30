@@ -39,7 +39,6 @@
   <!-- ===== Shared / Layout ===== -->
   <data name="Layout.Logout" xml:space="preserve"><value>Sign out</value></data>
   <data name="Layout.MyAccount" xml:space="preserve"><value>My account</value></data>
-  <data name="Layout.MyVault" xml:space="preserve"><value>My Vault</value></data>
   <data name="Layout.BrandFallback" xml:space="preserve"><value>Sufficit Identity</value></data>
   <data name="Layout.Server" xml:space="preserve"><value>Server</value></data>
   <data name="Layout.ServerDescription" xml:space="preserve"><value>This interface is being processed by server {0}.</value></data>
@@ -207,6 +206,9 @@
   <data name="Manage.ConnectedApps" xml:space="preserve"><value>Connected applications</value></data>
   <data name="Manage.ActiveSessions" xml:space="preserve"><value>Active sessions</value></data>
   <data name="Manage.PersonalData" xml:space="preserve"><value>My data (GDPR)</value></data>
+  <data name="Manage.AdditionalResources" xml:space="preserve"><value>More resources</value></data>
+  <data name="Manage.StoredCredentials" xml:space="preserve"><value>My Vault</value></data>
+  <data name="Manage.SystemManagement" xml:space="preserve"><value>System management</value></data>
 
   <!-- ===== Manage: Change Password ===== -->
   <data name="ChangePassword.Title" xml:space="preserve"><value>Change password</value></data>

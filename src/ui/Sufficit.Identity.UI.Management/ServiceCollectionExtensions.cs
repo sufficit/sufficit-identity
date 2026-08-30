@@ -27,7 +27,7 @@ namespace Sufficit.Identity.UI.Management;
 
 public static class ManagementUiPolicies
 {
-    public const string Access = "sufficit-identity-management-ui-access";
+    public const string Access = UiAuthorizationPolicies.ManagementAccess;
     public const string ManageClients = "sufficit-identity-management-ui-clients";
     public const string ManageClaims = "sufficit-identity-management-ui-claims";
     public const string ManageScopes = "sufficit-identity-management-ui-scopes";
