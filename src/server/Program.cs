@@ -179,10 +179,18 @@ var vaultUiEnabled = uiHostingOptions.Vault.IsEmbedded
 if (mgmtEnabled)
 {
     builder.Services.AddSufficitIdentityManagement(builder.Configuration);
+    // O adaptador do operador SUBSTITUI o resolvedor composto pelo
+    // AddSufficitIdentityManagement — e foi exatamente assim que o caminho de
+    // máquina ficou de fora na primeira implantação: o decorador de service
+    // principal estava registrado lá dentro, e este Replace o descartava. A
+    // cadeia agora é explícita: operador da casa por dentro, máquina por fora.
     builder.Services.Replace(
-        ServiceDescriptor.Scoped<
-            IManagementEntitlementResolver,
-            SufficitOperatorManagementEntitlementResolver>());
+        ServiceDescriptor.Scoped<IManagementEntitlementResolver>(provider =>
+            new Sufficit.Identity.Management.Authorization.ServicePrincipalEntitlementResolver(
+                new SufficitOperatorManagementEntitlementResolver(
+                    provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Sufficit.Identity.Management.ManagementOptions>>()),
+                provider.GetRequiredService<Sufficit.Identity.Management.Authorization.IServicePrincipalRoleSource>(),
+                provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Sufficit.Identity.Management.ManagementOptions>>())));
     // M1 fix (eval): replace the MissingClientSecretResolver stub with a
     // vault-backed resolver so provisioning of confidential clients works.
     // The vault is already registered by AddSufficitIdentitySTS above; the
