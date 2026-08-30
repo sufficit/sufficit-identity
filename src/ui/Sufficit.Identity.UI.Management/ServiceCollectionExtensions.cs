@@ -281,6 +281,8 @@ public static class ServiceCollectionExtensions
             ServiceDescriptor.Scoped<IAuthorizationHandler,
                 ManagementUiAccessAuthorizationHandler>());
         services.TryAddScoped<ManagementClientDataSource>();
+        services.TryAddScoped<
+            ServiceAccounts.ManagementServiceAccountDataSource>();
         services.TryAddScoped<ManagementClaimDataSource>();
         services.TryAddScoped<ManagementScopeDataSource>();
         services.TryAddScoped<ManagementSessionDataSource>();
