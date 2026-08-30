@@ -69,15 +69,15 @@ public sealed class UiLocalizationTests
     }
 
     [Theory]
-    [InlineData("pt-BR", "Meu Vault")]
+    [InlineData("pt-BR", "Credenciais armazenadas")]
     [InlineData("en-US", "My Vault")]
-    public void Vault_header_link_resolves_in_the_selected_culture(
+    public void Stored_credentials_link_resolves_in_the_selected_culture(
         string cultureName,
         string expected)
     {
         var resources = new ResourceManager(typeof(SharedResource));
         var translated = resources.GetString(
-            "Layout.MyVault",
+            "Manage.StoredCredentials",
             CultureInfo.GetCultureInfo(cultureName));
 
         Assert.Equal(expected, translated);
