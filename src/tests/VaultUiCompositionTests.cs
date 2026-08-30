@@ -34,6 +34,16 @@ public sealed class VaultUiCompositionTests
             StringComparison.Ordinal);
         Assert.Contains("LoadPersonalOverviewAsync", userPage,
             StringComparison.Ordinal);
+        Assert.Contains("<AuthorizeView Policy=\"@VaultUiPolicies.Admin\">",
+            userPage, StringComparison.Ordinal);
+        Assert.Contains("href=\"/vault/admin\"", userPage,
+            StringComparison.Ordinal);
+        Assert.Contains("Administração global", userPage,
+            StringComparison.Ordinal);
+        Assert.Contains("Credenciais pessoais permanecem isoladas por usuário",
+            userPage, StringComparison.Ordinal);
+        Assert.Contains("@page \"/vault/admin\"", adminPage,
+            StringComparison.Ordinal);
         Assert.Contains("@page \"/management/vault\"", adminPage,
             StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 640px)", css,
@@ -41,6 +51,10 @@ public sealed class VaultUiCompositionTests
         Assert.Contains("prefers-reduced-motion", css,
             StringComparison.Ordinal);
         Assert.Contains(".vault-list__status", css,
+            StringComparison.Ordinal);
+        Assert.Contains(".vault-admin-entry", css,
+            StringComparison.Ordinal);
+        Assert.Contains(".vault-button--admin", css,
             StringComparison.Ordinal);
         Assert.Contains(".vault-layout { min-height: 100vh; background: var(--vault-bg); }",
             css, StringComparison.Ordinal);
@@ -78,35 +92,62 @@ public sealed class VaultUiCompositionTests
     }
 
     [Fact]
-    public void Authenticated_header_exposes_vault_only_when_backend_and_surface_are_enabled()
+    public void Manage_page_exposes_only_available_and_authorized_resources()
     {
         var root = ResolveIdentityRepository();
         var layout = File.ReadAllText(Path.Combine(
             root, "src", "ui", "Sufficit.Identity.UI", "Components",
             "Layout", "MainLayout.razor"));
+        var manage = File.ReadAllText(Path.Combine(
+            root, "src", "ui", "Sufficit.Identity.UI", "Pages",
+            "Manage", "Index.razor"));
         var css = File.ReadAllText(Path.Combine(
             root, "src", "ui", "Sufficit.Identity.UI", "wwwroot",
             "css", "site.css"));
+        var policies = File.ReadAllText(Path.Combine(
+            root, "src", "ui", "Sufficit.Identity.UI.Abstractions",
+            "Hosting", "UiAuthorizationPolicies.cs"));
+        var managementComposition = File.ReadAllText(Path.Combine(
+            root, "src", "ui", "Sufficit.Identity.UI.Management",
+            "ServiceCollectionExtensions.cs"));
 
-        Assert.Contains("UiModules.HasSurface(UiSurface.Vault)", layout,
+        Assert.DoesNotContain("href=\"/vault\"", layout,
             StringComparison.Ordinal);
-        Assert.Contains("Sufficit:Vault:Enabled", layout,
+        Assert.DoesNotContain("nav-link--vault", css,
             StringComparison.Ordinal);
-        Assert.Contains("<AuthorizeView>", layout, StringComparison.Ordinal);
-        Assert.Contains("@if (VaultAvailable)", layout, StringComparison.Ordinal);
-        Assert.Contains("href=\"/vault\"", layout, StringComparison.Ordinal);
-        Assert.Contains("Layout.MyVault", layout, StringComparison.Ordinal);
+        Assert.Contains("UiModules.HasSurface(UiSurface.Vault)", manage,
+            StringComparison.Ordinal);
+        Assert.Contains("Sufficit:Vault:Enabled", manage,
+            StringComparison.Ordinal);
+        Assert.Contains("UiModules.HasSurface(UiSurface.Management)", manage,
+            StringComparison.Ordinal);
+        Assert.Contains("AuthorizationService.AuthorizeAsync", manage,
+            StringComparison.Ordinal);
+        Assert.Contains("UiAuthorizationPolicies.ManagementAccess", manage,
+            StringComparison.Ordinal);
+        Assert.Contains("@if (AdditionalResourcesAvailable)", manage,
+            StringComparison.Ordinal);
+        Assert.Contains("href=\"/vault\"", manage, StringComparison.Ordinal);
+        Assert.Contains("href=\"/management/\"", manage, StringComparison.Ordinal);
+        Assert.Contains("data-enhance-nav=\"false\"", manage,
+            StringComparison.Ordinal);
+        Assert.Contains("Manage.StoredCredentials", manage,
+            StringComparison.Ordinal);
+        Assert.Contains("Manage.SystemManagement", manage,
+            StringComparison.Ordinal);
+        Assert.Contains(".manage-resources", css, StringComparison.Ordinal);
+        Assert.Contains("sufficit-identity-management-ui-access", policies,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "public const string Access = UiAuthorizationPolicies.ManagementAccess;",
+            managementComposition,
+            StringComparison.Ordinal);
 
-        var culture = layout.IndexOf("<CultureSelector />", StringComparison.Ordinal);
-        var vault = layout.IndexOf("href=\"/vault\"", StringComparison.Ordinal);
-        var logout = layout.IndexOf("href=\"/account/logout\"", StringComparison.Ordinal);
-        Assert.True(culture >= 0 && culture < vault && vault < logout);
-
-        Assert.Contains(".nav-link--vault", css, StringComparison.Ordinal);
-        Assert.Contains("@media (max-width: 400px)", css,
-            StringComparison.Ordinal);
-        Assert.Contains(".nav-link--vault .nav-link__label { display: none; }",
-            css, StringComparison.Ordinal);
+        var personalData = manage.IndexOf(
+            "Manage.PersonalData", StringComparison.Ordinal);
+        var resources = manage.IndexOf(
+            "Manage.AdditionalResources", StringComparison.Ordinal);
+        Assert.True(personalData >= 0 && personalData < resources);
     }
 
     private static string ResolveIdentityRepository()
