@@ -364,7 +364,8 @@ public sealed class MfaRequirement : IAuthorizationRequirement;
 /// <c>amr</c> claim with at least one MFA-indicating value. Succeeds only then;
 /// otherwise leaves the requirement unsatisfied (the policy then denies).
 /// </summary>
-public sealed class MfaHandler : AuthorizationHandler<MfaRequirement>
+public sealed class MfaHandler(
+    IServiceScopeFactory scopeFactory) : AuthorizationHandler<MfaRequirement>
 {
     private const string AmrClaimType = "amr";
 
@@ -374,15 +375,51 @@ public sealed class MfaHandler : AuthorizationHandler<MfaRequirement>
         "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina"
     };
 
-    protected override Task HandleRequirementAsync(
+    protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context, MfaRequirement requirement)
     {
         var amrValues = context.User.FindAll(AmrClaimType).Select(c => c.Value);
         if (amrValues.Any(v => MfaValues.Contains(v)))
         {
             context.Succeed(requirement);
+            return;
         }
-        return Task.CompletedTask;
+
+        // Principal de MÁQUINA com papel declarado no banco: o portão de MFA
+        // da política não se aplica a ele, porque não PODE se aplicar — quem
+        // se autentica com segredo de cliente nunca carrega `amr`, e exigir o
+        // impossível aqui não protege nada: só transforma toda concessão de
+        // serviço em negação permanente, antes mesmo de o avaliador de
+        // capacidades rodar.
+        //
+        // A porta continua estreita nas duas dobradiças: só entra quem tem ao
+        // menos um papel em `identity:client:roles` (concessão deliberada, no
+        // banco, revogável com um UPDATE), e passar por aqui não dá acesso a
+        // nada — toda operação de gestão ainda exige a capability que o
+        // ServicePrincipalEntitlementResolver deriva desses mesmos papéis.
+        // Máquina sem papel continua barrada neste portão, como sempre foi.
+        if (!Authorization.ManagementPrincipal.IsService(context.User))
+        {
+            return;
+        }
+
+        var clientId = Authorization.ManagementPrincipal.ClientId(context.User);
+        if (string.IsNullOrWhiteSpace(clientId))
+        {
+            return;
+        }
+
+        // O handler é singleton e a fonte de papéis é scoped (fala com o
+        // banco); o escopo curto aqui é o preço de não rebaixar a fonte.
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var roles = await scope.ServiceProvider
+            .GetRequiredService<Authorization.IServicePrincipalRoleSource>()
+            .RolesAsync(clientId);
+
+        if (roles.Count > 0)
+        {
+            context.Succeed(requirement);
+        }
     }
 }
 
