@@ -49,6 +49,15 @@ public static class ManagementModulePresentations
             "clients",
             "key"),
         new(
+            "service-accounts",
+            "OAuth & OIDC",
+            20,
+            15,
+            "Contas de sistema",
+            "Serviços que se autenticam sozinhos e seus papéis de gestão",
+            "service-accounts",
+            "server"),
+        new(
             "scopes",
             "OAuth & OIDC",
             20,

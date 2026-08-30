@@ -123,6 +123,8 @@ public static class ServiceCollectionExtensions
             ProvisioningTokenIssuer>();
         services.TryAddScoped<IOperatorTokenManagementService,
             OperatorTokenManagementService>();
+        services.TryAddScoped<ServiceAccounts.IServiceAccountManagementService,
+            ServiceAccounts.ServiceAccountManagementService>();
         // O resolvedor de máquina DECORA o comum: um principal humano passa
         // por ele sem alteração nenhuma, e um de serviço ganha os papéis que o
         // registro do cliente declara no banco. Ver

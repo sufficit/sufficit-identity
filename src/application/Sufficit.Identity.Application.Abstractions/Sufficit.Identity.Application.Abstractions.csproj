@@ -25,6 +25,8 @@
              Link="Management\Branding\BrandingManagementContracts.cs" />
     <Compile Include="..\..\management\Claims\ClaimManagementService.cs"
              Link="Management\Claims\ClaimManagementContracts.cs" />
+    <Compile Include="..\..\management\ServiceAccounts\ServiceAccountManagementService.cs"
+             Link="Management\ServiceAccounts\ServiceAccountContracts.cs" />
     <Compile Include="..\..\management\Clients\ClientManagementService.cs"
              Link="Management\Clients\ClientManagementContracts.cs" />
     <Compile Include="..\..\management\Clients\ClientConfigurationDraftService.cs"
