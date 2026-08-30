@@ -15,6 +15,26 @@
     <div><strong>Somente metadados aparecem nesta página.</strong><span>Os valores permanecem criptografados no servidor e nunca são devolvidos pela listagem.</span></div>
 </div>
 
+<AuthorizeView Policy="@VaultUiPolicies.Admin">
+    <Authorized>
+        <section class="vault-admin-entry"
+                 aria-labelledby="vault-admin-entry-heading">
+            <div class="vault-admin-entry__copy">
+                <SUIIcon Name="shield" Size="22" />
+                <div>
+                    <h2 id="vault-admin-entry-heading">Administração global</h2>
+                    <p>Gerencie segredos globais usados por serviços e integrações. Credenciais pessoais permanecem isoladas por usuário.</p>
+                </div>
+            </div>
+            <a class="vault-button vault-button--admin"
+               href="/vault/admin">
+                Abrir Vault administrativo
+                <SUIIcon Name="arrow-right" Size="16" />
+            </a>
+        </section>
+    </Authorized>
+</AuthorizeView>
+
 @if (!string.IsNullOrWhiteSpace(loadError))
 {
     <div class="vault-load-error" role="alert">

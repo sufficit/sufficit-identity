@@ -3,6 +3,10 @@
 @inject IAccountSelfService AccountSelfService
 @inject IUserAvatarUrlResolver AvatarUrlResolver
 @inject IStringLocalizer<SharedResource> L
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@inject IUiModuleRegistry UiModules
+@inject IAuthorizationService AuthorizationService
+@using Sufficit.Identity.UI.Abstractions.Hosting
 
 <PageTitle>@L["Manage.Title"]</PageTitle>
 
@@ -46,6 +50,34 @@
         <a href="/manage/sessions" class="manage-link">@L["Manage.ActiveSessions"]</a>
         <a href="/manage/personaldata" class="manage-link">@L["Manage.PersonalData"]</a>
     </nav>
+
+    @if (AdditionalResourcesAvailable)
+    {
+        <section class="manage-resources"
+                 aria-labelledby="manage-resources-heading">
+            <h2 id="manage-resources-heading"
+                class="manage-resources__heading">
+                @L["Manage.AdditionalResources"]
+            </h2>
+            <nav class="manage-nav manage-nav--resources"
+                 aria-labelledby="manage-resources-heading">
+                @if (VaultAvailable)
+                {
+                    <a href="/vault" class="manage-link">
+                        @L["Manage.StoredCredentials"]
+                    </a>
+                }
+                @if (_managementAvailable)
+                {
+                    <a href="/management/"
+                       class="manage-link"
+                       data-enhance-nav="false">
+                        @L["Manage.SystemManagement"]
+                    </a>
+                }
+            </nav>
+        </section>
+    }
 </div>
 
 @code {
@@ -53,7 +85,14 @@
     private AccountSelfServiceProfile? _profile;
     private bool _emailConfirmed;
     private bool _avatarLoadFailed;
+    private bool _managementAvailable;
     private string? _avatarUrl;
+    private bool VaultAvailable =>
+        UiModules.HasSurface(UiSurface.Vault)
+        && bool.TryParse(Configuration["Sufficit:Vault:Enabled"], out var enabled)
+        && enabled;
+    private bool AdditionalResourcesAvailable =>
+        VaultAvailable || _managementAvailable;
     private string AvatarFallback =>
         string.IsNullOrWhiteSpace(_profile?.UserName)
             ? "ID"
@@ -69,6 +108,14 @@
         {
             _emailConfirmed = _profile.EmailConfirmed;
             _avatarUrl = await AvatarUrlResolver.ResolveAsync(_profile.UserId);
+        }
+
+        if (UiModules.HasSurface(UiSurface.Management))
+        {
+            var authorization = await AuthorizationService.AuthorizeAsync(
+                principal,
+                UiAuthorizationPolicies.ManagementAccess);
+            _managementAvailable = authorization.Succeeded;
         }
     }
 
