@@ -7,6 +7,12 @@
       "description": "Access to the example resource server.",
       "resources": [
         "example_api"
+      ],
+      "entitlementClaims": [
+        {
+          "type": "example_directive",
+          "value": "example:00000000-0000-0000-0000-000000000000"
+        }
       ]
     }
   ],

@@ -476,10 +476,21 @@ public sealed class TokenExchangeOptions
     public HashSet<string> AllowedClientIds { get; init; } = new(StringComparer.Ordinal);
 
     /// <summary>
-    /// Enforce rejects subject tokens without an unambiguous authorized-party
-    /// identity whenever <see cref="AllowedClientIds"/> is configured. Observe
-    /// is retained only as an explicit posture-checked migration mode.
+    /// Enforce rejects any subject token that cannot be attributed to exactly
+    /// one authorized party (<c>azp</c>/<c>client_id</c>/presenter) and — when
+    /// <see cref="AllowedClientIds"/> is configured — one whose party is not on
+    /// that allow-list. Observe is retained only as an explicit posture-checked
+    /// migration mode.
     /// </summary>
+    /// <remarks>
+    /// The unambiguous-party requirement applies with or without an allow-list
+    /// (eval 2026-08-30, F-1). Until that change the entire check was skipped
+    /// on the default empty allow-list, so the default deployment ran the
+    /// exchange grant with no confused-deputy defense at all. A deployment
+    /// whose subject tokens do not yet carry an unambiguous authorized party
+    /// should set <c>Observe</c> for a bounded migration window; the production
+    /// posture check reports that state.
+    /// </remarks>
     public SecurityPolicyEnforcementMode ProvenanceMode { get; init; } =
         SecurityPolicyEnforcementMode.Enforce;
 }
@@ -534,20 +545,23 @@ public sealed class TokenExchangeGrantHandler(
                 "The subject_token no longer identifies a user that is allowed to sign in.");
         }
 
-        // Finding #1 (confused-deputy, RFC 8707): with a non-empty
-        // AllowedClientIds, the subject_token's azp must match one of the
-        // authorized exchange clients.
-        if (tokenExchangeOptions.AllowedClientIds.Count > 0)
+        // Confused-deputy defense (RFC 8693 §4.1 / RFC 8707). This runs for
+        // EVERY exchange, not only when AllowedClientIds is configured
+        // (eval 2026-08-30, F-1): the previous gate meant the default
+        // deployment — empty allow-list — performed no provenance check at
+        // all, so any client holding the token-exchange grant permission could
+        // present a subject token minted for a different relying party. The
+        // policy always requires an unambiguous authorized party and, when an
+        // allow-list exists, that the party belongs to it. Observe mode remains
+        // the explicit, posture-checked migration escape hatch.
+        var provenance = subjectTokenProvenancePolicy.Evaluate(
+            result.Principal,
+            tokenExchangeOptions.AllowedClientIds,
+            tokenExchangeOptions.ProvenanceMode);
+        if (provenance.ShouldReject)
         {
-            var provenance = subjectTokenProvenancePolicy.Evaluate(
-                result.Principal,
-                tokenExchangeOptions.AllowedClientIds,
-                tokenExchangeOptions.ProvenanceMode);
-            if (provenance.ShouldReject)
-            {
-                return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant,
-                    "The subject_token was issued to a client not in the TokenExchange allowlist.");
-            }
+            return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant,
+                "The subject_token could not be attributed to an authorized party permitted to perform token exchange.");
         }
 
         var identity = await ops.BuildIdentityAsync(

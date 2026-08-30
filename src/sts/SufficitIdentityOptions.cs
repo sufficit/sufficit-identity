@@ -190,6 +190,21 @@ public sealed class SufficitIdentityOptions
     public ScopeEntitlementOptions ScopeEntitlements { get; init; } = new();
 
     /// <summary>
+    /// Additional product scopes this deployment serves, registered with
+    /// OpenIddict and advertised in the protected-resource metadata alongside
+    /// the standard OIDC scopes.
+    /// </summary>
+    /// <remarks>
+    /// Empty by default (eval 2026-08-30, F-2): product scope names are
+    /// deployment configuration, not built-ins of a vendor-neutral STS. The
+    /// scopes implied by <see cref="ScopeEntitlements"/> are registered
+    /// automatically, so a scope only needs to be listed here when it grants no
+    /// entitlement claim of its own. Declare under
+    /// <c>Sufficit:Identity:ApplicationScopes</c>.
+    /// </remarks>
+    public string[] ApplicationScopes { get; init; } = [];
+
+    /// <summary>
     /// Compatibility rollout policy for personal access-token issuance.
     /// Observe mode computes and records the strict decision while preserving
     /// existing callers; Enforce applies the attenuated decision.
@@ -894,6 +909,30 @@ public sealed class CspOptions
     public bool ReportOnly { get; init; } = true;
 
     /// <summary>
+    /// Replaces <c>'unsafe-inline'</c> in <c>style-src</c> with a per-request
+    /// nonce, so an injected <c>&lt;style&gt;</c> element is blocked while the
+    /// host page's own branding styles keep working (eval 2026-08-30, F-3).
+    /// </summary>
+    /// <remarks>
+    /// <b>Opt-in (default <c>false</c>) because of one browser gap.</b> A CSP
+    /// nonce authorizes <c>&lt;style&gt;</c> ELEMENTS only — it can never
+    /// authorize a <c>style="…"</c> ATTRIBUTE. Those are covered by emitting
+    /// <c>style-src-attr 'unsafe-inline'</c> alongside the nonce, which Chrome
+    /// and Safari honor; Firefox does not implement <c>style-src-attr</c> and
+    /// falls back to <c>style-src</c>, where the nonce causes
+    /// <c>'unsafe-inline'</c> to be ignored per CSP Level 2. The practical
+    /// effect on Firefox in enforce mode is that the few inline
+    /// <c>style</c> attributes in the management pages lose their styling —
+    /// cosmetic, admin-only, and invisible while
+    /// <see cref="ReportOnly"/> is true.
+    /// <para>Enable after confirming the browser matrix. Scripts do not need
+    /// this: every script the UI loads is external, so <c>script-src</c> is
+    /// already <c>'self'</c> plus the single hash for OpenIddict's form-post
+    /// submit.</para>
+    /// </remarks>
+    public bool UseNonce { get; init; } = false;
+
+    /// <summary>
     /// Acknowledges that running CSP in <see cref="ReportOnly"/> mode in
     /// production is a deliberate choice (e.g. during policy calibration). When
     /// false (default), the production posture check treats report-only CSP as
@@ -1080,18 +1119,24 @@ public sealed class ClaimScopeMapOptions
 /// </summary>
 public sealed class ScopeEntitlementOptions
 {
+    /// <summary>
+    /// Scope name → persisted claims granted when a user approves that scope.
+    /// </summary>
+    /// <remarks>
+    /// <b>Empty by default (eval 2026-08-30, F-2).</b> This map writes claims
+    /// onto real user accounts, so a built-in entry would provision one
+    /// deployment's product policy into every deployment of a service that is
+    /// meant to be vendor-neutral. Which scope entitles which claim is
+    /// deployment configuration — declare it under
+    /// <c>Sufficit:Identity:ScopeEntitlements:Grants</c> (see
+    /// <c>src/server/appsettings.json.template</c>).
+    /// <para><b>Migration:</b> a deployment that relied on the previous
+    /// built-in default must declare it in configuration before upgrading, or
+    /// the entitlement stops being granted on scope approval. Existing claims
+    /// already persisted on user accounts are untouched.</para>
+    /// </remarks>
     public Dictionary<string, List<PersistedEntitlementClaimOptions>> Grants { get; init; } =
-        new(StringComparer.Ordinal)
-        {
-            ["sufficit_ai_openai_bridge"] =
-            [
-                new()
-                {
-                    Type = "directive",
-                    Value = "aiuser:00000000-0000-0000-0000-000000000000",
-                },
-            ],
-        };
+        new(StringComparer.Ordinal);
 }
 
 public sealed class PersistedEntitlementClaimOptions
@@ -1614,12 +1659,18 @@ public sealed class SharedSignalsReceiverOptions
 /// </summary>
 /// <remarks>
 /// <b>Implemented from scratch</b> — OpenIddict 7.6 has no CIBA support.
-/// Pending requests are held by <c>ICibaPendingRequestStore</c> (an in-memory
-/// implementation is shipped for the current single-instance deployment).
-/// The store boundary includes an atomic approved-request consumption method;
-/// multi-replica deployments must provide a shared implementation before
-/// enabling CIBA. The completion channel binds approval to the requested
-/// subject and the poll path emits the RFC error contract.
+/// Pending requests are held by <c>ICibaPendingRequestStore</c>, registered as
+/// <c>RollingCibaPendingRequestStore</c>: the database store is the primary
+/// (durable, and therefore already shared across replicas) with the
+/// distributed-cache store mirrored alongside it during the rolling upgrade.
+/// The store boundary includes an atomic approved-request consumption method so
+/// only one poll can redeem an approval. The completion channel binds approval
+/// to the requested subject and the poll path emits the RFC error contract.
+/// <para>This remark previously stated that an in-memory store was shipped and
+/// that multi-replica deployments had to supply their own — stale text that
+/// predates the database store and that misled the 2026-08-30 evaluation into a
+/// false positive (F-4). Corrected against the DI registration in
+/// <c>ServiceCollectionExtensions</c>.</para>
 /// <para>
 /// Opt-in (default <see cref="Enabled"/>=<c>false</c>). Enabling registers the
 /// <c>/bc-authorize</c> initiation endpoint, the completion endpoint, and the

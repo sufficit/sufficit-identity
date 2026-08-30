@@ -442,6 +442,22 @@ public sealed class OpenIddictManifestProvisioner
             schemaVersion,
             secretReference: null,
             manifestIdentity);
+
+        // The entitlement travels with the scope record so every replica reads
+        // the same policy from the database, instead of each host repeating it
+        // in configuration (eval 2026-08-30, F-2).
+        var entitlements = ScopeEntitlements.Write(
+            manifest.EntitlementClaims.Select(claim =>
+                new ScopeEntitlementClaim(claim.Type, claim.Value)));
+        if (entitlements is { } value)
+        {
+            descriptor.Properties[ScopeEntitlements.PropertyName] = value;
+        }
+        else
+        {
+            descriptor.Properties.Remove(ScopeEntitlements.PropertyName);
+        }
+
         return descriptor;
     }
 
@@ -707,7 +723,17 @@ public sealed class OpenIddictManifestProvisioner
             GetStringProperty(current, SecretReferenceProperty),
             GetStringProperty(desired, SecretReferenceProperty),
             StringComparison.Ordinal) &&
-        NativeReturnUrisEqual(current, desired);
+        NativeReturnUrisEqual(current, desired) &&
+        ScopeEntitlementsEqual(current, desired);
+
+    // Compared as a set: an entitlement list that only changed order is the
+    // same policy and must not show up as a pending provisioning change.
+    private static bool ScopeEntitlementsEqual(
+        IDictionary<string, JsonElement> current,
+        IDictionary<string, JsonElement> desired) =>
+        ScopeEntitlements.Read(current.AsReadOnly())
+            .ToHashSet()
+            .SetEquals(ScopeEntitlements.Read(desired.AsReadOnly()));
 
     private static void SetManifestProperties(
         IDictionary<string, JsonElement> properties,
@@ -756,6 +782,18 @@ public sealed class OpenIddictManifestProvisioner
         else
         {
             target.Remove(NativeReturnUriPolicy.PropertyKey);
+        }
+
+        // Without this the entitlement would be written on create and silently
+        // dropped on the next update, since only the keys named here survive a
+        // managed merge.
+        if (source.TryGetValue(ScopeEntitlements.PropertyName, out var entitlements))
+        {
+            target[ScopeEntitlements.PropertyName] = entitlements;
+        }
+        else
+        {
+            target.Remove(ScopeEntitlements.PropertyName);
         }
     }
 

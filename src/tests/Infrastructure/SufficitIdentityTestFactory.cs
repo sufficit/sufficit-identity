@@ -164,6 +164,11 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                     TestDataSeeder.DeviceClientId,
                 ["Sufficit:Identity:Mcp:ImplicitClientIds:1"] =
                     TestDataSeeder.PasswordClientId,
+                // NOTE: the product scope and its entitlement are deliberately
+                // ABSENT here. They are seeded into the database by
+                // TestDataSeeder, the way a deployment's provisioning manifest
+                // declares them, so the suite proves the database path works
+                // with no configuration at all (eval 2026-08-30, F-2).
             });
 
             // Layered on top so a per-test override (e.g. a restricted
@@ -224,6 +229,17 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
             services.AddSingleton<IAuthorizationHandler, ScopeHandler>();
             services.AddSingleton<IAuthorizationHandler, MfaHandler>();
 
+            // The integration factory registers a MINIMAL limiter: it only has
+            // to resolve the "device-information" named policy so endpoints that
+            // reference it activate, and provide UseRateLimiter() a limiter to
+            // run. The production credential/admin/PAR/device partitioning is a
+            // singleton keyed on RemoteIpAddress — null under TestServer, so
+            // every test in the shared collection would share one partition and
+            // throttle each other. That production logic is covered directly
+            // instead: IdentityRateLimitPolicyTests exercises the classification,
+            // and RateLimiterServiceCollectionExtensionsTests drives the real
+            // AddSufficitIdentityRateLimiter partitions through DefaultHttpContext
+            // (eval 2026-08-30, architecture item 1).
             var rateLimit = context.Configuration
                 .GetSection("Sufficit:Identity:RateLimit")
                 .Get<RateLimitOptions>() ?? new RateLimitOptions();

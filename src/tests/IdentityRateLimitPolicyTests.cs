@@ -105,6 +105,63 @@ public sealed class IdentityRateLimitPolicyTests
         Assert.False(IdentityRateLimitPolicy.IsBulkEndpoint(path, "api"));
     }
 
+    // ---- Credential-endpoint classification (moved out of Program.cs,
+    // eval 2026-08-30 architecture item 1). Covering the whole /connect/ prefix
+    // is deliberate: a new protocol POST can never be silently unthrottled. ----
+
+    [Theory]
+    [InlineData("/connect/token")]
+    [InlineData("/connect/authorize")]
+    [InlineData("/connect/introspect")]
+    [InlineData("/connect/revocation")]
+    [InlineData("/connect/par")]
+    [InlineData("/connect/register")]
+    [InlineData("/connect/ciba/complete")]
+    [InlineData("/bc-authorize")]
+    [InlineData("/account/login")]
+    [InlineData("/account/forgotpassword")]
+    [InlineData("/account/resetpassword")]
+    [InlineData("/account/register")]
+    [InlineData("/account/externallogincallback")]
+    [InlineData("/account/passkeys/assertion")]
+    public void Credential_posts_are_throttled(string path)
+    {
+        Assert.True(
+            IdentityRateLimitPolicy.IsCredentialEndpoint(path, HttpMethods.Post));
+    }
+
+    [Theory]
+    // GETs are not credential-validation surfaces, even under /connect/.
+    [InlineData("/connect/authorize", "GET")]
+    [InlineData("/.well-known/openid-configuration", "GET")]
+    [InlineData("/connect/userinfo", "GET")]
+    // Unrelated POSTs stay in the unrestricted bucket.
+    [InlineData("/health", "POST")]
+    [InlineData("/api/users", "POST")]
+    [InlineData("/accountsomethingelse", "POST")]
+    public void Non_credential_requests_are_not_throttled_as_credentials(
+        string path,
+        string method)
+    {
+        Assert.False(IdentityRateLimitPolicy.IsCredentialEndpoint(path, method));
+    }
+
+    [Fact]
+    public void Device_information_lookup_is_its_own_get_bucket()
+    {
+        Assert.True(IdentityRateLimitPolicy.IsDeviceInformationEndpoint(
+            "/connect/device/info",
+            HttpMethods.Get));
+        // A POST to the same path is device verification, not the lookup.
+        Assert.False(IdentityRateLimitPolicy.IsDeviceInformationEndpoint(
+            "/connect/device/info",
+            HttpMethods.Post));
+        // The device page itself is not the info lookup.
+        Assert.False(IdentityRateLimitPolicy.IsDeviceInformationEndpoint(
+            "/connect/device",
+            HttpMethods.Get));
+    }
+
     [Fact]
     public async Task Par_rate_limit_response_is_rfc_compliant_oauth_json()
     {

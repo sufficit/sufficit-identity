@@ -111,8 +111,19 @@ public static class SecurityHeadersMiddlewareExtensions
                 var header = options.Csp.ReportOnly
                     ? "Content-Security-Policy-Report-Only"
                     : "Content-Security-Policy";
+
+                // The nonce must exist BEFORE the response is rendered, since
+                // the host page reads it while emitting its <style> elements.
+                // Publishing it on HttpContext.Items keeps the UI free of a
+                // dependency on this module's types (eval 2026-08-30, F-3).
+                var nonce = options.Csp.UseNonce ? CreateNonce() : null;
+                if (nonce is not null)
+                {
+                    context.Items[CspNonceItemKey] = nonce;
+                }
+
                 context.Response.Headers[header] =
-                    BuildContentSecurityPolicy(options);
+                    BuildContentSecurityPolicy(options, nonce);
             }
 
             await next();
@@ -155,18 +166,101 @@ public static class SecurityHeadersMiddlewareExtensions
     private static bool IsPopupLaunchMode(string? value) =>
         string.Equals(value, "popup", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// <c>HttpContext.Items</c> key carrying the per-request CSP nonce when
+    /// <see cref="CspOptions.UseNonce"/> is enabled. The key itself lives in the
+    /// dependency-free contract project so the UI can read the nonce without
+    /// referencing the STS assembly.
+    /// </summary>
+    internal const string CspNonceItemKey = CspNonce.ItemKey;
+
+    /// <summary>
+    /// Returns the CSP nonce for the current request, or <c>null</c> when
+    /// nonce-based CSP is disabled. A host page emits it as
+    /// <c>nonce="@value"</c> on every inline <c>&lt;style&gt;</c> it renders;
+    /// when this returns null the policy still carries <c>'unsafe-inline'</c>,
+    /// so omitting the attribute is correct rather than merely tolerated.
+    /// </summary>
+    public static string? GetCspNonce(HttpContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return CspNonce.From(context.Items);
+    }
+
+    // 128 bits, base64. CSP only requires the value be unpredictable per
+    // response; base64 keeps it directly usable as a source expression.
+    private static string CreateNonce() =>
+        Convert.ToBase64String(
+            System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
+
     internal static string BuildContentSecurityPolicy(
-        SufficitIdentityOptions options)
+        SufficitIdentityOptions options,
+        string? nonce = null)
     {
         var value = AddHumanVerificationSources(
             options.Csp.Policy,
             options.HumanVerification);
+
+        if (!string.IsNullOrEmpty(nonce))
+        {
+            value = ApplyStyleNonce(value, nonce);
+        }
+
         if (!string.IsNullOrWhiteSpace(options.Csp.ReportUri))
         {
             value += $"; report-uri {options.Csp.ReportUri}";
         }
 
         return value;
+    }
+
+    /// <summary>
+    /// Swaps <c>'unsafe-inline'</c> out of <c>style-src</c> for the request
+    /// nonce and re-grants it, narrowly, to <c>style-src-attr</c>. Keeping
+    /// <c>'unsafe-inline'</c> alongside a nonce would be pointless — CSP Level 2
+    /// says a directive carrying a nonce or hash ignores <c>'unsafe-inline'</c>
+    /// entirely — so it is removed rather than left as decoration.
+    /// </summary>
+    private static string ApplyStyleNonce(string policy, string nonce)
+    {
+        var directives = policy
+            .Split(';', StringSplitOptions.RemoveEmptyEntries
+                | StringSplitOptions.TrimEntries)
+            .ToList();
+        var index = directives.FindIndex(value =>
+            value.Equals("style-src", StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("style-src ", StringComparison.OrdinalIgnoreCase));
+
+        if (index < 0)
+        {
+            // No style-src to harden: the deployment replaced the policy and
+            // owns its own style sourcing. Do not invent a directive for it.
+            return policy;
+        }
+
+        var sources = directives[index]
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Skip(1)
+            .Where(source => !source.Equals(
+                "'unsafe-inline'",
+                StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        sources.Add($"'nonce-{nonce}'");
+        directives[index] = "style-src " + string.Join(' ', sources);
+
+        // Inline style ATTRIBUTES cannot carry a nonce, so they keep the
+        // targeted relaxation. Only added when the policy does not already
+        // state its own style-src-attr.
+        if (!directives.Any(value =>
+            value.Equals("style-src-attr", StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith(
+                "style-src-attr ",
+                StringComparison.OrdinalIgnoreCase)))
+        {
+            directives.Add("style-src-attr 'unsafe-inline'");
+        }
+
+        return string.Join("; ", directives);
     }
 
     internal static string BuildFormPostContentSecurityPolicy(

@@ -258,7 +258,7 @@
         "CacheLifetimeSeconds": 60,
         "ActivityUpdateIntervalSeconds": 300
       },
-      "_DeploymentTopology": "Explicit hosting contract: SingleReplica, Clustered, BehindTrustedProxy or ClusteredBehindTrustedProxy. Clustered modes require a shared distributed cache and an explicit issuer; proxy modes require TrustedProxies, HTTPS issuer and RateLimit:FailOnUntrustedProxy=true.",
+      "_DeploymentTopology": "REQUIRED (production posture finding 'deployment-topology-undeclared' since the 2026-08-30 evaluation, F-4): the deployment must state its shape rather than inherit SingleReplica silently, because a host that is in fact replicated keeps process-local state for DPoP nonces, front-channel logout context and passkey ceremonies with no other signal. Explicit hosting contract: SingleReplica, Clustered, BehindTrustedProxy or ClusteredBehindTrustedProxy. Clustered modes require a shared distributed cache and an explicit issuer; proxy modes require TrustedProxies, HTTPS issuer and RateLimit:FailOnUntrustedProxy=true.",
       "DeploymentTopology": "SingleReplica",
       "_DistributedCache": "Multi-replica distributed-cache guard. Several security-critical stores (DPoP replay/nonce, CIBA pending requests, front-channel logout, passkey tickets) depend on IDistributedCache. The default AddDistributedMemoryCache is single-node — correct for one replica, but with >1 replica each replica has its own isolated cache and DPoP replay protection / CIBA cross-replica / nonce challenges silently break. Set RequireShared=true before scaling out so the STS fails fast if the cache is the in-memory fallback (i.e. a shared cache like Redis is missing).",
       "DistributedCache": {
@@ -312,7 +312,13 @@
         "StepUpMode": "Enforce",
         "MaximumAuthenticationAgeMinutes": 15
       },
-      "_ClaimScopeMap": "Central claim-emission policy. Mapped claims require their scope. Unmapped claims retain legacy access-token behavior while IncludeUnmappedClaimsInAccessTokens is true; inventory and map consumers before changing it to false for strict allowlisting.",
+      "_ApplicationScopes": "OPTIONAL. Product scopes to advertise in the protected-resource metadata. This is NOT how a scope becomes usable: OpenIddict resolves scopes from the database, so a scope created through the provisioning manifest or the management API works without appearing here (the test suite proves it — test.scope is never configured). Empty in the shipped defaults; scope names are deployment policy, not built-ins of the STS.",
+      "ApplicationScopes": [],
+      "_ScopeEntitlements": "OPTIONAL compatibility layer. Persisted claims granted when a user approves a scope. Prefer declaring the entitlement ON THE SCOPE ITSELF via the provisioning manifest ('entitlementClaims', see docs/migration/examples/identity-manifest.v1.json) or the management API: the scope record lives in the database, so the policy is declared once and replicates to every server, instead of requiring the identical edit on each host with the drift that follows. Anything declared here is merged on top of what the scope record already carries.",
+      "ScopeEntitlements": {
+        "Grants": {}
+      },
+      "_ClaimScopeMap": "Central claim-emission policy. Mapped claims require their scope. Unmapped claims retain legacy access-token behavior while IncludeUnmappedClaimsInAccessTokens is true; inventory and map consumers before changing it to false for strict allowlisting. The directive -> directives entry is a RESTRICTION (it withholds the claim from clients that did not request the scope), so it remains a shipped default: it is a no-op for a deployment that has no such claim.",
       "ClaimScopeMap": {
         "ClaimToScope": {
           "directive": "directives"
@@ -499,6 +505,8 @@
         "ReportOnly": true,
         "_Policy": "CSP directive string. Default tuned for a same-origin Blazor Server UI: connect-src allows the SignalR WebSocket; style-src allows 'unsafe-inline' (Blazor/Bootstrap commonly need it — calibrate to remove); frame-ancestors 'none' reinforces X-Frame-Options: DENY.",
         "Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+        "_UseNonce": "true replaces 'unsafe-inline' in style-src with a per-request nonce, so an INJECTED <style> element is blocked while the host page's own branding styles keep working (eval 2026-08-30, F-3). Inline style ATTRIBUTES cannot carry a nonce and are covered by an automatically appended style-src-attr 'unsafe-inline'. Default false because of one browser gap: Firefox does not implement style-src-attr and falls back to style-src, where CSP Level 2 makes the nonce suppress 'unsafe-inline' — so on Firefox in ENFORCE mode the few inline style attributes in the management pages lose their styling (cosmetic, admin-only, invisible while ReportOnly is true). Enable after checking your browser matrix; scripts need nothing here, since every script the UI loads is external.",
+        "UseNonce": false,
         "_ReportUri": "Optional violation-report collector endpoint appended as 'report-uri <value>'. Empty = no report-uri directive.",
         "ReportUri": ""
       },

@@ -567,6 +567,63 @@ public sealed class ProvisioningManifestTests
             error.Contains("adoptExisting=true", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Manifest_persists_scope_entitlements_and_stays_idempotent()
+    {
+        // F-2 (eval 2026-08-30): the entitlement belongs to the scope record so
+        // a replicated database carries it to every host, replacing the
+        // per-server appsettings edit the configuration-only design required.
+        var suffix = Guid.NewGuid().ToString("N");
+        var scopeName = $"manifest_scope_{suffix}";
+        var clientId = $"manifest_web_{suffix}";
+
+        using var serviceScope = _factory.Services.CreateScope();
+        var scopes = serviceScope.ServiceProvider
+            .GetRequiredService<IOpenIddictScopeManager>();
+        var provisioner = new OpenIddictManifestProvisioner(
+            serviceScope.ServiceProvider
+                .GetRequiredService<IOpenIddictApplicationManager>(),
+            scopes,
+            new TrackingSecretResolver());
+
+        var manifest = PublicClientManifest(
+            scopeName,
+            clientId,
+            displayName: "Entitlement web client",
+            scopeDisplayName: "Entitlement API");
+        manifest.Scopes[0].EntitlementClaims.Add(
+            new IdentityScopeEntitlementManifest
+            {
+                Type = "directive",
+                Value = "aiuser:11111111-1111-1111-1111-111111111111",
+            });
+
+        await provisioner.ApplyAsync(manifest);
+
+        var scope = await scopes.FindByNameAsync(scopeName);
+        Assert.NotNull(scope);
+        var entitlements = ScopeEntitlements.Read(
+            await scopes.GetPropertiesAsync(scope!));
+        var entitlement = Assert.Single(entitlements);
+        Assert.Equal("directive", entitlement.Type);
+        Assert.Equal("aiuser:11111111-1111-1111-1111-111111111111", entitlement.Value);
+
+        // Re-applying the same manifest must not report a pending change, or
+        // every provisioning run would rewrite the scope forever.
+        var unchanged = await provisioner.PreviewAsync(manifest);
+        Assert.False(unchanged.HasChanges);
+
+        // Removing the entitlement is a real change, and it must actually clear
+        // the property rather than leave a stale grant behind.
+        manifest.Scopes[0].EntitlementClaims.Clear();
+        Assert.True((await provisioner.PreviewAsync(manifest)).HasChanges);
+        await provisioner.ApplyAsync(manifest);
+
+        var cleared = await scopes.FindByNameAsync(scopeName);
+        Assert.Empty(ScopeEntitlements.Read(
+            await scopes.GetPropertiesAsync(cleared!)));
+    }
+
     private static IdentityProvisioningManifest PublicClientManifest(
         string scopeName,
         string clientId,

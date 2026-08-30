@@ -1,10 +1,20 @@
 @inject IBrandingThemeProvider BrandingProvider
 @inject IUiModuleRegistry UiModules
 @using System.Globalization
+@using Microsoft.AspNetCore.Http
+@using Sufficit.Identity.Application.Security
 @using Sufficit.Identity.UI.Abstractions.Hosting
 
 @code {
     private BrandingTheme? _theme;
+
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    // Per-request CSP nonce, or null while nonce-based CSP is disabled — in
+    // which case the emitted policy still carries 'unsafe-inline' and Razor
+    // simply drops the null attribute (eval 2026-08-30, F-3).
+    private string? CspNonceValue => CspNonce.From(HttpContext?.Items);
 
     protected override async Task OnInitializedAsync()
     {
@@ -32,7 +42,7 @@
     }
     @if (!string.IsNullOrEmpty(_theme?.BrandColor))
     {
-        <style>
+        <style nonce="@CspNonceValue">
             :root {
                 --brand: @_theme.BrandColor;
                 --brand-ring: @(_theme.BrandColor)40;
@@ -49,7 +59,7 @@
     }
     @if (!string.IsNullOrEmpty(_theme?.BackgroundImageUrl))
     {
-        <style>
+        <style nonce="@CspNonceValue">
             body {
                 background:
                     linear-gradient(rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.15)),

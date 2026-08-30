@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Caching.Distributed;
@@ -33,9 +34,20 @@ internal sealed class FrontchannelLogoutDispatcher : IFrontchannelLogoutDispatch
         AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(2),
     };
 
+    /// <summary>
+    /// Durable-state namespace for the logout context. See
+    /// <see cref="IProtocolStateStore"/>.
+    /// </summary>
+    private const string StatePurpose = "frontchannel-logout";
+
+    private static readonly TimeSpan ContextLifetime = TimeSpan.FromMinutes(2);
+
     private readonly IOpenIddictAuthorizationManager _authorizationManager;
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly IDistributedCache _cache;
+    // Durable primary. Optional so focused unit tests can construct the
+    // dispatcher with a cache alone; the STS composition always supplies it.
+    private readonly IProtocolStateStore? _state;
     private readonly ILogger<FrontchannelLogoutDispatcher> _logger;
     private readonly string _issuer;
 
@@ -44,11 +56,13 @@ internal sealed class FrontchannelLogoutDispatcher : IFrontchannelLogoutDispatch
         IOpenIddictApplicationManager applicationManager,
         IDistributedCache cache,
         SufficitIdentityOptions options,
-        ILogger<FrontchannelLogoutDispatcher> logger)
+        ILogger<FrontchannelLogoutDispatcher> logger,
+        IProtocolStateStore? state = null)
     {
         _authorizationManager = authorizationManager;
         _applicationManager = applicationManager;
         _cache = cache;
+        _state = state;
         _logger = logger;
         _issuer = string.IsNullOrWhiteSpace(options.Issuer)
             ? "https://localhost/"
@@ -129,9 +143,25 @@ internal sealed class FrontchannelLogoutDispatcher : IFrontchannelLogoutDispatch
         }
 
         var contextId = WebEncoders.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
+        var payload = JsonSerializer.Serialize(logoutUris.Order(StringComparer.Ordinal));
+
+        // Written to both backends: the durable store is what makes the context
+        // visible to whichever replica the browser's follow-up request reaches
+        // (eval 2026-08-30, F-4), while the cache keeps a not-yet-upgraded
+        // replica working through a rolling deployment.
+        if (_state is not null)
+        {
+            await _state.SetAsync(
+                StatePurpose,
+                contextId,
+                Encoding.UTF8.GetBytes(payload),
+                ContextLifetime,
+                cancellationToken);
+        }
+
         await _cache.SetStringAsync(
             CacheKeyPrefix + contextId,
-            JsonSerializer.Serialize(logoutUris.Order(StringComparer.Ordinal)),
+            payload,
             CacheOptions,
             cancellationToken);
 
@@ -148,7 +178,12 @@ internal sealed class FrontchannelLogoutDispatcher : IFrontchannelLogoutDispatch
         }
 
         var key = CacheKeyPrefix + contextId;
-        var payload = await _cache.GetStringAsync(key, cancellationToken);
+        var durable = _state is null
+            ? null
+            : await _state.GetAsync(StatePurpose, contextId, cancellationToken);
+        var payload = durable is { Length: > 0 }
+            ? Encoding.UTF8.GetString(durable)
+            : await _cache.GetStringAsync(key, cancellationToken);
         if (payload is null)
         {
             return [];
@@ -156,7 +191,13 @@ internal sealed class FrontchannelLogoutDispatcher : IFrontchannelLogoutDispatch
 
         // A front-channel context is deliberately single-use. Remove it before
         // parsing/rendering so a refresh cannot repeatedly log the user out of
-        // every RP.
+        // every RP — and remove it from BOTH backends, or the copy left behind
+        // would make it replayable exactly once more.
+        if (_state is not null)
+        {
+            await _state.RemoveAsync(StatePurpose, contextId, cancellationToken);
+        }
+
         await _cache.RemoveAsync(key, cancellationToken);
 
         try

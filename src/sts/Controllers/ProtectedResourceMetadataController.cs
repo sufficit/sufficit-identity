@@ -64,13 +64,21 @@ public sealed class ProtectedResourceMetadataController : ControllerBase
             // The RS-recognized scopes are the same the AS advertises (this host
             // is both); a client can read the canonical list from the AS
             // discovery's scopes_supported.
+            // Product scopes come from configuration (eval 2026-08-30, F-2):
+            // ApplicationScopes plus whatever the entitlement map declares.
             scopes_supported = new[]
             {
                 "openid", "profile", "email", "roles",
                 "identity.management",
-                "sufficit_ai_openai_bridge",
                 _options.Mcp.RequiredScope
-            }.Concat(applicationScopes).Distinct(StringComparer.Ordinal).ToArray(),
+            }
+                .Concat(_options.ApplicationScopes)
+                .Concat(_options.ScopeEntitlements.Grants.Keys)
+                .Concat(applicationScopes)
+                .Where(scope => !string.IsNullOrWhiteSpace(scope))
+                .Select(scope => scope.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .ToArray(),
             // Introspection is the protected resource this host exposes for RSs.
             introspection_signing_alg_values_supported = new[] { "RS256" }
         });

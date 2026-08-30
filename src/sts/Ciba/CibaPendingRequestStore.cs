@@ -3,17 +3,27 @@ using System.Collections.Concurrent;
 namespace Sufficit.Identity.STS.Ciba;
 
 /// <summary>
-/// In-memory store for pending CIBA Core 1.0 authentication requests. Maps
-/// an <c>auth_req_id</c> to the state needed by the initiation endpoint, the
+/// Store for pending CIBA Core 1.0 authentication requests. Maps an
+/// <c>auth_req_id</c> to the state needed by the initiation endpoint, the
 /// completion channel, and the poll handler.
 /// </summary>
 /// <remarks>
-/// <b>Scope.</b> Single-instance STS (the current deployment model). For a
-/// multi-replica deployment, swap this for a shared store (Redis/DB); the
-/// interface <see cref="ICibaPendingRequestStore"/> isolates that change so the
-/// controllers and poll handler do not need to know the backing store.
-/// Entries self-evict on read after their expiry, so the dictionary does not
-/// grow unbounded for abandoned requests.
+/// <b>Backing store.</b> The registered implementation is
+/// <see cref="RollingCibaPendingRequestStore"/>, which uses
+/// <see cref="DatabaseCibaPendingRequestStore"/> as the primary (durable and
+/// therefore shared across replicas) and mirrors into
+/// <see cref="DistributedCibaPendingRequestStore"/> during the rolling
+/// upgrade. <see cref="InMemoryCibaPendingRequestStore"/> below is a
+/// single-process implementation retained for tests and embedded scenarios; it
+/// is NOT what the STS composition registers.
+/// <para>This remark previously claimed an in-memory store was shipped for a
+/// single-instance deployment. That was stale (it predates the database store)
+/// and it produced a false positive in the 2026-08-30 evaluation, which read
+/// this comment instead of the DI registration. Corrected per the standing rule
+/// that code — here <c>ServiceCollectionExtensions</c> — is the source of
+/// truth.</para>
+/// Entries self-evict on read after their expiry, so an abandoned request does
+/// not accumulate.
 /// </remarks>
 public interface ICibaPendingRequestStore
 {

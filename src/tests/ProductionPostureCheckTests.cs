@@ -122,6 +122,9 @@ public sealed class ProductionPostureCheckTests
             "credential-mutations-step-up-audit",
             "public-origin-request-derived",
             "dpop-replay-cache-not-shared",
+            // The fixture's configuration declares no DeploymentTopology, which
+            // is exactly the state F-4 makes visible (eval 2026-08-30).
+            "deployment-topology-undeclared",
             "management-authorization-disabled",
             "management-protected-principal-observe",
             "scim-client-policy-observe",
@@ -129,6 +132,53 @@ public sealed class ProductionPostureCheckTests
         };
 
         Assert.Equal(expected, findings.Select(finding => finding.Id).ToHashSet());
+    }
+
+    [Theory]
+    [InlineData("SingleReplica")]
+    [InlineData("Clustered")]
+    [InlineData("BehindTrustedProxy")]
+    [InlineData("ClusteredBehindTrustedProxy")]
+    public void Declared_deployment_topology_clears_the_undeclared_finding(
+        string topology)
+    {
+        // F-4 (eval 2026-08-30): the finding is about the DECLARATION, not the
+        // value — even SingleReplica clears it, because the point is that the
+        // deployment stated its shape instead of backing into the default.
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:DeploymentTopology"] = topology,
+            })
+            .Build();
+
+        var findings = new StsProductionPostureContributor(
+            new SufficitIdentityOptions
+            {
+                PublicUrl = "https://identity.example.com",
+                Csp = new CspOptions { Enabled = true, ReportOnly = false },
+            },
+            configuration).Evaluate();
+
+        Assert.DoesNotContain(
+            findings,
+            finding => finding.Id == "deployment-topology-undeclared");
+    }
+
+    [Fact]
+    public void Undeclared_deployment_topology_is_reported()
+    {
+        var findings = new StsProductionPostureContributor(
+            new SufficitIdentityOptions
+            {
+                PublicUrl = "https://identity.example.com",
+                Csp = new CspOptions { Enabled = true, ReportOnly = false },
+            },
+            new ConfigurationBuilder().Build()).Evaluate();
+
+        Assert.Contains(
+            findings,
+            finding => finding.Id == "deployment-topology-undeclared");
     }
 
     [Fact]
@@ -297,7 +347,14 @@ public sealed class ProductionPostureCheckTests
                 StepUpMode = CredentialMutationStepUpMode.Enforce,
             },
         };
-        var configuration = new ConfigurationBuilder().Build();
+        // A hardened deployment states its shape rather than inheriting
+        // SingleReplica silently (eval 2026-08-30, F-4).
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:DeploymentTopology"] = "SingleReplica",
+            })
+            .Build();
         var management = new ManagementLayerOptions
         {
             Enabled = true,

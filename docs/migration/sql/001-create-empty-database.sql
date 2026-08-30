@@ -713,3 +713,21 @@ VALUES ('20260820143602_AddOAuthClientCredentials', '10.0.11');
 
 COMMIT;
 
+START TRANSACTION;
+CREATE TABLE `protocolstateentries` (
+    `key` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+    `purpose` varchar(64) CHARACTER SET utf8mb4 NOT NULL,
+    `payload` longblob NOT NULL,
+    `expiresatutc` datetime(6) NOT NULL,
+    CONSTRAINT `PK_protocolstateentries` PRIMARY KEY (`key`)
+) CHARACTER SET=utf8mb4;
+
+CREATE INDEX `IX_protocolstateentries_expiresatutc` ON `protocolstateentries` (`expiresatutc`);
+
+CREATE INDEX `IX_protocolstateentries_purpose` ON `protocolstateentries` (`purpose`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260830224108_AddProtocolStateEntries', '10.0.11');
+
+COMMIT;
+

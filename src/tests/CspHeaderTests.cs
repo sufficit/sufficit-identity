@@ -180,6 +180,96 @@ public sealed class CspHeaderTests
     }
 
     [Fact]
+    public void Nonce_policy_replaces_unsafe_inline_and_scopes_attributes()
+    {
+        // F-3 (eval 2026-08-30): with UseNonce on, style-src must carry the
+        // nonce and MUST NOT keep 'unsafe-inline' — CSP Level 2 ignores
+        // 'unsafe-inline' on a directive that has a nonce, so leaving it would
+        // be decorative. Inline style ATTRIBUTES cannot take a nonce, so they
+        // move to the narrowly scoped style-src-attr.
+        var options = new SufficitIdentityOptions
+        {
+            Csp = new CspOptions { Enabled = true, UseNonce = true },
+        };
+
+        var policy = SecurityHeadersMiddlewareExtensions
+            .BuildContentSecurityPolicy(options, "TESTNONCEVALUE");
+        var styleDirective = policy
+            .Split(';', StringSplitOptions.TrimEntries)
+            .Single(value => value.StartsWith("style-src ", StringComparison.Ordinal));
+
+        Assert.Contains("'nonce-TESTNONCEVALUE'", styleDirective, StringComparison.Ordinal);
+        Assert.DoesNotContain("'unsafe-inline'", styleDirective, StringComparison.Ordinal);
+        Assert.Contains("style-src-attr 'unsafe-inline'", policy, StringComparison.Ordinal);
+        // script-src is untouched: every script the UI loads is external.
+        Assert.DoesNotContain("'nonce-TESTNONCEVALUE'", policy
+            .Split(';', StringSplitOptions.TrimEntries)
+            .Single(value => value.StartsWith("script-src ", StringComparison.Ordinal)),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Policy_without_a_nonce_keeps_the_compatible_unsafe_inline_default()
+    {
+        var options = new SufficitIdentityOptions
+        {
+            Csp = new CspOptions { Enabled = true, UseNonce = false },
+        };
+
+        var policy = SecurityHeadersMiddlewareExtensions
+            .BuildContentSecurityPolicy(options);
+        var styleDirective = policy
+            .Split(';', StringSplitOptions.TrimEntries)
+            .Single(value => value.StartsWith("style-src ", StringComparison.Ordinal));
+
+        Assert.Contains("'unsafe-inline'", styleDirective, StringComparison.Ordinal);
+        Assert.DoesNotContain("nonce-", policy, StringComparison.Ordinal);
+        Assert.DoesNotContain("style-src-attr", policy, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Enabled_nonce_reaches_the_response_header_and_varies_per_request()
+    {
+        // The nonce is only useful if it is unpredictable per response; a
+        // constant would authorize an injected <style> on every later request.
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Csp:UseNonce"] = "true",
+            });
+        var client = factory.CreateClient();
+
+        var first = await client.GetAsync("/.well-known/openid-configuration");
+        var second = await client.GetAsync("/.well-known/openid-configuration");
+
+        var firstNonce = ExtractStyleNonce(first);
+        var secondNonce = ExtractStyleNonce(second);
+
+        Assert.NotNull(firstNonce);
+        Assert.NotNull(secondNonce);
+        Assert.NotEqual(firstNonce, secondNonce);
+    }
+
+    private static string? ExtractStyleNonce(HttpResponseMessage response)
+    {
+        var header = response.Headers
+            .TryGetValues("Content-Security-Policy-Report-Only", out var reportOnly)
+            ? reportOnly.FirstOrDefault()
+            : response.Headers.TryGetValues("Content-Security-Policy", out var enforced)
+                ? enforced.FirstOrDefault()
+                : null;
+        if (header is null)
+        {
+            return null;
+        }
+
+        var match = System.Text.RegularExpressions.Regex.Match(
+            header,
+            @"style-src [^;]*'nonce-([A-Za-z0-9+/=]+)'");
+        return match.Success ? match.Groups[1].Value : null;
+    }
+
+    [Fact]
     public async Task Form_post_authorization_response_receives_the_tailored_policy()
     {
         var client = _factory.CreateClient(
