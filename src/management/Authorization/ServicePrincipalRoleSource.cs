@@ -1,4 +1,3 @@
-#if !APPLICATION_CONTRACTS
 using System.Collections.Immutable;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
@@ -82,4 +81,3 @@ public sealed class OpenIddictServicePrincipalRoleSource(
         return roles.ToImmutable();
     }
 }
-#endif

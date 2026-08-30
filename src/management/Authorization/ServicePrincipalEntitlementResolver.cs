@@ -1,4 +1,3 @@
-#if !APPLICATION_CONTRACTS
 using System.Security.Claims;
 using Microsoft.Extensions.Options;
 
@@ -107,4 +106,3 @@ public sealed class ServicePrincipalEntitlementResolver(
     }
 
 }
-#endif

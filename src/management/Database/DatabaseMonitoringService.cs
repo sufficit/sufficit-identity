@@ -4,25 +4,6 @@ using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Database;
 
-#if APPLICATION_CONTRACTS
-
-/// <summary>
-/// Canonical, read-only application boundary for database runtime telemetry.
-/// Both the embedded UI and HTTP adapter consume this service.
-/// </summary>
-public interface IDatabaseMonitoringService
-{
-    Task<DatabaseRuntimeSnapshot> GetAsync(
-        ManagementRequestContext context,
-        CancellationToken cancellationToken = default);
-
-    IAsyncEnumerable<DatabaseRuntimeSnapshot> WatchAsync(
-        ManagementRequestContext context,
-        CancellationToken cancellationToken = default);
-}
-
-#else
-
 internal sealed class DatabaseMonitoringService(
     IDatabaseRuntimeTelemetry telemetry,
     IManagementAuthorizationEvaluator authorization)
@@ -71,5 +52,3 @@ internal sealed class DatabaseMonitoringService(
         }
     }
 }
-
-#endif

@@ -1,4 +1,3 @@
-#if !APPLICATION_CONTRACTS
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
@@ -7,76 +6,10 @@ using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Provisioning;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using OAuthScopes = OpenIddict.Abstractions.OpenIddictConstants.Scopes;
-#endif
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Management.Scopes;
-
-#if APPLICATION_CONTRACTS
-
-/// <summary>
-/// Canonical application boundary for custom OAuth scope definitions stored by
-/// OpenIddict. Protocol scopes remain built-in and are not duplicated here.
-/// </summary>
-public interface IScopeManagementService
-{
-    Task<IReadOnlyList<ManagementScopeSummary>> ListAsync(
-        ManagementRequestContext context,
-        CancellationToken cancellationToken = default);
-
-    Task<ManagementScopeDetail> GetAsync(
-        string id,
-        ManagementRequestContext context,
-        CancellationToken cancellationToken = default);
-
-    Task<ManagementScopeDetail> CreateAsync(
-        CreateManagementScopeCommand command,
-        ManagementRequestContext context,
-        CancellationToken cancellationToken = default);
-
-    Task<ManagementScopeDetail> UpdateAsync(
-        string id,
-        UpdateManagementScopeCommand command,
-        ManagementRequestContext context,
-        CancellationToken cancellationToken = default);
-
-    Task DeleteAsync(
-        string id,
-        ManagementRequestContext context,
-        CancellationToken cancellationToken = default);
-}
-
-public sealed record ManagementScopeSummary(
-    string Id,
-    string Name,
-    string? DisplayName,
-    string? Description,
-    int ResourceCount,
-    int ClientCount,
-    bool IsManifestManaged);
-
-public sealed record ManagementScopeDetail(
-    string Id,
-    string Name,
-    string? DisplayName,
-    string? Description,
-    IReadOnlyList<string> Resources,
-    IReadOnlyList<string> ClientIds,
-    bool IsManifestManaged);
-
-public sealed record CreateManagementScopeCommand(
-    string Name,
-    string? DisplayName,
-    string? Description,
-    IReadOnlyList<string> Resources);
-
-public sealed record UpdateManagementScopeCommand(
-    string? DisplayName,
-    string? Description,
-    IReadOnlyList<string> Resources);
-
-#else
 
 internal sealed class ScopeManagementService(
     IOpenIddictScopeManager scopes,
@@ -664,4 +597,3 @@ internal sealed class ScopeManagementService(
         return resources;
     }
 }
-#endif

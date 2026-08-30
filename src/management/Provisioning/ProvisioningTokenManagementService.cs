@@ -1,4 +1,3 @@
-#if !APPLICATION_CONTRACTS
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -11,35 +10,9 @@ using Sufficit.Identity.Management.Audit;
 using OidcClaims = OpenIddict.Abstractions.OpenIddictConstants.Claims;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using static OpenIddict.Server.OpenIddictServerEvents;
-#endif
 using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Provisioning;
-
-#if APPLICATION_CONTRACTS
-
-/// <summary>
-/// A short-lived access token for a command-line provisioning operation.
-/// The access-token value is returned only at issuance time.
-/// </summary>
-public sealed record ProvisioningTokenIssueResult(
-    string AccessToken,
-    string TokenType,
-    DateTimeOffset ExpiresAtUtc,
-    IReadOnlyList<string> Scopes,
-    IReadOnlyList<string> Capabilities);
-
-public sealed record ProvisioningTokenIssueRequest(int? LifetimeSeconds = null);
-
-public interface IProvisioningTokenManagementService
-{
-    Task<ProvisioningTokenIssueResult> IssueAsync(
-        ManagementRequestContext context,
-        ProvisioningTokenIssueRequest? request = null,
-        CancellationToken cancellationToken = default);
-}
-
-#else
 
 internal interface IProvisioningTokenIssuer
 {
@@ -322,5 +295,3 @@ internal sealed class ProvisioningTokenIssuer(
         return result;
     }
 }
-
-#endif
