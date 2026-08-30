@@ -18,14 +18,16 @@ public sealed class VaultDataSource(
     AuthenticationStateProvider authenticationStateProvider,
     ILogger<VaultDataSource> logger)
 {
-    public async Task<VaultDataResult<IReadOnlyList<UserVaultSecretMetadata>>>
-        ListPersonalAsync(string @namespace, CancellationToken cancellationToken = default)
+    public async Task<VaultDataResult<UserVaultOverview>> LoadPersonalOverviewAsync(
+        CancellationToken cancellationToken = default)
     {
         var subject = await SubjectAsync();
-        if (subject is null) return VaultDataResult<IReadOnlyList<UserVaultSecretMetadata>>.Failure("Sua sessão não possui uma identidade válida.");
-        return await ExecuteAsync<IUserVaultService, IReadOnlyList<UserVaultSecretMetadata>>(
-            (service, _) => service.ListAsync(subject, @namespace, cancellationToken),
-            "personal Vault listing", cancellationToken);
+        if (subject is null)
+            return VaultDataResult<UserVaultOverview>.Failure(
+                "Sua sessão não possui uma identidade válida.");
+        return await ExecuteAsync<IUserVaultOverviewService, UserVaultOverview>(
+            (service, _) => service.GetAsync(subject, cancellationToken),
+            "personal Vault overview", cancellationToken);
     }
 
     public async Task<VaultDataResult<UserVaultSecretMetadata>> PutPersonalAsync(

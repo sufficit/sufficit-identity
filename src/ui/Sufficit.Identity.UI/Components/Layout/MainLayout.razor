@@ -1,7 +1,9 @@
 @inject IBrandingThemeProvider BrandingProvider
 @inject IStringLocalizer<SharedResource> L
 @inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@inject IUiModuleRegistry UiModules
 @inherits LayoutComponentBase
+@using Sufficit.Identity.UI.Abstractions.Hosting
 
 @code {
     protected BrandingTheme? _theme;
@@ -34,6 +36,14 @@
                 "Development",
                 StringComparison.OrdinalIgnoreCase);
 
+    // A personal Vault link is useful only when both the encrypted backend and
+    // its optional UI surface are active. The surrounding AuthorizeView keeps
+    // this product-level navigation out of anonymous authentication screens.
+    private bool VaultAvailable =>
+        UiModules.HasSurface(UiSurface.Vault)
+        && bool.TryParse(Configuration["Sufficit:Vault:Enabled"], out var enabled)
+        && enabled;
+
     protected override async Task OnInitializedAsync()
     {
         _theme = await BrandingProvider.GetActiveAsync();
@@ -55,6 +65,15 @@
             <CultureSelector />
             <AuthorizeView>
                 <Authorized>
+                    @if (VaultAvailable)
+                    {
+                        <a href="/vault"
+                           class="nav-link nav-link--vault"
+                           aria-label="@L["Layout.MyVault"]">
+                            <SUIIcon Name="key" Size="16" />
+                            <span class="nav-link__label">@L["Layout.MyVault"]</span>
+                        </a>
+                    }
                     <a href="/account/logout" class="nav-link">@L["Layout.Logout"]</a>
                 </Authorized>
             </AuthorizeView>

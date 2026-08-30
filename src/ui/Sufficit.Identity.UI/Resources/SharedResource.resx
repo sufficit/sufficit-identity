@@ -39,6 +39,7 @@
   <!-- ===== Shared / Layout ===== -->
   <data name="Layout.Logout" xml:space="preserve"><value>Sair</value></data>
   <data name="Layout.MyAccount" xml:space="preserve"><value>Minha conta</value></data>
+  <data name="Layout.MyVault" xml:space="preserve"><value>Meu Vault</value></data>
   <data name="Layout.BrandFallback" xml:space="preserve"><value>Sufficit Identity</value></data>
   <data name="Layout.Server" xml:space="preserve"><value>Servidor</value></data>
   <data name="Layout.ServerDescription" xml:space="preserve"><value>Esta interface está sendo processada pelo servidor {0}.</value></data>
