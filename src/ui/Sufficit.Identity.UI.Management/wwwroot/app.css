@@ -6906,3 +6906,73 @@ h3 {
     .operator-token-reveal > footer > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .operator-token-revoke-confirmation { width: 100%; flex-wrap: wrap; }
 }
+
+/* ------------------------------------------------------------------ */
+/* Contas de sistema (/service-accounts)                               */
+/*                                                                     */
+/* A célula de ações leva nowrap porque .button é inline-flex: numa    */
+/* coluna sem largura mínima o navegador estreita a célula até o       */
+/* rótulo quebrar letra a letra — foi exatamente o defeito visto em    */
+/* produção em 2026-08-30.                                             */
+.service-accounts-table td.sa-actions {
+    white-space: nowrap;
+    text-align: right;
+    vertical-align: top;
+}
+
+.service-accounts-table td.sa-actions .button + .button {
+    margin-left: 8px;
+}
+
+.service-accounts-table td {
+    vertical-align: top;
+    padding: 14px 12px;
+}
+
+.sa-tag {
+    display: inline-block;
+    margin: 2px 6px 2px 0;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--brand) 12%, transparent);
+    color: var(--brand);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.sa-tag--warning {
+    background: color-mix(in srgb, #b45309 14%, transparent);
+    color: #b45309;
+}
+
+.sa-muted {
+    color: var(--ink-muted);
+}
+
+.sa-role-picker {
+    display: grid;
+    gap: 6px;
+}
+
+.sa-role-picker__option {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.sa-role-picker__option em {
+    color: #b45309;
+    font-style: normal;
+    font-weight: 600;
+}
+
+.sa-capabilities {
+    margin: 6px 0 0;
+    padding-left: 18px;
+}
+
+.sa-capabilities li {
+    margin: 2px 0;
+}
