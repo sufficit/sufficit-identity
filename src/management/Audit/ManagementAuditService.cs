@@ -1,38 +1,9 @@
-#if !APPLICATION_CONTRACTS
 using Microsoft.EntityFrameworkCore;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
-#endif
 using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Audit;
-
-#if APPLICATION_CONTRACTS
-
-public interface IManagementAuditService
-{
-    Task<IReadOnlyList<ManagementAuditRecord>> ListAsync(
-        ManagementRequestContext context,
-        int limit = 100,
-        CancellationToken cancellationToken = default);
-}
-
-public sealed record ManagementAuditRecord(
-    long Id,
-    DateTime OccurredAtUtc,
-    string OperatorSubject,
-    string? OperatorDisplayName,
-    string Capability,
-    string ResourceType,
-    string? ResourceId,
-    string? ContextId,
-    string AuthorizationOutcome,
-    string OperationOutcome,
-    string? ReasonCode,
-    string CorrelationId,
-    string? AuthenticationMethods);
-
-#else
 
 internal sealed class ManagementAuditService(
     AppDbContext database,
@@ -113,4 +84,3 @@ internal static class ManagementAuditEventFactory
     private static string? Truncate(string? value, int maxLength) =>
         value is null || value.Length <= maxLength ? value : value[..maxLength];
 }
-#endif

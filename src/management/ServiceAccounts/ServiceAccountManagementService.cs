@@ -1,65 +1,11 @@
-#if !APPLICATION_CONTRACTS
 using System.Collections.Immutable;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Management.Audit;
-#endif
 using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.ServiceAccounts;
-
-// Mesmo arranjo do ManagementAuthorization.cs: os CONTRATOS compilam apenas na
-// Application.Abstractions (que a UI referencia) e a implementação apenas na
-// Management. Sem a exclusividade, o mesmo record existiria nos dois assemblies
-// e quem referencia ambos — os testes — morre em CS0433.
-#if APPLICATION_CONTRACTS
-
-/// <summary>
-/// Uma conta de sistema: um cliente OAuth que se autentica sozinho
-/// (<c>client_credentials</c>) e recebe capacidades de gestão por PAPÉIS
-/// declarados no próprio registro — a propriedade <c>identity:client:roles</c>
-/// que o <see cref="ServicePrincipalEntitlementResolver"/> consulta.
-/// </summary>
-/// <param name="Roles">Os papéis declarados no registro do cliente.</param>
-/// <param name="Capabilities">
-/// O que esses papéis SIGNIFICAM nesta implantação, já resolvido pelo mesmo
-/// mapa que o avaliador usa. A UI mostra os dois porque a pergunta do operador
-/// nunca é "que papéis tem?" — é "o que esta conta consegue fazer?".
-/// </param>
-public sealed record ServiceAccountSummary(
-    string ClientId,
-    string? DisplayName,
-    bool CanRequestTokens,
-    IReadOnlyList<string> Roles,
-    IReadOnlyList<string> Capabilities);
-
-/// <summary>Os papéis que esta implantação reconhece, com o significado.</summary>
-public sealed record ServiceAccountRoleOption(
-    string Role,
-    IReadOnlyList<string> Capabilities,
-    bool IsFullAdministrator);
-
-public sealed record ServiceAccountWorkspace(
-    IReadOnlyList<ServiceAccountSummary> Accounts,
-    IReadOnlyList<ServiceAccountRoleOption> KnownRoles);
-
-public sealed record SetServiceAccountRolesCommand(IReadOnlyList<string>? Roles);
-
-public interface IServiceAccountManagementService
-{
-    Task<ServiceAccountWorkspace> GetWorkspaceAsync(
-        ManagementRequestContext context,
-        CancellationToken cancellationToken = default);
-
-    Task<ServiceAccountSummary> SetRolesAsync(
-        string clientId,
-        SetServiceAccountRolesCommand command,
-        ManagementRequestContext context,
-        CancellationToken cancellationToken = default);
-}
-
-#else
 
 /// <summary>
 /// Gestão dos papéis de conta de sistema.
@@ -298,4 +244,3 @@ public sealed class ServiceAccountManagementService(
         return roles.ToImmutable();
     }
 }
-#endif
