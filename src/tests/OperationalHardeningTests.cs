@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
@@ -21,7 +22,7 @@ public sealed class MfaRequirementTests
     {
         // A principal whose amr claim includes "mfa" (RFC 8176) proves a second
         // factor was used → the MfaRequirement succeeds.
-        var handler = new MfaHandler();
+        var handler = new MfaHandler(EmptyScopeFactory());
         var requirement = new MfaRequirement();
         var context = new AuthorizationHandlerContext(
             new[] { requirement },
@@ -42,7 +43,7 @@ public sealed class MfaRequirementTests
     {
         // Password-only session: amr=pwd (or no amr at all) → no MFA evidence.
         // The requirement is left unsatisfied → the management policy denies.
-        var handler = new MfaHandler();
+        var handler = new MfaHandler(EmptyScopeFactory());
         var requirement = new MfaRequirement();
         var context = new AuthorizationHandlerContext(
             new[] { requirement },
@@ -64,7 +65,7 @@ public sealed class MfaRequirementTests
     public async Task Second_factor_amr_values_satisfy_the_requirement(string amrValue)
     {
         // Each RFC 8176 second-factor value individually proves MFA.
-        var handler = new MfaHandler();
+        var handler = new MfaHandler(EmptyScopeFactory());
         var requirement = new MfaRequirement();
         var context = new AuthorizationHandlerContext(
             new[] { requirement },
@@ -81,7 +82,7 @@ public sealed class MfaRequirementTests
     {
         // A token minted by a flow that never set amr (e.g. a service account
         // or a legacy session) must be rejected by the MFA-gated policy.
-        var handler = new MfaHandler();
+        var handler = new MfaHandler(EmptyScopeFactory());
         var requirement = new MfaRequirement();
         var context = new AuthorizationHandlerContext(
             new[] { requirement },
@@ -92,6 +93,14 @@ public sealed class MfaRequirementTests
 
         Assert.False(context.HasSucceeded);
     }
+    /// <summary>
+    /// Os testes desta classe exercitam o caminho do `amr`; o caminho de
+    /// máquina (papéis no banco) é coberto em
+    /// ManagementApplicationAuthorizationTests. Um provider vazio basta: o
+    /// handler só cria escopo quando o principal é de serviço.
+    /// </summary>
+    private static IServiceScopeFactory EmptyScopeFactory() =>
+        new ServiceCollection().BuildServiceProvider().GetRequiredService<IServiceScopeFactory>();
 }
 
 /// <summary>
@@ -151,4 +160,6 @@ public sealed class OperationalOptionsTests
         Assert.Equal(3600, options.TemporaryOperatorToken.MaximumLifetimeSeconds);
         Assert.Equal(24, options.TemporaryOperatorToken.MaximumCapabilities);
     }
+
+
 }
