@@ -72,6 +72,9 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IVaultNamedSecretStore, VaultBackedSecretStore>();
         services.TryAddScoped<Sufficit.Identity.Management.Vault.IUserVaultService,
             UserVaultPersonalSecretService>();
+        services.TryAddScoped<
+            Sufficit.Identity.Management.Vault.IUserVaultOverviewService,
+            UserVaultOverviewService>();
 
         var isDevelopment = string.Equals(
             configuration["ASPNETCORE_ENVIRONMENT"]

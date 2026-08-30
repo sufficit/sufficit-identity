@@ -28,11 +28,19 @@ public sealed class VaultUiCompositionTests
         Assert.DoesNotContain("DbContext", userPage, StringComparison.Ordinal);
         Assert.DoesNotContain("Ciphertext", userPage, StringComparison.Ordinal);
         Assert.Contains("@page \"/vault\"", userPage, StringComparison.Ordinal);
+        Assert.Contains("Credenciais conectadas", userPage,
+            StringComparison.Ordinal);
+        Assert.Contains("Gerenciada pelo aplicativo", userPage,
+            StringComparison.Ordinal);
+        Assert.Contains("LoadPersonalOverviewAsync", userPage,
+            StringComparison.Ordinal);
         Assert.Contains("@page \"/management/vault\"", adminPage,
             StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 640px)", css,
             StringComparison.Ordinal);
         Assert.Contains("prefers-reduced-motion", css,
+            StringComparison.Ordinal);
+        Assert.Contains(".vault-list__status", css,
             StringComparison.Ordinal);
         Assert.Contains(".vault-layout { min-height: 100vh; background: var(--vault-bg); }",
             css, StringComparison.Ordinal);
@@ -67,6 +75,38 @@ public sealed class VaultUiCompositionTests
             "typeof(Sufficit.Identity.UI.Vault.ServiceCollectionExtensions).Assembly",
             program,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Authenticated_header_exposes_vault_only_when_backend_and_surface_are_enabled()
+    {
+        var root = ResolveIdentityRepository();
+        var layout = File.ReadAllText(Path.Combine(
+            root, "src", "ui", "Sufficit.Identity.UI", "Components",
+            "Layout", "MainLayout.razor"));
+        var css = File.ReadAllText(Path.Combine(
+            root, "src", "ui", "Sufficit.Identity.UI", "wwwroot",
+            "css", "site.css"));
+
+        Assert.Contains("UiModules.HasSurface(UiSurface.Vault)", layout,
+            StringComparison.Ordinal);
+        Assert.Contains("Sufficit:Vault:Enabled", layout,
+            StringComparison.Ordinal);
+        Assert.Contains("<AuthorizeView>", layout, StringComparison.Ordinal);
+        Assert.Contains("@if (VaultAvailable)", layout, StringComparison.Ordinal);
+        Assert.Contains("href=\"/vault\"", layout, StringComparison.Ordinal);
+        Assert.Contains("Layout.MyVault", layout, StringComparison.Ordinal);
+
+        var culture = layout.IndexOf("<CultureSelector />", StringComparison.Ordinal);
+        var vault = layout.IndexOf("href=\"/vault\"", StringComparison.Ordinal);
+        var logout = layout.IndexOf("href=\"/account/logout\"", StringComparison.Ordinal);
+        Assert.True(culture >= 0 && culture < vault && vault < logout);
+
+        Assert.Contains(".nav-link--vault", css, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 400px)", css,
+            StringComparison.Ordinal);
+        Assert.Contains(".nav-link--vault .nav-link__label { display: none; }",
+            css, StringComparison.Ordinal);
     }
 
     private static string ResolveIdentityRepository()

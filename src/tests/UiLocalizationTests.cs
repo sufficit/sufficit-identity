@@ -68,6 +68,21 @@ public sealed class UiLocalizationTests
         Assert.Equal(expected, translated);
     }
 
+    [Theory]
+    [InlineData("pt-BR", "Meu Vault")]
+    [InlineData("en-US", "My Vault")]
+    public void Vault_header_link_resolves_in_the_selected_culture(
+        string cultureName,
+        string expected)
+    {
+        var resources = new ResourceManager(typeof(SharedResource));
+        var translated = resources.GetString(
+            "Layout.MyVault",
+            CultureInfo.GetCultureInfo(cultureName));
+
+        Assert.Equal(expected, translated);
+    }
+
     [Fact]
     public void Shared_resources_have_matching_portuguese_and_english_keys()
     {

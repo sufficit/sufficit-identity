@@ -77,6 +77,77 @@ public sealed class VaultTests
     }
 
     [Fact]
+    public async Task Personal_overview_combines_legacy_and_managed_metadata_without_pending_oauth_state()
+    {
+        var options = new VaultOptions
+        {
+            Enabled = true,
+            SigningKeyOverlapSeconds = 300,
+        };
+        var (vault, dbFactory) = CreateRealVault(options);
+        var personal = new UserVaultPersonalSecretService(
+            dbFactory,
+            vault,
+            options);
+        var named = new VaultBackedSecretStore(
+            dbFactory,
+            vault,
+            options);
+        var overviewService = new UserVaultOverviewService(personal, named);
+
+        await personal.PutAsync(
+            "user-a",
+            "personal",
+            "provider/api-key",
+            new SaveUserVaultSecret("legacy-value"));
+        await named.PutAsync(
+            "integrations/oauth/tokens/github",
+            "github-token",
+            "user-a",
+            "user-user-a");
+        await named.PutAsync(
+            "integrations/oauth/pending/temporary-state",
+            "pending-ticket",
+            "user-a",
+            "user-user-a",
+            DateTime.UtcNow.AddMinutes(15));
+        await named.PutAsync(
+            "providers/custom/api-key",
+            "custom-value",
+            "user-a",
+            "user-user-a");
+        await named.PutAsync(
+            "integrations/oauth/tokens/gitlab",
+            "other-user-token",
+            "user-b",
+            "user-user-b");
+
+        var overview = await overviewService.GetAsync("user-a");
+
+        Assert.Collection(
+            overview.PersonalSecrets,
+            item => Assert.Equal("provider/api-key", item.Name));
+        Assert.Collection(
+            overview.ManagedCredentials,
+            github =>
+            {
+                Assert.Equal("integrations/oauth/tokens/github", github.Name);
+                Assert.Equal("github", github.Provider);
+            },
+            custom =>
+            {
+                Assert.Equal("providers/custom/api-key", custom.Name);
+                Assert.Null(custom.Provider);
+            });
+        Assert.DoesNotContain(
+            overview.ManagedCredentials,
+            item => item.Name.Contains("/pending/", StringComparison.Ordinal));
+        Assert.DoesNotContain(
+            overview.ManagedCredentials,
+            item => item.Name.Contains("gitlab", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Registration_exposes_the_configured_state_through_options()
     {
         var configuration = new ConfigurationBuilder()
@@ -95,6 +166,10 @@ public sealed class VaultTests
         var configured = provider.GetRequiredService<IOptions<VaultOptions>>().Value;
         Assert.True(configured.Enabled);
         Assert.Equal("dataprotection", configured.KeySource);
+        Assert.Contains(
+            services,
+            descriptor => descriptor.ServiceType == typeof(IUserVaultOverviewService)
+                && descriptor.ImplementationType == typeof(UserVaultOverviewService));
     }
 
     [Fact]
