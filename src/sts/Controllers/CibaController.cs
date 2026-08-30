@@ -28,8 +28,12 @@ namespace Sufficit.Identity.STS.Controllers;
 /// </summary>
 /// <remarks>
 /// OpenIddict 7.6 has no CIBA primitives. The pending <c>auth_req_id</c> state
-/// lives in <see cref="Ciba.ICibaPendingRequestStore"/> (in-memory by default;
-/// swappable for Redis/DB in a multi-replica deployment). The poll loop and
+/// lives in <see cref="Ciba.ICibaPendingRequestStore"/>, registered as
+/// <c>RollingCibaPendingRequestStore</c> over a database primary — so it is
+/// already shared across replicas and survives a restart. (This remark used to
+/// say "in-memory by default; swappable for Redis/DB"; that predated the
+/// database store and was the third copy of a stale claim that misled the
+/// 2026-08-30 evaluation into a false positive.) The poll loop and
 /// completion reuse the device-flow shape (pending → approve → issue), but the
 /// principal handoff is via the store rather than OpenIddict's SignIn binding
 /// (which is device_code-specific). Portable: the store interface isolates the

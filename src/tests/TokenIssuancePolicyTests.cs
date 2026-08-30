@@ -188,6 +188,75 @@ public sealed class TokenIssuancePolicyTests
     }
 
     [Fact]
+    public void Subject_token_provenance_rejects_unattributable_token_without_allowlist()
+    {
+        // F-1 (eval 2026-08-30): an empty allow-list used to skip the whole
+        // check, leaving the default deployment with no confused-deputy
+        // defense. An unattributable subject token must now be rejected even
+        // when no actor allow-list is configured.
+        var policy = new SubjectTokenProvenancePolicy(
+            NullLogger<SubjectTokenProvenancePolicy>.Instance);
+        var noAllowlist = new HashSet<string>(StringComparer.Ordinal);
+
+        var missing = policy.Evaluate(
+            new ClaimsPrincipal(new ClaimsIdentity()),
+            noAllowlist,
+            SecurityPolicyEnforcementMode.Enforce);
+
+        var ambiguousIdentity = new ClaimsIdentity();
+        ambiguousIdentity.SetClaim(Claims.AuthorizedParty, "one-client");
+        ambiguousIdentity.SetClaim(Claims.ClientId, "another-client");
+        var ambiguous = policy.Evaluate(
+            new ClaimsPrincipal(ambiguousIdentity),
+            noAllowlist,
+            SecurityPolicyEnforcementMode.Enforce);
+
+        Assert.True(missing.ShouldReject);
+        Assert.Equal("subject_authorized_party_missing", missing.ReasonCode);
+        Assert.True(ambiguous.ShouldReject);
+        Assert.Equal("subject_authorized_party_ambiguous", ambiguous.ReasonCode);
+    }
+
+    [Fact]
+    public void Subject_token_provenance_accepts_any_unambiguous_party_without_allowlist()
+    {
+        // Without an allow-list there is nothing to test membership against, so
+        // a single unambiguous party is accepted — the deployment simply has
+        // not declared which actors may originate a subject token.
+        var policy = new SubjectTokenProvenancePolicy(
+            NullLogger<SubjectTokenProvenancePolicy>.Instance);
+        var identity = new ClaimsIdentity();
+        identity.SetClaim(Claims.AuthorizedParty, "some-client");
+
+        var decision = policy.Evaluate(
+            new ClaimsPrincipal(identity),
+            new HashSet<string>(StringComparer.Ordinal),
+            SecurityPolicyEnforcementMode.Enforce);
+
+        Assert.False(decision.ShouldReject);
+        Assert.False(decision.WouldReject);
+        Assert.Equal("some-client", decision.AuthorizedParty);
+    }
+
+    [Fact]
+    public void Subject_token_provenance_observe_mode_reports_without_rejecting()
+    {
+        // Observe is the bounded migration escape hatch for deployments whose
+        // subject tokens do not yet carry an unambiguous authorized party.
+        var policy = new SubjectTokenProvenancePolicy(
+            NullLogger<SubjectTokenProvenancePolicy>.Instance);
+
+        var decision = policy.Evaluate(
+            new ClaimsPrincipal(new ClaimsIdentity()),
+            new HashSet<string>(StringComparer.Ordinal),
+            SecurityPolicyEnforcementMode.Observe);
+
+        Assert.False(decision.ShouldReject);
+        Assert.True(decision.WouldReject);
+        Assert.Equal("subject_authorized_party_missing", decision.ReasonCode);
+    }
+
+    [Fact]
     public void Subject_token_provenance_accepts_single_allowed_party()
     {
         var policy = new SubjectTokenProvenancePolicy(

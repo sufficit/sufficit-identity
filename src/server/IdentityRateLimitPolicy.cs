@@ -11,6 +11,60 @@ internal static class IdentityRateLimitPolicy
         HttpMethods.IsPost(method)
         && path.Equals("/connect/par", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Interactive credential-validation endpoints: every POST under
+    /// <c>/connect/*</c> (token, authorize consent, endsession, introspection,
+    /// revocation, PAR, device verify, CIBA completion, DCR), the CIBA
+    /// initiation endpoint <c>/bc-authorize</c>, and the account credential
+    /// surfaces (login, forgot/reset password, register, external-login
+    /// callback, passkeys).
+    /// </summary>
+    /// <remarks>
+    /// Covering the whole <c>/connect/</c> prefix rather than an explicit list
+    /// is deliberate: a new protocol endpoint can never be silently left
+    /// unthrottled — the class of bug that bit when the original limiter covered
+    /// only <c>/connect/token</c>. GETs (discovery, userinfo, the authorize
+    /// challenge) are not credential-validation surfaces and stay unrestricted.
+    /// </remarks>
+    internal static bool IsCredentialEndpoint(PathString path, string method)
+    {
+        if (!HttpMethods.IsPost(method))
+        {
+            return false;
+        }
+
+        var value = path.Value ?? string.Empty;
+
+        if (value.StartsWith("/connect/", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // CIBA initiation lives outside /connect/ as defined by the OpenID
+        // Connect CIBA Core 1.0 specification (RFC 9126 defines PAR, not CIBA).
+        if (value.StartsWith("/bc-authorize", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return value.StartsWith("/account/login", StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("/account/forgotpassword", StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("/account/resetpassword", StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("/account/register", StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("/account/externallogincallback", StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("/account/passkeys", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Anonymous device-information lookup (<c>GET /connect/device/info</c>),
+    /// which gets its own bucket so enumeration cannot drain the credential one.
+    /// </summary>
+    internal static bool IsDeviceInformationEndpoint(PathString path, string method) =>
+        HttpMethods.IsGet(method)
+        && path.StartsWithSegments(
+            "/connect/device/info",
+            StringComparison.OrdinalIgnoreCase);
+
     internal static bool IsOAuthProtocolEndpoint(PathString path) =>
         path.StartsWithSegments("/connect", StringComparison.OrdinalIgnoreCase)
         || path.StartsWithSegments(

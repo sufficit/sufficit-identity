@@ -745,6 +745,14 @@ public static partial class ServiceCollectionExtensions
         // option is enabled). The distributed replay cache and nonce store use
         // IDistributedCache (registered above as AddDistributedMemoryCache;
         // swap for Redis when multi-replica).
+        // Durable key/value state for protocol features that have no table of
+        // their own (DPoP nonces, front-channel logout context, passkey
+        // ceremonies). See ProtocolStateStore — eval 2026-08-30, F-4.
+        services.TryAddSingleton<IProtocolStateStore>(sp =>
+            new DatabaseProtocolStateStore(
+                sp.GetRequiredService<IDbContextFactory<AppDbContext>>(),
+                TimeProvider.System));
+
         services.AddSingleton<Dpop.DistributedDpopReplayCache>();
         services.AddSingleton(sp => new Dpop.DatabaseDpopReplayCache(
             sp.GetRequiredService<IDbContextFactory<AppDbContext>>(),
@@ -761,8 +769,21 @@ public static partial class ServiceCollectionExtensions
         // Distributed, partition-bound DPoP nonce (RFC 9449 §8). The cache
         // payload is encrypted through IKeyVault when enabled, so a shared
         // Redis/SQL cache does not expose nonce material at rest.
+        // Durable primary with the cache accepted during a rolling deployment
+        // (eval 2026-08-30, F-4): a nonce challenge issued by one replica has to
+        // be honored by whichever replica receives the client's retry.
         services.AddSingleton<Dpop.IDpopNonceStore>(sp =>
-            sp.GetRequiredService<Dpop.DistributedDpopNonceStore>());
+            sp.GetRequiredService<Dpop.RollingDpopNonceStore>());
+
+        services.AddSingleton(sp => new Dpop.DatabaseDpopNonceStore(
+            sp.GetRequiredService<IProtocolStateStore>(),
+            ttl: null,
+            timeProvider: TimeProvider.System,
+            keyVault: sp.GetRequiredService<Sufficit.Identity.Vault.IKeyVault>()));
+
+        services.AddSingleton(sp => new Dpop.RollingDpopNonceStore(
+            sp.GetRequiredService<Dpop.DatabaseDpopNonceStore>(),
+            sp.GetRequiredService<Dpop.DistributedDpopNonceStore>()));
 
         // Concrete registration is separate so tests and deployment-specific
         // composition roots can resolve the implementation directly.

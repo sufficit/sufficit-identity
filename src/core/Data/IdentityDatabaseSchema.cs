@@ -39,6 +39,12 @@ public static class IdentityDatabaseSchema
     public const string OAuthClientCredentialsMigrationId = "20260820143602_AddOAuthClientCredentials";
 
     /// <summary>
+    /// Durable primary for DPoP nonces, front-channel logout context and
+    /// passkey ceremony tickets (eval 2026-08-30, F-4).
+    /// </summary>
+    public const string ProtocolStateEntriesMigrationId = "20260830224108_AddProtocolStateEntries";
+
+    /// <summary>
     /// Binary collation for opaque, case-sensitive utf8mb4 identifiers
     /// (reference tokens, session/stream ids, CIBA auth_req_ids, DPoP replay
     /// keys) — see AppDbContext.ApplyOpaqueIdentifierCollations (F-3, eval

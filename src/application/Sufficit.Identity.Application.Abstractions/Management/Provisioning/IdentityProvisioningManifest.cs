@@ -38,6 +38,28 @@ public sealed class IdentityScopeManifest
     public string? DisplayName { get; init; }
     public string? Description { get; init; }
     public List<string> Resources { get; init; } = [];
+
+    /// <summary>
+    /// Persisted claims granted to a user when they approve this scope.
+    /// </summary>
+    /// <remarks>
+    /// Declaring the entitlement here keeps it with the scope it belongs to and
+    /// carries it to every replica through the database, instead of requiring
+    /// the same edit in each host's configuration file (eval 2026-08-30, F-2).
+    /// The claims are persisted in the scope's property bag and read at token
+    /// issuance by the STS.
+    /// </remarks>
+    public List<IdentityScopeEntitlementManifest> EntitlementClaims { get; init; } = [];
+}
+
+/// <summary>
+/// One persisted claim entitled by an <see cref="IdentityScopeManifest"/>.
+/// </summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed class IdentityScopeEntitlementManifest
+{
+    public string Type { get; init; } = "";
+    public string Value { get; init; } = "";
 }
 
 /// <summary>

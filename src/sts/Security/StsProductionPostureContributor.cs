@@ -56,14 +56,16 @@ public sealed class StsProductionPostureContributor(
             .GetSection("Sufficit:Identity:TokenExchange")
             .Get<Grants.TokenExchangeOptions>()
             ?? new Grants.TokenExchangeOptions();
+        // Provenance is evaluated on every exchange since eval 2026-08-30 (F-1),
+        // so Observe mode is a permissive production default regardless of
+        // whether an actor allow-list was configured.
         if (tokenExchange.Enabled
-            && tokenExchange.AllowedClientIds.Count > 0
             && tokenExchange.ProvenanceMode
                 == SecurityPolicyEnforcementMode.Observe)
         {
             yield return new(
                 "token-exchange-provenance-observe",
-                "Token-exchange subject-token provenance is in Observe mode while an actor allow-list is configured.",
+                "Token-exchange subject-token provenance is in Observe mode, so subject tokens without an unambiguous authorized party are still accepted.",
                 "Migrate subject tokens to an unambiguous azp/client_id and set TokenExchange:ProvenanceMode=Enforce.");
         }
 
@@ -103,6 +105,24 @@ public sealed class StsProductionPostureContributor(
                 "dpop-replay-cache-not-shared",
                 "DPoP requires shared state but the registered distributed cache is process-local memory.",
                 "Register a shared cache or set DistributedCache:RequireShared=false for a genuine single-replica deployment.");
+        }
+
+        // The deployment shape must be a statement, not an inherited default
+        // (eval 2026-08-30, F-4). DeploymentTopology drives the proxy-trust,
+        // shared-cache and issuer contract enforced by DeploymentTopologyPolicy;
+        // while it silently defaults to SingleReplica, a host that is in fact
+        // replicated keeps the process-local IDistributedCache and degrades the
+        // state that has no database primary — DPoP nonce challenges,
+        // front-channel logout context and passkey ceremony tickets — with no
+        // signal at all. Requiring the key to be present makes that a decision
+        // the deployment records rather than one it backs into.
+        if (string.IsNullOrWhiteSpace(
+            configuration["Sufficit:Identity:DeploymentTopology"]))
+        {
+            yield return new(
+                "deployment-topology-undeclared",
+                "Sufficit:Identity:DeploymentTopology is not declared, so the host silently assumes SingleReplica and keeps process-local state for DPoP nonces, front-channel logout context and passkey ceremonies.",
+                "Declare Sufficit:Identity:DeploymentTopology explicitly (SingleReplica, Clustered, BehindTrustedProxy or ClusteredBehindTrustedProxy).");
         }
     }
 }

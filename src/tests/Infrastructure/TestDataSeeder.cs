@@ -21,6 +21,15 @@ public static class TestDataSeeder
 {
     public const string ScopeName = "test.scope";
 
+    /// <summary>
+    /// Product scope whose entitlement lives on the scope record in the
+    /// database rather than in configuration.
+    /// </summary>
+    public const string AiBridgeScopeName = "sufficit_ai_openai_bridge";
+
+    public const string AiBridgeEntitlementValue =
+        "aiuser:00000000-0000-0000-0000-000000000000";
+
     public const string ClientCredentialsClientId = "test-cc";
     public const string ClientCredentialsClientSecret = "test-cc-secret";
 
@@ -108,6 +117,32 @@ public static class TestDataSeeder
                 // reason.
                 Resources = { IntrospectionClientId, TokenExchangeClientId, TokenExchangeBlockedClientId },
             });
+        }
+
+        // Product scope carrying its own entitlement, seeded exactly the way a
+        // deployment's provisioning manifest declares it (eval 2026-08-30,
+        // F-2). Nothing about this scope appears in the fixture's
+        // configuration: it exists only in the database, which is also what
+        // proves OpenIddict accepts a scope from the store and that the STS
+        // reads the entitlement from the scope record.
+        if (await scopeManager.FindByNameAsync(AiBridgeScopeName) is null)
+        {
+            var descriptor = new OpenIddictScopeDescriptor
+            {
+                Name = AiBridgeScopeName,
+                DisplayName = "AI bridge",
+            };
+            if (Sufficit.Identity.Application.Security.ScopeEntitlements.Write(
+                [new Sufficit.Identity.Application.Security.ScopeEntitlementClaim(
+                    "directive",
+                    AiBridgeEntitlementValue)]) is { } entitlements)
+            {
+                descriptor.Properties[
+                    Sufficit.Identity.Application.Security
+                        .ScopeEntitlements.PropertyName] = entitlements;
+            }
+
+            await scopeManager.CreateAsync(descriptor);
         }
 
         // (a) confidential client_credentials caller.

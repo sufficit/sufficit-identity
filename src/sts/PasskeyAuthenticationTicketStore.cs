@@ -13,13 +13,23 @@ namespace Sufficit.Identity.STS;
 /// server. The browser receives only an opaque random key instead of the full
 /// protected challenge, avoiding oversized Set-Cookie response headers.
 /// </summary>
+/// <remarks>
+/// The ticket is held in a durable store as well as the distributed cache: the
+/// cache defaults to process-local memory, so with more than one replica a
+/// ceremony started on one host could not be completed on another and the user
+/// simply saw the passkey sign-in fail (eval 2026-08-30, F-4). The payload is
+/// data-protected either way, so the shared table never holds a readable
+/// ticket.
+/// </remarks>
 internal sealed class PasskeyAuthenticationTicketStore(
     IDistributedCache cache,
     IDataProtectionProvider dataProtectionProvider,
-    ILogger<PasskeyAuthenticationTicketStore> logger) : ITicketStore
+    ILogger<PasskeyAuthenticationTicketStore> logger,
+    IProtocolStateStore? state = null) : ITicketStore
 {
     private static readonly TimeSpan DefaultLifetime = TimeSpan.FromMinutes(10);
     private const string CacheKeyPrefix = "identity:passkey-ceremony:";
+    private const string StatePurpose = "passkey-ceremony";
     private readonly IDataProtector _protector = dataProtectionProvider.CreateProtector(
         "Sufficit.Identity.PasskeyAuthenticationTicketStore.v1");
 
@@ -41,7 +51,12 @@ internal sealed class PasskeyAuthenticationTicketStore(
     public async Task<AuthenticationTicket?> RetrieveAsync(string key)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
-        var protectedTicket = await cache.GetAsync(
+        // Durable store first; the cache still answers for a ceremony started
+        // by a not-yet-upgraded replica during a rolling deployment.
+        var protectedTicket = state is null
+            ? null
+            : await state.GetAsync(StatePurpose, key, CancellationToken.None);
+        protectedTicket ??= await cache.GetAsync(
             CacheKey(key),
             CancellationToken.None);
         if (protectedTicket is null)
@@ -61,7 +76,7 @@ internal sealed class PasskeyAuthenticationTicketStore(
             logger.LogWarning(
                 exception,
                 "A passkey ceremony ticket could not be restored and was discarded.");
-            await cache.RemoveAsync(CacheKey(key), CancellationToken.None);
+            await RemoveEverywhereAsync(key);
             return null;
         }
     }
@@ -69,7 +84,19 @@ internal sealed class PasskeyAuthenticationTicketStore(
     public Task RemoveAsync(string key)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
-        return cache.RemoveAsync(CacheKey(key), CancellationToken.None);
+        return RemoveEverywhereAsync(key);
+    }
+
+    // Both copies go, or the ceremony would still be resumable from whichever
+    // backend was left holding it.
+    private async Task RemoveEverywhereAsync(string key)
+    {
+        if (state is not null)
+        {
+            await state.RemoveAsync(StatePurpose, key, CancellationToken.None);
+        }
+
+        await cache.RemoveAsync(CacheKey(key), CancellationToken.None);
     }
 
     private async Task StoreAsync(
@@ -78,14 +105,27 @@ internal sealed class PasskeyAuthenticationTicketStore(
         CancellationToken cancellationToken)
     {
         var serializedTicket = TicketSerializer.Default.Serialize(ticket);
-        var cacheOptions = new DistributedCacheEntryOptions
+        var protectedTicket = _protector.Protect(serializedTicket);
+        var expiresAt = ResolveExpiration(ticket);
+
+        if (state is not null)
         {
-            AbsoluteExpiration = ResolveExpiration(ticket),
-        };
+            var lifetime = expiresAt - DateTimeOffset.UtcNow;
+            if (lifetime > TimeSpan.Zero)
+            {
+                await state.SetAsync(
+                    StatePurpose,
+                    key,
+                    protectedTicket,
+                    lifetime,
+                    cancellationToken);
+            }
+        }
+
         await cache.SetAsync(
             CacheKey(key),
-            _protector.Protect(serializedTicket),
-            cacheOptions,
+            protectedTicket,
+            new DistributedCacheEntryOptions { AbsoluteExpiration = expiresAt },
             cancellationToken);
     }
 

@@ -121,6 +121,13 @@ public sealed class AppDbContext
         Set<Entities.CibaPendingState>();
 
     /// <summary>
+    /// Durable protocol state that has no table of its own (DPoP nonces,
+    /// front-channel logout context, passkey ceremony tickets).
+    /// </summary>
+    public DbSet<Entities.ProtocolStateEntry> ProtocolStateEntries =>
+        Set<Entities.ProtocolStateEntry>();
+
+    /// <summary>
     /// Multiple independently revocable credentials for OAuth clients. This
     /// store deliberately uses client_id instead of an OpenIddict foreign key
     /// so the credential lifecycle survives a future protocol-engine swap.
@@ -203,6 +210,12 @@ public sealed class AppDbContext
             .Property(x => x.Key)
             .UseCollation(IdentityDatabaseSchema.BinaryIdentifierCollation);
 
+        // Opaque, case-sensitive lookup key — same rule as every other
+        // protocol identifier.
+        builder.Entity<Entities.ProtocolStateEntry>()
+            .Property(x => x.Key)
+            .UseCollation(IdentityDatabaseSchema.BinaryIdentifierCollation);
+
         builder.Entity<Entities.ManagementClientDraftRecord>()
             .Property(x => x.Id)
             .UseCollation(IdentityDatabaseSchema.AsciiBinaryCollation);
@@ -225,6 +238,30 @@ public sealed class AppDbContext
                 .HasDatabaseName("IX_dpopreplayentries_expiresatutc");
             SnakeCaseColumns(b, [
                 ("Key", "key"),
+                ("ExpiresAtUtc", "expiresatutc"),
+            ]);
+        });
+
+        builder.Entity<Entities.ProtocolStateEntry>(b =>
+        {
+            b.ToTable("protocolstateentries");
+            b.HasKey(x => x.Key);
+            b.Property(x => x.Key)
+                .HasMaxLength(IdentityDatabaseSchema.ProtocolStateKeyLength);
+            b.Property(x => x.Purpose)
+                .HasMaxLength(64)
+                .IsRequired();
+            b.Property(x => x.Payload).IsRequired();
+            b.Property(x => x.ExpiresAtUtc).IsRequired();
+            // Expiry sweeps scan by time; purpose narrows a targeted cleanup.
+            b.HasIndex(x => x.ExpiresAtUtc)
+                .HasDatabaseName("IX_protocolstateentries_expiresatutc");
+            b.HasIndex(x => x.Purpose)
+                .HasDatabaseName("IX_protocolstateentries_purpose");
+            SnakeCaseColumns(b, [
+                ("Key", "key"),
+                ("Purpose", "purpose"),
+                ("Payload", "payload"),
                 ("ExpiresAtUtc", "expiresatutc"),
             ]);
         });

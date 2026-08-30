@@ -81,51 +81,12 @@ internal sealed class DistributedDpopNonceStore : IDpopNonceStore
         NonceKeyPrefix + Convert.ToHexStringLower(SHA256.HashData(
             System.Text.Encoding.UTF8.GetBytes(partition)));
 
-    private string EncryptValue(string payload, string partition)
-    {
-        if (_keyVault is null) return payload;
+    // Confidentiality is shared with the database store through
+    // DpopNonceProtection so the two backends cannot drift into different
+    // encodings of the same value.
+    private string EncryptValue(string payload, string partition) =>
+        DpopNonceProtection.Encrypt(_keyVault, payload, partition);
 
-        return _keyVault.EncryptAsync(
-                VaultKeyName,
-                payload,
-                CreateAad(partition))
-            .GetAwaiter()
-            .GetResult();
-    }
-
-    private string DecryptValue(string value, string partition)
-    {
-        // A null vault is used by the focused unit tests and preserves the
-        // original plaintext cache contract. Once wired through DI, all new
-        // values are encrypted. Existing plaintext values are accepted during
-        // the rolling deployment and are replaced on the next Issue call.
-        if (_keyVault is null || !LooksLikeVaultValue(value)) return value;
-
-        try
-        {
-            return _keyVault.DecryptStringAsync(value, CreateAad(partition))
-                .GetAwaiter()
-                .GetResult();
-        }
-        catch (FormatException)
-        {
-            return value;
-        }
-        catch (CryptographicException)
-        {
-            return string.Empty;
-        }
-    }
-
-    private static IReadOnlyDictionary<string, string> CreateAad(string partition) =>
-        new Dictionary<string, string>(StringComparer.Ordinal)
-        {
-            ["scope"] = VaultKeyName,
-            ["partition"] = Convert.ToHexStringLower(SHA256.HashData(
-                System.Text.Encoding.UTF8.GetBytes(partition))),
-        };
-
-    private static bool LooksLikeVaultValue(string value) =>
-        value.StartsWith("v1.", StringComparison.Ordinal)
-        || value.StartsWith("pt1.", StringComparison.Ordinal);
+    private string DecryptValue(string value, string partition) =>
+        DpopNonceProtection.Decrypt(_keyVault, value, partition);
 }

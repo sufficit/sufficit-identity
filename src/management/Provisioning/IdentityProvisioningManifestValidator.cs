@@ -129,6 +129,30 @@ public static partial class IdentityProvisioningManifestValidator
             ValidateOptionalLength(scope.DisplayName, 200, $"{path}.displayName", errors);
             ValidateOptionalLength(scope.Description, 1000, $"{path}.description", errors);
             ValidateUniqueStrings(scope.Resources, $"{path}.resources", 100, errors);
+
+            // An entitlement writes a claim onto every user who approves the
+            // scope, so a blank type or value must be rejected here rather than
+            // silently skipped at issuance.
+            for (var claimIndex = 0;
+                claimIndex < scope.EntitlementClaims.Count;
+                claimIndex++)
+            {
+                var claim = scope.EntitlementClaims[claimIndex];
+                var claimPath = $"{path}.entitlementClaims[{claimIndex}]";
+
+                if (string.IsNullOrWhiteSpace(claim.Type))
+                {
+                    errors.Add($"{claimPath}.type is required.");
+                }
+
+                if (string.IsNullOrWhiteSpace(claim.Value))
+                {
+                    errors.Add($"{claimPath}.value is required.");
+                }
+
+                ValidateOptionalLength(claim.Type, 200, $"{claimPath}.type", errors);
+                ValidateOptionalLength(claim.Value, 500, $"{claimPath}.value", errors);
+            }
         }
 
         var declaredClients = new HashSet<string>(StringComparer.Ordinal);

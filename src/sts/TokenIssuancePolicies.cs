@@ -248,11 +248,14 @@ internal sealed class SubjectTokenProvenancePolicy(
         SecurityPolicyEnforcementMode mode)
     {
         ArgumentNullException.ThrowIfNull(subjectToken);
-        if (allowedSourceClientIds.Count == 0)
-        {
-            return new SubjectTokenProvenanceDecision(false, false, null, null);
-        }
 
+        // An empty allow-list no longer short-circuits the evaluation. Whether
+        // the deployment named its actor clients or not, a subject token that
+        // cannot be attributed to ONE authorized party is not safe to exchange:
+        // without an unambiguous azp/client_id/presenter there is nothing to
+        // attribute the delegation to, which is exactly the confused-deputy
+        // shape RFC 8693 §4.1 warns about. Only the membership test below is
+        // conditional on an allow-list existing.
         var parties = new[]
             {
                 subjectToken.GetClaim(Claims.AuthorizedParty),
@@ -266,7 +269,11 @@ internal sealed class SubjectTokenProvenancePolicy(
         {
             0 => "subject_authorized_party_missing",
             > 1 => "subject_authorized_party_ambiguous",
-            _ when !allowedSourceClientIds.Contains(parties[0]!) =>
+            // Membership is only meaningful when the deployment declared which
+            // clients may originate a subject token. With no allow-list the
+            // party is accepted, but it still had to be unambiguous above.
+            _ when allowedSourceClientIds.Count > 0
+                && !allowedSourceClientIds.Contains(parties[0]!) =>
                 "subject_authorized_party_not_allowed",
             _ => null,
         };

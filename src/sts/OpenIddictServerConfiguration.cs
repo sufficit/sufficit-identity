@@ -179,7 +179,16 @@ public static partial class ServiceCollectionExtensions
             Scopes.Address,
             "identity.management",
             "personal_tokens.manage",
-            "sufficit_ai_openai_bridge",
+            // Product scopes are deployment configuration, never built-ins of a
+            // vendor-neutral STS (eval 2026-08-30, F-2). A scope that entitles
+            // a claim is registered from the entitlement map itself, so
+            // declaring the grant is enough; ApplicationScopes covers the rest.
+            .. options.ApplicationScopes
+                .Where(scope => !string.IsNullOrWhiteSpace(scope))
+                .Select(scope => scope.Trim()),
+            .. options.ScopeEntitlements.Grants.Keys
+                .Where(scope => !string.IsNullOrWhiteSpace(scope))
+                .Select(scope => scope.Trim()),
             // Gates the MCP agent surface. The name comes from
             // Sufficit:Identity:Mcp:RequiredScope so it stays in step with
             // McpScopeProvisioner, which creates the scope and grants it to
