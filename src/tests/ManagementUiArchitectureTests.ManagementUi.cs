@@ -365,6 +365,7 @@ public sealed partial class ManagementUiArchitectureTests
             ".sa-create__actions",
             ".sa-role-picker",
             ".service-account-secret",
+            ".sa-footnote",
         })
         {
             Assert.Contains(required, stylesheet, StringComparison.Ordinal);
