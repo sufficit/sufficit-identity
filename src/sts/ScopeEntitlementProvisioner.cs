@@ -1,5 +1,7 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Core.Entities;
@@ -26,6 +28,7 @@ namespace Sufficit.Identity.STS;
 public sealed class ScopeEntitlementProvisioner(
     UserManager<ApplicationUser> userManager,
     SufficitIdentityOptions options,
+    ILogger<ScopeEntitlementProvisioner> logger,
     IOpenIddictScopeManager? scopes = null)
 {
     public async Task<IdentityResult> ProvisionAsync(
@@ -92,8 +95,27 @@ public sealed class ScopeEntitlementProvisioner(
                 continue;
             }
 
-            claims.AddRange(ScopeEntitlements.Read(
-                await scopes.GetPropertiesAsync(scope, cancellationToken)));
+            try
+            {
+                claims.AddRange(ScopeEntitlements.Read(
+                    await scopes.GetPropertiesAsync(scope, cancellationToken)));
+            }
+            catch (Exception exception)
+                when (exception is JsonException or InvalidOperationException)
+            {
+                // ScopeEntitlements.Read tolerates a malformed ENTRY, but a
+                // properties column that is not valid JSON throws inside
+                // GetPropertiesAsync — before Read ever runs. Letting that
+                // escape would take the whole grant down for every user of the
+                // scope, turning one bad row into an outage. An entitlement is
+                // an additive grant, so degrading to "not granted" is the safe
+                // direction; the scope itself still works.
+                logger.LogError(
+                    exception,
+                    "Scope {Scope} has unreadable entitlement properties; no "
+                    + "entitlement was applied for it.",
+                    name);
+            }
         }
 
         return claims;
@@ -104,8 +126,12 @@ public sealed class ScopeEntitlementProvisioner(
         options.ScopeEntitlements.Grants
             .Where(grant => approvedScopes.Contains(grant.Key))
             .SelectMany(grant => grant.Value)
+            // The same claim-type rule as the database path: an entitlement
+            // must not mint authorization regardless of where it was declared.
+            // Filtering only the database path would have left configuration as
+            // an open door to the very escalation the rule exists to stop.
             .Where(claim =>
-                !string.IsNullOrWhiteSpace(claim.Type)
+                ScopeEntitlements.IsGrantableClaimType(claim.Type)
                 && !string.IsNullOrWhiteSpace(claim.Value))
             .Select(claim => new ScopeEntitlementClaim(
                 claim.Type.Trim(),

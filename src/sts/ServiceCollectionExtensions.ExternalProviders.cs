@@ -42,7 +42,7 @@ namespace Sufficit.Identity.STS;
 /// <summary>
 /// DI extensions that wire up the Sufficit Identity STS server
 /// (ASP.NET Core Identity + OpenIddict server/validation).
-
+/// </summary>
 public static partial class ServiceCollectionExtensions
 {
     /// <summary>
