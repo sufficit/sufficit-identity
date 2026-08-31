@@ -6928,13 +6928,23 @@ h3 {
 /* coluna sem largura mínima o navegador estreita a célula até o       */
 /* rótulo quebrar letra a letra — foi exatamente o defeito visto em    */
 /* produção em 2026-08-30.                                             */
+/* A nota de rodapé vem logo depois da tabela: sem um respiro explícito ela
+   encosta na última linha e lê como parte dela. */
+.sa-footnote {
+    margin-top: 24px;
+}
+
 .service-accounts-table td.sa-actions {
     white-space: nowrap;
     text-align: right;
     vertical-align: top;
 }
 
-.service-accounts-table td.sa-actions .button + .button {
+/* Os botões da célula de ações são componentes SUI desde a migração, então
+   o seletor antigo (.button + .button) deixou de casar e as ações ficavam
+   coladas. Espaçar por irmão adjacente funciona qualquer que seja o elemento
+   que o componente renderize. */
+.service-accounts-table td.sa-actions > * + * {
     margin-left: 8px;
 }
 
