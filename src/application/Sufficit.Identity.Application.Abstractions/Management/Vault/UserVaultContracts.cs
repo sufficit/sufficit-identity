@@ -40,6 +40,73 @@ public interface IUserVaultOverviewService
         CancellationToken cancellationToken = default);
 }
 
+/// <summary>
+/// Administrative metadata boundary for user Vaults. This contract never
+/// exposes ciphertext, AAD or plaintext values; write operations can only
+/// remove data and remain protected by the Vault management capability.
+/// </summary>
+public interface IUserVaultManagementService
+{
+    Task<VaultUserInventoryPage> ListUsersAsync(
+        VaultUserInventoryQuery query,
+        Authorization.ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
+    Task<VaultUserDetail?> GetUserAsync(
+        string ownerSubject,
+        Authorization.ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
+    Task DeletePersonalSecretAsync(
+        string ownerSubject,
+        string @namespace,
+        string name,
+        Authorization.ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
+    Task DeleteManagedCredentialAsync(
+        string ownerSubject,
+        string name,
+        Authorization.ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
+    Task<VaultUserCleanupResult> ClearUserAsync(
+        string ownerSubject,
+        Authorization.ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed record VaultUserInventoryQuery(
+    string? Search = null,
+    int Offset = 0,
+    int Limit = 25);
+
+public sealed record VaultUserInventoryPage(
+    IReadOnlyList<VaultUserInventoryItem> Items,
+    int TotalUsers,
+    int TotalPersonalSecrets,
+    int TotalManagedCredentials,
+    int Offset,
+    int Limit);
+
+public sealed record VaultUserInventoryItem(
+    string OwnerSubject,
+    string? UserName,
+    string? Email,
+    bool UserExists,
+    int PersonalSecretCount,
+    int ManagedCredentialCount,
+    DateTime? LastUpdatedAtUtc);
+
+public sealed record VaultUserDetail(
+    VaultUserInventoryItem User,
+    IReadOnlyList<UserVaultSecretMetadata> PersonalSecrets,
+    IReadOnlyList<UserVaultManagedCredentialMetadata> ManagedCredentials);
+
+public sealed record VaultUserCleanupResult(
+    int PersonalSecretsDeleted,
+    int ManagedCredentialsDeleted);
+
 public sealed record UserVaultOverview(
     IReadOnlyList<UserVaultSecretMetadata> PersonalSecrets,
     IReadOnlyList<UserVaultManagedCredentialMetadata> ManagedCredentials);

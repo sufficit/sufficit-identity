@@ -185,6 +185,8 @@ public static class ServiceCollectionExtensions
             MetricsManagementService>();
         services.TryAddScoped<IVaultSecretsManagementService,
             VaultSecretsManagementService>();
+        services.TryAddScoped<IUserVaultManagementService,
+            UserVaultManagementService>();
         services.TryAddSingleton<McpSessionManager>();
         services.TryAddScoped<VaultMcpTools>();
         services.TryAddScoped<SelfServiceMcpTools>();

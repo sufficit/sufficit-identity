@@ -7,7 +7,9 @@
 ## Objetivo
 
 Entregar uma superfície Blazor reutilizável para o Vault do Sufficit Identity,
-com `/vault` para o usuário final e `/management/vault` para operadores. A UI
+com `/vault` para o usuário final e `/vault/admin` para operadores. O endereço
+legado `/management/vault` permanece como alias quando não houver conflito com
+uma Management UI montada em `/management`. A UI
 deve chamar contratos de aplicação, nunca `DbContext`, `IKeyVault` ou
 `IVaultNamedSecretStore` diretamente.
 
@@ -30,7 +32,7 @@ deve chamar contratos de aplicação, nunca `DbContext`, `IKeyVault` ou
 - [x] Criar contratos de segredo pessoal com ownership/namespace.
 - [x] Implementar persistência e autorização do cofre pessoal.
 - [x] Criar o projeto `Sufficit.Identity.UI.Vault` e as rotas `/vault` e
-  `/management/vault`.
+  `/vault/admin`, preservando `/management/vault` como alias legado.
 - [x] Integrar composição, assets e opções de hosting no servidor.
 - [x] Cobrir testes de isolamento, capabilities, API, navegação e responsivo.
 - [x] Registrar atividade concluída, executar build/suíte e publicar na `main`.

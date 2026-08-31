@@ -4,67 +4,302 @@
 @rendermode InteractiveServer
 @layout VaultLayout
 @inject VaultDataSource Data
+@inject NavigationManager Navigation
 
-<PageTitle>Vault administrativo | Sufficit Identity</PageTitle>
-<SUIPageHeader Title="Vault administrativo"
-            Description="Rotacione segredos nomeados usados por serviços. Os valores nunca aparecem na listagem.">
-    <Actions><SUIStatusBadge ToneValue="SUITone.Warning" Icon="shield">Capability protegida</SUIStatusBadge></Actions>
+<PageTitle>Gestão do Vault | Sufficit Identity</PageTitle>
+<SUIPageHeader Title="Gestão do Vault"
+            Description="Localize credenciais por usuário, remova acessos comprometidos e mantenha os segredos globais dos serviços.">
+    <Actions><SUIStatusBadge ToneValue="SUITone.Warning" Icon="shield">Acesso administrativo</SUIStatusBadge></Actions>
 </SUIPageHeader>
 
-<div class="vault-note vault-note--warning" role="note"><SUIIcon Name="alert" Size="20" /><div><strong>Operação de alto impacto.</strong><span>Substituir um segredo altera o próximo consumidor que o resolver. Registre a finalidade no nome e faça a rotação de forma controlada.</span></div></div>
+<div class="vault-note vault-note--warning" role="note">
+    <SUIIcon Name="alert" Size="20" />
+    <div>
+        <strong>Valores protegidos continuam invisíveis.</strong>
+        <span>Esta área mostra somente metadados. Remoções são definitivas, exigem permissão de gestão e ficam registradas na auditoria.</span>
+    </div>
+</div>
 
-<section class="vault-panel" aria-labelledby="admin-secret-heading">
-    <div class="vault-panel__heading"><div><h2 id="admin-secret-heading">Criar ou rotacionar</h2><p>O valor é aceito somente nesta operação.</p></div></div>
-    <EditForm Model="form" OnValidSubmit="SaveAsync" class="vault-form"><DataAnnotationsValidator /><div class="vault-form__grid"><div class="vault-field"><label for="admin-secret-name">Nome lógico</label><InputText id="admin-secret-name" @bind-Value="form.Name" autocomplete="off" placeholder="ex.: metrics/victoria-token" /><ValidationMessage For="() => form.Name" /></div><div class="vault-field"><label for="admin-secret-value">Novo valor</label><InputText id="admin-secret-value" type="password" @bind-Value="form.Value" autocomplete="new-password" /><ValidationMessage For="() => form.Value" /></div></div><div class="vault-form__actions"><button class="vault-button vault-button--primary" type="submit" disabled="@saving">@(saving ? "Salvando…" : "Salvar rotação")</button></div></EditForm>
-    @if (!string.IsNullOrWhiteSpace(message)) { <p class="vault-feedback @(success ? "vault-feedback--success" : "vault-feedback--error")" role="status">@message</p> }
-</section>
+<nav class="vault-admin-tabs" aria-label="Áreas da gestão do Vault">
+    <a class="vault-admin-tab @(!IsGlobalView ? "vault-admin-tab--active" : null)"
+       href="@UsersUrl()" aria-current="@(!IsGlobalView ? "page" : null)">
+        <SUIIcon Name="users" Size="17" /> Vaults de usuários
+    </a>
+    <a class="vault-admin-tab @(IsGlobalView ? "vault-admin-tab--active" : null)"
+       href="/vault/admin?view=global" aria-current="@(IsGlobalView ? "page" : null)">
+        <SUIIcon Name="database" Size="17" /> Segredos globais
+    </a>
+</nav>
 
-<section class="vault-panel" aria-labelledby="admin-list-heading">
-    <div class="vault-panel__heading"><div><h2 id="admin-list-heading">Segredos nomeados</h2><p>Somente metadados e data da última alteração.</p></div><SUIStatusBadge ToneValue="SUITone.Info">@items.Count @(items.Count == 1 ? "item" : "itens")</SUIStatusBadge></div>
-    @if (loading) { <div class="vault-loading" aria-label="Carregando segredos"></div> }
-    else if (items.Count == 0) { <SUIEmptyState Icon="database" Title="Nenhum segredo nomeado" Description="O armazenamento ainda não possui segredos administrativos." /> }
-    else { <div class="vault-list">@foreach (var item in items) { <div class="vault-list__item"><span class="vault-list__icon"><SUIIcon Name="lock" Size="18" /></span><div class="vault-list__copy"><strong>@item.Name</strong><span>Atualizado por @item.UpdatedBy em @item.UpdatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></div><button class="vault-button vault-button--quiet" type="button" @onclick="() => DeleteAsync(item.Name)" disabled="@saving">Remover</button></div> }</div> }
-</section>
+@if (IsGlobalView)
+{
+    <section class="vault-panel" aria-labelledby="admin-secret-heading">
+        <div class="vault-panel__heading">
+            <div><h2 id="admin-secret-heading">Criar ou rotacionar</h2><p>O novo valor é aceito somente nesta operação e não poderá ser consultado nesta tela.</p></div>
+        </div>
+        <AuthorizeView Policy="@VaultUiPolicies.AdminManage">
+            <Authorized Context="vaultAuthorization">
+                <EditForm Model="form" OnValidSubmit="SaveGlobalAsync" class="vault-form">
+                    <DataAnnotationsValidator />
+                    <div class="vault-form__grid">
+                        <div class="vault-field">
+                            <label for="admin-secret-name">Nome lógico</label>
+                            <InputText id="admin-secret-name" @bind-Value="form.Name" autocomplete="off" placeholder="ex.: metrics/victoria-token" />
+                            <ValidationMessage For="() => form.Name" />
+                        </div>
+                        <div class="vault-field">
+                            <label for="admin-secret-value">Novo valor</label>
+                            <InputText id="admin-secret-value" type="password" @bind-Value="form.Value" autocomplete="new-password" />
+                            <ValidationMessage For="() => form.Value" />
+                        </div>
+                    </div>
+                    <div class="vault-form__actions">
+                        <button class="vault-button vault-button--primary" type="submit" disabled="@saving">@(saving ? "Salvando…" : "Salvar rotação")</button>
+                    </div>
+                </EditForm>
+            </Authorized>
+            <NotAuthorized>
+                <p class="vault-panel__hint">Sua permissão permite consultar metadados, mas não criar nem rotacionar segredos.</p>
+            </NotAuthorized>
+        </AuthorizeView>
+        @if (!string.IsNullOrWhiteSpace(message))
+        {
+            <p class="vault-feedback @(success ? "vault-feedback--success" : "vault-feedback--error")" role="status">@message</p>
+        }
+    </section>
+
+    <section class="vault-panel" aria-labelledby="admin-list-heading">
+        <div class="vault-panel__heading">
+            <div><h2 id="admin-list-heading">Segredos globais</h2><p>Credenciais compartilhadas por serviços e rotinas internas.</p></div>
+            <SUIStatusBadge ToneValue="SUITone.Info">@globalItems.Count @(globalItems.Count == 1 ? "item" : "itens")</SUIStatusBadge>
+        </div>
+        @if (loading)
+        {
+            <div class="vault-loading" aria-label="Carregando segredos globais"></div>
+        }
+        else if (globalItems.Count == 0)
+        {
+            <SUIEmptyState Icon="database" Title="Nenhum segredo global" Description="O armazenamento ainda não possui segredos administrativos." />
+        }
+        else
+        {
+            <div class="vault-list">
+                @foreach (var item in globalItems)
+                {
+                    <div class="vault-list__item">
+                        <span class="vault-list__icon"><SUIIcon Name="lock" Size="18" /></span>
+                        <div class="vault-list__copy">
+                            <strong>@item.Name</strong>
+                            <span>Atualizado por @item.UpdatedBy em @FormatDate(item.UpdatedAtUtc)</span>
+                        </div>
+                        <AuthorizeView Policy="@VaultUiPolicies.AdminManage">
+                            <button class="vault-button vault-button--quiet" type="button" @onclick="() => DeleteGlobalAsync(item.Name)" disabled="@saving">Remover</button>
+                        </AuthorizeView>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+}
+else
+{
+    <section class="vault-panel" aria-labelledby="vault-users-heading">
+        <div class="vault-panel__heading vault-panel__heading--users">
+            <div><h2 id="vault-users-heading">Usuários com dados no Vault</h2><p>Inclui contas ativas e resíduos de contas removidas que ainda exigem limpeza.</p></div>
+            @if (userPage is not null)
+            {
+                <span class="vault-result-count">@userPage.TotalUsers @(userPage.TotalUsers == 1 ? "usuário" : "usuários")</span>
+            }
+        </div>
+
+        <form class="vault-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
+            <label for="vault-user-search">Buscar usuário</label>
+            <div class="vault-search__controls">
+                <div class="vault-search__input">
+                    <SUIIcon Name="search" Size="17" />
+                    <input id="vault-user-search" @bind="search" placeholder="E-mail, nome ou identificador" autocomplete="off" />
+                </div>
+                <button class="vault-button vault-button--primary" type="submit" disabled="@loading">Buscar</button>
+                @if (!string.IsNullOrWhiteSpace(QuerySearch))
+                {
+                    <a class="vault-button vault-button--quiet" href="/vault/admin">Limpar</a>
+                }
+            </div>
+        </form>
+
+        @if (userPage is not null)
+        {
+            <dl class="vault-inventory-strip">
+                <div><dt>Vaults encontrados</dt><dd>@userPage.TotalUsers</dd></div>
+                <div><dt>Segredos pessoais</dt><dd>@userPage.TotalPersonalSecrets</dd></div>
+                <div><dt>Credenciais conectadas</dt><dd>@userPage.TotalManagedCredentials</dd></div>
+            </dl>
+        }
+
+        @if (loading)
+        {
+            <div class="vault-loading" aria-label="Carregando usuários do Vault"></div>
+        }
+        else if (!string.IsNullOrWhiteSpace(message) && !success)
+        {
+            <div class="vault-load-error" role="alert">
+                <div><strong>Não foi possível carregar os Vaults</strong><span>@message</span></div>
+                <button class="vault-button vault-button--quiet" type="button" @onclick="LoadUsersAsync">Tentar novamente</button>
+            </div>
+        }
+        else if (userPage is null || userPage.Items.Count == 0)
+        {
+            <SUIEmptyState Icon="users" Title="Nenhum Vault encontrado" Description="Altere a busca ou aguarde até que uma credencial seja armazenada." />
+        }
+        else
+        {
+            <div class="vault-users">
+                @foreach (var item in userPage.Items)
+                {
+                    <a class="vault-user-row" href="@UserDetailUrl(item.OwnerSubject)">
+                        <span class="vault-user-row__icon"><SUIIcon Name="users" Size="19" /></span>
+                        <span class="vault-user-row__identity">
+                            <strong>@UserTitle(item)</strong>
+                            <span>@UserSubtitle(item)</span>
+                        </span>
+                        <span class="vault-user-row__counts">
+                            <span>@item.PersonalSecretCount pessoais</span>
+                            <span>@item.ManagedCredentialCount conectadas</span>
+                        </span>
+                        <span class="vault-user-row__activity">@(item.LastUpdatedAtUtc is null ? "Sem data" : $"Atualizado {FormatDate(item.LastUpdatedAtUtc.Value)}")</span>
+                        <SUIIcon Name="arrow-right" Size="17" />
+                    </a>
+                }
+            </div>
+            @if (TotalPages > 1)
+            {
+                <nav class="vault-pagination" aria-label="Paginação dos Vaults de usuários">
+                    <a class="vault-button vault-button--quiet" aria-disabled="@(CurrentPage <= 1)" href="@(CurrentPage > 1 ? UsersUrl(CurrentPage - 1) : null)">Anterior</a>
+                    <span>Página @CurrentPage de @TotalPages</span>
+                    <a class="vault-button vault-button--quiet" aria-disabled="@(CurrentPage >= TotalPages)" href="@(CurrentPage < TotalPages ? UsersUrl(CurrentPage + 1) : null)">Próxima</a>
+                </nav>
+            }
+        }
+    </section>
+}
 
 @code {
+    private const int PageSize = 25;
+    [SupplyParameterFromQuery(Name = "view")] public string? View { get; set; }
+    [SupplyParameterFromQuery(Name = "q")] public string? QuerySearch { get; set; }
+    [SupplyParameterFromQuery(Name = "page")] public int QueryPage { get; set; } = 1;
+
     private readonly AdminSecretForm form = new();
-    private IReadOnlyList<ManagementVaultSecret> items = [];
+    private IReadOnlyList<ManagementVaultSecret> globalItems = [];
+    private VaultUserInventoryPage? userPage;
     private bool loading = true;
     private bool saving;
-    private bool success;
+    private bool success = true;
+    private string search = string.Empty;
     private string? message;
+    private string? loadedFingerprint;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
-    private async Task LoadAsync()
+    private bool IsGlobalView => string.Equals(View, "global", StringComparison.OrdinalIgnoreCase);
+    private int CurrentPage => Math.Max(1, QueryPage);
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling((userPage?.TotalUsers ?? 0) / (double)PageSize));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var fingerprint = $"{View}|{QuerySearch}|{QueryPage}";
+        if (fingerprint == loadedFingerprint) return;
+        loadedFingerprint = fingerprint;
+        search = QuerySearch ?? string.Empty;
+        message = null;
+        if (IsGlobalView) await LoadGlobalAsync(); else await LoadUsersAsync();
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        loading = true;
+        var result = await Data.ListVaultUsersAsync(
+            QuerySearch,
+            (CurrentPage - 1) * PageSize,
+            PageSize);
+        success = result.IsSuccess;
+        userPage = result.Value;
+        message = result.Error;
+        loading = false;
+    }
+
+    private async Task LoadGlobalAsync()
     {
         loading = true;
         var result = await Data.ListAdminAsync();
-        if (result.IsSuccess) items = result.Value ?? [];
-        else { items = []; message = result.Error; success = false; }
+        success = result.IsSuccess;
+        globalItems = result.Value ?? [];
+        message = result.Error;
         loading = false;
     }
-    private async Task SaveAsync()
+
+    private Task SearchAsync()
     {
-        saving = true; message = null;
+        Navigation.NavigateTo(UsersUrl(1, search));
+        return Task.CompletedTask;
+    }
+
+    private async Task SaveGlobalAsync()
+    {
+        saving = true;
+        message = null;
         var result = await Data.PutAdminAsync(form.Name, form.Value);
         success = result.IsSuccess;
-        message = result.IsSuccess ? "Segredo administrativo salvo." : result.Error;
-        if (result.IsSuccess) { form.Value = string.Empty; await LoadAsync(); }
+        message = result.IsSuccess ? "Segredo global salvo." : result.Error;
+        if (result.IsSuccess)
+        {
+            form.Value = string.Empty;
+            await LoadGlobalAsync();
+        }
         saving = false;
     }
-    private async Task DeleteAsync(string name)
+
+    private async Task DeleteGlobalAsync(string name)
     {
         saving = true;
         var result = await Data.DeleteAdminAsync(name);
         success = result.IsSuccess;
-        message = result.IsSuccess ? "Segredo removido." : result.Error;
-        if (result.IsSuccess) await LoadAsync();
+        message = result.IsSuccess ? "Segredo global removido." : result.Error;
+        if (result.IsSuccess) await LoadGlobalAsync();
         saving = false;
     }
+
+    private string UsersUrl(int page = 1, string? searchValue = null)
+    {
+        var selectedSearch = searchValue ?? QuerySearch;
+        var query = new List<string>();
+        if (!string.IsNullOrWhiteSpace(selectedSearch))
+            query.Add($"q={Uri.EscapeDataString(selectedSearch.Trim())}");
+        if (page > 1) query.Add($"page={page}");
+        return query.Count == 0 ? "/vault/admin" : $"/vault/admin?{string.Join('&', query)}";
+    }
+
+    private static string UserDetailUrl(string ownerSubject) =>
+        $"/vault/admin/users/{Uri.EscapeDataString(ownerSubject)}";
+
+    private static string UserTitle(VaultUserInventoryItem item) =>
+        item.Email ?? item.UserName ?? item.OwnerSubject;
+
+    private static string UserSubtitle(VaultUserInventoryItem item)
+    {
+        if (!item.UserExists) return $"Conta removida · {item.OwnerSubject}";
+        if (!string.IsNullOrWhiteSpace(item.Email)
+            && !string.IsNullOrWhiteSpace(item.UserName))
+            return $"{item.UserName} · {item.OwnerSubject}";
+        return item.OwnerSubject;
+    }
+
+    private static string FormatDate(DateTime value) =>
+        value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+
     private sealed class AdminSecretForm
     {
         [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Informe um nome.")]
         public string Name { get; set; } = string.Empty;
+
         [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Informe um valor.")]
         public string Value { get; set; } = string.Empty;
     }

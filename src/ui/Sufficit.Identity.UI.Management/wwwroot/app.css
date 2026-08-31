@@ -5032,7 +5032,8 @@ h3 {
     text-align: center;
 }
 
-.data-table--audit td[data-label="Resultado"] > .status-badge {
+.data-table--audit td[data-label="Resultado"] > .status-badge,
+.data-table--audit td[data-label="Resultado"] > .sui-status-badge {
     display: flex;
     width: 100%;
     justify-content: center;
@@ -6093,7 +6094,8 @@ h3 {
         padding-inline: 16px;
     }
 
-    .capability-row .status-badge {
+    .capability-row .status-badge,
+    .capability-row .sui-status-badge {
         display: none;
     }
 
@@ -6119,7 +6121,8 @@ h3 {
         align-items: start;
     }
 
-    .contract-strip > .status-badge {
+    .contract-strip > .status-badge,
+    .contract-strip > .sui-status-badge {
         grid-column: 2;
         justify-self: start;
     }
@@ -6395,7 +6398,8 @@ h3 {
         height: 52px;
     }
 
-    .module-gate > .status-badge {
+    .module-gate > .status-badge,
+    .module-gate > .sui-status-badge {
         grid-column: 2;
         justify-self: start;
     }
@@ -6404,7 +6408,8 @@ h3 {
         grid-template-columns: 34px minmax(0, 1fr);
     }
 
-    .requirement-card > .status-badge {
+    .requirement-card > .status-badge,
+    .requirement-card > .sui-status-badge {
         grid-column: 2;
         justify-self: start;
     }
@@ -6577,7 +6582,9 @@ h3 {
     }
 
     .credential-panel__heading > .status-badge,
-    .account-access-panel__heading > .status-badge {
+    .credential-panel__heading > .sui-status-badge,
+    .account-access-panel__heading > .status-badge,
+    .account-access-panel__heading > .sui-status-badge {
         grid-column: 2;
         justify-self: start;
     }
@@ -6617,6 +6624,7 @@ h3 {
     }
 
     .client-credential-editor__status > .status-badge,
+    .client-credential-editor__status > .sui-status-badge,
     .client-secret-summary > .sui-status-badge {
         grid-column: 2;
         justify-self: start;
@@ -6660,7 +6668,8 @@ h3 {
         grid-template-columns: 40px minmax(0, 1fr);
     }
 
-    .client-key-method > summary > .status-badge {
+    .client-key-method > summary > .status-badge,
+    .client-key-method > summary > .sui-status-badge {
         grid-column: 2;
         justify-self: start;
     }
@@ -6768,7 +6777,8 @@ h3 {
         text-align: left;
     }
 
-    .data-table--audit td[data-label="Resultado"] > .status-badge {
+    .data-table--audit td[data-label="Resultado"] > .status-badge,
+    .data-table--audit td[data-label="Resultado"] > .sui-status-badge {
         justify-self: center;
     }
 
@@ -6823,6 +6833,7 @@ h3 {
     }
 
     .status-badge,
+    .sui-status-badge,
     .metric-card,
     .panel,
     .integration-banner {
@@ -6878,7 +6889,8 @@ h3 {
     .setup-intro { display: grid; }
     .setup-intro__assurance { max-width: none; }
     .draft-item { grid-template-columns: auto minmax(0, 1fr) auto; }
-    .draft-item > .status-badge { display: none; }
+    .draft-item > .status-badge,
+    .draft-item > .sui-status-badge { display: none; }
     .data-toolbar__actions, .compact-filter { width: 100%; }
     .clients-filters { grid-template-columns: minmax(0, 1fr); }
     .clients-filter--search { grid-column: auto; }
@@ -6888,10 +6900,12 @@ h3 {
     .pagination__status { order: -1; width: 100%; }
     .wizard-actions .button { min-width: 0; padding-inline: 12px; }
     .scope-option { grid-template-columns: auto minmax(0, 1fr); }
-    .scope-option > .status-badge { display: none; }
+    .scope-option > .status-badge,
+    .scope-option > .sui-status-badge { display: none; }
     .operator-token-request { grid-template-columns: 36px minmax(0, 1fr); }
     .operator-token-request__icon { width: 36px; height: 36px; }
-    .operator-token-request > .status-badge { grid-column: 2; justify-self: start; }
+    .operator-token-request > .status-badge,
+    .operator-token-request > .sui-status-badge { grid-column: 2; justify-self: start; }
     .operator-token-fields,
     .operator-token-capability-grid { grid-template-columns: minmax(0, 1fr); }
     .operator-token-issuer > header,

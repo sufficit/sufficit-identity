@@ -278,6 +278,31 @@ public sealed partial class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Management_home_sui_badges_preserve_the_mobile_grid()
+    {
+        var managementUi = ResolveManagementUiSource();
+        var home = File.ReadAllText(Path.Combine(
+            managementUi,
+            "Components",
+            "Pages",
+            "Home.razor"));
+        var stylesheet = File.ReadAllText(Path.Combine(
+            managementUi,
+            "wwwroot",
+            "app.css"));
+
+        Assert.Contains("<SUIStatusBadge", home, StringComparison.Ordinal);
+        Assert.Contains(
+            ".capability-row .status-badge,\n    .capability-row .sui-status-badge {\n        display: none;",
+            stylesheet,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".contract-strip > .status-badge,\n    .contract-strip > .sui-status-badge {\n        grid-column: 2;",
+            stylesheet,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Authorization_filter_controls_share_a_baseline_and_consistent_select_inset()
     {
         var stylesheet = File.ReadAllText(Path.Combine(

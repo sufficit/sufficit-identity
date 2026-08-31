@@ -18,9 +18,14 @@ public static class VaultUiPolicies
 {
     public const string User = "sufficit-identity-vault-user";
     public const string Admin = "sufficit-identity-vault-admin";
+    public const string AdminManage = "sufficit-identity-vault-admin-manage";
 }
 
-public sealed class VaultAdminRequirement : IAuthorizationRequirement;
+public sealed class VaultCapabilityRequirement(string capability)
+    : IAuthorizationRequirement
+{
+    public string Capability { get; } = capability;
+}
 
 /// <summary>
 /// Keeps the personal Vault UI composable when the optional management API is
@@ -36,16 +41,16 @@ internal sealed class DenyManagementEntitlementResolver : IManagementEntitlement
             new HashSet<string>(StringComparer.Ordinal)));
 }
 
-internal sealed class VaultAdminAuthorizationHandler(
+internal sealed class VaultCapabilityAuthorizationHandler(
     IManagementEntitlementResolver entitlements)
-    : AuthorizationHandler<VaultAdminRequirement>
+    : AuthorizationHandler<VaultCapabilityRequirement>
 {
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
-        VaultAdminRequirement requirement)
+        VaultCapabilityRequirement requirement)
     {
         var resolved = await entitlements.ResolveAsync(context.User);
-        if (resolved.Contains(ManagementCapabilities.VaultSecretsRead))
+        if (resolved.Contains(requirement.Capability))
             context.Succeed(requirement);
     }
 }
@@ -75,10 +80,18 @@ public static class ServiceCollectionExtensions
             options.AddPolicy(VaultUiPolicies.Admin, policy =>
             {
                 policy.RequireAuthenticatedUser();
-                policy.AddRequirements(new VaultAdminRequirement());
+                policy.AddRequirements(new VaultCapabilityRequirement(
+                    ManagementCapabilities.VaultSecretsRead));
+            });
+            options.AddPolicy(VaultUiPolicies.AdminManage, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.AddRequirements(new VaultCapabilityRequirement(
+                    ManagementCapabilities.VaultSecretsManage));
             });
         });
-        services.AddScoped<IAuthorizationHandler, VaultAdminAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler,
+            VaultCapabilityAuthorizationHandler>();
         services.AddCascadingAuthenticationState();
         services.TryAddScoped<VaultDataSource>();
         services.AddRazorComponents().AddInteractiveServerComponents();

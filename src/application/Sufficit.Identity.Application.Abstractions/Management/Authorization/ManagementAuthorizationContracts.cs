@@ -152,6 +152,8 @@ public static class ManagementResourceTypes
     public const string Metrics = "metrics";
     public const string VaultSecrets = "vault-secrets";
     public const string VaultSecretCollection = "vault-secret-collection";
+    public const string VaultUser = "vault-user";
+    public const string VaultUserCollection = "vault-user-collection";
     public const string Provisioning = "provisioning";
     public const string OperatorToken = "operator-token";
     public const string OperatorTokenCollection = "operator-token-collection";

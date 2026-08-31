@@ -69,6 +69,82 @@ public sealed class VaultDataSource(
             async (service, context) => { await service.DeleteAsync(name, "global", context, cancellationToken); return true; },
             "operator Vault deletion", cancellationToken, useManagementContext: true);
 
+    public Task<VaultDataResult<VaultUserInventoryPage>> ListVaultUsersAsync(
+        string? search,
+        int offset,
+        int limit,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync<IUserVaultManagementService, VaultUserInventoryPage>(
+            (service, context) => service.ListUsersAsync(
+                new VaultUserInventoryQuery(search, offset, limit),
+                context,
+                cancellationToken),
+            "user Vault inventory",
+            cancellationToken,
+            useManagementContext: true);
+
+    public Task<VaultDataResult<VaultUserDetail?>> LoadVaultUserAsync(
+        string ownerSubject,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync<IUserVaultManagementService, VaultUserDetail?>(
+            (service, context) => service.GetUserAsync(
+                ownerSubject,
+                context,
+                cancellationToken),
+            "user Vault detail",
+            cancellationToken,
+            useManagementContext: true);
+
+    public Task<VaultDataResult<bool>> DeleteVaultUserPersonalAsync(
+        string ownerSubject,
+        string @namespace,
+        string name,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync<IUserVaultManagementService, bool>(
+            async (service, context) =>
+            {
+                await service.DeletePersonalSecretAsync(
+                    ownerSubject,
+                    @namespace,
+                    name,
+                    context,
+                    cancellationToken);
+                return true;
+            },
+            "user Vault personal-secret deletion",
+            cancellationToken,
+            useManagementContext: true);
+
+    public Task<VaultDataResult<bool>> DeleteVaultUserManagedAsync(
+        string ownerSubject,
+        string name,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync<IUserVaultManagementService, bool>(
+            async (service, context) =>
+            {
+                await service.DeleteManagedCredentialAsync(
+                    ownerSubject,
+                    name,
+                    context,
+                    cancellationToken);
+                return true;
+            },
+            "user Vault managed-credential deletion",
+            cancellationToken,
+            useManagementContext: true);
+
+    public Task<VaultDataResult<VaultUserCleanupResult>> ClearVaultUserAsync(
+        string ownerSubject,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync<IUserVaultManagementService, VaultUserCleanupResult>(
+            (service, context) => service.ClearUserAsync(
+                ownerSubject,
+                context,
+                cancellationToken),
+            "user Vault cleanup",
+            cancellationToken,
+            useManagementContext: true);
+
     private async Task<VaultDataResult<T>> ExecuteAsync<TService, T>(
         Func<TService, ManagementRequestContext, Task<T>> operation,
         string operationName,
