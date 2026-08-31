@@ -18,7 +18,7 @@ using Xunit;
 
 namespace Sufficit.Identity.Tests;
 
-public sealed class ManagementApplicationAuthorizationTests
+public sealed partial class ManagementApplicationAuthorizationTests
 {
     [Fact]
     public async Task Management_scope_accepts_openiddict_principal_metadata()
@@ -283,206 +283,6 @@ public sealed class ManagementApplicationAuthorizationTests
 
     // ---- H3: object-level authorization boundary (IManagementObjectAccessPolicy) ----
 
-    [Fact]
-    public async Task Object_access_policy_default_is_permissive()
-    {
-        // With the shipped default policy, a capable operator is allowed against
-        // any resource (regression: the new boundary must not change behavior
-        // until a deployment opts into a non-permissive impl).
-        var evaluator = CreateEvaluator(adminRoles: ["identity-administrator"]);
-        var principal = PrincipalWithRole("identity-administrator");
-
-        var decision = await evaluator.EvaluateAsync(
-            principal,
-            ManagementCapabilities.UsersRead,
-            new ManagementResource(ManagementResourceTypes.User, "user-123"));
-
-        Assert.Equal(ManagementAuthorizationOutcome.Allowed, decision.Outcome);
-    }
-
-    [Fact]
-    public async Task Object_access_policy_denial_takes_precedence_after_capability_and_mfa()
-    {
-        // A non-permissive object policy returning Denied is surfaced unchanged
-        // by the evaluator, with the policy's own ReasonCode — proving the
-        // boundary is consulted and respected (the object-level/BOLA
-        // scoping). Capability + MFA still pass; only the object check denies.
-        var evaluator = CreateEvaluator(
-            adminRoles: ["identity-administrator"],
-            objectAccess: new DenyingObjectAccessPolicy("object_not_accessible"));
-        var principal = PrincipalWithRole("identity-administrator");
-
-        var decision = await evaluator.EvaluateAsync(
-            principal,
-            ManagementCapabilities.UsersDelete,
-            new ManagementResource(ManagementResourceTypes.User, "other-operator-user"));
-
-        Assert.Equal(ManagementAuthorizationOutcome.Denied, decision.Outcome);
-        Assert.Equal("object_not_accessible", decision.ReasonCode);
-    }
-
-    [Fact]
-    public async Task Object_access_policy_runs_only_after_capability_passes()
-    {
-        // Capability denial short-circuits before the object policy is ever
-        // consulted: an operator without the capability gets
-        // capability_not_granted even when the object policy would allow.
-        // (Uses an object policy that throws if called, to prove it was skipped.)
-        var evaluator = CreateEvaluator(
-            adminRoles: ["identity-administrator"],
-            objectAccess: new ThrowingObjectAccessPolicy());
-        // principal has NO admin role and NO capability claim → capability check fails.
-        var principal = PrincipalWithRole("no-capabilities");
-
-        var decision = await evaluator.EvaluateAsync(
-            principal,
-            ManagementCapabilities.UsersDelete,
-            new ManagementResource(ManagementResourceTypes.User, "user-1"));
-
-        Assert.Equal(ManagementAuthorizationOutcome.Denied, decision.Outcome);
-        Assert.Equal("capability_not_granted", decision.ReasonCode);
-    }
-
-    [Fact]
-    public async Task Missing_object_policy_fails_closed()
-    {
-        var decision = await new DefaultManagementObjectAccessPolicy()
-            .EvaluateAsync(
-                PrincipalWithRole("identity-administrator"),
-                ManagementCapabilities.UsersRead,
-                new ManagementResource(ManagementResourceTypes.UserCollection));
-
-        Assert.Equal("object_policy_unavailable", decision.ReasonCode);
-        Assert.False(decision.IsAllowed);
-    }
-
-    [Fact]
-    public async Task Concrete_object_policy_enforces_item_identity()
-    {
-        // With the multi-tenant system removed (2026-08 decision), the
-        // object-level contract is: item resources require an id, and user
-        // mutations consult the protected-principal policy. Tenants no longer
-        // participate — isolation is per deployment, externally.
-        var policy = new ConfigurationManagementObjectAccessPolicy(
-            new AllowProtectedPrincipalPolicy());
-
-        var allowed = await policy.EvaluateAsync(
-            PrincipalWithClaims(new Claim("sub", "operator-a")),
-            ManagementCapabilities.UsersRead,
-            new ManagementResource(ManagementResourceTypes.User, "user-1"));
-        Assert.True(allowed.IsAllowed);
-
-        var missingId = await policy.EvaluateAsync(
-            PrincipalWithClaims(new Claim("sub", "operator-a")),
-            ManagementCapabilities.UsersRead,
-            new ManagementResource(ManagementResourceTypes.User));
-        Assert.Equal("resource_id_required", missingId.ReasonCode);
-
-        var missingVaultSecretId = await policy.EvaluateAsync(
-            PrincipalWithClaims(new Claim("sub", "operator-a")),
-            ManagementCapabilities.VaultSecretsRead,
-            new ManagementResource(ManagementResourceTypes.VaultSecrets));
-        Assert.Equal("resource_id_required", missingVaultSecretId.ReasonCode);
-
-        // Collections stay reachable for any capability holder.
-        var collection = await policy.EvaluateAsync(
-            PrincipalWithClaims(new Claim("sub", "operator-a")),
-            ManagementCapabilities.ClientsRead,
-            new ManagementResource(ManagementResourceTypes.ClientCollection));
-        Assert.True(collection.IsAllowed);
-    }
-
-    [Fact]
-    public async Task Vault_break_glass_is_an_audit_marker_requiring_mfa()
-    {
-        // With the tenant/namespace boundary removed, break-glass no longer
-        // grants access — it marks emergency sessions in the audit trail and
-        // requires the dedicated claim AND MFA evidence.
-        var options = Options.Create(new ManagementOptions
-        {
-            Authorization = new ManagementAuthorizationOptions(),
-        });
-
-        var withoutMfa = PrincipalWithClaims(
-            new Claim("identity_vault_break_glass", "identity.vault.secrets"));
-        Assert.False(
-            ConfigurationManagementObjectAccessPolicy
-                .HasVaultBreakGlassEvidence(
-                    withoutMfa,
-                    options.Value.Authorization.VaultSecrets));
-
-        var withMfa = PrincipalWithClaims(
-            new Claim("identity_vault_break_glass", "identity.vault.secrets"),
-            new Claim("amr", "pwd mfa"));
-        Assert.True(
-            ConfigurationManagementObjectAccessPolicy
-                .HasVaultBreakGlassEvidence(
-                    withMfa,
-                    options.Value.Authorization.VaultSecrets));
-    }
-
-    [Fact]
-    public async Task Protected_principal_policy_denies_equal_tier_and_audits_break_glass()
-    {
-        using var factory = new ManagementTestFactory();
-        await ((IAsyncLifetime)factory).InitializeAsync();
-        await using var scope = factory.Services.CreateAsyncScope();
-        var users = scope.ServiceProvider.GetRequiredService<
-            UserManager<ApplicationUser>>();
-        var target = await users.FindByNameAsync(TestDataSeeder.DefaultUsername)
-            ?? throw new InvalidOperationException("Seed user not found.");
-        var added = await users.AddClaimAsync(
-            target,
-            new Claim("identity_principal_tier", "2"));
-        Assert.True(added.Succeeded);
-        var options = Options.Create(new ManagementOptions
-        {
-            Authorization = new ManagementAuthorizationOptions
-            {
-                ProtectedPrincipals = new ProtectedPrincipalAccessOptions
-                {
-                    Mode = ManagementPolicyEnforcementMode.Enforce,
-                },
-            },
-        });
-        var policy = new ConfigurationProtectedPrincipalAccessPolicy(
-            users,
-            options,
-            NullLogger<ConfigurationProtectedPrincipalAccessPolicy>.Instance);
-
-        var equalTier = await policy.EvaluateAsync(
-            PrincipalWithClaims(new Claim("identity_principal_tier", "2")),
-            ManagementCapabilities.UsersReset,
-            target.Id);
-        var higherTier = await policy.EvaluateAsync(
-            PrincipalWithClaims(new Claim("identity_principal_tier", "3")),
-            ManagementCapabilities.UsersReset,
-            target.Id);
-        var breakGlass = await policy.EvaluateAsync(
-            PrincipalWithClaims(
-                new Claim("identity_principal_tier", "1"),
-                new Claim("identity_break_glass", "identity.management"),
-                new Claim("amr", "pwd mfa")),
-            ManagementCapabilities.UsersReset,
-            target.Id);
-
-        Assert.Equal("protected_principal_higher_or_equal", equalTier.ReasonCode);
-        Assert.True(higherTier.IsAllowed);
-        Assert.Equal("protected_principal_break_glass", breakGlass.ReasonCode);
-    }
-
-    /// <summary>Stub object policy that denies every resource with a fixed reason.</summary>
-    private sealed class DenyingObjectAccessPolicy(string reason)
-        : IManagementObjectAccessPolicy
-    {
-        public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
-            ClaimsPrincipal principal,
-            string capability,
-            ManagementResource resource,
-            CancellationToken cancellationToken = default)
-            => ValueTask.FromResult(ManagementAuthorizationDecision.Denied(reason));
-    }
-
     private sealed class AllowingObjectAccessPolicy
         : IManagementObjectAccessPolicy
     {
@@ -517,7 +317,6 @@ public sealed class ManagementApplicationAuthorizationTests
             ValueTask.FromResult(ManagementAuthorizationDecision.Allowed());
     }
 
-
     // --- Principal de máquina (client_credentials) -----------------------
     //
     // Um serviço não passa por nenhuma das fontes de capacidade do resolvedor
@@ -531,116 +330,6 @@ public sealed class ManagementApplicationAuthorizationTests
 
     private const string ServiceClient = "sufficit_cloud_mobile_api";
     private const string VaultRole = "mobilecloudadministrator";
-
-    private static ClaimsPrincipal MachinePrincipal(string clientId) =>
-        new(new ClaimsIdentity(
-            [
-                // sub == client_id é o que marca a máquina: o handler de
-                // client_credentials põe o próprio cliente como subject porque
-                // não há mais ninguém para pôr.
-                new Claim("sub", clientId),
-                new Claim("client_id", clientId)
-            ],
-            authenticationType: "test",
-            nameType: ClaimTypes.Name,
-            roleType: ClaimTypes.Role));
-
-    [Fact]
-    public async Task Service_principal_gets_what_its_role_maps_to()
-    {
-        var evaluator = CreateEvaluator(
-            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.VaultSecretsManage] },
-            clientRoles: [VaultRole]);
-
-        var concedida = await evaluator.EvaluateAsync(
-            MachinePrincipal(ServiceClient),
-            ManagementCapabilities.VaultSecretsManage,
-            new ManagementResource(ManagementResourceTypes.VaultSecrets));
-        var fora = await evaluator.EvaluateAsync(
-            MachinePrincipal(ServiceClient),
-            ManagementCapabilities.UsersDelete,
-            new ManagementResource(ManagementResourceTypes.User));
-
-        Assert.True(concedida.IsAllowed);
-        Assert.Equal(ManagementAuthorizationOutcome.Denied, fora.Outcome);
-    }
-
-    [Fact]
-    public async Task Service_principal_passes_mfa_for_what_its_role_grants()
-    {
-        // O ponto: com RequireMfa ligado e sem `amr`, a capacidade do papel
-        // passa. Exigir segundo fator de quem se autenticou com segredo de
-        // cliente não é uma trava, é negação permanente.
-        var evaluator = CreateEvaluator(
-            requireMfa: true,
-            adminRoles: [],
-            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.VaultSecretsManage] },
-            clientRoles: [VaultRole]);
-
-        var decisao = await evaluator.EvaluateAsync(
-            MachinePrincipal(ServiceClient),
-            ManagementCapabilities.VaultSecretsManage,
-            new ManagementResource(ManagementResourceTypes.VaultSecrets));
-
-        Assert.True(decisao.IsAllowed);
-    }
-
-    [Fact]
-    public async Task Another_client_gets_nothing_from_someone_elses_roles()
-    {
-        var evaluator = CreateEvaluator(
-            requireMfa: true,
-            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.VaultSecretsManage] },
-            clientRoles: [VaultRole]);
-
-        var outro = await evaluator.EvaluateAsync(
-            MachinePrincipal("dcr_algum_cliente_anonimo"),
-            ManagementCapabilities.VaultSecretsManage,
-            new ManagementResource(ManagementResourceTypes.VaultSecrets));
-
-        Assert.Equal(ManagementAuthorizationOutcome.Denied, outro.Outcome);
-    }
-
-    [Fact]
-    public async Task A_human_holding_the_same_capability_still_needs_mfa()
-    {
-        // A isenção não pode vazar para operador: ele recebeu a capacidade por
-        // claim `permission`, não por ser máquina.
-        var evaluator = CreateEvaluator(
-            requireMfa: true,
-            adminRoles: [],
-            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.VaultSecretsManage] },
-            clientRoles: [VaultRole]);
-
-        var humano = await evaluator.EvaluateAsync(
-            PrincipalWithClaims(
-                new Claim("permission", ManagementCapabilities.VaultSecretsManage)),
-            ManagementCapabilities.VaultSecretsManage,
-            new ManagementResource(ManagementResourceTypes.VaultSecrets));
-
-        Assert.Equal(
-            ManagementAuthorizationOutcome.StepUpRequired,
-            humano.Outcome);
-    }
-
-    [Fact]
-    public async Task Client_without_declared_roles_changes_nothing()
-    {
-        // Estado padrão de todo cliente que existe hoje: sem a propriedade, o
-        // comportamento tem de ser exatamente o de antes desta mudança.
-        var evaluator = CreateEvaluator(
-            requireMfa: true,
-            adminRoles: [],
-            roleCapabilities: new() { [VaultRole] = [ManagementCapabilities.VaultSecretsManage] },
-            clientRoles: []);
-
-        var maquina = await evaluator.EvaluateAsync(
-            MachinePrincipal(ServiceClient),
-            ManagementCapabilities.VaultSecretsManage,
-            new ManagementResource(ManagementResourceTypes.VaultSecrets));
-
-        Assert.Equal(ManagementAuthorizationOutcome.Denied, maquina.Outcome);
-    }
 
     private static CapabilityManagementAuthorizationEvaluator CreateEvaluator(
         bool requireMfa = false,
@@ -691,15 +380,6 @@ public sealed class ManagementApplicationAuthorizationTests
             authenticationType: "test",
             nameType: ClaimTypes.Name,
             roleType: ClaimTypes.Role));
-
-    private sealed class FakeRoleSource(string clientId, string[] roles)
-        : IServicePrincipalRoleSource
-    {
-        public ValueTask<IReadOnlyCollection<string>> RolesAsync(
-            string requested, CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult<IReadOnlyCollection<string>>(
-                string.Equals(requested, clientId, StringComparison.Ordinal) ? roles : []);
-    }
 
     private sealed class TestHostEnvironment : IHostEnvironment
     {
