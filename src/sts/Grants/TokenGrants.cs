@@ -557,11 +557,12 @@ public sealed class TokenExchangeGrantHandler(
         var provenance = subjectTokenProvenancePolicy.Evaluate(
             result.Principal,
             tokenExchangeOptions.AllowedClientIds,
-            tokenExchangeOptions.ProvenanceMode);
+            tokenExchangeOptions.ProvenanceMode,
+            request.ClientId);
         if (provenance.ShouldReject)
         {
             return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant,
-                "The subject_token could not be attributed to an authorized party permitted to perform token exchange.");
+                "The subject_token was not issued for this client, so it cannot be exchanged by it.");
         }
 
         var identity = await ops.BuildIdentityAsync(
