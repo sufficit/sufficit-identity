@@ -172,6 +172,10 @@ public sealed class VaultUiCompositionTests
         Assert.Contains("Manage.SystemManagement", manage,
             StringComparison.Ordinal);
         Assert.Contains(".manage-resources", css, StringComparison.Ordinal);
+        Assert.Contains(
+            ".manage-resources__heading {\n    margin: 0 0 var(--space-5);",
+            css,
+            StringComparison.Ordinal);
         Assert.Contains("sufficit-identity-management-ui-access", policies,
             StringComparison.Ordinal);
         Assert.Contains(

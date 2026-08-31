@@ -967,7 +967,7 @@ img.profile-avatar { background: var(--surface-sunken); }
     border-top: 1px solid var(--line);
 }
 .manage-resources__heading {
-    margin: 0 0 var(--space-3);
+    margin: 0 0 var(--space-5);
     color: var(--ink-muted);
     font-size: 0.875rem;
     font-weight: 600;
