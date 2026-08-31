@@ -232,10 +232,22 @@ public sealed record SubjectTokenProvenanceDecision(
 
 public interface ISubjectTokenProvenancePolicy
 {
+    /// <summary>
+    /// Decides whether <paramref name="requestingClientId"/> may exchange
+    /// <paramref name="subjectToken"/>.
+    /// </summary>
+    /// <remarks>
+    /// RFC 8693 §5 requires the authorization server to establish that the
+    /// client is authorized to act on behalf of the subject; being able to
+    /// present the token is explicitly not sufficient, because a client that
+    /// legitimately receives a token as a bearer credential could otherwise
+    /// escalate it into a delegation — the confused deputy.
+    /// </remarks>
     SubjectTokenProvenanceDecision Evaluate(
         ClaimsPrincipal subjectToken,
         IReadOnlySet<string> allowedSourceClientIds,
-        SecurityPolicyEnforcementMode mode);
+        SecurityPolicyEnforcementMode mode,
+        string? requestingClientId = null);
 }
 
 internal sealed class SubjectTokenProvenancePolicy(
@@ -245,7 +257,8 @@ internal sealed class SubjectTokenProvenancePolicy(
     public SubjectTokenProvenanceDecision Evaluate(
         ClaimsPrincipal subjectToken,
         IReadOnlySet<string> allowedSourceClientIds,
-        SecurityPolicyEnforcementMode mode)
+        SecurityPolicyEnforcementMode mode,
+        string? requestingClientId = null)
     {
         ArgumentNullException.ThrowIfNull(subjectToken);
 
@@ -265,10 +278,32 @@ internal sealed class SubjectTokenProvenancePolicy(
             .Where(value => !string.IsNullOrWhiteSpace(value))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+        // RFC 8693 §5 — the caller must be an INTENDED RECIPIENT of the subject
+        // token, not merely its bearer. Requiring an unambiguous party (above)
+        // does not establish that: OpenIddict stamps exactly one party on every
+        // token it mints, so that test alone never fires and any client holding
+        // the exchange grant could escalate a token it received as a bearer
+        // credential into a delegation. Verified by
+        // TokenExchangeConfusedDeputyTests, which reproduced exactly that.
+        //
+        // A caller qualifies when the token was issued TO it, or when it is a
+        // declared audience/resource of the token — the two shapes in which an
+        // authorization server states an intended recipient.
+        var intendedRecipient =
+            string.IsNullOrWhiteSpace(requestingClientId)
+            || parties.Contains(requestingClientId, StringComparer.Ordinal)
+            || subjectToken.GetAudiences().Contains(
+                requestingClientId,
+                StringComparer.Ordinal)
+            || subjectToken.GetResources().Contains(
+                requestingClientId,
+                StringComparer.Ordinal);
+
         var reason = parties.Length switch
         {
             0 => "subject_authorized_party_missing",
             > 1 => "subject_authorized_party_ambiguous",
+            _ when !intendedRecipient => "subject_token_audience_mismatch",
             // Membership is only meaningful when the deployment declared which
             // clients may originate a subject token. With no allow-list the
             // party is accepted, but it still had to be unambiguous above.
