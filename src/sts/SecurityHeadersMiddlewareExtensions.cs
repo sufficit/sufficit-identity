@@ -265,9 +265,10 @@ public static class SecurityHeadersMiddlewareExtensions
 
     internal static string BuildFormPostContentSecurityPolicy(
         SufficitIdentityOptions options,
-        string redirectUri)
+        string redirectUri,
+        string? nonce = null)
     {
-        var policy = BuildContentSecurityPolicy(options);
+        var policy = BuildContentSecurityPolicy(options, nonce);
         if (!Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri)
             || (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))

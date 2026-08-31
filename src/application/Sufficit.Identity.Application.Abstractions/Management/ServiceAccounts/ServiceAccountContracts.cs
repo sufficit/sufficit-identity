@@ -1,5 +1,14 @@
 using Sufficit.Identity.Management.Authorization;
 
+// Os CONTRATOS compilam apenas neste projeto (Application.Abstractions, que a
+// UI referencia) e a implementação apenas no Management. A exclusividade é
+// obrigatória: sem ela o mesmo record existiria nos dois assemblies e quem
+// referencia ambos — os testes — morre em CS0433.
+//
+// Antes isso era garantido por #if APPLICATION_CONTRACTS; hoje é a fronteira de
+// arquivo, que é mais fácil de violar sem querer. Ao mover um tipo entre os dois
+// projetos, mova — não copie.
+
 namespace Sufficit.Identity.Management.ServiceAccounts;
 
 /// <summary>
