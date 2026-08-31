@@ -31,6 +31,45 @@ public static class ScopeEntitlements
     public const string PropertyName = "identity:scope:entitlement-claims";
 
     /// <summary>
+    /// Claim types an entitlement may never grant.
+    /// </summary>
+    /// <remarks>
+    /// An entitlement writes a claim onto every user who approves the scope, so
+    /// it must not be able to mint authorization. Both spellings of the role
+    /// claim are refused: OpenIddict's <c>role</c> and the
+    /// <c>ClaimTypes.Role</c> URI that ASP.NET Core Identity treats as the
+    /// principal's role type — a claim of the latter type is projected into the
+    /// cookie principal and satisfies <c>[Authorize(Roles = …)]</c>, so
+    /// declaring one on a consented scope would hand an administrator role to
+    /// everyone who approves it. Credential material is refused for the same
+    /// reason it is refused for token release.
+    /// </remarks>
+    public static readonly IReadOnlySet<string> ForbiddenClaimTypes =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "role",
+            "roles",
+            "http://schemas.microsoft.com/ws/2008/06/identity/claims/role",
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role",
+            "scope",
+            "scp",
+            "amr",
+            "acr",
+            "security_stamp",
+            "concurrency_stamp",
+            "password_hash",
+            "authenticator_key",
+            "recovery_codes",
+        };
+
+    /// <summary>
+    /// Whether a claim type may be granted as a scope entitlement.
+    /// </summary>
+    public static bool IsGrantableClaimType(string? type) =>
+        !string.IsNullOrWhiteSpace(type)
+        && !ForbiddenClaimTypes.Contains(type.Trim());
+
+    /// <summary>
     /// Reads the entitlement claims from a scope's property bag. Returns an
     /// empty list when the scope declares none, and skips malformed or
     /// incomplete entries rather than failing token issuance — a bad property
@@ -56,12 +95,15 @@ public static class ScopeEntitlements
 
             var type = ReadString(element, "type");
             var claimValue = ReadString(element, "value");
-            if (string.IsNullOrWhiteSpace(type) || string.IsNullOrWhiteSpace(claimValue))
+            if (string.IsNullOrWhiteSpace(claimValue) || !IsGrantableClaimType(type))
             {
+                // Filtering on READ as well as on write means a forbidden type
+                // that reached the table before this rule existed (or through a
+                // direct database edit) still never becomes a user claim.
                 continue;
             }
 
-            claims.Add(new ScopeEntitlementClaim(type.Trim(), claimValue.Trim()));
+            claims.Add(new ScopeEntitlementClaim(type!.Trim(), claimValue.Trim()));
         }
 
         return claims;
@@ -76,7 +118,7 @@ public static class ScopeEntitlements
     {
         var materialized = (claims ?? [])
             .Where(claim =>
-                !string.IsNullOrWhiteSpace(claim.Type)
+                IsGrantableClaimType(claim.Type)
                 && !string.IsNullOrWhiteSpace(claim.Value))
             .Select(claim => new ScopeEntitlementClaim(
                 claim.Type.Trim(),

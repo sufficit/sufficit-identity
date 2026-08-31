@@ -178,21 +178,42 @@ internal sealed class FrontchannelLogoutDispatcher : IFrontchannelLogoutDispatch
         }
 
         var key = CacheKeyPrefix + contextId;
-        var durable = _state is null
-            ? null
-            : await _state.GetAsync(StatePurpose, contextId, cancellationToken);
-        var payload = durable is { Length: > 0 }
-            ? Encoding.UTF8.GetString(durable)
-            : await _cache.GetStringAsync(key, cancellationToken);
+
+        // The durable store is AUTHORITATIVE whenever it is registered: the
+        // cache must never answer a single-use consume. Falling back to it
+        // reintroduced the replay this context exists to prevent — the replica
+        // that PREPARED the context keeps a copy in its process-local cache,
+        // so after another replica consumed and deleted the durable row, a
+        // browser landing back on the first replica read the stale copy and
+        // logged the user out of every RP a second time. The cache is written
+        // alongside only so a not-yet-upgraded replica can still serve a
+        // context it created; it is never consulted once the durable store is
+        // present.
+        string? payload;
+        if (_state is not null)
+        {
+            var durable = await _state.GetAsync(
+                StatePurpose,
+                contextId,
+                cancellationToken);
+            payload = durable is { Length: > 0 }
+                ? Encoding.UTF8.GetString(durable)
+                : null;
+        }
+        else
+        {
+            payload = await _cache.GetStringAsync(key, cancellationToken);
+        }
+
         if (payload is null)
         {
             return [];
         }
 
-        // A front-channel context is deliberately single-use. Remove it before
-        // parsing/rendering so a refresh cannot repeatedly log the user out of
-        // every RP — and remove it from BOTH backends, or the copy left behind
-        // would make it replayable exactly once more.
+        // Single-use: remove before parsing/rendering so a refresh cannot
+        // repeatedly log the user out of every RP. Both backends are cleared —
+        // the cache copy is not authoritative, but leaving it behind would
+        // resurrect the context on a replica that later lost its durable store.
         if (_state is not null)
         {
             await _state.RemoveAsync(StatePurpose, contextId, cancellationToken);

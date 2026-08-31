@@ -1,0 +1,294 @@
+@page "/vault/admin/users/{OwnerSubject}"
+@attribute [Authorize(Policy = VaultUiPolicies.Admin)]
+@rendermode InteractiveServer
+@layout VaultLayout
+@inject VaultDataSource Data
+
+<PageTitle>Vault do usuário | Sufficit Identity</PageTitle>
+
+<a class="vault-back-link" href="/vault/admin"><SUIIcon Name="arrow-left" Size="16" /> Voltar aos Vaults de usuários</a>
+
+<SUIPageHeader Title="@PageTitleText"
+            Description="Revise metadados e remova credenciais sem revelar valores protegidos.">
+    <Actions>
+        @if (detail is not null && !detail.User.UserExists)
+        {
+            <SUIStatusBadge ToneValue="SUITone.Warning" Icon="alert">Conta removida</SUIStatusBadge>
+        }
+        else
+        {
+            <SUIStatusBadge ToneValue="SUITone.Info" Icon="shield">Metadados protegidos</SUIStatusBadge>
+        }
+    </Actions>
+</SUIPageHeader>
+
+@if (loading)
+{
+    <div class="vault-panel"><div class="vault-loading" aria-label="Carregando Vault do usuário"></div></div>
+}
+else if (!string.IsNullOrWhiteSpace(loadError))
+{
+    <div class="vault-load-error" role="alert">
+        <div><strong>Não foi possível carregar este Vault</strong><span>@loadError</span></div>
+        <button class="vault-button vault-button--quiet" type="button" @onclick="LoadAsync">Tentar novamente</button>
+    </div>
+}
+else if (detail is null)
+{
+    @if (!string.IsNullOrWhiteSpace(feedback))
+    {
+        <p class="vault-feedback vault-feedback--success" role="status">@feedback</p>
+    }
+    <section class="vault-panel">
+        <SUIEmptyState Icon="users" Title="Vault não encontrado" Description="A conta não existe ou não possui mais credenciais armazenadas.">
+            <Actions><a class="vault-button vault-button--quiet" href="/vault/admin">Voltar à gestão</a></Actions>
+        </SUIEmptyState>
+    </section>
+}
+else
+{
+    <section class="vault-user-summary" aria-label="Identificação do usuário">
+        <span class="vault-user-summary__icon"><SUIIcon Name="users" Size="21" /></span>
+        <div>
+            <strong>@(detail.User.Email ?? detail.User.UserName ?? detail.User.OwnerSubject)</strong>
+            <span>@IdentityDescription(detail.User)</span>
+        </div>
+        <dl>
+            <div><dt>Pessoais</dt><dd>@detail.User.PersonalSecretCount</dd></div>
+            <div><dt>Conectadas</dt><dd>@detail.User.ManagedCredentialCount</dd></div>
+            <div><dt>Última atividade</dt><dd>@(detail.User.LastUpdatedAtUtc is null ? "Sem data" : FormatDate(detail.User.LastUpdatedAtUtc.Value))</dd></div>
+        </dl>
+    </section>
+
+    <div class="vault-note" role="note">
+        <SUIIcon Name="info" Size="20" />
+        <div><strong>Nenhuma senha é exibida.</strong><span>A remoção revoga o dado armazenado; o aplicativo conectado pode exigir uma nova autorização do usuário.</span></div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(feedback))
+    {
+        <p class="vault-feedback @(operationSucceeded ? "vault-feedback--success" : "vault-feedback--error")" role="status">@feedback</p>
+    }
+
+    <section class="vault-panel" aria-labelledby="managed-credentials-heading">
+        <div class="vault-panel__heading">
+            <div><h2 id="managed-credentials-heading">Credenciais conectadas</h2><p>Tokens e chaves mantidos por integrações em nome deste usuário.</p></div>
+            <SUIStatusBadge ToneValue="SUITone.Info">@detail.ManagedCredentials.Count</SUIStatusBadge>
+        </div>
+        @if (detail.ManagedCredentials.Count == 0)
+        {
+            <SUIEmptyState Icon="key" Title="Nenhuma credencial conectada" Description="Não há integrações persistidas para este usuário." />
+        }
+        else
+        {
+            <div class="vault-list">
+                @foreach (var item in detail.ManagedCredentials)
+                {
+                    var actionKey = $"managed:{item.Name}";
+                    <div class="vault-list__item vault-list__item--managed">
+                        <span class="vault-list__icon"><SUIIcon Name="key" Size="18" /></span>
+                        <div class="vault-list__copy">
+                            <strong>@(item.Provider is null ? item.Name : ProviderLabel(item.Provider))</strong>
+                            <span>@item.Name · atualizado em @FormatDate(item.UpdatedAtUtc)</span>
+                        </div>
+                        <div class="vault-list__status">
+                            @if (item.ExpiresAtUtc is { } expiration)
+                            {
+                                <span>Expira em @FormatDate(expiration)</span>
+                            }
+                            else
+                            {
+                                <span>Sem expiração informada</span>
+                            }
+                        </div>
+                        <AuthorizeView Policy="@VaultUiPolicies.AdminManage">
+                            @if (pendingAction == actionKey)
+                            {
+                                <div class="vault-confirm" role="group" aria-label="Confirmar remoção">
+                                    <span>Remover?</span>
+                                    <button class="vault-button vault-button--danger" type="button" @onclick="() => DeleteManagedAsync(item.Name)" disabled="@working">Confirmar</button>
+                                    <button class="vault-button vault-button--quiet" type="button" @onclick="CancelConfirmation" disabled="@working">Cancelar</button>
+                                </div>
+                            }
+                            else
+                            {
+                                <button class="vault-button vault-button--quiet" type="button" @onclick="() => Confirm(actionKey)" disabled="@working">Remover</button>
+                            }
+                        </AuthorizeView>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="vault-panel" aria-labelledby="personal-secrets-heading">
+        <div class="vault-panel__heading">
+            <div><h2 id="personal-secrets-heading">Segredos pessoais</h2><p>Entradas criadas diretamente pelo usuário no armazenamento pessoal.</p></div>
+            <SUIStatusBadge ToneValue="SUITone.Info">@detail.PersonalSecrets.Count</SUIStatusBadge>
+        </div>
+        @if (detail.PersonalSecrets.Count == 0)
+        {
+            <SUIEmptyState Icon="lock" Title="Nenhum segredo pessoal" Description="O usuário não criou entradas pessoais neste Vault." />
+        }
+        else
+        {
+            <div class="vault-list">
+                @foreach (var item in detail.PersonalSecrets)
+                {
+                    var actionKey = $"personal:{item.Namespace}:{item.Name}";
+                    <div class="vault-list__item">
+                        <span class="vault-list__icon"><SUIIcon Name="lock" Size="18" /></span>
+                        <div class="vault-list__copy">
+                            <strong>@item.Name</strong>
+                            <span>Namespace @item.Namespace · atualizado em @FormatDate(item.UpdatedAtUtc)</span>
+                        </div>
+                        <AuthorizeView Policy="@VaultUiPolicies.AdminManage">
+                            @if (pendingAction == actionKey)
+                            {
+                                <div class="vault-confirm" role="group" aria-label="Confirmar remoção">
+                                    <span>Remover?</span>
+                                    <button class="vault-button vault-button--danger" type="button" @onclick="() => DeletePersonalAsync(item.Namespace, item.Name)" disabled="@working">Confirmar</button>
+                                    <button class="vault-button vault-button--quiet" type="button" @onclick="CancelConfirmation" disabled="@working">Cancelar</button>
+                                </div>
+                            }
+                            else
+                            {
+                                <button class="vault-button vault-button--quiet" type="button" @onclick="() => Confirm(actionKey)" disabled="@working">Remover</button>
+                            }
+                        </AuthorizeView>
+                    </div>
+                }
+            </div>
+        }
+    </section>
+
+    <AuthorizeView Policy="@VaultUiPolicies.AdminManage">
+        <section class="vault-danger-zone" aria-labelledby="vault-cleanup-heading">
+            <div>
+                <h2 id="vault-cleanup-heading">Limpar o Vault deste usuário</h2>
+                <p>Remove todos os segredos pessoais e todas as credenciais conectadas. Estados temporários de autenticação não são alterados.</p>
+            </div>
+            @if (confirmClear)
+            {
+                <div class="vault-danger-zone__confirm" role="group" aria-label="Confirmar limpeza completa">
+                    <strong>Esta ação não pode ser desfeita.</strong>
+                    <div>
+                        <button class="vault-button vault-button--danger" type="button" @onclick="ClearAsync" disabled="@working">@(working ? "Limpando…" : "Confirmar limpeza")</button>
+                        <button class="vault-button vault-button--quiet" type="button" @onclick="CancelClear" disabled="@working">Cancelar</button>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <button class="vault-button vault-button--danger-outline" type="button" @onclick="RequestClear" disabled="@(working || TotalItems == 0)">Limpar credenciais</button>
+            }
+        </section>
+    </AuthorizeView>
+}
+
+@code {
+    [Parameter] public string OwnerSubject { get; set; } = string.Empty;
+
+    private VaultUserDetail? detail;
+    private bool loading = true;
+    private bool working;
+    private bool operationSucceeded;
+    private bool confirmClear;
+    private string? pendingAction;
+    private string? feedback;
+    private string? loadError;
+
+    private string PageTitleText => detail is null
+        ? "Vault do usuário"
+        : detail.User.Email ?? detail.User.UserName ?? "Vault do usuário";
+    private int TotalItems => detail is null
+        ? 0
+        : detail.PersonalSecrets.Count + detail.ManagedCredentials.Count;
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        loadError = null;
+        var result = await Data.LoadVaultUserAsync(OwnerSubject);
+        if (result.IsSuccess) detail = result.Value;
+        else
+        {
+            detail = null;
+            loadError = result.Error;
+        }
+        loading = false;
+    }
+
+    private void Confirm(string actionKey)
+    {
+        pendingAction = actionKey;
+        confirmClear = false;
+        feedback = null;
+    }
+
+    private void CancelConfirmation() => pendingAction = null;
+
+    private void RequestClear()
+    {
+        confirmClear = true;
+        pendingAction = null;
+        feedback = null;
+    }
+
+    private void CancelClear() => confirmClear = false;
+
+    private async Task DeleteManagedAsync(string name)
+    {
+        working = true;
+        var result = await Data.DeleteVaultUserManagedAsync(OwnerSubject, name);
+        await FinishMutationAsync(result, "Credencial conectada removida.");
+    }
+
+    private async Task DeletePersonalAsync(string @namespace, string name)
+    {
+        working = true;
+        var result = await Data.DeleteVaultUserPersonalAsync(
+            OwnerSubject,
+            @namespace,
+            name);
+        await FinishMutationAsync(result, "Segredo pessoal removido.");
+    }
+
+    private async Task FinishMutationAsync(VaultDataResult<bool> result, string successMessage)
+    {
+        operationSucceeded = result.IsSuccess;
+        feedback = result.IsSuccess ? successMessage : result.Error;
+        pendingAction = null;
+        working = false;
+        if (result.IsSuccess) await LoadAsync();
+    }
+
+    private async Task ClearAsync()
+    {
+        working = true;
+        var result = await Data.ClearVaultUserAsync(OwnerSubject);
+        operationSucceeded = result.IsSuccess;
+        feedback = result.IsSuccess && result.Value is { } cleanup
+            ? $"Vault limpo: {cleanup.PersonalSecretsDeleted} segredos pessoais e {cleanup.ManagedCredentialsDeleted} credenciais conectadas removidos."
+            : result.Error;
+        confirmClear = false;
+        working = false;
+        if (result.IsSuccess) await LoadAsync();
+    }
+
+    private static string IdentityDescription(VaultUserInventoryItem item)
+    {
+        var prefix = item.UserExists ? "Identificador" : "Conta não encontrada · identificador";
+        return $"{prefix} {item.OwnerSubject}";
+    }
+
+    private static string ProviderLabel(string provider) =>
+        provider.Length == 0
+            ? "Integração conectada"
+            : char.ToUpperInvariant(provider[0]) + provider[1..];
+
+    private static string FormatDate(DateTime value) =>
+        value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
+}

@@ -108,9 +108,38 @@ internal sealed class DatabaseProtocolStateStore(
             existing.ExpiresAtUtc = now + lifetime;
         }
 
-        database.SaveChanges();
+        try
+        {
+            database.SaveChanges();
+        }
+        catch (DbUpdateException) when (existing is null)
+        {
+            // Find-then-Add is not atomic: two requests for the same partition
+            // (one client issuing parallel token requests is the ordinary
+            // trigger for the DPoP nonce dance) both see no row and both
+            // insert, and the loser hits the primary key. Overwriting is the
+            // correct resolution — the value is a freshly minted, equally valid
+            // nonce or ticket. Letting this escape turned a routine race into a
+            // 500 on the token endpoint instead of the intended challenge.
+            database.ChangeTracker.Clear();
+            Overwrite(database, storageKey, purpose, payload, now + lifetime);
+        }
+
         SweepIfDue(database, now);
     }
+
+    private static void Overwrite(
+        AppDbContext database,
+        string storageKey,
+        string purpose,
+        byte[] payload,
+        DateTime expiresAtUtc) =>
+        database.ProtocolStateEntries
+            .Where(entry => entry.Key == storageKey)
+            .ExecuteUpdate(setters => setters
+                .SetProperty(entry => entry.Purpose, purpose)
+                .SetProperty(entry => entry.Payload, payload)
+                .SetProperty(entry => entry.ExpiresAtUtc, expiresAtUtc));
 
     public async Task SetAsync(
         string purpose,
@@ -144,7 +173,25 @@ internal sealed class DatabaseProtocolStateStore(
             existing.ExpiresAtUtc = now + lifetime;
         }
 
-        await database.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await database.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException) when (existing is null)
+        {
+            // Same insert race as the synchronous path — resolve by overwrite
+            // rather than surfacing a 500 to the caller.
+            database.ChangeTracker.Clear();
+            await database.ProtocolStateEntries
+                .Where(entry => entry.Key == storageKey)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(entry => entry.Purpose, purpose)
+                        .SetProperty(entry => entry.Payload, payload)
+                        .SetProperty(entry => entry.ExpiresAtUtc, now + lifetime),
+                    cancellationToken);
+        }
+
         await SweepIfDueAsync(database, now, cancellationToken);
     }
 

@@ -17,6 +17,15 @@ public sealed class VaultUiCompositionTests
         var adminPage = File.ReadAllText(Path.Combine(
             root, "src", "ui", "Sufficit.Identity.UI.Vault", "Components",
             "Pages", "AdminVault.razor"));
+        var adminUserPage = File.ReadAllText(Path.Combine(
+            root, "src", "ui", "Sufficit.Identity.UI.Vault", "Components",
+            "Pages", "AdminUserVault.razor"));
+        var dataSource = File.ReadAllText(Path.Combine(
+            root, "src", "ui", "Sufficit.Identity.UI.Vault", "Data",
+            "VaultDataSource.cs"));
+        var policies = File.ReadAllText(Path.Combine(
+            root, "src", "ui", "Sufficit.Identity.UI.Vault",
+            "ServiceCollectionExtensions.cs"));
         var css = File.ReadAllText(Path.Combine(
             root, "src", "ui", "Sufficit.Identity.UI.Vault", "wwwroot",
             "vault.css"));
@@ -46,6 +55,27 @@ public sealed class VaultUiCompositionTests
             StringComparison.Ordinal);
         Assert.Contains("@page \"/management/vault\"", adminPage,
             StringComparison.Ordinal);
+        Assert.Contains("Vaults de usuários", adminPage,
+            StringComparison.Ordinal);
+        Assert.Contains("Segredos globais", adminPage,
+            StringComparison.Ordinal);
+        Assert.Contains("ListVaultUsersAsync", adminPage,
+            StringComparison.Ordinal);
+        Assert.Contains("@page \"/vault/admin/users/{OwnerSubject}\"",
+            adminUserPage, StringComparison.Ordinal);
+        Assert.Contains("Credenciais conectadas", adminUserPage,
+            StringComparison.Ordinal);
+        Assert.Contains("Segredos pessoais", adminUserPage,
+            StringComparison.Ordinal);
+        Assert.Contains("Limpar o Vault deste usuário", adminUserPage,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("Ciphertext", adminPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("Ciphertext", adminUserPage, StringComparison.Ordinal);
+        Assert.DoesNotContain("ResolveAsync", dataSource, StringComparison.Ordinal);
+        Assert.Contains("VaultUiPolicies.AdminManage", adminUserPage,
+            StringComparison.Ordinal);
+        Assert.Contains("ManagementCapabilities.VaultSecretsManage", policies,
+            StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 640px)", css,
             StringComparison.Ordinal);
         Assert.Contains("prefers-reduced-motion", css,
@@ -55,6 +85,12 @@ public sealed class VaultUiCompositionTests
         Assert.Contains(".vault-admin-entry", css,
             StringComparison.Ordinal);
         Assert.Contains(".vault-button--admin", css,
+            StringComparison.Ordinal);
+        Assert.Contains(".vault-admin-tabs", css,
+            StringComparison.Ordinal);
+        Assert.Contains(".vault-user-row", css,
+            StringComparison.Ordinal);
+        Assert.Contains(".vault-danger-zone", css,
             StringComparison.Ordinal);
         Assert.Contains(".vault-layout { min-height: 100vh; background: var(--vault-bg); }",
             css, StringComparison.Ordinal);

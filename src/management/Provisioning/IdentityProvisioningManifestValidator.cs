@@ -144,6 +144,15 @@ public static partial class IdentityProvisioningManifestValidator
                 {
                     errors.Add($"{claimPath}.type is required.");
                 }
+                else if (!ScopeEntitlements.IsGrantableClaimType(claim.Type))
+                {
+                    // An entitlement must not be able to mint authorization: a
+                    // role claim declared on a consented scope would be granted
+                    // to every user who approves it.
+                    errors.Add(
+                        $"{claimPath}.type '{claim.Type}' cannot be granted as a "
+                        + "scope entitlement.");
+                }
 
                 if (string.IsNullOrWhiteSpace(claim.Value))
                 {
