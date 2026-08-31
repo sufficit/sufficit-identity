@@ -355,12 +355,20 @@ public sealed partial class ManagementUiArchitectureTests
             "Components",
             "Pages",
             "Home.razor"));
-        var controller = File.ReadAllText(Path.Combine(
-            ResolveIdentityRepository(),
-            "src",
-            "sts",
-            "Controllers",
-            "AuthorizationController.cs"));
+        // The controller is a partial class split across files by concern, so
+        // the assertions below must look at every part rather than pin one
+        // path — the logout branch lives in AuthorizationController.Logout.cs.
+        var controller = string.Join(
+            Environment.NewLine,
+            Directory.EnumerateFiles(
+                    Path.Combine(
+                        ResolveIdentityRepository(),
+                        "src",
+                        "sts",
+                        "Controllers"),
+                    "AuthorizationController*.cs")
+                .OrderBy(path => path, StringComparer.Ordinal)
+                .Select(File.ReadAllText));
 
         Assert.Contains("name=\"force_mfa\"", home, StringComparison.Ordinal);
         Assert.DoesNotContain(
