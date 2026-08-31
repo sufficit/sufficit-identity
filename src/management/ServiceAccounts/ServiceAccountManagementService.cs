@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
+using System.Security.Cryptography;
 using System.Text.Json;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Management.Audit;
@@ -146,6 +148,123 @@ public sealed class ServiceAccountManagementService(
                 OpenIddictConstants.Permissions.GrantTypes.ClientCredentials),
             Roles: roles,
             Capabilities: Resolve(roles, authorization));
+    }
+
+    public async Task<ServiceAccountCreated> CreateAsync(
+        CreateServiceAccountCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        // Criar exige ClientsCreate E ClientsUpdate. Papéis concedem
+        // capacidades de gestão, então criar uma conta JÁ COM papéis é a mesma
+        // concessão de privilégio que atribuí-los depois — pedir só a
+        // capacidade de criar abriria o atalho que o comentário da classe
+        // descreve, agora pela porta da criação.
+        await guard.DemandAsync(
+            context,
+            ManagementCapabilities.ClientsCreate,
+            new ManagementResource(ManagementResourceTypes.Client, command.ClientId),
+            cancellationToken,
+            auditDenial: true);
+        await guard.DemandAsync(
+            context,
+            ManagementCapabilities.ClientsUpdate,
+            new ManagementResource(ManagementResourceTypes.Client, command.ClientId),
+            cancellationToken,
+            auditDenial: true);
+
+        var clientId = (command.ClientId ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(clientId))
+        {
+            throw new ManagementValidationException(
+                "client_id_required",
+                "Informe o identificador da conta de sistema.",
+                field: "clientId");
+        }
+
+        if (await applications.FindByClientIdAsync(clientId, cancellationToken) is not null)
+        {
+            throw new ManagementValidationException(
+                "client_already_exists",
+                $"Já existe cliente '{clientId}'.",
+                field: "clientId");
+        }
+
+        var authorization = options.Value.Authorization;
+        var roles = NormalizeRoles(command.Roles, authorization);
+
+        // Segredo gerado pelo servidor por padrão: 256 bits de CSPRNG. Uma
+        // credencial de máquina não expira sozinha, então a força dela não pode
+        // depender do que um humano digitou com pressa.
+        var secret = string.IsNullOrWhiteSpace(command.ClientSecret)
+            ? Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(32))
+            : command.ClientSecret.Trim();
+
+        var descriptor = new OpenIddictApplicationDescriptor
+        {
+            ClientId = clientId,
+            ClientSecret = secret,
+            DisplayName = string.IsNullOrWhiteSpace(command.DisplayName)
+                ? clientId
+                : command.DisplayName.Trim(),
+            ClientType = OpenIddictConstants.ClientTypes.Confidential,
+        };
+
+        // A forma é fixa de propósito: uma conta de sistema fala com o endpoint
+        // de token por client_credentials e nada mais. Sem redirect, sem fluxo
+        // interativo — não há usuário nessa história.
+        descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Token);
+        descriptor.Permissions.Add(
+            OpenIddictConstants.Permissions.GrantTypes.ClientCredentials);
+
+        if (roles.Length > 0)
+        {
+            using var document = JsonDocument.Parse(JsonSerializer.Serialize(roles));
+            descriptor.Properties[authorization.ClientRolesPropertyName] =
+                document.RootElement.Clone();
+        }
+
+        await applications.CreateAsync(descriptor, cancellationToken);
+
+        return new ServiceAccountCreated(
+            new ServiceAccountSummary(
+                ClientId: clientId,
+                DisplayName: descriptor.DisplayName,
+                CanRequestTokens: true,
+                Roles: roles,
+                Capabilities: Resolve(roles, authorization)),
+            secret);
+    }
+
+    /// <summary>
+    /// Papéis distintos, sem brancos, recusando o que esta implantação não
+    /// reconhece.
+    /// </summary>
+    private static string[] NormalizeRoles(
+        IReadOnlyList<string>? requested,
+        ManagementAuthorizationOptions authorization)
+    {
+        var roles = (requested ?? [])
+            .Where(role => !string.IsNullOrWhiteSpace(role))
+            .Select(role => role.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var known = KnownRoles(authorization).Select(option => option.Role)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var unknown = roles.Where(role => !known.Contains(role)).ToArray();
+        if (unknown.Length > 0)
+        {
+            throw new ManagementValidationException(
+                "unknown_role",
+                $"Papel desconhecido nesta implantação: {string.Join(", ", unknown)}. "
+                + "Os papéis válidos vêm de RoleCapabilities e FullAdministratorRoles.",
+                field: "roles");
+        }
+
+        return roles;
     }
 
     private static IReadOnlyList<ServiceAccountRoleOption> KnownRoles(

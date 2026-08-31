@@ -40,6 +40,19 @@ public sealed class ManagementServiceAccountDataSource(
             "Service account role update",
             cancellationToken);
 
+    public Task<ManagementDataResult<ServiceAccountCreated>> CreateAsync(
+        string clientId,
+        string? displayName,
+        IReadOnlyList<string> roles,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (accounts, context) => accounts.CreateAsync(
+                new CreateServiceAccountCommand(clientId, displayName, roles),
+                context,
+                cancellationToken),
+            "Service account creation",
+            cancellationToken);
+
     private async Task<ManagementDataResult<T>> ExecuteAsync<T>(
         Func<IServiceAccountManagementService, ManagementRequestContext, Task<T>> operation,
         string operationName,

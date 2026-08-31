@@ -25,6 +25,19 @@ public sealed class ServiceAccountsController(
             RequestContext(),
             cancellationToken));
 
+    /// <summary>
+    /// Cria uma conta de sistema. O segredo volta UMA ÚNICA VEZ no corpo da
+    /// resposta — é armazenado apenas como hash e não pode ser reexibido.
+    /// </summary>
+    [HttpPost]
+    public async Task<ActionResult<ServiceAccountCreated>> Create(
+        [FromBody] CreateServiceAccountCommand command,
+        CancellationToken cancellationToken) =>
+        Ok(await accounts.CreateAsync(
+            command,
+            RequestContext(),
+            cancellationToken));
+
     [HttpPut("{clientId}/roles")]
     public async Task<ActionResult<ServiceAccountSummary>> SetRoles(
         string clientId,

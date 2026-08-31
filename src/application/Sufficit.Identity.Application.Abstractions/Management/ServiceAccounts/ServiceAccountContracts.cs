@@ -42,6 +42,33 @@ public sealed record ServiceAccountWorkspace(
 
 public sealed record SetServiceAccountRolesCommand(IReadOnlyList<string>? Roles);
 
+/// <summary>
+/// Cria uma conta de sistema: um cliente confidencial que se autentica sozinho
+/// (<c>client_credentials</c>) e recebe capacidades pelos papéis declarados.
+/// </summary>
+/// <param name="ClientSecret">
+/// Opcional. Ausente, o servidor gera um segredo forte — o caminho recomendado,
+/// porque um segredo escolhido por humano é o elo fraco de uma credencial que
+/// não expira sozinha.
+/// </param>
+public sealed record CreateServiceAccountCommand(
+    string ClientId,
+    string? DisplayName = null,
+    IReadOnlyList<string>? Roles = null,
+    string? ClientSecret = null);
+
+/// <summary>
+/// A conta recém-criada e o segredo, devolvido UMA ÚNICA VEZ.
+/// </summary>
+/// <remarks>
+/// O segredo é persistido apenas como hash, então não há como reexibi-lo
+/// depois: quem não copiar agora precisa rotacionar. A UI trata isso como um
+/// passo explícito em vez de um detalhe da resposta.
+/// </remarks>
+public sealed record ServiceAccountCreated(
+    ServiceAccountSummary Account,
+    string ClientSecret);
+
 public interface IServiceAccountManagementService
 {
     Task<ServiceAccountWorkspace> GetWorkspaceAsync(
@@ -51,6 +78,11 @@ public interface IServiceAccountManagementService
     Task<ServiceAccountSummary> SetRolesAsync(
         string clientId,
         SetServiceAccountRolesCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
+    Task<ServiceAccountCreated> CreateAsync(
+        CreateServiceAccountCommand command,
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 }
