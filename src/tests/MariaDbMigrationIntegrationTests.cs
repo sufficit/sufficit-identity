@@ -80,6 +80,7 @@ public sealed class MariaDbMigrationIntegrationTests
             IdentityDatabaseSchema.BinaryIdentifierCollationMigrationId,
             IdentityDatabaseSchema.VaultSecretExpirationMigrationId,
             IdentityDatabaseSchema.OAuthClientCredentialsMigrationId,
+            IdentityDatabaseSchema.ProtocolStateEntriesMigrationId,
         };
         var appliedMigrations = await context.Database
             .GetAppliedMigrationsAsync();
@@ -96,7 +97,7 @@ public sealed class MariaDbMigrationIntegrationTests
         await using var connection = context.Database.GetDbConnection();
         await connection.OpenAsync();
 
-        Assert.Equal(34, await ScalarIntAsync(connection, """
+        Assert.Equal(35, await ScalarIntAsync(connection, """
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
@@ -107,6 +108,13 @@ public sealed class MariaDbMigrationIntegrationTests
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
               AND table_name = 'oauthclientcredentials'
+            """));
+
+        Assert.Equal(1, await ScalarIntAsync(connection, """
+            SELECT COUNT(*)
+            FROM information_schema.tables
+            WHERE table_schema = DATABASE()
+              AND table_name = 'protocolstateentries'
             """));
 
         Assert.Equal(12, await ScalarIntAsync(connection, $"""
