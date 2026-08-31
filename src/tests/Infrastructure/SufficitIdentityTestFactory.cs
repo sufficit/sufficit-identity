@@ -1,3 +1,4 @@
+using System.Data.Common;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -10,6 +11,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -47,15 +49,29 @@ namespace Sufficit.Identity.Tests.Infrastructure;
 /// </para>
 /// <para>
 /// The production DB registration (MySQL via <c>ServerVersion.AutoDetect</c>)
-/// is swapped for a single, held-open SQLite in-memory connection so tests
-/// never touch a real database and never trigger the MySQL auto-detect
-/// handshake.
+/// is swapped for a per-factory temporary SQLite database so tests never
+/// touch a real database or trigger the MySQL auto-detect handshake. Each
+/// context opens its own connection, which preserves the intentional
+/// concurrent requests exercised by protocol race-condition tests.
 /// </para>
 /// </summary>
 public sealed class SufficitIdentityTestFactory : WebApplicationFactory<SufficitIdentityTestFactory>, IAsyncLifetime
 {
-    private readonly SqliteConnection _connection = new("DataSource=:memory:");
+    private static readonly SqliteUtcTimestampInterceptor SqliteFunctions = new();
+
+    private readonly string _databasePath = Path.Combine(
+        Path.GetTempPath(),
+        $"sufficit-identity-tests-{Guid.NewGuid():N}.db");
     private IReadOnlyDictionary<string, string?>? _extraConfiguration;
+
+    private string DatabaseConnectionString => new SqliteConnectionStringBuilder
+    {
+        DataSource = _databasePath,
+        Mode = SqliteOpenMode.ReadWriteCreate,
+        Cache = SqliteCacheMode.Shared,
+        Pooling = false,
+        DefaultTimeout = 30,
+    }.ToString();
 
     /// <summary>
     /// Builds a factory with additional configuration overlaid on top of the
@@ -65,7 +81,7 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
     /// parameterless-constructed instance via <see cref="StsCollection"/>,
     /// seeded once — this is only for the rare test that needs a config
     /// value that shared instance intentionally doesn't set, and therefore
-    /// needs its own, separate instance (own fresh in-memory SQLite
+    /// needs its own, separate instance (own fresh temporary SQLite
     /// database) instead.
     /// </summary>
     /// <remarks>
@@ -101,17 +117,6 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
         // ConfigureServices).
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
         Environment.SetEnvironmentVariable("ASPNETCORE_URLS", null);
-
-        _connection.Open();
-
-        // AppDbContext maps ApplicationUser.Timestamp with
-        // HasDefaultValueSql("(UTC_TIMESTAMP())") — a MySQL-only function. SQLite
-        // has no such builtin; register it as a user-defined function on the
-        // connection so inserts that rely on the DB-generated default (i.e. every
-        // UserManager.CreateAsync call) succeed unmodified.
-        _connection.CreateFunction("UTC_TIMESTAMP", () => DateTime.UtcNow);
-        _connection.CreateFunction<int, DateTime>(
-            "UTC_TIMESTAMP", _ => DateTime.UtcNow);
     }
 
     // Bypasses WebApplicationFactory's default reflection-based discovery of a
@@ -189,7 +194,7 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                 context.Configuration.GetSection("Sufficit:Identity:Cors")
                     .Get<CorsOptions>() ?? new CorsOptions());
 
-            ReplaceDatabaseWithSqlite(services, _connection);
+            ReplaceDatabaseWithSqlite(services, DatabaseConnectionString);
 
             // AuthorizationController lives in the STS assembly, which is not
             // this factory's "entry" assembly, so MVC's default application part
@@ -400,7 +405,9 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
         });
     }
 
-    private static void ReplaceDatabaseWithSqlite(IServiceCollection services, SqliteConnection connection)
+    private static void ReplaceDatabaseWithSqlite(
+        IServiceCollection services,
+        string connectionString)
     {
         // Modern EF Core doesn't just register a single DbContextOptions<T>
         // descriptor: AddDbContext also adds a DbContextOptionsConfiguration<T>
@@ -431,7 +438,8 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
         // single registration point. See AddSufficitIdentitySTS for rationale.
         services.AddDbContextFactory<AppDbContext>(db =>
         {
-            db.UseSqlite(connection);
+            db.UseSqlite(connectionString);
+            db.AddInterceptors(SqliteFunctions);
             db.UseOpenIddict();
         });
 
@@ -442,11 +450,17 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
         // here (the later EnsureCreatedAsync call remains idempotent and still
         // seeds the test data after the host is ready).
         var bootstrapOptions = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlite(connection)
+            .UseSqlite(connectionString)
+            .AddInterceptors(SqliteFunctions)
             .UseOpenIddict()
             .Options;
         using var bootstrapDb = new AppDbContext(bootstrapOptions);
         bootstrapDb.Database.EnsureCreated();
+        bootstrapDb.Database.OpenConnection();
+        using var command = bootstrapDb.Database.GetDbConnection().CreateCommand();
+        command.CommandText = "PRAGMA journal_mode=WAL;";
+        _ = command.ExecuteScalar();
+        bootstrapDb.Database.CloseConnection();
     }
 
     async Task IAsyncLifetime.InitializeAsync()
@@ -463,13 +477,54 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
 
     protected override void Dispose(bool disposing)
     {
-        // Dispose the host first (releases pooled DbContexts/scopes), then the
-        // backing SQLite connection they were using.
+        // Dispose the host first so every context releases its file handle,
+        // then remove the per-factory test database and its WAL sidecars.
         base.Dispose(disposing);
 
         if (disposing)
         {
-            _connection.Dispose();
+            DeleteDatabaseFile(_databasePath);
+            DeleteDatabaseFile(_databasePath + "-shm");
+            DeleteDatabaseFile(_databasePath + "-wal");
+        }
+    }
+
+    private static void DeleteDatabaseFile(string path)
+    {
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
+    }
+
+    private sealed class SqliteUtcTimestampInterceptor : DbConnectionInterceptor
+    {
+        public override void ConnectionOpened(
+            DbConnection connection,
+            ConnectionEndEventData eventData) => RegisterFunctions(connection);
+
+        public override Task ConnectionOpenedAsync(
+            DbConnection connection,
+            ConnectionEndEventData eventData,
+            CancellationToken cancellationToken = default)
+        {
+            RegisterFunctions(connection);
+            return Task.CompletedTask;
+        }
+
+        private static void RegisterFunctions(DbConnection connection)
+        {
+            if (connection is not SqliteConnection sqlite)
+            {
+                return;
+            }
+
+            // The production model uses MariaDB's UTC_TIMESTAMP defaults.
+            // Register the same name on every independently opened SQLite
+            // connection so inserts remain faithful to that model.
+            sqlite.CreateFunction("UTC_TIMESTAMP", () => DateTime.UtcNow);
+            sqlite.CreateFunction<int, DateTime>(
+                "UTC_TIMESTAMP", _ => DateTime.UtcNow);
         }
     }
 }
