@@ -6982,6 +6982,86 @@ h3 {
     font-weight: 600;
 }
 
+/* Formulário de nova conta de sistema. Segue o mesmo desenho do formulário
+   de operator token: cartão com cabeçalho, campos alinhados em linha e ações
+   no rodapé. */
+.sa-create {
+    border: 1px solid var(--sui-border, #e2e8f0);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 0 0 20px;
+    background: var(--sui-surface, #fff);
+    display: grid;
+    gap: 18px;
+}
+
+.sa-create__header h2 {
+    margin: 0 0 6px;
+    font-size: 1.05rem;
+}
+
+.sa-create__header p {
+    margin: 0;
+    color: var(--sui-text-muted, #64748b);
+    max-width: 70ch;
+}
+
+.sa-create__fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
+.sa-create__roles {
+    border: 1px solid var(--sui-border, #e2e8f0);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 0;
+}
+
+.sa-create__roles legend {
+    padding: 0 6px;
+    font-weight: 600;
+}
+
+.sa-create__empty-roles {
+    margin: 0;
+    color: var(--sui-text-muted, #64748b);
+}
+
+.sa-create__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.sa-create__actions > * {
+    flex: 0 0 auto;
+}
+
+/* O segredo aparece uma única vez: bloco monoespaçado, quebrando em qualquer
+   ponto para caber sem cortar. */
+.service-account-alert__copy {
+    display: grid;
+    gap: 10px;
+    justify-items: start;
+}
+
+.service-account-secret {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--sui-surface-strong, #0f172a);
+    color: #f8fafc;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.92rem;
+    width: 100%;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
 .sa-capabilities {
     margin: 6px 0 0;
     padding-left: 18px;

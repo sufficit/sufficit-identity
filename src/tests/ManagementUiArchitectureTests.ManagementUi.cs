@@ -328,6 +328,50 @@ public sealed partial class ManagementUiArchitectureTests
     }
 
     [Fact]
+    public void Service_account_form_uses_shared_sui_controls_and_page_vocabulary()
+    {
+        // A primeira versão desta tela escreveu inputs crus com classes
+        // inventadas (field/input/card/actions) que não existem na folha de
+        // estilo — o formulário saiu visualmente quebrado em produção. O que
+        // impede a repetição não é lembrar da convenção, é falhar quando ela
+        // não é seguida.
+        var managementUi = ResolveManagementUiSource();
+        var page = File.ReadAllText(Path.Combine(
+            managementUi,
+            "Components",
+            "Pages",
+            "ServiceAccounts.razor"));
+        var stylesheet = File.ReadAllText(Path.Combine(
+            managementUi,
+            "wwwroot",
+            "app.css"));
+
+        Assert.Contains("<SUITextField T=\"string\"", page, StringComparison.Ordinal);
+        Assert.Contains("<SUILoadingButton", page, StringComparison.Ordinal);
+        Assert.Contains("<SUIAlert", page, StringComparison.Ordinal);
+        Assert.Contains("data-sui-align-row", page, StringComparison.Ordinal);
+
+        // Nenhum botão cru: a tela inteira usa os componentes compartilhados.
+        Assert.DoesNotContain("class=\"button ", page, StringComparison.Ordinal);
+
+        // Classes que a página usa têm de existir na folha de estilo. Sem esta
+        // asserção, um nome inventado passa despercebido até alguém abrir a
+        // tela.
+        foreach (var required in new[]
+        {
+            ".sa-create",
+            ".sa-create__fields",
+            ".sa-create__roles",
+            ".sa-create__actions",
+            ".sa-role-picker",
+            ".service-account-secret",
+        })
+        {
+            Assert.Contains(required, stylesheet, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void Operator_token_form_uses_shared_sui_controls_and_aligned_fields()
     {
         var managementUi = ResolveManagementUiSource();
