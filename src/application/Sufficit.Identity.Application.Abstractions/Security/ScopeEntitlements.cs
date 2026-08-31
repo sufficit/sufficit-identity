@@ -18,10 +18,16 @@ public sealed record ScopeEntitlementClaim(string Type, string Value);
 /// the OpenIddict scope store, and the store is what OpenIddict consults when a
 /// client requests it — configuration was never required for a scope to work.
 /// Keeping the entitlement beside it means the pair is declared once, through
-/// the provisioning manifest or the management API, and reaches every replica
-/// the same way the scope itself does. With a replicated database that removes
-/// the per-server configuration edit entirely, along with the drift that comes
-/// from one host being updated and another not (eval 2026-08-30, F-2).
+/// the provisioning manifest, and reaches every replica the same way the scope
+/// itself does. With a replicated database that removes the per-server
+/// configuration edit entirely, along with the drift that comes from one host
+/// being updated and another not (eval 2026-08-30, F-2).
+/// <para>The management API's scope endpoints deliberately do NOT expose this:
+/// an entitlement grants a persisted claim to every user who approves the
+/// scope, which is a privilege-granting surface and needs its own capability
+/// gating rather than riding on ordinary scope editing. Earlier revisions of
+/// this remark claimed the management API could declare it; that was never
+/// true.</para>
 /// <para>The value is stored as a JSON array under
 /// <see cref="PropertyName"/> in the scope's <c>Properties</c> bag, the same
 /// mechanism the provisioning manifest already uses for its own metadata.</para>

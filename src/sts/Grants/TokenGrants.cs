@@ -213,6 +213,14 @@ public sealed class UserTokenGrantsHandler : ITokenGrantHandler
         grantedScopes = ops.ResolveImplicitMcpScopes(
             request.ClientId,
             grantedScopes);
+        // NOTE (eval 2026-08-30): this deliberately runs on refresh too, so a
+        // refresh token issued before scope-based entitlements existed repairs
+        // the user's access (see the device-flow test that pins it). The cost
+        // is that removing the claim from a user does NOT survive that user's
+        // next refresh — an entitlement revocation must therefore be paired
+        // with revoking the user's active grants, which the management API
+        // already does. Do not "fix" this by skipping refresh without deciding
+        // that trade-off first: the two behaviours are mutually exclusive.
         var entitlementResult = await ops.ProvisionScopeEntitlementsAsync(
             user,
             grantedScopes,
