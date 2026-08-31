@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace Sufficit.Identity.Tests;
@@ -357,19 +358,48 @@ public sealed partial class ManagementUiArchitectureTests
         // Classes que a página usa têm de existir na folha de estilo. Sem esta
         // asserção, um nome inventado passa despercebido até alguém abrir a
         // tela.
-        foreach (var required in new[]
-        {
-            ".sa-create",
-            ".sa-create__fields",
-            ".sa-create__roles",
-            ".sa-create__actions",
-            ".sa-role-picker",
-            ".service-account-secret",
-            ".sa-footnote",
-        })
-        {
-            Assert.Contains(required, stylesheet, StringComparison.Ordinal);
-        }
+        AssertEveryClassIsStyled(page, stylesheet);
+    }
+
+    /// <summary>
+    /// Toda classe escrita na página tem de existir na folha de estilo como
+    /// seletor próprio.
+    /// </summary>
+    /// <remarks>
+    /// A primeira versão disto era uma lista escrita à mão, e ela só continha
+    /// as classes que eu tinha lembrado de estilizar — justamente as certas.
+    /// <c>.service-account-alert</c> ficou de fora e chegou a produção sem
+    /// regra nenhuma, colando o cartão do segredo no aviso de baixo. Pior: a
+    /// comparação era por substring, então mesmo listada ela teria passado
+    /// casando dentro de <c>.service-account-alert__copy</c>. Derivar da própria
+    /// página e casar o token inteiro fecha os dois buracos de uma vez.
+    /// </remarks>
+    private static void AssertEveryClassIsStyled(string page, string stylesheet)
+    {
+        // Pega tanto o class= do HTML quanto o Class= dos componentes SUI.
+        var used = Regex
+            .Matches(page, "\\bclass\\s*=\\s*\"([^\"]*)\"", RegexOptions.IgnoreCase)
+            .SelectMany(match => match.Groups[1].Value.Split(
+                (char[]?)null,
+                StringSplitOptions.RemoveEmptyEntries))
+            // Valores calculados (@variavel, @(expressao)) não são nomes fixos.
+            .Where(token => !token.Contains('@', StringComparison.Ordinal))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.NotEmpty(used);
+
+        var orphans = used
+            .Where(token => !Regex.IsMatch(
+                stylesheet,
+                $@"\.{Regex.Escape(token)}(?![-\w])"))
+            .OrderBy(token => token, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.True(
+            orphans.Length == 0,
+            "Classes usadas na página sem regra na folha de estilo: "
+                + string.Join(", ", orphans));
     }
 
     [Fact]
