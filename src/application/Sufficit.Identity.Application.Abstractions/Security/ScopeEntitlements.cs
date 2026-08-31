@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace Sufficit.Identity.Application.Security;
@@ -49,7 +50,7 @@ public static class ScopeEntitlements
         {
             "role",
             "roles",
-            "http://schemas.microsoft.com/ws/2008/06/identity/claims/role",
+            ClaimTypes.Role,
             "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role",
             "scope",
             "scp",

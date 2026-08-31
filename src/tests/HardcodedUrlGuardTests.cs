@@ -53,6 +53,10 @@ public sealed class HardcodedUrlGuardTests
             "script endpoint of the configured human-verification provider"),
         ("https://www.google.com/recaptcha/api.js",
             "script endpoint of the configured human-verification provider"),
+        // This is a WS-Federation claim type identifier, not a destination.
+        // It is denied explicitly so a scope entitlement cannot mint roles.
+        ("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role",
+            "standard role claim type identifier used only for deny-list matching"),
     ];
 
     [Fact]

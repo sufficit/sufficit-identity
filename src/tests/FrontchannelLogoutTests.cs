@@ -1,10 +1,12 @@
 using System.Net;
+using System.Text;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.STS;
 using Sufficit.Identity.STS.Logout;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
@@ -24,10 +26,21 @@ public sealed class FrontchannelLogoutTests
         const string contextId = "frontchannel-test-context";
         await using (var scope = _factory.Services.CreateAsyncScope())
         {
+            const string payload = "[\"https://rp.tests.local/logout?existing=1\"]";
+            var state = scope.ServiceProvider.GetRequiredService<IProtocolStateStore>();
+            await state.SetAsync(
+                "frontchannel-logout",
+                contextId,
+                Encoding.UTF8.GetBytes(payload),
+                TimeSpan.FromMinutes(2));
+
+            // PrepareAsync writes both stores during rolling upgrades. Seed the
+            // same shape so the replay assertion proves ConsumeAsync removes
+            // the durable primary and its legacy cache mirror.
             var cache = scope.ServiceProvider.GetRequiredService<IDistributedCache>();
             await cache.SetStringAsync(
                 "oidc:frontchannel-logout:" + contextId,
-                "[\"https://rp.tests.local/logout?existing=1\"]");
+                payload);
         }
 
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
