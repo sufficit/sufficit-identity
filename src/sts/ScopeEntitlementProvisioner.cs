@@ -24,6 +24,22 @@ namespace Sufficit.Identity.STS;
 /// merged on top, for a deployment that prefers to pin the policy in its own
 /// configuration. It is empty by default, so the ordinary path costs nothing.
 /// </para>
+/// <para><b>When it runs.</b> On authorization_code, refresh_token and
+/// device_code. Running on refresh is deliberate — it repairs access for tokens
+/// issued before scope-based entitlements existed — but it has a real cost:
+/// removing the claim from a user does NOT survive that user's next refresh.
+/// <b>An entitlement revocation must therefore be paired with revoking the
+/// user's active grants</b>, which the management API already supports. The two
+/// behaviours (backfill on refresh, revocation that sticks) are mutually
+/// exclusive; this codebase chose backfill.
+/// It does NOT run on the password grant, which has no approval step at all —
+/// a scope obtained through ROPC was never consented to.</para>
+/// <para><b>Where it can be declared.</b> Only the provisioning manifest
+/// (<c>entitlementClaims</c>) writes the scope property today, plus the
+/// optional configuration map above. The management API's scope endpoints do
+/// NOT expose it — granting a persisted claim to every user who approves a
+/// scope is a privilege-granting surface, and adding it needs deliberate
+/// capability gating rather than riding on ordinary scope editing.</para>
 /// </remarks>
 public sealed class ScopeEntitlementProvisioner(
     UserManager<ApplicationUser> userManager,
