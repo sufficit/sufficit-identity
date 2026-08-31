@@ -7051,6 +7051,13 @@ h3 {
     flex: 0 0 auto;
 }
 
+/* O alerta do segredo é o único bloco da pilha da página sem margem própria —
+   os vizinhos (.sa-create, .inline-notice) já trazem 20px embaixo. Sem isto ele
+   encosta no aviso de sucesso logo abaixo e os dois cartões leem como um só. */
+.service-account-alert {
+    margin-bottom: 20px;
+}
+
 /* O segredo aparece uma única vez: bloco monoespaçado, quebrando em qualquer
    ponto para caber sem cortar. */
 .service-account-alert__copy {
