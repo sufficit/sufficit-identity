@@ -42,7 +42,7 @@ namespace Sufficit.Identity.STS;
 /// <summary>
 /// DI extensions that wire up the Sufficit Identity STS server
 /// (ASP.NET Core Identity + OpenIddict server/validation).
-
+/// </summary>
 public static partial class ServiceCollectionExtensions
 {
     private static void ValidateAdvancedProtocolOptions(SufficitIdentityOptions options)
@@ -53,6 +53,24 @@ public static partial class ServiceCollectionExtensions
         ValidateTokenFormatMap(
             options.Tokens.AccessTokenFormatsByResource,
             "Tokens:AccessTokenFormatsByResource");
+
+        // Nonce-based CSP works by rewriting the style-src directive. A policy
+        // that does not declare one (for example a deployment that folded
+        // styles into default-src) accepts Csp:UseNonce=true, publishes a nonce
+        // and renders nonce attributes while changing nothing — the fallback
+        // directive still carries 'unsafe-inline'. Silently doing nothing is
+        // the worst outcome for a security switch: it reads as enabled.
+        if (options.Csp.Enabled
+            && options.Csp.UseNonce
+            && !HasDirective(options.Csp.Policy, "style-src"))
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Identity:Csp:UseNonce=true requires the policy to declare "
+                + "a 'style-src' directive: the nonce is applied by rewriting it. "
+                + "Add style-src to Sufficit:Identity:Csp:Policy, or disable "
+                + "UseNonce so the setting does not claim protection it is not "
+                + "providing.");
+        }
 
         if (options.Mtls.Enabled
             && options.Mtls.DeploymentMode == MtlsDeploymentMode.Unattested)
@@ -183,4 +201,17 @@ public static partial class ServiceCollectionExtensions
                 $"Sufficit:Identity:{setting} contains an invalid or excessive exact-match token-format mapping.");
         }
     }
+
+    /// <summary>
+    /// Whether a CSP policy string declares the given directive.
+    /// </summary>
+    private static bool HasDirective(string? policy, string directive) =>
+        (policy ?? string.Empty)
+            .Split(';', StringSplitOptions.RemoveEmptyEntries
+                | StringSplitOptions.TrimEntries)
+            .Any(value =>
+                value.Equals(directive, StringComparison.OrdinalIgnoreCase)
+                || value.StartsWith(
+                    directive + " ",
+                    StringComparison.OrdinalIgnoreCase));
 }

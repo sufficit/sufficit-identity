@@ -129,6 +129,23 @@ script `092-retire-skoruba-identity-admin-api.sql` removes the superseded
 Skoruba Admin API scope, revokes tokens issued from its authorizations and
 removes only that permission from affected clients.
 
+`094-add-protocol-state-entries.sql` is **required** and easy to miss: it
+creates the `protocolstateentries` table that backs DPoP nonce challenges,
+front-channel logout context and passkey ceremony tickets. These used to live
+only in the in-process distributed cache, which silently stopped being shared
+the moment a deployment ran more than one replica (evaluation 2026-08-30, F-4).
+A host that provisions schema by SQL and skips this step does not fail at
+startup — it fails on the first DPoP nonce challenge and on every passkey
+ceremony, at runtime. Apply it before deploying that build.
+
+That same evaluation made `Sufficit:Identity:DeploymentTopology` a **required
+configuration key** outside Development: the production posture check refuses to
+start with `deployment-topology-undeclared` until the deployment states its
+shape (`SingleReplica`, `Clustered`, `BehindTrustedProxy` or
+`ClusteredBehindTrustedProxy`). Configurations derived from
+`src/server/appsettings.json.template` already declare it; one that trimmed the
+key must add it back.
+
 `011-add-openiddict-to-legacy.sql` intentionally does not use
 `CREATE TABLE IF NOT EXISTS`: encountering an existing protocol table is drift
 and must stop the rehearsal.
