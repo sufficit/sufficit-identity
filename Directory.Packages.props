@@ -6,8 +6,8 @@
   -->
   <ItemGroup>
     <!-- OpenIddict (Apache 2.0) -->
-    <PackageVersion Include="OpenIddict.AspNetCore" Version="7.6.0" />
-    <PackageVersion Include="OpenIddict.EntityFrameworkCore" Version="7.6.0" />
+    <PackageVersion Include="OpenIddict.AspNetCore" Version="7.6.1" />
+    <PackageVersion Include="OpenIddict.EntityFrameworkCore" Version="7.6.1" />
 
     <!-- External login providers -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.11" />
