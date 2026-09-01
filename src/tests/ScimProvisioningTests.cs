@@ -336,24 +336,37 @@ public sealed class ScimProvisioningTests
         await ((IAsyncLifetime)parent).InitializeAsync();
         using var factory = ScimFactory(parent, requireAuthorization: false);
 
+        // Capturado ANTES da requisição: o sinal é o PRÓXIMO lote gravado, e
+        // ler depois do GET poderia perder o lote que já passou.
+        //
+        // A versão anterior sondava a tabela por até 10 segundos de relógio.
+        // Isso passava com a máquina ociosa e falhava com ela carregada, e a
+        // falha ("audit era nulo") acusava a auditoria de não gravar quando o
+        // que faltou foi tempo. Esperar o evento termina assim que o worker
+        // grava; o limite abaixo existe só para não travar a suíte se ele
+        // morrer.
+        var queue = factory.Services.GetRequiredService<ScimAuditQueue>();
+        var flushed = queue.Flushed;
+
         using var response = await factory.CreateClient().GetAsync("/scim/v2/users");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        ManagementAuditEvent? audit = null;
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (DateTime.UtcNow < deadline)
+        // Esta é a única leitura SCIM do teste, então o próximo lote é o dela.
+        await flushed.WaitAsync(TimeSpan.FromSeconds(30));
+
+        // A contabilidade tem de refletir a tabela, senão o aviso de rastro
+        // incompleto no desligamento mente nas duas direções.
+        Assert.Equal(0, queue.Backlog);
+        Assert.Equal(0, queue.Dropped);
+        Assert.True(queue.Persisted >= 1);
+
+        ManagementAuditEvent? audit;
+        await using (var scope = factory.Services.CreateAsyncScope())
         {
-            await using var scope = factory.Services.CreateAsyncScope();
             var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             audit = await database.ManagementAuditEvents
                 .OrderByDescending(item => item.Id)
                 .FirstOrDefaultAsync(item => item.ReasonCode == "scim_users_listed");
-            if (audit is not null)
-            {
-                break;
-            }
-
-            await Task.Delay(50);
         }
 
         Assert.NotNull(audit);

@@ -55,17 +55,62 @@ internal sealed class ScimAuditQueue : IScimAuditQueue
             });
 
     private long _dropped;
+    private long _accepted;
+    private long _persisted;
+
+    // Substituída a cada lote gravado. Quem quer esperar a gravação lê a
+    // propriedade ANTES de provocar o trabalho e aguarda a Task capturada —
+    // ler depois perderia o sinal de um lote que já passou.
+    private TaskCompletionSource _flushed =
+        new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     public ChannelReader<ManagementAuditEvent> Reader => _channel.Reader;
 
     public long Dropped => Interlocked.Read(ref _dropped);
 
+    public long Accepted => Interlocked.Read(ref _accepted);
+
+    public long Persisted => Interlocked.Read(ref _persisted);
+
+    /// <summary>
+    /// Entradas aceitas que ainda não chegaram à tabela.
+    /// </summary>
+    /// <remarks>
+    /// Até aqui o único sinal era a contagem de descartes, e ela só era
+    /// relatada no desligamento. Uma fila que atrasa sem saturar não produzia
+    /// sinal nenhum: o rastro de leitura ficava incompleto e nada dizia isso.
+    /// </remarks>
+    public long Backlog => Accepted - Persisted;
+
+    /// <summary>
+    /// Completa na próxima gravação bem-sucedida de um lote.
+    /// </summary>
+    public Task Flushed => Volatile.Read(ref _flushed).Task;
+
     public void Enqueue(ManagementAuditEvent auditEvent)
     {
-        if (!_channel.Writer.TryWrite(auditEvent))
+        if (_channel.Writer.TryWrite(auditEvent))
+        {
+            Interlocked.Increment(ref _accepted);
+        }
+        else
         {
             Interlocked.Increment(ref _dropped);
         }
+    }
+
+    internal void MarkPersisted(int count)
+    {
+        Interlocked.Add(ref _persisted, count);
+
+        // Troca o gatilho antes de disparar o antigo, para que quem for
+        // aguardar o PRÓXIMO lote não receba o sinal deste.
+        Interlocked
+            .Exchange(
+                ref _flushed,
+                new TaskCompletionSource(
+                    TaskCreationOptions.RunContinuationsAsynchronously))
+            .SetResult();
     }
 }
 
@@ -102,6 +147,7 @@ internal sealed class ScimAuditWorker(
                     await databaseFactory.CreateDbContextAsync(stoppingToken);
                 database.ManagementAuditEvents.AddRange(batch);
                 await database.SaveChangesAsync(stoppingToken);
+                queue.MarkPersisted(batch.Count);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -129,6 +175,16 @@ internal sealed class ScimAuditWorker(
                 "{Dropped} SCIM read audit entries were dropped because the "
                 + "queue was saturated; the read trail is incomplete.",
                 queue.Dropped);
+        }
+
+        // Saturação não é a única forma de perder o rastro: o que ficou na fila
+        // no desligamento também não chegou à tabela.
+        if (queue.Backlog > 0)
+        {
+            logger.LogWarning(
+                "{Backlog} SCIM read audit entries were still queued at "
+                + "shutdown; the read trail is incomplete.",
+                queue.Backlog);
         }
     }
 }

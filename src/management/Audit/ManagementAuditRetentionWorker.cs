@@ -73,7 +73,14 @@ internal sealed class ManagementAuditRetentionWorker(
         }
     }
 
-    private async Task PruneAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Uma passada de poda. Interno porque o teste chama esta passada
+    /// diretamente: sincronizar com o laço de fundo só é possível dormindo, e
+    /// dormir o suficiente numa máquina ociosa é dormir de menos numa máquina
+    /// carregada. O agendamento não é o que o teste verifica — a regra de
+    /// retenção é.
+    /// </summary>
+    internal async Task PruneAsync(CancellationToken cancellationToken)
     {
         var retentionDays = optionsAccessor.Value.AuditRetentionDays;
         if (retentionDays <= 0)

@@ -288,10 +288,13 @@ public sealed class ManagementAuditVolumeTests
                 }),
                 NullLogger<ManagementAuditRetentionWorker>.Instance);
 
-            await worker.StartAsync(CancellationToken.None);
-            // The worker prunes immediately, then sleeps for its interval.
-            await Task.Delay(300);
-            await worker.StopAsync(CancellationToken.None);
+            // Executa a passada de poda diretamente, em vez de subir o serviço
+            // de fundo e dormir esperando que ele tenha terminado. Os 300ms que
+            // estavam aqui bastavam com a máquina ociosa e não bastavam com ela
+            // carregada — o teste falhava relatando 8 registros onde esperava 3,
+            // como se a retenção estivesse quebrada. O laço de agendamento não é
+            // o que este teste verifica.
+            await worker.PruneAsync(CancellationToken.None);
         }
 
         public async Task<int> CountAuditAsync()

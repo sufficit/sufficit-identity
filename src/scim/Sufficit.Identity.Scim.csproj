@@ -20,4 +20,8 @@
     <ProjectReference Include="..\core\Sufficit.Identity.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sufficit.Identity.Tests" />
+  </ItemGroup>
+
 </Project>

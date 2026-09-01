@@ -169,6 +169,7 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
             }
 
             ReplaceDatabaseWithSqlite(services, _connection);
+            BootstrapSchema();
         });
 
         builder.Configure(app =>
@@ -241,6 +242,36 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
             db.UseSqlite(connection);
             db.UseOpenIddict();
         });
+    }
+
+    /// <summary>
+    /// Cria o schema ANTES do host subir.
+    /// </summary>
+    /// <remarks>
+    /// Os <c>IHostedService</c> começam antes de
+    /// <see cref="IAsyncLifetime.InitializeAsync"/>, onde o
+    /// <c>EnsureCreatedAsync</c> ficava — então a retenção de auditoria e o
+    /// anel de chaves do DataProtection consultavam tabelas inexistentes no
+    /// arranque de TODO teste de gestão. Não era teoria: os logs mostravam
+    /// <c>no such table: managementauditevents</c> e
+    /// <c>no such table: dataprotectionkeys</c> em toda execução. O primeiro só
+    /// virava aviso engolido; o segundo é pior, porque o rascunho de cliente é
+    /// guardado com DataProtection, e uma chave que não persistiu no arranque
+    /// não é necessariamente a que vai desproteger depois.
+    /// <para>
+    /// O factory do STS já resolvia isto exatamente assim; este nunca adotou.
+    /// A chamada em <c>InitializeAsync</c> continua, idempotente, porque é ela
+    /// que semeia os dados de teste.
+    /// </para>
+    /// </remarks>
+    private void BootstrapSchema()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(_connection)
+            .UseOpenIddict()
+            .Options;
+        using var database = new AppDbContext(options);
+        database.Database.EnsureCreated();
     }
 
     async Task IAsyncLifetime.InitializeAsync()
