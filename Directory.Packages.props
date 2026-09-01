@@ -22,7 +22,7 @@
     <!-- Shared SUI component library (published from the sufficit-blazor-ui
          repository; consumed as a PACKAGE so builds and CI no longer depend
          on a sibling checkout). -->
-    <PackageVersion Include="Sufficit.Blazor.UI" Version="1.28.0" />
+    <PackageVersion Include="Sufficit.Blazor.UI" Version="2.2.1" />
 
     <!-- ASP.NET Core Data Protection key-ring persistence (P0 #B4) -->
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.11" />
