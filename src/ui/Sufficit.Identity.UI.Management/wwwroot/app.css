@@ -4025,6 +4025,46 @@ h3 {
     gap: 18px;
 }
 
+/* Campos SUI dentro de um formulário de gestão vestem a mesma caixa dos campos
+   nativos ao lado: alvo de toque de 44px, anel de foco da marca e rótulo do
+   mesmo peso. O componente continua dono do ritmo interno — rótulo, controle e
+   dica — e da alinhamento entre colunas; o que muda aqui é só a caixa. */
+.management-form .sui-form-grid + .sui-form-grid,
+.management-form .sui-form-grid + .field-group,
+.management-form .field-group + .sui-form-grid {
+    margin-top: 20px;
+}
+
+.management-form .sui-field__label {
+    color: var(--ink-strong);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.management-form .sui-field__input {
+    min-height: 44px;
+    height: auto;
+    padding: 9px 12px;
+    border-color: var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.4;
+}
+
+.management-form .sui-field__input:focus {
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px var(--brand-ring);
+}
+
+.management-form .sui-field__helper,
+.management-form .sui-field__error {
+    font-size: 12px;
+    line-height: 1.45;
+}
+
 .form-section {
     padding: 24px;
     border: 1px solid var(--line);
@@ -4251,6 +4291,14 @@ h3 {
 .field-group + .field-group,
 .choice-fieldset + .form-grid {
     margin-top: 20px;
+}
+
+/* Dentro de um grid quem separa é o gap. A margem acima é de empilhamento, mas
+   o seletor de irmão adjacente não sabe distinguir "abaixo" de "ao lado": em
+   .form-grid--two ela caía na SEGUNDA COLUNA e derrubava a coluna da direita
+   20px em relação à esquerda, desalinhando rótulos e controles. */
+.form-grid > .field-group + .field-group {
+    margin-top: 0;
 }
 
 .field-group {

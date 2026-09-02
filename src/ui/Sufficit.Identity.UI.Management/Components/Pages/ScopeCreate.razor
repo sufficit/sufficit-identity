@@ -38,7 +38,8 @@
 <EditForm Model="model"
           OnValidSubmit="CreateAsync"
           FormName="create-oauth-scope"
-          class="management-form">
+          class="management-form"
+          Context="definition">
     <DataAnnotationsValidator />
 
     <div class="form-section" aria-labelledby="scope-identity-heading">
@@ -46,33 +47,34 @@
             <h2 id="scope-identity-heading">Identificação</h2>
             <p>O nome faz parte do contrato OAuth e não poderá ser alterado após a criação.</p>
         </div>
-        <div class="form-grid form-grid--two">
-            <div class="field-group">
-                <label for="scope-name">Nome</label>
-                <InputText id="scope-name"
-                           class="form-control"
-                           autocomplete="off"
-                           @bind-Value="model.Name" />
-                <ValidationMessage For="() => model.Name" />
-                <span class="field-hint">Exemplo: <code>calendar.read</code> ou <code>urn:example:orders.write</code>.</span>
-            </div>
-            <div class="field-group">
-                <label for="scope-display-name">Nome de exibição <span class="label-optional">opcional</span></label>
-                <InputText id="scope-display-name"
-                           class="form-control"
-                           autocomplete="off"
-                           @bind-Value="model.DisplayName" />
-                <ValidationMessage For="() => model.DisplayName" />
-            </div>
-        </div>
-        <div class="field-group">
-            <label for="scope-description">Descrição <span class="label-optional">opcional</span></label>
-            <InputTextArea id="scope-description"
-                           class="form-control form-control--textarea"
-                           @bind-Value="model.Description" />
-            <ValidationMessage For="() => model.Description" />
-            <span class="field-hint">Explique de forma concreta o acesso concedido ao cliente.</span>
-        </div>
+        <SUIFormGrid Columns="2" Spacing="4" LabelLines="2">
+            <SUITextField T="string"
+                          id="scope-name"
+                          Label="Nome"
+                          HelperText="Exemplo: calendar.read ou urn:example:orders.write"
+                          MaxLength="200"
+                          ErrorText="@ErrorFor(definition, nameof(model.Name))"
+                          autocomplete="off"
+                          @bind-Value="model.Name" />
+            <SUITextField T="string"
+                          id="scope-display-name"
+                          Label="Nome de exibição (opcional)"
+                          HelperText="Rótulo apresentado ao usuário no consentimento."
+                          MaxLength="200"
+                          ErrorText="@ErrorFor(definition, nameof(model.DisplayName))"
+                          autocomplete="off"
+                          @bind-Value="model.DisplayName" />
+        </SUIFormGrid>
+        <SUIFormGrid Columns="1" Spacing="4">
+            <SUITextField T="string"
+                          id="scope-description"
+                          Label="Descrição (opcional)"
+                          HelperText="Explique de forma concreta o acesso concedido ao cliente."
+                          Multiline
+                          MaxLength="1000"
+                          ErrorText="@ErrorFor(definition, nameof(model.Description))"
+                          @bind-Value="model.Description" />
+        </SUIFormGrid>
     </div>
 
     <div class="form-section" aria-labelledby="scope-resources-heading">
@@ -80,13 +82,14 @@
             <h2 id="scope-resources-heading">Recursos protegidos</h2>
             <p>Informe os audiences que recebem este scope, um por linha.</p>
         </div>
-        <div class="field-group">
-            <label for="scope-resources">Resources / audiences <span class="label-optional">opcional</span></label>
-            <InputTextArea id="scope-resources"
-                           class="form-control form-control--textarea"
-                           @bind-Value="model.Resources" />
-            <span class="field-hint">Exemplo: <code>https://api.example.com/calendar</code></span>
-        </div>
+        <SUIFormGrid Columns="1" Spacing="4">
+            <SUITextField T="string"
+                          id="scope-resources"
+                          Label="Resources / audiences (opcional)"
+                          HelperText="Exemplo: https://api.example.com/calendar"
+                          Multiline
+                          @bind-Value="model.Resources" />
+        </SUIFormGrid>
     </div>
 
     <footer class="form-actions">
@@ -138,6 +141,16 @@
         (value ?? string.Empty).Split(
             ['\r', '\n'],
             StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+    /// <summary>
+    /// Entrega a mensagem de validação do campo ao próprio componente, em vez
+    /// de pendurar um &lt;ValidationMessage&gt; ao lado dele: dentro de um grid
+    /// de duas colunas, o elemento irmão vira uma célula e desloca a coluna
+    /// seguinte.
+    /// </summary>
+    private string? ErrorFor(EditContext context, string field) =>
+        context.GetValidationMessages(new FieldIdentifier(model, field))
+            .FirstOrDefault();
 
     private sealed class ScopeCreateModel
     {
