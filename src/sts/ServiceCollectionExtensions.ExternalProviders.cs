@@ -82,6 +82,9 @@ public static partial class ServiceCollectionExtensions
                 // only auto-confirms accounts with a provider-verified email
                 // (account-takeover fix). Google returns it as a JSON bool.
                 options.ClaimActions.MapJsonKey("email_verified", "email_verified", "boolean");
+                // Surface Google's profile photo url as the raw OIDC "picture" claim
+                // so the sign-in service can persist it for avatar consumption.
+                options.ClaimActions.MapJsonKey("picture", "picture");
             });
         }
 
