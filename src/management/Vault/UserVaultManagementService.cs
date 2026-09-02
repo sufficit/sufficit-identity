@@ -33,48 +33,39 @@ public sealed class UserVaultManagementService(
             cancellationToken);
         EnsureEnabled();
 
-        var personal = await database.VaultPersonalSecrets
-            .AsNoTracking()
-            .GroupBy(item => item.OwnerSubject)
-            .Select(group => new VaultOwnerAggregate(
-                group.Key,
-                group.Count(),
-                group.Max(item => item.UpdatedAtUtc)))
-            .ToArrayAsync(cancellationToken);
-        var managed = await database.VaultSecrets
+        // Both inventories come from one table now. What the user typed is the
+        // rows in the reserved personal namespace; everything else in a "user-"
+        // context was written by a connected application on their behalf.
+        var aggregates = await database.VaultSecrets
             .AsNoTracking()
             .Where(item => item.ContextId.StartsWith(UserContextPrefix)
                 && !item.Name.StartsWith(OAuthPendingPrefix))
-            .GroupBy(item => item.ContextId)
+            .GroupBy(item => new { item.ContextId, item.Namespace })
             .Select(group => new VaultOwnerAggregate(
-                group.Key,
+                group.Key.ContextId,
+                group.Key.Namespace,
                 group.Count(),
                 group.Max(item => item.UpdatedAtUtc)))
             .ToArrayAsync(cancellationToken);
 
         var owners = new Dictionary<string, MutableInventory>(
             StringComparer.OrdinalIgnoreCase);
-        foreach (var item in personal)
+        foreach (var item in aggregates)
         {
-            owners[item.OwnerSubject] = new MutableInventory
-            {
-                OwnerSubject = item.OwnerSubject,
-                PersonalSecretCount = item.Count,
-                LastUpdatedAtUtc = item.LastUpdatedAtUtc,
-            };
-        }
-
-        foreach (var item in managed)
-        {
-            if (item.OwnerSubject.Length <= UserContextPrefix.Length) continue;
-            var ownerSubject = item.OwnerSubject[UserContextPrefix.Length..];
+            if (item.ContextId.Length <= UserContextPrefix.Length) continue;
+            var ownerSubject = item.ContextId[UserContextPrefix.Length..];
             if (!owners.TryGetValue(ownerSubject, out var inventory))
             {
                 inventory = new MutableInventory { OwnerSubject = ownerSubject };
                 owners.Add(ownerSubject, inventory);
             }
 
-            inventory.ManagedCredentialCount = item.Count;
+            // Accumulated, not assigned: one owner now yields one group per
+            // namespace instead of a single group per context.
+            if (UserVaultPersonalSecretService.IsPersonal(item.Namespace))
+                inventory.PersonalSecretCount += item.Count;
+            else
+                inventory.ManagedCredentialCount += item.Count;
             inventory.LastUpdatedAtUtc = Latest(
                 inventory.LastUpdatedAtUtc,
                 item.LastUpdatedAtUtc);
@@ -136,26 +127,27 @@ public sealed class UserVaultManagementService(
             cancellationToken);
         EnsureEnabled();
 
-        var personal = await database.VaultPersonalSecrets
-            .AsNoTracking()
-            .Where(item => item.OwnerSubject == owner)
-            .OrderBy(item => item.Namespace)
-            .ThenBy(item => item.Name)
-            .Select(item => new UserVaultSecretMetadata(
-                item.Namespace,
-                item.Name,
-                item.UpdatedAtUtc,
-                item.UpdatedBy,
-                true))
-            .ToArrayAsync(cancellationToken);
-        var managedMetadata = await namedSecrets.ListAsync(
+        // One listing feeds both projections; the namespace decides which side
+        // a row belongs to, so a row can never appear in both.
+        var contextMetadata = await namedSecrets.ListAsync(
             ContextFor(owner),
             namespaces: null,
             cancellationToken);
-        var managed = managedMetadata
-            .Where(item => !item.Name.StartsWith(
-                OAuthPendingPrefix,
-                StringComparison.Ordinal))
+        var personal = contextMetadata
+            .Where(item => UserVaultPersonalSecretService.IsPersonal(item.Namespace))
+            .Select(item => new UserVaultSecretMetadata(
+                item.Namespace,
+                UserVaultPersonalSecretService.ToDisplayName(item.Name),
+                item.UpdatedAtUtc,
+                item.UpdatedBy,
+                true))
+            .OrderBy(item => item.Name, StringComparer.Ordinal)
+            .ToArray();
+        var managed = contextMetadata
+            .Where(item => !UserVaultPersonalSecretService.IsPersonal(item.Namespace)
+                && !item.Name.StartsWith(
+                    OAuthPendingPrefix,
+                    StringComparison.Ordinal))
             .Select(item => new UserVaultManagedCredentialMetadata(
                 item.Name,
                 item.Namespace,
@@ -201,7 +193,7 @@ public sealed class UserVaultManagementService(
     {
         var owner = NormalizeOwner(ownerSubject);
         var scope = VaultBackedSecretStore.NormalizeNamespace(@namespace);
-        var normalizedName = VaultBackedSecretStore.NormalizeName(name);
+        var storedName = UserVaultPersonalSecretService.ToStoredName(name);
         var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.VaultSecretsManage,
@@ -210,12 +202,16 @@ public sealed class UserVaultManagementService(
             auditDenial: true);
         EnsureEnabled();
 
-        var deleted = await database.VaultPersonalSecrets
-            .Where(item => item.OwnerSubject == owner
-                && item.Namespace == scope
-                && item.Name == normalizedName)
-            .ExecuteDeleteAsync(cancellationToken);
-        if (deleted == 0)
+        // Going through the same reserved mapping the writer uses is what keeps
+        // this operation confined to user-typed secrets: a connected credential
+        // is only reachable through DeleteManagedCredentialAsync, which audits
+        // under its own reason code.
+        var deleted = UserVaultPersonalSecretService.IsPersonal(scope)
+            && await namedSecrets.DeleteAsync(
+                storedName,
+                ContextFor(owner),
+                cancellationToken);
+        if (!deleted)
             throw new ManagementNotFoundException(
                 "personal_secret_not_found",
                 "Credencial pessoal não encontrada.");
@@ -235,7 +231,12 @@ public sealed class UserVaultManagementService(
     {
         var owner = NormalizeOwner(ownerSubject);
         var normalizedName = VaultBackedSecretStore.NormalizeName(name);
-        if (normalizedName.StartsWith(OAuthPendingPrefix, StringComparison.Ordinal))
+        // Mirror of DeletePersonalSecretAsync: a user-typed secret is not a
+        // connected credential, so it must not be removable — nor audited —
+        // through this path either.
+        if (normalizedName.StartsWith(OAuthPendingPrefix, StringComparison.Ordinal)
+            || UserVaultPersonalSecretService.IsPersonal(
+                VaultBackedSecretStore.GetNamespace(normalizedName)))
             throw new ManagementNotFoundException(
                 "managed_credential_not_found",
                 "Credencial conectada não encontrada.");
@@ -277,22 +278,28 @@ public sealed class UserVaultManagementService(
             auditDenial: true);
         EnsureEnabled();
 
-        var personalDeleted = await database.VaultPersonalSecrets
-            .Where(item => item.OwnerSubject == owner)
-            .ExecuteDeleteAsync(cancellationToken);
-        var managed = await namedSecrets.ListAsync(
+        // One sweep over the context, counted per side so the operator still
+        // sees what kind of data was removed. Pending OAuth handshake state is
+        // left alone: it expires on its own and clearing it mid-flow would break
+        // an authorization the user may be completing right now.
+        var contents = await namedSecrets.ListAsync(
             ContextFor(owner),
             namespaces: null,
             cancellationToken);
+        var personalDeleted = 0;
         var managedDeleted = 0;
-        foreach (var item in managed.Where(item => !item.Name.StartsWith(
+        foreach (var item in contents.Where(item => !item.Name.StartsWith(
                      OAuthPendingPrefix,
                      StringComparison.Ordinal)))
         {
-            if (await namedSecrets.DeleteAsync(
+            if (!await namedSecrets.DeleteAsync(
                     item.Name,
                     item.ContextId,
                     cancellationToken))
+                continue;
+            if (UserVaultPersonalSecretService.IsPersonal(item.Namespace))
+                personalDeleted++;
+            else
                 managedDeleted++;
         }
 
@@ -384,7 +391,8 @@ public sealed class UserVaultManagementService(
     }
 
     private sealed record VaultOwnerAggregate(
-        string OwnerSubject,
+        string ContextId,
+        string Namespace,
         int Count,
         DateTime LastUpdatedAtUtc);
 

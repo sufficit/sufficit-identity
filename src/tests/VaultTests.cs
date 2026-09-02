@@ -38,15 +38,15 @@ public sealed partial class VaultTests
     [Fact]
     public async Task Personal_secrets_are_scoped_by_owner_and_never_return_plaintext()
     {
-        var (vault, dbFactory) = CreateRealVault();
+        var options = new VaultOptions
+        {
+            Enabled = true,
+            SigningKeyOverlapSeconds = 1,
+        };
+        var (vault, dbFactory) = CreateRealVault(options);
         var service = new UserVaultPersonalSecretService(
-            dbFactory,
-            vault,
-            new VaultOptions
-            {
-                Enabled = true,
-                SigningKeyOverlapSeconds = 1,
-            });
+            new VaultBackedSecretStore(dbFactory, vault, options),
+            options);
 
         await service.PutAsync(
             "user-a", "personal", "provider/api-key",
@@ -62,12 +62,18 @@ public sealed partial class VaultTests
         Assert.Single(userB);
         Assert.Equal("user-a", userA[0].UpdatedBy);
         Assert.Equal("user-b", userB[0].UpdatedBy);
+        Assert.Equal("provider/api-key", userA[0].Name);
 
+        // Owners are separated by context, and the reserved root segment is what
+        // the store persists as the namespace.
         await using var database = await dbFactory.CreateDbContextAsync();
-        var stored = await database.VaultPersonalSecrets
-            .OrderBy(secret => secret.OwnerSubject)
+        var stored = await database.VaultSecrets
+            .OrderBy(secret => secret.ContextId)
             .ToArrayAsync();
         Assert.Equal(2, stored.Length);
+        Assert.Equal(["user-user-a", "user-user-b"], stored.Select(item => item.ContextId));
+        Assert.All(stored, item => Assert.Equal("personal", item.Namespace));
+        Assert.All(stored, item => Assert.Equal("personal/provider/api-key", item.Name));
         Assert.DoesNotContain("secret-a", stored[0].Ciphertext, StringComparison.Ordinal);
         Assert.DoesNotContain("secret-b", stored[1].Ciphertext, StringComparison.Ordinal);
 
@@ -76,8 +82,66 @@ public sealed partial class VaultTests
         Assert.Single(await service.ListAsync("user-b", "personal"));
     }
 
+    /// <summary>
+    /// Regression guard for the hazard created by merging user-typed secrets
+    /// into the table that also holds connected credentials: without the
+    /// reserved namespace, saving "oauth/tokens/github" under "integrations"
+    /// would overwrite the user's own GitHub credential. Fails if either layer
+    /// of the defence is removed.
+    /// </summary>
     [Fact]
-    public async Task Personal_overview_combines_legacy_and_managed_metadata_without_pending_oauth_state()
+    public async Task Personal_secrets_cannot_reach_the_namespaces_owned_by_connected_applications()
+    {
+        var options = new VaultOptions { Enabled = true };
+        var (vault, dbFactory) = CreateRealVault(options);
+        var named = new VaultBackedSecretStore(dbFactory, vault, options);
+        var service = new UserVaultPersonalSecretService(named, options);
+
+        await named.PutAsync(
+            "integrations/oauth/tokens/github",
+            "connected-credential",
+            "user-a",
+            "user-user-a");
+
+        // Layer one: an explicit non-personal namespace is refused, loudly.
+        var rejected = await Assert.ThrowsAsync<ArgumentException>(
+            () => service.PutAsync(
+                "user-a",
+                "integrations",
+                "oauth/tokens/github",
+                new SaveUserVaultSecret("attacker-value")));
+        Assert.Contains("reserved", rejected.Message, StringComparison.OrdinalIgnoreCase);
+
+        // Layer two: the same name accepted under the personal namespace lands
+        // beside the credential, never on top of it.
+        await service.PutAsync(
+            "user-a",
+            "personal",
+            "oauth/tokens/github",
+            new SaveUserVaultSecret("user-typed-value"));
+
+        Assert.Equal(
+            "connected-credential",
+            await named.GetSecretAsync(
+                "integrations/oauth/tokens/github",
+                "user-user-a"));
+        Assert.Equal(
+            "user-typed-value",
+            await named.GetSecretAsync(
+                "personal/oauth/tokens/github",
+                "user-user-a"));
+
+        // Deleting through the personal boundary cannot reach the credential.
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => service.DeleteAsync("user-a", "integrations", "oauth/tokens/github"));
+        await service.DeleteAsync("user-a", "personal", "oauth/tokens/github");
+        Assert.NotNull(await named.ResolveAsync(
+            "integrations/oauth/tokens/github",
+            "user-user-a"));
+    }
+
+    [Fact]
+    public async Task Personal_overview_combines_user_typed_and_managed_metadata_without_pending_oauth_state()
     {
         var options = new VaultOptions
         {
@@ -85,21 +149,18 @@ public sealed partial class VaultTests
             SigningKeyOverlapSeconds = 300,
         };
         var (vault, dbFactory) = CreateRealVault(options);
-        var personal = new UserVaultPersonalSecretService(
-            dbFactory,
-            vault,
-            options);
         var named = new VaultBackedSecretStore(
             dbFactory,
             vault,
             options);
+        var personal = new UserVaultPersonalSecretService(named, options);
         var overviewService = new UserVaultOverviewService(personal, named);
 
         await personal.PutAsync(
             "user-a",
             "personal",
             "provider/api-key",
-            new SaveUserVaultSecret("legacy-value"));
+            new SaveUserVaultSecret("user-typed-value"));
         await named.PutAsync(
             "integrations/oauth/tokens/github",
             "github-token",
@@ -145,6 +206,11 @@ public sealed partial class VaultTests
         Assert.DoesNotContain(
             overview.ManagedCredentials,
             item => item.Name.Contains("gitlab", StringComparison.Ordinal));
+        // The two UI sections must stay disjoint now that they read one table:
+        // a secret the user typed is never also a connected credential.
+        Assert.DoesNotContain(
+            overview.ManagedCredentials,
+            item => item.Namespace == UserVaultPersonalSecretService.PersonalNamespace);
     }
 
     // ---- EnvelopeCrypto (AES-256-GCM) ----

@@ -1,0 +1,30 @@
+-- 095-drop-vault-personal-secrets.sql
+--
+-- Retires `vaultpersonalsecrets`, the parallel table for user-owned secrets.
+--
+-- Why: the product shipped two designs for the same feature. Secrets typed by
+-- the user in the Vault UI went to `vaultpersonalsecrets`, while the personal
+-- Vault API (`/api/vault/personal/secrets`), the MCP tools and the OAuth
+-- integrations wrote to `vaultsecrets` under the caller's own `user-<sub>`
+-- context. Two tables meant two inventories of the same thing: the admin
+-- surface had to query both, the user's Vault page had to compose both, and a
+-- secret saved on a device was invisible to the one saved in the browser.
+-- User-typed secrets now live in `vaultsecrets` too, under the reserved
+-- `personal` namespace, which is what keeps them distinguishable from the
+-- credentials written by connected applications.
+--
+-- No data migration: the table held zero rows in production. Nothing was
+-- copied because there was nothing to copy, and nothing was lost.
+--
+-- Corresponds to EF migration 20260902194143_DropVaultPersonalSecrets.
+-- Idempotent: safe to re-run.
+--
+-- Verify before running, on any database that might not match production:
+--   SELECT COUNT(*) FROM `vaultpersonalsecrets`;
+-- A non-zero count means that deployment used the UI path and the rows must be
+-- re-keyed into `vaultsecrets` (context `user-<sub>`, name `personal/<name>`)
+-- before dropping. The values are envelope ciphertext bound by AAD to the old
+-- table's owner/namespace/name, so they cannot be moved by an UPDATE — they
+-- have to be decrypted and written back through the vault.
+
+DROP TABLE IF EXISTS `vaultpersonalsecrets`;

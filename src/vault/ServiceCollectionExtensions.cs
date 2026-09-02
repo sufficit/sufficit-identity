@@ -70,6 +70,9 @@ public static class ServiceCollectionExtensions
             services.TryAddSingleton<ISecretStore, EnvironmentSecretStore>();
         }
         services.TryAddScoped<IVaultNamedSecretStore, VaultBackedSecretStore>();
+        // User-typed secrets ride on the named-secret store, in the caller's own
+        // "user-<sub>" context, so the browser and the personal Vault API write
+        // to one inventory instead of two parallel tables.
         services.TryAddScoped<Sufficit.Identity.Management.Vault.IUserVaultService,
             UserVaultPersonalSecretService>();
         services.TryAddScoped<

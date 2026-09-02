@@ -100,14 +100,6 @@ public sealed class AppDbContext
     public DbSet<Entities.VaultSecret> VaultSecrets =>
         Set<Entities.VaultSecret>();
 
-    /// <summary>
-    /// User-owned Vault entries. These are separate from global operator
-    /// secrets so ownership is enforced by relational queries as well as the
-    /// application service.
-    /// </summary>
-    public DbSet<Entities.VaultPersonalSecret> VaultPersonalSecrets =>
-        Set<Entities.VaultPersonalSecret>();
-
     public DbSet<Entities.IdentityMetricsConfiguration> IdentityMetricsConfigurations =>
         Set<Entities.IdentityMetricsConfiguration>();
 
@@ -151,7 +143,6 @@ public sealed class AppDbContext
         OidcUserSessionMapping.Apply(builder);
         VaultKeyMapping.Apply(builder);
         VaultSecretMapping.Apply(builder);
-        VaultPersonalSecretMapping.Apply(builder);
         IdentityMetricsMapping.Apply(builder);
         ProtocolSecurityStateMapping.Apply(builder);
         OAuthClientCredentialMapping.Apply(builder);
