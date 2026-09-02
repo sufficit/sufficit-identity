@@ -81,7 +81,31 @@ public partial class AuthorizationController
         }
         catch (AntiforgeryValidationException ex)
         {
-            return BadRequest(new { error = "invalid_request", error_description = ex.Message });
+            // The token is bound to the authenticated principal, so a
+            // confirmation page that outlived its session fails this check:
+            // a second click, the back button, or a logout already performed
+            // in another tab. That is not an attack — the session is already
+            // gone, which is precisely what this endpoint was asked to
+            // achieve — and refusing turns "log me out" into a raw protocol
+            // error on a page the user can no longer act on.
+            //
+            // The CSRF protection this check exists for (#N2) is forcing a
+            // logout on a victim who IS signed in, so the refusal is kept for
+            // exactly that case and dropped for the other. Falling through
+            // reaches the same sign-out path the missing-cookie case already
+            // takes, which is a no-op followed by the validated
+            // post_logout_redirect_uri.
+            if (User?.Identity?.IsAuthenticated == true)
+            {
+                _logger.LogWarning(
+                    "Refused an end-session POST: antiforgery validation failed while a session was active. {Reason}",
+                    ex.Message);
+
+                return BadRequest(new { error = "invalid_request", error_description = ex.Message });
+            }
+
+            _logger.LogInformation(
+                "Accepted an end-session POST whose antiforgery token outlived its session; there is nothing left to sign out.");
         }
 
         // The Management recovery action must not immediately reuse the
