@@ -110,6 +110,11 @@ public sealed class CspOptions
         "default-src 'self'; " +
         "script-src 'self'; " +
         "style-src 'self' 'unsafe-inline'; " +
+        // Configured avatar origins (ManagementOptions.AvatarPictureOrigins)
+        // are appended to this directive at startup, so the allowlist and the
+        // header cannot drift apart. An origin permitted in one and missing
+        // from the other produces a broken avatar with no error anywhere —
+        // indistinguishable from a user who simply has none.
         "img-src 'self' data:; " +
         // 'self' covers the same-origin SignalR WebSocket upgrade — no need
         // for broad wss:/ws: wildcards that would allow XSS exfil to any host.

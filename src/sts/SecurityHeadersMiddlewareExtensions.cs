@@ -205,6 +205,19 @@ public static class SecurityHeadersMiddlewareExtensions
             options.Csp.Policy,
             options.HumanVerification);
 
+        // The console renders user avatars from these origins, so the header
+        // has to admit them. Composing it from the same setting that gates the
+        // rendering keeps the two from drifting: an origin allowed in only one
+        // of the pair yields a broken image and no diagnostic anywhere, which
+        // is indistinguishable from an account that has no avatar.
+        if (options.Management.AvatarPictureOrigins.Length > 0)
+        {
+            value = AddSources(
+                value,
+                "img-src",
+                options.Management.AvatarPictureOrigins);
+        }
+
         if (!string.IsNullOrEmpty(nonce))
         {
             value = ApplyStyleNonce(value, nonce);

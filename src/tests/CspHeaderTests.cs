@@ -50,6 +50,13 @@ public sealed class CspHeaderTests
             "img-src 'self' data:",
             csp,
             StringComparison.Ordinal);
+        // No avatar origin is configured in this fixture, so the directive must
+        // stay closed. The header is composed from the same setting that gates
+        // avatar rendering; an origin present in one and absent from the other
+        // renders a broken image and reports nothing, which looks exactly like
+        // an account with no avatar and so never gets filed as a bug.
+        Assert.DoesNotContain("img-src 'self' data: https:", csp, StringComparison.Ordinal);
+        Assert.DoesNotContain("img-src *", csp, StringComparison.Ordinal);
         Assert.Contains("connect-src 'self'", csp, StringComparison.Ordinal);
         // Tightened: no broad wss:/ws: wildcards (XSS exfil channel). 'self'
         // covers the same-origin SignalR WebSocket upgrade.

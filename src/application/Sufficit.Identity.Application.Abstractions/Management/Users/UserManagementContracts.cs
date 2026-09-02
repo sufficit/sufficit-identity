@@ -158,7 +158,8 @@ public sealed record ManagementUserSummary(
     bool TwoFactorEnabled,
     bool IsLockedOut,
     DateTime CreatedAtUtc = default,
-    bool HasExternalLogin = false);
+    bool HasExternalLogin = false,
+    string? PictureUrl = null);
 
 public sealed record ManagementUserActions(
     bool CanResetPassword,

@@ -188,6 +188,14 @@ internal sealed partial class UserManagementService
                 user.CreatedAtUtc,
                 HasExternalLogin = database.UserLogins.Any(login =>
                     login.UserId == user.Id),
+                // Correlated subquery rather than a join: the claim is absent
+                // for almost every account, and a join would drop or duplicate
+                // rows depending on its shape.
+                PictureUrl = database.UserClaims
+                    .Where(claim => claim.UserId == user.Id
+                        && claim.ClaimType == "picture")
+                    .Select(claim => claim.ClaimValue)
+                    .FirstOrDefault(),
                 IsLockedOut = user.LockoutEnd != null
                     && user.LockoutEnd > now
             })
@@ -201,7 +209,10 @@ internal sealed partial class UserManagementService
                 user.TwoFactorEnabled,
                 user.IsLockedOut,
                 user.CreatedAtUtc,
-                user.HasExternalLogin))
+                user.HasExternalLogin,
+                AvatarPictureHosts.Normalize(
+                    user.PictureUrl,
+                    managementOptions.Value.AvatarPictureOrigins)))
             .ToArray();
 
         // L3 fix (eval): no per-page audit row on read/list paths — the
