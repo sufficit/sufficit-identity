@@ -72,14 +72,15 @@ uma réplica de canário e depois em todas as réplicas. O guard de produção n
 depende de `RequireEncryptionInProduction`; essa propriedade permanece apenas
 por compatibilidade.
 
-Conte somente os marcadores legados persistidos, sem selecionar seus valores:
+Conte somente os marcadores legados persistidos, sem selecionar seus valores.
+A tabela `vaultpersonalsecrets` saiu da varredura porque foi removida pela
+migração `20260902194143_DropVaultPersonalSecrets`: os segredos digitados pelo
+usuário passaram a viver em `vaultsecrets`, no namespace reservado `personal`,
+e já são cobertos pela primeira linha da consulta.
 
 ```sql
 SELECT 'vaultsecrets.ciphertext' AS source, COUNT(*) AS legacy_count
 FROM vaultsecrets WHERE ciphertext LIKE 'pt1.%'
-UNION ALL
-SELECT 'vaultpersonalsecrets.ciphertext', COUNT(*)
-FROM vaultpersonalsecrets WHERE ciphertext LIKE 'pt1.%'
 UNION ALL
 SELECT 'identitymetricsconfiguration.secretciphertext', COUNT(*)
 FROM identitymetricsconfiguration WHERE secretciphertext LIKE 'pt1.%'

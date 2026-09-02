@@ -26,6 +26,11 @@ public static class IdentityDatabaseSchema
     public const string OidcUserSessionsMigrationId = "20260806131249_AddOidcUserSessions";
     public const string VaultKeysMigrationId = "20260806162913_AddVaultKeys"; // gitleaks:allow
     public const string VaultSecretsMigrationId = "20260808173938_AddVaultSecrets"; // gitleaks:allow
+    /// <summary>
+    /// Historical: the table this created was dropped by
+    /// <see cref="DropVaultPersonalSecretsMigrationId"/>. The id stays because
+    /// the row stays in the migration history of every database that applied it.
+    /// </summary>
     public const string VaultPersonalSecretsMigrationId = "20260808191220_AddVaultPersonalSecrets"; // gitleaks:allow
     public const string VaultSigningKeyJwkMigrationId = "20260808174200_AddVaultSigningKeyJwk"; // gitleaks:allow
     public const string VaultSigningKeyLifecycleMigrationId = "20260809224037_AddVaultSigningKeyLifecycle"; // gitleaks:allow
@@ -43,6 +48,13 @@ public static class IdentityDatabaseSchema
     /// passkey ceremony tickets (eval 2026-08-30, F-4).
     /// </summary>
     public const string ProtocolStateEntriesMigrationId = "20260830224108_AddProtocolStateEntries";
+
+    /// <summary>
+    /// Retires the parallel personal-secret table; user-typed secrets moved to
+    /// vaultsecrets under the reserved "personal" namespace. The table was empty
+    /// in production, so the drop carries no data migration.
+    /// </summary>
+    public const string DropVaultPersonalSecretsMigrationId = "20260902194143_DropVaultPersonalSecrets"; // gitleaks:allow
 
     /// <summary>
     /// Binary collation for opaque, case-sensitive utf8mb4 identifiers
@@ -149,6 +161,4 @@ public static class IdentityDatabaseSchema
     public const int VaultSecretContextLength = 64;
     public const int VaultSecretOwnerLength = 128;
     public const int VaultSecretUpdatedByLength = 128;
-    public const int VaultPersonalSecretOwnerLength = 255;
-    public const int VaultPersonalSecretNamespaceLength = 64;
 }

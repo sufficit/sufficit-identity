@@ -167,13 +167,12 @@ public sealed class DatabaseSchemaContractTests
             scimGroupMember.FindPrimaryKey()!.Properties.Select(
                 property => property.Name));
 
-        var personalSecret = RequiredEntity<VaultPersonalSecret>(model);
-        Assert.Equal("vaultpersonalsecrets", personalSecret.GetTableName());
-        AssertProperty(personalSecret, "OwnerSubject", "ownersubject", "varchar(255)", 255, nullable: false);
-        AssertProperty(personalSecret, "Namespace", "namespace", "varchar(64)", 64, nullable: false);
-        AssertProperty(personalSecret, "Ciphertext", "ciphertext", "longtext", null, nullable: false);
-        AssertIndex(personalSecret, "AK_vaultpersonalsecrets_owner_namespace_name", unique: true,
-            "OwnerSubject", "Namespace", "Name");
+        // vaultpersonalsecrets is gone: user-typed secrets are now rows in
+        // vaultsecrets under the reserved "personal" namespace, so the model
+        // must not carry the retired entity any more.
+        Assert.DoesNotContain(
+            model.GetEntityTypes(),
+            entity => entity.GetTableName() == "vaultpersonalsecrets");
 
         var namedSecret = RequiredEntity<VaultSecret>(model);
         Assert.Equal("vaultsecrets", namedSecret.GetTableName());
@@ -213,6 +212,7 @@ public sealed class DatabaseSchemaContractTests
             IdentityDatabaseSchema.VaultSecretExpirationMigrationId,
             IdentityDatabaseSchema.OAuthClientCredentialsMigrationId,
             IdentityDatabaseSchema.ProtocolStateEntriesMigrationId,
+            IdentityDatabaseSchema.DropVaultPersonalSecretsMigrationId,
         ], context.Database.GetMigrations());
 
         var history = context.GetService<IHistoryRepository>().GetCreateScript();

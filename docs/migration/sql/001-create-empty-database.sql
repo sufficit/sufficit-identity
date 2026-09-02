@@ -731,3 +731,11 @@ VALUES ('20260830224108_AddProtocolStateEntries', '10.0.11');
 
 COMMIT;
 
+START TRANSACTION;
+DROP TABLE `vaultpersonalsecrets`;
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260902194143_DropVaultPersonalSecrets', '10.0.11');
+
+COMMIT;
+

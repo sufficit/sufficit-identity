@@ -3,16 +3,18 @@ using Sufficit.Identity.Management.Vault;
 namespace Sufficit.Identity.Vault;
 
 /// <summary>
-/// Composes the original user-managed Vault with subject-bound named secrets
-/// used by integrations. OAuth handshake state is deliberately omitted: it is
-/// transient protocol material, not a credential the user can act on.
+/// Composes the user-managed Vault with subject-bound named secrets used by
+/// integrations. OAuth handshake state is deliberately omitted: it is transient
+/// protocol material, not a credential the user can act on.
 /// </summary>
 public sealed class UserVaultOverviewService(
     IUserVaultService personalSecrets,
     IVaultNamedSecretStore namedSecrets) : IUserVaultOverviewService
 {
-    private const string PersonalNamespace = "personal";
-    private const string PersonalContextPrefix = "user-";
+    private const string PersonalNamespace =
+        UserVaultPersonalSecretService.PersonalNamespace;
+    private const string PersonalContextPrefix =
+        UserVaultPersonalSecretService.PersonalContextPrefix;
     private const string OAuthPendingPrefix = "integrations/oauth/pending/";
     private const string OAuthTokenPrefix = "integrations/oauth/tokens/";
 
@@ -37,10 +39,14 @@ public sealed class UserVaultOverviewService(
         var personal = await personalTask;
         var named = await namedTask;
 
+        // Both lists now come from the same table, so the reserved namespace is
+        // what keeps the two UI sections disjoint: without this filter a secret
+        // the user typed would also be reported as a connected credential.
         var managed = named
-            .Where(item => !item.Name.StartsWith(
-                OAuthPendingPrefix,
-                StringComparison.Ordinal))
+            .Where(item => !UserVaultPersonalSecretService.IsPersonal(item.Namespace)
+                && !item.Name.StartsWith(
+                    OAuthPendingPrefix,
+                    StringComparison.Ordinal))
             .Select(item => new UserVaultManagedCredentialMetadata(
                 item.Name,
                 item.Namespace,

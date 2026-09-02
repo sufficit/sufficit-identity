@@ -19,14 +19,11 @@ public sealed partial class VaultTests
     {
         var options = new VaultOptions { Enabled = true };
         var (vault, dbFactory) = CreateRealVault(options);
-        var personal = new UserVaultPersonalSecretService(
-            dbFactory,
-            vault,
-            options);
         var named = new VaultBackedSecretStore(
             dbFactory,
             vault,
             options);
+        var personal = new UserVaultPersonalSecretService(named, options);
 
         await personal.PutAsync(
             "user-a",
