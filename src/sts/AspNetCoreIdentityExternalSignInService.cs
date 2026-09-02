@@ -97,6 +97,14 @@ public sealed class AspNetCoreIdentityExternalSignInService(
         cancellationToken.ThrowIfCancellationRequested();
         if (signIn.Succeeded)
         {
+            // Best-effort: capture the provider's profile picture url (consented data)
+            // so downstream avatar flows can consume it without extra provider calls.
+            await PersistPictureClaimAsync(
+                userManager,
+                linkedUser,
+                info.Principal.FindFirst(PictureClaimType)?.Value,
+                cancellationToken);
+
             logger.LogInformation(
                 "User completed external sign-in through {Provider}. "
                 + "Persistent={Persistent}; RememberedMfa={RememberedMfa}; "
@@ -215,6 +223,14 @@ public sealed class AspNetCoreIdentityExternalSignInService(
                 ErrorCode: "external-identity-link-failed");
         }
 
+        // Best-effort: capture the provider's profile picture url on registration too,
+        // so a brand-new external account already carries it.
+        await PersistPictureClaimAsync(
+            userManager,
+            user,
+            info.Principal.FindFirst(PictureClaimType)?.Value,
+            cancellationToken);
+
         // M5 fix (eval M5): gate the post-creation sign-in on the SAME policy
         // every token grant uses (CanSignInAsync), so RequireConfirmedEmail is
         // honored on the interactive path — not only on /connect/token. Without
@@ -261,4 +277,74 @@ public sealed class AspNetCoreIdentityExternalSignInService(
             rememberedMfa
                 ? "urn:sufficit:acr:loa2"
                 : "urn:sufficit:acr:loa1"));
+
+    /// <summary>
+    /// The OIDC claim type the service persists from the external provider principal.
+    /// </summary>
+    const string PictureClaimType = "picture";
+
+    /// <summary>
+    /// Persists (add or replace) the provider's picture url claim on the user.
+    /// Best-effort by design: any failure is logged and never blocks the sign-in.
+    /// </summary>
+    async Task PersistPictureClaimAsync(
+        UserManager<ApplicationUser> userManager,
+        ApplicationUser? user,
+        string? pictureUrl,
+        CancellationToken cancellationToken)
+    {
+        if (user is null || string.IsNullOrWhiteSpace(pictureUrl))
+        {
+            return;
+        }
+
+        try
+        {
+            var existing = (await userManager.GetClaimsAsync(user))
+                .FirstOrDefault(claim => string.Equals(
+                    claim.Type,
+                    PictureClaimType,
+                    StringComparison.Ordinal));
+            if (existing is null)
+            {
+                var add = await userManager.AddClaimAsync(
+                    user,
+                    new Claim(PictureClaimType, pictureUrl));
+                if (!add.Succeeded)
+                {
+                    logger.LogWarning(
+                        "External picture claim persistence (add) failed for {UserId}: {Codes}.",
+                        user.Id,
+                        string.Join(',', add.Errors.Select(error => error.Code)));
+                }
+            }
+            else if (!string.Equals(existing.Value, pictureUrl, StringComparison.Ordinal))
+            {
+                // Google rotates picture urls: replace whenever the value changed
+                // so consumers always hold the current one.
+                var replace = await userManager.ReplaceClaimAsync(
+                    user,
+                    existing,
+                    new Claim(PictureClaimType, pictureUrl));
+                if (!replace.Succeeded)
+                {
+                    logger.LogWarning(
+                        "External picture claim persistence (replace) failed for {UserId}: {Codes}.",
+                        user.Id,
+                        string.Join(',', replace.Errors.Select(error => error.Code)));
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(
+                "External picture claim persistence failed for {UserId}: {Message}.",
+                user.Id,
+                ex.Message);
+        }
+    }
 }

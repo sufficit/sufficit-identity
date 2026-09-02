@@ -394,9 +394,20 @@ public partial class AuthorizationController : Controller
             claims[Claims.Name] = displayName ?? await _userManager.GetUserNameAsync(user);
             claims[Claims.PreferredUsername] = await _userManager.GetUserNameAsync(user);
 
-            var avatarUrl = await _avatarUrlResolver.ResolveAsync(
-                userId,
-                HttpContext.RequestAborted);
+            // Prefer the picture captured from a consented external provider sign-in
+            // (refreshed on every external login); fall back to the branding theme.
+            var avatarUrl = persistedClaims
+                .LastOrDefault(claim => string.Equals(
+                    claim.Type,
+                    Claims.Picture,
+                    StringComparison.Ordinal))
+                ?.Value;
+            if (string.IsNullOrWhiteSpace(avatarUrl))
+            {
+                avatarUrl = await _avatarUrlResolver.ResolveAsync(
+                    userId,
+                    HttpContext.RequestAborted);
+            }
             if (!string.IsNullOrWhiteSpace(avatarUrl))
             {
                 claims[Claims.Picture] = avatarUrl;
