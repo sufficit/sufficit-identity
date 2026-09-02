@@ -252,6 +252,176 @@ public sealed class AuthorizationCodeFlowTests
             response.Headers.Location?.OriginalString);
     }
 
+    /// <summary>
+    /// The real browser flow: the confirmation page mints the antiforgery
+    /// token while the user is signed in, and the POST arrives with that same
+    /// session.
+    /// </summary>
+    /// <remarks>
+    /// The idempotent test above cannot catch a claim-identity mismatch: it
+    /// mints the token anonymously and posts anonymously, so the two halves
+    /// agree by construction. ASP.NET binds the antiforgery token to the
+    /// authenticated principal, so only a signed-in round trip exercises that
+    /// comparison — which is the one production reported failing with
+    /// "the provided antiforgery token was meant for a different claims-based
+    /// user than the current user".
+    /// </remarks>
+    [Fact]
+    public async Task End_session_post_succeeds_for_a_signed_in_user()
+    {
+        var username = $"endsession-signed-in-{Guid.NewGuid():N}";
+        const string password = "Str0ng!Passw0rd#EndSession";
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            await TestDataSeeder.CreateUserAsync(userManager, username, password);
+        }
+
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+        await TestOnlyEndpoints.SignInAsync(client, username);
+
+        var antiforgeryToken = await TestOnlyEndpoints.GetAntiforgeryTokenAsync(client);
+
+        using var response = await client.PostAsync(
+            "/connect/endsession",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["post_logout_redirect_uri"] =
+                    TestDataSeeder.AuthorizationCodePostLogoutRedirectUri,
+                ["state"] = "signed-in-logout",
+                ["__RequestVerificationToken"] = antiforgeryToken,
+            }));
+
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.True(
+            response.StatusCode == HttpStatusCode.Redirect,
+            $"expected a redirect, got {(int)response.StatusCode}: {body}");
+        Assert.Equal(
+            TestDataSeeder.AuthorizationCodePostLogoutRedirectUri
+                + "?state=signed-in-logout",
+            response.Headers.Location?.OriginalString);
+    }
+
+    /// <summary>
+    /// The stale confirmation page: the token was minted for a session that no
+    /// longer exists by the time the user confirms.
+    /// </summary>
+    /// <remarks>
+    /// This is what a second click, a back button or a logout already
+    /// performed in another tab produces. Logging out twice must be a no-op
+    /// that still lands the user on the post-logout page, not a raw protocol
+    /// error — the session is gone either way, which is what the caller asked
+    /// for.
+    /// </remarks>
+    [Fact]
+    public async Task End_session_post_is_idempotent_when_the_page_outlived_the_session()
+    {
+        var username = $"endsession-stale-{Guid.NewGuid():N}";
+        const string password = "Str0ng!Passw0rd#Stale";
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            await TestDataSeeder.CreateUserAsync(userManager, username, password);
+        }
+
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+        await TestOnlyEndpoints.SignInAsync(client, username);
+
+        // Rendered while signed in ...
+        var antiforgeryToken = await TestOnlyEndpoints.GetAntiforgeryTokenAsync(client);
+
+        // ... and confirmed after the session ended.
+        using (var first = await client.PostAsync(
+            "/connect/endsession",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["post_logout_redirect_uri"] =
+                    TestDataSeeder.AuthorizationCodePostLogoutRedirectUri,
+                ["state"] = "first",
+                ["__RequestVerificationToken"] = antiforgeryToken,
+            })))
+        {
+            Assert.Equal(HttpStatusCode.Redirect, first.StatusCode);
+        }
+
+        using var second = await client.PostAsync(
+            "/connect/endsession",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["post_logout_redirect_uri"] =
+                    TestDataSeeder.AuthorizationCodePostLogoutRedirectUri,
+                ["state"] = "second",
+                ["__RequestVerificationToken"] = antiforgeryToken,
+            }));
+
+        var body = await second.Content.ReadAsStringAsync();
+        Assert.True(
+            second.StatusCode == HttpStatusCode.Redirect,
+            $"a repeated logout must still redirect, got {(int)second.StatusCode}: {body}");
+    }
+
+    /// <summary>
+    /// The half of the antiforgery check that still has to hold: a page the
+    /// user did not come from must not be able to end an ACTIVE session.
+    /// </summary>
+    /// <remarks>
+    /// The stale-token case above is deliberately allowed through. This test
+    /// exists so that relaxation cannot quietly widen into "logout never
+    /// checks anything" — the two cases are distinguished by whether there is
+    /// a session left to protect, and only this one has one.
+    /// </remarks>
+    [Fact]
+    public async Task End_session_post_still_refuses_to_terminate_an_active_session_without_a_token()
+    {
+        var username = $"endsession-csrf-{Guid.NewGuid():N}";
+        const string password = "Str0ng!Passw0rd#Csrf";
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            await TestDataSeeder.CreateUserAsync(userManager, username, password);
+        }
+
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+        await TestOnlyEndpoints.SignInAsync(client, username);
+
+        using var forged = await client.PostAsync(
+            "/connect/endsession",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["post_logout_redirect_uri"] =
+                    TestDataSeeder.AuthorizationCodePostLogoutRedirectUri,
+                ["state"] = "forced",
+            }));
+
+        Assert.Equal(HttpStatusCode.BadRequest, forged.StatusCode);
+
+        // And the session must have survived the attempt.
+        var antiforgeryToken = await TestOnlyEndpoints.GetAntiforgeryTokenAsync(client);
+        using var genuine = await client.PostAsync(
+            "/connect/endsession",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["post_logout_redirect_uri"] =
+                    TestDataSeeder.AuthorizationCodePostLogoutRedirectUri,
+                ["state"] = "still-here",
+                ["__RequestVerificationToken"] = antiforgeryToken,
+            }));
+
+        Assert.Equal(HttpStatusCode.Redirect, genuine.StatusCode);
+    }
+
     [Fact]
     public async Task Authorization_code_remaps_a_legacy_string_address_claim()
     {
