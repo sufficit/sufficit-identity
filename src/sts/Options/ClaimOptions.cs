@@ -36,6 +36,15 @@ public sealed class ClaimScopeMapOptions
     public Dictionary<string, string> ClaimToScope { get; init; } = new(StringComparer.Ordinal)
     {
         ["directive"] = "directives",
+
+        // Same grant, same gate, whichever name it is stored under. Without
+        // this entry a grant persisted as "entitlements" would fall to the
+        // unmapped branch and — while the compatibility bridge below is on —
+        // reach the access token WITHOUT the scope check, handing the user's
+        // full authorization set to a client that asked only for openid. The
+        // scope stays "directives" because clients already request it; the
+        // point is to make the stored name irrelevant, not to add a hoop.
+        ["entitlements"] = "directives",
     };
 
     /// <summary>

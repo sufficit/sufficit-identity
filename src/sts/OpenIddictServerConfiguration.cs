@@ -311,6 +311,12 @@ public static partial class ServiceCollectionExtensions
                 serverOptions.CodeChallengeMethods.Remove(CodeChallengeMethods.Plain));
         }
 
+        // Unconditional: it decouples the stored claim name from the emitted
+        // one, so it must hold for every deployment and every flow. Gating it
+        // behind an option would mean the storage rename is safe on some hosts
+        // and silently breaking on others.
+        server.AddEventHandler(ProjectEntitlementClaimUnderBothNames.Descriptor);
+
         if (options.Dpop.Enabled)
         {
             server.AddEventHandler(Dpop.AttachDpopConfirmation.Descriptor);

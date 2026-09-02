@@ -400,4 +400,116 @@ public sealed class ClaimScopeMapTests
         descriptor.Permissions.Add(Permissions.Prefixes.Scope + DirectiveScopeName);
         await appManager.UpdateAsync(authorizationCodeClient, descriptor);
     }
+
+    // ------------------------------------------------------------------
+    // Storage name vs wire name.
+    //
+    // The persisted claim type used to travel straight into the token, which
+    // made renaming it in the database a breaking change for every consumer at
+    // once. These pin the decoupling: both names are emitted whichever one the
+    // grant is stored as, so the migration is invisible — and, critically, the
+    // second name inherits the scope gate instead of bypassing it.
+    // ------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("directive")]
+    [InlineData("entitlements")]
+    public async Task Both_names_reach_the_token_whichever_one_the_grant_is_stored_under(
+        string storedClaimType)
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(MapConfiguration());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await ProvisionDirectiveScopeAndClientAsync(factory);
+
+        var username = $"csm-both-{Guid.NewGuid():N}";
+        const string password = "Str0ng!Passw0rd#Both";
+        var value = $"phonecalls:{Guid.NewGuid():N}";
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await TestDataSeeder.CreateUserAsync(userManager, username, password);
+            await userManager.AddClaimAsync(user, new Claim(storedClaimType, value));
+        }
+
+        var body = await IntrospectAsync(factory, username, password,
+            $"{TestDataSeeder.ScopeName} {DirectiveScopeName}");
+
+        Assert.True(body.GetProperty("active").GetBoolean());
+        foreach (var emitted in new[] { "directive", "entitlements" })
+        {
+            Assert.True(
+                body.TryGetProperty(emitted, out var claim),
+                $"stored as '{storedClaimType}', but '{emitted}' is missing from the token");
+            Assert.Contains(value, Values(claim));
+        }
+    }
+
+    /// <summary>
+    /// The half that must not regress: the second name is a projection of a
+    /// gated claim, never a way around the gate.
+    /// </summary>
+    [Theory]
+    [InlineData("directive")]
+    [InlineData("entitlements")]
+    public async Task Neither_name_reaches_a_token_lacking_the_mapped_scope(
+        string storedClaimType)
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(MapConfiguration());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await ProvisionDirectiveScopeAndClientAsync(factory);
+
+        var username = $"csm-nogate-{Guid.NewGuid():N}";
+        const string password = "Str0ng!Passw0rd#Gate";
+        var value = $"telephonyadmin:{Guid.NewGuid():N}";
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await TestDataSeeder.CreateUserAsync(userManager, username, password);
+            await userManager.AddClaimAsync(user, new Claim(storedClaimType, value));
+        }
+
+        // Deliberately WITHOUT the mapped scope.
+        var body = await IntrospectAsync(factory, username, password, TestDataSeeder.ScopeName);
+
+        Assert.True(body.GetProperty("active").GetBoolean());
+        foreach (var emitted in new[] { "directive", "entitlements" })
+        {
+            Assert.False(
+                body.TryGetProperty(emitted, out _),
+                $"stored as '{storedClaimType}': '{emitted}' leaked into a token whose scope set lacks '{DirectiveScopeName}'");
+        }
+    }
+
+    private static IEnumerable<string> Values(JsonElement claim) =>
+        claim.ValueKind == JsonValueKind.Array
+            ? claim.EnumerateArray().Select(item => item.GetString() ?? string.Empty)
+            : [claim.GetString() ?? string.Empty];
+
+    private static async Task<JsonElement> IntrospectAsync(
+        SufficitIdentityTestFactory factory, string username, string password, string scope)
+    {
+        var client = factory.CreateClient();
+        var (tokenStatus, tokenBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "password",
+            ["username"] = username,
+            ["password"] = password,
+            ["client_id"] = MappedClientId,
+            ["client_secret"] = MappedClientSecret,
+            ["scope"] = scope,
+        });
+        Assert.Equal(HttpStatusCode.OK, tokenStatus);
+        var accessToken = tokenBody.GetProperty("access_token").GetString();
+        Assert.False(string.IsNullOrEmpty(accessToken));
+
+        client.DefaultRequestHeaders.Authorization = IntrospectionTests.BasicAuthFor(
+            TestDataSeeder.IntrospectionClientId, TestDataSeeder.IntrospectionClientSecret);
+        var (_, introspectBody) = await client.PostFormAsync("/connect/introspect", new Dictionary<string, string>
+        {
+            ["token"] = accessToken!,
+        });
+        return introspectBody;
+    }
 }
