@@ -12,6 +12,21 @@ public sealed class ManagementOptions
     public string RoutePrefix { get; init; } = "api";
 
     /// <summary>
+    /// Image origins (scheme + host, no path) the console may load user avatars
+    /// from, e.g. the identity provider that issues the <c>picture</c> claim.
+    /// </summary>
+    /// <remarks>
+    /// Empty by default, so avatars fall back to initials until a deployment
+    /// opts in. The <c>picture</c> claim is untrusted — it comes from an
+    /// external provider or from what a user typed — and an unfiltered value
+    /// would make every operator's browser call an address the listed account
+    /// chose. Each entry must also appear in the Content-Security-Policy
+    /// <c>img-src</c> directive; the header is composed from this list so the
+    /// two cannot drift apart.
+    /// </remarks>
+    public string[] AvatarPictureOrigins { get; init; } = [];
+
+    /// <summary>
     /// When true (default), the management endpoints require an access token
     /// carrying the configured scope. Setting false makes the whole management
     /// API anonymous and is <b>rejected at composition time outside

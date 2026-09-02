@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
@@ -21,6 +22,7 @@ internal sealed partial class UserManagementService(
     IIdentityAccountLifecycleService accountLifecycle,
     IAccountOnboardingService accountOnboarding,
     ISecurityEventTrigger securityEvents,
+    IOptions<ManagementOptions> managementOptions,
     ILogger<UserManagementService> logger) : IUserManagementService
 {
 

@@ -7087,3 +7087,35 @@ h3 {
 .sa-capabilities li {
     margin: 2px 0;
 }
+
+/* Avatar na listagem de usuários.
+   A maioria das contas não tem claim `picture`, então as iniciais são o estado
+   normal, não a exceção: precisam ficar tão apresentáveis quanto a foto. */
+.user-identity {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-width: 0;
+}
+
+.user-avatar {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--sui-surface-muted, #eceff3);
+}
+
+.user-avatar--initials {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--sui-text-muted, #55606e);
+    /* user-select: a inicial não é conteúdo — copiar a linha não deve trazê-la
+       grudada no nome. */
+    user-select: none;
+}

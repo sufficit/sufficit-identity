@@ -239,7 +239,25 @@ else
                             @foreach (var user in Page.Items)
                             {
                                 <tr>
-                                    <td data-label="Usuário"><a class="client-name client-link" href="@UserHref(user.Id)">@DisplayUserName(user)</a></td>
+                                    <td data-label="Usuário">
+                                        <span class="user-identity">
+                                            @*
+                                                referrerpolicy: the avatar host must not learn which
+                                                console page an operator is looking at.
+                                            *@
+                                            @if (user.PictureUrl is not null)
+                                            {
+                                                <img class="user-avatar" src="@user.PictureUrl" alt=""
+                                                     referrerpolicy="no-referrer" loading="lazy"
+                                                     width="28" height="28" />
+                                            }
+                                            else
+                                            {
+                                                <span class="user-avatar user-avatar--initials" aria-hidden="true">@InitialsFor(user)</span>
+                                            }
+                                            <a class="client-name client-link" href="@UserHref(user.Id)">@DisplayUserName(user)</a>
+                                        </span>
+                                    </td>
                                     <td data-label="E-mail">
                                         <span class="user-email">
                                             <span>@DisplayEmail(user)</span>
@@ -402,6 +420,18 @@ else
     private static string UserHref(string id) => $"users/{Uri.EscapeDataString(id)}";
     private static string DisplayUserName(ManagementUserSummary user) => string.IsNullOrWhiteSpace(user.UserName) ? user.Email ?? user.Id : user.UserName;
     private static string DisplayEmail(ManagementUserSummary user) => string.IsNullOrWhiteSpace(user.Email) ? "Não informado" : user.Email;
+    /// <summary>
+    /// Fallback avatar for the accounts that carry no usable picture — which is
+    /// nearly all of them. Takes the first letter of the display name; a name
+    /// that starts with punctuation or a digit yields "?" rather than a
+    /// confusing glyph.
+    /// </summary>
+    private static string InitialsFor(ManagementUserSummary user)
+    {
+        var source = DisplayUserName(user);
+        var first = source.FirstOrDefault(char.IsLetter);
+        return first == default ? "?" : char.ToUpperInvariant(first).ToString();
+    }
     private static string Pluralize(int count, string singular, string plural) => count is 1 ? singular : plural;
     private string SortMark(ManagementUserSort ascending, ManagementUserSort descending) => QuerySort == ascending ? "↑" : QuerySort == descending ? "↓" : "↕";
     private string DayAriaLabel(ManagementUserRegistrationDay day) => $"{day.Date.ToString("dd 'de' MMMM", PtBr)}: {day.Count} {Pluralize(day.Count, "cadastro", "cadastros")}{(day.IsAnomaly ? ", acima do padrão" : string.Empty)}";
