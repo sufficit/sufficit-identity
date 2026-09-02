@@ -60,6 +60,58 @@ public sealed class CspHeaderTests
         Assert.Contains("form-action 'self'", csp, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The logout confirmation page must be allowed to land on the relying
+    /// party.
+    /// </summary>
+    /// <remarks>
+    /// Browsers apply <c>form-action</c> to the whole redirect chain, not just
+    /// the form's action attribute. The form posts same-origin to
+    /// <c>/connect/endsession</c>, which <c>'self'</c> permits — but the 302 to
+    /// the RP's post-logout URI is cross-origin, so <c>'self'</c> alone blocks
+    /// the submission before it is ever sent. Nothing reaches the server and
+    /// nothing appears in its log; the button simply does nothing.
+    /// </remarks>
+    [Fact]
+    public async Task Logout_page_allows_form_action_to_the_registered_post_logout_uri()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+
+        using var response = await client.GetAsync(
+            "/account/logout?post_logout_redirect_uri="
+                + Uri.EscapeDataString(TestDataSeeder.AuthorizationCodePostLogoutRedirectUri));
+
+        var csp = string.Join(' ', response.Headers.GetValues("Content-Security-Policy-Report-Only"));
+        var expected = new Uri(TestDataSeeder.AuthorizationCodePostLogoutRedirectUri)
+            .GetLeftPart(UriPartial.Path);
+
+        Assert.Contains(expected, csp, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The query string is caller-controlled, so a value nobody registered must
+    /// not widen the policy to wherever a crafted link points.
+    /// </summary>
+    [Fact]
+    public async Task Logout_page_ignores_an_unregistered_post_logout_uri()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+
+        using var response = await client.GetAsync(
+            "/account/logout?post_logout_redirect_uri="
+                + Uri.EscapeDataString("https://nao-registrado.example/callback"));
+
+        var csp = string.Join(' ', response.Headers.GetValues("Content-Security-Policy-Report-Only"));
+
+        Assert.DoesNotContain("nao-registrado.example", csp, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task X_Frame_options_denied_is_emitted_alongside_csp()
     {

@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.DependencyInjection;
+using OpenIddict.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Sufficit.Identity.Application.Security;
 
@@ -123,7 +125,9 @@ public static class SecurityHeadersMiddlewareExtensions
                 }
 
                 context.Response.Headers[header] =
-                    BuildContentSecurityPolicy(options, nonce);
+                    await AddLogoutFormActionAsync(
+                        context,
+                        BuildContentSecurityPolicy(options, nonce));
             }
 
             await next();
@@ -325,6 +329,68 @@ public static class SecurityHeadersMiddlewareExtensions
                 "https://challenges.cloudflare.com"),
             _ => policy,
         };
+    }
+
+    /// <summary>
+    ///     Lets the logout confirmation page submit to the relying party.
+    /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         The form on <c>/account/logout</c> posts to
+    ///         <c>/connect/endsession</c> — same origin, which
+    ///         <c>form-action 'self'</c> allows. What it does not allow is
+    ///         where that POST ends up: browsers apply <c>form-action</c> to
+    ///         the whole redirect chain, so the 302 to the RP's
+    ///         <c>post_logout_redirect_uri</c> is blocked and the submission
+    ///         never leaves the page.
+    ///     </para>
+    ///     <para>
+    ///         The symptom is the worst kind: the button does nothing. No
+    ///         error, no navigation, nothing in the server log — the request
+    ///         was never made. Only the CSP violation report names it.
+    ///     </para>
+    ///     <para>
+    ///         The URI is taken from the query string, so it is not trusted:
+    ///         it is resolved against the registered post-logout URIs first.
+    ///         An unregistered value is ignored rather than widening
+    ///         <c>form-action</c> to wherever a crafted link asked for.
+    ///     </para>
+    /// </remarks>
+    private static async Task<string> AddLogoutFormActionAsync(
+        HttpContext context,
+        string policy)
+    {
+        if (!context.Request.Path.StartsWithSegments(
+                "/account/logout", StringComparison.OrdinalIgnoreCase))
+        {
+            return policy;
+        }
+
+        var requested = context.Request.Query["post_logout_redirect_uri"].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(requested)
+            || !Uri.TryCreate(requested, UriKind.Absolute, out var uri)
+            || (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            || !string.IsNullOrEmpty(uri.UserInfo))
+        {
+            return policy;
+        }
+
+        var applications = context.RequestServices
+            .GetService<IOpenIddictApplicationManager>();
+        if (applications is null)
+        {
+            return policy;
+        }
+
+        await foreach (var _ in applications.FindByPostLogoutRedirectUriAsync(
+            requested, context.RequestAborted))
+        {
+            // One registered match is enough; the value is legitimate.
+            return AddSources(policy, "form-action", uri.GetLeftPart(UriPartial.Path));
+        }
+
+        return policy;
     }
 
     private static string AddSources(
