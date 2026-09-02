@@ -390,10 +390,39 @@ public sealed class ClientCredentialsGrantHandler : ITokenGrantHandler
         identity.SetClaim(Claims.Name,
             await ops.ApplicationManager.GetDisplayNameAsync(application) as string
                 ?? request.ClientId!);
+
+        // Entitlements do registro: é a única forma de uma conta de máquina
+        // receber concessão por INSTÂNCIA (qual contexto) e não só por
+        // categoria (qual papel). Sem isto o token sai com sub, nome e escopos
+        // e nada sobre o que o serviço do outro lado possa decidir.
+        var granted = ClientEntitlements.Read(
+            await ops.ApplicationManager.GetPropertiesAsync(application));
+        foreach (var entitlement in granted)
+        {
+            identity.AddClaim(ClientEntitlements.ClaimType, entitlement);
+            identity.AddClaim(ClientEntitlements.LegacyClaimType, entitlement);
+        }
+
         identity.SetScopes(request.GetScopes());
         identity.SetResources(await ops.ResolveResourcesAsync(identity, request));
         GrantOperations.ApplyDpopBinding(identity, proof);
         identity.SetDestinations(ops.GetDestinations);
+
+        // Depois do SetDestinations, e só para ESTA identidade. O claim
+        // `directive` também existe em token de usuário, onde o mapa de
+        // claim-para-escopo decide o destino e chega até o id_token; carimbar
+        // por tipo no GetDestinations sequestraria aquele caminho. Aqui não há
+        // usuário nem id_token: entitlement é claim de autorização (RFC 9068
+        // §2.2.3.2) e quem decide com ele é o servidor de recurso.
+        if (granted.Count > 0)
+        {
+            foreach (var claim in identity.Claims.Where(claim =>
+                claim.Type is ClientEntitlements.ClaimType
+                    or ClientEntitlements.LegacyClaimType))
+            {
+                claim.SetDestinations(Destinations.AccessToken);
+            }
+        }
 
         return new SignInResult(
             OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
