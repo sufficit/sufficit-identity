@@ -179,6 +179,101 @@ public sealed partial class ManagementUiArchitectureTests
             StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Os dois campos lado a lado do formulário de scope têm de nascer da
+    /// mesma linha de grid compartilhada, com a mesma espécie de campo dos
+    /// dois lados.
+    /// </summary>
+    /// <remarks>
+    /// O desalinhamento não veio de "faltou um CSS": veio de três empilhamentos
+    /// diferentes. As colunas eram <c>&lt;div class="field-group"&gt;</c> irmãs
+    /// dentro de <c>.form-grid--two</c>, e a regra de empilhamento
+    /// <c>.field-group + .field-group { margin-top: 20px }</c> não distingue
+    /// "abaixo" de "ao lado" — ela caía na segunda coluna e derrubava a direita
+    /// 20px (medido). Como <c>.field-group</c> é um grid que estica, a dica que
+    /// só a esquerda tinha ainda inflava o input da direita de 44px para 56,5px.
+    /// E o rótulo da direita crescia sozinho porque o selo
+    /// <c>&lt;span class="label-optional"&gt;</c> mistura dois tamanhos de fonte
+    /// na mesma linha. Nada disso se conserta com margem local: quem reserva a
+    /// banda de rótulo e ancora as colunas no topo é o <c>SUIFormGrid</c>, e
+    /// quem carrega a dica dentro do campo — em vez de num
+    /// <c>&lt;span&gt;</c> avulso que só uma coluna tem — é o
+    /// <c>SUITextField</c>.
+    /// </remarks>
+    [Fact]
+    public void Scope_definition_fields_align_through_the_shared_form_grid()
+    {
+        var managementUi = ResolveManagementUiSource();
+        var pages = Path.Combine(managementUi, "Components", "Pages");
+        var stylesheet = File.ReadAllText(Path.Combine(
+            managementUi,
+            "wwwroot",
+            "app.css"));
+
+        foreach (var name in new[] { "ScopeDetail.razor", "ScopeCreate.razor" })
+        {
+            var page = File.ReadAllText(Path.Combine(pages, name));
+
+            Assert.Contains(
+                "<SUIFormGrid Columns=\"2\" Spacing=\"4\" LabelLines=\"2\">",
+                page,
+                StringComparison.Ordinal);
+
+            // As duas colunas são a mesma espécie de campo e as duas trazem
+            // dica: a assimetria era metade do desalinhamento.
+            var row = TwoColumnRow(page, name);
+            Assert.Equal(
+                2,
+                row.Split("<SUITextField T=\"string\"", StringSplitOptions.None)
+                    .Length - 1);
+            Assert.Equal(
+                2,
+                row.Split("HelperText=\"", StringSplitOptions.None).Length - 1);
+
+            // Nenhum resquício do par que derivava: grid manual, grupo de campo
+            // manual, controle cru, selo de rótulo e mensagem de validação
+            // solta (que dentro do grid vira uma célula e desloca a coluna
+            // seguinte).
+            Assert.DoesNotContain("form-grid--two", page, StringComparison.Ordinal);
+            Assert.DoesNotContain("class=\"field-group\"", page, StringComparison.Ordinal);
+            Assert.DoesNotContain("class=\"form-control", page, StringComparison.Ordinal);
+            Assert.DoesNotContain("label-optional", page, StringComparison.Ordinal);
+            Assert.DoesNotContain("<ValidationMessage", page, StringComparison.Ordinal);
+            Assert.DoesNotContain("<InputText", page, StringComparison.Ordinal);
+        }
+
+        // A margem de empilhamento continua valendo para campos empilhados, mas
+        // não pode vazar para o vizinho horizontal.
+        Assert.Contains(
+            ".form-grid > .field-group + .field-group {\n    margin-top: 0;\n}",
+            stylesheet,
+            StringComparison.Ordinal);
+
+        // O campo SUI dentro de um formulário de gestão veste a mesma caixa do
+        // campo nativo ao lado — inclusive o alvo de toque de 44px.
+        Assert.Contains(
+            ".management-form .sui-field__input {",
+            stylesheet,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".management-form .sui-form-grid + .sui-form-grid,",
+            stylesheet,
+            StringComparison.Ordinal);
+    }
+
+    private static string TwoColumnRow(string page, string name)
+    {
+        var start = page.IndexOf(
+            "<SUIFormGrid Columns=\"2\"",
+            StringComparison.Ordinal);
+        Assert.True(start >= 0, $"{name} perdeu a linha de duas colunas.");
+
+        var end = page.IndexOf("</SUIFormGrid>", start, StringComparison.Ordinal);
+        Assert.True(end > start, $"{name} deixou a linha de duas colunas aberta.");
+
+        return page[start..end];
+    }
+
     [Fact]
     public void Branding_preview_uses_the_configured_background_and_safe_live_draft_values()
     {
