@@ -73,6 +73,18 @@ Note the path: the **UI** lives under `/management/`, the **API** does not.
 `/management/api/...` returns 404 — confirm with `/api/overview`, which answers
 401 when unauthenticated.
 
+## Where provisioning manifests live
+
+Each product keeps its Identity provisioning manifest **in its own
+repository**, at `deploy/identity/identity-manifest.v1.json` (current
+examples: `sufficit-ai`, `sufficit-network-control`). Identity validates the
+schema at `preview` and applies the plan at `apply`; it does not store or
+centralize the manifest. So a scope or entitlement change is a pull request
+in the product's repository — where the product's own tests run — followed by
+the preview → apply flow below, never an edit in this repository. See
+decision [0005](https://github.com/sufficit/sufficit-identity-core/blob/main/docs/decisions/0005-manifest-location.md)
+in sufficit-identity-core.
+
 `api/operator-tokens` is what the confirmation page itself calls. Do not try to
 mint a token by calling it directly: it needs a token you do not have yet, and
 going around the page removes the human review that is the entire point.
