@@ -448,7 +448,83 @@ public partial class AuthorizationController : Controller
             }
         }
 
+        ProjectEntitlementUnderBothNames(claims);
+
         return Ok(claims);
+    }
+
+    /// <summary>
+    ///     Emits the authorization grant under both claim names here too, the way
+    ///     <see cref="ProjectEntitlementClaimUnderBothNames"/> already does for the
+    ///     access and identity tokens.
+    /// </summary>
+    /// <remarks>
+    ///     <para>
+    ///         That handler runs on <c>ProcessSignIn</c>, which userinfo never
+    ///         reaches: this response is assembled from persisted claims by hand,
+    ///         so it published whichever name the grant happened to be stored
+    ///         under. Renaming the stored type therefore stayed a breaking change
+    ///         for every userinfo consumer — precisely the coupling the token-side
+    ///         handler was written to remove — and a relying party reading only the
+    ///         old name saw the user lose every grant at once (QuePasa refused
+    ///         those logins outright with "no context assigned yet").
+    ///     </para>
+    ///     <para>
+    ///         The source is the response being built, never the persisted claims:
+    ///         a value is only there if it passed the claim-to-scope gate above, so
+    ///         the copy inherits that decision instead of re-deriving it. The target
+    ///         is gated on its own mapping as well, so a name the operator removed
+    ///         from the map — or whose scope this token lacks — is not reintroduced
+    ///         through the back door.
+    ///     </para>
+    /// </remarks>
+    private void ProjectEntitlementUnderBothNames(IDictionary<string, object?> claims)
+    {
+        Mirror(ClientEntitlements.LegacyClaimType, ClientEntitlements.ClaimType);
+        Mirror(ClientEntitlements.ClaimType, ClientEntitlements.LegacyClaimType);
+
+        void Mirror(string from, string to)
+        {
+            if (!claims.TryGetValue(from, out var source))
+            {
+                return;
+            }
+
+            if (!_applicationClaimPolicy.MappedClaimScopes.TryGetValue(to, out var requiredScope) ||
+                !User.HasScope(requiredScope))
+            {
+                return;
+            }
+
+            // Order is kept stable — target values first, then whatever the
+            // source adds — so a consumer diffing the response does not see
+            // churn that no grant change caused.
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var values = new List<string>();
+            foreach (var value in claims.TryGetValue(to, out var existing)
+                ? AsValues(existing).Concat(AsValues(source))
+                : AsValues(source))
+            {
+                if (seen.Add(value))
+                {
+                    values.Add(value);
+                }
+            }
+
+            if (values.Count == 0)
+            {
+                return;
+            }
+
+            claims[to] = values.Count == 1 ? values[0] : values.ToArray();
+        }
+
+        static IEnumerable<string> AsValues(object? value) => value switch
+        {
+            string single => [single],
+            IEnumerable<string> many => many,
+            _ => [],
+        };
     }
 
     private async Task<ImmutableArray<string>> GetRequestedScopesAsync(

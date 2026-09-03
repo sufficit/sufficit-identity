@@ -512,4 +512,139 @@ public sealed class ClaimScopeMapTests
         });
         return introspectBody;
     }
+
+    // ------------------------------------------------------------------
+    // The same decoupling, on /connect/userinfo.
+    //
+    // The token-side handler runs on ProcessSignIn, which userinfo never
+    // reaches: that response is assembled from persisted claims by hand, so it
+    // published whichever name the grant happened to be stored under. A
+    // relying party that reads userinfo (QuePasa) therefore saw the user lose
+    // every grant the moment the storage rename landed, and refused the login
+    // outright.
+    // ------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("directive")]
+    [InlineData("entitlements")]
+    public async Task Userinfo_returns_both_names_whichever_one_the_grant_is_stored_under(
+        string storedClaimType)
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(MapConfiguration());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await ProvisionDirectiveScopeAndClientAsync(factory);
+
+        var username = $"csm-ui-both-{Guid.NewGuid():N}";
+        const string password = "Str0ng!Passw0rd#UB";
+        var value = $"clientadmin:{Guid.NewGuid():N}";
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await TestDataSeeder.CreateUserAsync(userManager, username, password);
+            await userManager.AddClaimAsync(user, new Claim(storedClaimType, value));
+        }
+
+        var userinfo = await UserinfoAsync(factory, username, password,
+            $"openid {DirectiveScopeName}");
+
+        foreach (var emitted in new[] { "directive", "entitlements" })
+        {
+            Assert.True(
+                userinfo.TryGetProperty(emitted, out var claim),
+                $"stored as '{storedClaimType}', but '{emitted}' is missing from userinfo");
+            Assert.Contains(value, Values(claim));
+        }
+    }
+
+    /// <summary>
+    /// The half that must not regress: the mirrored name is a projection of a
+    /// gated claim, never a way around the gate.
+    /// </summary>
+    [Theory]
+    [InlineData("directive")]
+    [InlineData("entitlements")]
+    public async Task Userinfo_returns_neither_name_without_the_mapped_scope(
+        string storedClaimType)
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(MapConfiguration());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await ProvisionDirectiveScopeAndClientAsync(factory);
+
+        var username = $"csm-ui-gate-{Guid.NewGuid():N}";
+        const string password = "Str0ng!Passw0rd#UG";
+        var value = $"telephonyadmin:{Guid.NewGuid():N}";
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await TestDataSeeder.CreateUserAsync(userManager, username, password);
+            await userManager.AddClaimAsync(user, new Claim(storedClaimType, value));
+        }
+
+        // Deliberately WITHOUT the mapped scope.
+        var userinfo = await UserinfoAsync(factory, username, password, "openid");
+
+        foreach (var emitted in new[] { "directive", "entitlements" })
+        {
+            Assert.False(
+                userinfo.TryGetProperty(emitted, out _),
+                $"stored as '{storedClaimType}': '{emitted}' leaked into a userinfo response whose token lacks '{DirectiveScopeName}'");
+        }
+    }
+
+    /// <summary>
+    /// Values stored under BOTH names must not turn into a duplicated list:
+    /// the mirroring is a union, not an append.
+    /// </summary>
+    [Fact]
+    public async Task Userinfo_does_not_duplicate_a_value_stored_under_both_names()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(MapConfiguration());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await ProvisionDirectiveScopeAndClientAsync(factory);
+
+        var username = $"csm-ui-dup-{Guid.NewGuid():N}";
+        const string password = "Str0ng!Passw0rd#UD";
+        var value = $"mobile:{Guid.NewGuid():N}";
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await TestDataSeeder.CreateUserAsync(userManager, username, password);
+            await userManager.AddClaimAsync(user, new Claim("directive", value));
+            await userManager.AddClaimAsync(user, new Claim("entitlements", value));
+        }
+
+        var userinfo = await UserinfoAsync(factory, username, password,
+            $"openid {DirectiveScopeName}");
+
+        foreach (var emitted in new[] { "directive", "entitlements" })
+        {
+            Assert.True(userinfo.TryGetProperty(emitted, out var claim));
+            Assert.Equal([value], Values(claim).ToArray());
+        }
+    }
+
+    private static async Task<JsonElement> UserinfoAsync(
+        SufficitIdentityTestFactory factory, string username, string password, string scope)
+    {
+        var client = factory.CreateClient();
+        var (tokenStatus, tokenBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "password",
+            ["username"] = username,
+            ["password"] = password,
+            ["client_id"] = MappedClientId,
+            ["client_secret"] = MappedClientSecret,
+            ["scope"] = scope,
+        });
+        Assert.Equal(HttpStatusCode.OK, tokenStatus);
+        var accessToken = tokenBody.GetProperty("access_token").GetString();
+        Assert.False(string.IsNullOrEmpty(accessToken));
+
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+        return await client.GetFromJsonAsync<JsonElement>("/connect/userinfo");
+    }
 }
