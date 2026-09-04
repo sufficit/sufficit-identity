@@ -218,6 +218,14 @@ public sealed class ServiceAccountManagementService(
         descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Token);
         descriptor.Permissions.Add(
             OpenIddictConstants.Permissions.GrantTypes.ClientCredentials);
+        // Contas de serviço gerenciadas por esta superfície precisam poder
+        // solicitar o escopo administrativo que protege as APIs de gestão.
+        // A atribuição de escopos reservados é deliberadamente bloqueada no
+        // CRUD comum de clientes; aqui ela é parte do perfil fixo e auditado
+        // de criação da conta de sistema.
+        descriptor.Permissions.Add(
+            OpenIddictConstants.Permissions.Prefixes.Scope
+            + options.Value.RequiredScope);
 
         if (roles.Length > 0)
         {
