@@ -56,6 +56,9 @@ public sealed class ServiceAccountCreationTests
             OpenIddictConstants.Permissions.GrantTypes.ClientCredentials,
             permissions);
         Assert.Contains(OpenIddictConstants.Permissions.Endpoints.Token, permissions);
+        Assert.Contains(
+            OpenIddictConstants.Permissions.Prefixes.Scope + "identity.management",
+            permissions);
 
         // Sem fluxo interativo: uma conta de máquina que aceitasse
         // authorization_code seria uma porta de entrada com usuário nenhum
