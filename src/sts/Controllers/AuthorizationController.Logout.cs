@@ -126,11 +126,15 @@ public partial class AuthorizationController
         // we need it to enumerate the RPs whose sessions to terminate via
         // back-channel logout (item 3.2 [L1]). The distributor is a no-op when
         // BackchannelLogout is disabled, so this call is cheap in that case.
-        var sessionId = User.GetClaim(SessionIdClaimType);
-        var user = await _userManager.GetUserAsync(User);
+        // ControllerBase.User is annotated nullable (it resolves
+        // HttpContext?.User); during a live request it is never null, but
+        // normalize once so the claim reads below satisfy the contract.
+        var principal = User ?? new ClaimsPrincipal();
+        var sessionId = principal.GetClaim(SessionIdClaimType);
+        var user = await _userManager.GetUserAsync(principal);
         var userId = user is null
-            ? User.GetClaim(Claims.Subject)
-                ?? User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)
+            ? principal.GetClaim(Claims.Subject)
+                ?? principal.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier)
             : await _userManager.GetUserIdAsync(user);
 
         // RP-initiated logout is intentionally idempotent. The Identity cookie

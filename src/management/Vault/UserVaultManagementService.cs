@@ -34,11 +34,13 @@ public sealed class UserVaultManagementService(
         EnsureEnabled();
 
         // Both inventories come from one table now. What the user typed is the
-        // rows in the reserved personal namespace; everything else in a "user-"
-        // context was written by a connected application on their behalf.
+        // rows in the reserved personal namespace; everything else in a
+        // user-bound context was written by a connected application on their
+        // behalf. Since contexts became Guids, "user-bound" is simply any
+        // non-empty context Guid (the global context is Guid.Empty).
         var aggregates = await database.VaultSecrets
             .AsNoTracking()
-            .Where(item => item.ContextId.StartsWith(UserContextPrefix)
+            .Where(item => item.ContextId != Guid.Empty
                 && !item.Name.StartsWith(OAuthPendingPrefix))
             .GroupBy(item => new { item.ContextId, item.Namespace })
             .Select(group => new VaultOwnerAggregate(
@@ -52,8 +54,9 @@ public sealed class UserVaultManagementService(
             StringComparer.OrdinalIgnoreCase);
         foreach (var item in aggregates)
         {
-            if (item.ContextId.Length <= UserContextPrefix.Length) continue;
-            var ownerSubject = item.ContextId[UserContextPrefix.Length..];
+            // The context Guid IS the owner subject (the legacy user-<sub>
+            // prefix was stripped by the storage migration).
+            var ownerSubject = item.ContextId.ToString();
             if (!owners.TryGetValue(ownerSubject, out var inventory))
             {
                 inventory = new MutableInventory { OwnerSubject = ownerSubject };
@@ -391,7 +394,7 @@ public sealed class UserVaultManagementService(
     }
 
     private sealed record VaultOwnerAggregate(
-        string ContextId,
+        Guid ContextId,
         string Namespace,
         int Count,
         DateTime LastUpdatedAtUtc);

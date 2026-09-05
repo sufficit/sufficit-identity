@@ -176,13 +176,14 @@ public sealed class DatabaseSchemaContractTests
 
         var namedSecret = RequiredEntity<VaultSecret>(model);
         Assert.Equal("vaultsecrets", namedSecret.GetTableName());
-        AssertProperty(namedSecret, "ContextId", "contextid", "varchar(64)", 64, nullable: false);
+        AssertProperty(namedSecret, "ContextId", "contextid", "binary(16)", null, nullable: false);
         AssertProperty(namedSecret, "Namespace", "namespace", "varchar(64)", 64, nullable: false);
-        AssertProperty(namedSecret, "OwnerSubject", "ownersubject", "varchar(128)", 128, nullable: false);
+        AssertProperty(namedSecret, "Type", "type", "varchar(16)", 16, nullable: false);
+        AssertProperty(namedSecret, "OwnerSubject", "ownersubject", "binary(16)", null, nullable: false);
         AssertIndex(namedSecret, "AK_vaultsecrets_context_name", unique: true,
-            "ContextId", "Name");
+            "Type", "ContextId", "Name");
         AssertIndex(namedSecret, "IX_vaultsecrets_context_namespace", unique: false,
-            "ContextId", "Namespace");
+            "Type", "ContextId", "Namespace");
     }
 
     [Fact]
@@ -213,6 +214,7 @@ public sealed class DatabaseSchemaContractTests
             IdentityDatabaseSchema.OAuthClientCredentialsMigrationId,
             IdentityDatabaseSchema.ProtocolStateEntriesMigrationId,
             IdentityDatabaseSchema.DropVaultPersonalSecretsMigrationId,
+            IdentityDatabaseSchema.VaultSecretTypesMigrationId,
         ], context.Database.GetMigrations());
 
         var history = context.GetService<IHistoryRepository>().GetCreateScript();
