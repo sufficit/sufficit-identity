@@ -158,7 +158,26 @@ public static class IdentityDatabaseSchema
     public const int VaultLockOwnerLength = 64;
     public const int VaultSecretNameLength = 128;
     public const int VaultSecretNamespaceLength = 64;
+
+    /// <summary>
+    /// Owner-kind discriminator of a vault secret context. The row key is
+    /// (type, contextid, name): the same context Guid may exist as a user's
+    /// private context and as a client's system context without colliding.
+    /// </summary>
+    public const int VaultSecretTypeLength = 16;
+    public const string VaultSecretTypeUser = "user";
+    public const string VaultSecretTypeTenant = "tenant";
+    public const string VaultSecretTypeClient = "client";
+    public const string VaultSecretTypeGlobal = "global";
+
+    /// <summary>
+    /// Storage is binary(16) since AddVaultSecretTypes; the length still
+    /// bounds the textual context form accepted at the string boundary
+    /// (management contracts, MCP tools) before it is parsed into the typed
+    /// (type, context Guid) key.
+    /// </summary>
     public const int VaultSecretContextLength = 64;
+    public const string VaultSecretTypesMigrationId = "20260905172658_AddVaultSecretTypes"; // gitleaks:allow
     public const int VaultSecretOwnerLength = 128;
     public const int VaultSecretUpdatedByLength = 128;
 }

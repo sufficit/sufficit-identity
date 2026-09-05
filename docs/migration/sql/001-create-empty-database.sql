@@ -739,3 +739,33 @@ VALUES ('20260902194143_DropVaultPersonalSecrets', '10.0.11');
 
 COMMIT;
 
+START TRANSACTION;
+ALTER TABLE `vaultsecrets` DROP INDEX `AK_vaultsecrets_context_name`;
+
+ALTER TABLE `vaultsecrets` DROP INDEX `IX_vaultsecrets_context_namespace`;
+
+ALTER TABLE `vaultsecrets` ADD `type` varchar(16) CHARACTER SET utf8mb4 NOT NULL DEFAULT '';
+
+ALTER TABLE `vaultsecrets` ADD COLUMN `contextid_bin` binary(16) NULL, ADD COLUMN `ownersubject_bin` binary(16) NULL;
+
+UPDATE `vaultsecrets` `v` JOIN (  SELECT `id`,     CASE       WHEN LOWER(TRIM(`contextid`)) LIKE 'user-%' THEN 'user'       WHEN LOWER(TRIM(`contextid`)) LIKE 'tenant-%' THEN 'tenant'       WHEN LOWER(TRIM(`contextid`)) LIKE 'client-%' THEN 'client'       WHEN TRIM(`contextid`) REGEXP '^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$' THEN 'client'       ELSE 'global'     END AS `derived_type`,     CASE       WHEN LOWER(TRIM(`contextid`)) LIKE 'user-%' THEN SUBSTRING(TRIM(`contextid`), 6)       WHEN LOWER(TRIM(`contextid`)) LIKE 'tenant-%' THEN SUBSTRING(TRIM(`contextid`), 8)       WHEN LOWER(TRIM(`contextid`)) LIKE 'client-%' THEN SUBSTRING(TRIM(`contextid`), 8)       ELSE TRIM(`contextid`)     END AS `bare`   FROM `vaultsecrets` ) `n` ON `n`.`id` = `v`.`id` SET `v`.`type` = `n`.`derived_type`,   `v`.`contextid_bin` = CASE     WHEN `n`.`derived_type` = 'global' THEN UNHEX('00000000000000000000000000000000')     WHEN `n`.`bare` REGEXP '^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$' THEN UNHEX(CONCAT(SUBSTRING(`n`.`bare`,7,2),SUBSTRING(`n`.`bare`,5,2),SUBSTRING(`n`.`bare`,3,2),SUBSTRING(`n`.`bare`,1,2),SUBSTRING(`n`.`bare`,12,2),SUBSTRING(`n`.`bare`,10,2),SUBSTRING(`n`.`bare`,17,2),SUBSTRING(`n`.`bare`,15,2),SUBSTRING(`n`.`bare`,20,4),SUBSTRING(`n`.`bare`,25,12)))     ELSE UNHEX('00000000000000000000000000000000')   END;
+
+UPDATE `vaultsecrets` SET `ownersubject_bin` = `contextid_bin` WHERE `type` = 'user';
+
+UPDATE `vaultsecrets` `v` JOIN (  SELECT `id`,     CASE       WHEN LOWER(TRIM(`ownersubject`)) LIKE 'user-%' THEN SUBSTRING(TRIM(`ownersubject`), 6)       ELSE TRIM(`ownersubject`)     END AS `bare`   FROM `vaultsecrets`   WHERE `type` IS NULL OR `type` <> 'user' ) `n` ON `n`.`id` = `v`.`id` SET `v`.`ownersubject_bin` = CASE     WHEN `n`.`bare` REGEXP '^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$' THEN UNHEX(CONCAT(SUBSTRING(`n`.`bare`,7,2),SUBSTRING(`n`.`bare`,5,2),SUBSTRING(`n`.`bare`,3,2),SUBSTRING(`n`.`bare`,1,2),SUBSTRING(`n`.`bare`,12,2),SUBSTRING(`n`.`bare`,10,2),SUBSTRING(`n`.`bare`,17,2),SUBSTRING(`n`.`bare`,15,2),SUBSTRING(`n`.`bare`,20,4),SUBSTRING(`n`.`bare`,25,12)))     ELSE UNHEX('00000000000000000000000000000000')   END;
+
+ALTER TABLE `vaultsecrets` DROP COLUMN `contextid`, DROP COLUMN `ownersubject`;
+
+ALTER TABLE `vaultsecrets` CHANGE COLUMN `contextid_bin` `contextid` binary(16) NOT NULL;
+
+ALTER TABLE `vaultsecrets` CHANGE COLUMN `ownersubject_bin` `ownersubject` binary(16) NOT NULL;
+
+CREATE UNIQUE INDEX `AK_vaultsecrets_context_name` ON `vaultsecrets` (`type`, `contextid`, `name`);
+
+CREATE INDEX `IX_vaultsecrets_context_namespace` ON `vaultsecrets` (`type`, `contextid`, `namespace`);
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260905172658_AddVaultSecretTypes', '10.0.11');
+
+COMMIT;
+

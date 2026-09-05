@@ -26,22 +26,22 @@ public sealed partial class VaultTests
         var personal = new UserVaultPersonalSecretService(named, options);
 
         await personal.PutAsync(
-            "user-a",
+            "11111111-1111-1111-1111-111111111111",
             "personal",
             "providers/manual/api-key",
             new SaveUserVaultSecret("alice-personal"));
         await named.PutAsync(
             "integrations/oauth/tokens/github",
             "alice-github",
-            "user-a",
-            "user-user-a");
+            "11111111-1111-1111-1111-111111111111",
+            "user-11111111-1111-1111-1111-111111111111");
         await named.PutAsync(
             "integrations/oauth/pending/state",
             "transient-state",
-            "user-a",
-            "user-user-a");
+            "11111111-1111-1111-1111-111111111111",
+            "user-11111111-1111-1111-1111-111111111111");
         await personal.PutAsync(
-            "user-b",
+            "22222222-2222-2222-2222-222222222222",
             "personal",
             "providers/manual/api-key",
             new SaveUserVaultSecret("bob-personal"));
@@ -63,11 +63,11 @@ public sealed partial class VaultTests
             "vault-user-management-test");
 
         var page = await service.ListUsersAsync(
-            new VaultUserInventoryQuery("user-a"),
+            new VaultUserInventoryQuery("11111111-1111-1111-1111-111111111111"),
             context);
 
         var alice = Assert.Single(page.Items);
-        Assert.Equal("user-a", alice.OwnerSubject);
+        Assert.Equal("11111111-1111-1111-1111-111111111111", alice.OwnerSubject);
         Assert.False(alice.UserExists);
         Assert.Null(alice.Email);
         Assert.Equal(1, alice.PersonalSecretCount);
@@ -76,7 +76,7 @@ public sealed partial class VaultTests
         Assert.Equal(1, page.TotalManagedCredentials);
 
         var detail = Assert.IsType<VaultUserDetail>(
-            await service.GetUserAsync("user-a", context));
+            await service.GetUserAsync("11111111-1111-1111-1111-111111111111", context));
         Assert.Single(detail.PersonalSecrets);
         Assert.Single(detail.ManagedCredentials);
         Assert.Equal("github", detail.ManagedCredentials[0].Provider);
@@ -84,19 +84,19 @@ public sealed partial class VaultTests
             detail.GetType().GetProperties(),
             property => property.Name is "Value" or "Ciphertext" or "AadJson");
 
-        var cleanup = await service.ClearUserAsync("user-a", context);
+        var cleanup = await service.ClearUserAsync("11111111-1111-1111-1111-111111111111", context);
         Assert.Equal(1, cleanup.PersonalSecretsDeleted);
         Assert.Equal(1, cleanup.ManagedCredentialsDeleted);
         Assert.Null(await service.GetUserAsync("missing-user", context));
-        Assert.Single(await personal.ListAsync("user-b", "personal"));
+        Assert.Single(await personal.ListAsync("22222222-2222-2222-2222-222222222222", "personal"));
         Assert.NotNull(await named.ResolveAsync(
             "integrations/oauth/pending/state",
-            "user-user-a"));
+            "user-11111111-1111-1111-1111-111111111111"));
 
         var audit = await database.ManagementAuditEvents.AsNoTracking()
             .SingleAsync(item => item.ReasonCode == "vault_user_cleared");
         Assert.Equal(ManagementResourceTypes.VaultUser, audit.ResourceType);
-        Assert.Equal("user-a", audit.ResourceId);
+        Assert.Equal("11111111-1111-1111-1111-111111111111", audit.ResourceId);
     }
 
     [Fact]

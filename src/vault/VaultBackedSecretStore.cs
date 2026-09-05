@@ -27,6 +27,72 @@ public sealed record VaultNamedSecretResolution(
     string? Value);
 
 /// <summary>
+/// Typed vault context: the owner kind (user | tenant | client | global) plus
+/// the Guid identifying the owner inside that kind. This is the runtime form
+/// of the vaultsecrets (type, contextid) row key, so the same Guid can exist
+/// as a user's private context and as a client's system context at once.
+///
+/// Canonical text form (the only thing string boundaries ever see):
+/// <c>global</c>, <c>user-&lt;guid&gt;</c>, <c>tenant-&lt;guid&gt;</c> and a
+/// bare <c>&lt;guid&gt;</c> (client). A bare Guid parses as <c>client</c>
+/// because every pre-discriminator writer that used a bare Guid was addressing
+/// a system context — the storage migration classifies historical rows the
+/// same way, so runtime lookups keep finding migrated data.
+/// </summary>
+public readonly record struct VaultSecretContext(string Type, Guid ContextId)
+{
+    /// <summary>Parses any historical or current context text into its typed
+    /// form. Unrecognized values collapse to the global context, mirroring the
+    /// one-way storage migration.</summary>
+    public static VaultSecretContext Parse(string contextId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(contextId);
+        var value = contextId.Trim().ToLowerInvariant();
+        if (value == VaultBackedSecretStore.GlobalContextId)
+            return new VaultSecretContext(
+                IdentityDatabaseSchema.VaultSecretTypeGlobal,
+                Guid.Empty);
+        foreach (var (prefix, type) in Prefixes)
+        {
+            if (!value.StartsWith(prefix, StringComparison.Ordinal)) continue;
+            var rest = value[prefix.Length..];
+            return new VaultSecretContext(
+                type,
+                Guid.TryParse(rest, out var prefixed)
+                    ? prefixed
+                    : Guid.Empty);
+        }
+
+        return Guid.TryParse(value, out var bare)
+            ? new VaultSecretContext(IdentityDatabaseSchema.VaultSecretTypeClient, bare)
+            : new VaultSecretContext(
+                IdentityDatabaseSchema.VaultSecretTypeGlobal,
+                Guid.Empty);
+    }
+
+    private static readonly (string Prefix, string Type)[] Prefixes =
+    [
+        (VaultBackedSecretStore.UserContextPrefix, IdentityDatabaseSchema.VaultSecretTypeUser),
+        (VaultBackedSecretStore.TenantContextPrefix, IdentityDatabaseSchema.VaultSecretTypeTenant),
+        (VaultBackedSecretStore.ClientContextPrefix, IdentityDatabaseSchema.VaultSecretTypeClient),
+    ];
+
+    public override string ToString() =>
+        Type switch
+        {
+            IdentityDatabaseSchema.VaultSecretTypeUser =>
+                VaultBackedSecretStore.UserContextPrefix + ContextId.ToString("D"),
+            IdentityDatabaseSchema.VaultSecretTypeTenant =>
+                VaultBackedSecretStore.TenantContextPrefix + ContextId.ToString("D"),
+            // The client form is the bare Guid: it is what every historical
+            // writer already emitted, so ciphertext AAD and API contracts are
+            // byte-identical before and after the discriminator.
+            IdentityDatabaseSchema.VaultSecretTypeClient => ContextId.ToString("D"),
+            _ => VaultBackedSecretStore.GlobalContextId,
+        };
+}
+
+/// <summary>
 /// Database-backed named-secret store. Only ciphertext is persisted; the
 /// plaintext boundary is limited to the caller that explicitly asks for a
 /// secret (normally a server-side consumer, never the management response).
@@ -98,6 +164,20 @@ public sealed class VaultBackedSecretStore(
     private const string KeyName = "named-secrets";
     public const string GlobalContextId = "global";
 
+    /// <summary>Context prefix marking a per-user private context.</summary>
+    public const string UserContextPrefix = "user-";
+
+    /// <summary>Context prefix reserved for the future tenant-credential
+    /// sharing model (not implemented yet).</summary>
+    public const string TenantContextPrefix = "tenant-";
+
+    /// <summary>Context prefix for per-application (client) system
+    /// credentials such as connection strings.</summary>
+    public const string ClientContextPrefix = "client-";
+
+    public static readonly VaultSecretContext GlobalContext =
+        new(IdentityDatabaseSchema.VaultSecretTypeGlobal, Guid.Empty);
+
     public async Task<string?> GetSecretAsync(
         string name,
         CancellationToken cancellationToken = default) =>
@@ -119,12 +199,12 @@ public sealed class VaultBackedSecretStore(
     {
         EnsureEnabled();
         var normalized = NormalizeName(name);
-        var normalizedContext = NormalizeContextId(contextId);
+        var context = VaultSecretContext.Parse(NormalizeContextId(contextId));
         if (snapshots is not null)
         {
             var snapshot = await snapshots.GetSecretAsync(
                 normalized,
-                normalizedContext,
+                context.ToString(),
                 cancellationToken);
             if (snapshot is null) return null;
 
@@ -139,7 +219,8 @@ public sealed class VaultBackedSecretStore(
             cancellationToken);
         var item = await database.VaultSecrets.AsNoTracking()
             .SingleOrDefaultAsync(secret => secret.Name == normalized
-                && secret.ContextId == normalizedContext,
+                && secret.Type == context.Type
+                && secret.ContextId == context.ContextId,
                 cancellationToken);
         if (item is null) return null;
 
@@ -180,7 +261,7 @@ public sealed class VaultBackedSecretStore(
         CancellationToken cancellationToken = default)
     {
         EnsureEnabled();
-        var normalizedContext = NormalizeContextId(contextId);
+        var context = VaultSecretContext.Parse(NormalizeContextId(contextId));
         var normalizedNamespaces = namespaces?
             .Select(NormalizeNamespace)
             .ToHashSet(StringComparer.Ordinal);
@@ -188,7 +269,7 @@ public sealed class VaultBackedSecretStore(
         if (snapshots is not null)
         {
             return await snapshots.ListSecretsAsync(
-                normalizedContext,
+                context.ToString(),
                 normalizedNamespaces,
                 cancellationToken);
         }
@@ -196,24 +277,39 @@ public sealed class VaultBackedSecretStore(
         await using var database = await databaseFactory.CreateDbContextAsync(
             cancellationToken);
         var query = database.VaultSecrets.AsNoTracking()
-            .Where(secret => secret.ContextId == normalizedContext);
+            .Where(secret => secret.Type == context.Type
+                && secret.ContextId == context.ContextId);
         if (normalizedNamespaces is not null)
         {
             query = query.Where(secret => normalizedNamespaces.Contains(
                 secret.Namespace));
         }
-        return await query
+        var rows = await query
             .OrderBy(secret => secret.Name)
-            .Select(secret => new VaultSecretMetadata(
+            .Select(secret => new
+            {
                 secret.Name,
                 secret.Namespace,
+                secret.Type,
                 secret.ContextId,
                 secret.OwnerSubject,
                 secret.UpdatedAtUtc,
                 secret.UpdatedBy,
-                true,
-                secret.ExpiresAtUtc))
+                secret.ExpiresAtUtc
+            })
             .ToArrayAsync(cancellationToken);
+        // Guid → display mapping happens client-side: EF cannot translate the
+        // context rendering, and selecting entities would drag the ciphertext
+        // column along.
+        return rows.Select(secret => new VaultSecretMetadata(
+            secret.Name,
+            secret.Namespace,
+            new VaultSecretContext(secret.Type, secret.ContextId).ToString(),
+            ToSubjectString(secret.OwnerSubject),
+            secret.UpdatedAtUtc,
+            secret.UpdatedBy,
+            true,
+            secret.ExpiresAtUtc)).ToArray();
     }
 
     public async Task<VaultSecretMetadata> PutAsync(
@@ -252,7 +348,7 @@ public sealed class VaultBackedSecretStore(
     {
         EnsureEnabled();
         var normalized = NormalizeName(name);
-        var normalizedContext = NormalizeContextId(contextId);
+        var context = VaultSecretContext.Parse(NormalizeContextId(contextId));
         var secretNamespace = GetNamespace(normalized);
         if (string.IsNullOrWhiteSpace(value))
             throw new ArgumentException("Secret value cannot be empty.", nameof(value));
@@ -268,10 +364,11 @@ public sealed class VaultBackedSecretStore(
             cancellationToken);
         var item = await database.VaultSecrets
             .SingleOrDefaultAsync(secret => secret.Name == normalized
-                && secret.ContextId == normalizedContext,
+                && secret.Type == context.Type
+                && secret.ContextId == context.ContextId,
                 cancellationToken);
         var now = DateTime.UtcNow;
-        var aad = Aad(normalized, secretNamespace, normalizedContext);
+        var aad = Aad(normalized, secretNamespace, context.ToString());
         var ciphertext = await keyVault.EncryptAsync(
             KeyName,
             value,
@@ -284,8 +381,14 @@ public sealed class VaultBackedSecretStore(
             {
                 Name = normalized,
                 Namespace = secretNamespace,
-                ContextId = normalizedContext,
-                OwnerSubject = NormalizeSubject(updatedBy),
+                Type = context.Type,
+                ContextId = context.ContextId,
+                // A user context IS its owner: the subject Guid in the key is
+                // the user the secrets are private to, regardless of which
+                // surface (or operator) created the first row.
+                OwnerSubject = context.Type == IdentityDatabaseSchema.VaultSecretTypeUser
+                    ? context.ContextId
+                    : ToSubjectGuid(updatedBy),
             };
             database.VaultSecrets.Add(item);
         }
@@ -300,7 +403,7 @@ public sealed class VaultBackedSecretStore(
         {
             await snapshots.InvalidateSecretAsync(
                 normalized,
-                normalizedContext,
+                context.ToString(),
                 cancellationToken);
         }
         return ToMetadata(item);
@@ -318,18 +421,19 @@ public sealed class VaultBackedSecretStore(
     {
         EnsureEnabled();
         var normalized = NormalizeName(name);
-        var normalizedContext = NormalizeContextId(contextId);
+        var context = VaultSecretContext.Parse(NormalizeContextId(contextId));
         await using var database = await databaseFactory.CreateDbContextAsync(
             cancellationToken);
         var deleted = await database.VaultSecrets
             .Where(secret => secret.Name == normalized
-                && secret.ContextId == normalizedContext)
+                && secret.Type == context.Type
+                && secret.ContextId == context.ContextId)
             .ExecuteDeleteAsync(cancellationToken);
         if (deleted > 0 && snapshots is not null)
         {
             await snapshots.InvalidateSecretAsync(
                 normalized,
-                normalizedContext,
+                context.ToString(),
                 cancellationToken);
         }
         return deleted > 0;
@@ -402,20 +506,36 @@ public sealed class VaultBackedSecretStore(
     public static string GetNamespace(string normalizedName) =>
         NormalizeNamespace(normalizedName.Split('/', 2)[0]);
 
+    /// <summary>Subject Guid under the same conversion rules as the context:
+    /// a textual Guid is kept, a legacy <c>user-</c> prefix is stripped and
+    /// anything else collapses to <see cref="Guid.Empty"/>.</summary>
+    public static Guid ToSubjectGuid(string subject)
+    {
+        var value = subject.Trim();
+        if (value.StartsWith(UserContextPrefix, StringComparison.Ordinal))
+            value = value[UserContextPrefix.Length..];
+        return Guid.TryParse(value, out var guid) ? guid : Guid.Empty;
+    }
+
+    /// <summary>Display form of a subject Guid; <see cref="Guid.Empty"/> (no
+    /// recognizable owner) renders as an empty string.</summary>
+    public static string ToSubjectString(Guid subject) =>
+        subject == Guid.Empty ? string.Empty : subject.ToString("D");
+
     private static string NormalizeSubject(string subject)
     {
         var normalized = subject.Trim();
         return normalized[..Math.Min(
             normalized.Length,
-            IdentityDatabaseSchema.VaultSecretOwnerLength)];
+            IdentityDatabaseSchema.VaultSecretUpdatedByLength)];
     }
 
     private static VaultSecretMetadata ToMetadata(VaultSecret secret) =>
         new(
             secret.Name,
             secret.Namespace,
-            secret.ContextId,
-            secret.OwnerSubject,
+            new VaultSecretContext(secret.Type, secret.ContextId).ToString(),
+            ToSubjectString(secret.OwnerSubject),
             secret.UpdatedAtUtc,
             secret.UpdatedBy,
             true,
@@ -448,8 +568,8 @@ public sealed class VaultBackedSecretStore(
         ReadAad(new VaultSecretSnapshotEntry(
             secret.Name,
             secret.Namespace,
-            secret.ContextId,
-            secret.OwnerSubject,
+            new VaultSecretContext(secret.Type, secret.ContextId).ToString(),
+            ToSubjectString(secret.OwnerSubject),
             secret.Ciphertext,
             secret.AadJson,
             secret.UpdatedAtUtc,
@@ -477,12 +597,14 @@ public sealed class VaultBackedSecretStore(
                     out var aadNamespace);
                 if (hasContext || hasNamespace)
                 {
+                    // Contexts compare by Guid so ciphertext written before
+                    // the type discriminator (bare-Guid client form, legacy
+                    // user-<guid> AAD) keeps authenticating its migrated row;
+                    // the discriminator never weakens the name/namespace bind.
                     if (hasContext
                         && hasNamespace
-                        && string.Equals(
-                            aadContext,
-                            secret.ContextId,
-                            StringComparison.Ordinal)
+                        && VaultSecretContext.Parse(aadContext ?? string.Empty).ContextId
+                            == VaultSecretContext.Parse(secret.ContextId).ContextId
                         && string.Equals(
                             aadNamespace,
                             secret.Namespace,
@@ -495,10 +617,7 @@ public sealed class VaultBackedSecretStore(
                         "Named-secret AAD does not match its persisted context or namespace.");
                 }
 
-                if (string.Equals(
-                        secret.ContextId,
-                        GlobalContextId,
-                        StringComparison.Ordinal))
+                if (VaultSecretContext.Parse(secret.ContextId).ContextId == Guid.Empty)
                 {
                     return parsed;
                 }
@@ -506,11 +625,9 @@ public sealed class VaultBackedSecretStore(
         }
 
         // Compatibility for the first named-secret schema, whose AAD was not
-        // persisted by every writer and contained only scope + name.
-        if (!string.Equals(
-                secret.ContextId,
-                GlobalContextId,
-                StringComparison.Ordinal))
+        // persisted by every writer and contained only scope + name. Only the
+        // global (empty-Guid) context accepts that legacy shape.
+        if (VaultSecretContext.Parse(secret.ContextId).ContextId != Guid.Empty)
         {
             throw new CryptographicException(
                 "Legacy named-secret AAD is accepted only in the global context.");

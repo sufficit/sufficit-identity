@@ -144,74 +144,82 @@ public sealed partial class VaultTests
             vault,
             new VaultOptions { Enabled = true });
 
+        // Operator subjects are Guids since AddVaultSecretTypes: ownersubject
+        // is binary(16), so a non-Guid operator would collapse to Guid.Empty.
+        const string operatorA = "11111111-1111-1111-1111-111111111111";
+        const string operatorB = "22222222-2222-2222-2222-222222222222";
+        const string operatorC = "33333333-3333-3333-3333-333333333333";
+
         await store.PutAsync(
             "Providers/Google/Client-Secret",
             "tenant-a-secret",
-            "operator-a",
-            "tenant-a");
+            operatorA,
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
         await store.PutAsync(
             "providers/google/client-secret",
             "tenant-b-secret",
-            "operator-b",
-            "tenant-b");
+            operatorB,
+            "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
         await store.PutAsync(
             "billing/gateway/api-key",
             "billing-secret",
-            "operator-a",
-            "tenant-a");
+            operatorA,
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
 
         Assert.Equal(
             "tenant-a-secret",
             await store.GetSecretAsync(
                 "providers/google/client-secret",
-                "tenant-a"));
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
         Assert.Equal(
             "tenant-b-secret",
             await store.GetSecretAsync(
                 "providers/google/client-secret",
-                "tenant-b"));
+                "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"));
         Assert.Null(await store.GetSecretAsync(
             "providers/google/client-secret",
-            "tenant-c"));
+            "cccccccc-cccc-cccc-cccc-cccccccccccc"));
 
         var providersOnly = await store.ListAsync(
-            "tenant-a",
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
             new HashSet<string>(["providers"], StringComparer.Ordinal));
         var provider = Assert.Single(providersOnly);
         Assert.Equal("providers", provider.Namespace);
-        Assert.Equal("tenant-a", provider.ContextId);
-        Assert.Equal("operator-a", provider.OwnerSubject);
+        Assert.Equal("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", provider.ContextId);
+        Assert.Equal(operatorA, provider.OwnerSubject);
         Assert.False(await store.DeleteAsync(
             "providers/google/client-secret",
-            "tenant-c"));
+            "cccccccc-cccc-cccc-cccc-cccccccccccc"));
 
         await store.PutAsync(
             "providers/google/client-secret",
             "tenant-a-rotated",
-            "operator-c",
-            "tenant-a");
+            operatorC,
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
         var rotated = Assert.Single(await store.ListAsync(
-            "tenant-a",
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
             new HashSet<string>(["providers"], StringComparer.Ordinal)));
-        Assert.Equal("operator-a", rotated.OwnerSubject);
-        Assert.Equal("operator-c", rotated.UpdatedBy);
+        // Rotation never reassigns ownership: the creator stays the owner and
+        // only updatedby follows the operator who rotated the value.
+        Assert.Equal(operatorA, rotated.OwnerSubject);
+        Assert.Equal(operatorC, rotated.UpdatedBy);
         Assert.Equal(
             "tenant-a-rotated",
-            await store.GetSecretAsync(rotated.Name, "tenant-a"));
+            await store.GetSecretAsync(rotated.Name, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
         Assert.Equal(
             "tenant-b-secret",
-            await store.GetSecretAsync(rotated.Name, "tenant-b"));
+            await store.GetSecretAsync(rotated.Name, "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"));
 
         await using (var database = await dbFactory.CreateDbContextAsync())
         {
             var moved = await database.VaultSecrets.SingleAsync(secret =>
-                secret.ContextId == "tenant-b"
+                secret.ContextId == Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
                 && secret.Name == rotated.Name);
-            moved.ContextId = "tenant-c";
+            moved.ContextId = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
             await database.SaveChangesAsync();
         }
         await Assert.ThrowsAnyAsync<CryptographicException>(() =>
-            store.GetSecretAsync(rotated.Name, "tenant-c"));
+            store.GetSecretAsync(rotated.Name, "cccccccc-cccc-cccc-cccc-cccccccccccc"));
     }
 
     [Theory]
