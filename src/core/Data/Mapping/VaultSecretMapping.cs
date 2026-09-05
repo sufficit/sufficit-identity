@@ -27,11 +27,20 @@ internal static class VaultSecretMapping
                 b.Property(x => x.Namespace)
                     .HasMaxLength(IdentityDatabaseSchema.VaultSecretNamespaceLength)
                     .IsRequired();
+                b.Property(x => x.Type)
+                    .HasMaxLength(IdentityDatabaseSchema.VaultSecretTypeLength)
+                    .IsRequired();
                 b.Property(x => x.ContextId)
-                    .HasMaxLength(IdentityDatabaseSchema.VaultSecretContextLength)
+                    .HasColumnType("binary(16)")
+                    // Explicit Guid↔byte[] conversion pins the .NET ToByteArray
+                    // byte order (little-endian first three groups), matching
+                    // the storage migration's UNHEX layout and the convention
+                    // used across Sufficit databases.
+                    .HasConversion<byte[]>()
                     .IsRequired();
                 b.Property(x => x.OwnerSubject)
-                    .HasMaxLength(IdentityDatabaseSchema.VaultSecretOwnerLength)
+                    .HasColumnType("binary(16)")
+                    .HasConversion<byte[]>()
                     .IsRequired();
                 b.Property(x => x.Ciphertext)
                     .HasColumnType("longtext")
@@ -45,16 +54,17 @@ internal static class VaultSecretMapping
                 b.Property(x => x.UpdatedBy)
                     .HasMaxLength(IdentityDatabaseSchema.VaultSecretUpdatedByLength)
                     .IsRequired();
-                b.HasIndex(x => new { x.ContextId, x.Name })
+                b.HasIndex(x => new { x.Type, x.ContextId, x.Name })
                     .IsUnique()
                     .HasDatabaseName("AK_vaultsecrets_context_name");
-                b.HasIndex(x => new { x.ContextId, x.Namespace })
+                b.HasIndex(x => new { x.Type, x.ContextId, x.Namespace })
                     .HasDatabaseName("IX_vaultsecrets_context_namespace");
 
                 MappingHelpers.SnakeCaseColumns(b, [
                     ("Id", "id"),
                     ("Name", "name"),
                     ("Namespace", "namespace"),
+                    ("Type", "type"),
                     ("ContextId", "contextid"),
                     ("OwnerSubject", "ownersubject"),
                     ("Ciphertext", "ciphertext"),

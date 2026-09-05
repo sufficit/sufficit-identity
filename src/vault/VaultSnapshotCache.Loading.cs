@@ -174,9 +174,11 @@ public sealed partial class VaultSnapshotCache
         CancellationToken cancellationToken)
     {
         await using var database = await _databaseFactory.CreateDbContextAsync(cancellationToken);
+        var context = VaultSecretContext.Parse(cacheKey.ContextId);
         var row = await database.VaultSecrets.AsNoTracking()
             .SingleOrDefaultAsync(secret => secret.Name == cacheKey.Name
-                && secret.ContextId == cacheKey.ContextId,
+                && secret.Type == context.Type
+                && secret.ContextId == context.ContextId,
                 cancellationToken);
         return row is null ? null : ToEntry(row);
     }
@@ -187,23 +189,38 @@ public sealed partial class VaultSnapshotCache
         CancellationToken cancellationToken)
     {
         await using var database = await _databaseFactory.CreateDbContextAsync(cancellationToken);
+        var context = VaultSecretContext.Parse(contextId);
         var query = database.VaultSecrets.AsNoTracking()
-            .Where(secret => secret.ContextId == contextId);
+            .Where(secret => secret.Type == context.Type
+                && secret.ContextId == context.ContextId);
         if (namespaces is not null)
         {
             query = query.Where(secret => namespaces.Contains(secret.Namespace));
         }
 
-        return await query.OrderBy(secret => secret.Name)
-            .Select(secret => new VaultSecretMetadata(
+        var rows = await query.OrderBy(secret => secret.Name)
+            .Select(secret => new
+            {
                 secret.Name,
                 secret.Namespace,
+                secret.Type,
                 secret.ContextId,
                 secret.OwnerSubject,
                 secret.UpdatedAtUtc,
                 secret.UpdatedBy,
-                true,
-                secret.ExpiresAtUtc))
+                secret.ExpiresAtUtc
+            })
             .ToArrayAsync(cancellationToken);
+        // Guid → display mapping stays client-side: EF cannot translate the
+        // context rendering, and selecting the entity would drag ciphertext.
+        return rows.Select(secret => new VaultSecretMetadata(
+            secret.Name,
+            secret.Namespace,
+            new VaultSecretContext(secret.Type, secret.ContextId).ToString(),
+            VaultBackedSecretStore.ToSubjectString(secret.OwnerSubject),
+            secret.UpdatedAtUtc,
+            secret.UpdatedBy,
+            true,
+            secret.ExpiresAtUtc)).ToArray();
     }
 }

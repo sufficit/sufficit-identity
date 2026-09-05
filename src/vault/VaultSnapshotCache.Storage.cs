@@ -127,8 +127,8 @@ public sealed partial class VaultSnapshotCache
         new(
             secret.Name,
             secret.Namespace,
-            secret.ContextId,
-            secret.OwnerSubject,
+            new VaultSecretContext(secret.Type, secret.ContextId).ToString(),
+            VaultBackedSecretStore.ToSubjectString(secret.OwnerSubject),
             secret.Ciphertext,
             secret.AadJson,
             secret.UpdatedAtUtc,
