@@ -98,7 +98,10 @@ public sealed class MariaDbMigrationIntegrationTests
         await using var connection = context.Database.GetDbConnection();
         await connection.OpenAsync();
 
-        Assert.Equal(35, await ScalarIntAsync(connection, """
+        // 34 base tables remain: the canonical script creates the migrations
+        // history table plus 33 model tables, and the final migration drops
+        // vaultpersonalsecrets (user-typed secrets live in vaultsecrets).
+        Assert.Equal(34, await ScalarIntAsync(connection, """
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = DATABASE()
