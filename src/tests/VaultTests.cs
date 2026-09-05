@@ -49,19 +49,19 @@ public sealed partial class VaultTests
             options);
 
         await service.PutAsync(
-            "user-a", "personal", "provider/api-key",
+            "11111111-1111-1111-1111-111111111111", "personal", "provider/api-key",
             new SaveUserVaultSecret("secret-a"));
         await service.PutAsync(
-            "user-b", "personal", "provider/api-key",
+            "22222222-2222-2222-2222-222222222222", "personal", "provider/api-key",
             new SaveUserVaultSecret("secret-b"));
 
-        var userA = await service.ListAsync("user-a", "personal");
-        var userB = await service.ListAsync("user-b", "personal");
+        var userA = await service.ListAsync("11111111-1111-1111-1111-111111111111", "personal");
+        var userB = await service.ListAsync("22222222-2222-2222-2222-222222222222", "personal");
 
         Assert.Single(userA);
         Assert.Single(userB);
-        Assert.Equal("user-a", userA[0].UpdatedBy);
-        Assert.Equal("user-b", userB[0].UpdatedBy);
+        Assert.Equal("11111111-1111-1111-1111-111111111111", userA[0].UpdatedBy);
+        Assert.Equal("22222222-2222-2222-2222-222222222222", userB[0].UpdatedBy);
         Assert.Equal("provider/api-key", userA[0].Name);
 
         // Owners are separated by context, and the reserved root segment is what
@@ -71,15 +71,19 @@ public sealed partial class VaultTests
             .OrderBy(secret => secret.ContextId)
             .ToArrayAsync();
         Assert.Equal(2, stored.Length);
-        Assert.Equal(["user-user-a", "user-user-b"], stored.Select(item => item.ContextId));
+        // Contexts are Guids now: a user-<guid> legacy subject keeps only the
+        // Guid part, so the stored rows carry the subject Guids themselves.
+        Assert.Equal(
+            ["11111111-1111-1111-1111-111111111111", "22222222-2222-2222-2222-222222222222"],
+            stored.Select(item => item.ContextId.ToString()));
         Assert.All(stored, item => Assert.Equal("personal", item.Namespace));
         Assert.All(stored, item => Assert.Equal("personal/provider/api-key", item.Name));
         Assert.DoesNotContain("secret-a", stored[0].Ciphertext, StringComparison.Ordinal);
         Assert.DoesNotContain("secret-b", stored[1].Ciphertext, StringComparison.Ordinal);
 
-        await service.DeleteAsync("user-a", "personal", "provider/api-key");
-        Assert.Empty(await service.ListAsync("user-a", "personal"));
-        Assert.Single(await service.ListAsync("user-b", "personal"));
+        await service.DeleteAsync("11111111-1111-1111-1111-111111111111", "personal", "provider/api-key");
+        Assert.Empty(await service.ListAsync("11111111-1111-1111-1111-111111111111", "personal"));
+        Assert.Single(await service.ListAsync("22222222-2222-2222-2222-222222222222", "personal"));
     }
 
     /// <summary>
@@ -100,13 +104,13 @@ public sealed partial class VaultTests
         await named.PutAsync(
             "integrations/oauth/tokens/github",
             "connected-credential",
-            "user-a",
-            "user-user-a");
+            "11111111-1111-1111-1111-111111111111",
+            "user-11111111-1111-1111-1111-111111111111");
 
         // Layer one: an explicit non-personal namespace is refused, loudly.
         var rejected = await Assert.ThrowsAsync<ArgumentException>(
             () => service.PutAsync(
-                "user-a",
+                "11111111-1111-1111-1111-111111111111",
                 "integrations",
                 "oauth/tokens/github",
                 new SaveUserVaultSecret("attacker-value")));
@@ -115,7 +119,7 @@ public sealed partial class VaultTests
         // Layer two: the same name accepted under the personal namespace lands
         // beside the credential, never on top of it.
         await service.PutAsync(
-            "user-a",
+            "11111111-1111-1111-1111-111111111111",
             "personal",
             "oauth/tokens/github",
             new SaveUserVaultSecret("user-typed-value"));
@@ -124,20 +128,20 @@ public sealed partial class VaultTests
             "connected-credential",
             await named.GetSecretAsync(
                 "integrations/oauth/tokens/github",
-                "user-user-a"));
+                "user-11111111-1111-1111-1111-111111111111"));
         Assert.Equal(
             "user-typed-value",
             await named.GetSecretAsync(
                 "personal/oauth/tokens/github",
-                "user-user-a"));
+                "user-11111111-1111-1111-1111-111111111111"));
 
         // Deleting through the personal boundary cannot reach the credential.
         await Assert.ThrowsAsync<ArgumentException>(
-            () => service.DeleteAsync("user-a", "integrations", "oauth/tokens/github"));
-        await service.DeleteAsync("user-a", "personal", "oauth/tokens/github");
+            () => service.DeleteAsync("11111111-1111-1111-1111-111111111111", "integrations", "oauth/tokens/github"));
+        await service.DeleteAsync("11111111-1111-1111-1111-111111111111", "personal", "oauth/tokens/github");
         Assert.NotNull(await named.ResolveAsync(
             "integrations/oauth/tokens/github",
-            "user-user-a"));
+            "user-11111111-1111-1111-1111-111111111111"));
     }
 
     [Fact]
@@ -157,33 +161,33 @@ public sealed partial class VaultTests
         var overviewService = new UserVaultOverviewService(personal, named);
 
         await personal.PutAsync(
-            "user-a",
+            "11111111-1111-1111-1111-111111111111",
             "personal",
             "provider/api-key",
             new SaveUserVaultSecret("user-typed-value"));
         await named.PutAsync(
             "integrations/oauth/tokens/github",
             "github-token",
-            "user-a",
-            "user-user-a");
+            "11111111-1111-1111-1111-111111111111",
+            "user-11111111-1111-1111-1111-111111111111");
         await named.PutAsync(
             "integrations/oauth/pending/temporary-state",
             "pending-ticket",
-            "user-a",
-            "user-user-a",
+            "11111111-1111-1111-1111-111111111111",
+            "user-11111111-1111-1111-1111-111111111111",
             DateTime.UtcNow.AddMinutes(15));
         await named.PutAsync(
             "providers/custom/api-key",
             "custom-value",
-            "user-a",
-            "user-user-a");
+            "11111111-1111-1111-1111-111111111111",
+            "user-11111111-1111-1111-1111-111111111111");
         await named.PutAsync(
             "integrations/oauth/tokens/gitlab",
             "other-user-token",
-            "user-b",
-            "user-user-b");
+            "22222222-2222-2222-2222-222222222222",
+            "user-22222222-2222-2222-2222-222222222222");
 
-        var overview = await overviewService.GetAsync("user-a");
+        var overview = await overviewService.GetAsync("11111111-1111-1111-1111-111111111111");
 
         Assert.Collection(
             overview.PersonalSecrets,
@@ -260,7 +264,7 @@ public sealed partial class VaultTests
         await using (var database = await dbFactory.CreateDbContextAsync())
         {
             var row = await database.VaultSecrets.SingleAsync(item =>
-                item.Name == name && item.ContextId == context);
+                item.Name == name && item.ContextId == Guid.Empty);
             row.Ciphertext = replacementCiphertext;
             row.AadJson = JsonSerializer.Serialize(replacementAad);
             await database.SaveChangesAsync();
@@ -356,7 +360,7 @@ public sealed partial class VaultTests
         await using (var database = await dbFactory.CreateDbContextAsync())
         {
             var row = await database.VaultSecrets.SingleAsync(item =>
-                item.Name == name && item.ContextId == context);
+                item.Name == name && item.ContextId == Guid.Empty);
             row.Ciphertext = replacementCiphertext;
             row.AadJson = JsonSerializer.Serialize(replacementAad);
             await database.SaveChangesAsync();
