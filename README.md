@@ -1,5 +1,8 @@
 # Sufficit Identity
 
+> **Worktrees (padrão Sufficit):** toda árvore de trabalho deste projeto (humanos ou agentes de IA) deve ser criada dentro da pasta do próprio projeto: `git worktree add .worktrees/<nome>`. A pasta `.worktrees/` é ignorada pelo git (`.gitignore` → `**/.worktrees/`) e nunca deve ser versionada ou criada fora da raiz do repositório.
+
+
 OAuth 2.0 / OpenID Connect Security Token Service (STS) built on [.NET 10](https://dotnet.microsoft.com/) and [OpenIddict 7.6](https://github.com/openiddict/openiddict-core).
 
 [![CI](https://github.com/sufficit/sufficit-identity/actions/workflows/ci.yml/badge.svg)](https://github.com/sufficit/sufficit-identity/actions/workflows/ci.yml)

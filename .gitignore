@@ -104,3 +104,5 @@ docs/evaluations/
 deploy/local/
 **/publish*/
 helpers/github-bot-tokens.sh
+# Worktrees (padrao): arvores de trabalho em <repo>/.worktrees/
+**/.worktrees/
