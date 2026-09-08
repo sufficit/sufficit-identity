@@ -20,9 +20,9 @@
     <!-- Public Identity UI -->
     <PackageVersion Include="QRCoder" Version="1.8.0" />
     <!-- Shared SUI component library (published from the sufficit-blazor-ui
-         repository; consumed as a PACKAGE so builds and CI no longer depend
-         on a sibling checkout). -->
-    <PackageVersion Include="Sufficit.Blazor.UI" Version="1.28.0" />
+         repository; the UTC calendar version is pinned for CI/package mode.
+         A sibling checkout still takes precedence locally; see Directory.Build.props). -->
+    <PackageVersion Include="Sufficit.Blazor.UI" Version="1.26.908.2020" />
 
     <!-- ASP.NET Core Data Protection key-ring persistence (P0 #B4) -->
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.11" />
