@@ -45,7 +45,7 @@ public sealed class VaultUiCompositionTests
             StringComparison.Ordinal);
         Assert.Contains("<AuthorizeView Policy=\"@VaultUiPolicies.Admin\">",
             userPage, StringComparison.Ordinal);
-        Assert.Contains("href=\"/vault/admin\"", userPage,
+        Assert.Contains("Href=\"/vault/admin\"", userPage,
             StringComparison.Ordinal);
         Assert.Contains("Administração global", userPage,
             StringComparison.Ordinal);
@@ -84,7 +84,7 @@ public sealed class VaultUiCompositionTests
             StringComparison.Ordinal);
         Assert.Contains(".vault-admin-entry", css,
             StringComparison.Ordinal);
-        Assert.Contains(".vault-button--admin", css,
+        Assert.Contains(".vault-admin-entry .sui-btn", css,
             StringComparison.Ordinal);
         Assert.Contains(".vault-admin-tabs", css,
             StringComparison.Ordinal);

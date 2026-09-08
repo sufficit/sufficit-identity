@@ -30,7 +30,7 @@ else if (!string.IsNullOrWhiteSpace(loadError))
 {
     <div class="vault-load-error" role="alert">
         <div><strong>Não foi possível carregar este Vault</strong><span>@loadError</span></div>
-        <button class="vault-button vault-button--quiet" type="button" @onclick="LoadAsync">Tentar novamente</button>
+        <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="LoadAsync">Tentar novamente</SUIButton>
     </div>
 }
 else if (detail is null)
@@ -41,7 +41,7 @@ else if (detail is null)
     }
     <section class="vault-panel">
         <SUIEmptyState Icon="users" Title="Vault não encontrado" Description="A conta não existe ou não possui mais credenciais armazenadas.">
-            <Actions><a class="vault-button vault-button--quiet" href="/vault/admin">Voltar à gestão</a></Actions>
+            <Actions><SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" Href="/vault/admin">Voltar à gestão</SUIButton></Actions>
         </SUIEmptyState>
     </section>
 }
@@ -106,13 +106,13 @@ else
                             {
                                 <div class="vault-confirm" role="group" aria-label="Confirmar remoção">
                                     <span>Remover?</span>
-                                    <button class="vault-button vault-button--danger" type="button" @onclick="() => DeleteManagedAsync(item.Name)" disabled="@working">Confirmar</button>
-                                    <button class="vault-button vault-button--quiet" type="button" @onclick="CancelConfirmation" disabled="@working">Cancelar</button>
+                                    <SUIButton ColorValue="SUIColor.Error" OnClick="() => DeleteManagedAsync(item.Name)" Disabled="@working">Confirmar</SUIButton>
+                                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="CancelConfirmation" Disabled="@working">Cancelar</SUIButton>
                                 </div>
                             }
                             else
                             {
-                                <button class="vault-button vault-button--quiet" type="button" @onclick="() => Confirm(actionKey)" disabled="@working">Remover</button>
+                                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="() => Confirm(actionKey)" Disabled="@working">Remover</SUIButton>
                             }
                         </AuthorizeView>
                     </div>
@@ -147,13 +147,13 @@ else
                             {
                                 <div class="vault-confirm" role="group" aria-label="Confirmar remoção">
                                     <span>Remover?</span>
-                                    <button class="vault-button vault-button--danger" type="button" @onclick="() => DeletePersonalAsync(item.Namespace, item.Name)" disabled="@working">Confirmar</button>
-                                    <button class="vault-button vault-button--quiet" type="button" @onclick="CancelConfirmation" disabled="@working">Cancelar</button>
+                                    <SUIButton ColorValue="SUIColor.Error" OnClick="() => DeletePersonalAsync(item.Namespace, item.Name)" Disabled="@working">Confirmar</SUIButton>
+                                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="CancelConfirmation" Disabled="@working">Cancelar</SUIButton>
                                 </div>
                             }
                             else
                             {
-                                <button class="vault-button vault-button--quiet" type="button" @onclick="() => Confirm(actionKey)" disabled="@working">Remover</button>
+                                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="() => Confirm(actionKey)" Disabled="@working">Remover</SUIButton>
                             }
                         </AuthorizeView>
                     </div>
@@ -173,14 +173,14 @@ else
                 <div class="vault-danger-zone__confirm" role="group" aria-label="Confirmar limpeza completa">
                     <strong>Esta ação não pode ser desfeita.</strong>
                     <div>
-                        <button class="vault-button vault-button--danger" type="button" @onclick="ClearAsync" disabled="@working">@(working ? "Limpando…" : "Confirmar limpeza")</button>
-                        <button class="vault-button vault-button--quiet" type="button" @onclick="CancelClear" disabled="@working">Cancelar</button>
+                        <SUIButton ColorValue="SUIColor.Error" OnClick="ClearAsync" Disabled="@working">@(working ? "Limpando…" : "Confirmar limpeza")</SUIButton>
+                        <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="CancelClear" Disabled="@working">Cancelar</SUIButton>
                     </div>
                 </div>
             }
             else
             {
-                <button class="vault-button vault-button--danger-outline" type="button" @onclick="RequestClear" disabled="@(working || TotalItems == 0)">Limpar credenciais</button>
+                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Error" OnClick="RequestClear" Disabled="@(working || TotalItems == 0)">Limpar credenciais</SUIButton>
             }
         </section>
     </AuthorizeView>
