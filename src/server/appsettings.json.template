@@ -335,7 +335,9 @@
       "_PersonalTokens": "Enforce applies least-privilege PAT scope, caller, authentication-age and lifetime decisions. Observe is an explicitly acknowledged migration-only setting.",
       "PersonalTokens": {
         "Mode": "Enforce",
-        "RequiredScope": "personal_tokens.manage",
+        "RequiredScope": "personal.tokens.manage",
+        "_ScopeClientIds": "Explicit clients granted permission to request this self-service scope at startup. Keep deployment-specific client IDs here, never in STS source code.",
+        "ScopeClientIds": [],
         "_RequireMfa": "true requires the caller token to carry amr evidence of MFA before a durable personal token is issued. Default true.",
         "RequireMfa": true,
         "RequireRecentAuthentication": true,

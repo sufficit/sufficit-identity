@@ -178,7 +178,9 @@ public static partial class ServiceCollectionExtensions
             Scopes.OfflineAccess,
             Scopes.Address,
             "identity.management",
-            "personal_tokens.manage",
+            .. string.IsNullOrWhiteSpace(options.PersonalTokens.RequiredScope)
+                ? Array.Empty<string>()
+                : new[] { options.PersonalTokens.RequiredScope.Trim() },
             // Product scopes are deployment configuration, never built-ins of a
             // vendor-neutral STS (eval 2026-08-30, F-2). A scope that entitles
             // a claim is registered from the entitlement map itself, so

@@ -673,6 +673,9 @@ using (var scope = app.Services.CreateScope())
     await scope.ServiceProvider
         .GetRequiredService<McpScopeProvisioner>()
         .ProvisionAsync();
+    await scope.ServiceProvider
+        .GetRequiredService<PersonalTokenScopeProvisioner>()
+        .ProvisionAsync();
 }
 
 // Parse the MySQL/MariaDB database name out of a connection string for the

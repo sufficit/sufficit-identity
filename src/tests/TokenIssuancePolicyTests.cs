@@ -67,7 +67,7 @@ public sealed class TokenIssuancePolicyTests
         var policy = CreatePersonalTokenPolicy(new PersonalTokenIssuanceOptions
         {
             Mode = SecurityPolicyEnforcementMode.Observe,
-            RequiredScope = "personal_tokens.manage",
+            RequiredScope = "personal.tokens.manage",
             RequireRecentAuthentication = true,
             MaximumLifetimeDays = 30,
         });
@@ -98,7 +98,7 @@ public sealed class TokenIssuancePolicyTests
         var policy = CreatePersonalTokenPolicy(new PersonalTokenIssuanceOptions
         {
             Mode = SecurityPolicyEnforcementMode.Enforce,
-            RequiredScope = "personal_tokens.manage",
+            RequiredScope = "personal.tokens.manage",
             RequireRecentAuthentication = true,
             MaximumAuthenticationAgeMinutes = 15,
             MaximumLifetimeDays = 30,
@@ -108,7 +108,7 @@ public sealed class TokenIssuancePolicyTests
         var allowed = policy.Evaluate(new PersonalTokenIssuanceContext(
             "subject",
             "eligible-client",
-            ["personal_tokens.manage", Scopes.Profile, "not-server-allowed"],
+            ["personal.tokens.manage", Scopes.Profile, "not-server-allowed"],
             [Scopes.Profile],
             [Scopes.Profile, Scopes.Email],
             now.AddMinutes(-2),
@@ -119,7 +119,7 @@ public sealed class TokenIssuancePolicyTests
         var rejected = policy.Evaluate(new PersonalTokenIssuanceContext(
             "subject",
             "eligible-client",
-            ["personal_tokens.manage", Scopes.Profile],
+            ["personal.tokens.manage", Scopes.Profile],
             [Scopes.Email],
             [Scopes.Profile, Scopes.Email],
             now.AddMinutes(-2),
@@ -139,7 +139,7 @@ public sealed class TokenIssuancePolicyTests
     {
         var policy = CreatePersonalTokenPolicy(new PersonalTokenIssuanceOptions
         {
-            RequiredScope = "personal_tokens.manage",
+            RequiredScope = "personal.tokens.manage",
             RequireRecentAuthentication = false,
             MaximumLifetimeDays = 30,
         });
@@ -147,7 +147,7 @@ public sealed class TokenIssuancePolicyTests
         var context = new PersonalTokenIssuanceContext(
             "subject",
             "eligible-client",
-            ["personal_tokens.manage", Scopes.Profile],
+            ["personal.tokens.manage", Scopes.Profile],
             [Scopes.Profile],
             [Scopes.Profile, Scopes.Email],
             null,

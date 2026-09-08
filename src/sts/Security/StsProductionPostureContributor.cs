@@ -38,7 +38,7 @@ public sealed class StsProductionPostureContributor(
         {
             yield return new(
                 "personal-tokens-mfa-disabled",
-                "Personal-token issuance accepts a password-only authentication context for the sensitive personal_tokens.manage scope.",
+                "Personal-token issuance accepts a password-only authentication context for the sensitive personal.tokens.manage scope.",
                 "Set Sufficit:Identity:PersonalTokens:RequireMfa=true, or document a time-bounded security exception.");
         }
 

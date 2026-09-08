@@ -50,6 +50,10 @@ public sealed class PersonalTokensTests
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal("invalid_scope", body.RootElement.GetProperty("error").GetString());
+        Assert.Contains(body.RootElement.GetProperty("reasonCodes").EnumerateArray(),
+            item => item.GetString() == "requested_scope_not_delegated");
+        Assert.Equal(30, body.RootElement.GetProperty("maximumLifetimeDays").GetInt32());
+        Assert.False(string.IsNullOrWhiteSpace(body.RootElement.GetProperty("correlationId").GetString()));
     }
 
     [Fact]
