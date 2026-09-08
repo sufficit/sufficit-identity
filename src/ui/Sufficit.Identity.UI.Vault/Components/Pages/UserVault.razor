@@ -26,11 +26,11 @@
                     <p>Gerencie segredos globais usados por serviços e integrações. Credenciais pessoais permanecem isoladas por usuário.</p>
                 </div>
             </div>
-            <a class="vault-button vault-button--admin"
-               href="/vault/admin">
+            <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Warning"
+               Href="/vault/admin">
                 Abrir Vault administrativo
                 <SUIIcon Name="arrow-right" Size="16" />
-            </a>
+            </SUIButton>
         </section>
     </Authorized>
 </AuthorizeView>
@@ -39,7 +39,7 @@
 {
     <div class="vault-load-error" role="alert">
         <div><strong>Não foi possível carregar seu Vault.</strong><span>@loadError</span></div>
-        <button class="vault-button vault-button--quiet" type="button" @onclick="LoadAsync" disabled="@loading">Tentar novamente</button>
+        <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="LoadAsync" Disabled="@loading">Tentar novamente</SUIButton>
     </div>
 }
 
@@ -87,13 +87,24 @@
 
 <section class="vault-panel" aria-labelledby="personal-secret-heading">
     <div class="vault-panel__heading"><div><h2 id="personal-secret-heading">Adicionar ou substituir segredo</h2><p>Use um nome lógico, como <code>openai/api-key</code>.</p></div><SUIStatusBadge ToneValue="SUITone.Neutral">namespace: pessoal</SUIStatusBadge></div>
-    <EditForm Model="form" OnValidSubmit="SaveAsync" class="vault-form" aria-busy="@saving">
+    <EditForm Model="form" Context="editContext" OnValidSubmit="SaveAsync" class="vault-form" aria-busy="@saving">
         <DataAnnotationsValidator />
-        <div class="vault-form__grid">
-            <div class="vault-field"><label for="personal-secret-name">Nome</label><InputText id="personal-secret-name" @bind-Value="form.Name" autocomplete="off" maxlength="128" aria-describedby="personal-secret-name-hint" placeholder="ex.: fornecedor/api-key" /><span id="personal-secret-name-hint" class="vault-field__hint">Use letras, números e pelo menos uma barra.</span><ValidationMessage For="() => form.Name" /></div>
-            <div class="vault-field"><label for="personal-secret-value">Valor</label><InputText id="personal-secret-value" type="password" @bind-Value="form.Value" autocomplete="new-password" maxlength="16384" placeholder="Não será exibido novamente" /><ValidationMessage For="() => form.Value" /></div>
-        </div>
-        <div class="vault-form__actions"><button class="vault-button vault-button--primary" type="submit" disabled="@saving">@(saving ? "Salvando…" : "Salvar segredo")</button></div>
+        @* Keep EditContext notifications and validation explicit while consuming SUI 1.28.0. *@
+        <SUIFormGrid Columns="2" LabelLines="1">
+            <div>
+                <SUITextField T="string" Id="personal-secret-name" Label="Nome" Value="@form.Name"
+                              ValueChanged="value => { form.Name = value ?? string.Empty; editContext.NotifyFieldChanged(new(form, nameof(form.Name))); }"
+                              autocomplete="off" Placeholder="ex.: fornecedor/api-key" MaxLength="128" HelperText="Use letras, números e pelo menos uma barra." />
+                <ValidationMessage For="() => form.Name" />
+            </div>
+            <div>
+                <SUITextField T="string" Id="personal-secret-value" Label="Valor" Value="@form.Value"
+                              ValueChanged="value => { form.Value = value ?? string.Empty; editContext.NotifyFieldChanged(new(form, nameof(form.Value))); }"
+                              InputType="password" autocomplete="new-password" MaxLength="16384" Placeholder="Não será exibido novamente" />
+                <ValidationMessage For="() => form.Value" />
+            </div>
+        </SUIFormGrid>
+        <div class="vault-form__actions"><SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@saving">@(saving ? "Salvando…" : "Salvar segredo")</SUIButton></div>
     </EditForm>
     @if (!string.IsNullOrWhiteSpace(message)) { <p class="vault-feedback @(success ? "vault-feedback--success" : "vault-feedback--error")" role="status">@message</p> }
 </section>
@@ -107,7 +118,7 @@
         <div class="vault-list">
             @foreach (var item in personalSecrets)
             {
-                <div class="vault-list__item"><span class="vault-list__icon"><SUIIcon Name="key" Size="18" /></span><div class="vault-list__copy"><strong>@item.Name</strong><span>Atualizado em @item.UpdatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></div><button class="vault-button vault-button--quiet" type="button" @onclick="() => DeleteAsync(item.Name)" disabled="@saving">Remover</button></div>
+                <div class="vault-list__item"><span class="vault-list__icon"><SUIIcon Name="key" Size="18" /></span><div class="vault-list__copy"><strong>@item.Name</strong><span>Atualizado em @item.UpdatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></div><SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="() => DeleteAsync(item.Name)" Disabled="@saving">Remover</SUIButton></div>
             }
         </div>
     }

@@ -79,56 +79,40 @@
             <h2 id="clients-list-heading">Aplicações registradas</h2>
             <p>@ToolbarDescription</p>
         </div>
-        <div class="data-toolbar__actions clients-filters">
+        <div class="clients-filters">
             @if (CanFilter)
             {
-                <label class="search-field clients-filter--search">
-                    <span class="visually-hidden">Pesquisar aplicações</span>
+                <div class="clients-filter--search">
                     <SUIIcon Name="search" Size="18" />
-                    <input type="search"
-                           placeholder="Pesquisar por client_id ou nome"
-                           autocomplete="off"
-                           name="q"
-                           value="@search"
-                           @onchange="SearchChanged" />
-                </label>
-                <div class="compact-filter clients-filter">
-                    <span>Tipo</span>
-                    <SUISelect T="string" id="client-type-filter" name="type" aria-label="Tipo" Value="@typeFilter" ValueChanged="TypeSelected">
-                        <SUISelectItem Value="@("all")">Todos</SUISelectItem>
-                        <SUISelectItem Value="@("public")">Públicos</SUISelectItem>
-                        <SUISelectItem Value="@("confidential")">Confidenciais</SUISelectItem>
-                    </SUISelect>
+                    <SUITextField T="string" Class="clients-filter"
+                              Id="client-search" name="q" InputType="search" aria-label="Pesquisar aplicações"
+                              Placeholder="Pesquisar por client_id ou nome" autocomplete="off"
+                              Value="@search" ValueChanged="SearchChanged" />
                 </div>
-                <div class="compact-filter clients-filter">
-                    <span>Fluxo</span>
-                    <SUISelect T="string" id="client-grant-filter" name="grant" aria-label="Fluxo" Value="@grantFilter" ValueChanged="GrantSelected">
-                        <SUISelectItem Value="@("all")">Todos os fluxos</SUISelectItem>
-                        <SUISelectItem Value="@("authorization_code")">Authorization Code</SUISelectItem>
-                        <SUISelectItem Value="@("client_credentials")">Client Credentials</SUISelectItem>
-                        <SUISelectItem Value="@("device_code")">Device Code</SUISelectItem>
-                        <SUISelectItem Value="@("refresh_token")">Refresh Token</SUISelectItem>
-                    </SUISelect>
-                </div>
-                <div class="compact-filter clients-filter">
-                    <span>Origem</span>
-                    <SUISelect T="string" id="client-origin-filter" name="origin" aria-label="Origem" Value="@originFilter" ValueChanged="OriginSelected">
-                        <SUISelectItem Value="@("all")">Todas</SUISelectItem>
-                        <SUISelectItem Value="@("manual")">Manual</SUISelectItem>
-                        <SUISelectItem Value="@("manifest")">Manifesto</SUISelectItem>
-                    </SUISelect>
-                </div>
-                <div class="compact-filter clients-filter">
-                    <span>Estado</span>
-                    <SUISelect T="string" id="client-status-filter" name="status" aria-label="Estado" Value="@statusFilter" ValueChanged="StatusSelected">
-                        <SUISelectItem Value="@("all")">Todos</SUISelectItem>
-                        <SUISelectItem Value="@("active")">Ativos</SUISelectItem>
-                    </SUISelect>
-                </div>
-                <label class="compact-filter compact-filter--text clients-filter">
-                    <span>Scope</span>
-                    <input id="client-scope-filter" name="scope" class="form-control" value="@scopeFilter" placeholder="ex.: openid" @onchange="ScopeChanged" />
-                </label>
+                <SUISelect T="string" id="client-type-filter" name="type" Label="Tipo" Class="clients-filter" Value="@typeFilter" ValueChanged="TypeSelected">
+                    <SUISelectItem Value="@("all")">Todos</SUISelectItem>
+                    <SUISelectItem Value="@("public")">Públicos</SUISelectItem>
+                    <SUISelectItem Value="@("confidential")">Confidenciais</SUISelectItem>
+                </SUISelect>
+                <SUISelect T="string" id="client-grant-filter" name="grant" Label="Fluxo" Class="clients-filter" Value="@grantFilter" ValueChanged="GrantSelected">
+                    <SUISelectItem Value="@("all")">Todos os fluxos</SUISelectItem>
+                    <SUISelectItem Value="@("authorization_code")">Authorization Code</SUISelectItem>
+                    <SUISelectItem Value="@("client_credentials")">Client Credentials</SUISelectItem>
+                    <SUISelectItem Value="@("device_code")">Device Code</SUISelectItem>
+                    <SUISelectItem Value="@("refresh_token")">Refresh Token</SUISelectItem>
+                </SUISelect>
+                <SUISelect T="string" id="client-origin-filter" name="origin" Label="Origem" Class="clients-filter" Value="@originFilter" ValueChanged="OriginSelected">
+                    <SUISelectItem Value="@("all")">Todas</SUISelectItem>
+                    <SUISelectItem Value="@("manual")">Manual</SUISelectItem>
+                    <SUISelectItem Value="@("manifest")">Manifesto</SUISelectItem>
+                </SUISelect>
+                <SUISelect T="string" id="client-status-filter" name="status" Label="Estado" Class="clients-filter" Value="@statusFilter" ValueChanged="StatusSelected">
+                    <SUISelectItem Value="@("all")">Todos</SUISelectItem>
+                    <SUISelectItem Value="@("active")">Ativos</SUISelectItem>
+                </SUISelect>
+                <SUITextField T="string" Class="clients-filter" Label="Scope"
+                              Id="client-scope-filter" name="scope" Value="@scopeFilter"
+                              Placeholder="ex.: openid" ValueChanged="ScopeChanged" />
             }
         </div>
     </div>
@@ -159,11 +143,10 @@
                                 Title="@EmptyTitle"
                                 Description="@EmptyDescription">
                         <Actions>
-                            <button class="button button--secondary"
-                                    type="button"
-                                    @onclick="ClearSearch">
+                            <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default"
+                                    OnClick="ClearSearch">
                                     Limpar filtros
-                            </button>
+                            </SUIButton>
                         </Actions>
                     </SUIEmptyState>
                 }
@@ -230,11 +213,10 @@
                         Title="Não foi possível consultar os clientes"
                         Description="O serviço de identidade não conseguiu ler os registros agora. Verifique o banco e tente novamente.">
                 <Actions>
-                    <button class="button button--secondary"
-                            type="button"
-                            @onclick="LoadClientsAsync">
+                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default"
+                            OnClick="LoadClientsAsync">
                         Tentar novamente
-                    </button>
+                    </SUIButton>
                 </Actions>
             </SUIEmptyState>
         }
@@ -245,21 +227,19 @@
         @if (HasPages)
         {
             <nav class="pagination" aria-label="Paginação de aplicações">
-                <button class="button button--secondary button--small"
-                        type="button"
-                        disabled="@(CurrentPage <= 1 || loading)"
-                        @onclick="() => GoToPage(CurrentPage - 1)">
+                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" SizeValue="SUISize.Small"
+                        Disabled="@(CurrentPage <= 1 || loading)"
+                        OnClick="() => GoToPage(CurrentPage - 1)">
                     <SUIIcon Name="arrow-left" Size="15" />
                     Anterior
-                </button>
+                </SUIButton>
                 <span class="pagination__status">Página @CurrentPage de @PageCount</span>
-                <button class="button button--secondary button--small"
-                        type="button"
-                        disabled="@(CurrentPage >= PageCount || loading)"
-                        @onclick="() => GoToPage(CurrentPage + 1)">
+                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" SizeValue="SUISize.Small"
+                        Disabled="@(CurrentPage >= PageCount || loading)"
+                        OnClick="() => GoToPage(CurrentPage + 1)">
                     Próxima
                     <SUIIcon Name="arrow-right" Size="15" />
-                </button>
+                </SUIButton>
             </nav>
         }
         else
@@ -434,9 +414,9 @@
         loading = false;
     }
 
-    private void SearchChanged(ChangeEventArgs args)
+    private void SearchChanged(string? value)
     {
-        search = args.Value?.ToString() ?? string.Empty;
+        search = value ?? string.Empty;
         SyncUrl(resetPage: true);
     }
 
@@ -452,9 +432,9 @@
         SyncUrl(resetPage: true);
     }
 
-    private void ScopeChanged(ChangeEventArgs args)
+    private void ScopeChanged(string? value)
     {
-        scopeFilter = args.Value?.ToString()?.Trim() ?? string.Empty;
+        scopeFilter = value?.Trim() ?? string.Empty;
         SyncUrl(resetPage: true);
     }
 

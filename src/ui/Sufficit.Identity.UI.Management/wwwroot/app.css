@@ -2048,7 +2048,7 @@ h3 {
 }
 
 .clients-filter .sui-select__trigger,
-.clients-filter .form-control {
+.clients-filter .sui-field__input {
     min-height: 44px;
     font-size: 13px;
     letter-spacing: normal;
@@ -7167,3 +7167,13 @@ h3 {
        grudada no nome. */
     user-select: none;
 }
+
+/* Filter composition: labels belong to SUI; align the controls at the row end. */
+.clients-filter .sui-field__label { font-size: 11px; font-weight: 650; line-height: 1.2; }
+.clients-filter .sui-field__input { border-color: var(--line-strong); border-radius: var(--radius); background: var(--surface); color: var(--ink); }
+
+/* Package 1.28.0 has no adornment API; keep the decorative search icon outside the field. */
+.clients-filter--search { position: relative; }
+.clients-filter--search > svg { position: absolute; inset-inline-start: 12px; inset-block-end: 13px; z-index: 1; pointer-events: none; color: var(--ink-muted); }
+.clients-filter--search .sui-field__input { padding-inline-start: 40px; }
+.clients-filter :is(.sui-field__input, .sui-select__trigger) { font-weight: 400; }
