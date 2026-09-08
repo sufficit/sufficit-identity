@@ -12,7 +12,12 @@ public sealed class PersonalTokenIssuanceOptions
     public SecurityPolicyEnforcementMode Mode { get; init; } =
         SecurityPolicyEnforcementMode.Enforce;
 
-    public string RequiredScope { get; init; } = "personal_tokens.manage";
+    public string RequiredScope { get; init; } = "personal.tokens.manage";
+
+    /// <summary>Clients explicitly authorized to request the self-service scope.
+    /// Startup provisions their scope permission, without granting administrator roles.
+    /// Empty by default; deployments select their trusted clients.</summary>
+    public HashSet<string> ScopeClientIds { get; init; } = new(StringComparer.Ordinal);
 
     /// <summary>
     /// Requires MFA evidence in the caller's <c>amr</c> claim before issuing

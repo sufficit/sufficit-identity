@@ -331,6 +331,12 @@ public sealed partial class PersonalTokensController : ControllerBase
             {
                 error = issuanceDecision.ErrorCode,
                 error_description = "The personal token exceeds the caller's delegated authority.",
+                reasonCode = issuanceDecision.ReasonCodes.FirstOrDefault(),
+                reasonCodes = issuanceDecision.ReasonCodes,
+                requiredPermission = _options.PersonalTokens.RequiredScope,
+                maximumLifetimeDays = Math.Clamp(_options.PersonalTokens.MaximumLifetimeDays, 1, 365),
+                maximumAuthenticationAgeMinutes = Math.Clamp(_options.PersonalTokens.MaximumAuthenticationAgeMinutes, 1, 1440),
+                correlationId = HttpContext.TraceIdentifier,
             });
         }
         var applicationScopes = issuanceDecision.EffectiveScopes;
