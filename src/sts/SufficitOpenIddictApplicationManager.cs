@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+using System.Runtime.CompilerServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -34,6 +36,36 @@ internal sealed class SufficitOpenIddictApplicationManager(
     // This also bounds intentionally expensive PBKDF2 work if storage is
     // corrupted or modified outside the management service.
     internal const int MaximumActiveAdditionalSharedSecrets = 5;
+
+    public override async IAsyncEnumerable<ValidationResult> ValidateAsync(
+        OpenIddictEntityFrameworkCoreApplication application,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(application);
+        await foreach (var result in base.ValidateAsync(application, cancellationToken))
+        {
+            // OpenIddict 7.7 requires its legacy secret field or a signing key.
+            // Our registry is a third credential source. Suppress ONLY its
+            // missing-credential diagnostic and only with a persisted record.
+            // Expired/revoked records still permit editing the application;
+            // ValidateClientSecretAsync independently enforces the active window.
+            if (string.Equals(result.ErrorMessage,
+                    OpenIddictResources.GetResourceString(OpenIddictResources.ID2113),
+                    StringComparison.Ordinal)
+                && application.ClientType == OpenIddictConstants.ClientTypes.Confidential
+                && string.IsNullOrEmpty(application.ClientSecret)
+                && !string.IsNullOrEmpty(application.ClientId)
+                && await database.OAuthClientCredentials.AsNoTracking().AnyAsync(
+                    credential => credential.ClientId == application.ClientId
+                        && credential.Kind == OAuthClientCredentialKinds.SharedSecret
+                        && credential.SecretHash != "", cancellationToken))
+            {
+                continue;
+            }
+
+            yield return result;
+        }
+    }
 
     public override async ValueTask<bool> ValidateClientSecretAsync(
         OpenIddictEntityFrameworkCoreApplication application,

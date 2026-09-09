@@ -80,6 +80,8 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Usage
 
+- [Partner system authorization](usage/USAGE-PARTNER-SYSTEM-AUTHORIZATION.md) — credencial anual, tokens curtos e simulação local
+
 - [Embedded public and Management UIs](usage/USAGE-EMBEDDED-UI.md)
 - [Identity MCP — Vault and self-service](usage/USAGE-IDENTITY-MCP.md)
 - [SCIM 2.0](usage/USAGE-SCIM.md)
