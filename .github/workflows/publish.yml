@@ -1,0 +1,85 @@
+name: Publish Packages
+
+# Sufficit.Identity.Vault.Client was consumed by sufficit-ai and sufficit-endpoints
+# through an Exists() sibling checkout, with a PackageReference fallback that could
+# never resolve: nothing here had ever been published. Any build without the
+# sibling on disk failed on NU1101.
+#
+# Application.Abstractions ships alongside because the vault client depends on it;
+# publishing one without the other produces an unrestorable package.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/vault-client/**'
+      - 'src/application/Sufficit.Identity.Application.Abstractions/**'
+      - 'Directory.Build.props'
+      - 'Directory.Packages.props'
+      - '.github/workflows/publish.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    # This repository is public, so hosted minutes are free here and the
+    # self-hosted openclaw-ci runner is not needed.
+    runs-on: ubuntu-latest
+
+    env:
+      NUPKGS_DIR: ${{ github.workspace }}/nupkgs
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      # Directory.Build.props carries the product version (0.4.0-alpha), which
+      # alone would collide on every republish. The build stamp keeps each push
+      # unique and ordered without pretending the product version moved. It is
+      # split in two numeric identifiers on purpose: a single yyMMddHHmm would
+      # overflow a 32-bit prerelease identifier.
+      - name: Compose version
+        id: version
+        run: |
+          set -euo pipefail
+          base="$(grep -oPm1 '(?<=<Version>)[^<]+' Directory.Build.props)"
+          echo "value=${base}.$(date -u +%y%m%d).$(date -u +%H%M)" >> "$GITHUB_OUTPUT"
+
+      - name: Pack
+        run: |
+          set -euo pipefail
+          for project in \
+            src/application/Sufficit.Identity.Application.Abstractions/Sufficit.Identity.Application.Abstractions.csproj \
+            src/vault-client/Sufficit.Identity.Vault.Client.csproj; do
+            dotnet pack "${project}" \
+              --configuration Release \
+              --output "${NUPKGS_DIR}" \
+              -p:Version=${{ steps.version.outputs.value }}
+          done
+
+      - name: Publish to NuGet.org
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${NUGET_API_KEY}" ]]; then
+            echo "::warning::NUGET_API_KEY is not set on this repository; packages were built but not published."
+            exit 0
+          fi
+          dotnet nuget push "${NUPKGS_DIR}"/*.nupkg \
+            --skip-duplicate \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "${NUGET_API_KEY}"
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkgs
+          path: ${{ env.NUPKGS_DIR }}/*.nupkg
