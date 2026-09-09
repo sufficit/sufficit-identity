@@ -344,7 +344,7 @@ public sealed partial class ManagementUiArchitectureTests
         Assert.Contains("interface IInteractiveSignInService", contract, StringComparison.Ordinal);
         Assert.DoesNotContain("Microsoft.AspNetCore.Identity", contract, StringComparison.Ordinal);
         Assert.Contains(": IInteractiveSignInService", adapter, StringComparison.Ordinal);
-        Assert.Contains("SignInManager<ApplicationUser>", adapter, StringComparison.Ordinal);
+        Assert.Contains("SufficitSignInManager", adapter, StringComparison.Ordinal);
     }
 
     [Fact]
