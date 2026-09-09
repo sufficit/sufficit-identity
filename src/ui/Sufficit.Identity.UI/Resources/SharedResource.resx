@@ -489,4 +489,9 @@
   <data name="ManageTwoFactor.Description" xml:space="preserve"><value>Use um aplicativo autenticador para proteger sua conta com um segundo fator.</value></data>
   <data name="ManageTwoFactor.QrAlt" xml:space="preserve"><value>QR code para configurar a autenticação em duas etapas</value></data>
   <data name="Culture.Selector" xml:space="preserve"><value>Idioma</value></data>
+  <data name="AuthorizationError.Title" xml:space="preserve"><value>Não foi possível continuar este acesso</value></data>
+  <data name="AuthorizationError.Explanation" xml:space="preserve"><value>Esta solicitação de autenticação não pode mais ser utilizada. Isso pode acontecer ao voltar pelo navegador para uma etapa anterior, ou quando o link expira.</value></data>
+  <data name="AuthorizationError.Recovery" xml:space="preserve"><value>Volte ao aplicativo e inicie o acesso novamente. Não é necessário alterar sua senha nem configurar o segundo fator de novo por causa desta mensagem.</value></data>
+  <data name="AuthorizationError.Home" xml:space="preserve"><value>Ir para o início do Identity</value></data>
+  <data name="AuthorizationError.AttemptEnded" xml:space="preserve"><value>Esta tentativa foi interrompida. Nenhuma nova autenticação foi concluída.</value></data>
 </root>

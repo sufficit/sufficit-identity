@@ -218,6 +218,7 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
             // harmless no-op if Program.cs's real wiring already added it.
             services.AddAntiforgery();
             services.AddRazorComponents();
+            services.AddLocalization();
 
             services.AddAuthorization(options =>
             {
@@ -309,6 +310,10 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
             app.UseSufficitSecurityHeaders(configuration);
 
             app.UseRouting();
+            app.UseRequestLocalization(new Microsoft.AspNetCore.Builder.RequestLocalizationOptions()
+                .SetDefaultCulture("pt-BR")
+                .AddSupportedCultures("pt-BR", "en-US")
+                .AddSupportedUICultures("pt-BR", "en-US"));
             app.UseRateLimiter();
             app.UseSufficitCors(
                 app.ApplicationServices.GetRequiredService<SufficitIdentityOptions>().Cors);

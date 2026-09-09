@@ -489,4 +489,9 @@
   <data name="ManageTwoFactor.Description" xml:space="preserve"><value>Use an authenticator app to protect your account with a second factor.</value></data>
   <data name="ManageTwoFactor.QrAlt" xml:space="preserve"><value>QR code for setting up two-step verification</value></data>
   <data name="Culture.Selector" xml:space="preserve"><value>Language</value></data>
+  <data name="AuthorizationError.Title" xml:space="preserve"><value>Unable to continue this sign-in</value></data>
+  <data name="AuthorizationError.Explanation" xml:space="preserve"><value>This authentication request can no longer be used. This can happen when you go back to an earlier step in your browser or when the link expires.</value></data>
+  <data name="AuthorizationError.Recovery" xml:space="preserve"><value>Return to the application and start signing in again. You do not need to change your password or configure two-factor authentication again because of this message.</value></data>
+  <data name="AuthorizationError.Home" xml:space="preserve"><value>Go to the Identity home page</value></data>
+  <data name="AuthorizationError.AttemptEnded" xml:space="preserve"><value>This attempt was interrupted. No new authentication was completed.</value></data>
 </root>
