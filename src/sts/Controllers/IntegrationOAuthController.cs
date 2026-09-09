@@ -63,7 +63,8 @@ public sealed partial class IntegrationOAuthController(
             definition.Id,
             definition.Available,
             connected,
-            token?.ExpiresAtUtc));
+            token?.ExpiresAtUtc,
+            token?.AuthorizationRevision));
     }
 
     [Authorize(Policy = McpPolicy)]
@@ -71,7 +72,8 @@ public sealed partial class IntegrationOAuthController(
     public async Task<IActionResult> Authorize(
         string provider,
         [FromQuery(Name = "return_uri")] string? returnUri,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        [FromQuery(Name = "launch_mode")] string? launchMode = null)
     {
         var definition = providers.Find(provider);
         if (definition is null) return NotFound();
@@ -119,6 +121,8 @@ public sealed partial class IntegrationOAuthController(
                 nativeReturnUri,
                 await CallerDisplayNameAsync(cancellationToken),
                 cancellationToken);
+        var popup = string.Equals(launchMode, "popup", StringComparison.OrdinalIgnoreCase);
+        pending = pending with { Popup = popup };
         await secrets.PutAsync(
             PendingName(nonce),
             JsonSerializer.Serialize(pending, Json),
@@ -130,7 +134,8 @@ public sealed partial class IntegrationOAuthController(
             subject,
             definition.Id,
             nonce,
-            nativeReturnUri));
+            nativeReturnUri,
+            Popup: popup));
 
         var authorizationUrl = definition.Scheme is not null
             ? QueryHelpers.AddQueryString(
@@ -216,11 +221,11 @@ public sealed partial class IntegrationOAuthController(
 
         var pending = await ReadPendingAsync(flow, cancellationToken);
         if (pending is null)
-            return Redirect(ReturnLocation(flow.ReturnUri, definition.Id, "expired"));
+            return CompleteAuthorization(flow.ReturnUri, definition.Id, "expired", flow.Popup);
         if (!string.IsNullOrWhiteSpace(error))
         {
             await DeletePendingAsync(flow, cancellationToken);
-            return Redirect(ReturnLocation(pending.ReturnUri, definition.Id, "cancelled"));
+            return CompleteAuthorization(pending.ReturnUri, definition.Id, "cancelled", pending.Popup);
         }
 
         try
@@ -231,7 +236,7 @@ public sealed partial class IntegrationOAuthController(
                 var authentication = await HttpContext.AuthenticateAsync(
                     IdentityConstants.ExternalScheme);
                 if (!authentication.Succeeded || authentication.Properties is null)
-                    return Redirect(ReturnLocation(pending.ReturnUri, definition.Id, "failed"));
+                    return CompleteAuthorization(pending.ReturnUri, definition.Id, "failed", pending.Popup);
                 authentication.Properties.Items.TryGetValue(
                     "LoginProvider",
                     out var loginProvider);
@@ -239,13 +244,13 @@ public sealed partial class IntegrationOAuthController(
                         loginProvider,
                         definition.Scheme,
                         StringComparison.Ordinal))
-                    return Redirect(ReturnLocation(pending.ReturnUri, definition.Id, "failed"));
+                    return CompleteAuthorization(pending.ReturnUri, definition.Id, "failed", pending.Popup);
                 token = FromAuthenticationProperties(authentication.Properties);
             }
             else
             {
                 if (string.IsNullOrWhiteSpace(code))
-                    return Redirect(ReturnLocation(pending.ReturnUri, definition.Id, "failed"));
+                    return CompleteAuthorization(pending.ReturnUri, definition.Id, "failed", pending.Popup);
                 token = await ExchangeCodeAsync(
                     definition,
                     pending,
@@ -253,17 +258,25 @@ public sealed partial class IntegrationOAuthController(
                     cancellationToken);
             }
 
+            if (!IntegrationOAuthProtocol.HasRequiredScopes(definition.Scopes, token.Scope))
+            {
+                await DeletePendingAsync(flow, cancellationToken);
+                return CompleteAuthorization(pending.ReturnUri, definition.Id, "permissions_required", pending.Popup);
+            }
+
+            // Changes only on successful consent, never on automatic token refresh.
+            token = token with { AuthorizationRevision = Guid.NewGuid().ToString("N") };
             await SaveTokenAsync(flow.Subject, definition.Id, token, cancellationToken);
             await DeletePendingAsync(flow, cancellationToken);
-            return Redirect(ReturnLocation(pending.ReturnUri, definition.Id, "connected"));
+            return CompleteAuthorization(pending.ReturnUri, definition.Id, "connected", pending.Popup);
         }
         catch (HttpRequestException)
         {
-            return Redirect(ReturnLocation(pending.ReturnUri, definition.Id, "failed"));
+            return CompleteAuthorization(pending.ReturnUri, definition.Id, "failed", pending.Popup);
         }
         catch (Exception exception) when (exception is InvalidOperationException or JsonException)
         {
-            return Redirect(ReturnLocation(pending.ReturnUri, definition.Id, "failed"));
+            return CompleteAuthorization(pending.ReturnUri, definition.Id, "failed", pending.Popup);
         }
         finally
         {
@@ -330,7 +343,7 @@ public sealed partial class IntegrationOAuthController(
         };
         if (!string.IsNullOrWhiteSpace(definition.ProjectId))
             headers["X-Goog-User-Project"] = definition.ProjectId;
-        return Ok(new IntegrationOAuthAccess(headers, token.ExpiresAtUtc));
+        return Ok(new IntegrationOAuthAccess(headers, token.ExpiresAtUtc, token.AuthorizationRevision));
     }
 
     [Authorize(Policy = McpPolicy)]
@@ -350,40 +363,3 @@ public sealed partial class IntegrationOAuthController(
 
 }
 
-public sealed record IntegrationOAuthStatus(
-    string Provider,
-    bool Available,
-    bool Connected,
-    DateTimeOffset? ExpiresAtUtc);
-
-public sealed record IntegrationOAuthAuthorization(string AuthorizationUrl);
-
-public sealed record IntegrationOAuthAccess(
-    IReadOnlyDictionary<string, string> Headers,
-    DateTimeOffset? ExpiresAtUtc);
-
-internal sealed record IntegrationOAuthTicket(
-    string Subject,
-    string Provider,
-    string Nonce,
-    // Carried in the encrypted ticket as well as in the pending record so the
-    // browser can still be sent home when the pending record has expired but
-    // the ticket itself is intact.
-    string ReturnUri);
-
-internal sealed record PendingIntegrationOAuth(
-    string Provider,
-    string ReturnUri,
-    string CallbackUri,
-    string? CodeVerifier,
-    string? ClientId,
-    string? ClientSecret);
-
-internal sealed record IntegrationOAuthToken(
-    string AccessToken,
-    string? RefreshToken,
-    string? TokenType,
-    DateTimeOffset? ExpiresAtUtc,
-    string? Scope,
-    string? ClientId,
-    string? ClientSecret);
