@@ -28,7 +28,12 @@ internal sealed class ApplicationClaimDestinationPolicy(
     {
         if (options.ClaimToScope.TryGetValue(claim.Type, out var requiredScope))
         {
-            if (!claim.Subject!.HasScope(requiredScope)) yield break;
+            // Either the mapped scope or one of its declared successors: a client
+            // that already moved to the new name must not lose the claim, and one
+            // that has not moved must not be forced to.
+            if (!options.AcceptedScopeNames(requiredScope)
+                    .Any(scope => claim.Subject!.HasScope(scope)))
+                yield break;
 
             yield return Destinations.AccessToken;
             if (includeIdentityToken)
