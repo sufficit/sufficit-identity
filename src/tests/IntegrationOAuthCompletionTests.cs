@@ -37,8 +37,11 @@ public sealed class IntegrationOAuthCompletionTests
         {
             Directory.CreateDirectory(directory);
             File.WriteAllText(Path.Combine(directory, "completion.html"), result.Content);
+            File.WriteAllText(Path.Combine(directory, "completion.js"), fixture.Controller.CompletionScript().Content);
         }
-        Assert.Contains("window.close()", result.Content);
+        Assert.Contains("/api/integrations/oauth/completion.js", result.Content);
+        Assert.DoesNotContain("<script nonce=", result.Content);
+        Assert.Contains("data-integration-connected=\"true\"", result.Content);
         Assert.Contains("manualmente", result.Content);
         Assert.DoesNotContain("provider-secret", result.Content);
         Assert.Equal("no-store", fixture.Controller.Response.Headers.CacheControl);
@@ -73,7 +76,7 @@ public sealed class IntegrationOAuthCompletionTests
         var ticket = await fixture.Begin("popup");
         var result = Assert.IsType<ContentResult>(await fixture.Callback(ticket, "access_denied"));
         Assert.Contains("Conexão não concluída", result.Content);
-        Assert.DoesNotContain("setTimeout", result.Content);
+        Assert.Contains("data-integration-connected=\"false\"", result.Content);
         Assert.Equal("old-consent", (await fixture.Status()).AuthorizationRevision);
     }
 
@@ -90,7 +93,7 @@ public sealed class IntegrationOAuthCompletionTests
             Directory.CreateDirectory(directory);
             File.WriteAllText(Path.Combine(directory, "permissions.html"), result.Content);
         }
-        Assert.DoesNotContain("setTimeout", result.Content);
+        Assert.Contains("data-integration-connected=\"false\"", result.Content);
         Assert.Equal("old-consent", (await fixture.Status()).AuthorizationRevision);
     }
 
