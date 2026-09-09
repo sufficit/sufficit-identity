@@ -361,6 +361,89 @@ public sealed class DeviceFlowTests
     }
 
     [Fact]
+    public async Task Replay_of_a_redeemed_device_code_keeps_the_winners_tokens_valid()
+    {
+        // Issue #61 (CI run 34357932338): two final polls race; the winner
+        // redeems, the loser replays the single-use device_code. The flaky
+        // failure was the winner's /connect/userinfo turning 401 AFTER the
+        // loser's replay — the interleaving where the loser validates the
+        // device_code AFTER the winner committed its redemption. This test
+        // forces that exact interleaving deterministically (winner completes
+        // first, then the replay) so the regression cannot hide behind race
+        // timing, and asserts the winner's tokens survive the replay.
+        var username = $"device-race-{Guid.NewGuid():N}";
+        const string password = "Str0ng!Passw0rd#14";
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            await TestDataSeeder.CreateUserAsync(userManager, username, password);
+        }
+
+        var client = _factory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var winnerClient = _factory.CreateClient();
+        var loserClient = _factory.CreateClient();
+
+        var (authStatus, authBody) = await client.PostFormAsync(
+            "/connect/deviceauthorization",
+            new Dictionary<string, string>
+            {
+                ["client_id"] = TestDataSeeder.DeviceClientId,
+                ["client_secret"] = TestDataSeeder.DeviceClientSecret,
+                ["scope"] = $"openid profile email offline_access {TestDataSeeder.ScopeName}",
+            });
+        Assert.Equal(HttpStatusCode.OK, authStatus);
+        var deviceCode = authBody.GetProperty("device_code").GetString()!;
+        var userCode = authBody.GetProperty("user_code").GetString()!;
+
+        await TestOnlyEndpoints.SignInAsync(client, username);
+        var antiforgeryToken = await TestOnlyEndpoints.GetAntiforgeryTokenAsync(client);
+        using var approveResponse = await client.PostAsync("/connect/device",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["user_code"] = userCode,
+                ["approved"] = "true",
+                ["__RequestVerificationToken"] = antiforgeryToken,
+            }));
+        Assert.Equal(HttpStatusCode.Redirect, approveResponse.StatusCode);
+
+        var redemption = new Dictionary<string, string>
+        {
+            ["grant_type"] = "urn:ietf:params:oauth:grant-type:device_code",
+            ["device_code"] = deviceCode,
+            ["client_id"] = TestDataSeeder.DeviceClientId,
+            ["client_secret"] = TestDataSeeder.DeviceClientSecret,
+        };
+
+        // Winner: completes fully (SignIn commits the redemption).
+        var (winnerStatus, winnerBody) = await winnerClient
+            .PostFormAsync("/connect/token", redemption);
+        Assert.Equal(HttpStatusCode.OK, winnerStatus);
+        var accessToken = winnerBody.GetProperty("access_token").GetString();
+        Assert.False(string.IsNullOrEmpty(accessToken));
+
+        // Loser: replays the SAME device_code after the winner committed —
+        // the exact interleaving whose random cousin failed in CI.
+        var (replayStatus, replayBody) = await loserClient
+            .PostFormAsync("/connect/token", redemption);
+        Assert.Equal(HttpStatusCode.BadRequest, replayStatus);
+        Assert.Equal("invalid_grant", replayBody.GetProperty("error").GetString());
+
+        // The winner's reference access token must still work afterwards:
+        // the replay of a single-use device_code by the same client is a
+        // protocol error, NOT evidence of token theft, so it must not
+        // revoke the authorization's freshly issued tokens.
+        using var userInfoRequest = new HttpRequestMessage(HttpMethod.Get, "/connect/userinfo");
+        userInfoRequest.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+        using var userInfoResponse = await winnerClient.SendAsync(userInfoRequest);
+
+        Assert.Equal(HttpStatusCode.OK, userInfoResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task Approving_the_ai_scope_provisions_personal_ai_access_once()
     {
         var username = $"device-ai-{Guid.NewGuid():N}";
