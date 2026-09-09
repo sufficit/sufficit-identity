@@ -1,5 +1,6 @@
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Sufficit.Identity.STS.Controllers;
 
@@ -21,7 +22,8 @@ public sealed partial class IntegrationOAuthController
             _ => "A autorização não foi concluída ou expirou. Volte ao aplicativo e tente conectar novamente.",
         };
         var nonce = HtmlEncoder.Default.Encode(SecurityHeadersMiddlewareExtensions.GetCspNonce(HttpContext) ?? "");
-        var close = connected ? "setTimeout(() => window.close(), 1200);" : "";
+        var script = HtmlEncoder.Default.Encode(Absolute("/api/integrations/oauth/completion.js"));
+        var connectedValue = connected ? "true" : "false";
         return Content($$"""
             <!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
             <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -33,13 +35,20 @@ public sealed partial class IntegrationOAuthController
             h1 { font-size: 1.5rem; line-height: 1.25; }
             button { font: inherit; font-size: .875rem; padding: .65rem 1rem; cursor: pointer; }
             </style></head><body>
-            <main><h1>{{title}}</h1><p role="status">{{message}}</p>
+            <main data-integration-connected="{{connectedValue}}"><h1>{{title}}</h1><p role="status">{{message}}</p>
             <button type="button" id="close">Fechar esta aba</button>
             <p>Se a aba permanecer aberta, você pode fechá-la manualmente e voltar ao aplicativo.</p></main>
-            <script nonce="{{nonce}}">
-            document.getElementById('close').addEventListener('click', () => window.close());
-            {{close}}
-            </script></body></html>
+            <script src="{{script}}" defer></script></body></html>
             """, "text/html; charset=utf-8");
     }
+
+    [AllowAnonymous]
+    [HttpGet("completion.js")]
+    public ContentResult CompletionScript() => Content("""
+        const closeButton = document.getElementById('close');
+        closeButton?.addEventListener('click', () => window.close());
+        if (document.querySelector('[data-integration-connected="true"]'))
+            setTimeout(() => window.close(), 1200);
+        """, "text/javascript; charset=utf-8");
+
 }
