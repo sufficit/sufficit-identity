@@ -257,6 +257,13 @@ public static partial class ServiceCollectionExtensions
         // tokens just issued to the race's winner, turning their userinfo
         // 401. See Tokens/DeviceCodeReplayGuard.cs for the full rationale.
         server.AddEventHandler(Tokens.RejectRedeemedDeviceCodeReplay.Descriptor);
+        // Humanize unrecoverable /connect/authorize errors (e.g. the ID2013
+        // replay of a consumed PAR request_uri) for top-level browser
+        // navigations; machine clients keep the raw payload. See
+        // ErrorPages/BrowserAuthorizationErrorPage.cs.
+        server.AddEventHandler(
+            ErrorPages.BrowserAuthorizationErrorPage
+                .RenderBrowserFriendlyAuthorizationError.Descriptor);
 
         if (options.Fapi2.Enabled)
         {
