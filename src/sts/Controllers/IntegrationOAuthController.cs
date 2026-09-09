@@ -258,6 +258,12 @@ public sealed partial class IntegrationOAuthController(
                     cancellationToken);
             }
 
+            if (!IntegrationOAuthProtocol.HasRequiredScopes(definition.Scopes, token.Scope))
+            {
+                await DeletePendingAsync(flow, cancellationToken);
+                return CompleteAuthorization(pending.ReturnUri, definition.Id, "permissions_required", pending.Popup);
+            }
+
             // Changes only on successful consent, never on automatic token refresh.
             token = token with { AuthorizationRevision = Guid.NewGuid().ToString("N") };
             await SaveTokenAsync(flow.Subject, definition.Id, token, cancellationToken);

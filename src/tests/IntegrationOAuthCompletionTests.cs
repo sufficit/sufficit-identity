@@ -78,6 +78,23 @@ public sealed class IntegrationOAuthCompletionTests
     }
 
     [Fact]
+    public async Task Partial_consent_does_not_claim_success_or_replace_an_existing_grant()
+    {
+        var fixture = new Fixture(grantRequiredScopes: false);
+        fixture.StoreToken("old-consent");
+        var ticket = await fixture.Begin("popup");
+        var result = Assert.IsType<ContentResult>(await fixture.Callback(ticket));
+        Assert.Contains("permissões necessárias não foram concedidas", result.Content);
+        if (Environment.GetEnvironmentVariable("GENIUS_INTEGRATION_EVIDENCE") is { Length: > 0 } directory)
+        {
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(Path.Combine(directory, "permissions.html"), result.Content);
+        }
+        Assert.DoesNotContain("setTimeout", result.Content);
+        Assert.Equal("old-consent", (await fixture.Status()).AuthorizationRevision);
+    }
+
+    [Fact]
     public async Task Popup_mode_does_not_bypass_return_registration()
     {
         var fixture = new Fixture();
@@ -100,7 +117,7 @@ public sealed class IntegrationOAuthCompletionTests
         public MemoryVault Vault { get; } = new();
         public IntegrationOAuthController Controller { get; }
         private readonly string scope;
-        public Fixture()
+        public Fixture(bool grantRequiredScopes = true)
         {
             var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -110,7 +127,7 @@ public sealed class IntegrationOAuthCompletionTests
             }).Build();
             var registry = new IntegrationOAuthProviderRegistry(configuration, new TestSecretStore(configuration));
             scope = string.Join(' ', registry.Find(Provider)!.Scopes);
-            var authentication = new FakeAuthentication(scope);
+            var authentication = new FakeAuthentication(grantRequiredScopes ? scope : "openid");
             Controller = new IntegrationOAuthController(registry, Vault, new EphemeralDataProtectionProvider(),
                 new RefreshHttpClient(), new ReturnResolver(), null!);
             Controller.ControllerContext = new ControllerContext
