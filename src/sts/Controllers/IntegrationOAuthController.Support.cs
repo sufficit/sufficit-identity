@@ -111,7 +111,7 @@ public sealed partial class IntegrationOAuthController
             token.RefreshToken!,
             clientId,
             clientSecret);
-        return await RequestTokenAsync(
+        var refreshed = await RequestTokenAsync(
             provider,
             fields,
             token.ClientId,
@@ -119,6 +119,7 @@ public sealed partial class IntegrationOAuthController
             token.RefreshToken,
             token.Scope,
             cancellationToken);
+        return refreshed with { AuthorizationRevision = token.AuthorizationRevision };
     }
 
     private async Task<IntegrationOAuthToken> RequestTokenAsync(
