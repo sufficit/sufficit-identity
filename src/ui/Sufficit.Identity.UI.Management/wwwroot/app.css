@@ -7029,9 +7029,14 @@ h3 {
 
 .sa-role-picker__option {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 8px;
     cursor: pointer;
+}
+
+.sa-role-picker__option > input[type="checkbox"] {
+    flex-shrink: 0;
+    margin: 0;
 }
 
 .sa-role-picker__option em {
