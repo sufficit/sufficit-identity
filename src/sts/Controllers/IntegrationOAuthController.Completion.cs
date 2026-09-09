@@ -14,9 +14,12 @@ public sealed partial class IntegrationOAuthController
         Response.Headers["Referrer-Policy"] = "no-referrer";
         var connected = status == "connected";
         var title = connected ? "Conta conectada" : "Conexão não concluída";
-        var message = connected
-            ? "A autorização foi recebida. Volte ao aplicativo para acompanhar a conexão das ferramentas."
-            : "A autorização não foi concluída ou expirou. Volte ao aplicativo e tente conectar novamente.";
+        var message = status switch
+        {
+            "connected" => "A autorização foi recebida. Volte ao aplicativo para acompanhar a conexão das ferramentas.",
+            "permissions_required" => "As permissões necessárias não foram concedidas. Volte ao aplicativo, conecte novamente e confira as permissões solicitadas.",
+            _ => "A autorização não foi concluída ou expirou. Volte ao aplicativo e tente conectar novamente.",
+        };
         var nonce = HtmlEncoder.Default.Encode(SecurityHeadersMiddlewareExtensions.GetCspNonce(HttpContext) ?? "");
         var close = connected ? "setTimeout(() => window.close(), 1200);" : "";
         return Content($$"""
