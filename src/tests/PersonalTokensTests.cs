@@ -15,7 +15,7 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 namespace Sufficit.Identity.Tests;
 
 [Collection(StsCollection.Name)]
-public sealed class PersonalTokensTests
+public sealed partial class PersonalTokensTests
 {
     private readonly SufficitIdentityTestFactory _factory;
 
