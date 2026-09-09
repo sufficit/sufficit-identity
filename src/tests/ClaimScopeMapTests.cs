@@ -31,6 +31,7 @@ namespace Sufficit.Identity.Tests;
 public sealed class ClaimScopeMapTests
 {
     private const string DirectiveScopeName = "directives";
+    private const string SuccessorScopeName = "entitlements";
     private const string MappedClientId = "test-directive-client";
     private const string MappedClientSecret = "test-directive-client-secret";
 
@@ -113,6 +114,54 @@ public sealed class ClaimScopeMapTests
             ["client_secret"] = MappedClientSecret,
             // This time the token DOES carry the mapped scope.
             ["scope"] = $"{TestDataSeeder.ScopeName} {DirectiveScopeName}",
+        });
+        Assert.Equal(HttpStatusCode.OK, tokenStatus);
+        var accessToken = tokenBody.GetProperty("access_token").GetString();
+        Assert.False(string.IsNullOrEmpty(accessToken));
+
+        client.DefaultRequestHeaders.Authorization = IntrospectionTests.BasicAuthFor(
+            TestDataSeeder.IntrospectionClientId, TestDataSeeder.IntrospectionClientSecret);
+        var (_, introspectBody) = await client.PostFormAsync("/connect/introspect", new Dictionary<string, string>
+        {
+            ["token"] = accessToken!,
+        });
+
+        Assert.True(introspectBody.GetProperty("active").GetBoolean());
+        Assert.Equal(directiveValue,
+            introspectBody.GetProperty(TestDataSeeder.DirectiveClaimType).GetString());
+    }
+
+    [Fact]
+    public async Task Successor_scope_name_opens_the_same_gate_as_the_name_it_succeeds()
+    {
+        // A client that moved to the successor name must keep the claim. Without
+        // this the rename can only happen everywhere at once: whoever moves first
+        // asks for a name the gate does not know and silently loses the grant.
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(MapConfigurationWithSuccessor());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await ProvisionDirectiveScopeAndClientAsync(factory);
+        await ProvisionSuccessorScopeAsync(factory);
+
+        var username = $"csm-successor-{Guid.NewGuid():N}";
+        const string password = "Str0ng!Passw0rd#Succ";
+        const string directiveValue = "sufficit:test:csm-successor";
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            await TestDataSeeder.CreateUserAsync(userManager, username, password, directiveValue);
+        }
+
+        var client = factory.CreateClient();
+        var (tokenStatus, tokenBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "password",
+            ["username"] = username,
+            ["password"] = password,
+            ["client_id"] = MappedClientId,
+            ["client_secret"] = MappedClientSecret,
+            // The successor name only - never the name it succeeds.
+            ["scope"] = $"{TestDataSeeder.ScopeName} {SuccessorScopeName}",
         });
         Assert.Equal(HttpStatusCode.OK, tokenStatus);
         var accessToken = tokenBody.GetProperty("access_token").GetString();
@@ -349,6 +398,40 @@ public sealed class ClaimScopeMapTests
     {
         ["Sufficit:Identity:ClaimScopeMap:ClaimToScope:directive"] = DirectiveScopeName,
     };
+
+    private static IReadOnlyDictionary<string, string?> MapConfigurationWithSuccessor() => new Dictionary<string, string?>
+    {
+        ["Sufficit:Identity:ClaimScopeMap:ClaimToScope:directive"] = DirectiveScopeName,
+        [$"Sufficit:Identity:ClaimScopeMap:ScopeSuccessors:{DirectiveScopeName}:0"] = SuccessorScopeName,
+    };
+
+    /// <summary>
+    /// Provisions the successor scope and lets the mapped client request it,
+    /// mirroring <see cref="ProvisionDirectiveScopeAndClientAsync"/>.
+    /// </summary>
+    private static async Task ProvisionSuccessorScopeAsync(SufficitIdentityTestFactory factory)
+    {
+        using var scope = factory.Services.CreateScope();
+        var scopeManager = scope.ServiceProvider.GetRequiredService<IOpenIddictScopeManager>();
+        var appManager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+
+        if (await scopeManager.FindByNameAsync(SuccessorScopeName) is null)
+        {
+            await scopeManager.CreateAsync(new OpenIddictScopeDescriptor
+            {
+                Name = SuccessorScopeName,
+                DisplayName = "Entitlement claim scope",
+                Resources = { TestDataSeeder.IntrospectionClientId },
+            });
+        }
+
+        var mappedClient = await appManager.FindByClientIdAsync(MappedClientId)
+            ?? throw new InvalidOperationException("The mapped test client was not provisioned.");
+        var descriptor = new OpenIddictApplicationDescriptor();
+        await appManager.PopulateAsync(descriptor, mappedClient);
+        descriptor.Permissions.Add(Permissions.Prefixes.Scope + SuccessorScopeName);
+        await appManager.UpdateAsync(mappedClient, descriptor);
+    }
 
     /// <summary>
     /// Provisions the <c>directives</c> scope (with the introspection client as

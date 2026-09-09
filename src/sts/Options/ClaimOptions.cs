@@ -56,6 +56,56 @@ public sealed class ClaimScopeMapOptions
     public bool IncludeUnmappedClaimsInAccessTokens { get; init; } = true;
 
     /// <summary>
+    /// Successor names accepted in place of a mapped scope, keyed by the scope
+    /// they succeed. A subject holding either name satisfies the gate, and both
+    /// are advertised, so a client may move on its own schedule instead of on
+    /// everyone else's.
+    /// </summary>
+    /// <remarks>
+    /// <b>Order matters.</b> Declaring the successor here is the first step:
+    /// only after it is accepted and advertised may a client be switched to it.
+    /// Switching a client first asks for a name the server neither advertises
+    /// nor honours, and the gated claim is silently dropped from its tokens.
+    /// The predecessor is removed last, when no client asks for it any more.
+    /// </remarks>
+    public Dictionary<string, string[]> ScopeSuccessors { get; init; } = new(StringComparer.Ordinal)
+    {
+        // The grant claim is stored as "entitlements" since the 2026-09-02
+        // migration; the scope that releases it was left behind as
+        // "directives". Both names now open the same gate.
+        ["directives"] = ["entitlements"],
+    };
+
+    /// <summary>
+    /// Every scope name that satisfies <paramref name="scope"/>: itself plus
+    /// any declared successor.
+    /// </summary>
+    public IEnumerable<string> AcceptedScopeNames(string scope)
+    {
+        yield return scope;
+
+        if (!ScopeSuccessors.TryGetValue(scope, out var successors) || successors is null)
+            yield break;
+
+        foreach (var successor in successors)
+        {
+            if (!string.IsNullOrWhiteSpace(successor))
+                yield return successor.Trim();
+        }
+    }
+
+    /// <summary>
+    /// Every scope name this map can gate on, predecessors and successors
+    /// alike. Callers advertising or allowing scopes must use this instead of
+    /// <see cref="ClaimToScope"/> values, or a successor stays unrequestable.
+    /// </summary>
+    public IEnumerable<string> AllGatingScopeNames()
+        => ClaimToScope.Values
+            .Where(scope => !string.IsNullOrWhiteSpace(scope))
+            .SelectMany(scope => AcceptedScopeNames(scope.Trim()))
+            .Distinct(StringComparer.Ordinal);
+
+    /// <summary>
     /// Persisted claim types that are never eligible for token release when
     /// unmapped, including while the general compatibility bridge is active.
     /// Values are claim names only; claim values are never logged.
