@@ -34,6 +34,9 @@ botão apenas recarregava a tela.
 - 11 testes da política e integração de reautenticação passaram, incluindo o
   ciclo completo sessão antiga → TOTP → retomada de PAR → código de autorização;
 - 17 testes focados do serviço de login interativo e da reautenticação passaram;
+- suíte do CI sem testes de navegador: 1.115 testes passaram, sem warnings;
+- o teste arquitetural do adaptador foi alinhado ao `SufficitSignInManager`,
+  especialização necessária para iniciar a cerimônia de reautenticação MFA;
 - 30 testes focados do fluxo de autenticação e pré-validação do Blazor passaram;
 - build Release do `Sufficit.Identity.Server`: 0 warnings e 0 erros;
 - build Release do `Sufficit.Blazor.Server`: 0 warnings e 0 erros;
@@ -41,5 +44,7 @@ botão apenas recarregava a tela.
 
 ## Entrega
 
-As alterações ficaram locais e sem commit, push ou deploy. Essas operações
-exigem autorização operacional específica.
+As alterações funcionais foram enviadas às branches `main` nos commits
+`a38206c` (Identity) e `9bf85ed` (Blazor). Os dois serviços foram publicados em
+`eveo-apps`, `apoint-apps` e `castrum-apps`; a saúde dos seis processos e do
+balanceador do Blazor foi confirmada após a publicação.
