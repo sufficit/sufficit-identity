@@ -30,35 +30,5 @@ public static class BrowserAuthorizationErrors
             }));
 
     internal static bool IsHtmlNavigation(HttpRequest request)
-    {
-        // Token, PAR, introspection and all other APIs remain machine-readable,
-        // even if a caller sends browser-like headers. Only GET navigations qualify.
-        if (!HttpMethods.IsGet(request.Method)
-            || !(request.Path.Equals("/connect/authorize", StringComparison.OrdinalIgnoreCase)
-                || request.Path.Equals("/connect/endsession", StringComparison.OrdinalIgnoreCase)))
-            return false;
-
-        var mode = request.Headers["Sec-Fetch-Mode"].ToString();
-        var destination = request.Headers["Sec-Fetch-Dest"].ToString();
-        if ((mode.Length > 0 && mode != "navigate")
-            || (destination.Length > 0 && destination != "document")
-            || request.Headers.ContainsKey("X-Requested-With"))
-            return false;
-
-        // Legacy browsers may omit Fetch Metadata. An explicit HTML Accept is
-        // still required; wildcard, missing, malformed or q=0 is not sufficient.
-        try
-        {
-            var accept = request.GetTypedHeaders().Accept;
-            var html = accept?.Where(value => value.MediaType.Equals("text/html", StringComparison.OrdinalIgnoreCase))
-                .Select(value => value.Quality ?? 1).DefaultIfEmpty(0).Max() ?? 0;
-            var json = accept?.Where(value => value.MediaType.Equals("application/json", StringComparison.OrdinalIgnoreCase))
-                .Select(value => value.Quality ?? 1).DefaultIfEmpty(0).Max() ?? 0;
-            return html > 0 && html > json;
-        }
-        catch (FormatException)
-        {
-            return false;
-        }
-    }
+        => STS.ErrorPages.BrowserNavigationRequest.IsHtmlNavigation(request);
 }

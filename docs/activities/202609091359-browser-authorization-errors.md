@@ -2,6 +2,12 @@
 
 Implementado localmente sobre main 637c35b, preservando cinco package locks preexistentes. Sem deploy, push ou mudança em credenciais.
 
+## Integração para publicação (mesmo dia)
+
+Após autorização de commit/push/deploy, origin/main avançou para f7a1720 com um segundo renderer de erro e DeviceCodeReplayGuard. A integração mantém o renderer STS como alternativa para hosts sem UI embutida, com o mesmo predicado conservador BrowserNavigationRequest; na UI embutida somente status pages renderiza a resposta. Preservada a correção de device-code.
+
+A suíte completa exigiu textos nos recursos pt-BR/en e remoção do destino Blazor fixo da UI reutilizável. A versão integrada oferece retorno ao início do Identity, orientando reiniciar o acesso pelo aplicativo de origem. Não usa redirect_uri não validado. Locks foram regenerados em modo pacote (iguais a HEAD) conforme Directory.Build.props. Validação integrada: 1103 testes aprovados, zero warnings.
+
 `BrowserAuthorizationErrors` integra status pages antes da autenticação, somente quando o host possui UI pública embutida. `EnableStatusCodePagesIntegration` do OpenIddict delega a apresentação quando essa feature existe no request; demais chamadas mantêm respostas originais.
 
 Condições: GET em `/connect/authorize` ou `/connect/endsession`, Accept explícito de text/html com qualidade positiva e superior a application/json; Sec-Fetch-Mode navigate e Sec-Fetch-Dest document quando presentes. Não usa User-Agent. XHR, iframe, wildcard e APIs não recebem HTML. Cabeçalhos classificam apresentação, nunca autorização.
