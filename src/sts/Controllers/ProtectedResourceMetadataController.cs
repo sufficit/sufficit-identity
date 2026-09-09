@@ -50,10 +50,8 @@ public sealed class ProtectedResourceMetadataController : ControllerBase
         //   - scopes_supported: scopes this RS recognizes.
         // The document is intentionally minimal and static — it advertises the
         // AS location, which is the load-bearing piece for MCP discovery.
-        var applicationScopes = _options.ClaimScopeMap.ClaimToScope
-            .Values
-            .Where(scope => !string.IsNullOrWhiteSpace(scope))
-            .Distinct(StringComparer.Ordinal)
+        var applicationScopes = _options.ClaimScopeMap
+            .AllGatingScopeNames()
             .ToArray();
 
         return Ok(new

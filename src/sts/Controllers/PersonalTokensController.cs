@@ -297,7 +297,7 @@ public sealed partial class PersonalTokensController : ControllerBase
         }
 
         var allowedApplicationScopes = registeredScopes
-            .Concat(_options.ClaimScopeMap.ClaimToScope.Values)
+            .Concat(_options.ClaimScopeMap.AllGatingScopeNames())
             .Where(scope => !string.IsNullOrWhiteSpace(scope))
             .Append(Scopes.Roles)
             .Append(Scopes.Profile)
