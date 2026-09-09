@@ -12,7 +12,7 @@ namespace Sufficit.Identity.STS;
 /// implementation details.
 /// </summary>
 public sealed class AspNetCoreIdentityInteractiveSignInService(
-    SignInManager<ApplicationUser> signInManager,
+    SufficitSignInManager signInManager,
     IAuthenticationContextAccessor authenticationContextAccessor,
     TimeProvider timeProvider,
     ILogger<AspNetCoreIdentityInteractiveSignInService> logger)
@@ -79,6 +79,53 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
                 AuthenticationFlowDiagnostics.TraceId);
         }
 
+        return mapped;
+    }
+
+    public async Task<InteractiveSignInResult> BeginReauthenticationAsync(
+        ClaimsPrincipal principal,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var user = await signInManager.UserManager.GetUserAsync(principal);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (user is null)
+        {
+            return new InteractiveSignInResult(
+                InteractiveSignInStatus.RequiresPrimaryAuthentication);
+        }
+
+        if (await signInManager.UserManager.IsLockedOutAsync(user))
+        {
+            return new InteractiveSignInResult(
+                InteractiveSignInStatus.LockedOut);
+        }
+
+        if (!await signInManager.CanSignInAsync(user))
+        {
+            return new InteractiveSignInResult(
+                InteractiveSignInStatus.NotAllowed);
+        }
+
+        if (!await signInManager.UserManager.GetTwoFactorEnabledAsync(user))
+        {
+            return new InteractiveSignInResult(
+                InteractiveSignInStatus.RequiresPrimaryAuthentication);
+        }
+
+        var result = await signInManager.BeginTwoFactorReauthenticationAsync(
+            user,
+            isPersistent: true);
+        cancellationToken.ThrowIfCancellationRequested();
+        var mapped = Map(result);
+        logger.LogInformation(
+            "Recent authentication ceremony started. User={UserId}; "
+            + "Outcome={Status}; TraceId={TraceId}.",
+            user.Id,
+            mapped.Status,
+            AuthenticationFlowDiagnostics.TraceId);
         return mapped;
     }
 

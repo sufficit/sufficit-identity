@@ -52,6 +52,7 @@ public partial class AuthorizationController : Controller
     private readonly SharedSignals.ISharedSignalsDispatcher _sharedSignalsDispatcher;
     private readonly Fapi2Options _fapi2Options;
     private readonly IAntiforgery _antiforgery;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<AuthorizationController> _logger;
 
     public AuthorizationController(
@@ -70,6 +71,7 @@ public partial class AuthorizationController : Controller
         Grants.TokenGrantDispatcher grantDispatcher,
         Grants.GrantOperations grants,
         Cimd.CimdApplicationProvisioner cimdApplications,
+        TimeProvider timeProvider,
         ILogger<AuthorizationController> logger)
     {
         _applicationManager = applicationManager;
@@ -86,6 +88,7 @@ public partial class AuthorizationController : Controller
         _backchannelLogoutDispatcher = backchannelLogoutDispatcher;
         _frontchannelLogoutDispatcher = frontchannelLogoutDispatcher;
         _sharedSignalsDispatcher = sharedSignalsDispatcher;
+        _timeProvider = timeProvider;
         _logger = logger;
         // FAPI options drive the authorize-endpoint dpop_jkt binding; the
         // token-endpoint DPoP/FAPI preamble lives in the grant dispatcher.
@@ -122,9 +125,38 @@ public partial class AuthorizationController : Controller
 
             return Challenge(new AuthenticationProperties
             {
-                RedirectUri = Request.PathBase + Request.Path +
-                    QueryString.Create(Request.HasFormContentType ? Request.Form : Request.Query)
+                RedirectUri = CurrentAuthorizationRequestUrl()
             });
+        }
+
+        if (AuthorizationReauthenticationPolicy.IsRequired(
+                request,
+                result.Principal,
+                _timeProvider.GetUtcNow()))
+        {
+            if (request.HasPromptValue(PromptValues.None))
+            {
+                return Forbid(
+                    authenticationSchemes: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+                    properties: new AuthenticationProperties(new Dictionary<string, string?>
+                    {
+                        [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.LoginRequired,
+                        [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] =
+                            "Recent user authentication is required."
+                    }));
+            }
+
+            var returnUrl = CurrentAuthorizationRequestUrl();
+            _logger.LogInformation(
+                "OIDC authorization requires recent authentication. "
+                + "ClientId={ClientId}; MaxAge={MaxAge}; TraceId={TraceId}.",
+                request.ClientId,
+                request.MaxAge,
+                HttpContext.TraceIdentifier);
+            return Redirect(QueryHelpers.AddQueryString(
+                "/account/reauthenticate",
+                "returnUrl",
+                returnUrl));
         }
 
         var user = await _userManager.GetUserAsync(result.Principal) ??
@@ -565,5 +597,10 @@ public partial class AuthorizationController : Controller
 
         return allowedScopes.ToImmutable();
     }
+
+    private string CurrentAuthorizationRequestUrl() =>
+        Request.PathBase + Request.Path
+            + QueryString.Create(
+                Request.HasFormContentType ? Request.Form : Request.Query);
 
 }

@@ -1,3 +1,5 @@
+using System.Security.Claims;
+
 namespace Sufficit.Identity.Application.Accounts;
 
 /// <summary>
@@ -29,6 +31,7 @@ public enum InteractiveSignInStatus
     RequiresTwoFactor,
     LockedOut,
     NotAllowed,
+    RequiresPrimaryAuthentication,
 }
 
 public sealed record InteractiveSignInResult(InteractiveSignInStatus Status)
@@ -48,6 +51,15 @@ public interface IInteractiveSignInService
 
     Task<InteractiveSignInResult> PasswordSignInAsync(
         PasswordSignInCommand command,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Starts a fresh-authentication ceremony for the already authenticated
+    /// account. When MFA is enabled this creates Identity's protected pending
+    /// two-factor state without asking for the account name or password again.
+    /// </summary>
+    Task<InteractiveSignInResult> BeginReauthenticationAsync(
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken = default);
 
     Task<bool> HasPendingTwoFactorSignInAsync(
