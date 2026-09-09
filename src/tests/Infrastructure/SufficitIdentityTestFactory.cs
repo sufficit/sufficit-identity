@@ -366,24 +366,37 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                     var user = await userManager.FindByNameAsync(username) ??
                         throw new InvalidOperationException($"Test user '{username}' not found.");
 
-                    var additionalClaims = string.Equals(
+                    var withMfa = string.Equals(
                         form["mfa"].ToString(),
                         "true",
-                        StringComparison.OrdinalIgnoreCase)
+                        StringComparison.OrdinalIgnoreCase);
+                    var additionalClaims = withMfa
                             ? new[]
                             {
                                 new System.Security.Claims.Claim("amr", "pwd"),
                                 new System.Security.Claims.Claim("amr", "otp"),
                                 new System.Security.Claims.Claim("amr", "mfa"),
                                 new System.Security.Claims.Claim(
-                                    "auth_time",
-                                    DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                                        .ToString(System.Globalization.CultureInfo.InvariantCulture)),
-                                new System.Security.Claims.Claim(
                                     "acr",
                                     "urn:sufficit:acr:loa2"),
                             }
                             : [];
+                    if (withMfa)
+                    {
+                        var authenticatedAt = long.TryParse(
+                            form["auth_time"].ToString(),
+                            System.Globalization.NumberStyles.Integer,
+                            System.Globalization.CultureInfo.InvariantCulture,
+                            out var authenticationTime)
+                                ? DateTimeOffset.FromUnixTimeSeconds(authenticationTime)
+                                : DateTimeOffset.UtcNow;
+                        context.RequestServices
+                            .GetRequiredService<IAuthenticationContextAccessor>()
+                            .Set(new AuthenticationContextEvidence(
+                                ["pwd", "otp", "mfa"],
+                                authenticatedAt,
+                                "urn:sufficit:acr:loa2"));
+                    }
 
                     await signInManager.SignInWithClaimsAsync(
                         user,

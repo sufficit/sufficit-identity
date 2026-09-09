@@ -21,13 +21,23 @@ internal static class TestOnlyEndpoints
     public static async Task SignInAsync(
         HttpClient client,
         string username,
-        bool withMfa = false)
+        bool withMfa = false,
+        DateTimeOffset? authenticatedAt = null)
     {
-        var (status, _) = await client.PostFormAsync("/test-only/signin", new Dictionary<string, string>
+        var form = new Dictionary<string, string>
         {
             ["username"] = username,
             ["mfa"] = withMfa ? "true" : "false",
-        });
+        };
+        if (authenticatedAt is { } value)
+        {
+            form["auth_time"] = value.ToUnixTimeSeconds().ToString(
+                System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        var (status, _) = await client.PostFormAsync(
+            "/test-only/signin",
+            form);
         Assert.Equal(HttpStatusCode.OK, status);
     }
 

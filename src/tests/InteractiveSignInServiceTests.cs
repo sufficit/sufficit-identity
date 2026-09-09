@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
@@ -152,6 +153,28 @@ public sealed class InteractiveSignInServiceTests(
             "urn:sufficit:acr:loa2",
             ticket.Principal.FindFirst("acr")?.Value);
         Assert.True(ticket.Properties.IsPersistent);
+    }
+
+    [Fact]
+    public async Task Reauthentication_starts_pending_two_factor_for_current_user()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        var users = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var service = services.GetRequiredService<IInteractiveSignInService>();
+        var user = await CreateUserAsync(users, "reauthentication");
+        Assert.True((await users.SetTwoFactorEnabledAsync(user, true)).Succeeded);
+        SetHttpContext(services);
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, user.Id)],
+            "test"));
+
+        var result = await service.BeginReauthenticationAsync(principal);
+
+        Assert.Equal(
+            InteractiveSignInStatus.RequiresTwoFactor,
+            result.Status);
+        Assert.True(await service.HasPendingTwoFactorSignInAsync());
     }
 
     [Fact]

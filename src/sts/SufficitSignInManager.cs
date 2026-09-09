@@ -37,4 +37,18 @@ public sealed class SufficitSignInManager(
             isPersistent,
             loginProvider,
             bypassTwoFactor: false);
+
+    /// <summary>
+    /// Creates the same protected pending-MFA state used after a password
+    /// sign-in, but for an account already established by the application
+    /// cookie. The caller must first clear any remembered-browser MFA cookie.
+    /// </summary>
+    public Task<SignInResult> BeginTwoFactorReauthenticationAsync(
+        ApplicationUser user,
+        bool isPersistent = true) =>
+        SignInOrTwoFactorAsync(
+            user,
+            isPersistent,
+            loginProvider: null,
+            bypassTwoFactor: false);
 }
