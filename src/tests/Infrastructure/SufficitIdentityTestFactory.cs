@@ -217,6 +217,7 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
             // registrations are TryAdd-based, so calling it again here is a
             // harmless no-op if Program.cs's real wiring already added it.
             services.AddAntiforgery();
+            services.AddRazorComponents();
 
             services.AddAuthorization(options =>
             {
@@ -312,6 +313,7 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
             app.UseSufficitCors(
                 app.ApplicationServices.GetRequiredService<SufficitIdentityOptions>().Cors);
 
+            Sufficit.Identity.Server.BrowserAuthorizationErrors.UseBrowserAuthorizationErrors(app);
             app.UseAuthentication();
             app.UseAuthorization();
 

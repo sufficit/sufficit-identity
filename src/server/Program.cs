@@ -707,6 +707,11 @@ if (swaggerEnabled)
     }
 }
 
+// Only the embedded public UI can serve the recovery page and its assets.
+// Install before authentication: OpenIddict checks for the status-page feature.
+if (uiHostingOptions.Public.IsEmbedded)
+    app.UseBrowserAuthorizationErrors();
+
 app.UseAuthentication();
 app.UseAuthorization();
 

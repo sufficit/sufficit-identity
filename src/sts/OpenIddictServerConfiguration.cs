@@ -620,6 +620,7 @@ public static partial class ServiceCollectionExtensions
         // connect/* endpoints (passthrough) instead of OpenIddict writing
         // the responses directly.
         var aspNetCore = server.UseAspNetCore()
+              .EnableStatusCodePagesIntegration()
               .EnableAuthorizationEndpointPassthrough()
               .EnableEndSessionEndpointPassthrough()
               .EnableTokenEndpointPassthrough()
