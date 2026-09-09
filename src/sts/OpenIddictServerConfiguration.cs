@@ -161,9 +161,8 @@ public static partial class ServiceCollectionExtensions
             .Where(pair => !string.IsNullOrWhiteSpace(pair.Key)
                 && !string.IsNullOrWhiteSpace(pair.Value))
             .ToArray();
-        var applicationScopes = configuredClaimScopes
-            .Select(pair => pair.Value.Trim())
-            .Distinct(StringComparer.Ordinal)
+        var applicationScopes = options.ClaimScopeMap
+            .AllGatingScopeNames()
             .ToArray();
         var applicationClaims = configuredClaimScopes
             .Select(pair => pair.Key.Trim())
