@@ -966,8 +966,10 @@ img.profile-avatar { background: var(--surface-sunken); }
     padding-top: var(--space-5);
     border-top: 1px solid var(--line);
 }
-.manage-resources__heading {
+.manage-resources > .manage-resources__heading {
     margin: 0 0 var(--space-5);
+}
+.manage-resources__heading {
     color: var(--ink-muted);
     font-size: 0.875rem;
     font-weight: 600;
