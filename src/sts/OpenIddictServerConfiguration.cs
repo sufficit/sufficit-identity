@@ -252,6 +252,12 @@ public static partial class ServiceCollectionExtensions
         server.AddEventHandler(Tokens.ApplyAccessTokenFormat.Descriptor);
         server.AddEventHandler(
             Tokens.PrepareSelfContainedAccessToken.Descriptor);
+        // Issue #61: a replayed device_code (polling race, RFC 8628) must be
+        // a plain invalid_grant. The built-in theft heuristic would otherwise
+        // revoke every token of the authorization — including the reference
+        // tokens just issued to the race's winner, turning their userinfo
+        // 401. See Tokens/DeviceCodeReplayGuard.cs for the full rationale.
+        server.AddEventHandler(Tokens.RejectRedeemedDeviceCodeReplay.Descriptor);
 
         if (options.Fapi2.Enabled)
         {
