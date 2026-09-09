@@ -298,6 +298,25 @@ public sealed partial class FapiJarmTests
         Assert.False(result.ContainsKey("error"));
         Assert.False(string.IsNullOrWhiteSpace(result["code"].ToString()));
         Assert.Equal("https://sts.tests.local/", result["iss"].ToString());
+
+        // Browser Back repeats the redeemed PAR reference. The protocol must
+        // still reject it, but a document navigation gets a recovery page.
+        var replayUrl = QueryHelpers.AddQueryString("/connect/authorize",
+            new Dictionary<string, string?> { ["client_id"] = clientId, ["request_uri"] = requestUri });
+        using var technicalReplay = await client.GetAsync(replayUrl);
+        Assert.Equal(HttpStatusCode.BadRequest, technicalReplay.StatusCode);
+        Assert.Contains("ID2013", await technicalReplay.Content.ReadAsStringAsync());
+        using var browserReplay = new HttpRequestMessage(HttpMethod.Get, replayUrl);
+        browserReplay.Headers.Accept.ParseAdd("text/html");
+        browserReplay.Headers.Add("Sec-Fetch-Mode", "navigate");
+        browserReplay.Headers.Add("Sec-Fetch-Dest", "document");
+        using var friendlyReplay = await client.SendAsync(browserReplay);
+        Assert.Equal(HttpStatusCode.BadRequest, friendlyReplay.StatusCode);
+        Assert.Equal("text/html", friendlyReplay.Content.Headers.ContentType?.MediaType);
+        Assert.Null(friendlyReplay.Headers.Location);
+        var friendlyHtml = await friendlyReplay.Content.ReadAsStringAsync();
+        Assert.Contains("Não foi possível continuar este acesso", WebUtility.HtmlDecode(friendlyHtml));
+        Assert.DoesNotContain(requestUri!, friendlyHtml);
     }
 
     [Fact]

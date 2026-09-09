@@ -1,0 +1,35 @@
+@* Standalone SSR: recovery must not need a circuit, JavaScript, a login or a database lookup. *@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Não foi possível continuar — Sufficit Identity</title>
+    <link rel="stylesheet" href="/_content/Sufficit.Identity.UI/css/site.css" />
+    <link rel="stylesheet" href="/_content/Sufficit.Identity.UI/css/authorization-error.css" />
+</head>
+<body>
+    <div class="page">
+        <header class="topbar">
+            <div class="topbar-brand">
+                <a href="/">
+                    <span class="brand-wordmark"><span class="brand-name">Sufficit</span><span class="brand-sub">Identity</span></span>
+                </a>
+            </div>
+        </header>
+        <main class="content">
+            <section class="auth-card authorization-error" aria-labelledby="authorization-error-title">
+                <h1 id="authorization-error-title">Não foi possível continuar este acesso</h1>
+                <p>Esta solicitação de autenticação não pode mais ser utilizada. Isso pode acontecer ao voltar pelo navegador para uma etapa anterior, ou quando o link expira.</p>
+                <p>Volte ao aplicativo e inicie o acesso novamente. Não é necessário alterar sua senha nem configurar o segundo fator de novo por causa desta mensagem.</p>
+                <div class="authorization-error__actions">
+                    <a class="btn btn-primary" href="/">Ir para o início do Identity</a>
+                    <a class="btn btn-secondary" href="https://blazor.sufficit.com.br/">Voltar ao Blazor</a>
+                </div>
+                <p class="authorization-error__help">Esta tentativa foi interrompida. Nenhuma nova autenticação foi concluída.</p>
+            </section>
+        </main>
+    </div>
+</body>
+</html>

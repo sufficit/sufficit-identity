@@ -1,0 +1,33 @@
+.authorization-error {
+    max-width: 40rem;
+}
+
+.authorization-error p {
+    line-height: 1.6;
+    margin: 0 0 var(--space-4);
+}
+
+.authorization-error__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-block: var(--space-6);
+}
+
+.authorization-error__actions .btn {
+    min-height: 44px;
+    white-space: normal;
+    text-align: center;
+}
+
+.authorization-error .authorization-error__help {
+    color: var(--ink-muted);
+    margin-bottom: 0;
+}
+
+@media (max-width: 600px) {
+    .authorization-error__actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
