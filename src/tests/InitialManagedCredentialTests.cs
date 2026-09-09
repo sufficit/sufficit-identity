@@ -22,11 +22,11 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 namespace Sufficit.Identity.Tests;
 
 /// <summary>
-/// Local onboarding rehearsal. The operator is fixture bootstrap authority;
-/// the partner administrator and backend never receive provider capabilities.
-/// Business grants are seeded explicitly: no portfolio/delegation API is implied.
+/// Initial managed credential lifecycle with real authorization and token issuance.
+/// Custom entitlement values are opaque fixture data. Human and application
+/// identities remain independent; only the fixture operator has management rights.
 /// </summary>
-public sealed class PartnerAuthorizationSimulationTests
+public sealed class InitialManagedCredentialTests
 {
     private static ManagementRequestContext Operator() => new(
         new ClaimsPrincipal(new ClaimsIdentity(
@@ -35,7 +35,7 @@ public sealed class PartnerAuthorizationSimulationTests
             new Claim("permission", ManagementCapabilities.ClientsCreate),
             new Claim("permission", ManagementCapabilities.ClientsRead),
             new Claim("permission", ManagementCapabilities.ClientsUpdate),
-        ], "simulation-bootstrap")), "partner-auth-simulation");
+        ], "simulation-bootstrap")), "client-auth-simulation");
 
     private static ManagementTestFactory Factory(string clientId) => new(
         bypassAuthz: false,
@@ -47,9 +47,9 @@ public sealed class PartnerAuthorizationSimulationTests
     [Fact]
     public async Task Annual_first_credential_issues_short_machine_tokens_and_is_revocable()
     {
-        var clientId = $"partner-system-{Guid.NewGuid():N}";
-        var allowed = $"phonecalls:{Guid.NewGuid():D}";
-        var humanOnly = $"phonecalls:{Guid.NewGuid():D}";
+        var clientId = $"client-system-{Guid.NewGuid():N}";
+        var allowed = $"urn:example:permission:{Guid.NewGuid():D}";
+        var humanOnly = $"urn:example:permission:{Guid.NewGuid():D}";
         using var factory = Factory(clientId);
         await ((IAsyncLifetime)factory).InitializeAsync();
         using var http = factory.CreateClient();
@@ -60,14 +60,16 @@ public sealed class PartnerAuthorizationSimulationTests
         {
             var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var human = await TestDataSeeder.CreateUserAsync(users,
-                $"partner-admin-{Guid.NewGuid():N}", $"A!9-{Guid.NewGuid():N}", humanOnly);
+                $"test-user-{Guid.NewGuid():N}", $"A!9-{Guid.NewGuid():N}");
+            Assert.True((await users.AddClaimAsync(human,
+                new Claim(ClientEntitlements.ClaimType, humanOnly))).Succeeded);
             humanId = human.Id;
             Assert.Empty(await users.GetRolesAsync(human));
             var clients = scope.ServiceProvider.GetRequiredService<IClientManagementService>();
             credential = await CreateDatedClientAsync(clients, clientId, expiry);
 
-            // Explicit internal fixture grant, not an inherited human role or
-            // a public API that lets the partner grant itself any context.
+            // Opaque application claims are independent from user claims.
+            // Only fixture bootstrap assigns them through the application manager.
             var applications = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
             var application = await applications.FindByClientIdAsync(clientId);
             var descriptor = new OpenIddictApplicationDescriptor();
@@ -127,7 +129,7 @@ public sealed class PartnerAuthorizationSimulationTests
                 clients.CreateCredentialAsync(new CreateManagementClientCredentialCommand(
                     clientId, read.ClientVersion, "unauthorized self-service", true,
                     ExpiresAtUtc: DateTimeOffset.UtcNow.AddYears(1)),
-                    new ManagementRequestContext(principal, "partner-self-escalation-test")));
+                    new ManagementRequestContext(principal, "client-self-escalation-test")));
             Assert.Single((await clients.GetCredentialsAsync(clientId, Operator())).Credentials);
             await clients.RevokeCredentialAsync(new RevokeManagementClientCredentialCommand(
                 clientId, registered.Id!.Value, registered.Version, "simulation completed"), Operator());
@@ -140,7 +142,7 @@ public sealed class PartnerAuthorizationSimulationTests
     [InlineData(false)]
     public async Task First_managed_credential_enforces_schedule_and_expiration(bool scheduled)
     {
-        var clientId = $"partner-window-{Guid.NewGuid():N}";
+        var clientId = $"client-window-{Guid.NewGuid():N}";
         using var factory = Factory(clientId);
         await ((IAsyncLifetime)factory).InitializeAsync();
         using var http = factory.CreateClient();
@@ -173,7 +175,7 @@ public sealed class PartnerAuthorizationSimulationTests
     [Fact]
     public async Task Confidential_client_without_any_credential_is_still_rejected()
     {
-        using var factory = Factory($"partner-empty-{Guid.NewGuid():N}");
+        using var factory = Factory($"client-empty-{Guid.NewGuid():N}");
         await ((IAsyncLifetime)factory).InitializeAsync();
         await using var scope = factory.Services.CreateAsyncScope();
         var applications = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
@@ -188,7 +190,7 @@ public sealed class PartnerAuthorizationSimulationTests
     [Fact]
     public async Task Revoked_first_credential_can_be_replaced_without_weakening_other_validation()
     {
-        var clientId = $"partner-rotate-{Guid.NewGuid():N}";
+        var clientId = $"client-rotate-{Guid.NewGuid():N}";
         using var factory = Factory(clientId);
         await ((IAsyncLifetime)factory).InitializeAsync();
         using var http = factory.CreateClient();
@@ -221,7 +223,7 @@ public sealed class PartnerAuthorizationSimulationTests
     [InlineData(731)]
     public async Task Invalid_initial_expiration_leaves_the_public_client_unchanged(int days)
     {
-        var clientId = $"partner-invalid-window-{Guid.NewGuid():N}";
+        var clientId = $"client-invalid-window-{Guid.NewGuid():N}";
         using var factory = Factory(clientId);
         await ((IAsyncLifetime)factory).InitializeAsync();
         await using var scope = factory.Services.CreateAsyncScope();
@@ -246,7 +248,7 @@ public sealed class PartnerAuthorizationSimulationTests
         // Register an inert client first: client_credentials requires a
         // confidential client and cannot be enabled before it has a credential.
         var created = await clients.CreateAsync(new CreateManagementClientCommand(
-            clientId, null, "Partner backend simulation", null, false,
+            clientId, null, "OAuth application fixture", null, false,
             [], [], []), Operator());
         var credential = await clients.CreateCredentialAsync(new CreateManagementClientCredentialCommand(
             clientId, created.Version, "annual integration credential", true,
