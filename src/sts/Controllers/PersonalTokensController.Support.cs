@@ -46,7 +46,7 @@ public sealed partial class PersonalTokensController
             return null;
         }
 
-        return token;
+        return await IsArchivedAsync(token, cancellationToken) ? null : token;
     }
 
     private async Task<PersonalTokenSummary> ToSummaryAsync(

@@ -33,6 +33,7 @@ public sealed partial class PersonalTokensController : ControllerBase
     private const string DescriptionProperty = "urn:sufficit:token:description";
     private const string ClientIdProperty = "urn:sufficit:token:client_id";
     private const string ReplacesTokenIdProperty = "urn:sufficit:token:replaces_id";
+    private const string ArchivedAtProperty = "urn:sufficit:token:archived_at";
     private const string PersonalTokenClientId = "SufficitAPIUserAccess";
     private const string LegacyReferenceTokenType = "legacy_reference_token";
     private static readonly TimeSpan DefaultLifetime = TimeSpan.FromDays(30);
@@ -151,6 +152,9 @@ public sealed partial class PersonalTokensController : ControllerBase
 
         foreach (var token in candidates)
         {
+            if (await IsArchivedAsync(token, cancellationToken))
+                continue;
+
             if (string.Equals(
                     await _tokenManager.GetTypeAsync(token, cancellationToken),
                     LegacyReferenceTokenType,

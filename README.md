@@ -3,7 +3,7 @@
 > **Worktrees (padrão Sufficit):** toda árvore de trabalho deste projeto (humanos ou agentes de IA) deve ser criada dentro da pasta do próprio projeto: `git worktree add .worktrees/<nome>`. A pasta `.worktrees/` é ignorada pelo git (`.gitignore` → `**/.worktrees/`) e nunca deve ser versionada ou criada fora da raiz do repositório.
 
 
-OAuth 2.0 / OpenID Connect Security Token Service (STS) built on [.NET 10](https://dotnet.microsoft.com/) and [OpenIddict 7.6](https://github.com/openiddict/openiddict-core).
+OAuth 2.0 / OpenID Connect Security Token Service (STS) built on [.NET 10](https://dotnet.microsoft.com/) and [OpenIddict 7.7](https://github.com/openiddict/openiddict-core).
 
 [![CI](https://github.com/sufficit/sufficit-identity/actions/workflows/ci.yml/badge.svg)](https://github.com/sufficit/sufficit-identity/actions/workflows/ci.yml)
 [![License: MIT-0](https://img.shields.io/badge/License-MIT--0-blue.svg)](./LICENSE)
@@ -12,7 +12,7 @@ OAuth 2.0 / OpenID Connect Security Token Service (STS) built on [.NET 10](https
 
 ## What is this?
 
-A self-hostable, .NET-native identity provider that goes well beyond stock OpenIddict. It hand-implements modern protocol features OpenIddict 7.6 does not have — DPoP, CIBA, FAPI 2.0 enforcement, JARM, JAR, SSF/CAEP — on top of the OpenIddict server/validation core, with ASP.NET Core Identity and MySQL/MariaDB storage.
+A self-hostable, .NET-native identity provider that goes well beyond stock OpenIddict. It hand-implements modern protocol features OpenIddict 7.7 does not have — DPoP, CIBA, FAPI 2.0 enforcement, JARM, JAR, SSF/CAEP — on top of the OpenIddict server/validation core, with ASP.NET Core Identity and MySQL/MariaDB storage.
 
 ## Protocol coverage
 
