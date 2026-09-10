@@ -1,5 +1,9 @@
 # Chrome Phone e gestão de audiências
 
+> Atualização posterior: tela e menu publicados nos três nós após autorização.
+> Ver [registro de implantação](202609101542-deploy-audience-management.md).
+> O estado abaixo documenta a conclusão da etapa local, anterior ao deploy.
+
 ## Entrega e estado inicial
 
 Implementados o nome de scope solicitado pelo usuário (`chrome.phone`), a tela
