@@ -43,6 +43,6 @@ Fonte inicial: implementação anterior de proxies já presente no checkout, jun
 
 - [Guia e opções](../networking/USAGE-TRUSTED-PROXIES.md).
 - [Arquitetura do piloto](../architecture/ARCHITECTURE-RUNTIME-SNAPSHOTS.md).
-- [Plano de adoção e rollout pendente](../../../sufficit-standard/docs/plans/PLAN-RUNTIME-SNAPSHOTS-ADOPTION.md).
+- [Plano de adoção e rollout pendente](https://github.com/sufficit/sufficit-standard/blob/main/docs/plans/PLAN-RUNTIME-SNAPSHOTS-ADOPTION.md).
 
 Plano temporário desta implementação concluído; rollout continua rastreado no plano comum. Nenhum servidor produtivo recebeu esta versão nesta execução.
