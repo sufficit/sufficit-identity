@@ -1,6 +1,6 @@
 # Snapshots de runtime — Identity
 
-O Identity implementa o [padrão compartilhado Sufficit](../../../sufficit-standard/docs/architecture/ARCHITECTURE-RUNTIME-SNAPSHOTS.md) para proxies confiáveis. Código e testes locais concluídos; configuração do broker e rollout desta evolução ainda pendentes na etapa 1 do [plano de adoção](../../../sufficit-standard/docs/plans/PLAN-RUNTIME-SNAPSHOTS-ADOPTION.md).
+O Identity implementa o [padrão compartilhado Sufficit](https://github.com/sufficit/sufficit-standard/blob/main/docs/architecture/ARCHITECTURE-RUNTIME-SNAPSHOTS.md) para proxies confiáveis. Runtime publicado nos três nós com reconciliação por revisão; ativação do broker ainda pendente na etapa 1 do [plano de adoção](https://github.com/sufficit/sufficit-standard/blob/main/docs/plans/PLAN-RUNTIME-SNAPSHOTS-ADOPTION.md).
 
 ## Contrato implementado
 
