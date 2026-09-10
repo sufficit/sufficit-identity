@@ -78,6 +78,9 @@
   <data name="Login.Error.PasskeyGeneric" xml:space="preserve"><value>Falha ao autenticar com passkey.</value></data>
   <data name="Login.Error.PasskeyRetry" xml:space="preserve"><value>Não foi possível concluir a autenticação. Recarregue a página e tente novamente.</value></data>
   <data name="Login.Validation.UserNameRequired" xml:space="preserve"><value>Informe o e-mail ou usuário.</value></data>
+  <data name="AuthenticationContinue.Title" xml:space="preserve"><value>Autenticação confirmada</value></data>
+  <data name="AuthenticationContinue.Description" xml:space="preserve"><value>Retornando com segurança para o aplicativo...</value></data>
+  <data name="AuthenticationContinue.Action" xml:space="preserve"><value>Continuar para o aplicativo</value></data>
   <data name="Login.Validation.PasswordRequired" xml:space="preserve"><value>Informe a senha.</value></data>
 
   <!-- ===== Register ===== -->

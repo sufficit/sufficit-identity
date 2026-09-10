@@ -43,7 +43,8 @@ public sealed class PasswordLoginController(
 
         return result.Status switch
         {
-            InteractiveSignInStatus.Succeeded => LocalRedirect(returnUrl),
+            InteractiveSignInStatus.Succeeded => Redirect(
+                AuthenticationContinuation.Location(returnUrl)),
             InteractiveSignInStatus.RequiresTwoFactor => Redirect(
                 QueryHelpers.AddQueryString(
                     "/account/loginwith2fa",

@@ -25,9 +25,9 @@ public sealed class PasswordLoginControllerTests(
                 "/connect/authorize?client_id=test-client"));
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal(
-            "/connect/authorize?client_id=test-client",
-            response.Headers.Location?.OriginalString);
+        AssertAuthenticationContinuation(
+            response,
+            "/connect/authorize?client_id=test-client");
         Assert.Contains(
             response.Headers.GetValues("Set-Cookie"),
             value => value.Contains(
@@ -75,7 +75,7 @@ public sealed class PasswordLoginControllerTests(
                 "https://attacker.invalid/collect"));
 
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/", response.Headers.Location?.OriginalString);
+        AssertAuthenticationContinuation(response, "/");
     }
 
     private HttpClient CreateClient() => factory.CreateClient(
@@ -83,6 +83,22 @@ public sealed class PasswordLoginControllerTests(
         {
             AllowAutoRedirect = false,
         });
+
+    private static void AssertAuthenticationContinuation(
+        HttpResponseMessage response,
+        string expectedReturnUrl)
+    {
+        var location = response.Headers.Location;
+        Assert.NotNull(location);
+        Assert.StartsWith(
+            "/account/authenticationcontinue?",
+            location.OriginalString,
+            StringComparison.Ordinal);
+        var absolute = new Uri(new Uri("https://identity.tests.local"), location);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(
+            absolute.Query);
+        Assert.Equal(expectedReturnUrl, query["returnUrl"].ToString());
+    }
 
     private static FormUrlEncodedContent Form(
         string? antiforgeryToken,

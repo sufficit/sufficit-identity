@@ -243,6 +243,9 @@ public sealed partial class ManagementUiArchitectureTests
         var recovery = File.ReadAllText(Path.Combine(
             accountPages,
             "LoginWithRecoveryCode.razor"));
+        var continuation = File.ReadAllText(Path.Combine(
+            accountPages,
+            "AuthenticationContinue.razor"));
         var logout = File.ReadAllText(Path.Combine(accountPages, "Logout.razor"));
         var pages = login + twoFactor + recovery + logout;
 
@@ -251,6 +254,7 @@ public sealed partial class ManagementUiArchitectureTests
             "action=\"/account/login/password\"",
             login,
             StringComparison.Ordinal);
+        Assert.Contains("data-auth-submit-once", login, StringComparison.Ordinal);
         Assert.DoesNotContain("HandleLoginAsync", login, StringComparison.Ordinal);
         Assert.Contains(
             "[SupplyParameterFromQuery(Name = \"ReturnUrl\")]",
@@ -267,6 +271,7 @@ public sealed partial class ManagementUiArchitectureTests
             "action=\"/account/login/2fa\"",
             twoFactor,
             StringComparison.Ordinal);
+        Assert.Contains("data-auth-submit-once", twoFactor, StringComparison.Ordinal);
         Assert.DoesNotContain(
             "AuthenticatorSignInCommand",
             twoFactor,
@@ -275,6 +280,15 @@ public sealed partial class ManagementUiArchitectureTests
         Assert.Contains(
             "action=\"/account/login/recoverycode\"",
             recovery,
+            StringComparison.Ordinal);
+        Assert.Contains("data-auth-submit-once", recovery, StringComparison.Ordinal);
+        Assert.Contains(
+            "data-authentication-continue-url",
+            continuation,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "LocalUrlValidator.EnsureLocal(ReturnUrl)",
+            continuation,
             StringComparison.Ordinal);
         Assert.DoesNotContain(
             "RecoveryCodeSignInAsync",
@@ -345,6 +359,42 @@ public sealed partial class ManagementUiArchitectureTests
         Assert.DoesNotContain("Microsoft.AspNetCore.Identity", contract, StringComparison.Ordinal);
         Assert.Contains(": IInteractiveSignInService", adapter, StringComparison.Ordinal);
         Assert.Contains("SufficitSignInManager", adapter, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Authentication_forms_prevent_duplicate_submissions_without_losing_payload()
+    {
+        var script = File.ReadAllText(Path.Combine(
+            ResolvePublicUiSource(),
+            "wwwroot",
+            "js",
+            "identity.js"));
+
+        Assert.Contains("initializeSingleSubmitForms", script, StringComparison.Ordinal);
+        Assert.Contains("submittedForm.dataset.authSubmitted", script, StringComparison.Ordinal);
+        Assert.Contains("event.preventDefault();", script, StringComparison.Ordinal);
+
+        var submitListener = script.IndexOf(
+            "form.addEventListener('submit'",
+            StringComparison.Ordinal);
+        var deferredLock = script.IndexOf(
+            "window.setTimeout(function ()",
+            submitListener,
+            StringComparison.Ordinal);
+        var controlLock = script.IndexOf(
+            "controls[j].disabled = true;",
+            submitListener,
+            StringComparison.Ordinal);
+
+        Assert.True(submitListener >= 0);
+        Assert.True(
+            deferredLock >= 0 && controlLock > deferredLock,
+            "Authentication controls must be locked only after the browser captures the submit payload.");
+        Assert.Contains("window.addEventListener('pageshow'", script, StringComparison.Ordinal);
+        Assert.Contains("resetForm(forms[i])", script, StringComparison.Ordinal);
+        Assert.Contains("initializeAuthenticationContinue", script, StringComparison.Ordinal);
+        Assert.Contains("window.location.replace(returnUrl)", script, StringComparison.Ordinal);
+        Assert.Contains("returnUrl.indexOf('//') === 0", script, StringComparison.Ordinal);
     }
 
     [Fact]

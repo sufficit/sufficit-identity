@@ -72,17 +72,31 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
         Assert.Contains("/connect/authorize", query["returnUrl"].ToString());
 
         var antiforgery = await TestOnlyEndpoints.GetAntiforgeryTokenAsync(client);
-        var (status, _) = await client.PostFormAsync(
+        using var mfaResponse = await client.PostAsync(
             "/account/login/2fa",
-            new Dictionary<string, string>
+            new FormUrlEncodedContent(new Dictionary<string, string>
             {
                 ["Code"] = CurrentAuthenticatorCode(authenticatorKey),
                 ["RememberMe"] = "true",
                 ["RememberClient"] = "false",
                 ["ReturnUrl"] = query["returnUrl"].ToString(),
                 ["__RequestVerificationToken"] = antiforgery,
-            });
-        Assert.Equal(HttpStatusCode.Redirect, status);
+            }));
+        Assert.Equal(HttpStatusCode.Redirect, mfaResponse.StatusCode);
+
+        var continuationLocation = mfaResponse.Headers.Location;
+        Assert.NotNull(continuationLocation);
+        Assert.StartsWith(
+            "/account/authenticationcontinue?",
+            continuationLocation.OriginalString,
+            StringComparison.Ordinal);
+        var continuationQuery = QueryHelpers.ParseQuery(
+            new Uri(
+                new Uri("https://identity.tests.local"),
+                continuationLocation).Query);
+        Assert.Equal(
+            query["returnUrl"].ToString(),
+            continuationQuery["returnUrl"].ToString());
 
         using var completed = await client.GetAsync(query["returnUrl"].ToString());
         Assert.Equal(HttpStatusCode.Redirect, completed.StatusCode);

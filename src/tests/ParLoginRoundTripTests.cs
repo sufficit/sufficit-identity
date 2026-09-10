@@ -125,8 +125,9 @@ public sealed class ParLoginRoundTripTests
             Assert.Contains("ReturnUrl=", loginTarget);
         }
 
-        // The user signs in and the browser returns to /connect/authorize
-        // with the SAME request_uri (LocalRedirect from PasswordLoginController).
+        // The user signs in and the browser resumes /connect/authorize as a
+        // fresh navigation, after the credential POST ends on the same-origin
+        // authentication continuation page, with the SAME request_uri.
         await TestOnlyEndpoints.SignInAsync(client, username);
 
         // ------------------------------------------------------------------
