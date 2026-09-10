@@ -544,8 +544,11 @@ public static partial class ServiceCollectionExtensions
                     return Task.CompletedTask;
                 }
 
+                // Revalidation renews this session; it must not mint another sid.
+                // HttpContext.User may not yet be populated during authentication.
                 foreach (var claimType in new[]
                 {
+                    OidcSessionClaimsPrincipalFactory.SessionIdClaimType,
                     AuthenticationContextProjector.AuthenticationMethodClaimType,
                     AuthenticationContextProjector.AuthenticationTimeClaimType,
                     OidcSessionClaimsPrincipalFactory.AssuranceLevelClaimType,
