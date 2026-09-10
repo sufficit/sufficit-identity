@@ -31,6 +31,7 @@ public static class ManagementUiPolicies
     public const string ManageClients = "sufficit-identity-management-ui-clients";
     public const string ManageClaims = "sufficit-identity-management-ui-claims";
     public const string ManageScopes = "sufficit-identity-management-ui-scopes";
+    public const string UpdateAudienceBindings = "sufficit-identity-management-ui-audience-bindings";
     public const string ManageSessions =
         "sufficit-identity-management-ui-sessions";
     public const string ManageAuthorizations =
@@ -166,6 +167,13 @@ public static class ServiceCollectionExtensions
                     new ManagementCapabilityRequirement(
                         ManagementCapabilities.ScopesRead,
                         ManagementResourceTypes.ScopeCollection));
+            });
+
+            authorization.AddPolicy(ManagementUiPolicies.UpdateAudienceBindings, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.Requirements.Add(new ManagementCapabilityRequirement(
+                    ManagementCapabilities.ScopesUpdate, ManagementResourceTypes.ScopeCollection));
             });
 
             authorization.AddPolicy(

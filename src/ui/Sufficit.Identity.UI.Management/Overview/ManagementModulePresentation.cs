@@ -66,6 +66,8 @@ public static class ManagementModulePresentations
             "Recursos e permissões delegadas do protocolo",
             "scopes",
             "scope"),
+        new("audiences", "OAuth & OIDC", 20, 25, "Audiências",
+            "Destinatários dos tokens e vínculos com scopes", "audiences", "server"),
         new(
             "authorizations",
             "OAuth & OIDC",

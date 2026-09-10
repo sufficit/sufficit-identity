@@ -17,6 +17,17 @@ public sealed class ManagementScopeDataSource(
     AuthenticationStateProvider authenticationStateProvider,
     ILogger<ManagementScopeDataSource> logger)
 {
+    public Task<ManagementDataResult<ManagementAudienceInventory>> ListAudiencesAsync(
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync((scopes, context) => scopes.ListAudiencesAsync(context, cancellationToken),
+            "Audience listing", cancellationToken);
+
+    public Task<ManagementDataResult<ManagementScopeDetail>> UpdateAudienceBindingAsync(
+        string scopeId, UpdateAudienceBindingCommand command,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync((scopes, context) => scopes.UpdateAudienceBindingAsync(scopeId, command, context, cancellationToken),
+            "Audience binding update", cancellationToken);
+
     public Task<ManagementDataResult<IReadOnlyList<ManagementScopeSummary>>>
         ListAsync(CancellationToken cancellationToken = default) =>
         ExecuteAsync(

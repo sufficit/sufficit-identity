@@ -11,7 +11,7 @@ using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Management.Scopes;
 
-internal sealed class ScopeManagementService(
+internal sealed partial class ScopeManagementService(
     IOpenIddictScopeManager scopes,
     IOpenIddictApplicationManager applications,
     AppDbContext database,
