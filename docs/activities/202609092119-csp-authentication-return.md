@@ -58,6 +58,9 @@ as duas navegações e mantém `form-action 'self'` efetivo.
 - em cada nó, `sufficit-identity.service` ficou `active`, `/health` e
   `/health/ready` responderam HTTP 200, a nova rota e o JavaScript foram
   encontrados no artefato servido e não houve erro novo no journal;
+- os três nós foram uniformizados com o mesmo artefato; o SHA-256 de
+  `Sufficit.Identity.Server.dll` ficou
+  `20bb0f5487834d6ca6e7437cd4d4ee52f2185ec477746ded9c084663e6048a93`;
 - o wrapper de releases versionadas foi tentado primeiro e recusou a topologia
   legada, ainda baseada em `/opt/sufficit-identity`; nenhum processo foi
   alterado por essa tentativa. A entrega usou o publicador staged compatível
