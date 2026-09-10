@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.STS;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -20,8 +21,11 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
     private const string RedirectUri =
         "https://recent-authentication.example.invalid/callback";
 
-    [Fact]
-    public async Task Stale_session_is_sent_to_existing_two_factor_flow()
+    [Theory]
+    [InlineData(900, true)]
+    [InlineData(0, true)]
+    [InlineData(0, false)]
+    public async Task Stale_session_is_sent_to_existing_two_factor_flow(int maxAge, bool usePar)
     {
         var username = $"recent-auth-{Guid.NewGuid():N}";
         string authenticatorKey;
@@ -41,15 +45,17 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
         }
 
         using var client = factory.CreateClient(
-            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, BaseAddress = new Uri("https://identity.tests.local") });
         await TestOnlyEndpoints.SignInAsync(
             client,
             username,
             withMfa: true,
             authenticatedAt: DateTimeOffset.UtcNow.AddHours(-1));
-        var requestUri = await PushAuthorizationRequestAsync(client);
+        var authorizeUrl = usePar
+            ? AuthorizeUrl(await PushAuthorizationRequestAsync(client, maxAge: maxAge))
+            : DirectAuthorizationUrl(maxAge);
 
-        using var authorization = await client.GetAsync(AuthorizeUrl(requestUri));
+        using var authorization = await client.GetAsync(authorizeUrl);
         Assert.Equal(HttpStatusCode.Redirect, authorization.StatusCode);
         var confirmation = authorization.Headers.Location!;
         Assert.StartsWith(
@@ -83,6 +89,9 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
                 ["__RequestVerificationToken"] = antiforgery,
             }));
         Assert.Equal(HttpStatusCode.Redirect, mfaResponse.StatusCode);
+
+        if (maxAge == 0)
+            Assert.Contains(mfaResponse.Headers.GetValues("Set-Cookie"), value => value.StartsWith(AuthorizationAuthenticationReceipt.CookieName + "="));
 
         var continuationLocation = mfaResponse.Headers.Location;
         Assert.NotNull(continuationLocation);
@@ -124,7 +133,7 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
         }
 
         using var client = factory.CreateClient(
-            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, BaseAddress = new Uri("https://identity.tests.local") });
         await TestOnlyEndpoints.SignInAsync(
             client,
             username,
@@ -156,7 +165,7 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
         }
 
         using var client = factory.CreateClient(
-            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, BaseAddress = new Uri("https://identity.tests.local") });
         await TestOnlyEndpoints.SignInAsync(
             client,
             username,
@@ -209,7 +218,7 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
 
     private static async Task<string> PushAuthorizationRequestAsync(
         HttpClient client,
-        string? prompt = null)
+        string? prompt = null, int maxAge = 900)
     {
         var (_, challenge) = Pkce.CreatePair();
         var form = new Dictionary<string, string>
@@ -221,7 +230,7 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
             ["state"] = "s-" + Guid.NewGuid().ToString("N"),
             ["code_challenge"] = challenge,
             ["code_challenge_method"] = "S256",
-            ["max_age"] = "900",
+            ["max_age"] = maxAge.ToString(System.Globalization.CultureInfo.InvariantCulture),
         };
         if (!string.IsNullOrWhiteSpace(prompt))
         {
@@ -233,6 +242,19 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
             form);
         Assert.Equal(HttpStatusCode.Created, status);
         return body.GetProperty("request_uri").GetString()!;
+    }
+
+    private static string DirectAuthorizationUrl(int maxAge)
+    {
+        var (_, challenge) = Pkce.CreatePair();
+        return QueryHelpers.AddQueryString("/connect/authorize", new Dictionary<string, string?>
+        {
+            ["client_id"] = ClientId, ["redirect_uri"] = RedirectUri,
+            ["response_type"] = "code", ["scope"] = "openid profile",
+            ["code_challenge"] = challenge, ["code_challenge_method"] = "S256",
+            ["state"] = Guid.NewGuid().ToString("N"), ["prompt"] = "login",
+            ["max_age"] = maxAge.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        });
     }
 
     private static string AuthorizeUrl(string requestUri) =>

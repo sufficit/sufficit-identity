@@ -107,6 +107,7 @@ public sealed class ServerSideSessionsTests
         // The id_token sid is non-empty (proving the sid claim flows to tokens);
         // the session row is the durable home for that browser session.
         Assert.False(string.IsNullOrWhiteSpace(row.SessionId));
+        Assert.Equal(sid, row.SessionId);
         // IsCurrent is only true inside an HTTP request context (it reads the
         // caller's own cookie sid); queried out-of-band here it stays false.
     }

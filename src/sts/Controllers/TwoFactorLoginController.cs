@@ -66,7 +66,7 @@ public sealed class TwoFactorLoginController(
         return result.Status switch
         {
             InteractiveSignInStatus.Succeeded => Redirect(
-                AuthenticationContinuation.Location(returnUrl)),
+                AuthenticationContinuation.Location(returnUrl, HttpContext)),
             InteractiveSignInStatus.LockedOut => RedirectToAuthenticator(
                 returnUrl,
                 rememberMe,
@@ -113,7 +113,7 @@ public sealed class TwoFactorLoginController(
         return result.Status switch
         {
             InteractiveSignInStatus.Succeeded => Redirect(
-                AuthenticationContinuation.Location(returnUrl)),
+                AuthenticationContinuation.Location(returnUrl, HttpContext)),
             InteractiveSignInStatus.LockedOut => RedirectToRecoveryCode(
                 returnUrl,
                 "locked_out"),

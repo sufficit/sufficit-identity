@@ -132,7 +132,9 @@ public partial class AuthorizationController : Controller
         if (AuthorizationReauthenticationPolicy.IsRequired(
                 request,
                 result.Principal,
-                _timeProvider.GetUtcNow()))
+                _timeProvider.GetUtcNow())
+            && !(request.MaxAge == 0 && AuthorizationAuthenticationReceipt.IsValid(
+                HttpContext, CurrentAuthorizationRequestUrl())))
         {
             if (request.HasPromptValue(PromptValues.None))
             {
@@ -354,6 +356,7 @@ public partial class AuthorizationController : Controller
         identity.SetAuthorizationId(await _authorizationManager.GetIdAsync(authorization));
         identity.SetDestinations(_grants.GetDestinations);
 
+        if (request.MaxAge == 0) AuthorizationAuthenticationReceipt.Clear(HttpContext);
         return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 

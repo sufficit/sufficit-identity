@@ -22,6 +22,13 @@ public sealed class AuthorizationReauthenticationPolicyTests
             Now));
     }
 
+    [Fact]
+    public void Zero_max_age_always_requires_a_new_ceremony_without_receipt()
+    {
+        Assert.True(AuthorizationReauthenticationPolicy.IsRequired(
+            new OpenIddictRequest { MaxAge = 0 }, PrincipalAuthenticatedAt(Now), Now));
+    }
+
     [Theory]
     [InlineData(899, false)]
     [InlineData(900, false)]

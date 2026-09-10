@@ -25,6 +25,10 @@ internal static class AuthorizationReauthenticationPolicy
             return false;
         }
 
+        // Every new max_age=0 request needs a ceremony, even in the same second.
+        // Its authenticated continuation is checked separately by the controller.
+        if (maximumAgeSeconds == 0) return true;
+
         var value = principal.FindFirst(
             AuthenticationContextProjector.AuthenticationTimeClaimType)?.Value;
         if (!long.TryParse(
