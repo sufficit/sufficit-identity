@@ -46,9 +46,19 @@ as duas navegações e mantém `form-action 'self'` efetivo.
 - suíte completa de Identity: **1.116 aprovados**, sem warnings;
 - build Release de `Sufficit.Identity.Server`: **0 erros e 0 warnings**;
 - validação sintática de `identity.js` com `node --check`: aprovada;
-- `git diff --check`: aprovado.
+- `git diff --check`: aprovado;
+- teste em navegador real com Playwright: a abertura de
+  `/account/authenticationcontinue?returnUrl=%2Fhealth` navegou automaticamente
+  para `https://identity.sufficit.com.br/health` e recebeu `Healthy`.
 
 ## Entrega
 
-O commit e a publicação serão registrados abaixo após a conclusão do fluxo de
-entrega.
+- commit funcional: `4d558b2` na branch `main`, enviado para `origin/main`;
+- publicação staged concluída em `eveo-apps`, `apoint-apps` e `castrum-apps`;
+- em cada nó, `sufficit-identity.service` ficou `active`, `/health` e
+  `/health/ready` responderam HTTP 200, a nova rota e o JavaScript foram
+  encontrados no artefato servido e não houve erro novo no journal;
+- o wrapper de releases versionadas foi tentado primeiro e recusou a topologia
+  legada, ainda baseada em `/opt/sufficit-identity`; nenhum processo foi
+  alterado por essa tentativa. A entrega usou o publicador staged compatível
+  com a instalação atual, preservando configurações e certificados por nó.
