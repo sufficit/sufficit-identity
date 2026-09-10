@@ -608,14 +608,17 @@ public sealed class ClaimScopeMapTests
     // ------------------------------------------------------------------
 
     [Theory]
-    [InlineData("directive")]
-    [InlineData("entitlements")]
+    [InlineData("directive", "directives")]
+    [InlineData("directive", "entitlements")]
+    [InlineData("entitlements", "directives")]
+    [InlineData("entitlements", "entitlements")]
     public async Task Userinfo_returns_both_names_whichever_one_the_grant_is_stored_under(
-        string storedClaimType)
+        string storedClaimType, string requestedScope)
     {
-        using var factory = SufficitIdentityTestFactory.CreateIsolated(MapConfiguration());
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(MapConfigurationWithSuccessor());
         await ((IAsyncLifetime)factory).InitializeAsync();
         await ProvisionDirectiveScopeAndClientAsync(factory);
+        await ProvisionSuccessorScopeAsync(factory);
 
         var username = $"csm-ui-both-{Guid.NewGuid():N}";
         const string password = "Str0ng!Passw0rd#UB";
@@ -629,7 +632,7 @@ public sealed class ClaimScopeMapTests
         }
 
         var userinfo = await UserinfoAsync(factory, username, password,
-            $"openid {DirectiveScopeName}");
+            $"openid {requestedScope}");
 
         foreach (var emitted in new[] { "directive", "entitlements" })
         {

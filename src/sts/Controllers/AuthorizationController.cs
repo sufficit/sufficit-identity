@@ -459,7 +459,7 @@ public partial class AuthorizationController : Controller
         {
             foreach (var mapping in _applicationClaimPolicy.MappedClaimScopes)
             {
-                if (!User.HasScope(mapping.Value))
+                if (!CanReleaseUserInfoClaim(mapping.Key))
                 {
                     continue;
                 }
@@ -483,6 +483,17 @@ public partial class AuthorizationController : Controller
         ProjectEntitlementUnderBothNames(claims);
 
         return Ok(claims);
+    }
+
+    // Reuse the token claim policy so configured successor scopes behave
+    // identically in access tokens and in the current UserInfo projection.
+    private bool CanReleaseUserInfoClaim(string type)
+    {
+        var identity = new ClaimsIdentity(User.Claims);
+        var claim = new Claim(type, string.Empty);
+        identity.AddClaim(claim);
+        return _applicationClaimPolicy.GetDestinations(identity.Claims.Last(), includeIdentityToken: false)
+            .Contains(Destinations.AccessToken, StringComparer.Ordinal);
     }
 
     /// <summary>
@@ -522,8 +533,8 @@ public partial class AuthorizationController : Controller
                 return;
             }
 
-            if (!_applicationClaimPolicy.MappedClaimScopes.TryGetValue(to, out var requiredScope) ||
-                !User.HasScope(requiredScope))
+            if (!_applicationClaimPolicy.MappedClaimScopes.ContainsKey(to) ||
+                !CanReleaseUserInfoClaim(to))
             {
                 return;
             }
