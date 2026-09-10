@@ -129,6 +129,8 @@ public static class ManagementModulePresentations
             "Uso das aplicações e saúde da coleta",
             "metrics",
             "chart"),
+        new("trusted-proxies", "Operações", 40, 45, "Proxies confiáveis",
+            "Origem dos clientes e cadeia de encaminhamento", "settings/trusted-proxies", "settings"),
         new(
             "database",
             "Operações",

@@ -1176,6 +1176,7 @@
           "Microsoft.EntityFrameworkCore": "[10.0.11, )",
           "Microsoft.Extensions.Caching.StackExchangeRedis": "[10.0.11, )",
           "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": "[10.0.11, )",
+          "NATS.Client": "[1.1.8, )",
           "Serilog.AspNetCore": "[10.0.0, )",
           "Sufficit.Blazor.UI": "[1.26.908.2020, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
@@ -1336,6 +1337,12 @@
           "Microsoft.Extensions.Diagnostics.HealthChecks": "10.0.11",
           "Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions": "10.0.11"
         }
+      },
+      "NATS.Client": {
+        "type": "CentralTransitive",
+        "requested": "[1.1.8, )",
+        "resolved": "1.1.8",
+        "contentHash": "ISyMFTeESWsGQR10HEg5YtgrroDMg8XGsEWRMoWBrGWGRRHq+uSU3RzSU62tFW6ULEyjXQqPrnk6giyBKE98Aw=="
       },
       "OpenIddict.AspNetCore": {
         "type": "CentralTransitive",

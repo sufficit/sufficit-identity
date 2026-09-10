@@ -17,6 +17,7 @@ public static class IdentityDatabaseSchema
     public const int MetricsGrantTypeLength = 100;
     public const int MetricsOutcomeLength = 32;
     public const int MetricsSubjectHashLength = 64;
+    public const string TrustedProxyConfigurationMigrationId = "20260910131719_AddTrustedProxyConfiguration";
     public const string InitialMigrationId = "20260726213918_Initial";
     public const string BrandingThemesMigrationId = "20260729025623_AddBrandingThemes";
     public const string ManagementAuditMigrationId = "20260729221512_AddManagementAuditEvents";

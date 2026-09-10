@@ -116,4 +116,8 @@
   <data name="Capability.identity.management.tokens.issue.Description" xml:space="preserve"><value>Usada para gerar um Bearer temporário com um subconjunto das capabilities já possuídas pelo administrador. Essa capability não pode ser delegada ao próprio token.</value></data>
   <data name="Capability.identity.management.tokens.revoke.Title" xml:space="preserve"><value>Revogar tokens temporários de Management</value></data>
   <data name="Capability.identity.management.tokens.revoke.Description" xml:space="preserve"><value>Usada para invalidar um token temporário antes de sua expiração. Essa capability não pode ser incorporada a outro token temporário.</value></data>
+  <data name="Capability.identity.trusted-proxies.read.Title" xml:space="preserve"><value>Consultar proxies confiáveis</value></data>
+  <data name="Capability.identity.trusted-proxies.read.Description" xml:space="preserve"><value>Consultar proxies confiáveis, suas origens e o limite efetivo de saltos. Alterações exigem a permissão específica de gerenciamento.</value></data>
+  <data name="Capability.identity.trusted-proxies.manage.Title" xml:space="preserve"><value>Gerenciar proxies confiáveis</value></data>
+  <data name="Capability.identity.trusted-proxies.manage.Description" xml:space="preserve"><value>Alterar proxies confiáveis cadastrados no banco e o limite de saltos, com registro de auditoria. As redes definidas no arquivo permanecem em uso.</value></data>
 </root>

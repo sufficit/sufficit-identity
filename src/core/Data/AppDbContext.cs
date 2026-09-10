@@ -127,6 +127,8 @@ public sealed class AppDbContext
     public DbSet<Entities.OAuthClientCredential> OAuthClientCredentials =>
         Set<Entities.OAuthClientCredential>();
 
+    public DbSet<TrustedProxyConfiguration> TrustedProxyConfigurations => Set<TrustedProxyConfiguration>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -144,6 +146,7 @@ public sealed class AppDbContext
         VaultKeyMapping.Apply(builder);
         VaultSecretMapping.Apply(builder);
         IdentityMetricsMapping.Apply(builder);
+        TrustedProxyMapping.Apply(builder);
         ProtocolSecurityStateMapping.Apply(builder);
         OAuthClientCredentialMapping.Apply(builder);
 

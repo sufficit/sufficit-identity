@@ -31,5 +31,9 @@ public sealed class ManagementAuditEvent
 
     public string CorrelationId { get; set; } = string.Empty;
 
+    /// <summary>Non-secret configuration values before and after an audited mutation.</summary>
+    public string? BeforeJson { get; set; }
+    public string? AfterJson { get; set; }
+
     public string? AuthenticationMethods { get; set; }
 }
