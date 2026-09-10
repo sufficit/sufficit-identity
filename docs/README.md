@@ -77,8 +77,11 @@ Dated evaluations that are useful only as historical evidence live under
 - [Visual and interaction system](design/DESIGN-SYSTEM.md)
 - [Management product definition](design/DESIGN-MANAGEMENT-PRODUCT.md)
 - [Management visual contract](design/DESIGN-MANAGEMENT-UI.md)
+- [Audience management surface](design/DESIGN-AUDIENCES.md)
 
 ## Usage
+
+- [Gestão de audiências](management/USAGE-AUDIENCES.md) — inventário, vínculos de scopes, permissões e auditoria.
 
 - [Abertura e fechamento do Device Flow em popup](design/DESIGN-DEVICE-FLOW-POPUP.md) — launcher para Symposium, mensagens e limites do navegador.
 

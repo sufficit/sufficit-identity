@@ -160,10 +160,17 @@ public sealed partial class ManagementUiRoutingTests
             StringComparison.Ordinal);
     }
 
-    private static async Task<WebApplication> CreateHostAsync()
+    private static async Task<WebApplication> CreateHostAsync(bool useKestrel = false)
     {
         var builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseTestServer();
+        if (useKestrel)
+        {
+            builder.WebHost.UseKestrel().UseUrls("http://127.0.0.1:0");
+            builder.WebHost.UseSetting(WebHostDefaults.StaticWebAssetsKey,
+                Path.Combine(AppContext.BaseDirectory, "Sufficit.Identity.Server.staticwebassets.runtime.json"));
+            builder.WebHost.UseStaticWebAssets();
+        }
+        else builder.WebHost.UseTestServer();
 
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -221,6 +228,7 @@ public sealed partial class ManagementUiRoutingTests
         builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
 
         var app = builder.Build();
+        if (useKestrel) app.UseStaticFiles();
         app.UseRequestLocalization(new RequestLocalizationOptions()
             .SetDefaultCulture("pt-BR")
             .AddSupportedCultures("pt-BR", "en-US")
@@ -625,7 +633,36 @@ public sealed partial class ManagementUiRoutingTests
 
     private sealed class StubScopeManagementService : IScopeManagementService
     {
-        private static readonly ManagementScopeDetail Scope = new(
+        private bool failInventory;
+        public Task<ManagementAudienceInventory> ListAudiencesAsync(
+            ManagementRequestContext context, CancellationToken cancellationToken = default)
+        {
+            if (failInventory) throw new InvalidOperationException("Test inventory unavailable");
+            return Task.FromResult(new ManagementAudienceInventory(
+                Scope.Resources.Select(resource => new ManagementAudienceSummary(resource, [Scope], ["test-client"]))
+                    .Append(new ManagementAudienceSummary("SufficitEndpointsIntrospection", [ManifestScope], ["SufficitChromeExtension"]))
+                    .ToArray(), [Scope, ManifestScope]));
+        }
+
+        private static readonly ManagementScopeDetail ManifestScope = new(
+            "scope-manifest", "chrome.phone", "Chrome Phone", "Manifest-managed scope",
+            ["SufficitEndpointsIntrospection"], ["SufficitChromeExtension"], true);
+
+        public Task<ManagementScopeDetail> UpdateAudienceBindingAsync(string scopeId,
+            UpdateAudienceBindingCommand command, ManagementRequestContext context,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.Audience == "reject-test")
+                throw new ManagementConflictException("test_conflict", "Os vínculos deste scope mudaram. Atualize a lista e revise a operação.");
+            if (command.Audience == "fail-list-test") failInventory = true;
+            var resources = Scope.Resources.ToHashSet(StringComparer.Ordinal);
+            if (command.Assigned) resources.Add(command.Audience);
+            else resources.Remove(command.Audience);
+            Scope = Scope with { Resources = resources.Order(StringComparer.Ordinal).ToArray() };
+            return Task.FromResult(Scope);
+        }
+
+        private ManagementScopeDetail Scope = new(
             "scope-1",
             "test.scope",
             "Test scope",

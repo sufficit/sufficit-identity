@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-10T18:14:11Z",
+  "title": "Design System: Sufficit Identity — Audiências",
+  "extensions": {
+    "surface": {
+      "route": "/management/audiences",
+      "mode": "operate",
+      "document": "../DESIGN-AUDIENCES.md",
+      "authority": "../DESIGN-MANAGEMENT-UI.md"
+    },
+    "breakpoints": [
+      { "name": "audiences-mobile-max", "value": "767px" }
+    ],
+    "responsiveTable": {
+      "reuse": "data-table--scopes",
+      "mobileLabels": "data-label",
+      "mobileCellColumns": "minmax(96px, 0.38fr) minmax(0, 0.62fr)",
+      "lastColumnOverride": "auto",
+      "mobileLastCellAndSearchWidth": "100%",
+      "identifierWrapping": "overflow-wrap: anywhere"
+    },
+    "feedback": {
+      "footer": {
+        "loading": "Carregando…",
+        "success": "{filtered} de {total} audiência(s)",
+        "failure": "Nenhum resultado carregado",
+        "role": "status"
+      },
+      "mutationFailureRole": "alert",
+      "conflictAction": "Atualizar para revisar",
+      "independentOutcomes": "Sucesso da alteração pode coexistir com falha da consulta seguinte."
+    },
+    "focus": {
+      "openAction": "Título do formulário ou da confirmação, após renderização.",
+      "cancelOrSuccessfulMutation": "Título Audiências registradas.",
+      "reloadForReview": "Título do formulário se ainda aberto; senão, título do inventário.",
+      "headingTabIndex": -1,
+      "inheritedVisibleOutline": "3px solid var(--brand-ring)",
+      "inheritedOutlineOffset": "2px"
+    },
+    "navigation": {
+      "settingsMatch": "NavLinkMatch.All",
+      "reason": "Evitar seleção de Configurações por prefixo em TrustedProxies."
+    }
+  }
+}

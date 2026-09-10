@@ -1,0 +1,225 @@
+@page "/audiences"
+@attribute [Authorize(Policy = ManagementUiPolicies.ManageScopes)]
+@inject ManagementScopeDataSource ScopeData
+
+<PageTitle>Audiências | Sufficit Identity</PageTitle>
+
+<SUIPageHeader Title="Audiências" Description="Consulte os destinatários dos tokens e gerencie seus vínculos com scopes.">
+    <Actions>
+        <AuthorizeView Policy="@ManagementUiPolicies.UpdateAudienceBindings">
+            <button type="button" class="button button--primary" disabled="@(!interactive || loading || busy || result?.IsSuccess is not true)" @onclick="OpenBinding">
+                <SUIIcon Name="plus" Size="17" /> Vincular audiência
+            </button>
+        </AuthorizeView>
+    </Actions>
+</SUIPageHeader>
+
+<div class="contract-strip contract-strip--info">
+    <SUIIcon Name="scope" Size="20" />
+    <div>
+        <strong>Uma audiência identifica a API que recebe o token</strong>
+        <span>Ela é registrada nos recursos de um scope, não nos entitlements. Alterações afetam novos tokens e não configuram a validação da API.</span>
+    </div>
+</div>
+
+@if (notice is not null)
+{
+    <div class="inline-notice inline-notice--success" role="status"><SUIIcon Name="check" Size="19" /><span>@notice</span></div>
+}
+@if (submission?.IsSuccess is false)
+{
+    <div class="inline-notice inline-notice--danger" role="alert">
+        <SUIIcon Name="alert" Size="19" />
+        <div><strong>Vínculo não alterado</strong><span>@submission.ErrorMessage</span></div>
+        @if (submission.Outcome is ManagementDataOutcome.Conflict)
+        {
+            <button type="button" class="button button--secondary" disabled="@(loading || busy)" @onclick="ReloadForReviewAsync">Atualizar para revisar</button>
+        }
+    </div>
+}
+
+@if (showBinding)
+{
+    <AuthorizeView Policy="@ManagementUiPolicies.UpdateAudienceBindings">
+        <div class="form-section" aria-labelledby="audience-binding-heading" aria-busy="@busy">
+            <div class="form-section__heading">
+                <h2 id="audience-binding-heading" tabindex="-1" @ref="actionHeading">Vincular audiência</h2>
+                <p>Use um identificador existente ou informe um novo. Maiúsculas e minúsculas fazem diferença.</p>
+            </div>
+            @if (EditableScopes.Count is 0)
+            {
+                <p>Nenhum scope manual de API disponível. <a href="scopes/new">Crie um scope</a> ou altere o manifesto do serviço.</p>
+            }
+            else
+            {
+                <SUIFormGrid Columns="2" Spacing="4" LabelLines="2">
+                    <SUITextField T="string" id="audience-name" Label="Identificador da audiência" HelperText="O valor esperado pela API na claim aud." MaxLength="512" Disabled="@(busy || loading)" @bind-Value="audienceName" />
+                    <SUISelect T="string" id="audience-scope" Label="Scope de acesso à API" Disabled="@(busy || loading)" @bind-Value="selectedScopeId">
+                        <SUISelectItem Value="@(string.Empty)">Selecione um scope</SUISelectItem>
+                        @foreach (var scope in EditableScopes)
+                        {
+                            <SUISelectItem Value="@scope.Id">@scope.Name</SUISelectItem>
+                        }
+                    </SUISelect>
+                </SUIFormGrid>
+                <p class="audience-binding-impact">O vínculo permite que clientes autorizados a solicitar esse scope recebam tokens destinados à audiência.</p>
+            }
+            <div class="form-actions">
+                <button type="button" class="button button--primary" disabled="@(!CanSubmit)" @onclick="AddBindingAsync">@(busy ? "Salvando…" : "Salvar vínculo")</button>
+                <button type="button" class="button button--secondary" disabled="@busy" @onclick="CloseBinding">Cancelar</button>
+            </div>
+        </div>
+    </AuthorizeView>
+}
+
+@if (removal is not null)
+{
+    <div class="form-section" role="region" aria-labelledby="audience-remove-heading">
+        <h2 id="audience-remove-heading" tabindex="-1" @ref="actionHeading">Remover vínculo?</h2>
+        <p>O scope <code>@removal.Scope.Name</code> deixará de incluir <code>@removal.Audience</code> em novos tokens. Tokens já emitidos, clientes e o scope não serão excluídos.</p>
+        <p>Se este for o último vínculo, a audiência deixará de aparecer nesta lista.</p>
+        <div class="form-actions">
+            <button type="button" class="button button--danger" disabled="@(busy || loading)" @onclick="RemoveBindingAsync">@(busy ? "Removendo…" : "Confirmar remoção")</button>
+            <button type="button" class="button button--secondary" disabled="@busy" @onclick="CancelRemoval">Cancelar</button>
+        </div>
+    </div>
+}
+
+<div class="table-panel audience-panel" aria-labelledby="audiences-list-heading" aria-busy="@loading">
+    <div class="data-toolbar">
+        <div><h2 id="audiences-list-heading" tabindex="-1" @ref="inventoryHeading">Audiências registradas</h2><p>Vínculos de manifesto são somente leitura.</p></div>
+        <label class="search-field">
+            <span class="visually-hidden">Pesquisar audiências</span><SUIIcon Name="search" Size="18" />
+            <input type="search" placeholder="Audiência, scope ou cliente" autocomplete="off" @bind="search" @bind:event="oninput" />
+        </label>
+    </div>
+    @if (loading)
+    {
+        <div class="table-skeleton" aria-label="Carregando audiências"><span></span><span></span><span></span></div>
+    }
+    else if (result?.IsSuccess is not true)
+    {
+        <SUIEmptyState Icon="alert" Title="Não foi possível consultar as audiências" Description="@result?.ErrorMessage">
+            <Actions><button type="button" class="button button--secondary" @onclick="LoadAsync">Tentar novamente</button></Actions>
+        </SUIEmptyState>
+    }
+    else if (FilteredAudiences.Count is 0)
+    {
+        <SUIEmptyState Icon="server" Title="@(AllAudiences.Count is 0 ? "Nenhuma audiência registrada" : "Nenhuma audiência encontrada")" Description="@(AllAudiences.Count is 0 ? "Vincule uma audiência a um scope de API para registrá-la." : "Revise o identificador, scope ou cliente pesquisado.")">
+            <Actions>@if (search.Length > 0) { <button type="button" class="button button--secondary" @onclick="ClearSearch">Limpar pesquisa</button> }</Actions>
+        </SUIEmptyState>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data-table data-table--scopes">
+                <thead><tr><th scope="col">Audiência</th><th scope="col">Scopes vinculados</th><th scope="col">Clientes autorizados</th></tr></thead>
+                <tbody>
+                    @foreach (var audience in FilteredAudiences)
+                    {
+                        <tr @key="audience.Name">
+                            <td data-label="Audiência"><code>@audience.Name</code></td>
+                            <td data-label="Scopes vinculados">
+                                <ul class="audience-bindings">
+                                    @foreach (var scope in audience.Scopes)
+                                    {
+                                        <li>
+                                            <a href="@($"scopes/{Uri.EscapeDataString(scope.Id)}")">@scope.Name</a>
+                                            @if (scope.IsManifestManaged)
+                                            {
+                                                <SUIStatusBadge ToneValue="SUITone.Info">Manifesto</SUIStatusBadge>
+                                            }
+                                            else
+                                            {
+                                                <AuthorizeView Policy="@ManagementUiPolicies.UpdateAudienceBindings">
+                                                    <button type="button" class="row-action row-action--button" disabled="@(!interactive || busy)" aria-label="@($"Remover {audience.Name} do scope {scope.Name}")" @onclick="() => ConfirmRemoval(audience.Name, scope)">Remover vínculo</button>
+                                                </AuthorizeView>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            </td>
+                            <td data-label="Clientes autorizados">
+                                @if (audience.ClientIds.Count is 0) { <span>Nenhum cliente</span> }
+                                else
+                                {
+                                    <details><summary>@audience.ClientIds.Count cliente(s)</summary><ul class="audience-clients">@foreach (var clientId in audience.ClientIds) { <li><code>@clientId</code></li> }</ul></details>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+    <footer class="table-footer"><span role="status">@(loading ? "Carregando…" : result?.IsSuccess is true ? $"{FilteredAudiences.Count} de {AllAudiences.Count} audiência(s)" : "Nenhum resultado carregado")</span><a href="scopes">Gerenciar scopes</a></footer>
+</div>
+
+@code {
+    private ManagementDataResult<ManagementAudienceInventory>? result;
+    private ManagementDataResult<ManagementScopeDetail>? submission;
+    private string search = string.Empty, audienceName = string.Empty, selectedScopeId = string.Empty;
+    private string? notice;
+    private bool loading = true, busy, showBinding;
+    private ElementReference actionHeading;
+    private ElementReference inventoryHeading;
+    private bool focusAction;
+    private bool focusInventory;
+    private bool interactive;
+    private Removal? removal;
+    private sealed record Removal(string Audience, ManagementScopeDetail Scope);
+    private IReadOnlyList<ManagementAudienceSummary> AllAudiences => result?.Value?.Audiences ?? [];
+    private IReadOnlyList<ManagementScopeDetail> EditableScopes => result?.Value?.Scopes.Where(s =>
+        !s.IsManifestManaged && s.Name is not ("openid" or "offline_access" or "profile" or "email" or "phone" or "address" or "roles" or "entitlements" or "directives" or "identity.management" or "scim")).ToArray() ?? [];
+    private IReadOnlyList<ManagementAudienceSummary> FilteredAudiences => AllAudiences.Where(a =>
+        a.Name.Contains(search, StringComparison.OrdinalIgnoreCase) || a.Scopes.Any(s => s.Name.Contains(search, StringComparison.OrdinalIgnoreCase)) || a.ClientIds.Any(c => c.Contains(search, StringComparison.OrdinalIgnoreCase))).ToArray();
+    private bool CanSubmit => !busy && !loading && result?.IsSuccess is true && !string.IsNullOrWhiteSpace(audienceName) && EditableScopes.Any(s => s.Id == selectedScopeId);
+    protected override Task OnInitializedAsync() => LoadAsync();
+    private async Task LoadAsync() { loading = true; result = await ScopeData.ListAudiencesAsync(); loading = false; }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) { interactive = true; StateHasChanged(); }
+        if (focusAction) { focusAction = false; await actionHeading.FocusAsync(); }
+        if (focusInventory) { focusInventory = false; await inventoryHeading.FocusAsync(); }
+    }
+    private void OpenBinding() { showBinding = true; removal = null; submission = null; notice = null; focusAction = true; }
+    private void CloseBinding() { showBinding = false; submission = null; focusInventory = true; }
+    private void ClearSearch() => search = string.Empty;
+    private void ConfirmRemoval(string audience, ManagementScopeDetail scope) { removal = new(audience, scope); showBinding = false; submission = null; notice = null; focusAction = true; }
+    private void CancelRemoval() { removal = null; submission = null; focusInventory = true; }
+    private async Task ReloadForReviewAsync()
+    {
+        removal = null; submission = null;
+        await LoadAsync();
+        if (showBinding) focusAction = true;
+        else focusInventory = true;
+    }
+    private async Task AddBindingAsync()
+    {
+        if (!CanSubmit) return;
+        var scope = EditableScopes.Single(s => s.Id == selectedScopeId);
+        await SaveAsync(scope, audienceName.Trim(), true);
+    }
+    private async Task RemoveBindingAsync()
+    {
+        if (busy || loading || removal is null) return;
+        await SaveAsync(removal.Scope, removal.Audience, false);
+    }
+    private async Task SaveAsync(ManagementScopeDetail scope, string audience, bool assigned)
+    {
+        busy = true;
+        try
+        {
+            submission = await ScopeData.UpdateAudienceBindingAsync(scope.Id, new(audience, assigned, scope.Resources));
+            if (submission.IsSuccess)
+            {
+                notice = assigned ? "Audiência vinculada. A alteração foi auditada." : "Vínculo removido. A alteração foi auditada.";
+                showBinding = false; removal = null;
+                audienceName = string.Empty; selectedScopeId = string.Empty;
+                await LoadAsync();
+                focusInventory = true;
+            }
+        }
+        finally { busy = false; }
+    }
+}

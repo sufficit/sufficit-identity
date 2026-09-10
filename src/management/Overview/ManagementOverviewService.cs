@@ -23,6 +23,7 @@ public sealed class ManagementOverviewService(
         new("clients", ManagementCapabilities.ClientsRead),
         new("service-accounts", ManagementCapabilities.ClientsRead),
         new("scopes", ManagementCapabilities.ScopesRead),
+        new("audiences", ManagementCapabilities.ScopesRead),
         new("authorizations", ManagementCapabilities.AuthorizationsRead),
         new("branding", ManagementCapabilities.BrandingRead),
         new("sessions", ManagementCapabilities.SessionsRead),
