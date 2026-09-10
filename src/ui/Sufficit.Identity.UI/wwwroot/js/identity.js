@@ -30,6 +30,118 @@ window.sufficitIdentityDownloadFile = function (fileName, base64, mimeType) {
 };
 
 /**
+ * Authentication POSTs consume short-lived server state and, for OIDC PAR,
+ * eventually return through a one-time request_uri. A second click while the
+ * first navigation is still in progress must not submit that state again.
+ *
+ * The controls are disabled on the next task so the browser can first capture
+ * the original submitter and form payload. The dataset flag, set immediately,
+ * is the actual duplicate-submit guard.
+ */
+(function () {
+    function resetForm(form) {
+        delete form.dataset.authSubmitted;
+        form.removeAttribute('aria-busy');
+
+        var controls = form.querySelectorAll('button[type="submit"], input[type="submit"]');
+        for (var i = 0; i < controls.length; i++) {
+            controls[i].disabled = false;
+        }
+    }
+
+    function initializeSingleSubmitForms() {
+        var forms = document.querySelectorAll('form[data-auth-submit-once]');
+        for (var i = 0; i < forms.length; i++) {
+            var form = forms[i];
+            if (form.dataset.authSubmitBound === 'true') continue;
+
+            form.dataset.authSubmitBound = 'true';
+            form.addEventListener('submit', function (event) {
+                var submittedForm = event.currentTarget;
+                if (submittedForm.dataset.authSubmitted === 'true') {
+                    event.preventDefault();
+                    return;
+                }
+
+                submittedForm.dataset.authSubmitted = 'true';
+                submittedForm.setAttribute('aria-busy', 'true');
+
+                window.setTimeout(function () {
+                    var controls = submittedForm.querySelectorAll(
+                        'button[type="submit"], input[type="submit"]');
+                    for (var j = 0; j < controls.length; j++) {
+                        controls[j].disabled = true;
+                    }
+                }, 0);
+            });
+        }
+    }
+
+    function subscribeToEnhancedLoads() {
+        if (!window.Blazor || typeof window.Blazor.addEventListener !== 'function') {
+            return false;
+        }
+
+        window.Blazor.addEventListener('enhancedload', initializeSingleSubmitForms);
+        return true;
+    }
+
+    initializeSingleSubmitForms();
+    document.addEventListener('DOMContentLoaded', initializeSingleSubmitForms, { once: true });
+    window.addEventListener('load', initializeSingleSubmitForms, { once: true });
+    window.addEventListener('pageshow', function () {
+        var forms = document.querySelectorAll('form[data-auth-submit-once]');
+        for (var i = 0; i < forms.length; i++) resetForm(forms[i]);
+    });
+    if (!subscribeToEnhancedLoads()) {
+        window.addEventListener('load', function () {
+            initializeSingleSubmitForms();
+            subscribeToEnhancedLoads();
+        }, { once: true });
+    }
+})();
+
+/**
+ * Resumes authentication as a new top-level navigation after the credential
+ * POST has ended on a same-origin page. This prevents CSP `form-action` from
+ * applying to the later OIDC redirect from Identity to the relying party.
+ * The rendered link remains available when JavaScript is disabled or delayed.
+ */
+(function () {
+    function initializeAuthenticationContinue() {
+        var page = document.querySelector('[data-authentication-continue-url]');
+        if (!page || page.dataset.authenticationContinueStarted === 'true') return;
+
+        var returnUrl = page.getAttribute('data-authentication-continue-url') || '/';
+        if (returnUrl.charAt(0) !== '/' || returnUrl.indexOf('//') === 0) {
+            returnUrl = '/';
+        }
+
+        page.dataset.authenticationContinueStarted = 'true';
+        window.location.replace(returnUrl);
+    }
+
+    function subscribeToEnhancedLoads() {
+        if (!window.Blazor || typeof window.Blazor.addEventListener !== 'function') {
+            return false;
+        }
+
+        window.Blazor.addEventListener('enhancedload', initializeAuthenticationContinue);
+        return true;
+    }
+
+    initializeAuthenticationContinue();
+    document.addEventListener('DOMContentLoaded', initializeAuthenticationContinue, { once: true });
+    window.addEventListener('load', initializeAuthenticationContinue, { once: true });
+    if (!subscribeToEnhancedLoads()) {
+        window.addEventListener('load', function () {
+            initializeAuthenticationContinue();
+            subscribeToEnhancedLoads();
+        }, { once: true });
+    }
+})();
+
+/**
  * Persists the selected UI culture through a regular HTTP request. This is
  * deliberately browser-side rather than Blazor interop: the localization
  * cookie must be written on a fresh response, and the delegated listener also

@@ -109,7 +109,7 @@
         // Password sign-in must be a full HTTP POST. ASP.NET Core Identity
         // cannot emit its Set-Cookie header from this page's Blazor circuit
         // after the initial HTTP response has already started.
-        <form method="post" action="/account/login/password" data-enhance="false">
+        <form method="post" action="/account/login/password" data-enhance="false" data-auth-submit-once>
             <AntiforgeryToken />
             <input type="hidden" name="ReturnUrl" value="@(_returnUrl ?? "/")" />
 

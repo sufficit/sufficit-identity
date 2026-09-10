@@ -1,0 +1,28 @@
+@page "/account/authenticationcontinue"
+@inject IStringLocalizer<SharedResource> L
+
+<PageTitle>@L["AuthenticationContinue.Title"]</PageTitle>
+
+<div class="auth-card"
+     data-authentication-continue
+     data-authentication-continue-url="@_returnUrl">
+    <div class="spinner" aria-hidden="true"></div>
+    <h1>@L["AuthenticationContinue.Title"]</h1>
+    <p class="info">@L["AuthenticationContinue.Description"]</p>
+    <a href="@_returnUrl"
+       class="btn btn-primary btn-block"
+       data-enhance-nav="false">
+        @L["AuthenticationContinue.Action"]
+    </a>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] private string? ReturnUrl { get; set; }
+
+    private string _returnUrl = "/";
+
+    protected override void OnInitialized()
+    {
+        _returnUrl = LocalUrlValidator.EnsureLocal(ReturnUrl);
+    }
+}

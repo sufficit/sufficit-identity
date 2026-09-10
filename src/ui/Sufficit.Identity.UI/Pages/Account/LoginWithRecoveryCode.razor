@@ -14,7 +14,7 @@
         <div class="alert alert-error" role="alert">@errorMessage</div>
     }
 
-    <form method="post" action="/account/login/recoverycode" data-enhance="false">
+    <form method="post" action="/account/login/recoverycode" data-enhance="false" data-auth-submit-once>
         <AntiforgeryToken />
         <input type="hidden" name="ReturnUrl" value="@_returnUrl" />
 
