@@ -80,6 +80,12 @@ Dated evaluations that are useful only as historical evidence live under
 
 ## Usage
 
+- [Abertura e fechamento do Device Flow em popup](design/DESIGN-DEVICE-FLOW-POPUP.md) — launcher para Symposium, mensagens e limites do navegador.
+
+- [Classificação de navegador, API e Playwright](networking/USAGE-BROWSER-API-CLASSIFICATION.md) — regras de apresentação HTML/JSON, limites e reutilização.
+
+- [Rate limiting by operation and browser errors](networking/USAGE-RATE-LIMITING.md)
+
 - [Embedded public and Management UIs](usage/USAGE-EMBEDDED-UI.md)
 - [Identity MCP — Vault and self-service](usage/USAGE-IDENTITY-MCP.md)
 - [SCIM 2.0](usage/USAGE-SCIM.md)
@@ -103,3 +109,7 @@ RUNBOOK-CSP-CALIBRATION.md)
 An evaluation describes the repository at a point in time. Findings that still
 require work must be copied into the relevant active plan; an archived evaluation
 must never silently become the current roadmap.
+
+## Padrões compartilhados
+
+- [Snapshots de runtime](architecture/ARCHITECTURE-RUNTIME-SNAPSHOTS.md) — referência ao contrato Sufficit e diferenças da implementação atual.

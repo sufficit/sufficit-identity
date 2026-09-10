@@ -55,6 +55,9 @@ public static partial class ServiceCollectionExtensions
         string configurationSection = "Sufficit:Identity",
         ISecretStore? secretStore = null)
     {
+        services.AddOptions<Sufficit.Identity.Core.Networking.TrustedProxyOptions>()
+            .Bind(configuration.GetSection(configurationSection));
+        services.TryAddSingleton<Sufficit.Identity.Core.Networking.TrustedProxySnapshotStore>();
         // The STS is a self-contained API module. Register its controllers as
         // an MVC application part so any composition host can map them without
         // relying on entry-assembly discovery.

@@ -11,6 +11,11 @@ public static class BrowserNavigationRequest
             || !(request.Path.Equals("/connect/authorize", StringComparison.OrdinalIgnoreCase)
                 || request.Path.Equals("/connect/endsession", StringComparison.OrdinalIgnoreCase)))
             return false;
+        return PrefersHtmlDocument(request);
+    }
+
+    public static bool PrefersHtmlDocument(HttpRequest request)
+    {
         var mode = request.Headers["Sec-Fetch-Mode"].ToString();
         var destination = request.Headers["Sec-Fetch-Dest"].ToString();
         if ((mode.Length > 0 && mode != "navigate")

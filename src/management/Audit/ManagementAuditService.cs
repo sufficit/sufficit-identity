@@ -45,7 +45,7 @@ internal sealed class ManagementAuditService(
                 entry.OperationOutcome,
                 entry.ReasonCode,
                 entry.CorrelationId,
-                entry.AuthenticationMethods))
+                entry.AuthenticationMethods, entry.BeforeJson, entry.AfterJson))
             .ToArrayAsync(cancellationToken);
     }
 }

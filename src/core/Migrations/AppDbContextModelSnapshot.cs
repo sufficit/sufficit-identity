@@ -901,6 +901,10 @@ namespace Sufficit.Identity.Core.Migrations
 
                     MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("AfterJson")
+                        .HasColumnType("longtext")
+                        .HasColumnName("afterjson");
+
                     b.Property<string>("AuthenticationMethods")
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)")
@@ -911,6 +915,10 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)")
                         .HasColumnName("authorizationoutcome");
+
+                    b.Property<string>("BeforeJson")
+                        .HasColumnType("longtext")
+                        .HasColumnName("beforejson");
 
                     b.Property<string>("Capability")
                         .IsRequired()
@@ -1551,6 +1559,46 @@ namespace Sufficit.Identity.Core.Migrations
                         .HasDatabaseName("IX_ssfstreams_ownerclientid_status");
 
                     b.ToTable("ssfstreams", (string)null);
+                });
+
+            modelBuilder.Entity("Sufficit.Identity.Core.Entities.TrustedProxyConfiguration", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("int")
+                        .HasColumnName("id");
+
+                    b.Property<int?>("ForwardLimit")
+                        .HasColumnType("int")
+                        .HasColumnName("forwardlimit");
+
+                    b.Property<string>("NetworksJson")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasColumnName("networksjson");
+
+                    b.Property<string>("Revision")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .HasMaxLength(36)
+                        .HasColumnType("varchar(36)")
+                        .HasColumnName("revision");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)")
+                        .HasColumnName("updatedatutc");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("trustedproxyconfiguration", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            NetworksJson = "[]",
+                            Revision = "initial",
+                            UpdatedAtUtc = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        });
                 });
 
             modelBuilder.Entity("Sufficit.Identity.Core.Entities.VaultKey", b =>

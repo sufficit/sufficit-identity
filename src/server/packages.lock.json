@@ -47,6 +47,12 @@
           "Microsoft.EntityFrameworkCore.Relational": "10.0.11"
         }
       },
+      "NATS.Client": {
+        "type": "Direct",
+        "requested": "[1.1.8, )",
+        "resolved": "1.1.8",
+        "contentHash": "ISyMFTeESWsGQR10HEg5YtgrroDMg8XGsEWRMoWBrGWGRRHq+uSU3RzSU62tFW6ULEyjXQqPrnk6giyBKE98Aw=="
+      },
       "Serilog.AspNetCore": {
         "type": "Direct",
         "requested": "[10.0.0, )",

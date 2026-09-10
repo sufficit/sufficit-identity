@@ -497,4 +497,25 @@
   <data name="AuthorizationError.Recovery" xml:space="preserve"><value>Return to the application and start signing in again. You do not need to change your password or configure two-factor authentication again because of this message.</value></data>
   <data name="AuthorizationError.Home" xml:space="preserve"><value>Go to the Identity home page</value></data>
   <data name="AuthorizationError.AttemptEnded" xml:space="preserve"><value>This attempt was interrupted. No new authentication was completed.</value></data>
+  <data name="RateLimitError.Title" xml:space="preserve">
+    <value>Please wait before trying again</value>
+  </data>
+  <data name="RateLimitError.Explanation" xml:space="preserve">
+    <value>We received too many requests from your connection in a short time. For security, we need to pause briefly.</value>
+  </data>
+  <data name="RateLimitError.Recovery" xml:space="preserve">
+    <value>Wait {0} seconds, then return to the app or page where you started signing in and try again.</value>
+  </data>
+  <data name="RateLimitError.Help" xml:space="preserve">
+    <value>Refreshing this page will not restore access sooner.</value>
+  </data>
+  <data name="DeviceLauncher.Title" xml:space="preserve"><value>Sign in to the app</value></data>
+  <data name="DeviceLauncher.Explanation" xml:space="preserve"><value>Open the sign-in window to continue. When you finish, we will try to close the sign-in windows so you can return to the app.</value></data>
+  <data name="DeviceLauncher.Open" xml:space="preserve"><value>Open sign-in</value></data>
+  <data name="DeviceLauncher.Waiting" xml:space="preserve"><value>Finish signing in in the sign-in window. If you closed it, use the button to open it again.</value></data>
+  <data name="DeviceLauncher.Complete" xml:space="preserve"><value>Access authorized. Return to the app and close this tab if it remains open.</value></data>
+  <data name="DeviceLauncher.Denied" xml:space="preserve"><value>Access was not authorized. Close this tab and start a new attempt in the app.</value></data>
+  <data name="DeviceLauncher.Blocked" xml:space="preserve"><value>The browser blocked the sign-in window. Allow popups for this site or continue in this tab.</value></data>
+  <data name="DeviceLauncher.Manual" xml:space="preserve"><value>Continue in this tab</value></data>
+  <data name="DeviceLauncher.NoScript" xml:space="preserve"><value>Without JavaScript, the link opens sign-in in this tab. Close it manually when finished.</value></data>
 </root>

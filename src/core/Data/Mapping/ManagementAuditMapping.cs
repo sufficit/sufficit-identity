@@ -50,6 +50,8 @@ internal static class ManagementAuditMapping
                     .IsRequired();
                 b.Property(x => x.AuthenticationMethods)
                     .HasMaxLength(IdentityDatabaseSchema.AuditAuthenticationMethodsLength);
+                b.Property(x => x.BeforeJson).HasColumnName("beforejson").HasColumnType("longtext");
+                b.Property(x => x.AfterJson).HasColumnName("afterjson").HasColumnType("longtext");
                 b.HasIndex(x => x.OccurredAtUtc)
                     .HasDatabaseName("IX_managementauditevents_occurredatutc");
                 b.HasIndex(x => new { x.ResourceType, x.ResourceId })
