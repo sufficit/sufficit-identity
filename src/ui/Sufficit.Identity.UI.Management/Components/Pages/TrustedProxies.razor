@@ -1,0 +1,171 @@
+@page "/settings/trusted-proxies"
+@attribute [Authorize(Policy = ManagementUiPolicies.ReadTrustedProxies)]
+@using Sufficit.Identity.Management.Networking
+@using Sufficit.Identity.UI.Management.Networking
+@inject ManagementTrustedProxiesDataSource ProxyData
+
+<PageTitle>Proxies confiáveis | Sufficit Identity</PageTitle>
+<SUIPageHeader Title="Proxies confiáveis"
+               Description="Defina quais proxies podem informar o endereço original de quem acessa o Identity." />
+
+@if (loading)
+{
+    <div class="detail-shell" aria-busy="true" aria-label="Carregando proxies confiáveis">
+        <div class="detail-skeleton"></div>
+    </div>
+}
+else if (configuration is null)
+{
+    <SUIEmptyState Icon="alert" Title="Não foi possível carregar os proxies" Description="@message">
+        <Actions><SUIButton OnClick="LoadAsync">Tentar novamente</SUIButton></Actions>
+    </SUIEmptyState>
+}
+else
+{
+    <div class="proxy-workspace">
+        <section class="settings-panel" aria-labelledby="proxy-effective-heading">
+            <div class="panel-header">
+                <div><h2 id="proxy-effective-heading">Configuração em uso</h2>
+                    <p>As redes do arquivo e do banco são combinadas, sem duplicatas.</p></div>
+                <SUIStatusBadge ToneValue="SUITone.Info">@configuration.ForwardLimit saltos</SUIStatusBadge>
+            </div>
+            <div class="proxy-panel-body">
+            @if (configuration.EffectiveNetworks.Count == 0)
+            {
+                <p>Nenhum proxy cadastrado. Somente conexões locais de loopback são confiáveis.</p>
+            }
+            else
+            {
+                <ul class="proxy-networks" aria-label="Redes efetivas">
+                    @foreach (var network in configuration.EffectiveNetworks)
+                    {
+                        <li><code>@network</code><span>@Source(network)</span></li>
+                    }
+                </ul>
+            }
+            <p class="proxy-note">As entradas do appsettings são administradas no servidor e não podem ser removidas nesta tela.</p>
+            <dl class="config-list">
+                <div><dt>Saltos definidos no arquivo</dt><dd>@configuration.FileForwardLimit</dd></div>
+                <div><dt>Última alteração no banco (UTC)</dt><dd>@UpdatedLabel</dd></div>
+            </dl>
+            <a href="audit">Consultar auditoria de alterações</a>
+            </div>
+        </section>
+
+        <section class="settings-panel" aria-labelledby="proxy-edit-heading">
+            <div class="panel-header"><div><h2 id="proxy-edit-heading">Configuração no banco</h2>
+                <p>Cadastre apenas proxies sob seu controle. A confiança permite que eles informem o IP do cliente.</p></div></div>
+            <div class="proxy-panel-body">
+            <AuthorizeView Policy="@ManagementUiPolicies.WriteTrustedProxies">
+                <Authorized Context="operatorState">
+                    <EditForm Model="model" OnValidSubmit="SaveAsync" FormName="trusted-proxies">
+                        <DataAnnotationsValidator />
+                        <fieldset disabled="@saving" class="proxy-fields">
+                            <SUITextField T="string" id="trusted-proxy-networks" name="networks"
+                                          Label="IPs ou redes adicionais" Multiline="true" Rows="6"
+                                          HelperText="Um IPv4, IPv6 ou CIDR por linha. Deixe vazio para usar apenas as redes do arquivo."
+                                          Placeholder="172.16.2.0/32" MaxLength="@(8448)"
+                                          @bind-Value="model.Networks" />
+                            <SUISwitch id="proxy-inherit-limit" @bind-Value="model.InheritLimit"
+                                       Label="Usar o limite de saltos do appsettings" />
+                            @if (!model.InheritLimit)
+                            {
+                                <SUINumericField T="int" id="proxy-forward-limit" name="forwardLimit"
+                                                 Label="Máximo de saltos confiáveis" Min="@(1)" Max="@(10)"
+                                                 @bind-Value="model.ForwardLimit" />
+                                <ValidationMessage For="@(() => model.ForwardLimit)" />
+                            }
+                            <p class="proxy-note">Cliente → proxy → Nginx → Identity utiliza 2 saltos. O processamento para ao encontrar um intermediário não confiável.</p>
+                            <div class="form-actions">
+                                <SUIButton ButtonTypeValue="SUIButtonType.Submit" ColorValue="SUIColor.Primary" Disabled="@saving">
+                                    @(saving ? "Salvando…" : "Salvar configuração")
+                                </SUIButton>
+                                <SUIButton OnClick="LoadAsync" ColorValue="SUIColor.Default" VariantValue="SUIVariant.Outlined" Disabled="@saving">Recarregar</SUIButton>
+                            </div>
+                        </fieldset>
+                    </EditForm>
+                </Authorized>
+                <NotAuthorized><p>Sua conta pode consultar esta configuração, mas não alterá-la.</p></NotAuthorized>
+            </AuthorizeView>
+            @if (configuration.NotificationPending)
+            {
+                <p role="status" class="proxy-note">Configuração salva. O aviso às outras instâncias está pendente; a reconciliação periódica permanece ativa.</p>
+            }
+            @if (configuration.NotificationsEnabled)
+            {
+                <p class="proxy-note">Notificações: @(configuration.NotificationsConnected ? "conectadas" : "aguardando conexão").</p>
+            }
+            <p class="proxy-note">As alterações são auditadas e aplicadas sem reinício. Avisos de alteração antecipam a atualização quando conectados. A conferência de revisão ocorre aproximadamente a cada @configuration.RefreshSeconds segundos; a propagação depende da replicação do banco.</p>
+            </div>
+        </section>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(message))
+    {
+        <div role="status" aria-live="polite">
+            <SUIAlert ToneValue="@(error ? SUITone.Danger : SUITone.Success)">@message</SUIAlert>
+        </div>
+    }
+}
+
+@code {
+    private ManagementTrustedProxies? configuration;
+    private ProxyForm model = new();
+    private bool loading = true, saving, error;
+    private string? message;
+    private string UpdatedLabel => configuration?.UpdatedAtUtc is { } time && time > DateTime.UnixEpoch
+        ? time.ToString("dd/MM/yyyy HH:mm:ss") : "Nenhuma alteração";
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        if (saving) return;
+        loading = true;
+        message = null;
+        var result = await ProxyData.GetAsync();
+        configuration = result.Value;
+        if (result.IsSuccess && configuration is not null) Apply(configuration);
+        else { error = true; message = result.ErrorMessage; }
+        loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (saving || configuration is null) return;
+        saving = true;
+        message = null;
+        try
+        {
+            var result = await ProxyData.SaveAsync(new(
+                model.Networks.Split(['\r', '\n'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries),
+                model.InheritLimit ? null : model.ForwardLimit, configuration.Revision));
+            error = !result.IsSuccess;
+            if (result.IsSuccess && result.Value is not null)
+            {
+                Apply(result.Value);
+                message = "Configuração salva e aplicada nesta instância. A alteração foi registrada na auditoria.";
+            }
+            else message = result.ErrorMessage;
+        }
+        finally { saving = false; }
+    }
+
+    private void Apply(ManagementTrustedProxies value)
+    {
+        configuration = value;
+        model = new() { Networks = string.Join('\n', value.DatabaseNetworks),
+            InheritLimit = value.DatabaseForwardLimit is null, ForwardLimit = value.ForwardLimit };
+    }
+
+    private string Source(string network) => configuration!.FileNetworks.Contains(network)
+        ? configuration.DatabaseNetworks.Contains(network) ? "Arquivo + banco" : "Arquivo"
+        : "Banco";
+
+    private sealed class ProxyForm
+    {
+        public string Networks { get; set; } = string.Empty;
+        public bool InheritLimit { get; set; } = true;
+        [Range(1, 10, ErrorMessage = "Informe entre 1 e 10 saltos.")]
+        public int ForwardLimit { get; set; } = 2;
+    }
+}

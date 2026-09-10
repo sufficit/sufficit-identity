@@ -71,13 +71,34 @@ internal static class IdentityRateLimitPolicy
             "/bc-authorize",
             StringComparison.OrdinalIgnoreCase);
 
-    internal static string GetCredentialPartitionKey(
-        PathString path,
-        string method,
-        string clientIp) =>
-        IsPushedAuthorizationEndpoint(path, method)
-            ? "par-ip:" + clientIp
-            : "credential-ip:" + clientIp;
+    internal static string GetCredentialGroup(PathString path, string method)
+    {
+        if (IsPushedAuthorizationEndpoint(path, method)) return "par";
+        if (path.StartsWithSegments("/connect/token", StringComparison.OrdinalIgnoreCase)) return "token";
+        if (path.StartsWithSegments("/connect/introspect", StringComparison.OrdinalIgnoreCase)) return "introspection";
+        if (path.StartsWithSegments("/connect/deviceauthorization", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/bc-authorize", StringComparison.OrdinalIgnoreCase)) return "device-authorization";
+        if (path.StartsWithSegments("/connect/register", StringComparison.OrdinalIgnoreCase)) return "client-registration";
+        if (path.StartsWithSegments("/account", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/connect/device", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/connect/authorize", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/connect/endsession", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWithSegments("/connect/ciba/complete", StringComparison.OrdinalIgnoreCase)) return "interactive";
+        return "protocol"; // Fixed fallback: arbitrary paths cannot manufacture new buckets.
+    }
+
+    internal static (int Permits, int WindowSeconds) GetCredentialLimits(
+        PathString path, string method, STS.RateLimitOptions options) => GetCredentialGroup(path, method) switch
+    {
+        "par" => (options.PushedAuthorizationPermitLimit, options.PushedAuthorizationWindowSeconds),
+        "token" => (options.TokenPermitLimit ?? options.PermitLimit, options.TokenWindowSeconds ?? options.WindowSeconds),
+        "introspection" => (options.IntrospectionPermitLimit, options.IntrospectionWindowSeconds),
+        "interactive" => (options.InteractivePermitLimit ?? options.PermitLimit, options.InteractiveWindowSeconds ?? options.WindowSeconds),
+        _ => (options.PermitLimit, options.WindowSeconds),
+    };
+
+    internal static string GetCredentialPartitionKey(PathString path, string method, string clientIp)
+        => GetCredentialGroup(path, method) + "-ip:" + clientIp;
 
     /// <summary>
     /// Administrative surfaces: the management API and SCIM. Both were
@@ -146,15 +167,18 @@ internal static class IdentityRateLimitPolicy
         response.Headers.CacheControl = "no-store";
         response.Headers.Pragma = "no-cache";
 
-        if (!IsOAuthProtocolEndpoint(httpContext.Request.Path))
+        if (BrowserRateLimitErrors.IsHtmlNavigation(httpContext.Request)
+            && httpContext.RequestServices?.GetService<BrowserRateLimitErrors>() is { } browserPage)
         {
+            await browserPage.WriteAsync(httpContext, retryAfterSeconds);
             return;
         }
 
         response.ContentType = "application/json;charset=UTF-8";
         await response.WriteAsJsonAsync(new
         {
-            error = OpenIddictConstants.Errors.TemporarilyUnavailable,
+            error = IsOAuthProtocolEndpoint(httpContext.Request.Path)
+                ? OpenIddictConstants.Errors.TemporarilyUnavailable : "rate_limit_exceeded",
             error_description = "The authorization server is temporarily unable to handle the request due to rate limiting.",
         }, cancellationToken);
     }

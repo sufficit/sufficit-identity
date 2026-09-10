@@ -1,8 +1,8 @@
+using Sufficit.Identity.Core.Networking;
 using System.Net;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -66,27 +66,15 @@ if (!string.IsNullOrWhiteSpace(redisConnectionString))
 // public-facing URL (e.g. https://identity.example.com) instead of
 // the internal http://localhost:port.
 //
-// Trust is restricted to Sufficit:Identity:TrustedProxies (a list of CIDR
-// strings, e.g. "10.0.0.0/8"). When that list is empty we either trust any
-// upstream (Development only, so local docker-compose / dev reverse
-// proxies keep working out of the box) or fall back to the ASP.NET Core
-// default (loopback only) in every other environment — a startup warning
-// is logged below so the gap is visible instead of silently ignoring
-// forwarded headers from real proxies.
-var trustedProxies = builder.Configuration
-    .GetSection("Sufficit:Identity:TrustedProxies")
-    .Get<string[]>() ?? Array.Empty<string>();
+// File-managed networks are merged with the database configuration at startup.
+// TrustedProxyForwardingMiddleware uses immutable in-memory snapshots and
+// processes two trusted hops by default (edge proxy + local Nginx).
 
 // Host-level tunables (rate limit, HSTS) bound from the same Sufficit:Identity
 // section the server extensions use, so every knob lives in one config surface.
 var identityOptions = builder.Configuration
     .GetSection("Sufficit:Identity")
     .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
-
-DeploymentTopologyPolicy.Validate(
-    identityOptions,
-    trustedProxies.Length,
-    builder.Environment.IsDevelopment());
 
 // ---- Optional presentation composition ----
 // Embedded is the compatibility default. Either surface can be set to None so
@@ -98,35 +86,12 @@ var uiHostingOptions = builder.Configuration
     .Get<IdentityUiHostingOptions>() ?? new IdentityUiHostingOptions();
 uiHostingOptions.Validate();
 
-builder.Services.Configure<ForwardedHeadersOptions>(o =>
-{
-    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
-
-    if (trustedProxies.Length > 0)
-    {
-        o.KnownIPNetworks.Clear();
-        o.KnownProxies.Clear();
-
-        foreach (var cidr in trustedProxies)
-        {
-            var parts = cidr.Split('/', 2, StringSplitOptions.TrimEntries);
-            var prefix = IPAddress.Parse(parts[0]);
-            var prefixLength = parts.Length == 2
-                ? int.Parse(parts[1])
-                : (prefix.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 32 : 128);
-
-            o.KnownIPNetworks.Add(new System.Net.IPNetwork(prefix, prefixLength));
-        }
-    }
-    else if (builder.Environment.IsDevelopment())
-    {
-        // No TrustedProxies configured; in Development accept any upstream
-        // (we run inside Docker/k8s/Nginx on private networks).
-        o.KnownIPNetworks.Clear();
-        o.KnownProxies.Clear();
-    }
-    // else: leave the ASP.NET Core defaults (loopback only) in place.
-});
+builder.Services.Configure<TrustedProxyNatsOptions>(builder.Configuration.GetSection("Sufficit:Identity:ProxySynchronization:Nats"));
+builder.Services.AddSingleton<TrustedProxyRefreshSignal>();
+builder.Services.AddSingleton<TrustedProxyNatsBridge>();
+builder.Services.AddSingleton<ITrustedProxyChangePublisher>(sp => sp.GetRequiredService<TrustedProxyNatsBridge>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<TrustedProxyNatsBridge>());
+builder.Services.AddHostedService<TrustedProxyRefreshWorker>();
 
 // ---- Compact JSON globally (before STS so OpenIddict picks it up) ----
 builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(o =>
@@ -159,6 +124,7 @@ builder.Services.TryAddSingleton<IUserAvatarUrlResolver, UserAvatarUrlResolver>(
 if (uiHostingOptions.Public.IsEmbedded)
 {
     builder.Services.AddSufficitIdentityUI(builder.Configuration);
+    builder.Services.AddSingleton<BrowserRateLimitErrors>();
 }
 
 // ---- Sufficit email pipeline (RabbitMQ → Q-EMAIL) ----
@@ -245,7 +211,8 @@ builder.Services.AddSufficitCors(identityOptions.Cors);
 
 // ---- Health checks (liveness/readiness) ----
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<AppDbContext>("database");
+    .AddDbContextCheck<AppDbContext>("database")
+    .AddCheck<TrustedProxySnapshotHealthCheck>("trusted-proxy-snapshot");
 
 // ---- HSTS (outside Development only; local dev is plain HTTP) ----
 // Policy from Sufficit:Identity:Hsts (max-age days, subdomains, preload).
@@ -422,26 +389,6 @@ if (app.Environment.IsDevelopment())
     }
 }
 
-if (trustedProxies.Length == 0 && !app.Environment.IsDevelopment())
-{
-    var message =
-        "Sufficit:Identity:TrustedProxies is not configured; only loopback proxies are trusted, so " +
-        "X-Forwarded-* headers from remote reverse proxies will be ignored until it is set. " +
-        "With the rate limiter partitioning by RemoteIpAddress, this means ALL token-endpoint " +
-        "traffic shares ONE bucket (the proxy's IP) — a single source or even normal load can " +
-        "trigger self-inflicted 429s for everyone.";
-
-    // Item 5.1 [L4]: optionally make this a fatal startup error so a missing
-    // TrustedProxies cannot silently turn the rate limiter into a self-DoS.
-    if (identityOptions.RateLimit.FailOnUntrustedProxy)
-    {
-        throw new InvalidOperationException(message + " Set Sufficit:Identity:TrustedProxies " +
-            "(or disable Sufficit:Identity:RateLimit:FailOnUntrustedProxy to degrade to a warning).");
-    }
-
-    app.Logger.LogWarning(message);
-}
-
 // ---- Distributed-cache guard for multi-replica deployments ----
 // Several security-critical stores (DPoP replay cache + nonce store, CIBA
 // pending requests, front-channel logout context, passkey ceremony tickets)
@@ -527,7 +474,7 @@ app.UseMtlsClientCertificateForwarding(identityOptions.Mtls);
 // Must run BEFORE UseHttpsRedirection, UseAuthentication and any path-based
 // middleware (e.g. UseLowercasePaths) so that Request.Scheme/Host reflect
 // the public-facing URL.
-app.UseForwardedHeaders();
+app.UseMiddleware<TrustedProxyForwardingMiddleware>();
 
 // ---- HSTS + baseline security headers ----
 // Must run AFTER UseForwardedHeaders (so it sees the real scheme) and
@@ -710,7 +657,10 @@ if (swaggerEnabled)
 // Only the embedded public UI can serve the recovery page and its assets.
 // Install before authentication: OpenIddict checks for the status-page feature.
 if (uiHostingOptions.Public.IsEmbedded)
+{
     app.UseBrowserAuthorizationErrors();
+    app.MapDeviceBrowserLaunch();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -771,6 +721,31 @@ if (uiHostingOptions.Public.IsEmbedded)
         ? new[] { typeof(Sufficit.Identity.UI.Vault.ServiceCollectionExtensions).Assembly }
         : Array.Empty<System.Reflection.Assembly>();
     app.UseSufficitIdentityUI(publicAdditionalAssemblies);
+}
+
+// Load the merged trust boundary before accepting traffic (after schema provisioning).
+var proxySnapshots = app.Services.GetRequiredService<TrustedProxySnapshotStore>();
+await proxySnapshots.RefreshAsync();
+DeploymentTopologyPolicy.Validate(identityOptions, proxySnapshots.Current.EffectiveNetworks.Length,
+    app.Environment.IsDevelopment());
+if (proxySnapshots.Current.EffectiveNetworks.Length == 0 && !app.Environment.IsDevelopment())
+{
+    var message =
+        "No trusted proxies are configured in appsettings or the database; only loopback proxies are trusted, so " +
+        "X-Forwarded-* headers from remote reverse proxies will be ignored until it is set. " +
+        "With the rate limiter partitioning by RemoteIpAddress, this means ALL token-endpoint " +
+        "traffic shares ONE bucket (the proxy's IP) — a single source or even normal load can " +
+        "trigger self-inflicted 429s for everyone.";
+
+    // Item 5.1 [L4]: optionally make this a fatal startup error so a missing
+    // TrustedProxies cannot silently turn the rate limiter into a self-DoS.
+    if (identityOptions.RateLimit.FailOnUntrustedProxy)
+    {
+        throw new InvalidOperationException(message + " Set Sufficit:Identity:TrustedProxies " +
+            "(or disable Sufficit:Identity:RateLimit:FailOnUntrustedProxy to degrade to a warning).");
+    }
+
+    app.Logger.LogWarning(message);
 }
 
 app.Run();

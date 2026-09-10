@@ -25,9 +25,6 @@ internal static class RateLimiterServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(rateLimit);
         ArgumentException.ThrowIfNullOrWhiteSpace(managementRoutePrefix);
 
-        var credentialWindow = TimeSpan.FromSeconds(Math.Max(1, rateLimit.WindowSeconds));
-        var pushedAuthorizationWindow = TimeSpan.FromSeconds(
-            Math.Max(1, rateLimit.PushedAuthorizationWindowSeconds));
         var administrativeWindow = TimeSpan.FromSeconds(
             Math.Max(1, rateLimit.AdministrativeWindowSeconds));
         var administrativeBulkWindow = TimeSpan.FromSeconds(
@@ -44,7 +41,7 @@ internal static class RateLimiterServiceCollectionExtensions
                 {
                     _ when IdentityRateLimitPolicy.IsPushedAuthorizationEndpoint(
                         httpContext.Request.Path,
-                        httpContext.Request.Method) => pushedAuthorizationWindow,
+                        httpContext.Request.Method) => TimeSpan.FromSeconds(Math.Max(1, rateLimit.PushedAuthorizationWindowSeconds)),
                     _ when IdentityRateLimitPolicy.IsAdministrativeEndpoint(
                         httpContext.Request.Path,
                         managementRoutePrefix) =>
@@ -53,8 +50,13 @@ internal static class RateLimiterServiceCollectionExtensions
                             managementRoutePrefix)
                             ? administrativeBulkWindow
                             : administrativeWindow,
-                    _ => credentialWindow,
+                    _ when httpContext.GetEndpoint()?.Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName == "device-information"
+                        || IdentityRateLimitPolicy.IsDeviceInformationEndpoint(httpContext.Request.Path, httpContext.Request.Method)
+                        => TimeSpan.FromSeconds(Math.Max(1, rateLimit.DeviceInformationWindowSeconds)),
+                    _ => TimeSpan.FromSeconds(Math.Max(1, IdentityRateLimitPolicy.GetCredentialLimits(
+                        httpContext.Request.Path, httpContext.Request.Method, rateLimit).WindowSeconds)),
                 };
+                if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var remaining)) retryAfter = remaining;
                 var retryAfterSeconds = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds));
 
                 httpContext.RequestServices
@@ -136,23 +138,8 @@ internal static class RateLimiterServiceCollectionExtensions
 
                 var clientIp = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-                if (IdentityRateLimitPolicy.IsPushedAuthorizationEndpoint(
-                    httpContext.Request.Path,
-                    httpContext.Request.Method))
-                {
-                    return RateLimitPartition.GetFixedWindowLimiter(
-                        IdentityRateLimitPolicy.GetCredentialPartitionKey(
-                            httpContext.Request.Path,
-                            httpContext.Request.Method,
-                            clientIp),
-                        _ => new FixedWindowRateLimiterOptions
-                        {
-                            PermitLimit = Math.Max(1, rateLimit.PushedAuthorizationPermitLimit),
-                            Window = pushedAuthorizationWindow,
-                            QueueLimit = 0,
-                            AutoReplenishment = true,
-                        });
-                }
+                var limits = IdentityRateLimitPolicy.GetCredentialLimits(
+                    httpContext.Request.Path, httpContext.Request.Method, rateLimit);
 
                 return RateLimitPartition.GetFixedWindowLimiter(
                     IdentityRateLimitPolicy.GetCredentialPartitionKey(
@@ -161,8 +148,8 @@ internal static class RateLimiterServiceCollectionExtensions
                         clientIp),
                     _ => new FixedWindowRateLimiterOptions
                     {
-                        PermitLimit = Math.Max(1, rateLimit.PermitLimit),
-                        Window = credentialWindow,
+                        PermitLimit = Math.Max(1, limits.Permits),
+                        Window = TimeSpan.FromSeconds(Math.Max(1, limits.WindowSeconds)),
                         QueueLimit = 0,
                         AutoReplenishment = true,
                     });

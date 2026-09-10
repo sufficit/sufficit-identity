@@ -43,6 +43,8 @@ public static class ManagementUiPolicies
         "sufficit-identity-management-ui-provisioning";
     public const string ManageProvisioningToken =
         "sufficit-identity-management-ui-provisioning-token";
+    public const string ReadTrustedProxies = "sufficit-identity-management-ui-trusted-proxies";
+    public const string WriteTrustedProxies = "sufficit-identity-management-ui-trusted-proxies-write";
     public const string ManageMetrics = "sufficit-identity-management-ui-metrics";
     public const string ManageOperatorTokens =
         "sufficit-identity-management-ui-operator-tokens";
@@ -235,6 +237,18 @@ public static class ServiceCollectionExtensions
                             ManagementCapabilities.ProvisioningApply,
                             ManagementResourceTypes.Provisioning));
                 });
+            authorization.AddPolicy(ManagementUiPolicies.ReadTrustedProxies, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.Requirements.Add(new ManagementCapabilityRequirement(
+                    ManagementCapabilities.TrustedProxiesRead, ManagementResourceTypes.TrustedProxies));
+            });
+            authorization.AddPolicy(ManagementUiPolicies.WriteTrustedProxies, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.Requirements.Add(new ManagementCapabilityRequirement(
+                    ManagementCapabilities.TrustedProxiesManage, ManagementResourceTypes.TrustedProxies));
+            });
             authorization.AddPolicy(ManagementUiPolicies.ManageMetrics, policy =>
             {
                 policy.RequireAuthenticatedUser();
@@ -295,6 +309,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<ManagementProvisioningTokenDataSource>();
         services.TryAddScoped<ManagementDatabaseDataSource>();
         services.TryAddScoped<ManagementMetricsDataSource>();
+        services.TryAddScoped<Networking.ManagementTrustedProxiesDataSource>();
         services.TryAddScoped<ManagementOperatorTokenDataSource>();
 
         services.AddCascadingAuthenticationState();

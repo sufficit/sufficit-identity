@@ -108,9 +108,9 @@ Before deploying to production:
 
 - [ ] **Certificates** — generate two X.509 PFX files (signing + encryption) and configure `Certificates.SigningPath` / `EncryptionPath`
 - [ ] **Issuer** — set `Issuer` to the public HTTPS URL (e.g. `https://identity.example.com/`)
-- [ ] **TrustedProxies** — list the CIDR ranges of your reverse proxy network so forwarded headers work and rate limiting partitions by real client IP. This now matters for the management API and SCIM too: without it every administrative caller shares the proxy's bucket
+- [ ] **TrustedProxies** — configure the file baseline and database additions in Management → Proxies confiáveis. `ForwardLimit` defaults to 2 for edge proxy + Nginx; every intermediate hop must be trusted. Changes in the database are audited and refreshed in memory every 30 seconds (immediately on the saving instance), without per-request queries. The edge proxy must replace caller-supplied forwarding headers. See [trusted proxies](docs/networking/USAGE-TRUSTED-PROXIES.md).
 - [ ] **Database** — run `dotnet ef database update` (or apply `docs/migration/sql/001-create-empty-database.sql`) against your MariaDB instance
-- [ ] **Rate limiting** — verify `RateLimit.Enabled=true` and `FailOnUntrustedProxy=true` so a missing proxy config fails fast instead of self-DoSing. `AdministrativePermitLimit` (600/min) covers the management API and SCIM; `AdministrativeBulkPermitLimit` (30/min) is a separate bucket for whole-collection commands — provisioning manifest inventory/preview/apply and revoking every session of a user — so one cannot exhaust the other's budget
+- [ ] **Rate limiting** — [Configure operation quotas and 429 presentation](docs/networking/USAGE-RATE-LIMITING.md); token/introspection are independent from interactive sign-in. Verify `RateLimit.Enabled=true` and `FailOnUntrustedProxy=true` so a missing proxy config fails fast instead of self-DoSing. `AdministrativePermitLimit` (600/min) covers the management API and SCIM; `AdministrativeBulkPermitLimit` (30/min) is a separate bucket for whole-collection commands — provisioning manifest inventory/preview/apply and revoking every session of a user — so one cannot exhaust the other's budget
 - [ ] **Swagger** — `Swagger.Enabled` is unset by default, which publishes the contract in Development only. Both endpoints are anonymous, so setting it `true` in production hands any caller the full management/SCIM/provisioning/vault route inventory; set it explicitly to `false` if you want that decision recorded rather than implied
 - [ ] **Audit retention** — `Management.AuditRetentionDays` defaults to 15. The table is append-only and nothing pruned it before this setting existed, so the first run after upgrading deletes everything older; export the history first if you need it, or set `0` to disable pruning
 - [ ] **CSP** — calibrate `Csp.ReportOnly` against the real UI, then flip to `false` (enforce)
@@ -185,3 +185,7 @@ The CI pipeline additionally runs against real MariaDB 10.4.34 with migration re
 - [`appsettings.json.template`](src/server/appsettings.json.template) — every configuration key, documented inline
 - [`docs/`](docs/README.md) — architecture, design, runbooks, active plans
 - [`docs/plans/PLAN-PRODUCTION-READINESS.md`](docs/plans/PLAN-PRODUCTION-READINESS.md) — what's left for production hardening
+
+## Padrão de snapshots de runtime
+
+Consultar [contrato compartilhado e situação de adoção neste projeto](docs/architecture/ARCHITECTURE-RUNTIME-SNAPSHOTS.md) antes de criar ou alterar caches de configuração/catálogo. O padrão define atualização local após commit, notificações NATS e reconciliação; a migração do runtime está rastreada separadamente.

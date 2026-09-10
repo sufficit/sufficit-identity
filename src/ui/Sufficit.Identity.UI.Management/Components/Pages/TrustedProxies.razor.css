@@ -1,0 +1,14 @@
+.proxy-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: var(--sui-space-6, 24px); }
+.proxy-workspace > section { min-width: 0; }
+.proxy-fields { display: grid; gap: var(--sui-space-5, 20px); border: 0; padding: 0; margin: 0; min-width: 0; }
+.proxy-networks { list-style: none; padding: 0; margin: 0 0 var(--sui-space-4, 16px); }
+.proxy-networks li { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--sui-space-2, 8px); padding-block: var(--sui-space-3, 12px); border-bottom: 1px solid var(--sui-border, #ddd); }
+.proxy-networks code { overflow-wrap: anywhere; }
+.proxy-networks span, .proxy-note { color: var(--sui-text-secondary); }
+.proxy-note { font-size: .875rem; line-height: 1.6; }
+@media (max-width: 960px) { .proxy-workspace { grid-template-columns: minmax(0, 1fr); } }
+
+.proxy-panel-body { padding: var(--sui-space-5, 20px); }
+.proxy-panel-body > .proxy-note:last-child { margin-bottom: 0; }
+.proxy-panel-body .config-list { margin-inline: calc(-1 * var(--sui-space-5, 20px)); }
+.proxy-workspace + [role="status"] { margin-top: var(--sui-space-4, 16px); }

@@ -138,6 +138,50 @@ public sealed class RateLimiterServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void Token_and_introspection_exhaustion_does_not_block_device_confirmation_or_login()
+    {
+        using var limiter = BuildLimiter(new RateLimitOptions
+        {
+            PermitLimit = 2, TokenPermitLimit = 3, IntrospectionPermitLimit = 4,
+        });
+        const string ip = "192.0.2.20";
+        Assert.Equal(3, AcquireUntilRejected(limiter, Request("POST", "/connect/token", ip), 10));
+        Assert.Equal(4, AcquireUntilRejected(limiter, Request("POST", "/connect/introspect", ip), 10));
+        using var device = limiter.AttemptAcquire(Request("POST", "/connect/device", ip));
+        using var login = limiter.AttemptAcquire(Request("POST", "/account/login", ip));
+        Assert.True(device.IsAcquired);
+        Assert.True(login.IsAcquired);
+        using var overflow = limiter.AttemptAcquire(Request("POST", "/connect/device", ip));
+        Assert.False(overflow.IsAcquired);
+        Assert.Equal(2, AcquireUntilRejected(limiter, Request("POST", "/connect/register", ip), 10));
+        Assert.Equal(2, AcquireUntilRejected(limiter, Request("POST", "/connect/deviceauthorization", ip), 10));
+    }
+
+    [Fact]
+    public void Token_alias_or_untrusted_client_id_cannot_reset_exhausted_quota()
+    {
+        using var limiter = BuildLimiter(new RateLimitOptions { PermitLimit = 1 });
+        const string ip = "192.0.2.21";
+        using var first = limiter.AttemptAcquire(Request("POST", "/connect/token", ip));
+        Assert.True(first.IsAcquired);
+        var alias = Request("POST", "/connect/token/mtls", ip);
+        alias.Request.QueryString = new QueryString("?client_id=another-client");
+        alias.Request.Headers["X-Client-Id"] = "another-client";
+        using var second = limiter.AttemptAcquire(alias);
+        Assert.False(second.IsAcquired);
+    }
+
+    [Fact]
+    public void Unknown_protocol_paths_share_a_fixed_fallback_quota()
+    {
+        using var limiter = BuildLimiter(new RateLimitOptions { PermitLimit = 1 });
+        using var first = limiter.AttemptAcquire(Request("POST", "/connect/unknown-a", "192.0.2.22"));
+        using var second = limiter.AttemptAcquire(Request("POST", "/connect/unknown-b", "192.0.2.22"));
+        Assert.True(first.IsAcquired);
+        Assert.False(second.IsAcquired);
+    }
+
+    [Fact]
     public void Unclassified_requests_are_not_limited()
     {
         var limiter = BuildLimiter(new RateLimitOptions { PermitLimit = 1 });

@@ -22,7 +22,7 @@ public sealed class IdentityRateLimitPolicyTests
             clientIp);
 
         Assert.Equal("par-ip:192.0.2.10", par);
-        Assert.Equal("credential-ip:192.0.2.10", token);
+        Assert.Equal("token-ip:192.0.2.10", token);
         Assert.NotEqual(par, token);
     }
 

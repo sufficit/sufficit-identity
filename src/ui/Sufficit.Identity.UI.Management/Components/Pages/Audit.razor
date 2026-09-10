@@ -109,6 +109,14 @@
                                     </td>
                                     <td data-label="Ação">
                                         <code>@CapabilityLabel(entry.Capability)</code>
+                                        @if (entry.BeforeJson is not null || entry.AfterJson is not null)
+                                        {
+                                            <details class="audit-change-details">
+                                                <summary>Ver alteração</summary>
+                                                <strong>Antes</strong><pre style="white-space:pre-wrap;overflow-wrap:anywhere">@entry.BeforeJson</pre>
+                                                <strong>Depois</strong><pre style="white-space:pre-wrap;overflow-wrap:anywhere">@entry.AfterJson</pre>
+                                            </details>
+                                        }
                                     </td>
                                     <td data-label="Alvo">
                                         <span>@entry.ResourceType</span>
