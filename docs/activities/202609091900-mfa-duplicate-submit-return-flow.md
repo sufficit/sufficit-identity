@@ -57,6 +57,5 @@ em `202609092119-csp-authentication-return.md`.
 
 ## Entrega
 
-Alterações mantidas localmente. Nenhum commit, push ou deploy foi realizado
-nesta atividade porque a solicitação atual foi de diagnóstico/correção, sem
-nova autorização de publicação.
+Alterações integradas à correção de retorno compatível com CSP no commit
+`4d558b2` e publicadas nos três nós do Identity em 2026-09-09.
