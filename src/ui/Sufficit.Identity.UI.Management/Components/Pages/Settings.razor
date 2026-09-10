@@ -9,6 +9,10 @@
 <SUIPageHeader Title="Configuração administrativa"
             Description="Consulte a política, o transporte HTTP e os módulos informados pelo runtime." />
 
+<AuthorizeView Policy="@ManagementUiPolicies.ReadTrustedProxies">
+    <a class="button button--secondary" href="settings/trusted-proxies">Configurar proxies confiáveis</a>
+</AuthorizeView>
+
 @if (loading)
 {
     <div class="detail-shell"

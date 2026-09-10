@@ -156,6 +156,7 @@ public static class ServiceCollectionExtensions
                 provider => provider.GetRequiredService<
                     ManagementAuthorizationMiddlewareResultHandler>()));
         services.TryAddScoped<IManagementAuditService, ManagementAuditService>();
+        services.TryAddScoped<Sufficit.Identity.Management.Networking.ITrustedProxyManagementService, Sufficit.Identity.Management.Networking.TrustedProxyManagementService>();
         // The audit table is append-only and had no retention; this prunes
         // it past ManagementOptions.AuditRetentionDays.
         services.AddHostedService<ManagementAuditRetentionWorker>();

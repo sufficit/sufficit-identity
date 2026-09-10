@@ -98,7 +98,21 @@
           "ConsecutiveFailuresBeforeRestart": 3
         }
       },
-      "_TrustedProxies": "Array of CIDR strings for reverse-proxy networks allowed to set X-Forwarded-* headers. Leaving this UNSET (not listed) trusts only loopback (ASP.NET Core default). The example values below reflect the Sufficit production topology (verified 2026-07-21 from nginx access logs on eveo-apps/apoint-apps/castrum-apps): 203.0.113.10 (eveo-cloud Proxmox gateway), 203.0.113.11 (apoint-cloud gateway), plus the internal sufflocal/healthcheck networks 10.0.0.0/8 and the AWS Route53 health-checker range 198.51.100.0/24. If TrustedProxies is empty in production, the rate limiter partitions by the proxy's IP (one shared bucket for the whole deployment — self-inflicted 429s) and X-Forwarded-Proto is dropped (Request.Scheme stays http, defeating the cookie Secure policy). Adjust per environment in appsettings.<env>.json.",
+      "_TrustedProxies": "Baseline CIDRs trusted to supply X-Forwarded-* headers. Merged with database-managed additions from Management > Proxies confiáveis. File entries cannot be removed through Management. The immutable runtime snapshot applies local commits immediately. Optional NATS notifications trigger refreshes; revision-only reconciliation defaults to 30 seconds, loading content only on change. No database query per HTTP request. Empty merged configuration trusts loopback only. Changes to this file require a restart. The edge proxy must replace untrusted incoming forwarded headers with verified client information.",
+      "_ForwardLimit": "Maximum trusted hops processed right-to-left. Default 2 supports client -> edge proxy -> Nginx -> Identity. Database override takes precedence; null in the database inherits this value. Range 1-10. Every intermediate peer must be in the merged trust list.",
+      "ForwardLimit": 2,
+      "ProxySynchronization": {
+        "_description": "Revision-only reconciliation. Full content is loaded on change. Intervals include +/-10% jitter. Exceeding MaxStaleSeconds without database confirmation returns 503; never disables proxy validation. Increase ReconcileSeconds only with an explicit trust-removal delay budget.",
+        "ReconcileSeconds": 30,
+        "MaxStaleSeconds": 120,
+        "RefreshTimeoutSeconds": 10,
+        "Nats": {
+          "Enabled": false,
+          "Url": "nats://127.0.0.1:4222",
+          "_Token": "Supply credentials through protected environment configuration, not this template. Prefer TLS for remote connections and restrict subject permissions.",
+          "_Subject": "Default: sufficit.<ASPNETCORE_ENVIRONMENT lowercased>.identity.trusted-proxies.changed.v1. Every node subscribes without a queue group."
+        }
+      },
       "TrustedProxies": [
         "203.0.113.10/32",
         "203.0.113.11/32",
@@ -227,13 +241,22 @@
         "AllowedClientIds": [],
         "ProvenanceMode": "Enforce"
       },
-      "_RateLimit": "Independent fixed-window limits for credential and OAuth/OIDC protocol endpoints, per client IP, without queueing. Complements (never replaces) account lockout.",
+      "_RateLimit": "Independent fixed-window limits by operation and client IP, local to each replica, without queueing. Token/introspection do not consume interactive login/device confirmation quotas. Complements account lockout.",
       "RateLimit": {
         "Enabled": true,
-        "_PermitLimit": "Requests allowed per window, per client IP.",
+        "_PermitLimit": "Fallback requests per window and client IP; token and interactive overrides inherit this when null.",
         "PermitLimit": 30,
-        "_WindowSeconds": "Window length in seconds; also sent as Retry-After on 429.",
+        "_WindowSeconds": "Fallback window length. Retry-After uses remaining lease time when available, otherwise the window of the rejected operation.",
         "WindowSeconds": 60,
+        "_TokenPermitLimit": "Token issuance/refresh, including mTLS aliases. Null inherits PermitLimit/WindowSeconds; request client_id cannot create a separate bucket.",
+        "TokenPermitLimit": null,
+        "TokenWindowSeconds": null,
+        "_InteractivePermitLimit": "Login, credential forms, device confirmation and consent; separate from token, introspection, device authorization, registration and PAR. Null inherits PermitLimit/WindowSeconds.",
+        "InteractivePermitLimit": null,
+        "InteractiveWindowSeconds": null,
+        "_IntrospectionPermitLimit": "Server-to-server token validation has an independent allowance, including mTLS aliases.",
+        "IntrospectionPermitLimit": 300,
+        "IntrospectionWindowSeconds": 60,
         "_PushedAuthorizationPermitLimit": "PAR requests allowed per window and source IP. Uses a separate bucket so token failures cannot block new logins.",
         "PushedAuthorizationPermitLimit": 30,
         "PushedAuthorizationWindowSeconds": 60,

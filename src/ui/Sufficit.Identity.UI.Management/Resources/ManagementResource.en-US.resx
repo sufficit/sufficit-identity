@@ -116,4 +116,8 @@
   <data name="Capability.identity.management.tokens.issue.Description" xml:space="preserve"><value>Used to generate a temporary Bearer with a subset of capabilities already held by the administrator. This capability cannot be delegated to the token itself.</value></data>
   <data name="Capability.identity.management.tokens.revoke.Title" xml:space="preserve"><value>Revoke temporary Management tokens</value></data>
   <data name="Capability.identity.management.tokens.revoke.Description" xml:space="preserve"><value>Used to invalidate a temporary token before it expires. This capability cannot be included in another temporary token.</value></data>
+  <data name="Capability.identity.trusted-proxies.read.Title" xml:space="preserve"><value>Read trusted proxies</value></data>
+  <data name="Capability.identity.trusted-proxies.read.Description" xml:space="preserve"><value>View trusted proxies, their sources and the effective forwarding limit. Changes require the separate management permission.</value></data>
+  <data name="Capability.identity.trusted-proxies.manage.Title" xml:space="preserve"><value>Manage trusted proxies</value></data>
+  <data name="Capability.identity.trusted-proxies.manage.Description" xml:space="preserve"><value>Change database-managed trusted proxies and forwarding limits with an audit trail. The file-managed baseline remains in effect.</value></data>
 </root>

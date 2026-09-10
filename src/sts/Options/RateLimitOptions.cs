@@ -17,15 +17,27 @@ public sealed class RateLimitOptions
     public bool Enabled { get; init; } = true;
 
     /// <summary>
-    /// Requests allowed per window, per client IP.
+    /// Fallback requests allowed per operation window, per client IP.
     /// </summary>
     public int PermitLimit { get; init; } = 30;
 
     /// <summary>
-    /// Fixed window length, in seconds. Also returned as <c>Retry-After</c>
-    /// on 429 responses.
+    /// Fallback fixed window length, in seconds. Rejections use the remaining
+    /// lease time when available, otherwise the effective operation window.
     /// </summary>
     public int WindowSeconds { get; init; } = 60;
+
+    /// <summary>Independent token bucket. Null inherits PermitLimit/WindowSeconds.</summary>
+    public int? TokenPermitLimit { get; init; }
+    public int? TokenWindowSeconds { get; init; }
+
+    /// <summary>Independent human sign-in/consent bucket. Null inherits the legacy limits.</summary>
+    public int? InteractivePermitLimit { get; init; }
+    public int? InteractiveWindowSeconds { get; init; }
+
+    /// <summary>Server-to-server token validation: separate from token issuance and human actions.</summary>
+    public int IntrospectionPermitLimit { get; init; } = 300;
+    public int IntrospectionWindowSeconds { get; init; } = 60;
 
     /// <summary>
     /// Pushed authorization requests allowed per window and source IP. PAR

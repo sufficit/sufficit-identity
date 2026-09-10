@@ -23,4 +23,6 @@ public sealed record ManagementAuditRecord(
     string OperationOutcome,
     string? ReasonCode,
     string CorrelationId,
-    string? AuthenticationMethods);
+    string? AuthenticationMethods,
+    string? BeforeJson = null,
+    string? AfterJson = null);

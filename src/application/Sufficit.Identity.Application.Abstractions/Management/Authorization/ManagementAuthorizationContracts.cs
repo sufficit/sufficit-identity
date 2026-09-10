@@ -41,6 +41,8 @@ public static class ManagementCapabilities
         "identity.authorizations.revoke";
     public const string AuditRead = "identity.audit.read";
     public const string DatabaseRead = "identity.database.read";
+    public const string TrustedProxiesRead = "identity.trusted-proxies.read";
+    public const string TrustedProxiesManage = "identity.trusted-proxies.manage";
     public const string MetricsRead = "identity.metrics.read";
     public const string MetricsManage = "identity.metrics.manage";
     public const string VaultSecretsRead = "identity.vault.secrets.read";
@@ -102,6 +104,8 @@ public static class ManagementCapabilities
                 AuthorizationsRevoke,
                 AuditRead,
                 DatabaseRead,
+                TrustedProxiesRead,
+                TrustedProxiesManage,
                 MetricsRead,
                 MetricsManage,
                 VaultSecretsRead,
@@ -149,6 +153,7 @@ public static class ManagementResourceTypes
     public const string Audit = "audit";
     public const string DatabaseRuntime = "database-runtime";
     public const string Overview = "overview";
+    public const string TrustedProxies = "trusted-proxies";
     public const string Metrics = "metrics";
     public const string VaultSecrets = "vault-secrets";
     public const string VaultSecretCollection = "vault-secret-collection";

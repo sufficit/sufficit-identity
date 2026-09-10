@@ -46,6 +46,8 @@ public static class ManagementCapabilityPresentation
             [ManagementCapabilities.AuthorizationsRevoke] = "Capability.Label.Revoke",
             [ManagementCapabilities.AuditRead] = "Capability.Label.Read",
             [ManagementCapabilities.DatabaseRead] = "Capability.Label.Read",
+            [ManagementCapabilities.TrustedProxiesRead] = "Capability.Label.Read",
+            [ManagementCapabilities.TrustedProxiesManage] = "Capability.Label.Manage",
             [ManagementCapabilities.MetricsRead] = "Capability.Label.Read",
             [ManagementCapabilities.MetricsManage] = "Capability.Label.Manage",
             [ManagementCapabilities.VaultSecretsRead] = "Capability.Label.Read",

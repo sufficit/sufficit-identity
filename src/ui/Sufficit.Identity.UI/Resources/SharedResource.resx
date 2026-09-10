@@ -497,4 +497,25 @@
   <data name="AuthorizationError.Recovery" xml:space="preserve"><value>Volte ao aplicativo e inicie o acesso novamente. Não é necessário alterar sua senha nem configurar o segundo fator de novo por causa desta mensagem.</value></data>
   <data name="AuthorizationError.Home" xml:space="preserve"><value>Ir para o início do Identity</value></data>
   <data name="AuthorizationError.AttemptEnded" xml:space="preserve"><value>Esta tentativa foi interrompida. Nenhuma nova autenticação foi concluída.</value></data>
+  <data name="RateLimitError.Title" xml:space="preserve">
+    <value>Aguarde um pouco antes de tentar novamente</value>
+  </data>
+  <data name="RateLimitError.Explanation" xml:space="preserve">
+    <value>Recebemos muitas solicitações da sua conexão em pouco tempo. Por segurança, precisamos fazer uma breve pausa.</value>
+  </data>
+  <data name="RateLimitError.Recovery" xml:space="preserve">
+    <value>Aguarde {0} segundos e volte ao aplicativo ou à página de onde você iniciou o acesso para tentar novamente.</value>
+  </data>
+  <data name="RateLimitError.Help" xml:space="preserve">
+    <value>Recarregar esta página não antecipa a liberação do acesso.</value>
+  </data>
+  <data name="DeviceLauncher.Title" xml:space="preserve"><value>Entrar no aplicativo</value></data>
+  <data name="DeviceLauncher.Explanation" xml:space="preserve"><value>Abra a janela de autenticação para continuar. Ao concluir, tentaremos fechar as janelas de acesso e você poderá voltar ao aplicativo.</value></data>
+  <data name="DeviceLauncher.Open" xml:space="preserve"><value>Abrir autenticação</value></data>
+  <data name="DeviceLauncher.Waiting" xml:space="preserve"><value>Conclua o acesso na janela de autenticação. Se você a fechou, use o botão para abrir novamente.</value></data>
+  <data name="DeviceLauncher.Complete" xml:space="preserve"><value>Acesso autorizado. Você pode voltar ao aplicativo e fechar esta aba se ela permanecer aberta.</value></data>
+  <data name="DeviceLauncher.Denied" xml:space="preserve"><value>Acesso não autorizado. Você pode fechar esta aba e iniciar uma nova tentativa no aplicativo.</value></data>
+  <data name="DeviceLauncher.Blocked" xml:space="preserve"><value>O navegador bloqueou a janela de autenticação. Permita popups para este site ou continue nesta aba.</value></data>
+  <data name="DeviceLauncher.Manual" xml:space="preserve"><value>Continuar nesta aba</value></data>
+  <data name="DeviceLauncher.NoScript" xml:space="preserve"><value>Sem JavaScript, o link abre a autenticação nesta aba. Feche-a manualmente ao concluir.</value></data>
 </root>

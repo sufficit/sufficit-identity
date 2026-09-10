@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
-    <title>@L["AuthorizationError.Title"] — Sufficit Identity</title>
+    <title>@L[$"{ResourcePrefix}.Title"] — Sufficit Identity</title>
     <link rel="stylesheet" href="/_content/Sufficit.Identity.UI/css/site.css" />
     <link rel="stylesheet" href="/_content/Sufficit.Identity.UI/css/authorization-error.css" />
 </head>
@@ -21,15 +21,20 @@
         </header>
         <main class="content">
             <section class="auth-card authorization-error" aria-labelledby="authorization-error-title">
-                <h1 id="authorization-error-title">@L["AuthorizationError.Title"]</h1>
-                <p>@L["AuthorizationError.Explanation"]</p>
-                <p>@L["AuthorizationError.Recovery"]</p>
+                <h1 id="authorization-error-title">@L[$"{ResourcePrefix}.Title"]</h1>
+                <p>@L[$"{ResourcePrefix}.Explanation"]</p>
+                <p>@L[$"{ResourcePrefix}.Recovery", RetryAfterSeconds ?? 0]</p>
                 <div class="authorization-error__actions">
                     <a class="btn btn-primary" href="/">@L["AuthorizationError.Home"]</a>
                 </div>
-                <p class="authorization-error__help">@L["AuthorizationError.AttemptEnded"]</p>
+                <p class="authorization-error__help">@L[RetryAfterSeconds.HasValue ? "RateLimitError.Help" : "AuthorizationError.AttemptEnded"]</p>
             </section>
         </main>
     </div>
 </body>
 </html>
+
+@code {
+    [Parameter] public int? RetryAfterSeconds { get; set; }
+    private string ResourcePrefix => RetryAfterSeconds.HasValue ? "RateLimitError" : "AuthorizationError";
+}

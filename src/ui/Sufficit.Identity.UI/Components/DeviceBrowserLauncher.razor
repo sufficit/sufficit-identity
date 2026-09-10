@@ -1,0 +1,37 @@
+@inject Microsoft.Extensions.Localization.IStringLocalizer<SharedResource> L
+<!DOCTYPE html>
+<html lang="@System.Globalization.CultureInfo.CurrentUICulture.Name">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>@L["DeviceLauncher.Title"] — Sufficit Identity</title>
+    <link rel="stylesheet" href="/_content/Sufficit.Identity.UI/css/site.css" />
+    <link rel="stylesheet" href="/_content/Sufficit.Identity.UI/css/authorization-error.css" />
+</head>
+<body>
+    <div class="page">
+        <header class="topbar"><div class="topbar-brand"><a href="/"><span class="brand-wordmark"><span class="brand-name">Sufficit</span><span class="brand-sub">Identity</span></span></a></div></header>
+        <main class="content">
+            <section class="auth-card authorization-error" data-device-launcher aria-labelledby="launcher-title">
+                <h1 id="launcher-title">@L["DeviceLauncher.Title"]</h1>
+                <p>@L["DeviceLauncher.Explanation"]</p>
+                <div class="authorization-error__actions">
+                    <a class="btn btn-primary" href="@VerificationUrl" data-device-launch>@L["DeviceLauncher.Open"]</a>
+                </div>
+                <p data-device-waiting hidden role="status">@L["DeviceLauncher.Waiting"]</p>
+                <p data-device-complete hidden role="status">@L["DeviceLauncher.Complete"]</p>
+                <p data-device-denied hidden role="status">@L["DeviceLauncher.Denied"]</p>
+                <p data-device-blocked hidden role="status">@L["DeviceLauncher.Blocked"]</p>
+                <p data-device-manual hidden><a href="@VerificationUrl">@L["DeviceLauncher.Manual"]</a></p>
+                <noscript><p>@L["DeviceLauncher.NoScript"]</p></noscript>
+            </section>
+        </main>
+    </div>
+    <script src="/_content/Sufficit.Identity.UI/js/device-launcher.js"></script>
+</body>
+</html>
+@code {
+    [Parameter] public string UserCode { get; set; } = "";
+    private string VerificationUrl => "/connect/device?user_code=" + Uri.EscapeDataString(UserCode) + "&launch_mode=popup";
+}

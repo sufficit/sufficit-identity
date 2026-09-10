@@ -5,6 +5,7 @@
     (Apache 2.0). The Sufficit.Identity.* code itself is MIT-0.
   -->
   <ItemGroup>
+    <PackageVersion Include="NATS.Client" Version="1.1.8" />
     <!-- OpenIddict (Apache 2.0) -->
     <PackageVersion Include="OpenIddict.AspNetCore" Version="7.7.0" />
     <PackageVersion Include="OpenIddict.EntityFrameworkCore" Version="7.7.0" />

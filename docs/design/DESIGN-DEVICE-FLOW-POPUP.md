@@ -16,8 +16,9 @@ continua sendo um popup scriptável:
 2. tenta fechar a janela automaticamente.
 
 Enquanto o marcador está presente, o cabeçalho `Cross-Origin-Opener-Policy`
-usa `same-origin-allow-popups`. Isso é necessário para que a janela de origem
-continue visível ao popup durante os redirecionamentos de login; as páginas que
+usa `same-origin-allow-popups`. As políticas precisam corresponder e a origem precisa ser a mesma para
+preservar o opener entre documentos que usam esta diretiva; ela não garante
+retenção de um opener de outra origem. As páginas que
 não optam explicitamente por popup continuam usando `same-origin`.
 
 Mensagem emitida:
@@ -64,3 +65,32 @@ Se a autenticação for aberta por `xdg-open`, `open` ou um navegador já aberto
 o navegador pode não considerar a aba scriptável. Nesse caso o Identity não
 força o fechamento: exibe a instrução de fechamento manual para não esconder
 o resultado do usuário.
+
+## Symposium e abertura externa
+
+O Symposium 2026.910.1 abre `/device/launch?user_code=...&launch_mode=popup`
+quando o endpoint de verificação do Identity é `/connect/device`. O launcher é
+uma página SSR anônima da mesma origem do Identity, com `no-store`,
+`no-referrer` e COOP `same-origin-allow-popups`. Aceita somente o código curto
+(até 64 caracteres ASCII alfanuméricos, espaços e hífens); não aceita URL de
+retorno nem recebe device_code ou tokens.
+
+Um clique em **Abrir autenticação** cria o popup de mesma origem. Esse clique
+é necessário nos navegadores que bloqueiam popups sem interação. O launcher
+permanece no documento inicial; a autenticação e seus redirecionamentos
+acontecem no popup. Ao receber `sufficit-auth-complete`, valida origem exata,
+janela emissora, flow e resultado approved/denied, fecha o popup e tenta fechar
+a própria aba. O polling do token no Symposium continua sendo a autoridade
+para concluir o login: uma mensagem do navegador nunca fornece credenciais.
+
+No Chrome, a aba externa nova com uma entrada no histórico fecha junto com o
+popup. Uma aba reutilizada com histórico anterior pode recusar o fechamento;
+a página mantém o resultado e a orientação manual. Popup bloqueado oferece
+**Continuar nesta aba**. Sem JavaScript, o link também continua diretamente e
+exige fechamento manual. Fechar/reabrir o popup não cria novo device code.
+
+O launcher foi testado com COOP real e o script de conclusão do Identity,
+incluindo aprovação, recusa, mensagem de janela incorreta, popup bloqueado e
+recusa de fechamento da aba. Autenticação externa federada que rompa a relação
+opener pode exigir fallback; o launcher não reduz a política global para
+`unsafe-none` nem contorna a segurança do navegador.
