@@ -95,6 +95,13 @@ public sealed class SufficitIdentityOptions
     public TokenLifetimeOptions Tokens { get; init; } = new();
 
     /// <summary>
+    /// Retention for dead OpenIddict tokens and orphaned ad-hoc authorizations
+    /// pruned by the background <c>OpenIddictPruningWorker</c>. Valid,
+    /// unexpired tokens are never pruned. See <see cref="TokenPruningOptions"/>.
+    /// </summary>
+    public TokenPruningOptions TokenPruning { get; init; } = new();
+
+    /// <summary>
     /// Account lockout policy applied to password verification.
     /// See <see cref="LockoutOptions"/>.
     /// </summary>
