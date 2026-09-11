@@ -23,5 +23,5 @@ Resultado: 50 testes aprovados, zero avisos. Cobertura inclui autorização com 
 nome e o legado, negação para operador somente leitura, mapeamento de papéis,
 emissão de token com nome canônico, apresentação e endpoints de usuários.
 
-Alterações locais prontas para revisão; sem commit, push ou deploy nesta etapa.
+Alteração publicada posteriormente; consulte o [registro do deploy](202609112001-deploy-users-confirmation.md).
 Contrato permanente: [Design do Management](../design/DESIGN-MANAGEMENT-PRODUCT.md).
