@@ -70,6 +70,12 @@ auditoria em todo o fluxo.
   serviços de infraestrutura diretamente.
 - Capabilities e MFA vêm do mesmo contrato de aplicação usado pela API; a UI
   não mantém uma matriz paralela.
+- Identificadores de capabilities usam nomes concisos, sem underscore (`_`).
+  O envio de confirmação usa `identity.users.confirmation` (`UsersConfirmation`).
+  O nome anterior `identity.users.resend_confirmation` é aceito somente como
+  entrada de compatibilidade por `ManagementCapabilities.Normalize`; catálogo,
+  permissões resolvidas, tokens emitidos e novas auditorias usam o nome canônico.
+  Essa normalização preserva concessões existentes sem reescrever o histórico.
 - A UI pública e a administrativa obtêm a URL do avatar pelo mesmo resolver de
   aplicação. O tema ativo e seu template permanecem no runtime; as interfaces
   apenas exibem a imagem ou as iniciais de fallback.

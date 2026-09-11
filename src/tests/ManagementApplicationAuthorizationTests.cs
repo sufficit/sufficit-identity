@@ -122,7 +122,7 @@ public sealed partial class ManagementApplicationAuthorizationTests
                 RoleCapabilities = new(StringComparer.OrdinalIgnoreCase)
                 {
                     ["token-manager"] =
-                        ["identity.operator-tokens.read"],
+                        ["identity.operator-tokens.read", "identity.users.resend_confirmation"],
                 },
             },
         });
@@ -135,6 +135,8 @@ public sealed partial class ManagementApplicationAuthorizationTests
                     "permission",
                     "identity.users.reset-password")));
 
+        Assert.Contains(ManagementCapabilities.UsersConfirmation, entitlements.Capabilities);
+        Assert.DoesNotContain("identity.users.resend_confirmation", entitlements.Capabilities);
         Assert.Contains(
             ManagementCapabilities.UsersReset,
             entitlements.Capabilities);

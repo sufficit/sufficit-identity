@@ -24,8 +24,8 @@ public static class ManagementCapabilities
     /// read-only operator trigger unlimited account emails (mail-bombing
     /// vector) with no audit row of its own.
     /// </summary>
-    public const string UsersResendConfirmation =
-        "identity.users.resend_confirmation";
+    public const string UsersConfirmation =
+        "identity.users.confirmation";
     public const string ClaimsRead = "identity.claims.read";
     public const string ClaimsCreate = "identity.claims.create";
     public const string ClaimsUpdate = "identity.claims.update";
@@ -89,7 +89,7 @@ public static class ManagementCapabilities
                 UsersDisable,
                 UsersDelete,
                 UsersReset,
-                UsersResendConfirmation,
+                UsersConfirmation,
                 ClaimsRead,
                 ClaimsCreate,
                 ClaimsUpdate,
@@ -127,6 +127,7 @@ public static class ManagementCapabilities
     public static string Normalize(string capability) => capability switch
     {
         "identity.users.reset-password" => UsersReset,
+        "identity.users.resend_confirmation" => UsersConfirmation,
         "identity.operator-tokens.read" => ManagementTokensRead,
         "identity.operator-tokens.issue" => ManagementTokensIssue,
         "identity.operator-tokens.revoke" => ManagementTokensRevoke,

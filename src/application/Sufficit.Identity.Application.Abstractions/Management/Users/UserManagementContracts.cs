@@ -50,7 +50,7 @@ public interface IUserManagementService
     /// <summary>
     /// Resends the account-confirmation email to the user identified by
     /// <paramref name="id"/>. Requires the dedicated
-    /// <c>identity.users.resend_confirmation</c> capability (an outbound mail
+    /// <c>identity.users.confirmation</c> capability (an outbound mail
     /// action, not a read) and audits every outcome — see the implementation
     /// for the F-8 rationale.
     /// </summary>

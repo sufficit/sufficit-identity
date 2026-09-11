@@ -221,14 +221,14 @@ internal sealed partial class UserManagementService
         // account emails (mail-bombing vector) and the send itself produced
         // no audit row — only GetAsync's incidental user_read did, under the
         // wrong capability. This method now demands its own capability
-        // (identity.users.resend_confirmation) and journals every outcome:
+        // (identity.users.confirmation) and journals every outcome:
         // sent, skipped (no address) and failed alike.
         var auditResource = new ManagementResource(
             ManagementResourceTypes.User,
             id);
         var decision = await DemandAsync(
             context,
-            ManagementCapabilities.UsersResendConfirmation,
+            ManagementCapabilities.UsersConfirmation,
             auditResource,
             cancellationToken);
 
@@ -237,7 +237,7 @@ internal sealed partial class UserManagementService
         {
             await TryWriteAuditAsync(
                 context,
-                ManagementCapabilities.UsersResendConfirmation,
+                ManagementCapabilities.UsersConfirmation,
                 auditResource,
                 decision,
                 "failed",
@@ -252,7 +252,7 @@ internal sealed partial class UserManagementService
         {
             await TryWriteAuditAsync(
                 context,
-                ManagementCapabilities.UsersResendConfirmation,
+                ManagementCapabilities.UsersConfirmation,
                 auditResource,
                 decision,
                 "skipped",
@@ -275,7 +275,7 @@ internal sealed partial class UserManagementService
                 context.CorrelationId);
             await TryWriteAuditAsync(
                 context,
-                ManagementCapabilities.UsersResendConfirmation,
+                ManagementCapabilities.UsersConfirmation,
                 auditResource,
                 decision,
                 "failed",
@@ -288,7 +288,7 @@ internal sealed partial class UserManagementService
 
         await TryWriteAuditAsync(
             context,
-            ManagementCapabilities.UsersResendConfirmation,
+            ManagementCapabilities.UsersConfirmation,
             auditResource,
             decision,
             "succeeded",
