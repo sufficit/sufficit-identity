@@ -4,9 +4,9 @@
     "net10.0": {
       "Sufficit.Blazor.UI": {
         "type": "Direct",
-        "requested": "[1.26.908.2020, )",
-        "resolved": "1.26.908.2020",
-        "contentHash": "s04L8fLtN0trRe3MoHlDqKfKYDf/sHGgwKzO9w+TYd5mHDeUzLX55p06FFgYnbM/hNzqgoMEiUoJt0ksGodU8g=="
+        "requested": "[2.*, )",
+        "resolved": "2.26.911.2250",
+        "contentHash": "YzWPku2kBNF83gvFF2PakMMV2VbGpIy1P61xk6616QNRg6/jWmgoCiIbPPLw8D23d2PfyV/tt85DYXTkiSnn1Q=="
       },
       "sufficit.identity.application.abstractions": {
         "type": "Project"
@@ -17,7 +17,7 @@
       "sufficit.identity.ui.components": {
         "type": "Project",
         "dependencies": {
-          "Sufficit.Blazor.UI": "[1.26.908.2020, )"
+          "Sufficit.Blazor.UI": "[2.*, )"
         }
       }
     }
