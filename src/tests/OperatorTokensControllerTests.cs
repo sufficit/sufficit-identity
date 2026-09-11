@@ -139,8 +139,10 @@ public sealed class OperatorTokensControllerTests
                 && entry.OperationOutcome == "rejected");
     }
 
-    [Fact]
-    public async Task Issue_normalizes_legacy_capability_before_minting_token()
+    [Theory]
+    [InlineData("identity.users.reset-password", ManagementCapabilities.UsersReset)]
+    [InlineData("identity.users.resend_confirmation", ManagementCapabilities.UsersConfirmation)]
+    public async Task IssueNormalizesLegacyCapabilityBeforeMintingToken(string legacy, string canonical)
     {
         await using var factory = new ManagementTestFactory();
         await ((IAsyncLifetime)factory).InitializeAsync();
@@ -151,17 +153,17 @@ public sealed class OperatorTokensControllerTests
             new IssueOperatorTokenCommand(
                 "Compatibilidade durante migração",
                 300,
-                ["identity.users.reset-password"]));
+                [legacy]));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var issued = await response.Content
             .ReadFromJsonAsync<OperatorTokenIssueResult>();
         Assert.NotNull(issued);
         Assert.Equal(
-            [ManagementCapabilities.UsersReset],
+            [canonical],
             issued.Capabilities);
         Assert.DoesNotContain(
-            "identity.users.reset-password",
+            legacy,
             issued.Capabilities);
     }
 

@@ -13,7 +13,7 @@ namespace Sufficit.Identity.Tests;
 /// a read-only operator could trigger unlimited account emails — a
 /// mail-bombing vector — with no audit row for the send itself.
 /// </summary>
-public sealed class UsersResendConfirmationAuthorizationTests
+public sealed class UsersConfirmationAuthorizationTests
 {
     [Fact]
     public void Resend_confirmation_is_a_distinct_capability_in_the_catalog()
@@ -21,8 +21,10 @@ public sealed class UsersResendConfirmationAuthorizationTests
         // The presentation and authorization surfaces both enumerate
         // ManagementCapabilities.All; membership here keeps the operator
         // consoles, entitlement resolver and audit trail in agreement.
+        Assert.Equal("identity.users.confirmation", ManagementCapabilities.UsersConfirmation);
+        Assert.DoesNotContain("identity.users.resend_confirmation", ManagementCapabilities.All);
         Assert.Contains(
-            ManagementCapabilities.UsersResendConfirmation,
+            ManagementCapabilities.UsersConfirmation,
             ManagementCapabilities.All);
     }
 
@@ -35,7 +37,7 @@ public sealed class UsersResendConfirmationAuthorizationTests
             PrincipalWithClaims(new Claim(
                 "permission",
                 ManagementCapabilities.UsersRead)),
-            ManagementCapabilities.UsersResendConfirmation,
+            ManagementCapabilities.UsersConfirmation,
             new ManagementResource(ManagementResourceTypes.User, "user-1"));
 
         Assert.Equal(
@@ -44,16 +46,18 @@ public sealed class UsersResendConfirmationAuthorizationTests
         Assert.Equal("capability_not_granted", decision.ReasonCode);
     }
 
-    [Fact]
-    public async Task Explicit_resend_permission_allows_the_action()
+    [Theory]
+    [InlineData("identity.users.confirmation")]
+    [InlineData("identity.users.resend_confirmation")]
+    public async Task ExplicitConfirmationPermissionAllowsTheAction(string permission)
     {
         var evaluator = CreateEvaluator();
 
         var decision = await evaluator.EvaluateAsync(
             PrincipalWithClaims(new Claim(
                 "permission",
-                ManagementCapabilities.UsersResendConfirmation)),
-            ManagementCapabilities.UsersResendConfirmation,
+                permission)),
+            ManagementCapabilities.UsersConfirmation,
             new ManagementResource(ManagementResourceTypes.User, "user-1"));
 
         Assert.True(decision.IsAllowed);
