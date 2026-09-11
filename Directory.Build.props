@@ -16,6 +16,8 @@
 
     <!-- Central package management -->
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Sufficit.Blazor.UI floats on 2.*; packages.lock.json pins the resolved version. -->
+    <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
 
     <!-- Shared SUI components: local sibling checkout OR published package.

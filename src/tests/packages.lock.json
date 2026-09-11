@@ -1178,7 +1178,7 @@
           "Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore": "[10.0.11, )",
           "NATS.Client": "[1.1.8, )",
           "Serilog.AspNetCore": "[10.0.0, )",
-          "Sufficit.Blazor.UI": "[1.26.908.2020, )",
+          "Sufficit.Blazor.UI": "[2.*, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.Core": "[0.4.0-alpha, )",
           "Sufficit.Identity.Management": "[0.4.0-alpha, )",
@@ -1211,7 +1211,7 @@
         "type": "Project",
         "dependencies": {
           "QRCoder": "[1.8.0, )",
-          "Sufficit.Blazor.UI": "[1.26.908.2020, )",
+          "Sufficit.Blazor.UI": "[2.*, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )"
         }
@@ -1222,13 +1222,13 @@
       "sufficit.identity.ui.components": {
         "type": "Project",
         "dependencies": {
-          "Sufficit.Blazor.UI": "[1.26.908.2020, )"
+          "Sufficit.Blazor.UI": "[2.*, )"
         }
       },
       "sufficit.identity.ui.management": {
         "type": "Project",
         "dependencies": {
-          "Sufficit.Blazor.UI": "[1.26.908.2020, )",
+          "Sufficit.Blazor.UI": "[2.*, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Components": "[0.4.0-alpha, )"
@@ -1237,7 +1237,7 @@
       "sufficit.identity.ui.vault": {
         "type": "Project",
         "dependencies": {
-          "Sufficit.Blazor.UI": "[1.26.908.2020, )",
+          "Sufficit.Blazor.UI": "[2.*, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Components": "[0.4.0-alpha, )"
@@ -1425,9 +1425,9 @@
       },
       "Sufficit.Blazor.UI": {
         "type": "CentralTransitive",
-        "requested": "[1.26.908.2020, )",
-        "resolved": "1.26.908.2020",
-        "contentHash": "s04L8fLtN0trRe3MoHlDqKfKYDf/sHGgwKzO9w+TYd5mHDeUzLX55p06FFgYnbM/hNzqgoMEiUoJt0ksGodU8g==",
+        "requested": "[2.*, )",
+        "resolved": "2.26.911.2250",
+        "contentHash": "YzWPku2kBNF83gvFF2PakMMV2VbGpIy1P61xk6616QNRg6/jWmgoCiIbPPLw8D23d2PfyV/tt85DYXTkiSnn1Q==",
         "dependencies": {
           "Microsoft.AspNetCore.Components": "10.0.11",
           "Microsoft.AspNetCore.Components.Web": "10.0.11"
