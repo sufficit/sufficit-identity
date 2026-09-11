@@ -121,6 +121,7 @@ public static partial class ServiceCollectionExtensions
         services.AddSingleton(options.Mtls);
         services.AddSingleton(options.Jar);
         services.AddSingleton(options.Ciba);
+        services.AddSingleton(options.TokenPruning);
         services.AddSingleton(options.SharedSignals);
         services.AddSingleton(options.OutboundHttp);
         services.TryAddEnumerable(
@@ -261,7 +262,21 @@ public static partial class ServiceCollectionExtensions
         // function initialization. Real connection strings always enable the
         // collector; the sentinel keeps protocol tests deterministic.
         if (!string.Equals(configuredConnectionString, "unused", StringComparison.Ordinal))
+        {
             services.AddHostedService<IdentityUsageMetricsWorker>();
+            // Prunes dead OpenIddict tokens/orphaned authorizations past
+            // Sufficit:Identity:TokenPruning:RetentionDays. Registered only
+            // for real connection strings for the same reason as the metrics
+            // writer above: the shared in-memory SQLite connection used by
+            // integration hosts races background writers.
+            services.AddHostedService<Tokens.OpenIddictPruningWorker>();
+            // MariaDB rejects the LIMIT-in-subquery DELETE that the EF Core
+            // bulk path emits for OpenIddict's PruneAsync batches (the same
+            // dialect gap the audit retention worker hit in production), so
+            // real deployments force the transactional batch path instead.
+            services.AddOptions<OpenIddict.EntityFrameworkCore.OpenIddictEntityFrameworkCoreOptions>()
+                .Configure(entityFrameworkCore => entityFrameworkCore.DisableBulkOperations = true);
+        }
         var databaseTelemetry = new DatabaseRuntimeTelemetry();
         databaseTelemetry.ConfigureWatchdog(options.Database.Watchdog.Enabled);
         services.AddSingleton(databaseTelemetry);
