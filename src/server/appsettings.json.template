@@ -65,6 +65,8 @@
     "Identity": {
       "Issuer": "https://your-identity-host/",
       "PublicUrl": "https://your-identity-host/",
+      "_AllowDevelopmentOnPublicHost": "Keep false. With ASPNETCORE_ENVIRONMENT=Development the host refuses to start when Issuer/PublicUrl point at a public host or production certificates are configured, because Development enables ephemeral certificates and relaxed security checks. Set true only for a deliberate development server on a public name.",
+      "AllowDevelopmentOnPublicHost": false,
       "_PublicOrigin": "Enforce requires the configured PublicUrl/Issuer and prevents Host headers from shaping security links or metadata. Audit is an explicitly acknowledged migration-only setting.",
       "PublicOrigin": {
         "Mode": "Enforce"
@@ -150,6 +152,10 @@
         },
         "_Authorization": "The internal multi-tenant system was removed (2026-08): isolation is per deployment, externally. Object-level authorization covers protected principals; vault secret contexts/namespaces remain as pure data organization.",
         "Authorization": {
+          "_FullAdministratorRoles": "Roles whose members receive EVERY management capability, bypassing per-capability checks. Empty by default: no role becomes full administrator because of its name. A deployment that wants blanket operator access lists its own role name here, for example [\"administrator\"]. Prefer RoleCapabilities for anything narrower.",
+          "FullAdministratorRoles": [],
+          "_RoleCapabilities": "Maps a role name to the exact capabilities it grants, for example { \"identity-user-manager\": [\"identity.users.read\", \"identity.users.update\"] }.",
+          "RoleCapabilities": {},
           "ProtectedPrincipals": {
             "Mode": "Enforce",
             "TierClaimType": "identity_principal_tier",

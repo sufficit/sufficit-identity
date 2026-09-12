@@ -12,7 +12,6 @@ using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Server;
-using Sufficit.Identity.Server.Management;
 using Sufficit.Identity.Scim;
 using Sufficit.Identity.STS;
 using Sufficit.Identity.STS.Mtls;
@@ -75,6 +74,19 @@ if (!string.IsNullOrWhiteSpace(redisConnectionString))
 var identityOptions = builder.Configuration
     .GetSection("Sufficit:Identity")
     .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
+
+// A Development environment with a public issuer or production certificates is
+// a misconfiguration, not a developer machine: refuse to start before anything
+// that Development relaxes gets registered.
+if (DeploymentTopologyPolicy.ValidateDevelopmentHost(
+        identityOptions,
+        builder.Configuration["Sufficit:Vault:CertificatePath"],
+        builder.Environment.IsDevelopment()))
+{
+    Console.Error.WriteLine(
+        "WARNING: running the Development environment on a host configured like a real "
+        + "deployment because Sufficit:Identity:AllowDevelopmentOnPublicHost=true.");
+}
 
 // ---- Optional presentation composition ----
 // Embedded is the compatibility default. Either surface can be set to None so
@@ -144,19 +156,12 @@ var vaultUiEnabled = uiHostingOptions.Vault.IsEmbedded
 
 if (mgmtEnabled)
 {
+    // The module composes the generic scope/role resolver decorated by the
+    // service principal resolver. Which roles receive full administrator
+    // access is deployment configuration
+    // (Sufficit:Identity:Management:Authorization:FullAdministratorRoles,
+    // empty by default), never a role name hard-coded in the host.
     builder.Services.AddSufficitIdentityManagement(builder.Configuration);
-    // The operator adapter REPLACES the resolver composed by
-    // AddSufficitIdentityManagement — which is exactly how the machine path was
-    // dropped in the first rollout: the service principal decorator was
-    // registered inside that method, and this Replace discarded it. The chain
-    // is now explicit: the operator resolver inside, service principals outside.
-    builder.Services.Replace(
-        ServiceDescriptor.Scoped<IManagementEntitlementResolver>(provider =>
-            new Sufficit.Identity.Management.Authorization.ServicePrincipalEntitlementResolver(
-                new SufficitOperatorManagementEntitlementResolver(
-                    provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Sufficit.Identity.Management.ManagementOptions>>()),
-                provider.GetRequiredService<Sufficit.Identity.Management.Authorization.IServicePrincipalRoleSource>(),
-                provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<Sufficit.Identity.Management.ManagementOptions>>())));
     // M1 fix (eval): replace the MissingClientSecretResolver stub with a
     // vault-backed resolver so provisioning of confidential clients works.
     // The vault is already registered by AddSufficitIdentitySTS above; the
@@ -276,6 +281,11 @@ if (reconcileClientTokenLifetimes)
 }
 
 // ---- Development-only test authentication (MUST be before middleware) ----
+// Compiled into Debug builds only. Release binaries — CI, Docker and deploy.py
+// all publish Release — do not contain these endpoints at all, so a production
+// host started with ASPNETCORE_ENVIRONMENT=Development by mistake still cannot
+// expose an anonymous sign-in endpoint.
+#if DEBUG
 if (app.Environment.IsDevelopment())
 {
     app.Logger.LogInformation("REGISTERING __test__ endpoints");
@@ -315,7 +325,15 @@ if (app.Environment.IsDevelopment())
                 EmailConfirmed = true,
             };
             await userManager.CreateAsync(user, "Test123!@Test");
-            await userManager.AddToRoleAsync(user, "administrator");
+            // Grants whatever the deployment configured as full administrator
+            // roles (see appsettings.Development.json); nothing otherwise.
+            var fullAdministratorRoles = context.RequestServices
+                .GetService<Microsoft.Extensions.Options.IOptions<Sufficit.Identity.Management.ManagementOptions>>()
+                ?.Value.Authorization.FullAdministratorRoles ?? [];
+            foreach (var role in fullAdministratorRoles)
+            {
+                await userManager.AddToRoleAsync(user, role);
+            }
         }
         var claims = new List<System.Security.Claims.Claim>
         {
@@ -335,6 +353,8 @@ if (app.Environment.IsDevelopment())
         await context.Response.WriteAsync("ok");
     });
 }
+
+#endif
 
 // ---- Validate UI module composition (Phase 2) ----
 // Catches: duplicate modules, incompatible versions, surface requested

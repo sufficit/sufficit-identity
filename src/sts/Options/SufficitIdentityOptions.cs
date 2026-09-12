@@ -90,6 +90,14 @@ public sealed class SufficitIdentityOptions
         DeploymentTopology.SingleReplica;
 
     /// <summary>
+    /// Explicitly allows a Development-environment host to use a public issuer
+    /// or production certificate material. Default <see langword="false"/>:
+    /// that combination refuses to start. See
+    /// <see cref="DeploymentTopologyPolicy.ValidateDevelopmentHost"/>.
+    /// </summary>
+    public bool AllowDevelopmentOnPublicHost { get; init; }
+
+    /// <summary>
     /// Token lifetimes. See <see cref="TokenLifetimeOptions"/>.
     /// </summary>
     public TokenLifetimeOptions Tokens { get; init; } = new();

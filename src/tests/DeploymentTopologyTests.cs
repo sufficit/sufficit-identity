@@ -5,6 +5,85 @@ namespace Sufficit.Identity.Tests;
 
 public sealed class DeploymentTopologyTests
 {
+    [Theory]
+    [InlineData("https://localhost:5001/")]
+    [InlineData("https://127.0.0.1/")]
+    [InlineData("https://[::1]:5001/")]
+    [InlineData("https://identity.localhost/")]
+    [InlineData("https://sts.tests.local/")]
+    [InlineData("https://identity.test/")]
+    public void Development_accepts_local_hosts(string issuer)
+    {
+        var tolerated = DeploymentTopologyPolicy.ValidateDevelopmentHost(
+            new SufficitIdentityOptions { Issuer = issuer, PublicUrl = issuer },
+            vaultCertificatePath: null,
+            isDevelopment: true);
+
+        Assert.False(tolerated);
+    }
+
+    [Fact]
+    public void Development_refuses_a_public_issuer()
+    {
+        var error = Assert.Throws<InvalidOperationException>(() =>
+            DeploymentTopologyPolicy.ValidateDevelopmentHost(
+                new SufficitIdentityOptions { Issuer = "https://identity.example.com/" },
+                vaultCertificatePath: null,
+                isDevelopment: true));
+
+        Assert.Contains("identity.example.com", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Development_refuses_production_certificate_material()
+    {
+        Assert.Throws<InvalidOperationException>(() =>
+            DeploymentTopologyPolicy.ValidateDevelopmentHost(
+                new SufficitIdentityOptions
+                {
+                    Issuer = "https://localhost:5001/",
+                    Certificates = new CertificatesOptions { SigningPath = "/etc/identity/signing.pfx" },
+                },
+                vaultCertificatePath: null,
+                isDevelopment: true));
+
+        Assert.Throws<InvalidOperationException>(() =>
+            DeploymentTopologyPolicy.ValidateDevelopmentHost(
+                new SufficitIdentityOptions { Issuer = "https://localhost:5001/" },
+                vaultCertificatePath: "/run/secrets/vault-kek.pfx",
+                isDevelopment: true));
+    }
+
+    [Fact]
+    public void Explicit_override_tolerates_a_public_development_host()
+    {
+        var tolerated = DeploymentTopologyPolicy.ValidateDevelopmentHost(
+            new SufficitIdentityOptions
+            {
+                Issuer = "https://identity-dev.example.com/",
+                AllowDevelopmentOnPublicHost = true,
+            },
+            vaultCertificatePath: null,
+            isDevelopment: true);
+
+        Assert.True(tolerated);
+    }
+
+    [Fact]
+    public void Non_development_environments_are_not_affected()
+    {
+        var tolerated = DeploymentTopologyPolicy.ValidateDevelopmentHost(
+            new SufficitIdentityOptions
+            {
+                Issuer = "https://identity.example.com/",
+                Certificates = new CertificatesOptions { SigningPath = "/etc/identity/signing.pfx" },
+            },
+            vaultCertificatePath: "/run/secrets/vault-kek.pfx",
+            isDevelopment: false);
+
+        Assert.False(tolerated);
+    }
+
     [Fact]
     public void Single_replica_keeps_compatibility_defaults()
     {

@@ -12,7 +12,6 @@ using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Overview;
 using Sufficit.Identity.Management.Vault;
 using Sufficit.Identity.Core.Entities;
-using Sufficit.Identity.Server.Management;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 
@@ -213,22 +212,37 @@ public sealed partial class ManagementApplicationAuthorizationTests
     }
 
     [Fact]
-    public async Task Sufficit_host_maps_only_administrator_to_provider_operator()
+    public async Task Administrator_role_name_grants_nothing_without_configuration()
     {
-        var resolver = new SufficitOperatorManagementEntitlementResolver(
+        // Full administrator access is a deployment decision. A role that
+        // happens to be named "administrator" must not become god-mode just
+        // because of its name.
+        var resolver = new ScopeAndRoleManagementEntitlementResolver(
             Options.Create(new ManagementOptions()));
 
-        var manager = await resolver.ResolveAsync(
-            PrincipalWithRole(
-                "manager",
-                new Claim("directive", "clientadmin:acme")));
         var administrator = await resolver.ResolveAsync(
             PrincipalWithRole("administrator"));
 
-        Assert.Empty(manager.Capabilities);
+        Assert.Empty(administrator.Capabilities);
+    }
+
+    [Fact]
+    public async Task Configured_full_administrator_role_grants_every_capability()
+    {
+        var options = new ManagementOptions();
+        options.Authorization.FullAdministratorRoles = ["platform-operators"];
+        var resolver = new ScopeAndRoleManagementEntitlementResolver(
+            Options.Create(options));
+
+        var platformOperator = await resolver.ResolveAsync(
+            PrincipalWithRole("platform-operators"));
+        var manager = await resolver.ResolveAsync(
+            PrincipalWithRole("manager"));
+
         Assert.Equal(
             ManagementCapabilities.All.Order(StringComparer.Ordinal),
-            administrator.Capabilities.Order(StringComparer.Ordinal));
+            platformOperator.Capabilities.Order(StringComparer.Ordinal));
+        Assert.Empty(manager.Capabilities);
     }
 
     [Fact]
@@ -319,16 +333,16 @@ public sealed partial class ManagementApplicationAuthorizationTests
             ValueTask.FromResult(ManagementAuthorizationDecision.Allowed());
     }
 
-    // --- Principal de máquina (client_credentials) -----------------------
+    // --- Machine principal (client_credentials) --------------------------
     //
-    // Um serviço não passa por nenhuma das fontes de capacidade do resolvedor
-    // comum: o claim `permission` só é emitido a partir de um operador
-    // autenticado, e o cliente não está em papel de usuário nenhum. Antes, a
-    // única forma de dar acesso de gestão a um serviço era pô-lo num papel de
-    // administrador — trocar "não consegue nada" por "consegue tudo".
+    // A service matches none of the generic resolver's capability sources: the
+    // `permission` claim is only issued for an authenticated operator, and the
+    // client holds no user role. Previously the only way to give a service
+    // management access was to put it in an administrator role — trading
+    // "can do nothing" for "can do everything".
     //
-    // A concessão mora no banco (propriedade do cliente), o significado do
-    // papel continua em configuração. Mesma divisão que já valia para gente.
+    // The grant lives in the database (a client property); what the role means
+    // stays in configuration. The same split that already applied to people.
 
     private const string ServiceClient = "sufficit_cloud_mobile_api";
     private const string VaultRole = "mobilecloudadministrator";

@@ -12,7 +12,6 @@ using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Overview;
 using Sufficit.Identity.Management.Vault;
 using Sufficit.Identity.Core.Entities;
-using Sufficit.Identity.Server.Management;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 
