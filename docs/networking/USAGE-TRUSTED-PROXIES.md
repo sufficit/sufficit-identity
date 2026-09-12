@@ -1,69 +1,81 @@
-# Proxies confiáveis
+# Trusted proxies
 
-A tela `/management/settings/trusted-proxies` e a API `GET/PUT /api/trusted-proxies` usam o mesmo serviço administrativo. A leitura exige `identity.trusted-proxies.read`; a escrita, `identity.trusted-proxies.manage`, além da política MFA do Management. O prefixo HTTP acompanha a configuração do módulo.
+The `/management/settings/trusted-proxies` page and the `GET/PUT /api/trusted-proxies` API use the same administrative service. Reading requires `identity.trusted-proxies.read`; writing requires `identity.trusted-proxies.manage` plus the Management MFA policy. The HTTP prefix follows the module configuration.
 
-## Mesclagem e aplicação
+## Merging and application
 
-`Sufficit:Identity:TrustedProxies` permanece como baseline de arquivo. O banco contém redes adicionais, normalizadas e sem duplicatas, na linha singleton de `trustedproxyconfiguration`. Remover uma rede do banco nunca remove uma entrada igual do arquivo. A tela mostra ambas as origens.
+`Sufficit:Identity:TrustedProxies` remains the file baseline. The database holds additional networks, normalized and de-duplicated, in the singleton row of `trustedproxyconfiguration`. Removing a network from the database never removes an identical entry from the file. The page shows both sources.
 
-`Sufficit:Identity:ForwardLimit` vale 2 por padrão. O valor opcional no banco tem precedência; a opção “Usar o limite de saltos do appsettings” remove essa sobrescrita. Os limites aceitos são de 1 a 10. IPs IPv4/IPv6 e redes CIDR são aceitos; redes universais `/0`, nomes DNS e endereços com escopo são rejeitados. CIDRs com bits de host são normalizados para a rede base.
+`Sufficit:Identity:ForwardLimit` defaults to 2. The optional database value takes precedence; the "Use the appsettings hop limit" option removes that override. Accepted limits are 1 to 10. IPv4/IPv6 addresses and CIDR networks are accepted; universal `/0` networks, DNS names and scoped addresses are rejected. CIDRs with host bits set are normalized to the base network.
 
-O host carrega o snapshot antes de aceitar tráfego, após as migrações. Uma falha inicial impede a inicialização. O worker consulta somente a revisão a cada 30 segundos por padrão, com variação de ±10%; o conteúdo completo só é lido na inicialização ou quando a revisão mudou. Uma confirmação sem mudança renova o frescor e mantém a mesma instância do snapshot.
+The host loads the snapshot before accepting traffic, after migrations. An initial failure prevents startup. The worker queries only the revision every 30 seconds by default, with ±10% jitter; the full content is read only at startup or when the revision changed. A confirmation without a change renews freshness and keeps the same snapshot instance.
 
-A gravação administrativa e o refresh compartilham coordenação: após o commit, os dados confirmados são aplicados diretamente na memória, sem outro SELECT. Uma recarga iniciada antes da gravação não pode sobrescrevê-la. A notificação é enviada somente após o commit. Arquivos são carregados no início do processo e exigem reinício quando alterados.
+The administrative write and the refresh share coordination: after the commit, the confirmed data is applied directly in memory, without another SELECT. A reload started before the write cannot overwrite it. The notification is sent only after the commit. Files are loaded when the process starts and require a restart when changed.
 
-O middleware captura uma instância imutável das opções por versão do snapshot. Não modifica listas usadas por requisições concorrentes nem consulta o banco durante o encaminhamento. Cada salto deve ser confiável, e o processamento para ao encontrar um intermediário não confiável.
+The middleware captures an immutable options instance per snapshot version. It does not modify lists used by concurrent requests and does not query the database while forwarding. Every hop must be trusted, and processing stops at the first untrusted intermediary.
 
-## Auditoria e concorrência
+## Audit and concurrency
 
-Configuração e evento de auditoria são gravados no mesmo SaveChanges/transação. Os campos `beforejson`/`afterjson` contêm somente as redes e o limite configurados no banco, visíveis em “Ver alteração” na auditoria. Ator, data, capability e correlação seguem o contrato existente. A revisão enviada pela tela evita sobrescrever uma alteração concorrente; em conflito, recarregue antes de salvar.
+The configuration and the audit event are written in the same SaveChanges/transaction. The `beforejson`/`afterjson` fields contain only the networks and the limit configured in the database, visible under "View change" in the audit log. Actor, date, capability and correlation follow the existing contract. The revision sent by the page prevents overwriting a concurrent change; on conflict, reload before saving.
 
-## Publicação
+## Publication
 
-Aplicar `20260910131719_AddTrustedProxyConfiguration` uma vez no banco antes de trocar os binários. Alternativamente, o SQL `docs/migration/sql/097-add-trusted-proxies.sql` aplica esse delta uma vez; não executar ambos sem verificar o histórico. O schema vazio canônico também foi atualizado. A migração cria a linha inicial e adiciona campos opcionais à auditoria, preservando os dados existentes.
+Apply `20260910131719_AddTrustedProxyConfiguration` once to the database before swapping binaries. Alternatively, the SQL script `docs/migration/sql/097-add-trusted-proxies.sql` applies the same delta once; do not run both without checking the history. The canonical empty schema was updated as well. The migration creates the initial row and adds optional fields to the audit table, preserving existing data.
 
-Na cadeia cliente → proxy → Nginx → Identity, o header deve chegar ao Identity com `IP_CLIENTE, IP_PROXY`. O proxy de borda precisa substituir headers encaminhados fornecidos por clientes não confiáveis; apenas confiar no IP do proxy não autentica um header que ele copiou sem validar. Não aumentar o número de saltos sem verificar esse comportamento. O teste da aplicação cobre o limite e a parada em peers não confiáveis; não modifica nem substitui a configuração do proxy externo.
+In the chain client → proxy → Nginx → Identity, the header must reach Identity as `CLIENT_IP, PROXY_IP`. The edge proxy must replace forwarded headers supplied by untrusted clients; merely trusting the proxy IP does not authenticate a header it copied without validating. Do not raise the hop count without verifying that behavior. The application test covers the limit and the stop at untrusted peers; it neither modifies nor replaces the external proxy configuration.
 
-## Sincronização por NATS e recuperação
+## NATS synchronization and recovery
 
-Implementada conforme a [arquitetura de snapshots](../architecture/ARCHITECTURE-RUNTIME-SNAPSHOTS.md). NATS é opcional e desabilitado por padrão. Sua indisponibilidade não impede salvar a configuração; a API informa `NotificationPending` quando o último commit local não conseguiu enviar o aviso. Esse campo não é confirmação de aplicação pelos demais nós. `NotificationsConnected` indica conexão do transporte.
+Implemented according to the [runtime snapshot architecture](../architecture/ARCHITECTURE-RUNTIME-SNAPSHOTS.md). NATS is optional and disabled by default. Its unavailability does not prevent saving the configuration; the API reports `NotificationPending` when the last local commit could not send the notice. That field is not confirmation that other nodes applied the change. `NotificationsConnected` reports the transport connection.
 
-Cada instância assina sem queue group. O aviso contém versão do envelope, identificador do evento/processo, domínio, escopo, revisão e horário; não transporta redes confiáveis. A assinatura usa por padrão `sufficit.<ambiente em minúsculas>.identity.trusted-proxies.changed.v1` (por exemplo, `sufficit.production.identity.trusted-proxies.changed.v1`). Todos os nós devem alcançar o mesmo domínio NATS e subject, com credenciais e permissões restritas. A conexão aceita URL `nats://` ou `tls://`; usar TLS conforme a rede e política operacional.
+Every instance subscribes without a queue group. The notice carries the envelope version, event/process identifier, domain, scope, revision and timestamp; it never carries trusted networks. The subscription defaults to `sufficit.<lower-case environment>.identity.trusted-proxies.changed.v1` (for example, `sufficit.production.identity.trusted-proxies.changed.v1`). All nodes must reach the same NATS domain and subject, with restricted credentials and permissions. The connection accepts a `nats://` or `tls://` URL; use TLS as the network and operational policy require.
 
-Ao conectar ou reconectar, a assinatura é confirmada antes de solicitar uma conferência do banco. A bridge repete tentativas mesmo quando a conexão inicial falha. Avisos são agrupados em uma fila de capacidade 1; uma rajada não cria uma fila ilimitada. Há um debounce de 100ms antes da consulta por aviso. Um aviso recebido durante a atualização permanece para a próxima conferência.
+On connect or reconnect, the subscription is confirmed before a database check is requested. The bridge keeps retrying even when the initial connection fails. Notices are coalesced in a queue of capacity 1, so a burst cannot build an unbounded queue. There is a 100 ms debounce before the query triggered by a notice. A notice received during an update is kept for the next check.
 
-Se a revisão anunciada ainda não aparece, há tentativas adicionais após aproximadamente 1, 2, 4, 8, 15 e 30 segundos, com variação de ±10%. Depois dessa janela, a reconciliação periódica continua. GUIDs são opacos: avisos atrasados não ordenam snapshots, e uma revisão antiga já superada não bloqueia o processo indefinidamente. O conteúdo e a revisão aplicados são sempre os retornados juntos pelo banco local.
+If the announced revision does not appear yet, additional attempts run after roughly 1, 2, 4, 8, 15 and 30 seconds, with ±10% jitter. After that window, periodic reconciliation continues. GUIDs are opaque: late notices do not order snapshots, and an old revision that was already superseded cannot block the process indefinitely. The applied content and revision are always the ones returned together by the local database.
 
-A convergência é eventual e depende da replicação: uma leitura recente da réplica não prova que ela viu todos os commits de outros servidores. Não há outbox nem confirmação de aplicação por nó. Queda entre commit e publicação, ou evento perdido, é recuperada na conexão/reconciliação. SQL externo que altere a configuração precisa também mudar `revision`; manter a revisão impede detectar a alteração.
+Convergence is eventual and depends on replication: a recent read from a replica does not prove it has seen every commit from other servers. There is no outbox and no per-node application acknowledgement. A crash between commit and publication, or a lost notice, is recovered on connection or reconciliation. External SQL that changes the configuration must also change `revision`; keeping the revision prevents the change from being detected.
 
-## Opções do host
+## Host options
 
-Em `Sufficit:Identity:ProxySynchronization`:
+Under `Sufficit:Identity:ProxySynchronization`:
 
-| Opção | Padrão | Comportamento |
+| Option | Default | Behavior |
 | --- | --- | --- |
-| `ReconcileSeconds` | 30 | Conferência escalar, intervalo de 1 a 3600 segundos, com ±10% de variação. |
-| `MaxStaleSeconds` | 120 | Prazo máximo sem confirmação bem-sucedida do banco; deve ser pelo menos duas vezes o intervalo e no máximo 86400. |
-| `RefreshTimeoutSeconds` | 10 | Timeout de cada tentativa do worker, entre 1 e 60 segundos. |
-| `Nats:Enabled` | false | Habilita avisos; não modifica a autoridade do banco. |
-| `Nats:Url` | nats://127.0.0.1:4222 | Endpoint; configurar o endereço real alcançável pelos nós. |
-| `Nats:Token` | ausente | Credencial opcional; fornecer no ambiente protegido do serviço. |
-| `Nats:Subject` | derivado do ambiente | Override opcional, sem curingas. |
+| `ReconcileSeconds` | 30 | Scalar check interval, 1 to 3600 seconds, with ±10% jitter. |
+| `MaxStaleSeconds` | 120 | Maximum time without a successful database confirmation; must be at least twice the interval and at most 86400. |
+| `RefreshTimeoutSeconds` | 10 | Timeout for each worker attempt, between 1 and 60 seconds. |
+| `StaleSnapshotMode` | `FileBaseline` | What forwarding does once `MaxStaleSeconds` passes; see [Freshness and diagnostics](#freshness-and-diagnostics). |
+| `Nats:Enabled` | false | Enables notices; does not change the database's authority. |
+| `Nats:Url` | nats://127.0.0.1:4222 | Endpoint; configure the real address reachable by the nodes. |
+| `Nats:Token` | absent | Optional credential; supply it through the service's protected environment. |
+| `Nats:Subject` | derived from the environment | Optional override, without wildcards. |
 
-Exemplo de nomes de variáveis do ambiente protegido: `Sufficit__Identity__ProxySynchronization__Nats__Enabled`, `Sufficit__Identity__ProxySynchronization__Nats__Url` e `Sufficit__Identity__ProxySynchronization__Nats__Token`. Não versionar valores de credenciais. Nenhum segredo é necessário para a reconciliação sem broker.
+Example variable names for the protected environment: `Sufficit__Identity__ProxySynchronization__Nats__Enabled`, `Sufficit__Identity__ProxySynchronization__Nats__Url` and `Sufficit__Identity__ProxySynchronization__Nats__Token`. Do not version credential values. No secret is required for reconciliation without a broker.
 
-Para adotar 300 segundos, declarar também uma tolerância compatível (pelo menos 600 segundos) e avaliar o atraso de remoção de confiança. O padrão continua em 30 segundos para não ampliar automaticamente essa janela. Este intervalo não é garantia absoluta de propagação: inclui replicação, variação e duração das tentativas.
+To adopt 300 seconds, also declare a compatible tolerance (at least 600 seconds) and assess the trust-removal delay. The default stays at 30 seconds so that window is not widened automatically. This interval is not an absolute propagation guarantee: it includes replication, jitter and the duration of attempts.
 
-## Frescor e diagnóstico
+## Freshness and diagnostics
 
-Falhas preservam o último snapshot válido. Quando `MaxStaleSeconds` é excedido, o middleware retorna `503` antes de processar a requisição, inclusive endpoints de saúde/administração; jamais limpa a validação para confiar em qualquer origem. O worker continua trabalhando e a confirmação posterior do banco restabelece o atendimento automaticamente. A readiness também registra a verificação `trusted-proxy-snapshot`.
+Failures keep the last valid snapshot. Once `MaxStaleSeconds` passes without a successful database confirmation, the database-managed list is no longer trusted, and `StaleSnapshotMode` decides what happens next:
 
-A API administrativa inclui `LastConfirmedAtUtc`, `Generation`, `IsFresh`, `NotificationsEnabled`, `NotificationsConnected` e `NotificationPending`. `Generation` identifica trocas locais; não é versão global ordenada. No serviço `TrustedProxySnapshotStore.Diagnostics`, contadores de leituras escalares/conteúdo, última troca e falhas consecutivas permitem inspeção e testes. Logs registram conexão, desconexão, falhas, recuperação esgotada e recargas; a conferência bem-sucedida é Debug. Não são registrados URL/token do broker.
+| Mode | Forwarding while stale | Readiness (`trusted-proxy-snapshot`) |
+| --- | --- | --- |
+| `FileBaseline` (default) | Trusts only `Sufficit:Identity:TrustedProxies` from configuration. Database additions are ignored until the database confirms the list again. Traffic keeps flowing. | Degraded (HTTP 200) |
+| `Reject` | Refuses traffic with `503`. Liveness (`/health`) is still answered. | Unhealthy (HTTP 503) |
 
-## Testes locais com broker dedicado
+Neither mode disables validation or trusts arbitrary sources. The default trusts fewer peers, never more: a proxy an operator just removed from the database is not trusted while the database is unreachable. It also keeps replicas that share one database from all refusing traffic, and all failing readiness, at the same moment — which is how a two-minute database outage used to take every node offline, liveness included.
 
-`TrustedProxySynchronizationTests` valida SQL escalar, commit sem releitura, rollback, concorrência, frescor, entrada inválida e recuperação. `TrustedProxyNatsIntegrationTests` usa três stores independentes, broker autenticado, falha inicial, visibilidade atrasada da réplica e reconexão após aviso perdido.
+Plan for one consequence: while degraded, requests that arrive through a proxy listed only in the database lose the forwarded client address and scheme. List the production edge proxies in the file baseline so a database outage does not strip that information.
 
-O teste NATS é opt-in: fornecer `IDENTITY_TEST_NATS_URL` e `IDENTITY_TEST_NATS_CONTAINER`, cujo nome deve começar com `identity-proxy-sync-tests-`. O broker é exclusivamente de teste, com token `identity-test-token`; o teste para/inicia esse container. Mapear uma porta local FIXA, pois portas aleatórias podem mudar em um restart. Nunca apontar essas variáveis para produção. Sem elas, o teste é marcado como skipped.
+The worker keeps retrying, and the next confirmation restores the full list automatically. State transitions are logged once each — Warning when degrading to the file baseline, Error when refusing traffic, Information on recovery — rather than on every request.
 
-Esta implementação não exige nova migração além da tabela de proxies já existente. Ativação NATS e publicação desta versão em produção são etapas operacionais separadas.
+The administrative API includes `LastConfirmedAtUtc`, `Generation`, `IsFresh`, `NotificationsEnabled`, `NotificationsConnected` and `NotificationPending`. `Generation` identifies local swaps; it is not an ordered global version. On `TrustedProxySnapshotStore`, `State` reports the forwarding state (`Fresh`, `StaleFileBaseline`, `StaleRejected`) and `Diagnostics` exposes scalar/content read counters, last change and consecutive failures for inspection and tests. Logs record connection, disconnection, failures, exhausted recovery and reloads; a successful check is Debug. Broker URL and token are never logged.
+
+## Local tests with a dedicated broker
+
+`TrustedProxySynchronizationTests` covers scalar SQL, commit without re-reading, rollback, concurrency, freshness, invalid input and recovery, as well as degradation to the file baseline, refusal with liveness still answered in `Reject` mode, and readiness status per mode. `TrustedProxyNatsIntegrationTests` uses three independent stores, an authenticated broker, an initial failure, delayed replica visibility and reconnection after a lost notice.
+
+The NATS test is opt-in: provide `IDENTITY_TEST_NATS_URL` and `IDENTITY_TEST_NATS_CONTAINER`, whose name must start with `identity-proxy-sync-tests-`. The broker is exclusively for tests, with token `identity-test-token`; the test stops and starts that container. Map a FIXED local port, because random ports can change on restart. Never point these variables at production. Without them, the test is reported as skipped.
+
+This implementation requires no migration beyond the existing trusted proxy table. Enabling NATS and publishing this version to production are separate operational steps.

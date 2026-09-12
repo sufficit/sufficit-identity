@@ -102,10 +102,11 @@
       "_ForwardLimit": "Maximum trusted hops processed right-to-left. Default 2 supports client -> edge proxy -> Nginx -> Identity. Database override takes precedence; null in the database inherits this value. Range 1-10. Every intermediate peer must be in the merged trust list.",
       "ForwardLimit": 2,
       "ProxySynchronization": {
-        "_description": "Revision-only reconciliation. Full content is loaded on change. Intervals include +/-10% jitter. Exceeding MaxStaleSeconds without database confirmation returns 503; never disables proxy validation. Increase ReconcileSeconds only with an explicit trust-removal delay budget.",
+        "_description": "Revision-only reconciliation. Full content is loaded on change. Intervals include +/-10% jitter. Proxy validation is never disabled. When MaxStaleSeconds passes without database confirmation, StaleSnapshotMode decides: FileBaseline (default) trusts only the file-configured TrustedProxies until the database answers again, keeps serving and reports readiness Degraded; Reject refuses traffic with 503 (liveness still answers) and reports readiness Unhealthy. List production edge proxies in the file baseline so a database outage does not strip forwarded client information. Increase ReconcileSeconds only with an explicit trust-removal delay budget.",
         "ReconcileSeconds": 30,
         "MaxStaleSeconds": 120,
         "RefreshTimeoutSeconds": 10,
+        "StaleSnapshotMode": "FileBaseline",
         "Nats": {
           "Enabled": false,
           "Url": "nats://127.0.0.1:4222",
