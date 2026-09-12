@@ -18,6 +18,12 @@ public sealed class TrustedProxySnapshotStore
     private readonly TimeProvider clock;
     private readonly SemaphoreSlim refreshGate = new(1, 1);
     private TrustedProxySnapshot current;
+
+    /// <summary>
+    /// The file-configured proxies alone. A stable instance, so forwarding can
+    /// cache its middleware for it exactly as it does for a database snapshot.
+    /// </summary>
+    private readonly TrustedProxySnapshot fileBaseline;
     private TrustedProxySyncDiagnostics diagnostics = new();
     public TrustedProxySnapshot Current => Volatile.Read(ref current);
     public TrustedProxySyncDiagnostics Diagnostics => Volatile.Read(ref diagnostics);
@@ -26,6 +32,23 @@ public sealed class TrustedProxySnapshotStore
     public bool NotificationsConnected => publisher?.Connected == true;
     public bool IsFresh => Diagnostics.LastConfirmedAtUtc is { } confirmed
         && clock.GetUtcNow() - confirmed <= TimeSpan.FromSeconds(Synchronization.MaxStaleSeconds);
+
+    public TrustedProxySnapshotState State => ResolveForwarding().State;
+
+    /// <summary>
+    /// Decides which proxy list forwarding applies. Freshness and validity are
+    /// separate questions: a stale database list is not trusted, but that does
+    /// not have to mean refusing every request — the file-configured proxies
+    /// are the deployment's own baseline and remain valid without the database.
+    /// </summary>
+    public TrustedProxyForwarding ResolveForwarding()
+    {
+        if (IsFresh)
+            return new(TrustedProxySnapshotState.Fresh, Current);
+        return Synchronization.StaleSnapshotMode == TrustedProxyStaleSnapshotMode.Reject
+            ? new(TrustedProxySnapshotState.StaleRejected, null)
+            : new(TrustedProxySnapshotState.StaleFileBaseline, fileBaseline);
+    }
 
     public TrustedProxySnapshotStore(IServiceScopeFactory scopes,
         IOptions<TrustedProxyOptions> options, ILogger<TrustedProxySnapshotStore> logger,
@@ -40,6 +63,7 @@ public sealed class TrustedProxySnapshotStore
         var baseline = TrustedProxyValidation.Normalize(options.Value.TrustedProxies);
         TrustedProxyValidation.ValidateForwardLimit(options.Value.ForwardLimit);
         current = new(baseline, [], baseline, options.Value.ForwardLimit, null, "initial", null);
+        fileBaseline = new(baseline, [], baseline, options.Value.ForwardLimit, null, "file-baseline", null);
     }
 
     public async Task RefreshAsync(CancellationToken cancellationToken = default)

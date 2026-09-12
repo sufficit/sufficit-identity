@@ -145,11 +145,11 @@ var vaultUiEnabled = uiHostingOptions.Vault.IsEmbedded
 if (mgmtEnabled)
 {
     builder.Services.AddSufficitIdentityManagement(builder.Configuration);
-    // O adaptador do operador SUBSTITUI o resolvedor composto pelo
-    // AddSufficitIdentityManagement — e foi exatamente assim que o caminho de
-    // máquina ficou de fora na primeira implantação: o decorador de service
-    // principal estava registrado lá dentro, e este Replace o descartava. A
-    // cadeia agora é explícita: operador da casa por dentro, máquina por fora.
+    // The operator adapter REPLACES the resolver composed by
+    // AddSufficitIdentityManagement — which is exactly how the machine path was
+    // dropped in the first rollout: the service principal decorator was
+    // registered inside that method, and this Replace discarded it. The chain
+    // is now explicit: the operator resolver inside, service principals outside.
     builder.Services.Replace(
         ServiceDescriptor.Scoped<IManagementEntitlementResolver>(provider =>
             new Sufficit.Identity.Management.Authorization.ServicePrincipalEntitlementResolver(
@@ -691,12 +691,16 @@ app.MapControllers();
 
 // ---- Health checks (liveness/readiness) ----
 // /health: liveness only, no dependency checks (fast, always 200 once the
-// process is up). /health/ready: runs all registered checks (e.g. DB).
-app.MapHealthChecks("/health", new HealthCheckOptions
+// process is up). TrustedProxyForwardingMiddleware never refuses it, even when
+// it refuses other traffic. /health/ready: runs all registered checks (e.g.
+// DB, trusted proxy freshness); a stale proxy list served from the file
+// baseline reports Degraded (200) so replicas sharing one database are not all
+// removed from the load balancer at the same moment.
+app.MapHealthChecks(HealthEndpoints.Liveness, new HealthCheckOptions
 {
     Predicate = _ => false
 });
-app.MapHealthChecks("/health/ready");
+app.MapHealthChecks(HealthEndpoints.Readiness);
 
 // Map management endpoints (if enabled).
 if (mgmtEnabled)

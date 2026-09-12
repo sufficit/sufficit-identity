@@ -8,6 +8,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -113,26 +114,91 @@ public sealed class TrustedProxySynchronizationTests
     }
 
     [Fact]
-    public async Task Invalid_database_change_keeps_snapshot_and_stale_requests_fail_closed_until_recovered()
+    public async Task Stale_snapshot_in_reject_mode_refuses_traffic_but_not_liveness_until_recovered()
     {
-        await using var node = await Node.Create();
+        await using var node = await Node.Create(staleMode: TrustedProxyStaleSnapshotMode.Reject);
         var before = node.Store.Current;
         await node.SetRow(Guid.NewGuid().ToString("N"), "invalid-json");
         await Assert.ThrowsAsync<JsonException>(() => node.Store.RefreshAsync());
         Assert.Same(before, node.Store.Current);
         node.Clock.Advance(121);
-        var called = false;
-        var middleware = new TrustedProxyForwardingMiddleware(_ => { called = true; return Task.CompletedTask; },
+        var called = 0;
+        var middleware = new TrustedProxyForwardingMiddleware(_ => { called++; return Task.CompletedTask; },
             node.Store, NullLoggerFactory.Instance);
-        var request = new DefaultHttpContext();
-        await middleware.InvokeAsync(request);
-        Assert.Equal(503, request.Response.StatusCode);
-        Assert.False(called);
+
+        var traffic = new DefaultHttpContext();
+        traffic.Request.Path = "/connect/token";
+        await middleware.InvokeAsync(traffic);
+        Assert.Equal(503, traffic.Response.StatusCode);
+        Assert.Equal(0, called);
+
+        // Refusing liveness would make an orchestrator restart a process whose
+        // only problem is the database.
+        var liveness = new DefaultHttpContext();
+        liveness.Request.Path = "/health";
+        await middleware.InvokeAsync(liveness);
+        Assert.Equal(1, called);
+
         await node.SetRow(Guid.NewGuid().ToString("N"));
         await node.Store.RefreshAsync();
         await middleware.InvokeAsync(new DefaultHttpContext());
-        Assert.True(called);
+        Assert.Equal(2, called);
         Assert.Equal(0, node.Store.Diagnostics.ConsecutiveFailures);
+    }
+
+    [Fact]
+    public async Task Stale_snapshot_degrades_to_file_proxies_instead_of_refusing_traffic()
+    {
+        // The database is where operators add proxies at runtime; the file is
+        // the deployment's own baseline. When the database cannot confirm the
+        // list, trusting fewer peers keeps the node serving without trusting a
+        // proxy an operator may have just removed.
+        await using var node = await Node.Create();
+        var middleware = new TrustedProxyForwardingMiddleware(_ => Task.CompletedTask,
+            node.Store, NullLoggerFactory.Instance);
+
+        var viaDatabaseProxy = Forwarded("172.16.2.0", "198.51.100.7");
+        await middleware.InvokeAsync(viaDatabaseProxy);
+        Assert.Equal("198.51.100.7", viaDatabaseProxy.Connection.RemoteIpAddress!.ToString());
+
+        node.Clock.Advance(121);
+        Assert.Equal(TrustedProxySnapshotState.StaleFileBaseline, node.Store.State);
+
+        var staleViaDatabaseProxy = Forwarded("172.16.2.0", "198.51.100.7");
+        await middleware.InvokeAsync(staleViaDatabaseProxy);
+        Assert.NotEqual(503, staleViaDatabaseProxy.Response.StatusCode);
+        Assert.Equal("172.16.2.0", staleViaDatabaseProxy.Connection.RemoteIpAddress!.ToString());
+
+        var staleViaFileProxy = Forwarded("127.0.0.1", "198.51.100.7");
+        await middleware.InvokeAsync(staleViaFileProxy);
+        Assert.Equal("198.51.100.7", staleViaFileProxy.Connection.RemoteIpAddress!.ToString());
+
+        await node.SetRow(Guid.NewGuid().ToString("N"));
+        await node.Store.RefreshAsync();
+        var recovered = Forwarded("172.16.2.0", "198.51.100.7");
+        await middleware.InvokeAsync(recovered);
+        Assert.Equal("198.51.100.7", recovered.Connection.RemoteIpAddress!.ToString());
+    }
+
+    [Theory]
+    [InlineData(TrustedProxyStaleSnapshotMode.FileBaseline, HealthStatus.Degraded)]
+    [InlineData(TrustedProxyStaleSnapshotMode.Reject, HealthStatus.Unhealthy)]
+    public async Task Readiness_reports_a_stale_list_by_mode(
+        TrustedProxyStaleSnapshotMode mode,
+        HealthStatus expectedWhenStale)
+    {
+        await using var node = await Node.Create(staleMode: mode);
+        var check = new TrustedProxySnapshotHealthCheck(node.Store);
+
+        Assert.Equal(
+            HealthStatus.Healthy,
+            (await check.CheckHealthAsync(new HealthCheckContext())).Status);
+
+        node.Clock.Advance(121);
+
+        Assert.Equal(
+            expectedWhenStale,
+            (await check.CheckHealthAsync(new HealthCheckContext())).Status);
     }
 
     [Fact]
@@ -220,6 +286,14 @@ public sealed class TrustedProxySynchronizationTests
         }
     }
 
+    private static DefaultHttpContext Forwarded(string peer, string forwardedFor)
+    {
+        var context = new DefaultHttpContext();
+        context.Connection.RemoteIpAddress = IPAddress.Parse(peer);
+        context.Request.Headers["X-Forwarded-For"] = forwardedFor;
+        return context;
+    }
+
     internal static TrustedProxyConfiguration Row(string revision, string networks = "[\"172.16.2.0/32\"]") =>
         new() { Revision = revision, NetworksJson = networks, UpdatedAtUtc = DateTime.UtcNow };
 
@@ -238,21 +312,23 @@ public sealed class TrustedProxySynchronizationTests
         public Commands Commands { get; }
         public Clock Clock { get; } = new();
         private Node(SqliteConnection connection, ServiceProvider services, Commands commands,
-            ITrustedProxyChangePublisher? publisher, int reconcileSeconds)
+            ITrustedProxyChangePublisher? publisher, int reconcileSeconds, TrustedProxyStaleSnapshotMode staleMode)
         {
             this.connection = connection; this.services = services; Commands = commands;
             Store = new(services.GetRequiredService<IServiceScopeFactory>(), Options.Create(new TrustedProxyOptions
-            { TrustedProxies = ["127.0.0.1/32"], ProxySynchronization = new() { ReconcileSeconds = reconcileSeconds } }),
+            { TrustedProxies = ["127.0.0.1/32"], ProxySynchronization = new()
+                { ReconcileSeconds = reconcileSeconds, StaleSnapshotMode = staleMode } }),
                 NullLogger<TrustedProxySnapshotStore>.Instance, publisher, Clock);
         }
-        public static async Task<Node> Create(ITrustedProxyChangePublisher? publisher = null, int reconcileSeconds = 30)
+        public static async Task<Node> Create(ITrustedProxyChangePublisher? publisher = null, int reconcileSeconds = 30,
+            TrustedProxyStaleSnapshotMode staleMode = TrustedProxyStaleSnapshotMode.FileBaseline)
         {
             var connection = new SqliteConnection("Data Source=:memory:");
             await connection.OpenAsync();
             var commands = new Commands();
             var services = new ServiceCollection().AddDbContext<AppDbContext>(o =>
                 o.UseSqlite(connection).UseOpenIddict().AddInterceptors(commands)).BuildServiceProvider();
-            var node = new Node(connection, services, commands, publisher, reconcileSeconds);
+            var node = new Node(connection, services, commands, publisher, reconcileSeconds, staleMode);
             using var scope = services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             await db.Database.ExecuteSqlRawAsync("CREATE TABLE trustedproxyconfiguration (id INTEGER PRIMARY KEY, networksjson TEXT NOT NULL, forwardlimit INTEGER NULL, revision TEXT NOT NULL, updatedatutc TEXT NOT NULL)");
