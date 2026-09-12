@@ -686,7 +686,10 @@ if (uiHostingOptions.Public.IsEmbedded)
     app.MapDeviceBrowserLaunch();
 }
 
-app.UseAuthentication();
+// Static assets are anonymous files; skipping authentication for them avoids
+// a security-stamp read per script and stylesheet. The exclusion is based on
+// endpoint metadata, so OpenIddict protocol requests still authenticate.
+app.UseAuthenticationExceptStaticAssets();
 app.UseAuthorization();
 
 // Account recovery and registration are anonymous-only surfaces. Keep the

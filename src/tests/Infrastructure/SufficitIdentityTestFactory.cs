@@ -319,7 +319,8 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                 app.ApplicationServices.GetRequiredService<SufficitIdentityOptions>().Cors);
 
             Sufficit.Identity.Server.BrowserAuthorizationErrors.UseBrowserAuthorizationErrors(app);
-            app.UseAuthentication();
+            Sufficit.Identity.Server.StaticAssetAuthenticationExtensions
+                .UseAuthenticationExceptStaticAssets(app);
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
