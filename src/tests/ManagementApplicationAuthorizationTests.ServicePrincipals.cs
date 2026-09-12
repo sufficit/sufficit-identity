@@ -12,7 +12,6 @@ using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Overview;
 using Sufficit.Identity.Management.Vault;
 using Sufficit.Identity.Core.Entities;
-using Sufficit.Identity.Server.Management;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 
@@ -43,9 +42,10 @@ public sealed partial class ManagementApplicationAuthorizationTests
     [Fact]
     public async Task Service_principal_passes_mfa_for_what_its_role_grants()
     {
-        // O ponto: com RequireMfa ligado e sem `amr`, a capacidade do papel
-        // passa. Exigir segundo fator de quem se autenticou com segredo de
-        // cliente não é uma trava, é negação permanente.
+        // The point: with RequireMfa on and no `amr`, the role capability
+        // still applies. Requiring a second factor from something that
+        // authenticated with a client secret is not a lock, it is a permanent
+        // denial.
         var evaluator = CreateEvaluator(
             requireMfa: true,
             adminRoles: [],
@@ -79,8 +79,8 @@ public sealed partial class ManagementApplicationAuthorizationTests
     [Fact]
     public async Task A_human_holding_the_same_capability_still_needs_mfa()
     {
-        // A isenção não pode vazar para operador: ele recebeu a capacidade por
-        // claim `permission`, não por ser máquina.
+        // The exemption must not leak to operators: this one received the
+        // capability through the `permission` claim, not by being a machine.
         var evaluator = CreateEvaluator(
             requireMfa: true,
             adminRoles: [],
@@ -101,8 +101,8 @@ public sealed partial class ManagementApplicationAuthorizationTests
     [Fact]
     public async Task Client_without_declared_roles_changes_nothing()
     {
-        // Estado padrão de todo cliente que existe hoje: sem a propriedade, o
-        // comportamento tem de ser exatamente o de antes desta mudança.
+        // Default state of every existing client: without the property, the
+        // behavior must be exactly what it was before this change.
         var evaluator = CreateEvaluator(
             requireMfa: true,
             adminRoles: [],
@@ -120,9 +120,9 @@ public sealed partial class ManagementApplicationAuthorizationTests
     private static ClaimsPrincipal MachinePrincipal(string clientId) =>
         new(new ClaimsIdentity(
             [
-                // sub == client_id é o que marca a máquina: o handler de
-                // client_credentials põe o próprio cliente como subject porque
-                // não há mais ninguém para pôr.
+                // sub == client_id is what marks a machine: the
+                // client_credentials handler sets the client itself as the
+                // subject because there is nobody else to put there.
                 new Claim("sub", clientId),
                 new Claim("client_id", clientId)
             ],

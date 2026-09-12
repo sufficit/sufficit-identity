@@ -44,6 +44,116 @@ public enum DeploymentTopology
 /// </summary>
 public static class DeploymentTopologyPolicy
 {
+    /// <summary>
+    /// Refuses to start a Development-environment host that looks like a real
+    /// deployment: a public issuer or public URL, or production certificate
+    /// material configured.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>ASPNETCORE_ENVIRONMENT=Development</c> unlocks ephemeral signing and
+    /// encryption certificates, plaintext vault reads, cookies without the
+    /// Secure flag, anonymous API documentation and a relaxed security posture
+    /// check. A single environment variable copied from a staging unit file
+    /// should not be able to turn all of that on for a server with a public
+    /// issuer. Two independent signals that contradict each other fail the
+    /// start instead of producing a warning nobody reads.
+    /// </para>
+    /// <para>
+    /// A developer who genuinely runs Development on a public host sets
+    /// <c>Sufficit:Identity:AllowDevelopmentOnPublicHost=true</c>. The method
+    /// then returns <see langword="true"/> so the caller can log it.
+    /// </para>
+    /// </remarks>
+    /// <returns>
+    /// <see langword="true"/> when a contradiction was tolerated only because
+    /// of the explicit override; otherwise <see langword="false"/>.
+    /// </returns>
+    public static bool ValidateDevelopmentHost(
+        SufficitIdentityOptions options,
+        string? vaultCertificatePath,
+        bool isDevelopment)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        if (!isDevelopment)
+        {
+            return false;
+        }
+
+        var contradictions = new List<string>();
+        foreach (var (name, value) in new[]
+                 {
+                     ("Sufficit:Identity:Issuer", options.Issuer),
+                     ("Sufficit:Identity:PublicUrl", options.PublicUrl),
+                 })
+        {
+            if (!string.IsNullOrWhiteSpace(value)
+                && Uri.TryCreate(value, UriKind.Absolute, out var uri)
+                && !IsLocalDevelopmentHost(uri.Host))
+            {
+                contradictions.Add($"{name} points at the public host '{uri.Host}'");
+            }
+        }
+
+        var certificates = options.Certificates;
+        if (!string.IsNullOrWhiteSpace(certificates.SigningPath)
+            || certificates.SigningPaths.Any(path => !string.IsNullOrWhiteSpace(path))
+            || !string.IsNullOrWhiteSpace(certificates.EncryptionPath)
+            || certificates.EncryptionPaths.Any(path => !string.IsNullOrWhiteSpace(path)))
+        {
+            contradictions.Add("token signing or encryption certificates are configured");
+        }
+
+        if (!string.IsNullOrWhiteSpace(vaultCertificatePath))
+        {
+            contradictions.Add("a vault key-encryption certificate is configured");
+        }
+
+        if (contradictions.Count == 0)
+        {
+            return false;
+        }
+
+        if (options.AllowDevelopmentOnPublicHost)
+        {
+            return true;
+        }
+
+        throw new InvalidOperationException(
+            "ASPNETCORE_ENVIRONMENT=Development is set, but this host is configured like a "
+            + "real deployment: " + string.Join("; ", contradictions) + ". Development enables "
+            + "ephemeral certificates and relaxed security checks, so the process refuses to "
+            + "start. Use the correct environment name, or set "
+            + "Sufficit:Identity:AllowDevelopmentOnPublicHost=true if this is intentional.");
+    }
+
+    /// <summary>
+    /// Loopback addresses and the special-use names reserved for local and
+    /// test use (RFC 6761, RFC 6762): localhost, *.localhost, *.local, *.test,
+    /// *.invalid and *.example.
+    /// </summary>
+    internal static bool IsLocalDevelopmentHost(string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return true;
+        }
+
+        var normalized = host.Trim().TrimEnd('.').Trim('[', ']').ToLowerInvariant();
+        if (System.Net.IPAddress.TryParse(normalized, out var address))
+        {
+            return System.Net.IPAddress.IsLoopback(address);
+        }
+
+        if (normalized == "localhost")
+        {
+            return true;
+        }
+
+        return new[] { ".localhost", ".local", ".test", ".invalid", ".example" }
+            .Any(suffix => normalized.EndsWith(suffix, StringComparison.Ordinal));
+    }
+
     public static void Validate(
         SufficitIdentityOptions options,
         int trustedProxyCount,
