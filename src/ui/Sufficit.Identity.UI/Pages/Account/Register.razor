@@ -22,7 +22,7 @@ else
 {
     <div class="auth-card">
         <div class="auth-brand">
-            <img src="@_logoUrl" alt="Sufficit Identity" height="44" />
+            <img src="@_logoUrl" alt="@L["Layout.BrandFallback"]" height="44" />
         </div>
         <h1>@L["Register.Title"]</h1>
         <p class="auth-card-subtitle">@L["Register.Subtitle"]</p>
@@ -182,9 +182,21 @@ else
                     _returnUrl));
             if (!result.Succeeded)
             {
+                // The API answers in English with a stable code; the page owns
+                // the user's language, so it translates the codes it knows and
+                // falls back to the English description for the rest.
                 _error = string.Join(
                     " ",
-                    result.Errors.Select(error => error.Description));
+                    result.Errors
+                        .Select(error => error.Code switch
+                        {
+                            "DuplicateUserName" or "DuplicateEmail" =>
+                                L["Register.Error.CreateFailed"].Value,
+                            "registration-disabled" =>
+                                L["Register.Error.RegistrationDisabled"].Value,
+                            _ => error.Description,
+                        })
+                        .Distinct(StringComparer.Ordinal));
                 if (_verificationControl is not null)
                 {
                     // Provider responses are single-use. A corrected form must

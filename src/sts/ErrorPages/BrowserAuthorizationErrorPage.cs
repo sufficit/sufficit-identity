@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Http;
@@ -8,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using OpenIddict.Server;
 using OpenIddict.Server.AspNetCore;
+using Sufficit.Identity.STS.Resources;
 using OpenIddictServerAspNetCoreHandlers =
     OpenIddict.Server.AspNetCore.OpenIddictServerAspNetCoreHandlers;
 
@@ -22,7 +25,7 @@ namespace Sufficit.Identity.STS.ErrorPages;
 /// Why this exists (incident 2026-09-09, ID2013): OpenIddict 7.6 PAR
 /// <c>request_uri</c> values are single-use (RFC 9126 §6.1). When a user
 /// re-presents an already-redeemed <c>request_uri</c> — e.g. by clicking
-/// "Continuar com esta conta" on a stale <c>/account/login</c> tab whose
+/// "Continue with this account" on a stale <c>/account/login</c> tab whose
 /// session card links back to the consumed authorization request — the
 /// validation pipeline rejects the request BEFORE the controller runs and
 /// before any <c>redirect_uri</c> can be restored from the redeemed token
@@ -107,48 +110,68 @@ internal static class BrowserAuthorizationErrorPage
                 error,
                 request.HttpContext.TraceIdentifier);
 
-            var heading = "Não foi possível concluir o acesso";
+            // Text comes from the API module's own resources: this page has no
+            // presentation layer in front of it, so it cannot hand a code to a
+            // front end and let that localize. The language follows the request
+            // culture; English is the neutral fallback.
+            var services = request.HttpContext.RequestServices;
+            var messages = services.GetService<IStringLocalizer<AccountMessages>>();
+            string Text(string key, string english) =>
+                messages is null ? english : messages[key].Value;
+
+            var heading = Text(
+                "AuthorizationError.Heading",
+                "The sign-in could not be completed");
             var explanation = error switch
             {
-                OpenIddictConstants.Errors.InvalidToken =>
-                    """
-                    O pedido de autorização que abriu esta tela já foi utilizado
-                    ou expirou. Isso costuma acontecer quando a tela de login
-                    fica aberta depois que o acesso já foi concluído, ou quando
-                    o mesmo link é aberto uma segunda vez.
-                    """,
-                OpenIddictConstants.Errors.InvalidRequest =>
-                    """
-                    O pedido de autorização chegou incompleto ou inválido e não
-                    pôde ser processado.
-                    """,
-                _ =>
-                    """
-                    O pedido de autorização não pôde ser processado.
-                    """,
+                OpenIddictConstants.Errors.InvalidToken => Text(
+                    "AuthorizationError.InvalidToken",
+                    "The authorization request that opened this page has already been used or has expired."),
+                OpenIddictConstants.Errors.InvalidRequest => Text(
+                    "AuthorizationError.InvalidRequest",
+                    "The authorization request arrived incomplete or invalid and could not be processed."),
+                _ => Text(
+                    "AuthorizationError.Generic",
+                    "The authorization request could not be processed."),
             };
+            var productName = services.GetService<ProductBrandingOptions>()
+                ?.ProductName ?? "Identity";
+            var language = CultureInfo.CurrentUICulture.Name;
 
             var html = new StringBuilder()
-                .Append("<!doctype html><html lang=\"pt-BR\"><head>")
+                .Append("<!doctype html><html lang=\"")
+                    .Append(HtmlEncoder.Default.Encode(
+                        string.IsNullOrEmpty(language) ? "en" : language))
+                    .Append("\"><head>")
                 .Append("<meta charset=\"utf-8\">")
                 .Append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
                 .Append("<meta name=\"robots\" content=\"noindex\">")
-                .Append("<title>").Append(heading).Append(" — ")
-                    .Append(HtmlEncoder.Default.Encode(
-                        request.HttpContext.RequestServices
-                            .GetService<ProductBrandingOptions>()
-                            ?.ProductName ?? "Identity"))
+                .Append("<title>")
+                    .Append(HtmlEncoder.Default.Encode(heading))
+                    .Append(" — ")
+                    .Append(HtmlEncoder.Default.Encode(productName))
                     .Append("</title>")
                 .Append("</head><body>")
                 .Append("<main data-openiddict-error=\"")
                     .Append(HtmlEncoder.Default.Encode(error))
                     .Append("\">")
-                .Append("<h1>").Append(heading).Append("</h1>")
-                .Append("<p>").Append(explanation).Append("</p>")
-                .Append("<p>Volte ao aplicativo de origem e inicie o acesso novamente. ")
-                .Append("Se o problema persistir, entre em contato com o suporte informando os detalhes abaixo.</p>")
-                .Append("<p><a href=\"/\">Ir para a página inicial</a></p>")
-                .Append("<details><summary>Detalhes técnicos</summary><dl>");
+                .Append("<h1>").Append(HtmlEncoder.Default.Encode(heading)).Append("</h1>")
+                .Append("<p>").Append(HtmlEncoder.Default.Encode(explanation)).Append("</p>")
+                .Append("<p>")
+                    .Append(HtmlEncoder.Default.Encode(Text(
+                        "AuthorizationError.Recovery",
+                        "Return to the application you came from and start signing in again.")))
+                    .Append("</p>")
+                .Append("<p><a href=\"/\">")
+                    .Append(HtmlEncoder.Default.Encode(Text(
+                        "AuthorizationError.Home",
+                        "Go to the home page")))
+                    .Append("</a></p>")
+                .Append("<details><summary>")
+                    .Append(HtmlEncoder.Default.Encode(Text(
+                        "AuthorizationError.TechnicalDetails",
+                        "Technical details")))
+                    .Append("</summary><dl>");
 
             html.Append("<dt>error</dt><dd>")
                 .Append(HtmlEncoder.Default.Encode(error))

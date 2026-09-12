@@ -1,124 +1,126 @@
-# Vínculo de identidade externa
+# External identity linking
 
-## Problema
+## Problem
 
-Um provedor externo afirma um endereço de e-mail. Afirmar não é provar. Vários
-provedores amplamente usados nunca emitem `email_verified`, e um que emite pode
-estar afirmando algo que não checou.
+An external provider asserts an email address. Asserting is not proving.
+Several widely used providers never issue `email_verified`, and one that does
+may be asserting something it never checked.
 
-Se uma afirmação não provada bastar para **criar a conta local e vincular** a
-identidade externa, existe um ataque de sequestro antecipado:
+If an unproven assertion is enough to **create the local account and link**
+the external identity, there is an early-hijack attack:
 
-1. O atacante registra o endereço da vítima num provedor que não verifica
-   endereços e entra no Identity.
-2. Nasce a conta local, `EmailConfirmed=false`, com o login do atacante
-   vinculado. O atacante não consegue entrar ainda, porque a política de
-   sign-in exige e-mail confirmado.
-3. A vítima tenta se registrar e recebe erro genérico; tenta recuperar senha e
-   nada acontece, porque a conta não está confirmada.
-4. A vítima usa "reenviar confirmação", confirma o endereço — e o vínculo do
-   atacante sobrevive à confirmação. A partir daí o atacante entra pelo
-   provedor externo, com sessão plena.
+1. The attacker registers the victim's address with a provider that doesn't
+   verify addresses and signs in to Identity.
+2. The local account is born, `EmailConfirmed=false`, with the attacker's
+   login linked to it. The attacker can't sign in yet, because the sign-in
+   policy requires a confirmed email.
+3. The victim tries to register and gets a generic error; tries to recover
+   the password and nothing happens, because the account isn't confirmed.
+4. The victim uses "resend confirmation," confirms the address — and the
+   attacker's link survives the confirmation. From then on, the attacker
+   signs in through the external provider, with a full session.
 
-O passo que quebra tudo é o 2: **o vínculo precede a prova**.
+The step that breaks everything is step 2: **the link precedes the proof**.
 
-## Decisão
+## Decision
 
-Nada é persistido enquanto o controle do endereço não for estabelecido.
+Nothing is persisted until control of the address has been established.
 
-A decisão de "está estabelecido?" é uma fronteira explícita,
+The decision of "has it been established?" is an explicit boundary,
 `IExternalIdentityLinkingPolicy`
 (`src/application/Sufficit.Identity.Application.Abstractions/Accounts/ExternalIdentityLinking.cs`),
-com três respostas:
+with three answers:
 
-| Decisão | Significado |
+| Decision | Meaning |
 |---|---|
-| `Immediate` | Controle estabelecido; cria e vincula na mesma requisição. |
-| `RequiresEmailVerification` | Não estabelecido; nada é persistido e uma mensagem de prova é enviada. |
-| `Denied` | O provedor pode autenticar vínculos existentes, mas nunca criar conta. |
+| `Immediate` | Control established; creates and links in the same request. |
+| `RequiresEmailVerification` | Not established; nothing is persisted and a proof message is sent. |
+| `Denied` | The provider may authenticate existing links, but may never create an account. |
 
-A política é uma fronteira, e não uma condição embutida, porque a resposta é
-decisão de implantação e não fato de protocolo. Uma implantação cujo único
-provedor é um IdP corporativo próprio pode confiar nos endereços dele; uma que
-federa provedores de consumo não pode. O mesmo binário serve as duas sem que
-nenhuma edite um `if`.
+The policy is a boundary, not an embedded condition, because the answer is a
+deployment decision, not a protocol fact. A deployment whose only provider is
+an in-house corporate IdP can trust its addresses; one that federates
+consumer providers cannot. The same binary serves both without either editing
+an `if`.
 
-## Implementação padrão
+## Default implementation
 
 `ConfigurableExternalIdentityLinkingPolicy` (`src/sts/ExternalIdentityLinkingPolicy.cs`)
-avalia, nesta ordem: deny-list, chave `RequireVerifiedEmail`, afirmação do
-provedor, allow-list de provedores confiáveis.
+evaluates, in this order: deny-list, the `RequireVerifiedEmail` key, the
+provider's assertion, allow-list of trusted providers.
 
-**Nenhum provedor é nomeado em código.** Quais esquemas existem, e em quais
-deles a implantação acredita, é configuração
-(`Sufficit:Identity:ExternalIdentities`, ver `src/sts/Options/ExternalIdentityOptions.cs`).
+**No provider is named in code.** Which schemes exist, and which of them the
+deployment trusts, is configuration
+(`Sufficit:Identity:ExternalIdentities`, see `src/sts/Options/ExternalIdentityOptions.cs`).
 
-## Fluxo com prova
+## Flow with proof
 
 ```
-callback do provedor
-  └─ política: RequiresEmailVerification
-       ├─ PendingExternalIdentityStore.CreateAsync  → ticket de uso único
-       ├─ ExternalIdentityVerificationMessenger     → mensagem ao endereço
-       └─ resposta: EmailVerificationRequired  (nenhuma linha gravada)
+provider callback
+  └─ policy: RequiresEmailVerification
+       ├─ PendingExternalIdentityStore.CreateAsync  → single-use ticket
+       ├─ ExternalIdentityVerificationMessenger     → message to the address
+       └─ response: EmailVerificationRequired  (no row written)
 
 GET /account/externallink/confirm?ticket=…
   └─ IExternalSignInService.CompletePendingLinkAsync
-       ├─ redime o ticket (consome antes de usar)
-       ├─ recusa se o endereço já foi reivindicado nesse meio-tempo
-       └─ cria a conta JÁ confirmada + vincula + autentica
+       ├─ redeems the ticket (consumes before use)
+       ├─ refuses if the address was already claimed in the meantime
+       └─ creates the account ALREADY confirmed + links + signs in
 ```
 
-Resgatar o ticket **é** a prova: ele só foi entregue ao endereço em disputa,
-então quem o apresenta controla a caixa. Por isso a conta nasce confirmada —
-exigir uma segunda confirmação provaria o mesmo endereço duas vezes.
+Redeeming the ticket **is** the proof: it was only delivered to the address in
+dispute, so whoever presents it controls the mailbox. That's why the account
+is born confirmed — requiring a second confirmation would prove the same
+address twice.
 
-### Propriedades do ticket
+### Ticket properties
 
-| Propriedade | Como |
+| Property | How |
 |---|---|
-| Uso único | Removido antes de ser usado (`RedeemAsync`), então um replay não encontra nada |
-| Tamanho de credencial | 256 bits de `RandomNumberGenerator` |
-| Não legível no banco | A chave armazenada é o SHA-256 do ticket |
-| Janela curta | `VerificationLifetimeMinutes`, padrão 30, limitado a 5..1440 |
-| Compartilhado entre réplicas | Vive em `IProtocolStateStore` (tabela `protocolstateentries`), não em cookie |
+| Single use | Removed before being used (`RedeemAsync`), so a replay finds nothing |
+| Credential size | 256 bits from `RandomNumberGenerator` |
+| Not readable in the database | The stored key is the SHA-256 of the ticket |
+| Short window | `VerificationLifetimeMinutes`, default 30, capped at 5..1440 |
+| Shared across replicas | Lives in `IProtocolStateStore` (`protocolstateentries` table), not in a cookie |
 
-Não carrega URL de retorno. A prova é resgatada da caixa de e-mail, comumente em
-outro navegador, onde a requisição de autorização original já não existe — e um
-destino de redirecionamento que sobrevive a uma mensagem é mais uma coisa para
-validar.
+It carries no return URL. The proof is redeemed from the mailbox, commonly in
+another browser, where the original authorization request no longer exists —
+and a redirect destination that survives a message is one more thing to
+validate.
 
-## Dados legados
+## Legacy data
 
-O fluxo atual nunca vincula antes da prova, mas contas criadas pelo
-comportamento anterior ainda carregam o vínculo. `ConfirmEmailAsync`
-(`src/sts/AspNetCoreIdentityAccountOnboardingService.cs`) remove os logins
-externos de uma conta que estava não confirmada no momento em que o dono
-legítimo prova o endereço.
+The current flow never links before proof, but accounts created under the
+previous behavior still carry the link. `ConfirmEmailAsync`
+(`src/sts/AspNetCoreIdentityAccountOnboardingService.cs`) removes external
+logins from an account that was unconfirmed at the moment its legitimate
+owner proves the address.
 
-Isso é condicionado a `SignIn:RequireConfirmedEmail`. Só sob essa política é
-**impossível** existir vínculo legítimo numa conta não confirmada: vincular um
-provedor exige sessão autenticada, e autenticar exige o endereço confirmado. Sem
-a política, um usuário pode legitimamente entrar sem confirmar e vincular um
-provedor — e apagar seria destruir trabalho dele.
+This is conditioned on `SignIn:RequireConfirmedEmail`. Only under that policy
+is it **impossible** for a legitimate link to exist on an unconfirmed account:
+linking a provider requires an authenticated session, and authenticating
+requires a confirmed address. Without the policy, a user may legitimately
+sign in without confirming and link a provider — and purging it would destroy
+their work.
 
-## Verificação de postura
+## Posture check
 
-`StsProductionPostureContributor` reporta dois achados:
+`StsProductionPostureContributor` reports two findings:
 
-| Achado | Quando |
+| Finding | When |
 |---|---|
 | `external-identity-unverified-email` | `RequireVerifiedEmail=false` |
-| `external-identity-trusted-providers` | Há provedores na allow-list, que são listados no texto |
+| `external-identity-trusted-providers` | There are providers on the allow-list, listed in the text |
 
-O segundo não é um erro: é um lembrete auditável de que alguém decidiu acreditar
-naqueles provedores.
+The second one is not an error: it's an auditable reminder that someone
+decided to trust those providers.
 
-## Testes
+## Tests
 
-`src/tests/ExternalIdentityLinkingTests.cs` — decisões da política, uso único do
-ticket, fiação no host composto (o padrão do servidor real exige prova) e os dois
-lados do expurgo legado: conta não provada perde os vínculos, conta já provada os
-mantém.
+`src/tests/ExternalIdentityLinkingTests.cs` — policy decisions, single use of
+the ticket, wiring in the composed host (the real server's default requires
+proof), and both sides of the legacy purge: an unproven account loses its
+links, an already-proven account keeps them.
 
-O teste do expurgo foi verificado por mutação: desligado o expurgo, ele falha.
+The purge test was verified by mutation: with the purge turned off, it fails.

@@ -1,55 +1,55 @@
-# RFC 7521 / RFC 7523 — Client assertions com JWT (`private_key_jwt`)
+# RFC 7521 / RFC 7523 — JWT client assertions (`private_key_jwt`)
 
 | | |
 |---|---|
-| Papel | Authorization Server |
-| Abrangência | **B — Substancial** |
-| Origem | OpenIddict, com política própria de JWKS do cliente |
+| Role | Authorization Server |
+| Coverage | **B — Substantial** |
+| Origin | OpenIddict, with an in-house client JWKS policy |
 | Spec | https://www.rfc-editor.org/rfc/rfc7523 |
 
-## Como está implementado
+## Implementation
 
-`private_key_jwt` é habilitado **incondicionalmente** pelo OpenIddict; não há
-flag para desligar (nota em `src/sts/OpenIddictServerConfiguration.cs:60-62`).
-O cliente autentica no endpoint de token apresentando
+`private_key_jwt` is enabled **unconditionally** by OpenIddict; there is no
+flag to turn it off (note in `src/sts/OpenIddictServerConfiguration.cs:60-62`).
+The client authenticates at the token endpoint by presenting
 `client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer`
-e um JWT assinado por chave cuja pública está registrada.
+and a JWT signed with a key whose public counterpart is registered.
 
-O registro dessas chaves é próprio: `src/management/Clients/ClientJwksPolicy.cs`
-valida tanto o JWKS inline quanto o `jwks_uri`.
+Registration of these keys is in-house: `src/management/Clients/ClientJwksPolicy.cs`
+validates both the inline JWKS and the `jwks_uri`.
 
-| Regra aplicada | Onde |
+| Rule enforced | Where |
 |---|---|
-| `jwks_uri` precisa ser HTTPS absoluta, pública, sem user-info nem fragmento | `ClientJwksPolicy.cs:37-50` |
-| Somente chaves públicas `RSA` ou `EC` | `ClientJwksPolicy.cs:135-140` |
-| `kid` obrigatório e único no conjunto | `ClientJwksPolicy.cs:144-149` |
-| Limite de quantidade de chaves | `ClientJwksPolicy.cs:23` |
-| Busca remota do `jwks_uri` passa pelo guarda anti-SSRF | `src/sts/SafeHttpHandlerFactory.cs` |
+| `jwks_uri` must be absolute HTTPS, public, without user-info or fragment | `ClientJwksPolicy.cs:37-50` |
+| Only public `RSA` or `EC` keys | `ClientJwksPolicy.cs:135-140` |
+| `kid` required and unique within the set | `ClientJwksPolicy.cs:144-149` |
+| Limit on the number of keys | `ClientJwksPolicy.cs:23` |
+| Remote fetch of `jwks_uri` goes through the anti-SSRF guard | `src/sts/SafeHttpHandlerFactory.cs` |
 
-## Onde é exigido
+## Where it's required
 
-- **FAPI 2.0**: o cliente precisa autenticar com `private_key_jwt` **ou** mTLS;
-  segredo compartilhado é recusado
-  (`src/sts/Fapi/Fapi2Handlers.cs:151` e `:226`).
-- Demais clientes confidenciais podem usar `client_secret_basic` ou
-  `client_secret_post`, com o segredo armazenado apenas como hash — ver
+- **FAPI 2.0**: the client must authenticate with `private_key_jwt` **or** mTLS;
+  a shared secret is rejected
+  (`src/sts/Fapi/Fapi2Handlers.cs:151` and `:226`).
+- Other confidential clients can use `client_secret_basic` or
+  `client_secret_post`, with the secret stored only as a hash — see
   [RFC-6749-OAUTH2-CORE.md](RFC-6749-OAUTH2-CORE.md).
 
-## Correção de segurança herdada
+## Inherited security fix
 
-O OpenIddict 7.7 corrigiu a validação do `aud` em client assertions
-(GHSA-925x-4h4v-2792) e passou a aceitar `aud` como array JSON. O repositório
-está nessa versão (`Directory.Packages.props`), portanto a correção está
-presente.
+OpenIddict 7.7 fixed `aud` validation in client assertions
+(GHSA-925x-4h4v-2792) and started accepting `aud` as a JSON array. The repository
+is on that version (`Directory.Packages.props`), so the fix is
+present.
 
-## Lacunas
+## Gaps
 
-- O grant `urn:ietf:params:oauth:grant-type:jwt-bearer` (RFC 7523 §2.1,
-  *autorização* por assertion, não autenticação) **não** está habilitado. É a
-  peça que faltaria para o draft ID-JAG.
-- Não há rotação assistida de JWKS do cliente; o operador troca o documento.
+- The `urn:ietf:params:oauth:grant-type:jwt-bearer` grant (RFC 7523 §2.1,
+  *authorization* by assertion, not authentication) is **not** enabled. It's the
+  piece that would be missing for the ID-JAG draft.
+- There's no assisted rotation of the client's JWKS; the operator swaps the document.
 
-## Testes
+## Tests
 
 `ClientsControllerTests.Credentials`, `ClientDefinitionPolicyTests`,
-`FapiJarmTests`, `JarRequestObjectTests` (reaproveita a resolução de chaves).
+`FapiJarmTests`, `JarRequestObjectTests` (reuses key resolution).

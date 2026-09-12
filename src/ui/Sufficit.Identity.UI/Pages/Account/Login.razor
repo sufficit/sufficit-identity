@@ -15,7 +15,7 @@
 
 <div class="auth-card">
     <div class="auth-brand">
-        <img src="@_logoUrl" alt="Sufficit Identity" height="44" />
+        <img src="@_logoUrl" alt="@L["Layout.BrandFallback"]" height="44" />
     </div>
 
     <AuthorizeView>
@@ -44,6 +44,11 @@
             @if (_errorMessage is not null)
             {
                 <div class="alert alert-error" role="alert">@_errorMessage</div>
+            }
+
+            @if (_noticeMessage is not null)
+            {
+                <p class="info" role="status">@_noticeMessage</p>
             }
 
             @* F-8 (eval 2026-08-14): branch on the structured passkey error
@@ -170,8 +175,15 @@
     [SupplyParameterFromQuery(Name = "error")]
     private string? _externalError { get; set; }
 
+    // A flow that is waiting on the user (for example, a confirmation link sent
+    // to their mailbox) is not an error, so it arrives on its own parameter and
+    // renders as information rather than as a failure.
+    [SupplyParameterFromQuery(Name = "notice")]
+    private string? _externalNotice { get; set; }
+
     private string? _returnUrl;
     private string? _errorMessage;
+    private string? _noticeMessage;
     private IReadOnlyList<InteractiveSignInProvider> _externalProviders = [];
     private AccountRegistrationPolicy _registrationPolicy = new(false, false);
     private ElementReference _passkeyForm;
@@ -241,7 +253,17 @@
                 L["Login.Error.InvalidCredentials"],
             "request_expired" =>
                 L["Login.Error.RequestExpired"],
+            "registration_denied_for_provider" =>
+                L["Login.Error.RegistrationDeniedForProvider"],
+            "external_link_ticket_invalid" =>
+                L["Login.Error.ExternalLinkTicketInvalid"],
             _ => _errorMessage,
+        };
+        _noticeMessage = _externalNotice switch
+        {
+            "external_email_verification_sent" =>
+                L["Login.Notice.ExternalEmailVerificationSent"].Value,
+            _ => null,
         };
 
         // Load branding theme logo
@@ -259,7 +281,7 @@
                 _passkeySupported = await JS.InvokeAsync<bool>("passkeys.isSupported");
                 StateHasChanged();
             }
-            catch { /* JS interop indisponível no prerender */ }
+            catch { /* JS interop is unavailable during prerendering */ }
         }
     }
 

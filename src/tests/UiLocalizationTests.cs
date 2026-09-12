@@ -90,8 +90,8 @@ public sealed class UiLocalizationTests
             FindUiRoot(),
             "Sufficit.Identity.UI",
             "Resources");
-        var portuguese = ResourceKeys(Path.Combine(resources, "SharedResource.resx"));
-        var english = ResourceKeys(Path.Combine(resources, "SharedResource.en.resx"));
+        var portuguese = ResourceKeys(Path.Combine(resources, "SharedResource.pt-BR.resx"));
+        var english = ResourceKeys(Path.Combine(resources, "SharedResource.resx"));
 
         Assert.Equal(
             portuguese.OrderBy(key => key, StringComparer.Ordinal),
@@ -105,8 +105,8 @@ public sealed class UiLocalizationTests
             FindUiRoot(),
             "Sufficit.Identity.UI",
             "Resources");
-        var portuguese = ResourceKeys(Path.Combine(resources, "SharedResource.resx"));
-        var english = ResourceKeys(Path.Combine(resources, "SharedResource.en.resx"));
+        var portuguese = ResourceKeys(Path.Combine(resources, "SharedResource.pt-BR.resx"));
+        var english = ResourceKeys(Path.Combine(resources, "SharedResource.resx"));
 
         var portugueseTwoFactor = portuguese
             .Where(key => key.StartsWith("ManageTwoFactor.", StringComparison.Ordinal))
@@ -127,8 +127,8 @@ public sealed class UiLocalizationTests
             FindUiRoot(),
             "Sufficit.Identity.UI",
             "Resources");
-        var portuguese = ResourceKeys(Path.Combine(resources, "SharedResource.resx"));
-        var english = ResourceKeys(Path.Combine(resources, "SharedResource.en.resx"));
+        var portuguese = ResourceKeys(Path.Combine(resources, "SharedResource.pt-BR.resx"));
+        var english = ResourceKeys(Path.Combine(resources, "SharedResource.resx"));
 
         var portuguesePasskeys = portuguese
             .Where(key => key.StartsWith("ManagePasskeys.", StringComparison.Ordinal))
@@ -140,6 +140,29 @@ public sealed class UiLocalizationTests
         Assert.Equal(
             portuguesePasskeys.OrderBy(key => key, StringComparer.Ordinal),
             englishPasskeys.OrderBy(key => key, StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void Neutral_shared_resource_is_english()
+    {
+        // English is the neutral language of every module: a culture a
+        // deployment does not ship falls back to English, never to one
+        // deployment's local language.
+        var resources = Path.Combine(
+            FindUiRoot(),
+            "Sufficit.Identity.UI",
+            "Resources");
+        var nonEnglish = XDocument.Load(Path.Combine(resources, "SharedResource.resx"))
+            .Root!
+            .Elements("data")
+            .Select(element => (string?)element.Element("value") ?? string.Empty)
+            .Where(value => Regex.IsMatch(
+                value,
+                "[ãõçáéíóúâêôà]",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+            .ToArray();
+
+        Assert.Empty(nonEnglish);
     }
 
     private static IEnumerable<string> ResourceKeys(string path) =>
@@ -197,7 +220,7 @@ public sealed class UiLocalizationTests
 
         Assert.True(violations.Count == 0,
             $"Found {violations.Count} hardcoded pt-BR string(s) in public UI sources.\n" +
-            "Move user-facing text to SharedResource.resx and SharedResource.en.resx.\n" +
+            "Move user-facing text to SharedResource.resx (English, neutral) and SharedResource.pt-BR.resx.\n" +
             "Violations:\n" + string.Join("\n", violations));
     }
 

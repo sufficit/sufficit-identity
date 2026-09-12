@@ -5,7 +5,6 @@
     <RootNamespace>Sufficit.Identity.UI</RootNamespace>
     <AssemblyName>Sufficit.Identity.UI</AssemblyName>
     <Description>Sufficit Identity UI — embedded public and account frontend.</Description>
-    <NeutralLanguage>pt-BR</NeutralLanguage>
     <IsPackable>true</IsPackable>
     <!-- Static web assets (CSS, JS) served via MapStaticAssets in the host STS -->
     <StaticWebAssetsEnabled>true</StaticWebAssetsEnabled>

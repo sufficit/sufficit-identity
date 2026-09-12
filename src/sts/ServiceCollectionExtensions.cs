@@ -435,6 +435,10 @@ public static partial class ServiceCollectionExtensions
         }
 
         services.AddHttpContextAccessor();
+        // End-user text rendered by the API module itself (email messages, the
+        // fallback browser error page) resolves through IStringLocalizer.
+        // TryAdd-based, so a presentation module registering it too is harmless.
+        services.AddLocalization();
         services.Configure<IdentityPasskeyOptions>(passkeys =>
         {
             if (!string.IsNullOrWhiteSpace(options.Passkeys.RelyingPartyId))
@@ -478,15 +482,15 @@ public static partial class ServiceCollectionExtensions
                 IdentityConstants.ApplicationScheme)
             .Configure<OidcUserSessionTicketStore>((cookie, store) =>
                 cookie.SessionStore = store);
-        // .NET 10 native passkeys (WebAuthn/FIDO2): a inclusão do 9º generic
-        // arg IdentityUserPasskey<string> em IdentityDbContext (AppDbContext)
-        // faz AddEntityFrameworkStores<AppDbContext>() registrar automaticamente
-        // IUserPasskeyStore<ApplicationUser>. UserManager<T> ganha os métodos
+        // .NET 10 native passkeys (WebAuthn/FIDO2): declaring the ninth generic
+        // argument IdentityUserPasskey<string> on IdentityDbContext (AppDbContext)
+        // makes AddEntityFrameworkStores<AppDbContext>() register
+        // IUserPasskeyStore<ApplicationUser> automatically. UserManager<T> gains
         // AddOrUpdatePasskeyAsync / GetPasskeysAsync / RemovePasskeyAsync /
-        // FindByPasskeyIdAsync, e SignInManager<T> ganha CheckPasskeySignIn.
-        // A UI Blazor incorporada invoca via JS interop com
-        // navigator.credentials.create/get. A tabela userpasskeys é mapeada
-        // em AppDbContext.MapIdentityTables.
+        // FindByPasskeyIdAsync, and SignInManager<T> gains CheckPasskeySignIn.
+        // The embedded Blazor UI calls them through JS interop with
+        // navigator.credentials.create/get. The userpasskeys table is mapped in
+        // AppDbContext.MapIdentityTables.
 
         // Cookies used by the OpenIddict ASP.NET Core host.
         services.ConfigureApplicationCookie(o =>

@@ -2,70 +2,73 @@
 
 | | |
 |---|---|
-| Papel | Authorization Server |
-| Abrangência | **B — Substancial** |
-| Origem | Próprio |
+| Role | Authorization Server |
+| Coverage | **B — Substantial** |
+| Origin | In-house |
 | Spec | `draft-ietf-oauth-client-id-metadata-document` (Internet-Draft) |
 
-## O que é
+## What it is
 
-Em vez de registrar o cliente antecipadamente, o `client_id` **é** uma URL HTTPS
-que serve o próprio documento de metadados. O AS busca o documento na primeira
-vez que vê aquele identificador. A especificação de autorização do MCP **depreca
-o DCR** (RFC 7591) em favor deste mecanismo.
+Instead of registering the client ahead of time, the `client_id` **is** an
+HTTPS URL that serves the metadata document itself. The AS fetches the
+document the first time it sees that identifier. The MCP authorization spec
+**deprecates DCR** (RFC 7591) in favor of this mechanism.
 
-## Como está implementado
+## Implementation
 
-| Componente | Papel |
+| Component | Role |
 |---|---|
-| `src/sts/Cimd/ClientIdMetadataResolver.cs` | Busca e valida o documento |
-| `src/sts/Cimd/CimdApplicationProvisioner.cs` | Cria a aplicação no primeiro uso |
+| `src/sts/Cimd/ClientIdMetadataResolver.cs` | Fetches and validates the document |
+| `src/sts/Cimd/CimdApplicationProvisioner.cs` | Creates the application on first use |
 
-O gancho está no `/connect/authorize`: quando `FindByClientIdAsync` não encontra
-o cliente, `TryProvisionAsync` é chamado antes de falhar
-(`src/sts/Controllers/AuthorizationController.cs:176-190`). Identificador que não
-tenha a forma de URL CIMD cai no erro normal de cliente desconhecido.
+The hook sits in `/connect/authorize`: when `FindByClientIdAsync` doesn't find
+the client, `TryProvisionAsync` is called before failing
+(`src/sts/Controllers/AuthorizationController.cs:176-190`). An identifier that
+doesn't have the shape of a CIMD URL falls through to the normal unknown-client
+error.
 
-## Regras de busca e validação
+## Fetch and validation rules
 
 `ClientIdMetadataResolver.cs:36-48`:
 
-| Regra | Valor |
+| Rule | Value |
 |---|---|
-| Só `200 OK` | Redirecionamentos **não** são seguidos |
-| Tamanho máximo da resposta | `Mcp:ClientIdMetadataDocuments:MaxDocumentBytes`, padrão 5120 |
-| Timeout | `FetchTimeoutSeconds`, padrão 3, limitado a 30 |
-| Cache | `CacheTtlSeconds`, padrão 300 |
-| `client_id` do documento | Precisa ser **exatamente igual** ao identificador usado |
-| `redirect_uris` | Validados pela mesma política dos demais clientes |
-| Saída HTTP | Pelo guarda anti-SSRF |
+| Only `200 OK` | Redirects are **not** followed |
+| Maximum response size | `Mcp:ClientIdMetadataDocuments:MaxDocumentBytes`, default 5120 |
+| Timeout | `FetchTimeoutSeconds`, default 3, capped at 30 |
+| Cache | `CacheTtlSeconds`, default 300 |
+| Document's `client_id` | Must be **exactly equal** to the identifier used |
+| `redirect_uris` | Validated by the same policy as other clients |
+| HTTP egress | Through the anti-SSRF guard |
 
-Não seguir redirecionamento é o detalhe que impede um `client_id` aparentemente
-externo de apontar, por desvio, para um documento interno.
+Not following redirects is the detail that stops an apparently external
+`client_id` from pointing, by indirection, to an internal document.
 
-## Cliente provisionado
+## Provisioned client
 
-Nasce como cliente público, com o perfil de cliente MCP, PKCE exigido e
-consentimento explícito. `private_key_jwt` para clientes CIMD está marcado no
-código como extensão futura (`CimdApplicationProvisioner.cs:20`).
+Born as a public client, with the MCP client profile, PKCE required and
+explicit consent. `private_key_jwt` for CIMD clients is marked in the code as a
+future extension (`CimdApplicationProvisioner.cs:20`).
 
-## Anúncio
+## Announcement
 
-`client_id_metadata_document_supported` é publicado no documento de discovery
-seguindo a flag `Mcp:ClientIdMetadataDocuments:Enabled`, que é `false` por padrão
-(`src/sts/OpenIddictServerConfiguration.cs:572-577`, `src/sts/Options/McpOptions.cs:199`).
+`client_id_metadata_document_supported` is published in the discovery document
+following the `Mcp:ClientIdMetadataDocuments:Enabled` flag, which is `false` by
+default (`src/sts/OpenIddictServerConfiguration.cs:572-577`,
+`src/sts/Options/McpOptions.cs:199`).
 
-## Posição de mercado
+## Market position
 
-O Keycloak só ganhou CIMD experimental na 26.6 (2026). Ter isto implementado e
-anunciado corretamente é vantagem competitiva no cenário MCP.
+Keycloak only got experimental CIMD in 26.6 (2026). Having this implemented
+and correctly announced is a competitive advantage in the MCP landscape.
 
-## Lacunas
+## Gaps
 
-- Sem revalidação periódica do documento após o cache expirar para clientes já
-  provisionados: o registro persistido é a fonte depois do primeiro uso.
-- Sem `private_key_jwt` para cliente CIMD.
+- No periodic revalidation of the document after the cache expires for already
+  provisioned clients: the persisted registration is the source of truth after
+  first use.
+- No `private_key_jwt` for CIMD clients.
 
-## Testes
+## Tests
 
 `CimdTests`.

@@ -2,59 +2,61 @@
 
 | | |
 |---|---|
-| Papel | Authorization Server |
-| Abrangência | **B — Substancial** |
-| Origem | Próprio |
+| Role | Authorization Server |
+| Coverage | **B — Substantial** |
+| Origin | In-house |
 | Spec | https://openid.net/specs/oauth-v2-jarm.html |
 
-## Como está implementado
+## Implementation
 
-Ligado por `Sufficit:Identity:Jarm:Enabled` (padrão `false`). Quando ativo,
-quatro modos de resposta são adicionados ao OpenIddict e um handler assume a
-escrita da resposta (`src/sts/OpenIddictServerConfiguration.cs:277-285`):
+Enabled by `Sufficit:Identity:Jarm:Enabled` (default `false`). When active,
+four response modes are added to OpenIddict and a handler takes over writing
+the response (`src/sts/OpenIddictServerConfiguration.cs:277-285`):
 
-| `response_mode` | Constante |
+| `response_mode` | Constant |
 |---|---|
 | `jwt` | `JarmAuthorizationResponseHandler.Jwt` |
 | `query.jwt` | `QueryJwt` |
 | `fragment.jwt` | `FragmentJwt` |
 | `form_post.jwt` | `FormPostJwt` |
 
-`src/sts/Jarm/JarmAuthorizationResponseHandler.cs:16-19`. Um modo fora desses
-quatro não é tratado (`:50`), e a resposta segue o caminho normal.
+`src/sts/Jarm/JarmAuthorizationResponseHandler.cs:16-19`. A mode outside
+these four is not handled (`:50`), and the response follows the normal path.
 
-## Conteúdo e assinatura
+## Content and signing
 
-A resposta vira um JWT assinado pela credencial auxiliar, com vida de 120
-segundos por padrão (`src/sts/Options/JarmOptions.cs:19`). O algoritmo é
-publicado em `authorization_signing_alg_values_supported`
+The response becomes a JWT signed with the auxiliary credential, with a
+120-second lifetime by default (`src/sts/Options/JarmOptions.cs:19`). The
+algorithm is published in `authorization_signing_alg_values_supported`
 (`src/sts/OpenIddictServerConfiguration.cs:597-601`).
 
-O que o JARM protege: em `query.jwt` os parâmetros de resposta deixam de trafegar
-em claro na URL, e passam a ser um objeto assinado. Isso dá integridade e
-autenticação de origem à resposta de autorização — inclusive às respostas de
-erro, que sem JARM são forjáveis por quem controla o redirecionamento.
+What JARM protects: in `query.jwt` the response parameters no longer travel
+in cleartext in the URL, and instead become a signed object. This gives
+integrity and origin authentication to the authorization response —
+including error responses, which without JARM are forgeable by whoever
+controls the redirect.
 
-## Cifragem
+## Encryption
 
-Opcional (`Jarm:Encryption:Enabled`, padrão `false`). Quando ligada, resolve as
-credenciais de cifragem do cliente
-(`IJarmClientEncryptionCredentialsResolver`) e produz JWE com:
+Optional (`Jarm:Encryption:Enabled`, default `false`). When enabled, it
+resolves the client's encryption credentials
+(`IJarmClientEncryptionCredentialsResolver`) and produces a JWE with:
 
-| Parâmetro | Padrão |
+| Parameter | Default |
 |---|---|
-| Gerenciamento de chave RSA | `RSA-OAEP-256` |
-| Gerenciamento de chave EC | `ECDH-ES+A256KW` |
-| Cifragem de conteúdo | `A256CBC-HS512` |
+| RSA key management | `RSA-OAEP-256` |
+| EC key management | `ECDH-ES+A256KW` |
+| Content encryption | `A256CBC-HS512` |
 
-`src/sts/Options/JarmOptions.cs:59-74`. Os três são publicados em discovery
-quando a cifragem está ativa, como pede o perfil FAPI 2.0 Advancing.
+`src/sts/Options/JarmOptions.cs:59-74`. All three are published in discovery
+when encryption is active, as required by the FAPI 2.0 Advancing profile.
 
-## Lacunas
+## Gaps
 
-- Sem seleção de algoritmo por cliente: o `alg` é o da credencial auxiliar do OP.
-- `authorization_encryption_*` são globais, não por registro de cliente.
+- No per-client algorithm selection: the `alg` is the OP's auxiliary
+  credential's.
+- `authorization_encryption_*` are global, not per client registration.
 
-## Testes
+## Tests
 
 `FapiJarmTests`, `FapiJarmTests.Jarm`.

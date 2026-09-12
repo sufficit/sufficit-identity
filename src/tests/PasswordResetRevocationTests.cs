@@ -229,6 +229,9 @@ public sealed class PasswordResetRevocationTests(
             services.GetRequiredService<IAccountLookupPolicy>(),
             revoker,
             trigger,
+            services.GetRequiredService<
+                Microsoft.Extensions.Localization.IStringLocalizer<
+                    Sufficit.Identity.STS.Resources.AccountMessages>>(),
             NullLogger<AspNetCoreIdentityAccountOnboardingService>.Instance);
 
     private static string EncodeToken(string token) =>

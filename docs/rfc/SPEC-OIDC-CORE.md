@@ -2,19 +2,19 @@
 
 | | |
 |---|---|
-| Papel | OpenID Provider |
-| Abrangência | **B — Substancial** |
-| Origem | Misto: OpenIddict, com controller e projeções próprias |
+| Role | OpenID Provider |
+| Coverage | **B — Substantial** |
+| Origin | Mixed: OpenIddict, with in-house controller and projections |
 | Spec | https://openid.net/specs/openid-connect-core-1_0.html |
 
-## Fluxos
+## Flows
 
-Somente **Authorization Code Flow** (§3.1). Implicit (§3.2) e Hybrid (§3.3) não
-são registrados — ver [RFC-9700-OAUTH-SECURITY-BCP.md](RFC-9700-OAUTH-SECURITY-BCP.md).
+**Authorization Code Flow** (§3.1) only. Implicit (§3.2) and Hybrid (§3.3) are
+not registered — see [RFC-9700-OAUTH-SECURITY-BCP.md](RFC-9700-OAUTH-SECURITY-BCP.md).
 
 ## Endpoints
 
-| Papel | Caminho |
+| Role | Path |
 |---|---|
 | Authorization (§3.1.2) | `/connect/authorize` |
 | Token (§3.1.3) | `/connect/token` |
@@ -23,76 +23,78 @@ são registrados — ver [RFC-9700-OAUTH-SECURITY-BCP.md](RFC-9700-OAUTH-SECURIT
 
 ## `id_token`
 
-Emitido pelo OpenIddict com `iss`, `sub`, `aud`, `exp`, `iat`, `nonce` e
-`auth_time`. Os claims de identidade entram conforme escopo, decidido em
+Issued by OpenIddict with `iss`, `sub`, `aud`, `exp`, `iat`, `nonce` and
+`auth_time`. Identity claims are included based on scope, decided in
 `GrantOperations.GetDestinations` (`src/sts/Grants/GrantOperations.cs:260-326`):
 
-| Claim | Condição |
+| Claim | Condition |
 |---|---|
-| `name`, `preferred_username` | escopo `profile` |
-| `email`, `email_verified` | escopo `email` |
-| `role` | escopo `roles` |
-| `amr`, `acr`, `auth_time` | Sempre, em ambos os tokens |
-| `sid` | Apenas no `id_token` |
-| `cnf` | Apenas no access token |
-| `AspNet.Identity.SecurityStamp` | **Nunca emitido** |
+| `name`, `preferred_username` | `profile` scope |
+| `email`, `email_verified` | `email` scope |
+| `role` | `roles` scope |
+| `amr`, `acr`, `auth_time` | Always, in both tokens |
+| `sid` | Only in the `id_token` |
+| `cnf` | Only in the access token |
+| `AspNet.Identity.SecurityStamp` | **Never issued** |
 
-A última linha importa: o security stamp é estado interno do ASP.NET Identity, e
-vazá-lo num token daria a um cliente a capacidade de correlacionar invalidações.
-O `switch` o descarta explicitamente (`:302-303`).
+The last row matters: the security stamp is ASP.NET Identity internal state,
+and leaking it into a token would give a client the ability to correlate
+invalidations. The `switch` explicitly discards it (`:302-303`).
 
 ## UserInfo
 
-`src/sts/Controllers/AuthorizationController.cs:385-390`. Os claims são
-recarregados do `UserManager` no momento da chamada — não replicados do token —
-e filtrados por escopo (`:437-470`). `email_verified` reflete o estado atual da
-conta, não o do instante da emissão.
+`src/sts/Controllers/AuthorizationController.cs:385-390`. Claims are reloaded
+from `UserManager` at call time — not replicated from the token — and filtered
+by scope (`:437-470`). `email_verified` reflects the account's current state,
+not the state at issuance time.
 
-## `prompt` e `max_age`
+## `prompt` and `max_age`
 
-| Parâmetro | Comportamento |
+| Parameter | Behavior |
 |---|---|
-| `prompt=none` | Devolve `login_required`, `consent_required` ou `interaction_required` sem interação |
-| `prompt=login` | Força reautenticação via `AuthorizationReauthenticationPolicy` |
-| `prompt=consent` | Participa da política de consentimento em vez de contorná-la |
-| `max_age` | Exige autenticação recente; `max_age=0` usa um recibo assinado para evitar laço |
+| `prompt=none` | Returns `login_required`, `consent_required` or `interaction_required` without interaction |
+| `prompt=login` | Forces reauthentication via `AuthorizationReauthenticationPolicy` |
+| `prompt=consent` | Participates in the consent policy instead of bypassing it |
+| `max_age` | Requires recent authentication; `max_age=0` uses a signed receipt to avoid a loop |
 
-O tratamento de `prompt=consent` merece nota: a implementação anterior **pulava**
-a verificação de consentimento quando o parâmetro estava presente, exatamente o
-inverso do pedido. Hoje ele entra na política centralizada
+The handling of `prompt=consent` deserves a note: the previous implementation
+**skipped** the consent check when the parameter was present, exactly the
+opposite of what was requested. Today it goes through the centralized policy
 (`AuthorizationController.cs:290-330`).
 
-## Consentimento
+## Consent
 
-`AuthorizationConsentPolicy` avalia o `ConsentType` do cliente (implicit,
-explicit, systematic, external). Quando é preciso interagir, o `/connect/authorize`
-redireciona para `/consent` repassando a query original; a UI reposta ao mesmo
-endpoint com `consent_decision`, e a **antiforgery é validada no servidor**
-(`AuthorizationController.cs:260-275`). O host é API-only e não registra o filtro
-automático do MVC, portanto o componente Blazor sozinho não bastaria.
+`AuthorizationConsentPolicy` evaluates the client's `ConsentType` (implicit,
+explicit, systematic, external). When interaction is needed,
+`/connect/authorize` redirects to `/consent` carrying the original query; the
+UI posts back to the same endpoint with `consent_decision`, and
+**antiforgery is validated on the server**
+(`AuthorizationController.cs:260-275`). The host is API-only and doesn't
+register MVC's automatic filter, so the Blazor component alone would not be
+enough.
 
-A UI pode **estreitar** os escopos na reapresentação; ampliá-los não funciona,
-porque a validação de escopo do OpenIddict roda de novo na requisição reposta.
+The UI can **narrow** scopes on resubmission; widening them doesn't work,
+because OpenIddict's scope validation runs again on the resubmitted request.
 
 ## `sub`
 
-Estável, é o identificador do usuário no ASP.NET Identity. Não há
-pairwise/pseudonymous subject identifier (§8.1); o `sub` é o mesmo para todos os
-clientes.
+Stable, it's the user's identifier in ASP.NET Identity. There is no
+pairwise/pseudonymous subject identifier (§8.1); `sub` is the same for every
+client.
 
-## Lacunas
+## Gaps
 
-| Item | § | Estado |
+| Item | § | Status |
 |---|---|---|
-| Implicit e Hybrid | 3.2, 3.3 | Não, por decisão |
-| `claims` parameter | 5.5 | Não |
-| `request_uri` apontando para o cliente | 6.2 | Não, só via PAR |
-| Pairwise `sub` | 8.1 | Não |
-| `id_token` cifrado para o cliente | 10.2 | Não |
-| ACR solicitável por `acr_values` | 3.1.2.1 | Não |
-| Certificação OpenID | — | Não executada |
+| Implicit and Hybrid | 3.2, 3.3 | No, by decision |
+| `claims` parameter | 5.5 | No |
+| `request_uri` pointing to the client | 6.2 | No, only via PAR |
+| Pairwise `sub` | 8.1 | No |
+| `id_token` encrypted for the client | 10.2 | No |
+| ACR requestable via `acr_values` | 3.1.2.1 | No |
+| OpenID certification | — | Not performed |
 
-## Testes
+## Tests
 
 `AuthorizationCodeFlowTests`, `ConsentFallbackIntegrationTests`,
 `AuthorizationConsentPolicyTests`, `AuthorizationReauthenticationIntegrationTests`,

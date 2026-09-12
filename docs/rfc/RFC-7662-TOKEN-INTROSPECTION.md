@@ -2,42 +2,43 @@
 
 | | |
 |---|---|
-| Papel | Authorization Server |
-| Abrangência | **A — Completa** |
-| Origem | OpenIddict; endpoint em `src/sts/OpenIddictServerConfiguration.cs:47` |
+| Role | Authorization Server |
+| Coverage | **A — Complete** |
+| Origin | OpenIddict; endpoint in `src/sts/OpenIddictServerConfiguration.cs:47` |
 | Spec | https://www.rfc-editor.org/rfc/rfc7662 |
 
-## Como está implementado
+## Implementation
 
-`POST /connect/introspect`, servido pelo OpenIddict. É o caminho principal de
-validação porque o padrão do deployment é **access token por referência**
-(`UseReferenceAccessTokens()`, `src/sts/OpenIddictServerConfiguration.cs:405`):
-o valor entregue ao cliente é opaco e só o AS sabe traduzi-lo.
+`POST /connect/introspect`, served by OpenIddict. It is the primary
+validation path because the deployment defaults to **reference access
+tokens** (`UseReferenceAccessTokens()`, `src/sts/OpenIddictServerConfiguration.cs:405`):
+the value handed to the client is opaque, and only the AS can resolve it.
 
-| Requisito | § | Estado | Observação |
+| Requirement | § | Status | Note |
 |---|---|---|---|
-| Autenticação do chamador | 2.1 | Sim | Cliente confidencial ou token de portador autorizado. |
-| `active` como campo obrigatório | 2.2 | Sim | — |
-| Resposta mínima para token inativo | 2.2 | Sim, só `active: false` | Evita oráculo de existência. |
-| `scope`, `client_id`, `sub`, `exp` | 2.2 | Sim | — |
-| `cnf` para tokens vinculados | RFC 8705 §3.2 | Sim | Thumbprint mTLS repassado. |
-| Alias mTLS do endpoint | RFC 8705 §5 | Sim | `/connect/introspect/mtls`. |
+| Caller authentication | 2.1 | Yes | Confidential client or authorized bearer token. |
+| `active` as a mandatory field | 2.2 | Yes | — |
+| Minimal response for an inactive token | 2.2 | Yes, only `active: false` | Avoids an existence oracle. |
+| `scope`, `client_id`, `sub`, `exp` | 2.2 | Yes | — |
+| `cnf` for bound tokens | RFC 8705 §3.2 | Yes | mTLS thumbprint carried through. |
+| mTLS alias for the endpoint | RFC 8705 §5 | Yes | `/connect/introspect/mtls`. |
 
-## Limite de taxa
+## Rate limit
 
-A introspecção tem bucket próprio de 300 requisições por minuto por IP, separado
-do bucket de 30/min dos demais endpoints `POST /connect/*`
+Introspection has its own bucket of 300 requests per minute per IP, separate
+from the 30/min bucket shared by the other `POST /connect/*` endpoints
 (`src/server/IdentityRateLimitPolicy.cs`, `src/sts/Options/RateLimitOptions.cs:39-40`).
-Sem essa separação, um resource server chatty consumiria a cota de emissão.
+Without that separation, a chatty resource server could consume the issuance
+quota.
 
-## Introspecção de personal access tokens
+## Personal access token introspection
 
-Há um endpoint próprio, `POST /api/account/tokens/introspect`
-(`src/sts/Controllers/PersonalTokensController.cs:497`), com forma de resposta
-semelhante mas escopo diferente: serve para um resource server descobrir se um
-token pessoal continua ativo. Devolve `inactive` em qualquer falha, sem
-distinguir causa.
+There is a dedicated endpoint, `POST /api/account/tokens/introspect`
+(`src/sts/Controllers/PersonalTokensController.cs:497`), with a similar
+response shape but a different scope: it lets a resource server discover
+whether a personal token is still active. It returns `inactive` on any
+failure, without distinguishing the cause.
 
-## Testes
+## Tests
 
 `IntrospectionTests`, `PersonalTokensTests`, `MtlsPolicyTests`.

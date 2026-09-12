@@ -2,75 +2,75 @@
 
 | | |
 |---|---|
-| Papel | Authorization Server **e** Resource Server |
-| Abrangência | **B — Substancial** |
-| Origem | Misto — composição de outras especificações mais o endpoint MCP próprio |
+| Role | Authorization Server **and** Resource Server |
+| Coverage | **B — Substantial** |
+| Origin | Mixed — composition of other specifications plus the in-house MCP endpoint |
 | Spec | https://modelcontextprotocol.io/specification/draft/basic/authorization |
 
-## O que a especificação exige do AS
+## What the spec requires from the AS
 
-| Requisito | Como é atendido |
+| Requirement | Implementation |
 |---|---|
-| OAuth 2.1 com PKCE | [RFC-7636-PKCE.md](RFC-7636-PKCE.md); implicit e password fora |
-| RS implementa RFC 9728 | [RFC-9728-PROTECTED-RESOURCE-METADATA.md](RFC-9728-PROTECTED-RESOURCE-METADATA.md) |
-| AS publica RFC 8414 ou OIDC Discovery | [RFC-8414-AUTHORIZATION-SERVER-METADATA.md](RFC-8414-AUTHORIZATION-SERVER-METADATA.md) |
-| CIMD como registro preferencial | [SPEC-OAUTH-CIMD.md](SPEC-OAUTH-CIMD.md) |
-| DCR aceito, porém depreciado | [RFC-7591-DYNAMIC-CLIENT-REGISTRATION.md](RFC-7591-DYNAMIC-CLIENT-REGISTRATION.md) |
-| `resource` obrigatório (RFC 8707) | [RFC-8707-RESOURCE-INDICATORS.md](RFC-8707-RESOURCE-INDICATORS.md) |
-| `iss` na resposta e anúncio correspondente | [RFC-9207-ISSUER-IDENTIFICATION.md](RFC-9207-ISSUER-IDENTIFICATION.md) |
-| Token com audiência do recurso | Sim, via allow-list de recursos |
-| `WWW-Authenticate` com `resource_metadata` e `scope` | `src/management/Mcp/McpResourceMetadataChallenge.cs` |
-| `403` com `insufficient_scope` para step-up | Sim, `ScopeRequirement` |
+| OAuth 2.1 with PKCE | [RFC-7636-PKCE.md](RFC-7636-PKCE.md); implicit and password out |
+| RS implements RFC 9728 | [RFC-9728-PROTECTED-RESOURCE-METADATA.md](RFC-9728-PROTECTED-RESOURCE-METADATA.md) |
+| AS publishes RFC 8414 or OIDC Discovery | [RFC-8414-AUTHORIZATION-SERVER-METADATA.md](RFC-8414-AUTHORIZATION-SERVER-METADATA.md) |
+| CIMD as preferred registration | [SPEC-OAUTH-CIMD.md](SPEC-OAUTH-CIMD.md) |
+| DCR accepted, but deprecated | [RFC-7591-DYNAMIC-CLIENT-REGISTRATION.md](RFC-7591-DYNAMIC-CLIENT-REGISTRATION.md) |
+| `resource` required (RFC 8707) | [RFC-8707-RESOURCE-INDICATORS.md](RFC-8707-RESOURCE-INDICATORS.md) |
+| `iss` in the response and matching announcement | [RFC-9207-ISSUER-IDENTIFICATION.md](RFC-9207-ISSUER-IDENTIFICATION.md) |
+| Token audienced to the resource | Yes, via a resource allow-list |
+| `WWW-Authenticate` with `resource_metadata` and `scope` | `src/management/Mcp/McpResourceMetadataChallenge.cs` |
+| `403` with `insufficient_scope` for step-up | Yes, `ScopeRequirement` |
 
-Nenhuma peça da lista está faltando. É a razão do nível B e não C.
+No item on the list is missing. That's the reason for level B rather than C.
 
-## O servidor MCP próprio
+## The in-house MCP server
 
-Além de autorizar MCP de terceiros, o Identity **é** um servidor MCP:
-`src/management/Controllers/McpController.cs`, protegido pela policy
-`sufficit-identity-mcp` (escopo `identity.mcp`, padrão em
+Besides authorizing third-party MCP, Identity **is** an MCP server:
+`src/management/Controllers/McpController.cs`, protected by the
+`sufficit-identity-mcp` policy (scope `identity.mcp`, default in
 `src/sts/Options/McpOptions.cs:20`).
 
-Fala JSON-RPC com `tools/list` e `tools/call` (`McpController.cs:92-101`). O
-registro de ferramentas é `IdentityMcpToolRegistry`, composto por dois conjuntos
+It speaks JSON-RPC with `tools/list` and `tools/call` (`McpController.cs:92-101`).
+The tool registry is `IdentityMcpToolRegistry`, composed of two sets
 (`src/management/Mcp/McpTooling.cs:39`):
 
-| Conjunto | Arquivo | Alcance |
+| Set | File | Scope |
 |---|---|---|
-| Cofre pessoal | `VaultMcpTools.cs` | Ler, gravar, listar e apagar segredos do contexto `user-<sub>` |
-| Autosserviço | `SelfServiceMcpTools.cs` | Dados da própria conta |
+| Personal vault | `VaultMcpTools.cs` | Read, write, list and delete secrets in the `user-<sub>` context |
+| Self-service | `SelfServiceMcpTools.cs` | Data of the account's own owner |
 
-Duas propriedades de projeto valem registro:
+Two design properties are worth noting:
 
-1. **Toda ferramenta é vinculada ao sujeito autenticado.** O contexto do cofre é
-   forçado para `user-<sub>` no controller
-   (`src/management/Controllers/PersonalVaultController.cs:151`), não vem do
-   argumento. Um agente não alcança o segredo de outro usuário.
-2. **A exclusão exige confirmação em texto claro**: a ferramenta de remoção pede
-   `confirmPlaintext` além do nome (`VaultMcpTools.cs:69-72`), o que evita que um
-   modelo apague um segredo por inferência de intenção.
+1. **Every tool is bound to the authenticated subject.** The vault context is
+   forced to `user-<sub>` in the controller
+   (`src/management/Controllers/PersonalVaultController.cs:151`), not taken from
+   the argument. An agent cannot reach another user's secret.
+2. **Deletion requires plaintext confirmation**: the removal tool demands
+   `confirmPlaintext` in addition to the name (`VaultMcpTools.cs:69-72`), which
+   prevents a model from deleting a secret by inferring intent.
 
-## Escopos e provisionamento
+## Scopes and provisioning
 
-`McpScopeProvisioner` cria o escopo exigido no startup e o concede aos clientes
-de primeira parte configurados; `McpScopeGrantPolicy` decide a concessão
-implícita. Os recursos aceitos como audiência vêm de `Mcp:Resources`, com
-registro explícito — um agente não inventa audiência.
+`McpScopeProvisioner` creates the required scope at startup and grants it to the
+configured first-party clients; `McpScopeGrantPolicy` decides the implicit
+grant. Resources accepted as audience come from `Mcp:Resources`, with explicit
+registration — an agent cannot invent an audience.
 
-## Lacunas frente ao estado da arte
+## Gaps against the state of the art
 
-| Item | Estado | Comparação |
+| Item | Status | Comparison |
 |---|---|---|
-| Identidade de agente como princípio de primeira classe | Não | Entra Agent ID (GA abr/2026), Auth0 Agent-as-Principal |
-| Cofre de tokens de terceiros | **Sim**, em `src/sts/Integrations/` | Equivale ao Token Vault do Auth0 |
-| Delegação on-behalf-of para agente sem usuário | Não | Ver [RFC-8693-TOKEN-EXCHANGE.md](RFC-8693-TOKEN-EXCHANGE.md) |
-| ID-JAG / Cross-App Access | Não | Draft-04, adotado por Anthropic, Atlassian, Slack, Notion |
+| Agent identity as a first-class principal | No | Enter Agent ID (GA Apr/2026), Auth0 Agent-as-Principal |
+| Third-party token vault | **Yes**, in `src/sts/Integrations/` | Equivalent to Auth0's Token Vault |
+| On-behalf-of delegation for an agent without a user | No | See [RFC-8693-TOKEN-EXCHANGE.md](RFC-8693-TOKEN-EXCHANGE.md) |
+| ID-JAG / Cross-App Access | No | Draft-04, adopted by Anthropic, Atlassian, Slack, Notion |
 
-A primeira e a terceira linhas são a mesma lacuna vista de ângulos diferentes: o
-token exchange exige que o `subject_token` identifique um usuário, o que impede
-um agente de trocar a própria identidade por acesso downstream.
+The first and third rows are the same gap seen from different angles: token
+exchange requires the `subject_token` to identify a user, which prevents an
+agent from exchanging its own identity for downstream access.
 
-## Testes
+## Tests
 
 `McpTests`, `IdentityMcpTests`, `McpScopeGrantPolicy` via
-`PersonalTokenScopeProvisionerTests` e `ScopeEntitlementSecurityTests`.
+`PersonalTokenScopeProvisionerTests` and `ScopeEntitlementSecurityTests`.

@@ -2,72 +2,72 @@
 
 | | |
 |---|---|
-| Papel | Authorization Server |
-| Abrangência | **C — Parcial** |
-| Origem | Próprio — o OpenIddict não implementa DCR |
+| Role | Authorization Server |
+| Coverage | **C — Partial** |
+| Origin | In-house — OpenIddict does not implement DCR |
 | Spec | https://www.rfc-editor.org/rfc/rfc7591 |
 
-## Como está implementado
+## Implementation
 
-`POST /connect/register`, em `src/sts/Controllers/RegistrationController.cs`.
-Desligado por padrão (`Sufficit:Identity:Mcp:Dcr:Enabled = false`,
-`src/sts/Options/McpOptions.cs:87`). Quando desligado, responde `404` em vez de
-`403`, para não revelar a existência do endpoint (`RegistrationController.cs:80-86`).
+`POST /connect/register`, in `src/sts/Controllers/RegistrationController.cs`.
+Off by default (`Sufficit:Identity:Mcp:Dcr:Enabled = false`,
+`src/sts/Options/McpOptions.cs:87`). When off, it responds `404` instead of
+`403`, so as not to reveal the endpoint's existence (`RegistrationController.cs:80-86`).
 
-O endpoint é anunciado no documento de discovery apenas quando habilitado
+The endpoint is announced in the discovery document only when enabled
 (`src/sts/OpenIddictServerConfiguration.cs:556-565`).
 
-## Três portões
+## Three gates
 
-1. **Habilitação** (`Dcr.Enabled`).
-2. **Initial access token** (`RequireInitialAccessToken`, padrão `true`):
-   comparação em tempo constante do cabeçalho `Authorization`, com expiração
-   obrigatória; sem token configurado o endpoint responde `503`, e não passa
-   (`RegistrationController.cs:88-140`). Opcionalmente de uso único.
-3. **Perfil anônimo** (quando `RequireInitialAccessToken=false`): só cliente
-   público, sem segredo, restrito a `AnonymousGrantTypes` e `AnonymousScopes`
+1. **Enablement** (`Dcr.Enabled`).
+2. **Initial access token** (`RequireInitialAccessToken`, default `true`):
+   constant-time comparison of the `Authorization` header, with mandatory
+   expiration; with no token configured the endpoint responds `503`, and does not pass
+   (`RegistrationController.cs:88-140`). Optionally single-use.
+3. **Anonymous profile** (when `RequireInitialAccessToken=false`): public
+   client only, no secret, restricted to `AnonymousGrantTypes` and `AnonymousScopes`
    (`RegistrationController.cs:173-220`).
 
-## O que é validado no registro
+## What's validated at registration
 
-| Item | Regra |
+| Item | Rule |
 |---|---|
-| `redirect_uris` | `https` salvo loopback, sem fragmento — `ClientUriPolicy` |
-| `grant_types` | Somente os da allow-list; `password` e `implicit` recusados |
-| `scope` | Escopos reservados (`identity.management`, `scim`) bloqueados |
+| `redirect_uris` | `https` except loopback, without fragment — `ClientUriPolicy` |
+| `grant_types` | Only those on the allow-list; `password` and `implicit` rejected |
+| `scope` | Reserved scopes (`identity.management`, `scim`) blocked |
 | `token_endpoint_auth_method` | `none`, `client_secret_basic`, `client_secret_post` |
-| `jwks_uri` | HTTPS pública, validada contra SSRF |
-| `client_id` fornecido pelo chamador | Recusado salvo `AllowCallerSuppliedClientIds` |
-| `client_secret` fornecido pelo chamador | Recusado salvo `AllowCallerSuppliedSecrets` |
+| `jwks_uri` | Public HTTPS, validated against SSRF |
+| `client_id` supplied by the caller | Rejected unless `AllowCallerSuppliedClientIds` |
+| `client_secret` supplied by the caller | Rejected unless `AllowCallerSuppliedSecrets` |
 
-Todo cliente nasce com `ConsentType=Explicit` e, se usar `authorization_code`,
-com PKCE exigido (`RegistrationController.cs:149`).
+Every client is born with `ConsentType=Explicit` and, if it uses `authorization_code`,
+with PKCE required (`RegistrationController.cs:149`).
 
-## Proveniência
+## Provenance
 
-O registro grava marcadores nas propriedades da aplicação — origem, data,
-se foi anônimo, IP e user-agent
-(`RegistrationController.cs:36-52`), de modo que o console distingue cliente
-auto-registrado de cliente criado por operador.
+Registration records markers in the application's properties — origin, date,
+whether it was anonymous, IP and user-agent
+(`RegistrationController.cs:36-52`), so the console distinguishes a self-registered
+client from one created by an operator.
 
-## Limite de taxa
+## Rate limiting
 
-Bucket próprio `client-registration`
-(`src/server/IdentityRateLimitPolicy.cs`, método `GetCredentialGroup`).
+Its own bucket, `client-registration`
+(`src/server/IdentityRateLimitPolicy.cs`, method `GetCredentialGroup`).
 
-## Lacunas
+## Gaps
 
-- **Sem RFC 7592**: não há `registration_access_token` nem endpoint de
-  leitura/atualização/exclusão do cliente registrado. O ciclo de vida pós-registro
-  é só pelo plano de management.
-- O initial access token é um segredo estático compartilhado, sem atribuição por
-  registrante. Proposta de correção registrada na avaliação: emiti-lo como token
-  de referência do OpenIddict.
-- `software_statement` (§2.3) não é aceito.
-- A especificação de autorização do MCP **depreca** DCR em favor de CIMD — ver
+- **No RFC 7592**: there is no `registration_access_token` nor an endpoint for
+  reading/updating/deleting a registered client. The post-registration lifecycle
+  is only through the management plane.
+- The initial access token is a static shared secret, not attributed per
+  registrant. A fix has been proposed in the evaluation: issue it as an OpenIddict
+  reference token instead.
+- `software_statement` (§2.3) is not accepted.
+- The MCP authorization specification **deprecates** DCR in favor of CIMD — see
   [SPEC-OAUTH-CIMD.md](SPEC-OAUTH-CIMD.md).
 
-## Testes
+## Tests
 
 `ProvisioningControllerTests`, `ClientDefinitionPolicyTests`, `McpTests`,
 `IdentityMcpTests`.

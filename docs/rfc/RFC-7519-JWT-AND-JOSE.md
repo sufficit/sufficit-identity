@@ -1,66 +1,66 @@
-# RFC 7519 e a família JOSE — JWT, JWS, JWE, JWK, JWA
+# RFC 7519 and the JOSE family — JWT, JWS, JWE, JWK, JWA
 
 | | |
 |---|---|
-| Papel | Emissor e verificador |
-| Abrangência | **B — Substancial** |
-| Origem | Misto: `Microsoft.IdentityModel` via OpenIddict, mais o cofre próprio |
+| Role | Issuer and verifier |
+| Coverage | **B — Substantial** |
+| Origin | Mixed: `Microsoft.IdentityModel` via OpenIddict, plus the in-house vault |
 | Specs | RFC 7515 (JWS), 7516 (JWE), 7517 (JWK), 7518 (JWA), 7519 (JWT) |
 
-## Onde JWTs aparecem
+## Where JWTs appear
 
-| Uso | Formato | Assinado por |
+| Use | Format | Signed by |
 |---|---|---|
-| `id_token` | JWS | Chave de assinatura do OP |
-| Access token self-contained | JWS (`at+jwt`) | Chave de assinatura do OP |
-| Access token por referência | Opaco, não é JWT | — |
-| `logout_token` (back-channel) | JWS | Credencial auxiliar |
-| JARM (`response=`) | JWS, opcionalmente JWE | Credencial auxiliar |
-| Security Event Token (SSF/CAEP) | JWS (`secevent+jwt`) | Credencial auxiliar |
-| Prova DPoP (entrada) | JWS (`dpop+jwt`) | Chave do cliente |
-| Request object JAR (entrada) | JWS | Chave do cliente |
-| Client assertion (entrada) | JWS | Chave do cliente |
+| `id_token` | JWS | OP's signing key |
+| Self-contained access token | JWS (`at+jwt`) | OP's signing key |
+| Access token by reference | Opaque, not a JWT | — |
+| `logout_token` (back-channel) | JWS | Auxiliary credential |
+| JARM (`response=`) | JWS, optionally JWE | Auxiliary credential |
+| Security Event Token (SSF/CAEP) | JWS (`secevent+jwt`) | Auxiliary credential |
+| DPoP proof (inbound) | JWS (`dpop+jwt`) | Client key |
+| JAR request object (inbound) | JWS | Client key |
+| Client assertion (inbound) | JWS | Client key |
 
-Os tokens internos do OpenIddict (código de autorização, refresh, device code)
-são **cifrados** com o certificado de encriptação, por isso o deployment exige
-`Certificates:EncryptionPath` em produção
+OpenIddict's internal tokens (authorization code, refresh, device code)
+are **encrypted** with the encryption certificate, which is why the deployment requires
+`Certificates:EncryptionPath` in production
 (`src/sts/OpenIddictServerConfiguration.cs:481-489`).
 
-## Algoritmos
+## Algorithms
 
-| Contexto | Aceitos | Origem |
+| Context | Accepted | Origin |
 |---|---|---|
-| Assinatura de tokens do OP | `RS256`, `PS256`, `ES256` | `src/vault/SigningAlgorithms.cs:18-20` |
-| Prova DPoP | `ES256`, `RS256` | `src/sts/Dpop/DpopProofValidator.cs` (checagem de `alg`) |
-| Request object JAR | `PS256`, `ES256` por padrão | `src/sts/Options/JarOptions.cs:30-33` |
-| JWE do JARM | `RSA-OAEP-256` / `ECDH-ES+A256KW` com `A256CBC-HS512` | `src/sts/Options/JarmOptions.cs:59-74` |
-| JWKS de cliente | Somente chaves públicas `RSA` e `EC`, com `kid` único | `src/management/Clients/ClientJwksPolicy.cs:135-149` |
+| OP token signing | `RS256`, `PS256`, `ES256` | `src/vault/SigningAlgorithms.cs:18-20` |
+| DPoP proof | `ES256`, `RS256` | `src/sts/Dpop/DpopProofValidator.cs` (`alg` check) |
+| JAR request object | `PS256`, `ES256` by default | `src/sts/Options/JarOptions.cs:30-33` |
+| JARM's JWE | `RSA-OAEP-256` / `ECDH-ES+A256KW` with `A256CBC-HS512` | `src/sts/Options/JarmOptions.cs:59-74` |
+| Client JWKS | Only public `RSA` and `EC` keys, with a unique `kid` | `src/management/Clients/ClientJwksPolicy.cs:135-149` |
 
-Nenhum caminho aceita `none` nem algoritmo simétrico vindo do cliente: todas as
-listas são allow-lists explícitas. Isso fecha a classe de ataque de confusão de
-algoritmo descrita no RFC 8725.
+No path accepts `none` or a symmetric algorithm coming from the client: every
+list is an explicit allow-list. This closes the algorithm-confusion attack
+class described in RFC 8725.
 
-## Publicação de chaves (JWK Set)
+## Key publication (JWK Set)
 
 `GET /.well-known/openid-configuration/jwks`
-(`src/sts/OpenIddictServerConfiguration.cs:51`). Quando o cofre gerencia as
-chaves (`Vault:ManageSigningKeys`), o JWKS é reescrito por
-`VaultJsonWebKeySetHandler` para publicar as chaves do cofre e **remover** a
-chave efêmera de bootstrap que o OpenIddict exige na validação de opções
+(`src/sts/OpenIddictServerConfiguration.cs:51`). When the vault manages the
+keys (`Vault:ManageSigningKeys`), the JWKS is rewritten by
+`VaultJsonWebKeySetHandler` to publish the vault's keys and **remove** the
+ephemeral bootstrap key that OpenIddict requires for options validation
 (`src/sts/OpenIddictServerConfiguration.cs:437-450`).
 
-Rotação: `KeyVault.RotateKeyAsync` cria versão nova sob *lease* distribuído; as
-versões antigas continuam verificando, o que dá sobreposição sem downtime
+Rotation: `KeyVault.RotateKeyAsync` creates a new version under a distributed
+*lease*; the old versions keep verifying, which gives overlap without downtime
 (`src/vault/KeyVault.cs`, `src/vault/KeyVault.Signing.cs`).
 
-## Lacunas
+## Gaps
 
-- `typ: at+jwt` não é carimbado explicitamente no access token self-contained —
-  ver [RFC-9068-JWT-ACCESS-TOKEN.md](RFC-9068-JWT-ACCESS-TOKEN.md).
-- Não há suporte a algoritmos pós-quânticos; o OpenIddict 8.0 preview introduziu
-  ML-DSA, ainda não adotado aqui.
+- `typ: at+jwt` is not explicitly stamped on the self-contained access token —
+  see [RFC-9068-JWT-ACCESS-TOKEN.md](RFC-9068-JWT-ACCESS-TOKEN.md).
+- No support for post-quantum algorithms; OpenIddict 8.0 preview introduced
+  ML-DSA, not yet adopted here.
 
-## Testes
+## Tests
 
 `VaultSigningAlgorithmTests`, `VaultTests.Signing`, `CertificateRotationTests`,
 `DiscoveryTests`.

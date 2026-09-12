@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="ConfirmEmail.Subject" xml:space="preserve"><value>Confirm your email — {0}</value></data>
+  <data name="ConfirmEmail.Body" xml:space="preserve"><value>Confirm your account by &lt;a href="{0}"&gt;clicking here&lt;/a&gt;.</value></data>
+  <data name="ResetPassword.Subject" xml:space="preserve"><value>Reset your password — {0}</value></data>
+  <data name="ResetPassword.Body" xml:space="preserve"><value>Reset your password by &lt;a href="{0}"&gt;clicking here&lt;/a&gt;.</value></data>
+  <data name="ExternalLink.Subject" xml:space="preserve"><value>Confirm your email — {0}</value></data>
+  <data name="ExternalLink.Body" xml:space="preserve"><value>Confirm that this address is yours to finish signing in with {0}: &lt;a href="{1}"&gt;click here&lt;/a&gt;. If you did not start this sign-in, ignore this message — no account has been created.</value></data>
+  <data name="AuthorizationError.Heading" xml:space="preserve"><value>The sign-in could not be completed</value></data>
+  <data name="AuthorizationError.InvalidToken" xml:space="preserve"><value>The authorization request that opened this page has already been used or has expired. This usually happens when the sign-in page stays open after access was already granted, or when the same link is opened a second time.</value></data>
+  <data name="AuthorizationError.InvalidRequest" xml:space="preserve"><value>The authorization request arrived incomplete or invalid and could not be processed.</value></data>
+  <data name="AuthorizationError.Generic" xml:space="preserve"><value>The authorization request could not be processed.</value></data>
+  <data name="AuthorizationError.Recovery" xml:space="preserve"><value>Return to the application you came from and start signing in again. If the problem persists, contact support with the details below.</value></data>
+  <data name="AuthorizationError.Home" xml:space="preserve"><value>Go to the home page</value></data>
+  <data name="AuthorizationError.TechnicalDetails" xml:space="preserve"><value>Technical details</value></data>
+</root>

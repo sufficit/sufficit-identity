@@ -6,11 +6,13 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Application.Security;
+using Sufficit.Identity.STS.Resources;
 
 namespace Sufficit.Identity.STS;
 
@@ -27,6 +29,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
     IAccountLookupPolicy accountLookup,
     IIdentityUserSessionRevoker sessionRevoker,
     ISecurityEventTrigger securityEvents,
+    IStringLocalizer<AccountMessages> messages,
     ILogger<AspNetCoreIdentityAccountOnboardingService> logger)
     : IAccountOnboardingService
 {
@@ -71,7 +74,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
         {
             return RegistrationFailure(
                 "registration-disabled",
-                "Cadastro de novas contas está desativado.");
+                "New account registration is disabled.");
         }
 
         var userName = _registrationPolicy.RequiresUserName
@@ -195,10 +198,12 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
                     ["userId"] = user.Id,
                     ["code"] = EncodeToken(token),
                 });
-            var body = $"Redefina sua senha <a href=\"{HtmlEncoder.Default.Encode(callbackUrl)}\">clicando aqui</a>.";
+            var body = messages[
+                "ResetPassword.Body",
+                HtmlEncoder.Default.Encode(callbackUrl)].Value;
             await emailSender.SendEmailAsync(
                 email,
-                $"Redefinir senha — {_productName}",
+                messages["ResetPassword.Subject", _productName].Value,
                 body);
             cancellationToken.ThrowIfCancellationRequested();
             logger.LogInformation(
@@ -496,10 +501,12 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
                     ["code"] = EncodeToken(token),
                     ["returnUrl"] = LocalUrlValidator.EnsureLocal(returnUrl),
                 });
-            var body = $"Confirme sua conta <a href=\"{HtmlEncoder.Default.Encode(callbackUrl)}\">clicando aqui</a>.";
+            var body = messages[
+                "ConfirmEmail.Body",
+                HtmlEncoder.Default.Encode(callbackUrl)].Value;
             await emailSender.SendEmailAsync(
                 email,
-                $"Confirme seu e-mail — {_productName}",
+                messages["ConfirmEmail.Subject", _productName].Value,
                 body);
             cancellationToken.ThrowIfCancellationRequested();
             return true;
@@ -553,8 +560,8 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
                 // username or email is already taken.
                 var description = error.Code switch
                 {
-                    "DuplicateUserName" => "Não foi possível criar a conta. Verifique os dados informados.",
-                    "DuplicateEmail" => "Não foi possível criar a conta. Verifique os dados informados.",
+                    "DuplicateUserName" => "The account could not be created. Check the information provided.",
+                    "DuplicateEmail" => "The account could not be created. Check the information provided.",
                     _ => error.Description,
                 };
                 return new AccountLifecycleError(error.Code, description);

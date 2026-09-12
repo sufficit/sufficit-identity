@@ -2,63 +2,66 @@
 
 | | |
 |---|---|
-| Papel | Authorization Server |
-| Abrangência | **B — Substancial** |
-| Origem | Próprio — o OpenIddict não implementa JAR |
+| Role | Authorization Server |
+| Coverage | **B — Substantial** |
+| Origin | In-house — OpenIddict does not implement JAR |
 | Spec | https://www.rfc-editor.org/rfc/rfc9101 |
 
-## Como está implementado
+## Implementation
 
-Dois handlers de evento, registrados só quando `Sufficit:Identity:Jar:Enabled`
+Two event handlers, registered only when `Sufficit:Identity:Jar:Enabled`
 (`src/sts/OpenIddictServerConfiguration.cs:287-294`):
 
-| Handler | Ponto |
+| Handler | Point |
 |---|---|
 | `ExtractAuthorizationRequestObject` | `/connect/authorize` |
 | `ExtractPushedAuthorizationRequestObject` | `/connect/par` |
 
-Ambos em `src/sts/Jar/JarRequestObjectHandler.cs`. Eles extraem o parâmetro
-`request`, validam e mesclam os claims do objeto na requisição.
+Both in `src/sts/Jar/JarRequestObjectHandler.cs`. They extract the `request`
+parameter, validate it, and merge the object's claims into the request.
 
-## Validação, na ordem do código
+## Validation, in the order the code runs it
 
-| # | Verificação | Linha |
+| # | Check | Line |
 |---|---|---|
-| 1 | Parse sem validar, só para ler `alg`/`kid` | `:129` |
-| 2 | `iat`, `exp` e `jti` obrigatórios; `exp > iat` | `:154-162` |
-| 3 | `iat` no máximo 30 s no futuro; janela `exp - iat` limitada | `:170-171` |
-| 4 | `alg` na allow-list (`PS256`, `ES256` por padrão) | `:179-183` |
-| 5 | `client_id` presente no objeto e igual ao da requisição externa | `:187-200` |
-| 6 | Resolução das chaves do cliente via `jwks` ou `jwks_uri` | `:205-241` |
-| 7 | Validação de assinatura com `ValidateIssuer` e `ValidateAudience` ligados: `iss` = `client_id`, `aud` = issuer do OP | `:245-252` |
+| 1 | Parsed without validation, only to read `alg`/`kid` | `:129` |
+| 2 | `iat`, `exp` and `jti` required; `exp > iat` | `:154-162` |
+| 3 | `iat` at most 30 s in the future; `exp - iat` window bounded | `:170-171` |
+| 4 | `alg` on the allow-list (`PS256`, `ES256` by default) | `:179-183` |
+| 5 | `client_id` present in the object and equal to the one in the outer request | `:187-200` |
+| 6 | Resolution of the client's keys via `jwks` or `jwks_uri` | `:205-241` |
+| 7 | Signature validation with `ValidateIssuer` and `ValidateAudience` on: `iss` = `client_id`, `aud` = OP issuer | `:245-252` |
 
-O passo 4 é o que fecha a família de ataques de confusão de algoritmo: `none` e
-algoritmos simétricos não estão na lista e não podem ser negociados pelo cliente.
+Step 4 is what closes off the algorithm-confusion attack family: `none` and
+symmetric algorithms are not on the list and cannot be negotiated by the
+client.
 
-O passo 5 fecha a substituição de cliente: um objeto assinado por A não pode ser
-apresentado como requisição de B.
+Step 5 closes off client substitution: an object signed by A cannot be
+presented as a request from B.
 
-## Chaves remotas
+## Remote keys
 
-`src/sts/Jar/JarSigningKeyResolver.cs` busca `jwks_uri` através do
-`SafeHttpHandlerFactory` (guarda anti-SSRF, sem redirecionamento para rede
-interna) e mantém cache com TTL fixo — o comentário no código registra que o
-honramento de `Cache-Control` (RFC 9111) foi deliberadamente trocado por TTL
-fixo, para que um servidor hostil não force revalidação infinita.
+`src/sts/Jar/JarSigningKeyResolver.cs` fetches `jwks_uri` through
+`SafeHttpHandlerFactory` (anti-SSRF guard, no redirection into the internal
+network) and keeps a cache with a fixed TTL — a code comment records that
+honoring `Cache-Control` (RFC 9111) was deliberately traded for a fixed TTL,
+so that a hostile server cannot force infinite revalidation.
 
 ## Discovery
 
-Com JAR ligado, o documento publica `request_parameter_supported: true` e
-`request_object_signing_alg_values_supported` com a allow-list ordenada
+With JAR enabled, the document publishes `request_parameter_supported: true`
+and `request_object_signing_alg_values_supported` with the ordered allow-list
 (`src/sts/OpenIddictServerConfiguration.cs:625-634`).
 
-## Lacunas
+## Gaps
 
-- `request_uri` **por valor do cliente** (§5.2.2, buscar o objeto numa URL do
-  cliente) não é suportado. O `request_uri` aceito é o do PAR, que é do próprio
-  AS — o que é a recomendação do FAPI 2.0 de qualquer modo.
-- Request object cifrado (JWE) na entrada não é suportado; só assinado.
+- `request_uri` **by client value** (§5.2.2, fetching the object from a URL
+  hosted by the client) is not supported. The `request_uri` accepted is the
+  PAR one, which belongs to the AS itself — which is the FAPI 2.0
+  recommendation anyway.
+- Encrypted (JWE) request objects on input are not supported; only signed
+  ones.
 
-## Testes
+## Tests
 
 `JarRequestObjectTests`, `FapiJarmTests.Par`.
