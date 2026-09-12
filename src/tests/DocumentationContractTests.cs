@@ -12,7 +12,9 @@ public sealed partial class DocumentationContractTests
         "EVALUATION",
         "INVESTIGATION",
         "PLAN",
+        "RFC",
         "RUNBOOK",
+        "SPEC",
         "USAGE",
     ];
 
