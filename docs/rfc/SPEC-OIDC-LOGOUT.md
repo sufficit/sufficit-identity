@@ -1,72 +1,74 @@
-# RP-Initiated, Front-Channel e Back-Channel Logout
+# RP-Initiated, Front-Channel and Back-Channel Logout
 
 | | |
 |---|---|
-| Papel | OpenID Provider |
-| Abrangência | **B — Substancial** |
-| Origem | Misto |
+| Role | OpenID Provider |
+| Coverage | **B — Substantial** |
+| Origin | Mixed |
 | Specs | RP-Initiated Logout 1.0, Front-Channel Logout 1.0, Back-Channel Logout 1.0 |
 
 ## RP-Initiated Logout
 
-`GET /connect/endsession` (e o alias `/connect/logout`) valida o pedido pelo
-OpenIddict e redireciona para a página de confirmação da UI
+`GET /connect/endsession` (and the `/connect/logout` alias) validates the
+request via OpenIddict and redirects to the UI's confirmation page
 (`src/sts/Controllers/AuthorizationController.Logout.cs:37-64`).
 
-Detalhe de implementação relevante: a etapa intermediária **não** repassa o
-`id_token_hint`. Só `post_logout_redirect_uri` e `state` seguem para a UI. O
-motivo está registrado no código — um JWT no cabeçalho `Location` já estourou o
-buffer de resposta do nginx e transformou logout válido em 502. O pedido já foi
-validado pelo OpenIddict nesse ponto; a UI não precisa do hint.
+Relevant implementation detail: the intermediate step **does not** forward
+`id_token_hint`. Only `post_logout_redirect_uri` and `state` go on to the UI.
+The reason is recorded in the code — a JWT in the `Location` header once blew
+past nginx's response buffer and turned a valid logout into a 502. The request
+has already been validated by OpenIddict at that point; the UI doesn't need
+the hint.
 
-O `POST` executa a saída (`:66-224`) com antiforgery validada no servidor. Há uma
-exceção deliberada: se a validação falhar **e não houver sessão ativa**, o pedido
-segue. O ataque que a proteção existe para impedir é forçar o logout de quem
-*está* autenticado; recusar quem já não tem sessão só converteria "sair" em erro
-de protocolo numa página que o usuário não pode mais usar.
+The `POST` performs the sign-out (`:66-224`) with antiforgery validated on the
+server. There is one deliberate exception: if validation fails **and there is
+no active session**, the request proceeds. The attack this protection exists
+to prevent is forcing the logout of someone who *is* authenticated; refusing
+someone who already has no session would only turn "sign out" into a protocol
+error on a page the user can no longer use.
 
 ## Back-Channel Logout
 
-Anunciado apenas quando `BackchannelLogout:Enabled`
-(`src/sts/OpenIddictServerConfiguration.cs:506-511`). O dispatcher distribui
-`logout_token` assinado aos RPs registrados, com limite de 8 segundos e captura
-de exceção: um RP lento ou fora do ar **não** impede a saída local
-(`AuthorizationController.Logout.cs:150-170`).
+Announced only when `BackchannelLogout:Enabled`
+(`src/sts/OpenIddictServerConfiguration.cs:506-511`). The dispatcher
+distributes a signed `logout_token` to registered RPs, with an 8-second limit
+and exception capture: a slow or unavailable RP does **not** block the local
+sign-out (`AuthorizationController.Logout.cs:150-170`).
 
-| Requisito | Estado |
+| Requirement | Status |
 |---|---|
-| `logout_token` assinado com `events` e `sid` | Sim |
-| `sub` ou `sid` presente | Sim, ambos quando disponíveis |
-| Fan-out só para RPs com sessão | Sim, resolvido antes da saída |
-| RP que exige `sid` é pulado quando não há `sid` | Sim (`BackchannelLogoutDistributor.cs:138`) |
-| Falha de RP não bloqueia a saída local | Sim |
-| Repetição com backoff | Não |
+| `logout_token` signed with `events` and `sid` | Yes |
+| `sub` or `sid` present | Yes, both when available |
+| Fan-out only to RPs with a session | Yes, resolved before sign-out |
+| RP requiring `sid` is skipped when there's no `sid` | Yes (`BackchannelLogoutDistributor.cs:138`) |
+| RP failure doesn't block the local sign-out | Yes |
+| Retry with backoff | No |
 
 ## Front-Channel Logout
 
-Página de fan-out em iframe, `GET /connect/frontchannel-logout`
-(`AuthorizationController.Logout.cs:225-227`). O ponto de projeto: as URLs dos RP
-**nunca** vêm da query string. O que trafega é um identificador opaco de contexto
-(`logout_context`), preparado antes da saída enquanto o sujeito ainda é
-conhecido, e resolvido no servidor. Isso remove a classe de open redirect que
-essa página normalmente carrega.
+Iframe fan-out page, `GET /connect/frontchannel-logout`
+(`AuthorizationController.Logout.cs:225-227`). The design point: RP URLs
+**never** come from the query string. What travels is an opaque context
+identifier (`logout_context`), prepared before sign-out while the subject is
+still known, and resolved server-side. This removes the open-redirect class
+this page normally carries.
 
-## Efeitos colaterais da saída
+## Side effects of signing out
 
-| Efeito | Onde |
+| Effect | Where |
 |---|---|
-| Sessão server-side removida | `OidcUserSessionTicketStore` |
-| Sinal CAEP `session-revoked` | `_sharedSignalsDispatcher.SessionRevokedAsync` |
-| Cookie de MFA lembrada descartado quando `force_mfa` | `ForgetTwoFactorClientAsync` |
+| Server-side session removed | `OidcUserSessionTicketStore` |
+| CAEP `session-revoked` signal | `_sharedSignalsDispatcher.SessionRevokedAsync` |
+| Remembered-MFA cookie discarded when `force_mfa` | `ForgetTwoFactorClientAsync` |
 
-## Lacunas
+## Gaps
 
-- Session Management 1.0 (`check_session_iframe`) não é implementado, por
-  decisão: depende de cookies de terceiros, hoje bloqueados por padrão nos
-  navegadores. As sessões server-side e o back-channel cobrem o caso.
-- Sem repetição de `logout_token` para RP indisponível.
+- Session Management 1.0 (`check_session_iframe`) is not implemented, by
+  decision: it depends on third-party cookies, blocked by default in browsers
+  today. Server-side sessions and the back-channel cover the case.
+- No retry of `logout_token` for an unavailable RP.
 
-## Testes
+## Tests
 
 `BackchannelLogoutTests`, `FrontchannelLogoutTests`,
 `FrontchannelLogoutReplayTests`, `ServerSideSessionsTests`.

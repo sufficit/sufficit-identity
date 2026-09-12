@@ -1,78 +1,82 @@
-# RFC 8705 — Mutual-TLS client authentication e access tokens vinculados
+# RFC 8705 — Mutual-TLS client authentication and certificate-bound access tokens
 
 | | |
 |---|---|
-| Papel | Authorization Server |
-| Abrangência | **B — Substancial** |
-| Origem | Misto: OpenIddict 7.x nativo, mais política e encaminhamento próprios |
+| Role | Authorization Server |
+| Coverage | **B — Substantial** |
+| Origin | Mixed: native OpenIddict 7.x, plus in-house policy and forwarding |
 | Spec | https://www.rfc-editor.org/rfc/rfc8705 |
 
-## Ativação
+## Activation
 
-Tudo depende de `Sufficit:Identity:Mtls:Enabled`. Quando ligado
+Everything depends on `Sufficit:Identity:Mtls:Enabled`. When it is on
 (`src/sts/OpenIddictServerConfiguration.cs:64-131`):
 
-- Os **aliases** `/connect/{token,introspect,revocation,deviceauthorization,userinfo,par}/mtls`
-  são registrados como endpoints reais, não só publicados em metadata — registrar
-  o alias no documento sem mapear a rota não autentica ninguém (`:71-88`).
-- `EnableSelfSignedTlsClientAuthentication()` habilita `self_signed_tls_client_auth` (§2.2).
-- `EnablePublicKeyInfrastructureTlsClientAuthentication(...)` habilita
-  `tls_client_auth` (§2.1) quando há CAs confiáveis carregadas por
+- The **aliases** `/connect/{token,introspect,revocation,deviceauthorization,userinfo,par}/mtls`
+  are registered as real endpoints, not just published in metadata —
+  registering the alias in the document without mapping the route
+  authenticates no one (`:71-88`).
+- `EnableSelfSignedTlsClientAuthentication()` enables
+  `self_signed_tls_client_auth` (§2.2).
+- `EnablePublicKeyInfrastructureTlsClientAuthentication(...)` enables
+  `tls_client_auth` (§2.1) when trusted CAs are loaded by
   `MtlsCertificateAuthorityLoader` (`:96-104`).
-- `UseClientCertificateBoundAccessTokens()` faz o OpenIddict emitir e validar o
-  `cnf.x5t#S256` (§3), inclusive na introspecção (`:107-108`).
-- Os aliases absolutos são publicados em `mtls_endpoint_aliases` a partir de
-  `Mtls:EndpointBaseUrl`, permitindo isolar o handshake de certificado numa porta
-  dedicada sem mexer no `issuer` (`:110-130`).
+- `UseClientCertificateBoundAccessTokens()` makes OpenIddict issue and
+  validate the `cnf.x5t#S256` (§3), including during introspection
+  (`:107-108`).
+- The absolute aliases are published in `mtls_endpoint_aliases` from
+  `Mtls:EndpointBaseUrl`, allowing the certificate handshake to be isolated
+  on a dedicated port without touching the `issuer` (`:110-130`).
 
-## Terminação no proxy
+## Termination at the proxy
 
-O host **não** configura Kestrel para exigir certificado; isso é deliberado e
-documentado no próprio `Program.cs:440-464`. O caminho suportado em produção é a
-terminação no nginx/Envoy com encaminhamento do certificado validado por
-cabeçalho.
+The host does **not** configure Kestrel to require a certificate; this is
+deliberate and documented in `Program.cs:440-464` itself. The supported
+production path is termination at nginx/Envoy, with the validated
+certificate forwarded via header.
 
 `MtlsClientCertificateForwarding` (`src/sts/Mtls/MtlsClientCertificateForwarding.cs`)
-roda **antes** do middleware de proxies confiáveis (`Program.cs:471`), porque
-precisa ver o IP real do peer imediato. Ele:
+runs **before** the trusted-proxies middleware (`Program.cs:471`), because it
+needs to see the real IP of the immediate peer. It:
 
-- **remove** o cabeçalho configurado em qualquer modo, para que um cliente não o
-  injete;
-- só projeta o certificado quando o peer está numa das CIDRs dedicadas de
-  `Mtls:TrustedProxyNetworks`.
+- **strips** the configured header in every mode, so that a client cannot
+  inject it;
+- only projects the certificate when the peer is within one of the dedicated
+  CIDRs in `Mtls:TrustedProxyNetworks`.
 
-A validação de startup exige atestação explícita do modo de implantação:
-`DeploymentMode=Unattested` é recusado, e `TrustedProxy` sem CIDR também
-(`src/sts/ServiceCollectionExtensions.Validation.cs:75-120`).
+Startup validation requires explicit attestation of the deployment mode:
+`DeploymentMode=Unattested` is rejected, and so is `TrustedProxy` without a
+CIDR (`src/sts/ServiceCollectionExtensions.Validation.cs:75-120`).
 
-## Vínculo e conflito com DPoP
+## Binding and conflict with DPoP
 
 `RejectCombinedDpopAndMtlsSenderConstraints`
-(`src/sts/OpenIddictServerConfiguration.cs:342-346`) recusa requisição que tente
-usar os dois mecanismos de posse ao mesmo tempo. Sem isso, a semântica de qual
-`cnf` prevalece ficaria indefinida.
+(`src/sts/OpenIddictServerConfiguration.cs:342-346`) rejects a request that
+tries to use both proof-of-possession mechanisms at once. Without this, it
+would be undefined which `cnf` takes precedence.
 
 `MtlsClientCertificatePolicy` (`src/sts/Mtls/MtlsClientCertificatePolicy.cs`)
-verifica o thumbprint contra a lista registrada por cliente (`:124-131`) e trata
-revogação com timeout limitado (1 a 30 s, validado no startup).
+checks the thumbprint against the list registered per client (`:124-131`)
+and handles revocation with a bounded timeout (1 to 30 s, validated at
+startup).
 
-## Requisitos
+## Requirements
 
-| Requisito | § | Estado |
+| Requirement | § | Status |
 |---|---|---|
-| `tls_client_auth` | 2.1 | Sim, com CAs configuradas |
-| `self_signed_tls_client_auth` | 2.2 | Sim |
-| `cnf.x5t#S256` no access token | 3.1 | Sim (OpenIddict) |
-| Validação do vínculo no resource server | 3.2 | Parcial: exposto na introspecção; a checagem é do RS |
-| `mtls_endpoint_aliases` em discovery | 5 | Sim |
-| Verificação de revogação | — | Sim, com timeout limitado |
+| `tls_client_auth` | 2.1 | Yes, with configured CAs |
+| `self_signed_tls_client_auth` | 2.2 | Yes |
+| `cnf.x5t#S256` in the access token | 3.1 | Yes (OpenIddict) |
+| Binding validation at the resource server | 3.2 | Partial: exposed via introspection; the check is the RS's responsibility |
+| `mtls_endpoint_aliases` in discovery | 5 | Yes |
+| Revocation checking | — | Yes, with a bounded timeout |
 
-## Lacunas
+## Gaps
 
-- Sem receita testada de Kestrel direto; o modo suportado pressupõe proxy.
-- A conferência do `cnf` na chamada ao recurso depende de cada resource server.
+- No tested recipe for direct Kestrel; the supported mode assumes a proxy.
+- Checking the `cnf` on the resource call depends on each resource server.
 
-## Testes
+## Tests
 
 `MtlsPolicyTests`, `SenderConstraintTests`, `ClientsControllerTests.Credentials.Mtls`,
 `DeploymentTopologyTests`.

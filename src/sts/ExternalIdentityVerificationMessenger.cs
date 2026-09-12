@@ -2,8 +2,9 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
-using Sufficit.Identity.Application.Accounts;
+using Sufficit.Identity.STS.Resources;
 
 namespace Sufficit.Identity.STS;
 
@@ -22,6 +23,7 @@ public sealed class ExternalIdentityVerificationMessenger(
     IHttpContextAccessor httpContextAccessor,
     IPublicOriginResolver publicOrigin,
     SufficitIdentityOptions options,
+    IStringLocalizer<AccountMessages> messages,
     ILogger<ExternalIdentityVerificationMessenger> logger)
 {
     public const string ConfirmationPath = "/account/externallink/confirm";
@@ -48,17 +50,19 @@ public sealed class ExternalIdentityVerificationMessenger(
                 "ticket",
                 ticket);
             var callbackUrl = publicOrigin.BuildAbsolute(request, pathWithQuery);
-            var product = options.Branding.ProductName;
-            var body =
-                $"Confirme que este endereço é seu para concluir o acesso por "
-                + $"{HtmlEncoder.Default.Encode(providerDisplayName)}: "
-                + $"<a href=\"{HtmlEncoder.Default.Encode(callbackUrl)}\">clique aqui</a>. "
-                + "Se você não iniciou este acesso, ignore esta mensagem — "
-                + "nenhuma conta foi criada.";
-            await emailSender.SendEmailAsync(
-                email,
-                $"Confirme seu e-mail — {product}",
-                body);
+
+            // The message language follows the request culture; the text lives
+            // in AccountMessages resources so a deployment can add a culture
+            // without touching code.
+            var body = messages[
+                "ExternalLink.Body",
+                HtmlEncoder.Default.Encode(providerDisplayName),
+                HtmlEncoder.Default.Encode(callbackUrl)].Value;
+            var subject = messages[
+                "ExternalLink.Subject",
+                options.Branding.ProductName].Value;
+
+            await emailSender.SendEmailAsync(email, subject, body);
             cancellationToken.ThrowIfCancellationRequested();
             return true;
         }

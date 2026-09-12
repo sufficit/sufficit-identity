@@ -55,7 +55,7 @@ public sealed class LoginRecoveryUiTests
 
     [Theory]
     [InlineData("SharedResource.resx")]
-    [InlineData("SharedResource.en.resx")]
+    [InlineData("SharedResource.pt-BR.resx")]
     public void Login_recovery_copy_is_localized(string resourceFile)
     {
         var repository = ResolveIdentityRepository();

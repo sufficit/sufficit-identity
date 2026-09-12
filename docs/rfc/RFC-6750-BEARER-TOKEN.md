@@ -2,40 +2,40 @@
 
 | | |
 |---|---|
-| Papel | Authorization Server e Resource Server (APIs próprias) |
-| Abrangência | **A — Completa** |
-| Origem | OpenIddict (emissão e validação), próprio nos desafios de management |
+| Role | Authorization Server and Resource Server (in-house APIs) |
+| Coverage | **A — Complete** |
+| Origin | OpenIddict (issuance and validation), in-house for management challenges |
 | Spec | https://www.rfc-editor.org/rfc/rfc6750 |
 
-## Como está implementado
+## Implementation
 
-O token é entregue como `Bearer` no `token_type` da resposta do endpoint de
-token, salvo quando há vínculo de posse — aí vira `DPoP`
+The token is delivered as `Bearer` in the `token_type` of the token
+endpoint's response, except when there's a proof-of-possession binding — then it becomes `DPoP`
 (`src/sts/Dpop/DpopTokenHandlers.cs`, handler `AttachDpopTokenType`).
 
-As APIs próprias do Identity (management, SCIM, personal tokens, MCP) consomem o
-mesmo token via `OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme`,
-declarado nas policies em `src/management/ServiceCollectionExtensions.cs:211-236`
-e `src/scim/ScimServiceCollectionExtensions.cs:52-56`.
+Identity's own APIs (management, SCIM, personal tokens, MCP) consume the
+same token via `OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme`,
+declared in the policies at `src/management/ServiceCollectionExtensions.cs:211-236`
+and `src/scim/ScimServiceCollectionExtensions.cs:52-56`.
 
-## Requisitos
+## Requirements
 
-| Requisito | § | Estado | Evidência |
+| Requirement | § | Status | Evidence |
 |---|---|---|---|
-| Token no cabeçalho `Authorization: Bearer` | 2.1 | Sim | Esquema de validação do OpenIddict |
-| Token **não** aceito em query string | 2.3 | Sim, não há leitura de `access_token` na query | — |
-| `WWW-Authenticate` em 401 | 3 | Sim | `src/management/Mcp/McpResourceMetadataChallenge.cs` |
-| `error="invalid_token"` em token inválido | 3.1 | Sim (OpenIddict) | — |
-| `error="insufficient_scope"` em 403 | 3.1 | Sim | `ScopeRequirement` + desafio MCP |
-| TLS obrigatório | 5.3 | Sim fora de Development | — |
+| Token in the `Authorization: Bearer` header | 2.1 | Yes | OpenIddict's validation scheme |
+| Token **not** accepted in query string | 2.3 | Yes, no reading of `access_token` from the query | — |
+| `WWW-Authenticate` on 401 | 3 | Yes | `src/management/Mcp/McpResourceMetadataChallenge.cs` |
+| `error="invalid_token"` on invalid token | 3.1 | Yes (OpenIddict) | — |
+| `error="insufficient_scope"` on 403 | 3.1 | Yes | `ScopeRequirement` + MCP challenge |
+| TLS required | 5.3 | Yes outside Development | — |
 
-## Detalhe relevante
+## Notable detail
 
-O desafio de 401 do plano MCP acrescenta `resource_metadata` ao
-`WWW-Authenticate`, que é o que a especificação de autorização do MCP exige —
-ver [RFC-9728-PROTECTED-RESOURCE-METADATA.md](RFC-9728-PROTECTED-RESOURCE-METADATA.md).
+The 401 challenge for the MCP plan adds `resource_metadata` to the
+`WWW-Authenticate` header, which is what the MCP authorization specification
+requires — see [RFC-9728-PROTECTED-RESOURCE-METADATA.md](RFC-9728-PROTECTED-RESOURCE-METADATA.md).
 
-## Testes
+## Tests
 
 `IntrospectionTests`, `ManagementAuthorizationResponseTests`,
 `PublicAuthenticationBoundaryTests`, `McpTests`.

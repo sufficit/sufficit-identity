@@ -2,36 +2,38 @@
 
 | | |
 |---|---|
-| Papel | OpenID Provider |
-| Abrangência | **A — Completa** |
-| Origem | Misto |
+| Role | OpenID Provider |
+| Coverage | **A — Complete** |
+| Origin | Mixed |
 | Spec | https://openid.net/specs/openid-connect-discovery-1_0.html |
 
-O documento `/.well-known/openid-configuration` e a política de "não anunciar o
-que não está ligado" estão descritos em
+The `/.well-known/openid-configuration` document and the "don't announce what
+isn't wired up" policy are described in
 [RFC-8414-AUTHORIZATION-SERVER-METADATA.md](RFC-8414-AUTHORIZATION-SERVER-METADATA.md),
-que é a especificação base. Este documento cobre só o que é específico do OIDC.
+which is the base spec. This document covers only what's specific to OIDC.
 
-## Específico do OIDC
+## OIDC-specific
 
-| Metadado | Estado |
+| Metadata | Status |
 |---|---|
-| `userinfo_endpoint` | Sim |
-| `id_token_signing_alg_values_supported` | Sim (OpenIddict) |
+| `userinfo_endpoint` | Yes |
+| `id_token_signing_alg_values_supported` | Yes (OpenIddict) |
 | `subject_types_supported` | `public` |
-| `claims_supported` | Publicado a partir do que o controller realmente emite, incluindo os claims de aplicação do `ClaimScopeMap` (`OpenIddictServerConfiguration.cs:216-226`) |
-| `scopes_supported` | Inclui os escopos padrão, `identity.management`, o escopo de personal tokens, os de aplicação e os de *entitlement* (`:180-202`) |
-| `backchannel_logout_supported` | Reflete a configuração real |
-| `frontchannel_logout_supported` | Reflete a configuração real |
-| WebFinger (§2) | **Não implementado** |
+| `claims_supported` | Published from what the controller actually issues, including application claims from `ClaimScopeMap` (`OpenIddictServerConfiguration.cs:216-226`) |
+| `scopes_supported` | Includes the default scopes, `identity.management`, the personal tokens scope, application scopes and *entitlement* scopes (`:180-202`) |
+| `backchannel_logout_supported` | Reflects the actual configuration |
+| `frontchannel_logout_supported` | Reflects the actual configuration |
+| WebFinger (§2) | **Not implemented** |
 
-## Consequência de `claims_supported` ser derivado
+## Consequence of `claims_supported` being derived
 
-A lista não é estática: escopos e claims declarados em
-`Sufficit:Identity:ClaimScopeMap` e `ScopeEntitlements` entram no documento
-automaticamente. Isso mantém o STS neutro em relação ao vocabulário do produto —
-um cliente registra o próprio escopo por configuração, sem alterar o código.
+The list is not static: scopes and claims declared in
+`Sufficit:Identity:ClaimScopeMap` and `ScopeEntitlements` are automatically
+included in the document. This keeps the STS neutral with respect to the
+product's vocabulary — a client registers its own scope through
+configuration, without changing code.
 
-## Testes
+## Tests
 
-`DiscoveryTests` verifica presença **e ausência** condicional de cada metadado.
+`DiscoveryTests` verifies presence **and** conditional absence of each
+metadata field.

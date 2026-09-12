@@ -2,40 +2,40 @@
 
 | | |
 |---|---|
-| Papel | Authorization Server |
-| Abrangência | **A — Completa** |
-| Origem | OpenIddict; endpoint registrado em `src/sts/OpenIddictServerConfiguration.cs:48` |
+| Role | Authorization Server |
+| Coverage | **A — Complete** |
+| Origin | OpenIddict; endpoint registered in `src/sts/OpenIddictServerConfiguration.cs:48` |
 | Spec | https://www.rfc-editor.org/rfc/rfc7009 |
 
-## Como está implementado
+## Implementation
 
-`POST /connect/revocation`, servido inteiramente pelo OpenIddict. Com mTLS
-habilitado ganha o alias `/connect/revocation/mtls`
-(`src/sts/OpenIddictServerConfiguration.cs:75-77`), como exige o RFC 8705 §5.
+`POST /connect/revocation`, served entirely by OpenIddict. With mTLS
+enabled it gains the alias `/connect/revocation/mtls`
+(`src/sts/OpenIddictServerConfiguration.cs:75-77`), as required by RFC 8705 §5.
 
-| Requisito | § | Estado |
+| Requirement | § | Status |
 |---|---|---|
-| Revoga `refresh_token` e `access_token` | 2.1 | Sim |
-| `token_type_hint` aceito e opcional | 2.1 | Sim |
-| Autenticação do cliente exigida | 2.1 | Sim |
-| Cliente só revoga os próprios tokens | 2.1 | Sim |
-| `200 OK` para token inexistente | 2.2 | Sim |
-| Revogação em cascata do refresh | 2.1 | Sim, revoga a autorização associada |
+| Revokes `refresh_token` and `access_token` | 2.1 | Yes |
+| `token_type_hint` accepted and optional | 2.1 | Yes |
+| Client authentication required | 2.1 | Yes |
+| Client can only revoke its own tokens | 2.1 | Yes |
+| `200 OK` for a non-existent token | 2.2 | Yes |
+| Cascading revocation of the refresh token | 2.1 | Yes, revokes the associated authorization |
 
-## Revogação fora do endpoint
+## Revocation outside the endpoint
 
-Além do RFC, há três caminhos administrativos que revogam sem o cliente pedir:
+Besides the RFC, there are three administrative paths that revoke without the client asking:
 
-| Caminho | Onde | Efeito |
+| Path | Where | Effect |
 |---|---|---|
-| Mutação de credencial | `src/sts/CredentialMutationSecurityCoordinator.cs:114-155` | Rotaciona o security stamp e revoga tokens, autorizações e sessões de navegador. |
-| Revogação de sessão | `src/management/Sessions/` | Encerra sessões de um usuário em todos os dispositivos. |
-| Revogação de autorização | `src/management/Authorizations/` | Invalida o *grant* e os tokens dele derivados. |
+| Credential mutation | `src/sts/CredentialMutationSecurityCoordinator.cs:114-155` | Rotates the security stamp and revokes tokens, authorizations and browser sessions. |
+| Session revocation | `src/management/Sessions/` | Ends a user's sessions on all devices. |
+| Authorization revocation | `src/management/Authorizations/` | Invalidates the *grant* and the tokens derived from it. |
 
-Os três emitem sinal CAEP `session-revoked` quando o SSF está ligado — ver
+All three emit a CAEP `session-revoked` signal when SSF is enabled — see
 [SPEC-SSF-CAEP-RISC.md](SPEC-SSF-CAEP-RISC.md).
 
-## Testes
+## Tests
 
 `PasswordResetRevocationTests`, `SessionsAndAuthorizationsControllerTests`,
 `RefreshTokenTests`.

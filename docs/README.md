@@ -16,18 +16,18 @@ type prefix and an uppercase kebab-case subject. Completed work is archived in
 | `USAGE-` | Configuration and consumer-facing use of an implemented feature |
 | `EVALUATION-` | Evaluation instructions or dated assessment |
 | `INVESTIGATION-` | Time-bounded evidence, diagnosis and conclusions |
-| `RFC-` | Conformidade com uma RFC do IETF, em `rfc/` |
-| `SPEC-` | Conformidade com especificação não-IETF (OpenID Foundation, W3C, drafts), em `rfc/` |
+| `RFC-` | Conformance with an IETF RFC, under `rfc/` |
+| `SPEC-` | Conformance with a non-IETF specification (OpenID Foundation, W3C, drafts), under `rfc/` |
 
 Dated evaluations that are useful only as historical evidence live under
 `archive/evaluations`.
 
-## Conformidade com especificações
+## Specification conformance
 
-[`rfc/README.md`](rfc/README.md) indexa um documento por RFC ou especificação
-implementada, com nível de abrangência, origem da implementação (OpenIddict,
-próprio ou misto) e lacunas conhecidas. A fonte de verdade é o código: cada
-afirmação cita `arquivo:linha`.
+[`rfc/README.md`](rfc/README.md) indexes one document per implemented RFC or
+specification, with coverage level, implementation origin (OpenIddict,
+in-house or mixed) and known gaps. The source of truth is the code: each
+claim cites `file:line`.
 
 ## Active plans (pending work)
 
@@ -43,28 +43,28 @@ afirmação cita `arquivo:linha`.
 
 - [Evaluation remediation and god-service decomposition](activities/202608240940-fable-5-evaluation-remediation.md) — vault signature verification, audit retention and volume, administrative rate limiting, refusal-audit rule
 - [Identity MCP — Vault and self-service](activities/202608162300-identity-mcp-vault-self-service.md)
-- [Reconciliação do plano de autorização, SCIM e segredos](activities/202608092130-security-plan-reconciliation.md)
-- [Normalização de nomes e resumos das atividades](activities/202608092120-activity-documentation-normalization.md)
-- [Implementação e encerramento do plano de segurança](activities/202608092110-implementation-plan-closure.md)
-- [Handoff dos gates operacionais de produção](activities/202608092105-operational-gate-handoff.md)
-- [Reconciliação dos refactors arquiteturais P2](activities/202608092100-p2-architecture-reconciliation.md)
-- [Formato de access token por cliente e recurso](activities/202608092055-per-client-access-token-format.md)
-- [Métrica e orçamento de mensagens AES-GCM](activities/202608092052-vault-encryption-budget-metrics.md)
-- [Modelo criptográfico e composição de replay](activities/202608092045-crypto-model-replay-composition.md)
-- [Validação integrada P1 — JAR e mTLS](activities/202608092036-p1-integrated-validation.md)
-- [Revogação e topologia verificável de mTLS](activities/202608092035-mtls-revocation-topology.md)
-- [JAR com `jwks_uri` remoto seguro](activities/202608092022-jar-remote-jwks.md)
-- [Vault — autorização de named secrets](activities/202608092010-vault-secret-namespaces.md)
-- [Vault — lifecycle distribuído das chaves de assinatura](activities/202608092355-vault-signing-key-lifecycle.md)
-- [Vault — isolamento de segredos e consumidores](activities/202608092020-vault-secret-context-and-secret-store.md)
-- [Vault — boundaries fail-closed de produção](activities/202608091930-vault-fail-closed-boundaries.md)
-- [Sender constraints — exclusividade DPoP/mTLS](activities/202608091925-sender-constraint-exclusivity.md)
-- [Invariantes de cliente e Request Object](activities/202608091918-pkce-jar-invariants.md)
-- [Políticas sensíveis — defaults seguros](activities/202608091911-secure-policy-defaults.md)
-- [Production posture — contributors modulares](activities/202608091904-production-posture-contributors.md)
+- [Authorization, SCIM and secrets plan reconciliation](activities/202608092130-security-plan-reconciliation.md)
+- [Activity name and summary normalization](activities/202608092120-activity-documentation-normalization.md)
+- [Security plan implementation and closure](activities/202608092110-implementation-plan-closure.md)
+- [Production operational gate handoff](activities/202608092105-operational-gate-handoff.md)
+- [P2 architectural refactor reconciliation](activities/202608092100-p2-architecture-reconciliation.md)
+- [Per-client and per-resource access token format](activities/202608092055-per-client-access-token-format.md)
+- [AES-GCM message metrics and budget](activities/202608092052-vault-encryption-budget-metrics.md)
+- [Cryptographic model and replay composition](activities/202608092045-crypto-model-replay-composition.md)
+- [P1 integrated validation — JAR and mTLS](activities/202608092036-p1-integrated-validation.md)
+- [mTLS revocation and verifiable topology](activities/202608092035-mtls-revocation-topology.md)
+- [JAR with secure remote `jwks_uri`](activities/202608092022-jar-remote-jwks.md)
+- [Vault — named secret authorization](activities/202608092010-vault-secret-namespaces.md)
+- [Vault — distributed signing key lifecycle](activities/202608092355-vault-signing-key-lifecycle.md)
+- [Vault — secret and consumer isolation](activities/202608092020-vault-secret-context-and-secret-store.md)
+- [Vault — production fail-closed boundaries](activities/202608091930-vault-fail-closed-boundaries.md)
+- [Sender constraints — DPoP/mTLS exclusivity](activities/202608091925-sender-constraint-exclusivity.md)
+- [Client and Request Object invariants](activities/202608091918-pkce-jar-invariants.md)
+- [Sensitive policies — secure defaults](activities/202608091911-secure-policy-defaults.md)
+- [Production posture — modular contributors](activities/202608091904-production-posture-contributors.md)
 - [Security hardening wave 2](activities/202608071330-security-hardening-wave-2.md)
-- [Correções de segurança de protocolos e fronteiras](activities/202608071227-protocol-security-remediation.md)
-- [Endurecimento de segurança, sessão e vault](activities/202608071210-security-hardening.md)
+- [Protocol and boundary security fixes](activities/202608071227-protocol-security-remediation.md)
+- [Security, session and vault hardening](activities/202608071210-security-hardening.md)
 - [Protocol roadmap baseline](activities/202608011800-protocol-roadmap-baseline.md)
 - [Legacy cutover — DB/provider gates](activities/202608011820-legacy-cutover-db-provider.md)
 - [Pluggable UI — phases 0-1](activities/202608012000-pluggable-ui-phase0-phase1.md)
@@ -90,11 +90,11 @@ afirmação cita `arquivo:linha`.
 
 ## Usage
 
-- [Gestão de audiências](management/USAGE-AUDIENCES.md) — inventário, vínculos de scopes, permissões e auditoria.
+- [Audience management](management/USAGE-AUDIENCES.md) — inventory, scope bindings, permissions and audit.
 
-- [Abertura e fechamento do Device Flow em popup](design/DESIGN-DEVICE-FLOW-POPUP.md) — launcher para Symposium, mensagens e limites do navegador.
+- [Opening and closing the Device Flow in a popup](design/DESIGN-DEVICE-FLOW-POPUP.md) — launcher for Symposium, messaging and browser limits.
 
-- [Classificação de navegador, API e Playwright](networking/USAGE-BROWSER-API-CLASSIFICATION.md) — regras de apresentação HTML/JSON, limites e reutilização.
+- [Browser, API and Playwright classification](networking/USAGE-BROWSER-API-CLASSIFICATION.md) — HTML/JSON presentation rules, limits and reuse.
 
 - [Rate limiting by operation and browser errors](networking/USAGE-RATE-LIMITING.md)
 
@@ -109,8 +109,8 @@ afirmação cita `arquivo:linha`.
 - [Distributed cache and snapshot](runbooks/RUNBOOK-DISTRIBUTED-CACHE.md)
 - [Production evidence and release gates](runbooks/RUNBOOK-PRODUCTION-EVIDENCE.md)
 - [Database connection resilience and monitoring](runbooks/RUNBOOK-DATABASE-CONNECTION-RESILIENCE.md)
-- [CSP calibration](runbooks/RUNBOOK-CERTIFICATES — Geração, deploy, rotação e troubleshooting dos certificados de token (assinatura/encriptação/KEK). **CRÍTICO**: o runtime .NET 10.0.10 em produção rejeita PFX gerado por OpenSSL/SDK — ver runbook.
-RUNBOOK-CSP-CALIBRATION.md)
+- [Token certificates (signing & encryption)](runbooks/RUNBOOK-CERTIFICATES.md) — generation, deployment, rotation and troubleshooting of token certificates (signing/encryption/KEK). **CRITICAL**: the .NET 10.0.10 runtime in production rejects PFX files generated by OpenSSL/SDK — see runbook.
+- [CSP calibration](runbooks/RUNBOOK-CSP-CALIBRATION.md)
 - [Confirmed-email rollout](runbooks/RUNBOOK-CONFIRMED-EMAIL.md)
 - [Internal vault](runbooks/RUNBOOK-VAULT.md)
 
@@ -122,6 +122,6 @@ An evaluation describes the repository at a point in time. Findings that still
 require work must be copied into the relevant active plan; an archived evaluation
 must never silently become the current roadmap.
 
-## Padrões compartilhados
+## Shared patterns
 
-- [Snapshots de runtime](architecture/ARCHITECTURE-RUNTIME-SNAPSHOTS.md) — referência ao contrato Sufficit e diferenças da implementação atual.
+- [Runtime snapshots](architecture/ARCHITECTURE-RUNTIME-SNAPSHOTS.md) — reference to the Sufficit contract and differences from the current implementation.

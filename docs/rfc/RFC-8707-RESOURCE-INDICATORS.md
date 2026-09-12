@@ -2,15 +2,16 @@
 
 | | |
 |---|---|
-| Papel | Authorization Server |
-| Abrangência | **B — Substancial** |
-| Origem | Misto |
+| Role | Authorization Server |
+| Coverage | **B — Substantial** |
+| Origin | Mixed |
 | Spec | https://www.rfc-editor.org/rfc/rfc8707 |
 
-## Como está implementado
+## Implementation
 
-O parâmetro `resource` é processado pelo OpenIddict e transformado em audiência
-do token. A camada própria é o **registro explícito de recursos aceitos**:
+The `resource` parameter is processed by OpenIddict and turned into the
+token's audience. The in-house layer is the **explicit registration of
+accepted resources**:
 
 ```
 if (options.Mcp.Resources.Count > 0)
@@ -22,38 +23,39 @@ if (options.Mcp.Resources.Count > 0)
 
 `src/sts/OpenIddictServerConfiguration.cs:204-212`.
 
-Três controles somados decidem se um `resource` vira audiência:
+Three combined controls decide whether a `resource` becomes an audience:
 
-1. A allow-list do host acima (`Sufficit:Identity:Mcp:Resources`).
-2. A permissão `oi_rprm` por cliente, do OpenIddict.
-3. A resolução por grant em `GrantOperations.ResolveResourcesAsync`.
+1. The host allow-list above (`Sufficit:Identity:Mcp:Resources`).
+2. The per-client `oi_rprm` permission, from OpenIddict.
+3. Grant-level resolution in `GrantOperations.ResolveResourcesAsync`.
 
-O efeito é que **um cliente não transforma uma URI arbitrária em audiência**, que
-é a defesa que o RFC 8707 §3 existe para dar.
+The effect is that **a client cannot turn an arbitrary URI into an
+audience**, which is the defense RFC 8707 §3 exists to provide.
 
-## No token exchange
+## In token exchange
 
-A atenuação é explícita: recurso pedido que não esteja autorizado pelo
-`subject_token` devolve `invalid_target`; o conjunto emitido é a interseção
-(ver [RFC-8693-TOKEN-EXCHANGE.md](RFC-8693-TOKEN-EXCHANGE.md)).
+The attenuation is explicit: a requested resource not authorized by the
+`subject_token` returns `invalid_target`; the issued set is the intersection
+(see [RFC-8693-TOKEN-EXCHANGE.md](RFC-8693-TOKEN-EXCHANGE.md)).
 
-## Requisitos
+## Requirements
 
-| Requisito | § | Estado |
+| Requirement | § | Status |
 |---|---|---|
-| `resource` no authorize e no token | 2 | Sim |
-| Múltiplos `resource` | 2 | Sim |
-| `aud` do token reflete o `resource` | 2.2 | Sim |
-| `invalid_target` | 2 | Sim |
-| URI absoluta sem fragmento | 2 | Sim, validado no registro |
+| `resource` in authorize and in token | 2 | Yes |
+| Multiple `resource` values | 2 | Yes |
+| Token `aud` reflects the `resource` | 2.2 | Yes |
+| `invalid_target` | 2 | Yes |
+| Absolute URI without a fragment | 2 | Yes, validated at registration |
 
-## Papel no MCP
+## Role in MCP
 
-A especificação de autorização do MCP torna o `resource` **obrigatório** para o
-cliente, e o resource server deve recusar token cuja audiência não seja ele.
-Aqui o lado AS está pronto; a checagem de audiência no recurso é de cada
-serviço — ver [SPEC-MCP-AUTHORIZATION.md](SPEC-MCP-AUTHORIZATION.md).
+The MCP authorization specification makes `resource` **mandatory** for the
+client, and the resource server must reject a token whose audience is not
+itself. The AS side is ready here; audience checking at the resource is each
+service's own responsibility — see
+[SPEC-MCP-AUTHORIZATION.md](SPEC-MCP-AUTHORIZATION.md).
 
-## Testes
+## Tests
 
 `ResourceIndicatorTests`, `AudiencesControllerTests`, `McpTests`.

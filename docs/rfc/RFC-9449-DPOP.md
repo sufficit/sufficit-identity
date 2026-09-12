@@ -2,92 +2,94 @@
 
 | | |
 |---|---|
-| Papel | Authorization Server |
-| Abrangência | **B — Substancial** |
-| Origem | Próprio — o OpenIddict 7.x não implementa DPoP |
+| Role | Authorization Server |
+| Coverage | **B — Substantial** |
+| Origin | In-house — OpenIddict 7.x does not implement DPoP |
 | Spec | https://www.rfc-editor.org/rfc/rfc9449 |
 
-É a extensão com mais código próprio do repositório: 37 referências à RFC em
-`src/sts/Dpop/`.
+This is the extension with the most in-house code in the repository: 37
+references to the RFC in `src/sts/Dpop/`.
 
-## Componentes
+## Components
 
-| Arquivo | Papel |
+| File | Role |
 |---|---|
-| `DpopProofValidator.cs` | Validação da prova JWT |
+| `DpopProofValidator.cs` | Validation of the JWT proof |
 | `DpopTokenHandlers.cs` | `AttachDpopConfirmation`, `AttachDpopTokenType`, `ExtractDpopUserInfoToken`, `ValidateDpopAccessTokenProof` |
-| `DatabaseDpopReplayCache.cs` | Cache de `jti` persistido, atômico |
-| `DistributedDpopReplayCache.cs` | Camada distribuída |
-| `DatabaseDpopNonceStore.cs`, `DistributedDpopNonceStore.cs` | Emissão e validação de nonce |
-| `DpopValidationHandlers.cs` | Lado de validação de token |
+| `DatabaseDpopReplayCache.cs` | Persisted, atomic `jti` cache |
+| `DistributedDpopReplayCache.cs` | Distributed layer |
+| `DatabaseDpopNonceStore.cs`, `DistributedDpopNonceStore.cs` | Nonce issuance and validation |
+| `DpopValidationHandlers.cs` | Token validation side |
 
-Registro em `src/sts/OpenIddictServerConfiguration.cs:334-340` e
-`src/sts/ServiceCollectionExtensions.cs:778-815`.
+Registered in `src/sts/OpenIddictServerConfiguration.cs:334-340` and
+`src/sts/ServiceCollectionExtensions.cs:795-832`.
 
-## Validação da prova
+## Proof validation
 
-Ordem real do código (`src/sts/Dpop/DpopProofValidator.cs`):
+Actual order in the code (`src/sts/Dpop/DpopProofValidator.cs`):
 
-| # | Verificação | § |
+| # | Check | § |
 |---|---|---|
-| 1 | `typ` exatamente `dpop+jwt` | 4.2 |
-| 2 | `alg` restrito a `ES256` ou `RS256`, casando com o que o discovery anuncia | 4.2 |
-| 3 | Chave pública extraída do header `jwk`; assinatura verificada contra ela | 4.3 |
-| 4 | `htm` igual ao método HTTP, comparação sensível a maiúsculas | 4.3 |
-| 5 | `htu` igual à URL sem query nem fragmento | 4.3 |
-| 6 | `iat` no máximo 60 s no futuro e dentro da janela do cache de `jti` | 4.3 |
-| 7 | `exp` presente e no futuro | — |
-| 8 | `jti` inédito, contra cache persistido | 4.3 |
-| 9 | `ath` = base64url(SHA-256(access_token)) quando há token | 4.2 |
-| 10 | `nonce` igual ao emitido, quando exigido | 8 |
+| 1 | `typ` exactly `dpop+jwt` | 4.2 |
+| 2 | `alg` restricted to `ES256` or `RS256`, matching what discovery advertises | 4.2 |
+| 3 | Public key extracted from the `jwk` header; signature verified against it | 4.3 |
+| 4 | `htm` equal to the HTTP method, case-sensitive comparison | 4.3 |
+| 5 | `htu` equal to the URL without query or fragment | 4.3 |
+| 6 | `iat` at most 60 s in the future and within the `jti` cache window | 4.3 |
+| 7 | `exp` present and in the future | — |
+| 8 | `jti` unseen, checked against the persisted cache | 4.3 |
+| 9 | `ath` = base64url(SHA-256(access_token)) when a token is present | 4.2 |
+| 10 | `nonce` equal to the one issued, when required | 8 |
 
-O passo 6 é relevante: confiar só no cache de `jti` deixaria uma prova capturada
-utilizável enquanto o cache não expirasse. A janela temporal fecha isso.
+Step 6 matters: relying only on the `jti` cache would leave a captured proof
+usable until the cache entry expired. The time window closes that off.
 
-## Replay entre réplicas
+## Replay across replicas
 
-O cache de `jti` **não** é em memória por padrão: `DatabaseDpopReplayCache` é
-registrado como `IAtomicDpopReplayCache` e persiste em `dpopreplayentries`
-(`src/sts/ServiceCollectionExtensions.cs:779-783`). Há uma implementação em
-processo, mas o construtor que a usa emite aviso de que é inseguro em
-multi-réplica. Com três nós compartilhando o banco, o replay é bloqueado em todos.
+The `jti` cache is **not** in-memory by default: `DatabaseDpopReplayCache` is
+registered as `IAtomicDpopReplayCache` and persists to `dpopreplayentries`
+(`src/sts/ServiceCollectionExtensions.cs:796-800`). There is an in-process
+implementation, but the constructor that uses it emits a warning that it is
+unsafe in a multi-replica setup. With three nodes sharing the database,
+replay is blocked across all of them.
 
-## Dança do nonce
+## Nonce dance
 
-Em `TokenGrantDispatcher.DispatchAsync` (`src/sts/Grants/TokenGrants.cs`), quando
-`Dpop:RequireNonce`:
+In `TokenGrantDispatcher.DispatchAsync` (`src/sts/Grants/TokenGrants.cs`),
+when `Dpop:RequireNonce`:
 
-1. A partição do nonce é `caminho | client_id | thumbprint da chave`
-   (`BuildDpopNoncePartition`). Tráfego anônimo não rotaciona o desafio de outro
-   cliente.
-2. Se o nonce apresentado não é válido, a prova é validada **sem** nonce; só uma
-   prova criptograficamente válida recebe um nonce novo, devolvido em
-   `DPoP-Nonce` com erro `use_dpop_nonce`.
+1. The nonce partition is `path | client_id | key thumbprint`
+   (`BuildDpopNoncePartition`). Anonymous traffic does not rotate another
+   client's challenge.
+2. If the presented nonce is not valid, the proof is validated **without**
+   the nonce; only a cryptographically valid proof receives a new nonce,
+   returned in `DPoP-Nonce` with the `use_dpop_nonce` error.
 
-## Vínculo do token
+## Token binding
 
-| Momento | Comportamento |
+| Moment | Behavior |
 |---|---|
-| Emissão | `cnf.jkt` anexado por `AttachDpopConfirmation`; `token_type` vira `DPoP` |
-| Refresh | O vínculo **original** é preservado; o token não pode ser reamarrado a outra chave (`UserTokenGrantsHandler`) |
-| Authorization code | Sob FAPI 2.0, `dpop_jkt` autenticado no PAR é preservado no principal do código (`AuthorizationController.cs`) |
-| Userinfo | `ExtractDpopUserInfoToken` + verificação de `ath` |
-| Conflito com mTLS | Recusado por `RejectCombinedDpopAndMtlsSenderConstraints` |
+| Issuance | `cnf.jkt` attached by `AttachDpopConfirmation`; `token_type` becomes `DPoP` |
+| Refresh | The **original** binding is preserved; the token cannot be rebound to another key (`UserTokenGrantsHandler`) |
+| Authorization code | Under FAPI 2.0, `dpop_jkt` authenticated at PAR is preserved in the code's principal (`AuthorizationController.cs`) |
+| Userinfo | `ExtractDpopUserInfoToken` + `ath` verification |
+| Conflict with mTLS | Rejected by `RejectCombinedDpopAndMtlsSenderConstraints` |
 
-## Configuração
+## Configuration
 
-| Chave | Padrão | Efeito |
+| Key | Default | Effect |
 |---|---|---|
-| `Dpop:Enabled` | `false` | Liga a extensão e o anúncio em discovery |
-| `Dpop:RequireForAllClients` | `false` | Prova obrigatória para todos |
-| `Dpop:RequireNonce` | `false` | Ativa a dança do nonce |
+| `Dpop:Enabled` | `false` | Turns on the extension and its discovery advertisement |
+| `Dpop:RequireForAllClients` | `false` | Proof mandatory for everyone |
+| `Dpop:RequireNonce` | `false` | Activates the nonce dance |
 
-## Lacunas
+## Gaps
 
-- Sem prova obrigatória por cliente: a exigência é global ou via perfil FAPI.
-- `dpop_bound_access_tokens` como metadado por cliente (§5.2) não é registrado.
+- No mandatory proof per client: the requirement is global or via the FAPI
+  profile.
+- `dpop_bound_access_tokens` as per-client metadata (§5.2) is not registered.
 
-## Testes
+## Tests
 
 `DpopTests`, `SenderConstraintTests`, `DistributedStoreTests`,
 `FapiJarmTests`.

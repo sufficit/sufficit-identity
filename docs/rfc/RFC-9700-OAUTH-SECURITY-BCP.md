@@ -2,55 +2,55 @@
 
 | | |
 |---|---|
-| Papel | Authorization Server |
-| Abrangência | **B — Substancial** |
-| Origem | Misto — é um documento transversal, não um recurso |
+| Role | Authorization Server |
+| Coverage | **B — Substantial** |
+| Origin | Mixed — this is a cross-cutting document, not a feature |
 | Spec | https://www.rfc-editor.org/rfc/rfc9700 |
 
-Este documento não descreve um endpoint; audita o repositório contra as
-recomendações da BCP. É o resumo de conformidade que um revisor externo pede
-primeiro.
+This document does not describe an endpoint; it audits the repository
+against the BCP's recommendations. It is the conformance summary an external
+reviewer asks for first.
 
-## Recomendações principais
+## Main recommendations
 
-| Recomendação | § | Estado | Onde |
+| Recommendation | § | Status | Where |
 |---|---|---|---|
-| Não usar implicit grant | 2.1.2 | **Cumprido**, não registrado | `OpenIddictServerConfiguration.cs:243-247` |
-| Não usar Resource Owner Password Credentials | 2.4 | **Cumprido por padrão**, desligado | `:296-297` |
-| PKCE para todos os clientes de código | 2.1.1 | **Cumprido** | [RFC-7636-PKCE.md](RFC-7636-PKCE.md) |
-| Comparação exata de `redirect_uri` | 4.1 | Cumprido | `ClientUriPolicy.cs` |
-| Rotação de refresh token ou vínculo ao cliente | 4.14 | **Cumprido**, rotação de uso único com detecção de reuso | `:358-372` |
-| `iss` na resposta de autorização (anti mix-up) | 4.4 | Cumprido | [RFC-9207-ISSUER-IDENTIFICATION.md](RFC-9207-ISSUER-IDENTIFICATION.md) |
-| Tokens vinculados ao remetente | 4.10 | Cumprido, DPoP e mTLS | [RFC-9449-DPOP.md](RFC-9449-DPOP.md), [RFC-8705-MUTUAL-TLS.md](RFC-8705-MUTUAL-TLS.md) |
-| Restringir audiência dos tokens | 4.9 | Cumprido | [RFC-8707-RESOURCE-INDICATORS.md](RFC-8707-RESOURCE-INDICATORS.md) |
-| Não colocar credencial em query string | 4.3 | Cumprido | — |
-| Proteção CSRF nas etapas interativas | 4.7 | Cumprido, antiforgery validada no servidor em consent, logout e device | `AuthorizationController.cs:260-275` |
-| Contramedida a *clickjacking* | 4.5 | Cumprido, CSP e cabeçalhos de segurança | `SecurityHeadersMiddlewareExtensions.cs` |
-| Limitar tempo de vida do código | 4.1 | Cumprido, e reduzido sob FAPI | `:270-272` |
-| Autenticação forte do cliente | 4.13 | Disponível: `private_key_jwt` e mTLS; obrigatória sob FAPI | [RFC-7523-CLIENT-ASSERTION.md](RFC-7523-CLIENT-ASSERTION.md) |
-| Segredos de cliente não armazenados em claro | — | Cumprido, `PasswordHasher` V3 | `src/core/Services/ClientCredentialSecretHasher.cs:24-27` |
+| Do not use the implicit grant | 2.1.2 | **Met**, not registered | `OpenIddictServerConfiguration.cs:243-247` |
+| Do not use Resource Owner Password Credentials | 2.4 | **Met by default**, disabled | `:296-297` |
+| PKCE for all code clients | 2.1.1 | **Met** | [RFC-7636-PKCE.md](RFC-7636-PKCE.md) |
+| Exact `redirect_uri` comparison | 4.1 | Met | `ClientUriPolicy.cs` |
+| Refresh token rotation or client binding | 4.14 | **Met**, single-use rotation with reuse detection | `:358-372` |
+| `iss` in the authorization response (anti mix-up) | 4.4 | Met | [RFC-9207-ISSUER-IDENTIFICATION.md](RFC-9207-ISSUER-IDENTIFICATION.md) |
+| Sender-constrained tokens | 4.10 | Met, DPoP and mTLS | [RFC-9449-DPOP.md](RFC-9449-DPOP.md), [RFC-8705-MUTUAL-TLS.md](RFC-8705-MUTUAL-TLS.md) |
+| Restrict token audience | 4.9 | Met | [RFC-8707-RESOURCE-INDICATORS.md](RFC-8707-RESOURCE-INDICATORS.md) |
+| No credentials in query string | 4.3 | Met | — |
+| CSRF protection on interactive steps | 4.7 | Met, antiforgery validated server-side at consent, logout and device | `AuthorizationController.cs:260-275` |
+| Clickjacking countermeasure | 4.5 | Met, CSP and security headers | `SecurityHeadersMiddlewareExtensions.cs` |
+| Limit code lifetime | 4.1 | Met, and shortened under FAPI | `:270-272` |
+| Strong client authentication | 4.13 | Available: `private_key_jwt` and mTLS; mandatory under FAPI | [RFC-7523-CLIENT-ASSERTION.md](RFC-7523-CLIENT-ASSERTION.md) |
+| Client secrets not stored in cleartext | — | Met, `PasswordHasher` V3 | `src/core/Services/ClientCredentialSecretHasher.cs:24-27` |
 
-## Mitigações adicionais, além da BCP
+## Additional mitigations, beyond the BCP
 
-| Controle | Onde |
+| Control | Where |
 |---|---|
-| Verificação de postura que recusa subir em produção com achado não reconhecido | `src/sts/Security/ProductionPostureCheck.cs` |
-| Limite de taxa por grupo de endpoint, com bucket separado para introspecção, PAR, device-info e administração | `src/server/IdentityRateLimitPolicy.cs` |
-| Guarda anti-SSRF em toda saída HTTP (JWKS remoto, CIMD, HIBP, push SSF) | `src/sts/SafeHttpHandlerFactory.cs` |
-| Lockout de conta e política de senha de 12 caracteres | `src/sts/Options/AccountPolicyOptions.cs:14-48` |
-| Verificação de senha vazada (HIBP, k-anonymity) | `src/sts/BreachedPasswordValidator.cs` |
-| Sessões server-side revogáveis por dispositivo | `src/sts/OidcUserSessionTicketStore.cs` |
-| Revogação em cascata ao mudar credencial | `src/sts/CredentialMutationSecurityCoordinator.cs:114-155` |
+| Posture check that refuses to start in production with an unacknowledged finding | `src/sts/Security/ProductionPostureCheck.cs` |
+| Rate limiting per endpoint group, with a separate bucket for introspection, PAR, device-info and administration | `src/server/IdentityRateLimitPolicy.cs` |
+| Anti-SSRF guard on every outbound HTTP call (remote JWKS, CIMD, HIBP, SSF push) | `src/sts/SafeHttpHandlerFactory.cs` |
+| Account lockout and a 12-character password policy | `src/sts/Options/AccountPolicyOptions.cs:14-48` |
+| Breached password check (HIBP, k-anonymity) | `src/sts/BreachedPasswordValidator.cs` |
+| Server-side sessions, revocable per device | `src/sts/OidcUserSessionTicketStore.cs` |
+| Cascading revocation on credential change | `src/sts/CredentialMutationSecurityCoordinator.cs:114-155` |
 
-## Pontos de atenção conhecidos
+## Known attention points
 
-| Item | Risco | Nota |
+| Item | Risk | Note |
 |---|---|---|
-| `Sufficit:Identity:Issuer` vazio | `iss` segue o cabeçalho `Host` | Configurar sempre |
-| `RateLimit:FailOnUntrustedProxy = false` | Sem proxies confiáveis, o limite por IP colapsa num bucket só | Ligar em produção |
-| `Password:RejectBreached = false` | HIBP desligado por padrão, e falha aberta | Ligar em produção |
-| Grant de senha com enumeração por tempo | O hash só é calculado quando o usuário existe | Grant desligado por padrão |
-| Vínculo de identidade externa sem `email_verified` | Conta criada e vinculada antes da prova de posse do e-mail | Corrigir antes de abrir registro público |
+| Empty `Sufficit:Identity:Issuer` | `iss` follows the `Host` header | Always configure it |
+| `RateLimit:FailOnUntrustedProxy = false` | Without trusted proxies, the per-IP limit collapses into a single bucket | Enable in production |
+| `Password:RejectBreached = false` | HIBP disabled by default, and fails open | Enable in production |
+| Password grant with timing enumeration | The hash is only computed when the user exists | Grant disabled by default |
+| External identity linking without `email_verified` | Fixed: no account is created or bound until control of the address is proven | See [ARCHITECTURE-EXTERNAL-IDENTITY-LINKING.md](../architecture/ARCHITECTURE-EXTERNAL-IDENTITY-LINKING.md) |
 
-Os cinco estão detalhados, com cenário e correção, na avaliação independente mais
-recente em `docs/evaluations/`.
+The remaining items are detailed, with scenario and fix, in the most recent
+independent evaluation under `docs/evaluations/`.

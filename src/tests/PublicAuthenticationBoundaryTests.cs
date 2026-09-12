@@ -198,6 +198,12 @@ public sealed class PublicAuthenticationBoundaryTests(
     [InlineData(
         ExternalSignInStatus.RequiresTwoFactor,
         "/account/loginwith2fa")]
+    [InlineData(
+        ExternalSignInStatus.EmailVerificationRequired,
+        "notice=external_email_verification_sent")]
+    [InlineData(
+        ExternalSignInStatus.RegistrationDeniedForProvider,
+        "error=registration_denied_for_provider")]
     public async Task External_callback_maps_canonical_outcomes(
         ExternalSignInStatus status,
         string expectedLocation)
@@ -221,6 +227,35 @@ public sealed class PublicAuthenticationBoundaryTests(
             "offsite.example",
             redirect.Url,
             StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(ExternalSignInStatus.Succeeded, "/")]
+    [InlineData(
+        ExternalSignInStatus.LinkTicketInvalid,
+        "/account/login?error=external_link_ticket_invalid")]
+    [InlineData(
+        ExternalSignInStatus.AccountLinkRequiresSignIn,
+        "/account/login?error=account_link_requires_signin")]
+    public async Task External_link_confirmation_maps_outcomes_to_local_targets(
+        ExternalSignInStatus status,
+        string expectedPrefix)
+    {
+        // The confirmation link is opened from a mailbox, so it never carries a
+        // return target: every outcome lands on a fixed local page.
+        var external = new StubExternalSignInService
+        {
+            PendingLinkCompletion = new ExternalSignInResult(status),
+        };
+        var controller = CreateController(external);
+
+        var action = await controller.ConfirmLink(
+            "ticket-value",
+            CancellationToken.None);
+
+        var redirect = Assert.IsType<RedirectResult>(action);
+        Assert.Equal("ticket-value", external.RedeemedTicket);
+        Assert.StartsWith(expectedPrefix, redirect.Url, StringComparison.Ordinal);
     }
 
     [Fact]

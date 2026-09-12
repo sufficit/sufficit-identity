@@ -2,50 +2,50 @@
 
 | | |
 |---|---|
-| Papel | OpenID Provider |
-| Abrangência | **C — Parcial** |
-| Origem | Próprio |
+| Role | OpenID Provider |
+| Coverage | **C — Partial** |
+| Origin | In-house |
 | Spec | https://www.rfc-editor.org/rfc/rfc8176 |
 
-## Como está implementado
+## Implementation
 
 `AuthenticationContextProjection` (`src/sts/AuthenticationContextProjection.cs`)
-projeta três claims para o token e o `id_token`: `amr`, `acr` e `auth_time`
-(`:35-37`). O destino é ambos os tokens
+projects three claims onto the token and the `id_token`: `amr`, `acr`, and
+`auth_time` (`:35-37`). Both tokens are the target
 (`src/sts/Grants/GrantOperations.cs:289-294`).
 
-Os valores são gravados no momento do login e preservados na renovação do
-principal, para que uma revalidação de security stamp não rebaixe uma sessão que
-já fez MFA (`src/sts/ServiceCollectionExtensions.cs:541-560`).
+The values are written at login time and preserved across principal
+refreshes, so that a security-stamp revalidation does not downgrade a session
+that already completed MFA (`src/sts/ServiceCollectionExtensions.cs:556-599`).
 
-| Situação | `amr` emitido | `acr` |
+| Situation | `amr` issued | `acr` |
 |---|---|---|
-| Senha | `pwd` | `urn:sufficit:acr:loa1` |
-| Senha + dispositivo com MFA lembrado | `pwd`, `mfa` | `urn:sufficit:acr:loa2` |
-| Senha + TOTP | `pwd`, `otp`, `mfa` | `urn:sufficit:acr:loa2` |
-| Grant de senha (legado) | `pwd` | `urn:sufficit:acr:loa1` |
+| Password | `pwd` | `urn:sufficit:acr:loa1` |
+| Password + device with remembered MFA | `pwd`, `mfa` | `urn:sufficit:acr:loa2` |
+| Password + TOTP | `pwd`, `otp`, `mfa` | `urn:sufficit:acr:loa2` |
+| Password grant (legacy) | `pwd` | `urn:sufficit:acr:loa1` |
 
-## Consumo
+## Consumption
 
-O plano de management exige evidência de segundo fator: `MfaRequirement` aceita
-os valores `mfa`, `otp`, `hwk`, `sms`, `vcm`, `fpt`, `eye`, `voice` e `retina`
-(`src/management/ServiceCollectionExtensions.cs:377-380`), todos do registro do
-RFC 8176. A mesma exigência vale para emissão de personal tokens e gestão de
-streams SSF.
+The management plane requires evidence of a second factor: `MfaRequirement`
+accepts the values `mfa`, `otp`, `hwk`, `sms`, `vcm`, `fpt`, `eye`, `voice`,
+and `retina` (`src/management/ServiceCollectionExtensions.cs:377-380`), all
+from the RFC 8176 registry. The same requirement applies to personal token
+issuance and SSF stream management.
 
-## Lacunas
+## Gaps
 
-- **`acr` não usa URNs padronizadas.** `urn:sufficit:acr:loa1|loa2` é vocabulário
-  próprio; não há mapeamento para os valores do ISO/IEC 29115 nem para
-  `http://schemas.openid.net/pape/policies/2007/06/multi-factor`. Um RP de
-  terceiro não sabe interpretar. Correção sugerida: tornar o vocabulário
-  configurável em `AssuranceLevelOptions`.
-- Passkeys não emitem `hwk` nem `swk` distintamente; entram no caminho de MFA
-  como fator verificado.
-- `acr_values` na requisição não seleciona política de autenticação; só
-  `max_age` e `prompt=login` forçam reautenticação.
+- **`acr` does not use standardized URNs.** `urn:sufficit:acr:loa1|loa2` is
+  in-house vocabulary; there is no mapping to ISO/IEC 29115 values or to
+  `http://schemas.openid.net/pape/policies/2007/06/multi-factor`. A
+  third-party RP has no way to interpret it. Suggested fix: make the
+  vocabulary configurable via `AssuranceLevelOptions`.
+- Passkeys do not distinctly emit `hwk` or `swk`; they enter the MFA path as
+  a verified factor.
+- `acr_values` in the request does not select an authentication policy; only
+  `max_age` and `prompt=login` force re-authentication.
 
-## Testes
+## Tests
 
 `AuthenticationContextProjectionTests`, `AuthorizationReauthenticationPolicyTests`,
 `ManagementApplicationAuthorizationTests`.

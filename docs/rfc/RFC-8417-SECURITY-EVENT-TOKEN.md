@@ -1,73 +1,74 @@
-# RFC 8417, 8935 e 8936 — Security Event Token e sua entrega
+# RFC 8417, 8935 and 8936 — Security Event Token and its delivery
 
 | | |
 |---|---|
-| Papel | Transmissor de eventos de segurança |
-| Abrangência | **B — Substancial** |
-| Origem | Próprio |
+| Role | Security event transmitter |
+| Coverage | **B — Substantial** |
+| Origin | In-house |
 | Specs | RFC 8417 (SET), RFC 8935 (push), RFC 8936 (poll) |
 
-## Como está implementado
+## Implementation
 
-O SET é o envelope; o conteúdo semântico (CAEP, RISC) está descrito em
-[SPEC-SSF-CAEP-RISC.md](SPEC-SSF-CAEP-RISC.md). Aqui trata-se do formato e da
-entrega.
+The SET is the envelope; the semantic content (CAEP, RISC) is described in
+[SPEC-SSF-CAEP-RISC.md](SPEC-SSF-CAEP-RISC.md). This document covers the
+format and the delivery.
 
-| Componente | Papel |
+| Component | Role |
 |---|---|
-| `src/sts/SharedSignals/CaepEventGenerator.cs` | Monta e **assina** o SET |
-| `src/sts/SharedSignals/SharedSignalsDispatcher.cs` | Decide push ou poll e entrega |
-| `src/sts/SharedSignals/SsfStreamStore.cs` | Persiste streams e a fila de poll |
-| `src/sts/Controllers/SsfPollController.cs` | Endpoint de pull |
+| `src/sts/SharedSignals/CaepEventGenerator.cs` | Builds and **signs** the SET |
+| `src/sts/SharedSignals/SharedSignalsDispatcher.cs` | Decides push vs. poll and delivers |
+| `src/sts/SharedSignals/SsfStreamStore.cs` | Persists streams and the poll queue |
+| `src/sts/Controllers/SsfPollController.cs` | Pull endpoint |
 
-## Formato do SET
+## SET format
 
-`CaepEventGenerator` emite um JWT assinado com a credencial auxiliar, com `jti`
-aleatório de 128 bits (`:312`) e `events` como mapa de URI de tipo para o
-payload. As URIs usadas são as canônicas do OpenID:
-`https://schemas.openid.net/secevent/caep/event-type/…` e
+`CaepEventGenerator` issues a JWT signed with the auxiliary credential, with
+a random 128-bit `jti` (`:312`) and `events` as a map from type URI to
+payload. The URIs used are the canonical OpenID ones:
+`https://schemas.openid.net/secevent/caep/event-type/…` and
 `…/risc/event-type/verification` (`:12-20`).
 
-| Requisito RFC 8417 | § | Estado |
+| RFC 8417 requirement | § | Status |
 |---|---|---|
-| `iss`, `iat`, `jti`, `aud` | 2.2 | Sim |
-| `events` como objeto JSON | 2.2 | Sim |
-| SET assinado (JWS) | 3 | Sim |
-| `sub` fora do `events` desencorajado | 2.2 | Sim, o sujeito vai no payload do evento |
-| SET cifrado (JWE) | 3 | Não |
+| `iss`, `iat`, `jti`, `aud` | 2.2 | Yes |
+| `events` as a JSON object | 2.2 | Yes |
+| Signed SET (JWS) | 3 | Yes |
+| `sub` outside `events` discouraged | 2.2 | Yes, the subject is carried in the event payload |
+| Encrypted SET (JWE) | 3 | No |
 
-## Entrega push (RFC 8935)
+## Push delivery (RFC 8935)
 
-`DeliverPushStreamAsync` faz `POST` no endpoint configurado do receptor, com o
-cabeçalho `Authorization` opcional do stream
-(`SsfStreamsController.cs:104`). Entregas falhas são registradas, e uma falha de
-receptor **não** desfaz a operação local que gerou o sinal — a chamada é feita
-com prazo limitado e as exceções são absorvidas
-(`AuthorizationController.Logout.cs`, bloco do `_sharedSignalsDispatcher`).
+`DeliverPushStreamAsync` issues a `POST` to the receiver's configured
+endpoint, with the stream's optional `Authorization` header
+(`SsfStreamsController.cs:104`). Failed deliveries are logged, and a
+receiver failure **does not** undo the local operation that generated the
+signal — the call runs with a bounded deadline and exceptions are swallowed
+(`AuthorizationController.Logout.cs`, the `_sharedSignalsDispatcher` block).
 
-O endpoint de destino passa por `SafeHttpHandlerFactory.ValidateRequestUri`
-(`SsfStreamStore.cs:181`), o que impede um operador de transformar o
-transmissor em scanner de rede interna.
+The destination endpoint goes through `SafeHttpHandlerFactory.ValidateRequestUri`
+(`SsfStreamStore.cs:181`), which prevents an operator from turning the
+transmitter into an internal network scanner.
 
-## Entrega poll (RFC 8936)
+## Poll delivery (RFC 8936)
 
-Streams de poll não recebem HTTP; o SET é enfileirado em `ssfsetdeliveries`
-(`SharedSignalsDispatcher.cs:162-173`) e retirado pelo receptor via
-`SsfPollController`, autenticado pela mesma policy `sufficit-ssf-transmitter`.
+Poll streams receive no HTTP call; the SET is enqueued in `ssfsetdeliveries`
+(`SharedSignalsDispatcher.cs:162-173`) and pulled by the receiver via
+`SsfPollController`, authenticated by the same `sufficit-ssf-transmitter`
+policy.
 
-| Requisito RFC 8936 | Estado |
+| RFC 8936 requirement | Status |
 |---|---|
-| Entrega sob demanda | Sim |
-| Reconhecimento (`ack`) | Sim, pela fila de entregas |
-| `maxEvents` / `returnImmediately` | Parcial |
+| On-demand delivery | Yes |
+| Acknowledgment (`ack`) | Yes, via the delivery queue |
+| `maxEvents` / `returnImmediately` | Partial |
 
-## Lacunas
+## Gaps
 
-- Sem SET cifrado.
-- Sem repetição automática com backoff em push; a falha é registrada e o evento
-  para um receptor indisponível não é reenviado.
+- No encrypted SET.
+- No automatic retry with backoff on push; the failure is logged and the
+  event is not resent to an unavailable receiver.
 
-## Testes
+## Tests
 
 `SharedSignalsTests`, `SharedSignalsTests.Streams`, `SsfStreamsControllerTests`,
 `SsfSubscriptionMatcherTests`.

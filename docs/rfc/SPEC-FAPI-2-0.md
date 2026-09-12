@@ -2,84 +2,89 @@
 
 | | |
 |---|---|
-| Papel | Authorization Server |
-| Abrangência | **C — Parcial** (implementado, **não certificado**) |
-| Origem | Próprio |
+| Role | Authorization Server |
+| Coverage | **C — Partial** (implemented, **not certified**) |
+| Origin | In-house |
 | Spec | https://openid.net/specs/fapi-security-profile-2_0-final.html |
 
-O FAPI 2.0 Security Profile é especificação **Final** desde fevereiro de 2025. O
-repositório implementa os controles, mas **nunca rodou a suíte de conformidade
-da OpenID Foundation**. Por isso o nível é C: o comportamento existe, a prova
-externa não.
+The FAPI 2.0 Security Profile has been a **Final** specification since
+February 2025. The repository implements the controls, but **has never run
+the OpenID Foundation's conformance suite**. That is why the level is C: the
+behavior exists, the external proof does not.
 
-## Ativação
+## Activation
 
-`Sufficit:Identity:Fapi2:Enabled`, com aplicação por cliente decidida em
-`Fapi2Policy.Applies` (`src/sts/Fapi/Fapi2Handlers.cs:14`). Três handlers entram
-no pipeline (`src/sts/OpenIddictServerConfiguration.cs:267-276`):
+`Sufficit:Identity:Fapi2:Enabled`, with per-client application decided in
+`Fapi2Policy.Applies` (`src/sts/Fapi/Fapi2Handlers.cs:14`). Three handlers
+enter the pipeline (`src/sts/OpenIddictServerConfiguration.cs:267-276`):
 
-| Handler | Ponto |
+| Handler | Point |
 |---|---|
 | `ValidateFapiAuthorizationRequest` | `/connect/authorize` |
 | `ValidateFapiPushedAuthorizationRequest` | `/connect/par` |
 | `ValidateFapiTokenRequest` | `/connect/token` |
 
-## O que é recusado
+## What is rejected
 
-No PAR e no authorize (`Fapi2Handlers.cs:127-182`):
+At PAR and at authorize (`Fapi2Handlers.cs:127-182`):
 
-| Condição | Erro |
+| Condition | Error |
 |---|---|
-| Cliente não autenticado por `private_key_jwt` nem mTLS | `invalid_client` |
-| `response_type` diferente de `code` | `unsupported_response_type` |
-| `redirect_uri` ausente | `invalid_request` |
-| `code_challenge` ausente ou método diferente de `S256` | `invalid_request` |
-| `SenderConstraint=DPoP` e `dpop_jkt` ausente ou inválido | `invalid_request` |
-| Cliente sem PAR quando o perfil exige | `unauthorized_client` |
+| Client not authenticated via `private_key_jwt` or mTLS | `invalid_client` |
+| `response_type` other than `code` | `unsupported_response_type` |
+| `redirect_uri` missing | `invalid_request` |
+| `code_challenge` missing or method other than `S256` | `invalid_request` |
+| `SenderConstraint=DPoP` and `dpop_jkt` missing or invalid | `invalid_request` |
+| Client without PAR when the profile requires it | `unauthorized_client` |
 
-No token (`:214-232`): autenticação fraca é recusada, e com
-`SenderConstraint=Mtls` o certificado precisa estar presente e vinculado.
+At the token endpoint (`:214-232`): weak authentication is rejected, and with
+`SenderConstraint=Mtls` the certificate must be present and bound.
 
-## Tempos de vida
+## Lifetimes
 
-O perfil encurta dois valores, globalmente, porque o OpenIddict não os expõe por
-cliente (`src/sts/OpenIddictServerConfiguration.cs:268-275`):
+The profile shortens two values, globally, because OpenIddict does not
+expose them per client (`src/sts/OpenIddictServerConfiguration.cs:268-275`):
 
-| Valor | Chave |
+| Value | Key |
 |---|---|
-| Código de autorização | `Fapi2:AuthorizationCodeLifetimeSeconds` |
-| `request_uri` do PAR | `Fapi2:PushedAuthorizationRequestLifetimeSeconds` |
+| Authorization code | `Fapi2:AuthorizationCodeLifetimeSeconds` |
+| PAR `request_uri` | `Fapi2:PushedAuthorizationRequestLifetimeSeconds` |
 
-Aplicar globalmente é conservador: encurta também para clientes fora do perfil,
-o que é compatível para trás.
+Applying it globally is conservative: it also shortens lifetimes for clients
+outside the profile, which stays backward compatible.
 
-## Validação cruzada no startup
+## Cross-validation at startup
 
-`src/sts/ServiceCollectionExtensions.Validation.cs:135-141` recusa configuração
-incoerente: `SenderConstraint=DPoP` com `Dpop:Enabled=false` falha o processo,
-em vez de rodar um perfil que não pode cumprir o que promete.
+`src/sts/ServiceCollectionExtensions.Validation.cs:135-141` rejects
+inconsistent configuration: `SenderConstraint=DPoP` with `Dpop:Enabled=false`
+fails the process, instead of running a profile that cannot deliver on what
+it promises.
 
-## Composição
+## Composition
 
-O FAPI 2.0 aqui é a soma de outras peças, não uma implementação isolada:
+FAPI 2.0 here is the sum of other pieces, not a standalone implementation:
 
-- [RFC-9126-PAR.md](RFC-9126-PAR.md) — `request_uri` obrigatório
+- [RFC-9126-PAR.md](RFC-9126-PAR.md) — mandatory `request_uri`
 - [RFC-7636-PKCE.md](RFC-7636-PKCE.md) — `S256`
-- [RFC-9449-DPOP.md](RFC-9449-DPOP.md) ou [RFC-8705-MUTUAL-TLS.md](RFC-8705-MUTUAL-TLS.md) — vínculo de posse
-- [RFC-7523-CLIENT-ASSERTION.md](RFC-7523-CLIENT-ASSERTION.md) — autenticação forte
-- [RFC-9207-ISSUER-IDENTIFICATION.md](RFC-9207-ISSUER-IDENTIFICATION.md) — anti mix-up
-- [SPEC-JARM.md](SPEC-JARM.md) — resposta assinada (perfil Advancing)
+- [RFC-9449-DPOP.md](RFC-9449-DPOP.md) or
+  [RFC-8705-MUTUAL-TLS.md](RFC-8705-MUTUAL-TLS.md) — proof-of-possession
+  binding
+- [RFC-7523-CLIENT-ASSERTION.md](RFC-7523-CLIENT-ASSERTION.md) — strong
+  authentication
+- [RFC-9207-ISSUER-IDENTIFICATION.md](RFC-9207-ISSUER-IDENTIFICATION.md) —
+  anti mix-up
+- [SPEC-JARM.md](SPEC-JARM.md) — signed response (Advancing profile)
 
-## Lacunas
+## Gaps
 
-| Item | Estado |
+| Item | Status |
 |---|---|
-| Suíte de conformidade FAPI 2.0 no CI | Não |
-| FAPI 2.0 Message Signing | Parcial, via JARM; sem assinatura de requisição HTTP |
-| FAPI 1.0 Advanced | Não |
-| `request` object obrigatório no perfil | Não imposto; o PAR é o caminho |
+| FAPI 2.0 conformance suite in CI | No |
+| FAPI 2.0 Message Signing | Partial, via JARM; no HTTP request signing |
+| FAPI 1.0 Advanced | No |
+| Mandatory `request` object in the profile | Not enforced; PAR is the path taken |
 
-## Testes
+## Tests
 
 `FapiJarmTests`, `FapiJarmTests.Par`, `FapiJarmTests.Jarm`, `SenderConstraintTests`,
 `MtlsPolicyTests`.

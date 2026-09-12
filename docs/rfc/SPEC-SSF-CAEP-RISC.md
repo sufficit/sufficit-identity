@@ -1,78 +1,80 @@
-# Shared Signals Framework, CAEP e RISC
+# Shared Signals Framework, CAEP and RISC
 
 | | |
 |---|---|
-| Papel | Transmissor (Transmitter) |
-| Abrangência | **C — Parcial** |
-| Origem | Próprio |
-| Specs | OpenID SSF 1.0, CAEP 1.0, RISC 1.0 — todas **Final** desde setembro de 2025 |
+| Role | Transmitter |
+| Coverage | **C — Partial** |
+| Origin | In-house |
+| Specs | OpenID SSF 1.0, CAEP 1.0, RISC 1.0 — all **Final** since September 2025 |
 
-O envelope e a entrega estão em
-[RFC-8417-SECURITY-EVENT-TOKEN.md](RFC-8417-SECURITY-EVENT-TOKEN.md). Aqui está a
-semântica dos sinais.
+The envelope and delivery are covered in
+[RFC-8417-SECURITY-EVENT-TOKEN.md](RFC-8417-SECURITY-EVENT-TOKEN.md). This
+document covers the signal semantics.
 
-## Superfície
+## Surface
 
-| Papel | Caminho |
+| Role | Path |
 |---|---|
-| Configuração do transmissor | `GET /.well-known/ssf-configuration` |
-| Gestão de streams | `/ssf/streams` (`SsfStreamsController`) |
+| Transmitter configuration | `GET /.well-known/ssf-configuration` |
+| Stream management | `/ssf/streams` (`SsfStreamsController`) |
 | Poll | `SsfPollController` |
 
-A gestão de stream exige a policy `sufficit-ssf-transmitter`: bearer com escopo
-dedicado e, por padrão, evidência de MFA
-(`src/sts/ServiceCollectionExtensions.cs:890-894`). `SharedSignals:RequireMfa`
-desligado é achado reportado pela verificação de postura
-(`src/sts/Security/StsProductionPostureContributor.cs:50-52`).
+Stream management requires the `sufficit-ssf-transmitter` policy: bearer with
+a dedicated scope and, by default, evidence of MFA
+(`src/sts/ServiceCollectionExtensions.cs:907-913`).
+`SharedSignals:RequireMfa` turned off is a finding reported by the posture
+check (`src/sts/Security/StsProductionPostureContributor.cs:50-52`).
 
-## Eventos emitidos
+## Emitted events
 
 `src/sts/SharedSignals/CaepEventGenerator.cs:12-20`:
 
-| Evento | URI | Gatilho |
+| Event | URI | Trigger |
 |---|---|---|
-| Session Revoked | `…/caep/event-type/session-revoked` | Logout, revogação de sessão, mutação de credencial |
-| Credential Change | `…/caep/event-type/credential-change` | Troca de senha, passkey criada ou removida, 2FA alterada |
-| Device Change | `…/caep/event-type/device-change` | Registro de passkey (`AspNetCoreIdentityPasskeyService.cs:202`) |
-| Assurance Level Change | `…/caep/event-type/assurance-level-change` | Mudança de LoA da sessão |
-| RISC Verification | `…/risc/event-type/verification` | Teste de stream, sob demanda |
+| Session Revoked | `…/caep/event-type/session-revoked` | Logout, session revocation, credential mutation |
+| Credential Change | `…/caep/event-type/credential-change` | Password change, passkey created or removed, 2FA changed |
+| Device Change | `…/caep/event-type/device-change` | Passkey registration (`AspNetCoreIdentityPasskeyService.cs:202`) |
+| Assurance Level Change | `…/caep/event-type/assurance-level-change` | Session LoA change |
+| RISC Verification | `…/risc/event-type/verification` | Stream test, on demand |
 
-Os gatilhos são acoplados por `SharedSignalsSecurityEventTrigger`, não espalhados
-pelos serviços de conta.
+Triggers are coupled through `SharedSignalsSecurityEventTrigger`, not spread
+across the account services.
 
-## Assinatura de stream
+## Stream subscription
 
-`SsfSubscriptionMatcher` decide quais streams recebem cada evento por assunto e
-tipo (`src/sts/SharedSignals/SsfSubscriptionMatcher.cs`). Um stream criado sem
-filtro recebia tudo — o comentário em `SsfStreamsController.cs:135` registra que
-essa era a configuração mais ampla possível e foi restringida.
+`SsfSubscriptionMatcher` decides which streams receive each event by subject
+and type (`src/sts/SharedSignals/SsfSubscriptionMatcher.cs`). A stream created
+without a filter used to receive everything — the comment at
+`SsfStreamsController.cs:135` notes that this was the broadest possible
+configuration and was restricted.
 
-## Proteção do endpoint do receptor
+## Receiver endpoint protection
 
-O `endpoint_url` de um stream de push passa por
-`SafeHttpHandlerFactory.ValidateRequestUri` (`SsfStreamStore.cs:181`). Sem isso,
-quem pudesse criar um stream transformaria o transmissor num scanner de rede
-interna — um SSRF com credencial.
+A push stream's `endpoint_url` goes through
+`SafeHttpHandlerFactory.ValidateRequestUri` (`SsfStreamStore.cs:181`). Without
+this, anyone able to create a stream would turn the transmitter into an
+internal network scanner — an SSRF with credentials.
 
-## Lacunas
+## Gaps
 
-| Item | Estado |
+| Item | Status |
 |---|---|
-| Papel de **receptor** (consumir sinais de terceiros) | Não implementado |
-| Repetição com backoff em push | Não |
-| Verificação de stream por `verification_endpoint` conforme SSF §7.1.4 | Parcial |
-| `Continuous Access Evaluation` aplicado aos próprios tokens | Não — os sinais são emitidos, não consumidos |
+| **Receiver** role (consuming third-party signals) | Not implemented |
+| Retry with backoff on push | No |
+| Stream verification via `verification_endpoint` per SSF §7.1.4 | Partial |
+| `Continuous Access Evaluation` applied to its own tokens | No — signals are emitted, not consumed |
 
-A última linha é a mais relevante: o Identity **avisa** os outros sobre revogação,
-mas não **recebe** sinais externos para revogar sessões próprias.
+The last row is the most relevant: Identity **warns** others about
+revocation, but does not **receive** external signals to revoke its own
+sessions.
 
-## Comparação de mercado
+## Market comparison
 
-Keycloak só chegou a transmissor SSF em caráter experimental na 26.7 (2026). Ter
-push e poll com CAEP e RISC funcionando coloca este ponto acima da maioria dos
-concorrentes open-source.
+Keycloak only reached SSF transmitter status experimentally in 26.7 (2026).
+Having push and poll working with CAEP and RISC puts this item above most
+open-source competitors.
 
-## Testes
+## Tests
 
 `SharedSignalsTests`, `SharedSignalsTests.Streams`, `SsfStreamsControllerTests`,
 `SsfSubscriptionMatcherTests`.

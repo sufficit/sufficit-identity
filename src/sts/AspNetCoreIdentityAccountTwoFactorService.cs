@@ -56,7 +56,7 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         {
             return AccountTwoFactorResult.Failure(
                 "two-factor-already-enabled",
-                "A autenticação em duas etapas já está ativada.",
+                "Two-factor authentication is already enabled.",
                 await BuildOverviewAsync(user, cancellationToken));
         }
 
@@ -79,7 +79,7 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         {
             return AccountTwoFactorResult.Failure(
                 "authenticator-key-unavailable",
-                "Não foi possível preparar a chave do autenticador.");
+                "The authenticator key could not be prepared.");
         }
 
         var state = await BuildOverviewAsync(user, cancellationToken);
@@ -117,7 +117,7 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         {
             return AccountTwoFactorResult.Failure(
                 "two-factor-already-enabled",
-                "A autenticação em duas etapas já está ativada.",
+                "Two-factor authentication is already enabled.",
                 state);
         }
 
@@ -126,7 +126,7 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         {
             return AccountTwoFactorResult.Failure(
                 "authenticator-code-invalid",
-                "Informe o código atual de seis dígitos do aplicativo. Se ele ainda falhar, ative data e hora automáticas no celular e aguarde o próximo código.",
+                "Enter the current six-digit code from the authenticator app. If it still fails, turn on automatic date and time on the phone and wait for the next code.",
                 state);
         }
 
@@ -134,7 +134,7 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         {
             return AccountTwoFactorResult.Failure(
                 "authenticator-setup-required",
-                "Inicie a configuração do aplicativo autenticador antes de confirmar o código.",
+                "Start authenticator app setup before confirming the code.",
                 state);
         }
 
@@ -147,7 +147,7 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         {
             return AccountTwoFactorResult.Failure(
                 "authenticator-code-invalid",
-                "O código informado é inválido ou expirou. Ative data e hora automáticas no celular, aguarde o próximo código e tente novamente.",
+                "The code is invalid or has expired. Turn on automatic date and time on the phone, wait for the next code and try again.",
                 state);
         }
 
@@ -180,7 +180,7 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         {
             return AccountTwoFactorResult.Failure(
                 "recovery-codes-generation-failed",
-                "A autenticação em duas etapas foi ativada, mas os códigos de recuperação não puderam ser gerados. Gere novos códigos antes de sair.",
+                "Two-factor authentication was enabled, but recovery codes could not be generated. Generate new codes before leaving.",
                 enabledState);
         }
 
@@ -215,7 +215,7 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         {
             return AccountTwoFactorResult.Failure(
                 "two-factor-not-enabled",
-                "Ative a autenticação em duas etapas antes de gerar códigos de recuperação.",
+                "Enable two-factor authentication before generating recovery codes.",
                 await BuildOverviewAsync(user, cancellationToken));
         }
 
@@ -239,7 +239,7 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         {
             return AccountTwoFactorResult.Failure(
                 "recovery-codes-generation-failed",
-                "Não foi possível gerar novos códigos de recuperação.",
+                "New recovery codes could not be generated.",
                 state);
         }
 
@@ -457,5 +457,5 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
     private static AccountTwoFactorResult Unauthenticated() =>
         AccountTwoFactorResult.Failure(
             "unauthenticated",
-            "A sessão não está autenticada.");
+            "The session is not authenticated.");
 }

@@ -98,7 +98,7 @@
           "ConsecutiveFailuresBeforeRestart": 3
         }
       },
-      "_TrustedProxies": "Baseline CIDRs trusted to supply X-Forwarded-* headers. Merged with database-managed additions from Management > Proxies confiáveis. File entries cannot be removed through Management. The immutable runtime snapshot applies local commits immediately. Optional NATS notifications trigger refreshes; revision-only reconciliation defaults to 30 seconds, loading content only on change. No database query per HTTP request. Empty merged configuration trusts loopback only. Changes to this file require a restart. The edge proxy must replace untrusted incoming forwarded headers with verified client information.",
+      "_TrustedProxies": "Baseline CIDRs trusted to supply X-Forwarded-* headers. Merged with database-managed additions from Management > Trusted proxies. File entries cannot be removed through Management. The immutable runtime snapshot applies local commits immediately. Optional NATS notifications trigger refreshes; revision-only reconciliation defaults to 30 seconds, loading content only on change. No database query per HTTP request. Empty merged configuration trusts loopback only. Changes to this file require a restart. The edge proxy must replace untrusted incoming forwarded headers with verified client information.",
       "_ForwardLimit": "Maximum trusted hops processed right-to-left. Default 2 supports client -> edge proxy -> Nginx -> Identity. Database override takes precedence; null in the database inherits this value. Range 1-10. Every intermediate peer must be in the merged trust list.",
       "ForwardLimit": 2,
       "ProxySynchronization": {
@@ -583,7 +583,7 @@
         "EnableSsl": true,
         "RequireTls": false,
         "From": "no-reply@your-domain.com",
-        "FromName": "Sufficit Identity"
+        "FromName": "Identity"
       },
       "Email": {
         "_TestEmailAddress": "When non-empty, ALL outgoing emails are redirected to this address (dev/staging safety net). Leave empty in production.",

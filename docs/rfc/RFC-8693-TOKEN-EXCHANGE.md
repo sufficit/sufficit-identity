@@ -2,73 +2,74 @@
 
 | | |
 |---|---|
-| Papel | Authorization Server |
-| Abrangência | **C — Parcial** |
-| Origem | Misto: grant do OpenIddict, semântica própria |
+| Role | Authorization Server |
+| Coverage | **C — Partial** |
+| Origin | Mixed: OpenIddict grant, in-house semantics |
 | Spec | https://www.rfc-editor.org/rfc/rfc8693 |
 
-## Como está implementado
+## Implementation
 
-Grant habilitado em `src/sts/OpenIddictServerConfiguration.cs:247`
-(`AllowTokenExchangeFlow`); a lógica está em `TokenExchangeGrantHandler`
+Grant enabled in `src/sts/OpenIddictServerConfiguration.cs:247`
+(`AllowTokenExchangeFlow`); the logic lives in `TokenExchangeGrantHandler`
 (`src/sts/Grants/TokenGrants.cs`).
 
-Quatro camadas de controle, nesta ordem:
+Four layers of control, in this order:
 
-1. **Permissão por cliente** — `Permissions.GrantTypes.TokenExchange` no
-   registro, verificada pelo pipeline do OpenIddict antes do handler rodar.
-2. **Kill switch** — `Sufficit:Identity:TokenExchange:Enabled` (padrão `true`).
-3. **Allow-list de clientes** — `AllowedClientIds`, vazia por padrão.
-4. **Política de proveniência** — `ISubjectTokenProvenancePolicy`.
+1. **Per-client permission** — `Permissions.GrantTypes.TokenExchange` on the
+   registration, checked by OpenIddict's pipeline before the handler runs.
+2. **Kill switch** — `Sufficit:Identity:TokenExchange:Enabled` (default `true`).
+3. **Client allow-list** — `AllowedClientIds`, empty by default.
+4. **Provenance policy** — `ISubjectTokenProvenancePolicy`.
 
-## Defesa contra *confused deputy*
+## Defense against *confused deputy*
 
-É o ponto mais forte da implementação. A política exige que o `subject_token`
-tenha um **parte autorizada inequívoca** (`azp`/`client_id`/apresentador) e,
-havendo allow-list, que essa parte pertença a ela. A verificação roda em
-**toda** troca, não apenas quando a allow-list está configurada — comportamento
-anterior que deixava o deployment padrão sem defesa nenhuma.
+This is the strongest part of the implementation. The policy requires that
+the `subject_token` carry an **unambiguous authorized party**
+(`azp`/`client_id`/presenter) and, when an allow-list is configured, that
+this party belong to it. The check runs on **every** exchange, not only when
+the allow-list is configured — a previous behavior that left the default
+deployment with no defense at all.
 
-O modo `Observe` existe como escape migratório e é **reportado pelo
-`ProductionPostureCheck`**, ou seja, subir em produção nesse modo exige
-reconhecimento explícito (`src/sts/Security/StsProductionPostureContributor.cs:56-69`).
+The `Observe` mode exists as a migration escape hatch and is **reported by
+`ProductionPostureCheck`**, meaning that running it in production requires
+explicit acknowledgment (`src/sts/Security/StsProductionPostureContributor.cs:56-69`).
 
-## Atenuação
+## Attenuation
 
-| Dimensão | Regra |
+| Dimension | Rule |
 |---|---|
-| Escopos | Interseção entre o pedido e os do `subject_token`; sem pedido, herda todos. |
-| Recursos | `invalid_target` se o recurso pedido não estiver autorizado pelo subject token; o resultado é a interseção. |
-| Cadeia de atores | `act` é **aninhado**, preservando a cadeia anterior em vez de sobrescrevê-la (§4.1). |
-| Estado do usuário | `CanSignInAsync` revalidado; conta desativada invalida a troca. |
+| Scopes | Intersection between the request and the `subject_token`'s scopes; with no request, it inherits all of them. |
+| Resources | `invalid_target` if the requested resource is not authorized by the subject token; the result is the intersection. |
+| Actor chain | `act` is **nested**, preserving the previous chain instead of overwriting it (§4.1). |
+| User status | `CanSignInAsync` is revalidated; a deactivated account invalidates the exchange. |
 
-## Requisitos
+## Requirements
 
-| Requisito | § | Estado |
+| Requirement | § | Status |
 |---|---|---|
-| `subject_token` e `subject_token_type` | 2.1 | Sim |
-| `actor_token` / `actor_token_type` | 2.1 | **Não lido** |
-| `requested_token_type` | 2.1 | **Não tratado**; sempre emite access token |
-| `issued_token_type` na resposta | 2.2.1 | Herdado do OpenIddict |
-| Claim `act` com aninhamento | 4.1 | Sim |
-| `may_act` | 4.4 | Não |
-| `invalid_target` | 2.2.2 | Sim |
+| `subject_token` and `subject_token_type` | 2.1 | Yes |
+| `actor_token` / `actor_token_type` | 2.1 | **Not read** |
+| `requested_token_type` | 2.1 | **Not handled**; always issues an access token |
+| `issued_token_type` in the response | 2.2.1 | Inherited from OpenIddict |
+| `act` claim with nesting | 4.1 | Yes |
+| `may_act` | 4.4 | No |
+| `invalid_target` | 2.2.2 | Yes |
 
-## Lacuna principal
+## Main gap
 
-O `subject_token` precisa identificar um **usuário**: se `sub` não resolve para
-uma conta, a troca é recusada. Isso impede:
+The `subject_token` must identify a **user**: if `sub` does not resolve to
+an account, the exchange is rejected. This blocks:
 
-- agente ou serviço com identidade própria trocar seu token por um token de
-  recurso downstream (delegação serviço-a-serviço);
-- cadeias de ator sem usuário no início;
-- o padrão *Cross-App Access* / ID-JAG, hoje o caminho de consenso para acesso
-  de agentes entre aplicações SaaS.
+- an agent or service with its own identity exchanging its token for a
+  downstream resource token (service-to-service delegation);
+- actor chains with no user at the start;
+- the *Cross-App Access* / ID-JAG pattern, currently the emerging consensus
+  path for agent access across SaaS applications.
 
-A correção de projeto proposta é extrair `ISubjectTokenResolver` com duas
-implementações (usuário e cliente) e ler `actor_token`.
+The proposed design fix is to extract `ISubjectTokenResolver` with two
+implementations (user and client) and to read `actor_token`.
 
-## Testes
+## Tests
 
 `TokenExchangeTests`, `TokenExchangeConfusedDeputyTests`,
 `ResourceIndicatorTests`.

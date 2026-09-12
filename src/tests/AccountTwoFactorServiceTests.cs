@@ -138,7 +138,7 @@ public sealed class AccountTwoFactorServiceTests(
             result.Errors,
             error => error.Code == "authenticator-code-invalid");
         Assert.Contains(
-            "data e hora automáticas",
+            "automatic date and time",
             Assert.Single(result.Errors).Description,
             StringComparison.OrdinalIgnoreCase);
         Assert.False(await users.GetTwoFactorEnabledAsync(user));

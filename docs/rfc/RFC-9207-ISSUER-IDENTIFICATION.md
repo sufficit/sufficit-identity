@@ -2,16 +2,16 @@
 
 | | |
 |---|---|
-| Papel | Authorization Server |
-| Abrangência | **A — Completa** |
-| Origem | OpenIddict (parâmetro), próprio (anúncio) |
+| Role | Authorization Server |
+| Coverage | **A — Complete** |
+| Origin | OpenIddict (parameter), in-house (advertisement) |
 | Spec | https://www.rfc-editor.org/rfc/rfc9207 |
 
-## Como está implementado
+## Implementation
 
-O OpenIddict anexa `iss` a toda resposta de autorização redirecionável. O
-repositório acrescenta o bit de capacidade correspondente ao documento de
-discovery, incondicionalmente:
+OpenIddict attaches `iss` to every redirectable authorization response. The
+repository adds the corresponding capability bit to the discovery document,
+unconditionally:
 
 ```
 context.Metadata["authorization_response_iss_parameter_supported"] =
@@ -20,25 +20,26 @@ context.Metadata["authorization_response_iss_parameter_supported"] =
 
 `src/sts/OpenIddictServerConfiguration.cs:567-570`.
 
-## Por que importa
+## Why it matters
 
-Sem `iss`, um cliente que fala com vários AS pode ser induzido a enviar um código
-de autorização emitido pelo AS A para o endpoint de token do AS B — o ataque de
-mix-up do RFC 9700 §4.4. Com `iss` na resposta e o cliente comparando com o
-issuer registrado, o ataque falha.
+Without `iss`, a client talking to several ASs could be tricked into sending
+an authorization code issued by AS A to AS B's token endpoint — the mix-up
+attack from RFC 9700 §4.4. With `iss` in the response and the client
+comparing it against the registered issuer, the attack fails.
 
-A especificação de autorização do MCP exige que o AS que emite `iss` **também**
-anuncie `authorization_response_iss_parameter_supported: true`; um cliente MCP
-rejeita a resposta se o metadado disser `true` e o `iss` vier ausente. Como aqui
-o valor é sempre `true` e o OpenIddict sempre anexa, as duas pontas batem.
+The MCP authorization spec requires that an AS issuing `iss` **also**
+advertise `authorization_response_iss_parameter_supported: true`; an MCP
+client rejects the response if the metadata says `true` but `iss` is
+missing. Since here the value is always `true` and OpenIddict always attaches
+it, the two ends match.
 
-## Dependência
+## Dependency
 
-O valor de `iss` emitido é o issuer efetivo. Se `Sufficit:Identity:Issuer`
-estiver vazio, o OpenIddict deriva do `Host` da requisição — e então o `iss`
-segue um cabeçalho que pode ter sido forjado, esvaziando a proteção.
-**Configurar o issuer em produção não é opcional.**
+The `iss` value issued is the effective issuer. If `Sufficit:Identity:Issuer`
+is empty, OpenIddict derives it from the request's `Host` — and then `iss`
+follows a header that could have been forged, voiding the protection.
+**Configuring the issuer in production is not optional.**
 
-## Testes
+## Tests
 
 `DiscoveryTests`, `AuthorizationCodeFlowTests`.

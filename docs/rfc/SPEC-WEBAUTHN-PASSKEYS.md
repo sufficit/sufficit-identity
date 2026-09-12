@@ -2,72 +2,72 @@
 
 | | |
 |---|---|
-| Papel | Relying Party |
-| Abrangência | **B — Substancial** |
-| Origem | ASP.NET Core Identity 10 (nativo), com serviço e UI próprios |
+| Role | Relying Party |
+| Coverage | **B — Substantial** |
+| Origin | ASP.NET Core Identity 10 (native), with in-house service and UI |
 | Spec | https://www.w3.org/TR/webauthn-2/ |
 
 ## Base
 
-Não há biblioteca FIDO2 de terceiros. O suporte é o **nativo do .NET 10**: o
-`AppDbContext` declara o nono argumento genérico `IdentityUserPasskey<string>`,
-o que faz `AddEntityFrameworkStores` registrar `IUserPasskeyStore` e habilita em
-`UserManager` os métodos `AddOrUpdatePasskeyAsync`, `GetPasskeysAsync`,
-`RemovePasskeyAsync` e `FindByPasskeyIdAsync`, e em `SignInManager` o
-`CheckPasskeySignIn` (`src/sts/ServiceCollectionExtensions.cs:487-497`).
+There is no third-party FIDO2 library. Support is **native to .NET 10**: the
+`AppDbContext` declares the ninth generic argument `IdentityUserPasskey<string>`,
+which makes `AddEntityFrameworkStores` register `IUserPasskeyStore` and enables
+the `AddOrUpdatePasskeyAsync`, `GetPasskeysAsync`, `RemovePasskeyAsync` and
+`FindByPasskeyIdAsync` methods on `UserManager`, and `CheckPasskeySignIn` on
+`SignInManager` (`src/sts/ServiceCollectionExtensions.cs:485-493`).
 
-A tabela é `userpasskeys` (`src/core/Data/Mapping/PasskeyMapping.cs`).
+The table is `userpasskeys` (`src/core/Data/Mapping/PasskeyMapping.cs`).
 
-## Configuração
+## Configuration
 
-| Chave | Efeito |
+| Key | Effect |
 |---|---|
-| `Passkeys:RelyingPartyId` | Vira `IdentityPasskeyOptions.ServerDomain` (`:438-444`) |
-| `Passkeys:MaximumCredentialsPerAccount` | Padrão 10 |
-| `Passkeys:MaximumNameLength` | Padrão 100 |
-| `Passkeys:MaximumCredentialPayloadBytes` | Padrão 131 072 |
+| `Passkeys:RelyingPartyId` | Becomes `IdentityPasskeyOptions.ServerDomain` (`:442-448`) |
+| `Passkeys:MaximumCredentialsPerAccount` | Default 10 |
+| `Passkeys:MaximumNameLength` | Default 100 |
+| `Passkeys:MaximumCredentialPayloadBytes` | Default 131,072 |
 
-Os limites são verificados antes da atestação
-(`src/sts/AspNetCoreIdentityPasskeyService.cs:69`, `:118`), o que impede um
-usuário autenticado de inflar a tabela.
+The limits are checked before attestation
+(`src/sts/AspNetCoreIdentityPasskeyService.cs:69`, `:118`), which prevents an
+authenticated user from inflating the table.
 
-## Ceremônia
+## Ceremony
 
-| Etapa | Endpoint |
+| Step | Endpoint |
 |---|---|
-| Opções de criação | `POST /connect/…/creation-options` — exige autenticação |
-| Registro | `POST …/register` — exige autenticação |
-| Opções de requisição | `POST …/request-options` — anônimo |
-| Autenticação | `POST …/authenticate` — anônimo |
+| Creation options | `POST /connect/…/creation-options` — requires authentication |
+| Registration | `POST …/register` — requires authentication |
+| Request options | `POST …/request-options` — anonymous |
+| Authentication | `POST …/authenticate` — anonymous |
 
-`src/sts/Controllers/AccountPasskeysController.cs:23-97`. A validação de origem,
-de `RP ID` e do desafio é do framework.
+`src/sts/Controllers/AccountPasskeysController.cs:23-97`. Origin, `RP ID` and
+challenge validation are handled by the framework.
 
-## Estado da ceremônia fora do cookie
+## Ceremony state outside the cookie
 
-O ASP.NET Identity guarda o desafio WebAuthn no esquema temporário
-`TwoFactorUserId`. Mantê-lo no cookie produz cabeçalho de resposta maior que o
-buffer padrão de vários proxies reversos. Por isso o ticket protegido é guardado
-no servidor e o navegador recebe apenas uma chave de busca aleatória
-(`PasskeyAuthenticationTicketStore`, registrado em
-`src/sts/ServiceCollectionExtensions.cs:447-462`).
+ASP.NET Identity stores the WebAuthn challenge in the temporary
+`TwoFactorUserId` scheme. Keeping it in the cookie produces a response header
+larger than the default buffer of several reverse proxies. That's why the
+protected ticket is stored server-side and the browser only receives a random
+lookup key (`PasskeyAuthenticationTicketStore`, registered in
+`src/sts/ServiceCollectionExtensions.cs:449-461`).
 
-## Integração com o resto
+## Integration with the rest of the system
 
-- Passkey verificada conta como MFA nas políticas de step-up.
-- Registro e remoção emitem CAEP `device-change` e `credential-change`
+- A verified passkey counts as MFA in step-up policies.
+- Registration and removal emit CAEP `device-change` and `credential-change`
   (`AspNetCoreIdentityPasskeyService.cs:202`).
-- Mutação de passkey passa pelo `CredentialMutationSecurityCoordinator`, que
-  rotaciona o security stamp e revoga sessões.
+- Passkey mutation goes through `CredentialMutationSecurityCoordinator`, which
+  rotates the security stamp and revokes sessions.
 
-## Lacunas
+## Gaps
 
-- Sem verificação de atestação com metadados da FIDO MDS: o atestado é aceito sem
-  conferir o modelo do autenticador contra uma lista.
-- Sem política de exigir autenticadores com verificação de usuário obrigatória.
-- Sem *conditional UI* / autofill documentada como contrato.
+- No attestation verification against FIDO MDS metadata: the attestation is
+  accepted without checking the authenticator model against a list.
+- No policy to require authenticators with mandatory user verification.
+- No *conditional UI* / autofill documented as a contract.
 
-## Testes
+## Tests
 
 `AccountPasskeyServiceTests`, `AccountPasskeysControllerTests`,
 `CredentialMutationSecurityTests`.

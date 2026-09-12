@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="ConfirmEmail.Subject" xml:space="preserve"><value>Confirme seu e-mail — {0}</value></data>
+  <data name="ConfirmEmail.Body" xml:space="preserve"><value>Confirme sua conta &lt;a href="{0}"&gt;clicando aqui&lt;/a&gt;.</value></data>
+  <data name="ResetPassword.Subject" xml:space="preserve"><value>Redefinir senha — {0}</value></data>
+  <data name="ResetPassword.Body" xml:space="preserve"><value>Redefina sua senha &lt;a href="{0}"&gt;clicando aqui&lt;/a&gt;.</value></data>
+  <data name="ExternalLink.Subject" xml:space="preserve"><value>Confirme seu e-mail — {0}</value></data>
+  <data name="ExternalLink.Body" xml:space="preserve"><value>Confirme que este endereço é seu para concluir o acesso por {0}: &lt;a href="{1}"&gt;clique aqui&lt;/a&gt;. Se você não iniciou este acesso, ignore esta mensagem — nenhuma conta foi criada.</value></data>
+  <data name="AuthorizationError.Heading" xml:space="preserve"><value>Não foi possível concluir o acesso</value></data>
+  <data name="AuthorizationError.InvalidToken" xml:space="preserve"><value>O pedido de autorização que abriu esta tela já foi utilizado ou expirou. Isso costuma acontecer quando a tela de login fica aberta depois que o acesso já foi concluído, ou quando o mesmo link é aberto uma segunda vez.</value></data>
+  <data name="AuthorizationError.InvalidRequest" xml:space="preserve"><value>O pedido de autorização chegou incompleto ou inválido e não pôde ser processado.</value></data>
+  <data name="AuthorizationError.Generic" xml:space="preserve"><value>O pedido de autorização não pôde ser processado.</value></data>
+  <data name="AuthorizationError.Recovery" xml:space="preserve"><value>Volte ao aplicativo de origem e inicie o acesso novamente. Se o problema persistir, entre em contato com o suporte informando os detalhes abaixo.</value></data>
+  <data name="AuthorizationError.Home" xml:space="preserve"><value>Ir para a página inicial</value></data>
+  <data name="AuthorizationError.TechnicalDetails" xml:space="preserve"><value>Detalhes técnicos</value></data>
+</root>
