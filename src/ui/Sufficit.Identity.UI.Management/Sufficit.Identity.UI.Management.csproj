@@ -5,7 +5,6 @@
     <RootNamespace>Sufficit.Identity.UI.Management</RootNamespace>
     <AssemblyName>Sufficit.Identity.UI.Management</AssemblyName>
     <Description>Sufficit Identity UI — injectable administrative management module.</Description>
-    <NeutralLanguage>pt-BR</NeutralLanguage>
     <IsPackable>true</IsPackable>
     <StaticWebAssetsEnabled>true</StaticWebAssetsEnabled>
   </PropertyGroup>
