@@ -150,7 +150,7 @@ public sealed class InteractiveSignInServiceTests(
         Assert.Contains("mfa", methods);
         Assert.Equal("Loa2", ticket.Principal.FindFirst("aal")?.Value);
         Assert.Equal(
-            "urn:sufficit:acr:loa2",
+            "urn:identity:acr:loa2",
             ticket.Principal.FindFirst("acr")?.Value);
         Assert.True(ticket.Properties.IsPersistent);
     }
@@ -243,7 +243,7 @@ public sealed class InteractiveSignInServiceTests(
         Assert.DoesNotContain("otp", methods);
         Assert.Equal("Loa2", ticket.Principal.FindFirst("aal")?.Value);
         Assert.Equal(
-            "urn:sufficit:acr:loa2",
+            "urn:identity:acr:loa2",
             ticket.Principal.FindFirst("acr")?.Value);
         Assert.True(ticket.Properties.IsPersistent);
     }

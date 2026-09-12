@@ -391,10 +391,10 @@ public sealed class ClientCredentialsGrantHandler : ITokenGrantHandler
             await ops.ApplicationManager.GetDisplayNameAsync(application) as string
                 ?? request.ClientId!);
 
-        // Entitlements do registro: é a única forma de uma conta de máquina
-        // receber concessão por INSTÂNCIA (qual contexto) e não só por
-        // categoria (qual papel). Sem isto o token sai com sub, nome e escopos
-        // e nada sobre o que o serviço do outro lado possa decidir.
+        // Entitlements from the client registration: the only way a machine
+        // account receives a grant per INSTANCE (which context) and not only
+        // per category (which role). Without this the token carries sub, name
+        // and scopes, and nothing the service on the other side can decide on.
         var granted = ClientEntitlements.Read(
             await ops.ApplicationManager.GetPropertiesAsync(application));
         foreach (var entitlement in granted)
@@ -408,12 +408,12 @@ public sealed class ClientCredentialsGrantHandler : ITokenGrantHandler
         GrantOperations.ApplyDpopBinding(identity, proof);
         identity.SetDestinations(ops.GetDestinations);
 
-        // Depois do SetDestinations, e só para ESTA identidade. O claim
-        // `directive` também existe em token de usuário, onde o mapa de
-        // claim-para-escopo decide o destino e chega até o id_token; carimbar
-        // por tipo no GetDestinations sequestraria aquele caminho. Aqui não há
-        // usuário nem id_token: entitlement é claim de autorização (RFC 9068
-        // §2.2.3.2) e quem decide com ele é o servidor de recurso.
+        // After SetDestinations, and only for THIS identity. The `directive`
+        // claim also exists in user tokens, where the claim-to-scope map decides
+        // its destination and it reaches the id_token; stamping by type inside
+        // GetDestinations would hijack that path. Here there is no user and no
+        // id_token: an entitlement is an authorization claim (RFC 9068
+        // §2.2.3.2), and the resource server is the one that decides with it.
         if (granted.Count > 0)
         {
             foreach (var claim in identity.Claims.Where(claim =>
@@ -463,7 +463,8 @@ public sealed class PasswordGrantHandler : ITokenGrantHandler
             user,
             GrantOperations.CreateAuthenticationContextPrincipal(
                 ["pwd"],
-                "urn:sufficit:acr:loa1"),
+                ops.AuthenticationContextClasses.Map(
+                    Sufficit.Identity.Application.Security.CaepAssuranceLevel.Loa1)),
             httpContext.User);
         identity.SetScopes(request.GetScopes());
         identity.SetResources(await ops.ResolveResourcesAsync(identity, request));

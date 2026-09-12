@@ -11,19 +11,27 @@
 
 `AuthenticationContextProjection` (`src/sts/AuthenticationContextProjection.cs`)
 projects three claims onto the token and the `id_token`: `amr`, `acr`, and
-`auth_time` (`:35-37`). Both tokens are the target
-(`src/sts/Grants/GrantOperations.cs:289-294`).
+`auth_time` (`:38-40`). Both tokens are the target
+(`src/sts/Grants/GrantOperations.cs:293-298`).
 
 The values are written at login time and preserved across principal
 refreshes, so that a security-stamp revalidation does not downgrade a session
-that already completed MFA (`src/sts/ServiceCollectionExtensions.cs:556-599`).
+that already completed MFA (`src/sts/ServiceCollectionExtensions.cs:559-602`).
 
 | Situation | `amr` issued | `acr` |
 |---|---|---|
-| Password | `pwd` | `urn:sufficit:acr:loa1` |
-| Password + device with remembered MFA | `pwd`, `mfa` | `urn:sufficit:acr:loa2` |
-| Password + TOTP | `pwd`, `otp`, `mfa` | `urn:sufficit:acr:loa2` |
-| Password grant (legacy) | `pwd` | `urn:sufficit:acr:loa1` |
+| Password | `pwd` | `{prefix}loa1` |
+| Password + device with remembered MFA | `pwd`, `mfa` | `{prefix}loa2` |
+| Password + TOTP | `pwd`, `otp`, `mfa` | `{prefix}loa2` |
+| Password + recovery code | `pwd`, `rc`, `mfa` | `{prefix}loa2` |
+| Passkey | `passkey`, `hwk`, `mfa` | `{prefix}loa3` |
+| Password grant (legacy) | `pwd` | `{prefix}loa1` |
+
+`{prefix}` is `Sufficit:Identity:AuthenticationContext:AcrPrefix`, default
+`urn:identity:acr:`. Every sign-in path spells the level through
+`IAuthenticationContextClassMapper` (`src/sts/AuthenticationContextClassMapper.cs`),
+so the vocabulary lives in one place. A session with no sign-in evidence gets
+the level resolved from its `amr` values, spelled by the same mapper.
 
 ## Consumption
 
@@ -35,11 +43,10 @@ issuance and SSF stream management.
 
 ## Gaps
 
-- **`acr` does not use standardized URNs.** `urn:sufficit:acr:loa1|loa2` is
-  in-house vocabulary; there is no mapping to ISO/IEC 29115 values or to
-  `http://schemas.openid.net/pape/policies/2007/06/multi-factor`. A
-  third-party RP has no way to interpret it. Suggested fix: make the
-  vocabulary configurable via `AssuranceLevelOptions`.
+- **`acr` uses a deployment vocabulary, not a registered one.** The prefix is
+  configurable, but there is no built-in mapping to ISO/IEC 29115 values or to
+  `http://schemas.openid.net/pape/policies/2007/06/multi-factor`; a relying
+  party must be told what `loa1`–`loa3` mean.
 - Passkeys do not distinctly emit `hwk` or `swk`; they enter the MFA path as
   a verified factor.
 - `acr_values` in the request does not select an authentication policy; only

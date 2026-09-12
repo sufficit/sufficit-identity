@@ -1,3 +1,4 @@
+using Sufficit.Identity.Application.Security;
 using System.Globalization;
 using System.Security.Claims;
 using System.Collections.Immutable;
@@ -30,7 +31,9 @@ public interface IAuthenticationContextProjector
     void Project(ClaimsPrincipal source, ClaimsIdentity destination);
 }
 
-internal sealed class AuthenticationContextProjector : IAuthenticationContextProjector
+internal sealed class AuthenticationContextProjector(
+    IAuthenticationContextClassMapper authenticationContextClasses)
+    : IAuthenticationContextProjector
 {
     public const string AuthenticationMethodClaimType = "amr";
     public const string AuthenticationContextClassClaimType = "acr";
@@ -63,10 +66,15 @@ internal sealed class AuthenticationContextProjector : IAuthenticationContextPro
             AuthenticationContextClassClaimType)?.Value;
         if (string.IsNullOrWhiteSpace(authenticationContext))
         {
+            // The session stamps the level by enum name (for example "Loa2");
+            // spell it through the mapper instead of concatenating the name.
             var assuranceLevel = source.FindFirst(
                 OidcSessionClaimsPrincipalFactory.AssuranceLevelClaimType)?.Value;
-            if (!string.IsNullOrWhiteSpace(assuranceLevel))
-                authenticationContext = "urn:sufficit:acr:loa" + assuranceLevel;
+            if (Enum.TryParse<CaepAssuranceLevel>(
+                    assuranceLevel,
+                    ignoreCase: false,
+                    out var level))
+                authenticationContext = authenticationContextClasses.Map(level);
         }
         if (!string.IsNullOrWhiteSpace(authenticationContext))
             destination.SetClaim(

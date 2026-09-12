@@ -1,3 +1,4 @@
+using Sufficit.Identity.Application.Security;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
@@ -17,6 +18,7 @@ public sealed class AspNetCoreIdentityExternalSignInService(
     IAccountOnboardingService onboardingService,
     IAccountLookupPolicy accountLookup,
     IAuthenticationContextAccessor authenticationContextAccessor,
+    IAuthenticationContextClassMapper authenticationContextClasses,
     IExternalIdentityLinkingPolicy linkingPolicy,
     PendingExternalIdentityStore pendingLinks,
     ExternalIdentityVerificationMessenger verificationMessenger,
@@ -399,9 +401,9 @@ public sealed class AspNetCoreIdentityExternalSignInService(
                 ? ["federated", provider.ToLowerInvariant(), "mfa"]
                 : ["federated", provider.ToLowerInvariant()],
             timeProvider.GetUtcNow(),
-            rememberedMfa
-                ? "urn:sufficit:acr:loa2"
-                : "urn:sufficit:acr:loa1"));
+            authenticationContextClasses.Map(rememberedMfa
+                ? CaepAssuranceLevel.Loa2
+                : CaepAssuranceLevel.Loa1)));
 
     /// <summary>
     /// The OIDC claim type the service persists from the external provider principal.

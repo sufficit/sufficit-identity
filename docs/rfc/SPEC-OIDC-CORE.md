@@ -25,7 +25,7 @@ not registered — see [RFC-9700-OAUTH-SECURITY-BCP.md](RFC-9700-OAUTH-SECURITY-
 
 Issued by OpenIddict with `iss`, `sub`, `aud`, `exp`, `iat`, `nonce` and
 `auth_time`. Identity claims are included based on scope, decided in
-`GrantOperations.GetDestinations` (`src/sts/Grants/GrantOperations.cs:260-326`):
+`GrantOperations.GetDestinations` (`src/sts/Grants/GrantOperations.cs:264-330`):
 
 | Claim | Condition |
 |---|---|
@@ -39,7 +39,7 @@ Issued by OpenIddict with `iss`, `sub`, `aud`, `exp`, `iat`, `nonce` and
 
 The last row matters: the security stamp is ASP.NET Identity internal state,
 and leaking it into a token would give a client the ability to correlate
-invalidations. The `switch` explicitly discards it (`:302-303`).
+invalidations. The `switch` explicitly discards it (`:306-307`).
 
 ## UserInfo
 

@@ -22,19 +22,22 @@ public sealed class AuthenticationContextProjectionTests
         [
             new Claim("amr", "pwd"),
             new Claim("amr", "mfa"),
-            new Claim("acr", "urn:sufficit:acr:loa2"),
+            new Claim("acr", "urn:example:acr:loa2"),
             new Claim("auth_time", "123456"),
         ]);
         var destination = new ClaimsIdentity();
 
-        new AuthenticationContextProjector().Project(
+        new AuthenticationContextProjector(
+            new ConfigurableAuthenticationContextClassMapper(
+                new AuthenticationContextOptions()))
+            .Project(
             new ClaimsPrincipal(sourceIdentity),
             destination);
 
         Assert.Equal(
             ["pwd", "mfa"],
             destination.FindAll("amr").Select(claim => claim.Value));
-        Assert.Equal("urn:sufficit:acr:loa2", destination.FindFirst("acr")?.Value);
+        Assert.Equal("urn:example:acr:loa2", destination.FindFirst("acr")?.Value);
         Assert.Equal("123456", destination.FindFirst("auth_time")?.Value);
     }
 
@@ -52,7 +55,7 @@ public sealed class AuthenticationContextProjectionTests
         evidence.Set(new AuthenticationContextEvidence(
             ["pwd", "otp", "mfa"],
             DateTimeOffset.UtcNow.AddMinutes(-1),
-            "urn:sufficit:acr:loa2"));
+            "urn:example:acr:loa2"));
         var claimsFactory = scope.ServiceProvider
             .GetRequiredService<IUserClaimsPrincipalFactory<ApplicationUser>>();
 
@@ -60,7 +63,7 @@ public sealed class AuthenticationContextProjectionTests
 
         Assert.Contains(principal.FindAll("amr"), claim => claim.Value == "pwd");
         Assert.Contains(principal.FindAll("amr"), claim => claim.Value == "mfa");
-        Assert.Equal("urn:sufficit:acr:loa2", principal.FindFirst("acr")?.Value);
+        Assert.Equal("urn:example:acr:loa2", principal.FindFirst("acr")?.Value);
         Assert.True(long.TryParse(principal.FindFirst("auth_time")?.Value, out _));
     }
 
@@ -103,7 +106,7 @@ public sealed class AuthenticationContextProjectionTests
         evidence.Set(new AuthenticationContextEvidence(
             ["passkey", "hwk", "mfa"],
             DateTimeOffset.UtcNow.AddSeconds(-30),
-            "urn:sufficit:acr:loa3"));
+            "urn:example:acr:loa3"));
         var claimsFactory = scope.ServiceProvider
             .GetRequiredService<IUserClaimsPrincipalFactory<ApplicationUser>>();
 
@@ -111,7 +114,7 @@ public sealed class AuthenticationContextProjectionTests
 
         Assert.Equal("persisted-session", principal.FindFirst("sid")?.Value);
         Assert.Contains(principal.FindAll("amr"), claim => claim.Value == "passkey");
-        Assert.Equal("urn:sufficit:acr:loa3", principal.FindFirst("acr")?.Value);
+        Assert.Equal("urn:example:acr:loa3", principal.FindFirst("acr")?.Value);
         Assert.Single(principal.FindAll("auth_time"));
     }
 
@@ -142,6 +145,72 @@ public sealed class AuthenticationContextProjectionTests
 
         Assert.NotEqual("stale-cookie-sid", principal.FindFirst("sid")?.Value);
         Assert.False(string.IsNullOrWhiteSpace(principal.FindFirst("sid")?.Value));
+    }
+
+    [Theory]
+    [InlineData(Sufficit.Identity.Application.Security.CaepAssuranceLevel.Loa1, "urn:identity:acr:loa1")]
+    [InlineData(Sufficit.Identity.Application.Security.CaepAssuranceLevel.Loa2, "urn:identity:acr:loa2")]
+    [InlineData(Sufficit.Identity.Application.Security.CaepAssuranceLevel.Loa3, "urn:identity:acr:loa3")]
+    [InlineData(Sufficit.Identity.Application.Security.CaepAssuranceLevel.PhishingResistant, "urn:identity:acr:loa3")]
+    public void Mapper_spells_levels_with_the_neutral_default_prefix(
+        Sufficit.Identity.Application.Security.CaepAssuranceLevel level,
+        string expected)
+    {
+        var mapper = new ConfigurableAuthenticationContextClassMapper(
+            new AuthenticationContextOptions());
+
+        Assert.Equal(expected, mapper.Map(level));
+    }
+
+    [Fact]
+    public void Mapper_uses_the_configured_prefix()
+    {
+        // The acr vocabulary is a deployment's public contract: relying parties
+        // that already check another prefix keep receiving it.
+        var mapper = new ConfigurableAuthenticationContextClassMapper(
+            new AuthenticationContextOptions { AcrPrefix = "urn:example:loa:" });
+
+        Assert.Equal(
+            "urn:example:loa:loa2",
+            mapper.Map(Sufficit.Identity.Application.Security.CaepAssuranceLevel.Loa2));
+    }
+
+    [Fact]
+    public void Projector_spells_a_stamped_level_instead_of_concatenating_its_name()
+    {
+        // Regression: the fallback concatenated the enum name, emitting values
+        // such as "...acr:loaLoa2".
+        var sourceIdentity = new ClaimsIdentity(
+        [
+            new Claim("amr", "pwd"),
+            new Claim(OidcSessionClaimsPrincipalFactory.AssuranceLevelClaimType, "Loa2"),
+        ]);
+        var destination = new ClaimsIdentity();
+
+        new AuthenticationContextProjector(
+                new ConfigurableAuthenticationContextClassMapper(
+                    new AuthenticationContextOptions()))
+            .Project(new ClaimsPrincipal(sourceIdentity), destination);
+
+        Assert.Equal("urn:identity:acr:loa2", destination.FindFirst("acr")?.Value);
+    }
+
+    [Fact]
+    public async Task Session_factory_without_sign_in_evidence_spells_the_resolved_level()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await using var scope = factory.Services.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await users.FindByNameAsync(TestDataSeeder.DefaultUsername)
+            ?? throw new InvalidOperationException("Seed user not found.");
+
+        var principal = await scope.ServiceProvider
+            .GetRequiredService<IUserClaimsPrincipalFactory<ApplicationUser>>()
+            .CreateAsync(user);
+
+        Assert.Equal("urn:identity:acr:loa1", principal.FindFirst("acr")?.Value);
     }
 
     [Fact]
@@ -176,7 +245,7 @@ public sealed class AuthenticationContextProjectionTests
 
         Assert.Equal("pwd", introspection.GetProperty("amr").GetString());
         Assert.Equal(
-            "urn:sufficit:acr:loa1",
+            "urn:identity:acr:loa1",
             introspection.GetProperty("acr").GetString());
         Assert.True(introspection.GetProperty("auth_time").GetInt64() > 0);
     }

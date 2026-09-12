@@ -305,9 +305,30 @@
             {
                 _requiresTwoFactor = result.Errors.Any(error =>
                     string.Equals(error.Code, "two-factor-required", StringComparison.Ordinal));
+                // The API answers in English with a stable code; translate the
+                // codes this page knows. A required second step is explained by
+                // the dedicated block above, so it adds no error text.
+                var messages = result.Errors
+                    .Select(error => error.Code switch
+                    {
+                        "two-factor-required" => null,
+                        "account-locked" => L["Login.Error.LockedOut"].Value,
+                        "sign-in-not-allowed" => L["Login.Error.NotAllowed"].Value,
+                        "passkey-ceremony-invalid" => L["Login.Error.PasskeyRetry"].Value,
+                        "passkey-credential-required"
+                            or "passkey-credential-too-large"
+                            or "passkey-authentication-failed" =>
+                            L["Login.Error.PasskeyFailed"].Value,
+                        _ => L["Login.Error.PasskeyGeneric"].Value,
+                    })
+                    .OfType<string>()
+                    .Distinct(StringComparer.Ordinal)
+                    .ToArray();
                 _errorMessage = result.Errors.Count == 0
                     ? L["Login.Error.PasskeyFailed"]
-                    : string.Join(" ", result.Errors.Select(error => error.Description));
+                    : messages.Length == 0
+                        ? null
+                        : string.Join(" ", messages);
             }
         }
         catch (JSException exception)
@@ -317,7 +338,7 @@
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Erro no login por passkey");
+            Logger.LogError(ex, "Passkey sign-in failed.");
             _errorMessage = L["Login.Error.PasskeyGeneric"];
         }
         finally

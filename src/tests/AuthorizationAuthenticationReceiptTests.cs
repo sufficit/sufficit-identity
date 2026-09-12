@@ -59,7 +59,7 @@ public sealed class AuthorizationAuthenticationReceiptTests
     private static ServiceProvider Services(Clock clock)
     {
         var evidence = new AuthenticationContextAccessor();
-        evidence.Set(new AuthenticationContextEvidence(["otp", "mfa"], Now, "urn:sufficit:acr:loa2"));
+        evidence.Set(new AuthenticationContextEvidence(["otp", "mfa"], Now, "urn:example:acr:loa2"));
         return new ServiceCollection()
             .AddSingleton<TimeProvider>(clock)
             .AddSingleton<IDataProtectionProvider>(new EphemeralDataProtectionProvider())

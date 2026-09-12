@@ -22,7 +22,7 @@ references to the RFC in `src/sts/Dpop/`.
 | `DpopValidationHandlers.cs` | Token validation side |
 
 Registered in `src/sts/OpenIddictServerConfiguration.cs:334-340` and
-`src/sts/ServiceCollectionExtensions.cs:795-832`.
+`src/sts/ServiceCollectionExtensions.cs:798-835`.
 
 ## Proof validation
 
@@ -48,7 +48,7 @@ usable until the cache entry expired. The time window closes that off.
 
 The `jti` cache is **not** in-memory by default: `DatabaseDpopReplayCache` is
 registered as `IAtomicDpopReplayCache` and persists to `dpopreplayentries`
-(`src/sts/ServiceCollectionExtensions.cs:796-800`). There is an in-process
+(`src/sts/ServiceCollectionExtensions.cs:799-803`). There is an in-process
 implementation, but the constructor that uses it emits a warning that it is
 unsafe in a multi-replica setup. With three nodes sharing the database,
 replay is blocked across all of them.
