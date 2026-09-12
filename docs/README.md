@@ -16,9 +16,18 @@ type prefix and an uppercase kebab-case subject. Completed work is archived in
 | `USAGE-` | Configuration and consumer-facing use of an implemented feature |
 | `EVALUATION-` | Evaluation instructions or dated assessment |
 | `INVESTIGATION-` | Time-bounded evidence, diagnosis and conclusions |
+| `RFC-` | Conformidade com uma RFC do IETF, em `rfc/` |
+| `SPEC-` | Conformidade com especificação não-IETF (OpenID Foundation, W3C, drafts), em `rfc/` |
 
 Dated evaluations that are useful only as historical evidence live under
 `archive/evaluations`.
+
+## Conformidade com especificações
+
+[`rfc/README.md`](rfc/README.md) indexa um documento por RFC ou especificação
+implementada, com nível de abrangência, origem da implementação (OpenIddict,
+próprio ou misto) e lacunas conhecidas. A fonte de verdade é o código: cada
+afirmação cita `arquivo:linha`.
 
 ## Active plans (pending work)
 
