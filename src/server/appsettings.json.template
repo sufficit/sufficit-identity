@@ -286,7 +286,9 @@
         "_SlidingExpiration": "Renews active application and trusted-device cookies after half of their lifetime has elapsed. Abandoned sessions still expire at the configured boundary.",
         "SlidingExpiration": true,
         "CacheLifetimeSeconds": 60,
-        "ActivityUpdateIntervalSeconds": 300
+        "ActivityUpdateIntervalSeconds": 300,
+        "_PrincipalRefreshIntervalSeconds": "Maximum age of the browser-session principal before it is rebuilt from the database and the server-side ticket renewed. The security stamp is still checked on every request (lockout and credential changes take effect immediately) and any change to the user row, such as roles or claims, forces an earlier refresh. 0 rebuilds on every request. Default 300, range 0..3600.",
+        "PrincipalRefreshIntervalSeconds": 300
       },
       "_DeploymentTopology": "REQUIRED (production posture finding 'deployment-topology-undeclared' since the 2026-08-30 evaluation, F-4): the deployment must state its shape rather than inherit SingleReplica silently, because a host that is in fact replicated keeps process-local state for DPoP nonces, front-channel logout context and passkey ceremonies with no other signal. Explicit hosting contract: SingleReplica, Clustered, BehindTrustedProxy or ClusteredBehindTrustedProxy. Clustered modes require a shared distributed cache and an explicit issuer; proxy modes require TrustedProxies, HTTPS issuer and RateLimit:FailOnUntrustedProxy=true.",
       "DeploymentTopology": "SingleReplica",
