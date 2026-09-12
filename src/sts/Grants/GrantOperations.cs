@@ -23,6 +23,7 @@ public sealed class GrantOperations(
     IOpenIddictScopeManager scopeManager,
     IApplicationClaimDestinationPolicy applicationClaimPolicy,
     IAuthenticationContextProjector authenticationContextProjector,
+    IAuthenticationContextClassMapper authenticationContextClasses,
     ScopeEntitlementProvisioner scopeEntitlementProvisioner,
     McpScopeGrantPolicy mcpScopeGrantPolicy,
     IConfiguration configuration)
@@ -39,6 +40,9 @@ public sealed class GrantOperations(
     internal const string ActClaimType = "act";
 
     public UserManager<ApplicationUser> UserManager => userManager;
+
+    public IAuthenticationContextClassMapper AuthenticationContextClasses =>
+        authenticationContextClasses;
     public SignInManager<ApplicationUser> SignInManager => signInManager;
     public IOpenIddictApplicationManager ApplicationManager => applicationManager;
     public IOpenIddictScopeManager ScopeManager => scopeManager;

@@ -21,7 +21,7 @@ document covers the signal semantics.
 
 Stream management requires the `sufficit-ssf-transmitter` policy: bearer with
 a dedicated scope and, by default, evidence of MFA
-(`src/sts/ServiceCollectionExtensions.cs:907-913`).
+(`src/sts/ServiceCollectionExtensions.cs:910-916`).
 `SharedSignals:RequireMfa` turned off is a finding reported by the posture
 check (`src/sts/Security/StsProductionPostureContributor.cs:50-52`).
 

@@ -21,6 +21,7 @@ internal sealed class OidcSessionClaimsPrincipalFactory(
     RoleManager<ApplicationRole> roleManager,
     IOptions<IdentityOptions> identityOptions,
     IAssuranceLevelResolver assuranceLevelResolver,
+    IAuthenticationContextClassMapper authenticationContextClasses,
     IHttpContextAccessor httpContextAccessor,
     IAuthenticationContextAccessor authenticationContextAccessor,
     IDbContextFactory<AppDbContext> databaseFactory,
@@ -117,7 +118,7 @@ internal sealed class OidcSessionClaimsPrincipalFactory(
         ReplaceClaim(
             identity,
             AuthenticationContextProjector.AuthenticationContextClassClaimType,
-            evidence?.AuthenticationContextClass ?? "urn:sufficit:acr:loa" + aal);
+            evidence?.AuthenticationContextClass ?? authenticationContextClasses.Map(aal));
 
         // This factory runs during security-stamp validation and cookie
         // renewal. Keep the full claim projection at Debug so normal traffic

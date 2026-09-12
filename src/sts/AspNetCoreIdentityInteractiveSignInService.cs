@@ -1,3 +1,4 @@
+using Sufficit.Identity.Application.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using System.Security.Claims;
@@ -14,6 +15,7 @@ namespace Sufficit.Identity.STS;
 public sealed class AspNetCoreIdentityInteractiveSignInService(
     SufficitSignInManager signInManager,
     IAuthenticationContextAccessor authenticationContextAccessor,
+    IAuthenticationContextClassMapper authenticationContextClasses,
     TimeProvider timeProvider,
     ILogger<AspNetCoreIdentityInteractiveSignInService> logger)
     : IInteractiveSignInService
@@ -57,9 +59,9 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
         var isPersistent = command.IsPersistent || rememberedMfa;
         SetAuthenticationContext(
             rememberedMfa ? ["pwd", "mfa"] : ["pwd"],
-            rememberedMfa
-                ? "urn:sufficit:acr:loa2"
-                : "urn:sufficit:acr:loa1");
+            authenticationContextClasses.Map(rememberedMfa
+                ? CaepAssuranceLevel.Loa2
+                : CaepAssuranceLevel.Loa1));
         var result = await signInManager.PasswordSignInAsync(
             command.UserName,
             command.Password,
@@ -157,7 +159,9 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
         }
 
         var code = NormalizeAuthenticatorCode(command.Code);
-        SetAuthenticationContext(["pwd", "otp", "mfa"], "urn:sufficit:acr:loa2");
+        SetAuthenticationContext(
+            ["pwd", "otp", "mfa"],
+            authenticationContextClasses.Map(CaepAssuranceLevel.Loa2));
         // Remembering MFA also keeps this browser session alive for the same
         // bounded lifetime. Otherwise the trusted-device cookie survives a
         // browser restart while the application cookie disappears, producing
@@ -232,7 +236,9 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
                 InteractiveSignInStatus.Failed);
         }
 
-        SetAuthenticationContext(["pwd", "rc", "mfa"], "urn:sufficit:acr:loa2");
+        SetAuthenticationContext(
+            ["pwd", "rc", "mfa"],
+            authenticationContextClasses.Map(CaepAssuranceLevel.Loa2));
         var result = await signInManager.TwoFactorRecoveryCodeSignInAsync(
             NormalizeRecoveryCode(code));
         cancellationToken.ThrowIfCancellationRequested();
@@ -286,13 +292,13 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
         (code ?? string.Empty)
             .Replace(" ", string.Empty, StringComparison.Ordinal);
 
-    private static IReadOnlyCollection<Claim> MfaClaims(string secondFactor) =>
+    private IReadOnlyCollection<Claim> MfaClaims(string secondFactor) =>
     [
         new("amr", "pwd"),
         new("amr", secondFactor),
         new("amr", "mfa"),
         new("aal", "Loa2"),
-        new("acr", "urn:sufficit:acr:loa2"),
+        new("acr", authenticationContextClasses.Map(CaepAssuranceLevel.Loa2)),
     ];
 
     private void SetAuthenticationContext(

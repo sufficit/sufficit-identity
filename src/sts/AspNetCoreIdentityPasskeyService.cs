@@ -24,6 +24,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
     IAccountLookupPolicy accountLookup,
     AccountPasskeyOptions options,
     IAuthenticationContextAccessor authenticationContextAccessor,
+    IAuthenticationContextClassMapper authenticationContextClasses,
     TimeProvider timeProvider,
     ILogger<AspNetCoreIdentityPasskeyService> logger)
     : IAccountPasskeyService, IPasskeyAuthenticationService
@@ -47,7 +48,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
         {
             return PasskeyOptionsResult.Failure(
                 "unauthenticated",
-                "A sessão não está autenticada.");
+                "The session is not authenticated.");
         }
 
         var authorization = await credentialSecurity.AuthorizeAsync(
@@ -66,7 +67,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
         {
             return PasskeyOptionsResult.Failure(
                 "passkey-limit-reached",
-                $"Esta conta já possui o limite de {overview.MaximumCredentials} passkeys.");
+                $"This account already has the maximum of {overview.MaximumCredentials} passkeys.");
         }
 
         var accountName = await userManager.GetUserNameAsync(user)
@@ -95,7 +96,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
         {
             return AccountPasskeyResult.Failure(
                 "unauthenticated",
-                "A sessão não está autenticada.");
+                "The session is not authenticated.");
         }
 
         var authorization = await credentialSecurity.AuthorizeAsync(
@@ -115,7 +116,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
         {
             return AccountPasskeyResult.Failure(
                 "passkey-limit-reached",
-                $"Esta conta já possui o limite de {overview.MaximumCredentials} passkeys.",
+                $"This account already has the maximum of {overview.MaximumCredentials} passkeys.",
                 overview);
         }
 
@@ -124,7 +125,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
         {
             return AccountPasskeyResult.Failure(
                 "passkey-credential-required",
-                "O navegador não forneceu a credencial da passkey.",
+                "The browser did not provide the passkey credential.",
                 overview);
         }
 
@@ -132,7 +133,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
         {
             return AccountPasskeyResult.Failure(
                 "passkey-credential-too-large",
-                "A credencial recebida excede o tamanho permitido.",
+                "The received credential exceeds the allowed size.",
                 overview);
         }
 
@@ -141,7 +142,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
         {
             return AccountPasskeyResult.Failure(
                 "passkey-name-too-long",
-                $"O nome deve ter no máximo {MaximumNameLength} caracteres.",
+                $"The name must be at most {MaximumNameLength} characters.",
                 overview);
         }
 
@@ -160,7 +161,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
                 user.Id);
             return AccountPasskeyResult.Failure(
                 "passkey-ceremony-invalid",
-                "A solicitação de registro expirou ou é inválida. Inicie novamente.",
+                "The registration request expired or is invalid. Start again.",
                 overview);
         }
 
@@ -172,7 +173,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
                 attestation.Failure?.Message ?? "unspecified");
             return AccountPasskeyResult.Failure(
                 "passkey-attestation-failed",
-                "A passkey não pôde ser validada. Tente registrá-la novamente.",
+                "The passkey could not be validated. Try registering it again.",
                 overview);
         }
 
@@ -223,14 +224,14 @@ public sealed class AspNetCoreIdentityPasskeyService(
         {
             return AccountPasskeyResult.Failure(
                 "unauthenticated",
-                "A sessão não está autenticada.");
+                "The session is not authenticated.");
         }
         var credentialId = command.CredentialId?.Trim() ?? "";
         if (credentialId.Length == 0)
         {
             return AccountPasskeyResult.Failure(
                 "passkey-credential-required",
-                "A passkey que será renomeada não foi informada.",
+                "The passkey to rename was not provided.",
                 await BuildOverviewAsync(user, cancellationToken));
         }
 
@@ -239,7 +240,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
         {
             return AccountPasskeyResult.Failure(
                 "passkey-name-too-long",
-                $"O nome deve ter no máximo {MaximumNameLength} caracteres.",
+                $"The name must be at most {MaximumNameLength} characters.",
                 await BuildOverviewAsync(user, cancellationToken));
         }
 
@@ -253,7 +254,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
         {
             return AccountPasskeyResult.Failure(
                 "passkey-not-found",
-                "A passkey não foi encontrada.",
+                "The passkey was not found.",
                 await BuildOverviewAsync(user, cancellationToken));
         }
 
@@ -282,7 +283,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
         {
             return AccountPasskeyResult.Failure(
                 "unauthenticated",
-                "A sessão não está autenticada.");
+                "The session is not authenticated.");
         }
 
         var authorization = await credentialSecurity.AuthorizeAsync(
@@ -307,7 +308,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
         {
             return AccountPasskeyResult.Failure(
                 "passkey-not-found",
-                "A passkey não foi encontrada.",
+                "The passkey was not found.",
                 await BuildOverviewAsync(user, cancellationToken));
         }
 
@@ -375,14 +376,14 @@ public sealed class AspNetCoreIdentityPasskeyService(
         {
             return PasskeyAuthenticationResult.Failure(
                 "passkey-credential-required",
-                "O navegador não forneceu uma passkey.");
+                "The browser did not provide a passkey.");
         }
 
         if (Encoding.UTF8.GetByteCount(credentialJson) > MaximumCredentialPayloadBytes)
         {
             return PasskeyAuthenticationResult.Failure(
                 "passkey-credential-too-large",
-                "A credencial recebida excede o tamanho permitido.");
+                "The received credential exceeds the allowed size.");
         }
 
         SignInResult result;
@@ -392,7 +393,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
             authenticationContextAccessor.Set(new AuthenticationContextEvidence(
                 ["passkey", "hwk", "mfa"],
                 timeProvider.GetUtcNow(),
-                "urn:sufficit:acr:loa3"));
+                authenticationContextClasses.Map(CaepAssuranceLevel.PhishingResistant)));
             result = await signInManager.PasskeySignInAsync(credentialJson);
         }
         catch (Exception exception) when (IsInvalidCeremony(exception))
@@ -402,7 +403,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
                 "Passkey authentication ceremony was invalid.");
             return PasskeyAuthenticationResult.Failure(
                 "passkey-ceremony-invalid",
-                "A solicitação de autenticação expirou ou é inválida. Tente novamente.");
+                "The authentication request expired or is invalid. Try again.");
         }
 
         if (result.Succeeded)
@@ -415,14 +416,14 @@ public sealed class AspNetCoreIdentityPasskeyService(
         {
             return PasskeyAuthenticationResult.Failure(
                 "account-locked",
-                "A conta está temporariamente bloqueada.");
+                "The account is temporarily locked.");
         }
 
         if (result.IsNotAllowed)
         {
             return PasskeyAuthenticationResult.Failure(
                 "sign-in-not-allowed",
-                "O login não está permitido para esta conta.");
+                "Sign-in is not allowed for this account.");
         }
 
         // F-8 (eval 2026-08-14): a user with TOTP enabled still needs the
@@ -435,12 +436,12 @@ public sealed class AspNetCoreIdentityPasskeyService(
         {
             return PasskeyAuthenticationResult.Failure(
                 "two-factor-required",
-                "Esta conta exige uma segunda etapa de autenticação.");
+                "This account requires a second authentication step.");
         }
 
         return PasskeyAuthenticationResult.Failure(
             "passkey-authentication-failed",
-            "A passkey não pôde ser autenticada.");
+            "The passkey could not be authenticated.");
     }
 
     private async Task<AccountPasskeyOverview> BuildOverviewAsync(

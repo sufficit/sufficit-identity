@@ -346,7 +346,11 @@ if (app.Environment.IsDevelopment())
         {
             claims.Add(new System.Security.Claims.Claim("amr", "otp"));
             claims.Add(new System.Security.Claims.Claim("amr", "mfa"));
-            claims.Add(new System.Security.Claims.Claim("acr", "urn:sufficit:acr:loa2"));
+            claims.Add(new System.Security.Claims.Claim(
+                "acr",
+                context.RequestServices
+                    .GetRequiredService<IAuthenticationContextClassMapper>()
+                    .Map(Sufficit.Identity.Application.Security.CaepAssuranceLevel.Loa2)));
         }
         await signInManager.SignInWithClaimsAsync(user, null, claims);
         context.Response.StatusCode = 200;

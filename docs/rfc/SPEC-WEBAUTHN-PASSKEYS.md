@@ -14,7 +14,7 @@ There is no third-party FIDO2 library. Support is **native to .NET 10**: the
 which makes `AddEntityFrameworkStores` register `IUserPasskeyStore` and enables
 the `AddOrUpdatePasskeyAsync`, `GetPasskeysAsync`, `RemovePasskeyAsync` and
 `FindByPasskeyIdAsync` methods on `UserManager`, and `CheckPasskeySignIn` on
-`SignInManager` (`src/sts/ServiceCollectionExtensions.cs:485-493`).
+`SignInManager` (`src/sts/ServiceCollectionExtensions.cs:488-496`).
 
 The table is `userpasskeys` (`src/core/Data/Mapping/PasskeyMapping.cs`).
 
@@ -22,13 +22,13 @@ The table is `userpasskeys` (`src/core/Data/Mapping/PasskeyMapping.cs`).
 
 | Key | Effect |
 |---|---|
-| `Passkeys:RelyingPartyId` | Becomes `IdentityPasskeyOptions.ServerDomain` (`:442-448`) |
+| `Passkeys:RelyingPartyId` | Becomes `IdentityPasskeyOptions.ServerDomain` (`:445-451`) |
 | `Passkeys:MaximumCredentialsPerAccount` | Default 10 |
 | `Passkeys:MaximumNameLength` | Default 100 |
 | `Passkeys:MaximumCredentialPayloadBytes` | Default 131,072 |
 
 The limits are checked before attestation
-(`src/sts/AspNetCoreIdentityPasskeyService.cs:69`, `:118`), which prevents an
+(`src/sts/AspNetCoreIdentityPasskeyService.cs:70`, `:119`), which prevents an
 authenticated user from inflating the table.
 
 ## Ceremony
@@ -50,7 +50,7 @@ ASP.NET Identity stores the WebAuthn challenge in the temporary
 larger than the default buffer of several reverse proxies. That's why the
 protected ticket is stored server-side and the browser only receives a random
 lookup key (`PasskeyAuthenticationTicketStore`, registered in
-`src/sts/ServiceCollectionExtensions.cs:449-461`).
+`src/sts/ServiceCollectionExtensions.cs:452-464`).
 
 ## Integration with the rest of the system
 

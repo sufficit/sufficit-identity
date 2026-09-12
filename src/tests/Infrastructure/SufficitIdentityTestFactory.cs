@@ -370,6 +370,9 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                         form["mfa"].ToString(),
                         "true",
                         StringComparison.OrdinalIgnoreCase);
+                    var mfaAuthenticationContext = context.RequestServices
+                        .GetRequiredService<IAuthenticationContextClassMapper>()
+                        .Map(Sufficit.Identity.Application.Security.CaepAssuranceLevel.Loa2);
                     var additionalClaims = withMfa
                             ? new[]
                             {
@@ -378,7 +381,7 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                                 new System.Security.Claims.Claim("amr", "mfa"),
                                 new System.Security.Claims.Claim(
                                     "acr",
-                                    "urn:sufficit:acr:loa2"),
+                                    mfaAuthenticationContext),
                             }
                             : [];
                     if (withMfa)
@@ -395,7 +398,7 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                             .Set(new AuthenticationContextEvidence(
                                 ["pwd", "otp", "mfa"],
                                 authenticatedAt,
-                                "urn:sufficit:acr:loa2"));
+                                mfaAuthenticationContext));
                     }
 
                     await signInManager.SignInWithClaimsAsync(

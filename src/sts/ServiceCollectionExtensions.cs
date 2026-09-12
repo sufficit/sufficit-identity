@@ -115,6 +115,9 @@ public static partial class ServiceCollectionExtensions
         services.AddSingleton(options.HumanVerification);
         services.AddSingleton(options.TwoFactor);
         services.AddSingleton(options.Branding);
+        services.AddSingleton(options.AuthenticationContext);
+        services.AddSingleton<IAuthenticationContextClassMapper,
+            ConfigurableAuthenticationContextClassMapper>();
         services.AddSingleton(options.Passkeys);
         services.AddSingleton(options.CredentialMutations);
         services.AddSingleton(options.PersonalTokens);

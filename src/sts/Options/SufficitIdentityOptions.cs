@@ -179,6 +179,12 @@ public sealed class SufficitIdentityOptions
     public ProductBrandingOptions Branding { get; init; } = new();
 
     /// <summary>
+    /// Vocabulary of emitted <c>acr</c> values.
+    /// See <see cref="AuthenticationContextOptions"/>.
+    /// </summary>
+    public AuthenticationContextOptions AuthenticationContext { get; init; } = new();
+
+    /// <summary>
     /// Authenticator-app two-factor settings. See <see cref="TwoFactorOptions"/>.
     /// </summary>
     public TwoFactorOptions TwoFactor { get; init; } = new();

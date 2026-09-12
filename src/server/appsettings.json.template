@@ -336,6 +336,10 @@
         "_RequireConfirmedEmail": "true (default, secure-by-default) requires a confirmed email to sign in. Every grant collapses the unconfirmed case into the same generic invalid_grant as a wrong password (no user enumeration).",
         "RequireConfirmedEmail": true
       },
+      "_AuthenticationContext": "Vocabulary of the acr claim this server emits. The value is AcrPrefix followed by loa1 (password), loa2 (second factor) or loa3 (passkey). Relying parties outside your control read acr, so treat the prefix as a public contract: a deployment whose relying parties already check another vocabulary sets the prefix they expect.",
+      "AuthenticationContext": {
+        "AcrPrefix": "urn:identity:acr:"
+      },
       "_ExternalIdentities": "Governs whether a federated provider may CREATE a local account, which is a different question from whether it may sign one in. RequireVerifiedEmail=true (default) means an address the provider did not assert as verified gets a proof-of-possession message instead of an account: nothing is written to the user store until the link in that message is redeemed. Turning it off re-enables account pre-hijacking — an attacker who registers the victim's address at a provider that does not verify addresses ends up with a local account bound to their external identity, and keeps that binding after the victim later proves the address. TrustedEmailProviders names the specific schemes whose assertions are believed anyway (an IdP you operate that verifies out of band but does not map the claim); RegistrationDeniedProviders names schemes that may authenticate existing links but never bootstrap an account. No provider is named in code — these are deployment decisions.",
       "ExternalIdentities": {
         "RequireVerifiedEmail": true,
