@@ -547,7 +547,11 @@ public static partial class ServiceCollectionExtensions
             // Administrative lockout updates the user's security stamp. Check
             // it on every cookie-authenticated request so a blocked account
             // loses its local Identity session immediately instead of waiting
-            // for the framework's default validation interval.
+            // for the framework's default validation interval. The two-factor
+            // remember-me validator honors this value directly; the application
+            // cookie uses SessionSecurityStampValidator, which keeps the
+            // per-request stamp check but rebuilds the principal only on
+            // UserSessions.PrincipalRefreshIntervalSeconds or a user change.
             options.ValidationInterval = TimeSpan.Zero;
 
             // The validator rebuilds the principal through the claims factory.
@@ -700,6 +704,8 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<Grants.ITokenGrantHandler, Grants.PasswordGrantHandler>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.TokenExchangeGrantHandler>();
         services.AddScoped<Grants.TokenGrantDispatcher>();
+        services.Replace(ServiceDescriptor.Scoped<ISecurityStampValidator,
+            SessionSecurityStampValidator>());
         services.AddScoped<SufficitSignInManager>();
         services.AddScoped<SignInManager<ApplicationUser>>(services =>
             services.GetRequiredService<SufficitSignInManager>());

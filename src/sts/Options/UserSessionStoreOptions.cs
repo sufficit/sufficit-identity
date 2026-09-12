@@ -40,4 +40,12 @@ public sealed class UserSessionStoreOptions
 
     /// <summary>Minimum interval between durable activity updates.</summary>
     public int ActivityUpdateIntervalSeconds { get; init; } = 300;
+
+    /// <summary>
+    /// Maximum age of the cookie principal before it is rebuilt from the
+    /// store and the server-side ticket renewed. The security stamp is still
+    /// checked on every request, and any change to the user row forces an
+    /// earlier refresh. Zero rebuilds on every request. Clamped to 0..3600.
+    /// </summary>
+    public int PrincipalRefreshIntervalSeconds { get; init; } = 300;
 }
