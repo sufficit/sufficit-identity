@@ -329,6 +329,17 @@
         "_RequireConfirmedEmail": "true (default, secure-by-default) requires a confirmed email to sign in. Every grant collapses the unconfirmed case into the same generic invalid_grant as a wrong password (no user enumeration).",
         "RequireConfirmedEmail": true
       },
+      "_ExternalIdentities": "Governs whether a federated provider may CREATE a local account, which is a different question from whether it may sign one in. RequireVerifiedEmail=true (default) means an address the provider did not assert as verified gets a proof-of-possession message instead of an account: nothing is written to the user store until the link in that message is redeemed. Turning it off re-enables account pre-hijacking — an attacker who registers the victim's address at a provider that does not verify addresses ends up with a local account bound to their external identity, and keeps that binding after the victim later proves the address. TrustedEmailProviders names the specific schemes whose assertions are believed anyway (an IdP you operate that verifies out of band but does not map the claim); RegistrationDeniedProviders names schemes that may authenticate existing links but never bootstrap an account. No provider is named in code — these are deployment decisions.",
+      "ExternalIdentities": {
+        "RequireVerifiedEmail": true,
+        "TrustedEmailProviders": [],
+        "RegistrationDeniedProviders": [],
+        "VerificationLifetimeMinutes": 30
+      },
+      "_Branding": "Product name used in outbound message subjects and bodies. Kept out of code so the same binary does not announce someone else's company to your users.",
+      "Branding": {
+        "ProductName": "Identity"
+      },
       "_ServerSideSessions": "The ASP.NET Core Identity application cookie is SERVER-SIDE: the browser holds only the opaque OIDC `sid` as its cookie value, while the full AuthenticationTicket lives in the `oidcusersessions` table (DataProtection-protected). This enables per-device session enumeration (ISessionManagement.ListBySubjectAsync) and per-session revocation (ISessionManagement.RevokeAsync by sid), closing the protocol gap vs. Keycloak/Duende/Zitadel. The session store is DB-backed and therefore shared across replicas out of the box — no extra Redis dependency (unlike the DPoP/CIBA/nonce stores). Global revocation (RevokeAllSessionsAsync / management revoke-all / user disable/delete) bumps the security stamp AND drops every session row, so both the cookies and the session table reflect reality. Production schema must add the `oidcusersessions` table before deploying — see docs/migration/sql/080-add-oidc-user-sessions.sql (existing databases) or 001-create-empty-database.sql (fresh).",
       "_CredentialMutations": "Central security boundary for password, MFA, passkey and federated-login mutations. Enforce requires recent authentication; Audit is an explicitly acknowledged migration-only setting. Successful mutations revoke OAuth credentials and other browser sessions while preserving and refreshing the initiating browser session.",
       "CredentialMutations": {

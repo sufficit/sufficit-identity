@@ -322,6 +322,19 @@ public sealed class PublicAuthenticationBoundaryTests(
             CancellationToken cancellationToken = default) =>
             Task.FromResult(SetForceMfa(forceMfa));
 
+        public string? RedeemedTicket { get; private set; }
+
+        public ExternalSignInResult PendingLinkCompletion { get; init; } = new(
+            ExternalSignInStatus.LinkTicketInvalid);
+
+        public Task<ExternalSignInResult> CompletePendingLinkAsync(
+            string? ticket,
+            CancellationToken cancellationToken = default)
+        {
+            RedeemedTicket = ticket;
+            return Task.FromResult(PendingLinkCompletion);
+        }
+
         private ExternalSignInResult SetForceMfa(bool forceMfa)
         {
             ForceMfa = forceMfa;

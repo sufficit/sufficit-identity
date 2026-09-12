@@ -107,7 +107,12 @@ public sealed class TwoFactorOptions
     /// <summary>
     /// Issuer displayed by authenticator applications.
     /// </summary>
-    public string AuthenticatorIssuer { get; init; } = "Sufficit Identity";
+    /// <remarks>
+    /// Empty falls back to <c>Sufficit:Identity:Branding:ProductName</c>. The
+    /// issuer is what the user sees next to the code in their authenticator, so
+    /// it names the deployment, never the software vendor.
+    /// </remarks>
+    public string AuthenticatorIssuer { get; init; } = string.Empty;
 
     /// <summary>
     /// One-time recovery codes generated after activation or regeneration.

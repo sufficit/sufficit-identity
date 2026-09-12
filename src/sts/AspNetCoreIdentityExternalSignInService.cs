@@ -17,6 +17,10 @@ public sealed class AspNetCoreIdentityExternalSignInService(
     IAccountOnboardingService onboardingService,
     IAccountLookupPolicy accountLookup,
     IAuthenticationContextAccessor authenticationContextAccessor,
+    IExternalIdentityLinkingPolicy linkingPolicy,
+    PendingExternalIdentityStore pendingLinks,
+    ExternalIdentityVerificationMessenger verificationMessenger,
+    SufficitIdentityOptions identityOptions,
     TimeProvider timeProvider,
     ILogger<AspNetCoreIdentityExternalSignInService> logger)
     : IExternalSignInService
@@ -185,11 +189,143 @@ public sealed class AspNetCoreIdentityExternalSignInService(
                 "true",
                 StringComparison.OrdinalIgnoreCase)
             || verifiedClaim == "1";
+        var pictureUrl = info.Principal.FindFirst(PictureClaimType)?.Value;
+
+        // Account pre-hijacking gate. Creating the account and binding the
+        // external identity BEFORE the address is proven is what lets an
+        // attacker who registered the victim's address at a provider that does
+        // not verify addresses keep that binding after the victim later proves
+        // the address through registration recovery or a confirmation resend.
+        // Nothing is persisted until the policy says control is established.
+        var evaluation = await linkingPolicy.EvaluateAsync(
+            new ExternalIdentityAssertion(
+                info.LoginProvider,
+                info.ProviderKey,
+                info.ProviderDisplayName,
+                email,
+                emailVerified),
+            cancellationToken);
+
+        switch (evaluation.Decision)
+        {
+            case ExternalIdentityLinkingDecision.Denied:
+                logger.LogInformation(
+                    "External account bootstrap denied for {Provider}: {Reason}.",
+                    info.LoginProvider,
+                    evaluation.Reason);
+                return new ExternalSignInResult(
+                    ExternalSignInStatus.RegistrationDeniedForProvider,
+                    ErrorCode: evaluation.Reason);
+
+            case ExternalIdentityLinkingDecision.RequiresEmailVerification:
+                return await HoldForEmailVerificationAsync(
+                    info,
+                    email,
+                    pictureUrl,
+                    evaluation.Reason,
+                    cancellationToken);
+        }
+
+        return await CreateAndSignInAsync(
+            new PendingExternalIdentity(
+                info.LoginProvider,
+                info.ProviderKey,
+                info.ProviderDisplayName,
+                email,
+                pictureUrl),
+            emailConfirmed: true,
+            cancellationToken);
+    }
+
+    public async Task<ExternalSignInResult> CompletePendingLinkAsync(
+        string? ticket,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var pending = await pendingLinks.RedeemAsync(ticket, cancellationToken);
+        if (pending is null)
+        {
+            logger.LogInformation(
+                "External link confirmation presented an unknown, expired or "
+                + "already-redeemed ticket.");
+            return new ExternalSignInResult(
+                ExternalSignInStatus.LinkTicketInvalid);
+        }
+
+        // Between the message going out and the link being clicked, the address
+        // may have been claimed by a legitimate registration. Binding to it now
+        // would hand the external identity an account it never proved.
+        if (await accountLookup.FindUniqueByEmailAsync(
+                pending.Email,
+                cancellationToken) is not null)
+        {
+            logger.LogWarning(
+                "External link confirmation for {Provider} found the address "
+                + "already claimed; refusing to bind without an authenticated "
+                + "linking session.",
+                pending.Provider);
+            return new ExternalSignInResult(
+                ExternalSignInStatus.AccountLinkRequiresSignIn);
+        }
+
+        // Redeeming the ticket IS the proof of possession, so the account is
+        // born confirmed. Requiring a second confirmation afterwards would
+        // prove the same address twice.
+        return await CreateAndSignInAsync(
+            pending,
+            emailConfirmed: true,
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// Persists nothing; parks the assertion and sends the proof message. The
+    /// answer is identical whether or not delivery succeeded, so the response
+    /// cannot be used to probe which addresses exist or which deliver.
+    /// </summary>
+    private async Task<ExternalSignInResult> HoldForEmailVerificationAsync(
+        ExternalLoginInfo info,
+        string email,
+        string? pictureUrl,
+        string? reason,
+        CancellationToken cancellationToken)
+    {
+        var ticket = await pendingLinks.CreateAsync(
+            new PendingExternalIdentity(
+                info.LoginProvider,
+                info.ProviderKey,
+                info.ProviderDisplayName,
+                email,
+                pictureUrl),
+            PendingExternalIdentityStore.ResolveLifetime(
+                identityOptions.ExternalIdentities),
+            cancellationToken);
+
+        await verificationMessenger.SendAsync(
+            email,
+            ticket,
+            info.ProviderDisplayName ?? info.LoginProvider,
+            cancellationToken);
+
+        logger.LogInformation(
+            "External identity through {Provider} is awaiting email proof "
+            + "before any account is created. Reason={Reason}.",
+            info.LoginProvider,
+            reason);
+        return new ExternalSignInResult(
+            ExternalSignInStatus.EmailVerificationRequired,
+            info.ProviderDisplayName ?? info.LoginProvider);
+    }
+
+    private async Task<ExternalSignInResult> CreateAndSignInAsync(
+        PendingExternalIdentity pending,
+        bool emailConfirmed,
+        CancellationToken cancellationToken)
+    {
         var user = new ApplicationUser
         {
-            UserName = email,
-            Email = email,
-            EmailConfirmed = emailVerified,
+            UserName = pending.Email,
+            Email = pending.Email,
+            EmailConfirmed = emailConfirmed,
         };
         var creation = await userManager.CreateAsync(user);
         cancellationToken.ThrowIfCancellationRequested();
@@ -197,7 +333,7 @@ public sealed class AspNetCoreIdentityExternalSignInService(
         {
             logger.LogWarning(
                 "External account creation through {Provider} failed: {Codes}.",
-                info.LoginProvider,
+                pending.Provider,
                 string.Join(',', creation.Errors.Select(error => error.Code)));
             return new ExternalSignInResult(
                 ExternalSignInStatus.CreateFailed);
@@ -206,9 +342,9 @@ public sealed class AspNetCoreIdentityExternalSignInService(
         var addLogin = await userManager.AddLoginAsync(
             user,
             new UserLoginInfo(
-                info.LoginProvider,
-                info.ProviderKey,
-                info.ProviderDisplayName));
+                pending.Provider,
+                pending.ProviderKey,
+                pending.ProviderDisplayName));
         cancellationToken.ThrowIfCancellationRequested();
         if (!addLogin.Succeeded)
         {
@@ -216,7 +352,7 @@ public sealed class AspNetCoreIdentityExternalSignInService(
             logger.LogWarning(
                 "External login persistence through {Provider} failed. "
                 + "New account rollback succeeded: {RollbackSucceeded}.",
-                info.LoginProvider,
+                pending.Provider,
                 rollback.Succeeded);
             return new ExternalSignInResult(
                 ExternalSignInStatus.CreateFailed,
@@ -228,41 +364,30 @@ public sealed class AspNetCoreIdentityExternalSignInService(
         await PersistPictureClaimAsync(
             userManager,
             user,
-            info.Principal.FindFirst(PictureClaimType)?.Value,
+            pending.PictureUrl,
             cancellationToken);
 
-        // M5 fix (eval M5): gate the post-creation sign-in on the SAME policy
-        // every token grant uses (CanSignInAsync), so RequireConfirmedEmail is
-        // honored on the interactive path — not only on /connect/token. Without
-        // this, a freshly-created external user whose email the provider did NOT
-        // assert as verified (GitHub/Facebook do not map email_verified today)
-        // would get an Identity cookie despite EmailConfirmed=false, reaching the
-        // /account/manage self-service surface even though RequireConfirmedEmail
-        // says they should not be able to sign in. The account is still created
-        // (so the external identity is linked); the user simply has to confirm
-        // their email before the next sign-in succeeds — exactly like the local
-        // registration path.
+        // Gate the post-creation sign-in on the SAME policy every token grant
+        // uses (CanSignInAsync), so a deployment policy such as
+        // RequireConfirmedEmail is honored on the interactive path and not only
+        // on /connect/token.
         if (!await signInManager.CanSignInAsync(user))
         {
             logger.LogInformation(
                 "Created external user {UserId} through {Provider} but deferred "
-                + "sign-in: the sign-in policy (e.g. RequireConfirmedEmail) is not "
-                + "yet satisfied. Verified email: {EmailVerified}.",
+                + "sign-in: the sign-in policy is not yet satisfied.",
                 user.Id,
-                info.LoginProvider,
-                emailVerified);
+                pending.Provider);
             return new ExternalSignInResult(ExternalSignInStatus.NotAllowed);
         }
 
-        SetExternalAuthenticationContext(info.LoginProvider, rememberedMfa: false);
+        SetExternalAuthenticationContext(pending.Provider, rememberedMfa: false);
         await signInManager.SignInAsync(user, isPersistent: false);
         cancellationToken.ThrowIfCancellationRequested();
         logger.LogInformation(
-            "Created and signed in user {UserId} through {Provider}; "
-            + "verified email: {EmailVerified}.",
+            "Created and signed in user {UserId} through {Provider}.",
             user.Id,
-            info.LoginProvider,
-            emailVerified);
+            pending.Provider);
         return new ExternalSignInResult(ExternalSignInStatus.Succeeded);
     }
 

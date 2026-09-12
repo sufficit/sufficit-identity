@@ -16,6 +16,7 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
     ICredentialMutationSecurityCoordinator credentialSecurity,
     IAssuranceLevelResolver assuranceLevelResolver,
     TwoFactorOptions options,
+    ProductBrandingOptions branding,
     ILogger<AspNetCoreIdentityAccountTwoFactorService> logger)
     : IAccountTwoFactorService
 {
@@ -430,8 +431,10 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
 
     private string BuildAuthenticatorUri(string accountName, string key)
     {
+        // The issuer is what the user sees in their authenticator app, so it
+        // names the deployment, not the software vendor.
         var issuer = string.IsNullOrWhiteSpace(options.AuthenticatorIssuer)
-            ? "Sufficit Identity"
+            ? branding.ProductName
             : options.AuthenticatorIssuer.Trim();
         return $"otpauth://totp/{Uri.EscapeDataString(issuer)}:{Uri.EscapeDataString(accountName)}"
             + $"?secret={Uri.EscapeDataString(key)}"

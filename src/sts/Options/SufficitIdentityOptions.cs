@@ -159,6 +159,18 @@ public sealed class SufficitIdentityOptions
     public SignInPolicyOptions SignIn { get; init; } = new();
 
     /// <summary>
+    /// Whether and how an external identity provider may bootstrap a local
+    /// account. See <see cref="ExternalIdentityOptions"/>.
+    /// </summary>
+    public ExternalIdentityOptions ExternalIdentities { get; init; } = new();
+
+    /// <summary>
+    /// Product naming used in outbound messages.
+    /// See <see cref="ProductBrandingOptions"/>.
+    /// </summary>
+    public ProductBrandingOptions Branding { get; init; } = new();
+
+    /// <summary>
     /// Authenticator-app two-factor settings. See <see cref="TwoFactorOptions"/>.
     /// </summary>
     public TwoFactorOptions TwoFactor { get; init; } = new();

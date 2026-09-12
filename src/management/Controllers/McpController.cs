@@ -22,7 +22,9 @@ public sealed class McpController(
     ILogger<McpController> logger) : ControllerBase
 {
     private const string ProtocolVersion = "2025-06-18";
-    private const string ServerName = "Sufficit Identity MCP Server";
+    // Generic by design: this name is advertised to every MCP client that
+    // talks to this server, so it names the software, not the operator.
+    private const string ServerName = "Identity MCP Server";
 
     [HttpGet]
     public IActionResult GetServerInfo() => Ok(new

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.Application.Accounts;
+using Sufficit.Identity.STS;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 
@@ -36,8 +37,14 @@ public sealed class AccountTwoFactorServiceTests(
             reloaded?.AuthenticatorSetup);
         Assert.Equal(setup.SharedKey, persistedSetup.SharedKey);
         Assert.Equal(setup.AuthenticatorUri, persistedSetup.AuthenticatorUri);
+        // The issuer is whatever the deployment configured, not a vendor
+        // literal: asserting a brand here would pin the generic server to one
+        // company's name.
+        var issuer = Uri.EscapeDataString(
+            scope.ServiceProvider
+                .GetRequiredService<ProductBrandingOptions>().ProductName);
         Assert.Contains(
-            "otpauth://totp/Sufficit%20Identity:",
+            $"otpauth://totp/{issuer}:",
             setup.AuthenticatorUri,
             StringComparison.Ordinal);
         Assert.Contains("%40tests.local", setup.AuthenticatorUri, StringComparison.Ordinal);
@@ -46,7 +53,7 @@ public sealed class AccountTwoFactorServiceTests(
             setup.AuthenticatorUri,
             StringComparison.Ordinal);
         Assert.Contains(
-            "issuer=Sufficit%20Identity&digits=6",
+            $"issuer={issuer}&digits=6",
             setup.AuthenticatorUri,
             StringComparison.Ordinal);
         Assert.Equal(

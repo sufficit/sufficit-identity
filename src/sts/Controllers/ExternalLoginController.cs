@@ -92,9 +92,45 @@ public sealed class ExternalLoginController(
             ExternalSignInStatus.CreateFailed => LoginError(
                 "create_failed",
                 safeReturnUrl),
+            ExternalSignInStatus.EmailVerificationRequired => LoginNotice(
+                "external_email_verification_sent",
+                safeReturnUrl),
+            ExternalSignInStatus.RegistrationDeniedForProvider => LoginError(
+                "registration_denied_for_provider",
+                safeReturnUrl),
             _ => LoginError(
                 "external_callback_unavailable",
                 safeReturnUrl),
+        };
+    }
+
+    /// <summary>
+    /// Redeems the proof-of-possession ticket sent to an address that an
+    /// external provider asserted but did not verify. This is where the account
+    /// is created and bound — not at the provider callback.
+    /// </summary>
+    /// <remarks>
+    /// Anonymous by design: the person proving the address has no session yet,
+    /// and commonly opens the link in a different browser than the one that
+    /// started the provider flow.
+    /// </remarks>
+    [HttpGet("/account/externallink/confirm")]
+    public async Task<IActionResult> ConfirmLink(
+        [FromQuery] string? ticket,
+        CancellationToken cancellationToken)
+    {
+        var result = await externalSignInService.CompletePendingLinkAsync(
+            ticket,
+            cancellationToken);
+        return result.Status switch
+        {
+            ExternalSignInStatus.Succeeded => Redirect("/"),
+            ExternalSignInStatus.NotAllowed => LoginError("not_allowed", "/"),
+            ExternalSignInStatus.AccountLinkRequiresSignIn => LoginError(
+                "account_link_requires_signin",
+                "/"),
+            ExternalSignInStatus.CreateFailed => LoginError("create_failed", "/"),
+            _ => LoginError("external_link_ticket_invalid", "/"),
         };
     }
 
@@ -117,6 +153,19 @@ public sealed class ExternalLoginController(
                 ["provider"] = providerDisplayName,
             }));
     }
+
+    /// <summary>
+    /// A non-error outcome the login page should explain rather than flag: the
+    /// flow did not fail, it is waiting on the user's mailbox.
+    /// </summary>
+    private RedirectResult LoginNotice(string notice, string returnUrl) =>
+        Redirect(QueryHelpers.AddQueryString(
+            "/account/login",
+            new Dictionary<string, string?>
+            {
+                ["notice"] = notice,
+                ["returnUrl"] = returnUrl,
+            }));
 
     private RedirectResult LoginError(string error, string returnUrl) =>
         Redirect(QueryHelpers.AddQueryString(
