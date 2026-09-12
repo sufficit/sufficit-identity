@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.Extensions.DependencyInjection;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Http;
@@ -132,7 +133,12 @@ internal static class BrowserAuthorizationErrorPage
                 .Append("<meta charset=\"utf-8\">")
                 .Append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">")
                 .Append("<meta name=\"robots\" content=\"noindex\">")
-                .Append("<title>").Append(heading).Append(" — Sufficit Identity</title>")
+                .Append("<title>").Append(heading).Append(" — ")
+                    .Append(HtmlEncoder.Default.Encode(
+                        request.HttpContext.RequestServices
+                            .GetService<ProductBrandingOptions>()
+                            ?.ProductName ?? "Identity"))
+                    .Append("</title>")
                 .Append("</head><body>")
                 .Append("<main data-openiddict-error=\"")
                     .Append(HtmlEncoder.Default.Encode(error))

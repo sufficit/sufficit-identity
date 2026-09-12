@@ -13,6 +13,7 @@ namespace Sufficit.Identity.STS.Email;
 public sealed class SmtpEmailSender : IEmailSender, IDisposable
 {
     private readonly SmtpConfiguration _configuration;
+    private readonly string _fromDisplayName;
     private readonly EmailOptions _emailOptions;
     private readonly ILogger<SmtpEmailSender> _logger;
     private readonly SmtpClient? _client;
@@ -25,9 +26,15 @@ public sealed class SmtpEmailSender : IEmailSender, IDisposable
     {
         _logger = logger;
         _emailOptions = emailOptions;
+
         _configuration = configuration
             .GetSection("Sufficit:Identity:Smtp")
             .Get<SmtpConfiguration>() ?? new SmtpConfiguration();
+        // Display name shown to recipients. Configured, never a vendor literal.
+        _fromDisplayName = _configuration.FromName
+            ?? configuration.GetValue(
+                "Sufficit:Identity:Branding:ProductName",
+                "Identity")!;
         _configuration.Password = secretStore.GetSecretAsync(
                 "identity/smtp/password")
             .GetAwaiter()
@@ -96,7 +103,7 @@ public sealed class SmtpEmailSender : IEmailSender, IDisposable
 
         var from = new MailAddress(
             _configuration.From ?? "no-reply@example.com",
-            _configuration.FromName ?? "Sufficit Identity");
+            _fromDisplayName);
         var to = new MailAddress(recipient);
         using var message = new MailMessage(from, to)
         {

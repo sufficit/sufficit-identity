@@ -38,6 +38,14 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
         SecurityMeter.CreateCounter<long>(
             "identity.security.password_reset_revocation");
 
+    /// <summary>
+    /// Product name shown to end users. Read from configuration so the binary
+    /// does not announce one company's brand in another's deployment.
+    /// </summary>
+    private readonly string _productName = configuration.GetValue(
+        "Sufficit:Identity:Branding:ProductName",
+        "Identity")!;
+
     private readonly AccountRegistrationPolicy _registrationPolicy = new(
         configuration.GetValue(
             "Sufficit:Identity:Register:Enabled",
@@ -146,8 +154,14 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
             return InvalidConfirmationRequest();
         }
 
+        var wasUnconfirmed = !await userManager.IsEmailConfirmedAsync(user);
         var confirmation = await userManager.ConfirmEmailAsync(user, token);
         cancellationToken.ThrowIfCancellationRequested();
+        if (confirmation.Succeeded && wasUnconfirmed)
+        {
+            await PurgeUnprovenExternalLoginsAsync(user, cancellationToken);
+        }
+
         logger.LogInformation(
             "Email confirmation for {UserId}: {Status}.",
             user.Id,
@@ -184,7 +198,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
             var body = $"Redefina sua senha <a href=\"{HtmlEncoder.Default.Encode(callbackUrl)}\">clicando aqui</a>.";
             await emailSender.SendEmailAsync(
                 email,
-                "Redefinir senha — Sufficit Identity",
+                $"Redefinir senha — {_productName}",
                 body);
             cancellationToken.ThrowIfCancellationRequested();
             logger.LogInformation(
@@ -415,6 +429,55 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
         return null;
     }
 
+    /// <summary>
+    /// Removes external logins bound to an account while its address was still
+    /// unproven, at the moment the rightful owner proves it.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This is the data-legacy half of the account pre-hijacking fix. The
+    /// current external flow never binds before the proof, so nothing it
+    /// creates is affected; accounts created by the earlier behaviour still
+    /// carry a binding that the attacker would otherwise keep after the victim
+    /// confirms the address.
+    /// </para>
+    /// <para>
+    /// Gated on <c>RequireConfirmedEmail</c> because only under that policy is
+    /// a legitimate binding on an unconfirmed account impossible: linking a
+    /// provider requires an authenticated session, and signing in requires the
+    /// confirmed address. Without the policy a user can legitimately sign in
+    /// unconfirmed and link a provider, and purging would destroy their work.
+    /// </para>
+    /// </remarks>
+    private async Task PurgeUnprovenExternalLoginsAsync(
+        ApplicationUser user,
+        CancellationToken cancellationToken)
+    {
+        if (!configuration.GetValue(
+                "Sufficit:Identity:SignIn:RequireConfirmedEmail",
+                true))
+        {
+            return;
+        }
+
+        var logins = await userManager.GetLoginsAsync(user);
+        cancellationToken.ThrowIfCancellationRequested();
+        foreach (var login in logins)
+        {
+            var removal = await userManager.RemoveLoginAsync(
+                user,
+                login.LoginProvider,
+                login.ProviderKey);
+            logger.LogWarning(
+                "Removed external login {Provider} bound to {UserId} before the "
+                + "address was proven. Removal succeeded: {Succeeded}. The "
+                + "provider must be linked again from an authenticated session.",
+                login.LoginProvider,
+                user.Id,
+                removal.Succeeded);
+        }
+    }
+
     private async Task<bool> SendConfirmationMessageAsync(
         ApplicationUser user,
         string email,
@@ -436,7 +499,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
             var body = $"Confirme sua conta <a href=\"{HtmlEncoder.Default.Encode(callbackUrl)}\">clicando aqui</a>.";
             await emailSender.SendEmailAsync(
                 email,
-                "Confirme seu e-mail — Sufficit Identity",
+                $"Confirme seu e-mail — {_productName}",
                 body);
             cancellationToken.ThrowIfCancellationRequested();
             return true;

@@ -29,7 +29,7 @@ public sealed class McpScopeProvisioner(
             await scopes.CreateAsync(new OpenIddictScopeDescriptor
             {
                 Name = requiredScope,
-                DisplayName = "Sufficit Identity MCP and personal Vault",
+                DisplayName = "Identity MCP and personal Vault",
                 Description =
                     "Access your own Identity self-service tools and personal Vault. " +
                     "This does not grant management or shared-context access.",

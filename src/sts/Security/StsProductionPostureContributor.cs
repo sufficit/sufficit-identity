@@ -26,6 +26,32 @@ public sealed class StsProductionPostureContributor(
                 options.Csp.AcknowledgeReportOnly);
         }
 
+        if (!options.ExternalIdentities.RequireVerifiedEmail)
+        {
+            yield return new(
+                "external-identity-unverified-email",
+                "External providers may create accounts from email addresses no "
+                + "one proved, which allows account pre-hijacking: whoever "
+                + "registers a victim's address at a provider that does not "
+                + "verify it keeps the binding after the victim proves it.",
+                "Set Sufficit:Identity:ExternalIdentities:RequireVerifiedEmail=true, "
+                + "or list the specific provider under TrustedEmailProviders when "
+                + "it verifies addresses out of band.");
+        }
+
+        if (options.ExternalIdentities.TrustedEmailProviders.Count > 0)
+        {
+            yield return new(
+                "external-identity-trusted-providers",
+                "One or more external providers are trusted to assert email "
+                + "ownership without proof: "
+                + string.Join(
+                    ", ",
+                    options.ExternalIdentities.TrustedEmailProviders) + ".",
+                "Confirm each listed provider verifies addresses before "
+                + "asserting them; remove any that does not.");
+        }
+
         if (options.PersonalTokens.Mode == SecurityPolicyEnforcementMode.Observe)
         {
             yield return new(

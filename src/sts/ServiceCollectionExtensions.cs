@@ -114,6 +114,7 @@ public static partial class ServiceCollectionExtensions
                 dcrInitialAccessTokenConfigured)));
         services.AddSingleton(options.HumanVerification);
         services.AddSingleton(options.TwoFactor);
+        services.AddSingleton(options.Branding);
         services.AddSingleton(options.Passkeys);
         services.AddSingleton(options.CredentialMutations);
         services.AddSingleton(options.PersonalTokens);
@@ -713,6 +714,18 @@ public static partial class ServiceCollectionExtensions
             OpenIddictDeviceCloseFallbackResolver>();
         services.AddSingleton<IDeviceCloseFallbackTicketService,
             DataProtectionDeviceCloseFallbackTicketService>();
+        // External identities may only bootstrap a local account once control
+        // of the email address is established. The policy is a seam because the
+        // answer is a deployment decision, not a protocol fact.
+        services.AddSingleton<IExternalIdentityLinkingPolicy>(sp =>
+            new ConfigurableExternalIdentityLinkingPolicy(
+                options.ExternalIdentities,
+                sp.GetRequiredService<
+                    ILogger<ConfigurableExternalIdentityLinkingPolicy>>()));
+        services.AddSingleton<PendingExternalIdentityStore>(sp =>
+            new PendingExternalIdentityStore(
+                sp.GetRequiredService<IProtocolStateStore>()));
+        services.AddScoped<ExternalIdentityVerificationMessenger>();
         services.AddScoped<IExternalSignInService,
             AspNetCoreIdentityExternalSignInService>();
         services.AddScoped<AspNetCoreIdentityPasskeyService>();
