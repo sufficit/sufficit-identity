@@ -134,10 +134,20 @@ public sealed class VaultUiCompositionTests
             "mapEndpoints: !uiHostingOptions.Public.IsEmbedded",
             vaultModule,
             StringComparison.Ordinal);
+        // The Vault joins the public endpoint through a DI contribution, so
+        // neither the host nor the public UI references the Vault assembly.
         Assert.Contains(
-            "typeof(Sufficit.Identity.UI.Vault.ServiceCollectionExtensions).Assembly",
-            program,
+            "new PublicUiComponentAssembly(",
+            vaultModule,
             StringComparison.Ordinal);
+        var publicUiModule = File.ReadAllText(Path.Combine(
+            root, "src", "server", "PublicUiIdentityModule.cs"));
+        Assert.Contains(
+            "GetServices<PublicUiComponentAssembly>()",
+            publicUiModule,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("UI.Vault.ServiceCollectionExtensions).Assembly",
+            program, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -40,8 +40,8 @@ public sealed class ProgramPipelineOrderTests
             "UseSufficitCors",
             "UseSwagger",
             "UseSwaggerUI",
-            "UseBrowserAuthorizationErrors",
-            "MapDeviceBrowserLaunch",
+            // Module steps before authentication (public UI browser errors).
+            "identityPipeline.ApplyStage",
             "UseAuthenticationExceptStaticAssets",
             "UseAuthorization",
             "Use",
@@ -49,10 +49,10 @@ public sealed class ProgramPipelineOrderTests
             "MapHealthChecks",
             "MapHealthChecks",
             // Module endpoints in catalog order: management API, management
-            // console, Vault UI (see Module_endpoints_follow_the_catalog_order).
+            // console, Vault UI, public UI (see
+            // Module_endpoints_follow_the_catalog_order).
             "identityPipeline.ApplyStage",
             "identityPipeline.EnsureAllApplied",
-            "UseSufficitIdentityUI",
         ],
             calls);
     }
@@ -66,11 +66,13 @@ public sealed class ProgramPipelineOrderTests
         var management = program.IndexOf("new ManagementIdentityModule()", StringComparison.Ordinal);
         var managementUi = program.IndexOf("new ManagementUiIdentityModule()", StringComparison.Ordinal);
         var vaultUi = program.IndexOf("new VaultUiIdentityModule()", StringComparison.Ordinal);
+        var publicUi = program.IndexOf("new PublicUiIdentityModule()", StringComparison.Ordinal);
         var scim = program.IndexOf("new ScimIdentityModule()", StringComparison.Ordinal);
 
+        // The public UI maps its Blazor endpoint after the other surfaces.
         Assert.True(management >= 0 && management < managementUi
-            && managementUi < vaultUi && vaultUi < scim,
-            "Modules must be listed as management API, management console, Vault UI, SCIM.");
+            && managementUi < vaultUi && vaultUi < publicUi && publicUi < scim,
+            "Modules must be listed as management API, management console, Vault UI, public UI, SCIM.");
     }
 
     private static string ResolveIdentityRepository()
