@@ -88,18 +88,17 @@ public sealed class IdentityUiHostingOptionsTests
             "server",
             "Program.cs"));
 
-        Assert.Contains(
-            "if (uiHostingOptions.Public.IsEmbedded)",
-            program,
-            StringComparison.Ordinal);
-        Assert.Equal(
-            1,
-            Count(program, "builder.Services.AddSufficitIdentityUI"));
-        Assert.Equal(1, Count(program, "app.UseSufficitIdentityUI"));
-
-        // The management console and the Vault UI are modules: each guards
-        // its own enablement and registers and maps itself exactly once, and
-        // the host neither registers nor maps them directly.
+        // Every UI surface is a module: each guards its own enablement and
+        // registers and maps itself exactly once, and the host neither
+        // registers nor maps a surface directly.
+        var publicUiModule = File.ReadAllText(Path.Combine(
+            ResolveIdentityRepository(), "src", "server", "PublicUiIdentityModule.cs"));
+        Assert.Contains("Public.IsEmbedded", publicUiModule, StringComparison.Ordinal);
+        Assert.Equal(1, Count(publicUiModule, "services.AddSufficitIdentityUI"));
+        Assert.Equal(1, Count(publicUiModule, "app.UseSufficitIdentityUI"));
+        Assert.Equal(0, Count(program, "AddSufficitIdentityUI"));
+        Assert.Equal(0, Count(program, "UseSufficitIdentityUI"));
+        Assert.Contains("new PublicUiIdentityModule()", program, StringComparison.Ordinal);
         var managementUiModule = File.ReadAllText(Path.Combine(
             ResolveIdentityRepository(), "src", "ui",
             "Sufficit.Identity.UI.Management", "ManagementUiIdentityModule.cs"));

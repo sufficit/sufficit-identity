@@ -132,13 +132,6 @@ builder.Services.AddSufficitIdentitySTS(
 builder.Services.TryAddSingleton<IBrandingThemeProvider, BrandingThemeProvider>();
 builder.Services.TryAddSingleton<IUserAvatarUrlResolver, UserAvatarUrlResolver>();
 
-// ---- Sufficit Identity UI (Blazor Server: login/consent/logout/manage) ----
-if (uiHostingOptions.Public.IsEmbedded)
-{
-    builder.Services.AddSufficitIdentityUI(builder.Configuration);
-    builder.Services.AddSingleton<BrowserRateLimitErrors>();
-}
-
 // ---- Sufficit email pipeline (RabbitMQ → Q-EMAIL) ----
 // Activates only when Sufficit:Exchange:RabbitMQ:HostName is configured.
 // When active, replaces the UI's default IEmailSender (Smtp/Logging) with
@@ -151,12 +144,13 @@ builder.Services.AddSufficitEmailSender(
 // Each module reads its own enablement, registers its own services and
 // contributes its own pipeline steps; the host only lists them. The list order
 // is the service registration order and the order of endpoint contributions:
-// management API, management console, Vault UI, SCIM (A8).
+// management API, management console, Vault UI, public UI, SCIM (A8).
 var identityModules = Sufficit.Identity.Hosting.IdentityModuleCatalog.Create(
     builder.Configuration,
     new ManagementIdentityModule(),
     new ManagementUiIdentityModule(),
     new VaultUiIdentityModule(),
+    new PublicUiIdentityModule(),
     new ScimIdentityModule());
 identityModules.ConfigureServices(builder.Services, builder.Configuration);
 var mgmtEnabled = identityModules.IsEnabled(ManagementIdentityModule.ModuleId);
@@ -426,6 +420,13 @@ using (var scope = app.Services.CreateScope())
         .ProvisionAsync();
 }
 
+// ---- Module pipeline contributions ----
+// The host pipeline has not moved into the builder yet, so each stage a module
+// may contribute to is applied at its position below; EnsureAllApplied fails
+// startup if a module contributed to a stage this host does not apply.
+var identityPipeline = new Sufficit.Identity.Hosting.IdentityPipelineBuilder();
+identityModules.ConfigurePipeline(identityPipeline);
+
 // ---- Swagger ----
 // Both endpoints are anonymous, so publishing the document hands anyone the
 // full controller inventory (management, SCIM, provisioning, vault). Default
@@ -449,13 +450,9 @@ if (swaggerEnabled)
     }
 }
 
-// Only the embedded public UI can serve the recovery page and its assets.
-// Install before authentication: OpenIddict checks for the status-page feature.
-if (uiHostingOptions.Public.IsEmbedded)
-{
-    app.UseBrowserAuthorizationErrors();
-    app.MapDeviceBrowserLaunch();
-}
+// Module steps that must run before authentication (the public UI's browser
+// rendering of protocol errors).
+identityPipeline.ApplyStage(app, Sufficit.Identity.Hosting.IdentityPipelineStage.PreAuthentication);
 
 // Static assets are anonymous files; skipping authentication for them avoids
 // a security-stamp read per script and stylesheet. The exclusion is based on
@@ -500,23 +497,11 @@ app.MapHealthChecks(HealthEndpoints.Liveness, new HealthCheckOptions
 });
 app.MapHealthChecks(HealthEndpoints.Readiness);
 
-// ---- Module endpoints (management API, management console, Vault UI) ----
-// The host pipeline has not moved into the builder yet, so only the endpoints
-// stage is applied here; EnsureAllApplied fails startup if a module contributed
-// to a middleware stage that this position would apply out of order.
-var identityPipeline = new Sufficit.Identity.Hosting.IdentityPipelineBuilder();
-identityModules.ConfigurePipeline(identityPipeline);
+// ---- Module endpoints ----
+// Mapped in catalog order: management API, management console, Vault UI, then
+// the public UI, whose Blazor endpoint also serves the embedded Vault pages.
 identityPipeline.ApplyStage(app, Sufficit.Identity.Hosting.IdentityPipelineStage.Endpoints);
 identityPipeline.EnsureAllApplied();
-
-// ---- Sufficit Identity UI (Blazor Server endpoints + static assets) ----
-if (uiHostingOptions.Public.IsEmbedded)
-{
-    var publicAdditionalAssemblies = vaultUiEnabled
-        ? new[] { typeof(Sufficit.Identity.UI.Vault.ServiceCollectionExtensions).Assembly }
-        : Array.Empty<System.Reflection.Assembly>();
-    app.UseSufficitIdentityUI(publicAdditionalAssemblies);
-}
 
 // Load the merged trust boundary before accepting traffic (after schema provisioning).
 await HostStartupGuards.LoadTrustedProxiesAsync(app, identityOptions);

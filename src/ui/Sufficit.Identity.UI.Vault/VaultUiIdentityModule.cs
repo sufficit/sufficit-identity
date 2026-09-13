@@ -21,8 +21,18 @@ public sealed class VaultUiIdentityModule : IIdentityModule
         ReadHostingOptions(configuration).Vault.IsEmbedded
         && configuration.GetValue(EnabledSetting, defaultValue: true);
 
-    public void ConfigureServices(IServiceCollection services, IConfiguration configuration) =>
+    public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+    {
         services.AddSufficitIdentityVaultUI(configuration);
+
+        // When the public UI is embedded, the Vault pages join its Blazor
+        // endpoint instead of mapping their own (see ConfigurePipeline).
+        if (ReadHostingOptions(configuration).Public.IsEmbedded)
+        {
+            services.AddSingleton(new PublicUiComponentAssembly(
+                typeof(VaultUiIdentityModule).Assembly));
+        }
+    }
 
     public void ConfigurePipeline(IdentityPipelineBuilder pipeline) =>
         pipeline.MapEndpoints("vault-ui", app =>
