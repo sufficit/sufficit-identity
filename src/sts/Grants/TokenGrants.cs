@@ -413,7 +413,7 @@ public sealed class ClientCredentialsGrantHandler : ITokenGrantHandler
         // claim-para-escopo decide o destino e chega até o id_token; carimbar
         // por tipo no GetDestinations sequestraria aquele caminho. Aqui não há
         // usuário nem id_token: entitlement é claim de autorização (RFC 9068
-        // §2.2.3.2) e quem decide com ele é o servidor de recurso.
+        // §2.2.3.1) e quem decide com ele é o servidor de recurso.
         if (granted.Count > 0)
         {
             foreach (var claim in identity.Claims.Where(claim =>
