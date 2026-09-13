@@ -3,26 +3,26 @@
 @inject ManagementClientDataSource ClientData
 @inject NavigationManager Navigation
 
-<PageTitle>Nova aplicação | Sufficit Identity</PageTitle>
+<PageTitle>@L["Clients.Create.Title"] | Sufficit Identity</PageTitle>
 
-<SUIPageHeader Title="Nova aplicação"
-            Description="Escolha o cenário de uso. O Identity prepara uma configuração segura e explica cada decisão.">
+<SUIPageHeader Title="@L["Clients.Create.Title"].Value"
+            Description="@L["Clients.Create.Description"].Value">
     <Actions>
         <a class="button button--secondary" href="clients">
             <SUIIcon Name="arrow-left" Size="17" />
-            Voltar para aplicações
+            @L["Clients.Create.Back"]
         </a>
     </Actions>
 </SUIPageHeader>
 
 <div class="setup-intro" aria-labelledby="profile-heading">
     <div>
-        <h2 id="profile-heading">Como esta aplicação será usada?</h2>
-        <p>Você poderá revisar e ajustar tudo antes de criar. Nenhuma aplicação incompleta será registrada.</p>
+        <h2 id="profile-heading">@L["Clients.Create.ProfileHeading"]</h2>
+        <p>@L["Clients.Create.ProfileIntro"]</p>
     </div>
     <div class="setup-intro__assurance">
         <SUIIcon Name="shield" Size="20" />
-        <span>Defaults seguros, validação progressiva e rascunho retomável</span>
+        <span>@L["Clients.Create.Assurance"]</span>
     </div>
 </div>
 
@@ -31,7 +31,7 @@
     <div class="inline-notice inline-notice--danger" role="alert">
         <SUIIcon Name="alert" Size="19" />
         <div>
-            <strong>Não foi possível iniciar a configuração</strong>
+            <strong>@L["Clients.Create.ErrorTitle"]</strong>
             <span>@errorMessage</span>
         </div>
     </div>
@@ -39,7 +39,7 @@
 
 @if (loading)
 {
-    <div class="profile-grid" aria-label="Carregando perfis de aplicação" aria-busy="true">
+    <div class="profile-grid" aria-label="@L["Clients.Create.LoadingAriaLabel"].Value" aria-busy="true">
         @for (var index = 0; index < 4; index++)
         {
             <div class="profile-card profile-card--loading"></div>
@@ -50,17 +50,17 @@ else if (profiles.Count is 0)
 {
     <div>
         <SUIEmptyState Icon="alert"
-                    Title="Nenhum perfil disponível"
-                    Description="O runtime não informou uma configuração de aplicação disponível.">
+                    Title="@L["Clients.Create.EmptyTitle"].Value"
+                    Description="@L["Clients.Create.EmptyDescription"].Value">
             <Actions>
-                <button class="button button--secondary" type="button" @onclick="LoadAsync">Tentar novamente</button>
+                <button class="button button--secondary" type="button" @onclick="LoadAsync">@L["Clients.Create.Retry"]</button>
             </Actions>
         </SUIEmptyState>
     </div>
 }
 else
 {
-    <div class="profile-grid" aria-label="Perfis de aplicação">
+    <div class="profile-grid" aria-label="@L["Clients.Create.ProfilesAriaLabel"].Value">
         @foreach (var profile in profiles)
         {
             <button class="profile-card @(profile.IsAvailable ? string.Empty : "profile-card--unavailable")"
@@ -82,7 +82,7 @@ else
                     else if (creatingProfile == profile.Id)
                     {
                         <span class="button-spinner" aria-hidden="true"></span>
-                        <span class="visually-hidden">Criando rascunho</span>
+                        <span class="visually-hidden">@L["Clients.Create.CreatingDraft"]</span>
                     }
                     else
                     {
@@ -96,7 +96,7 @@ else
 
 <div class="setup-footnote">
     <SUIIcon Name="lock" Size="18" />
-    <p>Credenciais nunca entram na URL ou no rascunho. Quando necessárias, são geradas somente na conclusão e exibidas uma única vez.</p>
+    <p>@L["Clients.Create.Footnote"]</p>
 </div>
 
 @code {
@@ -135,6 +135,6 @@ else
             return;
         }
 
-        errorMessage = result.ErrorMessage ?? "O serviço não conseguiu criar o rascunho.";
+        errorMessage = result.ErrorMessage ?? L["Clients.Create.DraftCreationFailed"].Value;
     }
 }

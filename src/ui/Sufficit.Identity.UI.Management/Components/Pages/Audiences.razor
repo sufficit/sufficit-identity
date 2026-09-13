@@ -2,13 +2,13 @@
 @attribute [Authorize(Policy = ManagementUiPolicies.ManageScopes)]
 @inject ManagementScopeDataSource ScopeData
 
-<PageTitle>Audiências | Sufficit Identity</PageTitle>
+<PageTitle>@L["Audiences.PageTitle"]</PageTitle>
 
-<SUIPageHeader Title="Audiências" Description="Consulte os destinatários dos tokens e gerencie seus vínculos com scopes.">
+<SUIPageHeader Title="@L["Audiences.HeaderTitle"].Value" Description="@L["Audiences.HeaderDescription"].Value">
     <Actions>
         <AuthorizeView Policy="@ManagementUiPolicies.UpdateAudienceBindings">
             <button type="button" class="button button--primary" disabled="@(!interactive || loading || busy || result?.IsSuccess is not true)" @onclick="OpenBinding">
-                <SUIIcon Name="plus" Size="17" /> Vincular audiência
+                <SUIIcon Name="plus" Size="17" /> @L["Audiences.BindAudience"]
             </button>
         </AuthorizeView>
     </Actions>
@@ -17,8 +17,8 @@
 <div class="contract-strip contract-strip--info">
     <SUIIcon Name="scope" Size="20" />
     <div>
-        <strong>Uma audiência identifica a API que recebe o token</strong>
-        <span>Ela é registrada nos recursos de um scope, não nos entitlements. Alterações afetam novos tokens e não configuram a validação da API.</span>
+        <strong>@L["Audiences.InfoTitle"]</strong>
+        <span>@L["Audiences.InfoDescription"]</span>
     </div>
 </div>
 
@@ -30,10 +30,10 @@
 {
     <div class="inline-notice inline-notice--danger" role="alert">
         <SUIIcon Name="alert" Size="19" />
-        <div><strong>Vínculo não alterado</strong><span>@submission.ErrorMessage</span></div>
+        <div><strong>@L["Audiences.BindingNotAlteredTitle"]</strong><span>@submission.ErrorMessage</span></div>
         @if (submission.Outcome is ManagementDataOutcome.Conflict)
         {
-            <button type="button" class="button button--secondary" disabled="@(loading || busy)" @onclick="ReloadForReviewAsync">Atualizar para revisar</button>
+            <button type="button" class="button button--secondary" disabled="@(loading || busy)" @onclick="ReloadForReviewAsync">@L["Audiences.ReloadToReview"]</button>
         }
     </div>
 }
@@ -43,30 +43,30 @@
     <AuthorizeView Policy="@ManagementUiPolicies.UpdateAudienceBindings">
         <div class="form-section" aria-labelledby="audience-binding-heading" aria-busy="@busy">
             <div class="form-section__heading">
-                <h2 id="audience-binding-heading" tabindex="-1" @ref="actionHeading">Vincular audiência</h2>
-                <p>Use um identificador existente ou informe um novo. Maiúsculas e minúsculas fazem diferença.</p>
+                <h2 id="audience-binding-heading" tabindex="-1" @ref="actionHeading">@L["Audiences.BindAudience"]</h2>
+                <p>@L["Audiences.BindingHelp"]</p>
             </div>
             @if (EditableScopes.Count is 0)
             {
-                <p>Nenhum scope manual de API disponível. <a href="scopes/new">Crie um scope</a> ou altere o manifesto do serviço.</p>
+                <p>@L["Audiences.NoScopesAvailable"] <a href="scopes/new">@L["Audiences.CreateScopeLink"]</a> @L["Audiences.NoScopesAvailableSuffix"]</p>
             }
             else
             {
                 <SUIFormGrid Columns="2" Spacing="4" LabelLines="2">
-                    <SUITextField T="string" id="audience-name" Label="Identificador da audiência" HelperText="O valor esperado pela API na claim aud." MaxLength="512" Disabled="@(busy || loading)" @bind-Value="audienceName" />
-                    <SUISelect T="string" id="audience-scope" Label="Scope de acesso à API" Disabled="@(busy || loading)" @bind-Value="selectedScopeId">
-                        <SUISelectItem Value="@(string.Empty)">Selecione um scope</SUISelectItem>
+                    <SUITextField T="string" id="audience-name" Label="@L["Audiences.FieldIdentifier"].Value" HelperText="@L["Audiences.FieldIdentifierHelp"].Value" MaxLength="512" Disabled="@(busy || loading)" @bind-Value="audienceName" />
+                    <SUISelect T="string" id="audience-scope" Label="@L["Audiences.FieldScope"].Value" Disabled="@(busy || loading)" @bind-Value="selectedScopeId">
+                        <SUISelectItem Value="@(string.Empty)">@L["Audiences.SelectScope"]</SUISelectItem>
                         @foreach (var scope in EditableScopes)
                         {
                             <SUISelectItem Value="@scope.Id">@scope.Name</SUISelectItem>
                         }
                     </SUISelect>
                 </SUIFormGrid>
-                <p class="audience-binding-impact">O vínculo permite que clientes autorizados a solicitar esse scope recebam tokens destinados à audiência.</p>
+                <p class="audience-binding-impact">@L["Audiences.BindingImpact"]</p>
             }
             <div class="form-actions">
-                <button type="button" class="button button--primary" disabled="@(!CanSubmit)" @onclick="AddBindingAsync">@(busy ? "Salvando…" : "Salvar vínculo")</button>
-                <button type="button" class="button button--secondary" disabled="@busy" @onclick="CloseBinding">Cancelar</button>
+                <button type="button" class="button button--primary" disabled="@(!CanSubmit)" @onclick="AddBindingAsync">@(busy ? L["Audiences.Saving"].Value : L["Audiences.SaveBinding"].Value)</button>
+                <button type="button" class="button button--secondary" disabled="@busy" @onclick="CloseBinding">@L["Audiences.Cancel"]</button>
             </div>
         </div>
     </AuthorizeView>
@@ -75,51 +75,51 @@
 @if (removal is not null)
 {
     <div class="form-section" role="region" aria-labelledby="audience-remove-heading">
-        <h2 id="audience-remove-heading" tabindex="-1" @ref="actionHeading">Remover vínculo?</h2>
-        <p>O scope <code>@removal.Scope.Name</code> deixará de incluir <code>@removal.Audience</code> em novos tokens. Tokens já emitidos, clientes e o scope não serão excluídos.</p>
-        <p>Se este for o último vínculo, a audiência deixará de aparecer nesta lista.</p>
+        <h2 id="audience-remove-heading" tabindex="-1" @ref="actionHeading">@L["Audiences.RemoveHeading"]</h2>
+        <p>@L["Audiences.RemoveImpactPrefix"] <code>@removal.Scope.Name</code> @L["Audiences.RemoveImpactMiddle"] <code>@removal.Audience</code> @L["Audiences.RemoveImpactSuffix"]</p>
+        <p>@L["Audiences.LastBindingNotice"]</p>
         <div class="form-actions">
-            <button type="button" class="button button--danger" disabled="@(busy || loading)" @onclick="RemoveBindingAsync">@(busy ? "Removendo…" : "Confirmar remoção")</button>
-            <button type="button" class="button button--secondary" disabled="@busy" @onclick="CancelRemoval">Cancelar</button>
+            <button type="button" class="button button--danger" disabled="@(busy || loading)" @onclick="RemoveBindingAsync">@(busy ? L["Audiences.Removing"].Value : L["Audiences.ConfirmRemoval"].Value)</button>
+            <button type="button" class="button button--secondary" disabled="@busy" @onclick="CancelRemoval">@L["Audiences.Cancel"]</button>
         </div>
     </div>
 }
 
 <div class="table-panel audience-panel" aria-labelledby="audiences-list-heading" aria-busy="@loading">
     <div class="data-toolbar">
-        <div><h2 id="audiences-list-heading" tabindex="-1" @ref="inventoryHeading">Audiências registradas</h2><p>Vínculos de manifesto são somente leitura.</p></div>
+        <div><h2 id="audiences-list-heading" tabindex="-1" @ref="inventoryHeading">@L["Audiences.ListHeading"]</h2><p>@L["Audiences.ListDescription"]</p></div>
         <label class="search-field">
-            <span class="visually-hidden">Pesquisar audiências</span><SUIIcon Name="search" Size="18" />
-            <input type="search" placeholder="Audiência, scope ou cliente" autocomplete="off" @bind="search" @bind:event="oninput" />
+            <span class="visually-hidden">@L["Audiences.SearchLabel"]</span><SUIIcon Name="search" Size="18" />
+            <input type="search" placeholder="@L["Audiences.SearchPlaceholder"].Value" autocomplete="off" @bind="search" @bind:event="oninput" />
         </label>
     </div>
     @if (loading)
     {
-        <div class="table-skeleton" aria-label="Carregando audiências"><span></span><span></span><span></span></div>
+        <div class="table-skeleton" aria-label="@L["Audiences.LoadingAriaLabel"].Value"><span></span><span></span><span></span></div>
     }
     else if (result?.IsSuccess is not true)
     {
-        <SUIEmptyState Icon="alert" Title="Não foi possível consultar as audiências" Description="@result?.ErrorMessage">
-            <Actions><button type="button" class="button button--secondary" @onclick="LoadAsync">Tentar novamente</button></Actions>
+        <SUIEmptyState Icon="alert" Title="@L["Audiences.LoadErrorTitle"].Value" Description="@result?.ErrorMessage">
+            <Actions><button type="button" class="button button--secondary" @onclick="LoadAsync">@L["Audiences.TryAgain"]</button></Actions>
         </SUIEmptyState>
     }
     else if (FilteredAudiences.Count is 0)
     {
-        <SUIEmptyState Icon="server" Title="@(AllAudiences.Count is 0 ? "Nenhuma audiência registrada" : "Nenhuma audiência encontrada")" Description="@(AllAudiences.Count is 0 ? "Vincule uma audiência a um scope de API para registrá-la." : "Revise o identificador, scope ou cliente pesquisado.")">
-            <Actions>@if (search.Length > 0) { <button type="button" class="button button--secondary" @onclick="ClearSearch">Limpar pesquisa</button> }</Actions>
+        <SUIEmptyState Icon="server" Title="@(AllAudiences.Count is 0 ? L["Audiences.EmptyTitleNone"].Value : L["Audiences.EmptyTitleSearch"].Value)" Description="@(AllAudiences.Count is 0 ? L["Audiences.EmptyDescriptionNone"].Value : L["Audiences.EmptyDescriptionSearch"].Value)">
+            <Actions>@if (search.Length > 0) { <button type="button" class="button button--secondary" @onclick="ClearSearch">@L["Audiences.ClearSearch"]</button> }</Actions>
         </SUIEmptyState>
     }
     else
     {
         <div class="table-scroll">
             <table class="data-table data-table--scopes">
-                <thead><tr><th scope="col">Audiência</th><th scope="col">Scopes vinculados</th><th scope="col">Clientes autorizados</th></tr></thead>
+                <thead><tr><th scope="col">@L["Audiences.ColumnAudience"]</th><th scope="col">@L["Audiences.ColumnScopes"]</th><th scope="col">@L["Audiences.ColumnClients"]</th></tr></thead>
                 <tbody>
                     @foreach (var audience in FilteredAudiences)
                     {
                         <tr @key="audience.Name">
-                            <td data-label="Audiência"><code>@audience.Name</code></td>
-                            <td data-label="Scopes vinculados">
+                            <td data-label="@L["Audiences.ColumnAudience"].Value"><code>@audience.Name</code></td>
+                            <td data-label="@L["Audiences.ColumnScopes"].Value">
                                 <ul class="audience-bindings">
                                     @foreach (var scope in audience.Scopes)
                                     {
@@ -127,23 +127,23 @@
                                             <a href="@($"scopes/{Uri.EscapeDataString(scope.Id)}")">@scope.Name</a>
                                             @if (scope.IsManifestManaged)
                                             {
-                                                <SUIStatusBadge ToneValue="SUITone.Info">Manifesto</SUIStatusBadge>
+                                                <SUIStatusBadge ToneValue="SUITone.Info">@L["Audiences.ManifestBadge"]</SUIStatusBadge>
                                             }
                                             else
                                             {
                                                 <AuthorizeView Policy="@ManagementUiPolicies.UpdateAudienceBindings">
-                                                    <button type="button" class="row-action row-action--button" disabled="@(!interactive || busy)" aria-label="@($"Remover {audience.Name} do scope {scope.Name}")" @onclick="() => ConfirmRemoval(audience.Name, scope)">Remover vínculo</button>
+                                                    <button type="button" class="row-action row-action--button" disabled="@(!interactive || busy)" aria-label="@L["Audiences.RemoveBindingAriaLabel", audience.Name, scope.Name].Value" @onclick="() => ConfirmRemoval(audience.Name, scope)">@L["Audiences.RemoveBindingButton"]</button>
                                                 </AuthorizeView>
                                             }
                                         </li>
                                     }
                                 </ul>
                             </td>
-                            <td data-label="Clientes autorizados">
-                                @if (audience.ClientIds.Count is 0) { <span>Nenhum cliente</span> }
+                            <td data-label="@L["Audiences.ColumnClients"].Value">
+                                @if (audience.ClientIds.Count is 0) { <span>@L["Audiences.NoClients"]</span> }
                                 else
                                 {
-                                    <details><summary>@audience.ClientIds.Count cliente(s)</summary><ul class="audience-clients">@foreach (var clientId in audience.ClientIds) { <li><code>@clientId</code></li> }</ul></details>
+                                    <details><summary>@L["Audiences.ClientCountSummary", audience.ClientIds.Count]</summary><ul class="audience-clients">@foreach (var clientId in audience.ClientIds) { <li><code>@clientId</code></li> }</ul></details>
                                 }
                             </td>
                         </tr>
@@ -152,7 +152,7 @@
             </table>
         </div>
     }
-    <footer class="table-footer"><span role="status">@(loading ? "Carregando…" : result?.IsSuccess is true ? $"{FilteredAudiences.Count} de {AllAudiences.Count} audiência(s)" : "Nenhum resultado carregado")</span><a href="scopes">Gerenciar scopes</a></footer>
+    <footer class="table-footer"><span role="status">@(loading ? L["Audiences.LoadingFooter"].Value : result?.IsSuccess is true ? L["Audiences.FooterCountFormat", FilteredAudiences.Count, AllAudiences.Count].Value : L["Audiences.NoResultsLoaded"].Value)</span><a href="scopes">@L["Audiences.ManageScopesLink"]</a></footer>
 </div>
 
 @code {
@@ -213,7 +213,7 @@
             submission = await ScopeData.UpdateAudienceBindingAsync(scope.Id, new(audience, assigned, scope.Resources));
             if (submission.IsSuccess)
             {
-                notice = assigned ? "Audiência vinculada. A alteração foi auditada." : "Vínculo removido. A alteração foi auditada.";
+                notice = assigned ? L["Audiences.NoticeBound"].Value : L["Audiences.NoticeRemoved"].Value;
                 showBinding = false; removal = null;
                 audienceName = string.Empty; selectedScopeId = string.Empty;
                 await LoadAsync();

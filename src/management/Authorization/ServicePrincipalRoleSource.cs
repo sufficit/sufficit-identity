@@ -6,12 +6,12 @@ using OpenIddict.Abstractions;
 namespace Sufficit.Identity.Management.Authorization;
 
 /// <summary>
-/// Os papéis que o registro de um cliente declara.
+/// The roles a client's registration declares.
 ///
-/// Interface estreita de propósito: o resolvedor precisa de UMA pergunta, e
-/// depender do <c>IOpenIddictApplicationManager</c> inteiro por causa dela
-/// obrigaria qualquer teste a fingir umas quarenta operações que ele não usa —
-/// um duplo que mente sobre o que exercita.
+/// Deliberately narrow interface: the resolver needs ONE question, and
+/// depending on the entire <c>IOpenIddictApplicationManager</c> for it would
+/// force every test to fake some forty operations it doesn't use — a double
+/// that lies about what it exercises.
 /// </summary>
 public interface IServicePrincipalRoleSource
 {
@@ -21,9 +21,9 @@ public interface IServicePrincipalRoleSource
 }
 
 /// <summary>
-/// Lê os papéis da propriedade do cliente no banco — a mesma convenção
-/// <c>identity:client:*</c> que o registro dinâmico já usa para origem,
-/// user-agent e data de registro.
+/// Reads the roles from the client's property in the database — the same
+/// <c>identity:client:*</c> convention that dynamic registration already uses
+/// for origin, user-agent and registration date.
 /// </summary>
 public sealed class OpenIddictServicePrincipalRoleSource(
     IOpenIddictApplicationManager applications,
@@ -47,10 +47,10 @@ public sealed class OpenIddictServicePrincipalRoleSource(
     }
 
     /// <summary>
-    /// A propriedade é persistida como <see cref="JsonElement"/>. Aceita lista
-    /// e string única: quem escreve à mão costuma escrever a string, e recusar
-    /// isso seria recusar em silêncio — o cliente ficaria sem capacidade
-    /// nenhuma e nada diria por quê.
+    /// The property is persisted as <see cref="JsonElement"/>. Accepts both a
+    /// list and a single string: whoever writes it by hand usually writes the
+    /// string, and rejecting that would be a silent rejection — the client
+    /// would end up with no capabilities at all, and nothing would say why.
     /// </summary>
     private static IReadOnlyCollection<string> Parse(JsonElement declared)
     {

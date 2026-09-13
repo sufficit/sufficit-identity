@@ -1,11 +1,13 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Sessions;
 using Sufficit.Identity.Management.Users;
 using Sufficit.Identity.UI.Management.Clients;
+using Sufficit.Identity.UI.Management.Resources;
 
 namespace Sufficit.Identity.UI.Management.Sessions;
 
@@ -15,7 +17,8 @@ namespace Sufficit.Identity.UI.Management.Sessions;
 public sealed class ManagementSessionDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
-    ILogger<ManagementSessionDataSource> logger)
+    ILogger<ManagementSessionDataSource> logger,
+    IStringLocalizer<ManagementResource> localizer)
 {
     public Task<ManagementDataResult<ManagementSessionPage>> SearchAsync(
         ManagementSessionSearch query,
@@ -74,20 +77,20 @@ public sealed class ManagementSessionDataSource(
         {
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.Invalid,
-                exception.Message,
+                ManagementErrorText.For(localizer, exception),
                 exception.Field);
         }
         catch (ManagementConflictException exception)
         {
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.Conflict,
-                exception.Message);
+                ManagementErrorText.For(localizer, exception));
         }
         catch (ManagementNotFoundException exception)
         {
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.NotFound,
-                exception.Message);
+                ManagementErrorText.For(localizer, exception));
         }
         catch (ManagementAccessException exception)
         {
@@ -98,8 +101,8 @@ public sealed class ManagementSessionDataSource(
             return ManagementDataResult<T>.Failure(
                 outcome,
                 outcome is ManagementDataOutcome.StepUpRequired
-                    ? "Conclua a autenticação multifator para continuar."
-                    : "Sua conta não possui a capability necessária.");
+                    ? localizer["Common.Access.StepUpRequired"]
+                    : localizer["Common.Access.Forbidden"]);
         }
         catch (OperationCanceledException)
             when (!cancellationToken.IsCancellationRequested)
@@ -107,7 +110,7 @@ public sealed class ManagementSessionDataSource(
             logger.LogWarning("{OperationName} timed out.", operationName);
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.Unavailable,
-                "O serviço demorou mais que o esperado. Tente novamente.");
+                localizer["Common.Timeout"]);
         }
         catch (OperationCanceledException)
         {
@@ -121,7 +124,7 @@ public sealed class ManagementSessionDataSource(
                 operationName);
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.Unavailable,
-                "O serviço de identidade não conseguiu concluir a operação.");
+                localizer["Common.Unavailable"]);
         }
     }
 }

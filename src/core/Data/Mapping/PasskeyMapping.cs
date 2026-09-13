@@ -15,12 +15,12 @@ namespace Sufficit.Identity.Core.Data;
 internal static class PasskeyMapping
 {
         /// <summary>
-        /// Configura as entidades de passkey do .NET 10 Identity.
-        /// O IdentityDbContext base registra <see cref="IdentityUserPasskey{TKey}"/>
-        /// como entidade, mas a navigation <c>Data</c> (do tipo
-        /// <see cref="IdentityPasskeyData"/>) não é configurada automaticamente
-        /// como owned type em todos os cenários (especialmente com TUser customizado
-        /// e chave string). Aqui declaramos explicitamente OwnsOne para resolver.
+        /// Configures the .NET 10 Identity passkey entities.
+        /// The base IdentityDbContext registers <see cref="IdentityUserPasskey{TKey}"/>
+        /// as an entity, but the <c>Data</c> navigation (of type
+        /// <see cref="IdentityPasskeyData"/>) is not automatically configured
+        /// as an owned type in every scenario (especially with a custom TUser
+        /// and a string key). Here we explicitly declare OwnsOne to resolve that.
         /// </summary>
         internal static void Apply(ModelBuilder builder)
         {

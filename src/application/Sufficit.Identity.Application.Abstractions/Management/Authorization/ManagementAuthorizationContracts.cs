@@ -259,15 +259,15 @@ public sealed record ManagementEntitlements(
         Capabilities.Contains(capability);
 
     /// <summary>
-    /// Esta capacidade foi concedida a um principal de MÁQUINA, e por isso não
-    /// tem segundo fator a apresentar.
+    /// This capability was granted to a MACHINE principal, and therefore has
+    /// no second factor to present.
     ///
-    /// Quem resolve a concessão é quem sabe COMO ela foi concedida, e por isso
-    /// a exceção mora aqui e não numa política por recurso: a política vê o
-    /// recurso, não a origem da capacidade.
+    /// Whoever resolves the grant is the one who knows HOW it was granted, so
+    /// the exception lives here and not in a per-resource policy: the policy
+    /// sees the resource, not the origin of the capability.
     ///
-    /// Vazio por padrão. Um principal humano nunca entra aqui, então a
-    /// exigência de MFA continua exatamente como estava para ele.
+    /// Empty by default. A human principal never lands here, so the MFA
+    /// requirement remains exactly as it was for them.
     /// </summary>
     public bool IsMultiFactorExempt(string capability) =>
         MultiFactorExempt?.Contains(capability) is true;
@@ -391,26 +391,26 @@ public sealed class ManagementAuthorizationOptions
         ["permission"];
 
     /// <summary>
-    /// Nome da propriedade, no registro do cliente, que lista os papéis dele.
+    /// Name of the property, on the client registration, that lists its roles.
     ///
-    /// A CONCESSÃO mora no banco, junto com o cliente, exatamente como a de um
-    /// humano mora em <c>userroles</c>. O que o papel SIGNIFICA continua em
-    /// <see cref="RoleCapabilities"/>, que é config revisada. É a mesma divisão
-    /// que já valia para gente: o banco diz quem é o quê, a configuração diz o
-    /// que isso permite.
+    /// The GRANT lives in the database, alongside the client, exactly like a
+    /// human's lives in <c>userroles</c>. What the role MEANS stays in
+    /// <see cref="RoleCapabilities"/>, which is reviewed config. It's the same
+    /// split that already applied to people: the database says who is what,
+    /// the configuration says what that allows.
     ///
-    /// Pôr a concessão em configuração pareceu mais simples e não era: revogar
-    /// o acesso de um serviço comprometido passaria a exigir uma implantação,
-    /// e implantação é justamente o que quebra primeiro num dia ruim.
+    /// Putting the grant in configuration seemed simpler and wasn't: revoking
+    /// access from a compromised service would then require a deployment, and
+    /// deployment is exactly what breaks first on a bad day.
     /// </summary>
     public string ClientRolesPropertyName { get; set; } =
         "identity:client:roles";
 }
 
 /// <summary>
-/// Onde o <c>client_id</c> aparece num principal vindo de um access token.
-/// <c>azp</c> entra como alternativa porque é o que alguns emissores usam
-/// quando o token é para outra audiência.
+/// Where <c>client_id</c> appears in a principal coming from an access token.
+/// <c>azp</c> is used as a fallback because it's what some issuers use when
+/// the token targets a different audience.
 /// </summary>
 public static class ManagementPrincipal
 {
@@ -422,10 +422,10 @@ public static class ManagementPrincipal
             .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 
     /// <summary>
-    /// Um principal de MÁQUINA — autenticado por segredo de cliente, sem
-    /// usuário por trás. É o <c>sub</c> igual ao <c>client_id</c> que
-    /// distingue: o handler de client_credentials põe o próprio client_id como
-    /// subject, porque não há mais ninguém para pôr.
+    /// A MACHINE principal — authenticated with a client secret, with no user
+    /// behind it. The distinguishing factor is <c>sub</c> equal to
+    /// <c>client_id</c>: the client_credentials handler sets the client_id
+    /// itself as the subject, because there is no one else to set.
     /// </summary>
     public static bool IsService(ClaimsPrincipal principal)
     {

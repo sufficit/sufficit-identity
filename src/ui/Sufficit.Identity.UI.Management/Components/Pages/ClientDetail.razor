@@ -8,11 +8,11 @@
 <PageTitle>@PageTitleText</PageTitle>
 
 <SUIPageHeader Title="@HeaderTitle"
-            Description="Configuração registrada no serviço de identidade. Segredos nunca são retornados.">
+            Description="@L["Clients.Detail.Description"].Value">
     <Actions>
         <a class="button button--secondary" href="clients">
             <SUIIcon Name="arrow-left" Size="17" />
-            Voltar para clientes
+            @L["Clients.Detail.Back"]
         </a>
         @if (result?.Value is { } selectedClient)
         {
@@ -20,7 +20,7 @@
             {
                 <a class="button button--primary" href="@EditHref(selectedClient.Id)">
                     <SUIIcon Name="edit" Size="17" />
-                    Editar
+                    @L["Clients.Detail.Edit"]
                 </a>
             }
             <AuthorizeView Policy="@ManagementUiPolicies.ManageSessions">
@@ -28,7 +28,7 @@
                     <a class="button button--secondary"
                        href="@SessionsHref(selectedClient.ClientId)">
                         <SUIIcon Name="clock" Size="17" />
-                        Sessões
+                        @L["Clients.Detail.Sessions"]
                     </a>
                 </Authorized>
             </AuthorizeView>
@@ -37,7 +37,7 @@
                     <a class="button button--secondary"
                        href="@AuthorizationsHref(selectedClient.ClientId)">
                         <SUIIcon Name="shield" Size="17" />
-                        Autorizações
+                        @L["Clients.Detail.Authorizations"]
                     </a>
                 </Authorized>
             </AuthorizeView>
@@ -49,7 +49,7 @@
 {
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
-        <div><strong>Alterações salvas</strong><span>A aplicação foi atualizada e a nova versão está ativa.</span></div>
+        <div><strong>@L["Clients.Detail.UpdatedTitle"]</strong><span>@L["Clients.Detail.UpdatedMessage"]</span></div>
     </div>
 }
 
@@ -58,15 +58,15 @@
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
         <div>
-            <strong>Cliente criado</strong>
-            <span>O registro foi persistido com padrões seguros e o evento está disponível na auditoria.</span>
+            <strong>@L["Clients.Detail.CreatedTitle"]</strong>
+            <span>@L["Clients.Detail.CreatedMessage"]</span>
         </div>
     </div>
 }
 
 @if (loading)
 {
-    <div class="detail-shell" aria-busy="true" aria-label="Carregando detalhes do cliente">
+    <div class="detail-shell" aria-busy="true" aria-label="@L["Clients.Detail.LoadingAriaLabel"].Value">
         <div class="detail-skeleton"></div>
         <div class="detail-skeleton detail-skeleton--short"></div>
     </div>
