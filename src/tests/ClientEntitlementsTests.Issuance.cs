@@ -44,7 +44,7 @@ public sealed class ClientEntitlementsIssuanceTests
         Assert.Equal(Granted, Single(claims, ClientEntitlements.ClaimType));
         // O nome curto continua sendo emitido enquanto os consumidores da casa
         // (sufficit-ai, sufficit-provisioning) não migram para o container da
-        // RFC 9068 §2.2.3.2.
+        // RFC 9068 §2.2.3.1.
         Assert.Equal(Granted, Single(claims, ClientEntitlements.LegacyClaimType));
     }
 

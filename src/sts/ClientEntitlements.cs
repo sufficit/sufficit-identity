@@ -31,7 +31,7 @@ public static class ClientEntitlements
     public const string PropertyName = "identity:client:entitlements";
 
     /// <summary>
-    /// Container padronizado pela RFC 9068 §2.2.3.2, com semântica do SCIM
+    /// Container padronizado pela RFC 9068 §2.2.3.1, com semântica do SCIM
     /// (RFC 7643 §4.1.2).
     /// </summary>
     public const string ClaimType = "entitlements";
