@@ -98,6 +98,8 @@ claim cites `file:line`.
 
 - [Rate limiting by operation and browser errors](networking/USAGE-RATE-LIMITING.md)
 
+- [Managed client credentials](usage/USAGE-MANAGED-CLIENT-CREDENTIALS.md) — validade, rotação e emissão de tokens de aplicação
+
 - [Embedded public and Management UIs](usage/USAGE-EMBEDDED-UI.md)
 - [Identity MCP — Vault and self-service](usage/USAGE-IDENTITY-MCP.md)
 - [SCIM 2.0](usage/USAGE-SCIM.md)

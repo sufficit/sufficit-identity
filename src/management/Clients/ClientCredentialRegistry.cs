@@ -141,20 +141,17 @@ internal sealed class ClientCredentialRegistry(
                     "A credencial informada já está ativa para esta aplicação.");
             }
 
-            var createdAsPrimary = string.Equals(
+            var wasPublic = string.Equals(
                 entity.ClientType,
                 OpenIddictConstants.ClientTypes.Public,
                 StringComparison.Ordinal);
+            // Preserve the legacy primary-secret path when no validity window
+            // was requested. A dated first credential belongs in the registry:
+            // copying it into ClientSecret would bypass expiration/revocation.
+            var createdAsPrimary = wasPublic
+                && notBeforeUtc is null && expiresAtUtc is null;
             if (createdAsPrimary)
             {
-                if (notBeforeUtc is not null || expiresAtUtc is not null)
-                {
-                    throw new ManagementValidationException(
-                        "primary_credential_lifetime_unsupported",
-                        "A primeira credencial torna-se a credencial principal de compatibilidade e não aceita agendamento ou expiração. Adicione outra credencial depois para usar esse ciclo de vida.",
-                        "expiresAtUtc");
-                }
-
                 entity.ClientType = OpenIddictConstants.ClientTypes.Confidential;
                 await applications.UpdateAsync(
                     application,
@@ -216,6 +213,13 @@ internal sealed class ClientCredentialRegistry(
                     ? "client_primary_credential_created"
                     : "client_credential_created"));
             await database.SaveChangesAsync(cancellationToken);
+            if (wasPublic && !createdAsPrimary)
+            {
+                // Persist the registry entry inside this transaction before
+                // the adapter validates the confidential application's credential.
+                entity.ClientType = OpenIddictConstants.ClientTypes.Confidential;
+                await applications.UpdateAsync(application, cancellationToken);
+            }
             var overview = await BuildCredentialsOverviewAsync(
                 entity,
                 cancellationToken);
