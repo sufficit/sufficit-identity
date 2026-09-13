@@ -401,8 +401,20 @@ public sealed class ClientCredentialsGrantHandler : ITokenGrantHandler
 /// </summary>
 public sealed class PasswordGrantHandler : ITokenGrantHandler
 {
+    private static readonly ApplicationUser UnknownUser = new();
+    private static string? unknownUserPasswordHash;
+
     public IReadOnlyCollection<string> HandledGrantTypes { get; } =
         [GrantTypes.Password];
+
+    /// <summary>
+    /// A hash produced by the configured hasher, so verifying against it runs
+    /// the same algorithm and iteration count as a real account.
+    /// </summary>
+    private static string UnknownUserPasswordHash(
+        Microsoft.AspNetCore.Identity.UserManager<ApplicationUser> users) =>
+        unknownUserPasswordHash ??= users.PasswordHasher.HashPassword(
+            UnknownUser, Guid.NewGuid().ToString("N"));
 
     public async Task<IActionResult> HandleAsync(TokenGrantContext context)
     {
@@ -411,10 +423,21 @@ public sealed class PasswordGrantHandler : ITokenGrantHandler
 
         var user = await ops.UserManager.FindByNameAsync(request.Username!);
 
-        var result = user is not null
-            ? await ops.SignInManager.CheckPasswordSignInAsync(
-                user, request.Password!, lockoutOnFailure: true)
-            : Microsoft.AspNetCore.Identity.SignInResult.Failed;
+        Microsoft.AspNetCore.Identity.SignInResult result;
+        if (user is not null)
+        {
+            result = await ops.SignInManager.CheckPasswordSignInAsync(
+                user, request.Password!, lockoutOnFailure: true);
+        }
+        else
+        {
+            // Hash the submitted password anyway, so an unknown username costs
+            // the same key derivation as a wrong password and response time
+            // does not reveal which accounts exist.
+            ops.UserManager.PasswordHasher.VerifyHashedPassword(
+                UnknownUser, UnknownUserPasswordHash(ops.UserManager), request.Password!);
+            result = Microsoft.AspNetCore.Identity.SignInResult.Failed;
+        }
 
         if (user is null || !result.Succeeded
             || !await ops.SignInManager.CanSignInAsync(user))

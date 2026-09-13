@@ -82,9 +82,9 @@ public sealed class SmtpEmailSender : IEmailSender, IDisposable
         if (_client is null)
         {
             _logger.LogError(
-                "SMTP client is not initialized. Message to {Email} with "
+                "SMTP client is not initialized. Message to {Recipient} with "
                 + "subject {Subject} was not sent.",
-                email,
+                EmailAddressRedaction.Mask(email),
                 subject);
             return;
         }
@@ -115,16 +115,16 @@ public sealed class SmtpEmailSender : IEmailSender, IDisposable
         {
             await _client.SendMailAsync(message);
             _logger.LogInformation(
-                "Email sent to {Email} with subject {Subject}.",
-                recipient,
+                "Email sent to {Recipient} with subject {Subject}.",
+                EmailAddressRedaction.Mask(recipient),
                 subject);
         }
         catch (Exception exception)
         {
             _logger.LogError(
                 exception,
-                "Email delivery to {Email} with subject {Subject} failed.",
-                recipient,
+                "Email delivery to {Recipient} with subject {Subject} failed.",
+                EmailAddressRedaction.Mask(recipient),
                 subject);
             throw;
         }
@@ -162,16 +162,16 @@ public sealed class LoggingEmailSender(
         if (environment.IsDevelopment())
         {
             logger.LogInformation(
-                "Email preview without body or transport: {Email}, {Subject}.",
-                recipient,
+                "Email preview without body or transport: {Recipient}, {Subject}.",
+                EmailAddressRedaction.Mask(recipient),
                 subject);
             return Task.CompletedTask;
         }
 
         logger.LogError(
-            "No email transport is configured. Message to {Email} with subject "
+            "No email transport is configured. Message to {Recipient} with subject "
             + "{Subject} was not delivered.",
-            recipient,
+            EmailAddressRedaction.Mask(recipient),
             subject);
         throw new InvalidOperationException(
             "Configure Sufficit:Identity:Smtp or the RabbitMQ email queue "
