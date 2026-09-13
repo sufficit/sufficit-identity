@@ -11,6 +11,9 @@
       "sufficit.identity.application.abstractions": {
         "type": "Project"
       },
+      "sufficit.identity.hosting.abstractions": {
+        "type": "Project"
+      },
       "sufficit.identity.ui.abstractions": {
         "type": "Project"
       },

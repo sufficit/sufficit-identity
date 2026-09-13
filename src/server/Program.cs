@@ -147,49 +147,20 @@ builder.Services.AddSufficitEmailSender(
     builder.Configuration,
     secretStore: startupSecretStore);
 
-// ---- Optional: management REST API (opt-in via Sufficit:Identity:Management:Enabled) ----
-var mgmtEnabled = builder.Configuration
-    .GetValue<bool>("Sufficit:Identity:Management:Enabled");
-var vaultUiEnabled = uiHostingOptions.Vault.IsEmbedded
-    && builder.Configuration.GetValue(
-        "Sufficit:Identity:UI:Vault:Enabled", defaultValue: true);
-
-if (mgmtEnabled)
-{
-    // The module composes the generic scope/role resolver decorated by the
-    // service principal resolver. Which roles receive full administrator
-    // access is deployment configuration
-    // (Sufficit:Identity:Management:Authorization:FullAdministratorRoles,
-    // empty by default), never a role name hard-coded in the host.
-    builder.Services.AddSufficitIdentityManagement(builder.Configuration);
-    // M1 fix (eval): replace the MissingClientSecretResolver stub with a
-    // vault-backed resolver so provisioning of confidential clients works.
-    // The vault is already registered by AddSufficitIdentitySTS above; the
-    // resolver consumes IKeyVault (pass-through by default, real crypto when
-    // Sufficit:Vault:Enabled=true).
-    builder.Services.Replace(
-        ServiceDescriptor.Singleton<
-            Sufficit.Identity.Management.Provisioning.IClientSecretResolver,
-            Sufficit.Identity.Vault.VaultBackedClientSecretResolver>());
-    if (uiHostingOptions.Management.IsEmbedded)
-    {
-        builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
-    }
-}
-
-// ---- Optional Vault UI (personal secrets + capability-protected operator Vault) ----
-if (vaultUiEnabled)
-{
-    builder.Services.AddSufficitIdentityVaultUI(builder.Configuration);
-}
-
-// ---- Optional: SCIM 2.0 provisioning (RFC 7643/7644) ----
-// Modules composed through IIdentityModule register themselves; the host only
-// lists them. Remaining features migrate here one at a time (A8).
+// ---- Feature modules (IIdentityModule) ----
+// Each module reads its own enablement, registers its own services and
+// contributes its own pipeline steps; the host only lists them. The list order
+// is the service registration order and the order of endpoint contributions:
+// management API, management console, Vault UI, SCIM (A8).
 var identityModules = Sufficit.Identity.Hosting.IdentityModuleCatalog.Create(
     builder.Configuration,
+    new ManagementIdentityModule(),
+    new ManagementUiIdentityModule(),
+    new VaultUiIdentityModule(),
     new ScimIdentityModule());
 identityModules.ConfigureServices(builder.Services, builder.Configuration);
+var mgmtEnabled = identityModules.IsEnabled(ManagementIdentityModule.ModuleId);
+var vaultUiEnabled = identityModules.IsEnabled(VaultUiIdentityModule.ModuleId);
 var scimEnabled = identityModules.IsEnabled(ScimIdentityModule.ModuleId);
 
 // Management and SCIM both customize authorization failures. When both
@@ -529,21 +500,14 @@ app.MapHealthChecks(HealthEndpoints.Liveness, new HealthCheckOptions
 });
 app.MapHealthChecks(HealthEndpoints.Readiness);
 
-// Map management endpoints (if enabled).
-if (mgmtEnabled)
-{
-    app.UseSufficitIdentityManagementEndpoints(builder.Configuration);
-    if (uiHostingOptions.Management.IsEmbedded)
-    {
-        app.UseSufficitIdentityManagementUI();
-    }
-}
-
-if (vaultUiEnabled)
-{
-    app.UseSufficitIdentityVaultUI(
-        mapEndpoints: !uiHostingOptions.Public.IsEmbedded);
-}
+// ---- Module endpoints (management API, management console, Vault UI) ----
+// The host pipeline has not moved into the builder yet, so only the endpoints
+// stage is applied here; EnsureAllApplied fails startup if a module contributed
+// to a middleware stage that this position would apply out of order.
+var identityPipeline = new Sufficit.Identity.Hosting.IdentityPipelineBuilder();
+identityModules.ConfigurePipeline(identityPipeline);
+identityPipeline.ApplyStage(app, Sufficit.Identity.Hosting.IdentityPipelineStage.Endpoints);
+identityPipeline.EnsureAllApplied();
 
 // ---- Sufficit Identity UI (Blazor Server endpoints + static assets) ----
 if (uiHostingOptions.Public.IsEmbedded)

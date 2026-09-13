@@ -53,6 +53,7 @@ public sealed record IdentityPipelineStep(
 public sealed class IdentityPipelineBuilder
 {
     private readonly List<(IdentityPipelineStep Step, int Sequence, Action<IApplicationBuilder> Configure)> _contributions = [];
+    private readonly HashSet<string> _applied = new(StringComparer.Ordinal);
 
     /// <summary>Owner recorded for subsequent contributions; the catalog sets it to each module id.</summary>
     public string Owner { get; set; } = "host";
@@ -79,6 +80,21 @@ public sealed class IdentityPipelineBuilder
         return this;
     }
 
+    /// <summary>
+    /// Registers endpoint mapping that needs the full <see cref="WebApplication"/>
+    /// (Razor components, static assets, branches) at the endpoints stage.
+    /// </summary>
+    public IdentityPipelineBuilder MapEndpoints(
+        string name,
+        Action<WebApplication> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        return Use(IdentityPipelineStage.Endpoints, name, app =>
+            configure(app as WebApplication
+                ?? throw new InvalidOperationException(
+                    $"The pipeline step '{name}' requires a WebApplication host.")));
+    }
+
     /// <summary>Contributions in the order they will be applied.</summary>
     public IReadOnlyList<IdentityPipelineStep> Steps =>
         Ordered().Select(entry => entry.Step).ToArray();
@@ -88,8 +104,51 @@ public sealed class IdentityPipelineBuilder
         ArgumentNullException.ThrowIfNull(app);
         foreach (var entry in Ordered())
         {
-            entry.Configure(app);
+            ApplyEntry(app, entry.Step, entry.Configure);
         }
+    }
+
+    /// <summary>
+    /// Applies only the contributions of one stage, for a host whose own
+    /// pipeline has not moved into the builder yet. Pair it with
+    /// <see cref="EnsureAllApplied"/> so a contribution at another stage fails
+    /// startup instead of silently running at the wrong position.
+    /// </summary>
+    public void ApplyStage(IApplicationBuilder app, IdentityPipelineStage stage)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+        foreach (var entry in Ordered().Where(entry => entry.Step.Stage == stage))
+        {
+            ApplyEntry(app, entry.Step, entry.Configure);
+        }
+    }
+
+    public void EnsureAllApplied()
+    {
+        var pending = _contributions
+            .Where(entry => !_applied.Contains(entry.Step.Name))
+            .Select(entry => $"{entry.Step.Name} ({entry.Step.Stage}, {entry.Step.Owner})")
+            .ToArray();
+        if (pending.Length > 0)
+        {
+            throw new InvalidOperationException(
+                "Pipeline contributions were registered at stages the host does not apply: "
+                + string.Join(", ", pending) + ".");
+        }
+    }
+
+    private void ApplyEntry(
+        IApplicationBuilder app,
+        IdentityPipelineStep step,
+        Action<IApplicationBuilder> configure)
+    {
+        if (!_applied.Add(step.Name))
+        {
+            throw new InvalidOperationException(
+                $"The pipeline step '{step.Name}' was already applied.");
+        }
+
+        configure(app);
     }
 
     private IEnumerable<(IdentityPipelineStep Step, int Sequence, Action<IApplicationBuilder> Configure)> Ordered() =>

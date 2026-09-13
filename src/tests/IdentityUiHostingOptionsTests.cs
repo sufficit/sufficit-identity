@@ -92,20 +92,32 @@ public sealed class IdentityUiHostingOptionsTests
             "if (uiHostingOptions.Public.IsEmbedded)",
             program,
             StringComparison.Ordinal);
-        Assert.Contains(
-            "if (uiHostingOptions.Management.IsEmbedded)",
-            program,
-            StringComparison.Ordinal);
         Assert.Equal(
             1,
             Count(program, "builder.Services.AddSufficitIdentityUI"));
         Assert.Equal(1, Count(program, "app.UseSufficitIdentityUI"));
-        Assert.Equal(
-            1,
-            Count(program, "builder.Services.AddSufficitIdentityManagementUI"));
-        Assert.Equal(1, Count(program, "app.UseSufficitIdentityManagementUI"));
-        Assert.Equal(1, Count(program, "builder.Services.AddSufficitIdentityVaultUI"));
-        Assert.Equal(1, Count(program, "app.UseSufficitIdentityVaultUI"));
+
+        // The management console and the Vault UI are modules: each guards
+        // its own enablement and registers and maps itself exactly once, and
+        // the host neither registers nor maps them directly.
+        var managementUiModule = File.ReadAllText(Path.Combine(
+            ResolveIdentityRepository(), "src", "ui",
+            "Sufficit.Identity.UI.Management", "ManagementUiIdentityModule.cs"));
+        var vaultUiModule = File.ReadAllText(Path.Combine(
+            ResolveIdentityRepository(), "src", "ui",
+            "Sufficit.Identity.UI.Vault", "VaultUiIdentityModule.cs"));
+        Assert.Contains("uiHostingOptions.Management.IsEmbedded", managementUiModule, StringComparison.Ordinal);
+        Assert.Equal(1, Count(managementUiModule, "services.AddSufficitIdentityManagementUI"));
+        Assert.Equal(1, Count(managementUiModule, "app.UseSufficitIdentityManagementUI"));
+        Assert.Contains("Vault.IsEmbedded", vaultUiModule, StringComparison.Ordinal);
+        Assert.Equal(1, Count(vaultUiModule, "services.AddSufficitIdentityVaultUI"));
+        Assert.Equal(1, Count(vaultUiModule, "app.UseSufficitIdentityVaultUI"));
+        Assert.Equal(0, Count(program, "AddSufficitIdentityManagementUI"));
+        Assert.Equal(0, Count(program, "UseSufficitIdentityManagementUI"));
+        Assert.Equal(0, Count(program, "AddSufficitIdentityVaultUI"));
+        Assert.Equal(0, Count(program, "UseSufficitIdentityVaultUI"));
+        Assert.Contains("new ManagementUiIdentityModule()", program, StringComparison.Ordinal);
+        Assert.Contains("new VaultUiIdentityModule()", program, StringComparison.Ordinal);
         Assert.Contains(
             "context.User.Identity?.IsAuthenticated == true",
             program,

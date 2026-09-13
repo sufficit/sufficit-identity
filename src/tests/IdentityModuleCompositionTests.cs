@@ -28,6 +28,32 @@ public sealed class IdentityModuleCompositionTests
     }
 
     [Fact]
+    public void Applying_one_stage_leaves_other_stages_pending_and_fails_the_check()
+    {
+        var pipeline = new IdentityPipelineBuilder();
+        var applied = new List<string>();
+        pipeline.Use(IdentityPipelineStage.Endpoints, "endpoints", _ => applied.Add("endpoints"));
+        pipeline.Use(IdentityPipelineStage.PreAuthentication, "status-page", _ => applied.Add("status-page"));
+        var app = new ApplicationBuilder(new ServiceCollection().BuildServiceProvider());
+
+        pipeline.ApplyStage(app, IdentityPipelineStage.Endpoints);
+
+        Assert.Equal(["endpoints"], applied);
+        var failure = Assert.Throws<InvalidOperationException>(pipeline.EnsureAllApplied);
+        Assert.Contains("status-page", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Endpoint_mapping_requires_a_web_application_host()
+    {
+        var pipeline = new IdentityPipelineBuilder();
+        pipeline.MapEndpoints("ui", _ => { });
+
+        Assert.Throws<InvalidOperationException>(() =>
+            pipeline.Apply(new ApplicationBuilder(new ServiceCollection().BuildServiceProvider())));
+    }
+
+    [Fact]
     public void Duplicate_step_names_are_rejected()
     {
         var pipeline = new IdentityPipelineBuilder();

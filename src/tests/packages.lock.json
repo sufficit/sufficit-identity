@@ -1162,6 +1162,7 @@
           "OpenIddict.AspNetCore": "[7.7.0, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.Core": "[0.4.0-alpha, )",
+          "Sufficit.Identity.Hosting.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.Vault": "[0.4.0-alpha, )"
         }
       },
@@ -1235,6 +1236,7 @@
         "dependencies": {
           "Sufficit.Blazor.UI": "[2.*, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
+          "Sufficit.Identity.Hosting.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Components": "[0.4.0-alpha, )"
         }
@@ -1244,6 +1246,7 @@
         "dependencies": {
           "Sufficit.Blazor.UI": "[2.*, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
+          "Sufficit.Identity.Hosting.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.UI.Components": "[0.4.0-alpha, )"
         }
