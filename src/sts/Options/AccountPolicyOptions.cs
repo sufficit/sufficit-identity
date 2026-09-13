@@ -48,18 +48,30 @@ public sealed class PasswordPolicyOptions
     public int RequiredUniqueChars { get; init; } = 4;
 
     /// <summary>
-    /// OPT-IN hook for a breached-password validator (HaveIBeenPwned k-anonymity
-    /// range API, or a local top-N blocklist). Default <c>false</c>: the flag
-    /// exists to surface the decision as explicit config, but NO validator is
-    /// wired up by default in this pass — implementing the validator itself
-    /// (HIBP range call with network/mock, or a local list) is tracked as a
-    /// separate hardening item, since a network-dependent validator needs
-    /// careful handling of latency/availability and a local list is of limited
-    /// value. Flip to <c>true</c> only after the validator is implemented and
-    /// its latency/availability characteristics are validated for the target
-    /// environment.
+    /// Rejects new and changed passwords found in known breaches, using
+    /// <see cref="BreachedPasswordValidator"/> against the HaveIBeenPwned
+    /// k-anonymity range API: only the first five hex characters of the SHA-1
+    /// hash leave the server. Default <c>false</c>, because it requires
+    /// outbound HTTPS access that an isolated deployment may not have.
     /// </summary>
     public bool RejectBreached { get; init; } = false;
+
+    /// <summary>
+    /// What happens when the breach check cannot complete (timeout, network
+    /// failure or an error response). <see cref="BreachedPasswordFailureMode.FailOpen"/>
+    /// (default) accepts the password so an outage of the external API does
+    /// not block registration and password changes;
+    /// <see cref="BreachedPasswordFailureMode.FailClosed"/> rejects it until
+    /// the check succeeds.
+    /// </summary>
+    public BreachedPasswordFailureMode BreachedCheckFailureMode { get; init; } =
+        BreachedPasswordFailureMode.FailOpen;
+}
+
+public enum BreachedPasswordFailureMode
+{
+    FailOpen,
+    FailClosed,
 }
 /// <summary>
 /// Sign-in policy applied by ASP.NET Core Identity's

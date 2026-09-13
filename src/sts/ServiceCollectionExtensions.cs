@@ -428,8 +428,9 @@ public static partial class ServiceCollectionExtensions
             .AddDefaultTokenProviders();
 
         // L10: breached-password validator (HIBP k-anonymity range API).
-        // Registered only when RejectBreached is true. Fail-open on API
-        // unavailability (see BreachedPasswordValidator remarks).
+        // Registered only when RejectBreached is true. Password:
+        // BreachedCheckFailureMode decides what an unavailable API does
+        // (see BreachedPasswordValidator remarks).
         if (options.Password.RejectBreached)
         {
             services.AddHttpClient<BreachedPasswordValidator>()
