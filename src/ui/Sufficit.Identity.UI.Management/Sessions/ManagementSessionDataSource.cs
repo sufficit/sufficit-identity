@@ -18,7 +18,7 @@ public sealed class ManagementSessionDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
     ILogger<ManagementSessionDataSource> logger,
-    IStringLocalizer<ManagementResource> localizer)
+    IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer)
 {
     public Task<ManagementDataResult<ManagementSessionPage>> SearchAsync(
         ManagementSessionSearch query,

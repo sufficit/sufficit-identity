@@ -121,7 +121,7 @@ else
             </div>
             <div class="users-investigation__count" aria-label="@StaleUnverifiedCountLabel">
                 <strong>@Analytics.StaleUnverifiedWithoutExternalTotal.ToString("N0", PtBr)</strong>
-                <span>@Pluralize(Analytics.StaleUnverifiedWithoutExternalTotal, L["Users.Count.PendingAccountSingular"], L["Users.Count.PendingAccountPlural"])</span>
+                <span>@Pluralize(Analytics.StaleUnverifiedWithoutExternalTotal, L["Users.Count.AccountSingular"], L["Users.Count.AccountPlural"])</span>
             </div>
             @if (IsStaleUnverifiedReview)
             {

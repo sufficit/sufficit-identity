@@ -18,7 +18,7 @@ public sealed class ManagementUserDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
     ILogger<ManagementUserDataSource> logger,
-    IStringLocalizer<ManagementResource> localizer)
+    IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer)
 {
     public Task<ManagementDataResult<ManagementUserAccess>> GetAccessAsync(
         CancellationToken cancellationToken = default) =>
