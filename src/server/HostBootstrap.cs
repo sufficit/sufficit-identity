@@ -14,7 +14,7 @@ namespace Sufficit.Identity.Server;
 /// of registrations and pipeline steps instead of also carrying its helpers.
 /// Pure move: same code, same callers, same order.
 /// </remarks>
-internal static class HostBootstrap
+internal static partial class HostBootstrap
 {
     internal static string? ParseDatabaseName(string? connectionString)
     {

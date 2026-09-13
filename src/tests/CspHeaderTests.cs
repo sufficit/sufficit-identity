@@ -119,6 +119,82 @@ public sealed class CspHeaderTests
         Assert.DoesNotContain("nao-registrado.example", csp, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The consent POST may redirect through the authorization endpoint to a
+    /// cross-origin callback. The callback must be present in form-action or
+    /// Chromium blocks the redirect chain after the user approves consent.
+    /// </summary>
+    [Fact]
+    public async Task Consent_page_allows_form_action_to_the_clients_registered_redirect_uri()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+        var query = new Dictionary<string, string?>
+        {
+            ["client_id"] = TestDataSeeder.AuthorizationCodeClientId,
+            ["redirect_uri"] = TestDataSeeder.AuthorizationCodeRedirectUri,
+        };
+
+        using var response = await client.GetAsync(
+            QueryHelpers.AddQueryString("/consent", query));
+
+        var csp = string.Join(' ', response.Headers.GetValues(
+            "Content-Security-Policy-Report-Only"));
+        var expected = new Uri(TestDataSeeder.AuthorizationCodeRedirectUri)
+            .GetLeftPart(UriPartial.Path);
+
+        Assert.Contains(expected, csp, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Consent_page_ignores_an_unregistered_redirect_uri()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+        var query = new Dictionary<string, string?>
+        {
+            ["client_id"] = TestDataSeeder.AuthorizationCodeClientId,
+            ["redirect_uri"] = "https://nao-registrado.example/callback",
+        };
+
+        using var response = await client.GetAsync(
+            QueryHelpers.AddQueryString("/consent", query));
+
+        var csp = string.Join(' ', response.Headers.GetValues(
+            "Content-Security-Policy-Report-Only"));
+
+        Assert.DoesNotContain("nao-registrado.example", csp, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Consent_page_does_not_accept_another_clients_registered_redirect_uri()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+        var query = new Dictionary<string, string?>
+        {
+            ["client_id"] = TestDataSeeder.ClientCredentialsClientId,
+            ["redirect_uri"] = TestDataSeeder.AuthorizationCodeRedirectUri,
+        };
+
+        using var response = await client.GetAsync(
+            QueryHelpers.AddQueryString("/consent", query));
+
+        var csp = string.Join(' ', response.Headers.GetValues(
+            "Content-Security-Policy-Report-Only"));
+
+        Assert.DoesNotContain(
+            TestDataSeeder.AuthorizationCodeRedirectUri,
+            csp,
+            StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task X_Frame_options_denied_is_emitted_alongside_csp()
     {

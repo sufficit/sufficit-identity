@@ -281,166 +281,14 @@ if (reconcileClientTokenLifetimes)
 }
 
 // ---- Development-only test authentication (MUST be before middleware) ----
-// Compiled into Debug builds only. Release binaries — CI, Docker and deploy.py
-// all publish Release — do not contain these endpoints at all, so a production
-// host started with ASPNETCORE_ENVIRONMENT=Development by mistake still cannot
-// expose an anonymous sign-in endpoint.
-#if DEBUG
-if (app.Environment.IsDevelopment())
-{
-    app.Logger.LogInformation("REGISTERING __test__ endpoints");
-    app.MapGet("/__test__/ping", () => "pong");
-    // Lists every registered endpoint (route template, HTTP methods, auth
-    // metadata), optionally filtered by ?path=. invaluable when debugging
-    // route collisions between the root pipeline and the /management branch.
-    app.MapGet("/__test__/endpoints", (string? path) =>
-        string.Join("\n",
-            app.Services.GetRequiredService<Microsoft.AspNetCore.Routing.EndpointDataSource>()
-                .Endpoints
-                .Select(e => e is RouteEndpoint re
-                    ? $"{re.RoutePattern.RawText} [{string.Join(",", re.Metadata.GetMetadata<Microsoft.AspNetCore.Routing.HttpMethodMetadata>()?.HttpMethods ?? new[] { "?" })}] {string.Join(",", re.Metadata.OfType<Microsoft.AspNetCore.Authorization.IAuthorizeData>().Select(a => a.Policy ?? a.Roles ?? "auth"))}"
-                    : $"{e.DisplayName} [no-route]")
-                .Where(l => path is null || l.Contains(path, StringComparison.OrdinalIgnoreCase))));
-    app.MapPost("/__test__/signin", async (
-        Microsoft.AspNetCore.Http.HttpContext context,
-        Microsoft.AspNetCore.Identity.UserManager<Sufficit.Identity.Core.Entities.ApplicationUser> userManager,
-        Microsoft.AspNetCore.Identity.SignInManager<Sufficit.Identity.Core.Entities.ApplicationUser> signInManager) =>
-    {
-        var form = await context.Request.ReadFormAsync();
-        var username = form["username"].ToString();
-        if (string.IsNullOrWhiteSpace(username))
-        {
-            context.Response.StatusCode = 400;
-            await context.Response.WriteAsync("username required");
-            return;
-        }
-        var user = await userManager.FindByNameAsync(username)
-            ?? await userManager.FindByEmailAsync(username);
-        if (user is null)
-        {
-            user = new Sufficit.Identity.Core.Entities.ApplicationUser
-            {
-                UserName = username,
-                Email = username,
-                EmailConfirmed = true,
-            };
-            await userManager.CreateAsync(user, "Test123!@Test");
-            // Grants whatever the deployment configured as full administrator
-            // roles (see appsettings.Development.json); nothing otherwise.
-            var fullAdministratorRoles = context.RequestServices
-                .GetService<Microsoft.Extensions.Options.IOptions<Sufficit.Identity.Management.ManagementOptions>>()
-                ?.Value.Authorization.FullAdministratorRoles ?? [];
-            foreach (var role in fullAdministratorRoles)
-            {
-                await userManager.AddToRoleAsync(user, role);
-            }
-        }
-        var claims = new List<System.Security.Claims.Claim>
-        {
-            new("amr", "pwd"),
-            new("auth_time",
-                DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
-                System.Security.Claims.ClaimValueTypes.Integer64),
-        };
-        if (string.Equals(form["mfa"].ToString(), "true", StringComparison.OrdinalIgnoreCase))
-        {
-            claims.Add(new System.Security.Claims.Claim("amr", "otp"));
-            claims.Add(new System.Security.Claims.Claim("amr", "mfa"));
-            claims.Add(new System.Security.Claims.Claim(
-                "acr",
-                context.RequestServices
-                    .GetRequiredService<IAuthenticationContextClassMapper>()
-                    .Map(Sufficit.Identity.Application.Security.CaepAssuranceLevel.Loa2)));
-        }
-        await signInManager.SignInWithClaimsAsync(user, null, claims);
-        context.Response.StatusCode = 200;
-        await context.Response.WriteAsync("ok");
-    });
-}
-
-#endif
+// Debug builds only; see DevelopmentTestEndpoints.
+DevelopmentTestEndpoints.Map(app);
 
 // ---- Validate UI module composition (Phase 2) ----
-// Catches: duplicate modules, incompatible versions, surface requested
-// without a module, management UI without management API. All fail-fast
-// with a clear message instead of silent no-ops or runtime 404s.
-{
-    var hostVersion = typeof(Program).Assembly.GetName().Version ?? new Version(0, 4, 0);
-    var registry = app.Services.GetService<UiModuleRegistry>();
-    if (registry is not null)
-    {
-        // Collect all UiModuleDescriptor singletons registered by the UI modules.
-        foreach (var descriptor in app.Services.GetServices<UiModuleDescriptor>())
-        {
-            registry.Register(descriptor);
-        }
-
-        // Validate: incompatible versions.
-        foreach (var module in registry.Modules)
-        {
-            if (module.MinHostVersion > hostVersion)
-            {
-                throw new UiCompositionException(
-                    $"UI module '{module.Id}' v{module.Version} requires host >= " +
-                    $"v{module.MinHostVersion}, but the host is v{hostVersion}.");
-            }
-        }
-
-        // Validate: surface requested but no module registered for it.
-        if (uiHostingOptions.Public.IsEmbedded && !registry.HasSurface(UiSurface.Public))
-        {
-            throw new UiCompositionException(
-                "Public UI surface is Embedded but no public UI module was registered.");
-        }
-
-        if (uiHostingOptions.Management.IsEmbedded && !registry.HasSurface(UiSurface.Management))
-        {
-            if (!mgmtEnabled)
-            {
-                throw new UiCompositionException(
-                    "Management UI surface is Embedded but the management API " +
-                    "(Sufficit:Identity:Management:Enabled) is disabled.");
-            }
-            throw new UiCompositionException(
-                "Management UI surface is Embedded but no management UI module was registered.");
-        }
-
-        if (vaultUiEnabled && !registry.HasSurface(UiSurface.Vault))
-        {
-            throw new UiCompositionException(
-                "Vault UI surface is Embedded but no Vault UI module was registered.");
-        }
-    }
-}
+UiCompositionValidation.Validate(app, uiHostingOptions, mgmtEnabled, vaultUiEnabled);
 
 // ---- Distributed-cache guard for multi-replica deployments ----
-// Several security-critical stores (DPoP replay cache + nonce store, CIBA
-// pending requests, front-channel logout context, passkey ceremony tickets)
-// depend on IDistributedCache. The default registration is
-// AddDistributedMemoryCache (single-node, in-process) — correct for one
-// replica, but in a multi-replica deployment each replica has its own isolated
-// cache, so DPoP replay detection, CIBA cross-replica polling and nonce
-// challenges silently break. When RequireShared is on and the registered
-// IDistributedCache is the in-memory fallback, fail fast (or warn) so the gap
-// is visible instead of a silent security degradation.
-if (identityOptions.DistributedCache.RequireShared && !app.Environment.IsDevelopment())
-{
-    using var scope = app.Services.CreateScope();
-    var cache = scope.ServiceProvider.GetService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>();
-    var isMemoryFallback = cache?.GetType().Name is "MemoryDistributedCache";
-    if (isMemoryFallback)
-    {
-        var message =
-            "Sufficit:Identity:DistributedCache:RequireShared is true, but the registered " +
-            "IDistributedCache is the in-memory fallback (AddDistributedMemoryCache), which is NOT " +
-            "shared across replicas. DPoP replay protection, CIBA cross-replica polling, DPoP nonce " +
-            "challenges and front-channel logout context would silently break with >1 replica. " +
-            "Register a real shared cache (e.g. Redis via AddStackExchangeRedisCache) before scaling out, " +
-            "or set Sufficit:Identity:DistributedCache:RequireShared=false if this is genuinely a single-replica deployment.";
-
-        throw new InvalidOperationException(message);
-    }
-}
+HostStartupGuards.EnsureSharedDistributedCache(app, identityOptions);
 
 // ---- Consolidated production posture check (fail-closed) ----
 // Each enabled module contributes its own permissive settings. Development
@@ -582,50 +430,7 @@ if (rateLimit.Enabled)
 app.UseSufficitCors(identityOptions.Cors);
 
 // ---- Database schema provisioning (migrations). ----
-// Dev/test applies pending EF migrations to exercise migration paths. Outside
-// Development, only the dedicated --migrate-only process may change schema;
-// the HTTP process rejects the legacy AutoMigrate switch.
-if (!app.Environment.IsDevelopment()
-    && identityOptions.Database.AutoMigrate
-    && !migrateOnly)
-{
-    throw new InvalidOperationException(
-        "Database:AutoMigrate is no longer supported by the production web process. Run Sufficit.Identity.Server.dll --migrate-only as a dedicated deployment job.");
-}
-
-var shouldMigrate = migrateOnly || app.Environment.IsDevelopment();
-if (shouldMigrate)
-{
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-    if (identityOptions.Database.AllowedDatabaseNames.Length > 0)
-    {
-        var configured = startupSecretStore.GetSecretAsync(
-                "database/connection-string")
-            .GetAwaiter()
-            .GetResult();
-        var actualName = HostBootstrap.ParseDatabaseName(configured);
-        if (actualName is null || !identityOptions.Database.AllowedDatabaseNames.Contains(
-                actualName, StringComparer.Ordinal))
-        {
-            throw new InvalidOperationException(
-                $"Automatic database migration is enabled, but the connection string's database " +
-                $"'{actualName ?? "<unparsed>"}' is not in " +
-                $"Sufficit:Identity:Database:AllowedDatabaseNames " +
-                $"([{string.Join(", ", identityOptions.Database.AllowedDatabaseNames)}]). " +
-                "This guard prevents migrating the wrong database. Either add the database name to the " +
-                "allow-list, or disable Sufficit:Identity:Database:AutoMigrate and provision schema " +
-                "from docs/migration/sql/* instead.");
-        }
-    }
-
-    await HostBootstrap.ApplyMigrationsWithAdvisoryLockAsync(db);
-    app.Logger.LogInformation(
-        "Applied pending database migrations (environment: {Environment}, dedicatedMigrator: {DedicatedMigrator}).",
-        app.Environment.EnvironmentName,
-        migrateOnly);
-}
+await HostBootstrap.ProvisionSchemaAsync(app, identityOptions, startupSecretStore, migrateOnly);
 
 if (migrateOnly)
 {
@@ -648,12 +453,6 @@ using (var scope = app.Services.CreateScope())
         .GetRequiredService<PersonalTokenScopeProvisioner>()
         .ProvisionAsync();
 }
-
-// Parse the MySQL/MariaDB database name out of a connection string for the
-// allowed-database guard above. Returns null when it cannot be parsed. Hand-
-// rolled (no DbConnectionStringBuilder) so the host needs no extra package
-// reference; MySQL/MariaDB connection strings are semicolon-separated
-// key=value pairs where the database is the "database"/"db" key.
 
 // ---- Swagger ----
 // Both endpoints are anonymous, so publishing the document hands anyone the
@@ -755,28 +554,6 @@ if (uiHostingOptions.Public.IsEmbedded)
 }
 
 // Load the merged trust boundary before accepting traffic (after schema provisioning).
-var proxySnapshots = app.Services.GetRequiredService<TrustedProxySnapshotStore>();
-await proxySnapshots.RefreshAsync();
-DeploymentTopologyPolicy.Validate(identityOptions, proxySnapshots.Current.EffectiveNetworks.Length,
-    app.Environment.IsDevelopment());
-if (proxySnapshots.Current.EffectiveNetworks.Length == 0 && !app.Environment.IsDevelopment())
-{
-    var message =
-        "No trusted proxies are configured in appsettings or the database; only loopback proxies are trusted, so " +
-        "X-Forwarded-* headers from remote reverse proxies will be ignored until it is set. " +
-        "With the rate limiter partitioning by RemoteIpAddress, this means ALL token-endpoint " +
-        "traffic shares ONE bucket (the proxy's IP) — a single source or even normal load can " +
-        "trigger self-inflicted 429s for everyone.";
-
-    // Item 5.1 [L4]: optionally make this a fatal startup error so a missing
-    // TrustedProxies cannot silently turn the rate limiter into a self-DoS.
-    if (identityOptions.RateLimit.FailOnUntrustedProxy)
-    {
-        throw new InvalidOperationException(message + " Set Sufficit:Identity:TrustedProxies " +
-            "(or disable Sufficit:Identity:RateLimit:FailOnUntrustedProxy to degrade to a warning).");
-    }
-
-    app.Logger.LogWarning(message);
-}
+await HostStartupGuards.LoadTrustedProxiesAsync(app, identityOptions);
 
 app.Run();
