@@ -76,6 +76,21 @@ public sealed class SecurityHardeningTests
     }
 
     [Fact]
+    public async Task Breached_password_validator_rejects_when_api_unreachable_and_fail_closed()
+    {
+        var handler = new StubHandler(System.Net.HttpStatusCode.ServiceUnavailable);
+        var validator = new BreachedPasswordValidator(
+            new HttpClient(handler),
+            NullLogger<BreachedPasswordValidator>.Instance,
+            BreachedPasswordFailureMode.FailClosed);
+
+        var result = await validator.ValidateAsync(null!, null!, "any-password");
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(result.Errors, e => e.Code == "PasswordBreachCheckUnavailable");
+    }
+
+    [Fact]
     public async Task Breached_password_validator_rejects_known_breached_password()
     {
         // The HIBP API returns "SUFFIX:count" lines. We simulate a match by
