@@ -16,6 +16,16 @@ public interface ICibaClientPolicy
         string? clientSecret,
         string operation,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Applies the eligibility policy to a client the token endpoint has
+    /// already authenticated, with whatever method the client is registered
+    /// for (secret, private_key_jwt, mTLS).
+    /// </summary>
+    Task<CibaClientAuthorization> AuthorizeAuthenticatedClientAsync(
+        string? clientId,
+        string operation,
+        CancellationToken cancellationToken = default);
 }
 
 internal sealed class CibaClientPolicy(
@@ -61,6 +71,42 @@ internal sealed class CibaClientPolicy(
             return Denied("client_authentication_failed");
         }
 
+        return await EvaluateAsync(application, clientId, confidential, operation, cancellationToken);
+    }
+
+    public async Task<CibaClientAuthorization> AuthorizeAuthenticatedClientAsync(
+        string? clientId,
+        string operation,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+        if (string.IsNullOrWhiteSpace(clientId))
+        {
+            return Denied("client_id_missing");
+        }
+
+        var application = await applications.FindByClientIdAsync(
+            clientId,
+            cancellationToken);
+        if (application is null)
+        {
+            return Denied("client_unknown");
+        }
+
+        var confidential = string.Equals(
+            await applications.GetClientTypeAsync(application, cancellationToken),
+            OpenIddictConstants.ClientTypes.Confidential,
+            StringComparison.OrdinalIgnoreCase);
+        return await EvaluateAsync(application, clientId, confidential, operation, cancellationToken);
+    }
+
+    private async Task<CibaClientAuthorization> EvaluateAsync(
+        object application,
+        string clientId,
+        bool confidential,
+        string operation,
+        CancellationToken cancellationToken)
+    {
         var reasons = new List<string>();
         if (options.RequireConfidentialClient && !confidential)
         {

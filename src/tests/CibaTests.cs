@@ -12,19 +12,13 @@ namespace Sufficit.Identity.Tests;
 
 /// <summary>
 /// Covers OpenID Connect CIBA Core 1.0: initiation, polling, and the out-of-band
-/// completion channel. OpenIddict 7.6 has no CIBA primitives, so this exercises
-/// the from-scratch implementation (<c>CibaController</c> +
-/// <c>ICibaPendingRequestStore</c> + the poll branch in
-/// <c>AuthorizationController</c>).
+/// completion channel (<c>CibaController</c> + <c>ICibaPendingRequestStore</c>),
+/// with polling at the standard token endpoint (<c>CibaGrantHandler</c>).
 /// </summary>
 /// <remarks>
 /// The shared <see cref="StsCollection"/> fixture leaves CIBA disabled. These
 /// tests use isolated factories with <c>Ciba.Enabled=true</c>, so the shared
-/// suite is unaffected. The poll uses a dedicated test endpoint because
-/// OpenIddict's <c>/connect/token</c> pipeline rejects the unregistered CIBA
-/// grant_type with <c>unsupported_grant_type</c> before the controller runs —
-/// see <c>CibaController.Poll</c> for the rationale and the
-/// <c>/connect/ciba/token</c> endpoint that bypasses that validation.
+/// suite is unaffected.
 /// </remarks>
 public sealed class CibaInitiationTests
 {
@@ -109,9 +103,8 @@ public sealed class CibaInitiationTests
         var client = factory.CreateClient();
         var authReqId = await InitiateAsync(client);
 
-        // The dedicated CIBA poll endpoint (NOT /connect/token, which OpenIddict
-        // rejects for the unregistered grant). Returns authorization_pending.
-        var (status, body) = await client.PostFormAsync("/connect/ciba/token", new Dictionary<string, string>
+        // CIBA Core 1.0 §10.1: polling is the standard token endpoint.
+        var (status, body) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
         {
             ["grant_type"] = "urn:openid:params:grant-type:ciba",
             ["auth_req_id"] = authReqId,
@@ -128,9 +121,8 @@ public sealed class CibaInitiationTests
     {
         // End-to-end CIBA happy path: initiate → approve (via the store,
         // simulating the out-of-band completion channel) → poll → token.
-        // The token is emitted by CibaAccessTokenGenerator (a hand-built JWT,
-        // since OpenIddict forbids SignIn from the unregistered
-        // /connect/ciba/token endpoint). A second poll is rejected (one-shot).
+        // The token is issued by the regular token pipeline. A second poll is
+        // rejected (one-shot).
         using var factory = SufficitIdentityTestFactory.CreateIsolated(CibaEnabledWithShortInterval());
         await ((IAsyncLifetime)factory).InitializeAsync();
         await EnsureCibaClientAsync(factory);
@@ -145,7 +137,7 @@ public sealed class CibaInitiationTests
             Assert.True(store.Approve(authReqId, subject));
         }
 
-        var (status, body) = await client.PostFormAsync("/connect/ciba/token", new Dictionary<string, string>
+        var (status, body) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
         {
             ["grant_type"] = "urn:openid:params:grant-type:ciba",
             ["auth_req_id"] = authReqId,
@@ -158,21 +150,11 @@ public sealed class CibaInitiationTests
         Assert.False(string.IsNullOrEmpty(accessToken));
         Assert.Equal("Bearer", body.GetProperty("token_type").GetString());
         Assert.Equal("test.scope", body.GetProperty("scope").GetString());
-
-        // The token is a self-contained JWT (typ=at+jwt). Decode the header to
-        // confirm it is signed (not opaque) and carries the access-token type.
-        var handler = new Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler();
-        var jwt = handler.ReadJsonWebToken(accessToken!);
-        Assert.Equal("at+jwt", jwt.Typ);
-        Assert.Equal(subject, jwt.GetClaim("sub").Value);
-        Assert.False(jwt.TryGetClaim("email", out _));
-        Assert.False(jwt.TryGetClaim("name", out _));
-        Assert.False(jwt.TryGetClaim("preferred_username", out _));
-        Assert.False(jwt.TryGetClaim("role", out _));
+        Assert.False(body.TryGetProperty("refresh_token", out _));
 
         // One-shot: a second poll after issuance must NOT replay the token
         // (the store removed the auth_req_id on emission).
-        var (replayStatus, _) = await client.PostFormAsync("/connect/ciba/token", new Dictionary<string, string>
+        var (replayStatus, _) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
         {
             ["grant_type"] = "urn:openid:params:grant-type:ciba",
             ["auth_req_id"] = authReqId,
@@ -188,6 +170,7 @@ public sealed class CibaInitiationTests
             "/connect/introspect",
             new Dictionary<string, string> { ["token"] = accessToken! });
         Assert.True(active.GetProperty("active").GetBoolean());
+        Assert.Equal(subject, active.GetProperty("sub").GetString());
 
         client.DefaultRequestHeaders.Authorization = null;
         var (revocationStatus, _) = await client.PostFormAsync(
@@ -240,7 +223,7 @@ public sealed class CibaInitiationTests
         var client = factory.CreateClient();
         var authReqId = await InitiateAsync(client);
 
-        var (status, body) = await client.PostFormAsync("/connect/ciba/token", new Dictionary<string, string>
+        var (status, body) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
         {
             ["grant_type"] = "urn:openid:params:grant-type:ciba",
             ["auth_req_id"] = authReqId,
@@ -250,6 +233,76 @@ public sealed class CibaInitiationTests
 
         Assert.Equal(HttpStatusCode.BadRequest, status);
         Assert.Equal("invalid_grant", body.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task Poll_uses_the_token_endpoint_client_authentication()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(CibaEnabledWithShortInterval());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await EnsureCibaClientAsync(factory);
+
+        var client = factory.CreateClient();
+        var authReqId = await InitiateAsync(client);
+
+        // client_secret_basic: only the token endpoint authenticates this way,
+        // the dedicated poll endpoint read the secret from the form.
+        client.DefaultRequestHeaders.Authorization = IntrospectionTests.BasicAuthFor(
+            "test-ciba", "test-ciba-secret");
+        var (pendingStatus, pendingBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "urn:openid:params:grant-type:ciba",
+            ["auth_req_id"] = authReqId,
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, pendingStatus);
+        Assert.Equal("authorization_pending", pendingBody.GetProperty("error").GetString());
+
+        client.DefaultRequestHeaders.Authorization = IntrospectionTests.BasicAuthFor(
+            "test-ciba", "wrong-secret");
+        var (rejectedStatus, rejectedBody) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "urn:openid:params:grant-type:ciba",
+            ["auth_req_id"] = authReqId,
+        });
+        Assert.Equal(HttpStatusCode.Unauthorized, rejectedStatus);
+        Assert.Equal("invalid_client", rejectedBody.GetProperty("error").GetString());
+
+        client.DefaultRequestHeaders.Authorization = null;
+        using var legacyPoll = await client.PostAsync(
+            "/connect/ciba/token",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["grant_type"] = "urn:openid:params:grant-type:ciba",
+                ["auth_req_id"] = authReqId,
+            }));
+        Assert.Equal(HttpStatusCode.NotFound, legacyPoll.StatusCode);
+    }
+
+    [Fact]
+    public async Task Discovery_advertises_ciba_poll_mode_only_when_enabled()
+    {
+        using var enabled = SufficitIdentityTestFactory.CreateIsolated(CibaEnabled());
+        await ((IAsyncLifetime)enabled).InitializeAsync();
+        var metadata = await enabled.CreateClient()
+            .GetFromJsonAsync<System.Text.Json.JsonElement>("/.well-known/openid-configuration");
+
+        Assert.Contains(
+            metadata.GetProperty("grant_types_supported").EnumerateArray(),
+            value => value.GetString() == "urn:openid:params:grant-type:ciba");
+        Assert.EndsWith("/bc-authorize",
+            metadata.GetProperty("backchannel_authentication_endpoint").GetString());
+        Assert.Equal(["poll"], metadata.GetProperty("backchannel_token_delivery_modes_supported")
+            .EnumerateArray().Select(value => value.GetString()!).ToArray());
+
+        using var disabled = SufficitIdentityTestFactory.CreateIsolated(
+            new Dictionary<string, string?>());
+        await ((IAsyncLifetime)disabled).InitializeAsync();
+        var disabledMetadata = await disabled.CreateClient()
+            .GetFromJsonAsync<System.Text.Json.JsonElement>("/.well-known/openid-configuration");
+        Assert.False(disabledMetadata.TryGetProperty("backchannel_authentication_endpoint", out _));
+        Assert.DoesNotContain(
+            disabledMetadata.GetProperty("grant_types_supported").EnumerateArray(),
+            value => value.GetString() == "urn:openid:params:grant-type:ciba");
     }
 
     [Fact]

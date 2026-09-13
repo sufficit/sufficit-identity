@@ -250,18 +250,8 @@ public static partial class ServiceCollectionExtensions
         services.AddSingleton<Ciba.ICibaPendingRequestStore,
             Ciba.RollingCibaPendingRequestStore>();
         services.AddScoped<Ciba.ICibaClientPolicy, Ciba.CibaClientPolicy>();
-
-        // Always resolvable so the disabled controller can return a deliberate
-        // 404 instead of failing activation with a DI 500. The feature gate
-        // prevents any generator method from running while CIBA is disabled.
-        var cibaIssuer = string.IsNullOrWhiteSpace(options.Issuer)
-            ? "https://localhost/"
-            : options.Issuer;
-        var cibaAccessTokenMinutes =
-            options.Tokens.AccessTokenLifetimeMinutes ?? 60;
-        services.AddSingleton(new Ciba.CibaAccessTokenGenerator(
-            auxiliarySigningCredentials,
-            cibaIssuer,
-            cibaAccessTokenMinutes));
+        // Tokens are issued by the regular token pipeline; the handler
+        // refuses the grant while CIBA is disabled.
+        services.AddScoped<Grants.ITokenGrantHandler, Grants.CibaGrantHandler>();
     }
 }

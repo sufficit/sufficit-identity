@@ -197,6 +197,14 @@ public static partial class ServiceCollectionExtensions
             server.AllowCustomFlow(Grants.IdentityAssertionGrant.JwtBearerGrantType);
         }
 
+        // CIBA poll mode (CIBA Core 1.0 §10.1) at the standard token endpoint,
+        // so the grant inherits client authentication, DPoP and mTLS binding.
+        // Handled in Grants/CibaGrantHandler.cs.
+        if (options.Ciba.Enabled)
+        {
+            server.AllowCustomFlow(Grants.CibaGrantHandler.GrantType);
+        }
+
         server.AddEventHandler(RecordIdentityUsage.Descriptor);
         server.AddEventHandler(RecordAuthorizationUsageFailure.Descriptor);
         server.AddEventHandler(RecordTokenUsageFailure.Descriptor);

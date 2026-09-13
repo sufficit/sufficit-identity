@@ -22,33 +22,22 @@ namespace Sufficit.Identity.STS.Controllers;
 /// <summary>
 /// CIBA (OpenID Connect Client-Initiated Backchannel Authentication Core 1.0).
 /// Implements the initiation (<c>/bc-authorize</c>) and completion
-/// (<c>/connect/ciba/complete</c>) halves. The polling half
-/// (<c>grant_type=urn:openid:params:grant-type:ciba</c>) lives in
-/// <see cref="AuthorizationController.ExchangeForCibaAsync"/>.
+/// (<c>/connect/ciba/complete</c>) halves. The polling half is the standard
+/// token endpoint with <c>grant_type=urn:openid:params:grant-type:ciba</c>,
+/// served by <see cref="Grants.CibaGrantHandler"/>.
 /// </summary>
 /// <remarks>
-/// OpenIddict 7.6 has no CIBA primitives. The pending <c>auth_req_id</c> state
-/// lives in <see cref="Ciba.ICibaPendingRequestStore"/>, registered as
-/// <c>RollingCibaPendingRequestStore</c> over a database primary — so it is
-/// already shared across replicas and survives a restart. (This remark used to
-/// say "in-memory by default; swappable for Redis/DB"; that predated the
-/// database store and was the third copy of a stale claim that misled the
-/// 2026-08-30 evaluation into a false positive.) The poll loop and
-/// completion reuse the device-flow shape (pending → approve → issue), but the
-/// principal handoff is via the store rather than OpenIddict's SignIn binding
-/// (which is device_code-specific). Portable: the store interface isolates the
-/// OpenIddict-free core from the host.
+/// The pending <c>auth_req_id</c> state lives in
+/// <see cref="Ciba.ICibaPendingRequestStore"/>, registered as
+/// <c>RollingCibaPendingRequestStore</c> over a database primary, so it is
+/// shared across replicas and survives a restart. The initiation endpoint is
+/// not a token endpoint, so it still authenticates the client itself through
+/// <see cref="Ciba.ICibaClientPolicy"/> (client secret only).
 /// </remarks>
 public class CibaController : Controller
 {
-    /// <summary>CIBA Core 1.0 §3 — the CIBA grant-type URI.</summary>
-    public const string CibaGrantType = "urn:openid:params:grant-type:ciba";
-
     private readonly IOpenIddictApplicationManager _applicationManager;
-    private readonly IOpenIddictScopeManager _scopeManager;
-    private readonly IOpenIddictTokenManager _tokenManager;
     private readonly Ciba.ICibaPendingRequestStore _pendingStore;
-    private readonly Ciba.CibaAccessTokenGenerator _accessTokenGenerator;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IAntiforgery _antiforgery;
@@ -58,10 +47,7 @@ public class CibaController : Controller
 
     public CibaController(
         IOpenIddictApplicationManager applicationManager,
-        IOpenIddictScopeManager scopeManager,
-        IOpenIddictTokenManager tokenManager,
         Ciba.ICibaPendingRequestStore pendingStore,
-        Ciba.CibaAccessTokenGenerator accessTokenGenerator,
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager,
         IConfiguration configuration,
@@ -70,10 +56,7 @@ public class CibaController : Controller
         IAccountLookupPolicy accountLookup)
     {
         _applicationManager = applicationManager;
-        _scopeManager = scopeManager;
-        _tokenManager = tokenManager;
         _pendingStore = pendingStore;
-        _accessTokenGenerator = accessTokenGenerator;
         _signInManager = signInManager;
         _userManager = userManager;
         _antiforgery = antiforgery;
@@ -326,181 +309,5 @@ public class CibaController : Controller
 
         _pendingStore.Approve(authReqId, approverId);
         return Ok(new { status = "approved" });
-    }
-
-    // -----------------------------------------------------------------------
-    // POST ~/connect/ciba/token — the CIBA poll endpoint (CIBA Core 1.0 §10).
-    // -----------------------------------------------------------------------
-    // CIBA Core 1.0 specifies the token endpoint as the poll target. However,
-    // OpenIddict 7.6 has no CIBA grant-type registration, so a
-    // grant_type=urn:openid:params:grant-type:ciba posted to /connect/token is
-    // rejected with unsupported_grant_type before the controller runs. This
-    // dedicated endpoint (/connect/ciba/token) implements the same poll
-    // contract so CIBA works on OpenIddict 7.6 today. When migrating off
-    // OpenIddict (or when a future OpenIddict version adds CIBA), this logic
-    // moves to the standard token endpoint unchanged — the response shape and
-    // error codes are RFC-compliant either way.
-    [HttpPost("~/connect/ciba/token")]
-    [IgnoreAntiforgeryToken]
-    [Produces("application/json")]
-    public async Task<IActionResult> Poll()
-    {
-        var authReqId = Request.Form["auth_req_id"].ToString();
-        var grantType = Request.Form["grant_type"].ToString();
-        var clientId = Request.Form["client_id"].ToString();
-        var clientSecret = Request.Form["client_secret"].ToString();
-
-        if (!string.Equals(grantType, CibaGrantType, StringComparison.Ordinal))
-        {
-            return BadRequest(new { error = Errors.UnsupportedGrantType });
-        }
-
-        var clientAuthorization = await _clientPolicy.AuthorizeAsync(
-            clientId,
-            clientSecret,
-            "poll",
-            HttpContext.RequestAborted);
-        if (!clientAuthorization.Allowed)
-        {
-            return Unauthorized(new { error = clientAuthorization.ErrorCode });
-        }
-
-        var pending = _pendingStore.Find(authReqId);
-        if (pending is null)
-        {
-            // Unknown or expired (the store evicts expired entries on read).
-            return BadRequest(new { error = Errors.ExpiredToken, error_description = "The auth_req_id is unknown or expired." });
-        }
-
-        // CIBA Core 1.0: auth_req_id is issued to exactly one client. A
-        // different, otherwise valid client must never be able to redeem it.
-        // Use invalid_grant so the response does not disclose whether the
-        // identifier belongs to another client.
-        if (!string.Equals(pending.ClientId, clientId, StringComparison.Ordinal))
-        {
-            return BadRequest(new
-            {
-                error = Errors.InvalidGrant,
-                error_description = "The auth_req_id is invalid for this client."
-            });
-        }
-
-        // Approved? Atomically consume the request before issuing the token.
-        // This closes the TOCTOU window where two concurrent polls could both
-        // observe ApprovedSubject and mint two access tokens.
-        if (_pendingStore.TryConsumeApproved(authReqId, out var consumed))
-        {
-            var subject = consumed.ApprovedSubject!;
-            var user = await _userManager.FindByIdAsync(subject);
-            if (user is null || !await _signInManager.CanSignInAsync(user))
-            {
-                _pendingStore.Deny(authReqId);
-                return BadRequest(new { error = Errors.InvalidGrant });
-            }
-
-            // Emit the access token MANUALLY (Limitation 2). SignIn would throw
-            // ("A sign-in response cannot be returned from this endpoint")
-            // because /connect/ciba/token is not a registered OpenIddict
-            // endpoint. CibaAccessTokenGenerator builds a self-contained JWT
-            // signed with the STS key, validatable against the STS JWKS. This
-            // is tracked by an OpenIddict token entry so introspection and
-            // revocation can still enforce its status.
-            var scopes = consumed.Scopes.ToImmutableArray();
-            var resources = new List<string>();
-            await foreach (var resource in _scopeManager.ListResourcesAsync(scopes))
-            {
-                if (!resources.Contains(resource, StringComparer.Ordinal))
-                {
-                    resources.Add(resource);
-                }
-            }
-
-            // Scopes without configured resources remain usable by the
-            // initiating client, while mapped scopes use their resource
-            // servers as audiences just like the regular token pipeline.
-            if (resources.Count == 0)
-            {
-                resources.Add(consumed.ClientId);
-            }
-
-            var extraClaims = new List<System.Security.Claims.Claim>();
-            if (scopes.Contains(Scopes.Email, StringComparer.Ordinal))
-            {
-                extraClaims.Add(new System.Security.Claims.Claim(
-                    Claims.Email,
-                    (await _userManager.GetEmailAsync(user)) ?? string.Empty));
-            }
-            if (scopes.Contains(Scopes.Profile, StringComparer.Ordinal))
-            {
-                var userName = (await _userManager.GetUserNameAsync(user)) ?? string.Empty;
-                extraClaims.Add(new System.Security.Claims.Claim(Claims.Name, userName));
-                extraClaims.Add(new System.Security.Claims.Claim(Claims.PreferredUsername, userName));
-            }
-            if (scopes.Contains(Scopes.Roles, StringComparer.Ordinal))
-            {
-                foreach (var role in await _userManager.GetRolesAsync(user))
-                {
-                    extraClaims.Add(new System.Security.Claims.Claim(Claims.Role, role));
-                }
-            }
-
-            var application = await _applicationManager.FindByClientIdAsync(
-                consumed.ClientId);
-            var now = DateTimeOffset.UtcNow;
-            var expiration = now + _accessTokenGenerator.AccessTokenLifetime;
-            var tokenEntry = await _tokenManager.CreateAsync(new OpenIddictTokenDescriptor
-            {
-                Subject = subject,
-                Status = Statuses.Valid,
-                Type = TokenTypeIdentifiers.AccessToken,
-                CreationDate = now,
-                ExpirationDate = expiration,
-                ApplicationId = application is not null
-                    ? await _applicationManager.GetIdAsync(application)
-                    : null,
-            });
-            var tokenId = await _tokenManager.GetIdAsync(tokenEntry)
-                ?? throw new InvalidOperationException(
-                    "The CIBA access-token entry has no identifier.");
-            var accessToken = _accessTokenGenerator.Generate(
-                subject: subject,
-                audiences: resources,
-                scopes: scopes,
-                clientId: consumed.ClientId,
-                tokenId: tokenId,
-                extraClaims: extraClaims);
-            var tokenDescriptor = new OpenIddictTokenDescriptor();
-            await _tokenManager.PopulateAsync(tokenDescriptor, tokenEntry);
-            tokenDescriptor.Payload = accessToken;
-            await _tokenManager.UpdateAsync(tokenEntry, tokenDescriptor);
-
-            // CIBA Core 1.0 / RFC 6749 §5.1 successful token response.
-            Response.Headers.CacheControl = "no-store";
-            Response.Headers.Pragma = "no-cache";
-            return Ok(new
-            {
-                access_token = accessToken,
-                token_type = "Bearer",
-                expires_in = (long)_accessTokenGenerator.AccessTokenLifetime.TotalSeconds,
-                scope = string.Join(' ', scopes),
-            });
-        }
-
-        // If another concurrent poll consumed the approved request, return the
-        // same non-disclosing terminal error as an unknown auth_req_id.
-        if (_pendingStore.Find(authReqId) is null)
-        {
-            return BadRequest(new { error = Errors.ExpiredToken, error_description = "The auth_req_id is unknown or expired." });
-        }
-
-        // CIBA Core 1.0 slow-down enforcement: reject polls faster than the
-        // configured interval.
-        if (!_pendingStore.TryRecordPoll(authReqId, TimeSpan.FromSeconds(_options.PollIntervalSeconds)))
-        {
-            return BadRequest(new { error = Errors.SlowDown, error_description = "The client is polling too fast." });
-        }
-
-        // Still pending — the canonical polling response.
-        return BadRequest(new { error = Errors.AuthorizationPending, error_description = "The authorization request is still pending approval." });
     }
 }

@@ -94,6 +94,21 @@ public static partial class ServiceCollectionExtensions
                             "connect/register").AbsoluteUri);
                 }
 
+                // CIBA (CIBA Core 1.0 §4): OpenIddict lists the grant type
+                // in grant_types_supported from the custom flow; the
+                // initiation endpoint and delivery mode are ours to publish.
+                if (options.Ciba.Enabled)
+                {
+                    context.Metadata["backchannel_authentication_endpoint"] =
+                        JsonValue.Create(new Uri(
+                            context.Issuer ?? new Uri("/", UriKind.Relative),
+                            "bc-authorize").AbsoluteUri);
+                    context.Metadata["backchannel_token_delivery_modes_supported"] =
+                        new JsonArray(JsonValue.Create("poll"));
+                    context.Metadata["backchannel_user_code_parameter_supported"] =
+                        JsonValue.Create(false);
+                }
+
                 // OpenIddict attaches `iss` to every redirectable
                 // authorization response (RFC 9207). Publish the
                 // matching capability bit explicitly for FAPI clients.

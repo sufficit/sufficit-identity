@@ -10,7 +10,8 @@ namespace Sufficit.Identity.STS;
 /// <c>auth_req_id</c> until the user approves (or denies, or it expires).
 /// </summary>
 /// <remarks>
-/// <b>Implemented from scratch</b> — OpenIddict 7.6 has no CIBA support.
+/// Initiation and approval are in-house endpoints; polling is the standard
+/// token endpoint through a custom grant (<c>Grants.CibaGrantHandler</c>).
 /// Pending requests are held by <c>ICibaPendingRequestStore</c>, registered as
 /// <c>RollingCibaPendingRequestStore</c>: the database store is the primary
 /// (durable, and therefore already shared across replicas) with the
