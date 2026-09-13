@@ -166,14 +166,14 @@ internal sealed class SessionManagementService(
         {
             throw new ManagementNotFoundException(
                 "session_not_found",
-                "A credencial emitida não foi encontrada.");
+                "The issued credential was not found.");
         }
 
         if (!await tokenManager.TryRevokeAsync(token, cancellationToken))
         {
             throw new ManagementConflictException(
                 "session_revoke_failed",
-                "Não foi possível revogar a credencial emitida.");
+                "The issued credential could not be revoked.");
         }
 
         database.ManagementAuditEvents.Add(
@@ -210,7 +210,7 @@ internal sealed class SessionManagementService(
         {
             throw new ManagementNotFoundException(
                 "session_user_not_found",
-                "A conta não foi encontrada.");
+                "The account was not found.");
         }
 
         var stampResult = await userManager.UpdateSecurityStampAsync(user);
@@ -218,7 +218,7 @@ internal sealed class SessionManagementService(
         {
             throw new ManagementConflictException(
                 "session_cookie_revoke_failed",
-                "Não foi possível invalidar as sessões da conta.");
+                "The account's sessions could not be invalidated.");
         }
 
         var result = await sessionRevoker.RevokeAsync(
@@ -272,7 +272,7 @@ internal sealed class SessionManagementService(
         {
             throw new ManagementValidationException(
                 "session_id_required",
-                "Informe a sessão.",
+                "Provide the session.",
                 "id");
         }
 

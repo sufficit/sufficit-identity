@@ -14,18 +14,25 @@ public sealed partial class IntegrationOAuthController
         Response.Headers.CacheControl = "no-store";
         Response.Headers["Referrer-Policy"] = "no-referrer";
         var connected = status == "connected";
-        var title = connected ? "Conta conectada" : "Conexão não concluída";
-        var message = status switch
+        // A page shown to the end user, so its text follows the request
+        // culture; the values come from trusted resources, not from input.
+        var title = messages[connected
+            ? "IntegrationCompletion.ConnectedTitle"
+            : "IntegrationCompletion.FailedTitle"].Value;
+        var message = messages[status switch
         {
-            "connected" => "A autorização foi recebida. Volte ao aplicativo para acompanhar a conexão das ferramentas.",
-            "permissions_required" => "As permissões necessárias não foram concedidas. Volte ao aplicativo, conecte novamente e confira as permissões solicitadas.",
-            _ => "A autorização não foi concluída ou expirou. Volte ao aplicativo e tente conectar novamente.",
-        };
+            "connected" => "IntegrationCompletion.Connected",
+            "permissions_required" => "IntegrationCompletion.PermissionsRequired",
+            _ => "IntegrationCompletion.Failed",
+        }].Value;
+        var closeLabel = messages["IntegrationCompletion.Close"].Value;
+        var closeHint = messages["IntegrationCompletion.CloseHint"].Value;
+        var language = System.Globalization.CultureInfo.CurrentUICulture.Name;
         var nonce = HtmlEncoder.Default.Encode(SecurityHeadersMiddlewareExtensions.GetCspNonce(HttpContext) ?? "");
         var script = HtmlEncoder.Default.Encode(Absolute("/api/integrations/oauth/completion.js"));
         var connectedValue = connected ? "true" : "false";
         return Content($$"""
-            <!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+            <!doctype html><html lang="{{language}}"><head><meta charset="utf-8">
             <meta name="viewport" content="width=device-width,initial-scale=1">
             <title>{{title}} — Sufficit</title>
             <style nonce="{{nonce}}">
@@ -36,8 +43,8 @@ public sealed partial class IntegrationOAuthController
             button { font: inherit; font-size: .875rem; padding: .65rem 1rem; cursor: pointer; }
             </style></head><body>
             <main data-integration-connected="{{connectedValue}}"><h1>{{title}}</h1><p role="status">{{message}}</p>
-            <button type="button" id="close">Fechar esta aba</button>
-            <p>Se a aba permanecer aberta, você pode fechá-la manualmente e voltar ao aplicativo.</p></main>
+            <button type="button" id="close">{{closeLabel}}</button>
+            <p>{{closeHint}}</p></main>
             <script src="{{script}}" defer></script></body></html>
             """, "text/html; charset=utf-8");
     }

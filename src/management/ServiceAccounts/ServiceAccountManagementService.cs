@@ -10,15 +10,15 @@ using Sufficit.Identity.Management.Authorization;
 namespace Sufficit.Identity.Management.ServiceAccounts;
 
 /// <summary>
-/// Gestão dos papéis de conta de sistema.
+/// Manages service-account roles.
 ///
-/// A leitura exige <c>identity.clients.read</c> e a escrita
-/// <c>identity.clients.update</c> — as mesmas capacidades que já governam o
-/// registro de clientes, porque é exatamente isso que esta tela edita. Um
-/// papel de máquina concede capacidades de GESTÃO, então dar-lhe uma
-/// capability própria e mais fraca criaria um atalho de escalada: quem
-/// pudesse "só mexer em contas de sistema" poderia dar a uma conta o papel de
-/// administrador e entrar por ela.
+/// Reading requires <c>identity.clients.read</c> and writing requires
+/// <c>identity.clients.update</c> — the same capabilities that already govern
+/// client registration, because that is exactly what this screen edits. A
+/// machine role grants MANAGEMENT capabilities, so giving it its own weaker
+/// capability would create an escalation shortcut: whoever could "only touch
+/// service accounts" could hand an account the administrator role and log in
+/// through it.
 /// </summary>
 public sealed class ServiceAccountManagementService(
     IOpenIddictApplicationManager applications,
@@ -54,10 +54,10 @@ public sealed class ServiceAccountManagementService(
                 ? ParseRoles(declared)
                 : [];
 
-            // A lista mostra quem PODE agir como sistema (tem o grant) ou quem
-            // JÁ tem papel declarado — o segundo caso pega a configuração
-            // esquecida: um cliente que perdeu o grant mas ficou com papel é
-            // exatamente o resíduo que ninguém encontra sem uma tela.
+            // The list shows whoever CAN act as a system (has the grant) or
+            // who ALREADY has a declared role — the second case catches the
+            // forgotten configuration: a client that lost the grant but kept
+            // the role is exactly the residue nobody finds without a screen.
             if (!canRequestTokens && roles.Count == 0)
             {
                 continue;
@@ -97,7 +97,7 @@ public sealed class ServiceAccountManagementService(
 
         var application = await applications.FindByClientIdAsync(clientId, cancellationToken)
             ?? throw new ManagementValidationException(
-                "client_not_found", $"Não existe cliente '{clientId}'.");
+                "client_not_found", $"Client '{clientId}' does not exist.");
 
         var authorization = options.Value.Authorization;
         var known = KnownRoles(authorization).Select(option => option.Role)
@@ -109,17 +109,17 @@ public sealed class ServiceAccountManagementService(
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        // Papel desconhecido é recusado na ESCRITA, ao contrário da leitura
-        // (onde o resolvedor o ignora em silêncio para não derrubar o que é
-        // válido). Quem digita "administrador" querendo "administrator" precisa
-        // ouvir isso agora, não descobrir num 403 do serviço semanas depois.
+        // An unknown role is refused on WRITE, unlike on read (where the
+        // resolver silently ignores it so it doesn't break what is valid).
+        // Whoever types "administrador" meaning "administrator" needs to hear
+        // that now, not discover it in a 403 from the service weeks later.
         var unknown = roles.Where(role => !known.Contains(role)).ToArray();
         if (unknown.Length > 0)
         {
             throw new ManagementValidationException(
                 "unknown_role",
-                $"Papel desconhecido nesta implantação: {string.Join(", ", unknown)}. "
-                + "Os papéis válidos vêm de RoleCapabilities e FullAdministratorRoles.",
+                $"Unknown role in this deployment: {string.Join(", ", unknown)}. "
+                + "Valid roles come from RoleCapabilities and FullAdministratorRoles.",
                 field: "roles");
         }
 
@@ -157,11 +157,11 @@ public sealed class ServiceAccountManagementService(
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        // Criar exige ClientsCreate E ClientsUpdate. Papéis concedem
-        // capacidades de gestão, então criar uma conta JÁ COM papéis é a mesma
-        // concessão de privilégio que atribuí-los depois — pedir só a
-        // capacidade de criar abriria o atalho que o comentário da classe
-        // descreve, agora pela porta da criação.
+        // Creating requires ClientsCreate AND ClientsUpdate. Roles grant
+        // management capabilities, so creating an account ALREADY WITH roles
+        // is the same privilege grant as assigning them afterward —
+        // requesting only the create capability would open the shortcut the
+        // class comment describes, now through the creation door.
         await guard.DemandAsync(
             context,
             ManagementCapabilities.ClientsCreate,
@@ -180,7 +180,7 @@ public sealed class ServiceAccountManagementService(
         {
             throw new ManagementValidationException(
                 "client_id_required",
-                "Informe o identificador da conta de sistema.",
+                "Provide the identifier of the service account.",
                 field: "clientId");
         }
 
@@ -188,16 +188,16 @@ public sealed class ServiceAccountManagementService(
         {
             throw new ManagementValidationException(
                 "client_already_exists",
-                $"Já existe cliente '{clientId}'.",
+                $"Client '{clientId}' already exists.",
                 field: "clientId");
         }
 
         var authorization = options.Value.Authorization;
         var roles = NormalizeRoles(command.Roles, authorization);
 
-        // Segredo gerado pelo servidor por padrão: 256 bits de CSPRNG. Uma
-        // credencial de máquina não expira sozinha, então a força dela não pode
-        // depender do que um humano digitou com pressa.
+        // Server-generated secret by default: 256 bits of CSPRNG. A machine
+        // credential does not expire on its own, so its strength cannot
+        // depend on what a human typed in a hurry.
         var secret = string.IsNullOrWhiteSpace(command.ClientSecret)
             ? Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(32))
             : command.ClientSecret.Trim();
@@ -212,17 +212,17 @@ public sealed class ServiceAccountManagementService(
             ClientType = OpenIddictConstants.ClientTypes.Confidential,
         };
 
-        // A forma é fixa de propósito: uma conta de sistema fala com o endpoint
-        // de token por client_credentials e nada mais. Sem redirect, sem fluxo
-        // interativo — não há usuário nessa história.
+        // The shape is fixed on purpose: a service account talks to the token
+        // endpoint via client_credentials and nothing else. No redirect, no
+        // interactive flow — there is no user in this story.
         descriptor.Permissions.Add(OpenIddictConstants.Permissions.Endpoints.Token);
         descriptor.Permissions.Add(
             OpenIddictConstants.Permissions.GrantTypes.ClientCredentials);
-        // Contas de serviço gerenciadas por esta superfície precisam poder
-        // solicitar o escopo administrativo que protege as APIs de gestão.
-        // A atribuição de escopos reservados é deliberadamente bloqueada no
-        // CRUD comum de clientes; aqui ela é parte do perfil fixo e auditado
-        // de criação da conta de sistema.
+        // Service accounts managed by this surface need to be able to
+        // request the administrative scope that protects the management
+        // APIs. Assigning reserved scopes is deliberately blocked in the
+        // common client CRUD; here it is part of the fixed, audited profile
+        // of service-account creation.
         descriptor.Permissions.Add(
             OpenIddictConstants.Permissions.Prefixes.Scope
             + options.Value.RequiredScope);
@@ -247,8 +247,8 @@ public sealed class ServiceAccountManagementService(
     }
 
     /// <summary>
-    /// Papéis distintos, sem brancos, recusando o que esta implantação não
-    /// reconhece.
+    /// Distinct roles, no blanks, rejecting whatever this deployment does
+    /// not recognize.
     /// </summary>
     private static string[] NormalizeRoles(
         IReadOnlyList<string>? requested,
@@ -267,8 +267,8 @@ public sealed class ServiceAccountManagementService(
         {
             throw new ManagementValidationException(
                 "unknown_role",
-                $"Papel desconhecido nesta implantação: {string.Join(", ", unknown)}. "
-                + "Os papéis válidos vêm de RoleCapabilities e FullAdministratorRoles.",
+                $"Unknown role in this deployment: {string.Join(", ", unknown)}. "
+                + "Valid roles come from RoleCapabilities and FullAdministratorRoles.",
                 field: "roles");
         }
 
@@ -304,10 +304,11 @@ public sealed class ServiceAccountManagementService(
     }
 
     /// <summary>
-    /// A MESMA resolução do <c>ServicePrincipalEntitlementResolver</c>: papel
-    /// de administrador total dá tudo; os demais dão o que o mapa diz; nome de
-    /// capability desconhecido cai fora. A tela tem que mostrar exatamente o
-    /// que o avaliador vai conceder, senão ela vira uma segunda opinião.
+    /// The SAME resolution as <c>ServicePrincipalEntitlementResolver</c>: a
+    /// full-administrator role grants everything; the others grant whatever
+    /// the map says; an unknown capability name is dropped. The screen must
+    /// show exactly what the evaluator will grant, or it becomes a second
+    /// opinion.
     /// </summary>
     private static IReadOnlyList<string> Resolve(
         IReadOnlyList<string> roles,

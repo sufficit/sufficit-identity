@@ -217,7 +217,7 @@ public sealed class UserVaultManagementService(
         if (!deleted)
             throw new ManagementNotFoundException(
                 "personal_secret_not_found",
-                "Credencial pessoal não encontrada.");
+                "Personal credential not found.");
         await AuditAsync(
             context,
             UserResource(owner),
@@ -242,7 +242,7 @@ public sealed class UserVaultManagementService(
                 VaultBackedSecretStore.GetNamespace(normalizedName)))
             throw new ManagementNotFoundException(
                 "managed_credential_not_found",
-                "Credencial conectada não encontrada.");
+                "Connected credential not found.");
         var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.VaultSecretsManage,
@@ -257,7 +257,7 @@ public sealed class UserVaultManagementService(
                 cancellationToken))
             throw new ManagementNotFoundException(
                 "managed_credential_not_found",
-                "Credencial conectada não encontrada.");
+                "Connected credential not found.");
         await AuditAsync(
             context,
             UserResource(owner),
@@ -309,7 +309,7 @@ public sealed class UserVaultManagementService(
         if (personalDeleted == 0 && managedDeleted == 0)
             throw new ManagementNotFoundException(
                 "vault_user_empty",
-                "Este usuário não possui credenciais armazenadas.");
+                "This user has no stored credentials.");
         await AuditAsync(
             context,
             resource,
@@ -342,7 +342,7 @@ public sealed class UserVaultManagementService(
         if (!options.Value.Enabled)
             throw new ManagementValidationException(
                 "vault_required",
-                "Habilite Sufficit:Vault:Enabled antes de administrar credenciais.");
+                "Enable Sufficit:Vault:Enabled before managing credentials.");
     }
 
     private static bool Matches(MutableInventory item, string? search) =>

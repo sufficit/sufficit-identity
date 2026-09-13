@@ -205,7 +205,7 @@ internal sealed class MetricsManagementService(
     internal static IQueryable<MetricsDimensionAggregate> BuildGrantAggregationQuery(
         IQueryable<IdentityApplicationUsageEvent> query) =>
         query
-            .GroupBy(item => item.GrantType ?? "não informado")
+            .GroupBy(item => item.GrantType ?? "not informed")
             .Select(group => new MetricsDimensionAggregate
             {
                 Name = group.Key,

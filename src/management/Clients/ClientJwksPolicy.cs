@@ -63,7 +63,7 @@ internal static class ClientJwksPolicy
         {
             throw new ManagementValidationException(
                 "jwks_too_large",
-                "O conjunto JWKS não pode ultrapassar 64 KiB.",
+                "The JWKS set cannot exceed 64 KiB.",
                 "jwksJson");
         }
 
@@ -82,7 +82,7 @@ internal static class ClientJwksPolicy
             {
                 throw new ManagementValidationException(
                     "jwks_keys_invalid",
-                    "O JWKS deve conter entre 1 e 10 chaves públicas em 'keys'.",
+                    "The JWKS must contain between 1 and 10 public keys in 'keys'.",
                     "jwksJson");
             }
 
@@ -98,14 +98,14 @@ internal static class ClientJwksPolicy
         {
             throw new ManagementValidationException(
                 "jwks_json_invalid",
-                $"O JWKS não é um JSON válido: {exception.Message}",
+                $"The JWKS is not valid JSON: {exception.Message}",
                 "jwksJson");
         }
         catch (ArgumentException exception)
         {
             throw new ManagementValidationException(
                 "jwks_json_invalid",
-                $"O JWKS não pôde ser interpretado: {exception.Message}",
+                $"The JWKS could not be parsed: {exception.Message}",
                 "jwksJson");
         }
     }
@@ -116,7 +116,7 @@ internal static class ClientJwksPolicy
         {
             throw new ManagementValidationException(
                 "jwks_key_invalid",
-                "Cada item de 'keys' deve ser uma chave JWK pública.",
+                "Each item in 'keys' must be a public JWK key.",
                 "jwksJson");
         }
 
@@ -126,7 +126,7 @@ internal static class ClientJwksPolicy
             {
                 throw new ManagementValidationException(
                     "jwks_private_material_forbidden",
-                    "O Identity aceita apenas chaves públicas. Remova parâmetros privados ou simétricos do JWKS.",
+                    "Identity accepts only public keys. Remove private or symmetric parameters from the JWKS.",
                     "jwksJson");
             }
         }
@@ -137,7 +137,7 @@ internal static class ClientJwksPolicy
         {
             throw new ManagementValidationException(
                 "jwks_key_type_unsupported",
-                "Use somente chaves públicas RSA ou EC para private_key_jwt.",
+                "Use only RSA or EC public keys for private_key_jwt.",
                 "jwksJson");
         }
 
@@ -146,7 +146,7 @@ internal static class ClientJwksPolicy
         {
             throw new ManagementValidationException(
                 "jwks_kid_duplicate",
-                "Cada chave pública deve possuir um kid único.",
+                "Each public key must have a unique kid.",
                 "jwksJson");
         }
 
@@ -159,7 +159,7 @@ internal static class ClientJwksPolicy
         {
             throw new ManagementValidationException(
                 "jwks_use_invalid",
-                "Chaves de autenticação devem usar 'use': 'sig' ou omitir o campo.",
+                "Authentication keys must use 'use': 'sig' or omit the field.",
                 "jwksJson");
         }
 
@@ -186,7 +186,7 @@ internal static class ClientJwksPolicy
         {
             throw new ManagementValidationException(
                 "jwks_rsa_key_too_small",
-                "Chaves RSA devem possuir pelo menos 2048 bits.",
+                "RSA keys must have at least 2048 bits.",
                 "jwksJson");
         }
     }
@@ -198,7 +198,7 @@ internal static class ClientJwksPolicy
         {
             throw new ManagementValidationException(
                 "jwks_curve_unsupported",
-                "Use curvas P-256, P-384 ou P-521.",
+                "Use P-256, P-384, or P-521 curves.",
                 "jwksJson");
         }
 
@@ -219,7 +219,7 @@ internal static class ClientJwksPolicy
         {
             throw new ManagementValidationException(
                 "jwks_ec_coordinates_invalid",
-                "As coordenadas EC não correspondem à curva informada.",
+                "The EC coordinates do not match the specified curve.",
                 "jwksJson");
         }
     }
@@ -240,7 +240,7 @@ internal static class ClientJwksPolicy
         {
             throw new ManagementValidationException(
                 "jwks_algorithm_unsupported",
-                "O algoritmo da chave deve ser RS*, PS* ou ES* com SHA-256/384/512.",
+                "The key algorithm must be RS*, PS*, or ES* with SHA-256/384/512.",
                 "jwksJson");
         }
 
@@ -252,7 +252,7 @@ internal static class ClientJwksPolicy
         {
             throw new ManagementValidationException(
                 "jwks_algorithm_key_type_mismatch",
-                "O algoritmo informado não corresponde ao tipo da chave pública.",
+                "The specified algorithm does not match the public key type.",
                 "jwksJson");
         }
     }
@@ -265,7 +265,7 @@ internal static class ClientJwksPolicy
         {
             throw new ManagementValidationException(
                 "jwks_key_parameter_required",
-                $"Cada chave pública deve informar '{property}'.",
+                $"Each public key must provide '{property}'.",
                 "jwksJson");
         }
 

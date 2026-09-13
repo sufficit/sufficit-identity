@@ -96,12 +96,12 @@ public sealed class VaultSecretsManagementService(
         EnsureEnabled();
         if (string.IsNullOrWhiteSpace(command.Value))
             throw new ManagementValidationException(
-                "secret_value_required", "O valor do segredo é obrigatório.", "value");
+                "secret_value_required", "The secret value is required.", "value");
         if (command.ExpiresAtUtc is { } expiration
             && expiration <= DateTime.UtcNow)
             throw new ManagementValidationException(
                 "secret_expiration_invalid",
-                "A expiração do segredo deve estar no futuro.",
+                "The secret's expiration must be in the future.",
                 "expiresAtUtc");
 
         var metadata = await store.PutAsync(
@@ -200,7 +200,7 @@ public sealed class VaultSecretsManagementService(
                 normalizedContext,
                 cancellationToken))
             throw new ManagementNotFoundException(
-                "secret_not_found", "Segredo nomeado não encontrado.");
+                "secret_not_found", "Named secret not found.");
         database.ManagementAuditEvents.Add(
             Sufficit.Identity.Management.Audit.ManagementAuditEventFactory.Create(
                 context,
@@ -268,7 +268,7 @@ public sealed class VaultSecretsManagementService(
         if (!options.Value.Enabled)
             throw new ManagementValidationException(
                 "vault_required",
-                "Habilite Sufficit:Vault:Enabled antes de administrar segredos.");
+                "Enable Sufficit:Vault:Enabled before managing secrets.");
     }
 
     private static ManagementVaultSecret ToContract(VaultSecretMetadata item) =>

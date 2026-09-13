@@ -165,7 +165,7 @@ internal sealed class AuthorizationManagementService(
         {
             throw new ManagementNotFoundException(
                 "authorization_not_found",
-                "A autorização não foi encontrada.");
+                "The authorization was not found.");
         }
 
         var revokedCredentials = await tokenManager.RevokeByAuthorizationIdAsync(
@@ -177,7 +177,7 @@ internal sealed class AuthorizationManagementService(
         {
             throw new ManagementConflictException(
                 "authorization_revoke_failed",
-                "Não foi possível revogar a autorização.");
+                "Could not revoke the authorization.");
         }
 
         database.ManagementAuditEvents.Add(
@@ -239,7 +239,7 @@ internal sealed class AuthorizationManagementService(
         {
             throw new ManagementValidationException(
                 "authorization_id_required",
-                "Informe a autorização.",
+                "Provide the authorization.",
                 "id");
         }
 

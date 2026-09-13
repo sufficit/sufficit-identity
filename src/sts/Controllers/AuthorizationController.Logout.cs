@@ -254,23 +254,23 @@ public partial class AuthorizationController
             "; frame-ancestors 'none'; base-uri 'none'; form-action 'none'";
 
         var html = new StringBuilder(
-            "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\">" +
+            "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
             "<meta name=\"referrer\" content=\"no-referrer\">" +
             "<meta http-equiv=\"refresh\" content=\"3;url=/\">" +
-            "<title>Encerrando sessões conectadas</title></head><body>" +
-            "<h1>Encerrando sessões conectadas</h1>" +
-            "<p>Você será redirecionado em instantes.</p>");
+            "<title>Ending connected sessions</title></head><body>" +
+            "<h1>Ending connected sessions</h1>" +
+            "<p>You will be redirected shortly.</p>");
 
         for (var index = 0; index < logoutUris.Count; index++)
         {
-            html.Append("<iframe hidden title=\"Logout da aplicação ")
+            html.Append("<iframe hidden title=\"Application logout ")
                 .Append(index + 1)
                 .Append("\" src=\"")
                 .Append(HtmlEncoder.Default.Encode(logoutUris[index]))
                 .Append("\"></iframe>");
         }
 
-        html.Append("<p><a href=\"/\">Continuar</a></p></body></html>");
+        html.Append("<p><a href=\"/\">Continue</a></p></body></html>");
         return Content(html.ToString(), "text/html; charset=utf-8");
     }
 }

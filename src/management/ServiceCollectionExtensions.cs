@@ -125,11 +125,11 @@ public static class ServiceCollectionExtensions
             OperatorTokenManagementService>();
         services.TryAddScoped<ServiceAccounts.IServiceAccountManagementService,
             ServiceAccounts.ServiceAccountManagementService>();
-        // O resolvedor de máquina DECORA o comum: um principal humano passa
-        // por ele sem alteração nenhuma, e um de serviço ganha os papéis que o
-        // registro do cliente declara no banco. Ver
-        // ServicePrincipalEntitlementResolver para por que a concessão mora lá
-        // e não em configuração.
+        // The machine resolver DECORATES the common one: a human principal
+        // passes through it unchanged, and a service principal gains the
+        // roles that the client registration declares in the database. See
+        // ServicePrincipalEntitlementResolver for why the grant lives there
+        // and not in configuration.
         services.TryAddScoped<IServicePrincipalRoleSource,
             OpenIddictServicePrincipalRoleSource>();
         services.TryAddScoped<ScopeAndRoleManagementEntitlementResolver>();
@@ -390,19 +390,20 @@ public sealed class MfaHandler(
             return;
         }
 
-        // Principal de MÁQUINA com papel declarado no banco: o portão de MFA
-        // da política não se aplica a ele, porque não PODE se aplicar — quem
-        // se autentica com segredo de cliente nunca carrega `amr`, e exigir o
-        // impossível aqui não protege nada: só transforma toda concessão de
-        // serviço em negação permanente, antes mesmo de o avaliador de
-        // capacidades rodar.
+        // MACHINE principal with a role declared in the database: the
+        // policy's MFA gate does not apply to it, because it CANNOT apply —
+        // whoever authenticates with a client secret never carries `amr`,
+        // and requiring the impossible here protects nothing: it just turns
+        // every service grant into a permanent denial, before the capability
+        // evaluator even runs.
         //
-        // A porta continua estreita nas duas dobradiças: só entra quem tem ao
-        // menos um papel em `identity:client:roles` (concessão deliberada, no
-        // banco, revogável com um UPDATE), e passar por aqui não dá acesso a
-        // nada — toda operação de gestão ainda exige a capability que o
-        // ServicePrincipalEntitlementResolver deriva desses mesmos papéis.
-        // Máquina sem papel continua barrada neste portão, como sempre foi.
+        // The gate stays narrow on both hinges: only whoever has at least
+        // one role in `identity:client:roles` gets in (a deliberate grant,
+        // in the database, revocable with an UPDATE), and passing through
+        // here grants no access by itself — every management operation still
+        // requires the capability that ServicePrincipalEntitlementResolver
+        // derives from those same roles. A machine without a role stays
+        // barred at this gate, as it always has.
         if (!Authorization.ManagementPrincipal.IsService(context.User))
         {
             return;
@@ -414,8 +415,9 @@ public sealed class MfaHandler(
             return;
         }
 
-        // O handler é singleton e a fonte de papéis é scoped (fala com o
-        // banco); o escopo curto aqui é o preço de não rebaixar a fonte.
+        // The handler is a singleton and the role source is scoped (it talks
+        // to the database); the short-lived scope here is the price of not
+        // downgrading the source.
         await using var scope = scopeFactory.CreateAsyncScope();
         var roles = await scope.ServiceProvider
             .GetRequiredService<Authorization.IServicePrincipalRoleSource>()

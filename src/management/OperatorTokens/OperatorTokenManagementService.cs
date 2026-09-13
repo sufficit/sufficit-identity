@@ -143,7 +143,7 @@ internal sealed partial class OperatorTokenManagementService(
             {
                 throw new ManagementConflictException(
                     "temporary_operator_token_disabled",
-                    "A emissão de tokens temporários de Management está desabilitada neste ambiente.");
+                    "Issuing temporary Management tokens is disabled in this environment.");
             }
 
             purpose = NormalizePurpose(command.Purpose);
@@ -222,7 +222,7 @@ internal sealed partial class OperatorTokenManagementService(
                     tokenId,
                     cancellationToken)
                 ?? throw new InvalidOperationException(
-                    "O registro do token temporário não foi encontrado.");
+                    "The temporary token record was not found.");
 
             var descriptor = new OpenIddictTokenDescriptor();
             await tokenManager.PopulateAsync(
@@ -319,7 +319,7 @@ internal sealed partial class OperatorTokenManagementService(
         {
             throw new ManagementValidationException(
                 "operator_token_id_required",
-                "O identificador do token é obrigatório.",
+                "The token identifier is required.",
                 "id");
         }
 
@@ -340,7 +340,7 @@ internal sealed partial class OperatorTokenManagementService(
         {
             throw new ManagementNotFoundException(
                 "operator_token_not_found",
-                "O token temporário não existe ou não pertence ao operador atual.");
+                "The temporary token does not exist or does not belong to the current operator.");
         }
 
         await using var transaction = await database.Database
@@ -351,7 +351,7 @@ internal sealed partial class OperatorTokenManagementService(
             {
                 throw new ManagementConflictException(
                     "operator_token_revoke_failed",
-                    "O token temporário não pôde ser revogado.");
+                    "The temporary token could not be revoked.");
             }
 
             database.ManagementAuditEvents.Add(
@@ -423,9 +423,9 @@ internal sealed partial class OperatorTokenManagementService(
             result.Add(new OperatorTokenSummary(
                 await tokenManager.GetIdAsync(token, cancellationToken)
                     ?? throw new InvalidOperationException(
-                        "O token temporário não possui identificador."),
+                        "The temporary token has no identifier."),
                 GetStringProperty(properties, PurposeProperty)
-                    ?? "Operação temporária",
+                    ?? "Temporary operation",
                 await tokenManager.GetCreationDateAsync(
                     token,
                     cancellationToken) ?? DateTimeOffset.MinValue,

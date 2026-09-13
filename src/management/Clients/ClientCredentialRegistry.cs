@@ -138,7 +138,7 @@ internal sealed class ClientCredentialRegistry(
             {
                 throw new ManagementConflictException(
                     "client_credential_duplicate",
-                    "A credencial informada já está ativa para esta aplicação.");
+                    "The provided credential is already active for this application.");
             }
 
             var wasPublic = string.Equals(
@@ -171,7 +171,7 @@ internal sealed class ClientCredentialRegistry(
                 {
                     throw new ManagementConflictException(
                         "client_credential_limit_reached",
-                        $"Cada aplicação pode manter até {ClientCredentialPolicy.MaximumActiveAdditionalSharedSecrets} credenciais compartilhadas adicionais ativas.");
+                        $"Each application can keep up to {ClientCredentialPolicy.MaximumActiveAdditionalSharedSecrets} additional active shared credentials.");
                 }
 
                 var duplicateLabel = await database.OAuthClientCredentials
@@ -184,7 +184,7 @@ internal sealed class ClientCredentialRegistry(
                 {
                     throw new ManagementConflictException(
                         "client_credential_label_duplicate",
-                        "Já existe uma credencial ativa com esse nome.");
+                        "An active credential with that name already exists.");
                 }
 
                 var secretHash = credentialSecretHasher.Hash(oneTimeSecret);
@@ -264,7 +264,7 @@ internal sealed class ClientCredentialRegistry(
                 context.CorrelationId);
             throw new ManagementConflictException(
                 "client_credential_changed",
-                "As credenciais foram alteradas por outra operação. Recarregue os dados.");
+                "The credentials were changed by another operation. Reload the data.");
         }
     }
 
@@ -305,7 +305,7 @@ internal sealed class ClientCredentialRegistry(
             {
                 throw new ManagementValidationException(
                     "client_credential_version_required",
-                    "Recarregue as credenciais antes de revogar.",
+                    "Reload the credentials before revoking.",
                     "expectedCredentialVersion");
             }
 
@@ -318,7 +318,7 @@ internal sealed class ClientCredentialRegistry(
             {
                 throw new ManagementNotFoundException(
                     "client_credential_not_found",
-                    "A credencial não foi encontrada.");
+                    "The credential was not found.");
             }
             if (!string.Equals(
                     credential.ConcurrencyToken,
@@ -327,13 +327,13 @@ internal sealed class ClientCredentialRegistry(
             {
                 throw new ManagementConflictException(
                     "client_credential_changed",
-                    "A credencial foi alterada por outra operação. Recarregue os dados.");
+                    "The credential was changed by another operation. Reload the data.");
             }
             if (credential.RevokedAtUtc is not null)
             {
                 throw new ManagementConflictException(
                     "client_credential_already_revoked",
-                    "A credencial já foi revogada.");
+                    "The credential has already been revoked.");
             }
 
             var revocationReason = ClientCredentialPolicy.ValidateRevocationReason(command.Reason);
@@ -396,7 +396,7 @@ internal sealed class ClientCredentialRegistry(
                 command.CredentialId);
             throw new ManagementConflictException(
                 "client_credential_changed",
-                "A credencial foi alterada por outra operação. Recarregue os dados.");
+                "The credential was changed by another operation. Reload the data.");
         }
     }
 
@@ -530,7 +530,7 @@ internal sealed class ClientCredentialRegistry(
         {
             throw new ManagementValidationException(
                 "mtls_certificate_kid_required",
-                "Informe o identificador do certificado que será revogado.",
+                "Provide the identifier of the certificate to revoke.",
                 "keyId");
         }
 
@@ -600,7 +600,7 @@ internal sealed class ClientCredentialRegistry(
         {
             credentials.Add(new ManagementClientCredentialSummary(
                 Id: null,
-                Label: "Credencial principal (compatibilidade)",
+                Label: "Primary credential (compatibility)",
                 Kind: OAuthClientCredentialKinds.SharedSecret,
                 SecretHint: string.Empty,
                 Status: "active",
@@ -649,7 +649,7 @@ internal sealed class ClientCredentialRegistry(
         {
             throw new ManagementConflictException(
                 "client_manifest_managed",
-                "Este cliente é gerenciado por manifesto declarativo. Altere suas credenciais no manifesto e aplique o provisionamento.");
+                "This client is managed by a declarative manifest. Change its credentials in the manifest and apply provisioning.");
         }
     }
 }

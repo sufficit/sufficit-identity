@@ -27,12 +27,12 @@ internal sealed partial class UserManagementService
         var userName = Required(
             command.UserName,
             "user_name_required",
-            "Informe o nome de usuário.",
+            "Provide the user name.",
             "userName");
         var email = Required(
             command.Email,
             "user_email_required",
-            "Informe o e-mail do usuário.",
+            "Provide the user's email.",
             "email");
         var phoneNumber = string.IsNullOrWhiteSpace(command.PhoneNumber)
             ? null
@@ -41,28 +41,28 @@ internal sealed partial class UserManagementService
         {
             throw new ManagementValidationException(
                 "user_name_too_long",
-                "Use no máximo 256 caracteres no nome de usuário.",
+                "Use at most 256 characters for the user name.",
                 "userName");
         }
         if (email.Length > 256)
         {
             throw new ManagementValidationException(
                 "user_email_too_long",
-                "Use no máximo 256 caracteres no e-mail.",
+                "Use at most 256 characters for the email.",
                 "email");
         }
         if (!new EmailAddressAttribute().IsValid(email))
         {
             throw new ManagementValidationException(
                 "user_email_invalid",
-                "Informe um endereço de e-mail válido.",
+                "Provide a valid email address.",
                 "email");
         }
         if (phoneNumber?.Length > 256)
         {
             throw new ManagementValidationException(
                 "user_phone_number_too_long",
-                "Use no máximo 256 caracteres no telefone.",
+                "Use at most 256 characters for the phone number.",
                 "phoneNumber");
         }
 
@@ -88,7 +88,7 @@ internal sealed partial class UserManagementService
                 cancellationToken);
             throw new ManagementNotFoundException(
                 "user_not_found",
-                "O usuário não foi encontrado.");
+                "The user was not found.");
         }
 
         var userNameChanged = !string.Equals(
@@ -198,7 +198,7 @@ internal sealed partial class UserManagementService
                 CancellationToken.None);
             throw new ManagementConflictException(
                 "user_profile_update_failed",
-                "Não foi possível atualizar o perfil do usuário.");
+                "The user's profile could not be updated.");
         }
 
         return await GetAsync(
@@ -245,7 +245,7 @@ internal sealed partial class UserManagementService
                 cancellationToken);
             throw new ManagementNotFoundException(
                 "user_not_found",
-                "O usuário não foi encontrado.");
+                "The user was not found.");
         }
 
         if (string.IsNullOrWhiteSpace(user.Email))
@@ -283,7 +283,7 @@ internal sealed partial class UserManagementService
                 cancellationToken);
             throw new ManagementConflictException(
                 "user_confirmation_resend_failed",
-                "Não foi possível reenviar a confirmação de e-mail.");
+                "The email confirmation could not be resent.");
         }
 
         await TryWriteAuditAsync(

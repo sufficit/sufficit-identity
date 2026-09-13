@@ -197,7 +197,7 @@ internal sealed partial class ClientManagementService
             {
                 throw new ManagementValidationException(
                     "scope_reserved",
-                    $"O scope '{forbidden}' protege uma superfície administrativa e não pode ser atribuído a um cliente pela API de gerenciamento.",
+                    $"The scope '{forbidden}' protects an administrative surface and cannot be assigned to a client through the management API.",
                     "scopes");
             }
 
@@ -354,7 +354,7 @@ internal sealed partial class ClientManagementService
             {
                 throw new ManagementValidationException(
                     "client_version_required",
-                    "Recarregue a aplicação antes de salvar para confirmar a versão atual.",
+                    "Reload the application before saving to confirm the current version.",
                     "expectedVersion");
             }
 
@@ -365,7 +365,7 @@ internal sealed partial class ClientManagementService
             {
                 throw new ManagementConflictException(
                     "client_changed",
-                    "O cliente foi alterado por outra operação. Recarregue os dados antes de salvar.");
+                    "The client was changed by another operation. Reload the data before saving.");
             }
 
             var descriptor = new OpenIddictApplicationDescriptor();
@@ -379,7 +379,7 @@ internal sealed partial class ClientManagementService
             {
                 throw new ManagementConflictException(
                     "client_manifest_managed",
-                    "Este cliente é gerenciado por manifesto declarativo. Altere o manifesto e aplique o provisionamento.");
+                    "This client is managed by a declarative manifest. Change the manifest and apply provisioning.");
             }
 
             var redirectUris = ClientUriPolicy.ValidateRedirectUris(
@@ -465,7 +465,7 @@ internal sealed partial class ClientManagementService
             {
                 throw new ManagementValidationException(
                     "scope_reserved",
-                    $"O scope '{forbidden}' protege uma superfície administrativa e não pode ser atribuído a um cliente pela API de gerenciamento.",
+                    $"The scope '{forbidden}' protects an administrative surface and cannot be assigned to a client through the management API.",
                     "scopes");
             }
 
@@ -615,7 +615,7 @@ internal sealed partial class ClientManagementService
                 context.CorrelationId);
             throw new ManagementConflictException(
                 "client_changed",
-                "O cliente foi alterado por outra operação. Recarregue os dados antes de salvar.");
+                "The client was changed by another operation. Reload the data before saving.");
         }
         catch (Exception exception)
         {

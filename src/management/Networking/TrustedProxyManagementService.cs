@@ -31,7 +31,7 @@ internal sealed class TrustedProxyManagementService(AppDbContext database,
         try
         {
             networks = TrustedProxyValidation.Normalize(command.Networks
-                ?? throw new ArgumentException("Informe a lista de proxies.")).ToArray();
+                ?? throw new ArgumentException("Provide the list of proxies.")).ToArray();
             TrustedProxyValidation.ValidateForwardLimit(command.ForwardLimit);
         }
         catch (ArgumentException exception)
@@ -61,7 +61,7 @@ internal sealed class TrustedProxyManagementService(AppDbContext database,
     }
 
     private static ManagementValidationException Conflict() => new("trusted_proxy_conflict",
-        "A configuração foi alterada por outro operador. Recarregue antes de salvar.");
+        "The configuration was changed by another operator. Reload before saving.");
 
     private ManagementTrustedProxies ToContract(TrustedProxySnapshot s) => new(
         s.FileNetworks, s.DatabaseNetworks, s.EffectiveNetworks, s.FileForwardLimit,

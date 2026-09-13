@@ -37,50 +37,50 @@ internal sealed partial class ClientConfigurationDraftService(
     [
         new(
             ManagementClientProfiles.Web,
-            "Aplicação web / BFF",
-            "Login interativo processado por um servidor capaz de proteger uma credencial.",
+            "Web application / BFF",
+            "Interactive login processed by a server capable of protecting a credential.",
             "browser",
-            "Authorization Code + PKCE, renovação e consentimento explícito.",
+            "Authorization Code + PKCE, renewal and explicit consent.",
             RequiresRedirectUris: true,
             CreatesCredential: true),
         new(
             ManagementClientProfiles.Spa,
-            "SPA pública",
-            "Aplicação executada no navegador, sem segredo incorporado ao código.",
+            "Public SPA",
+            "Application running in the browser, with no secret embedded in the code.",
             "code",
-            "Authorization Code + PKCE, sem client secret.",
+            "Authorization Code + PKCE, without a client secret.",
             RequiresRedirectUris: true,
             CreatesCredential: false),
         new(
             ManagementClientProfiles.Native,
-            "Aplicativo móvel ou desktop",
-            "Cliente público instalado no dispositivo do usuário.",
+            "Mobile or desktop application",
+            "Public client installed on the user's device.",
             "device",
-            "Authorization Code + PKCE com redirect de loopback seguro.",
+            "Authorization Code + PKCE with a secure loopback redirect.",
             RequiresRedirectUris: true,
             CreatesCredential: false),
         new(
             ManagementClientProfiles.Service,
-            "Serviço para serviço",
-            "Integração sem usuário para jobs, APIs internas e automações.",
+            "Service to service",
+            "Userless integration for jobs, internal APIs, and automations.",
             "server",
-            "Client Credentials com uma credencial exibida uma única vez.",
+            "Client Credentials with a credential shown only once.",
             RequiresRedirectUris: false,
             CreatesCredential: true),
         new(
             ManagementClientProfiles.Device,
-            "Dispositivo ou CLI",
-            "Equipamento ou terminal com entrada limitada que autoriza em outro navegador.",
+            "Device or CLI",
+            "Equipment or terminal with limited input that authorizes from another browser.",
             "terminal",
-            "Device Authorization com renovação opcional.",
+            "Device Authorization with optional renewal.",
             RequiresRedirectUris: false,
             CreatesCredential: false),
         new(
             ManagementClientProfiles.Advanced,
-            "Configuração avançada",
-            "Comece com padrões seguros e ajuste conscientemente cada fluxo.",
+            "Advanced configuration",
+            "Start with secure defaults and consciously adjust each flow.",
             "settings",
-            "Controle explícito com as mesmas proteções do configurador.",
+            "Explicit control with the same protections as the wizard.",
             RequiresRedirectUris: true,
             CreatesCredential: false),
     ];
@@ -103,13 +103,13 @@ internal sealed partial class ClientConfigurationDraftService(
         await DemandCreateAsync(context, cancellationToken);
         var result = new List<ManagementClientAvailableScope>
         {
-            new("openid", "Identidade OpenID", "Identifica o usuário no protocolo OpenID Connect.", [], true),
-            new("profile", "Perfil básico", "Nome e atributos básicos do perfil.", [], true),
-            new("email", "E-mail", "Endereço de e-mail e seu estado de confirmação.", [], true),
-            new("phone", "Telefone", "Número de telefone e seu estado de confirmação.", [], true),
-            new("address", "Endereço", "Dados de endereço padronizados pelo OpenID Connect.", [], true),
-            new("roles", "Papéis", "Papéis genéricos emitidos para o usuário.", [], true),
-            new("offline_access", "Acesso contínuo", "Permite solicitar refresh tokens.", [], true),
+            new("openid", "OpenID identity", "Identifies the user in the OpenID Connect protocol.", [], true),
+            new("profile", "Basic profile", "Name and basic profile attributes.", [], true),
+            new("email", "Email", "Email address and its confirmation status.", [], true),
+            new("phone", "Phone", "Phone number and its confirmation status.", [], true),
+            new("address", "Address", "Address data standardized by OpenID Connect.", [], true),
+            new("roles", "Roles", "Generic roles issued for the user.", [], true),
+            new("offline_access", "Continuous access", "Allows requesting refresh tokens.", [], true),
         };
         var reserved = managementOptions.Value.ReservedApiScopes;
         await foreach (var scope in scopes.ListAsync(cancellationToken: cancellationToken))
@@ -222,7 +222,7 @@ internal sealed partial class ClientConfigurationDraftService(
         {
             throw new ManagementConflictException(
                 "client_draft_changed",
-                "Este rascunho foi alterado em outra sessão. Recarregue antes de continuar.");
+                "This draft was changed in another session. Reload before continuing.");
         }
 
         var step = NormalizeStep(command.CurrentStep);
@@ -261,7 +261,7 @@ internal sealed partial class ClientConfigurationDraftService(
         {
             throw new ManagementConflictException(
                 "client_draft_changed",
-                "Este rascunho foi alterado em outra sessão. Recarregue antes de criar a aplicação.");
+                "This draft was changed in another session. Reload before creating the application.");
         }
 
         var values = Unprotect(row);
@@ -373,7 +373,7 @@ internal sealed partial class ClientConfigurationDraftService(
         {
             throw new ManagementNotFoundException(
                 "client_draft_not_found",
-                "O rascunho não existe ou não pertence a este operador.");
+                "The draft does not exist or does not belong to this operator.");
         }
         if (row.ExpiresAtUtc <= timeProvider.GetUtcNow().UtcDateTime)
         {
@@ -384,7 +384,7 @@ internal sealed partial class ClientConfigurationDraftService(
             }
             throw new ManagementNotFoundException(
                 "client_draft_expired",
-                "Este rascunho expirou. Inicie uma nova configuração.");
+                "This draft expired. Start a new configuration.");
         }
         return row;
     }

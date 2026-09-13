@@ -53,7 +53,7 @@ internal static class ClientCredentialPolicy
         {
             throw new ManagementValidationException(
                 "client_version_required",
-                "Recarregue a aplicação antes de adicionar uma credencial.",
+                "Reload the application before adding a credential.",
                 "expectedClientVersion");
         }
         if (!string.Equals(
@@ -63,7 +63,7 @@ internal static class ClientCredentialPolicy
         {
             throw new ManagementConflictException(
                 "client_changed",
-                "A aplicação foi alterada por outra operação. Recarregue os dados.");
+                "The application was changed by another operation. Reload the data.");
         }
     }
 
@@ -149,14 +149,14 @@ internal static class ClientCredentialPolicy
         {
             throw new ManagementValidationException(
                 "client_credential_label_invalid",
-                $"O nome deve ter entre 1 e {IdentityDatabaseSchema.OAuthClientCredentialLabelLength} caracteres.",
+                $"The name must be between 1 and {IdentityDatabaseSchema.OAuthClientCredentialLabelLength} characters.",
                 "label");
         }
         if (label.Any(char.IsControl))
         {
             throw new ManagementValidationException(
                 "client_credential_label_invalid",
-                "O nome da credencial não pode conter caracteres de controle.",
+                "The credential name cannot contain control characters.",
                 "label");
         }
 
@@ -172,7 +172,7 @@ internal static class ClientCredentialPolicy
         {
             throw new ManagementValidationException(
                 "client_credential_expiration_invalid",
-                "A expiração deve estar no futuro.",
+                "The expiration must be in the future.",
                 "expiresAtUtc");
         }
         if (expiresAtUtc is { } boundedExpiry
@@ -180,7 +180,7 @@ internal static class ClientCredentialPolicy
         {
             throw new ManagementValidationException(
                 "client_credential_expiration_too_distant",
-                $"A expiração não pode ultrapassar {MaximumClientCredentialLifetimeDays} dias.",
+                $"The expiration cannot exceed {MaximumClientCredentialLifetimeDays} days.",
                 "expiresAtUtc");
         }
         if (notBeforeUtc is { } notBefore
@@ -189,7 +189,7 @@ internal static class ClientCredentialPolicy
         {
             throw new ManagementValidationException(
                 "client_credential_window_invalid",
-                "O início da validade deve ser anterior à expiração.",
+                "The validity start must be before the expiration.",
                 "notBeforeUtc");
         }
     }
@@ -206,7 +206,7 @@ internal static class ClientCredentialPolicy
         {
             throw new ManagementValidationException(
                 "client_credential_revocation_reason_invalid",
-                $"O motivo deve ter até {IdentityDatabaseSchema.OAuthClientCredentialReasonLength} caracteres e não pode conter caracteres de controle.",
+                $"The reason must be at most {IdentityDatabaseSchema.OAuthClientCredentialReasonLength} characters and cannot contain control characters.",
                 "reason");
         }
 
@@ -256,7 +256,7 @@ internal static class ClientCredentialPolicy
         {
             throw new ManagementValidationException(
                 "client_secret_required",
-                "Informe uma credencial ou escolha a geração automática.",
+                "Provide a credential or choose automatic generation.",
                 "clientSecret");
         }
 
@@ -264,7 +264,7 @@ internal static class ClientCredentialPolicy
         {
             throw new ManagementValidationException(
                 "client_secret_length_invalid",
-                $"A credencial deve ter entre {MinimumClientSecretLength} e {MaximumClientSecretLength} caracteres.",
+                $"The credential must be between {MinimumClientSecretLength} and {MaximumClientSecretLength} characters.",
                 "clientSecret");
         }
 
@@ -273,7 +273,7 @@ internal static class ClientCredentialPolicy
         {
             throw new ManagementValidationException(
                 "client_secret_format_invalid",
-                "A credencial não pode começar ou terminar com espaços nem conter caracteres de controle.",
+                "The credential cannot start or end with spaces or contain control characters.",
                 "clientSecret");
         }
 

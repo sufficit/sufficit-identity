@@ -52,8 +52,9 @@ internal sealed class RabbitMQEmailQueue : IEmailSender
             _logger.LogWarning("TEST MODE: redirecting email from {Original} to {Test}", email, recipient);
         }
 
-        // Heurística mantida idêntica ao legado. Mudar quebra o contrato com
-        // o consumidor da fila Q-EMAIL (que tria por ModelId).
+        // Heuristic kept identical to the legacy implementation. Changing it
+        // breaks the contract with the Q-EMAIL queue consumer (which sorts
+        // by ModelId).
         var isPasswordReset =
             (!string.IsNullOrWhiteSpace(htmlMessage)
              && (

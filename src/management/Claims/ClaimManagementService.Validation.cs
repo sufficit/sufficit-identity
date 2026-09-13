@@ -23,27 +23,27 @@ internal sealed partial class ClaimManagementService
         var type = Required(
             value,
             "claim_type_required",
-            "Informe o tipo da claim.",
+            "Provide the claim type.",
             "type");
         if (type.Length > ClaimTypeMaxLength)
         {
             throw new ManagementValidationException(
                 "claim_type_too_long",
-                $"Use no máximo {ClaimTypeMaxLength} caracteres.",
+                $"Use at most {ClaimTypeMaxLength} characters.",
                 "type");
         }
         if (type.Any(char.IsWhiteSpace) || type.Any(char.IsControl))
         {
             throw new ManagementValidationException(
                 "claim_type_invalid",
-                "O tipo da claim não pode conter espaços ou caracteres de controle.",
+                "The claim type cannot contain spaces or control characters.",
                 "type");
         }
         if (IsAuthorizationSensitiveClaimType(type))
         {
             throw new ManagementValidationException(
                 "claim_type_reserved",
-                "Essa claim é derivada pelo protocolo ou pelo perfil e não pode ser atribuída manualmente.",
+                "This claim is derived by the protocol or the profile and cannot be assigned manually.",
                 "type");
         }
 
@@ -82,21 +82,21 @@ internal sealed partial class ClaimManagementService
         {
             throw new ManagementValidationException(
                 "claim_value_required",
-                "Informe o valor da claim.",
+                "Provide the claim value.",
                 "value");
         }
         if (value.Length > ClaimValueMaxLength)
         {
             throw new ManagementValidationException(
                 "claim_value_too_long",
-                $"Use no máximo {ClaimValueMaxLength} caracteres.",
+                $"Use at most {ClaimValueMaxLength} characters.",
                 "value");
         }
         if (value.Contains('\0', StringComparison.Ordinal))
         {
             throw new ManagementValidationException(
                 "claim_value_invalid",
-                "O valor da claim contém um caractere inválido.",
+                "The claim value contains an invalid character.",
                 "value");
         }
 
@@ -132,7 +132,7 @@ internal sealed partial class ClaimManagementService
         {
             throw new ManagementConflictException(
                 reasonCode,
-                "Não foi possível invalidar as sessões da conta.");
+                "Could not invalidate the account's sessions.");
         }
     }
 

@@ -58,9 +58,10 @@ internal sealed class ScimAuditQueue : IScimAuditQueue
     private long _accepted;
     private long _persisted;
 
-    // Substituída a cada lote gravado. Quem quer esperar a gravação lê a
-    // propriedade ANTES de provocar o trabalho e aguarda a Task capturada —
-    // ler depois perderia o sinal de um lote que já passou.
+    // Replaced on every batch written. Whoever wants to wait for the write
+    // reads the property BEFORE triggering the work and awaits the captured
+    // Task — reading it afterward would miss the signal for a batch that has
+    // already passed.
     private TaskCompletionSource _flushed =
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -73,17 +74,17 @@ internal sealed class ScimAuditQueue : IScimAuditQueue
     public long Persisted => Interlocked.Read(ref _persisted);
 
     /// <summary>
-    /// Entradas aceitas que ainda não chegaram à tabela.
+    /// Accepted entries that have not reached the table yet.
     /// </summary>
     /// <remarks>
-    /// Até aqui o único sinal era a contagem de descartes, e ela só era
-    /// relatada no desligamento. Uma fila que atrasa sem saturar não produzia
-    /// sinal nenhum: o rastro de leitura ficava incompleto e nada dizia isso.
+    /// Until now the only signal was the drop count, and it was only
+    /// reported on shutdown. A queue that lags without saturating produced no
+    /// signal at all: the read trail stayed incomplete and nothing said so.
     /// </remarks>
     public long Backlog => Accepted - Persisted;
 
     /// <summary>
-    /// Completa na próxima gravação bem-sucedida de um lote.
+    /// Completes on the next successful write of a batch.
     /// </summary>
     public Task Flushed => Volatile.Read(ref _flushed).Task;
 
@@ -103,8 +104,8 @@ internal sealed class ScimAuditQueue : IScimAuditQueue
     {
         Interlocked.Add(ref _persisted, count);
 
-        // Troca o gatilho antes de disparar o antigo, para que quem for
-        // aguardar o PRÓXIMO lote não receba o sinal deste.
+        // Swap the trigger before completing the old one, so that whoever
+        // is waiting for the NEXT batch does not receive this one's signal.
         Interlocked
             .Exchange(
                 ref _flushed,
@@ -177,8 +178,8 @@ internal sealed class ScimAuditWorker(
                 queue.Dropped);
         }
 
-        // Saturação não é a única forma de perder o rastro: o que ficou na fila
-        // no desligamento também não chegou à tabela.
+        // Saturation is not the only way to lose the trail: whatever stayed
+        // in the queue at shutdown also never reached the table.
         if (queue.Backlog > 0)
         {
             logger.LogWarning(

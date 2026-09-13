@@ -53,7 +53,7 @@ internal sealed partial class ScopeManagementService
             new ManagementResource(ManagementResourceTypes.Scope, scopeId), cancellationToken,
             auditDenial: true);
         var scope = await scopes.FindByIdAsync(scopeId, cancellationToken)
-            ?? throw new ManagementNotFoundException("scope_not_found", "O scope não foi encontrado.");
+            ?? throw new ManagementNotFoundException("scope_not_found", "The scope was not found.");
         await DemandManuallyManagedAsync(scope, cancellationToken);
         var name = await scopes.GetNameAsync(scope, cancellationToken);
         if (command.Assigned && (ProtocolScopes.Contains(name ?? string.Empty)
@@ -62,18 +62,18 @@ internal sealed partial class ScopeManagementService
             || RetiredIdentityScopes.Contains(name)))
         {
             throw new ManagementValidationException("audience_scope_not_editable",
-                "Use um scope de acesso à API. Scopes de claims ou reservados não recebem novas audiências por esta tela.", "scopeId");
+                "Use an API access scope. Claim or reserved scopes cannot receive new audiences from this screen.", "scopeId");
         }
 
         var audience = ValidateResources([command.Audience]).Single();
         if (audience.Any(char.IsWhiteSpace))
             throw new ManagementValidationException("scope_resource_invalid",
-                "O identificador da audiência não pode conter espaços.", "audience");
+                "The audience identifier cannot contain spaces.", "audience");
         var expected = ValidateResources(command.ExpectedResources);
         var current = await scopes.GetResourcesAsync(scope, cancellationToken);
         if (!expected.SetEquals(current))
             throw new ManagementConflictException("audience_bindings_changed",
-                "Os vínculos deste scope mudaram. Atualize a lista e revise a operação.");
+                "This scope's bindings have changed. Refresh the list and review the operation.");
 
         var resources = current.ToHashSet(StringComparer.Ordinal);
         if (command.Assigned) resources.Add(audience);

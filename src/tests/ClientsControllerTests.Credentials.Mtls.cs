@@ -217,7 +217,7 @@ public sealed partial class ClientsControllerTests
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("chave privada", body, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("private key", body, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(privatePem, body, StringComparison.Ordinal);
     }
 
@@ -358,7 +358,7 @@ public sealed partial class ClientsControllerTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
         Assert.True(body.Contains(
-            "apenas chaves públicas",
+            "only public keys",
             StringComparison.OrdinalIgnoreCase), body);
         Assert.DoesNotContain(privateValue, body, StringComparison.Ordinal);
     }

@@ -88,6 +88,7 @@ public sealed class IntegrationOAuthCompletionTests
         var ticket = await fixture.Begin("popup");
         var result = Assert.IsType<ContentResult>(await fixture.Callback(ticket));
         Assert.Contains("permissões necessárias não foram concedidas", result.Content);
+        Assert.Contains("lang=\"pt-BR\"", result.Content);
         if (Environment.GetEnvironmentVariable("GENIUS_INTEGRATION_EVIDENCE") is { Length: > 0 } directory)
         {
             Directory.CreateDirectory(directory);
@@ -132,7 +133,12 @@ public sealed class IntegrationOAuthCompletionTests
             scope = string.Join(' ', registry.Find(Provider)!.Scopes);
             var authentication = new FakeAuthentication(grantRequiredScopes ? scope : "openid");
             Controller = new IntegrationOAuthController(registry, Vault, new EphemeralDataProtectionProvider(),
-                new RefreshHttpClient(), new ReturnResolver(), null!);
+                new RefreshHttpClient(), new ReturnResolver(), null!,
+                new Microsoft.Extensions.Localization.StringLocalizer<Sufficit.Identity.STS.Resources.AccountMessages>(
+                    new Microsoft.Extensions.Localization.ResourceManagerStringLocalizerFactory(
+                        Microsoft.Extensions.Options.Options.Create(
+                            new Microsoft.Extensions.Localization.LocalizationOptions()),
+                        Microsoft.Extensions.Logging.Abstractions.NullLoggerFactory.Instance)));
             Controller.ControllerContext = new ControllerContext
             {
                 HttpContext = new DefaultHttpContext
@@ -154,8 +160,24 @@ public sealed class IntegrationOAuthCompletionTests
                 await Controller.Authorize(Provider, null, default, launchMode)).Value);
             return QueryHelpers.ParseQuery(new Uri(result.AuthorizationUrl).Query)["ticket"].ToString();
         }
-        public Task<IActionResult> Callback(string ticket, string? error = null) =>
-            Controller.Callback(Provider, ticket, null, null, error, default);
+        /// <summary>
+        /// The completion page is shown to the end user, so these tests run the
+        /// callback in the pt-BR host culture they assert against.
+        /// </summary>
+        public async Task<IActionResult> Callback(string ticket, string? error = null)
+        {
+            var previousCulture = System.Globalization.CultureInfo.CurrentUICulture;
+            System.Globalization.CultureInfo.CurrentUICulture =
+                System.Globalization.CultureInfo.GetCultureInfo("pt-BR");
+            try
+            {
+                return await Controller.Callback(Provider, ticket, null, null, error, default);
+            }
+            finally
+            {
+                System.Globalization.CultureInfo.CurrentUICulture = previousCulture;
+            }
+        }
         public async Task<IntegrationOAuthStatus> Status() => Assert.IsType<IntegrationOAuthStatus>(
             Assert.IsType<OkObjectResult>(await Controller.Status(Provider, default)).Value);
     }

@@ -70,9 +70,9 @@ internal sealed class OpenIddictPruningWorker(
     }
 
     /// <summary>
-    /// Uma passada de poda. Interno porque o teste chama esta passada
-    /// diretamente: o laço de agendamento não é o que ele verifica — a regra
-    /// de retenção é.
+    /// A single pruning pass. Internal because the test calls this pass
+    /// directly: the scheduling loop is not what it verifies — the retention
+    /// rule is.
     /// </summary>
     internal async Task PruneAsync(CancellationToken cancellationToken)
     {

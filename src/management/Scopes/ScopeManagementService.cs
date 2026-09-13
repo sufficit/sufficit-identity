@@ -118,7 +118,7 @@ internal sealed partial class ScopeManagementService(
         {
             throw new ManagementNotFoundException(
                 "scope_not_found",
-                "O scope não foi encontrado.");
+                "The scope was not found.");
         }
 
         var detail = await ToDetailAsync(scope, cancellationToken);
@@ -155,7 +155,7 @@ internal sealed partial class ScopeManagementService(
         {
             throw new ManagementConflictException(
                 "scope_already_exists",
-                "Já existe um scope com esse nome.");
+                "A scope with this name already exists.");
         }
 
         var descriptor = new OpenIddictScopeDescriptor
@@ -213,7 +213,7 @@ internal sealed partial class ScopeManagementService(
                 context.CorrelationId);
             throw new ManagementConflictException(
                 "scope_create_failed",
-                "Não foi possível criar o scope.");
+                "The scope could not be created.");
         }
     }
 
@@ -240,7 +240,7 @@ internal sealed partial class ScopeManagementService(
         {
             throw new ManagementNotFoundException(
                 "scope_not_found",
-                "O scope não foi encontrado.");
+                "The scope was not found.");
         }
         await DemandManuallyManagedAsync(scope, cancellationToken);
 
@@ -298,7 +298,7 @@ internal sealed partial class ScopeManagementService(
                 context.CorrelationId);
             throw new ManagementConflictException(
                 "scope_update_failed",
-                "Não foi possível atualizar o scope.");
+                "The scope could not be updated.");
         }
     }
 
@@ -323,7 +323,7 @@ internal sealed partial class ScopeManagementService(
         {
             throw new ManagementNotFoundException(
                 "scope_not_found",
-                "O scope não foi encontrado.");
+                "The scope was not found.");
         }
         await DemandManuallyManagedAsync(scope, cancellationToken);
 
@@ -332,13 +332,13 @@ internal sealed partial class ScopeManagementService(
             cancellationToken)
             ?? throw new ManagementConflictException(
                 "scope_name_missing",
-                "O scope não possui um nome válido.");
+                "The scope does not have a valid name.");
         var usage = await ListClientUsageAsync(cancellationToken);
         if (usage.TryGetValue(name, out var clients) && clients.Count > 0)
         {
             throw new ManagementConflictException(
                 "scope_in_use",
-                $"Remova o scope dos clientes antes de excluí-lo ({clients.Count} cliente(s) ainda o utilizam).");
+                $"Remove the scope from clients before deleting it ({clients.Count} client(s) still use it).");
         }
 
         await using var transaction = await database.Database
@@ -372,7 +372,7 @@ internal sealed partial class ScopeManagementService(
                 context.CorrelationId);
             throw new ManagementConflictException(
                 "scope_delete_failed",
-                "Não foi possível excluir o scope.");
+                "The scope could not be deleted.");
         }
     }
 
@@ -423,7 +423,7 @@ internal sealed partial class ScopeManagementService(
         {
             throw new ManagementConflictException(
                 "scope_manifest_managed",
-                "Este scope é gerenciado pelo manifesto declarativo. Altere o manifesto e aplique o provisionamento.");
+                "This scope is managed by the declarative manifest. Change the manifest and apply provisioning.");
         }
     }
 
@@ -477,14 +477,14 @@ internal sealed partial class ScopeManagementService(
         {
             throw new ManagementValidationException(
                 "scope_name_required",
-                "Informe o nome do scope.",
+                "Provide the scope name.",
                 "name");
         }
         if (name.Length > IdentityDatabaseSchema.OpenIddictScopeNameLength)
         {
             throw new ManagementValidationException(
                 "scope_name_too_long",
-                $"Use no máximo {IdentityDatabaseSchema.OpenIddictScopeNameLength} caracteres.",
+                $"Use at most {IdentityDatabaseSchema.OpenIddictScopeNameLength} characters.",
                 "name");
         }
         if (name.Any(character =>
@@ -494,21 +494,21 @@ internal sealed partial class ScopeManagementService(
         {
             throw new ManagementValidationException(
                 "scope_name_invalid",
-                "Use um scope-token OAuth sem espaços, aspas ou barra invertida.",
+                "Use an OAuth scope token without spaces, quotes, or backslashes.",
                 "name");
         }
         if (ProtocolScopes.Contains(name))
         {
             throw new ManagementValidationException(
                 "scope_name_reserved",
-                "Esse scope é definido pelo protocolo e não deve ser cadastrado como scope customizado.",
+                "This scope is defined by the protocol and must not be registered as a custom scope.",
                 "name");
         }
         if (RetiredIdentityScopes.Contains(name))
         {
             throw new ManagementValidationException(
                 "scope_retired",
-                "Esse scope foi aposentado e não pode ser criado novamente.",
+                "This scope has been retired and cannot be created again.",
                 "name");
         }
         // H2/M3 fix (eval): API-protection scopes (management, SCIM, custom
@@ -521,7 +521,7 @@ internal sealed partial class ScopeManagementService(
         {
             throw new ManagementValidationException(
                 "scope_name_reserved",
-                "Esse scope protege uma superfície administrativa e não pode ser criado pela API de gerenciamento. Declare-o via bootstrap/provisioning.",
+                "This scope protects an administrative surface and cannot be created through the management API. Declare it via bootstrap/provisioning.",
                 "name");
         }
 
@@ -541,7 +541,7 @@ internal sealed partial class ScopeManagementService(
         {
             throw new ManagementValidationException(
                 reasonCode,
-                $"Use no máximo {maxLength} caracteres.",
+                $"Use at most {maxLength} characters.",
                 field);
         }
 
@@ -555,14 +555,14 @@ internal sealed partial class ScopeManagementService(
         {
             throw new ManagementValidationException(
                 "scope_resources_required",
-                "A lista de resources é obrigatória, mesmo quando vazia.",
+                "The resources list is required, even when empty.",
                 "resources");
         }
         if (values.Count > ResourceCountLimit)
         {
             throw new ManagementValidationException(
                 "scope_resources_limit",
-                $"Use no máximo {ResourceCountLimit} resources.",
+                $"Use at most {ResourceCountLimit} resources.",
                 "resources");
         }
 
@@ -574,7 +574,7 @@ internal sealed partial class ScopeManagementService(
             {
                 throw new ManagementValidationException(
                     "scope_resource_invalid",
-                    "Resources não podem ser vazios.",
+                    "Resources cannot be empty.",
                     "resources");
             }
             if (resource.Length > ResourceMaxLength
@@ -582,14 +582,14 @@ internal sealed partial class ScopeManagementService(
             {
                 throw new ManagementValidationException(
                     "scope_resource_invalid",
-                    $"Cada resource deve ter até {ResourceMaxLength} caracteres e não pode conter caracteres de controle.",
+                    $"Each resource must be up to {ResourceMaxLength} characters and cannot contain control characters.",
                     "resources");
             }
             if (!resources.Add(resource))
             {
                 throw new ManagementValidationException(
                     "scope_resource_duplicate",
-                    $"O resource '{resource}' está duplicado.",
+                    $"The resource '{resource}' is duplicated.",
                     "resources");
             }
         }

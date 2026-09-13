@@ -22,16 +22,16 @@ internal sealed partial class ClientConfigurationDraftService
         var issues = new List<ClientValidationIssue>();
         AddRequired(issues, values.DisplayName, "display_name_required",
             ManagementClientDraftSteps.Identity, "displayName",
-            "Informe um nome que permita reconhecer a aplicação.");
+            "Provide a name that identifies the application.");
         AddRequired(issues, values.ClientId, "client_id_required",
             ManagementClientDraftSteps.Identity, "clientId",
-            "Informe um client ID estável para a integração.");
+            "Provide a stable client ID for the integration.");
 
         var clientId = values.ClientId.Trim();
         if (clientId.Length > IdentityDatabaseSchema.OpenIddictClientIdLength)
         {
             AddError(issues, "client_id_too_long", ManagementClientDraftSteps.Identity,
-                "clientId", $"Use no máximo {IdentityDatabaseSchema.OpenIddictClientIdLength} caracteres.");
+                "clientId", $"Use at most {IdentityDatabaseSchema.OpenIddictClientIdLength} characters.");
         }
         else if (clientId.Length > 0 && clientId.Any(char.IsWhiteSpace))
         {
@@ -40,8 +40,8 @@ internal sealed partial class ClientConfigurationDraftService
                 ManagementClientDraftSteps.Identity,
                 "clientId",
                 ClientValidationSeverity.Warning,
-                "Espaços no client ID dificultam integrações e diagnóstico.",
-                "Prefira letras, números, ponto, hífen, sublinhado ou dois-pontos."));
+                "Spaces in the client ID make integrations and diagnostics harder.",
+                "Prefer letters, numbers, period, hyphen, underscore, or colon."));
         }
 
         if (clientId.Length > 0 && await applications.FindByClientIdAsync(
@@ -49,45 +49,45 @@ internal sealed partial class ClientConfigurationDraftService
                 cancellationToken) is not null)
         {
             AddError(issues, "client_already_exists", ManagementClientDraftSteps.Identity,
-                "clientId", "Este client ID já pertence a outra aplicação.");
+                "clientId", "This client ID already belongs to another application.");
         }
 
         var grants = GrantCount(values);
         if (grants == 0)
         {
             AddError(issues, "grant_required", ManagementClientDraftSteps.Protocol,
-                "grantTypes", "Escolha como a aplicação irá obter tokens.");
+                "grantTypes", "Choose how the application will obtain tokens.");
         }
         if (values.ClientCredentials &&
             string.Equals(values.ClientType, "public", StringComparison.Ordinal))
         {
             AddError(issues, "confidential_client_required", ManagementClientDraftSteps.Protocol,
-                "clientType", "Client Credentials exige uma aplicação confidencial.");
+                "clientType", "Client Credentials requires a confidential application.");
         }
         if (values.AuthorizationCode && values.RedirectUris.Count == 0)
         {
             AddError(issues, "redirect_uri_required", ManagementClientDraftSteps.Uris,
-                "redirectUris", "O login interativo exige pelo menos uma Redirect URI.");
+                "redirectUris", "Interactive login requires at least one Redirect URI.");
         }
         if (values.Scopes.Contains("offline_access", StringComparer.Ordinal) && !values.RefreshToken)
         {
             AddError(issues, "offline_access_requires_refresh_token",
                 ManagementClientDraftSteps.Permissions, "scopes",
-                "offline_access exige que Refresh Token esteja habilitado.");
+                "offline_access requires Refresh Token to be enabled.");
         }
 
         ValidateOptionalLifetime(issues, values.AccessTokenLifetimeMinutes,
             TokenLifetimeLimits.MinimumAccessTokenLifetimeMinutes,
             TokenLifetimeLimits.MaximumAccessTokenLifetimeMinutes,
-            "accessTokenLifetimeMinutes", "Access token deve ficar entre 1 minuto e 7 dias.");
+            "accessTokenLifetimeMinutes", "Access token must be between 1 minute and 7 days.");
         ValidateOptionalLifetime(issues, values.IdentityTokenLifetimeMinutes,
             TokenLifetimeLimits.MinimumIdentityTokenLifetimeMinutes,
             TokenLifetimeLimits.MaximumIdentityTokenLifetimeMinutes,
-            "identityTokenLifetimeMinutes", "ID token deve ficar entre 1 e 120 minutos.");
+            "identityTokenLifetimeMinutes", "ID token must be between 1 and 120 minutes.");
         ValidateOptionalLifetime(issues, values.RefreshTokenLifetimeDays,
             TokenLifetimeLimits.MinimumRefreshTokenLifetimeDays,
             TokenLifetimeLimits.MaximumRefreshTokenLifetimeDays,
-            "refreshTokenLifetimeDays", "Refresh token deve ficar entre 1 e 365 dias.");
+            "refreshTokenLifetimeDays", "Refresh token must be between 1 and 365 days.");
 
         if (values.ClientCredentials && !values.AuthorizationCode && !values.DeviceCode)
         {
@@ -95,7 +95,7 @@ internal sealed partial class ClientConfigurationDraftService
             {
                 AddError(issues, "identity_scope_without_user",
                     ManagementClientDraftSteps.Permissions, "scopes",
-                    $"O scope '{scope}' representa um usuário e não se aplica a serviço para serviço.");
+                    $"The scope '{scope}' represents a user and does not apply to service-to-service.");
             }
         }
 
@@ -110,19 +110,19 @@ internal sealed partial class ClientConfigurationDraftService
         {
             AddError(issues, "frontchannel_logout_origin_mismatch",
                 ManagementClientDraftSteps.Uris, "frontchannelLogoutUri",
-                "A URI de front-channel deve usar o mesmo protocolo, host e porta de uma Redirect URI.");
+                "The front-channel URI must use the same protocol, host, and port as a Redirect URI.");
         }
         if (values.FrontchannelLogoutSessionRequired &&
             string.IsNullOrWhiteSpace(values.FrontchannelLogoutUri))
         {
             AddError(issues, "frontchannel_logout_uri_required", ManagementClientDraftSteps.Uris,
-                "frontchannelLogoutUri", "Informe a URI antes de exigir logout por sessão.");
+                "frontchannelLogoutUri", "Provide the URI before requiring per-session logout.");
         }
         if (values.BackchannelLogoutSessionRequired &&
             string.IsNullOrWhiteSpace(values.BackchannelLogoutUri))
         {
             AddError(issues, "backchannel_logout_uri_required", ManagementClientDraftSteps.Uris,
-                "backchannelLogoutUri", "Informe a URI antes de exigir logout por sessão.");
+                "backchannelLogoutUri", "Provide the URI before requiring per-session logout.");
         }
 
         return new ClientDraftValidation(
@@ -148,7 +148,7 @@ internal sealed partial class ClientConfigurationDraftService
         foreach (var duplicate in duplicates)
         {
             AddError(issues, "redirect_uri_duplicate", ManagementClientDraftSteps.Uris,
-                field, $"A URI '{duplicate}' aparece mais de uma vez.");
+                field, $"The URI '{duplicate}' appears more than once.");
         }
     }
 
@@ -164,13 +164,13 @@ internal sealed partial class ClientConfigurationDraftService
         if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri))
         {
             AddError(issues, "redirect_uri_invalid", ManagementClientDraftSteps.Uris,
-                field, $"'{value}' não é uma URI absoluta válida.");
+                field, $"'{value}' is not a valid absolute URI.");
             return;
         }
         if (!string.IsNullOrEmpty(uri.Fragment))
         {
             AddError(issues, "redirect_uri_fragment", ManagementClientDraftSteps.Uris,
-                field, "Redirect URIs não podem conter fragmento (#...).");
+                field, "Redirect URIs cannot contain a fragment (#...).");
         }
         var loopback = uri.IsLoopback || string.Equals(
             uri.Host,
@@ -180,7 +180,7 @@ internal sealed partial class ClientConfigurationDraftService
             && !loopback)
         {
             AddError(issues, "redirect_uri_https_required", ManagementClientDraftSteps.Uris,
-                field, "Use HTTPS. HTTP é aceito somente em loopback local.");
+                field, "Use HTTPS. HTTP is accepted only on local loopback.");
         }
     }
 
