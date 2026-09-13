@@ -184,12 +184,13 @@ if (vaultUiEnabled)
 }
 
 // ---- Optional: SCIM 2.0 provisioning (RFC 7643/7644) ----
-var scimEnabled = builder.Configuration
-    .GetValue<bool>("Sufficit:Identity:Scim:Enabled");
-if (scimEnabled)
-{
-    builder.Services.AddSufficitIdentityScim(builder.Configuration);
-}
+// Modules composed through IIdentityModule register themselves; the host only
+// lists them. Remaining features migrate here one at a time (A8).
+var identityModules = Sufficit.Identity.Hosting.IdentityModuleCatalog.Create(
+    builder.Configuration,
+    new ScimIdentityModule());
+identityModules.ConfigureServices(builder.Services, builder.Configuration);
+var scimEnabled = identityModules.IsEnabled(ScimIdentityModule.ModuleId);
 
 // Management and SCIM both customize authorization failures. When both
 // modules are enabled, preserve the actionable Management Problem Details
