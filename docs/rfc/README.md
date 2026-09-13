@@ -46,7 +46,7 @@ out of scope.
 | 8414 | Authorization Server Metadata | A | Mixed | [RFC-8414-AUTHORIZATION-SERVER-METADATA.md](RFC-8414-AUTHORIZATION-SERVER-METADATA.md) |
 | 8417/8935/8936 | Security Event Token and delivery | B | In-house | [RFC-8417-SECURITY-EVENT-TOKEN.md](RFC-8417-SECURITY-EVENT-TOKEN.md) |
 | 8628 | Device Authorization Grant | A | Mixed | [RFC-8628-DEVICE-AUTHORIZATION-GRANT.md](RFC-8628-DEVICE-AUTHORIZATION-GRANT.md) |
-| 8693 | Token Exchange | C | Mixed | [RFC-8693-TOKEN-EXCHANGE.md](RFC-8693-TOKEN-EXCHANGE.md) |
+| 8693 | Token Exchange | B | Mixed | [RFC-8693-TOKEN-EXCHANGE.md](RFC-8693-TOKEN-EXCHANGE.md) |
 | 8705 | Mutual-TLS client auth and bound tokens | B | Mixed | [RFC-8705-MUTUAL-TLS.md](RFC-8705-MUTUAL-TLS.md) |
 | 8707 | Resource Indicators | B | Mixed | [RFC-8707-RESOURCE-INDICATORS.md](RFC-8707-RESOURCE-INDICATORS.md) |
 | 9068 | JWT Profile for Access Tokens | B | Mixed | [RFC-9068-JWT-ACCESS-TOKEN.md](RFC-9068-JWT-ACCESS-TOKEN.md) |
@@ -71,6 +71,7 @@ out of scope.
 | WebAuthn Level 2 and passkeys | B | ASP.NET Identity | [SPEC-WEBAUTHN-PASSKEYS.md](SPEC-WEBAUTHN-PASSKEYS.md) |
 | OAuth Client ID Metadata Document (draft) | B | In-house | [SPEC-OAUTH-CIMD.md](SPEC-OAUTH-CIMD.md) |
 | MCP Authorization | B | Mixed | [SPEC-MCP-AUTHORIZATION.md](SPEC-MCP-AUTHORIZATION.md) |
+| Identity Assertion JWT Authorization Grant (ID-JAG, draft-04) | C | In-house | [SPEC-OAUTH-ID-JAG.md](SPEC-OAUTH-ID-JAG.md) |
 
 ## Not implemented, by decision
 
@@ -78,7 +79,6 @@ out of scope.
 |---|---|
 | SAML 2.0 | Out of the product's scope; no SAML consumer. |
 | OpenID Connect Session Management 1.0 (`check_session_iframe`) | Replaced by server-side sessions and back-channel logout; the iframe depends on third-party cookies. |
-| Identity Assertion JWT Authorization Grant (ID-JAG) | Draft; evaluated as the next step for agent-to-agent application access. |
 | OAuth 2.0 Device Posture / RFC 9396 (RAR) | No demand; `scope` + `resource` cover the current cases. |
 | Implicit and Hybrid flow | Deliberately removed — see [RFC-9700-OAUTH-SECURITY-BCP.md](RFC-9700-OAUTH-SECURITY-BCP.md). |
 | Resource Owner Password Credentials | Off by default, kept only as migration compatibility. |

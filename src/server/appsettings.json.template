@@ -250,6 +250,22 @@
         "_AllowClientSubjectTokens": "Accepts a subject_token that identifies a client (for example a client_credentials token) instead of a user, so a service or agent can exchange its own token for a downstream one. Only the client's own token qualifies: its subject must be its single authorized party. Default false.",
         "AllowClientSubjectTokens": false
       },
+      "_IdentityAssertions": "Identity Assertion JWT Authorization Grant (ID-JAG, Cross-App Access). Issuance: this server acts as the IdP and issues a grant for a trusted authorization server in exchange for an id_token or refresh_token (token exchange with requested_token_type=urn:ietf:params:oauth:token-type:id-jag). Redemption: this server accepts grants from trusted IdPs through the jwt-bearer grant; the subject must already be linked to a local account through an external login named LoginProvider. Both roles are disabled by default.",
+      "IdentityAssertions": {
+        "Issuance": {
+          "Enabled": false,
+          "LifetimeSeconds": 300,
+          "IncludeEmail": true,
+          "Audiences": []
+        },
+        "_Audiences": "Each entry: { \"Issuer\": \"https://auth.saas.example/\", \"Aliases\": [], \"AllowedClientIds\": [], \"ClientIdMap\": { \"local-client\": \"remote-client\" }, \"AllowedScopes\": [], \"AllowedResources\": [] }. Empty allow-lists pass the request through. Each requesting client also needs the permission aud:<value> for the audience value it sends (issuer or alias).",
+        "Redemption": {
+          "Enabled": false,
+          "MaxAssertionLifetimeSeconds": 600,
+          "TrustedIssuers": []
+        },
+        "_TrustedIssuers": "Each entry: { \"Issuer\": \"https://idp.example/\", \"JwksUri\": null, \"LoginProvider\": \"idp-example\", \"AllowedClientIds\": [], \"AllowedScopes\": [] }. JwksUri defaults to the issuer's discovery document."
+      },
       "_RateLimit": "Independent fixed-window limits by operation and client IP, local to each replica, without queueing. Token/introspection do not consume interactive login/device confirmation quotas. Complements account lockout.",
       "RateLimit": {
         "Enabled": true,

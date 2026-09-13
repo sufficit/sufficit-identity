@@ -512,7 +512,8 @@ public sealed class TokenExchangeOptions
 /// <c>act</c> actor chain.
 /// </summary>
 public sealed class TokenExchangeGrantHandler(
-    ISubjectTokenProvenancePolicy subjectTokenProvenancePolicy) : ITokenGrantHandler
+    ISubjectTokenProvenancePolicy subjectTokenProvenancePolicy,
+    IdentityAssertionIssuer identityAssertionIssuer) : ITokenGrantHandler
 {
     public IReadOnlyCollection<string> HandledGrantTypes { get; } =
         [GrantTypes.TokenExchange];
@@ -543,6 +544,14 @@ public sealed class TokenExchangeGrantHandler(
         {
             return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant,
                 "The subject_token is missing, invalid or expired.");
+        }
+
+        // ID-JAG: an identity assertion for another authorization server, with
+        // its own binding rules (see IdentityAssertionIssuer).
+        if (string.Equals(request.RequestedTokenType,
+            IdentityAssertionGrant.TokenType, StringComparison.Ordinal))
+        {
+            return await identityAssertionIssuer.IssueAsync(context, result.Principal);
         }
 
         var subject = result.Principal.GetClaim(Claims.Subject);
