@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\application\Sufficit.Identity.Application.Abstractions\Sufficit.Identity.Application.Abstractions.csproj" />
+    <ProjectReference Include="..\..\hosting\Sufficit.Identity.Hosting.Abstractions\Sufficit.Identity.Hosting.Abstractions.csproj" />
     <ProjectReference Include="..\Sufficit.Identity.UI.Abstractions\Sufficit.Identity.UI.Abstractions.csproj" />
     <ProjectReference Include="..\Sufficit.Identity.UI.Components\Sufficit.Identity.UI.Components.csproj" />
     <!-- Local sibling checkout wins when present (fast inner loop);

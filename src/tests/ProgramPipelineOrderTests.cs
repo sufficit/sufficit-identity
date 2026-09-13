@@ -13,7 +13,7 @@ namespace Sufficit.Identity.Tests;
 public sealed class ProgramPipelineOrderTests
 {
     private static readonly Regex PipelineCall = new(
-        @"\bapp\.(?<name>(?:Use|Map)[A-Za-z]*(?:<[^>]+>)?)\(",
+        @"\bapp\.(?<name>(?:Use|Map)[A-Za-z]*(?:<[^>]+>)?)\(|(?<name>identityPipeline\.(?:ApplyStage|EnsureAllApplied))\(",
         RegexOptions.CultureInvariant);
 
     [Fact]
@@ -48,12 +48,29 @@ public sealed class ProgramPipelineOrderTests
             "MapControllers",
             "MapHealthChecks",
             "MapHealthChecks",
-            "UseSufficitIdentityManagementEndpoints",
-            "UseSufficitIdentityManagementUI",
-            "UseSufficitIdentityVaultUI",
+            // Module endpoints in catalog order: management API, management
+            // console, Vault UI (see Module_endpoints_follow_the_catalog_order).
+            "identityPipeline.ApplyStage",
+            "identityPipeline.EnsureAllApplied",
             "UseSufficitIdentityUI",
         ],
             calls);
+    }
+
+    [Fact]
+    public void Module_endpoints_follow_the_catalog_order()
+    {
+        var program = File.ReadAllText(Path.Combine(
+            ResolveIdentityRepository(), "src", "server", "Program.cs"));
+
+        var management = program.IndexOf("new ManagementIdentityModule()", StringComparison.Ordinal);
+        var managementUi = program.IndexOf("new ManagementUiIdentityModule()", StringComparison.Ordinal);
+        var vaultUi = program.IndexOf("new VaultUiIdentityModule()", StringComparison.Ordinal);
+        var scim = program.IndexOf("new ScimIdentityModule()", StringComparison.Ordinal);
+
+        Assert.True(management >= 0 && management < managementUi
+            && managementUi < vaultUi && vaultUi < scim,
+            "Modules must be listed as management API, management console, Vault UI, SCIM.");
     }
 
     private static string ResolveIdentityRepository()

@@ -127,9 +127,12 @@ public sealed class VaultUiCompositionTests
             StringComparison.Ordinal);
         Assert.Contains("razorComponents.AddAdditionalAssemblies",
             publicExtensions, StringComparison.Ordinal);
+        var vaultModule = File.ReadAllText(Path.Combine(
+            root, "src", "ui", "Sufficit.Identity.UI.Vault",
+            "VaultUiIdentityModule.cs"));
         Assert.Contains(
             "mapEndpoints: !uiHostingOptions.Public.IsEmbedded",
-            program,
+            vaultModule,
             StringComparison.Ordinal);
         Assert.Contains(
             "typeof(Sufficit.Identity.UI.Vault.ServiceCollectionExtensions).Assembly",
