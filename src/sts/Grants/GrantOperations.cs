@@ -172,6 +172,60 @@ public sealed class GrantOperations(
     }
 
     /// <summary>
+    /// Builds the identity of a client acting as itself: subject, display
+    /// name and the entitlements from its registration. Shared by the
+    /// client_credentials grant and token exchange with a client subject.
+    /// </summary>
+    public async Task<ClaimsIdentity> BuildClientIdentityAsync(
+        object application,
+        string fallbackClientId)
+    {
+        var identity = new ClaimsIdentity(
+            authenticationType: Microsoft.IdentityModel.Tokens.TokenValidationParameters.DefaultAuthenticationType,
+            nameType: Claims.Name,
+            roleType: Claims.Role);
+
+        identity.SetClaim(Claims.Subject,
+            await ApplicationManager.GetClientIdAsync(application) as string
+                ?? fallbackClientId);
+        identity.SetClaim(Claims.Name,
+            await ApplicationManager.GetDisplayNameAsync(application) as string
+                ?? fallbackClientId);
+
+        // Entitlements from the client registration: the only way a machine
+        // account receives a grant per INSTANCE (which context) and not only
+        // per category (which role). Without this the token carries sub, name
+        // and scopes, and nothing the service on the other side can decide on.
+        foreach (var entitlement in ClientEntitlements.Read(
+            await ApplicationManager.GetPropertiesAsync(application)))
+        {
+            identity.AddClaim(ClientEntitlements.ClaimType, entitlement);
+            identity.AddClaim(ClientEntitlements.LegacyClaimType, entitlement);
+        }
+
+        return identity;
+    }
+
+    /// <summary>
+    /// Sends client entitlement claims to the access token only. Call after
+    /// <c>SetDestinations</c>, and only for a client identity: the same claim
+    /// type exists in user tokens, where the claim-to-scope map decides its
+    /// destination and it may reach the id_token; stamping by type inside
+    /// <see cref="GetDestinations"/> would hijack that path. A client identity
+    /// has no id_token: an entitlement is an authorization claim (RFC 9068
+    /// §2.2.3.1), and the resource server is the one that decides with it.
+    /// </summary>
+    public static void RestrictEntitlementsToAccessToken(ClaimsIdentity identity)
+    {
+        foreach (var claim in identity.Claims.Where(claim =>
+            claim.Type is ClientEntitlements.ClaimType
+                or ClientEntitlements.LegacyClaimType))
+        {
+            claim.SetDestinations(Destinations.AccessToken);
+        }
+    }
+
+    /// <summary>
     /// Claim types already derived from ASP.NET Core Identity in
     /// <see cref="BuildIdentityAsync"/>. Persisted claims of these types are
     /// skipped when re-projecting the user's stored claims, and the OIDC

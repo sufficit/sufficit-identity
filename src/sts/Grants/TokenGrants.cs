@@ -379,50 +379,14 @@ public sealed class ClientCredentialsGrantHandler : ITokenGrantHandler
             ?? throw new InvalidOperationException(
                 "The application cannot be found.");
 
-        var identity = new ClaimsIdentity(
-            authenticationType: Microsoft.IdentityModel.Tokens.TokenValidationParameters.DefaultAuthenticationType,
-            nameType: Claims.Name,
-            roleType: Claims.Role);
-
-        identity.SetClaim(Claims.Subject,
-            await ops.ApplicationManager.GetClientIdAsync(application) as string
-                ?? request.ClientId!);
-        identity.SetClaim(Claims.Name,
-            await ops.ApplicationManager.GetDisplayNameAsync(application) as string
-                ?? request.ClientId!);
-
-        // Entitlements from the client registration: the only way a machine
-        // account receives a grant per INSTANCE (which context) and not only
-        // per category (which role). Without this the token carries sub, name
-        // and scopes, and nothing the service on the other side can decide on.
-        var granted = ClientEntitlements.Read(
-            await ops.ApplicationManager.GetPropertiesAsync(application));
-        foreach (var entitlement in granted)
-        {
-            identity.AddClaim(ClientEntitlements.ClaimType, entitlement);
-            identity.AddClaim(ClientEntitlements.LegacyClaimType, entitlement);
-        }
+        var identity = await ops.BuildClientIdentityAsync(
+            application, request.ClientId!);
 
         identity.SetScopes(request.GetScopes());
         identity.SetResources(await ops.ResolveResourcesAsync(identity, request));
         GrantOperations.ApplyDpopBinding(identity, proof);
         identity.SetDestinations(ops.GetDestinations);
-
-        // After SetDestinations, and only for THIS identity. The `directive`
-        // claim also exists in user tokens, where the claim-to-scope map decides
-        // its destination and it reaches the id_token; stamping by type inside
-        // GetDestinations would hijack that path. Here there is no user and no
-        // id_token: an entitlement is an authorization claim (RFC 9068
-        // §2.2.3.1), and the resource server is the one that decides with it.
-        if (granted.Count > 0)
-        {
-            foreach (var claim in identity.Claims.Where(claim =>
-                claim.Type is ClientEntitlements.ClaimType
-                    or ClientEntitlements.LegacyClaimType))
-            {
-                claim.SetDestinations(Destinations.AccessToken);
-            }
-        }
+        GrantOperations.RestrictEntitlementsToAccessToken(identity);
 
         return new SignInResult(
             OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
@@ -531,6 +495,15 @@ public sealed class TokenExchangeOptions
     /// </remarks>
     public SecurityPolicyEnforcementMode ProvenanceMode { get; init; } =
         SecurityPolicyEnforcementMode.Enforce;
+
+    /// <summary>
+    /// Accepts a subject token that identifies a client instead of a user, so
+    /// a service or agent with its own identity can exchange its token for a
+    /// downstream one. Only the client's own token qualifies: its subject must
+    /// be its single authorized party, and the client registration must still
+    /// exist. Default <see langword="false"/>.
+    /// </summary>
+    public bool AllowClientSubjectTokens { get; init; }
 }
 
 /// <summary>
@@ -577,7 +550,8 @@ public sealed class TokenExchangeGrantHandler(
             ? await ops.UserManager.FindByIdAsync(subject)
             : null;
 
-        if (user is null || !await ops.SignInManager.CanSignInAsync(user))
+        if ((user is null && !tokenExchangeOptions.AllowClientSubjectTokens)
+            || (user is not null && !await ops.SignInManager.CanSignInAsync(user)))
         {
             return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant,
                 "The subject_token no longer identifies a user that is allowed to sign in.");
@@ -603,8 +577,64 @@ public sealed class TokenExchangeGrantHandler(
                 "The subject_token was not issued for this client, so it cannot be exchanged by it.");
         }
 
-        var identity = await ops.BuildIdentityAsync(
-            user, result.Principal, httpContext.User);
+        // OpenIddict validates the actor token's signature, lifetime and type,
+        // but disables audience and presenter validation for token exchange.
+        // Without the rule below a caller could name as actor any party whose
+        // token it merely holds. The actor token must have been issued to the
+        // calling client itself; its subject then becomes the acting party.
+        var actorSubject = request.ClientId!;
+        var actorPrincipal = result.Properties?.GetParameter<ClaimsPrincipal>(
+            OpenIddictServerAspNetCoreConstants.Properties.ActorTokenPrincipal);
+        if (actorPrincipal is not null)
+        {
+            var actorParties = AuthorizedParties(actorPrincipal);
+            var actorTokenSubject = actorPrincipal.GetClaim(Claims.Subject);
+            if (actorParties.Length != 1
+                || !string.Equals(actorParties[0], request.ClientId, StringComparison.Ordinal)
+                || string.IsNullOrEmpty(actorTokenSubject))
+            {
+                return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant,
+                    "The actor_token was not issued to this client.");
+            }
+
+            if (!string.Equals(actorTokenSubject, request.ClientId, StringComparison.Ordinal))
+            {
+                var actorUser = await ops.UserManager.FindByIdAsync(actorTokenSubject);
+                if (actorUser is null || !await ops.SignInManager.CanSignInAsync(actorUser))
+                {
+                    return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant,
+                        "The actor_token no longer identifies a user that is allowed to sign in.");
+                }
+            }
+
+            actorSubject = actorTokenSubject;
+        }
+
+        ClaimsIdentity identity;
+        if (user is not null)
+        {
+            identity = await ops.BuildIdentityAsync(
+                user, result.Principal, httpContext.User);
+        }
+        else
+        {
+            // A subject token without a user qualifies only as the client's
+            // own token: its subject is its single authorized party. A token a
+            // client merely received from another client has a different
+            // subject and party, and provenance already bound the party to
+            // this caller.
+            var application = subject is not null
+                && string.Equals(subject, provenance.AuthorizedParty, StringComparison.Ordinal)
+                    ? await ops.ApplicationManager.FindByClientIdAsync(subject)
+                    : null;
+            if (application is null)
+            {
+                return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant,
+                    "The subject_token does not identify a user or the client it was issued to.");
+            }
+
+            identity = await ops.BuildClientIdentityAsync(application, subject!);
+        }
 
         // Delegated scopes are the intersection of what the calling client
         // asked for and what the subject_token itself carried; a client that
@@ -630,18 +660,44 @@ public sealed class TokenExchangeGrantHandler(
 
         // RFC 8693 §4.1: identify the acting party, NESTING any actor chain
         // the subject_token already carried instead of overwriting it.
+        // When the actor is not the caller itself (a user token issued to the
+        // caller), client_id records which client presented it.
         var priorAct = result.Principal.GetClaim(GrantOperations.ActClaimType);
-        object actClaim = priorAct is not null
-            ? new { sub = request.ClientId, act = JsonSerializer.Deserialize<JsonElement>(priorAct) }
-            : new { sub = request.ClientId };
+        var actClaim = new Dictionary<string, object> { ["sub"] = actorSubject };
+        if (!string.Equals(actorSubject, request.ClientId, StringComparison.Ordinal))
+        {
+            actClaim["client_id"] = request.ClientId!;
+        }
+
+        if (priorAct is not null)
+        {
+            actClaim["act"] = JsonSerializer.Deserialize<JsonElement>(priorAct);
+        }
+
         identity.SetClaim(GrantOperations.ActClaimType,
             JsonSerializer.SerializeToElement(actClaim));
 
         GrantOperations.ApplyDpopBinding(identity, proof);
         identity.SetDestinations(ops.GetDestinations);
+        if (user is null)
+        {
+            GrantOperations.RestrictEntitlementsToAccessToken(identity);
+        }
 
         return new SignInResult(
             OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
             new ClaimsPrincipal(identity));
     }
+
+    private static string[] AuthorizedParties(ClaimsPrincipal principal) =>
+        new[]
+            {
+                principal.GetClaim(Claims.AuthorizedParty),
+                principal.GetClaim(Claims.ClientId),
+            }
+            .Concat(principal.GetPresenters())
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
 }
