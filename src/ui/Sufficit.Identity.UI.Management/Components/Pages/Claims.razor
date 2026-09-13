@@ -7,17 +7,17 @@
 <PageTitle>@PageTitleText</PageTitle>
 
 <SUIPageHeader Title="@HeaderTitle"
-            Description="Atributos adicionais emitidos pelo provedor para esta conta.">
+            Description="@L["Claims.HeaderDescription"].Value">
     <Actions>
         <a class="button button--secondary" href="@UserHref">
             <SUIIcon Name="arrow-left" Size="17" />
-            Voltar para o usuário
+            @L["Claims.BackToUser"]
         </a>
         @if (HasUserContext)
         {
             <a class="button button--primary" href="@CreateHref">
                 <SUIIcon Name="plus" Size="17" />
-                Atribuir claim
+                @L["Claims.AssignClaim"]
             </a>
         }
     </Actions>
@@ -27,10 +27,10 @@
 {
     <div>
         <SUIEmptyState Icon="users"
-                    Title="Selecione um usuário"
-                    Description="Abra uma conta no diretório de identidades para consultar e administrar suas claims.">
+                    Title="@L["Claims.SelectUser.Title"].Value"
+                    Description="@L["Claims.SelectUser.Description"].Value">
             <Actions>
-                <a class="button button--primary" href="users">Abrir diretório de usuários</a>
+                <a class="button button--primary" href="users">@L["Claims.OpenUserDirectory"]</a>
             </Actions>
         </SUIEmptyState>
     </div>
@@ -42,8 +42,8 @@ else
         <div class="inline-notice inline-notice--success" role="status">
             <SUIIcon Name="check" Size="19" />
             <div>
-                <strong>Claim atribuída</strong>
-                <span>O selo de segurança foi atualizado e os tokens anteriores foram revogados.</span>
+                <strong>@L["Claims.Assigned.Title"]</strong>
+                <span>@L["Claims.Assigned.Description"]</span>
             </div>
         </div>
     }
@@ -53,8 +53,8 @@ else
         <div class="inline-notice inline-notice--success" role="status">
             <SUIIcon Name="check" Size="19" />
             <div>
-                <strong>Claim removida</strong>
-                <span>A atribuição foi excluída e as credenciais emitidas anteriormente foram revogadas.</span>
+                <strong>@L["Claims.Removed.Title"]</strong>
+                <span>@L["Claims.Removed.Description"]</span>
             </div>
         </div>
     }
@@ -65,34 +65,34 @@ else
             <strong>@AccountLabel</strong>
             <span>@AccountDescription</span>
         </div>
-        <SUIStatusBadge ToneValue="SUITone.Info">Conta selecionada</SUIStatusBadge>
+        <SUIStatusBadge ToneValue="SUITone.Info">@L["Claims.ContractStrip.Badge"]</SUIStatusBadge>
     </div>
 
     <div class="table-panel" aria-labelledby="claims-list-heading" aria-busy="@loading">
         <div class="data-toolbar data-toolbar--users">
             <div>
-                <h2 id="claims-list-heading">Claims da conta</h2>
-                <p>Tipos multivalorados aparecem em linhas separadas e podem ser editados individualmente.</p>
+                <h2 id="claims-list-heading">@L["Claims.List.Heading"]</h2>
+                <p>@L["Claims.List.Description"]</p>
             </div>
             <div class="data-toolbar__actions">
                 <form class="user-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
                     <label class="search-field">
-                        <span class="visually-hidden">Pesquisar claims da conta</span>
+                        <span class="visually-hidden">@L["Claims.Search.VisuallyHidden"]</span>
                         <SUIIcon Name="search" Size="18" />
                         <input type="search"
-                               placeholder="Tipo ou valor"
+                               placeholder="@L["Claims.Search.Placeholder"].Value"
                                autocomplete="off"
                                @bind="search" />
                     </label>
                     <button class="button button--secondary" type="submit" disabled="@loading">
-                        Pesquisar
+                        @L["Claims.Search.Submit"]
                     </button>
                     @if (!string.IsNullOrWhiteSpace(search))
                     {
                         <button class="button button--secondary button--compact"
                                 type="button"
                                 @onclick="ClearSearchAsync">
-                            Limpar
+                            @L["Claims.Search.Clear"]
                         </button>
                     }
                 </form>
@@ -102,7 +102,7 @@ else
         <div class="client-results" aria-live="polite">
             @if (loading)
             {
-                <div class="table-skeleton" aria-label="Carregando claims">
+                <div class="table-skeleton" aria-label="@L["Claims.LoadingAriaLabel"].Value">
                     @for (var index = 0; index < 4; index++)
                     {
                         <span></span>
@@ -113,9 +113,9 @@ else
             {
                 <SUIEmptyState Icon="alert"
                             Title="@UserErrorTitle"
-                            Description="@(userResult.ErrorMessage ?? "O serviço não conseguiu ler a conta.")">
+                            Description="@(userResult.ErrorMessage ?? L["Claims.User.Error.GenericDescription"].Value)">
                     <Actions>
-                        <a class="button button--secondary" href="users">Voltar para usuários</a>
+                        <a class="button button--secondary" href="users">@L["Claims.BackToUsers"]</a>
                     </Actions>
                 </SUIEmptyState>
             }
@@ -124,10 +124,10 @@ else
                 @if (Page.Items.Count is 0)
                 {
                     <SUIEmptyState Icon="shield"
-                                Title="Nenhuma claim atribuída"
+                                Title="@L["Claims.Empty.Title"].Value"
                                 Description="@EmptyDescription">
                         <Actions>
-                            <a class="button button--primary" href="@CreateHref">Atribuir primeira claim</a>
+                            <a class="button button--primary" href="@CreateHref">@L["Claims.AssignFirstClaim"]</a>
                         </Actions>
                     </SUIEmptyState>
                 }
@@ -137,22 +137,22 @@ else
                         <table class="data-table data-table--claims">
                             <thead>
                                 <tr>
-                                    <th scope="col">Tipo</th>
-                                    <th scope="col">Valor</th>
-                                    <th scope="col">Estado</th>
-                                    <th scope="col"><span class="visually-hidden">Ações</span></th>
+                                    <th scope="col">@L["Claims.Column.Type"]</th>
+                                    <th scope="col">@L["Claims.Column.Value"]</th>
+                                    <th scope="col">@L["Claims.Column.State"]</th>
+                                    <th scope="col"><span class="visually-hidden">@L["Claims.Column.Actions"]</span></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach (var claim in Page.Items)
                                 {
                                     <tr>
-                                        <td data-label="Tipo"><code class="client-id">@claim.Type</code></td>
-                                        <td data-label="Valor"><span class="claim-value">@claim.Value</span></td>
-                                        <td data-label="Estado"><SUIStatusBadge ToneValue="SUITone.Success">Atribuída</SUIStatusBadge></td>
-                                        <td data-label="Ações">
+                                        <td data-label="@L["Claims.Column.Type"].Value"><code class="client-id">@claim.Type</code></td>
+                                        <td data-label="@L["Claims.Column.Value"].Value"><span class="claim-value">@claim.Value</span></td>
+                                        <td data-label="@L["Claims.Column.State"].Value"><SUIStatusBadge ToneValue="SUITone.Success">@L["Claims.AssignedBadge"]</SUIStatusBadge></td>
+                                        <td data-label="@L["Claims.Column.Actions"].Value">
                                             <a class="row-action" href="@ClaimHref(claim.Id)">
-                                                Editar
+                                                @L["Claims.Edit"]
                                                 <SUIIcon Name="edit" Size="15" />
                                             </a>
                                         </td>
@@ -167,10 +167,10 @@ else
             {
                 <SUIEmptyState Icon="alert"
                             Title="@ErrorTitle"
-                            Description="@(result?.ErrorMessage ?? "O serviço não conseguiu ler as atribuições agora.")">
+                            Description="@(result?.ErrorMessage ?? L["Claims.Error.GenericDescription"].Value)">
                     <Actions>
                         <button class="button button--secondary" type="button" @onclick="LoadAsync">
-                            Tentar novamente
+                            @L["Claims.Retry"]
                         </button>
                     </Actions>
                 </SUIEmptyState>
@@ -181,14 +181,14 @@ else
             <span>@ResultCountLabel</span>
             @if (result?.IsSuccess is true && Page.TotalCount > Page.PageSize)
             {
-                <div class="pagination" aria-label="Paginação de claims">
+                <div class="pagination" aria-label="@L["Claims.PaginationAriaLabel"].Value">
                     <button class="button button--secondary button--compact" type="button"
                             disabled="@(Page.Page <= 1 || loading)"
-                            @onclick="PreviousPageAsync">Anterior</button>
-                    <span>Página @Page.Page de @TotalPages</span>
+                            @onclick="PreviousPageAsync">@L["Claims.Previous"]</button>
+                    <span>@string.Format(L["Claims.PageOfFormat"].Value, Page.Page, TotalPages)</span>
                     <button class="button button--secondary button--compact" type="button"
                             disabled="@(Page.Page >= TotalPages || loading)"
-                            @onclick="NextPageAsync">Próxima</button>
+                            @onclick="NextPageAsync">@L["Claims.Next"]</button>
                 </div>
             }
         </footer>
@@ -196,13 +196,13 @@ else
 
     <div class="client-guardrails" aria-labelledby="claim-boundary-heading">
         <div>
-            <h2 id="claim-boundary-heading">Atributos do protocolo, não regras empresariais</h2>
-            <p>O provedor armazena os valores; cada aplicação decide como interpretá-los.</p>
+            <h2 id="claim-boundary-heading">@L["Claims.Boundary.Heading"]</h2>
+            <p>@L["Claims.Boundary.Description"]</p>
         </div>
         <ul>
-            <li><SUIIcon Name="shield" Size="18" /> Claims reservadas permanecem protegidas</li>
-            <li><SUIIcon Name="refresh" Size="18" /> Cada mutação revoga tokens da conta</li>
-            <li><SUIIcon Name="audit" Size="18" /> Valores não entram na auditoria</li>
+            <li><SUIIcon Name="shield" Size="18" /> @L["Claims.Boundary.ReservedProtected"]</li>
+            <li><SUIIcon Name="refresh" Size="18" /> @L["Claims.Boundary.MutationRevokes"]</li>
+            <li><SUIIcon Name="audit" Size="18" /> @L["Claims.Boundary.ValuesNotAudited"]</li>
         </ul>
     </div>
 }
@@ -232,19 +232,20 @@ else
 
     private string HeaderTitle =>
         userResult?.Value is { } user
-            ? $"Claims de {DisplayName(user)}"
-            : "Claims do usuário";
+            ? string.Format(L["Claims.HeaderTitleFormat"].Value, DisplayName(user))
+            : L["Claims.HeaderTitleDefault"].Value;
 
-    private string PageTitleText => $"{HeaderTitle} | Sufficit Identity";
+    private string PageTitleText =>
+        string.Format(L["Claims.PageTitleFormat"].Value, HeaderTitle);
 
     private string AccountLabel =>
         userResult?.Value is { } user
             ? DisplayName(user)
-            : "Conta do provedor";
+            : L["Claims.AccountLabelDefault"].Value;
 
     private string AccountDescription =>
         userResult?.Value is { } user
-            ? $"{user.Email ?? "E-mail não informado"} · {user.Id}"
+            ? $"{user.Email ?? L["Claims.EmailNotInformed"].Value} · {user.Id}"
             : UserId ?? string.Empty;
 
     private string UserHref =>
@@ -260,27 +261,27 @@ else
 
     private string EmptyDescription =>
         string.IsNullOrWhiteSpace(search)
-            ? "A conta ainda não possui atributos adicionais. Claims padrão continuam sendo derivadas pelo protocolo."
-            : "Nenhuma claim desta conta corresponde ao tipo ou valor pesquisado.";
+            ? L["Claims.Empty.NoAttributesYet"].Value
+            : L["Claims.Empty.NoMatch"].Value;
 
     private string UserErrorTitle =>
         userResult?.Outcome is ManagementDataOutcome.NotFound
-            ? "Usuário não encontrado"
-            : "Não foi possível abrir o usuário";
+            ? L["Claims.User.Error.NotFound"].Value
+            : L["Claims.User.Error.Generic"].Value;
 
     private string ErrorTitle =>
         result?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? "MFA exigido para consultar claims"
+            ? L["Claims.Error.StepUp"].Value
             : result?.Outcome is ManagementDataOutcome.Forbidden
-                ? "Acesso às claims negado"
-                : "Não foi possível consultar as claims";
+                ? L["Claims.Error.Forbidden"].Value
+                : L["Claims.Error.Generic"].Value;
 
     private string ResultCountLabel =>
         loading
-            ? "Carregando claims"
+            ? L["Claims.ResultCount.Loading"].Value
             : result?.IsSuccess is true
-                ? $"{Page.TotalCount} {Pluralize(Page.TotalCount, "atribuição", "atribuições")}"
-                : "Nenhum resultado carregado";
+                ? $"{Page.TotalCount} {Pluralize(Page.TotalCount, L["Claims.ResultCount.Singular"].Value, L["Claims.ResultCount.Plural"].Value)}"
+                : L["Claims.ResultCount.NoneLoaded"].Value;
 
     protected override async Task OnParametersSetAsync()
     {

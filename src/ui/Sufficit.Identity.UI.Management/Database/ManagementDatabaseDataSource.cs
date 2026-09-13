@@ -2,11 +2,13 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Application.Diagnostics;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Database;
 using Sufficit.Identity.UI.Management.Clients;
+using Sufficit.Identity.UI.Management.Resources;
 
 namespace Sufficit.Identity.UI.Management.Database;
 
@@ -16,7 +18,8 @@ namespace Sufficit.Identity.UI.Management.Database;
 public sealed class ManagementDatabaseDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
-    ILogger<ManagementDatabaseDataSource> logger)
+    ILogger<ManagementDatabaseDataSource> logger,
+    IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer)
 {
     public async IAsyncEnumerable<DatabaseRuntimeSnapshot> WatchAsync(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -63,8 +66,8 @@ public sealed class ManagementDatabaseDataSource(
             return ManagementDataResult<DatabaseRuntimeSnapshot>.Failure(
                 outcome,
                 outcome is ManagementDataOutcome.StepUpRequired
-                    ? "Conclua a autenticação multifator para continuar."
-                    : "Sua conta não possui a capability necessária.");
+                    ? localizer["Common.Access.StepUpRequired"]
+                    : localizer["Common.Access.Forbidden"]);
         }
         catch (OperationCanceledException)
             when (!cancellationToken.IsCancellationRequested)
@@ -72,7 +75,7 @@ public sealed class ManagementDatabaseDataSource(
             logger.LogWarning("Database telemetry query timed out.");
             return ManagementDataResult<DatabaseRuntimeSnapshot>.Failure(
                 ManagementDataOutcome.Unavailable,
-                "A telemetria demorou mais que o esperado. Tente novamente.");
+                localizer["Common.Timeout"]);
         }
         catch (OperationCanceledException)
         {
@@ -85,7 +88,7 @@ public sealed class ManagementDatabaseDataSource(
                 "Database telemetry failed in the embedded management module.");
             return ManagementDataResult<DatabaseRuntimeSnapshot>.Failure(
                 ManagementDataOutcome.Unavailable,
-                "O runtime não conseguiu informar o estado do banco de dados.");
+                localizer["Common.Unavailable"]);
         }
     }
 }

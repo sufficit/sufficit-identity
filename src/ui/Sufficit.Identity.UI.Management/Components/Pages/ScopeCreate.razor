@@ -3,14 +3,14 @@
 @inject ManagementScopeDataSource ScopeData
 @inject NavigationManager Navigation
 
-<PageTitle>Novo scope OAuth | Sufficit Identity</PageTitle>
+<PageTitle>@L["Scopes.Create.PageTitle"]</PageTitle>
 
-<SUIPageHeader Title="Novo scope"
-            Description="Registre uma permissão OAuth personalizada para um ou mais recursos protegidos.">
+<SUIPageHeader Title="@L["Scopes.NewScope"].Value"
+            Description="@L["Scopes.Create.HeaderDescription"].Value">
     <Actions>
         <a class="button button--secondary" href="scopes">
             <SUIIcon Name="arrow-left" Size="17" />
-            Voltar para scopes
+            @L["Scopes.BackToScopes"]
         </a>
     </Actions>
 </SUIPageHeader>
@@ -18,10 +18,10 @@
 <div class="contract-strip contract-strip--success">
     <SUIIcon Name="shield" Size="20" />
     <div>
-        <strong>Validação centralizada</strong>
-        <span>Nome, recursos, autorização e auditoria passam pelo mesmo serviço usado pela Management API.</span>
+        <strong>@L["Scopes.Create.Validation.Title"]</strong>
+        <span>@L["Scopes.Create.Validation.Description"]</span>
     </div>
-    <SUIStatusBadge ToneValue="SUITone.Success">Canônico</SUIStatusBadge>
+    <SUIStatusBadge ToneValue="SUITone.Success">@L["Scopes.Canonical"]</SUIStatusBadge>
 </div>
 
 @if (submission?.IsSuccess is false)
@@ -29,7 +29,7 @@
     <div class="inline-notice inline-notice--danger" role="alert">
         <SUIIcon Name="alert" Size="19" />
         <div>
-            <strong>Não foi possível criar o scope</strong>
+            <strong>@L["Scopes.Create.Error.Title"]</strong>
             <span>@submission.ErrorMessage</span>
         </div>
     </div>
@@ -44,22 +44,22 @@
 
     <div class="form-section" aria-labelledby="scope-identity-heading">
         <div class="form-section__heading">
-            <h2 id="scope-identity-heading">Identificação</h2>
-            <p>O nome faz parte do contrato OAuth e não poderá ser alterado após a criação.</p>
+            <h2 id="scope-identity-heading">@L["Scopes.Identification.Title"]</h2>
+            <p>@L["Scopes.Identification.Description"]</p>
         </div>
         <SUIFormGrid Columns="2" Spacing="4" LabelLines="2">
             <SUITextField T="string"
                           id="scope-name"
-                          Label="Nome"
-                          HelperText="Exemplo: calendar.read ou urn:example:orders.write"
+                          Label="@L["Scopes.Field.Name.Label"].Value"
+                          HelperText="@L["Scopes.Field.Name.Helper"].Value"
                           MaxLength="200"
                           ErrorText="@ErrorFor(definition, nameof(model.Name))"
                           autocomplete="off"
                           @bind-Value="model.Name" />
             <SUITextField T="string"
                           id="scope-display-name"
-                          Label="Nome de exibição (opcional)"
-                          HelperText="Rótulo apresentado ao usuário no consentimento."
+                          Label="@L["Scopes.Field.DisplayName.Label"].Value"
+                          HelperText="@L["Scopes.Field.DisplayName.Helper"].Value"
                           MaxLength="200"
                           ErrorText="@ErrorFor(definition, nameof(model.DisplayName))"
                           autocomplete="off"
@@ -68,8 +68,8 @@
         <SUIFormGrid Columns="1" Spacing="4">
             <SUITextField T="string"
                           id="scope-description"
-                          Label="Descrição (opcional)"
-                          HelperText="Explique de forma concreta o acesso concedido ao cliente."
+                          Label="@L["Scopes.Field.Description.Label"].Value"
+                          HelperText="@L["Scopes.Field.Description.Helper"].Value"
                           Multiline
                           MaxLength="1000"
                           ErrorText="@ErrorFor(definition, nameof(model.Description))"
@@ -79,31 +79,31 @@
 
     <div class="form-section" aria-labelledby="scope-resources-heading">
         <div class="form-section__heading">
-            <h2 id="scope-resources-heading">Recursos protegidos</h2>
-            <p>Informe os audiences que recebem este scope, um por linha.</p>
+            <h2 id="scope-resources-heading">@L["Scopes.Resources.Title"]</h2>
+            <p>@L["Scopes.Resources.Description"]</p>
         </div>
         <SUIFormGrid Columns="1" Spacing="4">
             <SUITextField T="string"
                           id="scope-resources"
-                          Label="Resources / audiences (opcional)"
-                          HelperText="Exemplo: https://api.example.com/calendar"
+                          Label="@L["Scopes.Field.Resources.Label"].Value"
+                          HelperText="@L["Scopes.Field.Resources.Helper"].Value"
                           Multiline
                           @bind-Value="model.Resources" />
         </SUIFormGrid>
     </div>
 
     <footer class="form-actions">
-        <a class="button button--secondary" href="scopes">Cancelar</a>
+        <a class="button button--secondary" href="scopes">@L["Scopes.Cancel"]</a>
         <button class="button button--primary" type="submit" disabled="@submitting">
             @if (submitting)
             {
                 <span class="button-spinner" aria-hidden="true"></span>
-                <span>Criando scope…</span>
+                <span>@L["Scopes.Create.Submitting"]</span>
             }
             else
             {
                 <SUIIcon Name="plus" Size="17" />
-                <span>Criar scope</span>
+                <span>@L["Scopes.Create.Submit"]</span>
             }
         </button>
     </footer>
@@ -113,6 +113,8 @@
     private readonly ScopeCreateModel model = new();
     private ManagementDataResult<ManagementScopeDetail>? submission;
     private bool submitting;
+
+    protected override void OnInitialized() => model.Localizer = L;
 
     private async Task CreateAsync()
     {
@@ -143,27 +145,61 @@
             StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     /// <summary>
-    /// Entrega a mensagem de validação do campo ao próprio componente, em vez
-    /// de pendurar um &lt;ValidationMessage&gt; ao lado dele: dentro de um grid
-    /// de duas colunas, o elemento irmão vira uma célula e desloca a coluna
-    /// seguinte.
+    /// Delivers the field validation message to the component itself, instead
+    /// of hanging a &lt;ValidationMessage&gt; next to it: inside a two-column
+    /// grid, the sibling element becomes a cell and shifts the following
+    /// column.
     /// </summary>
     private string? ErrorFor(EditContext context, string field) =>
         context.GetValidationMessages(new FieldIdentifier(model, field))
             .FirstOrDefault();
 
-    private sealed class ScopeCreateModel
+    private sealed class ScopeCreateModel : IValidatableObject
     {
-        [Required(ErrorMessage = "Informe o nome do scope.")]
-        [StringLength(200, ErrorMessage = "Use no máximo 200 caracteres.")]
+        public IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource>? Localizer { get; set; }
+
         public string Name { get; set; } = string.Empty;
 
-        [StringLength(200, ErrorMessage = "Use no máximo 200 caracteres.")]
         public string? DisplayName { get; set; }
 
-        [StringLength(1000, ErrorMessage = "Use no máximo 1000 caracteres.")]
         public string? Description { get; set; }
 
         public string? Resources { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            var l = Localizer;
+            if (l is null)
+            {
+                yield break;
+            }
+
+            if (string.IsNullOrWhiteSpace(Name))
+            {
+                yield return new ValidationResult(
+                    l["Scopes.Validation.NameRequired"].Value,
+                    [nameof(Name)]);
+            }
+            else if (Name.Length > 200)
+            {
+                yield return new ValidationResult(
+                    l["Scopes.Validation.MaxLength200"].Value,
+                    [nameof(Name)]);
+            }
+
+            if (DisplayName?.Length > 200)
+            {
+                yield return new ValidationResult(
+                    l["Scopes.Validation.MaxLength200"].Value,
+                    [nameof(DisplayName)]);
+            }
+
+            if (Description?.Length > 1000)
+            {
+                yield return new ValidationResult(
+                    l["Scopes.Validation.MaxLength1000"].Value,
+                    [nameof(Description)]);
+            }
+        }
     }
 }

@@ -4,14 +4,14 @@
 @inject ManagementUserDataSource UserData
 @inject NavigationManager Navigation
 
-<PageTitle>Editar usuário | Sufficit Identity</PageTitle>
+<PageTitle>@L["Users.Edit.PageTitle"]</PageTitle>
 
-<SUIPageHeader Title="Editar perfil"
-            Description="Atualize a identidade da conta sem duplicar regras de persistência ou autorização na interface.">
+<SUIPageHeader Title="@L["Users.Edit.HeaderTitle"].Value"
+            Description="@L["Users.Edit.HeaderDescription"].Value">
     <Actions>
         <a class="button button--secondary" href="@DetailHref">
             <SUIIcon Name="arrow-left" Size="17" />
-            Voltar para o usuário
+            @L["Users.Edit.BackToUser"]
         </a>
     </Actions>
 </SUIPageHeader>
@@ -19,7 +19,7 @@
 @if (loading)
 {
     <div class="form-section" aria-busy="true">
-        <div class="table-skeleton" aria-label="Carregando perfil do usuário">
+        <div class="table-skeleton" aria-label="@L["Users.Edit.LoadingAriaLabel"].Value">
             @for (var index = 0; index < 4; index++)
             {
                 <span></span>
@@ -35,14 +35,14 @@ else if (detailResult?.IsSuccess is false)
                     Description="@detailResult.ErrorMessage">
             <Actions>
                 <a class="button button--secondary" href="@UsersHref">
-                    Voltar para usuários
+                    @L["Users.Edit.BackToUsers"]
                 </a>
                 @if (detailResult.Outcome is ManagementDataOutcome.Unavailable)
                 {
                     <button class="button button--primary"
                             type="button"
                             @onclick="LoadAsync">
-                        Tentar novamente
+                        @L["Users.Edit.Retry"]
                     </button>
                 }
             </Actions>
@@ -53,11 +53,11 @@ else if (User.Actions.UpdateProfileRequiresMfa)
 {
     <div class="panel">
         <SUIEmptyState Icon="shield"
-                    Title="MFA necessário para editar o perfil"
-                    Description="A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.">
+                    Title="@L["Users.Edit.MfaRequired.Title"].Value"
+                    Description="@L["Users.Edit.MfaRequired.Description"].Value">
             <Actions>
                 <a class="button button--secondary" href="@DetailHref">
-                    Voltar para o usuário
+                    @L["Users.Edit.BackToUser"]
                 </a>
             </Actions>
         </SUIEmptyState>
@@ -67,11 +67,11 @@ else if (!User.Actions.CanUpdateProfile)
 {
     <div class="panel">
         <SUIEmptyState Icon="lock"
-                    Title="Edição de perfil não autorizada"
-                    Description="Sua sessão não possui a capability necessária para alterar contas do provedor.">
+                    Title="@L["Users.Edit.Forbidden.Title"].Value"
+                    Description="@L["Users.Edit.Forbidden.Description"].Value">
             <Actions>
                 <a class="button button--secondary" href="@DetailHref">
-                    Voltar para o usuário
+                    @L["Users.Edit.BackToUser"]
                 </a>
             </Actions>
         </SUIEmptyState>
@@ -82,10 +82,10 @@ else
     <div class="contract-strip contract-strip--warning">
         <SUIIcon Name="shield" Size="20" />
         <div>
-            <strong>Alteração da conta no provedor</strong>
-            <span>Dados modificados invalidam tokens ativos; consentimentos duráveis permanecem preservados.</span>
+            <strong>@L["Users.Edit.ContractStrip.Title"]</strong>
+            <span>@L["Users.Edit.ContractStrip.Description"]</span>
         </div>
-        <SUIStatusBadge ToneValue="SUITone.Warning">Sessões afetadas</SUIStatusBadge>
+        <SUIStatusBadge ToneValue="SUITone.Warning">@L["Users.Edit.ContractStrip.Badge"]</SUIStatusBadge>
     </div>
 
     @if (submission?.IsSuccess is false)
@@ -108,13 +108,13 @@ else
 
         <div class="form-section" aria-labelledby="user-profile-heading">
             <div class="form-section__heading">
-                <h2 id="user-profile-heading">Identificação</h2>
-                <p>O Identity valida unicidade e formato no servidor. E-mail e telefone alterados voltam a exigir confirmação.</p>
+                <h2 id="user-profile-heading">@L["Users.Edit.Identity.Heading"]</h2>
+                <p>@L["Users.Edit.Identity.Description"]</p>
             </div>
 
             <div class="form-grid form-grid--two">
                 <div class="field-group">
-                    <label for="user-name">Nome de usuário</label>
+                    <label for="user-name">@L["Users.Edit.Field.UserName"]</label>
                     <InputText id="user-name"
                                class="form-control"
                                autocomplete="username"
@@ -128,7 +128,7 @@ else
                 </div>
 
                 <div class="field-group">
-                    <label for="user-email">E-mail</label>
+                    <label for="user-email">@L["Users.Edit.Field.Email"]</label>
                     <InputText id="user-email"
                                class="form-control"
                                type="email"
@@ -145,8 +145,8 @@ else
 
             <div class="field-group">
                 <label for="user-phone">
-                    Telefone
-                    <span class="label-optional">Opcional</span>
+                    @L["Users.Edit.Field.Phone"]
+                    <span class="label-optional">@L["Users.Edit.Field.PhoneOptional"]</span>
                 </label>
                 <InputText id="user-phone"
                            class="form-control"
@@ -159,24 +159,24 @@ else
                 {
                     <p class="validation-message">@submission.ErrorMessage</p>
                 }
-                <span class="field-hint">Use o formato reconhecido pelo provedor de confirmação configurado para este runtime.</span>
+                <span class="field-hint">@L["Users.Edit.Field.PhoneHint"]</span>
             </div>
         </div>
 
         <footer class="form-actions">
-            <a class="button button--secondary" href="@DetailHref">Cancelar</a>
+            <a class="button button--secondary" href="@DetailHref">@L["Users.Edit.Cancel"]</a>
             <button class="button button--primary"
                     type="submit"
                     disabled="@submitting">
                 @if (submitting)
                 {
                     <span class="button-spinner" aria-hidden="true"></span>
-                    <span>Salvando perfil…</span>
+                    <span>@L["Users.Edit.Submitting"]</span>
                 }
                 else
                 {
                     <SUIIcon Name="check" Size="17" />
-                    <span>Salvar perfil</span>
+                    <span>@L["Users.Edit.Submit"]</span>
                 }
             </button>
         </footer>
@@ -216,21 +216,21 @@ else
 
     private string LoadErrorTitle =>
         detailResult?.Outcome is ManagementDataOutcome.NotFound
-            ? "Usuário não encontrado"
+            ? L["Users.Edit.LoadError.NotFound"].Value
             : detailResult?.Outcome is ManagementDataOutcome.StepUpRequired
-                ? "MFA exigido para carregar o perfil"
+                ? L["Users.Edit.LoadError.StepUp"].Value
                 : detailResult?.Outcome is ManagementDataOutcome.Forbidden
-                    ? "Acesso ao usuário negado"
-                    : "Não foi possível carregar o perfil";
+                    ? L["Users.Edit.LoadError.Forbidden"].Value
+                    : L["Users.Edit.LoadError.Generic"].Value;
 
     private string SubmissionTitle =>
         submission?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? "MFA exigido para editar o perfil"
+            ? L["Users.Edit.SubmitError.StepUp"].Value
             : submission?.Outcome is ManagementDataOutcome.Forbidden
-                ? "Autoridade insuficiente sobre a conta"
+                ? L["Users.Edit.SubmitError.Forbidden"].Value
                 : submission?.Outcome is ManagementDataOutcome.Conflict
-                    ? "Nome de usuário ou e-mail já utilizado"
-                    : "Não foi possível atualizar o perfil";
+                    ? L["Users.Edit.SubmitError.Conflict"].Value
+                    : L["Users.Edit.SubmitError.Generic"].Value;
 
     protected override async Task OnParametersSetAsync() => await LoadAsync();
 
@@ -271,18 +271,51 @@ else
         }
     }
 
-    private sealed class UserEditModel
+    protected override void OnInitialized()
     {
-        [Required(ErrorMessage = "Informe o nome de usuário.")]
-        [StringLength(256, ErrorMessage = "Use no máximo 256 caracteres.")]
+        model.Localizer = L;
+        base.OnInitialized();
+    }
+
+    private sealed class UserEditModel : IValidatableObject
+    {
+        public IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource>? Localizer { get; set; }
+
         public string UserName { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Informe o e-mail.")]
-        [EmailAddress(ErrorMessage = "Informe um e-mail válido.")]
-        [StringLength(256, ErrorMessage = "Use no máximo 256 caracteres.")]
         public string Email { get; set; } = string.Empty;
 
-        [StringLength(256, ErrorMessage = "Use no máximo 256 caracteres.")]
         public string? PhoneNumber { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            var l = Localizer ?? throw new InvalidOperationException(
+                "The form model localizer must be set before validation.");
+
+            if (string.IsNullOrWhiteSpace(UserName))
+            {
+                yield return new ValidationResult(l["Users.Edit.Validation.UserNameRequired"].Value, [nameof(UserName)]);
+            }
+            if (UserName?.Length > 256)
+            {
+                yield return new ValidationResult(l["Common.Validation.MaxLength", 256].Value, [nameof(UserName)]);
+            }
+            if (string.IsNullOrWhiteSpace(Email))
+            {
+                yield return new ValidationResult(l["Users.Edit.Validation.EmailRequired"].Value, [nameof(Email)]);
+            }
+            if (!string.IsNullOrWhiteSpace(Email) && !new EmailAddressAttribute().IsValid(Email))
+            {
+                yield return new ValidationResult(l["Users.Edit.Validation.EmailInvalid"].Value, [nameof(Email)]);
+            }
+            if (Email?.Length > 256)
+            {
+                yield return new ValidationResult(l["Common.Validation.MaxLength", 256].Value, [nameof(Email)]);
+            }
+            if (PhoneNumber?.Length > 256)
+            {
+                yield return new ValidationResult(l["Common.Validation.MaxLength", 256].Value, [nameof(PhoneNumber)]);
+            }
+        }
     }
 }

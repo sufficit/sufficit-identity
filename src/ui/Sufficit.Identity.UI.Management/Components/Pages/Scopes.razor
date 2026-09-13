@@ -6,11 +6,11 @@
 <PageTitle>Scopes OAuth | Sufficit Identity</PageTitle>
 
 <SUIPageHeader Title="Scopes"
-            Description="Gerencie permissões OAuth personalizadas e os recursos protegidos que elas representam.">
+            Description="@L["Scopes.PageDescription"].Value">
     <Actions>
         <a class="button button--primary" href="scopes/new">
             <SUIIcon Name="plus" Size="17" />
-            Novo scope
+            @L["Scopes.NewScope"]
         </a>
     </Actions>
 </SUIPageHeader>
@@ -20,8 +20,8 @@
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
         <div>
-            <strong>Scope excluído</strong>
-            <span>A definição foi removida e a operação foi auditada.</span>
+            <strong>@L["Scopes.Deleted.Title"]</strong>
+            <span>@L["Scopes.Deleted.Description"]</span>
         </div>
     </div>
 }
@@ -29,8 +29,8 @@
 <div class="contract-strip contract-strip--info">
     <SUIIcon Name="scope" Size="20" />
     <div>
-        <strong>Definições personalizadas OAuth/OIDC</strong>
-        <span>Scopes padrão como <code>openid</code>, <code>profile</code> e <code>offline_access</code> pertencem ao protocolo e não são duplicados aqui.</span>
+        <strong>@L["Scopes.CustomDefinitions.Title"]</strong>
+        <span>@((MarkupString)L["Scopes.CustomDefinitions.Description"].Value)</span>
     </div>
     <SUIStatusBadge ToneValue="SUITone.Info">OAuth 2.0</SUIStatusBadge>
 </div>
@@ -38,17 +38,17 @@
 <div class="table-panel" aria-labelledby="scopes-list-heading" aria-busy="@loading">
     <div class="data-toolbar">
         <div>
-            <h2 id="scopes-list-heading">Scopes registrados</h2>
-            <p>Scopes declarativos são visíveis, mas sua edição permanece no manifesto.</p>
+            <h2 id="scopes-list-heading">@L["Scopes.List.Title"]</h2>
+            <p>@L["Scopes.List.Description"]</p>
         </div>
         <div class="data-toolbar__actions">
             @if (AllScopes.Count > 0)
             {
                 <label class="search-field">
-                    <span class="visually-hidden">Pesquisar scopes</span>
+                    <span class="visually-hidden">@L["Scopes.Search.Label"]</span>
                     <SUIIcon Name="search" Size="18" />
                     <input type="search"
-                           placeholder="Nome, título ou recurso"
+                           placeholder="@L["Scopes.Search.Placeholder"].Value"
                            autocomplete="off"
                            @bind="search"
                            @bind:event="oninput" />
@@ -60,7 +60,7 @@
     <div class="client-results" aria-live="polite">
         @if (loading)
         {
-            <div class="table-skeleton" aria-label="Carregando scopes">
+            <div class="table-skeleton" aria-label="@L["Scopes.Loading"].Value">
                 @for (var index = 0; index < 4; index++)
                 {
                     <span></span>
@@ -72,16 +72,16 @@
             @if (FilteredScopes.Count is 0)
             {
                 <SUIEmptyState Icon="scope"
-                            Title="@(AllScopes.Count is 0 ? "Nenhum scope personalizado" : "Nenhum scope corresponde à pesquisa")"
-                            Description="@(AllScopes.Count is 0 ? "Crie a primeira permissão OAuth específica dos seus recursos." : "Revise o nome, título ou descrição informada.")">
+                            Title="@(AllScopes.Count is 0 ? L["Scopes.Empty.NoScopes.Title"].Value : L["Scopes.Empty.NoMatch.Title"].Value)"
+                            Description="@(AllScopes.Count is 0 ? L["Scopes.Empty.NoScopes.Description"].Value : L["Scopes.Empty.NoMatch.Description"].Value)">
                     <Actions>
                         @if (AllScopes.Count is 0)
                         {
-                            <a class="button button--primary" href="scopes/new">Criar primeiro scope</a>
+                            <a class="button button--primary" href="scopes/new">@L["Scopes.CreateFirst"]</a>
                         }
                         else
                         {
-                            <button class="button button--secondary" type="button" @onclick="ClearSearch">Limpar pesquisa</button>
+                            <button class="button button--secondary" type="button" @onclick="ClearSearch">@L["Scopes.ClearSearch"]</button>
                         }
                     </Actions>
                 </SUIEmptyState>
@@ -92,33 +92,33 @@
                     <table class="data-table data-table--scopes">
                         <thead>
                             <tr>
-                                <th scope="col">Scope</th>
-                                <th scope="col">Origem</th>
-                                <th scope="col">Recursos</th>
-                                <th scope="col">Clientes</th>
-                                <th scope="col"><span class="visually-hidden">Ações</span></th>
+                                <th scope="col">@L["Scopes.Table.Scope"]</th>
+                                <th scope="col">@L["Scopes.Table.Origin"]</th>
+                                <th scope="col">@L["Scopes.Table.Resources"]</th>
+                                <th scope="col">@L["Scopes.Table.Clients"]</th>
+                                <th scope="col"><span class="visually-hidden">@L["Scopes.Table.Actions"]</span></th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var scope in FilteredScopes)
                             {
                                 <tr>
-                                    <td data-label="Scope">
+                                    <td data-label="@L["Scopes.Table.Scope"].Value">
                                         <a class="scope-identity" href="@ScopeHref(scope.Id)">
                                             <strong>@DisplayName(scope)</strong>
                                             <code>@scope.Name</code>
                                         </a>
                                     </td>
-                                    <td data-label="Origem">
+                                    <td data-label="@L["Scopes.Table.Origin"].Value">
                                         <SUIStatusBadge ToneValue="@(scope.IsManifestManaged ? SUITone.Info : SUITone.Neutral)">
-                                            @(scope.IsManifestManaged ? "Manifesto" : "Manual")
+                                            @(scope.IsManifestManaged ? L["Scopes.Origin.Manifest"] : L["Scopes.Origin.Manual"])
                                         </SUIStatusBadge>
                                     </td>
-                                    <td data-label="Recursos">@scope.ResourceCount</td>
-                                    <td data-label="Clientes">@scope.ClientCount</td>
-                                    <td data-label="Ações">
+                                    <td data-label="@L["Scopes.Table.Resources"].Value">@scope.ResourceCount</td>
+                                    <td data-label="@L["Scopes.Table.Clients"].Value">@scope.ClientCount</td>
+                                    <td data-label="@L["Scopes.Table.Actions"].Value">
                                         <a class="row-action" href="@ScopeHref(scope.Id)">
-                                            Detalhes
+                                            @L["Scopes.Details"]
                                             <SUIIcon Name="arrow-right" Size="15" />
                                         </a>
                                     </td>
@@ -133,9 +133,9 @@
         {
             <SUIEmptyState Icon="alert"
                         Title="@ErrorTitle"
-                        Description="@(result?.ErrorMessage ?? "O serviço não conseguiu consultar os scopes agora.")">
+                        Description="@(result?.ErrorMessage ?? L["Scopes.Error.Fallback"].Value)">
                 <Actions>
-                    <button class="button button--secondary" type="button" @onclick="LoadAsync">Tentar novamente</button>
+                    <button class="button button--secondary" type="button" @onclick="LoadAsync">@L["Scopes.Retry"]</button>
                 </Actions>
             </SUIEmptyState>
         }
@@ -143,19 +143,19 @@
 
     <footer class="table-footer">
         <span>@ResultCountLabel</span>
-        <span>Registro canônico do runtime de autorização</span>
+        <span>@L["Scopes.Footer.CanonicalRegistry"]</span>
     </footer>
 </div>
 
 <div class="client-guardrails" aria-labelledby="scope-safety-heading">
     <div>
-        <h2 id="scope-safety-heading">Ciclo de vida seguro</h2>
-        <p>A interface respeita a origem e os vínculos existentes antes de qualquer mutação.</p>
+        <h2 id="scope-safety-heading">@L["Scopes.SafetyHeading"]</h2>
+        <p>@L["Scopes.SafetyDescription"]</p>
     </div>
     <ul>
-        <li><SUIIcon Name="lock" Size="18" /> Nome imutável após a criação</li>
-        <li><SUIIcon Name="workflow" Size="18" /> Scopes declarativos mudam somente no manifesto</li>
-        <li><SUIIcon Name="key" Size="18" /> Exclusão bloqueada enquanto clientes utilizam o scope</li>
+        <li><SUIIcon Name="lock" Size="18" /> @L["Scopes.Safety.Immutable"]</li>
+        <li><SUIIcon Name="workflow" Size="18" /> @L["Scopes.Safety.ManifestOnly"]</li>
+        <li><SUIIcon Name="key" Size="18" /> @L["Scopes.Safety.DeleteBlocked"]</li>
     </ul>
 </div>
 
@@ -181,17 +181,17 @@
 
     private string ErrorTitle =>
         result?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? "MFA exigido para consultar scopes"
+            ? L["Scopes.ErrorTitle.StepUp"].Value
             : result?.Outcome is ManagementDataOutcome.Forbidden
-                ? "Acesso aos scopes negado"
-                : "Não foi possível consultar os scopes";
+                ? L["Scopes.ErrorTitle.Forbidden"].Value
+                : L["Scopes.ErrorTitle.Generic"].Value;
 
     private string ResultCountLabel =>
         loading
-            ? "Carregando scopes"
+            ? L["Scopes.Loading"].Value
             : result?.IsSuccess is true
-                ? $"{FilteredScopes.Count} de {AllScopes.Count} scope(s)"
-                : "Nenhum resultado carregado";
+                ? L["Scopes.ResultCount.Format", FilteredScopes.Count, AllScopes.Count].Value
+                : L["Scopes.ResultCount.None"].Value;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 

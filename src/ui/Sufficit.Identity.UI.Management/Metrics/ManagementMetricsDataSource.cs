@@ -1,10 +1,12 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Metrics;
 using Sufficit.Identity.UI.Management.Clients;
+using Sufficit.Identity.UI.Management.Resources;
 
 namespace Sufficit.Identity.UI.Management.Metrics;
 
@@ -15,7 +17,8 @@ namespace Sufficit.Identity.UI.Management.Metrics;
 public sealed class ManagementMetricsDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
-    ILogger<ManagementMetricsDataSource> logger)
+    ILogger<ManagementMetricsDataSource> logger,
+    IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer)
 {
     public Task<ManagementDataResult<ManagementMetricsOverview>> GetOverviewAsync(
         DateTime? fromUtc, DateTime? toUtc, string? clientId,
@@ -49,7 +52,7 @@ public sealed class ManagementMetricsDataSource(
         }
         catch (ManagementValidationException exception)
         {
-            return ManagementDataResult<T>.Failure(ManagementDataOutcome.Invalid, exception.Message, exception.Field);
+            return ManagementDataResult<T>.Failure(ManagementDataOutcome.Invalid, ManagementErrorText.For(localizer, exception), exception.Field);
         }
         catch (ManagementAccessException exception)
         {
@@ -57,19 +60,19 @@ public sealed class ManagementMetricsDataSource(
                 ? ManagementDataOutcome.StepUpRequired : ManagementDataOutcome.Forbidden;
             return ManagementDataResult<T>.Failure(outcome,
                 outcome is ManagementDataOutcome.StepUpRequired
-                    ? "Conclua a autenticação multifator para continuar."
-                    : "Sua conta não possui autoridade para consultar métricas.");
+                    ? localizer["Common.Access.StepUpRequired"]
+                    : localizer["Common.Access.Forbidden"]);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             logger.LogWarning("{OperationName} timed out.", operationName);
-            return ManagementDataResult<T>.Failure(ManagementDataOutcome.Unavailable, "A consulta demorou mais que o esperado.");
+            return ManagementDataResult<T>.Failure(ManagementDataOutcome.Unavailable, localizer["Common.Timeout"]);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception exception)
         {
             logger.LogError(exception, "{OperationName} failed.", operationName);
-            return ManagementDataResult<T>.Failure(ManagementDataOutcome.Unavailable, "O serviço não conseguiu concluir a consulta de métricas.");
+            return ManagementDataResult<T>.Failure(ManagementDataOutcome.Unavailable, localizer["Common.Unavailable"]);
         }
     }
 }

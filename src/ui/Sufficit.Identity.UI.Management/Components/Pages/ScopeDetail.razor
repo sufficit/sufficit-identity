@@ -8,11 +8,11 @@
 <PageTitle>@PageTitleText</PageTitle>
 
 <SUIPageHeader Title="@HeaderTitle"
-            Description="Definição OAuth/OIDC persistida pelo runtime de autorização.">
+            Description="@L["Scopes.Detail.HeaderDescription"].Value">
     <Actions>
         <a class="button button--secondary" href="scopes">
             <SUIIcon Name="arrow-left" Size="17" />
-            Voltar para scopes
+            @L["Scopes.BackToScopes"]
         </a>
     </Actions>
 </SUIPageHeader>
@@ -22,8 +22,8 @@
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
         <div>
-            <strong>Scope criado</strong>
-            <span>A definição foi persistida e a operação foi auditada.</span>
+            <strong>@L["Scopes.Created.Title"]</strong>
+            <span>@L["Scopes.Created.Description"]</span>
         </div>
     </div>
 }
@@ -33,15 +33,15 @@
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
         <div>
-            <strong>Scope atualizado</strong>
-            <span>Nome de exibição, descrição e recursos foram persistidos.</span>
+            <strong>@L["Scopes.Updated.Title"]</strong>
+            <span>@L["Scopes.Updated.Description"]</span>
         </div>
     </div>
 }
 
 @if (loading)
 {
-    <div class="detail-shell" aria-busy="true" aria-label="Carregando scope">
+    <div class="detail-shell" aria-busy="true" aria-label="@L["Scopes.Loading.Aria"].Value">
         <div class="detail-skeleton"></div>
     </div>
 }
@@ -52,10 +52,10 @@ else if (result?.IsSuccess is true && result.Value is not null)
         <div class="contract-strip contract-strip--info">
             <SUIIcon Name="workflow" Size="20" />
             <div>
-                <strong>Gerenciado pelo manifesto declarativo</strong>
-                <span>Esta tela é somente leitura. Altere o manifesto e aplique o provisionamento para manter uma única fonte de verdade.</span>
+                <strong>@L["Scopes.ManifestManaged.Title"]</strong>
+                <span>@L["Scopes.ManifestManaged.Description"]</span>
             </div>
-            <SUIStatusBadge ToneValue="SUITone.Info">Somente leitura</SUIStatusBadge>
+            <SUIStatusBadge ToneValue="SUITone.Info">@L["Scopes.ReadOnly"]</SUIStatusBadge>
         </div>
     }
 
@@ -64,7 +64,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
         <div class="inline-notice inline-notice--danger" role="alert">
             <SUIIcon Name="alert" Size="19" />
             <div>
-                <strong>Não foi possível concluir a operação</strong>
+                <strong>@L["Scopes.OperationError.Title"]</strong>
                 <span>@(submission?.ErrorMessage ?? deletion?.ErrorMessage)</span>
             </div>
         </div>
@@ -79,20 +79,20 @@ else if (result?.IsSuccess is true && result.Value is not null)
         <DataAnnotationsValidator />
         <div class="form-section" aria-labelledby="scope-detail-heading">
             <div class="form-section__heading">
-                <h2 id="scope-detail-heading">Definição</h2>
-                <p>O nome é um identificador de protocolo imutável. Os demais campos podem evoluir sem alterar o contrato solicitado pelos clientes.</p>
+                <h2 id="scope-detail-heading">@L["Scopes.Detail.Title"]</h2>
+                <p>@L["Scopes.Detail.Description"]</p>
             </div>
             <SUIFormGrid Columns="2" Spacing="4" LabelLines="2">
                 <SUITextField T="string"
                               id="scope-name"
-                              Label="Nome"
-                              HelperText="Identificador OAuth imutável."
+                              Label="@L["Scopes.Field.Name.Label"].Value"
+                              HelperText="@L["Scopes.Field.Name.ImmutableHelper"].Value"
                               Value="@scope.Name"
                               readonly />
                 <SUITextField T="string"
                               id="scope-display-name"
-                              Label="Nome de exibição (opcional)"
-                              HelperText="Rótulo apresentado ao usuário no consentimento."
+                              Label="@L["Scopes.Field.DisplayName.Label"].Value"
+                              HelperText="@L["Scopes.Field.DisplayName.Helper"].Value"
                               MaxLength="200"
                               Disabled="@scope.IsManifestManaged"
                               ErrorText="@ErrorFor(definition, nameof(model.DisplayName))"
@@ -101,8 +101,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
             <SUIFormGrid Columns="1" Spacing="4">
                 <SUITextField T="string"
                               id="scope-description"
-                              Label="Descrição (opcional)"
-                              HelperText="Explique de forma concreta o acesso concedido ao cliente."
+                              Label="@L["Scopes.Field.Description.Label"].Value"
+                              HelperText="@L["Scopes.Field.Description.Helper"].Value"
                               Multiline
                               MaxLength="1000"
                               Disabled="@scope.IsManifestManaged"
@@ -110,8 +110,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
                               @bind-Value="model.Description" />
                 <SUITextField T="string"
                               id="scope-resources"
-                              Label="Resources / audiences"
-                              HelperText="Um audience por linha."
+                              Label="@L["Scopes.Field.Resources.DetailLabel"].Value"
+                              HelperText="@L["Scopes.Field.Resources.DetailHelper"].Value"
                               Multiline
                               Disabled="@scope.IsManifestManaged"
                               @bind-Value="model.Resources" />
@@ -120,12 +120,12 @@ else if (result?.IsSuccess is true && result.Value is not null)
 
         <div class="form-section" aria-labelledby="scope-usage-heading">
             <div class="form-section__heading">
-                <h2 id="scope-usage-heading">Clientes vinculados</h2>
-                <p>A exclusão permanece bloqueada enquanto algum cliente possuir permissão para solicitar este scope.</p>
+                <h2 id="scope-usage-heading">@L["Scopes.Usage.Title"]</h2>
+                <p>@L["Scopes.Usage.Description"]</p>
             </div>
             @if (scope.ClientIds.Count is 0)
             {
-                <p class="detail-empty">Nenhum cliente utiliza este scope.</p>
+                <p class="detail-empty">@L["Scopes.Usage.None"]</p>
             }
             else
             {
@@ -146,12 +146,12 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     @if (submitting)
                     {
                         <span class="button-spinner" aria-hidden="true"></span>
-                        <span>Salvando…</span>
+                        <span>@L["Scopes.Save.Saving"]</span>
                     }
                     else
                     {
                         <SUIIcon Name="check" Size="17" />
-                        <span>Salvar alterações</span>
+                        <span>@L["Scopes.Save.Submit"]</span>
                     }
                 </button>
             </footer>
@@ -163,25 +163,25 @@ else if (result?.IsSuccess is true && result.Value is not null)
     {
         <div class="delete-zone" aria-labelledby="delete-scope-heading">
             <div>
-                <h2 id="delete-scope-heading">Excluir scope</h2>
+                <h2 id="delete-scope-heading">@L["Scopes.Delete.Title"]</h2>
                 <p>
                     @(scope.ClientIds.Count is 0
-                        ? "A definição será removida do provedor. Tokens já emitidos permanecem válidos até expirar ou serem revogados."
-                        : "Remova primeiro o scope dos clientes listados acima.")
+                        ? L["Scopes.Delete.NoClients"]
+                        : L["Scopes.Delete.HasClients"])
                 </p>
             </div>
             <label class="delete-confirmation">
                 <input type="checkbox"
                        disabled="@(scope.ClientIds.Count > 0)"
                        @bind="deleteConfirmed" />
-                <span>Confirmo a exclusão definitiva desta definição.</span>
+                <span>@L["Scopes.Delete.ConfirmLabel"]</span>
             </label>
             <button class="button button--danger"
                     type="button"
                     disabled="@(!deleteConfirmed || deleting || scope.ClientIds.Count > 0)"
                     @onclick="DeleteAsync">
                 <SUIIcon Name="trash" Size="17" />
-                @(deleting ? "Excluindo…" : "Excluir scope")
+                @(deleting ? L["Scopes.Delete.Deleting"] : L["Scopes.Delete.Title"])
             </button>
         </div>
     }
@@ -191,9 +191,9 @@ else
     <div>
         <SUIEmptyState Icon="alert"
                     Title="@ErrorTitle"
-                    Description="@(result?.ErrorMessage ?? "O serviço não conseguiu ler o scope.")">
+                    Description="@(result?.ErrorMessage ?? L["Scopes.Error.DetailFallback"].Value)">
             <Actions>
-                <a class="button button--secondary" href="scopes">Voltar para scopes</a>
+                <a class="button button--secondary" href="scopes">@L["Scopes.BackToScopes"]</a>
             </Actions>
         </SUIEmptyState>
     </div>
@@ -221,20 +221,21 @@ else
     private string HeaderTitle =>
         result?.Value?.DisplayName
         ?? result?.Value?.Name
-        ?? "Detalhes do scope";
+        ?? L["Scopes.Detail.DefaultTitle"].Value;
 
     private string PageTitleText => $"{HeaderTitle} | Sufficit Identity";
 
     private string ErrorTitle =>
         result?.Outcome is ManagementDataOutcome.NotFound
-            ? "Scope não encontrado"
+            ? L["Scopes.ErrorTitle.NotFound"].Value
             : result?.Outcome is ManagementDataOutcome.StepUpRequired
-                ? "MFA exigido para consultar o scope"
-                : "Não foi possível abrir o scope";
+                ? L["Scopes.ErrorTitle.DetailStepUp"].Value
+                : L["Scopes.ErrorTitle.DetailGeneric"].Value;
 
     protected override async Task OnParametersSetAsync()
     {
         loading = true;
+        model.Localizer = L;
         result = await ScopeData.GetAsync(Id);
         if (result.IsSuccess && result.Value is not null)
         {
@@ -291,23 +292,46 @@ else
             StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     /// <summary>
-    /// Entrega a mensagem de validação do campo ao próprio componente, em vez
-    /// de pendurar um &lt;ValidationMessage&gt; ao lado dele: dentro de um grid
-    /// de duas colunas, o elemento irmão vira uma célula e desloca a coluna
-    /// seguinte.
+    /// Delivers the field validation message to the component itself, instead
+    /// of hanging a &lt;ValidationMessage&gt; next to it: inside a two-column
+    /// grid, the sibling element becomes a cell and shifts the following
+    /// column.
     /// </summary>
     private string? ErrorFor(EditContext context, string field) =>
         context.GetValidationMessages(new FieldIdentifier(model, field))
             .FirstOrDefault();
 
-    private sealed class ScopeEditModel
+    private sealed class ScopeEditModel : IValidatableObject
     {
-        [StringLength(200, ErrorMessage = "Use no máximo 200 caracteres.")]
+        public IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource>? Localizer { get; set; }
+
         public string? DisplayName { get; set; }
 
-        [StringLength(1000, ErrorMessage = "Use no máximo 1000 caracteres.")]
         public string? Description { get; set; }
 
         public string? Resources { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            var l = Localizer;
+            if (l is null)
+            {
+                yield break;
+            }
+
+            if (DisplayName?.Length > 200)
+            {
+                yield return new ValidationResult(
+                    l["Scopes.Validation.MaxLength200"].Value,
+                    [nameof(DisplayName)]);
+            }
+
+            if (Description?.Length > 1000)
+            {
+                yield return new ValidationResult(
+                    l["Scopes.Validation.MaxLength1000"].Value,
+                    [nameof(Description)]);
+            }
+        }
     }
 }

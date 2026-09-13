@@ -4,14 +4,14 @@
 @inject ManagementUserDataSource UserData
 @inject NavigationManager Navigation
 
-<PageTitle>Novo usuário | Sufficit Identity</PageTitle>
+<PageTitle>@L["Users.Create.PageTitle"]</PageTitle>
 
-<SUIPageHeader Title="Novo usuário"
-            Description="Crie uma conta no provedor sem atribuir autoridades próprias de aplicações.">
+<SUIPageHeader Title="@L["Users.Create.HeaderTitle"].Value"
+            Description="@L["Users.Create.HeaderDescription"].Value">
     <Actions>
         <a class="button button--secondary" href="users">
             <SUIIcon Name="arrow-left" Size="17" />
-            Voltar para usuários
+            @L["Users.Create.BackToUsers"]
         </a>
     </Actions>
 </SUIPageHeader>
@@ -19,16 +19,16 @@
 <div class="contract-strip contract-strip--success">
     <SUIIcon Name="shield" Size="20" />
     <div>
-        <strong>Conta de autenticação, não perfil empresarial</strong>
-        <span>Esta operação cria identificação e credencial. Grupos, cargos e permissões são definidos pelos sistemas que os utilizam.</span>
+        <strong>@L["Users.Create.ContractStrip.Title"]</strong>
+        <span>@L["Users.Create.ContractStrip.Description"]</span>
     </div>
-    <SUIStatusBadge ToneValue="SUITone.Success">Auditável</SUIStatusBadge>
+    <SUIStatusBadge ToneValue="SUITone.Success">@L["Users.Create.ContractStrip.Badge"]</SUIStatusBadge>
 </div>
 
 @if (loading)
 {
     <div class="form-section" aria-busy="true">
-        <div class="table-skeleton" aria-label="Carregando autorização">
+        <div class="table-skeleton" aria-label="@L["Users.Create.LoadingAriaLabel"].Value">
             @for (var index = 0; index < 4; index++)
             {
                 <span></span>
@@ -46,7 +46,7 @@ else if (accessResult?.IsSuccess is false)
                 <button class="button button--secondary"
                         type="button"
                         @onclick="LoadAsync">
-                    Tentar novamente
+                    @L["Users.Create.Retry"]
                 </button>
             </Actions>
         </SUIEmptyState>
@@ -56,10 +56,10 @@ else if (!Access.CanCreate)
 {
     <div class="panel">
         <SUIEmptyState Icon="users"
-                    Title="Criação de usuários não autorizada"
-                    Description="Sua sessão pode consultar o diretório, mas não possui a capability necessária para criar contas.">
+                    Title="@L["Users.Create.Forbidden.Title"].Value"
+                    Description="@L["Users.Create.Forbidden.Description"].Value">
             <Actions>
-                <a class="button button--secondary" href="users">Voltar para usuários</a>
+                <a class="button button--secondary" href="users">@L["Users.Create.BackToUsers"]</a>
             </Actions>
         </SUIEmptyState>
     </div>
@@ -86,13 +86,13 @@ else
 
         <div class="form-section" aria-labelledby="user-identity-heading">
             <div class="form-section__heading">
-                <h2 id="user-identity-heading">Identificação</h2>
-                <p>Use dados reconhecíveis pelo usuário. O e-mail começa pendente de confirmação.</p>
+                <h2 id="user-identity-heading">@L["Users.Create.Identity.Heading"]</h2>
+                <p>@L["Users.Create.Identity.Description"]</p>
             </div>
 
             <div class="form-grid form-grid--two">
                 <div class="field-group">
-                    <label for="user-name">Nome de usuário</label>
+                    <label for="user-name">@L["Users.Create.Field.UserName"]</label>
                     <InputText id="user-name"
                                class="form-control"
                                autocomplete="username"
@@ -106,7 +106,7 @@ else
                 </div>
 
                 <div class="field-group">
-                    <label for="user-email">E-mail</label>
+                    <label for="user-email">@L["Users.Create.Field.Email"]</label>
                     <InputText id="user-email"
                                class="form-control"
                                type="email"
@@ -124,13 +124,13 @@ else
 
         <div class="form-section" aria-labelledby="user-password-heading">
             <div class="form-section__heading">
-                <h2 id="user-password-heading">Senha inicial</h2>
-                <p>A política real é validada pelo Identity no servidor. A senha nunca entra na auditoria ou na resposta.</p>
+                <h2 id="user-password-heading">@L["Users.Create.Password.Heading"]</h2>
+                <p>@L["Users.Create.Password.Description"]</p>
             </div>
 
             <div class="form-grid form-grid--two">
                 <div class="field-group">
-                    <label for="initial-password">Senha</label>
+                    <label for="initial-password">@L["Users.Create.Field.Password"]</label>
                     <InputText id="initial-password"
                                class="form-control"
                                type="password"
@@ -144,7 +144,7 @@ else
                 </div>
 
                 <div class="field-group">
-                    <label for="confirm-password">Confirmar senha</label>
+                    <label for="confirm-password">@L["Users.Create.Field.ConfirmPassword"]</label>
                     <InputText id="confirm-password"
                                class="form-control"
                                type="password"
@@ -153,23 +153,23 @@ else
                     <ValidationMessage For="() => model.ConfirmPassword" />
                 </div>
             </div>
-            <span class="field-hint">Compartilhe a senha por um canal seguro e oriente a troca após o primeiro acesso.</span>
+            <span class="field-hint">@L["Users.Create.Password.Hint"]</span>
         </div>
 
         <footer class="form-actions">
-            <a class="button button--secondary" href="users">Cancelar</a>
+            <a class="button button--secondary" href="users">@L["Users.Create.Cancel"]</a>
             <button class="button button--primary"
                     type="submit"
                     disabled="@submitting">
                 @if (submitting)
                 {
                     <span class="button-spinner" aria-hidden="true"></span>
-                    <span>Criando usuário…</span>
+                    <span>@L["Users.Create.Submitting"]</span>
                 }
                 else
                 {
                     <SUIIcon Name="plus" Size="17" />
-                    <span>Criar usuário</span>
+                    <span>@L["Users.Create.Submit"]</span>
                 }
             </button>
         </footer>
@@ -189,15 +189,15 @@ else
 
     private string AccessErrorTitle =>
         accessResult?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? "Autenticação adicional necessária"
-            : "Não foi possível carregar sua autoridade";
+            ? L["Users.Create.AccessError.StepUpTitle"].Value
+            : L["Users.Create.AccessError.GenericTitle"].Value;
 
     private string SubmissionTitle =>
         submission?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? "MFA exigido para criar usuários"
+            ? L["Users.Create.SubmitError.StepUpTitle"].Value
             : submission?.Outcome is ManagementDataOutcome.Conflict
-                ? "Já existe uma identidade com esses dados"
-                : "Não foi possível criar o usuário";
+                ? L["Users.Create.SubmitError.ConflictTitle"].Value
+                : L["Users.Create.SubmitError.GenericTitle"].Value;
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -231,24 +231,61 @@ else
         }
     }
 
-    private sealed class UserCreateModel
+    protected override void OnInitialized()
     {
-        [Required(ErrorMessage = "Informe o nome de usuário.")]
-        [StringLength(256, ErrorMessage = "Use no máximo 256 caracteres.")]
+        model.Localizer = L;
+        base.OnInitialized();
+    }
+
+    private sealed class UserCreateModel : IValidatableObject
+    {
+        public IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource>? Localizer { get; set; }
+
         public string UserName { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Informe o e-mail.")]
-        [EmailAddress(ErrorMessage = "Informe um e-mail válido.")]
-        [StringLength(256, ErrorMessage = "Use no máximo 256 caracteres.")]
         public string Email { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Informe a senha inicial.")]
         public string InitialPassword { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Confirme a senha inicial.")]
-        [Compare(
-            nameof(InitialPassword),
-            ErrorMessage = "As senhas não coincidem.")]
         public string ConfirmPassword { get; set; } = string.Empty;
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            var l = Localizer ?? throw new InvalidOperationException(
+                "The form model localizer must be set before validation.");
+
+            if (string.IsNullOrWhiteSpace(UserName))
+            {
+                yield return new ValidationResult(l["Users.Create.Validation.UserNameRequired"].Value, [nameof(UserName)]);
+            }
+            if (UserName?.Length > 256)
+            {
+                yield return new ValidationResult(l["Common.Validation.MaxLength", 256].Value, [nameof(UserName)]);
+            }
+            if (string.IsNullOrWhiteSpace(Email))
+            {
+                yield return new ValidationResult(l["Users.Create.Validation.EmailRequired"].Value, [nameof(Email)]);
+            }
+            if (!string.IsNullOrWhiteSpace(Email) && !new EmailAddressAttribute().IsValid(Email))
+            {
+                yield return new ValidationResult(l["Users.Create.Validation.EmailInvalid"].Value, [nameof(Email)]);
+            }
+            if (Email?.Length > 256)
+            {
+                yield return new ValidationResult(l["Common.Validation.MaxLength", 256].Value, [nameof(Email)]);
+            }
+            if (string.IsNullOrWhiteSpace(InitialPassword))
+            {
+                yield return new ValidationResult(l["Users.Create.Validation.PasswordRequired"].Value, [nameof(InitialPassword)]);
+            }
+            if (string.IsNullOrWhiteSpace(ConfirmPassword))
+            {
+                yield return new ValidationResult(l["Users.Create.Validation.ConfirmPasswordRequired"].Value, [nameof(ConfirmPassword)]);
+            }
+            if (!string.Equals(InitialPassword, ConfirmPassword, StringComparison.Ordinal))
+            {
+                yield return new ValidationResult(l["Users.Create.Validation.PasswordsDoNotMatch"].Value, [nameof(ConfirmPassword)]);
+            }
+        }
     }
 }

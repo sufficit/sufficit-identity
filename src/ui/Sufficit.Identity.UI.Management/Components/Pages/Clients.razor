@@ -4,18 +4,18 @@
 @inject ManagementClientDataSource ClientData
 @inject NavigationManager Navigation
 
-<PageTitle>Aplicações | Sufficit Identity</PageTitle>
+<PageTitle>@L["Clients.List.PageTitle"] | Sufficit Identity</PageTitle>
 
-<SUIPageHeader Title="Aplicações"
-            Description="Crie, retome e gerencie integrações OAuth e OpenID Connect.">
+<SUIPageHeader Title="@L["Clients.List.PageTitle"].Value"
+            Description="@L["Clients.List.Description"].Value">
     <Actions>
         <a class="button button--secondary" href="clients/registrations">
             <SUIIcon Name="shield" Size="17" />
-            Registros automáticos
+            @L["Clients.Registrations.Title"]
         </a>
         <a class="button button--primary" href="clients/new">
             <SUIIcon Name="plus" Size="17" />
-            Nova aplicação
+            @L["Clients.Create.Title"]
         </a>
     </Actions>
 </SUIPageHeader>
@@ -25,8 +25,8 @@
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
         <div>
-            <strong>Cliente excluído</strong>
-            <span>O registro <code>@DeletedClientId</code> foi removido e a operação foi auditada.</span>
+            <strong>@L["Clients.List.DeletedTitle"]</strong>
+            <span>@L["Clients.List.DeletedMessagePrefix"] <code>@DeletedClientId</code> @L["Clients.List.DeletedMessageSuffix"]</span>
         </div>
     </div>
 }
@@ -35,15 +35,15 @@
 {
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
-        <div><strong>Rascunho descartado</strong><span>A configuração incompleta foi removida com segurança.</span></div>
+        <div><strong>@L["Clients.List.DraftDeletedTitle"]</strong><span>@L["Clients.List.DraftDeletedMessage"]</span></div>
     </div>
 }
 
 <div class="contract-strip contract-strip--info" id="clients-integration-note">
     <SUIIcon Name="code" Size="20" />
     <div>
-        <strong>Uma única fonte de verdade</strong>
-        <span>A interface e a API usam as mesmas validações, permissões e trilha de auditoria.</span>
+        <strong>@L["Clients.List.SingleSourceTitle"]</strong>
+        <span>@L["Clients.List.SingleSourceMessage"]</span>
     </div>
     <SUIStatusBadge ToneValue="SUITone.Info">Capability</SUIStatusBadge>
 </div>
@@ -52,8 +52,8 @@
 {
     <div class="draft-panel" aria-labelledby="drafts-heading">
         <div class="data-toolbar">
-            <div><h2 id="drafts-heading">Continuar configuração</h2><p>Rascunhos protegidos e disponíveis somente para sua conta administrativa.</p></div>
-            <SUIStatusBadge ToneValue="SUITone.Info">@Drafts.Count @(Drafts.Count == 1 ? "rascunho" : "rascunhos")</SUIStatusBadge>
+            <div><h2 id="drafts-heading">@L["Clients.List.ContinueConfigHeading"]</h2><p>@L["Clients.List.DraftsProtectedDescription"]</p></div>
+            <SUIStatusBadge ToneValue="SUITone.Info">@Drafts.Count @(Drafts.Count == 1 ? L["Clients.List.DraftSingular"] : L["Clients.List.DraftPlural"])</SUIStatusBadge>
         </div>
         <div class="draft-list">
             @foreach (var item in Drafts)
@@ -62,10 +62,10 @@
                     <span class="draft-item__icon"><SUIIcon Name="edit" Size="19" /></span>
                     <span class="draft-item__body">
                         <strong>@DraftName(item)</strong>
-                        <span>@item.ProfileDisplayName · Etapa @DraftStepLabel(item.CurrentStep)</span>
-                        <small>Atualizado @FormatRelative(item.UpdatedAt) · expira em @item.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy")</small>
+                        <span>@item.ProfileDisplayName · @L["Clients.List.StepLabel"] @DraftStepLabel(item.CurrentStep)</span>
+                        <small>@L["Clients.List.UpdatedLabel"] @FormatRelative(item.UpdatedAt) · @L["Clients.List.ExpiresInLabel"] @item.ExpiresAt.ToLocalTime().ToString("dd/MM/yyyy")</small>
                     </span>
-                    <SUIStatusBadge ToneValue="@(item.IsReady ? SUITone.Success : SUITone.Neutral)">@(item.IsReady ? "Pronto" : "Em andamento")</SUIStatusBadge>
+                    <SUIStatusBadge ToneValue="@(item.IsReady ? SUITone.Success : SUITone.Neutral)">@(item.IsReady ? L["Clients.List.ReadyStatus"] : L["Clients.List.InProgressStatus"])</SUIStatusBadge>
                     <SUIIcon Name="arrow-right" Size="17" />
                 </a>
             }
@@ -76,7 +76,7 @@
 <div class="table-panel" aria-labelledby="clients-list-heading" aria-busy="@loading">
     <div class="data-toolbar data-toolbar--clients">
         <div>
-            <h2 id="clients-list-heading">Aplicações registradas</h2>
+            <h2 id="clients-list-heading">@L["Clients.List.RegisteredHeading"]</h2>
             <p>@ToolbarDescription</p>
         </div>
         <div class="clients-filters">
@@ -85,34 +85,34 @@
                 <div class="clients-filter--search">
                     <SUIIcon Name="search" Size="18" />
                     <SUITextField T="string" Class="clients-filter"
-                              Id="client-search" name="q" InputType="search" aria-label="Pesquisar aplicações"
-                              Placeholder="Pesquisar por client_id ou nome" autocomplete="off"
+                              Id="client-search" name="q" InputType="search" aria-label="@L["Clients.List.SearchAriaLabel"].Value"
+                              Placeholder="@L["Clients.List.SearchPlaceholder"].Value" autocomplete="off"
                               Value="@search" ValueChanged="SearchChanged" />
                 </div>
-                <SUISelect T="string" id="client-type-filter" name="type" Label="Tipo" Class="clients-filter" Value="@typeFilter" ValueChanged="TypeSelected">
-                    <SUISelectItem Value="@("all")">Todos</SUISelectItem>
-                    <SUISelectItem Value="@("public")">Públicos</SUISelectItem>
-                    <SUISelectItem Value="@("confidential")">Confidenciais</SUISelectItem>
+                <SUISelect T="string" id="client-type-filter" name="type" Label="@L["Clients.Detail.TypeLabel"].Value" Class="clients-filter" Value="@typeFilter" ValueChanged="TypeSelected">
+                    <SUISelectItem Value="@("all")">@L["Clients.List.All"]</SUISelectItem>
+                    <SUISelectItem Value="@("public")">@L["Clients.List.FilterPublic"]</SUISelectItem>
+                    <SUISelectItem Value="@("confidential")">@L["Clients.List.FilterConfidential"]</SUISelectItem>
                 </SUISelect>
-                <SUISelect T="string" id="client-grant-filter" name="grant" Label="Fluxo" Class="clients-filter" Value="@grantFilter" ValueChanged="GrantSelected">
-                    <SUISelectItem Value="@("all")">Todos os fluxos</SUISelectItem>
+                <SUISelect T="string" id="client-grant-filter" name="grant" Label="@L["Clients.List.FlowLabel"].Value" Class="clients-filter" Value="@grantFilter" ValueChanged="GrantSelected">
+                    <SUISelectItem Value="@("all")">@L["Clients.List.AllFlows"]</SUISelectItem>
                     <SUISelectItem Value="@("authorization_code")">Authorization Code</SUISelectItem>
                     <SUISelectItem Value="@("client_credentials")">Client Credentials</SUISelectItem>
                     <SUISelectItem Value="@("device_code")">Device Code</SUISelectItem>
                     <SUISelectItem Value="@("refresh_token")">Refresh Token</SUISelectItem>
                 </SUISelect>
-                <SUISelect T="string" id="client-origin-filter" name="origin" Label="Origem" Class="clients-filter" Value="@originFilter" ValueChanged="OriginSelected">
-                    <SUISelectItem Value="@("all")">Todas</SUISelectItem>
-                    <SUISelectItem Value="@("manual")">Manual</SUISelectItem>
-                    <SUISelectItem Value="@("manifest")">Manifesto</SUISelectItem>
+                <SUISelect T="string" id="client-origin-filter" name="origin" Label="@L["Clients.List.OriginLabel"].Value" Class="clients-filter" Value="@originFilter" ValueChanged="OriginSelected">
+                    <SUISelectItem Value="@("all")">@L["Clients.List.AllFeminine"]</SUISelectItem>
+                    <SUISelectItem Value="@("manual")">@L["Clients.List.OriginManual"]</SUISelectItem>
+                    <SUISelectItem Value="@("manifest")">@L["Clients.List.OriginManifest"]</SUISelectItem>
                 </SUISelect>
-                <SUISelect T="string" id="client-status-filter" name="status" Label="Estado" Class="clients-filter" Value="@statusFilter" ValueChanged="StatusSelected">
-                    <SUISelectItem Value="@("all")">Todos</SUISelectItem>
-                    <SUISelectItem Value="@("active")">Ativos</SUISelectItem>
+                <SUISelect T="string" id="client-status-filter" name="status" Label="@L["Clients.List.StatusLabel"].Value" Class="clients-filter" Value="@statusFilter" ValueChanged="StatusSelected">
+                    <SUISelectItem Value="@("all")">@L["Clients.List.All"]</SUISelectItem>
+                    <SUISelectItem Value="@("active")">@L["Clients.List.StatusActive"]</SUISelectItem>
                 </SUISelect>
                 <SUITextField T="string" Class="clients-filter" Label="Scope"
                               Id="client-scope-filter" name="scope" Value="@scopeFilter"
-                              Placeholder="ex.: openid" ValueChanged="ScopeChanged" />
+                              Placeholder="@L["Clients.List.ScopePlaceholder"].Value" ValueChanged="ScopeChanged" />
             }
         </div>
     </div>
@@ -120,7 +120,7 @@
     <div class="client-results" aria-live="polite">
         @if (loading)
         {
-            <div class="table-skeleton" aria-label="Carregando clientes">
+            <div class="table-skeleton" aria-label="@L["Clients.List.LoadingClientsAriaLabel"].Value">
                 @for (var index = 0; index < 4; index++)
                 {
                     <span></span>
@@ -145,7 +145,7 @@
                         <Actions>
                             <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default"
                                     OnClick="ClearSearch">
-                                    Limpar filtros
+                                    @L["Clients.List.ClearFilters"]
                             </SUIButton>
                         </Actions>
                     </SUIEmptyState>
@@ -157,19 +157,19 @@
                     <table class="data-table data-table--clients">
                         <thead>
                             <tr>
-                                <th scope="col">Aplicação</th>
+                                <th scope="col">@L["Clients.Registrations.ColumnApplication"]</th>
                                 <th scope="col">Client ID</th>
-                                <th scope="col">Tipo</th>
-                                <th scope="col">Estado</th>
-                                <th scope="col">Origem</th>
-                                <th scope="col"><span class="visually-hidden">Ações</span></th>
+                                <th scope="col">@L["Clients.Detail.TypeLabel"]</th>
+                                <th scope="col">@L["Clients.List.StatusLabel"]</th>
+                                <th scope="col">@L["Clients.List.OriginLabel"]</th>
+                                <th scope="col"><span class="visually-hidden">@L["Clients.Registrations.ColumnActions"]</span></th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var client in FilteredClients)
                             {
                                 <tr>
-                                    <td data-label="Aplicação">
+                                    <td data-label="@L["Clients.Registrations.ColumnApplication"].Value">
                                         <a class="client-name client-link"
                                            href="@ClientHref(client.Id)">
                                             @DisplayName(client)
@@ -178,25 +178,25 @@
                                     <td data-label="Client ID">
                                         <code class="client-id">@client.ClientId</code>
                                     </td>
-                                    <td data-label="Tipo">
+                                    <td data-label="@L["Clients.Detail.TypeLabel"].Value">
                                         <SUIStatusBadge ToneValue="@IdentitySuiTone.From(ClientTypeTone(client.Type))">
                                             @ClientTypeLabel(client.Type)
                                         </SUIStatusBadge>
                                     </td>
-                                    <td data-label="Estado">
+                                    <td data-label="@L["Clients.List.StatusLabel"].Value">
                                         <span class="registration-state">
                                             <span class="status-dot @(ClientStatusTone(client.Status))" aria-hidden="true"></span>
                                             @ClientStatusLabel(client.Status)
                                         </span>
                                     </td>
-                                    <td data-label="Origem">
+                                    <td data-label="@L["Clients.List.OriginLabel"].Value">
                                         <span class="registration-state">@ClientOriginLabel(client.Origin)</span>
                                     </td>
-                                    <td data-label="Ações">
+                                    <td data-label="@L["Clients.Registrations.ColumnActions"].Value">
                                         <a class="row-action"
                                            href="@ClientHref(client.Id)"
-                                           aria-label="@($"Abrir detalhes de {client.ClientId}")">
-                                            Detalhes
+                                           aria-label="@L["Clients.List.OpenDetailsAriaLabel", client.ClientId].Value">
+                                            @L["Clients.Registrations.Details"]
                                             <SUIIcon Name="arrow-right" Size="15" />
                                         </a>
                                     </td>
@@ -210,12 +210,12 @@
         else
         {
             <SUIEmptyState Icon="database"
-                        Title="Não foi possível consultar os clientes"
-                        Description="O serviço de identidade não conseguiu ler os registros agora. Verifique o banco e tente novamente.">
+                        Title="@L["Clients.List.QueryErrorTitle"].Value"
+                        Description="@L["Clients.List.QueryErrorDescription"].Value">
                 <Actions>
                     <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default"
                             OnClick="LoadClientsAsync">
-                        Tentar novamente
+                        @L["Clients.Create.Retry"]
                     </SUIButton>
                 </Actions>
             </SUIEmptyState>
@@ -226,38 +226,38 @@
         <span aria-live="polite" aria-atomic="true">@ResultCountLabel</span>
         @if (HasPages)
         {
-            <nav class="pagination" aria-label="Paginação de aplicações">
+            <nav class="pagination" aria-label="@L["Clients.List.PaginationAriaLabel"].Value">
                 <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" SizeValue="SUISize.Small"
                         Disabled="@(CurrentPage <= 1 || loading)"
                         OnClick="() => GoToPage(CurrentPage - 1)">
                     <SUIIcon Name="arrow-left" Size="15" />
-                    Anterior
+                    @L["Clients.Registrations.Previous"]
                 </SUIButton>
-                <span class="pagination__status">Página @CurrentPage de @PageCount</span>
+                <span class="pagination__status">@L["Clients.Registrations.PageOf", CurrentPage, PageCount]</span>
                 <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" SizeValue="SUISize.Small"
                         Disabled="@(CurrentPage >= PageCount || loading)"
                         OnClick="() => GoToPage(CurrentPage + 1)">
-                    Próxima
+                    @L["Clients.Registrations.Next"]
                     <SUIIcon Name="arrow-right" Size="15" />
                 </SUIButton>
             </nav>
         }
         else
         {
-            <span class="pagination__status">Página única</span>
+            <span class="pagination__status">@L["Clients.List.SinglePage"]</span>
         }
     </footer>
 </div>
 
 <div class="client-guardrails" aria-labelledby="client-safety-heading">
     <div>
-        <h2 id="client-safety-heading">Proteções aplicadas</h2>
-        <p>Cada alteração é validada, autorizada e auditada antes de chegar ao registro OAuth.</p>
+        <h2 id="client-safety-heading">@L["Clients.List.GuardrailsHeading"]</h2>
+        <p>@L["Clients.List.GuardrailsDescription"]</p>
     </div>
     <ul>
-        <li><SUIIcon Name="shield" Size="18" /> Operações exigem capabilities específicas do provedor</li>
-        <li><SUIIcon Name="lock" Size="18" /> Segredos nunca aparecem na listagem</li>
-        <li><SUIIcon Name="audit" Size="18" /> Criação e exclusão geram eventos persistentes</li>
+        <li><SUIIcon Name="shield" Size="18" /> @L["Clients.List.GuardrailCapabilities"]</li>
+        <li><SUIIcon Name="lock" Size="18" /> @L["Clients.List.GuardrailSecrets"]</li>
+        <li><SUIIcon Name="audit" Size="18" /> @L["Clients.List.GuardrailAudit"]</li>
     </ul>
 </div>
 
@@ -317,27 +317,27 @@
 
     private string ToolbarDescription =>
         loading
-            ? "Consultando o registro de aplicações…"
+            ? L["Clients.List.ToolbarLoading"].Value
             : result?.IsSuccess is true
-                ? "Filtros e paginação são processados pelo serviço de aplicação."
-                : "A consulta falhou antes de retornar registros.";
+                ? L["Clients.List.ToolbarSuccess"].Value
+                : L["Clients.List.ToolbarFailure"].Value;
 
     private string ResultCountLabel =>
         loading
-            ? "Carregando registros"
+            ? L["Clients.Registrations.LoadingRegistrations"].Value
             : result?.IsSuccess is true
                 ? ResultRangeLabel
-                : "Nenhum registro carregado";
+                : L["Clients.List.NoRecordsLoaded"].Value;
 
     private string EmptyTitle =>
         HasActiveClientFilters
-            ? "Nenhum cliente corresponde aos filtros"
-            : "Nenhum cliente registrado";
+            ? L["Clients.List.NoMatchTitle"].Value
+            : L["Clients.List.NoClientsTitle"].Value;
 
     private string EmptyDescription =>
         HasActiveClientFilters
-            ? "Revise os filtros de busca, tipo, fluxo, origem, estado ou scope e tente novamente."
-            : "O serviço respondeu com uma coleção vazia. Crie a primeira aplicação para começar.";
+            ? L["Clients.List.NoMatchDescription"].Value
+            : L["Clients.List.NoClientsDescription"].Value;
 
     private bool HasActiveClientFilters =>
         !string.IsNullOrWhiteSpace(search)
@@ -358,12 +358,13 @@
         {
             if (TotalCount is 0)
             {
-                return "0 registros";
+                return L["Clients.List.ZeroRecords"].Value;
             }
 
             var first = ((CurrentPage - 1) * PageSize) + 1;
             var last = Math.Min(CurrentPage * PageSize, TotalCount);
-            return $"{first}–{last} de {TotalCount} {Pluralize(TotalCount, "registro", "registros")}";
+            var unit = Pluralize(TotalCount, L["Clients.List.RecordSingular"].Value, L["Clients.List.RecordPlural"].Value);
+            return L["Clients.List.RangeFormat", first, last, TotalCount, unit].Value;
         }
     }
 
@@ -499,31 +500,31 @@
     private static string DraftHref(ManagementClientDraftSummary item) =>
         $"clients/drafts/{item.Id:D}/{item.CurrentStep}";
 
-    private static string DraftName(ManagementClientDraftSummary item) =>
+    private string DraftName(ManagementClientDraftSummary item) =>
         !string.IsNullOrWhiteSpace(item.DisplayName)
             ? item.DisplayName
             : !string.IsNullOrWhiteSpace(item.ClientId)
                 ? item.ClientId
-                : "Aplicação sem nome";
+                : L["Clients.List.UnnamedApplication"].Value;
 
-    private static string DraftStepLabel(string step) => step switch
+    private string DraftStepLabel(string step) => step switch
     {
-        ManagementClientDraftSteps.Identity => "Identidade",
-        ManagementClientDraftSteps.Protocol => "Protocolo",
-        ManagementClientDraftSteps.Permissions => "Permissões",
-        ManagementClientDraftSteps.Uris => "URIs e logout",
-        ManagementClientDraftSteps.Credentials => "Credenciais",
-        ManagementClientDraftSteps.Review => "Revisão",
-        _ => "Configuração"
+        ManagementClientDraftSteps.Identity => L["Clients.Draft.Step.Identity"].Value,
+        ManagementClientDraftSteps.Protocol => L["Clients.Draft.Step.Protocol"].Value,
+        ManagementClientDraftSteps.Permissions => L["Clients.Draft.Step.Permissions"].Value,
+        ManagementClientDraftSteps.Uris => L["Clients.Draft.Step.UrisLogout"].Value,
+        ManagementClientDraftSteps.Credentials => L["Clients.Draft.Step.Credentials"].Value,
+        ManagementClientDraftSteps.Review => L["Clients.Draft.Step.Review"].Value,
+        _ => L["Clients.Draft.Step.Default"].Value
     };
 
-    private static string FormatRelative(DateTimeOffset value)
+    private string FormatRelative(DateTimeOffset value)
     {
         var elapsed = DateTimeOffset.UtcNow - value.ToUniversalTime();
-        if (elapsed < TimeSpan.FromMinutes(1)) return "agora";
-        if (elapsed < TimeSpan.FromHours(1)) return $"há {(int)elapsed.TotalMinutes} min";
-        if (elapsed < TimeSpan.FromDays(1)) return $"há {(int)elapsed.TotalHours} h";
-        return $"em {value.ToLocalTime():dd/MM/yyyy}";
+        if (elapsed < TimeSpan.FromMinutes(1)) return L["Clients.List.JustNow"].Value;
+        if (elapsed < TimeSpan.FromHours(1)) return L["Clients.List.MinutesAgo", (int)elapsed.TotalMinutes].Value;
+        if (elapsed < TimeSpan.FromDays(1)) return L["Clients.List.HoursAgo", (int)elapsed.TotalHours].Value;
+        return $"{L["Clients.List.OnDatePrefix"].Value} {value.ToLocalTime():dd/MM/yyyy}";
     }
 
     private static string NormalizeType(string? value) => value?.ToLowerInvariant() switch
@@ -566,17 +567,17 @@
 
     private string BaseUri => Navigation.Uri.Split('?', '#')[0];
 
-    private static string DisplayName(ManagementClientSummary client) =>
+    private string DisplayName(ManagementClientSummary client) =>
         string.IsNullOrWhiteSpace(client.DisplayName)
-            ? "Sem nome de exibição"
+            ? L["Clients.List.NoDisplayName"].Value
             : client.DisplayName;
 
-    private static string ClientTypeLabel(string? type) =>
+    private string ClientTypeLabel(string? type) =>
         type?.ToLowerInvariant() switch
         {
-            "public" => "Público",
-            "confidential" => "Confidencial",
-            null or "" => "Não informado",
+            "public" => L["Clients.Detail.TypePublic"].Value,
+            "confidential" => L["Clients.Detail.TypeConfidential"].Value,
+            null or "" => L["Clients.Detail.NotInformed"].Value,
             _ => type
         };
 
@@ -585,14 +586,14 @@
             ? "info"
             : "neutral";
 
-    private static string ClientStatusLabel(string? status) => "Ativo";
+    private string ClientStatusLabel(string? status) => L["Clients.List.ClientStatusActive"].Value;
 
     private static string ClientStatusTone(string? status) => "status-dot--success";
 
-    private static string ClientOriginLabel(string? origin) =>
+    private string ClientOriginLabel(string? origin) =>
         string.Equals(origin, "manifest", StringComparison.OrdinalIgnoreCase)
-            ? "Manifesto"
-            : "Manual";
+            ? L["Clients.List.OriginManifest"].Value
+            : L["Clients.List.OriginManual"].Value;
 
     private static string Pluralize(int count, string singular, string plural) =>
         count is 1 ? singular : plural;
