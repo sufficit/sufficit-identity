@@ -246,6 +246,7 @@ public sealed partial class PersonalTokensController
         string name,
         string? value)
     {
+        descriptor.Properties.Remove(LegacyPropertyName(name));
         if (value is null)
         {
             descriptor.Properties.Remove(name);
@@ -259,10 +260,21 @@ public sealed partial class PersonalTokensController
     private static string? GetStringProperty(
         IReadOnlyDictionary<string, JsonElement> properties,
         string name) =>
+        ReadStringProperty(properties, name)
+        ?? ReadStringProperty(properties, LegacyPropertyName(name));
+
+    private static string? ReadStringProperty(
+        IReadOnlyDictionary<string, JsonElement> properties,
+        string name) =>
         properties.TryGetValue(name, out var value)
         && value.ValueKind == JsonValueKind.String
             ? value.GetString()
             : null;
+
+    private static string LegacyPropertyName(string name) =>
+        name.StartsWith(PropertyPrefix, StringComparison.Ordinal)
+            ? LegacyPropertyPrefix + name[PropertyPrefix.Length..]
+            : name;
 
     private static async Task<List<string>> ToListAsync(
         IAsyncEnumerable<string> values,

@@ -29,12 +29,16 @@ namespace Sufficit.Identity.STS.Controllers;
 [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
 public sealed partial class PersonalTokensController : ControllerBase
 {
-    private const string LegacyAddressClaimType = "urn:sufficit:claim:address";
-    private const string DescriptionProperty = "urn:sufficit:token:description";
-    private const string ClientIdProperty = "urn:sufficit:token:client_id";
-    private const string ReplacesTokenIdProperty = "urn:sufficit:token:replaces_id";
-    private const string ArchivedAtProperty = "urn:sufficit:token:archived_at";
-    private const string PersonalTokenClientId = "SufficitAPIUserAccess";
+    private const string LegacyAddressClaimType = Grants.GrantOperations.LegacyAddressClaimType;
+    // Metadata written by this server. Tokens stored before the vocabulary
+    // became product-neutral (including rows imported by migration 012) carry
+    // the legacy prefix, so every read falls back to it.
+    internal const string PropertyPrefix = "urn:identity:token:";
+    internal const string LegacyPropertyPrefix = "urn:sufficit:token:";
+    private const string DescriptionProperty = PropertyPrefix + "description";
+    private const string ClientIdProperty = PropertyPrefix + "client_id";
+    private const string ReplacesTokenIdProperty = PropertyPrefix + "replaces_id";
+    private const string ArchivedAtProperty = PropertyPrefix + "archived_at";
     private const string LegacyReferenceTokenType = "legacy_reference_token";
     private static readonly TimeSpan DefaultLifetime = TimeSpan.FromDays(30);
     private static readonly TimeSpan MaximumUserLifetime = TimeSpan.FromDays(365);
@@ -110,6 +114,8 @@ public sealed partial class PersonalTokensController : ControllerBase
         _issuancePolicy = issuancePolicy;
         _reservedScopePolicy = reservedScopePolicy;
     }
+
+    private string PersonalTokenClientId => _options.PersonalTokens.EffectiveClientId;
 
     [HttpGet]
     [ProducesResponseType<IReadOnlyList<PersonalTokenSummary>>(StatusCodes.Status200OK)]

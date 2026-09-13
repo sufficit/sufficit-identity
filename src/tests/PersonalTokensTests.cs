@@ -153,7 +153,7 @@ public sealed partial class PersonalTokensTests
         Assert.False(string.IsNullOrWhiteSpace(referenceToken));
         Assert.False(string.IsNullOrWhiteSpace(tokenId));
         Assert.DoesNotContain('.', referenceToken!);
-        Assert.Equal("SufficitAPIUserAccess",
+        Assert.Equal(Sufficit.Identity.STS.PersonalTokenIssuanceOptions.DefaultClientId,
             created.RootElement.GetProperty("token").GetProperty("clientId").GetString());
 
         // Read through a fresh DbContext so this assertion verifies the
@@ -166,7 +166,7 @@ public sealed partial class PersonalTokensTests
                 .AsNoTracking()
                 .SingleAsync(token => token.Id == tokenId);
             Assert.NotNull(persisted.Properties);
-            Assert.Contains("SufficitAPIUserAccess", persisted.Properties, StringComparison.Ordinal);
+            Assert.Contains(Sufficit.Identity.STS.PersonalTokenIssuanceOptions.DefaultClientId, persisted.Properties, StringComparison.Ordinal);
             Assert.Contains("Integration test", persisted.Properties, StringComparison.Ordinal);
         }
 
@@ -186,7 +186,7 @@ public sealed partial class PersonalTokensTests
         Assert.True(introspected.RootElement.GetProperty("active").GetBoolean());
         Assert.Equal(TestDataSeeder.DefaultUsername,
             introspected.RootElement.GetProperty("username").GetString());
-        Assert.Equal("SufficitAPIUserAccess",
+        Assert.Equal(Sufficit.Identity.STS.PersonalTokenIssuanceOptions.DefaultClientId,
             introspected.RootElement.GetProperty("client_id").GetString());
 
         var updatedExpiration = DateTimeOffset.UtcNow.AddDays(60);
@@ -455,10 +455,10 @@ public sealed partial class PersonalTokensTests
         Assert.Equal(
             legacyTokenId,
             properties.RootElement
-                .GetProperty("urn:sufficit:token:replaces_id")
+                .GetProperty("urn:identity:token:replaces_id")
                 .GetString());
         Assert.False(properties.RootElement.TryGetProperty(
-            "urn:sufficit:token:description",
+            "urn:identity:token:description",
             out _));
     }
 

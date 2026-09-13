@@ -32,10 +32,10 @@ public sealed class GrantOperations(
         OidcSessionClaimsPrincipalFactory.SessionIdClaimType;
 
     // `address` is an OIDC structured claim. Legacy user claims may use the
-    // same name for arbitrary text, so preserve those values under Sufficit's
-    // private namespace instead of asking the Identity service to understand
-    // domain-specific address data.
-    internal const string LegacyAddressClaimType = "urn:sufficit:claim:address";
+    // same name for arbitrary text, so preserve those values under a
+    // product-private namespace instead of asking the Identity service to
+    // understand domain-specific address data.
+    internal const string LegacyAddressClaimType = "urn:identity:claim:address";
 
     internal const string ActClaimType = "act";
 

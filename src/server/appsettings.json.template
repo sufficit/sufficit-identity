@@ -399,6 +399,8 @@
       },
       "_PersonalTokens": "Enforce applies least-privilege PAT scope, caller, authentication-age and lifetime decisions. Observe is an explicitly acknowledged migration-only setting.",
       "PersonalTokens": {
+        "_ClientId": "client_id claim and metadata written into new personal tokens. Default identity-personal-access-token. A deployment that already issued personal tokens under another value can keep it for resource servers; listing does not depend on it.",
+        "ClientId": "identity-personal-access-token",
         "Mode": "Enforce",
         "RequiredScope": "personal.tokens.manage",
         "_ScopeClientIds": "Explicit clients granted permission to request this self-service scope at startup. Keep deployment-specific client IDs here, never in STS source code.",

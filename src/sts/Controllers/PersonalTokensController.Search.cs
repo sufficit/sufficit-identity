@@ -46,8 +46,13 @@ public sealed record PersonalTokenPage(IReadOnlyList<PersonalTokenSummary> Items
 public static class PersonalTokenSearch
 {
     public const int ScanLimit = 2000;
-    private const string Prefix = "urn:sufficit:token:";
-    private const string PersonalClient = "SufficitAPIUserAccess";
+    private const string Prefix = PersonalTokensController.PropertyPrefix;
+    private const string LegacyPrefix = PersonalTokensController.LegacyPropertyPrefix;
+
+    private static string? StringProperty(JsonElement root, string key) =>
+        root.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
     private const string AccessType = OpenIddict.Abstractions.OpenIddictConstants.TokenTypeIdentifiers.AccessToken;
 
     public static async Task<PersonalTokenPage> ReadAsync(AppDbContext db, string subject,
@@ -83,15 +88,19 @@ public static class PersonalTokenSearch
             {
                 ct.ThrowIfCancellationRequested();
                 using var json = JsonDocument.Parse(row.Properties ?? "{}");
-                string? Property(string name) => json.RootElement.TryGetProperty(Prefix + name, out var value)
-                    && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+                string? Property(string name) =>
+                    StringProperty(json.RootElement, Prefix + name)
+                    ?? StringProperty(json.RootElement, LegacyPrefix + name);
                 var legacy = row.Type == "legacy_reference_token";
                 var client = Property("client_id") ?? row.Client;
                 var archived = !string.IsNullOrWhiteSpace(Property("archived_at"));
                 var active = !legacy && row.Status == "valid" && row.RedemptionDate == null
                     && (row.ExpirationDate == null || row.ExpirationDate > now);
                 var description = Property("description");
-                var match = !archived && (legacy || client == PersonalClient)
+                // Only personal tokens carry client_id metadata; session tokens
+                // do not. Matching on its presence rather than its value keeps
+                // tokens issued under an earlier client id visible.
+                var match = !archived && (legacy || Property("client_id") is not null)
                     && (state == "all" || state == "legacy" && legacy
                         || state == "active" && active || state == "history" && !active)
                     && (term.Length == 0 || (description?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)
@@ -101,13 +110,13 @@ public static class PersonalTokenSearch
                     // Only inspect replacement metadata for this candidate,
                     // and compare the parsed property, not an arbitrary substring.
                     var candidates = owned.Where(t => t.Type == AccessType && t.Properties != null
-                        && t.Properties.Contains(Prefix + "replaces_id") && t.Properties.Contains(row.Id!))
+                        && (t.Properties.Contains(Prefix + "replaces_id") || t.Properties.Contains(LegacyPrefix + "replaces_id")) && t.Properties.Contains(row.Id!))
                         .Select(t => t.Properties).AsAsyncEnumerable();
                     await foreach (var candidate in candidates.WithCancellation(ct))
                     {
                         using var replacement = JsonDocument.Parse(candidate!);
-                        if (replacement.RootElement.TryGetProperty(Prefix + "replaces_id", out var id)
-                            && id.ValueKind == JsonValueKind.String && id.GetString() == row.Id)
+                        if ((StringProperty(replacement.RootElement, Prefix + "replaces_id")
+                                ?? StringProperty(replacement.RootElement, LegacyPrefix + "replaces_id")) == row.Id)
                         { match = false; break; }
                     }
                 }
@@ -119,7 +128,7 @@ public static class PersonalTokenSearch
                     // The wire contract keeps the UI's short type name; the
                     // database uses OpenIddict's RFC URN, not "access_token".
                     result.Add(new(row.Id!, legacy ? "legacy_reference_token" : "access_token", Guid.TryParse(subject, out var owner) ? owner : null,
-                        client ?? PersonalClient, AsOffset(row.CreationDate) ?? DateTimeOffset.MinValue,
+                        client ?? PersonalTokenIssuanceOptions.DefaultClientId, AsOffset(row.CreationDate) ?? DateTimeOffset.MinValue,
                         AsOffset(row.ExpirationDate), AsOffset(row.RedemptionDate), description, null, row.Status ?? "unknown"));
             }
             if (batch.Count < 200) return new(result, null, subject);

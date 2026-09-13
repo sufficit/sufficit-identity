@@ -30,7 +30,7 @@ namespace Sufficit.Identity.Tests;
 [Collection(StsCollection.Name)]
 public sealed class AuthorizationCodeFlowTests
 {
-    private const string LegacyAddressClaimType = "urn:sufficit:claim:address";
+    private const string LegacyAddressClaimType = "urn:identity:claim:address";
 
     private readonly SufficitIdentityTestFactory _factory;
 

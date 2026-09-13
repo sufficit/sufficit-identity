@@ -208,7 +208,7 @@ internal sealed class ProvisioningTokenIssuer(
         "identity:temporary-provisioning-token";
     private const string PermissionClaimType = "permission";
     private const string TemporaryClientId =
-        "SufficitIdentityProvisioningTemporary";
+        "identity-provisioning-temporary";
 
     public async Task<ProvisioningTokenIssueResult> IssueAsync(
         ManagementRequestContext context,

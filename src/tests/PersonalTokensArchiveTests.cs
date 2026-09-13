@@ -35,7 +35,7 @@ public sealed partial class PersonalTokensTests
         var retained = await manager.FindByIdAsync(id);
         Assert.NotNull(retained);
         Assert.Equal(Statuses.Revoked, await manager.GetStatusAsync(retained));
-        Assert.True((await manager.GetPropertiesAsync(retained)).ContainsKey("urn:sufficit:token:archived_at"));
+        Assert.True((await manager.GetPropertiesAsync(retained)).ContainsKey("urn:identity:token:archived_at"));
         using var update = await client.PatchAsJsonAsync($"/api/account/tokens/{id}", new { updateDescription = true, description = "must not change" });
         Assert.Equal(HttpStatusCode.NotFound, update.StatusCode);
     }
@@ -55,7 +55,7 @@ public sealed partial class PersonalTokensTests
         var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictTokenManager>();
         var token = await manager.FindByIdAsync(id);
         Assert.Equal(status, await manager.GetStatusAsync(token!));
-        Assert.False((await manager.GetPropertiesAsync(token!)).ContainsKey("urn:sufficit:token:archived_at"));
+        Assert.False((await manager.GetPropertiesAsync(token!)).ContainsKey("urn:identity:token:archived_at"));
     }
 
     [Theory]
