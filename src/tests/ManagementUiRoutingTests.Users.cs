@@ -80,7 +80,7 @@ public sealed partial class ManagementUiRoutingTests
     }
 
     [Fact]
-    public async Task Portuguese_user_directory_keeps_date_fields_in_pt_BR_when_request_is_en_US()
+    public async Task User_directory_keeps_date_fields_in_pt_BR_when_request_is_en_US()
     {
         await using var app = await CreateHostAsync();
         using var client = app.GetTestClient();
@@ -97,7 +97,7 @@ public sealed partial class ManagementUiRoutingTests
         Assert.Equal(2, html.Split("lang=\"pt-BR\"", StringSplitOptions.None).Length - 1);
         Assert.Equal(2, html.Split("dd/mm/aaaa", StringSplitOptions.None).Length - 1);
         Assert.DoesNotContain("mm/dd/yyyy", html, StringComparison.Ordinal);
-        Assert.Contains("Filtros e ordenação", html, StringComparison.Ordinal);
+        Assert.Contains("Filters and sorting", html, StringComparison.Ordinal);
     }
 
     [Fact]

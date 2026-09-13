@@ -124,4 +124,208 @@
   <data name="Common.Access.Forbidden" xml:space="preserve"><value>Your account does not have the required authority.</value></data>
   <data name="Common.Timeout" xml:space="preserve"><value>The service took longer than expected. Try again.</value></data>
   <data name="Common.Unavailable" xml:space="preserve"><value>The identity service could not complete the operation.</value></data>
+  <data name="Audiences.PageTitle" xml:space="preserve"><value>Audiences | Sufficit Identity</value></data>
+  <data name="Audiences.HeaderTitle" xml:space="preserve"><value>Audiences</value></data>
+  <data name="Audiences.HeaderDescription" xml:space="preserve"><value>Review token recipients and manage their bindings to scopes.</value></data>
+  <data name="Audiences.BindAudience" xml:space="preserve"><value>Bind audience</value></data>
+  <data name="Audiences.InfoTitle" xml:space="preserve"><value>An audience identifies the API that receives the token</value></data>
+  <data name="Audiences.InfoDescription" xml:space="preserve"><value>It is registered in a scope's resources, not in entitlements. Changes affect new tokens and do not configure the API's validation.</value></data>
+  <data name="Audiences.BindingNotAlteredTitle" xml:space="preserve"><value>Binding not changed</value></data>
+  <data name="Audiences.ReloadToReview" xml:space="preserve"><value>Reload to review</value></data>
+  <data name="Audiences.BindingHelp" xml:space="preserve"><value>Use an existing identifier or enter a new one. Identifiers are case-sensitive.</value></data>
+  <data name="Audiences.NoScopesAvailable" xml:space="preserve"><value>No manual API scope is available.</value></data>
+  <data name="Audiences.CreateScopeLink" xml:space="preserve"><value>Create a scope</value></data>
+  <data name="Audiences.NoScopesAvailableSuffix" xml:space="preserve"><value>or change the service manifest.</value></data>
+  <data name="Audiences.FieldIdentifier" xml:space="preserve"><value>Audience identifier</value></data>
+  <data name="Audiences.FieldIdentifierHelp" xml:space="preserve"><value>The value the API expects in the aud claim.</value></data>
+  <data name="Audiences.FieldScope" xml:space="preserve"><value>API access scope</value></data>
+  <data name="Audiences.SelectScope" xml:space="preserve"><value>Select a scope</value></data>
+  <data name="Audiences.BindingImpact" xml:space="preserve"><value>The binding lets clients authorized to request this scope receive tokens addressed to the audience.</value></data>
+  <data name="Audiences.Saving" xml:space="preserve"><value>Saving…</value></data>
+  <data name="Audiences.SaveBinding" xml:space="preserve"><value>Save binding</value></data>
+  <data name="Audiences.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Audiences.RemoveHeading" xml:space="preserve"><value>Remove binding?</value></data>
+  <data name="Audiences.RemoveImpactPrefix" xml:space="preserve"><value>The scope</value></data>
+  <data name="Audiences.RemoveImpactMiddle" xml:space="preserve"><value>will stop including</value></data>
+  <data name="Audiences.RemoveImpactSuffix" xml:space="preserve"><value>in new tokens. Tokens already issued, clients and the scope will not be deleted.</value></data>
+  <data name="Audiences.LastBindingNotice" xml:space="preserve"><value>If this is the last binding, the audience will no longer appear in this list.</value></data>
+  <data name="Audiences.Removing" xml:space="preserve"><value>Removing…</value></data>
+  <data name="Audiences.ConfirmRemoval" xml:space="preserve"><value>Confirm removal</value></data>
+  <data name="Audiences.ListHeading" xml:space="preserve"><value>Registered audiences</value></data>
+  <data name="Audiences.ListDescription" xml:space="preserve"><value>Manifest bindings are read-only.</value></data>
+  <data name="Audiences.SearchLabel" xml:space="preserve"><value>Search audiences</value></data>
+  <data name="Audiences.SearchPlaceholder" xml:space="preserve"><value>Audience, scope or client</value></data>
+  <data name="Audiences.LoadingAriaLabel" xml:space="preserve"><value>Loading audiences</value></data>
+  <data name="Audiences.LoadErrorTitle" xml:space="preserve"><value>Could not load the audiences</value></data>
+  <data name="Audiences.TryAgain" xml:space="preserve"><value>Try again</value></data>
+  <data name="Audiences.EmptyTitleNone" xml:space="preserve"><value>No audience registered</value></data>
+  <data name="Audiences.EmptyTitleSearch" xml:space="preserve"><value>No audience found</value></data>
+  <data name="Audiences.EmptyDescriptionNone" xml:space="preserve"><value>Bind an audience to an API scope to register it.</value></data>
+  <data name="Audiences.EmptyDescriptionSearch" xml:space="preserve"><value>Check the identifier, scope or client you searched for.</value></data>
+  <data name="Audiences.ClearSearch" xml:space="preserve"><value>Clear search</value></data>
+  <data name="Audiences.ColumnAudience" xml:space="preserve"><value>Audience</value></data>
+  <data name="Audiences.ColumnScopes" xml:space="preserve"><value>Bound scopes</value></data>
+  <data name="Audiences.ColumnClients" xml:space="preserve"><value>Authorized clients</value></data>
+  <data name="Audiences.ManifestBadge" xml:space="preserve"><value>Manifest</value></data>
+  <data name="Audiences.RemoveBindingAriaLabel" xml:space="preserve"><value>Remove {0} from scope {1}</value></data>
+  <data name="Audiences.RemoveBindingButton" xml:space="preserve"><value>Remove binding</value></data>
+  <data name="Audiences.NoClients" xml:space="preserve"><value>No clients</value></data>
+  <data name="Audiences.ClientCountSummary" xml:space="preserve"><value>{0} client(s)</value></data>
+  <data name="Audiences.LoadingFooter" xml:space="preserve"><value>Loading…</value></data>
+  <data name="Audiences.FooterCountFormat" xml:space="preserve"><value>{0} of {1} audience(s)</value></data>
+  <data name="Audiences.NoResultsLoaded" xml:space="preserve"><value>No results loaded</value></data>
+  <data name="Audiences.ManageScopesLink" xml:space="preserve"><value>Manage scopes</value></data>
+  <data name="Audiences.NoticeBound" xml:space="preserve"><value>Audience bound. The change was audited.</value></data>
+  <data name="Audiences.NoticeRemoved" xml:space="preserve"><value>Binding removed. The change was audited.</value></data>
+  <data name="Clients.Create.Title" xml:space="preserve"><value>New application</value></data>
+  <data name="Clients.Create.Description" xml:space="preserve"><value>Choose the usage scenario. Identity prepares a secure configuration and explains each decision.</value></data>
+  <data name="Clients.Create.Back" xml:space="preserve"><value>Back to applications</value></data>
+  <data name="Clients.Create.ProfileHeading" xml:space="preserve"><value>How will this application be used?</value></data>
+  <data name="Clients.Create.ProfileIntro" xml:space="preserve"><value>You can review and adjust everything before creating it. No incomplete application is registered.</value></data>
+  <data name="Clients.Create.Assurance" xml:space="preserve"><value>Secure defaults, progressive validation and a resumable draft</value></data>
+  <data name="Clients.Create.ErrorTitle" xml:space="preserve"><value>Could not start the configuration</value></data>
+  <data name="Clients.Create.LoadingAriaLabel" xml:space="preserve"><value>Loading application profiles</value></data>
+  <data name="Clients.Create.EmptyTitle" xml:space="preserve"><value>No profile available</value></data>
+  <data name="Clients.Create.EmptyDescription" xml:space="preserve"><value>The runtime did not report an available application configuration.</value></data>
+  <data name="Clients.Create.Retry" xml:space="preserve"><value>Try again</value></data>
+  <data name="Clients.Create.ProfilesAriaLabel" xml:space="preserve"><value>Application profiles</value></data>
+  <data name="Clients.Create.CreatingDraft" xml:space="preserve"><value>Creating draft</value></data>
+  <data name="Clients.Create.Footnote" xml:space="preserve"><value>Credentials never go into the URL or the draft. When needed, they are generated only at completion and shown once.</value></data>
+  <data name="Clients.Create.DraftCreationFailed" xml:space="preserve"><value>The service could not create the draft.</value></data>
+  <data name="Clients.Detail.Description" xml:space="preserve"><value>Configuration registered in the identity service. Secrets are never returned.</value></data>
+  <data name="Clients.Detail.Back" xml:space="preserve"><value>Back to clients</value></data>
+  <data name="Clients.Detail.Edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="Clients.Detail.Sessions" xml:space="preserve"><value>Sessions</value></data>
+  <data name="Clients.Detail.Authorizations" xml:space="preserve"><value>Authorizations</value></data>
+  <data name="Clients.Detail.UpdatedTitle" xml:space="preserve"><value>Changes saved</value></data>
+  <data name="Clients.Detail.UpdatedMessage" xml:space="preserve"><value>The application was updated and the new version is active.</value></data>
+  <data name="Clients.Detail.CreatedTitle" xml:space="preserve"><value>Client created</value></data>
+  <data name="Clients.Detail.CreatedMessage" xml:space="preserve"><value>The registration was persisted with secure defaults and the event is available in the audit log.</value></data>
+  <data name="Clients.Detail.LoadingAriaLabel" xml:space="preserve"><value>Loading client details</value></data>
+  <data name="Clients.Registrations.Title" xml:space="preserve"><value>Automatic registrations</value></data>
+  <data name="Clients.Registrations.Description" xml:space="preserve"><value>Applications that registered themselves through Dynamic Client Registration (RFC 7591). Anonymous registrations are limited to the interactive sign-in profile, with no API scopes.</value></data>
+  <data name="Clients.Registrations.AllApplications" xml:space="preserve"><value>All applications</value></data>
+  <data name="Clients.Registrations.RevokedTitle" xml:space="preserve"><value>Registration revoked</value></data>
+  <data name="Clients.Registrations.RevokedMessagePrefix" xml:space="preserve"><value>The client</value></data>
+  <data name="Clients.Registrations.RevokedMessageSuffix" xml:space="preserve"><value>was removed together with its tokens and consents. The operation was audited.</value></data>
+  <data name="Clients.Registrations.RevokeErrorTitle" xml:space="preserve"><value>Could not revoke</value></data>
+  <data name="Clients.Registrations.LoadingRegistrations" xml:space="preserve"><value>Loading registrations</value></data>
+  <data name="Clients.Registrations.EmptyTitle" xml:space="preserve"><value>No automatic registration</value></data>
+  <data name="Clients.Registrations.EmptyDescription" xml:space="preserve"><value>No application has registered itself yet. When an MCP client signs in for the first time, it appears here.</value></data>
+  <data name="Clients.Registrations.ColumnApplication" xml:space="preserve"><value>Application</value></data>
+  <data name="Clients.Registrations.ColumnRegisteredAt" xml:space="preserve"><value>Registered at</value></data>
+  <data name="Clients.Registrations.ColumnOrigin" xml:space="preserve"><value>Request origin</value></data>
+  <data name="Clients.Registrations.ColumnActions" xml:space="preserve"><value>Actions</value></data>
+  <data name="Clients.Registrations.AnonymousMcpProfile" xml:space="preserve"><value>Anonymous (MCP profile)</value></data>
+  <data name="Clients.Registrations.InitialToken" xml:space="preserve"><value>Initial token</value></data>
+  <data name="Clients.Registrations.Details" xml:space="preserve"><value>Details</value></data>
+  <data name="Clients.Registrations.Revoking" xml:space="preserve"><value>Revoking…</value></data>
+  <data name="Clients.Registrations.Revoke" xml:space="preserve"><value>Revoke</value></data>
+  <data name="Clients.Registrations.Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Clients.Registrations.PageOf" xml:space="preserve"><value>Page {0} of {1}</value></data>
+  <data name="Clients.Registrations.Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Clients.Registrations.CountFormat" xml:space="preserve"><value>{0} automatic registration(s)</value></data>
+  <data name="Clients.Registrations.RevokeGenericError" xml:space="preserve"><value>The identity service refused the removal.</value></data>
+  <data name="Users.PageTitle" xml:space="preserve"><value>Users | Sufficit Identity</value></data>
+  <data name="Users.Header.Title" xml:space="preserve"><value>Users</value></data>
+  <data name="Users.Header.Description" xml:space="preserve"><value>Investigate registrations, spot unusual spikes and browse the directory with shareable filters.</value></data>
+  <data name="Users.Actions.New" xml:space="preserve"><value>New user</value></data>
+  <data name="Users.Actions.Retry" xml:space="preserve"><value>Try again</value></data>
+  <data name="Users.Badge.GlobalDirectory" xml:space="preserve"><value>Global directory</value></data>
+  <data name="Users.Deleted.Title" xml:space="preserve"><value>Account deleted</value></data>
+  <data name="Users.Deleted.Description" xml:space="preserve"><value>Previous credentials, sessions, tokens and authorizations were revoked.</value></data>
+  <data name="Users.Loading.Dashboard" xml:space="preserve"><value>Loading dashboard</value></data>
+  <data name="Users.Loading.History" xml:space="preserve"><value>Loading history</value></data>
+  <data name="Users.Loading.Users" xml:space="preserve"><value>Loading users</value></data>
+  <data name="Users.Overview.Heading" xml:space="preserve"><value>Registrations per day</value></data>
+  <data name="Users.Overview.RangeLabel" xml:space="preserve"><value>Last {0} days · dates in UTC</value></data>
+  <data name="Users.Overview.EmptyHistory" xml:space="preserve"><value>There is not enough history for this period yet.</value></data>
+  <data name="Users.Insight.Directory" xml:space="preserve"><value>Directory</value></data>
+  <data name="Users.Insight.Today" xml:space="preserve"><value>Today</value></data>
+  <data name="Users.Insight.Typical" xml:space="preserve"><value>Typical day</value></data>
+  <data name="Users.Insight.OutOfPattern" xml:space="preserve"><value>Out of pattern</value></data>
+  <data name="Users.Chart.AriaLabel" xml:space="preserve"><value>Daily registrations chart. Select a day to filter the list.</value></data>
+  <data name="Users.Chart.LegendAriaLabel" xml:space="preserve"><value>Chart legend</value></data>
+  <data name="Users.Chart.LegendRegistrations" xml:space="preserve"><value>Registrations</value></data>
+  <data name="Users.Chart.LegendAnomaly" xml:space="preserve"><value>Above {0} per day</value></data>
+  <data name="Users.Chart.LegendHint" xml:space="preserve"><value>Tap a column to open that day</value></data>
+  <data name="Users.Chart.DayAriaLabel" xml:space="preserve"><value>{0}: {1} {2}{3}</value></data>
+  <data name="Users.Chart.DayAnomalySuffix" xml:space="preserve"><value>, above the usual pattern</value></data>
+  <data name="Users.Investigation.Heading" xml:space="preserve"><value>Registrations pending for more than 15 days</value></data>
+  <data name="Users.Investigation.Description" xml:space="preserve"><value>Email not confirmed and no linked external login, such as Google or Facebook.</value></data>
+  <data name="Users.Investigation.End" xml:space="preserve"><value>End investigation</value></data>
+  <data name="Users.Investigation.Review" xml:space="preserve"><value>Review accounts</value></data>
+  <data name="Users.Count.AccountSingular" xml:space="preserve"><value>account</value></data>
+  <data name="Users.Count.AccountPlural" xml:space="preserve"><value>accounts</value></data>
+  <data name="Users.Count.PendingAccountSingular" xml:space="preserve"><value>pending account</value></data>
+  <data name="Users.Count.PendingAccountPlural" xml:space="preserve"><value>pending accounts</value></data>
+  <data name="Users.Count.RegistrationSingular" xml:space="preserve"><value>registration</value></data>
+  <data name="Users.Count.RegistrationPlural" xml:space="preserve"><value>registrations</value></data>
+  <data name="Users.Filters.Heading" xml:space="preserve"><value>Filters and sorting</value></data>
+  <data name="Users.Filters.NameOrEmail" xml:space="preserve"><value>Name or email</value></data>
+  <data name="Users.Filters.SearchPlaceholder" xml:space="preserve"><value>Search the directory</value></data>
+  <data name="Users.Filters.Investigation" xml:space="preserve"><value>Investigation</value></data>
+  <data name="Users.Filters.Review.All" xml:space="preserve"><value>Full directory</value></data>
+  <data name="Users.Filters.Review.Stale" xml:space="preserve"><value>Pending for more than 15 days</value></data>
+  <data name="Users.Filters.State" xml:space="preserve"><value>State</value></data>
+  <data name="Users.Filters.All" xml:space="preserve"><value>All</value></data>
+  <data name="Users.Filters.State.Active" xml:space="preserve"><value>Active</value></data>
+  <data name="Users.Filters.State.Locked" xml:space="preserve"><value>Locked</value></data>
+  <data name="Users.Common.Email" xml:space="preserve"><value>Email</value></data>
+  <data name="Users.Filters.Email.Confirmed" xml:space="preserve"><value>Confirmed</value></data>
+  <data name="Users.Filters.Email.NotConfirmed" xml:space="preserve"><value>Not confirmed</value></data>
+  <data name="Users.Filters.Mfa" xml:space="preserve"><value>MFA</value></data>
+  <data name="Users.Filters.Active" xml:space="preserve"><value>Active</value></data>
+  <data name="Users.Filters.Inactive" xml:space="preserve"><value>Inactive</value></data>
+  <data name="Users.Filters.RegisteredFrom" xml:space="preserve"><value>Registered from</value></data>
+  <data name="Users.Filters.RegisteredTo" xml:space="preserve"><value>Registered to</value></data>
+  <data name="Users.Filters.SortBy" xml:space="preserve"><value>Sort by</value></data>
+  <data name="Users.Sort.CreatedNewest" xml:space="preserve"><value>Newest registration</value></data>
+  <data name="Users.Sort.CreatedOldest" xml:space="preserve"><value>Oldest registration</value></data>
+  <data name="Users.Sort.NameAsc" xml:space="preserve"><value>Name A–Z</value></data>
+  <data name="Users.Sort.NameDesc" xml:space="preserve"><value>Name Z–A</value></data>
+  <data name="Users.Sort.EmailAsc" xml:space="preserve"><value>Email A–Z</value></data>
+  <data name="Users.Sort.EmailDesc" xml:space="preserve"><value>Email Z–A</value></data>
+  <data name="Users.Filters.ChartHistory" xml:space="preserve"><value>Chart history</value></data>
+  <data name="Users.Range.Days" xml:space="preserve"><value>{0} days</value></data>
+  <data name="Users.Filters.Applying" xml:space="preserve"><value>Applying…</value></data>
+  <data name="Users.Filters.Apply" xml:space="preserve"><value>Apply filters</value></data>
+  <data name="Users.Filters.Clear" xml:space="preserve"><value>Clear</value></data>
+  <data name="Users.Filters.None" xml:space="preserve"><value>No filters</value></data>
+  <data name="Users.Filters.ActiveSingular" xml:space="preserve"><value>active filter</value></data>
+  <data name="Users.Filters.ActivePlural" xml:space="preserve"><value>active filters</value></data>
+  <data name="Users.Results.Heading" xml:space="preserve"><value>Accounts found</value></data>
+  <data name="Users.Results.StaleContext" xml:space="preserve"><value>More than 15 days, without email confirmation and without a linked external login.</value></data>
+  <data name="Users.Results.DayContext" xml:space="preserve"><value>Registrations on {0}</value></data>
+  <data name="Users.Results.DefaultContext" xml:space="preserve"><value>Combine filters to narrow down the set under investigation.</value></data>
+  <data name="Users.Results.Updating" xml:space="preserve"><value>Updating…</value></data>
+  <data name="Users.Empty.BackToDirectory" xml:space="preserve"><value>Back to directory</value></data>
+  <data name="Users.Empty.PendingTitle" xml:space="preserve"><value>No pending account matches this criterion</value></data>
+  <data name="Users.Empty.DefaultTitle" xml:space="preserve"><value>No user in this selection</value></data>
+  <data name="Users.Empty.PendingDescription" xml:space="preserve"><value>There are no registrations older than 15 days with an unconfirmed email and no linked external login.</value></data>
+  <data name="Users.Empty.DefaultDescription" xml:space="preserve"><value>Change the filters or clear the selected day to broaden the search.</value></data>
+  <data name="Users.Error.StepUpTitle" xml:space="preserve"><value>Additional authentication required</value></data>
+  <data name="Users.Error.AccessDeniedTitle" xml:space="preserve"><value>Directory access not authorized</value></data>
+  <data name="Users.Error.MfaRequiredTitle" xml:space="preserve"><value>MFA required for this operation</value></data>
+  <data name="Users.Error.DirectoryDeniedTitle" xml:space="preserve"><value>Directory access denied</value></data>
+  <data name="Users.Error.QueryFailedTitle" xml:space="preserve"><value>Could not load the users</value></data>
+  <data name="Users.Table.SortByName" xml:space="preserve"><value>Sort by name</value></data>
+  <data name="Users.Table.User" xml:space="preserve"><value>User</value></data>
+  <data name="Users.Table.SortByCreated" xml:space="preserve"><value>Sort by registration date</value></data>
+  <data name="Users.Table.Registered" xml:space="preserve"><value>Registered</value></data>
+  <data name="Users.Table.ExternalAccess" xml:space="preserve"><value>External access</value></data>
+  <data name="Users.Table.Actions" xml:space="preserve"><value>Actions</value></data>
+  <data name="Users.Table.EmailConfirmed" xml:space="preserve"><value>Email confirmed</value></data>
+  <data name="Users.Table.Linked" xml:space="preserve"><value>Linked</value></data>
+  <data name="Users.Table.Missing" xml:space="preserve"><value>Missing</value></data>
+  <data name="Users.Table.Locked" xml:space="preserve"><value>Locked</value></data>
+  <data name="Users.Table.OpenDetails" xml:space="preserve"><value>Open details for {0}</value></data>
+  <data name="Users.Table.Details" xml:space="preserve"><value>Details</value></data>
+  <data name="Users.Table.EmailUnset" xml:space="preserve"><value>Not provided</value></data>
+  <data name="Users.Pagination.AriaLabel" xml:space="preserve"><value>User pagination</value></data>
+  <data name="Users.Pagination.Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Users.Pagination.PageOf" xml:space="preserve"><value>Page {0} of {1}</value></data>
+  <data name="Users.Pagination.Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Users.Pagination.NoResults" xml:space="preserve"><value>No results</value></data>
+  <data name="Users.Pagination.Showing" xml:space="preserve"><value>Showing {0}–{1} of {2}</value></data>
 </root>

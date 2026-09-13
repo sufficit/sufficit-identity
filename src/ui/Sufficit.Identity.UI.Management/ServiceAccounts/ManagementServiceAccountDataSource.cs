@@ -21,7 +21,7 @@ public sealed class ManagementServiceAccountDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
     ILogger<ManagementServiceAccountDataSource> logger,
-    IStringLocalizer<ManagementResource> localizer)
+    IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer)
 {
     public Task<ManagementDataResult<ServiceAccountWorkspace>> GetWorkspaceAsync(
         CancellationToken cancellationToken = default) =>

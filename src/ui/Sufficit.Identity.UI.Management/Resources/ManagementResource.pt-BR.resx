@@ -124,4 +124,208 @@
   <data name="Common.Access.Forbidden" xml:space="preserve"><value>Sua conta não possui a autoridade necessária.</value></data>
   <data name="Common.Timeout" xml:space="preserve"><value>O serviço demorou mais que o esperado. Tente novamente.</value></data>
   <data name="Common.Unavailable" xml:space="preserve"><value>O serviço de identidade não conseguiu concluir a operação.</value></data>
+  <data name="Audiences.PageTitle" xml:space="preserve"><value>Audiências | Sufficit Identity</value></data>
+  <data name="Audiences.HeaderTitle" xml:space="preserve"><value>Audiências</value></data>
+  <data name="Audiences.HeaderDescription" xml:space="preserve"><value>Consulte os destinatários dos tokens e gerencie seus vínculos com scopes.</value></data>
+  <data name="Audiences.BindAudience" xml:space="preserve"><value>Vincular audiência</value></data>
+  <data name="Audiences.InfoTitle" xml:space="preserve"><value>Uma audiência identifica a API que recebe o token</value></data>
+  <data name="Audiences.InfoDescription" xml:space="preserve"><value>Ela é registrada nos recursos de um scope, não nos entitlements. Alterações afetam novos tokens e não configuram a validação da API.</value></data>
+  <data name="Audiences.BindingNotAlteredTitle" xml:space="preserve"><value>Vínculo não alterado</value></data>
+  <data name="Audiences.ReloadToReview" xml:space="preserve"><value>Atualizar para revisar</value></data>
+  <data name="Audiences.BindingHelp" xml:space="preserve"><value>Use um identificador existente ou informe um novo. Maiúsculas e minúsculas fazem diferença.</value></data>
+  <data name="Audiences.NoScopesAvailable" xml:space="preserve"><value>Nenhum scope manual de API disponível.</value></data>
+  <data name="Audiences.CreateScopeLink" xml:space="preserve"><value>Crie um scope</value></data>
+  <data name="Audiences.NoScopesAvailableSuffix" xml:space="preserve"><value>ou altere o manifesto do serviço.</value></data>
+  <data name="Audiences.FieldIdentifier" xml:space="preserve"><value>Identificador da audiência</value></data>
+  <data name="Audiences.FieldIdentifierHelp" xml:space="preserve"><value>O valor esperado pela API na claim aud.</value></data>
+  <data name="Audiences.FieldScope" xml:space="preserve"><value>Scope de acesso à API</value></data>
+  <data name="Audiences.SelectScope" xml:space="preserve"><value>Selecione um scope</value></data>
+  <data name="Audiences.BindingImpact" xml:space="preserve"><value>O vínculo permite que clientes autorizados a solicitar esse scope recebam tokens destinados à audiência.</value></data>
+  <data name="Audiences.Saving" xml:space="preserve"><value>Salvando…</value></data>
+  <data name="Audiences.SaveBinding" xml:space="preserve"><value>Salvar vínculo</value></data>
+  <data name="Audiences.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Audiences.RemoveHeading" xml:space="preserve"><value>Remover vínculo?</value></data>
+  <data name="Audiences.RemoveImpactPrefix" xml:space="preserve"><value>O scope</value></data>
+  <data name="Audiences.RemoveImpactMiddle" xml:space="preserve"><value>deixará de incluir</value></data>
+  <data name="Audiences.RemoveImpactSuffix" xml:space="preserve"><value>em novos tokens. Tokens já emitidos, clientes e o scope não serão excluídos.</value></data>
+  <data name="Audiences.LastBindingNotice" xml:space="preserve"><value>Se este for o último vínculo, a audiência deixará de aparecer nesta lista.</value></data>
+  <data name="Audiences.Removing" xml:space="preserve"><value>Removendo…</value></data>
+  <data name="Audiences.ConfirmRemoval" xml:space="preserve"><value>Confirmar remoção</value></data>
+  <data name="Audiences.ListHeading" xml:space="preserve"><value>Audiências registradas</value></data>
+  <data name="Audiences.ListDescription" xml:space="preserve"><value>Vínculos de manifesto são somente leitura.</value></data>
+  <data name="Audiences.SearchLabel" xml:space="preserve"><value>Pesquisar audiências</value></data>
+  <data name="Audiences.SearchPlaceholder" xml:space="preserve"><value>Audiência, scope ou cliente</value></data>
+  <data name="Audiences.LoadingAriaLabel" xml:space="preserve"><value>Carregando audiências</value></data>
+  <data name="Audiences.LoadErrorTitle" xml:space="preserve"><value>Não foi possível consultar as audiências</value></data>
+  <data name="Audiences.TryAgain" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Audiences.EmptyTitleNone" xml:space="preserve"><value>Nenhuma audiência registrada</value></data>
+  <data name="Audiences.EmptyTitleSearch" xml:space="preserve"><value>Nenhuma audiência encontrada</value></data>
+  <data name="Audiences.EmptyDescriptionNone" xml:space="preserve"><value>Vincule uma audiência a um scope de API para registrá-la.</value></data>
+  <data name="Audiences.EmptyDescriptionSearch" xml:space="preserve"><value>Revise o identificador, scope ou cliente pesquisado.</value></data>
+  <data name="Audiences.ClearSearch" xml:space="preserve"><value>Limpar pesquisa</value></data>
+  <data name="Audiences.ColumnAudience" xml:space="preserve"><value>Audiência</value></data>
+  <data name="Audiences.ColumnScopes" xml:space="preserve"><value>Scopes vinculados</value></data>
+  <data name="Audiences.ColumnClients" xml:space="preserve"><value>Clientes autorizados</value></data>
+  <data name="Audiences.ManifestBadge" xml:space="preserve"><value>Manifesto</value></data>
+  <data name="Audiences.RemoveBindingAriaLabel" xml:space="preserve"><value>Remover {0} do scope {1}</value></data>
+  <data name="Audiences.RemoveBindingButton" xml:space="preserve"><value>Remover vínculo</value></data>
+  <data name="Audiences.NoClients" xml:space="preserve"><value>Nenhum cliente</value></data>
+  <data name="Audiences.ClientCountSummary" xml:space="preserve"><value>{0} cliente(s)</value></data>
+  <data name="Audiences.LoadingFooter" xml:space="preserve"><value>Carregando…</value></data>
+  <data name="Audiences.FooterCountFormat" xml:space="preserve"><value>{0} de {1} audiência(s)</value></data>
+  <data name="Audiences.NoResultsLoaded" xml:space="preserve"><value>Nenhum resultado carregado</value></data>
+  <data name="Audiences.ManageScopesLink" xml:space="preserve"><value>Gerenciar scopes</value></data>
+  <data name="Audiences.NoticeBound" xml:space="preserve"><value>Audiência vinculada. A alteração foi auditada.</value></data>
+  <data name="Audiences.NoticeRemoved" xml:space="preserve"><value>Vínculo removido. A alteração foi auditada.</value></data>
+  <data name="Clients.Create.Title" xml:space="preserve"><value>Nova aplicação</value></data>
+  <data name="Clients.Create.Description" xml:space="preserve"><value>Escolha o cenário de uso. O Identity prepara uma configuração segura e explica cada decisão.</value></data>
+  <data name="Clients.Create.Back" xml:space="preserve"><value>Voltar para aplicações</value></data>
+  <data name="Clients.Create.ProfileHeading" xml:space="preserve"><value>Como esta aplicação será usada?</value></data>
+  <data name="Clients.Create.ProfileIntro" xml:space="preserve"><value>Você poderá revisar e ajustar tudo antes de criar. Nenhuma aplicação incompleta será registrada.</value></data>
+  <data name="Clients.Create.Assurance" xml:space="preserve"><value>Defaults seguros, validação progressiva e rascunho retomável</value></data>
+  <data name="Clients.Create.ErrorTitle" xml:space="preserve"><value>Não foi possível iniciar a configuração</value></data>
+  <data name="Clients.Create.LoadingAriaLabel" xml:space="preserve"><value>Carregando perfis de aplicação</value></data>
+  <data name="Clients.Create.EmptyTitle" xml:space="preserve"><value>Nenhum perfil disponível</value></data>
+  <data name="Clients.Create.EmptyDescription" xml:space="preserve"><value>O runtime não informou uma configuração de aplicação disponível.</value></data>
+  <data name="Clients.Create.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Clients.Create.ProfilesAriaLabel" xml:space="preserve"><value>Perfis de aplicação</value></data>
+  <data name="Clients.Create.CreatingDraft" xml:space="preserve"><value>Criando rascunho</value></data>
+  <data name="Clients.Create.Footnote" xml:space="preserve"><value>Credenciais nunca entram na URL ou no rascunho. Quando necessárias, são geradas somente na conclusão e exibidas uma única vez.</value></data>
+  <data name="Clients.Create.DraftCreationFailed" xml:space="preserve"><value>O serviço não conseguiu criar o rascunho.</value></data>
+  <data name="Clients.Detail.Description" xml:space="preserve"><value>Configuração registrada no serviço de identidade. Segredos nunca são retornados.</value></data>
+  <data name="Clients.Detail.Back" xml:space="preserve"><value>Voltar para clientes</value></data>
+  <data name="Clients.Detail.Edit" xml:space="preserve"><value>Editar</value></data>
+  <data name="Clients.Detail.Sessions" xml:space="preserve"><value>Sessões</value></data>
+  <data name="Clients.Detail.Authorizations" xml:space="preserve"><value>Autorizações</value></data>
+  <data name="Clients.Detail.UpdatedTitle" xml:space="preserve"><value>Alterações salvas</value></data>
+  <data name="Clients.Detail.UpdatedMessage" xml:space="preserve"><value>A aplicação foi atualizada e a nova versão está ativa.</value></data>
+  <data name="Clients.Detail.CreatedTitle" xml:space="preserve"><value>Cliente criado</value></data>
+  <data name="Clients.Detail.CreatedMessage" xml:space="preserve"><value>O registro foi persistido com padrões seguros e o evento está disponível na auditoria.</value></data>
+  <data name="Clients.Detail.LoadingAriaLabel" xml:space="preserve"><value>Carregando detalhes do cliente</value></data>
+  <data name="Clients.Registrations.Title" xml:space="preserve"><value>Registros automáticos</value></data>
+  <data name="Clients.Registrations.Description" xml:space="preserve"><value>Aplicações que se registraram sozinhas via Dynamic Client Registration (RFC 7591). Registros anônimos ficam limitados ao perfil de login interativo — sem escopos de API.</value></data>
+  <data name="Clients.Registrations.AllApplications" xml:space="preserve"><value>Todas as aplicações</value></data>
+  <data name="Clients.Registrations.RevokedTitle" xml:space="preserve"><value>Registro revogado</value></data>
+  <data name="Clients.Registrations.RevokedMessagePrefix" xml:space="preserve"><value>O cliente</value></data>
+  <data name="Clients.Registrations.RevokedMessageSuffix" xml:space="preserve"><value>foi removido junto com seus tokens e consentimentos. A operação foi auditada.</value></data>
+  <data name="Clients.Registrations.RevokeErrorTitle" xml:space="preserve"><value>Não foi possível revogar</value></data>
+  <data name="Clients.Registrations.LoadingRegistrations" xml:space="preserve"><value>Carregando registros</value></data>
+  <data name="Clients.Registrations.EmptyTitle" xml:space="preserve"><value>Nenhum registro automático</value></data>
+  <data name="Clients.Registrations.EmptyDescription" xml:space="preserve"><value>Nenhuma aplicação se registrou sozinha até agora. Quando um cliente MCP fizer login pela primeira vez, ele aparece aqui.</value></data>
+  <data name="Clients.Registrations.ColumnApplication" xml:space="preserve"><value>Aplicação</value></data>
+  <data name="Clients.Registrations.ColumnRegisteredAt" xml:space="preserve"><value>Registrado em</value></data>
+  <data name="Clients.Registrations.ColumnOrigin" xml:space="preserve"><value>Origem da chamada</value></data>
+  <data name="Clients.Registrations.ColumnActions" xml:space="preserve"><value>Ações</value></data>
+  <data name="Clients.Registrations.AnonymousMcpProfile" xml:space="preserve"><value>Anônimo (perfil MCP)</value></data>
+  <data name="Clients.Registrations.InitialToken" xml:space="preserve"><value>Token inicial</value></data>
+  <data name="Clients.Registrations.Details" xml:space="preserve"><value>Detalhes</value></data>
+  <data name="Clients.Registrations.Revoking" xml:space="preserve"><value>Revogando…</value></data>
+  <data name="Clients.Registrations.Revoke" xml:space="preserve"><value>Revogar</value></data>
+  <data name="Clients.Registrations.Previous" xml:space="preserve"><value>Anterior</value></data>
+  <data name="Clients.Registrations.PageOf" xml:space="preserve"><value>Página {0} de {1}</value></data>
+  <data name="Clients.Registrations.Next" xml:space="preserve"><value>Próxima</value></data>
+  <data name="Clients.Registrations.CountFormat" xml:space="preserve"><value>{0} registro(s) automático(s)</value></data>
+  <data name="Clients.Registrations.RevokeGenericError" xml:space="preserve"><value>O serviço de identidade recusou a remoção.</value></data>
+  <data name="Users.PageTitle" xml:space="preserve"><value>Usuários | Sufficit Identity</value></data>
+  <data name="Users.Header.Title" xml:space="preserve"><value>Usuários</value></data>
+  <data name="Users.Header.Description" xml:space="preserve"><value>Investigue cadastros, encontre picos fora do padrão e navegue pelo diretório com filtros compartilháveis.</value></data>
+  <data name="Users.Actions.New" xml:space="preserve"><value>Novo usuário</value></data>
+  <data name="Users.Actions.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Users.Badge.GlobalDirectory" xml:space="preserve"><value>Diretório global</value></data>
+  <data name="Users.Deleted.Title" xml:space="preserve"><value>Conta excluída</value></data>
+  <data name="Users.Deleted.Description" xml:space="preserve"><value>Credenciais, sessões, tokens e autorizações anteriores foram revogados.</value></data>
+  <data name="Users.Loading.Dashboard" xml:space="preserve"><value>Carregando dashboard</value></data>
+  <data name="Users.Loading.History" xml:space="preserve"><value>Carregando histórico</value></data>
+  <data name="Users.Loading.Users" xml:space="preserve"><value>Carregando usuários</value></data>
+  <data name="Users.Overview.Heading" xml:space="preserve"><value>Cadastros por dia</value></data>
+  <data name="Users.Overview.RangeLabel" xml:space="preserve"><value>Últimos {0} dias · datas em UTC</value></data>
+  <data name="Users.Overview.EmptyHistory" xml:space="preserve"><value>Ainda não há histórico suficiente para o período.</value></data>
+  <data name="Users.Insight.Directory" xml:space="preserve"><value>Diretório</value></data>
+  <data name="Users.Insight.Today" xml:space="preserve"><value>Hoje</value></data>
+  <data name="Users.Insight.Typical" xml:space="preserve"><value>Dia típico</value></data>
+  <data name="Users.Insight.OutOfPattern" xml:space="preserve"><value>Fora do padrão</value></data>
+  <data name="Users.Chart.AriaLabel" xml:space="preserve"><value>Gráfico de cadastros diários. Selecione um dia para filtrar a lista.</value></data>
+  <data name="Users.Chart.LegendAriaLabel" xml:space="preserve"><value>Legenda do gráfico</value></data>
+  <data name="Users.Chart.LegendRegistrations" xml:space="preserve"><value>Cadastros</value></data>
+  <data name="Users.Chart.LegendAnomaly" xml:space="preserve"><value>Acima de {0} no dia</value></data>
+  <data name="Users.Chart.LegendHint" xml:space="preserve"><value>Toque em uma coluna para abrir aquele dia</value></data>
+  <data name="Users.Chart.DayAriaLabel" xml:space="preserve"><value>{0}: {1} {2}{3}</value></data>
+  <data name="Users.Chart.DayAnomalySuffix" xml:space="preserve"><value>, acima do padrão</value></data>
+  <data name="Users.Investigation.Heading" xml:space="preserve"><value>Cadastros pendentes há mais de 15 dias</value></data>
+  <data name="Users.Investigation.Description" xml:space="preserve"><value>E-mail não confirmado e nenhum login externo vinculado, como Google ou Facebook.</value></data>
+  <data name="Users.Investigation.End" xml:space="preserve"><value>Encerrar investigação</value></data>
+  <data name="Users.Investigation.Review" xml:space="preserve"><value>Revisar contas</value></data>
+  <data name="Users.Count.AccountSingular" xml:space="preserve"><value>conta</value></data>
+  <data name="Users.Count.AccountPlural" xml:space="preserve"><value>contas</value></data>
+  <data name="Users.Count.PendingAccountSingular" xml:space="preserve"><value>conta pendente</value></data>
+  <data name="Users.Count.PendingAccountPlural" xml:space="preserve"><value>contas pendentes</value></data>
+  <data name="Users.Count.RegistrationSingular" xml:space="preserve"><value>cadastro</value></data>
+  <data name="Users.Count.RegistrationPlural" xml:space="preserve"><value>cadastros</value></data>
+  <data name="Users.Filters.Heading" xml:space="preserve"><value>Filtros e ordenação</value></data>
+  <data name="Users.Filters.NameOrEmail" xml:space="preserve"><value>Nome ou e-mail</value></data>
+  <data name="Users.Filters.SearchPlaceholder" xml:space="preserve"><value>Buscar no diretório</value></data>
+  <data name="Users.Filters.Investigation" xml:space="preserve"><value>Investigação</value></data>
+  <data name="Users.Filters.Review.All" xml:space="preserve"><value>Diretório completo</value></data>
+  <data name="Users.Filters.Review.Stale" xml:space="preserve"><value>Pendentes há mais de 15 dias</value></data>
+  <data name="Users.Filters.State" xml:space="preserve"><value>Estado</value></data>
+  <data name="Users.Filters.All" xml:space="preserve"><value>Todos</value></data>
+  <data name="Users.Filters.State.Active" xml:space="preserve"><value>Ativos</value></data>
+  <data name="Users.Filters.State.Locked" xml:space="preserve"><value>Bloqueados</value></data>
+  <data name="Users.Common.Email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="Users.Filters.Email.Confirmed" xml:space="preserve"><value>Confirmado</value></data>
+  <data name="Users.Filters.Email.NotConfirmed" xml:space="preserve"><value>Não confirmado</value></data>
+  <data name="Users.Filters.Mfa" xml:space="preserve"><value>MFA</value></data>
+  <data name="Users.Filters.Active" xml:space="preserve"><value>Ativo</value></data>
+  <data name="Users.Filters.Inactive" xml:space="preserve"><value>Inativo</value></data>
+  <data name="Users.Filters.RegisteredFrom" xml:space="preserve"><value>Cadastro inicial</value></data>
+  <data name="Users.Filters.RegisteredTo" xml:space="preserve"><value>Cadastro final</value></data>
+  <data name="Users.Filters.SortBy" xml:space="preserve"><value>Ordenar por</value></data>
+  <data name="Users.Sort.CreatedNewest" xml:space="preserve"><value>Cadastro mais recente</value></data>
+  <data name="Users.Sort.CreatedOldest" xml:space="preserve"><value>Cadastro mais antigo</value></data>
+  <data name="Users.Sort.NameAsc" xml:space="preserve"><value>Nome A–Z</value></data>
+  <data name="Users.Sort.NameDesc" xml:space="preserve"><value>Nome Z–A</value></data>
+  <data name="Users.Sort.EmailAsc" xml:space="preserve"><value>E-mail A–Z</value></data>
+  <data name="Users.Sort.EmailDesc" xml:space="preserve"><value>E-mail Z–A</value></data>
+  <data name="Users.Filters.ChartHistory" xml:space="preserve"><value>Histórico do gráfico</value></data>
+  <data name="Users.Range.Days" xml:space="preserve"><value>{0} dias</value></data>
+  <data name="Users.Filters.Applying" xml:space="preserve"><value>Aplicando…</value></data>
+  <data name="Users.Filters.Apply" xml:space="preserve"><value>Aplicar filtros</value></data>
+  <data name="Users.Filters.Clear" xml:space="preserve"><value>Limpar</value></data>
+  <data name="Users.Filters.None" xml:space="preserve"><value>Sem filtros</value></data>
+  <data name="Users.Filters.ActiveSingular" xml:space="preserve"><value>filtro ativo</value></data>
+  <data name="Users.Filters.ActivePlural" xml:space="preserve"><value>filtros ativos</value></data>
+  <data name="Users.Results.Heading" xml:space="preserve"><value>Contas encontradas</value></data>
+  <data name="Users.Results.StaleContext" xml:space="preserve"><value>Mais de 15 dias, sem confirmação de e-mail e sem login externo vinculado.</value></data>
+  <data name="Users.Results.DayContext" xml:space="preserve"><value>Cadastros de {0}</value></data>
+  <data name="Users.Results.DefaultContext" xml:space="preserve"><value>Use filtros combinados para reduzir o conjunto investigado.</value></data>
+  <data name="Users.Results.Updating" xml:space="preserve"><value>Atualizando…</value></data>
+  <data name="Users.Empty.BackToDirectory" xml:space="preserve"><value>Voltar ao diretório</value></data>
+  <data name="Users.Empty.PendingTitle" xml:space="preserve"><value>Nenhuma conta pendente neste critério</value></data>
+  <data name="Users.Empty.DefaultTitle" xml:space="preserve"><value>Nenhum usuário neste recorte</value></data>
+  <data name="Users.Empty.PendingDescription" xml:space="preserve"><value>Não há cadastros com mais de 15 dias, e-mail não confirmado e sem login externo vinculado.</value></data>
+  <data name="Users.Empty.DefaultDescription" xml:space="preserve"><value>Altere os filtros ou limpe o dia selecionado para ampliar a busca.</value></data>
+  <data name="Users.Error.StepUpTitle" xml:space="preserve"><value>Autenticação adicional necessária</value></data>
+  <data name="Users.Error.AccessDeniedTitle" xml:space="preserve"><value>Acesso ao diretório não autorizado</value></data>
+  <data name="Users.Error.MfaRequiredTitle" xml:space="preserve"><value>MFA exigido para esta operação</value></data>
+  <data name="Users.Error.DirectoryDeniedTitle" xml:space="preserve"><value>Acesso ao diretório negado</value></data>
+  <data name="Users.Error.QueryFailedTitle" xml:space="preserve"><value>Não foi possível consultar os usuários</value></data>
+  <data name="Users.Table.SortByName" xml:space="preserve"><value>Ordenar por nome</value></data>
+  <data name="Users.Table.User" xml:space="preserve"><value>Usuário</value></data>
+  <data name="Users.Table.SortByCreated" xml:space="preserve"><value>Ordenar por data de cadastro</value></data>
+  <data name="Users.Table.Registered" xml:space="preserve"><value>Cadastro</value></data>
+  <data name="Users.Table.ExternalAccess" xml:space="preserve"><value>Acesso externo</value></data>
+  <data name="Users.Table.Actions" xml:space="preserve"><value>Ações</value></data>
+  <data name="Users.Table.EmailConfirmed" xml:space="preserve"><value>E-mail confirmado</value></data>
+  <data name="Users.Table.Linked" xml:space="preserve"><value>Vinculado</value></data>
+  <data name="Users.Table.Missing" xml:space="preserve"><value>Ausente</value></data>
+  <data name="Users.Table.Locked" xml:space="preserve"><value>Bloqueado</value></data>
+  <data name="Users.Table.OpenDetails" xml:space="preserve"><value>Abrir detalhes de {0}</value></data>
+  <data name="Users.Table.Details" xml:space="preserve"><value>Detalhes</value></data>
+  <data name="Users.Table.EmailUnset" xml:space="preserve"><value>Não informado</value></data>
+  <data name="Users.Pagination.AriaLabel" xml:space="preserve"><value>Paginação de usuários</value></data>
+  <data name="Users.Pagination.Previous" xml:space="preserve"><value>Anterior</value></data>
+  <data name="Users.Pagination.PageOf" xml:space="preserve"><value>Página {0} de {1}</value></data>
+  <data name="Users.Pagination.Next" xml:space="preserve"><value>Próxima</value></data>
+  <data name="Users.Pagination.NoResults" xml:space="preserve"><value>Nenhum resultado</value></data>
+  <data name="Users.Pagination.Showing" xml:space="preserve"><value>Exibindo {0}–{1} de {2}</value></data>
 </root>

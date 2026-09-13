@@ -17,7 +17,7 @@ public sealed class ManagementClientDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
     ILogger<ManagementClientDataSource> logger,
-    IStringLocalizer<ManagementResource> localizer)
+    IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer)
 {
     public Task<ManagementDataResult<IReadOnlyList<ManagementClientSummary>>>
         GetClientsAsync(CancellationToken cancellationToken = default) =>

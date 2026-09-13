@@ -167,7 +167,8 @@ public sealed partial class ManagementUiRoutingTests
         await SignInAsync(client, "administrator");
 
         using var create = await client.GetAsync("/management/clients/new");
-        var createHtml = await create.Content.ReadAsStringAsync();
+        var createHtml = WebUtility.HtmlDecode(
+            await create.Content.ReadAsStringAsync());
         using var detail = await client.GetAsync(
             "/management/clients/test-id");
         var detailHtml = WebUtility.HtmlDecode(
