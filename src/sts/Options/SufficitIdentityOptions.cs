@@ -303,6 +303,12 @@ public sealed class SufficitIdentityOptions
     public CibaOptions Ciba { get; init; } = new();
 
     /// <summary>
+    /// Identity Assertion JWT Authorization Grant (ID-JAG) issuance and
+    /// redemption. See <see cref="IdentityAssertionOptions"/>.
+    /// </summary>
+    public IdentityAssertionOptions IdentityAssertions { get; init; } = new();
+
+    /// <summary>
     /// MCP / agent-AI resource-server configuration. See
     /// <see cref="McpOptions"/>.
     /// </summary>

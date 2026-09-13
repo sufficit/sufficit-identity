@@ -243,6 +243,36 @@ public static partial class ServiceCollectionExtensions
               .AllowRefreshTokenFlow()
               .AllowTokenExchangeFlow();
 
+        // ID-JAG (draft-ietf-oauth-identity-assertion-authz-grant): the IdP
+        // role is a token exchange for a custom requested_token_type, and the
+        // resource authorization server role is the RFC 7523 jwt-bearer grant.
+        // Both are handled in Grants/IdentityAssertionGrants.cs.
+        if (options.IdentityAssertions.Issuance.Enabled)
+        {
+            server.Configure(serverOptions => serverOptions.RequestedTokenTypes.Add(
+                Grants.IdentityAssertionGrant.TokenType));
+            server.AddEventHandler(
+                Grants.DeferIdentityAssertionRequestValidation.Descriptor);
+
+            // OpenIddict rejects unregistered audience values before the grant
+            // handler runs, and still requires the per-client "aud:" permission,
+            // so each client must be allowed to address each trusted audience.
+            var identityAssertionAudiences = options.IdentityAssertions.Issuance.Audiences
+                .SelectMany(audience => audience.Aliases.Prepend(audience.Issuer))
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            if (identityAssertionAudiences.Length > 0)
+            {
+                server.RegisterAudiences(identityAssertionAudiences);
+            }
+        }
+
+        if (options.IdentityAssertions.Redemption.Enabled)
+        {
+            server.AllowCustomFlow(Grants.IdentityAssertionGrant.JwtBearerGrantType);
+        }
+
         server.AddEventHandler(RecordIdentityUsage.Descriptor);
         server.AddEventHandler(RecordAuthorizationUsageFailure.Descriptor);
         server.AddEventHandler(RecordTokenUsageFailure.Descriptor);
@@ -529,6 +559,20 @@ public static partial class ServiceCollectionExtensions
                     JsonValue.Create(options.FrontchannelLogout.Enabled);
                 context.Metadata["frontchannel_logout_session_supported"] =
                     JsonValue.Create(options.FrontchannelLogout.Enabled);
+
+                // ID-JAG metadata (draft §7): published only for the roles
+                // that are enabled.
+                if (options.IdentityAssertions.Issuance.Enabled)
+                {
+                    context.Metadata["identity_chaining_requested_token_types_supported"] =
+                        new JsonArray(JsonValue.Create(Grants.IdentityAssertionGrant.TokenType));
+                }
+
+                if (options.IdentityAssertions.Redemption.Enabled)
+                {
+                    context.Metadata["authorization_grant_profiles_supported"] =
+                        new JsonArray(JsonValue.Create(Grants.IdentityAssertionGrant.GrantProfile));
+                }
 
                 // mTLS sender-constrained access tokens (RFC 8705, item
                 // 3.4). Advertised ONLY when Mtls.Enabled — the host
