@@ -413,7 +413,7 @@ public sealed class ClientCredentialsGrantHandler : ITokenGrantHandler
         // its destination and it reaches the id_token; stamping by type inside
         // GetDestinations would hijack that path. Here there is no user and no
         // id_token: an entitlement is an authorization claim (RFC 9068
-        // §2.2.3.2), and the resource server is the one that decides with it.
+        // §2.2.3.1), and the resource server is the one that decides with it.
         if (granted.Count > 0)
         {
             foreach (var claim in identity.Claims.Where(claim =>

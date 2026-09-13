@@ -37,7 +37,7 @@ it, and the application claims mapped by `ClaimScopeMap`.
 
 For `client_credentials` tokens, the client registration's *entitlements* are
 stamped as an authorization claim explicitly destined for the access token
-(`ClientCredentialsGrantHandler`), which is the intended use under §2.2.3.2.
+(`ClientCredentialsGrantHandler`), which is the intended use under §2.2.3.1.
 
 ## Requirements
 
@@ -47,7 +47,8 @@ stamped as an authorization claim explicitly destined for the access token
 | Asymmetric signature | 4 | Yes, `RS256`/`PS256`/`ES256` |
 | `typ: at+jwt` in the header | 2.1 | Explicit in CIBA; inherited from OpenIddict elsewhere |
 | Identity claims limited by scope | 2.2.3.1 | Yes |
-| Authorization claims (`scope`, `groups`, `roles`, `entitlements`) | 2.2.3.2 | Yes |
+| `scope` claim | 2.2.3 | Yes |
+| Authorization claims (`groups`, `roles`, `entitlements`) | 2.2.3.1 | Yes |
 | Reject a token without `aud` at the RS | 4 | Resource server's responsibility |
 
 ## About `typ: at+jwt`
