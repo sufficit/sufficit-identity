@@ -246,7 +246,9 @@
       "TokenExchange": {
         "Enabled": true,
         "AllowedClientIds": [],
-        "ProvenanceMode": "Enforce"
+        "ProvenanceMode": "Enforce",
+        "_AllowClientSubjectTokens": "Accepts a subject_token that identifies a client (for example a client_credentials token) instead of a user, so a service or agent can exchange its own token for a downstream one. Only the client's own token qualifies: its subject must be its single authorized party. Default false.",
+        "AllowClientSubjectTokens": false
       },
       "_RateLimit": "Independent fixed-window limits by operation and client IP, local to each replica, without queueing. Token/introspection do not consume interactive login/device confirmation quotas. Complements account lockout.",
       "RateLimit": {
