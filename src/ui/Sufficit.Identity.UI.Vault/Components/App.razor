@@ -14,8 +14,8 @@
     <SUIThemeProvider>
         <Routes @rendermode="InteractiveServer" />
         <div id="blazor-error-ui" role="alert">
-            <span>Não foi possível manter a conexão com o Vault.</span>
-            <a class="vault-link" href="">Recarregar</a>
+            <span>@L["Vault.App.ConnectionLost"]</span>
+            <a class="vault-link" href="">@L["Vault.App.Reload"]</a>
         </div>
     </SUIThemeProvider>
     <script src="/_framework/blazor.web.js"></script>

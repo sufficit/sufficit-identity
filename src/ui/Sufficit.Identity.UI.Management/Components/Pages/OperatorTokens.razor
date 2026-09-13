@@ -9,20 +9,20 @@
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 
-<PageTitle>Tokens temporários | Sufficit Identity</PageTitle>
+<PageTitle>@L["OperatorTokens.PageTitle"]</PageTitle>
 
-<SUIPageHeader Title="Tokens temporários"
-               Description="Emita credenciais curtas e atenuadas para automações administrativas em nome do operador autenticado." />
+<SUIPageHeader Title="@L["OperatorTokens.Header.Title"].Value"
+               Description="@L["OperatorTokens.Header.Description"].Value" />
 
 <div class="contract-strip @(ShowMfaWarning ? "contract-strip--warning" : "contract-strip--info")">
     <SUIIcon Name="shield" Size="20" />
     <div>
-        <strong>O link prepara; somente você autoriza</strong>
-        <span>Parâmetros da URL preenchem a solicitação, mas nunca emitem o token nem ampliam as capabilities do operador.</span>
+        <strong>@L["OperatorTokens.LinkPrepares.Title"]</strong>
+        <span>@L["OperatorTokens.LinkPrepares.Description"]</span>
     </div>
     @if (ShowMfaWarning)
     {
-        <SUIStatusBadge ToneValue="SUITone.Warning">MFA obrigatório</SUIStatusBadge>
+        <SUIStatusBadge ToneValue="SUITone.Warning">@L["OperatorTokens.MfaRequiredBadge"]</SUIStatusBadge>
     }
 </div>
 
@@ -30,7 +30,7 @@
 {
     <div class="operator-token-loading" aria-live="polite">
         <span class="button-spinner" aria-hidden="true"></span>
-        <span>Consultando tokens do operador…</span>
+        <span>@L["OperatorTokens.Loading"]</span>
     </div>
 }
 else if (workspaceResult.IsSuccess is false || workspace is null)
@@ -49,15 +49,15 @@ else
         <section class="operator-token-request" aria-labelledby="prepared-request-heading">
             <span class="operator-token-request__icon"><SUIIcon Name="external" Size="20" /></span>
             <div>
-                <h2 id="prepared-request-heading">Solicitação preparada pelo link</h2>
-                <p>Confira finalidade, duração e acessos. Nenhuma operação foi executada.</p>
+                <h2 id="prepared-request-heading">@L["OperatorTokens.PreparedRequest.Title"]</h2>
+                <p>@L["OperatorTokens.PreparedRequest.Description"]</p>
                 <dl>
-                    <div><dt>Finalidade</dt><dd>@purpose</dd></div>
-                    <div><dt>Validade</dt><dd>@FormatDuration(tokenLifetimeSeconds)</dd></div>
-                    <div><dt>Capabilities</dt><dd>@selectedCapabilities.Count selecionada(s)</dd></div>
+                    <div><dt>@L["OperatorTokens.Field.PurposeLabel"]</dt><dd>@purpose</dd></div>
+                    <div><dt>@L["OperatorTokens.Field.LifetimeLabel"]</dt><dd>@FormatDuration(tokenLifetimeSeconds)</dd></div>
+                    <div><dt>@L["OperatorTokens.Field.CapabilitiesLabel"]</dt><dd>@L["OperatorTokens.Field.CapabilitiesSelectedCount", selectedCapabilities.Count]</dd></div>
                 </dl>
             </div>
-            <SUIStatusBadge ToneValue="SUITone.Neutral">Aguardando confirmação</SUIStatusBadge>
+            <SUIStatusBadge ToneValue="SUITone.Neutral">@L["OperatorTokens.AwaitingConfirmation"]</SUIStatusBadge>
         </section>
     }
 
@@ -65,8 +65,8 @@ else
     {
         <SUIAlert ToneValue="SUITone.Danger" Icon="alert" Class="operator-token-alert">
             <div class="operator-token-alert__copy">
-                <strong>O link solicitou acessos indisponíveis</strong>
-                <span>Remova da URL ou obtenha autorização para: @string.Join(", ", queryUnavailableCapabilities).</span>
+                <strong>@L["OperatorTokens.UnavailableAccess.Title"]</strong>
+                <span>@L["OperatorTokens.UnavailableAccess.Description", string.Join(", ", queryUnavailableCapabilities)]</span>
             </div>
         </SUIAlert>
     }
@@ -75,7 +75,7 @@ else
     {
         <SUIAlert ToneValue="SUITone.Danger" Icon="alert" Class="operator-token-alert">
             <div class="operator-token-alert__copy">
-                <strong>O link contém parâmetros inválidos</strong>
+                <strong>@L["OperatorTokens.InvalidLinkParameters.Title"]</strong>
                 <ul>
                     @foreach (var error in queryValidationErrors)
                     {
@@ -109,8 +109,8 @@ else
         <div class="inline-notice inline-notice--success" role="status">
             <SUIIcon Name="check" Size="19" />
             <div>
-                <strong>Token revogado</strong>
-                <span>“@revokedPurpose” deixou de autorizar novas requisições.</span>
+                <strong>@L["OperatorTokens.Revoked.Title"]</strong>
+                <span>@L["OperatorTokens.Revoked.Description", revokedPurpose]</span>
             </div>
         </div>
     }
@@ -119,21 +119,21 @@ else
         <section class="operator-token-issuer" aria-labelledby="operator-token-issuer-heading">
             <header>
                 <div>
-                    <h2 id="operator-token-issuer-heading">Preparar credencial</h2>
-                    <p>O token terá somente os acessos selecionados e expirará automaticamente.</p>
+                    <h2 id="operator-token-issuer-heading">@L["OperatorTokens.Issuer.Title"]</h2>
+                    <p>@L["OperatorTokens.Issuer.Description"]</p>
                 </div>
                 <SUIStatusBadge ToneValue="@(workspace.IssuanceEnabled ? SUITone.Success : SUITone.Danger)">
-                    @(workspace.IssuanceEnabled ? "Emissão habilitada" : "Emissão desabilitada")
+                    @(workspace.IssuanceEnabled ? L["OperatorTokens.Issuer.EnabledBadge"] : L["OperatorTokens.Issuer.DisabledBadge"])
                 </SUIStatusBadge>
             </header>
 
             <div class="operator-token-fields" data-sui-align-row>
                 <SUITextField T="string"
                               id="operator-token-purpose"
-                              aria-label="Finalidade"
-                              Label="Finalidade"
-                              HelperText="Esta descrição aparece na lista e na auditoria; não inclua segredos."
-                              Placeholder="Ex.: atualizar clientes Hermes e Symposium"
+                              aria-label="@L["OperatorTokens.Field.PurposeLabel"].Value"
+                              Label="@L["OperatorTokens.Field.PurposeLabel"].Value"
+                              HelperText="@L["OperatorTokens.Field.Purpose.Helper"].Value"
+                              Placeholder="@L["OperatorTokens.Field.Purpose.Placeholder"].Value"
                               MaxLength="120"
                               Disabled="@issuing"
                               Value="@purpose"
@@ -142,8 +142,8 @@ else
 
                 <SUISelect T="int"
                            id="operator-token-lifetime"
-                           aria-label="Validade"
-                           Label="Validade"
+                           aria-label="@L["OperatorTokens.Field.LifetimeLabel"].Value"
+                           Label="@L["OperatorTokens.Field.LifetimeLabel"].Value"
                            HelperText="@LifetimeHelperText"
                            Disabled="@issuing"
                            Value="@tokenLifetimeSeconds"
@@ -156,13 +156,13 @@ else
             </div>
 
             <details class="operator-token-capability-picker" open="@capabilityPickerOpen">
-                <summary>Selecionar capabilities</summary>
+                <summary>@L["OperatorTokens.CapabilityPicker.Summary"]</summary>
                 <div class="operator-token-capability-picker__body">
                     <SUITextField T="string"
                                   id="capability-filter"
-                                  aria-label="Filtrar capabilities"
-                                  Label="Filtrar capabilities"
-                                  Placeholder="Nome ou área"
+                                  aria-label="@L["OperatorTokens.CapabilityFilter.Label"].Value"
+                                  Label="@L["OperatorTokens.CapabilityFilter.Label"].Value"
+                                  Placeholder="@L["OperatorTokens.CapabilityFilter.Placeholder"].Value"
                                   Immediate
                                   Disabled="@issuing"
                                   Value="@capabilityFilter"
@@ -196,7 +196,7 @@ else
 
                     @if (CapabilityGroups.Count is 0)
                     {
-                        <p class="operator-token-capability-picker__empty">Nenhuma capability corresponde ao filtro atual.</p>
+                        <p class="operator-token-capability-picker__empty">@L["OperatorTokens.CapabilityPicker.Empty"]</p>
                     }
                 </div>
             </details>
@@ -204,7 +204,7 @@ else
             <footer class="operator-token-issue-actions">
                 <div class="operator-token-issue-summary">
                     <strong>@FormatDuration(tokenLifetimeSeconds)</strong>
-                    <span>· @selectedCapabilities.Count de @workspace.MaximumCapabilities capabilities</span>
+                    <span>· @L["OperatorTokens.Issuer.SelectedSummary", selectedCapabilities.Count, workspace.MaximumCapabilities]</span>
                 </div>
                 <AuthorizeView Policy="@ManagementUiPolicies.IssueOperatorTokens">
                     <Authorized>
@@ -214,11 +214,11 @@ else
                                           OnClick="IssueAsync"
                                           aria-busy="@issuing">
                             <SUIIcon Name="key" Size="17" />
-                            <span>@(queryPrepared ? "Confirmar e gerar token" : "Gerar token temporário")</span>
+                            <span>@(queryPrepared ? L["OperatorTokens.Issue.ConfirmButton"] : L["OperatorTokens.Issue.GenerateButton"])</span>
                         </SUILoadingButton>
                     </Authorized>
                     <NotAuthorized>
-                        <span class="operator-token-unauthorized">Seu usuário não possui <code>identity.management.tokens.issue</code>.</span>
+                        <span class="operator-token-unauthorized">@L["OperatorTokens.Issue.MissingCapability"].Value <code>identity.management.tokens.issue</code>.</span>
                     </NotAuthorized>
                 </AuthorizeView>
             </footer>
@@ -226,15 +226,15 @@ else
 
         <aside class="operator-token-safety" aria-labelledby="operator-token-safety-heading">
             <span class="operator-token-safety__icon"><SUIIcon Name="shield" Size="24" /></span>
-            <h2 id="operator-token-safety-heading">Limites aplicados</h2>
+            <h2 id="operator-token-safety-heading">@L["OperatorTokens.Safety.Title"]</h2>
             <ul class="plain-check-list">
-                <li><SUIIcon Name="check" Size="16" /> Escopo OAuth fixo em <code>identity.management</code></li>
-                <li><SUIIcon Name="check" Size="16" /> Sem papel de administrador incorporado</li>
-                <li><SUIIcon Name="check" Size="16" /> MFA e autenticação atual preservados</li>
-                <li><SUIIcon Name="check" Size="16" /> Emissão e revogação auditadas</li>
-                <li><SUIIcon Name="check" Size="16" /> Um token temporário não emite outro</li>
+                <li><SUIIcon Name="check" Size="16" /> @L["OperatorTokens.Safety.FixedScope"].Value <code>identity.management</code></li>
+                <li><SUIIcon Name="check" Size="16" /> @L["OperatorTokens.Safety.NoAdminRole"]</li>
+                <li><SUIIcon Name="check" Size="16" /> @L["OperatorTokens.Safety.MfaPreserved"]</li>
+                <li><SUIIcon Name="check" Size="16" /> @L["OperatorTokens.Safety.AuditedIssuance"]</li>
+                <li><SUIIcon Name="check" Size="16" /> @L["OperatorTokens.Safety.NoChaining"]</li>
             </ul>
-            <p>A URL pode solicitar somente valores de formulário. O servidor recalcula todas as permissões no momento da emissão.</p>
+            <p>@L["OperatorTokens.Safety.UrlNote"]</p>
         </aside>
     </div>
 
@@ -243,35 +243,35 @@ else
         <section class="operator-token-reveal" aria-labelledby="operator-token-reveal-heading" role="status">
             <header>
                 <div>
-                    <h2 id="operator-token-reveal-heading">Token disponível uma única vez</h2>
-                    <p>Copie agora. A lista abaixo mantém somente metadados para revogação e auditoria.</p>
+                    <h2 id="operator-token-reveal-heading">@L["OperatorTokens.Reveal.Title"]</h2>
+                    <p>@L["OperatorTokens.Reveal.Description"]</p>
                 </div>
-                <SUIStatusBadge ToneValue="SUITone.Warning">Expira @issuedExpiresAt.ToLocalTime().ToString("dd/MM HH:mm:ss")</SUIStatusBadge>
+                <SUIStatusBadge ToneValue="SUITone.Warning">@L["OperatorTokens.Reveal.ExpiresBadge", issuedExpiresAt.ToLocalTime().ToString("dd/MM HH:mm:ss")]</SUIStatusBadge>
             </header>
             <textarea class="operator-token-value"
-                      aria-label="Token temporário de Management"
+                      aria-label="@L["OperatorTokens.Reveal.TokenAriaLabel"].Value"
                       readonly
                       spellcheck="false"
                       autocomplete="off">@issuedToken</textarea>
             <footer>
-                <span>Bearer · @issuedCapabilities.Count capability(s)</span>
+                <span>@L["OperatorTokens.Reveal.CapabilitiesCount", issuedCapabilities.Count]</span>
                 <div>
                     <SUIButton VariantValue="SUIVariant.Outlined"
                                ColorValue="SUIColor.Primary"
                                OnClick="CopyIssuedTokenAsync">
                         <SUIIcon Name="code" Size="17" />
-                        @(tokenCopied ? "Copiado" : "Copiar token")
+                        @(tokenCopied ? L["OperatorTokens.Reveal.Copied"] : L["OperatorTokens.Reveal.CopyButton"])
                     </SUIButton>
                     <SUIButton VariantValue="SUIVariant.Text"
                                ColorValue="SUIColor.Default"
                                OnClick="HideIssuedToken">
-                        Ocultar
+                        @L["OperatorTokens.Reveal.Hide"]
                     </SUIButton>
                 </div>
             </footer>
             @if (clipboardUnavailable)
             {
-                <span class="operator-token-clipboard-note">A cópia automática foi bloqueada; selecione o valor e use Ctrl+C.</span>
+                <span class="operator-token-clipboard-note">@L["OperatorTokens.Reveal.ClipboardBlocked"]</span>
             }
         </section>
     }
@@ -279,17 +279,17 @@ else
     <section class="operator-token-active" aria-labelledby="operator-token-active-heading">
         <header>
             <div>
-                <h2 id="operator-token-active-heading">Tokens ativos</h2>
-                <p>Somente credenciais temporárias emitidas para este operador são exibidas.</p>
+                <h2 id="operator-token-active-heading">@L["OperatorTokens.Active.Title"]</h2>
+                <p>@L["OperatorTokens.Active.Description"]</p>
             </div>
-            <SUIStatusBadge ToneValue="SUITone.Neutral">@workspace.ActiveTokens.Count ativo(s)</SUIStatusBadge>
+            <SUIStatusBadge ToneValue="SUITone.Neutral">@L["OperatorTokens.Active.CountBadge", workspace.ActiveTokens.Count]</SUIStatusBadge>
         </header>
 
         @if (workspace.ActiveTokens.Count is 0)
         {
             <SUIEmptyState Icon="key"
-                           Title="Nenhum token temporário ativo"
-                           Description="Prepare uma credencial acima ou abra um link parametrizado enviado para uma tarefa específica." />
+                           Title="@L["OperatorTokens.Active.EmptyTitle"].Value"
+                           Description="@L["OperatorTokens.Active.EmptyDescription"].Value" />
         }
         else
         {
@@ -300,9 +300,9 @@ else
                         <div class="operator-token-list__main">
                             <div>
                                 <strong>@token.Purpose</strong>
-                                <span>Emitido @token.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm") · expira @token.ExpiresAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                <span>@L["OperatorTokens.Active.IssuedExpires", token.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm"), token.ExpiresAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")]</span>
                             </div>
-                            <SUIStatusBadge ToneValue="SUITone.Success">Ativo</SUIStatusBadge>
+                            <SUIStatusBadge ToneValue="SUITone.Success">@L["OperatorTokens.Active.StatusBadge"]</SUIStatusBadge>
                         </div>
                         <div class="operator-token-list__capabilities">
                             @foreach (var capability in token.Capabilities)
@@ -311,26 +311,26 @@ else
                             }
                         </div>
                         <footer>
-                            <code title="Identificador auditável">@ShortId(token.Id)</code>
+                            <code title="@L["OperatorTokens.Active.AuditableId"].Value">@ShortId(token.Id)</code>
                             <AuthorizeView Policy="@ManagementUiPolicies.RevokeOperatorTokens">
                                 <Authorized>
                                     @if (pendingRevokeId == token.Id)
                                     {
                                         <div class="operator-token-revoke-confirmation">
-                                            <span>Revogar agora?</span>
+                                            <span>@L["OperatorTokens.Revoke.ConfirmPrompt"]</span>
                                             <SUILoadingButton IsLoading="@revoking"
                                                               Disabled="@revoking"
                                                               SizeValue="SUISize.Small"
                                                               ColorValue="SUIColor.Error"
                                                               OnClick="async _ => await RevokeAsync(token)">
-                                                Confirmar
+                                                @L["OperatorTokens.Revoke.Confirm"]
                                             </SUILoadingButton>
                                             <SUIButton VariantValue="SUIVariant.Text"
                                                        ColorValue="SUIColor.Default"
                                                        SizeValue="SUISize.Small"
                                                        Disabled="@revoking"
                                                        OnClick="CancelRevoke">
-                                                Cancelar
+                                                @L["OperatorTokens.Revoke.Cancel"]
                                             </SUIButton>
                                         </div>
                                     }
@@ -340,7 +340,7 @@ else
                                                    ColorValue="SUIColor.Error"
                                                    SizeValue="SUISize.Small"
                                                    OnClick="_ => PrepareRevoke(token.Id)">
-                                            Revogar
+                                            @L["Capability.Label.Revoke"]
                                         </SUIButton>
                                     }
                                 </Authorized>
@@ -458,7 +458,7 @@ else
 
         var requestedPurpose = RequestedPurpose?.Trim();
         purpose = string.IsNullOrWhiteSpace(requestedPurpose)
-            ? "Operação administrativa temporária"
+            ? L["OperatorTokens.DefaultPurpose"].Value
             : requestedPurpose[..Math.Min(requestedPurpose.Length, 120)];
         if (requestedPurpose?.Length > 120)
         {
@@ -605,7 +605,7 @@ else
 
     private string LifetimeHelperText => workspace is null
         ? string.Empty
-        : $"Limite deste ambiente: {FormatDuration(workspace.MaximumLifetimeSeconds)}.";
+        : L["OperatorTokens.Field.Lifetime.Helper", FormatDuration(workspace.MaximumLifetimeSeconds)].Value;
 
     private Task LifetimeChanged(int value)
     {
@@ -733,27 +733,27 @@ else
     private string CapabilityLabel(string capability) =>
         ManagementCapabilityPresentation.Get(capability, L).Label;
 
-    private static string FormatDuration(int seconds) => seconds switch
+    private string FormatDuration(int seconds) => seconds switch
     {
-        3600 => "1 hora",
-        _ when seconds % 60 is 0 => $"{seconds / 60} minutos",
-        _ => $"{seconds} segundos",
+        3600 => L["OperatorTokens.Duration.OneHour"].Value,
+        _ when seconds % 60 is 0 => L["OperatorTokens.Duration.Minutes", seconds / 60].Value,
+        _ => L["OperatorTokens.Duration.Seconds", seconds].Value,
     };
 
     private static string ShortId(string id) => id.Length <= 12
         ? id
         : $"{id[..8]}…{id[^4..]}";
 
-    private static string ErrorTitle<T>(ManagementDataResult<T> result) =>
+    private string ErrorTitle<T>(ManagementDataResult<T> result) =>
         result.Outcome switch
         {
-            ManagementDataOutcome.Invalid => "Revise os dados da solicitação",
-            ManagementDataOutcome.Conflict => "A emissão não está disponível neste ambiente",
-            ManagementDataOutcome.NotFound => "Token não encontrado",
-            ManagementDataOutcome.Forbidden => "Capability administrativa ausente",
-            ManagementDataOutcome.StepUpRequired => "Autenticação multifator necessária",
-            ManagementDataOutcome.Unavailable => "Identity não concluiu a operação",
-            _ => "A operação não foi concluída",
+            ManagementDataOutcome.Invalid => L["OperatorTokens.Error.InvalidTitle"].Value,
+            ManagementDataOutcome.Conflict => L["OperatorTokens.Error.ConflictTitle"].Value,
+            ManagementDataOutcome.NotFound => L["OperatorTokens.Error.NotFoundTitle"].Value,
+            ManagementDataOutcome.Forbidden => L["OperatorTokens.Error.ForbiddenTitle"].Value,
+            ManagementDataOutcome.StepUpRequired => L["OperatorTokens.Error.StepUpTitle"].Value,
+            ManagementDataOutcome.Unavailable => L["OperatorTokens.Error.UnavailableTitle"].Value,
+            _ => L["OperatorTokens.Error.GenericTitle"].Value,
         };
 
     private static ManagementDataResult<object> ToObjectResult<T>(

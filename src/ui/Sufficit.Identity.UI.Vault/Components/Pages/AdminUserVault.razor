@@ -4,33 +4,33 @@
 @layout VaultLayout
 @inject VaultDataSource Data
 
-<PageTitle>Vault do usuário | Sufficit Identity</PageTitle>
+<PageTitle>@L["Vault.AdminUserVault.DefaultTitle"].Value | Sufficit Identity</PageTitle>
 
-<a class="vault-back-link" href="/vault/admin"><SUIIcon Name="arrow-left" Size="16" /> Voltar aos Vaults de usuários</a>
+<a class="vault-back-link" href="/vault/admin"><SUIIcon Name="arrow-left" Size="16" /> @L["Vault.AdminUserVault.BackLink"]</a>
 
 <SUIPageHeader Title="@PageTitleText"
-            Description="Revise metadados e remova credenciais sem revelar valores protegidos.">
+            Description="@L["Vault.AdminUserVault.Description"].Value">
     <Actions>
         @if (detail is not null && !detail.User.UserExists)
         {
-            <SUIStatusBadge ToneValue="SUITone.Warning" Icon="alert">Conta removida</SUIStatusBadge>
+            <SUIStatusBadge ToneValue="SUITone.Warning" Icon="alert">@L["Vault.AdminUserVault.AccountRemoved"]</SUIStatusBadge>
         }
         else
         {
-            <SUIStatusBadge ToneValue="SUITone.Info" Icon="shield">Metadados protegidos</SUIStatusBadge>
+            <SUIStatusBadge ToneValue="SUITone.Info" Icon="shield">@L["Vault.AdminUserVault.MetadataProtected"]</SUIStatusBadge>
         }
     </Actions>
 </SUIPageHeader>
 
 @if (loading)
 {
-    <div class="vault-panel"><div class="vault-loading" aria-label="Carregando Vault do usuário"></div></div>
+    <div class="vault-panel"><div class="vault-loading" aria-label="@L["Vault.AdminUserVault.LoadingAriaLabel"].Value"></div></div>
 }
 else if (!string.IsNullOrWhiteSpace(loadError))
 {
     <div class="vault-load-error" role="alert">
-        <div><strong>Não foi possível carregar este Vault</strong><span>@loadError</span></div>
-        <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="LoadAsync">Tentar novamente</SUIButton>
+        <div><strong>@L["Vault.AdminUserVault.LoadErrorTitle"]</strong><span>@loadError</span></div>
+        <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="LoadAsync">@L["Vault.Common.Retry"]</SUIButton>
     </div>
 }
 else if (detail is null)
@@ -40,29 +40,29 @@ else if (detail is null)
         <p class="vault-feedback vault-feedback--success" role="status">@feedback</p>
     }
     <section class="vault-panel">
-        <SUIEmptyState Icon="users" Title="Vault não encontrado" Description="A conta não existe ou não possui mais credenciais armazenadas.">
-            <Actions><SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" Href="/vault/admin">Voltar à gestão</SUIButton></Actions>
+        <SUIEmptyState Icon="users" Title="@L["Vault.AdminUserVault.NotFoundTitle"].Value" Description="@L["Vault.AdminUserVault.NotFoundDescription"].Value">
+            <Actions><SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" Href="/vault/admin">@L["Vault.AdminUserVault.BackToManagement"]</SUIButton></Actions>
         </SUIEmptyState>
     </section>
 }
 else
 {
-    <section class="vault-user-summary" aria-label="Identificação do usuário">
+    <section class="vault-user-summary" aria-label="@L["Vault.AdminUserVault.IdentificationAriaLabel"].Value">
         <span class="vault-user-summary__icon"><SUIIcon Name="users" Size="21" /></span>
         <div>
             <strong>@(detail.User.Email ?? detail.User.UserName ?? detail.User.OwnerSubject)</strong>
             <span>@IdentityDescription(detail.User)</span>
         </div>
         <dl>
-            <div><dt>Pessoais</dt><dd>@detail.User.PersonalSecretCount</dd></div>
-            <div><dt>Conectadas</dt><dd>@detail.User.ManagedCredentialCount</dd></div>
-            <div><dt>Última atividade</dt><dd>@(detail.User.LastUpdatedAtUtc is null ? "Sem data" : FormatDate(detail.User.LastUpdatedAtUtc.Value))</dd></div>
+            <div><dt>@L["Vault.AdminUserVault.PersonalLabel"]</dt><dd>@detail.User.PersonalSecretCount</dd></div>
+            <div><dt>@L["Vault.AdminUserVault.ConnectedLabel"]</dt><dd>@detail.User.ManagedCredentialCount</dd></div>
+            <div><dt>@L["Vault.AdminUserVault.LastActivityLabel"]</dt><dd>@(detail.User.LastUpdatedAtUtc is null ? L["Vault.Common.NoDate"].Value : FormatDate(detail.User.LastUpdatedAtUtc.Value))</dd></div>
         </dl>
     </section>
 
     <div class="vault-note" role="note">
         <SUIIcon Name="info" Size="20" />
-        <div><strong>Nenhuma senha é exibida.</strong><span>A remoção revoga o dado armazenado; o aplicativo conectado pode exigir uma nova autorização do usuário.</span></div>
+        <div><strong>@L["Vault.AdminUserVault.NoPasswordShown"]</strong><span>@L["Vault.AdminUserVault.NoteBody"]</span></div>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(feedback))
@@ -72,12 +72,12 @@ else
 
     <section class="vault-panel" aria-labelledby="managed-credentials-heading">
         <div class="vault-panel__heading">
-            <div><h2 id="managed-credentials-heading">Credenciais conectadas</h2><p>Tokens e chaves mantidos por integrações em nome deste usuário.</p></div>
+            <div><h2 id="managed-credentials-heading">@L["Vault.AdminUserVault.ManagedCredentialsHeading"]</h2><p>@L["Vault.AdminUserVault.ManagedCredentialsDescription"]</p></div>
             <SUIStatusBadge ToneValue="SUITone.Info">@detail.ManagedCredentials.Count</SUIStatusBadge>
         </div>
         @if (detail.ManagedCredentials.Count == 0)
         {
-            <SUIEmptyState Icon="key" Title="Nenhuma credencial conectada" Description="Não há integrações persistidas para este usuário." />
+            <SUIEmptyState Icon="key" Title="@L["Vault.AdminUserVault.ManagedCredentialsEmptyTitle"].Value" Description="@L["Vault.AdminUserVault.ManagedCredentialsEmptyDescription"].Value" />
         }
         else
         {
@@ -89,30 +89,30 @@ else
                         <span class="vault-list__icon"><SUIIcon Name="key" Size="18" /></span>
                         <div class="vault-list__copy">
                             <strong>@(item.Provider is null ? item.Name : ProviderLabel(item.Provider))</strong>
-                            <span>@item.Name · atualizado em @FormatDate(item.UpdatedAtUtc)</span>
+                            <span>@string.Format(L["Vault.AdminUserVault.ManagedCredentialMeta"].Value, item.Name, FormatDate(item.UpdatedAtUtc))</span>
                         </div>
                         <div class="vault-list__status">
                             @if (item.ExpiresAtUtc is { } expiration)
                             {
-                                <span>Expira em @FormatDate(expiration)</span>
+                                <span>@string.Format(L["Vault.AdminUserVault.ExpiresOn"].Value, FormatDate(expiration))</span>
                             }
                             else
                             {
-                                <span>Sem expiração informada</span>
+                                <span>@L["Vault.AdminUserVault.NoExpirationInfo"]</span>
                             }
                         </div>
                         <AuthorizeView Policy="@VaultUiPolicies.AdminManage">
                             @if (pendingAction == actionKey)
                             {
-                                <div class="vault-confirm" role="group" aria-label="Confirmar remoção">
-                                    <span>Remover?</span>
-                                    <SUIButton ColorValue="SUIColor.Error" OnClick="() => DeleteManagedAsync(item.Name)" Disabled="@working">Confirmar</SUIButton>
-                                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="CancelConfirmation" Disabled="@working">Cancelar</SUIButton>
+                                <div class="vault-confirm" role="group" aria-label="@L["Vault.AdminUserVault.ConfirmRemovalAriaLabel"].Value">
+                                    <span>@L["Vault.AdminUserVault.RemoveQuestion"]</span>
+                                    <SUIButton ColorValue="SUIColor.Error" OnClick="() => DeleteManagedAsync(item.Name)" Disabled="@working">@L["Vault.Common.Confirm"]</SUIButton>
+                                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="CancelConfirmation" Disabled="@working">@L["Vault.Common.Cancel"]</SUIButton>
                                 </div>
                             }
                             else
                             {
-                                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="() => Confirm(actionKey)" Disabled="@working">Remover</SUIButton>
+                                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="() => Confirm(actionKey)" Disabled="@working">@L["Vault.Common.Remove"]</SUIButton>
                             }
                         </AuthorizeView>
                     </div>
@@ -123,12 +123,12 @@ else
 
     <section class="vault-panel" aria-labelledby="personal-secrets-heading">
         <div class="vault-panel__heading">
-            <div><h2 id="personal-secrets-heading">Segredos pessoais</h2><p>Entradas criadas diretamente pelo usuário no armazenamento pessoal.</p></div>
+            <div><h2 id="personal-secrets-heading">@L["Vault.AdminUserVault.PersonalSecretsHeading"]</h2><p>@L["Vault.AdminUserVault.PersonalSecretsDescription"]</p></div>
             <SUIStatusBadge ToneValue="SUITone.Info">@detail.PersonalSecrets.Count</SUIStatusBadge>
         </div>
         @if (detail.PersonalSecrets.Count == 0)
         {
-            <SUIEmptyState Icon="lock" Title="Nenhum segredo pessoal" Description="O usuário não criou entradas pessoais neste Vault." />
+            <SUIEmptyState Icon="lock" Title="@L["Vault.AdminUserVault.PersonalSecretsEmptyTitle"].Value" Description="@L["Vault.AdminUserVault.PersonalSecretsEmptyDescription"].Value" />
         }
         else
         {
@@ -140,20 +140,20 @@ else
                         <span class="vault-list__icon"><SUIIcon Name="lock" Size="18" /></span>
                         <div class="vault-list__copy">
                             <strong>@item.Name</strong>
-                            <span>Namespace @item.Namespace · atualizado em @FormatDate(item.UpdatedAtUtc)</span>
+                            <span>@string.Format(L["Vault.AdminUserVault.PersonalSecretMeta"].Value, item.Namespace, FormatDate(item.UpdatedAtUtc))</span>
                         </div>
                         <AuthorizeView Policy="@VaultUiPolicies.AdminManage">
                             @if (pendingAction == actionKey)
                             {
-                                <div class="vault-confirm" role="group" aria-label="Confirmar remoção">
-                                    <span>Remover?</span>
-                                    <SUIButton ColorValue="SUIColor.Error" OnClick="() => DeletePersonalAsync(item.Namespace, item.Name)" Disabled="@working">Confirmar</SUIButton>
-                                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="CancelConfirmation" Disabled="@working">Cancelar</SUIButton>
+                                <div class="vault-confirm" role="group" aria-label="@L["Vault.AdminUserVault.ConfirmRemovalAriaLabel"].Value">
+                                    <span>@L["Vault.AdminUserVault.RemoveQuestion"]</span>
+                                    <SUIButton ColorValue="SUIColor.Error" OnClick="() => DeletePersonalAsync(item.Namespace, item.Name)" Disabled="@working">@L["Vault.Common.Confirm"]</SUIButton>
+                                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="CancelConfirmation" Disabled="@working">@L["Vault.Common.Cancel"]</SUIButton>
                                 </div>
                             }
                             else
                             {
-                                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="() => Confirm(actionKey)" Disabled="@working">Remover</SUIButton>
+                                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="() => Confirm(actionKey)" Disabled="@working">@L["Vault.Common.Remove"]</SUIButton>
                             }
                         </AuthorizeView>
                     </div>
@@ -165,22 +165,22 @@ else
     <AuthorizeView Policy="@VaultUiPolicies.AdminManage">
         <section class="vault-danger-zone" aria-labelledby="vault-cleanup-heading">
             <div>
-                <h2 id="vault-cleanup-heading">Limpar o Vault deste usuário</h2>
-                <p>Remove todos os segredos pessoais e todas as credenciais conectadas. Estados temporários de autenticação não são alterados.</p>
+                <h2 id="vault-cleanup-heading">@L["Vault.AdminUserVault.CleanupHeading"]</h2>
+                <p>@L["Vault.AdminUserVault.CleanupDescription"]</p>
             </div>
             @if (confirmClear)
             {
-                <div class="vault-danger-zone__confirm" role="group" aria-label="Confirmar limpeza completa">
-                    <strong>Esta ação não pode ser desfeita.</strong>
+                <div class="vault-danger-zone__confirm" role="group" aria-label="@L["Vault.AdminUserVault.CleanupConfirmAriaLabel"].Value">
+                    <strong>@L["Vault.AdminUserVault.CleanupIrreversible"]</strong>
                     <div>
-                        <SUIButton ColorValue="SUIColor.Error" OnClick="ClearAsync" Disabled="@working">@(working ? "Limpando…" : "Confirmar limpeza")</SUIButton>
-                        <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="CancelClear" Disabled="@working">Cancelar</SUIButton>
+                        <SUIButton ColorValue="SUIColor.Error" OnClick="ClearAsync" Disabled="@working">@(working ? L["Vault.AdminUserVault.Clearing"].Value : L["Vault.AdminUserVault.ConfirmCleanup"].Value)</SUIButton>
+                        <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="CancelClear" Disabled="@working">@L["Vault.Common.Cancel"]</SUIButton>
                     </div>
                 </div>
             }
             else
             {
-                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Error" OnClick="RequestClear" Disabled="@(working || TotalItems == 0)">Limpar credenciais</SUIButton>
+                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Error" OnClick="RequestClear" Disabled="@(working || TotalItems == 0)">@L["Vault.AdminUserVault.ClearCredentials"]</SUIButton>
             }
         </section>
     </AuthorizeView>
@@ -199,8 +199,8 @@ else
     private string? loadError;
 
     private string PageTitleText => detail is null
-        ? "Vault do usuário"
-        : detail.User.Email ?? detail.User.UserName ?? "Vault do usuário";
+        ? L["Vault.AdminUserVault.DefaultTitle"].Value
+        : detail.User.Email ?? detail.User.UserName ?? L["Vault.AdminUserVault.DefaultTitle"].Value;
     private int TotalItems => detail is null
         ? 0
         : detail.PersonalSecrets.Count + detail.ManagedCredentials.Count;
@@ -243,7 +243,7 @@ else
     {
         working = true;
         var result = await Data.DeleteVaultUserManagedAsync(OwnerSubject, name);
-        await FinishMutationAsync(result, "Credencial conectada removida.");
+        await FinishMutationAsync(result, L["Vault.AdminUserVault.ManagedCredentialRemoved"].Value);
     }
 
     private async Task DeletePersonalAsync(string @namespace, string name)
@@ -253,7 +253,7 @@ else
             OwnerSubject,
             @namespace,
             name);
-        await FinishMutationAsync(result, "Segredo pessoal removido.");
+        await FinishMutationAsync(result, L["Vault.AdminUserVault.PersonalSecretRemoved"].Value);
     }
 
     private async Task FinishMutationAsync(VaultDataResult<bool> result, string successMessage)
@@ -271,22 +271,27 @@ else
         var result = await Data.ClearVaultUserAsync(OwnerSubject);
         operationSucceeded = result.IsSuccess;
         feedback = result.IsSuccess && result.Value is { } cleanup
-            ? $"Vault limpo: {cleanup.PersonalSecretsDeleted} segredos pessoais e {cleanup.ManagedCredentialsDeleted} credenciais conectadas removidos."
+            ? string.Format(
+                L["Vault.AdminUserVault.VaultCleared"].Value,
+                cleanup.PersonalSecretsDeleted,
+                cleanup.ManagedCredentialsDeleted)
             : result.Error;
         confirmClear = false;
         working = false;
         if (result.IsSuccess) await LoadAsync();
     }
 
-    private static string IdentityDescription(VaultUserInventoryItem item)
+    private string IdentityDescription(VaultUserInventoryItem item)
     {
-        var prefix = item.UserExists ? "Identificador" : "Conta não encontrada · identificador";
+        var prefix = item.UserExists
+            ? L["Vault.AdminUserVault.IdentifierPrefix"].Value
+            : L["Vault.AdminUserVault.AccountNotFoundIdentifierPrefix"].Value;
         return $"{prefix} {item.OwnerSubject}";
     }
 
-    private static string ProviderLabel(string provider) =>
+    private string ProviderLabel(string provider) =>
         provider.Length == 0
-            ? "Integração conectada"
+            ? L["Vault.AdminUserVault.ConnectedIntegration"].Value
             : char.ToUpperInvariant(provider[0]) + provider[1..];
 
     private static string FormatDate(DateTime value) =>

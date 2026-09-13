@@ -7,21 +7,21 @@
 
 <CascadingValue Name="ManagementOverview" Value="overviewResult">
 <div class="app-shell @(navigationOpen ? "app-shell--nav-open" : null)">
-    <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
+    <a class="skip-link" href="#main-content">@L["Layout.SkipToContent"]</a>
 
     <button class="sidebar-scrim"
             type="button"
-            aria-label="Fechar navegação"
+            aria-label="@L["Layout.CloseNavigation"].Value"
             @onclick="CloseNavigationAsync"></button>
 
     <aside class="app-sidebar"
            id="management-navigation"
            @onkeydown="HandleNavigationKeyDown">
         <div class="sidebar-mobile-header">
-            <span>Navegação</span>
+            <span>@L["Layout.Navigation"]</span>
             <button class="icon-button"
                     type="button"
-                    aria-label="Fechar navegação"
+                    aria-label="@L["Layout.CloseNavigation"].Value"
                     @ref="closeNavigationButton"
                     @onclick="CloseNavigationAsync">
                 <SUIIcon Name="x" />
@@ -37,7 +37,7 @@
             <div class="topbar-leading">
                 <button class="icon-button topbar-menu"
                         type="button"
-                        aria-label="Abrir navegação"
+                        aria-label="@L["Layout.OpenNavigation"].Value"
                         aria-controls="management-navigation"
                         aria-expanded="@(navigationOpen ? "true" : "false")"
                         @ref="openNavigationButton"
@@ -45,7 +45,7 @@
                     <SUIIcon Name="menu" />
                 </button>
                 <div class="topbar-context">
-                    <span>Ambiente</span>
+                    <span>@L["Layout.Environment"]</span>
                     <strong>@EnvironmentLabel</strong>
                 </div>
             </div>
@@ -57,7 +57,7 @@
                 </SUIStatusBadge>
                 <AuthorizeView>
                     <Authorized Context="authentication">
-                        <div class="operator-placeholder" aria-label="Operador autenticado">
+                        <div class="operator-placeholder" aria-label="@L["Layout.AuthenticatedOperator"].Value">
                             <span class="operator-placeholder__avatar">
                                 @if (!avatarLoadFailed
                                     && !string.IsNullOrWhiteSpace(avatarUrl))
@@ -75,7 +75,7 @@
                             </span>
                             <div>
                                 <strong>@OperatorName(authentication.User.Identity?.Name)</strong>
-                                <span>Sessão do Identity</span>
+                                <span>@L["Layout.IdentitySession"]</span>
                             </div>
                         </div>
                     </Authorized>
@@ -107,7 +107,7 @@
             : Environment.MachineName;
 
     private string EnvironmentLabel =>
-        overviewResult?.Value?.EnvironmentName ?? "Indisponível";
+        overviewResult?.Value?.EnvironmentName ?? L["Layout.Unavailable"].Value;
 
     private string RuntimeStatusTone =>
         overviewResult?.IsSuccess is not true
@@ -127,22 +127,22 @@
 
     private string RuntimeStatusLabel =>
         overviewResult?.IsSuccess is not true
-            ? "Estado do runtime indisponível"
+            ? L["Layout.Runtime.Unavailable"].Value
             : overviewResult.Value?.Operator is
                 { RequiresMfa: true, MeetsMfaRequirement: false }
-                ? "Autenticação multifator necessária"
-                : "Política administrativa verificada";
+                ? L["Layout.Mfa.Required"].Value
+                : L["Layout.Policy.Verified"].Value;
 
     private string RuntimeStatusShortLabel =>
         overviewResult?.IsSuccess is not true
-            ? "Indisponível"
+            ? L["Layout.Unavailable"].Value
             : overviewResult.Value?.Operator is
                 { RequiresMfa: true, MeetsMfaRequirement: false }
-                ? "MFA necessária"
-                : "Verificado";
+                ? L["Layout.Mfa.RequiredShort"].Value
+                : L["Layout.Verified"].Value;
 
-    private static string OperatorName(string? name) =>
-        string.IsNullOrWhiteSpace(name) ? "Operador autenticado" : name;
+    private string OperatorName(string? name) =>
+        string.IsNullOrWhiteSpace(name) ? L["Layout.AuthenticatedOperator"].Value : name;
 
     private static string OperatorInitial(string? name) =>
         string.IsNullOrWhiteSpace(name)

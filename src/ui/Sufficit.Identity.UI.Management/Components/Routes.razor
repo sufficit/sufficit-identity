@@ -4,13 +4,12 @@
             <NotAuthorized>
                 <LayoutView Layout="typeof(MainLayout)">
                     <section class="panel" aria-labelledby="management-access-denied">
-                        <h1 id="management-access-denied">Acesso não autorizado</h1>
+                        <h1 id="management-access-denied">@L["Routes.AccessDenied.Title"]</h1>
                         <p>
-                            Sua sessão está ativa, mas não possui a autoridade
-                            necessária para esta área administrativa.
+                            @L["Routes.AccessDenied.Description"]
                         </p>
                         <a class="button button--secondary" href="/account/manage">
-                            Abrir minha conta
+                            @L["Routes.AccessDenied.OpenAccount"]
                         </a>
                     </section>
                 </LayoutView>

@@ -2,16 +2,16 @@
     <img src="/_content/Sufficit.Identity.UI.Management/img/logo-mark.png" width="36" height="36" alt="" />
     <div class="sidebar-brand__text">
         <strong>Sufficit Identity</strong>
-        <span>Administração</span>
+        <span>@L["Nav.Brand.Subtitle"]</span>
     </div>
 </div>
 
-<nav class="sidebar-nav" aria-label="Navegação principal">
+<nav class="sidebar-nav" aria-label="@L["Nav.AriaLabel"].Value">
     <div class="nav-section">
-        <span class="nav-section__label">Visão geral</span>
+        <span class="nav-section__label">@L["Nav.Section.Overview"]</span>
         <NavLink class="nav-item" href="" Match="NavLinkMatch.All">
             <SUIIcon Name="dashboard" />
-            <span>Início</span>
+            <span>@L["Nav.Home"]</span>
         </NavLink>
     </div>
 
@@ -33,7 +33,7 @@
 <div class="sidebar-footer">
     <NavLink class="nav-item" href="settings" Match="NavLinkMatch.All">
         <SUIIcon Name="settings" />
-        <span>Configurações</span>
+        <span>@L["Nav.Settings"]</span>
     </NavLink>
     <div class="sidebar-status">
         <span class="status-dot @(Overview?.IsSuccess is true ? "status-dot--success" : null)"
@@ -44,8 +44,8 @@
         </div>
     </div>
     <div class="sidebar-instance"
-         title="Servidor que está processando esta interface">
-        <span>Servidor</span>
+         title="@L["Nav.ServerTooltip"].Value">
+        <span>@L["Nav.Server"]</span>
         <code>@ServerHostName</code>
     </div>
 </div>
@@ -68,7 +68,7 @@
     private IEnumerable<ManagementModulePresentation> AvailablePresentations =>
         Overview?.Value?.Modules
             .Where(module => module.CanAccess)
-            .Select(module => ManagementModulePresentations.Find(module.Key))
+            .Select(module => ManagementModulePresentations.Find(module.Key, L))
             .Where(item => item is not null)
             .Cast<ManagementModulePresentation>()
         ?? [];
@@ -78,12 +78,12 @@
 
     private string RuntimeLabel =>
         Overview?.IsSuccess is true
-            ? $"{AvailableModuleCount} {Pluralize(AvailableModuleCount, "módulo", "módulos")}"
-            : "Estado indisponível";
+            ? $"{AvailableModuleCount} {Pluralize(AvailableModuleCount, L["Nav.Runtime.ModuleSingular"].Value, L["Nav.Runtime.ModulePlural"].Value)}"
+            : L["Nav.Runtime.Unavailable"].Value;
 
     private string RuntimeDescription =>
         Overview?.Value?.EnvironmentName
-        ?? "Não foi possível consultar o runtime";
+        ?? L["Nav.Runtime.UnknownEnvironment"].Value;
 
     private static string Pluralize(
         int count,

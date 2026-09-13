@@ -22,9 +22,9 @@
     <SUIThemeProvider Theme="@ManagementTheme">
         <Routes @rendermode="InteractiveServer" />
         <div id="blazor-error-ui" role="alert">
-            <span>Não foi possível manter a conexão com o painel.</span>
-            <a href="" class="reload">Recarregar</a>
-            <button type="button" class="dismiss" aria-label="Fechar aviso">×</button>
+            <span>@L["Layout.ConnectionLost"]</span>
+            <a href="" class="reload">@L["Layout.Reload"]</a>
+            <button type="button" class="dismiss" aria-label="@L["Layout.DismissNotice"].Value">×</button>
         </div>
     </SUIThemeProvider>
     <script src="/_content/Sufficit.Identity.UI.Management/_framework/blazor.web.js"></script>

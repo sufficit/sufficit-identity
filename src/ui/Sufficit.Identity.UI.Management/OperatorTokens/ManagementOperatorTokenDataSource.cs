@@ -1,10 +1,12 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.OperatorTokens;
 using Sufficit.Identity.UI.Management.Clients;
+using Sufficit.Identity.UI.Management.Resources;
 
 namespace Sufficit.Identity.UI.Management.OperatorTokens;
 
@@ -16,7 +18,8 @@ namespace Sufficit.Identity.UI.Management.OperatorTokens;
 public sealed class ManagementOperatorTokenDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
-    ILogger<ManagementOperatorTokenDataSource> logger)
+    ILogger<ManagementOperatorTokenDataSource> logger,
+    IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer)
 {
     public Task<ManagementDataResult<OperatorTokenWorkspace>> GetAsync(
         CancellationToken cancellationToken = default) =>
@@ -24,7 +27,7 @@ public sealed class ManagementOperatorTokenDataSource(
             (service, context) => service.GetWorkspaceAsync(
                 context,
                 cancellationToken),
-            "consultar os tokens temporários",
+            localizer["OperatorTokens.Operation.ViewTokens"],
             cancellationToken);
 
     public Task<ManagementDataResult<OperatorTokenIssueResult>> IssueAsync(
@@ -35,7 +38,7 @@ public sealed class ManagementOperatorTokenDataSource(
                 command,
                 context,
                 cancellationToken),
-            "emitir o token temporário",
+            localizer["OperatorTokens.Operation.IssueToken"],
             cancellationToken);
 
     public Task<ManagementDataResult<bool>> RevokeAsync(
@@ -47,7 +50,7 @@ public sealed class ManagementOperatorTokenDataSource(
                 await service.RevokeAsync(id, context, cancellationToken);
                 return true;
             },
-            "revogar o token temporário",
+            localizer["OperatorTokens.Operation.RevokeToken"],
             cancellationToken);
 
     private async Task<ManagementDataResult<T>> ExecuteAsync<T>(
@@ -73,23 +76,23 @@ public sealed class ManagementOperatorTokenDataSource(
         {
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.Invalid,
-                exception.Message,
+                ManagementErrorText.For(localizer, exception),
                 exception.Field);
         }
         catch (ManagementConflictException exception)
         {
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.Conflict,
-                exception.Message,
+                ManagementErrorText.For(localizer, exception),
                 errorDetails: [
-                    "Confirme a política TemporaryOperatorToken do ambiente e tente novamente."
+                    localizer["OperatorTokens.Conflict.CheckPolicy"]
                 ]);
         }
         catch (ManagementNotFoundException exception)
         {
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.NotFound,
-                exception.Message);
+                ManagementErrorText.For(localizer, exception));
         }
         catch (ManagementAccessException exception)
         {
@@ -98,13 +101,15 @@ public sealed class ManagementOperatorTokenDataSource(
                     ? ManagementDataOutcome.StepUpRequired
                     : ManagementDataOutcome.Forbidden;
             var message = outcome is ManagementDataOutcome.StepUpRequired
-                ? "Conclua a autenticação multifator e recarregue esta página."
-                : "O operador atual não possui a capability necessária para esta operação.";
+                ? localizer["Common.Access.StepUpRequired"]
+                : localizer["Common.Access.Forbidden"];
             return ManagementDataResult<T>.Failure(
                 outcome,
                 message,
                 errorDetails: [
-                    $"Motivo técnico: {exception.Decision.ReasonCode}."
+                    localizer[
+                        "OperatorTokens.Access.TechnicalReason",
+                        exception.Decision.ReasonCode]
                 ]);
         }
         catch (OperationCanceledException)
@@ -115,7 +120,7 @@ public sealed class ManagementOperatorTokenDataSource(
                 operationName);
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.Unavailable,
-                $"O Identity não respondeu a tempo ao tentar {operationName}.");
+                localizer["Common.Timeout"]);
         }
         catch (OperationCanceledException)
         {
@@ -129,7 +134,7 @@ public sealed class ManagementOperatorTokenDataSource(
                 operationName);
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.Unavailable,
-                $"Não foi possível {operationName}. Consulte os logs pelo correlation ID e tente novamente.");
+                localizer["Common.Unavailable"]);
         }
     }
 }
