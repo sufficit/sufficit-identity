@@ -69,8 +69,8 @@ internal sealed class RabbitMQEmailQueue : IEmailSender
         var messageId = Guid.NewGuid();
 
         _logger.LogInformation(
-            "sending mail to {Email} with subject: {Subject} (ModelId: {ModelId}, MessageId: {MessageId}, Kind: {Kind})",
-            recipient, subject, modelId, messageId,
+            "sending mail to {Recipient} with subject: {Subject} (ModelId: {ModelId}, MessageId: {MessageId}, Kind: {Kind})",
+            EmailAddressRedaction.Mask(recipient), subject, modelId, messageId,
             isPasswordReset ? "password-reset" : "email-confirmation");
 
         var message = new EmailQueueMessage
@@ -85,8 +85,8 @@ internal sealed class RabbitMQEmailQueue : IEmailSender
         await _publisher.PublishAsync(message, CancellationToken.None);
 
         _logger.LogInformation(
-            "mail enqueued to exchange (ModelId: {ModelId}, MessageId: {MessageId}, Recipient: {Email})",
-            modelId, messageId, recipient);
+            "mail enqueued to exchange (ModelId: {ModelId}, MessageId: {MessageId}, Recipient: {Recipient})",
+            modelId, messageId, EmailAddressRedaction.Mask(recipient));
     }
 
 }

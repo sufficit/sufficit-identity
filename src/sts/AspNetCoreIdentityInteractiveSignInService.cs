@@ -71,11 +71,13 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
         var mapped = Map(result);
         if (mapped.Status == InteractiveSignInStatus.Succeeded)
         {
+            // The account id, not the typed login: usernames are often email
+            // addresses and would put personal data in the logs.
             logger.LogInformation(
-                "Password sign-in completed. User={UserName}; "
+                "Password sign-in completed. User={UserId}; "
                 + "Persistent={Persistent}; RememberedMfa={RememberedMfa}; "
                 + "TraceId={TraceId}.",
-                command.UserName,
+                user?.Id,
                 isPersistent,
                 rememberedMfa,
                 AuthenticationFlowDiagnostics.TraceId);

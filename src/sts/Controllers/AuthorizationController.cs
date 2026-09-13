@@ -26,11 +26,12 @@ namespace Sufficit.Identity.STS.Controllers;
 /// <summary>
 /// Implements the OAuth/OIDC <c>/connect/*</c> endpoints.
 ///
-/// This is an API-only STS: there is no built-in login UI. For interactive
-/// flows (authorization_code), the controller challenges to the login path
-/// configured in the application cookie (default <c>/login</c>) — which a
-/// separate frontend repository should serve. With <c>prompt=none</c>, the
-/// STS returns <c>login_required</c>/<c>interaction_required</c> instead.
+/// The controller does not render pages. For interactive flows
+/// (authorization_code), it challenges to the login path configured in the
+/// application cookie, which the host serves either through the embedded
+/// public UI module or through a separately deployed frontend. With
+/// <c>prompt=none</c>, the STS returns <c>login_required</c> /
+/// <c>interaction_required</c> instead.
 /// </summary>
 public partial class AuthorizationController : Controller
 {
