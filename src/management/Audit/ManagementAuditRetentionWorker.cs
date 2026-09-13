@@ -74,11 +74,11 @@ internal sealed class ManagementAuditRetentionWorker(
     }
 
     /// <summary>
-    /// Uma passada de poda. Interno porque o teste chama esta passada
-    /// diretamente: sincronizar com o laço de fundo só é possível dormindo, e
-    /// dormir o suficiente numa máquina ociosa é dormir de menos numa máquina
-    /// carregada. O agendamento não é o que o teste verifica — a regra de
-    /// retenção é.
+    /// A single pruning pass. Internal because the test calls this pass
+    /// directly: syncing with the background loop is only possible by
+    /// sleeping, and sleeping long enough on an idle machine is sleeping too
+    /// little on a loaded one. The schedule is not what the test verifies —
+    /// the retention rule is.
     /// </summary>
     internal async Task PruneAsync(CancellationToken cancellationToken)
     {

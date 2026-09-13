@@ -67,7 +67,7 @@ public sealed class AccountSelfService(
         {
             return AccountSelfServiceResult.Failure(
                 "password-required",
-                "A senha atual e a nova senha são obrigatórias.");
+                "The current password and new password are required.");
         }
 
         if (!string.Equals(
@@ -77,7 +77,7 @@ public sealed class AccountSelfService(
         {
             return AccountSelfServiceResult.Failure(
                 "password-confirmation-mismatch",
-                "A confirmação da nova senha não confere.");
+                "The new password confirmation does not match.");
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -210,14 +210,14 @@ public sealed class AccountSelfService(
         {
             return AccountSelfServiceResult.Failure(
                 "email-confirmation-mismatch",
-                "E-mail não confere.");
+                "Email does not match.");
         }
 
         if (!await userManager.CheckPasswordAsync(user, command.Password))
         {
             return AccountSelfServiceResult.Failure(
                 "password-incorrect",
-                "Senha incorreta.");
+                "Incorrect password.");
         }
 
         try
@@ -292,5 +292,5 @@ public sealed class AccountSelfService(
     private static AccountSelfServiceResult Unauthenticated() =>
         AccountSelfServiceResult.Failure(
             "unauthenticated",
-            "A sessão não está autenticada.");
+            "The session is not authenticated.");
 }

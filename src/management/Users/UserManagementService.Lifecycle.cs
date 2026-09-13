@@ -27,7 +27,7 @@ internal sealed partial class UserManagementService
         var password = Required(
             command.NewPassword,
             "user_password_required",
-            "Informe a nova senha.",
+            "Provide the new password.",
             "newPassword",
             trim: false);
         var auditResource = new ManagementResource(
@@ -52,7 +52,7 @@ internal sealed partial class UserManagementService
                 cancellationToken);
             throw new ManagementNotFoundException(
                 "user_not_found",
-                "O usuário não foi encontrado.");
+                "The user was not found.");
         }
 
         await using var transaction = await database.Database
@@ -115,7 +115,7 @@ internal sealed partial class UserManagementService
                 cancellationToken);
             throw new ManagementConflictException(
                 "user_password_reset_failed",
-                "Não foi possível redefinir a senha do usuário.");
+                "The user's password could not be reset.");
         }
 
         // CAEP credential-change: administrative password reset has no target
@@ -178,7 +178,7 @@ internal sealed partial class UserManagementService
                 cancellationToken);
             throw new ManagementNotFoundException(
                 "user_not_found",
-                "O usuário não foi encontrado.");
+                "The user was not found.");
         }
 
         await using var transaction = await database.Database
@@ -243,8 +243,8 @@ internal sealed partial class UserManagementService
                     ? "user_lock_failed"
                     : "user_unlock_failed",
                 command.Locked
-                    ? "Não foi possível bloquear o acesso do usuário."
-                    : "Não foi possível desbloquear o acesso do usuário.");
+                    ? "The user's access could not be locked."
+                    : "The user's access could not be unlocked.");
         }
 
         return await GetAsync(
@@ -293,7 +293,7 @@ internal sealed partial class UserManagementService
                 cancellationToken);
             throw new ManagementNotFoundException(
                 "user_not_found",
-                "O usuário não foi encontrado.");
+                "The user was not found.");
         }
 
         await using var transaction = await database.Database
@@ -346,7 +346,7 @@ internal sealed partial class UserManagementService
                 CancellationToken.None);
             throw new ManagementConflictException(
                 "user_delete_failed",
-                "Não foi possível excluir o usuário.");
+                "The user could not be deleted.");
         }
     }
 

@@ -262,7 +262,7 @@ internal sealed class ProvisioningManagementService(
                 cancellationToken);
             throw new ManagementConflictException(
                 "provisioning_secret_unavailable",
-                "O ambiente não conseguiu resolver a referência de segredo do cliente.");
+                "The environment could not resolve the client's secret reference.");
         }
         catch (Exception exception)
         {

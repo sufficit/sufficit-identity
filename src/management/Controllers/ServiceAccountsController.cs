@@ -6,11 +6,11 @@ using Sufficit.Identity.Management.ServiceAccounts;
 namespace Sufficit.Identity.Management.Controllers;
 
 /// <summary>
-/// Contas de sistema: clientes que se autenticam sozinhos e recebem
-/// capacidades de gestão por papéis declarados no registro
-/// (<c>identity:client:roles</c>). Leitura sob <c>identity.clients.read</c>,
-/// escrita sob <c>identity.clients.update</c> — é o registro de clientes que
-/// esta superfície edita.
+/// Service accounts: clients that authenticate on their own and receive
+/// management capabilities through roles declared in the registration
+/// (<c>identity:client:roles</c>). Read under <c>identity.clients.read</c>,
+/// write under <c>identity.clients.update</c> — it is the client registry
+/// that this surface edits.
 /// </summary>
 [ApiController]
 [Authorize(Policy = "sufficit-identity-management")]
@@ -26,8 +26,8 @@ public sealed class ServiceAccountsController(
             cancellationToken));
 
     /// <summary>
-    /// Cria uma conta de sistema. O segredo volta UMA ÚNICA VEZ no corpo da
-    /// resposta — é armazenado apenas como hash e não pode ser reexibido.
+    /// Creates a service account. The secret is returned ONLY ONCE in the
+    /// response body — it is stored only as a hash and cannot be shown again.
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<ServiceAccountCreated>> Create(

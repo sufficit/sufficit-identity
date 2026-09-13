@@ -57,8 +57,8 @@ internal sealed partial class UserManagementService
             throw new ManagementConflictException(
                 reasonCode,
                 reasonCode == "user_name_conflict"
-                    ? "Já existe um usuário com esse nome."
-                    : "Já existe um usuário com esse e-mail.");
+                    ? "A user with this name already exists."
+                    : "A user with this email already exists.");
         }
 
         var field = reasonCode switch
@@ -71,22 +71,22 @@ internal sealed partial class UserManagementService
             .Select(error => error.Code switch
             {
                 "PasswordTooShort" =>
-                    "A senha não possui o comprimento mínimo configurado.",
+                    "The password does not meet the configured minimum length.",
                 "PasswordRequiresNonAlphanumeric" =>
-                    "A senha precisa conter um caractere especial.",
+                    "The password must contain a special character.",
                 "PasswordRequiresDigit" =>
-                    "A senha precisa conter um número.",
+                    "The password must contain a digit.",
                 "PasswordRequiresLower" =>
-                    "A senha precisa conter uma letra minúscula.",
+                    "The password must contain a lowercase letter.",
                 "PasswordRequiresUpper" =>
-                    "A senha precisa conter uma letra maiúscula.",
+                    "The password must contain an uppercase letter.",
                 "PasswordRequiresUniqueChars" =>
-                    "A senha precisa conter mais caracteres diferentes.",
+                    "The password must contain more distinct characters.",
                 "InvalidUserName" =>
-                    "O nome de usuário contém caracteres não permitidos.",
+                    "The user name contains characters that are not allowed.",
                 "InvalidEmail" =>
-                    "Informe um endereço de e-mail válido.",
-                _ => "Revise os dados informados e tente novamente."
+                    "Provide a valid email address.",
+                _ => "Review the information provided and try again."
             })
             .Distinct(StringComparer.Ordinal)
             .ToArray();
@@ -108,8 +108,8 @@ internal sealed partial class UserManagementService
             return new ManagementConflictException(
                 reasonCode,
                 reasonCode == "user_name_conflict"
-                    ? "Já existe um usuário com esse nome."
-                    : "Já existe um usuário com esse e-mail.");
+                    ? "A user with this name already exists."
+                    : "A user with this email already exists.");
         }
 
         var field = reasonCode switch
@@ -121,10 +121,10 @@ internal sealed partial class UserManagementService
         var message = reasonCode switch
         {
             "user_name_invalid" =>
-                "O nome de usuário contém caracteres não permitidos.",
+                "The user name contains characters that are not allowed.",
             "user_email_invalid" =>
-                "Informe um endereço de e-mail válido.",
-            _ => "Revise os dados informados e tente novamente."
+                "Provide a valid email address.",
+            _ => "Review the information provided and try again."
         };
 
         return new ManagementValidationException(

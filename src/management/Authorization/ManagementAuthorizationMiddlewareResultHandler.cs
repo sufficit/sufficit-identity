@@ -87,9 +87,9 @@ public sealed class ManagementAuthorizationMiddlewareResultHandler
         var details = new ProblemDetails
         {
             Status = StatusCodes.Status403Forbidden,
-            Title = "Permissão OAuth necessária ausente",
+            Title = "Missing required OAuth permission",
             Detail =
-                "A sessão está autenticada, mas o token não contém a permissão OAuth exigida. Renove a sessão e tente novamente.",
+                "The session is authenticated, but the token does not contain the required OAuth permission. Renew the session and try again.",
             Instance = context.Request.Path
         };
         details.Extensions["reasonCode"] = "scope_required";
@@ -103,9 +103,9 @@ public sealed class ManagementAuthorizationMiddlewareResultHandler
         var details = new ProblemDetails
         {
             Status = StatusCodes.Status403Forbidden,
-            Title = "MFA necessário para continuar",
+            Title = "MFA required to continue",
             Detail =
-                "A sessão está autenticada, mas o token não contém evidência válida do segundo fator. Renove a sessão concluindo o MFA e tente novamente.",
+                "The session is authenticated, but the token does not contain valid evidence of the second factor. Renew the session by completing MFA and try again.",
             Instance = context.Request.Path
         };
         details.Extensions["reasonCode"] = "mfa_required";

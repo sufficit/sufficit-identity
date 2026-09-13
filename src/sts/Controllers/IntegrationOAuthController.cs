@@ -34,7 +34,9 @@ public sealed partial class IntegrationOAuthController(
     IDataProtectionProvider dataProtection,
     IHttpClientFactory httpClients,
     IClientNativeReturnUriResolver nativeReturnUris,
-    IOpenIddictApplicationManager applications) : ControllerBase
+    IOpenIddictApplicationManager applications,
+    Microsoft.Extensions.Localization.IStringLocalizer<Sufficit.Identity.STS.Resources.AccountMessages> messages)
+    : ControllerBase
 {
     private const string McpPolicy = "sufficit-identity-mcp";
     private const string HttpClientName = "identity-integration-oauth";
@@ -82,7 +84,7 @@ public sealed partial class IntegrationOAuthController(
             return Conflict(new
             {
                 error = "provider_unavailable",
-                message = $"{definition.DisplayName} ainda não possui autorização central configurada.",
+                message = $"{definition.DisplayName} does not yet have central authorization configured.",
             });
         }
 
@@ -103,7 +105,7 @@ public sealed partial class IntegrationOAuthController(
             {
                 error = "return_uri_not_registered",
                 message =
-                    "O cliente chamador não possui um retorno nativo registrado para esta operação.",
+                    "The calling client does not have a native return registered for this operation.",
             });
         }
 
@@ -215,7 +217,7 @@ public sealed partial class IntegrationOAuthController(
             return BadRequest(new
             {
                 error = "authorization_expired",
-                message = "A autorização expirou. Reinicie a conexão pelo aplicativo.",
+                message = "The authorization has expired. Restart the connection from the application.",
             });
         }
 

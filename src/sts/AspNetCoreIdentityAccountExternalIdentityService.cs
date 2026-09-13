@@ -20,7 +20,7 @@ public sealed class AspNetCoreIdentityAccountExternalIdentityService(
     : IAccountExternalIdentityService
 {
     private const string LastSignInMethodReason =
-        "Adicione uma senha, passkey ou outra identidade antes de remover este acesso.";
+        "Add a password, passkey, or other identity before removing this access.";
 
     public async Task<AccountExternalIdentityOverview?> GetOverviewAsync(
         ClaimsPrincipal principal,
@@ -93,7 +93,7 @@ public sealed class AspNetCoreIdentityAccountExternalIdentityService(
         {
             return AccountSelfServiceResult.Failure(
                 "external-identity-invalid",
-                "A identidade externa recebida é inválida.");
+                "The external identity received is invalid.");
         }
 
         var schemes = await signInManager
@@ -106,7 +106,7 @@ public sealed class AspNetCoreIdentityAccountExternalIdentityService(
         {
             return AccountSelfServiceResult.Failure(
                 "external-provider-unavailable",
-                "O provedor externo não está disponível.");
+                "The external provider is not available.");
         }
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -119,7 +119,7 @@ public sealed class AspNetCoreIdentityAccountExternalIdentityService(
                 ? AccountSelfServiceResult.Success
                 : AccountSelfServiceResult.Failure(
                     "external-identity-in-use",
-                    "Esta identidade externa já está vinculada a outra conta.");
+                    "This external identity is already linked to another account.");
         }
 
         var result = await userManager.AddLoginAsync(
@@ -190,7 +190,7 @@ public sealed class AspNetCoreIdentityAccountExternalIdentityService(
         {
             return AccountSelfServiceResult.Failure(
                 "external-identity-not-found",
-                "A identidade externa não foi encontrada.");
+                "The external identity was not found.");
         }
 
         if (!await HasAlternativeSignInMethodAsync(
@@ -279,5 +279,5 @@ public sealed class AspNetCoreIdentityAccountExternalIdentityService(
     private static AccountSelfServiceResult Unauthenticated() =>
         AccountSelfServiceResult.Failure(
             "unauthenticated",
-            "A sessão não está autenticada.");
+            "The session is not authenticated.");
 }

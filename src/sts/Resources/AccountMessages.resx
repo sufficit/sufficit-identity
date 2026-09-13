@@ -17,4 +17,11 @@
   <data name="AuthorizationError.Recovery" xml:space="preserve"><value>Return to the application you came from and start signing in again. If the problem persists, contact support with the details below.</value></data>
   <data name="AuthorizationError.Home" xml:space="preserve"><value>Go to the home page</value></data>
   <data name="AuthorizationError.TechnicalDetails" xml:space="preserve"><value>Technical details</value></data>
+  <data name="IntegrationCompletion.ConnectedTitle" xml:space="preserve"><value>Account connected</value></data>
+  <data name="IntegrationCompletion.FailedTitle" xml:space="preserve"><value>Connection not completed</value></data>
+  <data name="IntegrationCompletion.Connected" xml:space="preserve"><value>The authorization was received. Return to the application to follow the tools' connection.</value></data>
+  <data name="IntegrationCompletion.PermissionsRequired" xml:space="preserve"><value>The required permissions were not granted. Return to the application, connect again and review the requested permissions.</value></data>
+  <data name="IntegrationCompletion.Failed" xml:space="preserve"><value>The authorization was not completed or has expired. Return to the application and try connecting again.</value></data>
+  <data name="IntegrationCompletion.Close" xml:space="preserve"><value>Close this tab</value></data>
+  <data name="IntegrationCompletion.CloseHint" xml:space="preserve"><value>If the tab stays open, you can close it manually and return to the application.</value></data>
 </root>

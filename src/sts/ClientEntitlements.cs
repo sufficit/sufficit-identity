@@ -4,57 +4,58 @@ using System.Text.Json;
 namespace Sufficit.Identity.STS;
 
 /// <summary>
-/// Entitlements concedidos ao registro de um cliente.
+/// Entitlements granted to a client registration.
 /// </summary>
 /// <remarks>
-/// Um token de <c>client_credentials</c> não passa por nenhuma fonte de claims:
-/// o handler monta uma identidade crua com <c>sub</c>, nome, escopos e
-/// recursos. Isso deixava uma conta de máquina sem como receber uma concessão
-/// que não fosse papel — e papel é categoria, não instância. Um agente que
-/// precisa acessar o contexto <c>X</c> precisa dizer QUAL contexto, e isso é um
-/// valor.
+/// A <c>client_credentials</c> token does not go through any claims source:
+/// the handler assembles a raw identity with <c>sub</c>, name, scopes and
+/// resources. That left a machine account with no way to receive a grant
+/// other than a role — and a role is a category, not an instance. An agent
+/// that needs to access context <c>X</c> needs to say WHICH context, and
+/// that is a value.
 /// <para>
-/// A concessão mora na propriedade <c>identity:client:entitlements</c> do
-/// próprio cliente, mesma convenção de <c>identity:client:roles</c>: o banco
-/// diz quem tem o quê, e revogar é um UPDATE, sem implantação.
+/// The grant lives in the client's own <c>identity:client:entitlements</c>
+/// property, the same convention as <c>identity:client:roles</c>: the
+/// database says who has what, and revoking is an UPDATE, with no
+/// deployment.
 /// </para>
 /// <para>
-/// O tipo do claim é fixo aqui de propósito. Deixar o operador escolher o tipo
-/// seria deixá-lo escrever <c>role</c> ou <c>scope</c> e escalar sozinho — foi
-/// exatamente esse buraco que os entitlements de escopo tiveram que fechar com
-/// uma lista de tipos proibidos. Aqui não existe a escolha.
+/// The claim type is fixed here on purpose. Letting the operator choose the
+/// type would let them write <c>role</c> or <c>scope</c> and escalate on
+/// their own — that is exactly the hole scope entitlements had to close with
+/// a list of forbidden types. Here there is no choice.
 /// </para>
 /// </remarks>
 public static class ClientEntitlements
 {
-    /// <summary>Propriedade do cliente que guarda a concessão.</summary>
+    /// <summary>Client property that holds the grant.</summary>
     public const string PropertyName = "identity:client:entitlements";
 
     /// <summary>
-    /// Container padronizado pela RFC 9068 §2.2.3.1, com semântica do SCIM
+    /// Container standardized by RFC 9068 §2.2.3.1, with SCIM semantics
     /// (RFC 7643 §4.1.2).
     /// </summary>
     public const string ClaimType = "entitlements";
 
     /// <summary>
-    /// Nome curto que os serviços da casa já consomem (sufficit-ai e
-    /// sufficit-provisioning). Emitido em paralelo durante a transição: ele não
-    /// está no registro IANA e a RFC 7519 §4.3 pede nomes resistentes a
-    /// colisão, mas cortá-lo antes dos consumidores migrarem seria quebrar
-    /// para ganhar elegância.
+    /// Short name already consumed by our own services (sufficit-ai and
+    /// sufficit-provisioning). Emitted in parallel during the transition: it
+    /// is not in the IANA registry and RFC 7519 §4.3 asks for
+    /// collision-resistant names, but cutting it before the consumers
+    /// migrate would break things to gain elegance.
     /// </summary>
     public const string LegacyClaimType = "directive";
 
-    /// <summary>Limite defensivo: um token não é lugar para texto livre.</summary>
+    /// <summary>Defensive limit: a token is not a place for free-form text.</summary>
     private const int MaximumLength = 256;
 
     /// <summary>
-    /// Lê a propriedade e devolve apenas os valores utilizáveis.
+    /// Reads the property and returns only the usable values.
     /// </summary>
     /// <remarks>
-    /// Aceita lista e string única, como o leitor de papéis: quem escreve à mão
-    /// costuma escrever a string, e recusar em silêncio deixaria o cliente sem
-    /// capacidade nenhuma sem dizer por quê.
+    /// Accepts a list and a single string, like the role reader: whoever
+    /// writes it by hand tends to write the string, and silently refusing it
+    /// would leave the client with no capability at all without saying why.
     /// </remarks>
     public static IReadOnlyCollection<string> Read(
         IReadOnlyDictionary<string, JsonElement> properties)
@@ -90,12 +91,12 @@ public static class ClientEntitlements
     }
 
     /// <summary>
-    /// Um entitlement precisa sobreviver ao transporte sem mudar de sentido.
+    /// An entitlement needs to survive transport without changing meaning.
     /// </summary>
     /// <remarks>
-    /// Espaço em branco é recusado porque consumidores tratam listas separadas
-    /// por espaço; um valor com espaço viraria dois do outro lado. Caracteres de
-    /// controle são recusados porque atravessam log e cabeçalho.
+    /// Whitespace is rejected because consumers treat lists as space
+    /// separated; a value with a space would become two on the other side.
+    /// Control characters are rejected because they cross logs and headers.
     /// </remarks>
     public static bool IsUsable(string? value) =>
         !string.IsNullOrWhiteSpace(value)

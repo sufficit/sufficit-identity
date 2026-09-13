@@ -433,11 +433,11 @@ internal sealed class DatabaseRuntimeTelemetry : IDatabaseRuntimeTelemetry,
         try
         {
             var value = valueFactory();
-            return string.IsNullOrWhiteSpace(value) ? "não informado" : value;
+            return string.IsNullOrWhiteSpace(value) ? "not informed" : value;
         }
         catch (InvalidOperationException)
         {
-            return "não informado";
+            return "not informed";
         }
     }
 

@@ -196,7 +196,7 @@ public sealed class AccountAccessService(
             {
                 return AccountSelfServiceResult.Failure(
                     "connected-application-revoke-failed",
-                    "Não foi possível revogar todo o acesso da aplicação.");
+                    "Not all of the application's access could be revoked.");
             }
         }
 
@@ -247,7 +247,7 @@ public sealed class AccountAccessService(
         {
             return AccountSelfServiceResult.Failure(
                 "session-revoke-failed",
-                "Não foi possível revogar a credencial emitida.");
+                "The issued credential could not be revoked.");
         }
 
         logger.LogInformation(
@@ -322,7 +322,7 @@ public sealed class AccountAccessService(
     private static string DisplayName(string? displayName, string? clientId) =>
         string.IsNullOrWhiteSpace(displayName)
             ? string.IsNullOrWhiteSpace(clientId)
-                ? "Aplicação desconhecida"
+                ? "Unknown application"
                 : clientId
             : displayName;
 
@@ -347,15 +347,15 @@ public sealed class AccountAccessService(
     private static AccountSelfServiceResult Unauthenticated() =>
         AccountSelfServiceResult.Failure(
             "unauthenticated",
-            "A sessão não está autenticada.");
+            "The session is not authenticated.");
 
     private static AccountSelfServiceResult NotFoundApplication() =>
         AccountSelfServiceResult.Failure(
             "connected-application-not-found",
-            "A aplicação conectada não foi encontrada.");
+            "The connected application was not found.");
 
     private static AccountSelfServiceResult NotFoundSession() =>
         AccountSelfServiceResult.Failure(
             "session-not-found",
-            "A credencial emitida não foi encontrada.");
+            "The issued credential was not found.");
 }

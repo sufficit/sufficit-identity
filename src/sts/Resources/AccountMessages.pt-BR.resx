@@ -17,4 +17,11 @@
   <data name="AuthorizationError.Recovery" xml:space="preserve"><value>Volte ao aplicativo de origem e inicie o acesso novamente. Se o problema persistir, entre em contato com o suporte informando os detalhes abaixo.</value></data>
   <data name="AuthorizationError.Home" xml:space="preserve"><value>Ir para a página inicial</value></data>
   <data name="AuthorizationError.TechnicalDetails" xml:space="preserve"><value>Detalhes técnicos</value></data>
+  <data name="IntegrationCompletion.ConnectedTitle" xml:space="preserve"><value>Conta conectada</value></data>
+  <data name="IntegrationCompletion.FailedTitle" xml:space="preserve"><value>Conexão não concluída</value></data>
+  <data name="IntegrationCompletion.Connected" xml:space="preserve"><value>A autorização foi recebida. Volte ao aplicativo para acompanhar a conexão das ferramentas.</value></data>
+  <data name="IntegrationCompletion.PermissionsRequired" xml:space="preserve"><value>As permissões necessárias não foram concedidas. Volte ao aplicativo, conecte novamente e confira as permissões solicitadas.</value></data>
+  <data name="IntegrationCompletion.Failed" xml:space="preserve"><value>A autorização não foi concluída ou expirou. Volte ao aplicativo e tente conectar novamente.</value></data>
+  <data name="IntegrationCompletion.Close" xml:space="preserve"><value>Fechar esta aba</value></data>
+  <data name="IntegrationCompletion.CloseHint" xml:space="preserve"><value>Se a aba permanecer aberta, você pode fechá-la manualmente e voltar ao aplicativo.</value></data>
 </root>

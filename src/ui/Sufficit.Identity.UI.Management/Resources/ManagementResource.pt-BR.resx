@@ -1915,4 +1915,115 @@
   <data name="Branding.HostDefault" xml:space="preserve"><value>padrão do host</value></data>
   <data name="Branding.Validation.NameRequired" xml:space="preserve"><value>Informe o nome do tema.</value></data>
   <data name="Branding.Validation.HexColorFormat" xml:space="preserve"><value>Use o formato #RRGGBB (ex: #cc0000).</value></data>
+  <data name="Error.authorization_not_found" xml:space="preserve"><value>A autorização não foi encontrada.</value></data>
+  <data name="Error.authorization_revoke_failed" xml:space="preserve"><value>Não foi possível revogar a autorização.</value></data>
+  <data name="Error.authorization_id_required" xml:space="preserve"><value>Informe a autorização.</value></data>
+  <data name="Error.claim_type_required" xml:space="preserve"><value>Informe o tipo da claim.</value></data>
+  <data name="Error.claim_type_invalid" xml:space="preserve"><value>O tipo da claim não pode conter espaços ou caracteres de controle.</value></data>
+  <data name="Error.claim_type_reserved" xml:space="preserve"><value>Essa claim é derivada pelo protocolo ou pelo perfil e não pode ser atribuída manualmente.</value></data>
+  <data name="Error.claim_value_required" xml:space="preserve"><value>Informe o valor da claim.</value></data>
+  <data name="Error.claim_value_invalid" xml:space="preserve"><value>O valor da claim contém um caractere inválido.</value></data>
+  <data name="Error.claim_session_invalidation_failed" xml:space="preserve"><value>Não foi possível invalidar as sessões da conta.</value></data>
+  <data name="Error.claim_not_found" xml:space="preserve"><value>A claim atribuída não foi encontrada.</value></data>
+  <data name="Error.claim_user_required" xml:space="preserve"><value>Selecione a conta que receberá a claim.</value></data>
+  <data name="Error.claim_already_assigned" xml:space="preserve"><value>Essa conta já possui a mesma claim e valor.</value></data>
+  <data name="Error.claim_assign_failed" xml:space="preserve"><value>Não foi possível atribuir a claim.</value></data>
+  <data name="Error.claim_remove_failed" xml:space="preserve"><value>Não foi possível remover a claim.</value></data>
+  <data name="Error.claim_update_failed" xml:space="preserve"><value>Não foi possível atualizar a claim.</value></data>
+  <data name="Error.client_draft_not_found" xml:space="preserve"><value>O rascunho não existe ou não pertence a este operador.</value></data>
+  <data name="Error.client_draft_expired" xml:space="preserve"><value>Este rascunho expirou. Inicie uma nova configuração.</value></data>
+  <data name="Error.client_credential_duplicate" xml:space="preserve"><value>A credencial informada já está ativa para esta aplicação.</value></data>
+  <data name="Error.client_credential_label_duplicate" xml:space="preserve"><value>Já existe uma credencial ativa com esse nome.</value></data>
+  <data name="Error.client_credential_version_required" xml:space="preserve"><value>Recarregue as credenciais antes de revogar.</value></data>
+  <data name="Error.client_credential_not_found" xml:space="preserve"><value>A credencial não foi encontrada.</value></data>
+  <data name="Error.client_credential_already_revoked" xml:space="preserve"><value>A credencial já foi revogada.</value></data>
+  <data name="Error.mtls_certificate_kid_required" xml:space="preserve"><value>Informe o identificador do certificado que será revogado.</value></data>
+  <data name="Error.jwks_too_large" xml:space="preserve"><value>O conjunto JWKS não pode ultrapassar 64 KiB.</value></data>
+  <data name="Error.jwks_keys_invalid" xml:space="preserve"><value>O JWKS deve conter entre 1 e 10 chaves públicas em 'keys'.</value></data>
+  <data name="Error.jwks_key_invalid" xml:space="preserve"><value>Cada item de 'keys' deve ser uma chave JWK pública.</value></data>
+  <data name="Error.jwks_private_material_forbidden" xml:space="preserve"><value>O Identity aceita apenas chaves públicas. Remova parâmetros privados ou simétricos do JWKS.</value></data>
+  <data name="Error.jwks_key_type_unsupported" xml:space="preserve"><value>Use somente chaves públicas RSA ou EC para private_key_jwt.</value></data>
+  <data name="Error.jwks_kid_duplicate" xml:space="preserve"><value>Cada chave pública deve possuir um kid único.</value></data>
+  <data name="Error.jwks_use_invalid" xml:space="preserve"><value>Chaves de autenticação devem usar 'use': 'sig' ou omitir o campo.</value></data>
+  <data name="Error.jwks_rsa_key_too_small" xml:space="preserve"><value>Chaves RSA devem possuir pelo menos 2048 bits.</value></data>
+  <data name="Error.jwks_curve_unsupported" xml:space="preserve"><value>Use curvas P-256, P-384 ou P-521.</value></data>
+  <data name="Error.jwks_ec_coordinates_invalid" xml:space="preserve"><value>As coordenadas EC não correspondem à curva informada.</value></data>
+  <data name="Error.jwks_algorithm_unsupported" xml:space="preserve"><value>O algoritmo da chave deve ser RS*, PS* ou ES* com SHA-256/384/512.</value></data>
+  <data name="Error.jwks_algorithm_key_type_mismatch" xml:space="preserve"><value>O algoritmo informado não corresponde ao tipo da chave pública.</value></data>
+  <data name="Error.client_query_paging_invalid" xml:space="preserve"><value>page deve ser positivo e pageSize deve estar entre 1 e 100.</value></data>
+  <data name="Error.client_query_type_invalid" xml:space="preserve"><value>type deve ser all, public ou confidential.</value></data>
+  <data name="Error.client_query_origin_invalid" xml:space="preserve"><value>origin deve ser all, manual, manifest ou dcr.</value></data>
+  <data name="Error.client_query_status_invalid" xml:space="preserve"><value>status deve ser all ou active até que o ciclo de ativação seja habilitado.</value></data>
+  <data name="Error.client_profile_invalid" xml:space="preserve"><value>Escolha um perfil de aplicação disponível.</value></data>
+  <data name="Error.client_draft_unreadable" xml:space="preserve"><value>O rascunho não pôde ser lido com segurança. Abandone-o e inicie outro.</value></data>
+  <data name="Error.client_draft_completed" xml:space="preserve"><value>Este rascunho já foi concluído.</value></data>
+  <data name="Error.client_credential_expiration_invalid" xml:space="preserve"><value>A expiração deve estar no futuro.</value></data>
+  <data name="Error.client_credential_window_invalid" xml:space="preserve"><value>O início da validade deve ser anterior à expiração.</value></data>
+  <data name="Error.client_secret_required" xml:space="preserve"><value>Informe uma credencial ou escolha a geração automática.</value></data>
+  <data name="Error.client_secret_format_invalid" xml:space="preserve"><value>A credencial não pode começar ou terminar com espaços nem conter caracteres de controle.</value></data>
+  <data name="Error.mtls_certificate_required" xml:space="preserve"><value>Informe o certificado público em formato PEM.</value></data>
+  <data name="Error.mtls_certificate_too_large" xml:space="preserve"><value>O certificado público não pode ultrapassar 64 KiB.</value></data>
+  <data name="Error.mtls_private_key_forbidden" xml:space="preserve"><value>Envie somente o certificado público. A chave privada deve permanecer no cliente.</value></data>
+  <data name="Error.mtls_certificate_kid_duplicate" xml:space="preserve"><value>Já existe uma chave pública com esse identificador (kid).</value></data>
+  <data name="Error.mtls_certificate_duplicate" xml:space="preserve"><value>Este certificado já está registrado para a aplicação.</value></data>
+  <data name="Error.mtls_certificate_not_found" xml:space="preserve"><value>O certificado mTLS não foi encontrado.</value></data>
+  <data name="Error.mtls_certificate_not_self_signed" xml:space="preserve"><value>self_signed_tls_client_auth exige um certificado autoassinado.</value></data>
+  <data name="Error.mtls_certificate_key_usage_invalid" xml:space="preserve"><value>O certificado deve declarar o uso digitalSignature.</value></data>
+  <data name="Error.mtls_certificate_extended_key_usage_invalid" xml:space="preserve"><value>O certificado deve declarar o uso estendido clientAuth.</value></data>
+  <data name="Error.mtls_certificate_signature_invalid" xml:space="preserve"><value>O certificado informado é autoemitido, mas sua assinatura não é válida como certificado autoassinado.</value></data>
+  <data name="Error.mtls_pki_certificate_invalid" xml:space="preserve"><value>Para tls_client_auth, envie uma CA subordinada não autoemitida com basicConstraints CA e keyCertSign.</value></data>
+  <data name="Error.mtls_authentication_method_invalid" xml:space="preserve"><value>Use self_signed_tls_client_auth ou tls_client_auth.</value></data>
+  <data name="Error.mtls_certificate_kid_invalid" xml:space="preserve"><value>O identificador (kid) deve ter até 100 caracteres e usar letras, números, ponto, hífen, sublinhado ou dois-pontos.</value></data>
+  <data name="Error.trusted_proxy_conflict" xml:space="preserve"><value>A configuração foi alterada por outro operador. Recarregue antes de salvar.</value></data>
+  <data name="Error.temporary_operator_token_disabled" xml:space="preserve"><value>A emissão de tokens temporários de Management está desabilitada neste ambiente.</value></data>
+  <data name="Error.operator_token_id_required" xml:space="preserve"><value>O identificador do token é obrigatório.</value></data>
+  <data name="Error.operator_token_not_found" xml:space="preserve"><value>O token temporário não existe ou não pertence ao operador atual.</value></data>
+  <data name="Error.operator_token_revoke_failed" xml:space="preserve"><value>O token temporário não pôde ser revogado.</value></data>
+  <data name="Error.operator_token_capability_required" xml:space="preserve"><value>Selecione pelo menos uma capability para o token temporário.</value></data>
+  <data name="Error.operator_token_capability_not_delegable" xml:space="preserve"><value>Tokens temporários não podem emitir ou revogar outros tokens temporários.</value></data>
+  <data name="Error.temporary_operator_token_issuer_missing" xml:space="preserve"><value>O token temporário não pode ser emitido porque o issuer público do Identity não está configurado.</value></data>
+  <data name="Error.operator_token_purpose_required" xml:space="preserve"><value>Informe a finalidade do token temporário.</value></data>
+  <data name="Error.operator_token_purpose_too_long" xml:space="preserve"><value>A finalidade deve ter no máximo 120 caracteres.</value></data>
+  <data name="Error.provisioning_secret_unavailable" xml:space="preserve"><value>O ambiente não conseguiu resolver a referência de segredo do cliente.</value></data>
+  <data name="Error.temporary_provisioning_token_disabled" xml:space="preserve"><value>A emissão de tokens temporários de provisioning está desabilitada neste ambiente.</value></data>
+  <data name="Error.temporary_provisioning_token_issuer_missing" xml:space="preserve"><value>O token temporário não pode ser emitido porque o issuer público do Identity não está configurado.</value></data>
+  <data name="Error.scope_not_found" xml:space="preserve"><value>O scope não foi encontrado.</value></data>
+  <data name="Error.scope_already_exists" xml:space="preserve"><value>Já existe um scope com esse nome.</value></data>
+  <data name="Error.scope_create_failed" xml:space="preserve"><value>Não foi possível criar o scope.</value></data>
+  <data name="Error.scope_update_failed" xml:space="preserve"><value>Não foi possível atualizar o scope.</value></data>
+  <data name="Error.scope_delete_failed" xml:space="preserve"><value>Não foi possível excluir o scope.</value></data>
+  <data name="Error.scope_name_missing" xml:space="preserve"><value>O scope não possui um nome válido.</value></data>
+  <data name="Error.scope_manifest_managed" xml:space="preserve"><value>Este scope é gerenciado pelo manifesto declarativo. Altere o manifesto e aplique o provisionamento.</value></data>
+  <data name="Error.scope_name_required" xml:space="preserve"><value>Informe o nome do scope.</value></data>
+  <data name="Error.scope_name_invalid" xml:space="preserve"><value>Use um scope-token OAuth sem espaços, aspas ou barra invertida.</value></data>
+  <data name="Error.scope_retired" xml:space="preserve"><value>Esse scope foi aposentado e não pode ser criado novamente.</value></data>
+  <data name="Error.scope_resources_required" xml:space="preserve"><value>A lista de resources é obrigatória, mesmo quando vazia.</value></data>
+  <data name="Error.audience_scope_not_editable" xml:space="preserve"><value>Use um scope de acesso à API. Scopes de claims ou reservados não recebem novas audiências por esta tela.</value></data>
+  <data name="Error.audience_bindings_changed" xml:space="preserve"><value>Os vínculos deste scope mudaram. Atualize a lista e revise a operação.</value></data>
+  <data name="Error.client_id_required" xml:space="preserve"><value>Informe o identificador da conta de sistema.</value></data>
+  <data name="Error.session_not_found" xml:space="preserve"><value>A credencial emitida não foi encontrada.</value></data>
+  <data name="Error.session_revoke_failed" xml:space="preserve"><value>Não foi possível revogar a credencial emitida.</value></data>
+  <data name="Error.session_user_not_found" xml:space="preserve"><value>A conta não foi encontrada.</value></data>
+  <data name="Error.session_cookie_revoke_failed" xml:space="preserve"><value>Não foi possível invalidar as sessões da conta.</value></data>
+  <data name="Error.session_id_required" xml:space="preserve"><value>Informe a sessão.</value></data>
+  <data name="Error.user_name_required" xml:space="preserve"><value>Informe o nome de usuário.</value></data>
+  <data name="Error.user_email_required" xml:space="preserve"><value>Informe o e-mail do usuário.</value></data>
+  <data name="Error.user_name_too_long" xml:space="preserve"><value>Use no máximo 256 caracteres no nome de usuário.</value></data>
+  <data name="Error.user_email_too_long" xml:space="preserve"><value>Use no máximo 256 caracteres no e-mail.</value></data>
+  <data name="Error.user_email_invalid" xml:space="preserve"><value>Informe um endereço de e-mail válido.</value></data>
+  <data name="Error.user_phone_number_too_long" xml:space="preserve"><value>Use no máximo 256 caracteres no telefone.</value></data>
+  <data name="Error.user_create_failed" xml:space="preserve"><value>Não foi possível criar o usuário.</value></data>
+  <data name="Error.user_not_found" xml:space="preserve"><value>O usuário não foi encontrado.</value></data>
+  <data name="Error.user_password_reset_failed" xml:space="preserve"><value>Não foi possível redefinir a senha do usuário.</value></data>
+  <data name="Error.user_lock_failed" xml:space="preserve"><value>Não foi possível bloquear o acesso do usuário.</value></data>
+  <data name="Error.user_unlock_failed" xml:space="preserve"><value>Não foi possível desbloquear o acesso do usuário.</value></data>
+  <data name="Error.user_delete_failed" xml:space="preserve"><value>Não foi possível excluir o usuário.</value></data>
+  <data name="Error.user_profile_update_failed" xml:space="preserve"><value>Não foi possível atualizar o perfil do usuário.</value></data>
+  <data name="Error.user_confirmation_resend_failed" xml:space="preserve"><value>Não foi possível reenviar a confirmação de e-mail.</value></data>
+  <data name="Error.personal_secret_not_found" xml:space="preserve"><value>Credencial pessoal não encontrada.</value></data>
+  <data name="Error.managed_credential_not_found" xml:space="preserve"><value>Credencial conectada não encontrada.</value></data>
+  <data name="Error.vault_user_empty" xml:space="preserve"><value>Este usuário não possui credenciais armazenadas.</value></data>
+  <data name="Error.secret_value_required" xml:space="preserve"><value>O valor do segredo é obrigatório.</value></data>
+  <data name="Error.secret_expiration_invalid" xml:space="preserve"><value>A expiração do segredo deve estar no futuro.</value></data>
+  <data name="Error.secret_not_found" xml:space="preserve"><value>Segredo nomeado não encontrado.</value></data>
 </root>

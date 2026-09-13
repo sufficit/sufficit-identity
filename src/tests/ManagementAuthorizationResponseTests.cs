@@ -62,7 +62,7 @@ public sealed class ManagementAuthorizationResponseTests
             body.GetProperty("reasonCode").GetString());
         Assert.False(body.TryGetProperty("requiredPermission", out _));
         Assert.Contains(
-            "segundo fator",
+            "second factor",
             body.GetProperty("detail").GetString(),
             StringComparison.OrdinalIgnoreCase);
     }

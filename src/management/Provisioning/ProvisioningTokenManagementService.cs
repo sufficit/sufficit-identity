@@ -89,7 +89,7 @@ internal sealed class ProvisioningTokenManagementService(
         {
             throw new ManagementConflictException(
                 "temporary_provisioning_token_disabled",
-                "A emissão de tokens temporários de provisioning está desabilitada neste ambiente.");
+                "Issuing temporary provisioning tokens is disabled in this environment.");
         }
 
         var lifetimeSeconds = ResolveLifetime(
@@ -157,7 +157,7 @@ internal sealed class ProvisioningTokenManagementService(
         {
             throw new ManagementValidationException(
                 "temporary_token_lifetime_invalid",
-                $"A validade deve estar entre 60 e {maximum} segundos.",
+                $"The lifetime must be between 60 and {maximum} seconds.",
                 "lifetimeSeconds");
         }
 
@@ -276,7 +276,7 @@ internal sealed class ProvisioningTokenIssuer(
         {
             throw new ManagementConflictException(
                 "temporary_provisioning_token_issuer_missing",
-                "O token temporário não pode ser emitido porque o issuer público do Identity não está configurado.");
+                "The temporary token cannot be issued because the Identity public issuer is not configured.");
         }
 
         return issuer.TrimEnd('/') + "/";

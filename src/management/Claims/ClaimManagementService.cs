@@ -195,7 +195,7 @@ internal sealed partial class ClaimManagementService(
         {
             throw new ManagementNotFoundException(
                 "claim_not_found",
-                "A claim atribuída não foi encontrada.");
+                "The assigned claim was not found.");
         }
 
         // L3 fix (eval): no audit row on read paths.
@@ -212,7 +212,7 @@ internal sealed partial class ClaimManagementService(
         var userId = Required(
             command.UserId,
             "claim_user_required",
-            "Selecione a conta que receberá a claim.",
+            "Select the account that will receive the claim.",
             "userId");
         var type = ValidateClaimType(command.Type);
         var value = ValidateClaimValue(command.Value);
@@ -231,7 +231,7 @@ internal sealed partial class ClaimManagementService(
         {
             throw new ManagementNotFoundException(
                 "claim_user_not_found",
-                "A conta selecionada não foi encontrada.");
+                "The selected account was not found.");
         }
 
         var claimSet = database.Set<IdentityUserClaim<string>>();
@@ -244,7 +244,7 @@ internal sealed partial class ClaimManagementService(
         {
             throw new ManagementConflictException(
                 "claim_already_assigned",
-                "Essa conta já possui a mesma claim e valor.");
+                "This account already has the same claim and value.");
         }
 
         await using var transaction = await database.Database
@@ -329,7 +329,7 @@ internal sealed partial class ClaimManagementService(
                 "claim_assign_failed");
             throw new ManagementConflictException(
                 "claim_assign_failed",
-                "Não foi possível atribuir a claim.");
+                "Could not assign the claim.");
         }
     }
 
@@ -353,7 +353,7 @@ internal sealed partial class ClaimManagementService(
         {
             throw new ManagementNotFoundException(
                 "claim_not_found",
-                "A claim atribuída não foi encontrada.");
+                "The assigned claim was not found.");
         }
 
         var user = await userManager.FindByIdAsync(claim.UserId);
@@ -361,7 +361,7 @@ internal sealed partial class ClaimManagementService(
         {
             throw new ManagementConflictException(
                 "claim_user_not_found",
-                "A conta vinculada à claim não foi encontrada.");
+                "The account linked to the claim was not found.");
         }
 
         await using var transaction = await database.Database
@@ -422,7 +422,7 @@ internal sealed partial class ClaimManagementService(
                 "claim_remove_failed");
             throw new ManagementConflictException(
                 "claim_remove_failed",
-                "Não foi possível remover a claim.");
+                "Could not remove the claim.");
         }
     }
 
@@ -451,7 +451,7 @@ internal sealed partial class ClaimManagementService(
         {
             throw new ManagementNotFoundException(
                 "claim_not_found",
-                "A claim atribuída não foi encontrada.");
+                "The assigned claim was not found.");
         }
 
         var user = await userManager.FindByIdAsync(claim.UserId);
@@ -459,7 +459,7 @@ internal sealed partial class ClaimManagementService(
         {
             throw new ManagementConflictException(
                 "claim_user_not_found",
-                "A conta vinculada à claim não foi encontrada.");
+                "The account linked to the claim was not found.");
         }
 
         if (await database.Set<IdentityUserClaim<string>>().AnyAsync(
@@ -472,7 +472,7 @@ internal sealed partial class ClaimManagementService(
         {
             throw new ManagementConflictException(
                 "claim_already_assigned",
-                "Essa conta já possui a mesma claim e valor.");
+                "This account already has the same claim and value.");
         }
 
         await using var transaction = await database.Database
@@ -549,7 +549,7 @@ internal sealed partial class ClaimManagementService(
                 "claim_update_failed");
             throw new ManagementConflictException(
                 "claim_update_failed",
-                "Não foi possível atualizar a claim.");
+                "Could not update the claim.");
         }
     }
 

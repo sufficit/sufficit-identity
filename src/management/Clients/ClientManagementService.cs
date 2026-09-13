@@ -41,7 +41,7 @@ internal sealed partial class ClientManagementService(
         {
             throw new ManagementValidationException(
                 "client_query_paging_invalid",
-                "page deve ser positivo e pageSize deve estar entre 1 e 100.",
+                "page must be positive and pageSize must be between 1 and 100.",
                 "pageSize");
         }
 
@@ -53,7 +53,7 @@ internal sealed partial class ClientManagementService(
         {
             throw new ManagementValidationException(
                 "client_query_type_invalid",
-                "type deve ser all, public ou confidential.",
+                "type must be all, public, or confidential.",
                 "type");
         }
 
@@ -64,7 +64,7 @@ internal sealed partial class ClientManagementService(
         {
             throw new ManagementValidationException(
                 "client_query_origin_invalid",
-                "origin deve ser all, manual, manifest ou dcr.",
+                "origin must be all, manual, manifest, or dcr.",
                 "origin");
         }
 
@@ -73,7 +73,7 @@ internal sealed partial class ClientManagementService(
         {
             throw new ManagementValidationException(
                 "client_query_status_invalid",
-                "status deve ser all ou active até que o ciclo de ativação seja habilitado.",
+                "status must be all or active until the activation cycle is enabled.",
                 "status");
         }
 

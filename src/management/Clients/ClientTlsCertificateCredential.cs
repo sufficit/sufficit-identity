@@ -21,21 +21,21 @@ internal static class ClientTlsCertificateCredential
         {
             throw new ManagementValidationException(
                 "mtls_certificate_required",
-                "Informe o certificado público em formato PEM.",
+                "Provide the public certificate in PEM format.",
                 "certificatePem");
         }
         if (certificatePem.Length > 64 * 1024)
         {
             throw new ManagementValidationException(
                 "mtls_certificate_too_large",
-                "O certificado público não pode ultrapassar 64 KiB.",
+                "The public certificate cannot exceed 64 KiB.",
                 "certificatePem");
         }
         if (certificatePem.Contains("PRIVATE KEY-----", StringComparison.Ordinal))
         {
             throw new ManagementValidationException(
                 "mtls_private_key_forbidden",
-                "Envie somente o certificado público. A chave privada deve permanecer no cliente.",
+                "Send only the public certificate. The private key must stay with the client.",
                 "certificatePem");
         }
 
@@ -44,7 +44,7 @@ internal static class ClientTlsCertificateCredential
         {
             throw new ManagementValidationException(
                 "mtls_private_key_forbidden",
-                "Envie somente o certificado público. A chave privada deve permanecer no cliente.",
+                "Send only the public certificate. The private key must stay with the client.",
                 "certificatePem");
         }
 
@@ -158,7 +158,7 @@ internal static class ClientTlsCertificateCredential
         {
             throw new ManagementConflictException(
                 "mtls_certificate_limit_reached",
-                $"Cada aplicação pode manter até {MaximumCertificates} certificados mTLS durante a rotação.");
+                $"Each application can keep up to {MaximumCertificates} mTLS certificates during rotation.");
         }
         if (result.Keys.Any(key => string.Equals(
                 key.Kid,
@@ -167,7 +167,7 @@ internal static class ClientTlsCertificateCredential
         {
             throw new ManagementConflictException(
                 "mtls_certificate_kid_duplicate",
-                "Já existe uma chave pública com esse identificador (kid).");
+                "A public key with that identifier (kid) already exists.");
         }
 
         var thumbprint = CertificateThumbprint(certificate);
@@ -179,7 +179,7 @@ internal static class ClientTlsCertificateCredential
         {
             throw new ManagementConflictException(
                 "mtls_certificate_duplicate",
-                "Este certificado já está registrado para a aplicação.");
+                "This certificate is already registered for the application.");
         }
 
         result.Keys.Add(certificate);
@@ -194,7 +194,7 @@ internal static class ClientTlsCertificateCredential
         {
             throw new ManagementNotFoundException(
                 "mtls_certificate_not_found",
-                "O certificado mTLS não foi encontrado.");
+                "The mTLS certificate was not found.");
         }
 
         var source = new JsonWebKeySet(existingJsonWebKeySet);
@@ -218,7 +218,7 @@ internal static class ClientTlsCertificateCredential
         {
             throw new ManagementNotFoundException(
                 "mtls_certificate_not_found",
-                "O certificado mTLS não foi encontrado.");
+                "The mTLS certificate was not found.");
         }
 
         return result.Keys.Count == 0 ? null : result;
@@ -235,7 +235,7 @@ internal static class ClientTlsCertificateCredential
         {
             throw new ManagementValidationException(
                 "mtls_certificate_invalid",
-                $"O certificado PEM não pôde ser interpretado: {exception.Message}",
+                $"The PEM certificate could not be parsed: {exception.Message}",
                 "certificatePem");
         }
     }
@@ -252,14 +252,14 @@ internal static class ClientTlsCertificateCredential
             {
                 throw new ManagementValidationException(
                     "mtls_certificate_not_self_signed",
-                    "self_signed_tls_client_auth exige um certificado autoassinado.",
+                    "self_signed_tls_client_auth requires a self-signed certificate.",
                     "certificatePem");
             }
             if (!HasKeyUsage(certificate, X509KeyUsageFlags.DigitalSignature))
             {
                 throw new ManagementValidationException(
                     "mtls_certificate_key_usage_invalid",
-                    "O certificado deve declarar o uso digitalSignature.",
+                    "The certificate must declare the digitalSignature usage.",
                     "certificatePem");
             }
             if (!HasExtendedKeyUsage(
@@ -268,7 +268,7 @@ internal static class ClientTlsCertificateCredential
             {
                 throw new ManagementValidationException(
                     "mtls_certificate_extended_key_usage_invalid",
-                    "O certificado deve declarar o uso estendido clientAuth.",
+                    "The certificate must declare the clientAuth extended usage.",
                     "certificatePem");
             }
 
@@ -280,7 +280,7 @@ internal static class ClientTlsCertificateCredential
             {
                 throw new ManagementValidationException(
                     "mtls_certificate_signature_invalid",
-                    "O certificado informado é autoemitido, mas sua assinatura não é válida como certificado autoassinado.",
+                    "The provided certificate is self-issued, but its signature is not valid as a self-signed certificate.",
                     "certificatePem");
             }
             return;
@@ -296,7 +296,7 @@ internal static class ClientTlsCertificateCredential
             {
                 throw new ManagementValidationException(
                     "mtls_pki_certificate_invalid",
-                    "Para tls_client_auth, envie uma CA subordinada não autoemitida com basicConstraints CA e keyCertSign.",
+                    "For tls_client_auth, send a non-self-issued subordinate CA with basicConstraints CA and keyCertSign.",
                     "certificatePem");
             }
             return;
@@ -304,7 +304,7 @@ internal static class ClientTlsCertificateCredential
 
         throw new ManagementValidationException(
             "mtls_authentication_method_invalid",
-            "Use self_signed_tls_client_auth ou tls_client_auth.",
+            "Use self_signed_tls_client_auth or tls_client_auth.",
             "authenticationMethod");
     }
 
@@ -322,7 +322,7 @@ internal static class ClientTlsCertificateCredential
         {
             throw new ManagementValidationException(
                 "mtls_certificate_kid_invalid",
-                "O identificador (kid) deve ter até 100 caracteres e usar letras, números, ponto, hífen, sublinhado ou dois-pontos.",
+                "The identifier (kid) must be at most 100 characters and use letters, numbers, period, hyphen, underscore, or colon.",
                 "keyId");
         }
 

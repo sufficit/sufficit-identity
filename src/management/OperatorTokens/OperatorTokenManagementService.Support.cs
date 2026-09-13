@@ -65,14 +65,14 @@ internal sealed partial class OperatorTokenManagementService
         {
             throw new ManagementValidationException(
                 "operator_token_capability_required",
-                "Selecione pelo menos uma capability para o token temporário.",
+                "Select at least one capability for the temporary token.",
                 "capabilities");
         }
         if (normalized.Length > ResolveMaximumCapabilities(policy))
         {
             throw new ManagementValidationException(
                 "operator_token_capability_limit",
-                $"O token temporário aceita no máximo {ResolveMaximumCapabilities(policy)} capabilities.",
+                $"The temporary token accepts at most {ResolveMaximumCapabilities(policy)} capabilities.",
                 "capabilities");
         }
 
@@ -83,7 +83,7 @@ internal sealed partial class OperatorTokenManagementService
         {
             throw new ManagementValidationException(
                 "operator_token_capability_unknown",
-                $"Capability desconhecida: {string.Join(", ", unknown)}.",
+                $"Unknown capability: {string.Join(", ", unknown)}.",
                 "capabilities");
         }
 
@@ -94,7 +94,7 @@ internal sealed partial class OperatorTokenManagementService
         {
             throw new ManagementValidationException(
                 "operator_token_capability_not_delegable",
-                "Tokens temporários não podem emitir ou revogar outros tokens temporários.",
+                "Temporary tokens cannot issue or revoke other temporary tokens.",
                 "capabilities");
         }
 
@@ -207,7 +207,7 @@ internal sealed partial class OperatorTokenManagementService
         {
             throw new ManagementConflictException(
                 "temporary_operator_token_issuer_missing",
-                "O token temporário não pode ser emitido porque o issuer público do Identity não está configurado.");
+                "The temporary token cannot be issued because the Identity public issuer is not configured.");
         }
         return issuer.TrimEnd('/') + "/";
     }
@@ -219,14 +219,14 @@ internal sealed partial class OperatorTokenManagementService
         {
             throw new ManagementValidationException(
                 "operator_token_purpose_required",
-                "Informe a finalidade do token temporário.",
+                "Provide the purpose of the temporary token.",
                 "purpose");
         }
         if (normalized.Length > 120)
         {
             throw new ManagementValidationException(
                 "operator_token_purpose_too_long",
-                "A finalidade deve ter no máximo 120 caracteres.",
+                "The purpose must be at most 120 characters.",
                 "purpose");
         }
         return normalized;
@@ -249,7 +249,7 @@ internal sealed partial class OperatorTokenManagementService
         {
             throw new ManagementValidationException(
                 "operator_token_lifetime_invalid",
-                $"A validade deve ficar entre 60 e {maximum} segundos.",
+                $"The lifetime must be between 60 and {maximum} seconds.",
                 "lifetimeSeconds");
         }
         return lifetime;

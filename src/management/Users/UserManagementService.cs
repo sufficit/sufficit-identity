@@ -36,38 +36,38 @@ internal sealed partial class UserManagementService(
         var userName = Required(
             command.UserName,
             "user_name_required",
-            "Informe o nome de usuário.",
+            "Provide the user name.",
             "userName");
         var email = Required(
             command.Email,
             "user_email_required",
-            "Informe o e-mail do usuário.",
+            "Provide the user's email.",
             "email");
         if (userName.Length > 256)
         {
             throw new ManagementValidationException(
                 "user_name_too_long",
-                "Use no máximo 256 caracteres no nome de usuário.",
+                "Use at most 256 characters for the user name.",
                 "userName");
         }
         if (email.Length > 256)
         {
             throw new ManagementValidationException(
                 "user_email_too_long",
-                "Use no máximo 256 caracteres no e-mail.",
+                "Use at most 256 characters for the email.",
                 "email");
         }
         if (!new EmailAddressAttribute().IsValid(email))
         {
             throw new ManagementValidationException(
                 "user_email_invalid",
-                "Informe um endereço de e-mail válido.",
+                "Provide a valid email address.",
                 "email");
         }
         var password = Required(
             command.InitialPassword,
             "user_password_required",
-            "Informe a senha inicial.",
+            "Provide the initial password.",
             "initialPassword",
             trim: false);
         var collection = new ManagementResource(
@@ -146,7 +146,7 @@ internal sealed partial class UserManagementService(
                 cancellationToken);
             throw new ManagementConflictException(
                 "user_create_failed",
-                "Não foi possível criar o usuário.");
+                "The user could not be created.");
         }
 
         return await GetAsync(

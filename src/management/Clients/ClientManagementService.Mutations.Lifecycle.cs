@@ -169,7 +169,7 @@ internal sealed partial class ClientManagementService
             {
                 throw new ManagementValidationException(
                     "client_version_required",
-                    "Recarregue a aplicação antes de substituir a credencial.",
+                    "Reload the application before replacing the credential.",
                     "expectedVersion");
             }
 
@@ -180,7 +180,7 @@ internal sealed partial class ClientManagementService
             {
                 throw new ManagementConflictException(
                     "client_changed",
-                    "O cliente foi alterado por outra operação. Recarregue os dados antes de substituir a credencial.");
+                    "The client was changed by another operation. Reload the data before replacing the credential.");
             }
 
             var descriptor = new OpenIddictApplicationDescriptor();
@@ -193,7 +193,7 @@ internal sealed partial class ClientManagementService
             {
                 throw new ManagementConflictException(
                     "client_manifest_managed",
-                    "Este cliente é gerenciado por manifesto declarativo. Altere a referência do segredo no manifesto e aplique o provisionamento.");
+                    "This client is managed by a declarative manifest. Change the secret reference in the manifest and apply provisioning.");
             }
 
             var generated = command.Generate;
@@ -263,7 +263,7 @@ internal sealed partial class ClientManagementService
                 context.CorrelationId);
             throw new ManagementConflictException(
                 "client_changed",
-                "O cliente foi alterado por outra operação. Recarregue os dados antes de substituir a credencial.");
+                "The client was changed by another operation. Reload the data before replacing the credential.");
         }
         catch (Exception exception)
         {

@@ -22,7 +22,7 @@ internal sealed partial class ClientConfigurationDraftService
             StringComparison.OrdinalIgnoreCase))
         ?? throw new ManagementValidationException(
             "client_profile_invalid",
-            "Escolha um perfil de aplicação disponível.",
+            "Choose an available application profile.",
             "profile");
 
     private static ManagementClientProfile WithAvailability(
@@ -37,18 +37,18 @@ internal sealed partial class ClientConfigurationDraftService
             ManagementClientProfiles.Advanced =>
                 (capabilities.SupportsGrant(
                     ManagementRuntimeCapabilities.AuthorizationCode),
-                 "O runtime não habilita Authorization Code."),
+                 "The runtime does not enable Authorization Code."),
             ManagementClientProfiles.Service =>
                 (capabilities.SupportsGrant(
                     ManagementRuntimeCapabilities.ClientCredentials),
-                 "O runtime não habilita Client Credentials."),
+                 "The runtime does not enable Client Credentials."),
             ManagementClientProfiles.Device =>
                 (capabilities.SupportsGrant(
                         ManagementRuntimeCapabilities.DeviceCode) &&
                  capabilities.SupportsFeature(
                      ManagementRuntimeCapabilities.DeviceAuthorization),
-                 "O runtime não habilita Device Authorization."),
-            _ => (false, "Perfil desconhecido para este runtime."),
+                 "The runtime does not enable Device Authorization."),
+            _ => (false, "Unknown profile for this runtime."),
         };
 
         return profile with
@@ -68,7 +68,7 @@ internal sealed partial class ClientConfigurationDraftService
             throw new ManagementValidationException(
                 "client_profile_unavailable",
                 resolved.UnavailableReason ??
-                    "Este perfil não está habilitado no runtime atual.",
+                    "This profile is not enabled in the current runtime.",
                 "profile");
         }
     }
@@ -171,7 +171,7 @@ internal sealed partial class ClientConfigurationDraftService
                 row.OwnerSubject);
             throw new ManagementValidationException(
                 "client_draft_unreadable",
-                "O rascunho não pôde ser lido com segurança. Abandone-o e inicie outro.");
+                "The draft could not be read safely. Abandon it and start another.");
         }
     }
 
@@ -184,7 +184,7 @@ internal sealed partial class ClientConfigurationDraftService
         {
             throw new ManagementConflictException(
                 "client_draft_completed",
-                "Este rascunho já foi concluído.");
+                "This draft has already been completed.");
         }
     }
 

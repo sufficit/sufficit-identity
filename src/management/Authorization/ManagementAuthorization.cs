@@ -428,16 +428,17 @@ public sealed class CapabilityManagementAuthorizationEvaluator
             resource,
             cancellationToken);
 
-        // A isenção vale SÓ para a capacidade que a implantação concedeu
-        // explicitamente a este client_id em ServicePrincipals. Não é "serviço
-        // não faz MFA": é "esta concessão, para este cliente, foi declarada
-        // sem segundo fator". Qualquer outra capacidade do mesmo principal
-        // continua exigindo MFA e continua sendo negada, que é o certo.
+        // The exemption applies ONLY to the capability the deployment explicitly
+        // granted to this client_id in ServicePrincipals. It is not "this
+        // service never does MFA": it is "this grant, for this client, was
+        // declared without a second factor". Any other capability of the same
+        // principal still requires MFA and is still denied, which is correct.
         //
-        // Existe porque exigir segundo fator de quem se autenticou com segredo
-        // de cliente é exigir o impossível: um principal de máquina nunca tem
-        // `amr`, e o efeito prático da exigência não é segurança, é negar para
-        // sempre. O controle dele é o segredo mais esta lista fechada.
+        // It exists because requiring a second factor from someone who
+        // authenticated with a client secret is requiring the impossible: a
+        // machine principal never has `amr`, and the practical effect of the
+        // requirement is not security, it is permanent denial. Its control is
+        // the secret plus this closed list.
         var exempt = grants.IsMultiFactorExempt(capability);
         if (policy.RequireMfa && !exempt && !HasMfaEvidence(principal))
         {

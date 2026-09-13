@@ -142,7 +142,7 @@ public sealed partial class ClientsControllerTests
                 ClientSecret = "too-short",
             });
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
-        Assert.Contains("entre 32 e 512", await invalid.Content.ReadAsStringAsync(),
+        Assert.Contains("between 32 and 512", await invalid.Content.ReadAsStringAsync(),
             StringComparison.OrdinalIgnoreCase);
 
         var replacement = $"custom-replacement-{Guid.NewGuid():N}";
@@ -452,7 +452,7 @@ public sealed partial class ClientsControllerTests
                 Generate = true,
             });
         Assert.Equal(HttpStatusCode.Conflict, rejected.StatusCode);
-        Assert.Contains("até 5", await rejected.Content.ReadAsStringAsync(),
+        Assert.Contains("up to 5", await rejected.Content.ReadAsStringAsync(),
             StringComparison.OrdinalIgnoreCase);
 
         using var listed = await client.GetAsync(

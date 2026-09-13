@@ -29,7 +29,7 @@ public sealed class AccountPasskeysController(
         {
             return BadRequest(PasskeyOptionsResult.Failure(
                 "antiforgery-invalid",
-                "A página expirou. Recarregue-a e tente novamente."));
+                "The page has expired. Reload it and try again."));
         }
 
         var result = await accountPasskeys.CreateRegistrationOptionsAsync(
@@ -54,7 +54,7 @@ public sealed class AccountPasskeysController(
         {
             return BadRequest(AccountPasskeyResult.Failure(
                 "antiforgery-invalid",
-                "A página expirou. Recarregue-a e tente novamente."));
+                "The page has expired. Reload it and try again."));
         }
 
         var result = await accountPasskeys.RegisterAsync(
@@ -78,7 +78,7 @@ public sealed class AccountPasskeysController(
         {
             return BadRequest(PasskeyOptionsResult.Failure(
                 "antiforgery-invalid",
-                "A página expirou. Recarregue-a e tente novamente."));
+                "The page has expired. Reload it and try again."));
         }
 
         var result = await authentication.CreateRequestOptionsAsync(
@@ -102,7 +102,7 @@ public sealed class AccountPasskeysController(
         {
             return BadRequest(PasskeyAuthenticationResult.Failure(
                 "antiforgery-invalid",
-                "A página expirou. Recarregue-a e tente novamente."));
+                "The page has expired. Reload it and try again."));
         }
 
         var result = await authentication.SignInAsync(
