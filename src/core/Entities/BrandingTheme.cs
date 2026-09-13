@@ -12,7 +12,7 @@ public sealed class BrandingTheme
 {
     public int Id { get; set; }
 
-    /// <summary>Human-readable name for this theme (e.g. "Sufficit padrão").</summary>
+    /// <summary>Human-readable name for this theme (e.g. "Sufficit default").</summary>
     public string Name { get; set; } = string.Empty;
 
     /// <summary>Only one theme should be active at a time.</summary>

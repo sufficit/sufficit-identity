@@ -1,27 +1,27 @@
 using Sufficit.Identity.Management.Authorization;
 
-// Os CONTRATOS compilam apenas neste projeto (Application.Abstractions, que a
-// UI referencia) e a implementação apenas no Management. A exclusividade é
-// obrigatória: sem ela o mesmo record existiria nos dois assemblies e quem
-// referencia ambos — os testes — morre em CS0433.
+// The CONTRACTS compile only in this project (Application.Abstractions, which
+// the UI references), and the implementation only in Management. This
+// exclusivity is mandatory: without it, the same record would exist in both
+// assemblies, and whoever references both — the tests — dies with CS0433.
 //
-// Antes isso era garantido por #if APPLICATION_CONTRACTS; hoje é a fronteira de
-// arquivo, que é mais fácil de violar sem querer. Ao mover um tipo entre os dois
-// projetos, mova — não copie.
+// This used to be guaranteed by #if APPLICATION_CONTRACTS; today it's the file
+// boundary, which is easier to violate by accident. When moving a type between
+// the two projects, move it — don't copy it.
 
 namespace Sufficit.Identity.Management.ServiceAccounts;
 
 /// <summary>
-/// Uma conta de sistema: um cliente OAuth que se autentica sozinho
-/// (<c>client_credentials</c>) e recebe capacidades de gestão por PAPÉIS
-/// declarados no próprio registro — a propriedade <c>identity:client:roles</c>
-/// que o <see cref="ServicePrincipalEntitlementResolver"/> consulta.
+/// A system account: an OAuth client that authenticates on its own
+/// (<c>client_credentials</c>) and receives management capabilities through
+/// ROLES declared on its own registration — the <c>identity:client:roles</c>
+/// property that <see cref="ServicePrincipalEntitlementResolver"/> reads.
 /// </summary>
-/// <param name="Roles">Os papéis declarados no registro do cliente.</param>
+/// <param name="Roles">The roles declared on the client registration.</param>
 /// <param name="Capabilities">
-/// O que esses papéis SIGNIFICAM nesta implantação, já resolvido pelo mesmo
-/// mapa que o avaliador usa. A UI mostra os dois porque a pergunta do operador
-/// nunca é "que papéis tem?" — é "o que esta conta consegue fazer?".
+/// What those roles MEAN in this deployment, already resolved by the same map
+/// the evaluator uses. The UI shows both because the operator's question is
+/// never "what roles does it have?" — it's "what can this account actually do?".
 /// </param>
 public sealed record ServiceAccountSummary(
     string ClientId,
@@ -30,7 +30,7 @@ public sealed record ServiceAccountSummary(
     IReadOnlyList<string> Roles,
     IReadOnlyList<string> Capabilities);
 
-/// <summary>Os papéis que esta implantação reconhece, com o significado.</summary>
+/// <summary>The roles this deployment recognizes, with their meaning.</summary>
 public sealed record ServiceAccountRoleOption(
     string Role,
     IReadOnlyList<string> Capabilities,
@@ -43,13 +43,14 @@ public sealed record ServiceAccountWorkspace(
 public sealed record SetServiceAccountRolesCommand(IReadOnlyList<string>? Roles);
 
 /// <summary>
-/// Cria uma conta de sistema: um cliente confidencial que se autentica sozinho
-/// (<c>client_credentials</c>) e recebe capacidades pelos papéis declarados.
+/// Creates a system account: a confidential client that authenticates on its
+/// own (<c>client_credentials</c>) and receives capabilities through its
+/// declared roles.
 /// </summary>
 /// <param name="ClientSecret">
-/// Opcional. Ausente, o servidor gera um segredo forte — o caminho recomendado,
-/// porque um segredo escolhido por humano é o elo fraco de uma credencial que
-/// não expira sozinha.
+/// Optional. If absent, the server generates a strong secret — the recommended
+/// path, because a human-chosen secret is the weak link of a credential that
+/// never expires on its own.
 /// </param>
 public sealed record CreateServiceAccountCommand(
     string ClientId,
@@ -58,12 +59,12 @@ public sealed record CreateServiceAccountCommand(
     string? ClientSecret = null);
 
 /// <summary>
-/// A conta recém-criada e o segredo, devolvido UMA ÚNICA VEZ.
+/// The newly created account and the secret, returned EXACTLY ONCE.
 /// </summary>
 /// <remarks>
-/// O segredo é persistido apenas como hash, então não há como reexibi-lo
-/// depois: quem não copiar agora precisa rotacionar. A UI trata isso como um
-/// passo explícito em vez de um detalhe da resposta.
+/// The secret is persisted only as a hash, so there is no way to display it
+/// again later: whoever doesn't copy it now must rotate it. The UI treats this
+/// as an explicit step rather than a detail of the response.
 /// </remarks>
 public sealed record ServiceAccountCreated(
     ServiceAccountSummary Account,

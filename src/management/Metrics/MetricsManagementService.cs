@@ -32,7 +32,7 @@ internal sealed class MetricsManagementService(
         var to = (toUtc ?? DateTime.UtcNow).ToUniversalTime();
         var from = (fromUtc ?? to.AddDays(-30)).ToUniversalTime();
         if (from >= to || to - from > TimeSpan.FromDays(366))
-            throw new ManagementValidationException("invalid_metrics_range", "O período deve ter entre 1 minuto e 366 dias.", "fromUtc");
+            throw new ManagementValidationException("invalid_metrics_range", "The period must be between 1 minute and 366 days.", "fromUtc");
 
         var query = database.IdentityApplicationUsageEvents.AsNoTracking()
             .Where(item => item.OccurredAtUtc >= from && item.OccurredAtUtc < to);
@@ -109,7 +109,7 @@ internal sealed class MetricsManagementService(
         Validate(command);
         if (!string.IsNullOrWhiteSpace(command.Secret) && !vaultOptions.Value.Enabled)
             throw new ManagementValidationException("metrics_vault_required",
-                "Habilite o vault interno antes de armazenar uma credencial de exportação.", "secret");
+                "Enable the internal vault before storing an export credential.", "secret");
         var entity = await database.IdentityMetricsConfigurations.SingleOrDefaultAsync(
             item => item.Id == IdentityMetricsConfiguration.SingletonId, cancellationToken)
             ?? DefaultConfiguration();
@@ -154,17 +154,17 @@ internal sealed class MetricsManagementService(
     private static void Validate(SaveManagementMetricsConfiguration command)
     {
         if (command.RetentionDays is < 1 or > 3650)
-            throw new ManagementValidationException("invalid_retention", "A retenção deve estar entre 1 e 3650 dias.", "retentionDays");
+            throw new ManagementValidationException("invalid_retention", "Retention must be between 1 and 3650 days.", "retentionDays");
         if (command.BatchSize is < 1 or > 2000)
-            throw new ManagementValidationException("invalid_batch_size", "O lote deve estar entre 1 e 2000 eventos.", "batchSize");
+            throw new ManagementValidationException("invalid_batch_size", "The batch size must be between 1 and 2000 events.", "batchSize");
         if (command.TimeoutSeconds is < 1 or > 120)
-            throw new ManagementValidationException("invalid_timeout", "O timeout deve estar entre 1 e 120 segundos.", "timeoutSeconds");
+            throw new ManagementValidationException("invalid_timeout", "The timeout must be between 1 and 120 seconds.", "timeoutSeconds");
         var provider = command.Provider.Trim().ToLowerInvariant();
         if (provider is not ("internal" or "victoria_metrics"))
-            throw new ManagementValidationException("invalid_provider", "O provedor deve ser internal ou victoria_metrics.", "provider");
+            throw new ManagementValidationException("invalid_provider", "The provider must be internal or victoria_metrics.", "provider");
         if (command.ExportEnabled && provider == "victoria_metrics" &&
             (!Uri.TryCreate(command.Endpoint, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https")))
-            throw new ManagementValidationException("invalid_endpoint", "Informe um endpoint HTTP(S) absoluto para exportação.", "endpoint");
+            throw new ManagementValidationException("invalid_endpoint", "Provide an absolute HTTP(S) endpoint for export.", "endpoint");
     }
 
     private static IdentityMetricsConfiguration DefaultConfiguration() => new()

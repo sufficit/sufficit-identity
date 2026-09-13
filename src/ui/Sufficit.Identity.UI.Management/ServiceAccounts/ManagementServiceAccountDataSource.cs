@@ -1,24 +1,27 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.ServiceAccounts;
 using Sufficit.Identity.UI.Management.Clients;
+using Sufficit.Identity.UI.Management.Resources;
 
 namespace Sufficit.Identity.UI.Management.ServiceAccounts;
 
 /// <summary>
-/// Ponte da página de contas de sistema para o serviço de gestão — o mesmo
-/// papel que o <c>ManagementClientDataSource</c> cumpre para clientes: resolve
-/// o serviço num escopo próprio, monta o contexto a partir do estado de
-/// autenticação do circuito, e converte as exceções de gestão nos resultados
-/// que a página sabe exibir.
+/// Bridge from the service-account page to the management service — the same
+/// role that <c>ManagementClientDataSource</c> plays for clients: resolves
+/// the service in its own scope, builds the context from the circuit's
+/// authentication state, and converts management exceptions into the results
+/// the page knows how to display.
 /// </summary>
 public sealed class ManagementServiceAccountDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
-    ILogger<ManagementServiceAccountDataSource> logger)
+    ILogger<ManagementServiceAccountDataSource> logger,
+    IStringLocalizer<ManagementResource> localizer)
 {
     public Task<ManagementDataResult<ServiceAccountWorkspace>> GetWorkspaceAsync(
         CancellationToken cancellationToken = default) =>
@@ -72,7 +75,7 @@ public sealed class ManagementServiceAccountDataSource(
         {
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.Invalid,
-                exception.Message,
+                ManagementErrorText.For(localizer, exception),
                 exception.Field);
         }
         catch (ManagementAccessException exception)
@@ -84,8 +87,8 @@ public sealed class ManagementServiceAccountDataSource(
             return ManagementDataResult<T>.Failure(
                 outcome,
                 outcome is ManagementDataOutcome.StepUpRequired
-                    ? "Conclua a autenticação multifator para continuar."
-                    : "Sua conta não possui a autoridade necessária.");
+                    ? localizer["Common.Access.StepUpRequired"]
+                    : localizer["Common.Access.Forbidden"]);
         }
         catch (OperationCanceledException)
             when (!cancellationToken.IsCancellationRequested)
@@ -93,7 +96,7 @@ public sealed class ManagementServiceAccountDataSource(
             logger.LogWarning("{OperationName} timed out.", operationName);
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.Unavailable,
-                "O serviço demorou mais que o esperado. Tente novamente.");
+                localizer["Common.Timeout"]);
         }
         catch (OperationCanceledException)
         {
@@ -107,7 +110,7 @@ public sealed class ManagementServiceAccountDataSource(
                 operationName);
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.Unavailable,
-                "O serviço de identidade não conseguiu concluir a operação.");
+                localizer["Common.Unavailable"]);
         }
     }
 

@@ -4,14 +4,14 @@
 @inject ManagementClientDataSource ClientData
 @inject NavigationManager Navigation
 
-<PageTitle>Registros automáticos | Sufficit Identity</PageTitle>
+<PageTitle>@L["Clients.Registrations.Title"] | Sufficit Identity</PageTitle>
 
-<SUIPageHeader Title="Registros automáticos"
-            Description="Aplicações que se registraram sozinhas via Dynamic Client Registration (RFC 7591). Registros anônimos ficam limitados ao perfil de login interativo — sem escopos de API.">
+<SUIPageHeader Title="@L["Clients.Registrations.Title"].Value"
+            Description="@L["Clients.Registrations.Description"].Value">
     <Actions>
         <a class="button button--secondary" href="clients">
             <SUIIcon Name="key" Size="17" />
-            Todas as aplicações
+            @L["Clients.Registrations.AllApplications"]
         </a>
     </Actions>
 </SUIPageHeader>
@@ -21,8 +21,8 @@
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
         <div>
-            <strong>Registro revogado</strong>
-            <span>O cliente <code>@RevokedClientId</code> foi removido junto com seus tokens e consentimentos. A operação foi auditada.</span>
+            <strong>@L["Clients.Registrations.RevokedTitle"]</strong>
+            <span>@L["Clients.Registrations.RevokedMessagePrefix"] <code>@RevokedClientId</code> @L["Clients.Registrations.RevokedMessageSuffix"]</span>
         </div>
     </div>
 }
@@ -32,7 +32,7 @@
     <div class="inline-notice inline-notice--danger" role="alert">
         <SUIIcon Name="alert-triangle" Size="19" />
         <div>
-            <strong>Não foi possível revogar</strong>
+            <strong>@L["Clients.Registrations.RevokeErrorTitle"]</strong>
             <span>@RevokeError</span>
         </div>
     </div>
@@ -42,7 +42,7 @@
     <div class="table-card__body">
         @if (Page is null)
         {
-            <div class="table-skeleton" aria-label="Carregando registros">
+            <div class="table-skeleton" aria-label="@L["Clients.Registrations.LoadingRegistrations"].Value">
                 @for (var index = 0; index < 4; index++)
                 {
                     <span></span>
@@ -52,8 +52,8 @@
         else if (Page.Items.Count == 0)
         {
             <SUIEmptyState Icon="key"
-                        Title="Nenhum registro automático"
-                        Description="Nenhuma aplicação se registrou sozinha até agora. Quando um cliente MCP fizer login pela primeira vez, ele aparece aqui." />
+                        Title="@L["Clients.Registrations.EmptyTitle"].Value"
+                        Description="@L["Clients.Registrations.EmptyDescription"].Value" />
         }
         else
         {
@@ -61,19 +61,19 @@
                 <table class="data-table data-table--clients">
                     <thead>
                         <tr>
-                            <th scope="col">Aplicação</th>
+                            <th scope="col">@L["Clients.Registrations.ColumnApplication"]</th>
                             <th scope="col">Client ID</th>
-                            <th scope="col">Registrado em</th>
-                            <th scope="col">Origem da chamada</th>
+                            <th scope="col">@L["Clients.Registrations.ColumnRegisteredAt"]</th>
+                            <th scope="col">@L["Clients.Registrations.ColumnOrigin"]</th>
                             <th scope="col">Gate</th>
-                            <th scope="col"><span class="visually-hidden">Ações</span></th>
+                            <th scope="col"><span class="visually-hidden">@L["Clients.Registrations.ColumnActions"]</span></th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var client in Page.Items)
                         {
                             <tr>
-                                <td data-label="Aplicação">
+                                <td data-label="@L["Clients.Registrations.ColumnApplication"].Value">
                                     <a class="client-name client-link" href="@ClientHref(client.Id)">
                                         @(string.IsNullOrWhiteSpace(client.DisplayName)
                                             ? client.ClientId
@@ -83,12 +83,12 @@
                                 <td data-label="Client ID">
                                     <code class="client-id">@client.ClientId</code>
                                 </td>
-                                <td data-label="Registrado em">
+                                <td data-label="@L["Clients.Registrations.ColumnRegisteredAt"].Value">
                                     @(client.RegisteredAtUtc is { } instant
                                         ? instant.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                                         : "—")
                                 </td>
-                                <td data-label="Origem da chamada">
+                                <td data-label="@L["Clients.Registrations.ColumnOrigin"].Value">
                                     <span class="registration-state">
                                         <code>@(client.RegisteredFromAddress ?? "—")</code>
                                     </span>
@@ -103,20 +103,20 @@
                                     <SUIStatusBadge ToneValue="@IdentitySuiTone.From(
                                         client.RegisteredAnonymously ? "warning" : "success")">
                                         @(client.RegisteredAnonymously
-                                            ? "Anônimo (perfil MCP)"
-                                            : "Token inicial")
+                                            ? L["Clients.Registrations.AnonymousMcpProfile"]
+                                            : L["Clients.Registrations.InitialToken"])
                                     </SUIStatusBadge>
                                 </td>
-                                <td data-label="Ações">
+                                <td data-label="@L["Clients.Registrations.ColumnActions"].Value">
                                     <a class="row-action" href="@ClientHref(client.Id)">
-                                        Detalhes
+                                        @L["Clients.Registrations.Details"]
                                         <SUIIcon Name="arrow-right" Size="15" />
                                     </a>
                                     <button class="row-action row-action--danger"
                                             type="button"
                                             disabled="@(RevokingClientId == client.ClientId)"
                                             @onclick="() => RevokeAsync(client.ClientId)">
-                                        @(RevokingClientId == client.ClientId ? "Revogando…" : "Revogar")
+                                        @(RevokingClientId == client.ClientId ? L["Clients.Registrations.Revoking"] : L["Clients.Registrations.Revoke"])
                                     </button>
                                 </td>
                             </tr>
@@ -136,14 +136,14 @@
                         type="button"
                         disabled="@(CurrentPage <= 1)"
                         @onclick="() => GoToPageAsync(CurrentPage - 1)">
-                    Anterior
+                    @L["Clients.Registrations.Previous"]
                 </button>
-                <span>Página @Page.Page de @Page.PageCount</span>
+                <span>@L["Clients.Registrations.PageOf", Page.Page, Page.PageCount]</span>
                 <button class="button button--ghost"
                         type="button"
                         disabled="@(CurrentPage >= Page.PageCount)"
                         @onclick="() => GoToPageAsync(CurrentPage + 1)">
-                    Próxima
+                    @L["Clients.Registrations.Next"]
                 </button>
             </div>
         }
@@ -171,10 +171,10 @@
         : null;
 
     private string ResultCountLabel => Page is null
-        ? "Carregando registros"
+        ? L["Clients.Registrations.LoadingRegistrations"].Value
         : Page.TotalCount == 0
-            ? "Nenhum registro automático"
-            : $"{Page.TotalCount} registro(s) automático(s)";
+            ? L["Clients.Registrations.EmptyTitle"].Value
+            : L["Clients.Registrations.CountFormat", Page.TotalCount].Value;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -225,7 +225,7 @@
         }
 
         RevokeError = outcome.ErrorMessage
-            ?? "O serviço de identidade recusou a remoção.";
+            ?? L["Clients.Registrations.RevokeGenericError"].Value;
     }
 
     private static string ClientHref(string id) => $"clients/{id}";

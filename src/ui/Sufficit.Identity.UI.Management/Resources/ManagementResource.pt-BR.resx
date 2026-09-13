@@ -120,4 +120,8 @@
   <data name="Capability.identity.trusted-proxies.read.Description" xml:space="preserve"><value>Consultar proxies confiáveis, suas origens e o limite efetivo de saltos. Alterações exigem a permissão específica de gerenciamento.</value></data>
   <data name="Capability.identity.trusted-proxies.manage.Title" xml:space="preserve"><value>Gerenciar proxies confiáveis</value></data>
   <data name="Capability.identity.trusted-proxies.manage.Description" xml:space="preserve"><value>Alterar proxies confiáveis cadastrados no banco e o limite de saltos, com registro de auditoria. As redes definidas no arquivo permanecem em uso.</value></data>
+  <data name="Common.Access.StepUpRequired" xml:space="preserve"><value>Conclua a autenticação multifator para continuar.</value></data>
+  <data name="Common.Access.Forbidden" xml:space="preserve"><value>Sua conta não possui a autoridade necessária.</value></data>
+  <data name="Common.Timeout" xml:space="preserve"><value>O serviço demorou mais que o esperado. Tente novamente.</value></data>
+  <data name="Common.Unavailable" xml:space="preserve"><value>O serviço de identidade não conseguiu concluir a operação.</value></data>
 </root>

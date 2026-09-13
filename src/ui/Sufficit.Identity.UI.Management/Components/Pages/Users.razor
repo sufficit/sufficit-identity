@@ -5,19 +5,19 @@
 @inject ManagementUserDataSource UserData
 @inject NavigationManager Navigation
 
-<PageTitle>Usuários | Sufficit Identity</PageTitle>
+<PageTitle>@L["Users.PageTitle"]</PageTitle>
 
-<SUIPageHeader Title="Usuários"
-            Description="Investigue cadastros, encontre picos fora do padrão e navegue pelo diretório com filtros compartilháveis.">
+<SUIPageHeader Title="@L["Users.Header.Title"]"
+            Description="@L["Users.Header.Description"]">
     <Actions>
         @if (accessResult?.IsSuccess is true && Access.CanCreate)
         {
             <a class="button button--primary" href="users/new">
                 <SUIIcon Name="plus" Size="17" />
-                Novo usuário
+                @L["Users.Actions.New"]
             </a>
         }
-        <SUIStatusBadge ToneValue="SUITone.Info" Icon="shield">Diretório global</SUIStatusBadge>
+        <SUIStatusBadge ToneValue="SUITone.Info" Icon="shield">@L["Users.Badge.GlobalDirectory"]</SUIStatusBadge>
     </Actions>
 </SUIPageHeader>
 
@@ -25,21 +25,21 @@
 {
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
-        <div><strong>Conta excluída</strong><span>Credenciais, sessões, tokens e autorizações anteriores foram revogados.</span></div>
+        <div><strong>@L["Users.Deleted.Title"]</strong><span>@L["Users.Deleted.Description"]</span></div>
     </div>
 }
 
 @if (accessLoading)
 {
     <div class="users-dashboard users-dashboard--loading" aria-busy="true">
-        <div class="table-skeleton" aria-label="Carregando dashboard"><span></span><span></span><span></span><span></span></div>
+        <div class="table-skeleton" aria-label="@L["Users.Loading.Dashboard"]"><span></span><span></span><span></span><span></span></div>
     </div>
 }
 else if (accessResult?.IsSuccess is false)
 {
     <div class="panel">
         <SUIEmptyState Icon="shield" Title="@AccessErrorTitle" Description="@accessResult.ErrorMessage">
-            <Actions><button class="button button--secondary" type="button" @onclick="LoadAccessAsync">Tentar novamente</button></Actions>
+            <Actions><button class="button button--secondary" type="button" @onclick="LoadAccessAsync">@L["Users.Actions.Retry"]</button></Actions>
         </SUIEmptyState>
     </div>
 }
@@ -49,8 +49,8 @@ else
         <div class="users-overview" aria-labelledby="registration-overview-heading">
             <div class="users-overview__heading">
                 <div>
-                    <h2 id="registration-overview-heading">Cadastros por dia</h2>
-                    <p>@AnalyticsRangeLabel · datas em UTC</p>
+                    <h2 id="registration-overview-heading">@L["Users.Overview.Heading"]</h2>
+                    <p>@AnalyticsRangeLabel</p>
                 </div>
                 @if (SelectedDay is not null)
                 {
@@ -62,25 +62,25 @@ else
             </div>
 
             <dl class="users-insight-strip">
-                <div><dt>Diretório</dt><dd>@Analytics.DirectoryTotal.ToString("N0", PtBr)</dd></div>
-                <div><dt>Hoje</dt><dd>@Analytics.RegisteredToday.ToString("N0", PtBr)</dd></div>
-                <div><dt>Dia típico</dt><dd>@Analytics.TypicalRegistrationsPerDay.ToString("0.#", PtBr)</dd></div>
+                <div><dt>@L["Users.Insight.Directory"]</dt><dd>@Analytics.DirectoryTotal.ToString("N0", PtBr)</dd></div>
+                <div><dt>@L["Users.Insight.Today"]</dt><dd>@Analytics.RegisteredToday.ToString("N0", PtBr)</dd></div>
+                <div><dt>@L["Users.Insight.Typical"]</dt><dd>@Analytics.TypicalRegistrationsPerDay.ToString("0.#", PtBr)</dd></div>
                 <div class="@(AnomalyCount > 0 ? "users-insight--alert" : null)">
-                    <dt>Fora do padrão</dt><dd>@AnomalyCount</dd>
+                    <dt>@L["Users.Insight.OutOfPattern"]</dt><dd>@AnomalyCount</dd>
                 </div>
             </dl>
 
             @if (usersLoading && usersResult is null)
             {
-                <div class="registration-chart registration-chart--loading" aria-label="Carregando histórico"></div>
+                <div class="registration-chart registration-chart--loading" aria-label="@L["Users.Loading.History"]"></div>
             }
             else if (Analytics.Days.Count is 0)
             {
-                <div class="registration-chart__empty">Ainda não há histórico suficiente para o período.</div>
+                <div class="registration-chart__empty">@L["Users.Overview.EmptyHistory"]</div>
             }
             else
             {
-                <div class="registration-chart" role="group" aria-label="Gráfico de cadastros diários. Selecione um dia para filtrar a lista.">
+                <div class="registration-chart" role="group" aria-label="@L["Users.Chart.AriaLabel"]">
                     <div class="registration-chart__scale" aria-hidden="true">
                         <span>@ChartMax</span><span>@Math.Ceiling(ChartMax / 2d)</span><span>0</span>
                     </div>
@@ -102,10 +102,10 @@ else
                         </div>
                     </div>
                 </div>
-                <div class="chart-legend" aria-label="Legenda do gráfico">
-                    <span><i class="chart-legend__mark"></i>Cadastros</span>
-                    <span><i class="chart-legend__mark chart-legend__mark--alert"></i>Acima de @Analytics.AnomalyThreshold no dia</span>
-                    <span class="chart-legend__hint">Toque em uma coluna para abrir aquele dia</span>
+                <div class="chart-legend" aria-label="@L["Users.Chart.LegendAriaLabel"]">
+                    <span><i class="chart-legend__mark"></i>@L["Users.Chart.LegendRegistrations"]</span>
+                    <span><i class="chart-legend__mark chart-legend__mark--alert"></i>@L["Users.Chart.LegendAnomaly", Analytics.AnomalyThreshold]</span>
+                    <span class="chart-legend__hint">@L["Users.Chart.LegendHint"]</span>
                 </div>
             }
         </div>
@@ -115,131 +115,131 @@ else
             <div class="users-investigation__summary">
                 <span class="users-investigation__icon" aria-hidden="true"><SUIIcon Name="alert" Size="20" /></span>
                 <div>
-                    <h2 id="stale-unverified-heading">Cadastros pendentes há mais de 15 dias</h2>
-                    <p>E-mail não confirmado e nenhum login externo vinculado, como Google ou Facebook.</p>
+                    <h2 id="stale-unverified-heading">@L["Users.Investigation.Heading"]</h2>
+                    <p>@L["Users.Investigation.Description"]</p>
                 </div>
             </div>
             <div class="users-investigation__count" aria-label="@StaleUnverifiedCountLabel">
                 <strong>@Analytics.StaleUnverifiedWithoutExternalTotal.ToString("N0", PtBr)</strong>
-                <span>@Pluralize(Analytics.StaleUnverifiedWithoutExternalTotal, "conta", "contas")</span>
+                <span>@Pluralize(Analytics.StaleUnverifiedWithoutExternalTotal, L["Users.Count.PendingAccountSingular"], L["Users.Count.PendingAccountPlural"])</span>
             </div>
             @if (IsStaleUnverifiedReview)
             {
                 <a class="button button--secondary" href="@BaseUri" aria-current="page">
-                    <SUIIcon Name="x" Size="15" /> Encerrar investigação
+                    <SUIIcon Name="x" Size="15" /> @L["Users.Investigation.End"]
                 </a>
             }
             else
             {
                 <a class="button button--secondary" href="@RiskReviewUrl">
-                    Revisar contas <SUIIcon Name="arrow-right" Size="15" />
+                    @L["Users.Investigation.Review"] <SUIIcon Name="arrow-right" Size="15" />
                 </a>
             }
         </div>
 
         <details class="users-filter-panel" open>
             <summary>
-                <span><SUIIcon Name="search" Size="18" /> Filtros e ordenação</span>
+                <span><SUIIcon Name="search" Size="18" /> @L["Users.Filters.Heading"]</span>
                 <span class="users-filter-count">@ActiveFilterLabel</span>
             </summary>
             <form class="users-filter-form" data-sui-align-row @onsubmit="ApplyFilters" @onsubmit:preventDefault>
                 <SUITextField T="string" Class="users-field users-field--search"
                               Id="users-search" name="search" autocomplete="off"
-                              Label="Nome ou e-mail" InputType="search" Placeholder="Buscar no diretório"
+                              Label="@L["Users.Filters.NameOrEmail"]" InputType="search" Placeholder="@L["Users.Filters.SearchPlaceholder"]"
                               Value="@search" ValueChanged="SearchSelected" Immediate />
                 <SUISelect T="ManagementUserReviewFilter" Class="users-field users-field--review"
-                           Label="Investigação" id="users-review-filter" name="review"
+                           Label="@L["Users.Filters.Investigation"]" id="users-review-filter" name="review"
                            Value="@review" ValueChanged="ReviewSelected">
-                    <SUISelectItem Value="@ManagementUserReviewFilter.All">Diretório completo</SUISelectItem>
-                    <SUISelectItem Value="@ManagementUserReviewFilter.StaleUnverifiedWithoutExternal">Pendentes há mais de 15 dias</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserReviewFilter.All">@L["Users.Filters.Review.All"]</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserReviewFilter.StaleUnverifiedWithoutExternal">@L["Users.Filters.Review.Stale"]</SUISelectItem>
                 </SUISelect>
                 <SUISelect T="ManagementUserStateFilter" Class="users-field"
-                           Label="Estado" id="users-state-filter" name="state"
+                           Label="@L["Users.Filters.State"]" id="users-state-filter" name="state"
                            Value="@state" ValueChanged="StateSelected">
-                    <SUISelectItem Value="@ManagementUserStateFilter.All">Todos</SUISelectItem>
-                    <SUISelectItem Value="@ManagementUserStateFilter.Active">Ativos</SUISelectItem>
-                    <SUISelectItem Value="@ManagementUserStateFilter.Locked">Bloqueados</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserStateFilter.All">@L["Users.Filters.All"]</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserStateFilter.Active">@L["Users.Filters.State.Active"]</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserStateFilter.Locked">@L["Users.Filters.State.Locked"]</SUISelectItem>
                 </SUISelect>
                 <SUISelect T="ManagementUserBooleanFilter" Class="users-field"
-                           Label="E-mail" id="users-email-filter" name="email"
+                           Label="@L["Users.Common.Email"]" id="users-email-filter" name="email"
                            Value="@emailConfirmed" ValueChanged="EmailSelected">
-                    <SUISelectItem Value="@ManagementUserBooleanFilter.All">Todos</SUISelectItem>
-                    <SUISelectItem Value="@ManagementUserBooleanFilter.Enabled">Confirmado</SUISelectItem>
-                    <SUISelectItem Value="@ManagementUserBooleanFilter.Disabled">Não confirmado</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserBooleanFilter.All">@L["Users.Filters.All"]</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserBooleanFilter.Enabled">@L["Users.Filters.Email.Confirmed"]</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserBooleanFilter.Disabled">@L["Users.Filters.Email.NotConfirmed"]</SUISelectItem>
                 </SUISelect>
                 <SUISelect T="ManagementUserBooleanFilter" Class="users-field"
-                           Label="MFA" id="users-mfa-filter" name="mfa"
+                           Label="@L["Users.Filters.Mfa"]" id="users-mfa-filter" name="mfa"
                            Value="@mfa" ValueChanged="MfaSelected">
-                    <SUISelectItem Value="@ManagementUserBooleanFilter.All">Todos</SUISelectItem>
-                    <SUISelectItem Value="@ManagementUserBooleanFilter.Enabled">Ativo</SUISelectItem>
-                    <SUISelectItem Value="@ManagementUserBooleanFilter.Disabled">Inativo</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserBooleanFilter.All">@L["Users.Filters.All"]</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserBooleanFilter.Enabled">@L["Users.Filters.Active"]</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserBooleanFilter.Disabled">@L["Users.Filters.Inactive"]</SUISelectItem>
                 </SUISelect>
                 <SUIDateField Class="users-field"
                               Id="users-registered-from" Name="registeredFrom"
-                              Label="Cadastro inicial" Culture="@PtBr"
+                              Label="@L["Users.Filters.RegisteredFrom"]" Culture="@PtBr"
                               Value="@registeredFrom" ValueChanged="RegisteredFromSelected" />
                 <SUIDateField Class="users-field"
                               Id="users-registered-to" Name="registeredTo"
-                              Label="Cadastro final" Culture="@PtBr"
+                              Label="@L["Users.Filters.RegisteredTo"]" Culture="@PtBr"
                               Value="@registeredTo" ValueChanged="RegisteredToSelected" />
                 <SUISelect T="ManagementUserSort" Class="users-field"
-                           Label="Ordenar por" id="users-sort-filter" name="sort"
+                           Label="@L["Users.Filters.SortBy"]" id="users-sort-filter" name="sort"
                            Value="@sort" ValueChanged="SortSelected">
-                    <SUISelectItem Value="@ManagementUserSort.CreatedNewest">Cadastro mais recente</SUISelectItem>
-                    <SUISelectItem Value="@ManagementUserSort.CreatedOldest">Cadastro mais antigo</SUISelectItem>
-                    <SUISelectItem Value="@ManagementUserSort.NameAscending">Nome A–Z</SUISelectItem>
-                    <SUISelectItem Value="@ManagementUserSort.NameDescending">Nome Z–A</SUISelectItem>
-                    <SUISelectItem Value="@ManagementUserSort.EmailAscending">E-mail A–Z</SUISelectItem>
-                    <SUISelectItem Value="@ManagementUserSort.EmailDescending">E-mail Z–A</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserSort.CreatedNewest">@L["Users.Sort.CreatedNewest"]</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserSort.CreatedOldest">@L["Users.Sort.CreatedOldest"]</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserSort.NameAscending">@L["Users.Sort.NameAsc"]</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserSort.NameDescending">@L["Users.Sort.NameDesc"]</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserSort.EmailAscending">@L["Users.Sort.EmailAsc"]</SUISelectItem>
+                    <SUISelectItem Value="@ManagementUserSort.EmailDescending">@L["Users.Sort.EmailDesc"]</SUISelectItem>
                 </SUISelect>
                 <SUISelect T="int" Class="users-field"
-                           Label="Histórico do gráfico" id="users-analytics-filter" name="range"
+                           Label="@L["Users.Filters.ChartHistory"]" id="users-analytics-filter" name="range"
                            Value="@analyticsDays" ValueChanged="AnalyticsDaysSelected">
-                    <SUISelectItem Value="@(14)">14 dias</SUISelectItem>
-                    <SUISelectItem Value="@(30)">30 dias</SUISelectItem>
-                    <SUISelectItem Value="@(60)">60 dias</SUISelectItem>
-                    <SUISelectItem Value="@(90)">90 dias</SUISelectItem>
+                    <SUISelectItem Value="@(14)">@L["Users.Range.Days", 14]</SUISelectItem>
+                    <SUISelectItem Value="@(30)">@L["Users.Range.Days", 30]</SUISelectItem>
+                    <SUISelectItem Value="@(60)">@L["Users.Range.Days", 60]</SUISelectItem>
+                    <SUISelectItem Value="@(90)">@L["Users.Range.Days", 90]</SUISelectItem>
                 </SUISelect>
                 <div class="users-filter-actions">
-                    <SUIButton ColorValue="SUIColor.Primary" ButtonTypeValue="SUIButtonType.Submit" Disabled="@usersLoading">@(usersLoading ? "Aplicando…" : "Aplicar filtros")</SUIButton>
-                    <SUIButton ColorValue="SUIColor.Default" VariantValue="SUIVariant.Outlined" Disabled="@usersLoading" OnClick="ClearFilters">Limpar</SUIButton>
+                    <SUIButton ColorValue="SUIColor.Primary" ButtonTypeValue="SUIButtonType.Submit" Disabled="@usersLoading">@(usersLoading ? L["Users.Filters.Applying"] : L["Users.Filters.Apply"])</SUIButton>
+                    <SUIButton ColorValue="SUIColor.Default" VariantValue="SUIVariant.Outlined" Disabled="@usersLoading" OnClick="ClearFilters">@L["Users.Filters.Clear"]</SUIButton>
                 </div>
             </form>
         </details>
 
         <div class="table-panel users-results" aria-labelledby="users-list-heading">
             <div class="data-toolbar users-results__header">
-                <div><h2 id="users-list-heading">Contas encontradas</h2><p>@ResultContextLabel</p></div>
+                <div><h2 id="users-list-heading">@L["Users.Results.Heading"]</h2><p>@ResultContextLabel</p></div>
                 <span class="users-result-total" aria-live="polite">@ResultCountLabel</span>
             </div>
             <div class="client-results" aria-live="polite">
                 @if (usersLoading)
                 {
-                    <div class="table-skeleton" aria-label="Carregando usuários"><span></span><span></span><span></span><span></span><span></span></div>
+                    <div class="table-skeleton" aria-label="@L["Users.Loading.Users"]"><span></span><span></span><span></span><span></span><span></span></div>
                 }
                 else if (usersResult?.IsSuccess is false)
                 {
-                    <SUIEmptyState Icon="alert" Title="@UsersErrorTitle" Description="@usersResult.ErrorMessage"><Actions><button class="button button--secondary" type="button" @onclick="LoadUsersAsync">Tentar novamente</button></Actions></SUIEmptyState>
+                    <SUIEmptyState Icon="alert" Title="@UsersErrorTitle" Description="@usersResult.ErrorMessage"><Actions><button class="button button--secondary" type="button" @onclick="LoadUsersAsync">@L["Users.Actions.Retry"]</button></Actions></SUIEmptyState>
                 }
                 else if (Page.Items.Count is 0)
                 {
-                    <SUIEmptyState Icon="users" Title="@EmptyStateTitle" Description="@EmptyStateDescription"><Actions><button class="button button--secondary" type="button" @onclick="ClearFilters">Voltar ao diretório</button></Actions></SUIEmptyState>
+                    <SUIEmptyState Icon="users" Title="@EmptyStateTitle" Description="@EmptyStateDescription"><Actions><button class="button button--secondary" type="button" @onclick="ClearFilters">@L["Users.Empty.BackToDirectory"]</button></Actions></SUIEmptyState>
                 }
                 else
                 {
                     <div class="table-scroll">
                         <table class="data-table data-table--users users-table">
                             <thead><tr>
-                                <th scope="col"><a href="@UrlFor(sort: ToggleNameSort, page: 1)" aria-label="Ordenar por nome">Usuário @SortMark(ManagementUserSort.NameAscending, ManagementUserSort.NameDescending)</a></th>
-                                <th scope="col">E-mail</th>
-                                <th scope="col"><a href="@UrlFor(sort: ToggleCreatedSort, page: 1)" aria-label="Ordenar por data de cadastro">Cadastro @SortMark(ManagementUserSort.CreatedNewest, ManagementUserSort.CreatedOldest)</a></th>
-                                <th scope="col">Acesso externo</th><th scope="col">MFA</th><th scope="col">Estado</th><th scope="col"><span class="visually-hidden">Ações</span></th>
+                                <th scope="col"><a href="@UrlFor(sort: ToggleNameSort, page: 1)" aria-label="@L["Users.Table.SortByName"]">@L["Users.Table.User"] @SortMark(ManagementUserSort.NameAscending, ManagementUserSort.NameDescending)</a></th>
+                                <th scope="col">@L["Users.Common.Email"]</th>
+                                <th scope="col"><a href="@UrlFor(sort: ToggleCreatedSort, page: 1)" aria-label="@L["Users.Table.SortByCreated"]">@L["Users.Table.Registered"] @SortMark(ManagementUserSort.CreatedNewest, ManagementUserSort.CreatedOldest)</a></th>
+                                <th scope="col">@L["Users.Table.ExternalAccess"]</th><th scope="col">@L["Users.Filters.Mfa"]</th><th scope="col">@L["Users.Filters.State"]</th><th scope="col"><span class="visually-hidden">@L["Users.Table.Actions"]</span></th>
                             </tr></thead>
                             <tbody>
                             @foreach (var user in Page.Items)
                             {
                                 <tr>
-                                    <td data-label="Usuário">
+                                    <td data-label="@L["Users.Table.User"]">
                                         <span class="user-identity">
                                             @*
                                                 referrerpolicy: the avatar host must not learn which
@@ -258,22 +258,22 @@ else
                                             <a class="client-name client-link" href="@UserHref(user.Id)">@DisplayUserName(user)</a>
                                         </span>
                                     </td>
-                                    <td data-label="E-mail">
+                                    <td data-label="@L["Users.Common.Email"]">
                                         <span class="user-email">
                                             <span>@DisplayEmail(user)</span>
                                             @if (user.EmailConfirmed)
                                             {
-                                                <span class="verified-mark" title="E-mail confirmado" aria-label="E-mail confirmado">
+                                                <span class="verified-mark" title="@L["Users.Table.EmailConfirmed"]" aria-label="@L["Users.Table.EmailConfirmed"]">
                                                     <SUIIcon Name="check" Size="13" />
                                                 </span>
                                             }
                                         </span>
                                     </td>
-                                    <td data-label="Cadastro"><time datetime="@user.CreatedAtUtc.ToString("O")"><strong>@user.CreatedAtUtc.ToString("dd/MM/yyyy", PtBr)</strong><span>@user.CreatedAtUtc.ToString("HH:mm", PtBr) UTC</span></time></td>
-                                    <td data-label="Acesso externo"><SUIStatusBadge ToneValue="@(user.HasExternalLogin ? SUITone.Info : SUITone.Warning)">@(user.HasExternalLogin ? "Vinculado" : "Ausente")</SUIStatusBadge></td>
-                                    <td data-label="MFA"><SUIStatusBadge ToneValue="@(user.TwoFactorEnabled ? SUITone.Success : SUITone.Neutral)">@(user.TwoFactorEnabled ? "Ativo" : "Inativo")</SUIStatusBadge></td>
-                                    <td data-label="Estado"><span class="registration-state"><span class="status-dot @(user.IsLockedOut ? "status-dot--danger" : "status-dot--success")" aria-hidden="true"></span>@(user.IsLockedOut ? "Bloqueado" : "Ativo")</span></td>
-                                    <td data-label="Ações"><a class="row-action" href="@UserHref(user.Id)" aria-label="@($"Abrir detalhes de {DisplayUserName(user)}")">Detalhes<SUIIcon Name="arrow-right" Size="15" /></a></td>
+                                    <td data-label="@L["Users.Table.Registered"]"><time datetime="@user.CreatedAtUtc.ToString("O")"><strong>@user.CreatedAtUtc.ToString("dd/MM/yyyy", PtBr)</strong><span>@user.CreatedAtUtc.ToString("HH:mm", PtBr) UTC</span></time></td>
+                                    <td data-label="@L["Users.Table.ExternalAccess"]"><SUIStatusBadge ToneValue="@(user.HasExternalLogin ? SUITone.Info : SUITone.Warning)">@(user.HasExternalLogin ? L["Users.Table.Linked"] : L["Users.Table.Missing"])</SUIStatusBadge></td>
+                                    <td data-label="@L["Users.Filters.Mfa"]"><SUIStatusBadge ToneValue="@(user.TwoFactorEnabled ? SUITone.Success : SUITone.Neutral)">@(user.TwoFactorEnabled ? L["Users.Filters.Active"] : L["Users.Filters.Inactive"])</SUIStatusBadge></td>
+                                    <td data-label="@L["Users.Filters.State"]"><span class="registration-state"><span class="status-dot @(user.IsLockedOut ? "status-dot--danger" : "status-dot--success")" aria-hidden="true"></span>@(user.IsLockedOut ? L["Users.Table.Locked"] : L["Users.Filters.Active"])</span></td>
+                                    <td data-label="@L["Users.Table.Actions"]"><a class="row-action" href="@UserHref(user.Id)" aria-label="@L["Users.Table.OpenDetails", DisplayUserName(user)]">@L["Users.Table.Details"]<SUIIcon Name="arrow-right" Size="15" /></a></td>
                                 </tr>
                             }
                             </tbody>
@@ -285,10 +285,10 @@ else
                 <span>@PaginationLabel</span>
                 @if (TotalPages > 1)
                 {
-                    <nav class="pagination" aria-label="Paginação de usuários">
-                        <a class="button button--secondary button--compact" aria-disabled="@(Page.Page <= 1)" href="@(Page.Page > 1 ? UrlFor(page: Page.Page - 1) : null)">Anterior</a>
-                        <span>Página @Page.Page de @TotalPages</span>
-                        <a class="button button--secondary button--compact" aria-disabled="@(Page.Page >= TotalPages)" href="@(Page.Page < TotalPages ? UrlFor(page: Page.Page + 1) : null)">Próxima</a>
+                    <nav class="pagination" aria-label="@L["Users.Pagination.AriaLabel"]">
+                        <a class="button button--secondary button--compact" aria-disabled="@(Page.Page <= 1)" href="@(Page.Page > 1 ? UrlFor(page: Page.Page - 1) : null)">@L["Users.Pagination.Previous"]</a>
+                        <span>@L["Users.Pagination.PageOf", Page.Page, TotalPages]</span>
+                        <a class="button button--secondary button--compact" aria-disabled="@(Page.Page >= TotalPages)" href="@(Page.Page < TotalPages ? UrlFor(page: Page.Page + 1) : null)">@L["Users.Pagination.Next"]</a>
                     </nav>
                 }
             </footer>
@@ -343,16 +343,16 @@ else
     private int ChartMax => Math.Max(1, Analytics.Days.Count > 0 ? Analytics.Days.Max(day => day.Count) : 1);
     private ManagementUserSort ToggleCreatedSort => QuerySort == ManagementUserSort.CreatedNewest ? ManagementUserSort.CreatedOldest : ManagementUserSort.CreatedNewest;
     private ManagementUserSort ToggleNameSort => QuerySort == ManagementUserSort.NameAscending ? ManagementUserSort.NameDescending : ManagementUserSort.NameAscending;
-    private string AccessErrorTitle => accessResult?.Outcome is ManagementDataOutcome.StepUpRequired ? "Autenticação adicional necessária" : "Acesso ao diretório não autorizado";
-    private string UsersErrorTitle => usersResult?.Outcome is ManagementDataOutcome.StepUpRequired ? "MFA exigido para esta operação" : usersResult?.Outcome is ManagementDataOutcome.Forbidden ? "Acesso ao diretório negado" : "Não foi possível consultar os usuários";
-    private string AnalyticsRangeLabel => $"Últimos {analyticsDays} dias";
-    private string ResultContextLabel => IsStaleUnverifiedReview ? "Mais de 15 dias, sem confirmação de e-mail e sem login externo vinculado." : SelectedDay is { } day ? $"Cadastros de {day:dd/MM/yyyy}" : "Use filtros combinados para reduzir o conjunto investigado.";
-    private string ResultCountLabel => usersLoading ? "Atualizando…" : $"{Page.TotalCount:N0} {Pluralize(Page.TotalCount, "conta", "contas")}";
-    private string PaginationLabel => Page.TotalCount == 0 ? "Nenhum resultado" : $"Exibindo {(Page.Page - 1) * Page.PageSize + 1:N0}–{Math.Min(Page.Page * Page.PageSize, Page.TotalCount):N0} de {Page.TotalCount:N0}";
-    private string ActiveFilterLabel { get { var count = 0; if (!string.IsNullOrWhiteSpace(QuerySearch)) count++; if (QueryFrom is not null || QueryTo is not null) count++; if (QueryDay is not null) count++; if (QueryState != ManagementUserStateFilter.All) count++; if (QueryEmail != ManagementUserBooleanFilter.All) count++; if (QueryMfa != ManagementUserBooleanFilter.All) count++; if (QueryReview != ManagementUserReviewFilter.All) count++; return count == 0 ? "Sem filtros" : $"{count} {Pluralize(count, "filtro ativo", "filtros ativos")}"; } }
-    private string StaleUnverifiedCountLabel => $"{Analytics.StaleUnverifiedWithoutExternalTotal:N0} {Pluralize(Analytics.StaleUnverifiedWithoutExternalTotal, "conta pendente", "contas pendentes")}";
-    private string EmptyStateTitle => IsStaleUnverifiedReview ? "Nenhuma conta pendente neste critério" : "Nenhum usuário neste recorte";
-    private string EmptyStateDescription => IsStaleUnverifiedReview ? "Não há cadastros com mais de 15 dias, e-mail não confirmado e sem login externo vinculado." : "Altere os filtros ou limpe o dia selecionado para ampliar a busca.";
+    private string AccessErrorTitle => accessResult?.Outcome is ManagementDataOutcome.StepUpRequired ? L["Users.Error.StepUpTitle"] : L["Users.Error.AccessDeniedTitle"];
+    private string UsersErrorTitle => usersResult?.Outcome is ManagementDataOutcome.StepUpRequired ? L["Users.Error.MfaRequiredTitle"] : usersResult?.Outcome is ManagementDataOutcome.Forbidden ? L["Users.Error.DirectoryDeniedTitle"] : L["Users.Error.QueryFailedTitle"];
+    private string AnalyticsRangeLabel => L["Users.Overview.RangeLabel", analyticsDays];
+    private string ResultContextLabel => IsStaleUnverifiedReview ? L["Users.Results.StaleContext"] : SelectedDay is { } day ? L["Users.Results.DayContext", day.ToString("dd/MM/yyyy", PtBr)] : L["Users.Results.DefaultContext"];
+    private string ResultCountLabel => usersLoading ? L["Users.Results.Updating"] : $"{Page.TotalCount:N0} {Pluralize(Page.TotalCount, L["Users.Count.AccountSingular"], L["Users.Count.AccountPlural"])}";
+    private string PaginationLabel => Page.TotalCount == 0 ? L["Users.Pagination.NoResults"] : L["Users.Pagination.Showing", ((Page.Page - 1) * Page.PageSize + 1).ToString("N0"), Math.Min(Page.Page * Page.PageSize, Page.TotalCount).ToString("N0"), Page.TotalCount.ToString("N0")];
+    private string ActiveFilterLabel { get { var count = 0; if (!string.IsNullOrWhiteSpace(QuerySearch)) count++; if (QueryFrom is not null || QueryTo is not null) count++; if (QueryDay is not null) count++; if (QueryState != ManagementUserStateFilter.All) count++; if (QueryEmail != ManagementUserBooleanFilter.All) count++; if (QueryMfa != ManagementUserBooleanFilter.All) count++; if (QueryReview != ManagementUserReviewFilter.All) count++; return count == 0 ? L["Users.Filters.None"] : $"{count} {Pluralize(count, L["Users.Filters.ActiveSingular"], L["Users.Filters.ActivePlural"])}"; } }
+    private string StaleUnverifiedCountLabel => $"{Analytics.StaleUnverifiedWithoutExternalTotal:N0} {Pluralize(Analytics.StaleUnverifiedWithoutExternalTotal, L["Users.Count.PendingAccountSingular"], L["Users.Count.PendingAccountPlural"])}";
+    private string EmptyStateTitle => IsStaleUnverifiedReview ? L["Users.Empty.PendingTitle"] : L["Users.Empty.DefaultTitle"];
+    private string EmptyStateDescription => IsStaleUnverifiedReview ? L["Users.Empty.PendingDescription"] : L["Users.Empty.DefaultDescription"];
 
     protected override async Task OnParametersSetAsync()
     {
@@ -419,7 +419,7 @@ else
         .ToString("0.###", CultureInfo.InvariantCulture);
     private static string UserHref(string id) => $"users/{Uri.EscapeDataString(id)}";
     private static string DisplayUserName(ManagementUserSummary user) => string.IsNullOrWhiteSpace(user.UserName) ? user.Email ?? user.Id : user.UserName;
-    private static string DisplayEmail(ManagementUserSummary user) => string.IsNullOrWhiteSpace(user.Email) ? "Não informado" : user.Email;
+    private string DisplayEmail(ManagementUserSummary user) => string.IsNullOrWhiteSpace(user.Email) ? L["Users.Table.EmailUnset"] : user.Email;
     /// <summary>
     /// Fallback avatar for the accounts that carry no usable picture — which is
     /// nearly all of them. Takes the first letter of the display name; a name
@@ -434,5 +434,5 @@ else
     }
     private static string Pluralize(int count, string singular, string plural) => count is 1 ? singular : plural;
     private string SortMark(ManagementUserSort ascending, ManagementUserSort descending) => QuerySort == ascending ? "↑" : QuerySort == descending ? "↓" : "↕";
-    private string DayAriaLabel(ManagementUserRegistrationDay day) => $"{day.Date.ToString("dd 'de' MMMM", PtBr)}: {day.Count} {Pluralize(day.Count, "cadastro", "cadastros")}{(day.IsAnomaly ? ", acima do padrão" : string.Empty)}";
+    private string DayAriaLabel(ManagementUserRegistrationDay day) => L["Users.Chart.DayAriaLabel", day.Date.ToString("dd 'de' MMMM", PtBr), day.Count, Pluralize(day.Count, L["Users.Count.RegistrationSingular"], L["Users.Count.RegistrationPlural"]), day.IsAnomaly ? L["Users.Chart.DayAnomalySuffix"] : string.Empty];
 }
