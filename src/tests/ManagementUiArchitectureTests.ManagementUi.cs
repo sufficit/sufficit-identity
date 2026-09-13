@@ -105,7 +105,7 @@ public sealed partial class ManagementUiArchitectureTests
             "wwwroot",
             "app.css"));
 
-        Assert.Contains("new(\"Credenciais\", \"lock\")", editor,
+        Assert.Contains("new(L[\"Clients.Draft.Step.Credentials\"].Value, \"lock\")", editor,
             StringComparison.Ordinal);
         Assert.Contains("type=\"password\"", editor, StringComparison.Ordinal);
         Assert.Contains("credentialClientIdConfirmation", editor,
@@ -311,7 +311,7 @@ public sealed partial class ManagementUiArchitectureTests
             "Database.razor"));
 
         Assert.Contains(".WatchAsync(cancellationToken)", page, StringComparison.Ordinal);
-        Assert.Contains("Eventos em tempo real", page, StringComparison.Ordinal);
+        Assert.Contains("L[\"Database.LiveStatus.Active\"]", page, StringComparison.Ordinal);
         Assert.DoesNotContain("PeriodicTimer", page, StringComparison.Ordinal);
         Assert.DoesNotContain("FromSeconds(2)", page, StringComparison.Ordinal);
         Assert.DoesNotContain("a cada 2 segundos", page, StringComparison.Ordinal);
@@ -420,7 +420,7 @@ public sealed partial class ManagementUiArchitectureTests
             "Pages",
             "Authorizations.razor"));
         Assert.Contains("authorization-state-filter", page, StringComparison.Ordinal);
-        Assert.Contains("aria-label=\"Estado\"", page, StringComparison.Ordinal);
+        Assert.Contains("aria-label=\"@L[\"Authorizations.Filter.StateLabel\"].Value\"", page, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -328,4 +328,1202 @@
   <data name="Users.Pagination.Next" xml:space="preserve"><value>Próxima</value></data>
   <data name="Users.Pagination.NoResults" xml:space="preserve"><value>Nenhum resultado</value></data>
   <data name="Users.Pagination.Showing" xml:space="preserve"><value>Exibindo {0}–{1} de {2}</value></data>
+  <data name="Clients.Detail.TypeLabel" xml:space="preserve"><value>Tipo</value></data>
+  <data name="Clients.Detail.ConsentLabel" xml:space="preserve"><value>Consentimento</value></data>
+  <data name="Clients.Detail.InternalIdLabel" xml:space="preserve"><value>Identificador interno</value></data>
+  <data name="Clients.Detail.ManifestManagedTitle" xml:space="preserve"><value>Gerenciada por manifesto</value></data>
+  <data name="Clients.Detail.ManifestManagedDescription" xml:space="preserve"><value>Altere a definição declarativa para evitar que o próximo provisionamento sobrescreva este registro.</value></data>
+  <data name="Clients.Detail.PermissionsHeading" xml:space="preserve"><value>Protocolos e permissões</value></data>
+  <data name="Clients.Detail.PermissionsCount" xml:space="preserve"><value>{0} permissões registradas</value></data>
+  <data name="Clients.Detail.NoPermissions" xml:space="preserve"><value>Nenhuma permissão registrada.</value></data>
+  <data name="Clients.Detail.EndpointsAndResponses" xml:space="preserve"><value>Endpoints e respostas</value></data>
+  <data name="Clients.Detail.TokenValidityHeading" xml:space="preserve"><value>Validade dos tokens</value></data>
+  <data name="Clients.Detail.TokenValiditySubheading" xml:space="preserve"><value>Valor efetivo e origem da política</value></data>
+  <data name="Clients.Detail.AdjustAction" xml:space="preserve"><value>Ajustar</value></data>
+  <data name="Clients.Detail.AppAuthHeading" xml:space="preserve"><value>Autenticação da aplicação</value></data>
+  <data name="Clients.Detail.AppAuthSubheading" xml:space="preserve"><value>Credenciais compartilhadas e chaves públicas aceitas nos endpoints OAuth</value></data>
+  <data name="Clients.Detail.ManageAction" xml:space="preserve"><value>Gerenciar</value></data>
+  <data name="Clients.Detail.AuthNotConfigured" xml:space="preserve"><value>Autenticação de cliente ainda não configurada</value></data>
+  <data name="Clients.Detail.AuthNotConfiguredHint" xml:space="preserve"><value>Adicione um segredo ou uma chave pública antes de usar fluxos de cliente confidencial.</value></data>
+  <data name="Clients.Detail.ConfiguredBadge" xml:space="preserve"><value>Configurada</value></data>
+  <data name="Clients.Detail.ActionRequiredBadge" xml:space="preserve"><value>Ação necessária</value></data>
+  <data name="Clients.Detail.DestinationsHeading" xml:space="preserve"><value>Destinos e logout</value></data>
+  <data name="Clients.Detail.DestinationsSubheading" xml:space="preserve"><value>URLs utilizadas pelo navegador e pelos canais de encerramento</value></data>
+  <data name="Clients.Detail.NoUris" xml:space="preserve"><value>Nenhuma URI registrada.</value></data>
+  <data name="Clients.Detail.AfterLogoutHeading" xml:space="preserve"><value>Após logout</value></data>
+  <data name="Clients.Detail.NoDestinations" xml:space="preserve"><value>Nenhum destino registrado.</value></data>
+  <data name="Clients.Detail.NativeReturnsHeading" xml:space="preserve"><value>Retornos nativos</value></data>
+  <data name="Clients.Detail.NoReturns" xml:space="preserve"><value>Nenhum retorno registrado.</value></data>
+  <data name="Clients.Detail.FederatedLogoutHeading" xml:space="preserve"><value>Logout federado</value></data>
+  <data name="Clients.Detail.NoEndpoints" xml:space="preserve"><value>Nenhum endpoint registrado.</value></data>
+  <data name="Clients.Detail.SecurityRequirementsHeading" xml:space="preserve"><value>Requisitos de segurança</value></data>
+  <data name="Clients.Detail.SecurityRequirementsSubheading" xml:space="preserve"><value>Controles adicionais aplicados durante a autorização.</value></data>
+  <data name="Clients.Detail.DeleteClient" xml:space="preserve"><value>Excluir cliente</value></data>
+  <data name="Clients.Detail.DeleteDescription" xml:space="preserve"><value>A exclusão interrompe novos fluxos OAuth deste cliente e é registrada de forma permanente na auditoria administrativa.</value></data>
+  <data name="Clients.Detail.DeleteConfirmPrefix" xml:space="preserve"><value>Digite</value></data>
+  <data name="Clients.Detail.DeleteConfirmSuffix" xml:space="preserve"><value>para confirmar</value></data>
+  <data name="Clients.Detail.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Clients.Detail.Deleting" xml:space="preserve"><value>Excluindo…</value></data>
+  <data name="Clients.Detail.ConfirmDelete" xml:space="preserve"><value>Confirmar exclusão</value></data>
+  <data name="Clients.Detail.NotFoundTitle" xml:space="preserve"><value>Cliente não encontrado</value></data>
+  <data name="Clients.Detail.GenericErrorTitle" xml:space="preserve"><value>Não foi possível abrir o cliente</value></data>
+  <data name="Clients.Detail.GenericErrorDescription" xml:space="preserve"><value>O serviço de identidade não conseguiu ler esse registro. Tente novamente.</value></data>
+  <data name="Clients.Detail.HeaderFallbackTitle" xml:space="preserve"><value>Detalhes do cliente</value></data>
+  <data name="Clients.Detail.TypePublic" xml:space="preserve"><value>Público</value></data>
+  <data name="Clients.Detail.TypeConfidential" xml:space="preserve"><value>Confidencial</value></data>
+  <data name="Clients.Detail.NotInformed" xml:space="preserve"><value>Não informado</value></data>
+  <data name="Clients.Detail.ConsentExplicit" xml:space="preserve"><value>Explícito</value></data>
+  <data name="Clients.Detail.ConsentImplicit" xml:space="preserve"><value>Implícito</value></data>
+  <data name="Clients.Detail.ConsentExternal" xml:space="preserve"><value>Externo</value></data>
+  <data name="Clients.Detail.ConsentSystematic" xml:space="preserve"><value>Sistemático</value></data>
+  <data name="Clients.Detail.PkceRequired" xml:space="preserve"><value>PKCE obrigatório</value></data>
+  <data name="Clients.Detail.ParRequired" xml:space="preserve"><value>PAR obrigatório</value></data>
+  <data name="Clients.Detail.AuthMethodSecretHeader" xml:space="preserve"><value>segredo no cabeçalho</value></data>
+  <data name="Clients.Detail.AuthMethodSecretBody" xml:space="preserve"><value>segredo no corpo</value></data>
+  <data name="Clients.Detail.AuthMethodSignedJwt" xml:space="preserve"><value>JWT assinado</value></data>
+  <data name="Clients.Detail.AuthMethodMtls" xml:space="preserve"><value>certificado mTLS</value></data>
+  <data name="Clients.Detail.AuthMethodMtlsSelfSigned" xml:space="preserve"><value>certificado mTLS autoassinado</value></data>
+  <data name="Clients.Detail.NoAuthMethodsAvailable" xml:space="preserve"><value>Nenhum método disponível.</value></data>
+  <data name="Clients.Detail.AuthMethodsAvailable" xml:space="preserve"><value>Métodos disponíveis: {0}. Cada requisição usa somente um método.</value></data>
+  <data name="Clients.Detail.ActiveCredentialsCount" xml:space="preserve"><value>{0} credenciais compartilhadas ativas</value></data>
+  <data name="Clients.Detail.ActiveCredentialSingular" xml:space="preserve"><value>1 credencial compartilhada ativa</value></data>
+  <data name="Clients.Detail.PublicKeyAuthActive" xml:space="preserve"><value>Autenticação por chave pública ativa</value></data>
+  <data name="Clients.Detail.ClientAuthConfigured" xml:space="preserve"><value>Autenticação de cliente configurada</value></data>
+  <data name="Clients.Detail.PolicyGlobalDefault" xml:space="preserve"><value>Padrão global</value></data>
+  <data name="Clients.Detail.PolicyCustom" xml:space="preserve"><value>Personalizado</value></data>
+  <data name="Clients.Detail.OneDay" xml:space="preserve"><value>1 dia</value></data>
+  <data name="Clients.Detail.DaysFormat" xml:space="preserve"><value>{0} dias</value></data>
+  <data name="Clients.Detail.OneHour" xml:space="preserve"><value>1 hora</value></data>
+  <data name="Clients.Detail.HoursFormat" xml:space="preserve"><value>{0} horas</value></data>
+  <data name="Clients.Detail.OneMinute" xml:space="preserve"><value>1 minuto</value></data>
+  <data name="Clients.Detail.MinutesFormat" xml:space="preserve"><value>{0} minutos</value></data>
+  <data name="Clients.List.PageTitle" xml:space="preserve"><value>Aplicações</value></data>
+  <data name="Clients.List.Description" xml:space="preserve"><value>Crie, retome e gerencie integrações OAuth e OpenID Connect.</value></data>
+  <data name="Clients.List.DeletedTitle" xml:space="preserve"><value>Cliente excluído</value></data>
+  <data name="Clients.List.DeletedMessagePrefix" xml:space="preserve"><value>O registro</value></data>
+  <data name="Clients.List.DeletedMessageSuffix" xml:space="preserve"><value>foi removido e a operação foi auditada.</value></data>
+  <data name="Clients.List.DraftDeletedTitle" xml:space="preserve"><value>Rascunho descartado</value></data>
+  <data name="Clients.List.DraftDeletedMessage" xml:space="preserve"><value>A configuração incompleta foi removida com segurança.</value></data>
+  <data name="Clients.List.SingleSourceTitle" xml:space="preserve"><value>Uma única fonte de verdade</value></data>
+  <data name="Clients.List.SingleSourceMessage" xml:space="preserve"><value>A interface e a API usam as mesmas validações, permissões e trilha de auditoria.</value></data>
+  <data name="Clients.List.ContinueConfigHeading" xml:space="preserve"><value>Continuar configuração</value></data>
+  <data name="Clients.List.DraftsProtectedDescription" xml:space="preserve"><value>Rascunhos protegidos e disponíveis somente para sua conta administrativa.</value></data>
+  <data name="Clients.List.DraftSingular" xml:space="preserve"><value>rascunho</value></data>
+  <data name="Clients.List.DraftPlural" xml:space="preserve"><value>rascunhos</value></data>
+  <data name="Clients.Draft.Step.Identity" xml:space="preserve"><value>Identidade</value></data>
+  <data name="Clients.Draft.Step.Protocol" xml:space="preserve"><value>Protocolo</value></data>
+  <data name="Clients.Draft.Step.Permissions" xml:space="preserve"><value>Permissões</value></data>
+  <data name="Clients.Draft.Step.UrisLogout" xml:space="preserve"><value>URIs e logout</value></data>
+  <data name="Clients.Draft.Step.Credentials" xml:space="preserve"><value>Credenciais</value></data>
+  <data name="Clients.Draft.Step.Review" xml:space="preserve"><value>Revisão</value></data>
+  <data name="Clients.Draft.Step.Default" xml:space="preserve"><value>Configuração</value></data>
+  <data name="Clients.List.StepLabel" xml:space="preserve"><value>Etapa</value></data>
+  <data name="Clients.List.UpdatedLabel" xml:space="preserve"><value>Atualizado</value></data>
+  <data name="Clients.List.ExpiresInLabel" xml:space="preserve"><value>expira em</value></data>
+  <data name="Clients.List.ReadyStatus" xml:space="preserve"><value>Pronto</value></data>
+  <data name="Clients.List.InProgressStatus" xml:space="preserve"><value>Em andamento</value></data>
+  <data name="Clients.List.RegisteredHeading" xml:space="preserve"><value>Aplicações registradas</value></data>
+  <data name="Clients.List.SearchAriaLabel" xml:space="preserve"><value>Pesquisar aplicações</value></data>
+  <data name="Clients.List.SearchPlaceholder" xml:space="preserve"><value>Pesquisar por client_id ou nome</value></data>
+  <data name="Clients.List.All" xml:space="preserve"><value>Todos</value></data>
+  <data name="Clients.List.FilterPublic" xml:space="preserve"><value>Públicos</value></data>
+  <data name="Clients.List.FilterConfidential" xml:space="preserve"><value>Confidenciais</value></data>
+  <data name="Clients.List.FlowLabel" xml:space="preserve"><value>Fluxo</value></data>
+  <data name="Clients.List.AllFlows" xml:space="preserve"><value>Todos os fluxos</value></data>
+  <data name="Clients.List.OriginLabel" xml:space="preserve"><value>Origem</value></data>
+  <data name="Clients.List.AllFeminine" xml:space="preserve"><value>Todas</value></data>
+  <data name="Clients.List.OriginManual" xml:space="preserve"><value>Manual</value></data>
+  <data name="Clients.List.OriginManifest" xml:space="preserve"><value>Manifesto</value></data>
+  <data name="Clients.List.StatusLabel" xml:space="preserve"><value>Estado</value></data>
+  <data name="Clients.List.StatusActive" xml:space="preserve"><value>Ativos</value></data>
+  <data name="Clients.List.ScopePlaceholder" xml:space="preserve"><value>ex.: openid</value></data>
+  <data name="Clients.List.LoadingClientsAriaLabel" xml:space="preserve"><value>Carregando clientes</value></data>
+  <data name="Clients.List.ClearFilters" xml:space="preserve"><value>Limpar filtros</value></data>
+  <data name="Clients.List.OpenDetailsAriaLabel" xml:space="preserve"><value>Abrir detalhes de {0}</value></data>
+  <data name="Clients.List.QueryErrorTitle" xml:space="preserve"><value>Não foi possível consultar os clientes</value></data>
+  <data name="Clients.List.QueryErrorDescription" xml:space="preserve"><value>O serviço de identidade não conseguiu ler os registros agora. Verifique o banco e tente novamente.</value></data>
+  <data name="Clients.List.PaginationAriaLabel" xml:space="preserve"><value>Paginação de aplicações</value></data>
+  <data name="Clients.List.SinglePage" xml:space="preserve"><value>Página única</value></data>
+  <data name="Clients.List.GuardrailsHeading" xml:space="preserve"><value>Proteções aplicadas</value></data>
+  <data name="Clients.List.GuardrailsDescription" xml:space="preserve"><value>Cada alteração é validada, autorizada e auditada antes de chegar ao registro OAuth.</value></data>
+  <data name="Clients.List.GuardrailCapabilities" xml:space="preserve"><value>Operações exigem capabilities específicas do provedor</value></data>
+  <data name="Clients.List.GuardrailSecrets" xml:space="preserve"><value>Segredos nunca aparecem na listagem</value></data>
+  <data name="Clients.List.GuardrailAudit" xml:space="preserve"><value>Criação e exclusão geram eventos persistentes</value></data>
+  <data name="Clients.List.ToolbarLoading" xml:space="preserve"><value>Consultando o registro de aplicações…</value></data>
+  <data name="Clients.List.ToolbarSuccess" xml:space="preserve"><value>Filtros e paginação são processados pelo serviço de aplicação.</value></data>
+  <data name="Clients.List.ToolbarFailure" xml:space="preserve"><value>A consulta falhou antes de retornar registros.</value></data>
+  <data name="Clients.List.NoRecordsLoaded" xml:space="preserve"><value>Nenhum registro carregado</value></data>
+  <data name="Clients.List.NoMatchTitle" xml:space="preserve"><value>Nenhum cliente corresponde aos filtros</value></data>
+  <data name="Clients.List.NoClientsTitle" xml:space="preserve"><value>Nenhum cliente registrado</value></data>
+  <data name="Clients.List.NoMatchDescription" xml:space="preserve"><value>Revise os filtros de busca, tipo, fluxo, origem, estado ou scope e tente novamente.</value></data>
+  <data name="Clients.List.NoClientsDescription" xml:space="preserve"><value>O serviço respondeu com uma coleção vazia. Crie a primeira aplicação para começar.</value></data>
+  <data name="Clients.List.ZeroRecords" xml:space="preserve"><value>0 registros</value></data>
+  <data name="Clients.List.RangeFormat" xml:space="preserve"><value>{0}–{1} de {2} {3}</value></data>
+  <data name="Clients.List.RecordSingular" xml:space="preserve"><value>registro</value></data>
+  <data name="Clients.List.RecordPlural" xml:space="preserve"><value>registros</value></data>
+  <data name="Clients.List.UnnamedApplication" xml:space="preserve"><value>Aplicação sem nome</value></data>
+  <data name="Clients.List.JustNow" xml:space="preserve"><value>agora</value></data>
+  <data name="Clients.List.MinutesAgo" xml:space="preserve"><value>há {0} min</value></data>
+  <data name="Clients.List.HoursAgo" xml:space="preserve"><value>há {0} h</value></data>
+  <data name="Clients.List.OnDatePrefix" xml:space="preserve"><value>em</value></data>
+  <data name="Clients.List.NoDisplayName" xml:space="preserve"><value>Sem nome de exibição</value></data>
+  <data name="Clients.List.ClientStatusActive" xml:space="preserve"><value>Ativo</value></data>
+  <data name="Clients.Draft.PageTitle" xml:space="preserve"><value>Configurar aplicação</value></data>
+  <data name="Clients.Draft.LoadingAriaLabel" xml:space="preserve"><value>Carregando configuração</value></data>
+  <data name="Clients.Draft.RecoveringDraft" xml:space="preserve"><value>Recuperando seu rascunho protegido…</value></data>
+  <data name="Clients.Draft.UnavailableTitle" xml:space="preserve"><value>Rascunho indisponível</value></data>
+  <data name="Clients.Draft.UnavailableDescription" xml:space="preserve"><value>Ele pode ter expirado, sido concluído ou pertencer a outra sessão administrativa.</value></data>
+  <data name="Clients.Draft.OpenErrorTitle" xml:space="preserve"><value>Não foi possível abrir esta configuração</value></data>
+  <data name="Clients.Draft.StartNewApplication" xml:space="preserve"><value>Iniciar nova aplicação</value></data>
+  <data name="Clients.Draft.CreatedTitle" xml:space="preserve"><value>Aplicação criada</value></data>
+  <data name="Clients.Draft.CreatedDescription" xml:space="preserve"><value>A configuração foi validada, registrada e auditada com sucesso.</value></data>
+  <data name="Clients.Draft.CopyCredentialTitle" xml:space="preserve"><value>Copie a credencial agora</value></data>
+  <data name="Clients.Draft.CopyCredentialMessage" xml:space="preserve"><value>Ela não será armazenada nem exibida novamente.</value></data>
+  <data name="Clients.Draft.GeneratedCredentialAriaLabel" xml:space="preserve"><value>Credencial gerada para a aplicação</value></data>
+  <data name="Clients.Draft.OpenApplication" xml:space="preserve"><value>Abrir aplicação</value></data>
+  <data name="Clients.Draft.WizardDescription" xml:space="preserve"><value>Avance no seu ritmo. O rascunho é protegido e retomável por 14 dias.</value></data>
+  <data name="Clients.Draft.SaveAndExit" xml:space="preserve"><value>Salvar e sair</value></data>
+  <data name="Clients.Draft.OperationErrorTitle" xml:space="preserve"><value>Não foi possível concluir a operação</value></data>
+  <data name="Clients.Draft.StepsAriaLabel" xml:space="preserve"><value>Etapas da configuração</value></data>
+  <data name="Clients.Draft.StepProgress" xml:space="preserve"><value>Etapa {0} de {1}</value></data>
+  <data name="Clients.Draft.Saving" xml:space="preserve"><value>Salvando…</value></data>
+  <data name="Clients.Draft.SavedAt" xml:space="preserve"><value>Salvo às {0}</value></data>
+  <data name="Clients.Draft.ProtectedDraft" xml:space="preserve"><value>Rascunho protegido</value></data>
+  <data name="Clients.Draft.AppNameLabel" xml:space="preserve"><value>Nome da aplicação</value></data>
+  <data name="Clients.Draft.AppNameHint" xml:space="preserve"><value>Nome humano mostrado em consentimentos e auditoria.</value></data>
+  <data name="Clients.Draft.ClientIdHintPrefix" xml:space="preserve"><value>Identificador estável usado pelo protocolo. Exemplo:</value></data>
+  <data name="Clients.Draft.CustomConfigLabel" xml:space="preserve"><value>Configuração personalizada</value></data>
+  <data name="Clients.Draft.ValidationPendingMessage" xml:space="preserve"><value>A configuração será validada antes da criação.</value></data>
+  <data name="Clients.Draft.ClientTypeLegend" xml:space="preserve"><value>Tipo de cliente</value></data>
+  <data name="Clients.Draft.PublicClientHint" xml:space="preserve"><value>Sem segredo armazenado no navegador, dispositivo ou CLI.</value></data>
+  <data name="Clients.Draft.ConfidentialClientHint" xml:space="preserve"><value>Servidor capaz de proteger uma credencial.</value></data>
+  <data name="Clients.Draft.GrantTypesLegend" xml:space="preserve"><value>Como obtém tokens</value></data>
+  <data name="Clients.Draft.AuthCodeHint" xml:space="preserve"><value>Login interativo moderno.</value></data>
+  <data name="Clients.Draft.RefreshTokenHint" xml:space="preserve"><value>Renova a sessão sem novo login.</value></data>
+  <data name="Clients.Draft.ClientCredentialsHint" xml:space="preserve"><value>Integração sem usuário.</value></data>
+  <data name="Clients.Draft.DeviceCodeHint" xml:space="preserve"><value>Autoriza em outro dispositivo.</value></data>
+  <data name="Clients.Draft.ConsentExplicitOption" xml:space="preserve"><value>Explícito — o usuário confirma</value></data>
+  <data name="Clients.Draft.ConsentImplicitOption" xml:space="preserve"><value>Implícito — aplicação confiável</value></data>
+  <data name="Clients.Draft.ConsentExternalOption" xml:space="preserve"><value>Externo — decisão administrada fora do fluxo</value></data>
+  <data name="Clients.Draft.ConsentSystematicOption" xml:space="preserve"><value>Sistemático — confirmação recorrente</value></data>
+  <data name="Clients.Draft.RequireParLabel" xml:space="preserve"><value>Exigir PAR</value></data>
+  <data name="Clients.Draft.RequireParHint" xml:space="preserve"><value>Protege os parâmetros antes de abrir o navegador.</value></data>
+  <data name="Clients.Draft.TokenLifetimeHint" xml:space="preserve"><value>Opcional: em branco, a aplicação herda o padrão global do servidor.</value></data>
+  <data name="Clients.Draft.AccessTokenLifetimeLabel" xml:space="preserve"><value>Access token (minutos)</value></data>
+  <data name="Clients.Draft.IdTokenLifetimeLabel" xml:space="preserve"><value>ID token (minutos)</value></data>
+  <data name="Clients.Draft.RefreshTokenLifetimeLabel" xml:space="preserve"><value>Refresh token (dias)</value></data>
+  <data name="Clients.Draft.SearchPermissionsLabel" xml:space="preserve"><value>Pesquisar permissões</value></data>
+  <data name="Clients.Draft.SearchScopesPlaceholder" xml:space="preserve"><value>Pesquisar por nome ou finalidade</value></data>
+  <data name="Clients.Draft.DefaultScopeBadge" xml:space="preserve"><value>Padrão</value></data>
+  <data name="Clients.Draft.RedirectUrisHint" xml:space="preserve"><value>Destinos exatos permitidos após o login.</value></data>
+  <data name="Clients.Draft.AddAction" xml:space="preserve"><value>Adicionar</value></data>
+  <data name="Clients.Draft.NoUriAdded" xml:space="preserve"><value>Nenhuma URI adicionada.</value></data>
+  <data name="Clients.Draft.RemoveRedirectUriAriaLabel" xml:space="preserve"><value>Remover Redirect URI {0}</value></data>
+  <data name="Clients.Draft.PostLogoutUrisHint" xml:space="preserve"><value>Destinos permitidos ao encerrar a sessão.</value></data>
+  <data name="Clients.Draft.RemovePostLogoutUriAriaLabel" xml:space="preserve"><value>Remover Post logout redirect URI {0}</value></data>
+  <data name="Clients.Draft.AdvancedLogoutSummary" xml:space="preserve"><value>Logout avançado</value></data>
+  <data name="Clients.Draft.FrontchannelSessionLabel" xml:space="preserve"><value>Sessão no front-channel</value></data>
+  <data name="Clients.Draft.SessionRequiredHint" xml:space="preserve"><value>Inclui o identificador da sessão no logout.</value></data>
+  <data name="Clients.Draft.BackchannelSessionLabel" xml:space="preserve"><value>Sessão no back-channel</value></data>
+  <data name="Clients.Draft.CredentialWillBeGenerated" xml:space="preserve"><value>Uma credencial será gerada na conclusão</value></data>
+  <data name="Clients.Draft.NoSecretNeeded" xml:space="preserve"><value>Esta aplicação não precisa de segredo</value></data>
+  <data name="Clients.Draft.CredentialOneTimeHint" xml:space="preserve"><value>O valor será exibido uma única vez. Guarde-o diretamente em um cofre de segredos; ele nunca entra no rascunho.</value></data>
+  <data name="Clients.Draft.PublicClientNoSecretHint" xml:space="preserve"><value>Clientes públicos usam PKCE ou Device Code e não devem carregar um segredo que não conseguiriam proteger.</value></data>
+  <data name="Clients.Draft.ChecklistProtectedConfig" xml:space="preserve"><value>O rascunho contém somente configuração protegida</value></data>
+  <data name="Clients.Draft.ChecklistRandomCredential" xml:space="preserve"><value>A credencial é aleatória e criada no último instante</value></data>
+  <data name="Clients.Draft.ChecklistAuditNoSecret" xml:space="preserve"><value>Auditoria registra a operação, nunca o segredo</value></data>
+  <data name="Clients.Draft.ReadyTitle" xml:space="preserve"><value>Pronto para criar</value></data>
+  <data name="Clients.Draft.NotReadyTitle" xml:space="preserve"><value>Ainda existem ajustes necessários</value></data>
+  <data name="Clients.Draft.ReadyMessage" xml:space="preserve"><value>Revise o resumo e conclua quando estiver seguro.</value></data>
+  <data name="Clients.Draft.NotReadyMessage" xml:space="preserve"><value>Abra os itens abaixo para ir diretamente à etapa correspondente.</value></data>
+  <data name="Clients.Draft.NameLabel" xml:space="preserve"><value>Nome</value></data>
+  <data name="Clients.Draft.FlowsLabel" xml:space="preserve"><value>Fluxos</value></data>
+  <data name="Clients.Draft.RequiredLabel" xml:space="preserve"><value>Obrigatório</value></data>
+  <data name="Clients.Draft.OptionalLabel" xml:space="preserve"><value>Opcional</value></data>
+  <data name="Clients.Draft.TokensLabel" xml:space="preserve"><value>Tokens</value></data>
+  <data name="Clients.Draft.NoScopeSelected" xml:space="preserve"><value>Nenhuma permissão selecionada.</value></data>
+  <data name="Clients.Draft.ReturnsHeading" xml:space="preserve"><value>Retornos</value></data>
+  <data name="Clients.Draft.ReturnsSummary" xml:space="preserve"><value>{0} Redirect URI(s) e {1} retorno(s) pós-logout.</value></data>
+  <data name="Clients.Draft.SwitchProfile" xml:space="preserve"><value>Trocar perfil</value></data>
+  <data name="Clients.Draft.Continue" xml:space="preserve"><value>Continuar</value></data>
+  <data name="Clients.Draft.CreateApplication" xml:space="preserve"><value>Criar aplicação</value></data>
+  <data name="Clients.Draft.ConfirmAbandonMessage" xml:space="preserve"><value>Descartar definitivamente este rascunho?</value></data>
+  <data name="Clients.Draft.ConfirmAbandonYes" xml:space="preserve"><value>Sim, descartar</value></data>
+  <data name="Clients.Draft.AbandonDraft" xml:space="preserve"><value>Descartar rascunho</value></data>
+  <data name="Clients.Draft.DraftNotFoundError" xml:space="preserve"><value>O rascunho não foi encontrado.</value></data>
+  <data name="Clients.Draft.SaveFailedError" xml:space="preserve"><value>Não foi possível salvar o rascunho.</value></data>
+  <data name="Clients.Draft.CreateFailedError" xml:space="preserve"><value>Não foi possível criar a aplicação.</value></data>
+  <data name="Clients.Draft.AbandonFailedError" xml:space="preserve"><value>Não foi possível descartar o rascunho.</value></data>
+  <data name="Clients.Draft.StepShort.Permissions" xml:space="preserve"><value>Acessos</value></data>
+  <data name="Clients.Draft.StepShort.Uris" xml:space="preserve"><value>URIs</value></data>
+  <data name="Clients.Draft.StepShort.Credentials" xml:space="preserve"><value>Segredo</value></data>
+  <data name="Clients.Draft.Eyebrow.Identity" xml:space="preserve"><value>Comece pelo essencial</value></data>
+  <data name="Clients.Draft.Eyebrow.Protocol" xml:space="preserve"><value>Escolha o fluxo</value></data>
+  <data name="Clients.Draft.Eyebrow.Permissions" xml:space="preserve"><value>Menor privilégio</value></data>
+  <data name="Clients.Draft.Eyebrow.Uris" xml:space="preserve"><value>Defina retornos exatos</value></data>
+  <data name="Clients.Draft.Eyebrow.Credentials" xml:space="preserve"><value>Proteja a integração</value></data>
+  <data name="Clients.Draft.Eyebrow.Review" xml:space="preserve"><value>Confira antes de criar</value></data>
+  <data name="Clients.Draft.StepDescription.Identity" xml:space="preserve"><value>Defina como pessoas e integrações reconhecerão esta aplicação.</value></data>
+  <data name="Clients.Draft.StepDescription.Protocol" xml:space="preserve"><value>Selecione apenas os fluxos necessários para reduzir a superfície de risco.</value></data>
+  <data name="Clients.Draft.StepDescription.Permissions" xml:space="preserve"><value>Conceda somente os dados e operações necessários.</value></data>
+  <data name="Clients.Draft.StepDescription.Uris" xml:space="preserve"><value>Cadastre destinos HTTPS e o comportamento de encerramento de sessão.</value></data>
+  <data name="Clients.Draft.StepDescription.Credentials" xml:space="preserve"><value>Entenda como a credencial será criada e entregue.</value></data>
+  <data name="Clients.Draft.StepDescription.Review" xml:space="preserve"><value>Valide o contrato completo e corrija pendências.</value></data>
+  <data name="Clients.Draft.TokenSummaryFormat" xml:space="preserve"><value>access {0} min · ID {1} min · refresh {2} dias</value></data>
+  <data name="Clients.Draft.GlobalDefaultShort" xml:space="preserve"><value>global</value></data>
+  <data name="Clients.Edit.LoadingAriaLabel" xml:space="preserve"><value>Carregando aplicação</value></data>
+  <data name="Clients.Edit.RecoveringConfig" xml:space="preserve"><value>Recuperando configuração…</value></data>
+  <data name="Clients.Edit.OpenErrorTitle" xml:space="preserve"><value>Não foi possível editar esta aplicação</value></data>
+  <data name="Clients.Edit.RecordUnavailable" xml:space="preserve"><value>O registro não está disponível.</value></data>
+  <data name="Clients.Edit.ManifestManagedTitle" xml:space="preserve"><value>Aplicação gerenciada por manifesto</value></data>
+  <data name="Clients.Edit.ManifestManagedMessage" xml:space="preserve"><value>Edite o manifesto declarativo e aplique o provisionamento para alterar este registro.</value></data>
+  <data name="Clients.Edit.BackToDetails" xml:space="preserve"><value>Voltar aos detalhes</value></data>
+  <data name="Clients.Edit.SectionsAriaLabel" xml:space="preserve"><value>Seções da edição</value></data>
+  <data name="Clients.Edit.ExistingApplication" xml:space="preserve"><value>Aplicação existente</value></data>
+  <data name="Clients.Edit.SafeReview" xml:space="preserve"><value>Revisão segura</value></data>
+  <data name="Clients.Edit.CredentialProtected" xml:space="preserve"><value>Credencial protegida</value></data>
+  <data name="Clients.Edit.NoActiveCredential" xml:space="preserve"><value>Sem credencial ativa</value></data>
+  <data name="Clients.Edit.AppNameHelper" xml:space="preserve"><value>Nome exibido no consentimento e na auditoria.</value></data>
+  <data name="Clients.Edit.ClientIdImmutableHelper" xml:space="preserve"><value>O identificador é imutável para não quebrar integrações existentes.</value></data>
+  <data name="Clients.Edit.ConsentExternalOption" xml:space="preserve"><value>Externo — decisão fora do fluxo</value></data>
+  <data name="Clients.Edit.RequireParHint" xml:space="preserve"><value>Protege parâmetros antes de abrir o navegador.</value></data>
+  <data name="Clients.Edit.AuthorizedFlowsLegend" xml:space="preserve"><value>Fluxos autorizados</value></data>
+  <data name="Clients.Edit.CurrentTypeHint" xml:space="preserve"><value>O tipo atual é {0}. A credencial é administrada em uma seção separada.</value></data>
+  <data name="Clients.Edit.ScopesHintPrefix" xml:space="preserve"><value>Um scope por linha, sem o prefixo técnico</value></data>
+  <data name="Clients.Edit.MoreInfoAboutAriaLabel" xml:space="preserve"><value>Mais informações sobre {0}</value></data>
+  <data name="Clients.Edit.AccessTokenHelp" xml:space="preserve"><value>Autoriza chamadas às APIs em nome do usuário ou da aplicação. É enviado ao servidor da API e não deve ser usado como comprovante de identidade.</value></data>
+  <data name="Clients.Edit.AccessTokenShortDesc" xml:space="preserve"><value>Acesso às APIs da aplicação.</value></data>
+  <data name="Clients.Edit.UseGlobalDefault" xml:space="preserve"><value>Usar padrão global</value></data>
+  <data name="Clients.Edit.CustomValueLabel" xml:space="preserve"><value>Valor personalizado</value></data>
+  <data name="Clients.Edit.MinutesUnit" xml:space="preserve"><value>min</value></data>
+  <data name="Clients.Edit.IdTokenHelp" xml:space="preserve"><value>Informa à aplicação que o login OIDC foi concluído e pode transportar dados do usuário autenticado. Não deve ser enviado para autorizar chamadas às APIs.</value></data>
+  <data name="Clients.Edit.IdTokenShortDesc" xml:space="preserve"><value>Identidade entregue ao cliente OIDC.</value></data>
+  <data name="Clients.Edit.RefreshTokenHelp" xml:space="preserve"><value>Permite obter novos access tokens sem solicitar outro login. É uma credencial sensível e deve ficar armazenada somente em ambiente seguro.</value></data>
+  <data name="Clients.Edit.RefreshTokenShortDesc" xml:space="preserve"><value>Janela máxima para renovar a sessão.</value></data>
+  <data name="Clients.Edit.DaysUnit" xml:space="preserve"><value>dias</value></data>
+  <data name="Clients.Edit.GlobalDefaultFootnote" xml:space="preserve"><value>Ao usar o padrão global, futuras mudanças do servidor passam a valer automaticamente para esta aplicação.</value></data>
+  <data name="Clients.Edit.RedirectUrisHint" xml:space="preserve"><value>Uma URI HTTPS por linha. Fragmentos não são permitidos.</value></data>
+  <data name="Clients.Edit.PostLogoutUrisLabel" xml:space="preserve"><value>Redirect URIs após logout</value></data>
+  <data name="Clients.Edit.OptionalTag" xml:space="preserve"><value>opcional</value></data>
+  <data name="Clients.Edit.NativeReturnsHintPrefix" xml:space="preserve"><value>Uma URI por linha. Para onde o navegador leva o usuário de volta ao aplicativo depois que a concessão termina — não recebe código nem token, por isso aceita esquema de uso privado (RFC 8252), por exemplo</value></data>
+  <data name="Clients.Edit.NativeReturnsHintSuffix" xml:space="preserve"><value>. A comparação é exata, sem curinga.</value></data>
+  <data name="Clients.Edit.FrontchannelLogoutLabel" xml:space="preserve"><value>Logout front-channel</value></data>
+  <data name="Clients.Edit.RequireSessionLabel" xml:space="preserve"><value>Exigir sessão</value></data>
+  <data name="Clients.Edit.FrontchannelSidHint" xml:space="preserve"><value>Inclui sid no logout federado.</value></data>
+  <data name="Clients.Edit.BackchannelLogoutLabel" xml:space="preserve"><value>Logout back-channel</value></data>
+  <data name="Clients.Edit.BackchannelNotifyHint" xml:space="preserve"><value>Envia a notificação de logout.</value></data>
+  <data name="Clients.Edit.AppAuthDescription" xml:space="preserve"><value>Cadastre credenciais simultâneas para rotação sem indisponibilidade ou use chaves públicas. Cada requisição OAuth deve usar apenas um método de autenticação.</value></data>
+  <data name="Clients.Edit.PendingBadge" xml:space="preserve"><value>Pendente</value></data>
+  <data name="Clients.Edit.AvailableMethodsAriaLabel" xml:space="preserve"><value>Métodos de autenticação disponíveis</value></data>
+  <data name="Clients.Edit.AvailableMethodsLabel" xml:space="preserve"><value>Métodos disponíveis</value></data>
+  <data name="Clients.Edit.NoMethodBadge" xml:space="preserve"><value>Nenhum método</value></data>
+  <data name="Clients.Edit.LoadingCredentials" xml:space="preserve"><value>Carregando credenciais…</value></data>
+  <data name="Clients.Edit.SharedSecretsHeading" xml:space="preserve"><value>Segredos compartilhados</value></data>
+  <data name="Clients.Edit.SharedSecretsDescription" xml:space="preserve"><value>Somente o identificador final é exibido. O valor completo nunca é recuperável.</value></data>
+  <data name="Clients.Edit.ActiveCountSuffix" xml:space="preserve"><value>{0} ativo(s)</value></data>
+  <data name="Clients.Edit.NoSharedSecretTitle" xml:space="preserve"><value>Nenhum segredo compartilhado</value></data>
+  <data name="Clients.Edit.NoSharedSecretHint" xml:space="preserve"><value>Adicione a primeira credencial ou configure private_key_jwt abaixo.</value></data>
+  <data name="Clients.Edit.FingerprintTitle" xml:space="preserve"><value>Impressão digital da credencial</value></data>
+  <data name="Clients.Edit.ProtectedValue" xml:space="preserve"><value>Valor protegido</value></data>
+  <data name="Clients.Edit.ExpiresOnFormat" xml:space="preserve"><value>Expira em {0}</value></data>
+  <data name="Clients.Edit.RevokeAction" xml:space="preserve"><value>Revogar</value></data>
+  <data name="Clients.Edit.PrimaryLabel" xml:space="preserve"><value>Principal</value></data>
+  <data name="Clients.Edit.ConfirmRevocationAriaLabel" xml:space="preserve"><value>Confirmar revogação</value></data>
+  <data name="Clients.Edit.RevokeCredentialConfirm" xml:space="preserve"><value>Revogar esta credencial agora?</value></data>
+  <data name="Clients.Edit.RevokeCredentialWarning" xml:space="preserve"><value>Novas autenticações com esse valor serão recusadas imediatamente.</value></data>
+  <data name="Clients.Edit.OptionalReasonPlaceholder" xml:space="preserve"><value>Motivo opcional</value></data>
+  <data name="Clients.Edit.RevocationReasonAriaLabel" xml:space="preserve"><value>Motivo da revogação</value></data>
+  <data name="Clients.Edit.Revoking" xml:space="preserve"><value>Revogando…</value></data>
+  <data name="Clients.Edit.ConfirmRevocation" xml:space="preserve"><value>Confirmar revogação</value></data>
+  <data name="Clients.Edit.CredentialUpdateErrorTitle" xml:space="preserve"><value>Não foi possível atualizar as credenciais</value></data>
+  <data name="Clients.Edit.CopyCredentialOnceMessage" xml:space="preserve"><value>Este é o único momento em que o valor completo será exibido. Salve-o no cofre da aplicação.</value></data>
+  <data name="Clients.Edit.NewCredentialAriaLabel" xml:space="preserve"><value>Nova credencial da aplicação</value></data>
+  <data name="Clients.Edit.Copied" xml:space="preserve"><value>Copiada</value></data>
+  <data name="Clients.Edit.CopyCredentialAction" xml:space="preserve"><value>Copiar credencial</value></data>
+  <data name="Clients.Edit.HideValue" xml:space="preserve"><value>Ocultar valor</value></data>
+  <data name="Clients.Edit.ClipboardUnavailable" xml:space="preserve"><value>A cópia automática não está disponível. Selecione e copie o valor acima.</value></data>
+  <data name="Clients.Edit.ManageRotation" xml:space="preserve"><value>Gerenciar rotação</value></data>
+  <data name="Clients.Edit.RotationGuidance" xml:space="preserve"><value>Adicione primeiro a nova credencial, atualize a aplicação consumidora e só então revogue a anterior.</value></data>
+  <data name="Clients.Edit.AddCredentialAction" xml:space="preserve"><value>Adicionar credencial</value></data>
+  <data name="Clients.Edit.ReplacePrimary" xml:space="preserve"><value>Substituir principal</value></data>
+  <data name="Clients.Edit.ReplacePrimaryCredential" xml:space="preserve"><value>Substituir credencial principal</value></data>
+  <data name="Clients.Edit.AddCredentialNote" xml:space="preserve"><value>A credencial atual continua funcionando até você revogá-la.</value></data>
+  <data name="Clients.Edit.ReplaceCredentialNote" xml:space="preserve"><value>A principal anterior deixa de funcionar assim que a substituição for confirmada.</value></data>
+  <data name="Clients.Edit.CredentialNameLabel" xml:space="preserve"><value>Nome da credencial</value></data>
+  <data name="Clients.Edit.CredentialNamePlaceholder" xml:space="preserve"><value>Ex.: produção — agosto 2026</value></data>
+  <data name="Clients.Edit.CredentialNameHint" xml:space="preserve"><value>Identifique ambiente, instância ou período de rotação.</value></data>
+  <data name="Clients.Edit.ExpirationLabel" xml:space="preserve"><value>Expiração</value></data>
+  <data name="Clients.Edit.OptionalUtcTag" xml:space="preserve"><value>opcional, UTC</value></data>
+  <data name="Clients.Edit.NoExpirationHint" xml:space="preserve"><value>Sem data, permanece válida até ser revogada.</value></data>
+  <data name="Clients.Edit.HowToSetValueLegend" xml:space="preserve"><value>Como definir o valor</value></data>
+  <data name="Clients.Edit.GenerateAutomatically" xml:space="preserve"><value>Gerar automaticamente</value></data>
+  <data name="Clients.Edit.GenerateAutomaticallyHint" xml:space="preserve"><value>Recomendado. Usa 256 bits de aleatoriedade criptográfica.</value></data>
+  <data name="Clients.Edit.EnterCredentialManually" xml:space="preserve"><value>Informar uma credencial</value></data>
+  <data name="Clients.Edit.EnterCredentialHint" xml:space="preserve"><value>Use um valor aleatório vindo do seu cofre de segredos.</value></data>
+  <data name="Clients.Edit.NewCredentialLabel" xml:space="preserve"><value>Nova credencial</value></data>
+  <data name="Clients.Edit.CredentialLengthHint" xml:space="preserve"><value>Entre 32 e 512 caracteres, sem espaços nas extremidades.</value></data>
+  <data name="Clients.Edit.ConfirmCredentialLabel" xml:space="preserve"><value>Confirmar credencial</value></data>
+  <data name="Clients.Edit.ValuesDoNotMatch" xml:space="preserve"><value>Os valores informados não coincidem.</value></data>
+  <data name="Clients.Edit.ConfirmOperationLabel" xml:space="preserve"><value>Confirme a operação</value></data>
+  <data name="Clients.Edit.NewValueOnceNote" xml:space="preserve"><value>O novo valor será mostrado uma única vez.</value></data>
+  <data name="Clients.Edit.PrimaryReplacedNote" xml:space="preserve"><value>Tokens emitidos continuam válidos, mas a principal anterior será recusada em novas autenticações.</value></data>
+  <data name="Clients.Edit.ConfirmReplacement" xml:space="preserve"><value>Confirmar substituição</value></data>
+  <data name="Clients.Edit.TlsCertificatesTitle" xml:space="preserve"><value>Certificados — mTLS</value></data>
+  <data name="Clients.Edit.TlsCertificatesDescription" xml:space="preserve"><value>Autenticação RFC 8705 sem segredo compartilhado; a chave privada permanece na aplicação.</value></data>
+  <data name="Clients.Edit.OptionalBadge" xml:space="preserve"><value>Opcional</value></data>
+  <data name="Clients.Edit.MtlsNotEnabledTitle" xml:space="preserve"><value>Transporte mTLS não ativado neste deployment</value></data>
+  <data name="Clients.Edit.MtlsNotEnabledMessage" xml:space="preserve"><value>Você pode preparar e rotacionar certificados agora. O método será aceito quando o domínio mTLS e a validação de certificado forem ativados na infraestrutura.</value></data>
+  <data name="Clients.Edit.PublicMaterialHeading" xml:space="preserve"><value>Material público registrado</value></data>
+  <data name="Clients.Edit.PublicMaterialDescription" xml:space="preserve"><value>Certificados autoassinados autenticam diretamente; CAs subordinadas habilitam certificados emitidos por uma PKI confiável.</value></data>
+  <data name="Clients.Edit.CountOfFormat" xml:space="preserve"><value>{0} de {1}</value></data>
+  <data name="Clients.Edit.NoCertificateTitle" xml:space="preserve"><value>Nenhum certificado registrado</value></data>
+  <data name="Clients.Edit.NoCertificateHint" xml:space="preserve"><value>Cadastre o certificado público autoassinado recomendado ou uma CA subordinada da PKI.</value></data>
+  <data name="Clients.Edit.ConfirmCertRevocationAriaLabel" xml:space="preserve"><value>Confirmar revogação do certificado</value></data>
+  <data name="Clients.Edit.RevokeCertConfirm" xml:space="preserve"><value>Revogar este certificado agora?</value></data>
+  <data name="Clients.Edit.RevokeCertWarning" xml:space="preserve"><value>Novas autenticações mTLS com este material serão recusadas imediatamente.</value></data>
+  <data name="Clients.Edit.AddCertificateAction" xml:space="preserve"><value>Adicionar certificado</value></data>
+  <data name="Clients.Edit.TrustModelLegend" xml:space="preserve"><value>Modelo de confiança</value></data>
+  <data name="Clients.Edit.SelfSignedCertOption" xml:space="preserve"><value>Certificado autoassinado</value></data>
+  <data name="Clients.Edit.SelfSignedCertHint" xml:space="preserve"><value>Recomendado. O certificado exato fica vinculado a esta aplicação.</value></data>
+  <data name="Clients.Edit.TrustedPkiOption" xml:space="preserve"><value>PKI confiável</value></data>
+  <data name="Clients.Edit.TrustedPkiHint" xml:space="preserve"><value>Avançado. Cadastre uma CA subordinada; a raiz deve estar na trust store do deployment.</value></data>
+  <data name="Clients.Edit.PkiNoRootTitle" xml:space="preserve"><value>PKI ainda sem raiz confiável</value></data>
+  <data name="Clients.Edit.PkiNoRootMessage" xml:space="preserve"><value>A CA subordinada pode ser preparada, mas tls_client_auth só será aceito após uma raiz pública ser configurada no deployment.</value></data>
+  <data name="Clients.Edit.KeyIdLabel" xml:space="preserve"><value>Identificador (kid)</value></data>
+  <data name="Clients.Edit.KeyIdPlaceholder" xml:space="preserve"><value>Ex.: producao-2026-08</value></data>
+  <data name="Clients.Edit.KeyIdHint" xml:space="preserve"><value>Se ficar vazio, será derivado da impressão digital do certificado.</value></data>
+  <data name="Clients.Edit.ConfirmClientIdLabel" xml:space="preserve"><value>Confirme o client ID</value></data>
+  <data name="Clients.Edit.LinkMaterialSuffix" xml:space="preserve"><value>para vincular o material à aplicação correta.</value></data>
+  <data name="Clients.Edit.CertificatePemLabel" xml:space="preserve"><value>Certificado público PEM</value></data>
+  <data name="Clients.Edit.CertificatePemHint" xml:space="preserve"><value>Nunca cole PFX, senha ou bloco PRIVATE KEY. Para PKI, envie somente a CA subordinada não autoemitida.</value></data>
+  <data name="Clients.Edit.RegisterCertErrorTitle" xml:space="preserve"><value>Não foi possível registrar o certificado</value></data>
+  <data name="Clients.Edit.Registering" xml:space="preserve"><value>Registrando…</value></data>
+  <data name="Clients.Edit.RegisterCertificateAction" xml:space="preserve"><value>Registrar certificado</value></data>
+  <data name="Clients.Edit.PublicKeysTitle" xml:space="preserve"><value>Chaves públicas — private_key_jwt</value></data>
+  <data name="Clients.Edit.PublicKeysDescription" xml:space="preserve"><value>Recomendado para serviços capazes de assinar uma client assertion.</value></data>
+  <data name="Clients.Edit.PublicMaterialOnlyTitle" xml:space="preserve"><value>Envie somente material público</value></data>
+  <data name="Clients.Edit.PublicMaterialOnlyMessage" xml:space="preserve"><value>O Identity rejeita parâmetros privados, chaves simétricas e kids duplicados. Até 10 chaves podem coexistir durante a rotação.</value></data>
+  <data name="Clients.Edit.JwksLabel" xml:space="preserve"><value>JWKS público</value></data>
+  <data name="Clients.Edit.JwksHint" xml:space="preserve"><value>Deixe vazio e salve para remover o método. Nunca cole a chave privada.</value></data>
+  <data name="Clients.Edit.SaveJwksAction" xml:space="preserve"><value>Salvar chaves públicas</value></data>
+  <data name="Clients.Edit.ReviewConfigErrorTitle" xml:space="preserve"><value>Revise a configuração</value></data>
+  <data name="Clients.Edit.SaveChangesAction" xml:space="preserve"><value>Salvar alterações</value></data>
+  <data name="Clients.Edit.AuditVersionNote" xml:space="preserve"><value>As alterações serão auditadas e usam a versão {0}.</value></data>
+  <data name="Clients.Edit.SectionProtocolsScopes" xml:space="preserve"><value>Protocolos e scopes</value></data>
+  <data name="Clients.Edit.SectionUrlsLogout" xml:space="preserve"><value>URLs e logout</value></data>
+  <data name="Clients.Edit.EditAppTitle" xml:space="preserve"><value>Editar aplicação</value></data>
+  <data name="Clients.Edit.EditAppTitleWithName" xml:space="preserve"><value>Editar aplicação — {0}</value></data>
+  <data name="Clients.Edit.HeaderDescriptionFallback" xml:space="preserve"><value>Altere qualquer seção e salve todas as mudanças de uma vez.</value></data>
+  <data name="Clients.Edit.HeaderDescriptionFormat" xml:space="preserve"><value>Aplicação: {0}. Ajustes gerais são salvos em conjunto; a credencial possui confirmação e auditoria próprias.</value></data>
+  <data name="Clients.Edit.GenericApplicationWord" xml:space="preserve"><value>aplicação</value></data>
+  <data name="Clients.Edit.SectionDescIdentity" xml:space="preserve"><value>Altere apenas os dados de apresentação e consentimento; o client ID permanece estável.</value></data>
+  <data name="Clients.Edit.SectionDescProtocol" xml:space="preserve"><value>Escolha somente os fluxos necessários e os scopes que a aplicação realmente consome.</value></data>
+  <data name="Clients.Edit.SectionDescTokens" xml:space="preserve"><value>Defina a validade padrão dos tokens emitidos para esta aplicação ou herde o valor global.</value></data>
+  <data name="Clients.Edit.SectionDescUrls" xml:space="preserve"><value>Confira os destinos antes de salvar. Cada URI é validada no servidor.</value></data>
+  <data name="Clients.Edit.SectionDescCredentials" xml:space="preserve"><value>Faça rotação sem indisponibilidade e prefira autenticação assimétrica quando a aplicação suportar.</value></data>
+  <data name="Clients.Edit.SaveFailedError" xml:space="preserve"><value>Não foi possível salvar as alterações.</value></data>
+  <data name="Clients.Edit.AddCredentialError" xml:space="preserve"><value>Não foi possível adicionar a credencial.</value></data>
+  <data name="Clients.Edit.ReplaceCredentialError" xml:space="preserve"><value>Não foi possível substituir a credencial.</value></data>
+  <data name="Clients.Edit.LoadCredentialsError" xml:space="preserve"><value>Não foi possível carregar as credenciais.</value></data>
+  <data name="Clients.Edit.RevokeCredentialError" xml:space="preserve"><value>Não foi possível revogar a credencial.</value></data>
+  <data name="Clients.Edit.ReloadToConfirmVersion" xml:space="preserve"><value>Recarregue a aplicação para confirmar a versão atual.</value></data>
+  <data name="Clients.Edit.RegisterCertError" xml:space="preserve"><value>Não foi possível registrar o certificado.</value></data>
+  <data name="Clients.Edit.RevokeCertError" xml:space="preserve"><value>Não foi possível revogar o certificado.</value></data>
+  <data name="Clients.Edit.SaveJwksError" xml:space="preserve"><value>Não foi possível salvar as chaves públicas.</value></data>
+  <data name="Clients.Edit.AuthMethodSecretHeaderBasic" xml:space="preserve"><value>Segredo no cabeçalho (Basic)</value></data>
+  <data name="Clients.Edit.AuthMethodSecretBodyLabel" xml:space="preserve"><value>Segredo no corpo</value></data>
+  <data name="Clients.Edit.AuthMethodSignedJwtLabel" xml:space="preserve"><value>JWT assinado (private_key_jwt)</value></data>
+  <data name="Clients.Edit.AuthMethodMtlsLabel" xml:space="preserve"><value>Certificado mTLS</value></data>
+  <data name="Clients.Edit.AuthMethodMtlsSelfSignedLabel" xml:space="preserve"><value>Certificado mTLS autoassinado</value></data>
+  <data name="Clients.Edit.StatusActive" xml:space="preserve"><value>Ativa</value></data>
+  <data name="Clients.Edit.StatusScheduled" xml:space="preserve"><value>Agendada</value></data>
+  <data name="Clients.Edit.StatusExpired" xml:space="preserve"><value>Expirada</value></data>
+  <data name="Clients.Edit.StatusRevoked" xml:space="preserve"><value>Revogada</value></data>
+  <data name="Clients.Edit.TypeConfidentialLower" xml:space="preserve"><value>confidencial</value></data>
+  <data name="Clients.Edit.TypePublicLower" xml:space="preserve"><value>público</value></data>
+  <data name="Clients.Edit.TypeNotInformedLower" xml:space="preserve"><value>não informado</value></data>
+  <data name="Users.Create.PageTitle" xml:space="preserve"><value>Novo usuário | Sufficit Identity</value></data>
+  <data name="Users.Create.HeaderTitle" xml:space="preserve"><value>Novo usuário</value></data>
+  <data name="Users.Create.HeaderDescription" xml:space="preserve"><value>Crie uma conta no provedor sem atribuir autoridades próprias de aplicações.</value></data>
+  <data name="Users.Create.BackToUsers" xml:space="preserve"><value>Voltar para usuários</value></data>
+  <data name="Users.Create.ContractStrip.Title" xml:space="preserve"><value>Conta de autenticação, não perfil empresarial</value></data>
+  <data name="Users.Create.ContractStrip.Description" xml:space="preserve"><value>Esta operação cria identificação e credencial. Grupos, cargos e permissões são definidos pelos sistemas que os utilizam.</value></data>
+  <data name="Users.Create.ContractStrip.Badge" xml:space="preserve"><value>Auditável</value></data>
+  <data name="Users.Create.LoadingAriaLabel" xml:space="preserve"><value>Carregando autorização</value></data>
+  <data name="Users.Create.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Users.Create.Forbidden.Title" xml:space="preserve"><value>Criação de usuários não autorizada</value></data>
+  <data name="Users.Create.Forbidden.Description" xml:space="preserve"><value>Sua sessão pode consultar o diretório, mas não possui a capability necessária para criar contas.</value></data>
+  <data name="Users.Create.Identity.Heading" xml:space="preserve"><value>Identificação</value></data>
+  <data name="Users.Create.Identity.Description" xml:space="preserve"><value>Use dados reconhecíveis pelo usuário. O e-mail começa pendente de confirmação.</value></data>
+  <data name="Users.Create.Field.UserName" xml:space="preserve"><value>Nome de usuário</value></data>
+  <data name="Users.Create.Field.Email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="Users.Create.Password.Heading" xml:space="preserve"><value>Senha inicial</value></data>
+  <data name="Users.Create.Password.Description" xml:space="preserve"><value>A política real é validada pelo Identity no servidor. A senha nunca entra na auditoria ou na resposta.</value></data>
+  <data name="Users.Create.Field.Password" xml:space="preserve"><value>Senha</value></data>
+  <data name="Users.Create.Field.ConfirmPassword" xml:space="preserve"><value>Confirmar senha</value></data>
+  <data name="Users.Create.Password.Hint" xml:space="preserve"><value>Compartilhe a senha por um canal seguro e oriente a troca após o primeiro acesso.</value></data>
+  <data name="Users.Create.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Users.Create.Submitting" xml:space="preserve"><value>Criando usuário…</value></data>
+  <data name="Users.Create.Submit" xml:space="preserve"><value>Criar usuário</value></data>
+  <data name="Users.Create.AccessError.StepUpTitle" xml:space="preserve"><value>Autenticação adicional necessária</value></data>
+  <data name="Users.Create.AccessError.GenericTitle" xml:space="preserve"><value>Não foi possível carregar sua autoridade</value></data>
+  <data name="Users.Create.SubmitError.StepUpTitle" xml:space="preserve"><value>MFA exigido para criar usuários</value></data>
+  <data name="Users.Create.SubmitError.ConflictTitle" xml:space="preserve"><value>Já existe uma identidade com esses dados</value></data>
+  <data name="Users.Create.SubmitError.GenericTitle" xml:space="preserve"><value>Não foi possível criar o usuário</value></data>
+  <data name="Users.Create.Validation.UserNameRequired" xml:space="preserve"><value>Informe o nome de usuário.</value></data>
+  <data name="Users.Create.Validation.MaxLength256" xml:space="preserve"><value>Use no máximo 256 caracteres.</value></data>
+  <data name="Users.Create.Validation.EmailRequired" xml:space="preserve"><value>Informe o e-mail.</value></data>
+  <data name="Users.Create.Validation.EmailInvalid" xml:space="preserve"><value>Informe um e-mail válido.</value></data>
+  <data name="Users.Create.Validation.PasswordRequired" xml:space="preserve"><value>Informe a senha inicial.</value></data>
+  <data name="Users.Create.Validation.ConfirmPasswordRequired" xml:space="preserve"><value>Confirme a senha inicial.</value></data>
+  <data name="Users.Create.Validation.PasswordsDoNotMatch" xml:space="preserve"><value>As senhas não coincidem.</value></data>
+  <data name="Users.Edit.PageTitle" xml:space="preserve"><value>Editar usuário | Sufficit Identity</value></data>
+  <data name="Users.Edit.HeaderTitle" xml:space="preserve"><value>Editar perfil</value></data>
+  <data name="Users.Edit.HeaderDescription" xml:space="preserve"><value>Atualize a identidade da conta sem duplicar regras de persistência ou autorização na interface.</value></data>
+  <data name="Users.Edit.BackToUser" xml:space="preserve"><value>Voltar para o usuário</value></data>
+  <data name="Users.Edit.LoadingAriaLabel" xml:space="preserve"><value>Carregando perfil do usuário</value></data>
+  <data name="Users.Edit.BackToUsers" xml:space="preserve"><value>Voltar para usuários</value></data>
+  <data name="Users.Edit.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Users.Edit.MfaRequired.Title" xml:space="preserve"><value>MFA necessário para editar o perfil</value></data>
+  <data name="Users.Edit.MfaRequired.Description" xml:space="preserve"><value>A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.</value></data>
+  <data name="Users.Edit.Forbidden.Title" xml:space="preserve"><value>Edição de perfil não autorizada</value></data>
+  <data name="Users.Edit.Forbidden.Description" xml:space="preserve"><value>Sua sessão não possui a capability necessária para alterar contas do provedor.</value></data>
+  <data name="Users.Edit.ContractStrip.Title" xml:space="preserve"><value>Alteração da conta no provedor</value></data>
+  <data name="Users.Edit.ContractStrip.Description" xml:space="preserve"><value>Dados modificados invalidam tokens ativos; consentimentos duráveis permanecem preservados.</value></data>
+  <data name="Users.Edit.ContractStrip.Badge" xml:space="preserve"><value>Sessões afetadas</value></data>
+  <data name="Users.Edit.Identity.Heading" xml:space="preserve"><value>Identificação</value></data>
+  <data name="Users.Edit.Identity.Description" xml:space="preserve"><value>O Identity valida unicidade e formato no servidor. E-mail e telefone alterados voltam a exigir confirmação.</value></data>
+  <data name="Users.Edit.Field.UserName" xml:space="preserve"><value>Nome de usuário</value></data>
+  <data name="Users.Edit.Field.Email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="Users.Edit.Field.Phone" xml:space="preserve"><value>Telefone</value></data>
+  <data name="Users.Edit.Field.PhoneOptional" xml:space="preserve"><value>Opcional</value></data>
+  <data name="Users.Edit.Field.PhoneHint" xml:space="preserve"><value>Use o formato reconhecido pelo provedor de confirmação configurado para este runtime.</value></data>
+  <data name="Users.Edit.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Users.Edit.Submitting" xml:space="preserve"><value>Salvando perfil…</value></data>
+  <data name="Users.Edit.Submit" xml:space="preserve"><value>Salvar perfil</value></data>
+  <data name="Users.Edit.LoadError.NotFound" xml:space="preserve"><value>Usuário não encontrado</value></data>
+  <data name="Users.Edit.LoadError.StepUp" xml:space="preserve"><value>MFA exigido para carregar o perfil</value></data>
+  <data name="Users.Edit.LoadError.Forbidden" xml:space="preserve"><value>Acesso ao usuário negado</value></data>
+  <data name="Users.Edit.LoadError.Generic" xml:space="preserve"><value>Não foi possível carregar o perfil</value></data>
+  <data name="Users.Edit.SubmitError.StepUp" xml:space="preserve"><value>MFA exigido para editar o perfil</value></data>
+  <data name="Users.Edit.SubmitError.Forbidden" xml:space="preserve"><value>Autoridade insuficiente sobre a conta</value></data>
+  <data name="Users.Edit.SubmitError.Conflict" xml:space="preserve"><value>Nome de usuário ou e-mail já utilizado</value></data>
+  <data name="Users.Edit.SubmitError.Generic" xml:space="preserve"><value>Não foi possível atualizar o perfil</value></data>
+  <data name="Users.Edit.Validation.UserNameRequired" xml:space="preserve"><value>Informe o nome de usuário.</value></data>
+  <data name="Users.Edit.Validation.MaxLength256" xml:space="preserve"><value>Use no máximo 256 caracteres.</value></data>
+  <data name="Users.Edit.Validation.EmailRequired" xml:space="preserve"><value>Informe o e-mail.</value></data>
+  <data name="Users.Edit.Validation.EmailInvalid" xml:space="preserve"><value>Informe um e-mail válido.</value></data>
+  <data name="Users.Detail.HeaderDescription" xml:space="preserve"><value>Perfil, credenciais e estado de autenticação mantidos pelo provedor.</value></data>
+  <data name="Users.Detail.BackToUsers" xml:space="preserve"><value>Voltar para usuários</value></data>
+  <data name="Users.Detail.ClaimsLink" xml:space="preserve"><value>Claims da conta</value></data>
+  <data name="Users.Detail.SessionsLink" xml:space="preserve"><value>Sessões</value></data>
+  <data name="Users.Detail.AuthorizationsLink" xml:space="preserve"><value>Autorizações</value></data>
+  <data name="Users.Detail.EditProfileLink" xml:space="preserve"><value>Editar perfil</value></data>
+  <data name="Users.Detail.Created.Title" xml:space="preserve"><value>Usuário criado</value></data>
+  <data name="Users.Detail.Created.Description" xml:space="preserve"><value>A conta foi criada sem atribuir cargos ou permissões próprias de aplicações.</value></data>
+  <data name="Users.Detail.Updated.Title" xml:space="preserve"><value>Perfil atualizado</value></data>
+  <data name="Users.Detail.Updated.Description" xml:space="preserve"><value>Os dados foram salvos e os tokens ativos anteriores foram invalidados.</value></data>
+  <data name="Users.Detail.PasswordReset.Title" xml:space="preserve"><value>Senha redefinida</value></data>
+  <data name="Users.Detail.PasswordReset.Description" xml:space="preserve"><value>A credencial e o selo de segurança foram atualizados; o evento foi registrado na auditoria.</value></data>
+  <data name="Users.Detail.LockoutChanged.LockedTitle" xml:space="preserve"><value>Acesso bloqueado</value></data>
+  <data name="Users.Detail.LockoutChanged.UnlockedTitle" xml:space="preserve"><value>Acesso desbloqueado</value></data>
+  <data name="Users.Detail.LockoutChanged.LockedDescription" xml:space="preserve"><value>As sessões, os tokens e as autorizações da conta foram revogados.</value></data>
+  <data name="Users.Detail.LockoutChanged.UnlockedDescription" xml:space="preserve"><value>A conta pode autenticar novamente; as sessões anteriores continuam revogadas.</value></data>
+  <data name="Users.Detail.LoadingAriaLabel" xml:space="preserve"><value>Carregando detalhes do usuário</value></data>
+  <data name="Users.Detail.Field.UserName" xml:space="preserve"><value>Nome de usuário</value></data>
+  <data name="Users.Detail.Field.Email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="Users.Detail.Field.Confirmation" xml:space="preserve"><value>Confirmação</value></data>
+  <data name="Users.Detail.EmailConfirmedYes" xml:space="preserve"><value>E-mail confirmado</value></data>
+  <data name="Users.Detail.EmailConfirmedPending" xml:space="preserve"><value>Pendente</value></data>
+  <data name="Users.Detail.Field.Id" xml:space="preserve"><value>Identificador</value></data>
+  <data name="Users.Detail.Security.Heading" xml:space="preserve"><value>Segurança da conta</value></data>
+  <data name="Users.Detail.Security.Mfa" xml:space="preserve"><value>Autenticação multifator</value></data>
+  <data name="Users.Detail.Security.MfaActive" xml:space="preserve"><value>Ativa</value></data>
+  <data name="Users.Detail.Security.MfaInactive" xml:space="preserve"><value>Inativa</value></data>
+  <data name="Users.Detail.Security.Lockout" xml:space="preserve"><value>Bloqueio</value></data>
+  <data name="Users.Detail.Security.AccessFailures" xml:space="preserve"><value>Falhas de acesso</value></data>
+  <data name="Users.Detail.Security.Phone" xml:space="preserve"><value>Telefone</value></data>
+  <data name="Users.Detail.States.Heading" xml:space="preserve"><value>Estados da identidade</value></data>
+  <data name="Users.Detail.States.EmailVerified" xml:space="preserve"><value>E-mail verificado</value></data>
+  <data name="Users.Detail.Common.Yes" xml:space="preserve"><value>Sim</value></data>
+  <data name="Users.Detail.Common.No" xml:space="preserve"><value>Não</value></data>
+  <data name="Users.Detail.States.PhoneVerified" xml:space="preserve"><value>Telefone verificado</value></data>
+  <data name="Users.Detail.States.LockoutEnabled" xml:space="preserve"><value>Bloqueio habilitado</value></data>
+  <data name="Users.Detail.States.LastUpdated" xml:space="preserve"><value>Última atualização</value></data>
+  <data name="Users.Detail.Audit.Heading" xml:space="preserve"><value>Consulta auditada</value></data>
+  <data name="Users.Detail.Audit.Description" xml:space="preserve"><value>O operador, o usuário, a decisão e a correlação foram registrados sem claims ou credenciais.</value></data>
+  <data name="Users.Detail.Audit.Badge" xml:space="preserve"><value>Registrada</value></data>
+  <data name="Users.Detail.Access.UnlockHeading" xml:space="preserve"><value>Desbloquear acesso</value></data>
+  <data name="Users.Detail.Access.LockHeading" xml:space="preserve"><value>Bloquear acesso</value></data>
+  <data name="Users.Detail.Access.UnlockDescription" xml:space="preserve"><value>Remove o bloqueio da conta sem restaurar sessões ou tokens anteriores.</value></data>
+  <data name="Users.Detail.Access.LockDescription" xml:space="preserve"><value>Interrompe novas autenticações e revoga sessões, tokens e autorizações desta conta.</value></data>
+  <data name="Users.Detail.Access.LockedBadge" xml:space="preserve"><value>Conta bloqueada</value></data>
+  <data name="Users.Detail.Access.ActiveBadge" xml:space="preserve"><value>Conta ativa</value></data>
+  <data name="Users.Detail.Access.ConfirmLabel" xml:space="preserve"><value>Confirmo o bloqueio desta conta</value></data>
+  <data name="Users.Detail.Access.ConfirmHint" xml:space="preserve"><value>O usuário perderá o acesso na próxima validação e precisará ser desbloqueado por um operador autorizado.</value></data>
+  <data name="Users.Detail.Access.ActionNote" xml:space="preserve"><value>Esta operação afeta a conta no provedor e fica registrada na auditoria.</value></data>
+  <data name="Users.Detail.Access.Unlocking" xml:space="preserve"><value>Desbloqueando…</value></data>
+  <data name="Users.Detail.Access.Locking" xml:space="preserve"><value>Bloqueando…</value></data>
+  <data name="Users.Detail.Access.UnlockButton" xml:space="preserve"><value>Desbloquear conta</value></data>
+  <data name="Users.Detail.Access.LockButton" xml:space="preserve"><value>Bloquear conta</value></data>
+  <data name="Users.Detail.Access.MfaRequiredTitle" xml:space="preserve"><value>MFA necessário para alterar o acesso</value></data>
+  <data name="Users.Detail.MfaRequiredDescription" xml:space="preserve"><value>A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.</value></data>
+  <data name="Users.Detail.Access.SelfProtectedTitle" xml:space="preserve"><value>Sua própria conta permanece protegida</value></data>
+  <data name="Users.Detail.Access.SelfProtectedDescription" xml:space="preserve"><value>Para evitar perda acidental de acesso administrativo, outro operador autorizado deve bloquear esta conta.</value></data>
+  <data name="Users.Detail.Access.ForbiddenTitle" xml:space="preserve"><value>Bloqueio não autorizado</value></data>
+  <data name="Users.Detail.Access.ForbiddenDescription" xml:space="preserve"><value>Sua sessão não possui a capability necessária para bloquear ou desbloquear contas.</value></data>
+  <data name="Users.Detail.Reset.Title" xml:space="preserve"><value>Redefinir senha</value></data>
+  <data name="Users.Detail.Reset.Description" xml:space="preserve"><value>A nova credencial substitui a senha atual e invalida os tokens afetados.</value></data>
+  <data name="Users.Detail.Reset.Badge" xml:space="preserve"><value>Conta do provedor</value></data>
+  <data name="Users.Detail.Reset.Field.NewPassword" xml:space="preserve"><value>Nova senha</value></data>
+  <data name="Users.Detail.Reset.Field.ConfirmPassword" xml:space="preserve"><value>Confirmar nova senha</value></data>
+  <data name="Users.Detail.Reset.PolicyNote" xml:space="preserve"><value>A política de senha é aplicada pelo Identity no servidor.</value></data>
+  <data name="Users.Detail.Reset.Submitting" xml:space="preserve"><value>Redefinindo…</value></data>
+  <data name="Users.Detail.Reset.MfaRequiredTitle" xml:space="preserve"><value>MFA necessário para redefinir a senha</value></data>
+  <data name="Users.Detail.Reset.ForbiddenTitle" xml:space="preserve"><value>Redefinição não autorizada</value></data>
+  <data name="Users.Detail.Reset.ForbiddenDescription" xml:space="preserve"><value>Sua sessão não possui a capability necessária para redefinir credenciais.</value></data>
+  <data name="Users.Detail.Delete.Heading" xml:space="preserve"><value>Excluir conta do provedor</value></data>
+  <data name="Users.Detail.Delete.Description" xml:space="preserve"><value>A conta, suas credenciais e os vínculos Identity serão removidos. Tokens, sessões e autorizações serão revogados antes da exclusão.</value></data>
+  <data name="Users.Detail.Delete.ConfirmLabelPrefix" xml:space="preserve"><value>Digite</value></data>
+  <data name="Users.Detail.Delete.ConfirmLabelSuffix" xml:space="preserve"><value>para confirmar</value></data>
+  <data name="Users.Detail.Delete.Help" xml:space="preserve"><value>Esta operação é permanente e não altera dados empresariais mantidos por outras aplicações.</value></data>
+  <data name="Users.Detail.Delete.Submitting" xml:space="preserve"><value>Excluindo…</value></data>
+  <data name="Users.Detail.Delete.Submit" xml:space="preserve"><value>Excluir conta</value></data>
+  <data name="Users.Detail.Delete.MfaRequiredTitle" xml:space="preserve"><value>MFA necessário para excluir a conta</value></data>
+  <data name="Users.Detail.Delete.MfaRequiredDescription" xml:space="preserve"><value>A política administrativa exige autenticação multifator antes de uma exclusão permanente.</value></data>
+  <data name="Users.Detail.Delete.SelfTitle" xml:space="preserve"><value>Sua própria conta não pode ser excluída</value></data>
+  <data name="Users.Detail.Delete.SelfDescription" xml:space="preserve"><value>Outro operador autorizado deve executar esta operação para evitar perda acidental do acesso administrativo.</value></data>
+  <data name="Users.Detail.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Users.Detail.HeaderTitleDefault" xml:space="preserve"><value>Detalhes do usuário</value></data>
+  <data name="Users.Detail.PageTitleFormat" xml:space="preserve"><value>{0} | Sufficit Identity</value></data>
+  <data name="Users.Detail.Error.NotFound" xml:space="preserve"><value>Usuário não encontrado</value></data>
+  <data name="Users.Detail.Error.StepUp" xml:space="preserve"><value>MFA exigido para consultar o usuário</value></data>
+  <data name="Users.Detail.Error.Forbidden" xml:space="preserve"><value>Acesso ao usuário negado</value></data>
+  <data name="Users.Detail.Error.Generic" xml:space="preserve"><value>Não foi possível abrir o usuário</value></data>
+  <data name="Users.Detail.Error.GenericDescription" xml:space="preserve"><value>O serviço de identidade não conseguiu ler esse registro.</value></data>
+  <data name="Users.Detail.Reset.Error.StepUp" xml:space="preserve"><value>MFA exigido para redefinir a senha</value></data>
+  <data name="Users.Detail.Error.InsufficientAuthority" xml:space="preserve"><value>Autoridade insuficiente sobre a conta</value></data>
+  <data name="Users.Detail.Reset.Error.Generic" xml:space="preserve"><value>Não foi possível redefinir a senha</value></data>
+  <data name="Users.Detail.Access.Error.StepUp" xml:space="preserve"><value>MFA exigido para alterar o acesso</value></data>
+  <data name="Users.Detail.Access.Error.Generic" xml:space="preserve"><value>Não foi possível alterar o acesso</value></data>
+  <data name="Users.Detail.Delete.Error.StepUp" xml:space="preserve"><value>MFA exigido para excluir a conta</value></data>
+  <data name="Users.Detail.Delete.Error.Forbidden" xml:space="preserve"><value>Exclusão não autorizada</value></data>
+  <data name="Users.Detail.Delete.Error.NotFound" xml:space="preserve"><value>A conta já não existe</value></data>
+  <data name="Users.Detail.Delete.Error.Generic" xml:space="preserve"><value>Não foi possível excluir a conta</value></data>
+  <data name="Users.Detail.NotInformed" xml:space="preserve"><value>Não informado</value></data>
+  <data name="Users.Detail.Security.LockoutDisabled" xml:space="preserve"><value>Desabilitado</value></data>
+  <data name="Users.Detail.Security.LockedUntilFormat" xml:space="preserve"><value>Bloqueado até {0}</value></data>
+  <data name="Users.Detail.Security.NoActiveLockout" xml:space="preserve"><value>Sem bloqueio ativo</value></data>
+  <data name="Sessions.PageTitle" xml:space="preserve"><value>Sessões | Sufficit Identity</value></data>
+  <data name="Sessions.HeaderTitle" xml:space="preserve"><value>Sessões e credenciais</value></data>
+  <data name="Sessions.HeaderDescription" xml:space="preserve"><value>Inspecione metadados das credenciais emitidas pelo provedor e interrompa seu uso.</value></data>
+  <data name="Sessions.ContractStrip.Title" xml:space="preserve"><value>Fonte canônica: runtime de autorização</value></data>
+  <data name="Sessions.ContractStrip.Description" xml:space="preserve"><value>Esta tela não exibe conteúdo, referência ou payload de tokens. Cookies só são invalidados no encerramento total da conta.</value></data>
+  <data name="Sessions.ContractStrip.Badge" xml:space="preserve"><value>Metadados seguros</value></data>
+  <data name="Sessions.Revoked.Title" xml:space="preserve"><value>Credencial revogada</value></data>
+  <data name="Sessions.Revoked.Description" xml:space="preserve"><value>Novas validações dessa credencial serão recusadas.</value></data>
+  <data name="Sessions.RevokedAll.Title" xml:space="preserve"><value>Sessões da conta encerradas</value></data>
+  <data name="Sessions.RevokedAll.DescriptionFormat" xml:space="preserve"><value>{0} credencial(is) e {1} autorização(ões) foram revogadas; o cookie foi invalidado pelo selo de segurança.</value></data>
+  <data name="Sessions.List.Heading" xml:space="preserve"><value>Credenciais emitidas</value></data>
+  <data name="Sessions.Search.VisuallyHidden" xml:space="preserve"><value>Pesquisar sessões</value></data>
+  <data name="Sessions.Search.Placeholder" xml:space="preserve"><value>Usuário, cliente, tipo ou estado</value></data>
+  <data name="Sessions.Filter.StateLabel" xml:space="preserve"><value>Estado</value></data>
+  <data name="Sessions.Filter.Active" xml:space="preserve"><value>Ativas</value></data>
+  <data name="Sessions.Filter.All" xml:space="preserve"><value>Todas</value></data>
+  <data name="Sessions.Apply" xml:space="preserve"><value>Aplicar</value></data>
+  <data name="Sessions.LoadingAriaLabel" xml:space="preserve"><value>Carregando sessões</value></data>
+  <data name="Sessions.Empty.Title" xml:space="preserve"><value>Nenhuma credencial encontrada</value></data>
+  <data name="Sessions.Empty.Description" xml:space="preserve"><value>Não há registros neste recorte. Altere o estado ou a pesquisa para ampliar a consulta.</value></data>
+  <data name="Sessions.Column.UserApplication" xml:space="preserve"><value>Usuário / aplicação</value></data>
+  <data name="Sessions.Column.Client" xml:space="preserve"><value>Cliente</value></data>
+  <data name="Sessions.Column.Type" xml:space="preserve"><value>Tipo</value></data>
+  <data name="Sessions.Column.IssuedExpires" xml:space="preserve"><value>Emissão / expiração</value></data>
+  <data name="Sessions.Column.State" xml:space="preserve"><value>Estado</value></data>
+  <data name="Sessions.Column.Actions" xml:space="preserve"><value>Ações</value></data>
+  <data name="Sessions.TechnicalClientNoApp" xml:space="preserve"><value>Cliente técnico sem aplicação</value></data>
+  <data name="Sessions.NoClient" xml:space="preserve"><value>Sem cliente</value></data>
+  <data name="Sessions.ExpiresPrefix" xml:space="preserve"><value>expira</value></data>
+  <data name="Sessions.RevokeAction" xml:space="preserve"><value>Revogar</value></data>
+  <data name="Sessions.Error.GenericDescription" xml:space="preserve"><value>O serviço não conseguiu consultar as sessões.</value></data>
+  <data name="Sessions.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Sessions.PaginationAriaLabel" xml:space="preserve"><value>Paginação de sessões</value></data>
+  <data name="Sessions.Previous" xml:space="preserve"><value>Anterior</value></data>
+  <data name="Sessions.PageOfFormat" xml:space="preserve"><value>Página {0} de {1}</value></data>
+  <data name="Sessions.Next" xml:space="preserve"><value>Próxima</value></data>
+  <data name="Sessions.RevokeConfirm.Heading" xml:space="preserve"><value>Revogar esta credencial?</value></data>
+  <data name="Sessions.RevokeConfirm.IssuedAt" xml:space="preserve"><value>emitida</value></data>
+  <data name="Sessions.RevokeConfirm.ErrorTitle" xml:space="preserve"><value>Não foi possível revogar</value></data>
+  <data name="Sessions.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Sessions.Revoking" xml:space="preserve"><value>Revogando…</value></data>
+  <data name="Sessions.ConfirmRevocation" xml:space="preserve"><value>Confirmar revogação</value></data>
+  <data name="Sessions.RevokeAll.Heading" xml:space="preserve"><value>Encerrar todas as sessões desta conta</value></data>
+  <data name="Sessions.RevokeAll.Description" xml:space="preserve"><value>Gira o selo de segurança e revoga tokens e autorizações vinculados ao usuário filtrado.</value></data>
+  <data name="Sessions.RevokeAll.ConfirmLabel" xml:space="preserve"><value>Confirmo o encerramento total.</value></data>
+  <data name="Sessions.RevokeAll.Ending" xml:space="preserve"><value>Encerrando…</value></data>
+  <data name="Sessions.RevokeAll.EndAll" xml:space="preserve"><value>Encerrar todas</value></data>
+  <data name="Sessions.FilterDescription.ByAccountFormat" xml:space="preserve"><value>Filtradas pela conta {0}.</value></data>
+  <data name="Sessions.FilterDescription.ByClientFormat" xml:space="preserve"><value>Filtradas pelo cliente {0}.</value></data>
+  <data name="Sessions.FilterDescription.Default" xml:space="preserve"><value>Cada linha representa uma credencial persistida pelo runtime de autorização.</value></data>
+  <data name="Sessions.Error.StepUp" xml:space="preserve"><value>MFA exigido para consultar sessões</value></data>
+  <data name="Sessions.Error.Forbidden" xml:space="preserve"><value>Acesso às sessões negado</value></data>
+  <data name="Sessions.Error.Generic" xml:space="preserve"><value>Não foi possível consultar as sessões</value></data>
+  <data name="Sessions.ResultCount.Loading" xml:space="preserve"><value>Carregando sessões</value></data>
+  <data name="Sessions.ResultCount.Format" xml:space="preserve"><value>{0} credencial(is)</value></data>
+  <data name="Sessions.ResultCount.NoneLoaded" xml:space="preserve"><value>Nenhum resultado carregado</value></data>
+  <data name="Sessions.NoUser" xml:space="preserve"><value>Sem usuário</value></data>
+  <data name="Sessions.Application" xml:space="preserve"><value>Aplicação</value></data>
+  <data name="Sessions.Status.Active" xml:space="preserve"><value>Ativa</value></data>
+  <data name="Sessions.Status.Revoked" xml:space="preserve"><value>Revogada</value></data>
+  <data name="Sessions.Status.Used" xml:space="preserve"><value>Utilizada</value></data>
+  <data name="Sessions.NoExpiration" xml:space="preserve"><value>sem prazo</value></data>
+  <data name="ServiceAccounts.PageTitle" xml:space="preserve"><value>Contas de sistema | Sufficit Identity</value></data>
+  <data name="ServiceAccounts.HeaderTitle" xml:space="preserve"><value>Contas de sistema</value></data>
+  <data name="ServiceAccounts.HeaderDescription" xml:space="preserve"><value>Serviços que se autenticam sozinhos (client_credentials) e recebem capacidades de gestão por papéis declarados no próprio registro. Revogar um papel vale na próxima requisição — nenhum token precisa expirar.</value></data>
+  <data name="ServiceAccounts.Reload" xml:space="preserve"><value>Recarregar</value></data>
+  <data name="ServiceAccounts.NewAccount" xml:space="preserve"><value>Nova conta</value></data>
+  <data name="ServiceAccounts.CreatedSecret.Title" xml:space="preserve"><value>Copie o segredo agora — ele não será exibido de novo</value></data>
+  <data name="ServiceAccounts.CreatedSecret.AccountLabel" xml:space="preserve"><value>Conta</value></data>
+  <data name="ServiceAccounts.CreatedSecret.HashNote" xml:space="preserve"><value>O segredo é guardado apenas como hash; se perder, só resta rotacionar.</value></data>
+  <data name="ServiceAccounts.CreatedSecret.Acknowledge" xml:space="preserve"><value>Já copiei</value></data>
+  <data name="ServiceAccounts.Create.AriaLabel" xml:space="preserve"><value>Nova conta de sistema</value></data>
+  <data name="ServiceAccounts.Create.DescriptionPrefix" xml:space="preserve"><value>A conta é criada como cliente confidencial com</value></data>
+  <data name="ServiceAccounts.Create.DescriptionSuffix" xml:space="preserve"><value>— sem redirect e sem fluxo interativo, porque não há usuário nessa história. O segredo é gerado pelo servidor e mostrado uma única vez.</value></data>
+  <data name="ServiceAccounts.Field.IdentifierAriaLabel" xml:space="preserve"><value>Identificador</value></data>
+  <data name="ServiceAccounts.Field.IdentifierLabel" xml:space="preserve"><value>Identificador (client_id)</value></data>
+  <data name="ServiceAccounts.Field.IdentifierHelp" xml:space="preserve"><value>Como o serviço se identifica no endpoint de token.</value></data>
+  <data name="ServiceAccounts.Field.IdentifierPlaceholder" xml:space="preserve"><value>Ex.: billing-sync</value></data>
+  <data name="ServiceAccounts.Field.DisplayNameAriaLabel" xml:space="preserve"><value>Nome de exibição</value></data>
+  <data name="ServiceAccounts.Field.DisplayNameLabel" xml:space="preserve"><value>Nome de exibição</value></data>
+  <data name="ServiceAccounts.Field.DisplayNameHelp" xml:space="preserve"><value>Opcional. Aparece na lista e na auditoria.</value></data>
+  <data name="ServiceAccounts.Field.DisplayNamePlaceholder" xml:space="preserve"><value>Ex.: Sincronização de faturamento</value></data>
+  <data name="ServiceAccounts.Roles" xml:space="preserve"><value>Papéis</value></data>
+  <data name="ServiceAccounts.NoRoles.DescriptionPrefix" xml:space="preserve"><value>Esta implantação não declara papéis</value></data>
+  <data name="ServiceAccounts.NoRoles.DescriptionSuffix" xml:space="preserve"><value>. A conta pode ser criada sem papel e recebê-los depois.</value></data>
+  <data name="ServiceAccounts.RolePicker.NewAccountAriaLabel" xml:space="preserve"><value>Papéis da nova conta</value></data>
+  <data name="ServiceAccounts.FullAdministratorSuffixCreate" xml:space="preserve"><value> — administrador pleno</value></data>
+  <data name="ServiceAccounts.CreateSubmit" xml:space="preserve"><value>Criar conta</value></data>
+  <data name="ServiceAccounts.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="ServiceAccounts.Error.Title" xml:space="preserve"><value>Não foi possível concluir</value></data>
+  <data name="ServiceAccounts.Loading" xml:space="preserve"><value>Carregando contas de sistema…</value></data>
+  <data name="ServiceAccounts.Empty.Title" xml:space="preserve"><value>Nenhuma conta de sistema</value></data>
+  <data name="ServiceAccounts.Empty.Description" xml:space="preserve"><value>Nenhum cliente tem o grant client_credentials nem papéis declarados. Conceda o grant no registro do cliente para que ele apareça aqui.</value></data>
+  <data name="ServiceAccounts.Table.AriaLabel" xml:space="preserve"><value>Contas de sistema</value></data>
+  <data name="ServiceAccounts.Column.Client" xml:space="preserve"><value>Cliente</value></data>
+  <data name="ServiceAccounts.Column.ResultingCapabilities" xml:space="preserve"><value>Capacidades resultantes</value></data>
+  <data name="ServiceAccounts.NoGrantTag" xml:space="preserve"><value>sem grant client_credentials</value></data>
+  <data name="ServiceAccounts.RolePicker.AccountAriaLabelFormat" xml:space="preserve"><value>Papéis de {0}</value></data>
+  <data name="ServiceAccounts.FullAdministratorSuffixEdit" xml:space="preserve"><value> — administrador total</value></data>
+  <data name="ServiceAccounts.NoneRolesMasculine" xml:space="preserve"><value>nenhum</value></data>
+  <data name="ServiceAccounts.NoneCapabilitiesFeminine" xml:space="preserve"><value>nenhuma</value></data>
+  <data name="ServiceAccounts.CapabilityCountFormat" xml:space="preserve"><value>{0} capacidade(s)</value></data>
+  <data name="ServiceAccounts.Save" xml:space="preserve"><value>Salvar</value></data>
+  <data name="ServiceAccounts.EditRoles" xml:space="preserve"><value>Editar papéis</value></data>
+  <data name="ServiceAccounts.Footnote.Prefix" xml:space="preserve"><value>O que cada papel significa vem da configuração da implantação</value></data>
+  <data name="ServiceAccounts.Footnote.Middle" xml:space="preserve"><value>; esta tela decide apenas</value></data>
+  <data name="ServiceAccounts.Footnote.Who" xml:space="preserve"><value>quem</value></data>
+  <data name="ServiceAccounts.Footnote.Suffix" xml:space="preserve"><value>tem o papel. Um operador humano com o mesmo papel continua exigindo segundo fator — a isenção de MFA é da conta de sistema, e só para o que os papéis dela concedem.</value></data>
+  <data name="ServiceAccounts.Created.SuccessFormat" xml:space="preserve"><value>Conta '{0}' criada.</value></data>
+  <data name="ServiceAccounts.RolesRemovedFormat" xml:space="preserve"><value>Papéis removidos de {0}. A conta perde as capacidades na próxima requisição.</value></data>
+  <data name="ServiceAccounts.RolesUpdatedFormat" xml:space="preserve"><value>Papéis de {0} atualizados.</value></data>
+  <data name="Authorizations.PageTitle" xml:space="preserve"><value>Autorizações | Sufficit Identity</value></data>
+  <data name="Authorizations.HeaderTitle" xml:space="preserve"><value>Autorizações</value></data>
+  <data name="Authorizations.HeaderDescription" xml:space="preserve"><value>Revise consentimentos e grants OAuth/OpenID Connect mantidos pelo provedor.</value></data>
+  <data name="Authorizations.ContractStrip.Title" xml:space="preserve"><value>Autorizações persistidas</value></data>
+  <data name="Authorizations.ContractStrip.Description" xml:space="preserve"><value>Revogar uma autorização também invalida todas as credenciais associadas a ela.</value></data>
+  <data name="Authorizations.Revoked.Title" xml:space="preserve"><value>Autorização revogada</value></data>
+  <data name="Authorizations.Revoked.Description" xml:space="preserve"><value>O grant e suas credenciais relacionadas não podem mais ser utilizados.</value></data>
+  <data name="Authorizations.List.Heading" xml:space="preserve"><value>Grants e consentimentos</value></data>
+  <data name="Authorizations.Search.VisuallyHidden" xml:space="preserve"><value>Pesquisar autorizações</value></data>
+  <data name="Authorizations.Search.Placeholder" xml:space="preserve"><value>Usuário, cliente, tipo ou estado</value></data>
+  <data name="Authorizations.Filter.StateLabel" xml:space="preserve"><value>Estado</value></data>
+  <data name="Authorizations.Filter.Active" xml:space="preserve"><value>Ativas</value></data>
+  <data name="Authorizations.Filter.All" xml:space="preserve"><value>Todas</value></data>
+  <data name="Authorizations.Apply" xml:space="preserve"><value>Aplicar</value></data>
+  <data name="Authorizations.LoadingAriaLabel" xml:space="preserve"><value>Carregando autorizações</value></data>
+  <data name="Authorizations.Empty.Title" xml:space="preserve"><value>Nenhuma autorização encontrada</value></data>
+  <data name="Authorizations.Empty.Description" xml:space="preserve"><value>Não há grants neste recorte. Altere o estado ou a pesquisa para ampliar a consulta.</value></data>
+  <data name="Authorizations.Column.User" xml:space="preserve"><value>Usuário</value></data>
+  <data name="Authorizations.Column.Client" xml:space="preserve"><value>Cliente</value></data>
+  <data name="Authorizations.Column.Scopes" xml:space="preserve"><value>Scopes</value></data>
+  <data name="Authorizations.Column.TypeCreated" xml:space="preserve"><value>Tipo / criação</value></data>
+  <data name="Authorizations.Column.Credentials" xml:space="preserve"><value>Credenciais</value></data>
+  <data name="Authorizations.Column.State" xml:space="preserve"><value>Estado</value></data>
+  <data name="Authorizations.Column.Actions" xml:space="preserve"><value>Ações</value></data>
+  <data name="Authorizations.NoUser" xml:space="preserve"><value>Sem usuário</value></data>
+  <data name="Authorizations.NoClient" xml:space="preserve"><value>Sem cliente</value></data>
+  <data name="Authorizations.NoScopes" xml:space="preserve"><value>Sem scopes</value></data>
+  <data name="Authorizations.RevokeAction" xml:space="preserve"><value>Revogar</value></data>
+  <data name="Authorizations.Error.GenericDescription" xml:space="preserve"><value>O serviço não conseguiu consultar as autorizações.</value></data>
+  <data name="Authorizations.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Authorizations.PaginationAriaLabel" xml:space="preserve"><value>Paginação de autorizações</value></data>
+  <data name="Authorizations.Previous" xml:space="preserve"><value>Anterior</value></data>
+  <data name="Authorizations.PageOfFormat" xml:space="preserve"><value>Página {0} de {1}</value></data>
+  <data name="Authorizations.Next" xml:space="preserve"><value>Próxima</value></data>
+  <data name="Authorizations.RevokeConfirm.Heading" xml:space="preserve"><value>Revogar esta autorização?</value></data>
+  <data name="Authorizations.RevokeConfirm.CredentialCountFormat" xml:space="preserve"><value>{0} credencial(is) associada(s).</value></data>
+  <data name="Authorizations.RevokeConfirm.ErrorTitle" xml:space="preserve"><value>Não foi possível revogar</value></data>
+  <data name="Authorizations.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Authorizations.Revoking" xml:space="preserve"><value>Revogando…</value></data>
+  <data name="Authorizations.ConfirmRevocation" xml:space="preserve"><value>Confirmar revogação</value></data>
+  <data name="Authorizations.FilterDescription.ByAccountFormat" xml:space="preserve"><value>Filtradas pela conta {0}.</value></data>
+  <data name="Authorizations.FilterDescription.ByClientFormat" xml:space="preserve"><value>Filtradas pelo cliente {0}.</value></data>
+  <data name="Authorizations.FilterDescription.Default" xml:space="preserve"><value>Cada linha representa uma autorização persistida pelo runtime de autorização.</value></data>
+  <data name="Authorizations.Error.StepUp" xml:space="preserve"><value>MFA exigido para consultar autorizações</value></data>
+  <data name="Authorizations.Error.Forbidden" xml:space="preserve"><value>Acesso às autorizações negado</value></data>
+  <data name="Authorizations.Error.Generic" xml:space="preserve"><value>Não foi possível consultar as autorizações</value></data>
+  <data name="Authorizations.ResultCount.Loading" xml:space="preserve"><value>Carregando autorizações</value></data>
+  <data name="Authorizations.ResultCount.Format" xml:space="preserve"><value>{0} autorização(ões)</value></data>
+  <data name="Authorizations.ResultCount.NoneLoaded" xml:space="preserve"><value>Nenhum resultado carregado</value></data>
+  <data name="Authorizations.Status.Active" xml:space="preserve"><value>Ativa</value></data>
+  <data name="Authorizations.Status.Revoked" xml:space="preserve"><value>Revogada</value></data>
+  <data name="Authorizations.NoDateRecorded" xml:space="preserve"><value>data não registrada</value></data>
+  <data name="Claims.HeaderDescription" xml:space="preserve"><value>Atributos adicionais emitidos pelo provedor para esta conta.</value></data>
+  <data name="Claims.BackToUser" xml:space="preserve"><value>Voltar para o usuário</value></data>
+  <data name="Claims.AssignClaim" xml:space="preserve"><value>Atribuir claim</value></data>
+  <data name="Claims.SelectUser.Title" xml:space="preserve"><value>Selecione um usuário</value></data>
+  <data name="Claims.SelectUser.Description" xml:space="preserve"><value>Abra uma conta no diretório de identidades para consultar e administrar suas claims.</value></data>
+  <data name="Claims.OpenUserDirectory" xml:space="preserve"><value>Abrir diretório de usuários</value></data>
+  <data name="Claims.Assigned.Title" xml:space="preserve"><value>Claim atribuída</value></data>
+  <data name="Claims.Assigned.Description" xml:space="preserve"><value>O selo de segurança foi atualizado e os tokens anteriores foram revogados.</value></data>
+  <data name="Claims.Removed.Title" xml:space="preserve"><value>Claim removida</value></data>
+  <data name="Claims.Removed.Description" xml:space="preserve"><value>A atribuição foi excluída e as credenciais emitidas anteriormente foram revogadas.</value></data>
+  <data name="Claims.ContractStrip.Badge" xml:space="preserve"><value>Conta selecionada</value></data>
+  <data name="Claims.List.Heading" xml:space="preserve"><value>Claims da conta</value></data>
+  <data name="Claims.List.Description" xml:space="preserve"><value>Tipos multivalorados aparecem em linhas separadas e podem ser editados individualmente.</value></data>
+  <data name="Claims.Search.VisuallyHidden" xml:space="preserve"><value>Pesquisar claims da conta</value></data>
+  <data name="Claims.Search.Placeholder" xml:space="preserve"><value>Tipo ou valor</value></data>
+  <data name="Claims.Search.Submit" xml:space="preserve"><value>Pesquisar</value></data>
+  <data name="Claims.Search.Clear" xml:space="preserve"><value>Limpar</value></data>
+  <data name="Claims.LoadingAriaLabel" xml:space="preserve"><value>Carregando claims</value></data>
+  <data name="Claims.User.Error.GenericDescription" xml:space="preserve"><value>O serviço não conseguiu ler a conta.</value></data>
+  <data name="Claims.BackToUsers" xml:space="preserve"><value>Voltar para usuários</value></data>
+  <data name="Claims.Empty.Title" xml:space="preserve"><value>Nenhuma claim atribuída</value></data>
+  <data name="Claims.AssignFirstClaim" xml:space="preserve"><value>Atribuir primeira claim</value></data>
+  <data name="Claims.Column.Type" xml:space="preserve"><value>Tipo</value></data>
+  <data name="Claims.Column.Value" xml:space="preserve"><value>Valor</value></data>
+  <data name="Claims.Column.State" xml:space="preserve"><value>Estado</value></data>
+  <data name="Claims.Column.Actions" xml:space="preserve"><value>Ações</value></data>
+  <data name="Claims.AssignedBadge" xml:space="preserve"><value>Atribuída</value></data>
+  <data name="Claims.Edit" xml:space="preserve"><value>Editar</value></data>
+  <data name="Claims.Error.GenericDescription" xml:space="preserve"><value>O serviço não conseguiu ler as atribuições agora.</value></data>
+  <data name="Claims.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Claims.PaginationAriaLabel" xml:space="preserve"><value>Paginação de claims</value></data>
+  <data name="Claims.Previous" xml:space="preserve"><value>Anterior</value></data>
+  <data name="Claims.PageOfFormat" xml:space="preserve"><value>Página {0} de {1}</value></data>
+  <data name="Claims.Next" xml:space="preserve"><value>Próxima</value></data>
+  <data name="Claims.Boundary.Heading" xml:space="preserve"><value>Atributos do protocolo, não regras empresariais</value></data>
+  <data name="Claims.Boundary.Description" xml:space="preserve"><value>O provedor armazena os valores; cada aplicação decide como interpretá-los.</value></data>
+  <data name="Claims.Boundary.ReservedProtected" xml:space="preserve"><value>Claims reservadas permanecem protegidas</value></data>
+  <data name="Claims.Boundary.MutationRevokes" xml:space="preserve"><value>Cada mutação revoga tokens da conta</value></data>
+  <data name="Claims.Boundary.ValuesNotAudited" xml:space="preserve"><value>Valores não entram na auditoria</value></data>
+  <data name="Claims.HeaderTitleFormat" xml:space="preserve"><value>Claims de {0}</value></data>
+  <data name="Claims.HeaderTitleDefault" xml:space="preserve"><value>Claims do usuário</value></data>
+  <data name="Claims.PageTitleFormat" xml:space="preserve"><value>{0} | Sufficit Identity</value></data>
+  <data name="Claims.AccountLabelDefault" xml:space="preserve"><value>Conta do provedor</value></data>
+  <data name="Claims.EmailNotInformed" xml:space="preserve"><value>E-mail não informado</value></data>
+  <data name="Claims.Empty.NoAttributesYet" xml:space="preserve"><value>A conta ainda não possui atributos adicionais. Claims padrão continuam sendo derivadas pelo protocolo.</value></data>
+  <data name="Claims.Empty.NoMatch" xml:space="preserve"><value>Nenhuma claim desta conta corresponde ao tipo ou valor pesquisado.</value></data>
+  <data name="Claims.User.Error.NotFound" xml:space="preserve"><value>Usuário não encontrado</value></data>
+  <data name="Claims.User.Error.Generic" xml:space="preserve"><value>Não foi possível abrir o usuário</value></data>
+  <data name="Claims.Error.StepUp" xml:space="preserve"><value>MFA exigido para consultar claims</value></data>
+  <data name="Claims.Error.Forbidden" xml:space="preserve"><value>Acesso às claims negado</value></data>
+  <data name="Claims.Error.Generic" xml:space="preserve"><value>Não foi possível consultar as claims</value></data>
+  <data name="Claims.ResultCount.Loading" xml:space="preserve"><value>Carregando claims</value></data>
+  <data name="Claims.ResultCount.NoneLoaded" xml:space="preserve"><value>Nenhum resultado carregado</value></data>
+  <data name="Claims.ResultCount.Singular" xml:space="preserve"><value>atribuição</value></data>
+  <data name="Claims.ResultCount.Plural" xml:space="preserve"><value>atribuições</value></data>
+  <data name="ClaimCreate.PageTitle" xml:space="preserve"><value>Atribuir claim | Sufficit Identity</value></data>
+  <data name="ClaimCreate.HeaderTitle" xml:space="preserve"><value>Atribuir claim</value></data>
+  <data name="ClaimCreate.BackToClaims" xml:space="preserve"><value>Voltar para claims</value></data>
+  <data name="ClaimCreate.SelectUser.Title" xml:space="preserve"><value>Selecione um usuário</value></data>
+  <data name="ClaimCreate.SelectUser.Description" xml:space="preserve"><value>Abra uma conta no diretório de identidades antes de atribuir uma claim.</value></data>
+  <data name="ClaimCreate.OpenUserDirectory" xml:space="preserve"><value>Abrir diretório de usuários</value></data>
+  <data name="ClaimCreate.ContractStrip.Title" xml:space="preserve"><value>Alteração efetiva na próxima emissão</value></data>
+  <data name="ClaimCreate.ContractStrip.Description" xml:space="preserve"><value>A atribuição atualiza o selo de segurança e revoga tokens ativos da conta.</value></data>
+  <data name="ClaimCreate.ContractStrip.Badge" xml:space="preserve"><value>Impacta credenciais</value></data>
+  <data name="ClaimCreate.SubmitError.Title" xml:space="preserve"><value>Não foi possível atribuir a claim</value></data>
+  <data name="ClaimCreate.Account.Heading" xml:space="preserve"><value>Conta</value></data>
+  <data name="ClaimCreate.Account.Description" xml:space="preserve"><value>A claim será vinculada somente a esta identidade.</value></data>
+  <data name="ClaimCreate.Field.User" xml:space="preserve"><value>Usuário</value></data>
+  <data name="ClaimCreate.Field.Email" xml:space="preserve"><value>E-mail</value></data>
+  <data name="ClaimCreate.NotInformed" xml:space="preserve"><value>Não informado</value></data>
+  <data name="ClaimCreate.Field.Identifier" xml:space="preserve"><value>Identificador</value></data>
+  <data name="ClaimCreate.Attribute.Heading" xml:space="preserve"><value>Atributo</value></data>
+  <data name="ClaimCreate.Attribute.Description" xml:space="preserve"><value>Use nomes interoperáveis quando existirem. Claims de protocolo e perfil básico são protegidas.</value></data>
+  <data name="ClaimCreate.Field.Type" xml:space="preserve"><value>Tipo da claim</value></data>
+  <data name="ClaimCreate.Field.TypeHintPrefix" xml:space="preserve"><value>Exemplo:</value></data>
+  <data name="ClaimCreate.Field.TypeHintSuffix" xml:space="preserve"><value>ou um nome com namespace próprio.</value></data>
+  <data name="ClaimCreate.Field.Value" xml:space="preserve"><value>Valor</value></data>
+  <data name="ClaimCreate.Field.ValueHint" xml:space="preserve"><value>O valor não será copiado para o evento de auditoria.</value></data>
+  <data name="ClaimCreate.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="ClaimCreate.Submitting" xml:space="preserve"><value>Atribuindo…</value></data>
+  <data name="ClaimCreate.Submit" xml:space="preserve"><value>Atribuir claim</value></data>
+  <data name="ClaimCreate.LoadingAccount" xml:space="preserve"><value>Carregando conta…</value></data>
+  <data name="ClaimCreate.HeaderDescriptionFormat" xml:space="preserve"><value>Associe um atributo adicional a {0} sem incorporar regras da aplicação.</value></data>
+  <data name="ClaimCreate.HeaderDescriptionNoUser" xml:space="preserve"><value>Selecione uma conta antes de atribuir um atributo adicional.</value></data>
+  <data name="ClaimCreate.Validation.TypeRequired" xml:space="preserve"><value>Informe o tipo da claim.</value></data>
+  <data name="ClaimCreate.Validation.MaxLength256" xml:space="preserve"><value>Use no máximo 256 caracteres.</value></data>
+  <data name="ClaimCreate.Validation.ValueRequired" xml:space="preserve"><value>Informe o valor da claim.</value></data>
+  <data name="ClaimCreate.Validation.MaxLength4096" xml:space="preserve"><value>Use no máximo 4096 caracteres.</value></data>
+  <data name="ClaimDetail.PageTitle" xml:space="preserve"><value>Editar claim | Sufficit Identity</value></data>
+  <data name="ClaimDetail.HeaderTitle" xml:space="preserve"><value>Editar claim</value></data>
+  <data name="ClaimDetail.HeaderDescription" xml:space="preserve"><value>Atualize o tipo ou o valor desta atribuição sem recriar o registro.</value></data>
+  <data name="ClaimDetail.BackToClaims" xml:space="preserve"><value>Voltar para claims</value></data>
+  <data name="ClaimDetail.Updated.Title" xml:space="preserve"><value>Claim atualizada</value></data>
+  <data name="ClaimDetail.Updated.Description" xml:space="preserve"><value>A nova versão foi persistida e os tokens anteriores da conta foram revogados.</value></data>
+  <data name="ClaimDetail.SelectClaim.Title" xml:space="preserve"><value>Selecione uma claim</value></data>
+  <data name="ClaimDetail.SelectClaim.Description" xml:space="preserve"><value>Abra as claims de um usuário e escolha a atribuição que deseja editar.</value></data>
+  <data name="ClaimDetail.OpenUserDirectory" xml:space="preserve"><value>Abrir diretório de usuários</value></data>
+  <data name="ClaimDetail.LoadingAriaLabel" xml:space="preserve"><value>Carregando claim</value></data>
+  <data name="ClaimDetail.ContractStrip.Title" xml:space="preserve"><value>Atualização com invalidação</value></data>
+  <data name="ClaimDetail.ContractStrip.DescriptionFormat" xml:space="preserve"><value>Salvar gira o selo de segurança e revoga as credenciais emitidas para {0}.</value></data>
+  <data name="ClaimDetail.ContractStrip.Badge" xml:space="preserve"><value>Impacta credenciais</value></data>
+  <data name="ClaimDetail.SubmitError.Title" xml:space="preserve"><value>Não foi possível atualizar a claim</value></data>
+  <data name="ClaimDetail.Assignment.Heading" xml:space="preserve"><value>Atribuição</value></data>
+  <data name="ClaimDetail.Assignment.Description" xml:space="preserve"><value>O identificador e a conta permanecem fixos; tipo e valor podem ser corrigidos.</value></data>
+  <data name="ClaimDetail.Field.Account" xml:space="preserve"><value>Conta</value></data>
+  <data name="ClaimDetail.Field.Identifier" xml:space="preserve"><value>Identificador</value></data>
+  <data name="ClaimDetail.TypeValue.Heading" xml:space="preserve"><value>Tipo e valor</value></data>
+  <data name="ClaimDetail.TypeValue.Description" xml:space="preserve"><value>Claims multivaloradas continuam representadas por atribuições independentes.</value></data>
+  <data name="ClaimDetail.Field.Type" xml:space="preserve"><value>Tipo da claim</value></data>
+  <data name="ClaimDetail.Field.Value" xml:space="preserve"><value>Valor</value></data>
+  <data name="ClaimDetail.Field.ValueHint" xml:space="preserve"><value>O conteúdo não será registrado no evento de auditoria.</value></data>
+  <data name="ClaimDetail.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="ClaimDetail.Saving" xml:space="preserve"><value>Salvando…</value></data>
+  <data name="ClaimDetail.SaveClaim" xml:space="preserve"><value>Salvar claim</value></data>
+  <data name="ClaimDetail.Delete.Heading" xml:space="preserve"><value>Remover atribuição</value></data>
+  <data name="ClaimDetail.Delete.Description" xml:space="preserve"><value>Exclui somente esta claim e invalida as credenciais emitidas anteriormente.</value></data>
+  <data name="ClaimDetail.Delete.ErrorTitle" xml:space="preserve"><value>Não foi possível remover a claim</value></data>
+  <data name="ClaimDetail.Delete.ConfirmLabel" xml:space="preserve"><value>Confirmo a remoção desta atribuição.</value></data>
+  <data name="ClaimDetail.Delete.Removing" xml:space="preserve"><value>Removendo…</value></data>
+  <data name="ClaimDetail.Delete.Submit" xml:space="preserve"><value>Remover claim</value></data>
+  <data name="ClaimDetail.Error.NotFound" xml:space="preserve"><value>Claim não encontrada</value></data>
+  <data name="ClaimDetail.Error.StepUp" xml:space="preserve"><value>MFA exigido para consultar a claim</value></data>
+  <data name="ClaimDetail.Error.Generic" xml:space="preserve"><value>Não foi possível abrir a claim</value></data>
+  <data name="ClaimDetail.Error.GenericDescription" xml:space="preserve"><value>A claim não pertence a esta conta ou não foi encontrada.</value></data>
+  <data name="ClaimDetail.Validation.TypeRequired" xml:space="preserve"><value>Informe o tipo da claim.</value></data>
+  <data name="ClaimDetail.Validation.MaxLength256" xml:space="preserve"><value>Use no máximo 256 caracteres.</value></data>
+  <data name="ClaimDetail.Validation.ValueRequired" xml:space="preserve"><value>Informe o valor da claim.</value></data>
+  <data name="ClaimDetail.Validation.MaxLength4096" xml:space="preserve"><value>Use no máximo 4096 caracteres.</value></data>
+  <data name="Scopes.PageDescription" xml:space="preserve"><value>Gerencie permissões OAuth personalizadas e os recursos protegidos que elas representam.</value></data>
+  <data name="Scopes.NewScope" xml:space="preserve"><value>Novo scope</value></data>
+  <data name="Scopes.Deleted.Title" xml:space="preserve"><value>Scope excluído</value></data>
+  <data name="Scopes.Deleted.Description" xml:space="preserve"><value>A definição foi removida e a operação foi auditada.</value></data>
+  <data name="Scopes.CustomDefinitions.Title" xml:space="preserve"><value>Definições personalizadas OAuth/OIDC</value></data>
+  <data name="Scopes.CustomDefinitions.Description" xml:space="preserve"><value>Scopes padrão como &lt;code&gt;openid&lt;/code&gt;, &lt;code&gt;profile&lt;/code&gt; e &lt;code&gt;offline_access&lt;/code&gt; pertencem ao protocolo e não são duplicados aqui.</value></data>
+  <data name="Scopes.List.Title" xml:space="preserve"><value>Scopes registrados</value></data>
+  <data name="Scopes.List.Description" xml:space="preserve"><value>Scopes declarativos são visíveis, mas sua edição permanece no manifesto.</value></data>
+  <data name="Scopes.Search.Label" xml:space="preserve"><value>Pesquisar scopes</value></data>
+  <data name="Scopes.Search.Placeholder" xml:space="preserve"><value>Nome, título ou recurso</value></data>
+  <data name="Scopes.Loading" xml:space="preserve"><value>Carregando scopes</value></data>
+  <data name="Scopes.Empty.NoScopes.Title" xml:space="preserve"><value>Nenhum scope personalizado</value></data>
+  <data name="Scopes.Empty.NoMatch.Title" xml:space="preserve"><value>Nenhum scope corresponde à pesquisa</value></data>
+  <data name="Scopes.Empty.NoScopes.Description" xml:space="preserve"><value>Crie a primeira permissão OAuth específica dos seus recursos.</value></data>
+  <data name="Scopes.Empty.NoMatch.Description" xml:space="preserve"><value>Revise o nome, título ou descrição informada.</value></data>
+  <data name="Scopes.CreateFirst" xml:space="preserve"><value>Criar primeiro scope</value></data>
+  <data name="Scopes.ClearSearch" xml:space="preserve"><value>Limpar pesquisa</value></data>
+  <data name="Scopes.Table.Scope" xml:space="preserve"><value>Scope</value></data>
+  <data name="Scopes.Table.Origin" xml:space="preserve"><value>Origem</value></data>
+  <data name="Scopes.Table.Resources" xml:space="preserve"><value>Recursos</value></data>
+  <data name="Scopes.Table.Clients" xml:space="preserve"><value>Clientes</value></data>
+  <data name="Scopes.Table.Actions" xml:space="preserve"><value>Ações</value></data>
+  <data name="Scopes.Origin.Manifest" xml:space="preserve"><value>Manifesto</value></data>
+  <data name="Scopes.Origin.Manual" xml:space="preserve"><value>Manual</value></data>
+  <data name="Scopes.Details" xml:space="preserve"><value>Detalhes</value></data>
+  <data name="Scopes.ErrorTitle.StepUp" xml:space="preserve"><value>MFA exigido para consultar scopes</value></data>
+  <data name="Scopes.ErrorTitle.Forbidden" xml:space="preserve"><value>Acesso aos scopes negado</value></data>
+  <data name="Scopes.ErrorTitle.Generic" xml:space="preserve"><value>Não foi possível consultar os scopes</value></data>
+  <data name="Scopes.Error.Fallback" xml:space="preserve"><value>O serviço não conseguiu consultar os scopes agora.</value></data>
+  <data name="Scopes.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Scopes.ResultCount.Format" xml:space="preserve"><value>{0} de {1} scope(s)</value></data>
+  <data name="Scopes.ResultCount.None" xml:space="preserve"><value>Nenhum resultado carregado</value></data>
+  <data name="Scopes.SafetyHeading" xml:space="preserve"><value>Ciclo de vida seguro</value></data>
+  <data name="Scopes.SafetyDescription" xml:space="preserve"><value>A interface respeita a origem e os vínculos existentes antes de qualquer mutação.</value></data>
+  <data name="Scopes.Safety.Immutable" xml:space="preserve"><value>Nome imutável após a criação</value></data>
+  <data name="Scopes.Safety.ManifestOnly" xml:space="preserve"><value>Scopes declarativos mudam somente no manifesto</value></data>
+  <data name="Scopes.Safety.DeleteBlocked" xml:space="preserve"><value>Exclusão bloqueada enquanto clientes utilizam o scope</value></data>
+  <data name="Scopes.Footer.CanonicalRegistry" xml:space="preserve"><value>Registro canônico do runtime de autorização</value></data>
+  <data name="Scopes.Create.PageTitle" xml:space="preserve"><value>Novo scope OAuth | Sufficit Identity</value></data>
+  <data name="Scopes.Create.HeaderDescription" xml:space="preserve"><value>Registre uma permissão OAuth personalizada para um ou mais recursos protegidos.</value></data>
+  <data name="Scopes.BackToScopes" xml:space="preserve"><value>Voltar para scopes</value></data>
+  <data name="Scopes.Create.Validation.Title" xml:space="preserve"><value>Validação centralizada</value></data>
+  <data name="Scopes.Create.Validation.Description" xml:space="preserve"><value>Nome, recursos, autorização e auditoria passam pelo mesmo serviço usado pela Management API.</value></data>
+  <data name="Scopes.Canonical" xml:space="preserve"><value>Canônico</value></data>
+  <data name="Scopes.Create.Error.Title" xml:space="preserve"><value>Não foi possível criar o scope</value></data>
+  <data name="Scopes.Identification.Title" xml:space="preserve"><value>Identificação</value></data>
+  <data name="Scopes.Identification.Description" xml:space="preserve"><value>O nome faz parte do contrato OAuth e não poderá ser alterado após a criação.</value></data>
+  <data name="Scopes.Field.Name.Label" xml:space="preserve"><value>Nome</value></data>
+  <data name="Scopes.Field.Name.Helper" xml:space="preserve"><value>Exemplo: calendar.read ou urn:example:orders.write</value></data>
+  <data name="Scopes.Field.DisplayName.Label" xml:space="preserve"><value>Nome de exibição (opcional)</value></data>
+  <data name="Scopes.Field.DisplayName.Helper" xml:space="preserve"><value>Rótulo apresentado ao usuário no consentimento.</value></data>
+  <data name="Scopes.Field.Description.Label" xml:space="preserve"><value>Descrição (opcional)</value></data>
+  <data name="Scopes.Field.Description.Helper" xml:space="preserve"><value>Explique de forma concreta o acesso concedido ao cliente.</value></data>
+  <data name="Scopes.Resources.Title" xml:space="preserve"><value>Recursos protegidos</value></data>
+  <data name="Scopes.Resources.Description" xml:space="preserve"><value>Informe os audiences que recebem este scope, um por linha.</value></data>
+  <data name="Scopes.Field.Resources.Label" xml:space="preserve"><value>Resources / audiences (opcional)</value></data>
+  <data name="Scopes.Field.Resources.Helper" xml:space="preserve"><value>Exemplo: https://api.example.com/calendar</value></data>
+  <data name="Scopes.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Scopes.Create.Submitting" xml:space="preserve"><value>Criando scope…</value></data>
+  <data name="Scopes.Create.Submit" xml:space="preserve"><value>Criar scope</value></data>
+  <data name="Scopes.Validation.NameRequired" xml:space="preserve"><value>Informe o nome do scope.</value></data>
+  <data name="Scopes.Validation.MaxLength200" xml:space="preserve"><value>Use no máximo 200 caracteres.</value></data>
+  <data name="Scopes.Validation.MaxLength1000" xml:space="preserve"><value>Use no máximo 1000 caracteres.</value></data>
+  <data name="Scopes.Detail.DefaultTitle" xml:space="preserve"><value>Detalhes do scope</value></data>
+  <data name="Scopes.Detail.HeaderDescription" xml:space="preserve"><value>Definição OAuth/OIDC persistida pelo runtime de autorização.</value></data>
+  <data name="Scopes.Created.Title" xml:space="preserve"><value>Scope criado</value></data>
+  <data name="Scopes.Created.Description" xml:space="preserve"><value>A definição foi persistida e a operação foi auditada.</value></data>
+  <data name="Scopes.Updated.Title" xml:space="preserve"><value>Scope atualizado</value></data>
+  <data name="Scopes.Updated.Description" xml:space="preserve"><value>Nome de exibição, descrição e recursos foram persistidos.</value></data>
+  <data name="Scopes.Loading.Aria" xml:space="preserve"><value>Carregando scope</value></data>
+  <data name="Scopes.ManifestManaged.Title" xml:space="preserve"><value>Gerenciado pelo manifesto declarativo</value></data>
+  <data name="Scopes.ManifestManaged.Description" xml:space="preserve"><value>Esta tela é somente leitura. Altere o manifesto e aplique o provisionamento para manter uma única fonte de verdade.</value></data>
+  <data name="Scopes.ReadOnly" xml:space="preserve"><value>Somente leitura</value></data>
+  <data name="Scopes.OperationError.Title" xml:space="preserve"><value>Não foi possível concluir a operação</value></data>
+  <data name="Scopes.Detail.Title" xml:space="preserve"><value>Definição</value></data>
+  <data name="Scopes.Detail.Description" xml:space="preserve"><value>O nome é um identificador de protocolo imutável. Os demais campos podem evoluir sem alterar o contrato solicitado pelos clientes.</value></data>
+  <data name="Scopes.Field.Name.ImmutableHelper" xml:space="preserve"><value>Identificador OAuth imutável.</value></data>
+  <data name="Scopes.Field.Resources.DetailLabel" xml:space="preserve"><value>Resources / audiences</value></data>
+  <data name="Scopes.Field.Resources.DetailHelper" xml:space="preserve"><value>Um audience por linha.</value></data>
+  <data name="Scopes.Usage.Title" xml:space="preserve"><value>Clientes vinculados</value></data>
+  <data name="Scopes.Usage.Description" xml:space="preserve"><value>A exclusão permanece bloqueada enquanto algum cliente possuir permissão para solicitar este scope.</value></data>
+  <data name="Scopes.Usage.None" xml:space="preserve"><value>Nenhum cliente utiliza este scope.</value></data>
+  <data name="Scopes.Save.Saving" xml:space="preserve"><value>Salvando…</value></data>
+  <data name="Scopes.Save.Submit" xml:space="preserve"><value>Salvar alterações</value></data>
+  <data name="Scopes.Delete.Title" xml:space="preserve"><value>Excluir scope</value></data>
+  <data name="Scopes.Delete.NoClients" xml:space="preserve"><value>A definição será removida do provedor. Tokens já emitidos permanecem válidos até expirar ou serem revogados.</value></data>
+  <data name="Scopes.Delete.HasClients" xml:space="preserve"><value>Remova primeiro o scope dos clientes listados acima.</value></data>
+  <data name="Scopes.Delete.ConfirmLabel" xml:space="preserve"><value>Confirmo a exclusão definitiva desta definição.</value></data>
+  <data name="Scopes.Delete.Deleting" xml:space="preserve"><value>Excluindo…</value></data>
+  <data name="Scopes.ErrorTitle.NotFound" xml:space="preserve"><value>Scope não encontrado</value></data>
+  <data name="Scopes.ErrorTitle.DetailStepUp" xml:space="preserve"><value>MFA exigido para consultar o scope</value></data>
+  <data name="Scopes.ErrorTitle.DetailGeneric" xml:space="preserve"><value>Não foi possível abrir o scope</value></data>
+  <data name="Scopes.Error.DetailFallback" xml:space="preserve"><value>O serviço não conseguiu ler o scope.</value></data>
+  <data name="Audit.PageTitle" xml:space="preserve"><value>Auditoria | Sufficit Identity</value></data>
+  <data name="Audit.HeaderTitle" xml:space="preserve"><value>Auditoria</value></data>
+  <data name="Audit.HeaderDescription" xml:space="preserve"><value>Rastreabilidade das decisões de autorização e mutações administrativas.</value></data>
+  <data name="Audit.PersistentEvents.Title" xml:space="preserve"><value>Eventos persistentes e sem segredos</value></data>
+  <data name="Audit.PersistentEvents.Description" xml:space="preserve"><value>Operador, capability, alvo, resultado e correlation ID são registrados pela camada de aplicação.</value></data>
+  <data name="Audit.Active" xml:space="preserve"><value>Ativa</value></data>
+  <data name="Audit.List.Title" xml:space="preserve"><value>Eventos administrativos</value></data>
+  <data name="Audit.List.Description" xml:space="preserve"><value>Os 100 eventos mais recentes, em horário UTC.</value></data>
+  <data name="Audit.Search.Label" xml:space="preserve"><value>Pesquisar eventos</value></data>
+  <data name="Audit.Search.Placeholder" xml:space="preserve"><value>Operador, ação ou alvo</value></data>
+  <data name="Audit.Refresh" xml:space="preserve"><value>Atualizar</value></data>
+  <data name="Audit.Loading.Aria" xml:space="preserve"><value>Carregando eventos de auditoria</value></data>
+  <data name="Audit.ClearSearch" xml:space="preserve"><value>Limpar pesquisa</value></data>
+  <data name="Audit.Table.When" xml:space="preserve"><value>Quando</value></data>
+  <data name="Audit.Table.Operator" xml:space="preserve"><value>Operador</value></data>
+  <data name="Audit.Table.Action" xml:space="preserve"><value>Ação</value></data>
+  <data name="Audit.Table.Target" xml:space="preserve"><value>Alvo</value></data>
+  <data name="Audit.Table.Result" xml:space="preserve"><value>Resultado</value></data>
+  <data name="Audit.Table.Correlation" xml:space="preserve"><value>Correlação</value></data>
+  <data name="Audit.ViewChange" xml:space="preserve"><value>Ver alteração</value></data>
+  <data name="Audit.Before" xml:space="preserve"><value>Antes</value></data>
+  <data name="Audit.After" xml:space="preserve"><value>Depois</value></data>
+  <data name="Audit.ErrorTitle" xml:space="preserve"><value>Não foi possível consultar a auditoria</value></data>
+  <data name="Audit.Error.Fallback" xml:space="preserve"><value>O serviço de identidade não retornou os eventos agora.</value></data>
+  <data name="Audit.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Audit.Footer.UtcLimit" xml:space="preserve"><value>Registros em UTC · limite de 100</value></data>
+  <data name="Audit.Safety.Heading" xml:space="preserve"><value>Conteúdo protegido</value></data>
+  <data name="Audit.Safety.Description" xml:space="preserve"><value>A trilha registra metadados operacionais suficientes para investigação sem replicar dados sensíveis.</value></data>
+  <data name="Audit.Safety.NoSecrets" xml:space="preserve"><value>Segredos e tokens nunca são persistidos</value></data>
+  <data name="Audit.Safety.StableCodes" xml:space="preserve"><value>Decisões negadas usam códigos estáveis</value></data>
+  <data name="Audit.Safety.Correlation" xml:space="preserve"><value>Correlation ID conecta operação e logs</value></data>
+  <data name="Audit.Empty.NoEvents.Title" xml:space="preserve"><value>Nenhum evento administrativo</value></data>
+  <data name="Audit.Empty.NoMatch.Title" xml:space="preserve"><value>Nenhum evento corresponde à pesquisa</value></data>
+  <data name="Audit.Empty.NoEvents.Description" xml:space="preserve"><value>Criações, exclusões e tentativas negadas aparecerão aqui.</value></data>
+  <data name="Audit.Empty.NoMatch.Description" xml:space="preserve"><value>Revise o operador, a ação ou o identificador informado.</value></data>
+  <data name="Audit.ResultCount.Loading" xml:space="preserve"><value>Carregando eventos</value></data>
+  <data name="Audit.ResultCount.Format" xml:space="preserve"><value>{0} de {1} eventos</value></data>
+  <data name="Audit.ResultCount.None" xml:space="preserve"><value>Nenhum evento carregado</value></data>
+  <data name="Audit.Capability.ClientsCreate" xml:space="preserve"><value>Criar cliente</value></data>
+  <data name="Audit.Capability.ClientsDelete" xml:space="preserve"><value>Excluir cliente</value></data>
+  <data name="Audit.Capability.ClientsRead" xml:space="preserve"><value>Consultar clientes</value></data>
+  <data name="Audit.Outcome.Succeeded" xml:space="preserve"><value>Concluído</value></data>
+  <data name="Audit.Outcome.Denied" xml:space="preserve"><value>Negado</value></data>
+  <data name="Audit.Outcome.Rejected" xml:space="preserve"><value>Rejeitado</value></data>
+  <data name="Audit.Outcome.Conflict" xml:space="preserve"><value>Conflito</value></data>
+  <data name="Audit.Outcome.NotFound" xml:space="preserve"><value>Não encontrado</value></data>
+  <data name="TrustedProxies.PageTitle" xml:space="preserve"><value>Proxies confiáveis | Sufficit Identity</value></data>
+  <data name="TrustedProxies.HeaderTitle" xml:space="preserve"><value>Proxies confiáveis</value></data>
+  <data name="TrustedProxies.HeaderDescription" xml:space="preserve"><value>Defina quais proxies podem informar o endereço original de quem acessa o Identity.</value></data>
+  <data name="TrustedProxies.Loading.Aria" xml:space="preserve"><value>Carregando proxies confiáveis</value></data>
+  <data name="TrustedProxies.LoadError.Title" xml:space="preserve"><value>Não foi possível carregar os proxies</value></data>
+  <data name="TrustedProxies.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="TrustedProxies.Effective.Heading" xml:space="preserve"><value>Configuração em uso</value></data>
+  <data name="TrustedProxies.Effective.Description" xml:space="preserve"><value>As redes do arquivo e do banco são combinadas, sem duplicatas.</value></data>
+  <data name="TrustedProxies.ForwardLimitBadge" xml:space="preserve"><value>{0} saltos</value></data>
+  <data name="TrustedProxies.NoProxies" xml:space="preserve"><value>Nenhum proxy cadastrado. Somente conexões locais de loopback são confiáveis.</value></data>
+  <data name="TrustedProxies.EffectiveNetworks.Aria" xml:space="preserve"><value>Redes efetivas</value></data>
+  <data name="TrustedProxies.AppSettingsNote" xml:space="preserve"><value>As entradas do appsettings são administradas no servidor e não podem ser removidas nesta tela.</value></data>
+  <data name="TrustedProxies.FileHopsLabel" xml:space="preserve"><value>Saltos definidos no arquivo</value></data>
+  <data name="TrustedProxies.LastDbChangeLabel" xml:space="preserve"><value>Última alteração no banco (UTC)</value></data>
+  <data name="TrustedProxies.ViewAuditLink" xml:space="preserve"><value>Consultar auditoria de alterações</value></data>
+  <data name="TrustedProxies.DbConfig.Heading" xml:space="preserve"><value>Configuração no banco</value></data>
+  <data name="TrustedProxies.DbConfig.Description" xml:space="preserve"><value>Cadastre apenas proxies sob seu controle. A confiança permite que eles informem o IP do cliente.</value></data>
+  <data name="TrustedProxies.Field.Networks.Label" xml:space="preserve"><value>IPs ou redes adicionais</value></data>
+  <data name="TrustedProxies.Field.Networks.Helper" xml:space="preserve"><value>Um IPv4, IPv6 ou CIDR por linha. Deixe vazio para usar apenas as redes do arquivo.</value></data>
+  <data name="TrustedProxies.Field.InheritLimit.Label" xml:space="preserve"><value>Usar o limite de saltos do appsettings</value></data>
+  <data name="TrustedProxies.Field.ForwardLimit.Label" xml:space="preserve"><value>Máximo de saltos confiáveis</value></data>
+  <data name="TrustedProxies.HopExplanation" xml:space="preserve"><value>Cliente → proxy → Nginx → Identity utiliza 2 saltos. O processamento para ao encontrar um intermediário não confiável.</value></data>
+  <data name="TrustedProxies.Saving" xml:space="preserve"><value>Salvando…</value></data>
+  <data name="TrustedProxies.SaveConfig" xml:space="preserve"><value>Salvar configuração</value></data>
+  <data name="TrustedProxies.Reload" xml:space="preserve"><value>Recarregar</value></data>
+  <data name="TrustedProxies.NotAuthorized" xml:space="preserve"><value>Sua conta pode consultar esta configuração, mas não alterá-la.</value></data>
+  <data name="TrustedProxies.NotificationPending" xml:space="preserve"><value>Configuração salva. O aviso às outras instâncias está pendente; a reconciliação periódica permanece ativa.</value></data>
+  <data name="TrustedProxies.Notifications.Connected" xml:space="preserve"><value>Notificações: conectadas.</value></data>
+  <data name="TrustedProxies.Notifications.Waiting" xml:space="preserve"><value>Notificações: aguardando conexão.</value></data>
+  <data name="TrustedProxies.AuditNote" xml:space="preserve"><value>As alterações são auditadas e aplicadas sem reinício. Avisos de alteração antecipam a atualização quando conectados. A conferência de revisão ocorre aproximadamente a cada {0} segundos; a propagação depende da replicação do banco.</value></data>
+  <data name="TrustedProxies.NoChanges" xml:space="preserve"><value>Nenhuma alteração</value></data>
+  <data name="TrustedProxies.Source.FileAndDb" xml:space="preserve"><value>Arquivo + banco</value></data>
+  <data name="TrustedProxies.Source.File" xml:space="preserve"><value>Arquivo</value></data>
+  <data name="TrustedProxies.Source.Database" xml:space="preserve"><value>Banco</value></data>
+  <data name="TrustedProxies.Validation.ForwardLimitRange" xml:space="preserve"><value>Informe entre 1 e 10 saltos.</value></data>
+  <data name="TrustedProxies.ConfigSaved" xml:space="preserve"><value>Configuração salva e aplicada nesta instância. A alteração foi registrada na auditoria.</value></data>
+  <data name="Database.PageTitle" xml:space="preserve"><value>Banco de dados | Sufficit Identity</value></data>
+  <data name="Database.HeaderTitle" xml:space="preserve"><value>Banco de dados</value></data>
+  <data name="Database.HeaderDescription" xml:space="preserve"><value>Acompanhe a pressão do pool, as conexões locadas pelo runtime e a recuperação automática do acesso à persistência.</value></data>
+  <data name="Database.LiveControl.Paused" xml:space="preserve"><value>Tempo real pausado</value></data>
+  <data name="Database.LiveControl.Active" xml:space="preserve"><value>Tempo real ativo</value></data>
+  <data name="Database.LiveControl.Reconnecting" xml:space="preserve"><value>Reconectando…</value></data>
+  <data name="Database.Refreshing" xml:space="preserve"><value>Atualizando…</value></data>
+  <data name="Database.RefreshNow" xml:space="preserve"><value>Atualizar agora</value></data>
+  <data name="Database.Loading.Aria" xml:space="preserve"><value>Carregando telemetria do banco de dados</value></data>
+  <data name="Database.LoadError.Title" xml:space="preserve"><value>Não foi possível consultar o banco de dados</value></data>
+  <data name="Database.LoadError.Fallback" xml:space="preserve"><value>O runtime não informou a telemetria de conexões.</value></data>
+  <data name="Database.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Database.StaleData.Title" xml:space="preserve"><value>Os dados podem estar desatualizados</value></data>
+  <data name="Database.StaleData.Suffix" xml:space="preserve"><value>A última captura válida continua visível.</value></data>
+  <data name="Database.Capacity.Aria" xml:space="preserve"><value>Capacidade dos pools de conexão</value></data>
+  <data name="Database.Pool.Prefix" xml:space="preserve"><value>Pool</value></data>
+  <data name="Database.Column.OccupancyObserved" xml:space="preserve"><value>Ocupação observada</value></data>
+  <data name="Database.Occupancy.Aria" xml:space="preserve"><value>Ocupação do pool {0}</value></data>
+  <data name="Database.Facts.InUse" xml:space="preserve"><value>Em uso</value></data>
+  <data name="Database.Facts.Idle" xml:space="preserve"><value>Ociosas</value></data>
+  <data name="Database.Facts.Limit" xml:space="preserve"><value>Limite</value></data>
+  <data name="Database.Facts.Queued" xml:space="preserve"><value>Na fila</value></data>
+  <data name="Database.Facts.PoolTimeouts" xml:space="preserve"><value>Timeouts do pool</value></data>
+  <data name="Database.NoPoolMetrics" xml:space="preserve"><value>Este provedor ainda não publicou métricas de pool. A lista abaixo continua mostrando as conexões observadas pelo EF Core.</value></data>
+  <data name="Database.Connections.Heading" xml:space="preserve"><value>Conexões locadas agora</value></data>
+  <data name="Database.Connections.CountSuffix" xml:space="preserve"><value>conexão(ões) · captura em</value></data>
+  <data name="Database.Empty.NoConnections.Title" xml:space="preserve"><value>Nenhuma conexão locada neste instante</value></data>
+  <data name="Database.Empty.NoConnections.Description" xml:space="preserve"><value>O EF Core abre e devolve conexões rapidamente. Isso é normal quando não há comando em execução; os contadores do pool acima continuam representando conexões ociosas.</value></data>
+  <data name="Database.Table.Connection" xml:space="preserve"><value>Conexão</value></data>
+  <data name="Database.Table.Origin" xml:space="preserve"><value>Origem</value></data>
+  <data name="Database.Table.OpenedAt" xml:space="preserve"><value>Abertura</value></data>
+  <data name="Database.Table.Requests" xml:space="preserve"><value>Requisições</value></data>
+  <data name="Database.Table.LastExecution" xml:space="preserve"><value>Última execução</value></data>
+  <data name="Database.Table.State" xml:space="preserve"><value>Estado</value></data>
+  <data name="Database.Timing.AgoFormat" xml:space="preserve"><value>há {0}</value></data>
+  <data name="Database.Requests.InLease" xml:space="preserve"><value>{0} nesta locação</value></data>
+  <data name="Database.State.Running" xml:space="preserve"><value>{0} em execução</value></data>
+  <data name="Database.State.Leased" xml:space="preserve"><value>Locada</value></data>
+  <data name="Database.Footer.TotalCommands" xml:space="preserve"><value>{0} comandos observados desde o início do processo</value></data>
+  <data name="Database.Footer.FailedCommands" xml:space="preserve"><value>{0} falha(s) · SQL e parâmetros não são coletados</value></data>
+  <data name="Database.Watchdog.ProviderUnidentified" xml:space="preserve"><value>Provedor não identificado</value></data>
+  <data name="Database.Watchdog.Title.Healthy" xml:space="preserve"><value>Watchdog confirmou acesso ao banco</value></data>
+  <data name="Database.Watchdog.Title.Degraded" xml:space="preserve"><value>Watchdog detectou degradação do banco</value></data>
+  <data name="Database.Watchdog.Title.Restarting" xml:space="preserve"><value>Runtime solicitou reinicialização controlada</value></data>
+  <data name="Database.Watchdog.Title.Starting" xml:space="preserve"><value>Watchdog aguardando a primeira verificação</value></data>
+  <data name="Database.Watchdog.Title.Disabled" xml:space="preserve"><value>Watchdog de banco desativado</value></data>
+  <data name="Database.Watchdog.Badge.Healthy" xml:space="preserve"><value>Saudável</value></data>
+  <data name="Database.Watchdog.Badge.Degraded" xml:space="preserve"><value>Degradado</value></data>
+  <data name="Database.Watchdog.Badge.Restarting" xml:space="preserve"><value>Reiniciando</value></data>
+  <data name="Database.Watchdog.Badge.Starting" xml:space="preserve"><value>Inicializando</value></data>
+  <data name="Database.Watchdog.Badge.Disabled" xml:space="preserve"><value>Desativado</value></data>
+  <data name="Database.Watchdog.Description.Disabled" xml:space="preserve"><value>O processo não será reiniciado automaticamente se o pool permanecer inutilizável.</value></data>
+  <data name="Database.Watchdog.Description.WaitingFirstCheck" xml:space="preserve"><value>A primeira verificação ocorre após a janela de aquecimento do serviço.</value></data>
+  <data name="Database.Watchdog.LatencyUnavailable" xml:space="preserve"><value>latência indisponível</value></data>
+  <data name="Database.Watchdog.Description.LastCheckOk" xml:space="preserve"><value>Última verificação em {0} · {1}.</value></data>
+  <data name="Database.Watchdog.Description.LastCheckFailures" xml:space="preserve"><value>{0} falha(s) consecutiva(s) · última tentativa em {1}.</value></data>
+  <data name="Database.RefreshError.NotAvailable" xml:space="preserve"><value>A captura atual não ficou disponível.</value></data>
+  <data name="Database.LiveStream.Interrupted" xml:space="preserve"><value>O fluxo em tempo real foi interrompido e será reconectado automaticamente.</value></data>
+  <data name="Database.PhysicalConnection.Logical" xml:space="preserve"><value>Identificador lógico</value></data>
+  <data name="Database.PhysicalConnection.Session" xml:space="preserve"><value>Sessão {0}</value></data>
+  <data name="Database.Pool.Status.Critical" xml:space="preserve"><value>Pressão crítica</value></data>
+  <data name="Database.Pool.Status.Attention" xml:space="preserve"><value>Atenção</value></data>
+  <data name="Database.Pool.Status.WithinLimit" xml:space="preserve"><value>Dentro do limite</value></data>
+  <data name="Database.Pool.Status.PartialTelemetry" xml:space="preserve"><value>Telemetria parcial</value></data>
+  <data name="Database.Pressure.WithLimit" xml:space="preserve"><value>{0} de {1} conexões ({2}%)</value></data>
+  <data name="Database.Pressure.NoLimit" xml:space="preserve"><value>{0} conexão(ões) em uso; limite não publicado</value></data>
+  <data name="Database.Pressure.NotPublished" xml:space="preserve"><value>O provedor não publicou ocupação</value></data>
+  <data name="Database.Elapsed.LessThanSecond" xml:space="preserve"><value>menos de 1 segundo</value></data>
+  <data name="Database.LastCommand.None" xml:space="preserve"><value>Nenhum comando</value></data>
+  <data name="Database.Duration.Unavailable" xml:space="preserve"><value>Duração indisponível</value></data>
+  <data name="Database.Duration.LessThanMs" xml:space="preserve"><value>menos de 1 ms</value></data>
+  <data name="Database.LiveStatus.Paused" xml:space="preserve"><value>Eventos em tempo real pausados</value></data>
+  <data name="Database.LiveStatus.Active" xml:space="preserve"><value>Eventos em tempo real</value></data>
+  <data name="Database.LiveStatus.Reconnecting" xml:space="preserve"><value>Reconectando eventos…</value></data>
+  <data name="Metrics.PageTitle" xml:space="preserve"><value>Métricas | Sufficit Identity</value></data>
+  <data name="Metrics.HeaderTitle" xml:space="preserve"><value>Uso das aplicações</value></data>
+  <data name="Metrics.HeaderDescription" xml:space="preserve"><value>Acompanhe autenticações por cliente e configure a coleta sem acoplar a disponibilidade do Identity ao destino externo.</value></data>
+  <data name="Metrics.OffCriticalPath.Title" xml:space="preserve"><value>Coleta fora do caminho crítico</value></data>
+  <data name="Metrics.OffCriticalPath.Description" xml:space="preserve"><value>Autenticação nunca aguarda banco ou exportador; pressão excessiva é descartada e fica visível.</value></data>
+  <data name="Metrics.NonBlocking" xml:space="preserve"><value>Não bloqueante</value></data>
+  <data name="Metrics.Filter.Heading" xml:space="preserve"><value>Período analisado</value></data>
+  <data name="Metrics.Filter.Description" xml:space="preserve"><value>Os filtros ficam na URL para preservar e compartilhar a investigação.</value></data>
+  <data name="Metrics.Filter.PeriodAria" xml:space="preserve"><value>Período</value></data>
+  <data name="Metrics.Filter.Last7Days" xml:space="preserve"><value>Últimos 7 dias</value></data>
+  <data name="Metrics.Filter.Last30Days" xml:space="preserve"><value>Últimos 30 dias</value></data>
+  <data name="Metrics.Filter.Last90Days" xml:space="preserve"><value>Últimos 90 dias</value></data>
+  <data name="Metrics.Filter.Last12Months" xml:space="preserve"><value>Últimos 12 meses</value></data>
+  <data name="Metrics.Filter.ClientIdAria" xml:space="preserve"><value>Client ID opcional</value></data>
+  <data name="Metrics.Filter.ClientIdLabel" xml:space="preserve"><value>Client ID (opcional)</value></data>
+  <data name="Metrics.Filter.AllApplications" xml:space="preserve"><value>Todas as aplicações</value></data>
+  <data name="Metrics.Filter.Apply" xml:space="preserve"><value>Aplicar filtros</value></data>
+  <data name="Metrics.Loading.Aria" xml:space="preserve"><value>Carregando métricas</value></data>
+  <data name="Metrics.LoadError.Title" xml:space="preserve"><value>Não foi possível consultar as métricas</value></data>
+  <data name="Metrics.LoadError.Fallback" xml:space="preserve"><value>O coletor não informou seu estado.</value></data>
+  <data name="Metrics.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Metrics.Summary.Aria" xml:space="preserve"><value>Resumo de uso</value></data>
+  <data name="Metrics.Summary.EventsInPeriod" xml:space="preserve"><value>Eventos no período</value></data>
+  <data name="Metrics.Summary.ActiveApplications" xml:space="preserve"><value>Aplicações ativas</value></data>
+  <data name="Metrics.Summary.Success" xml:space="preserve"><value>Sucesso</value></data>
+  <data name="Metrics.Summary.DroppedInQueue" xml:space="preserve"><value>Descartados na fila</value></data>
+  <data name="Metrics.Chart.Heading" xml:space="preserve"><value>Cadência diária</value></data>
+  <data name="Metrics.Chart.Description" xml:space="preserve"><value>Emissões OAuth/OIDC concluídas por dia.</value></data>
+  <data name="Metrics.Chart.NoUsage" xml:space="preserve"><value>Nenhum uso registrado neste período.</value></data>
+  <data name="Metrics.Chart.Aria" xml:space="preserve"><value>Gráfico de uso diário</value></data>
+  <data name="Metrics.Collector.Heading" xml:space="preserve"><value>Saúde da coleta</value></data>
+  <data name="Metrics.Collector.Description" xml:space="preserve"><value>Pressão e entregas desde o início do processo.</value></data>
+  <data name="Metrics.Collector.Queued" xml:space="preserve"><value>Na fila</value></data>
+  <data name="Metrics.Collector.Persisted" xml:space="preserve"><value>Persistidos</value></data>
+  <data name="Metrics.Collector.Exported" xml:space="preserve"><value>Exportados</value></data>
+  <data name="Metrics.Collector.IsolatedFailures" xml:space="preserve"><value>Falhas isoladas</value></data>
+  <data name="Metrics.TopApplications.Heading" xml:space="preserve"><value>Aplicações mais utilizadas</value></data>
+  <data name="Metrics.TopApplications.Description" xml:space="preserve"><value>Ordenadas pelo volume no período selecionado.</value></data>
+  <data name="Metrics.TopApplications.NoMatch" xml:space="preserve"><value>Nenhuma aplicação corresponde aos filtros.</value></data>
+  <data name="Metrics.TopApplications.LastUsed" xml:space="preserve"><value>último uso {0} UTC</value></data>
+  <data name="Metrics.Settings.Heading" xml:space="preserve"><value>Coleta e exportação</value></data>
+  <data name="Metrics.Settings.Description" xml:space="preserve"><value>A configuração é persistida no banco e reaplicada em execução. O vault interno deve estar habilitado para armazenar credenciais.</value></data>
+  <data name="Metrics.Settings.LocalCollection.Label" xml:space="preserve"><value>Coleta local</value></data>
+  <data name="Metrics.Settings.LocalCollection.Description" xml:space="preserve"><value>Registra uso por aplicação no banco.</value></data>
+  <data name="Metrics.Settings.ExternalExport.Label" xml:space="preserve"><value>Exportação externa</value></data>
+  <data name="Metrics.Settings.ExternalExport.Description" xml:space="preserve"><value>Envia lotes sem afetar autenticações.</value></data>
+  <data name="Metrics.Field.Provider.Label" xml:space="preserve"><value>Provedor</value></data>
+  <data name="Metrics.Provider.InternalOnly" xml:space="preserve"><value>Somente banco local</value></data>
+  <data name="Metrics.Field.RetentionDays.Label" xml:space="preserve"><value>Retenção em dias</value></data>
+  <data name="Metrics.Field.Endpoint.Label" xml:space="preserve"><value>Endpoint</value></data>
+  <data name="Metrics.Field.Database.Label" xml:space="preserve"><value>Banco lógico</value></data>
+  <data name="Metrics.Field.AuthScheme.Label" xml:space="preserve"><value>Esquema de autorização</value></data>
+  <data name="Metrics.AuthScheme.None" xml:space="preserve"><value>Sem autenticação</value></data>
+  <data name="Metrics.Field.Username.Aria" xml:space="preserve"><value>Usuário Basic</value></data>
+  <data name="Metrics.Field.Username.Label" xml:space="preserve"><value>Usuário (Basic)</value></data>
+  <data name="Metrics.Field.Secret.Aria" xml:space="preserve"><value>Novo segredo opcional</value></data>
+  <data name="Metrics.Field.Secret.Label" xml:space="preserve"><value>Novo segredo (opcional)</value></data>
+  <data name="Metrics.Secret.Existing" xml:space="preserve"><value>Já existe um segredo protegido; deixe vazio para mantê-lo.</value></data>
+  <data name="Metrics.Secret.None" xml:space="preserve"><value>Nenhum segredo armazenado.</value></data>
+  <data name="Metrics.Field.BatchSize.Label" xml:space="preserve"><value>Eventos por lote</value></data>
+  <data name="Metrics.Field.Timeout.Label" xml:space="preserve"><value>Timeout do exportador em segundos</value></data>
+  <data name="Metrics.ClearSecret.Label" xml:space="preserve"><value>Remover a credencial protegida ao salvar</value></data>
+  <data name="Metrics.Save.Saving" xml:space="preserve"><value>Salvando…</value></data>
+  <data name="Metrics.Save.Submit" xml:space="preserve"><value>Salvar configuração</value></data>
+  <data name="Metrics.Save.Success" xml:space="preserve"><value>Configuração salva e disponível para o coletor.</value></data>
+  <data name="Metrics.Compact.Million" xml:space="preserve"><value>mi</value></data>
+  <data name="Metrics.Compact.Thousand" xml:space="preserve"><value>mil</value></data>
+  <data name="Common.Validation.MaxLength" xml:space="preserve"><value>Use no máximo {0} caracteres.</value></data>
+  <data name="Users.Detail.Validation.NewPasswordRequired" xml:space="preserve"><value>Informe a nova senha.</value></data>
+  <data name="Users.Detail.Validation.ConfirmNewPasswordRequired" xml:space="preserve"><value>Confirme a nova senha.</value></data>
+  <data name="Claims.Validation.TypeRequired" xml:space="preserve"><value>Informe o tipo da claim.</value></data>
+  <data name="Claims.Validation.ValueRequired" xml:space="preserve"><value>Informe o valor da claim.</value></data>
 </root>

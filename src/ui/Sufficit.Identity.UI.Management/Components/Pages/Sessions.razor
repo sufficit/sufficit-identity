@@ -3,19 +3,19 @@
 @attribute [StreamRendering]
 @inject ManagementSessionDataSource SessionData
 
-<PageTitle>Sessões | Sufficit Identity</PageTitle>
+<PageTitle>@L["Sessions.PageTitle"]</PageTitle>
 
-<SUIPageHeader Title="Sessões e credenciais"
-            Description="Inspecione metadados das credenciais emitidas pelo provedor e interrompa seu uso.">
+<SUIPageHeader Title="@L["Sessions.HeaderTitle"].Value"
+            Description="@L["Sessions.HeaderDescription"].Value">
 </SUIPageHeader>
 
 <div class="contract-strip contract-strip--info">
     <SUIIcon Name="clock" Size="20" />
     <div>
-        <strong>Fonte canônica: runtime de autorização</strong>
-        <span>Esta tela não exibe conteúdo, referência ou payload de tokens. Cookies só são invalidados no encerramento total da conta.</span>
+        <strong>@L["Sessions.ContractStrip.Title"]</strong>
+        <span>@L["Sessions.ContractStrip.Description"]</span>
     </div>
-    <SUIStatusBadge ToneValue="SUITone.Info">Metadados seguros</SUIStatusBadge>
+    <SUIStatusBadge ToneValue="SUITone.Info">@L["Sessions.ContractStrip.Badge"]</SUIStatusBadge>
 </div>
 
 @if (revoked)
@@ -23,8 +23,8 @@
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
         <div>
-            <strong>Credencial revogada</strong>
-            <span>Novas validações dessa credencial serão recusadas.</span>
+            <strong>@L["Sessions.Revoked.Title"]</strong>
+            <span>@L["Sessions.Revoked.Description"]</span>
         </div>
     </div>
 }
@@ -34,8 +34,8 @@
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
         <div>
-            <strong>Sessões da conta encerradas</strong>
-            <span>@revokedAll.RevokedTokens credencial(is) e @revokedAll.RevokedAuthorizations autorização(ões) foram revogadas; o cookie foi invalidado pelo selo de segurança.</span>
+            <strong>@L["Sessions.RevokedAll.Title"]</strong>
+            <span>@string.Format(L["Sessions.RevokedAll.DescriptionFormat"].Value, revokedAll.RevokedTokens, revokedAll.RevokedAuthorizations)</span>
         </div>
     </div>
 }
@@ -43,27 +43,27 @@
 <div class="table-panel" aria-labelledby="sessions-list-heading" aria-busy="@loading">
     <div class="data-toolbar data-toolbar--users">
         <div>
-            <h2 id="sessions-list-heading">Credenciais emitidas</h2>
+            <h2 id="sessions-list-heading">@L["Sessions.List.Heading"]</h2>
             <p>@FilterDescription</p>
         </div>
         <div class="data-toolbar__actions">
             <form class="user-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
                 <label class="search-field">
-                    <span class="visually-hidden">Pesquisar sessões</span>
+                    <span class="visually-hidden">@L["Sessions.Search.VisuallyHidden"]</span>
                     <SUIIcon Name="search" Size="18" />
                     <input type="search"
-                           placeholder="Usuário, cliente, tipo ou estado"
+                           placeholder="@L["Sessions.Search.Placeholder"].Value"
                            autocomplete="off"
                            @bind="search" />
                 </label>
                 <div class="select-field">
-                    <span>Estado</span>
+                    <span>@L["Sessions.Filter.StateLabel"]</span>
                     <SUISelect T="string" @bind-Value="stateFilter">
-                        <SUISelectItem Value="@("active")">Ativas</SUISelectItem>
-                        <SUISelectItem Value="@("all")">Todas</SUISelectItem>
+                        <SUISelectItem Value="@("active")">@L["Sessions.Filter.Active"]</SUISelectItem>
+                        <SUISelectItem Value="@("all")">@L["Sessions.Filter.All"]</SUISelectItem>
                     </SUISelect>
                 </div>
-                <button class="button button--secondary" type="submit" disabled="@loading">Aplicar</button>
+                <button class="button button--secondary" type="submit" disabled="@loading">@L["Sessions.Apply"]</button>
             </form>
         </div>
     </div>
@@ -71,7 +71,7 @@
     <div class="client-results" aria-live="polite">
         @if (loading)
         {
-            <div class="table-skeleton" aria-label="Carregando sessões">
+            <div class="table-skeleton" aria-label="@L["Sessions.LoadingAriaLabel"].Value">
                 @for (var index = 0; index < 4; index++)
                 {
                     <span></span>
@@ -83,8 +83,8 @@
             @if (Page.Items.Count is 0)
             {
                 <SUIEmptyState Icon="clock"
-                            Title="Nenhuma credencial encontrada"
-                            Description="Não há registros neste recorte. Altere o estado ou a pesquisa para ampliar a consulta." />
+                            Title="@L["Sessions.Empty.Title"].Value"
+                            Description="@L["Sessions.Empty.Description"].Value" />
             }
             else
             {
@@ -92,19 +92,19 @@
                     <table class="data-table data-table--claims">
                         <thead>
                             <tr>
-                                <th scope="col">Usuário / aplicação</th>
-                                <th scope="col">Cliente</th>
-                                <th scope="col">Tipo</th>
-                                <th scope="col">Emissão / expiração</th>
-                                <th scope="col">Estado</th>
-                                <th scope="col"><span class="visually-hidden">Ações</span></th>
+                                <th scope="col">@L["Sessions.Column.UserApplication"]</th>
+                                <th scope="col">@L["Sessions.Column.Client"]</th>
+                                <th scope="col">@L["Sessions.Column.Type"]</th>
+                                <th scope="col">@L["Sessions.Column.IssuedExpires"]</th>
+                                <th scope="col">@L["Sessions.Column.State"]</th>
+                                <th scope="col"><span class="visually-hidden">@L["Sessions.Column.Actions"]</span></th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var session in Page.Items)
                             {
                                 <tr>
-                                    <td data-label="Usuário / aplicação">
+                                    <td data-label="@L["Sessions.Column.UserApplication"].Value">
                                         @if (HasHumanUser(session))
                                         {
                                             <a class="client-name" href="@UserHref(session.UserId!)">@UserLabel(session)</a>
@@ -117,37 +117,37 @@
                                         }
                                         else
                                         {
-                                            <span>Cliente técnico sem aplicação</span>
+                                            <span>@L["Sessions.TechnicalClientNoApp"]</span>
                                         }
                                     </td>
-                                    <td data-label="Cliente">
+                                    <td data-label="@L["Sessions.Column.Client"].Value">
                                         <span class="scope-identity">
-                                            <strong>@(session.ClientDisplayName ?? session.ClientId ?? "Sem cliente")</strong>
+                                            <strong>@(session.ClientDisplayName ?? session.ClientId ?? L["Sessions.NoClient"].Value)</strong>
                                             @if (session.ClientId is not null)
                                             {
                                                 <code>@session.ClientId</code>
                                             }
                                         </span>
                                     </td>
-                                    <td data-label="Tipo"><code class="client-id">@TypeLabel(session.Type)</code></td>
-                                    <td data-label="Emissão / expiração">
+                                    <td data-label="@L["Sessions.Column.Type"].Value"><code class="client-id">@TypeLabel(session.Type)</code></td>
+                                    <td data-label="@L["Sessions.Column.IssuedExpires"].Value">
                                         <span class="scope-identity">
                                             <strong>@DateLabel(session.CreatedAt)</strong>
-                                            <code>expira @DateLabel(session.ExpiresAt)</code>
+                                            <code>@L["Sessions.ExpiresPrefix"] @DateLabel(session.ExpiresAt)</code>
                                         </span>
                                     </td>
-                                    <td data-label="Estado">
+                                    <td data-label="@L["Sessions.Column.State"].Value">
                                         <SUIStatusBadge ToneValue="@(session.IsActive ? SUITone.Success : SUITone.Neutral)">
                                             @StatusLabel(session.Status)
                                         </SUIStatusBadge>
                                     </td>
-                                    <td data-label="Ações">
+                                    <td data-label="@L["Sessions.Column.Actions"].Value">
                                         @if (session.IsActive)
                                         {
                                             <button class="row-action row-action--button"
                                                     type="button"
                                                     @onclick="() => SelectForRevocation(session)">
-                                                Revogar
+                                                @L["Sessions.RevokeAction"]
                                                 <SUIIcon Name="lock" Size="15" />
                                             </button>
                                         }
@@ -163,9 +163,9 @@
         {
             <SUIEmptyState Icon="alert"
                         Title="@ErrorTitle"
-                        Description="@(result?.ErrorMessage ?? "O serviço não conseguiu consultar as sessões.")">
+                        Description="@(result?.ErrorMessage ?? L["Sessions.Error.GenericDescription"].Value)">
                 <Actions>
-                    <button class="button button--secondary" type="button" @onclick="LoadAsync">Tentar novamente</button>
+                    <button class="button button--secondary" type="button" @onclick="LoadAsync">@L["Sessions.Retry"]</button>
                 </Actions>
             </SUIEmptyState>
         }
@@ -175,14 +175,14 @@
         <span>@ResultCountLabel</span>
         @if (result?.IsSuccess is true && Page.TotalCount > Page.PageSize)
         {
-            <div class="pagination" aria-label="Paginação de sessões">
+            <div class="pagination" aria-label="@L["Sessions.PaginationAriaLabel"].Value">
                 <button class="button button--secondary button--compact" type="button"
                         disabled="@(Page.Page <= 1 || loading)"
-                        @onclick="PreviousPageAsync">Anterior</button>
-                <span>Página @Page.Page de @TotalPages</span>
+                        @onclick="PreviousPageAsync">@L["Sessions.Previous"]</button>
+                <span>@string.Format(L["Sessions.PageOfFormat"].Value, Page.Page, TotalPages)</span>
                 <button class="button button--secondary button--compact" type="button"
                         disabled="@(Page.Page >= TotalPages || loading)"
-                        @onclick="NextPageAsync">Próxima</button>
+                        @onclick="NextPageAsync">@L["Sessions.Next"]</button>
             </div>
         }
     </footer>
@@ -192,20 +192,20 @@
 {
     <div class="delete-zone" aria-labelledby="revoke-session-heading">
         <div>
-            <h2 id="revoke-session-heading">Revogar esta credencial?</h2>
-            <p>@PrincipalLabel(selected) · @TypeLabel(selected.Type) · emitida @DateLabel(selected.CreatedAt).</p>
+            <h2 id="revoke-session-heading">@L["Sessions.RevokeConfirm.Heading"]</h2>
+            <p>@PrincipalLabel(selected) · @TypeLabel(selected.Type) · @L["Sessions.RevokeConfirm.IssuedAt"] @DateLabel(selected.CreatedAt).</p>
         </div>
         @if (revocation?.IsSuccess is false)
         {
             <div class="inline-notice inline-notice--danger" role="alert">
                 <SUIIcon Name="alert" Size="19" />
-                <div><strong>Não foi possível revogar</strong><span>@revocation.ErrorMessage</span></div>
+                <div><strong>@L["Sessions.RevokeConfirm.ErrorTitle"]</strong><span>@revocation.ErrorMessage</span></div>
             </div>
         }
-        <button class="button button--secondary" type="button" @onclick="CancelRevocation">Cancelar</button>
+        <button class="button button--secondary" type="button" @onclick="CancelRevocation">@L["Sessions.Cancel"]</button>
         <button class="button button--danger" type="button" disabled="@revoking" @onclick="RevokeAsync">
             <SUIIcon Name="lock" Size="17" />
-            @(revoking ? "Revogando…" : "Confirmar revogação")
+            @(revoking ? L["Sessions.Revoking"] : L["Sessions.ConfirmRevocation"])
         </button>
     </div>
 }
@@ -214,20 +214,20 @@
 {
     <div class="danger-zone" aria-labelledby="revoke-all-heading">
         <div>
-            <h2 id="revoke-all-heading">Encerrar todas as sessões desta conta</h2>
-            <p>Gira o selo de segurança e revoga tokens e autorizações vinculados ao usuário filtrado.</p>
+            <h2 id="revoke-all-heading">@L["Sessions.RevokeAll.Heading"]</h2>
+            <p>@L["Sessions.RevokeAll.Description"]</p>
         </div>
         <div>
             <label class="delete-confirmation">
                 <input type="checkbox" @bind="revokeAllConfirmed" />
-                <span>Confirmo o encerramento total.</span>
+                <span>@L["Sessions.RevokeAll.ConfirmLabel"]</span>
             </label>
             <button class="button button--danger"
                     type="button"
                     disabled="@(!revokeAllConfirmed || revokingAll)"
                     @onclick="RevokeAllAsync">
                 <SUIIcon Name="lock" Size="17" />
-                @(revokingAll ? "Encerrando…" : "Encerrar todas")
+                @(revokingAll ? L["Sessions.RevokeAll.Ending"] : L["Sessions.RevokeAll.EndAll"])
             </button>
         </div>
     </div>
@@ -262,24 +262,24 @@
 
     private string FilterDescription =>
         UserId is not null
-            ? $"Filtradas pela conta {UserId}."
+            ? string.Format(L["Sessions.FilterDescription.ByAccountFormat"].Value, UserId)
             : ClientId is not null
-                ? $"Filtradas pelo cliente {ClientId}."
-                : "Cada linha representa uma credencial persistida pelo runtime de autorização.";
+                ? string.Format(L["Sessions.FilterDescription.ByClientFormat"].Value, ClientId)
+                : L["Sessions.FilterDescription.Default"].Value;
 
     private string ErrorTitle =>
         result?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? "MFA exigido para consultar sessões"
+            ? L["Sessions.Error.StepUp"].Value
             : result?.Outcome is ManagementDataOutcome.Forbidden
-                ? "Acesso às sessões negado"
-                : "Não foi possível consultar as sessões";
+                ? L["Sessions.Error.Forbidden"].Value
+                : L["Sessions.Error.Generic"].Value;
 
     private string ResultCountLabel =>
         loading
-            ? "Carregando sessões"
+            ? L["Sessions.ResultCount.Loading"].Value
             : result?.IsSuccess is true
-                ? $"{Page.TotalCount} credencial(is)"
-                : "Nenhum resultado carregado";
+                ? string.Format(L["Sessions.ResultCount.Format"].Value, Page.TotalCount)
+                : L["Sessions.ResultCount.NoneLoaded"].Value;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -374,33 +374,33 @@
         session.UserId is not null
         && (session.UserName is not null || session.Email is not null);
 
-    private static string UserLabel(ManagementSessionSummary session) =>
-        session.UserName ?? session.Email ?? session.UserId ?? "Sem usuário";
+    private string UserLabel(ManagementSessionSummary session) =>
+        session.UserName ?? session.Email ?? session.UserId ?? L["Sessions.NoUser"].Value;
 
     private static string UserHref(string id) =>
         $"users/{Uri.EscapeDataString(id)}";
 
-    private static string ClientLabel(ManagementSessionSummary session) =>
-        session.ClientDisplayName ?? session.ClientId ?? "Aplicação";
+    private string ClientLabel(ManagementSessionSummary session) =>
+        session.ClientDisplayName ?? session.ClientId ?? L["Sessions.Application"].Value;
 
     private static string ClientHref(string id) =>
         $"clients/{Uri.EscapeDataString(id)}";
 
-    private static string PrincipalLabel(ManagementSessionSummary session) =>
+    private string PrincipalLabel(ManagementSessionSummary session) =>
         HasHumanUser(session) ? UserLabel(session) : ClientLabel(session);
 
     private static string TypeLabel(string value) =>
         value.Replace('_', ' ');
 
-    private static string StatusLabel(string value) =>
+    private string StatusLabel(string value) =>
         value switch
         {
-            "valid" => "Ativa",
-            "revoked" => "Revogada",
-            "redeemed" => "Utilizada",
+            "valid" => L["Sessions.Status.Active"].Value,
+            "revoked" => L["Sessions.Status.Revoked"].Value,
+            "redeemed" => L["Sessions.Status.Used"].Value,
             _ => value
         };
 
-    private static string DateLabel(DateTimeOffset? value) =>
-        value?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "sem prazo";
+    private string DateLabel(DateTimeOffset? value) =>
+        value?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? L["Sessions.NoExpiration"].Value;
 }

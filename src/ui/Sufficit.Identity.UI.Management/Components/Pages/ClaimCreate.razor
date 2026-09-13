@@ -4,14 +4,14 @@
 @inject ManagementUserDataSource UserData
 @inject NavigationManager Navigation
 
-<PageTitle>Atribuir claim | Sufficit Identity</PageTitle>
+<PageTitle>@L["ClaimCreate.PageTitle"]</PageTitle>
 
-<SUIPageHeader Title="Atribuir claim"
+<SUIPageHeader Title="@L["ClaimCreate.HeaderTitle"].Value"
             Description="@HeaderDescription">
     <Actions>
         <a class="button button--secondary" href="@BackHref">
             <SUIIcon Name="arrow-left" Size="17" />
-            Voltar para claims
+            @L["ClaimCreate.BackToClaims"]
         </a>
     </Actions>
 </SUIPageHeader>
@@ -20,10 +20,10 @@
 {
     <div>
         <SUIEmptyState Icon="users"
-                    Title="Selecione um usuário"
-                    Description="Abra uma conta no diretório de identidades antes de atribuir uma claim.">
+                    Title="@L["ClaimCreate.SelectUser.Title"].Value"
+                    Description="@L["ClaimCreate.SelectUser.Description"].Value">
             <Actions>
-                <a class="button button--primary" href="users">Abrir diretório de usuários</a>
+                <a class="button button--primary" href="users">@L["ClaimCreate.OpenUserDirectory"]</a>
             </Actions>
         </SUIEmptyState>
     </div>
@@ -33,10 +33,10 @@ else
     <div class="contract-strip contract-strip--warning">
         <SUIIcon Name="refresh" Size="20" />
         <div>
-            <strong>Alteração efetiva na próxima emissão</strong>
-            <span>A atribuição atualiza o selo de segurança e revoga tokens ativos da conta.</span>
+            <strong>@L["ClaimCreate.ContractStrip.Title"]</strong>
+            <span>@L["ClaimCreate.ContractStrip.Description"]</span>
         </div>
-        <SUIStatusBadge ToneValue="SUITone.Warning">Impacta credenciais</SUIStatusBadge>
+        <SUIStatusBadge ToneValue="SUITone.Warning">@L["ClaimCreate.ContractStrip.Badge"]</SUIStatusBadge>
     </div>
 
     @if (submission?.IsSuccess is false)
@@ -44,7 +44,7 @@ else
         <div class="inline-notice inline-notice--danger" role="alert">
             <SUIIcon Name="alert" Size="19" />
             <div>
-                <strong>Não foi possível atribuir a claim</strong>
+                <strong>@L["ClaimCreate.SubmitError.Title"]</strong>
                 <span>@submission.ErrorMessage</span>
             </div>
         </div>
@@ -59,20 +59,20 @@ else
 
         <div class="form-section" aria-labelledby="claim-account-heading">
             <div class="form-section__heading">
-                <h2 id="claim-account-heading">Conta</h2>
-                <p>A claim será vinculada somente a esta identidade.</p>
+                <h2 id="claim-account-heading">@L["ClaimCreate.Account.Heading"]</h2>
+                <p>@L["ClaimCreate.Account.Description"]</p>
             </div>
             <dl class="property-list">
                 <div>
-                    <dt>Usuário</dt>
+                    <dt>@L["ClaimCreate.Field.User"]</dt>
                     <dd>@AccountLabel</dd>
                 </div>
                 <div>
-                    <dt>E-mail</dt>
-                    <dd>@(userResult?.Value?.Email ?? "Não informado")</dd>
+                    <dt>@L["ClaimCreate.Field.Email"]</dt>
+                    <dd>@(userResult?.Value?.Email ?? L["ClaimCreate.NotInformed"].Value)</dd>
                 </div>
                 <div>
-                    <dt>Identificador</dt>
+                    <dt>@L["ClaimCreate.Field.Identifier"]</dt>
                     <dd><code class="client-id">@UserId</code></dd>
                 </div>
             </dl>
@@ -80,12 +80,12 @@ else
 
         <div class="form-section" aria-labelledby="claim-value-heading">
             <div class="form-section__heading">
-                <h2 id="claim-value-heading">Atributo</h2>
-                <p>Use nomes interoperáveis quando existirem. Claims de protocolo e perfil básico são protegidas.</p>
+                <h2 id="claim-value-heading">@L["ClaimCreate.Attribute.Heading"]</h2>
+                <p>@L["ClaimCreate.Attribute.Description"]</p>
             </div>
 
             <div class="field-group">
-                <label for="claim-type">Tipo da claim</label>
+                <label for="claim-type">@L["ClaimCreate.Field.Type"]</label>
                 <InputText id="claim-type"
                            class="form-control"
                            list="claim-type-suggestions"
@@ -98,32 +98,32 @@ else
                     }
                 </datalist>
                 <ValidationMessage For="() => model.Type" />
-                <span class="field-hint">Exemplo: <code>locale</code>, <code>zoneinfo</code> ou um nome com namespace próprio.</span>
+                <span class="field-hint">@L["ClaimCreate.Field.TypeHintPrefix"] <code>locale</code>, <code>zoneinfo</code> @L["ClaimCreate.Field.TypeHintSuffix"]</span>
             </div>
 
             <div class="field-group">
-                <label for="claim-value">Valor</label>
+                <label for="claim-value">@L["ClaimCreate.Field.Value"]</label>
                 <InputTextArea id="claim-value"
                                class="form-control form-control--textarea"
                                @bind-Value="model.Value" />
                 <ValidationMessage For="() => model.Value" />
-                <span class="field-hint">O valor não será copiado para o evento de auditoria.</span>
+                <span class="field-hint">@L["ClaimCreate.Field.ValueHint"]</span>
             </div>
         </div>
 
         <footer class="form-actions">
-            <a class="button button--secondary" href="@BackHref">Cancelar</a>
+            <a class="button button--secondary" href="@BackHref">@L["ClaimCreate.Cancel"]</a>
             <button class="button button--primary" type="submit"
                     disabled="@(submitting || userResult?.IsSuccess is not true)">
                 @if (submitting)
                 {
                     <span class="button-spinner" aria-hidden="true"></span>
-                    <span>Atribuindo…</span>
+                    <span>@L["ClaimCreate.Submitting"]</span>
                 }
                 else
                 {
                     <SUIIcon Name="plus" Size="17" />
-                    <span>Atribuir claim</span>
+                    <span>@L["ClaimCreate.Submit"]</span>
                 }
             </button>
         </footer>
@@ -150,12 +150,12 @@ else
     private string AccountLabel =>
         userResult?.Value is { } user
             ? user.UserName ?? user.Email ?? user.Id
-            : "Carregando conta…";
+            : L["ClaimCreate.LoadingAccount"].Value;
 
     private string HeaderDescription =>
         HasUserContext
-            ? $"Associe um atributo adicional a {AccountLabel} sem incorporar regras da aplicação."
-            : "Selecione uma conta antes de atribuir um atributo adicional.";
+            ? string.Format(L["ClaimCreate.HeaderDescriptionFormat"].Value, AccountLabel)
+            : L["ClaimCreate.HeaderDescriptionNoUser"].Value;
 
     private string BackHref =>
         HasUserContext
@@ -201,14 +201,41 @@ else
         }
     }
 
-    private sealed class ClaimCreateModel
+    protected override void OnInitialized()
     {
-        [Required(ErrorMessage = "Informe o tipo da claim.")]
-        [StringLength(256, ErrorMessage = "Use no máximo 256 caracteres.")]
+        model.Localizer = L;
+        base.OnInitialized();
+    }
+
+    private sealed class ClaimCreateModel : IValidatableObject
+    {
+        public IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource>? Localizer { get; set; }
+
         public string Type { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Informe o valor da claim.")]
-        [StringLength(4096, ErrorMessage = "Use no máximo 4096 caracteres.")]
         public string Value { get; set; } = string.Empty;
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            var l = Localizer ?? throw new InvalidOperationException(
+                "The form model localizer must be set before validation.");
+
+            if (string.IsNullOrWhiteSpace(Type))
+            {
+                yield return new ValidationResult(l["Claims.Validation.TypeRequired"].Value, [nameof(Type)]);
+            }
+            if (Type?.Length > 256)
+            {
+                yield return new ValidationResult(l["Common.Validation.MaxLength", 256].Value, [nameof(Type)]);
+            }
+            if (string.IsNullOrWhiteSpace(Value))
+            {
+                yield return new ValidationResult(l["Claims.Validation.ValueRequired"].Value, [nameof(Value)]);
+            }
+            if (Value?.Length > 4096)
+            {
+                yield return new ValidationResult(l["Common.Validation.MaxLength", 4096].Value, [nameof(Value)]);
+            }
+        }
     }
 }

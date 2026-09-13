@@ -5,26 +5,26 @@
 @inject ManagementClientDataSource ClientData
 @inject NavigationManager Navigation
 
-<PageTitle>Configurar aplicação | Sufficit Identity</PageTitle>
+<PageTitle>@L["Clients.Draft.PageTitle"] | Sufficit Identity</PageTitle>
 
 @if (loading)
 {
-    <div class="wizard-loading" aria-busy="true" aria-label="Carregando configuração">
+    <div class="wizard-loading" aria-busy="true" aria-label="@L["Clients.Draft.LoadingAriaLabel"].Value">
         <span class="button-spinner" aria-hidden="true"></span>
-        <p>Recuperando seu rascunho protegido…</p>
+        <p>@L["Clients.Draft.RecoveringDraft"]</p>
     </div>
 }
 else if (draft is null)
 {
     <div>
-        <SUIPageHeader Title="Rascunho indisponível"
-                    Description="Ele pode ter expirado, sido concluído ou pertencer a outra sessão administrativa." />
+        <SUIPageHeader Title="@L["Clients.Draft.UnavailableTitle"].Value"
+                    Description="@L["Clients.Draft.UnavailableDescription"].Value" />
     </div>
     <div>
-        <SUIEmptyState Icon="alert" Title="Não foi possível abrir esta configuração" Description="@errorMessage">
+        <SUIEmptyState Icon="alert" Title="@L["Clients.Draft.OpenErrorTitle"].Value" Description="@errorMessage">
             <Actions>
-                <a class="button button--primary" href="clients/new">Iniciar nova aplicação</a>
-                <a class="button button--secondary" href="clients">Voltar para aplicações</a>
+                <a class="button button--primary" href="clients/new">@L["Clients.Draft.StartNewApplication"]</a>
+                <a class="button button--secondary" href="clients">@L["Clients.Create.Back"]</a>
             </Actions>
         </SUIEmptyState>
     </div>
@@ -32,8 +32,8 @@ else if (draft is null)
 else if (completion is not null)
 {
     <div>
-        <SUIPageHeader Title="Aplicação criada"
-                    Description="A configuração foi validada, registrada e auditada com sucesso." />
+        <SUIPageHeader Title="@L["Clients.Draft.CreatedTitle"].Value"
+                    Description="@L["Clients.Draft.CreatedDescription"].Value" />
     </div>
     <div class="completion-panel" aria-labelledby="completion-heading">
         <span class="completion-panel__icon"><SUIIcon Name="check" Size="26" /></span>
@@ -45,30 +45,30 @@ else if (completion is not null)
         {
             <div class="one-time-secret" role="alert">
                 <div>
-                    <strong>Copie a credencial agora</strong>
-                    <span>Ela não será armazenada nem exibida novamente.</span>
+                    <strong>@L["Clients.Draft.CopyCredentialTitle"]</strong>
+                    <span>@L["Clients.Draft.CopyCredentialMessage"]</span>
                 </div>
                 <input id="generated-client-secret"
                        name="generated-client-secret"
                        class="form-control technical-value"
                        value="@completion.OneTimeSecret"
                        readonly
-                       aria-label="Credencial gerada para a aplicação" />
+                       aria-label="@L["Clients.Draft.GeneratedCredentialAriaLabel"].Value" />
             </div>
         }
         <div class="wizard-actions wizard-actions--complete">
-            <a class="button button--primary" href="@ClientHref(completion.Client.Id)">Abrir aplicação</a>
-            <a class="button button--secondary" href="clients">Voltar para aplicações</a>
+            <a class="button button--primary" href="@ClientHref(completion.Client.Id)">@L["Clients.Draft.OpenApplication"]</a>
+            <a class="button button--secondary" href="clients">@L["Clients.Create.Back"]</a>
         </div>
     </div>
 }
 else
 {
     <div>
-    <SUIPageHeader Title="Configurar aplicação"
-                Description="Avance no seu ritmo. O rascunho é protegido e retomável por 14 dias.">
+    <SUIPageHeader Title="@L["Clients.Draft.PageTitle"].Value"
+                Description="@L["Clients.Draft.WizardDescription"].Value">
         <Actions>
-            <a class="button button--secondary" href="clients">Salvar e sair</a>
+            <a class="button button--secondary" href="clients">@L["Clients.Draft.SaveAndExit"]</a>
         </Actions>
     </SUIPageHeader>
 
@@ -76,14 +76,14 @@ else
     {
         <div class="inline-notice inline-notice--danger" role="alert">
             <SUIIcon Name="alert" Size="19" />
-            <div><strong>Não foi possível concluir a operação</strong><span>@errorMessage</span></div>
+            <div><strong>@L["Clients.Draft.OperationErrorTitle"]</strong><span>@errorMessage</span></div>
         </div>
     }
 
     <div class="wizard-shell">
-        <nav class="wizard-progress" aria-label="Etapas da configuração">
+        <nav class="wizard-progress" aria-label="@L["Clients.Draft.StepsAriaLabel"].Value">
             <div class="wizard-progress__summary">
-                <span>Etapa @(CurrentStepIndex + 1) de @Steps.Length</span>
+                <span>@L["Clients.Draft.StepProgress", CurrentStepIndex + 1, Steps.Length]</span>
                 <strong>@CurrentStep.Label</strong>
             </div>
             <ol>
@@ -103,17 +103,17 @@ else
                 @if (saving)
                 {
                     <span class="button-spinner" aria-hidden="true"></span>
-                    <span>Salvando…</span>
+                    <span>@L["Clients.Draft.Saving"]</span>
                 }
                 else if (savedAt is not null)
                 {
                     <span class="wizard-save-state__icon"><SUIIcon Name="check" Size="15" /></span>
-                    <span>Salvo às @savedAt.Value.ToLocalTime().ToString("HH:mm")</span>
+                    <span>@L["Clients.Draft.SavedAt", savedAt.Value.ToLocalTime().ToString("HH:mm")]</span>
                 }
                 else
                 {
                     <span class="wizard-save-state__icon"><SUIIcon Name="lock" Size="15" /></span>
-                    <span>Rascunho protegido</span>
+                    <span>@L["Clients.Draft.ProtectedDraft"]</span>
                 }
             </div>
         </nav>
@@ -129,11 +129,11 @@ else
             {
                 <div class="form-grid form-grid--two">
                     <div class="field-group">
-                        <label for="client-display-name">Nome da aplicação</label>
+                        <label for="client-display-name">@L["Clients.Draft.AppNameLabel"]</label>
                         <input id="client-display-name" name="displayName" class="form-control"
                                autocomplete="organization" value="@draft.Values.DisplayName"
                                @oninput="DisplayNameChangedAsync" />
-                        <span class="field-hint">Nome humano mostrado em consentimentos e auditoria.</span>
+                        <span class="field-hint">@L["Clients.Draft.AppNameHint"]</span>
                         @foreach (var issue in IssuesFor("displayName"))
                         {
                             <span class="field-feedback field-feedback--@IssueTone(issue)">@issue.Message</span>
@@ -144,7 +144,7 @@ else
                         <input id="client-id" name="clientId" class="form-control technical-value"
                                autocomplete="off" spellcheck="false" value="@draft.Values.ClientId"
                                @oninput="ClientIdChangedAsync" />
-                        <span class="field-hint">Identificador estável usado pelo protocolo. Exemplo: <code>portal_web</code>.</span>
+                        <span class="field-hint">@L["Clients.Draft.ClientIdHintPrefix"] <code>portal_web</code>.</span>
                         @foreach (var issue in IssuesFor("clientId"))
                         {
                             <span class="field-feedback field-feedback--@IssueTone(issue)">@issue.Message</span>
@@ -159,40 +159,40 @@ else
             else if (CurrentStep.Id == ManagementClientDraftSteps.Protocol)
             {
                 <fieldset class="choice-fieldset">
-                    <legend>Tipo de cliente</legend>
+                    <legend>@L["Clients.Draft.ClientTypeLegend"]</legend>
                     <div class="choice-grid choice-grid--two">
                         <label class="choice-control">
                             <input name="client-type" type="radio" value="public"
                                    checked="@(draft.Values.ClientType == "public")"
                                    @onchange='() => SetClientTypeAsync("public")' />
-                            <span><strong>Público</strong><small>Sem segredo armazenado no navegador, dispositivo ou CLI.</small></span>
+                            <span><strong>@L["Clients.Detail.TypePublic"]</strong><small>@L["Clients.Draft.PublicClientHint"]</small></span>
                         </label>
                         <label class="choice-control">
                             <input name="client-type" type="radio" value="confidential"
                                    checked="@(draft.Values.ClientType == "confidential")"
                                    @onchange='() => SetClientTypeAsync("confidential")' />
-                            <span><strong>Confidencial</strong><small>Servidor capaz de proteger uma credencial.</small></span>
+                            <span><strong>@L["Clients.Detail.TypeConfidential"]</strong><small>@L["Clients.Draft.ConfidentialClientHint"]</small></span>
                         </label>
                     </div>
                 </fieldset>
                 <fieldset class="choice-fieldset">
-                    <legend>Como obtém tokens</legend>
+                    <legend>@L["Clients.Draft.GrantTypesLegend"]</legend>
                     <div class="choice-grid">
                         <label class="choice-control">
                             <input id="grant-authorization-code" name="grantTypes" type="checkbox" checked="@draft.Values.AuthorizationCode" @onchange="AuthorizationCodeChangedAsync" />
-                            <span><strong>Authorization Code + PKCE</strong><small>Login interativo moderno.</small></span>
+                            <span><strong>Authorization Code + PKCE</strong><small>@L["Clients.Draft.AuthCodeHint"]</small></span>
                         </label>
                         <label class="choice-control">
                             <input id="grant-refresh-token" name="grantTypes" type="checkbox" checked="@draft.Values.RefreshToken" @onchange="RefreshTokenChangedAsync" />
-                            <span><strong>Refresh Token</strong><small>Renova a sessão sem novo login.</small></span>
+                            <span><strong>Refresh Token</strong><small>@L["Clients.Draft.RefreshTokenHint"]</small></span>
                         </label>
                         <label class="choice-control">
                             <input id="grant-client-credentials" name="grantTypes" type="checkbox" checked="@draft.Values.ClientCredentials" @onchange="ClientCredentialsChangedAsync" />
-                            <span><strong>Client Credentials</strong><small>Integração sem usuário.</small></span>
+                            <span><strong>Client Credentials</strong><small>@L["Clients.Draft.ClientCredentialsHint"]</small></span>
                         </label>
                         <label class="choice-control">
                             <input id="grant-device-code" name="grantTypes" type="checkbox" checked="@draft.Values.DeviceCode" @onchange="DeviceCodeChangedAsync" />
-                            <span><strong>Device Code</strong><small>Autoriza em outro dispositivo.</small></span>
+                            <span><strong>Device Code</strong><small>@L["Clients.Draft.DeviceCodeHint"]</small></span>
                         </label>
                     </div>
                     @foreach (var issue in IssuesFor("grantTypes"))
@@ -202,37 +202,37 @@ else
                 </fieldset>
                 <div class="form-grid form-grid--two">
                     <div class="field-group">
-                        <label for="consent-type">Consentimento</label>
+                        <label for="consent-type">@L["Clients.Detail.ConsentLabel"]</label>
                         <select id="consent-type" name="consentType" class="form-control"
                                 value="@draft.Values.ConsentType" @onchange="ConsentChangedAsync">
-                            <option value="explicit">Explícito — o usuário confirma</option>
-                            <option value="implicit">Implícito — aplicação confiável</option>
-                            <option value="external">Externo — decisão administrada fora do fluxo</option>
-                            <option value="systematic">Sistemático — confirmação recorrente</option>
+                            <option value="explicit">@L["Clients.Draft.ConsentExplicitOption"]</option>
+                            <option value="implicit">@L["Clients.Draft.ConsentImplicitOption"]</option>
+                            <option value="external">@L["Clients.Draft.ConsentExternalOption"]</option>
+                            <option value="systematic">@L["Clients.Draft.ConsentSystematicOption"]</option>
                         </select>
                     </div>
                     <label class="choice-control choice-control--single">
                         <input id="require-par" name="requirePar" type="checkbox"
                                checked="@draft.Values.RequirePar" @onchange="RequireParChangedAsync" />
-                        <span><strong>Exigir PAR</strong><small>Protege os parâmetros antes de abrir o navegador.</small></span>
+                        <span><strong>@L["Clients.Draft.RequireParLabel"]</strong><small>@L["Clients.Draft.RequireParHint"]</small></span>
                     </label>
                 </div>
                 <div class="field-group token-lifetime-editor">
                     <div class="field-group__heading">
-                        <label>Validade dos tokens</label>
-                        <span class="field-hint">Opcional: em branco, a aplicação herda o padrão global do servidor.</span>
+                        <label>@L["Clients.Detail.TokenValidityHeading"]</label>
+                        <span class="field-hint">@L["Clients.Draft.TokenLifetimeHint"]</span>
                     </div>
                     <div class="form-grid form-grid--three">
                         <div class="field-group">
-                            <label for="draft-access-token-lifetime">Access token (minutos)</label>
+                            <label for="draft-access-token-lifetime">@L["Clients.Draft.AccessTokenLifetimeLabel"]</label>
                             <input id="draft-access-token-lifetime" name="accessTokenLifetimeMinutes" type="number" min="1" max="@TokenLifetimeLimits.MaximumAccessTokenLifetimeMinutes" class="form-control" value="@draft.Values.AccessTokenLifetimeMinutes" @oninput="AccessTokenLifetimeChangedAsync" />
                         </div>
                         <div class="field-group">
-                            <label for="draft-identity-token-lifetime">ID token (minutos)</label>
+                            <label for="draft-identity-token-lifetime">@L["Clients.Draft.IdTokenLifetimeLabel"]</label>
                             <input id="draft-identity-token-lifetime" name="identityTokenLifetimeMinutes" type="number" min="1" max="120" class="form-control" value="@draft.Values.IdentityTokenLifetimeMinutes" @oninput="IdentityTokenLifetimeChangedAsync" />
                         </div>
                         <div class="field-group">
-                            <label for="draft-refresh-token-lifetime">Refresh token (dias)</label>
+                            <label for="draft-refresh-token-lifetime">@L["Clients.Draft.RefreshTokenLifetimeLabel"]</label>
                             <input id="draft-refresh-token-lifetime" name="refreshTokenLifetimeDays" type="number" min="1" max="365" class="form-control" value="@draft.Values.RefreshTokenLifetimeDays" @oninput="RefreshTokenLifetimeChangedAsync" />
                         </div>
                     </div>
@@ -241,9 +241,9 @@ else
             else if (CurrentStep.Id == ManagementClientDraftSteps.Permissions)
             {
                 <label class="search-field scope-search">
-                    <span class="visually-hidden">Pesquisar permissões</span>
+                    <span class="visually-hidden">@L["Clients.Draft.SearchPermissionsLabel"]</span>
                     <SUIIcon Name="search" Size="18" />
-                    <input id="scope-search" name="scopeSearch" type="search" placeholder="Pesquisar por nome ou finalidade"
+                    <input id="scope-search" name="scopeSearch" type="search" placeholder="@L["Clients.Draft.SearchScopesPlaceholder"].Value"
                            autocomplete="off" @bind="scopeSearch" @bind:event="oninput" />
                 </label>
                 <div class="scope-picker">
@@ -256,7 +256,7 @@ else
                             <span><strong>@scope.DisplayName</strong><code>@scope.Name</code><small>@scope.Description</small></span>
                             @if (scope.IsProtocolScope)
                             {
-                                <SUIStatusBadge ToneValue="SUITone.Neutral">Padrão</SUIStatusBadge>
+                                <SUIStatusBadge ToneValue="SUITone.Neutral">@L["Clients.Draft.DefaultScopeBadge"]</SUIStatusBadge>
                             }
                         </label>
                     }
@@ -269,10 +269,10 @@ else
             else if (CurrentStep.Id == ManagementClientDraftSteps.Uris)
             {
                 <div class="uri-editor">
-                    <div class="uri-editor__heading"><div><h3>Redirect URIs</h3><p>Destinos exatos permitidos após o login.</p></div><button class="button button--secondary button--compact" type="button" @onclick="AddRedirectAsync"><SUIIcon Name="plus" Size="16" />Adicionar</button></div>
+                    <div class="uri-editor__heading"><div><h3>Redirect URIs</h3><p>@L["Clients.Draft.RedirectUrisHint"]</p></div><button class="button button--secondary button--compact" type="button" @onclick="AddRedirectAsync"><SUIIcon Name="plus" Size="16" />@L["Clients.Draft.AddAction"]</button></div>
                     @if (draft.Values.RedirectUris.Count == 0)
                     {
-                        <p class="uri-editor__empty">Nenhuma URI adicionada.</p>
+                        <p class="uri-editor__empty">@L["Clients.Draft.NoUriAdded"]</p>
                     }
                     @foreach (var uri in draft.Values.RedirectUris.Select((value, index) => (value, index)))
                     {
@@ -280,7 +280,7 @@ else
                             <input id="redirect-uri-@uri.index" name="redirectUris" class="form-control technical-value"
                                    aria-label="Redirect URI @(uri.index + 1)" value="@uri.value"
                                    @oninput="args => RedirectChangedAsync(uri.index, args)" />
-                            <button type="button" class="icon-button" aria-label="Remover Redirect URI @(uri.index + 1)" @onclick="() => RemoveRedirectAsync(uri.index)"><SUIIcon Name="trash" Size="17" /></button>
+                            <button type="button" class="icon-button" aria-label="@L["Clients.Draft.RemoveRedirectUriAriaLabel", uri.index + 1].Value" @onclick="() => RemoveRedirectAsync(uri.index)"><SUIIcon Name="trash" Size="17" /></button>
                         </div>
                     }
                     @foreach (var issue in IssuesFor("redirectUris"))
@@ -289,26 +289,26 @@ else
                     }
                 </div>
                 <div class="uri-editor">
-                    <div class="uri-editor__heading"><div><h3>Post logout redirect URIs</h3><p>Destinos permitidos ao encerrar a sessão.</p></div><button class="button button--secondary button--compact" type="button" @onclick="AddLogoutRedirectAsync"><SUIIcon Name="plus" Size="16" />Adicionar</button></div>
+                    <div class="uri-editor__heading"><div><h3>Post logout redirect URIs</h3><p>@L["Clients.Draft.PostLogoutUrisHint"]</p></div><button class="button button--secondary button--compact" type="button" @onclick="AddLogoutRedirectAsync"><SUIIcon Name="plus" Size="16" />@L["Clients.Draft.AddAction"]</button></div>
                     @foreach (var uri in draft.Values.PostLogoutRedirectUris.Select((value, index) => (value, index)))
                     {
                         <div class="uri-row">
                             <input id="logout-redirect-uri-@uri.index" name="postLogoutRedirectUris" class="form-control technical-value"
                                    aria-label="Post logout redirect URI @(uri.index + 1)" value="@uri.value"
                                    @oninput="args => LogoutRedirectChangedAsync(uri.index, args)" />
-                            <button type="button" class="icon-button" aria-label="Remover Post logout redirect URI @(uri.index + 1)" @onclick="() => RemoveLogoutRedirectAsync(uri.index)"><SUIIcon Name="trash" Size="17" /></button>
+                            <button type="button" class="icon-button" aria-label="@L["Clients.Draft.RemovePostLogoutUriAriaLabel", uri.index + 1].Value" @onclick="() => RemoveLogoutRedirectAsync(uri.index)"><SUIIcon Name="trash" Size="17" /></button>
                         </div>
                     }
                 </div>
                 <details class="advanced-disclosure">
-                    <summary>Logout avançado</summary>
+                    <summary>@L["Clients.Draft.AdvancedLogoutSummary"]</summary>
                     <div class="form-grid form-grid--two">
                         <div class="field-group"><label for="frontchannel-uri">Front-channel logout URI</label><input id="frontchannel-uri" name="frontchannelLogoutUri" class="form-control technical-value" value="@draft.Values.FrontchannelLogoutUri" @oninput="FrontchannelChangedAsync" /></div>
                         <div class="field-group"><label for="backchannel-uri">Back-channel logout URI</label><input id="backchannel-uri" name="backchannelLogoutUri" class="form-control technical-value" value="@draft.Values.BackchannelLogoutUri" @oninput="BackchannelChangedAsync" /></div>
                     </div>
                     <div class="choice-grid choice-grid--two">
-                        <label class="choice-control"><input name="frontchannelSessionRequired" type="checkbox" checked="@draft.Values.FrontchannelLogoutSessionRequired" @onchange="FrontchannelSessionChangedAsync" /><span><strong>Sessão no front-channel</strong><small>Inclui o identificador da sessão no logout.</small></span></label>
-                        <label class="choice-control"><input name="backchannelSessionRequired" type="checkbox" checked="@draft.Values.BackchannelLogoutSessionRequired" @onchange="BackchannelSessionChangedAsync" /><span><strong>Sessão no back-channel</strong><small>Inclui o identificador da sessão no logout.</small></span></label>
+                        <label class="choice-control"><input name="frontchannelSessionRequired" type="checkbox" checked="@draft.Values.FrontchannelLogoutSessionRequired" @onchange="FrontchannelSessionChangedAsync" /><span><strong>@L["Clients.Draft.FrontchannelSessionLabel"]</strong><small>@L["Clients.Draft.SessionRequiredHint"]</small></span></label>
+                        <label class="choice-control"><input name="backchannelSessionRequired" type="checkbox" checked="@draft.Values.BackchannelLogoutSessionRequired" @onchange="BackchannelSessionChangedAsync" /><span><strong>@L["Clients.Draft.BackchannelSessionLabel"]</strong><small>@L["Clients.Draft.SessionRequiredHint"]</small></span></label>
                     </div>
                 </details>
             }
@@ -317,21 +317,21 @@ else
                 <div class="credential-decision">
                     <span><SUIIcon Name="@(CreatesCredential ? "key" : "shield")" Size="26" /></span>
                     <div>
-                        <h3>@(CreatesCredential ? "Uma credencial será gerada na conclusão" : "Esta aplicação não precisa de segredo")</h3>
-                        <p>@(CreatesCredential ? "O valor será exibido uma única vez. Guarde-o diretamente em um cofre de segredos; ele nunca entra no rascunho." : "Clientes públicos usam PKCE ou Device Code e não devem carregar um segredo que não conseguiriam proteger.")</p>
+                        <h3>@(CreatesCredential ? L["Clients.Draft.CredentialWillBeGenerated"] : L["Clients.Draft.NoSecretNeeded"])</h3>
+                        <p>@(CreatesCredential ? L["Clients.Draft.CredentialOneTimeHint"] : L["Clients.Draft.PublicClientNoSecretHint"])</p>
                     </div>
                 </div>
                 <ul class="security-checklist">
-                    <li><SUIIcon Name="check" Size="17" /> O rascunho contém somente configuração protegida</li>
-                    <li><SUIIcon Name="check" Size="17" /> A credencial é aleatória e criada no último instante</li>
-                    <li><SUIIcon Name="check" Size="17" /> Auditoria registra a operação, nunca o segredo</li>
+                    <li><SUIIcon Name="check" Size="17" /> @L["Clients.Draft.ChecklistProtectedConfig"]</li>
+                    <li><SUIIcon Name="check" Size="17" /> @L["Clients.Draft.ChecklistRandomCredential"]</li>
+                    <li><SUIIcon Name="check" Size="17" /> @L["Clients.Draft.ChecklistAuditNoSecret"]</li>
                 </ul>
             }
             else
             {
                 <div class="review-status review-status--@(draft.Validation.IsReady ? "ready" : "blocked")">
                     <SUIIcon Name="@(draft.Validation.IsReady ? "check" : "alert")" Size="22" />
-                    <div><strong>@(draft.Validation.IsReady ? "Pronto para criar" : "Ainda existem ajustes necessários")</strong><span>@(draft.Validation.IsReady ? "Revise o resumo e conclua quando estiver seguro." : "Abra os itens abaixo para ir diretamente à etapa correspondente.")</span></div>
+                    <div><strong>@(draft.Validation.IsReady ? L["Clients.Draft.ReadyTitle"] : L["Clients.Draft.NotReadyTitle"])</strong><span>@(draft.Validation.IsReady ? L["Clients.Draft.ReadyMessage"] : L["Clients.Draft.NotReadyMessage"])</span></div>
                 </div>
                 @if (draft.Validation.Issues.Count > 0)
                 {
@@ -353,10 +353,10 @@ else
                     </div>
                 }
                 <div class="review-grid">
-                    <div><h3>Identidade</h3><dl><div><dt>Nome</dt><dd>@ValueOrDash(draft.Values.DisplayName)</dd></div><div><dt>Client ID</dt><dd><code>@ValueOrDash(draft.Values.ClientId)</code></dd></div><div><dt>Tipo</dt><dd>@draft.Values.ClientType</dd></div></dl></div>
-                    <div><h3>Protocolo</h3><dl><div><dt>Fluxos</dt><dd>@GrantSummary</dd></div><div><dt>Consentimento</dt><dd>@draft.Values.ConsentType</dd></div><div><dt>PAR</dt><dd>@(draft.Values.RequirePar ? "Obrigatório" : "Opcional")</dd></div><div><dt>Tokens</dt><dd>@TokenLifetimeSummary</dd></div></dl></div>
-                    <div><h3>Permissões</h3><p>@(draft.Values.Scopes.Count == 0 ? "Nenhuma permissão selecionada." : string.Join(", ", draft.Values.Scopes))</p></div>
-                    <div><h3>Retornos</h3><p>@draft.Values.RedirectUris.Count Redirect URI(s) e @draft.Values.PostLogoutRedirectUris.Count retorno(s) pós-logout.</p></div>
+                    <div><h3>@L["Clients.Draft.Step.Identity"]</h3><dl><div><dt>@L["Clients.Draft.NameLabel"]</dt><dd>@ValueOrDash(draft.Values.DisplayName)</dd></div><div><dt>Client ID</dt><dd><code>@ValueOrDash(draft.Values.ClientId)</code></dd></div><div><dt>@L["Clients.Detail.TypeLabel"]</dt><dd>@draft.Values.ClientType</dd></div></dl></div>
+                    <div><h3>@L["Clients.Draft.Step.Protocol"]</h3><dl><div><dt>@L["Clients.Draft.FlowsLabel"]</dt><dd>@GrantSummary</dd></div><div><dt>@L["Clients.Detail.ConsentLabel"]</dt><dd>@draft.Values.ConsentType</dd></div><div><dt>PAR</dt><dd>@(draft.Values.RequirePar ? L["Clients.Draft.RequiredLabel"] : L["Clients.Draft.OptionalLabel"])</dd></div><div><dt>@L["Clients.Draft.TokensLabel"]</dt><dd>@TokenLifetimeSummary</dd></div></dl></div>
+                    <div><h3>@L["Clients.Draft.Step.Permissions"]</h3><p>@(draft.Values.Scopes.Count == 0 ? L["Clients.Draft.NoScopeSelected"].Value : string.Join(", ", draft.Values.Scopes))</p></div>
+                    <div><h3>@L["Clients.Draft.ReturnsHeading"]</h3><p>@L["Clients.Draft.ReturnsSummary", draft.Values.RedirectUris.Count, draft.Values.PostLogoutRedirectUris.Count]</p></div>
                 </div>
             }
 
@@ -364,17 +364,17 @@ else
                 <div>
                     @if (CurrentStepIndex > 0)
                     {
-                        <button class="button button--secondary" type="button" disabled="@busy" @onclick="PreviousAsync"><SUIIcon Name="arrow-left" Size="17" />Anterior</button>
+                        <button class="button button--secondary" type="button" disabled="@busy" @onclick="PreviousAsync"><SUIIcon Name="arrow-left" Size="17" />@L["Clients.Registrations.Previous"]</button>
                     }
                     else
                     {
-                        <a class="button button--secondary" href="clients/new">Trocar perfil</a>
+                        <a class="button button--secondary" href="clients/new">@L["Clients.Draft.SwitchProfile"]</a>
                     }
                 </div>
                 <div>
                     @if (CurrentStepIndex < Steps.Length - 1)
                     {
-                        <button class="button button--primary" type="button" disabled="@busy" @onclick="NextAsync">Continuar<SUIIcon Name="arrow-right" Size="17" /></button>
+                        <button class="button button--primary" type="button" disabled="@busy" @onclick="NextAsync">@L["Clients.Draft.Continue"]<SUIIcon Name="arrow-right" Size="17" /></button>
                     }
                     else
                     {
@@ -383,7 +383,7 @@ else
                             {
                                 <span class="button-spinner" aria-hidden="true"></span>
                             }
-                            <span>Criar aplicação</span>
+                            <span>@L["Clients.Draft.CreateApplication"]</span>
                         </button>
                     }
                 </div>
@@ -392,13 +392,13 @@ else
             <div class="abandon-zone">
                 @if (confirmAbandon)
                 {
-                    <span>Descartar definitivamente este rascunho?</span>
-                    <button class="button button--danger button--compact" type="button" disabled="@busy" @onclick="AbandonAsync">Sim, descartar</button>
-                    <button class="button button--secondary button--compact" type="button" @onclick="() => confirmAbandon = false">Cancelar</button>
+                    <span>@L["Clients.Draft.ConfirmAbandonMessage"]</span>
+                    <button class="button button--danger button--compact" type="button" disabled="@busy" @onclick="AbandonAsync">@L["Clients.Draft.ConfirmAbandonYes"]</button>
+                    <button class="button button--secondary button--compact" type="button" @onclick="() => confirmAbandon = false">@L["Clients.Detail.Cancel"]</button>
                 }
                 else
                 {
-                    <button class="text-action text-action--danger" type="button" @onclick="() => confirmAbandon = true">Descartar rascunho</button>
+                    <button class="text-action text-action--danger" type="button" @onclick="() => confirmAbandon = true">@L["Clients.Draft.AbandonDraft"]</button>
                 }
             </div>
         </main>
@@ -410,14 +410,14 @@ else
     [Parameter] public Guid Id { get; set; }
     [Parameter] public string Step { get; set; } = ManagementClientDraftSteps.Identity;
 
-    private static readonly WizardStep[] Steps =
+    private WizardStep[] Steps =>
     [
-        new(ManagementClientDraftSteps.Identity, "Identidade", "Identidade", "Comece pelo essencial", "Defina como pessoas e integrações reconhecerão esta aplicação."),
-        new(ManagementClientDraftSteps.Protocol, "Protocolo", "Protocolo", "Escolha o fluxo", "Selecione apenas os fluxos necessários para reduzir a superfície de risco."),
-        new(ManagementClientDraftSteps.Permissions, "Permissões", "Acessos", "Menor privilégio", "Conceda somente os dados e operações necessários."),
-        new(ManagementClientDraftSteps.Uris, "URIs e logout", "URIs", "Defina retornos exatos", "Cadastre destinos HTTPS e o comportamento de encerramento de sessão."),
-        new(ManagementClientDraftSteps.Credentials, "Credenciais", "Segredo", "Proteja a integração", "Entenda como a credencial será criada e entregue."),
-        new(ManagementClientDraftSteps.Review, "Revisão", "Revisão", "Confira antes de criar", "Valide o contrato completo e corrija pendências."),
+        new(ManagementClientDraftSteps.Identity, L["Clients.Draft.Step.Identity"].Value, L["Clients.Draft.Step.Identity"].Value, L["Clients.Draft.Eyebrow.Identity"].Value, L["Clients.Draft.StepDescription.Identity"].Value),
+        new(ManagementClientDraftSteps.Protocol, L["Clients.Draft.Step.Protocol"].Value, L["Clients.Draft.Step.Protocol"].Value, L["Clients.Draft.Eyebrow.Protocol"].Value, L["Clients.Draft.StepDescription.Protocol"].Value),
+        new(ManagementClientDraftSteps.Permissions, L["Clients.Draft.Step.Permissions"].Value, L["Clients.Draft.StepShort.Permissions"].Value, L["Clients.Draft.Eyebrow.Permissions"].Value, L["Clients.Draft.StepDescription.Permissions"].Value),
+        new(ManagementClientDraftSteps.Uris, L["Clients.Draft.Step.UrisLogout"].Value, L["Clients.Draft.StepShort.Uris"].Value, L["Clients.Draft.Eyebrow.Uris"].Value, L["Clients.Draft.StepDescription.Uris"].Value),
+        new(ManagementClientDraftSteps.Credentials, L["Clients.Draft.Step.Credentials"].Value, L["Clients.Draft.StepShort.Credentials"].Value, L["Clients.Draft.Eyebrow.Credentials"].Value, L["Clients.Draft.StepDescription.Credentials"].Value),
+        new(ManagementClientDraftSteps.Review, L["Clients.Draft.Step.Review"].Value, L["Clients.Draft.Step.Review"].Value, L["Clients.Draft.Eyebrow.Review"].Value, L["Clients.Draft.StepDescription.Review"].Value),
     ];
 
     private ManagementClientDraftDetail? draft;
@@ -438,8 +438,8 @@ else
     private int CurrentStepIndex => Math.Max(0, Array.FindIndex(Steps, item => item.Id == NormalizeStep(Step)));
     private WizardStep CurrentStep => Steps[CurrentStepIndex];
     private ManagementClientProfile? Profile => profiles.FirstOrDefault(item => item.Id == draft?.Profile);
-    private string ProfileName => Profile?.DisplayName ?? draft?.Profile ?? "Configuração personalizada";
-    private string ProfileOutcome => Profile?.Outcome ?? "A configuração será validada antes da criação.";
+    private string ProfileName => Profile?.DisplayName ?? draft?.Profile ?? L["Clients.Draft.CustomConfigLabel"].Value;
+    private string ProfileOutcome => Profile?.Outcome ?? L["Clients.Draft.ValidationPendingMessage"].Value;
     private bool CreatesCredential => draft?.Values.ClientType == "confidential";
     private IEnumerable<ManagementClientAvailableScope> FilteredScopes => string.IsNullOrWhiteSpace(scopeSearch)
         ? scopes
@@ -455,7 +455,10 @@ else
     }.Where(value => value is not null));
     private string TokenLifetimeSummary => draft is null
         ? "—"
-        : $"access {draft.Values.AccessTokenLifetimeMinutes?.ToString() ?? "global"} min · ID {draft.Values.IdentityTokenLifetimeMinutes?.ToString() ?? "global"} min · refresh {draft.Values.RefreshTokenLifetimeDays?.ToString() ?? "global"} dias";
+        : L["Clients.Draft.TokenSummaryFormat",
+            draft.Values.AccessTokenLifetimeMinutes?.ToString() ?? L["Clients.Draft.GlobalDefaultShort"].Value,
+            draft.Values.IdentityTokenLifetimeMinutes?.ToString() ?? L["Clients.Draft.GlobalDefaultShort"].Value,
+            draft.Values.RefreshTokenLifetimeDays?.ToString() ?? L["Clients.Draft.GlobalDefaultShort"].Value].Value;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -483,7 +486,7 @@ else
         draft = draftResult.Value;
         profiles = (await profilesTask).Value ?? [];
         scopes = (await scopesTask).Value ?? [];
-        errorMessage = draftResult.IsSuccess ? null : draftResult.ErrorMessage ?? "O rascunho não foi encontrado.";
+        errorMessage = draftResult.IsSuccess ? null : draftResult.ErrorMessage ?? L["Clients.Draft.DraftNotFoundError"].Value;
         loadedId = Id;
         loading = false;
         if (draft is not null && !ManagementClientDraftSteps.All.Contains(Step, StringComparer.OrdinalIgnoreCase))
@@ -557,7 +560,7 @@ else
                 savedAt = result.Value.UpdatedAt;
                 return true;
             }
-            errorMessage = result.ErrorMessage ?? "Não foi possível salvar o rascunho.";
+            errorMessage = result.ErrorMessage ?? L["Clients.Draft.SaveFailedError"].Value;
             return false;
         }
         finally
@@ -585,7 +588,7 @@ else
         {
             var result = await ClientData.CompleteClientDraftAsync(Id, draft.Version);
             if (result.IsSuccess) completion = result.Value;
-            else errorMessage = result.ErrorMessage ?? "Não foi possível criar a aplicação.";
+            else errorMessage = result.ErrorMessage ?? L["Clients.Draft.CreateFailedError"].Value;
         }
         busy = false;
     }
@@ -596,7 +599,7 @@ else
         busy = true;
         var result = await ClientData.AbandonClientDraftAsync(Id);
         if (result.IsSuccess) Navigation.NavigateTo("clients?draftDeleted=1");
-        else errorMessage = result.ErrorMessage ?? "Não foi possível descartar o rascunho.";
+        else errorMessage = result.ErrorMessage ?? L["Clients.Draft.AbandonFailedError"].Value;
         busy = false;
     }
 

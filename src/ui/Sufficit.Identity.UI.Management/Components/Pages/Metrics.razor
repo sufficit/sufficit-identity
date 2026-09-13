@@ -6,59 +6,59 @@
 
 @{ var overview = overviewResult?.Value!; }
 
-<PageTitle>Métricas | Sufficit Identity</PageTitle>
+<PageTitle>@L["Metrics.PageTitle"]</PageTitle>
 
-<SUIPageHeader Title="Uso das aplicações"
-            Description="Acompanhe autenticações por cliente e configure a coleta sem acoplar a disponibilidade do Identity ao destino externo." />
+<SUIPageHeader Title="@L["Metrics.HeaderTitle"].Value"
+            Description="@L["Metrics.HeaderDescription"].Value" />
 
 <div class="contract-strip contract-strip--success">
     <SUIIcon Name="chart" Size="20" />
     <div>
-        <strong>Coleta fora do caminho crítico</strong>
-        <span>Autenticação nunca aguarda banco ou exportador; pressão excessiva é descartada e fica visível.</span>
+        <strong>@L["Metrics.OffCriticalPath.Title"]</strong>
+        <span>@L["Metrics.OffCriticalPath.Description"]</span>
     </div>
-    <SUIStatusBadge ToneValue="SUITone.Success">Não bloqueante</SUIStatusBadge>
+    <SUIStatusBadge ToneValue="SUITone.Success">@L["Metrics.NonBlocking"]</SUIStatusBadge>
 </div>
 
 <div class="metrics-filter" aria-labelledby="metrics-filter-heading">
     <div>
-        <h2 id="metrics-filter-heading">Período analisado</h2>
-        <p>Os filtros ficam na URL para preservar e compartilhar a investigação.</p>
+        <h2 id="metrics-filter-heading">@L["Metrics.Filter.Heading"]</h2>
+        <p>@L["Metrics.Filter.Description"]</p>
     </div>
     <div class="metrics-filter__controls" data-sui-align-row>
         <SUISelect T="int"
                    id="metrics-days"
                    name="days"
-                   aria-label="Período"
-                   Label="Período"
+                   aria-label="@L["Metrics.Filter.PeriodAria"].Value"
+                   Label="@L["Metrics.Filter.PeriodAria"].Value"
                    Value="@selectedDays"
                    ValueChanged="SelectedDaysChanged">
-            <SUISelectItem Value="@(7)">Últimos 7 dias</SUISelectItem>
-            <SUISelectItem Value="@(30)">Últimos 30 dias</SUISelectItem>
-            <SUISelectItem Value="@(90)">Últimos 90 dias</SUISelectItem>
-            <SUISelectItem Value="@(365)">Últimos 12 meses</SUISelectItem>
+            <SUISelectItem Value="@(7)">@L["Metrics.Filter.Last7Days"]</SUISelectItem>
+            <SUISelectItem Value="@(30)">@L["Metrics.Filter.Last30Days"]</SUISelectItem>
+            <SUISelectItem Value="@(90)">@L["Metrics.Filter.Last90Days"]</SUISelectItem>
+            <SUISelectItem Value="@(365)">@L["Metrics.Filter.Last12Months"]</SUISelectItem>
         </SUISelect>
         <SUITextField T="string"
                       id="metrics-client"
                       name="client"
-                      aria-label="Client ID opcional"
-                      Label="Client ID (opcional)"
+                      aria-label="@L["Metrics.Filter.ClientIdAria"].Value"
+                      Label="@L["Metrics.Filter.ClientIdLabel"].Value"
                       InputType="search"
-                      Placeholder="Todas as aplicações"
+                      Placeholder="@L["Metrics.Filter.AllApplications"].Value"
                       Value="@selectedClient"
                       ValueChanged="SelectedClientChanged"
                       autocomplete="off" />
         <SUIButton ColorValue="SUIColor.Primary"
                    Class="metrics-filter__apply"
                    OnClick="ApplyFilters">
-            Aplicar filtros
+            @L["Metrics.Filter.Apply"]
         </SUIButton>
     </div>
 </div>
 
 @if (loading)
 {
-    <div class="detail-shell" aria-busy="true" aria-label="Carregando métricas">
+    <div class="detail-shell" aria-busy="true" aria-label="@L["Metrics.Loading.Aria"].Value">
         <div class="detail-skeleton"></div>
         <div class="detail-skeleton detail-skeleton--short"></div>
     </div>
@@ -66,36 +66,36 @@
 else if (overviewResult?.IsSuccess is not true || overviewResult.Value is null)
 {
     <div>
-        <SUIEmptyState Icon="alert" Title="Não foi possível consultar as métricas"
-                    Description="@(overviewResult?.ErrorMessage ?? "O coletor não informou seu estado.")">
+        <SUIEmptyState Icon="alert" Title="@L["Metrics.LoadError.Title"].Value"
+                    Description="@(overviewResult?.ErrorMessage ?? L["Metrics.LoadError.Fallback"].Value)">
             <Actions>
-                <SUIButton ColorValue="SUIColor.Primary" OnClick="LoadAsync">Tentar novamente</SUIButton>
+                <SUIButton ColorValue="SUIColor.Primary" OnClick="LoadAsync">@L["Metrics.Retry"]</SUIButton>
             </Actions>
         </SUIEmptyState>
     </div>
 }
 else
 {
-    <div class="metrics-summary" aria-label="Resumo de uso">
-        <div><span>Eventos no período</span><strong>@FormatNumber(overview.TotalEvents)</strong></div>
-        <div><span>Aplicações ativas</span><strong>@FormatNumber(overview.ActiveApplications)</strong></div>
-        <div><span>Sucesso</span><strong>@SuccessRate(overview)</strong></div>
-        <div><span>Descartados na fila</span><strong>@FormatNumber(overview.Collector.Dropped)</strong></div>
+    <div class="metrics-summary" aria-label="@L["Metrics.Summary.Aria"].Value">
+        <div><span>@L["Metrics.Summary.EventsInPeriod"]</span><strong>@FormatNumber(overview.TotalEvents)</strong></div>
+        <div><span>@L["Metrics.Summary.ActiveApplications"]</span><strong>@FormatNumber(overview.ActiveApplications)</strong></div>
+        <div><span>@L["Metrics.Summary.Success"]</span><strong>@SuccessRate(overview)</strong></div>
+        <div><span>@L["Metrics.Summary.DroppedInQueue"]</span><strong>@FormatNumber(overview.Collector.Dropped)</strong></div>
     </div>
 
     <div class="metrics-workspace">
         <div class="panel metrics-chart-panel" aria-labelledby="usage-chart-heading">
             <div class="panel-header">
-                <div><h2 id="usage-chart-heading">Cadência diária</h2><p>Emissões OAuth/OIDC concluídas por dia.</p></div>
+                <div><h2 id="usage-chart-heading">@L["Metrics.Chart.Heading"]</h2><p>@L["Metrics.Chart.Description"]</p></div>
                 <span class="section-meta">UTC</span>
             </div>
             @if (overview.Daily.Count is 0)
             {
-                <div class="metrics-empty">Nenhum uso registrado neste período.</div>
+                <div class="metrics-empty">@L["Metrics.Chart.NoUsage"]</div>
             }
             else
             {
-                <div class="usage-chart" role="img" aria-label="Gráfico de uso diário">
+                <div class="usage-chart" role="img" aria-label="@L["Metrics.Chart.Aria"].Value">
                     @foreach (var point in overview.Daily)
                     {
                         <div class="usage-chart__column" title="@point.DateUtc.ToString("dd/MM/yyyy"): @point.Count">
@@ -109,23 +109,23 @@ else
         </div>
 
         <div class="panel" aria-labelledby="collector-heading">
-            <div class="panel-header"><div><h2 id="collector-heading">Saúde da coleta</h2><p>Pressão e entregas desde o início do processo.</p></div></div>
+            <div class="panel-header"><div><h2 id="collector-heading">@L["Metrics.Collector.Heading"]</h2><p>@L["Metrics.Collector.Description"]</p></div></div>
             <dl class="metrics-health">
-                <div><dt>Na fila</dt><dd>@FormatNumber(overview.Collector.QueueDepth)</dd></div>
-                <div><dt>Persistidos</dt><dd>@FormatNumber(overview.Collector.Persisted)</dd></div>
-                <div><dt>Exportados</dt><dd>@FormatNumber(overview.Collector.Exported)</dd></div>
-                <div><dt>Falhas isoladas</dt><dd>@FormatNumber(overview.Collector.Failures)</dd></div>
+                <div><dt>@L["Metrics.Collector.Queued"]</dt><dd>@FormatNumber(overview.Collector.QueueDepth)</dd></div>
+                <div><dt>@L["Metrics.Collector.Persisted"]</dt><dd>@FormatNumber(overview.Collector.Persisted)</dd></div>
+                <div><dt>@L["Metrics.Collector.Exported"]</dt><dd>@FormatNumber(overview.Collector.Exported)</dd></div>
+                <div><dt>@L["Metrics.Collector.IsolatedFailures"]</dt><dd>@FormatNumber(overview.Collector.Failures)</dd></div>
             </dl>
         </div>
     </div>
 
     <div class="table-panel" aria-labelledby="top-applications-heading">
         <div class="data-toolbar">
-            <div><h2 id="top-applications-heading">Aplicações mais utilizadas</h2><p>Ordenadas pelo volume no período selecionado.</p></div>
+            <div><h2 id="top-applications-heading">@L["Metrics.TopApplications.Heading"]</h2><p>@L["Metrics.TopApplications.Description"]</p></div>
         </div>
         @if (overview.Applications.Count is 0)
         {
-            <div class="metrics-empty">Nenhuma aplicação corresponde aos filtros.</div>
+            <div class="metrics-empty">@L["Metrics.TopApplications.NoMatch"]</div>
         }
         else
         {
@@ -134,7 +134,7 @@ else
                 {
                     <div class="metrics-application-row">
                         <div><strong>@application.DisplayName</strong><code>@application.ClientId</code></div>
-                        <div><strong>@FormatNumber(application.Count)</strong><span>último uso @application.LastUsedAtUtc.ToString("dd/MM HH:mm") UTC</span></div>
+                        <div><strong>@FormatNumber(application.Count)</strong><span>@L["Metrics.TopApplications.LastUsed", application.LastUsedAtUtc.ToString("dd/MM HH:mm")]</span></div>
                     </div>
                 }
             </div>
@@ -144,8 +144,8 @@ else
 
 <div class="form-section metrics-settings" aria-labelledby="metrics-settings-heading">
     <div class="form-section__heading">
-        <h2 id="metrics-settings-heading">Coleta e exportação</h2>
-        <p>A configuração é persistida no banco e reaplicada em execução. O vault interno deve estar habilitado para armazenar credenciais.</p>
+        <h2 id="metrics-settings-heading">@L["Metrics.Settings.Heading"]</h2>
+        <p>@L["Metrics.Settings.Description"]</p>
     </div>
     @if (configurationLoading)
     {
@@ -157,78 +157,78 @@ else
             <DataAnnotationsValidator />
             <div class="metrics-toggle-row">
                 <div class="metrics-toggle-card">
-                    <SUISwitch @bind-Value="configuration.Enabled" Label="Coleta local" />
-                    <p>Registra uso por aplicação no banco.</p>
+                    <SUISwitch @bind-Value="configuration.Enabled" Label="@L["Metrics.Settings.LocalCollection.Label"].Value" />
+                    <p>@L["Metrics.Settings.LocalCollection.Description"]</p>
                 </div>
                 <div class="metrics-toggle-card">
-                    <SUISwitch @bind-Value="configuration.ExportEnabled" Label="Exportação externa" />
-                    <p>Envia lotes sem afetar autenticações.</p>
+                    <SUISwitch @bind-Value="configuration.ExportEnabled" Label="@L["Metrics.Settings.ExternalExport.Label"].Value" />
+                    <p>@L["Metrics.Settings.ExternalExport.Description"]</p>
                 </div>
             </div>
             <div class="form-grid form-grid--two metrics-settings__fields" data-sui-align-row>
                 <SUISelect T="string"
                            id="metrics-provider"
-                           aria-label="Provedor"
-                           Label="Provedor"
+                           aria-label="@L["Metrics.Field.Provider.Label"].Value"
+                           Label="@L["Metrics.Field.Provider.Label"].Value"
                            @bind-Value="configuration.Provider">
-                    <SUISelectItem Value="@("internal")">Somente banco local</SUISelectItem>
+                    <SUISelectItem Value="@("internal")">@L["Metrics.Provider.InternalOnly"]</SUISelectItem>
                     <SUISelectItem Value="@("victoria_metrics")">VictoriaMetrics</SUISelectItem>
                 </SUISelect>
                 <SUINumericField T="int"
                                  id="metrics-retention"
-                                 aria-label="Retenção em dias"
-                                 Label="Retenção em dias"
+                                 aria-label="@L["Metrics.Field.RetentionDays.Label"].Value"
+                                 Label="@L["Metrics.Field.RetentionDays.Label"].Value"
                                  Min="@(1)"
                                  Max="@(3650)"
                                  @bind-Value="configuration.RetentionDays" />
                 <SUITextField T="string"
                               id="metrics-endpoint"
-                              aria-label="Endpoint"
-                              Label="Endpoint"
+                              aria-label="@L["Metrics.Field.Endpoint.Label"].Value"
+                              Label="@L["Metrics.Field.Endpoint.Label"].Value"
                               InputType="url"
                               Placeholder="https://metrics.example.com"
                               @bind-Value="configuration.Endpoint" />
                 <SUITextField T="string"
                               id="metrics-database"
-                              aria-label="Banco lógico"
-                              Label="Banco lógico"
+                              aria-label="@L["Metrics.Field.Database.Label"].Value"
+                              Label="@L["Metrics.Field.Database.Label"].Value"
                               Placeholder="identity"
                               @bind-Value="configuration.Database" />
                 <SUISelect T="string"
                            id="metrics-auth"
-                           aria-label="Esquema de autorização"
-                           Label="Esquema de autorização"
+                           aria-label="@L["Metrics.Field.AuthScheme.Label"].Value"
+                           Label="@L["Metrics.Field.AuthScheme.Label"].Value"
                            Value="@AuthorizationSchemeValue"
                            ValueChanged="AuthorizationSchemeChanged">
-                    <SUISelectItem Value="@string.Empty">Sem autenticação</SUISelectItem>
+                    <SUISelectItem Value="@string.Empty">@L["Metrics.AuthScheme.None"]</SUISelectItem>
                     <SUISelectItem Value="@("Bearer")">Bearer</SUISelectItem>
                     <SUISelectItem Value="@("Basic")">Basic</SUISelectItem>
                 </SUISelect>
                 <SUITextField T="string"
                               id="metrics-username"
-                              aria-label="Usuário Basic"
-                              Label="Usuário (Basic)"
+                              aria-label="@L["Metrics.Field.Username.Aria"].Value"
+                              Label="@L["Metrics.Field.Username.Label"].Value"
                               @bind-Value="configuration.Username"
                               autocomplete="username" />
                 <SUITextField T="string"
                               id="metrics-secret"
-                              aria-label="Novo segredo opcional"
-                              Label="Novo segredo (opcional)"
+                              aria-label="@L["Metrics.Field.Secret.Aria"].Value"
+                              Label="@L["Metrics.Field.Secret.Label"].Value"
                               InputType="password"
                               HelperText="@SecretHelperText"
                               @bind-Value="configuration.Secret"
                               autocomplete="new-password" />
                 <SUINumericField T="int"
                                  id="metrics-batch"
-                                 aria-label="Eventos por lote"
-                                 Label="Eventos por lote"
+                                 aria-label="@L["Metrics.Field.BatchSize.Label"].Value"
+                                 Label="@L["Metrics.Field.BatchSize.Label"].Value"
                                  Min="@(1)"
                                  Max="@(2000)"
                                  @bind-Value="configuration.BatchSize" />
                 <SUINumericField T="int"
                                  id="metrics-timeout"
-                                 aria-label="Timeout do exportador em segundos"
-                                 Label="Timeout do exportador em segundos"
+                                 aria-label="@L["Metrics.Field.Timeout.Label"].Value"
+                                 Label="@L["Metrics.Field.Timeout.Label"].Value"
                                  Min="@(1)"
                                  Max="@(120)"
                                  @bind-Value="configuration.TimeoutSeconds" />
@@ -237,7 +237,7 @@ else
             {
                 <div class="metrics-clear-secret">
                     <SUISwitch @bind-Value="configuration.ClearSecret"
-                               Label="Remover a credencial protegida ao salvar" />
+                               Label="@L["Metrics.ClearSecret.Label"].Value" />
                 </div>
             }
             @if (!string.IsNullOrWhiteSpace(configurationMessage))
@@ -252,7 +252,7 @@ else
                 <SUIButton ButtonTypeValue="SUIButtonType.Submit"
                            ColorValue="SUIColor.Primary"
                            Disabled="@savingConfiguration">
-                    @(savingConfiguration ? "Salvando…" : "Salvar configuração")
+                    @(savingConfiguration ? L["Metrics.Save.Saving"] : L["Metrics.Save.Submit"])
                 </SUIButton>
             </div>
         </EditForm>
@@ -272,8 +272,8 @@ else
 
     private string AuthorizationSchemeValue => configuration?.AuthorizationScheme ?? string.Empty;
     private string SecretHelperText => configuration?.HasSecret is true
-        ? "Já existe um segredo protegido; deixe vazio para mantê-lo."
-        : "Nenhum segredo armazenado.";
+        ? L["Metrics.Secret.Existing"].Value
+        : L["Metrics.Secret.None"].Value;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -338,14 +338,18 @@ else
         if (configuration is null) return;
         savingConfiguration = true; configurationMessage = null;
         var result = await MetricsData.UpdateConfigurationAsync(configuration.ToCommand());
-        configurationMessage = result.IsSuccess ? "Configuração salva e disponível para o coletor." : result.ErrorMessage;
+        configurationMessage = result.IsSuccess ? L["Metrics.Save.Success"].Value : result.ErrorMessage;
         configurationMessageIsError = !result.IsSuccess;
         if (result.IsSuccess && result.Value is not null) configuration = MetricsConfigurationModel.From(result.Value);
         savingConfiguration = false;
     }
 
     private static string FormatNumber(long value) => value.ToString("N0", System.Globalization.CultureInfo.GetCultureInfo("pt-BR"));
-    private static string FormatCompact(long value) => value >= 1_000_000 ? $"{value / 1_000_000d:0.#} mi" : value >= 1_000 ? $"{value / 1_000d:0.#} mil" : value.ToString();
+    private string FormatCompact(long value) => value >= 1_000_000
+        ? $"{value / 1_000_000d:0.#} {L["Metrics.Compact.Million"].Value}"
+        : value >= 1_000
+            ? $"{value / 1_000d:0.#} {L["Metrics.Compact.Thousand"].Value}"
+            : value.ToString();
     private static string SuccessRate(ManagementMetricsOverview value) => value.TotalEvents == 0 ? "—" : $"{value.SuccessfulEvents * 100d / value.TotalEvents:0.#}%";
     private static int BarHeight(long count, IReadOnlyList<ManagementMetricsDailyPoint> points) => Math.Max(4, (int)Math.Round(count * 100d / Math.Max(1, points.Max(item => item.Count))));
 

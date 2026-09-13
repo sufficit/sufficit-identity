@@ -45,7 +45,7 @@ public sealed partial class ManagementUiRoutingTests
         var html = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("Aplicações registradas", html, StringComparison.Ordinal);
+        Assert.Contains("Aplicações registradas", WebUtility.HtmlDecode(html), StringComparison.Ordinal);
         Assert.Contains("test-client", html, StringComparison.Ordinal);
         Assert.Contains(
             "src=\"/_content/Sufficit.Identity.UI.Management/_framework/blazor.web.js\"",

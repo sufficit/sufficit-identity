@@ -8,17 +8,17 @@
 <PageTitle>@PageTitleText</PageTitle>
 
 <SUIPageHeader Title="@HeaderTitle"
-            Description="Perfil, credenciais e estado de autenticação mantidos pelo provedor.">
+            Description="@L["Users.Detail.HeaderDescription"].Value">
     <Actions>
         <a class="button button--secondary" href="@BackHref">
             <SUIIcon Name="arrow-left" Size="17" />
-            Voltar para usuários
+            @L["Users.Detail.BackToUsers"]
         </a>
         <AuthorizeView Policy="@ManagementUiPolicies.ManageClaims">
             <Authorized>
                 <a class="button button--secondary" href="@ClaimsHref">
                     <SUIIcon Name="shield" Size="17" />
-                    Claims da conta
+                    @L["Users.Detail.ClaimsLink"]
                 </a>
             </Authorized>
         </AuthorizeView>
@@ -26,7 +26,7 @@
             <Authorized>
                 <a class="button button--secondary" href="@SessionsHref">
                     <SUIIcon Name="clock" Size="17" />
-                    Sessões
+                    @L["Users.Detail.SessionsLink"]
                 </a>
             </Authorized>
         </AuthorizeView>
@@ -34,7 +34,7 @@
             <Authorized>
                 <a class="button button--secondary" href="@AuthorizationsHref">
                     <SUIIcon Name="shield" Size="17" />
-                    Autorizações
+                    @L["Users.Detail.AuthorizationsLink"]
                 </a>
             </Authorized>
         </AuthorizeView>
@@ -42,7 +42,7 @@
         {
             <a class="button button--primary" href="@EditHref">
                 <SUIIcon Name="edit" Size="17" />
-                Editar perfil
+                @L["Users.Detail.EditProfileLink"]
             </a>
         }
     </Actions>
@@ -53,8 +53,8 @@
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
         <div>
-            <strong>Usuário criado</strong>
-            <span>A conta foi criada sem atribuir cargos ou permissões próprias de aplicações.</span>
+            <strong>@L["Users.Detail.Created.Title"]</strong>
+            <span>@L["Users.Detail.Created.Description"]</span>
         </div>
     </div>
 }
@@ -64,8 +64,8 @@
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
         <div>
-            <strong>Perfil atualizado</strong>
-            <span>Os dados foram salvos e os tokens ativos anteriores foram invalidados.</span>
+            <strong>@L["Users.Detail.Updated.Title"]</strong>
+            <span>@L["Users.Detail.Updated.Description"]</span>
         </div>
     </div>
 }
@@ -75,8 +75,8 @@
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
         <div>
-            <strong>Senha redefinida</strong>
-            <span>A credencial e o selo de segurança foram atualizados; o evento foi registrado na auditoria.</span>
+            <strong>@L["Users.Detail.PasswordReset.Title"]</strong>
+            <span>@L["Users.Detail.PasswordReset.Description"]</span>
         </div>
     </div>
 }
@@ -86,11 +86,11 @@
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
         <div>
-            <strong>@(lastLockoutState is true ? "Acesso bloqueado" : "Acesso desbloqueado")</strong>
+            <strong>@(lastLockoutState is true ? L["Users.Detail.LockoutChanged.LockedTitle"] : L["Users.Detail.LockoutChanged.UnlockedTitle"])</strong>
             <span>
                 @(lastLockoutState is true
-                    ? "As sessões, os tokens e as autorizações da conta foram revogados."
-                    : "A conta pode autenticar novamente; as sessões anteriores continuam revogadas.")
+                    ? L["Users.Detail.LockoutChanged.LockedDescription"]
+                    : L["Users.Detail.LockoutChanged.UnlockedDescription"])
             </span>
         </div>
     </div>
@@ -98,7 +98,7 @@
 
 @if (loading)
 {
-    <div class="detail-shell" aria-busy="true" aria-label="Carregando detalhes do usuário">
+    <div class="detail-shell" aria-busy="true" aria-label="@L["Users.Detail.LoadingAriaLabel"].Value">
         <div class="detail-skeleton"></div>
         <div class="detail-skeleton detail-skeleton--short"></div>
     </div>
@@ -108,69 +108,69 @@ else if (result?.IsSuccess is true && result.Value is not null)
     <div class="detail-shell">
         <div class="detail-summary detail-summary--users">
             <div>
-                <span class="detail-label">Nome de usuário</span>
+                <span class="detail-label">@L["Users.Detail.Field.UserName"]</span>
                 <strong class="detail-value">@Display(user.UserName)</strong>
             </div>
             <div>
-                <span class="detail-label">E-mail</span>
+                <span class="detail-label">@L["Users.Detail.Field.Email"]</span>
                 <span class="detail-value">@Display(user.Email)</span>
             </div>
             <div>
-                <span class="detail-label">Confirmação</span>
+                <span class="detail-label">@L["Users.Detail.Field.Confirmation"]</span>
                 <SUIStatusBadge ToneValue="@(user.EmailConfirmed ? SUITone.Success : SUITone.Neutral)">
-                    @(user.EmailConfirmed ? "E-mail confirmado" : "Pendente")
+                    @(user.EmailConfirmed ? L["Users.Detail.EmailConfirmedYes"] : L["Users.Detail.EmailConfirmedPending"])
                 </SUIStatusBadge>
             </div>
             <div>
-                <span class="detail-label">Identificador</span>
+                <span class="detail-label">@L["Users.Detail.Field.Id"]</span>
                 <code class="detail-value detail-value--code">@user.Id</code>
             </div>
         </div>
 
         <div class="detail-columns detail-columns--users">
             <div aria-labelledby="user-security-heading">
-                <h2 id="user-security-heading">Segurança da conta</h2>
+                <h2 id="user-security-heading">@L["Users.Detail.Security.Heading"]</h2>
                 <dl class="property-list">
                     <div>
-                        <dt>Autenticação multifator</dt>
+                        <dt>@L["Users.Detail.Security.Mfa"]</dt>
                         <dd>
                             <SUIStatusBadge ToneValue="@(user.TwoFactorEnabled ? SUITone.Success : SUITone.Neutral)">
-                                @(user.TwoFactorEnabled ? "Ativa" : "Inativa")
+                                @(user.TwoFactorEnabled ? L["Users.Detail.Security.MfaActive"] : L["Users.Detail.Security.MfaInactive"])
                             </SUIStatusBadge>
                         </dd>
                     </div>
                     <div>
-                        <dt>Bloqueio</dt>
+                        <dt>@L["Users.Detail.Security.Lockout"]</dt>
                         <dd>@LockoutLabel(user)</dd>
                     </div>
                     <div>
-                        <dt>Falhas de acesso</dt>
+                        <dt>@L["Users.Detail.Security.AccessFailures"]</dt>
                         <dd>@user.AccessFailedCount</dd>
                     </div>
                     <div>
-                        <dt>Telefone</dt>
+                        <dt>@L["Users.Detail.Security.Phone"]</dt>
                         <dd>@Display(user.PhoneNumber)</dd>
                     </div>
                 </dl>
             </div>
 
             <div aria-labelledby="user-state-heading">
-                <h2 id="user-state-heading">Estados da identidade</h2>
+                <h2 id="user-state-heading">@L["Users.Detail.States.Heading"]</h2>
                 <dl class="property-list">
                     <div>
-                        <dt>E-mail verificado</dt>
-                        <dd>@(user.EmailConfirmed ? "Sim" : "Não")</dd>
+                        <dt>@L["Users.Detail.States.EmailVerified"]</dt>
+                        <dd>@(user.EmailConfirmed ? L["Users.Detail.Common.Yes"] : L["Users.Detail.Common.No"])</dd>
                     </div>
                     <div>
-                        <dt>Telefone verificado</dt>
-                        <dd>@(user.PhoneNumberConfirmed ? "Sim" : "Não")</dd>
+                        <dt>@L["Users.Detail.States.PhoneVerified"]</dt>
+                        <dd>@(user.PhoneNumberConfirmed ? L["Users.Detail.Common.Yes"] : L["Users.Detail.Common.No"])</dd>
                     </div>
                     <div>
-                        <dt>Bloqueio habilitado</dt>
-                        <dd>@(user.LockoutEnabled ? "Sim" : "Não")</dd>
+                        <dt>@L["Users.Detail.States.LockoutEnabled"]</dt>
+                        <dd>@(user.LockoutEnabled ? L["Users.Detail.Common.Yes"] : L["Users.Detail.Common.No"])</dd>
                     </div>
                     <div>
-                        <dt>Última atualização</dt>
+                        <dt>@L["Users.Detail.States.LastUpdated"]</dt>
                         <dd>@user.UpdatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</dd>
                     </div>
                 </dl>
@@ -179,10 +179,10 @@ else if (result?.IsSuccess is true && result.Value is not null)
 
         <div class="requirements-line" aria-labelledby="user-audit-heading">
             <div>
-                <h2 id="user-audit-heading">Consulta auditada</h2>
-                <p>O operador, o usuário, a decisão e a correlação foram registrados sem claims ou credenciais.</p>
+                <h2 id="user-audit-heading">@L["Users.Detail.Audit.Heading"]</h2>
+                <p>@L["Users.Detail.Audit.Description"]</p>
             </div>
-            <SUIStatusBadge ToneValue="SUITone.Success" Icon="audit">Registrada</SUIStatusBadge>
+            <SUIStatusBadge ToneValue="SUITone.Success" Icon="audit">@L["Users.Detail.Audit.Badge"]</SUIStatusBadge>
         </div>
     </div>
 
@@ -196,16 +196,16 @@ else if (result?.IsSuccess is true && result.Value is not null)
                 </div>
                 <div>
                     <h2 id="account-access-heading">
-                        @(currentlyLocked ? "Desbloquear acesso" : "Bloquear acesso")
+                        @(currentlyLocked ? L["Users.Detail.Access.UnlockHeading"] : L["Users.Detail.Access.LockHeading"])
                     </h2>
                     <p>
                         @(currentlyLocked
-                            ? "Remove o bloqueio da conta sem restaurar sessões ou tokens anteriores."
-                            : "Interrompe novas autenticações e revoga sessões, tokens e autorizações desta conta.")
+                            ? L["Users.Detail.Access.UnlockDescription"]
+                            : L["Users.Detail.Access.LockDescription"])
                     </p>
                 </div>
                 <SUIStatusBadge ToneValue="@(currentlyLocked ? SUITone.Warning : SUITone.Danger)">
-                    @(currentlyLocked ? "Conta bloqueada" : "Conta ativa")
+                    @(currentlyLocked ? L["Users.Detail.Access.LockedBadge"] : L["Users.Detail.Access.ActiveBadge"])
                 </SUIStatusBadge>
             </div>
 
@@ -227,14 +227,14 @@ else if (result?.IsSuccess is true && result.Value is not null)
                            type="checkbox"
                            @bind="lockoutConfirmed" />
                     <span>
-                        <strong>Confirmo o bloqueio desta conta</strong>
-                        <small>O usuário perderá o acesso na próxima validação e precisará ser desbloqueado por um operador autorizado.</small>
+                        <strong>@L["Users.Detail.Access.ConfirmLabel"]</strong>
+                        <small>@L["Users.Detail.Access.ConfirmHint"]</small>
                     </span>
                 </label>
             }
 
             <div class="account-access-panel__actions">
-                <span>Esta operação afeta a conta no provedor e fica registrada na auditoria.</span>
+                <span>@L["Users.Detail.Access.ActionNote"]</span>
                 <button class="button @(currentlyLocked ? "button--secondary" : "button--danger")"
                         type="button"
                         disabled="@(changingLockout || (!currentlyLocked && !lockoutConfirmed))"
@@ -242,12 +242,12 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     @if (changingLockout)
                     {
                         <span class="button-spinner" aria-hidden="true"></span>
-                        <span>@(currentlyLocked ? "Desbloqueando…" : "Bloqueando…")</span>
+                        <span>@(currentlyLocked ? L["Users.Detail.Access.Unlocking"] : L["Users.Detail.Access.Locking"])</span>
                     }
                     else
                     {
                         <SUIIcon Name="@(currentlyLocked ? "refresh" : "lock")" Size="17" />
-                        <span>@(currentlyLocked ? "Desbloquear conta" : "Bloquear conta")</span>
+                        <span>@(currentlyLocked ? L["Users.Detail.Access.UnlockButton"] : L["Users.Detail.Access.LockButton"])</span>
                     }
                 </button>
             </div>
@@ -258,8 +258,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
         <div class="decision-note decision-note--neutral">
             <SUIIcon Name="shield" Size="21" />
             <div>
-                <h2>MFA necessário para alterar o acesso</h2>
-                <p>A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.</p>
+                <h2>@L["Users.Detail.Access.MfaRequiredTitle"]</h2>
+                <p>@L["Users.Detail.MfaRequiredDescription"]</p>
             </div>
         </div>
     }
@@ -268,8 +268,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
         <div class="decision-note decision-note--neutral">
             <SUIIcon Name="shield" Size="21" />
             <div>
-                <h2>Sua própria conta permanece protegida</h2>
-                <p>Para evitar perda acidental de acesso administrativo, outro operador autorizado deve bloquear esta conta.</p>
+                <h2>@L["Users.Detail.Access.SelfProtectedTitle"]</h2>
+                <p>@L["Users.Detail.Access.SelfProtectedDescription"]</p>
             </div>
         </div>
     }
@@ -278,8 +278,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
         <div class="decision-note decision-note--neutral">
             <SUIIcon Name="lock" Size="21" />
             <div>
-                <h2>Bloqueio não autorizado</h2>
-                <p>Sua sessão não possui a capability necessária para bloquear ou desbloquear contas.</p>
+                <h2>@L["Users.Detail.Access.ForbiddenTitle"]</h2>
+                <p>@L["Users.Detail.Access.ForbiddenDescription"]</p>
             </div>
         </div>
     }
@@ -296,10 +296,10 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     <SUIIcon Name="key" Size="20" />
                 </div>
                 <div>
-                    <h2>Redefinir senha</h2>
-                    <p>A nova credencial substitui a senha atual e invalida os tokens afetados.</p>
+                    <h2>@L["Users.Detail.Reset.Title"]</h2>
+                    <p>@L["Users.Detail.Reset.Description"]</p>
                 </div>
-                <SUIStatusBadge ToneValue="SUITone.Info">Conta do provedor</SUIStatusBadge>
+                <SUIStatusBadge ToneValue="SUITone.Info">@L["Users.Detail.Reset.Badge"]</SUIStatusBadge>
             </div>
 
             @if (resetResult?.IsSuccess is false)
@@ -315,7 +315,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
 
             <div class="form-grid form-grid--two credential-panel__fields">
                 <div class="field-group">
-                    <label for="new-password">Nova senha</label>
+                    <label for="new-password">@L["Users.Detail.Reset.Field.NewPassword"]</label>
                     <InputText id="new-password"
                                class="form-control"
                                type="password"
@@ -328,7 +328,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     }
                 </div>
                 <div class="field-group">
-                    <label for="confirm-new-password">Confirmar nova senha</label>
+                    <label for="confirm-new-password">@L["Users.Detail.Reset.Field.ConfirmPassword"]</label>
                     <InputText id="confirm-new-password"
                                class="form-control"
                                type="password"
@@ -339,19 +339,19 @@ else if (result?.IsSuccess is true && result.Value is not null)
             </div>
 
             <div class="credential-panel__actions">
-                <span>A política de senha é aplicada pelo Identity no servidor.</span>
+                <span>@L["Users.Detail.Reset.PolicyNote"]</span>
                 <button class="button button--primary"
                         type="submit"
                         disabled="@resettingPassword">
                     @if (resettingPassword)
                     {
                         <span class="button-spinner" aria-hidden="true"></span>
-                        <span>Redefinindo…</span>
+                        <span>@L["Users.Detail.Reset.Submitting"]</span>
                     }
                     else
                     {
                         <SUIIcon Name="key" Size="17" />
-                        <span>Redefinir senha</span>
+                        <span>@L["Users.Detail.Reset.Title"]</span>
                     }
                 </button>
             </div>
@@ -362,8 +362,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
         <div class="decision-note decision-note--neutral">
             <SUIIcon Name="shield" Size="21" />
             <div>
-                <h2>MFA necessário para redefinir a senha</h2>
-                <p>A política administrativa exige autenticação multifator. Conclua o MFA e retorne a esta página.</p>
+                <h2>@L["Users.Detail.Reset.MfaRequiredTitle"]</h2>
+                <p>@L["Users.Detail.MfaRequiredDescription"]</p>
             </div>
         </div>
     }
@@ -372,8 +372,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
         <div class="decision-note decision-note--neutral">
             <SUIIcon Name="lock" Size="21" />
             <div>
-                <h2>Redefinição não autorizada</h2>
-                <p>Sua sessão não possui a capability necessária para redefinir credenciais.</p>
+                <h2>@L["Users.Detail.Reset.ForbiddenTitle"]</h2>
+                <p>@L["Users.Detail.Reset.ForbiddenDescription"]</p>
             </div>
         </div>
     }
@@ -382,13 +382,13 @@ else if (result?.IsSuccess is true && result.Value is not null)
     {
         <div class="delete-zone" aria-labelledby="delete-user-heading">
             <div>
-                <h2 id="delete-user-heading">Excluir conta do provedor</h2>
-                <p>A conta, suas credenciais e os vínculos Identity serão removidos. Tokens, sessões e autorizações serão revogados antes da exclusão.</p>
+                <h2 id="delete-user-heading">@L["Users.Detail.Delete.Heading"]</h2>
+                <p>@L["Users.Detail.Delete.Description"]</p>
             </div>
 
             <div class="delete-confirmation">
                 <label for="delete-user-confirmation">
-                    Digite <strong>@DeletionConfirmationValue</strong> para confirmar
+                    @L["Users.Detail.Delete.ConfirmLabelPrefix"] <strong>@DeletionConfirmationValue</strong> @L["Users.Detail.Delete.ConfirmLabelSuffix"]
                 </label>
                 <input id="delete-user-confirmation"
                        class="form-control"
@@ -398,7 +398,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                        aria-describedby="delete-user-help"
                        @bind="deleteConfirmation"
                        @bind:event="oninput" />
-                <small id="delete-user-help">Esta operação é permanente e não altera dados empresariais mantidos por outras aplicações.</small>
+                <small id="delete-user-help">@L["Users.Detail.Delete.Help"]</small>
             </div>
 
             <button class="button button--danger"
@@ -408,12 +408,12 @@ else if (result?.IsSuccess is true && result.Value is not null)
                 @if (deleting)
                 {
                     <span class="button-spinner" aria-hidden="true"></span>
-                    <span>Excluindo…</span>
+                    <span>@L["Users.Detail.Delete.Submitting"]</span>
                 }
                 else
                 {
                     <SUIIcon Name="trash" Size="17" />
-                    <span>Excluir conta</span>
+                    <span>@L["Users.Detail.Delete.Submit"]</span>
                 }
             </button>
 
@@ -434,8 +434,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
         <div class="decision-note decision-note--neutral">
             <SUIIcon Name="shield" Size="21" />
             <div>
-                <h2>MFA necessário para excluir a conta</h2>
-                <p>A política administrativa exige autenticação multifator antes de uma exclusão permanente.</p>
+                <h2>@L["Users.Detail.Delete.MfaRequiredTitle"]</h2>
+                <p>@L["Users.Detail.Delete.MfaRequiredDescription"]</p>
             </div>
         </div>
     }
@@ -444,8 +444,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
         <div class="decision-note decision-note--neutral">
             <SUIIcon Name="shield" Size="21" />
             <div>
-                <h2>Sua própria conta não pode ser excluída</h2>
-                <p>Outro operador autorizado deve executar esta operação para evitar perda acidental do acesso administrativo.</p>
+                <h2>@L["Users.Detail.Delete.SelfTitle"]</h2>
+                <p>@L["Users.Detail.Delete.SelfDescription"]</p>
             </div>
         </div>
     }
@@ -457,13 +457,13 @@ else
                     Title="@ErrorTitle"
                     Description="@ErrorDescription">
             <Actions>
-                <a class="button button--secondary" href="@BackHref">Voltar para usuários</a>
+                <a class="button button--secondary" href="@BackHref">@L["Users.Detail.BackToUsers"]</a>
                 @if (result?.Outcome is ManagementDataOutcome.Unavailable)
                 {
                     <button class="button button--primary"
                             type="button"
                             @onclick="LoadAsync">
-                        Tentar novamente
+                        @L["Users.Detail.Retry"]
                     </button>
                 }
             </Actions>
@@ -503,10 +503,10 @@ else
     private string HeaderTitle =>
         result?.Value?.UserName
         ?? result?.Value?.Email
-        ?? "Detalhes do usuário";
+        ?? L["Users.Detail.HeaderTitleDefault"].Value;
 
     private string PageTitleText =>
-        $"{HeaderTitle} | Sufficit Identity";
+        string.Format(L["Users.Detail.PageTitleFormat"].Value, HeaderTitle);
 
     private const string BackHref = "users";
 
@@ -524,39 +524,39 @@ else
 
     private string ErrorTitle =>
         result?.Outcome is ManagementDataOutcome.NotFound
-            ? "Usuário não encontrado"
+            ? L["Users.Detail.Error.NotFound"].Value
             : result?.Outcome is ManagementDataOutcome.StepUpRequired
-                ? "MFA exigido para consultar o usuário"
+                ? L["Users.Detail.Error.StepUp"].Value
                 : result?.Outcome is ManagementDataOutcome.Forbidden
-                    ? "Acesso ao usuário negado"
-                    : "Não foi possível abrir o usuário";
+                    ? L["Users.Detail.Error.Forbidden"].Value
+                    : L["Users.Detail.Error.Generic"].Value;
 
     private string ErrorDescription =>
         result?.ErrorMessage
-        ?? "O serviço de identidade não conseguiu ler esse registro.";
+        ?? L["Users.Detail.Error.GenericDescription"].Value;
 
     private string ResetErrorTitle =>
         resetResult?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? "MFA exigido para redefinir a senha"
+            ? L["Users.Detail.Reset.Error.StepUp"].Value
             : resetResult?.Outcome is ManagementDataOutcome.Forbidden
-                ? "Autoridade insuficiente sobre a conta"
-                : "Não foi possível redefinir a senha";
+                ? L["Users.Detail.Error.InsufficientAuthority"].Value
+                : L["Users.Detail.Reset.Error.Generic"].Value;
 
     private string LockoutErrorTitle =>
         lockoutResult?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? "MFA exigido para alterar o acesso"
+            ? L["Users.Detail.Access.Error.StepUp"].Value
             : lockoutResult?.Outcome is ManagementDataOutcome.Forbidden
-                ? "Autoridade insuficiente sobre a conta"
-                : "Não foi possível alterar o acesso";
+                ? L["Users.Detail.Error.InsufficientAuthority"].Value
+                : L["Users.Detail.Access.Error.Generic"].Value;
 
     private string DeleteErrorTitle =>
         deleteResult?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? "MFA exigido para excluir a conta"
+            ? L["Users.Detail.Delete.Error.StepUp"].Value
             : deleteResult?.Outcome is ManagementDataOutcome.Forbidden
-                ? "Exclusão não autorizada"
+                ? L["Users.Detail.Delete.Error.Forbidden"].Value
                 : deleteResult?.Outcome is ManagementDataOutcome.NotFound
-                    ? "A conta já não existe"
-                    : "Não foi possível excluir a conta";
+                    ? L["Users.Detail.Delete.Error.NotFound"].Value
+                    : L["Users.Detail.Delete.Error.Generic"].Value;
 
     private string DeletionConfirmationValue =>
         result?.Value?.UserName
@@ -643,34 +643,58 @@ else
         }
     }
 
-    private static string Display(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? "Não informado" : value;
+    private string Display(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? L["Users.Detail.NotInformed"].Value : value;
 
-    private static string LockoutLabel(ManagementUserDetail user)
+    private string LockoutLabel(ManagementUserDetail user)
     {
         if (!user.LockoutEnabled)
         {
-            return "Desabilitado";
+            return L["Users.Detail.Security.LockoutDisabled"].Value;
         }
 
         return user.LockoutEnd is { } end && end > DateTimeOffset.UtcNow
-            ? $"Bloqueado até {end.ToLocalTime():dd/MM/yyyy HH:mm}"
-            : "Sem bloqueio ativo";
+            ? string.Format(
+                L["Users.Detail.Security.LockedUntilFormat"].Value,
+                end.ToLocalTime().ToString("dd/MM/yyyy HH:mm"))
+            : L["Users.Detail.Security.NoActiveLockout"].Value;
     }
 
     private static bool IsLockedOut(ManagementUserDetail? user) =>
         user?.LockoutEnd is { } end
         && end > DateTimeOffset.UtcNow;
 
-    private sealed class PasswordResetModel
+    protected override void OnInitialized()
     {
-        [Required(ErrorMessage = "Informe a nova senha.")]
+        passwordModel.Localizer = L;
+        base.OnInitialized();
+    }
+
+    private sealed class PasswordResetModel : IValidatableObject
+    {
+        public IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource>? Localizer { get; set; }
+
         public string NewPassword { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Confirme a nova senha.")]
-        [Compare(
-            nameof(NewPassword),
-            ErrorMessage = "As senhas não coincidem.")]
         public string ConfirmPassword { get; set; } = string.Empty;
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            var l = Localizer ?? throw new InvalidOperationException(
+                "The form model localizer must be set before validation.");
+
+            if (string.IsNullOrWhiteSpace(NewPassword))
+            {
+                yield return new ValidationResult(l["Users.Detail.Validation.NewPasswordRequired"].Value, [nameof(NewPassword)]);
+            }
+            if (string.IsNullOrWhiteSpace(ConfirmPassword))
+            {
+                yield return new ValidationResult(l["Users.Detail.Validation.ConfirmNewPasswordRequired"].Value, [nameof(ConfirmPassword)]);
+            }
+            if (!string.Equals(NewPassword, ConfirmPassword, StringComparison.Ordinal))
+            {
+                yield return new ValidationResult(l["Users.Create.Validation.PasswordsDoNotMatch"].Value, [nameof(ConfirmPassword)]);
+            }
+        }
     }
 }

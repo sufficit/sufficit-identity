@@ -13,24 +13,24 @@
     <Actions>
         <a class="button button--secondary" href="@DetailHref">
             <SUIIcon Name="arrow-left" Size="17" />
-            Cancelar
+            @L["Clients.Detail.Cancel"]
         </a>
     </Actions>
 </SUIPageHeader>
 
 @if (loading)
 {
-    <div class="wizard-loading" aria-busy="true" aria-label="Carregando aplicação">
+    <div class="wizard-loading" aria-busy="true" aria-label="@L["Clients.Edit.LoadingAriaLabel"].Value">
         <span class="button-spinner" aria-hidden="true"></span>
-        <p>Recuperando configuração…</p>
+        <p>@L["Clients.Edit.RecoveringConfig"]</p>
     </div>
 }
 else if (client is null)
 {
     <SUIEmptyState Icon="alert"
-                Title="Não foi possível editar esta aplicação"
-                Description="@(loadResult?.ErrorMessage ?? "O registro não está disponível.")">
-        <Actions><a class="button button--secondary" href="clients">Voltar para aplicações</a></Actions>
+                Title="@L["Clients.Edit.OpenErrorTitle"].Value"
+                Description="@(loadResult?.ErrorMessage ?? L["Clients.Edit.RecordUnavailable"].Value)">
+        <Actions><a class="button button--secondary" href="clients">@L["Clients.Create.Back"]</a></Actions>
     </SUIEmptyState>
 }
 else if (client.IsManifestManaged)
@@ -38,21 +38,21 @@ else if (client.IsManifestManaged)
     <div class="inline-notice inline-notice--warning" role="status">
         <SUIIcon Name="lock" Size="19" />
         <div>
-            <strong>Aplicação gerenciada por manifesto</strong>
-            <span>Edite o manifesto declarativo e aplique o provisionamento para alterar este registro.</span>
+            <strong>@L["Clients.Edit.ManifestManagedTitle"]</strong>
+            <span>@L["Clients.Edit.ManifestManagedMessage"]</span>
         </div>
     </div>
     <div class="wizard-actions wizard-actions--complete">
-        <a class="button button--primary" href="@DetailHref">Voltar aos detalhes</a>
+        <a class="button button--primary" href="@DetailHref">@L["Clients.Edit.BackToDetails"]</a>
     </div>
 }
 else
 {
     <div class="wizard-shell client-edit-shell">
-        <nav class="wizard-progress" aria-label="Seções da edição">
+        <nav class="wizard-progress" aria-label="@L["Clients.Edit.SectionsAriaLabel"].Value">
             <div class="wizard-progress__summary">
-                <span>Aplicação existente</span>
-                <strong>Revisão segura</strong>
+                <span>@L["Clients.Edit.ExistingApplication"]</span>
+                <strong>@L["Clients.Edit.SafeReview"]</strong>
             </div>
             <ol>
                 @foreach (var item in Sections
@@ -71,7 +71,7 @@ else
             </ol>
             <div class="wizard-save-state">
                 <span class="wizard-save-state__icon"><SUIIcon Name="lock" Size="15" /></span>
-                <span>@(client.HasClientSecret ? "Credencial protegida" : "Sem credencial ativa")</span>
+                <span>@(client.HasClientSecret ? L["Clients.Edit.CredentialProtected"] : L["Clients.Edit.NoActiveCredential"])</span>
             </div>
         </nav>
 
@@ -87,8 +87,8 @@ else
                     <SUITextField T="string"
                                   id="edit-display-name"
                                   name="displayName"
-                                  Label="Nome da aplicação"
-                                  HelperText="Nome exibido no consentimento e na auditoria."
+                                  Label="@L["Clients.Draft.AppNameLabel"].Value"
+                                  HelperText="@L["Clients.Edit.AppNameHelper"].Value"
                                   autocomplete="organization"
                                   @bind-Value="displayName" />
                     <SUITextField T="string"
@@ -96,7 +96,7 @@ else
                                   name="clientId"
                                   Class="client-edit-technical-field"
                                   Label="Client ID"
-                                  HelperText="O identificador é imutável para não quebrar integrações existentes."
+                                  HelperText="@L["Clients.Edit.ClientIdImmutableHelper"].Value"
                                   Value="@client.ClientId"
                                   readonly />
                 </SUIFormGrid>
@@ -104,19 +104,19 @@ else
                     <SUISelect T="string"
                                id="edit-consent"
                                name="consentType"
-                               Label="Consentimento"
+                               Label="@L["Clients.Detail.ConsentLabel"].Value"
                                @bind-Value="consentType"
                                MenuMaxWidth="min(30rem, calc(100vw - 24px))">
-                        <SUISelectItem Value="@("explicit")">Explícito — o usuário confirma</SUISelectItem>
-                        <SUISelectItem Value="@("implicit")">Implícito — aplicação confiável</SUISelectItem>
-                        <SUISelectItem Value="@("external")">Externo — decisão fora do fluxo</SUISelectItem>
-                        <SUISelectItem Value="@("systematic")">Sistemático — confirmação recorrente</SUISelectItem>
+                        <SUISelectItem Value="@("explicit")">@L["Clients.Draft.ConsentExplicitOption"]</SUISelectItem>
+                        <SUISelectItem Value="@("implicit")">@L["Clients.Draft.ConsentImplicitOption"]</SUISelectItem>
+                        <SUISelectItem Value="@("external")">@L["Clients.Edit.ConsentExternalOption"]</SUISelectItem>
+                        <SUISelectItem Value="@("systematic")">@L["Clients.Draft.ConsentSystematicOption"]</SUISelectItem>
                     </SUISelect>
                     <div class="client-edit-choice-field" data-sui-align-field>
                         <span class="client-edit-choice-field__label" data-sui-field-label aria-hidden="true"></span>
                         <label class="choice-control client-edit-par-choice">
                             <input id="edit-require-par" name="requirePar" type="checkbox" @bind="requirePar" />
-                            <span><strong>Exigir PAR</strong><small>Protege parâmetros antes de abrir o navegador.</small></span>
+                            <span><strong>@L["Clients.Draft.RequireParLabel"]</strong><small>@L["Clients.Edit.RequireParHint"]</small></span>
                         </label>
                     </div>
                 </SUIFormGrid>
@@ -124,20 +124,20 @@ else
             else if (activeSection == 1)
             {
                 <fieldset class="choice-fieldset">
-                    <legend>Fluxos autorizados</legend>
+                    <legend>@L["Clients.Edit.AuthorizedFlowsLegend"]</legend>
                     <div class="choice-grid choice-grid--two">
-                        <label class="choice-control"><input id="edit-grant-authorization-code" name="grantAuthorizationCode" type="checkbox" @bind="authorizationCode" /><span><strong>Authorization Code + PKCE</strong><small>Login interativo moderno.</small></span></label>
-                        <label class="choice-control"><input id="edit-grant-refresh-token" name="grantRefreshToken" type="checkbox" @bind="refreshToken" /><span><strong>Refresh Token</strong><small>Renova a sessão sem novo login.</small></span></label>
-                        <label class="choice-control"><input id="edit-grant-client-credentials" name="grantClientCredentials" type="checkbox" @bind="clientCredentials" /><span><strong>Client Credentials</strong><small>Integração sem usuário.</small></span></label>
-                        <label class="choice-control"><input id="edit-grant-device-code" name="grantDeviceCode" type="checkbox" @bind="deviceCode" /><span><strong>Device Code</strong><small>Autoriza em outro dispositivo.</small></span></label>
+                        <label class="choice-control"><input id="edit-grant-authorization-code" name="grantAuthorizationCode" type="checkbox" @bind="authorizationCode" /><span><strong>Authorization Code + PKCE</strong><small>@L["Clients.Draft.AuthCodeHint"]</small></span></label>
+                        <label class="choice-control"><input id="edit-grant-refresh-token" name="grantRefreshToken" type="checkbox" @bind="refreshToken" /><span><strong>Refresh Token</strong><small>@L["Clients.Draft.RefreshTokenHint"]</small></span></label>
+                        <label class="choice-control"><input id="edit-grant-client-credentials" name="grantClientCredentials" type="checkbox" @bind="clientCredentials" /><span><strong>Client Credentials</strong><small>@L["Clients.Draft.ClientCredentialsHint"]</small></span></label>
+                        <label class="choice-control"><input id="edit-grant-device-code" name="grantDeviceCode" type="checkbox" @bind="deviceCode" /><span><strong>Device Code</strong><small>@L["Clients.Draft.DeviceCodeHint"]</small></span></label>
                     </div>
-                    <span class="field-hint">O tipo atual é @ClientTypeLabel(client.Type). A credencial é administrada em uma seção separada.</span>
+                    <span class="field-hint">@L["Clients.Edit.CurrentTypeHint", ClientTypeLabel(client.Type)]</span>
                 </fieldset>
                 <div class="field-group edit-textarea-group">
                     <label for="edit-scopes">Scopes</label>
                     <textarea id="edit-scopes" name="scopes" class="form-control form-control--textarea technical-value"
                               @bind="scopesText"></textarea>
-                    <span class="field-hint">Um scope por linha, sem o prefixo técnico <code>scp:</code>.</span>
+                    <span class="field-hint">@L["Clients.Edit.ScopesHintPrefix"] <code>scp:</code>.</span>
                 </div>
             }
             else if (activeSection == 2)
@@ -150,23 +150,23 @@ else
                                 <span class="token-help">
                                     <button type="button"
                                             class="token-help__trigger"
-                                            aria-label="Mais informações sobre Access token"
+                                            aria-label="@L["Clients.Edit.MoreInfoAboutAriaLabel", "Access token"].Value"
                                             aria-describedby="access-token-help">
                                         <SUIIcon Name="info" Size="16" />
                                     </button>
                                     <span id="access-token-help" class="token-help__content" role="tooltip">
-                                        Autoriza chamadas às APIs em nome do usuário ou da aplicação. É enviado ao servidor da API e não deve ser usado como comprovante de identidade.
+                                        @L["Clients.Edit.AccessTokenHelp"]
                                     </span>
                                 </span>
                             </div>
-                            <span>Acesso às APIs da aplicação.</span>
+                            <span>@L["Clients.Edit.AccessTokenShortDesc"]</span>
                         </div>
                         <label class="lifetime-inherit-control">
                             <input type="checkbox" @bind="inheritAccessTokenLifetime" />
-                            <span>Usar padrão global <small>@FormatMinutes(client.GlobalAccessTokenLifetimeMinutes)</small></span>
+                            <span>@L["Clients.Edit.UseGlobalDefault"] <small>@FormatMinutes(client.GlobalAccessTokenLifetimeMinutes)</small></span>
                         </label>
                         <label class="lifetime-value-control" for="edit-access-token-lifetime">
-                            <span>Valor personalizado</span>
+                            <span>@L["Clients.Edit.CustomValueLabel"]</span>
                             <span class="number-with-unit">
                                 <input id="edit-access-token-lifetime"
                                        name="accessTokenLifetimeMinutes"
@@ -175,7 +175,7 @@ else
                                        max="@TokenLifetimeLimits.MaximumAccessTokenLifetimeMinutes"
                                        disabled="@inheritAccessTokenLifetime"
                                        @bind="accessTokenLifetimeMinutes" />
-                                <span>min</span>
+                                <span>@L["Clients.Edit.MinutesUnit"]</span>
                             </span>
                         </label>
                     </div>
@@ -187,23 +187,23 @@ else
                                 <span class="token-help">
                                     <button type="button"
                                             class="token-help__trigger"
-                                            aria-label="Mais informações sobre ID token"
+                                            aria-label="@L["Clients.Edit.MoreInfoAboutAriaLabel", "ID token"].Value"
                                             aria-describedby="identity-token-help">
                                         <SUIIcon Name="info" Size="16" />
                                     </button>
                                     <span id="identity-token-help" class="token-help__content" role="tooltip">
-                                        Informa à aplicação que o login OIDC foi concluído e pode transportar dados do usuário autenticado. Não deve ser enviado para autorizar chamadas às APIs.
+                                        @L["Clients.Edit.IdTokenHelp"]
                                     </span>
                                 </span>
                             </div>
-                            <span>Identidade entregue ao cliente OIDC.</span>
+                            <span>@L["Clients.Edit.IdTokenShortDesc"]</span>
                         </div>
                         <label class="lifetime-inherit-control">
                             <input type="checkbox" @bind="inheritIdentityTokenLifetime" />
-                            <span>Usar padrão global <small>@FormatMinutes(client.GlobalIdentityTokenLifetimeMinutes)</small></span>
+                            <span>@L["Clients.Edit.UseGlobalDefault"] <small>@FormatMinutes(client.GlobalIdentityTokenLifetimeMinutes)</small></span>
                         </label>
                         <label class="lifetime-value-control" for="edit-identity-token-lifetime">
-                            <span>Valor personalizado</span>
+                            <span>@L["Clients.Edit.CustomValueLabel"]</span>
                             <span class="number-with-unit">
                                 <input id="edit-identity-token-lifetime"
                                        name="identityTokenLifetimeMinutes"
@@ -212,7 +212,7 @@ else
                                        max="120"
                                        disabled="@inheritIdentityTokenLifetime"
                                        @bind="identityTokenLifetimeMinutes" />
-                                <span>min</span>
+                                <span>@L["Clients.Edit.MinutesUnit"]</span>
                             </span>
                         </label>
                     </div>
@@ -224,23 +224,23 @@ else
                                 <span class="token-help">
                                     <button type="button"
                                             class="token-help__trigger"
-                                            aria-label="Mais informações sobre Refresh token"
+                                            aria-label="@L["Clients.Edit.MoreInfoAboutAriaLabel", "Refresh token"].Value"
                                             aria-describedby="refresh-token-help">
                                         <SUIIcon Name="info" Size="16" />
                                     </button>
                                     <span id="refresh-token-help" class="token-help__content" role="tooltip">
-                                        Permite obter novos access tokens sem solicitar outro login. É uma credencial sensível e deve ficar armazenada somente em ambiente seguro.
+                                        @L["Clients.Edit.RefreshTokenHelp"]
                                     </span>
                                 </span>
                             </div>
-                            <span>Janela máxima para renovar a sessão.</span>
+                            <span>@L["Clients.Edit.RefreshTokenShortDesc"]</span>
                         </div>
                         <label class="lifetime-inherit-control">
                             <input type="checkbox" @bind="inheritRefreshTokenLifetime" />
-                            <span>Usar padrão global <small>@FormatDays(client.GlobalRefreshTokenLifetimeDays)</small></span>
+                            <span>@L["Clients.Edit.UseGlobalDefault"] <small>@FormatDays(client.GlobalRefreshTokenLifetimeDays)</small></span>
                         </label>
                         <label class="lifetime-value-control" for="edit-refresh-token-lifetime">
-                            <span>Valor personalizado</span>
+                            <span>@L["Clients.Edit.CustomValueLabel"]</span>
                             <span class="number-with-unit">
                                 <input id="edit-refresh-token-lifetime"
                                        name="refreshTokenLifetimeDays"
@@ -249,13 +249,13 @@ else
                                        max="365"
                                        disabled="@inheritRefreshTokenLifetime"
                                        @bind="refreshTokenLifetimeDays" />
-                                <span>dias</span>
+                                <span>@L["Clients.Edit.DaysUnit"]</span>
                             </span>
                         </label>
                     </div>
                 </div>
                 <p class="field-hint lifetime-policy-editor__hint">
-                    Ao usar o padrão global, futuras mudanças do servidor passam a valer automaticamente para esta aplicação.
+                    @L["Clients.Edit.GlobalDefaultFootnote"]
                 </p>
             }
             else if (activeSection == 3)
@@ -264,34 +264,31 @@ else
                     <label for="edit-redirects">Redirect URIs</label>
                     <textarea id="edit-redirects" name="redirectUris" class="form-control form-control--textarea technical-value"
                               @bind="redirectUrisText"></textarea>
-                    <span class="field-hint">Uma URI HTTPS por linha. Fragmentos não são permitidos.</span>
+                    <span class="field-hint">@L["Clients.Edit.RedirectUrisHint"]</span>
                 </div>
                 <div class="field-group">
-                    <label for="edit-post-logout">Redirect URIs após logout <span class="label-optional">opcional</span></label>
+                    <label for="edit-post-logout">@L["Clients.Edit.PostLogoutUrisLabel"] <span class="label-optional">@L["Clients.Edit.OptionalTag"]</span></label>
                     <textarea id="edit-post-logout" name="postLogoutRedirectUris" class="form-control form-control--textarea technical-value"
                               @bind="postLogoutRedirectUrisText"></textarea>
                 </div>
                 <div class="field-group">
-                    <label for="edit-native-returns">Retornos nativos <span class="label-optional">opcional</span></label>
+                    <label for="edit-native-returns">@L["Clients.Detail.NativeReturnsHeading"] <span class="label-optional">@L["Clients.Edit.OptionalTag"]</span></label>
                     <textarea id="edit-native-returns" name="nativeReturnUris" class="form-control form-control--textarea technical-value"
                               @bind="nativeReturnUrisText"></textarea>
                     <span class="field-hint">
-                        Uma URI por linha. Para onde o navegador leva o usuário de volta ao aplicativo
-                        depois que a concessão termina — não recebe código nem token, por isso aceita
-                        esquema de uso privado (RFC 8252), por exemplo <code>meuapp://auth-complete</code>.
-                        A comparação é exata, sem curinga.
+                        @L["Clients.Edit.NativeReturnsHintPrefix"] <code>meuapp://auth-complete</code>@L["Clients.Edit.NativeReturnsHintSuffix"]
                     </span>
                 </div>
                 <div class="form-grid form-grid--two">
                     <div class="field-group">
-                        <label for="edit-frontchannel">Logout front-channel <span class="label-optional">opcional</span></label>
+                        <label for="edit-frontchannel">@L["Clients.Edit.FrontchannelLogoutLabel"] <span class="label-optional">@L["Clients.Edit.OptionalTag"]</span></label>
                         <input id="edit-frontchannel" name="frontchannelLogoutUri" class="form-control technical-value" @bind="frontchannelLogoutUri" />
-                        <label class="switch-control"><input id="edit-frontchannel-session" name="frontchannelLogoutSessionRequired" type="checkbox" @bind="frontchannelLogoutSessionRequired" /><span><strong>Exigir sessão</strong><small>Inclui sid no logout federado.</small></span></label>
+                        <label class="switch-control"><input id="edit-frontchannel-session" name="frontchannelLogoutSessionRequired" type="checkbox" @bind="frontchannelLogoutSessionRequired" /><span><strong>@L["Clients.Edit.RequireSessionLabel"]</strong><small>@L["Clients.Edit.FrontchannelSidHint"]</small></span></label>
                     </div>
                     <div class="field-group">
-                        <label for="edit-backchannel">Logout back-channel <span class="label-optional">opcional</span></label>
+                        <label for="edit-backchannel">@L["Clients.Edit.BackchannelLogoutLabel"] <span class="label-optional">@L["Clients.Edit.OptionalTag"]</span></label>
                         <input id="edit-backchannel" name="backchannelLogoutUri" class="form-control technical-value" @bind="backchannelLogoutUri" />
-                        <label class="switch-control"><input id="edit-backchannel-session" name="backchannelLogoutSessionRequired" type="checkbox" @bind="backchannelLogoutSessionRequired" /><span><strong>Exigir sessão</strong><small>Envia a notificação de logout.</small></span></label>
+                        <label class="switch-control"><input id="edit-backchannel-session" name="backchannelLogoutSessionRequired" type="checkbox" @bind="backchannelLogoutSessionRequired" /><span><strong>@L["Clients.Edit.RequireSessionLabel"]</strong><small>@L["Clients.Edit.BackchannelNotifyHint"]</small></span></label>
                     </div>
                 </div>
             }
@@ -303,22 +300,22 @@ else
                             <SUIIcon Name="lock" Size="21" />
                         </span>
                         <div>
-                            <h3 id="client-credential-heading">Autenticação da aplicação</h3>
+                            <h3 id="client-credential-heading">@L["Clients.Detail.AppAuthHeading"]</h3>
                             <p>
-                                Cadastre credenciais simultâneas para rotação sem indisponibilidade ou use chaves públicas. Cada requisição OAuth deve usar apenas um método de autenticação.
+                                @L["Clients.Edit.AppAuthDescription"]
                             </p>
                         </div>
                         <span class="status-badge status-badge--@(HasConfiguredAuthentication ? "success" : "warning")">
-                            @(HasConfiguredAuthentication ? "Configurada" : "Pendente")
+                            @(HasConfiguredAuthentication ? L["Clients.Detail.ConfiguredBadge"] : L["Clients.Edit.PendingBadge"])
                         </span>
                     </header>
 
-                    <div class="client-auth-methods" aria-label="Métodos de autenticação disponíveis">
-                        <strong>Métodos disponíveis</strong>
+                    <div class="client-auth-methods" aria-label="@L["Clients.Edit.AvailableMethodsAriaLabel"].Value">
+                        <strong>@L["Clients.Edit.AvailableMethodsLabel"]</strong>
                         <div>
                             @if (AuthenticationMethods.Count is 0)
                             {
-                                <span class="status-badge status-badge--warning">Nenhum método</span>
+                                <span class="status-badge status-badge--warning">@L["Clients.Edit.NoMethodBadge"]</span>
                             }
                             else
                             {
@@ -334,7 +331,7 @@ else
                     {
                         <div class="client-credential-loading" aria-busy="true">
                             <span class="button-spinner" aria-hidden="true"></span>
-                            <span>Carregando credenciais…</span>
+                            <span>@L["Clients.Edit.LoadingCredentials"]</span>
                         </div>
                     }
                     else
@@ -342,10 +339,10 @@ else
                         <div class="client-credential-catalog">
                             <header class="client-credential-catalog__heading">
                                 <div>
-                                    <h4>Segredos compartilhados</h4>
-                                    <p>Somente o identificador final é exibido. O valor completo nunca é recuperável.</p>
+                                    <h4>@L["Clients.Edit.SharedSecretsHeading"]</h4>
+                                    <p>@L["Clients.Edit.SharedSecretsDescription"]</p>
                                 </div>
-                                <span>@ActiveSharedCredentialCount ativo(s)</span>
+                                <span>@L["Clients.Edit.ActiveCountSuffix", ActiveSharedCredentialCount]</span>
                             </header>
 
                             @if (credentialOverview?.Credentials.Count is not > 0)
@@ -353,8 +350,8 @@ else
                                 <div class="client-credential-empty">
                                     <SUIIcon Name="key" Size="20" />
                                     <div>
-                                        <strong>Nenhum segredo compartilhado</strong>
-                                        <span>Adicione a primeira credencial ou configure private_key_jwt abaixo.</span>
+                                        <strong>@L["Clients.Edit.NoSharedSecretTitle"]</strong>
+                                        <span>@L["Clients.Edit.NoSharedSecretHint"]</span>
                                     </div>
                                 </div>
                             }
@@ -371,15 +368,15 @@ else
                                                     {
                                                         @* Fingerprint of the stored hash, not a piece of
                                                            the secret — do not render it as a suffix. *@
-                                                        <code title="Impressão digital da credencial">#@credential.SecretHint</code>
+                                                        <code title="@L["Clients.Edit.FingerprintTitle"].Value">#@credential.SecretHint</code>
                                                     }
                                                     else
                                                     {
-                                                        <span>Valor protegido</span>
+                                                        <span>@L["Clients.Edit.ProtectedValue"]</span>
                                                     }
                                                     @if (credential.ExpiresAtUtc is not null)
                                                     {
-                                                        <span>Expira em @FormatCredentialDate(credential.ExpiresAtUtc)</span>
+                                                        <span>@L["Clients.Edit.ExpiresOnFormat", FormatCredentialDate(credential.ExpiresAtUtc)]</span>
                                                     }
                                                 </span>
                                             </div>
@@ -392,31 +389,31 @@ else
                                                         type="button"
                                                         disabled="@(revokingCredentialId is not null)"
                                                         @onclick="() => BeginCredentialRevocation(credential)">
-                                                    Revogar
+                                                    @L["Clients.Edit.RevokeAction"]
                                                 </button>
                                             }
                                             else if (credential.IsPrimary)
                                             {
-                                                <span class="client-credential-list__primary">Principal</span>
+                                                <span class="client-credential-list__primary">@L["Clients.Edit.PrimaryLabel"]</span>
                                             }
 
                                             @if (revokingCredentialId == credential.Id)
                                             {
-                                                <div class="client-credential-revoke" role="group" aria-label="Confirmar revogação">
+                                                <div class="client-credential-revoke" role="group" aria-label="@L["Clients.Edit.ConfirmRevocationAriaLabel"].Value">
                                                     <div>
-                                                        <strong>Revogar esta credencial agora?</strong>
-                                                        <span>Novas autenticações com esse valor serão recusadas imediatamente.</span>
+                                                        <strong>@L["Clients.Edit.RevokeCredentialConfirm"]</strong>
+                                                        <span>@L["Clients.Edit.RevokeCredentialWarning"]</span>
                                                     </div>
                                                     <input class="form-control"
                                                            name="credentialRevocationReason"
                                                            maxlength="256"
-                                                           placeholder="Motivo opcional"
-                                                           aria-label="Motivo da revogação"
+                                                           placeholder="@L["Clients.Edit.OptionalReasonPlaceholder"].Value"
+                                                           aria-label="@L["Clients.Edit.RevocationReasonAriaLabel"].Value"
                                                            @bind="credentialRevocationReason" />
                                                     <div>
-                                                        <button class="button button--secondary button--compact" type="button" @onclick="CancelCredentialRevocation">Cancelar</button>
+                                                        <button class="button button--secondary button--compact" type="button" @onclick="CancelCredentialRevocation">@L["Clients.Detail.Cancel"]</button>
                                                         <button class="button button--danger button--compact" type="button" disabled="@revokingCredential" @onclick="RevokeCredentialAsync">
-                                                            @(revokingCredential ? "Revogando…" : "Confirmar revogação")
+                                                            @(revokingCredential ? L["Clients.Edit.Revoking"] : L["Clients.Edit.ConfirmRevocation"])
                                                         </button>
                                                     </div>
                                                 </div>
@@ -432,7 +429,7 @@ else
                     {
                         <div class="inline-notice inline-notice--danger" role="alert">
                             <SUIIcon Name="alert" Size="19" />
-                            <div><strong>Não foi possível atualizar as credenciais</strong><span>@credentialErrorMessage</span></div>
+                            <div><strong>@L["Clients.Edit.CredentialUpdateErrorTitle"]</strong><span>@credentialErrorMessage</span></div>
                         </div>
                     }
 
@@ -440,27 +437,27 @@ else
                     {
                         <div class="client-credential-reveal" role="alert">
                             <div>
-                                <strong>Copie a credencial agora</strong>
-                                <span>Este é o único momento em que o valor completo será exibido. Salve-o no cofre da aplicação.</span>
+                                <strong>@L["Clients.Draft.CopyCredentialTitle"]</strong>
+                                <span>@L["Clients.Edit.CopyCredentialOnceMessage"]</span>
                             </div>
                             <input id="rotated-client-secret"
                                    name="rotated-client-secret"
                                    class="form-control technical-value"
                                    value="@rotatedClientSecret"
                                    readonly
-                                   aria-label="Nova credencial da aplicação" />
+                                   aria-label="@L["Clients.Edit.NewCredentialAriaLabel"].Value" />
                             <div class="client-credential-reveal__actions">
                                 <button class="button button--primary" type="button" @onclick="CopyRotatedSecretAsync">
                                     <SUIIcon Name="copy" Size="17" />
-                                    @(credentialCopied ? "Copiada" : "Copiar credencial")
+                                    @(credentialCopied ? L["Clients.Edit.Copied"] : L["Clients.Edit.CopyCredentialAction"])
                                 </button>
                                 <button class="button button--secondary" type="button" @onclick="HideRotatedSecret">
-                                    Ocultar valor
+                                    @L["Clients.Edit.HideValue"]
                                 </button>
                             </div>
                             @if (clipboardUnavailable)
                             {
-                                <span class="field-error" role="status">A cópia automática não está disponível. Selecione e copie o valor acima.</span>
+                                <span class="field-error" role="status">@L["Clients.Edit.ClipboardUnavailable"]</span>
                             }
                         </div>
                     }
@@ -468,18 +465,18 @@ else
                     {
                         <div class="client-credential-editor__summary client-credential-editor__summary--actions">
                             <div>
-                                <strong>Gerenciar rotação</strong>
-                                <span>Adicione primeiro a nova credencial, atualize a aplicação consumidora e só então revogue a anterior.</span>
+                                <strong>@L["Clients.Edit.ManageRotation"]</strong>
+                                <span>@L["Clients.Edit.RotationGuidance"]</span>
                             </div>
                             <div>
                                 <button class="button button--primary" type="button" @onclick="BeginCredentialCreation">
                                     <SUIIcon Name="plus" Size="17" />
-                                    Adicionar credencial
+                                    @L["Clients.Edit.AddCredentialAction"]
                                 </button>
                                 @if (HasPrimaryCredential)
                                 {
                                     <button class="button button--secondary" type="button" @onclick="BeginCredentialRotation">
-                                        Substituir principal
+                                        @L["Clients.Edit.ReplacePrimary"]
                                     </button>
                                 }
                             </div>
@@ -490,11 +487,11 @@ else
                         <div class="client-credential-editor__form">
                             <header class="client-credential-form-heading">
                                 <div>
-                                    <strong>@(credentialOperation == "add" ? "Adicionar credencial" : "Substituir credencial principal")</strong>
+                                    <strong>@(credentialOperation == "add" ? L["Clients.Edit.AddCredentialAction"] : L["Clients.Edit.ReplacePrimaryCredential"])</strong>
                                     <span>
                                         @(credentialOperation == "add"
-                                            ? "A credencial atual continua funcionando até você revogá-la."
-                                            : "A principal anterior deixa de funcionar assim que a substituição for confirmada.")
+                                            ? L["Clients.Edit.AddCredentialNote"]
+                                            : L["Clients.Edit.ReplaceCredentialNote"])
                                     </span>
                                 </div>
                             </header>
@@ -503,18 +500,18 @@ else
                             {
                                 <div class="form-grid form-grid--two">
                                     <div class="field-group">
-                                        <label for="credential-label">Nome da credencial</label>
+                                        <label for="credential-label">@L["Clients.Edit.CredentialNameLabel"]</label>
                                         <input id="credential-label"
                                                name="credentialLabel"
                                                class="form-control"
                                                maxlength="100"
-                                               placeholder="Ex.: produção — agosto 2026"
+                                               placeholder="@L["Clients.Edit.CredentialNamePlaceholder"].Value"
                                                @bind="credentialLabel"
                                                @bind:event="oninput" />
-                                        <span class="field-hint">Identifique ambiente, instância ou período de rotação.</span>
+                                        <span class="field-hint">@L["Clients.Edit.CredentialNameHint"]</span>
                                     </div>
                                     <div class="field-group">
-                                        <label for="credential-expiration">Expiração <span class="label-optional">opcional, UTC</span></label>
+                                        <label for="credential-expiration">@L["Clients.Edit.ExpirationLabel"] <span class="label-optional">@L["Clients.Edit.OptionalUtcTag"]</span></label>
                                         <input id="credential-expiration"
                                                name="credentialExpiration"
                                                class="form-control"
@@ -523,13 +520,13 @@ else
                                                max="@MaximumCredentialExpirationDate"
                                                @bind="credentialExpirationDate"
                                                @bind:format="yyyy-MM-dd" />
-                                        <span class="field-hint">Sem data, permanece válida até ser revogada.</span>
+                                        <span class="field-hint">@L["Clients.Edit.NoExpirationHint"]</span>
                                     </div>
                                 </div>
                             }
 
                             <fieldset class="choice-fieldset">
-                                <legend>Como definir o valor</legend>
+                                <legend>@L["Clients.Edit.HowToSetValueLegend"]</legend>
                                 <div class="choice-grid choice-grid--two">
                                     <label class="choice-control">
                                         <input type="radio"
@@ -537,7 +534,7 @@ else
                                                value="generated"
                                                checked="@(credentialMode == "generated")"
                                                @onchange="SetGeneratedCredentialMode" />
-                                        <span><strong>Gerar automaticamente</strong><small>Recomendado. Usa 256 bits de aleatoriedade criptográfica.</small></span>
+                                        <span><strong>@L["Clients.Edit.GenerateAutomatically"]</strong><small>@L["Clients.Edit.GenerateAutomaticallyHint"]</small></span>
                                     </label>
                                     <label class="choice-control">
                                         <input type="radio"
@@ -545,7 +542,7 @@ else
                                                value="custom"
                                                checked="@(credentialMode == "custom")"
                                                @onchange="SetCustomCredentialMode" />
-                                        <span><strong>Informar uma credencial</strong><small>Use um valor aleatório vindo do seu cofre de segredos.</small></span>
+                                        <span><strong>@L["Clients.Edit.EnterCredentialManually"]</strong><small>@L["Clients.Edit.EnterCredentialHint"]</small></span>
                                     </label>
                                 </div>
                             </fieldset>
@@ -554,7 +551,7 @@ else
                             {
                                 <div class="form-grid form-grid--two">
                                     <div class="field-group">
-                                        <label for="custom-client-secret">Nova credencial</label>
+                                        <label for="custom-client-secret">@L["Clients.Edit.NewCredentialLabel"]</label>
                                         <input id="custom-client-secret"
                                                name="customClientSecret"
                                                class="form-control technical-value"
@@ -565,10 +562,10 @@ else
                                                spellcheck="false"
                                                @bind="customClientSecret"
                                                @bind:event="oninput" />
-                                        <span class="field-hint">Entre 32 e 512 caracteres, sem espaços nas extremidades.</span>
+                                        <span class="field-hint">@L["Clients.Edit.CredentialLengthHint"]</span>
                                     </div>
                                     <div class="field-group">
-                                        <label for="custom-client-secret-confirmation">Confirmar credencial</label>
+                                        <label for="custom-client-secret-confirmation">@L["Clients.Edit.ConfirmCredentialLabel"]</label>
                                         <input id="custom-client-secret-confirmation"
                                                name="customClientSecretConfirmation"
                                                class="form-control technical-value"
@@ -581,7 +578,7 @@ else
                                                @bind:event="oninput" />
                                         @if (!string.IsNullOrEmpty(customClientSecretConfirmation) && !CustomCredentialsMatch)
                                         {
-                                            <span class="field-error">Os valores informados não coincidem.</span>
+                                            <span class="field-error">@L["Clients.Edit.ValuesDoNotMatch"]</span>
                                         }
                                     </div>
                                 </div>
@@ -589,15 +586,15 @@ else
 
                             <div class="client-credential-confirmation">
                                 <div>
-                                    <strong>Confirme a operação</strong>
+                                    <strong>@L["Clients.Edit.ConfirmOperationLabel"]</strong>
                                     <span>
                                         @(credentialOperation == "add"
-                                            ? "O novo valor será mostrado uma única vez."
-                                            : "Tokens emitidos continuam válidos, mas a principal anterior será recusada em novas autenticações.")
+                                            ? L["Clients.Edit.NewValueOnceNote"]
+                                            : L["Clients.Edit.PrimaryReplacedNote"])
                                     </span>
                                 </div>
                                 <div class="field-group">
-                                    <label for="credential-client-id-confirmation">Digite <code>@client.ClientId</code> para confirmar</label>
+                                    <label for="credential-client-id-confirmation">@L["Clients.Detail.DeleteConfirmPrefix"] <code>@client.ClientId</code> @L["Clients.Detail.DeleteConfirmSuffix"]</label>
                                     <input id="credential-client-id-confirmation"
                                            name="credentialClientIdConfirmation"
                                            class="form-control technical-value"
@@ -612,20 +609,20 @@ else
                             {
                                 <div class="inline-notice inline-notice--danger" role="alert">
                                     <SUIIcon Name="alert" Size="19" />
-                                    <div><strong>Não foi possível concluir a operação</strong><span>@credentialErrorMessage</span></div>
+                                    <div><strong>@L["Clients.Draft.OperationErrorTitle"]</strong><span>@credentialErrorMessage</span></div>
                                 </div>
                             }
 
                             <div class="client-credential-editor__actions">
-                                <button class="button button--secondary" type="button" disabled="@rotatingCredential" @onclick="CancelCredentialRotation">Cancelar</button>
+                                <button class="button button--secondary" type="button" disabled="@rotatingCredential" @onclick="CancelCredentialRotation">@L["Clients.Detail.Cancel"]</button>
                                 <button class="button button--primary" type="button" disabled="@(!CanSubmitCredential)" @onclick="SubmitCredentialAsync">
                                     @if (rotatingCredential)
                                     {
-                                        <span class="button-spinner" aria-hidden="true"></span><span>Salvando…</span>
+                                        <span class="button-spinner" aria-hidden="true"></span><span>@L["Clients.Draft.Saving"]</span>
                                     }
                                     else
                                     {
-                                        <SUIIcon Name="key" Size="17" /><span>@(credentialOperation == "add" ? "Adicionar credencial" : "Confirmar substituição")</span>
+                                        <SUIIcon Name="key" Size="17" /><span>@(credentialOperation == "add" ? L["Clients.Edit.AddCredentialAction"] : L["Clients.Edit.ConfirmReplacement"])</span>
                                     }
                                 </button>
                             </div>
@@ -636,11 +633,11 @@ else
                         <summary>
                             <span class="client-key-method__icon"><SUIIcon Name="lock" Size="19" /></span>
                             <span>
-                                <strong>Certificados — mTLS</strong>
-                                <small>Autenticação RFC 8705 sem segredo compartilhado; a chave privada permanece na aplicação.</small>
+                                <strong>@L["Clients.Edit.TlsCertificatesTitle"]</strong>
+                                <small>@L["Clients.Edit.TlsCertificatesDescription"]</small>
                             </span>
                             <span class="status-badge status-badge--@(HasActiveTlsCertificate ? "success" : "neutral")">
-                                @(HasActiveTlsCertificate ? "Ativo" : "Opcional")
+                                @(HasActiveTlsCertificate ? L["Clients.List.ClientStatusActive"] : L["Clients.Edit.OptionalBadge"])
                             </span>
                         </summary>
                         <div class="client-key-method__body">
@@ -649,8 +646,8 @@ else
                                 <div class="inline-notice inline-notice--info" role="note">
                                     <SUIIcon Name="info" Size="18" />
                                     <div>
-                                        <strong>Transporte mTLS não ativado neste deployment</strong>
-                                        <span>Você pode preparar e rotacionar certificados agora. O método será aceito quando o domínio mTLS e a validação de certificado forem ativados na infraestrutura.</span>
+                                        <strong>@L["Clients.Edit.MtlsNotEnabledTitle"]</strong>
+                                        <span>@L["Clients.Edit.MtlsNotEnabledMessage"]</span>
                                     </div>
                                 </div>
                             }
@@ -658,10 +655,10 @@ else
                             <div class="client-credential-catalog">
                                 <header class="client-credential-catalog__heading">
                                     <div>
-                                        <h4>Material público registrado</h4>
-                                        <p>Certificados autoassinados autenticam diretamente; CAs subordinadas habilitam certificados emitidos por uma PKI confiável.</p>
+                                        <h4>@L["Clients.Edit.PublicMaterialHeading"]</h4>
+                                        <p>@L["Clients.Edit.PublicMaterialDescription"]</p>
                                     </div>
-                                    <span>@TlsCertificates.Count de @(credentialOverview?.MaximumTlsCertificates ?? 10)</span>
+                                    <span>@L["Clients.Edit.CountOfFormat", TlsCertificates.Count, credentialOverview?.MaximumTlsCertificates ?? 10]</span>
                                 </header>
 
                                 @if (TlsCertificates.Count == 0)
@@ -669,8 +666,8 @@ else
                                     <div class="client-credential-empty">
                                         <SUIIcon Name="lock" Size="20" />
                                         <div>
-                                            <strong>Nenhum certificado registrado</strong>
-                                            <span>Cadastre o certificado público autoassinado recomendado ou uma CA subordinada da PKI.</span>
+                                            <strong>@L["Clients.Edit.NoCertificateTitle"]</strong>
+                                            <span>@L["Clients.Edit.NoCertificateHint"]</span>
                                         </div>
                                     </div>
                                 }
@@ -685,7 +682,7 @@ else
                                                     <span>
                                                         <span>@AuthenticationMethodLabel(certificate.AuthenticationMethod)</span>
                                                         <code>kid: @certificate.KeyId</code>
-                                                        <span>Expira em @FormatCredentialDate(certificate.ExpiresAtUtc)</span>
+                                                        <span>@L["Clients.Edit.ExpiresOnFormat", FormatCredentialDate(certificate.ExpiresAtUtc)]</span>
                                                     </span>
                                                     <code class="client-certificate-thumbprint">SHA-256 @FormatCertificateThumbprint(certificate.Sha256Thumbprint)</code>
                                                 </div>
@@ -698,21 +695,21 @@ else
                                                             type="button"
                                                             disabled="@(revokingTlsKeyId is not null)"
                                                             @onclick="() => BeginTlsCertificateRevocation(certificate.KeyId)">
-                                                        Revogar
+                                                        @L["Clients.Edit.RevokeAction"]
                                                     </button>
                                                 }
 
                                                 @if (revokingTlsKeyId == certificate.KeyId)
                                                 {
-                                                    <div class="client-credential-revoke client-certificate-revoke" role="group" aria-label="Confirmar revogação do certificado">
+                                                    <div class="client-credential-revoke client-certificate-revoke" role="group" aria-label="@L["Clients.Edit.ConfirmCertRevocationAriaLabel"].Value">
                                                         <div>
-                                                            <strong>Revogar este certificado agora?</strong>
-                                                            <span>Novas autenticações mTLS com este material serão recusadas imediatamente.</span>
+                                                            <strong>@L["Clients.Edit.RevokeCertConfirm"]</strong>
+                                                            <span>@L["Clients.Edit.RevokeCertWarning"]</span>
                                                         </div>
                                                         <div>
-                                                            <button class="button button--secondary button--compact" type="button" @onclick="CancelTlsCertificateRevocation">Cancelar</button>
+                                                            <button class="button button--secondary button--compact" type="button" @onclick="CancelTlsCertificateRevocation">@L["Clients.Detail.Cancel"]</button>
                                                             <button class="button button--danger button--compact" type="button" disabled="@revokingTlsCertificate" @onclick="RevokeTlsCertificateAsync">
-                                                                @(revokingTlsCertificate ? "Revogando…" : "Confirmar revogação")
+                                                                @(revokingTlsCertificate ? L["Clients.Edit.Revoking"] : L["Clients.Edit.ConfirmRevocation"])
                                                             </button>
                                                         </div>
                                                     </div>
@@ -728,7 +725,7 @@ else
                                 <div class="client-key-method__actions">
                                     <button class="button button--primary" type="button" @onclick="BeginTlsCertificateRegistration">
                                         <SUIIcon Name="plus" Size="17" />
-                                        Adicionar certificado
+                                        @L["Clients.Edit.AddCertificateAction"]
                                     </button>
                                 </div>
                             }
@@ -736,7 +733,7 @@ else
                             {
                                 <div class="client-credential-editor__form client-certificate-form">
                                     <fieldset class="choice-fieldset">
-                                        <legend>Modelo de confiança</legend>
+                                        <legend>@L["Clients.Edit.TrustModelLegend"]</legend>
                                         <div class="choice-grid choice-grid--two">
                                             <label class="choice-control">
                                                 <input type="radio"
@@ -744,7 +741,7 @@ else
                                                        value="self_signed_tls_client_auth"
                                                        checked="@(tlsAuthenticationMethod == "self_signed_tls_client_auth")"
                                                        @onchange="UseSelfSignedTlsAuthentication" />
-                                                <span><strong>Certificado autoassinado</strong><small>Recomendado. O certificado exato fica vinculado a esta aplicação.</small></span>
+                                                <span><strong>@L["Clients.Edit.SelfSignedCertOption"]</strong><small>@L["Clients.Edit.SelfSignedCertHint"]</small></span>
                                             </label>
                                             <label class="choice-control">
                                                 <input type="radio"
@@ -752,7 +749,7 @@ else
                                                        value="tls_client_auth"
                                                        checked="@(tlsAuthenticationMethod == "tls_client_auth")"
                                                        @onchange="UsePkiTlsAuthentication" />
-                                                <span><strong>PKI confiável</strong><small>Avançado. Cadastre uma CA subordinada; a raiz deve estar na trust store do deployment.</small></span>
+                                                <span><strong>@L["Clients.Edit.TrustedPkiOption"]</strong><small>@L["Clients.Edit.TrustedPkiHint"]</small></span>
                                             </label>
                                         </div>
                                     </fieldset>
@@ -762,27 +759,27 @@ else
                                         <div class="inline-notice inline-notice--info" role="note">
                                             <SUIIcon Name="info" Size="18" />
                                             <div>
-                                                <strong>PKI ainda sem raiz confiável</strong>
-                                                <span>A CA subordinada pode ser preparada, mas tls_client_auth só será aceito após uma raiz pública ser configurada no deployment.</span>
+                                                <strong>@L["Clients.Edit.PkiNoRootTitle"]</strong>
+                                                <span>@L["Clients.Edit.PkiNoRootMessage"]</span>
                                             </div>
                                         </div>
                                     }
 
                                     <div class="form-grid form-grid--two">
                                         <div class="field-group">
-                                            <label for="tls-certificate-kid">Identificador (kid) <span class="label-optional">opcional</span></label>
+                                            <label for="tls-certificate-kid">@L["Clients.Edit.KeyIdLabel"] <span class="label-optional">@L["Clients.Edit.OptionalTag"]</span></label>
                                             <input id="tls-certificate-kid"
                                                    name="tlsCertificateKid"
                                                    class="form-control technical-value"
                                                    maxlength="100"
-                                                   placeholder="Ex.: producao-2026-08"
+                                                   placeholder="@L["Clients.Edit.KeyIdPlaceholder"].Value"
                                                    spellcheck="false"
                                                    @bind="tlsCertificateKeyId"
                                                    @bind:event="oninput" />
-                                            <span class="field-hint">Se ficar vazio, será derivado da impressão digital do certificado.</span>
+                                            <span class="field-hint">@L["Clients.Edit.KeyIdHint"]</span>
                                         </div>
                                         <div class="field-group">
-                                            <label for="tls-client-id-confirmation">Confirme o client ID</label>
+                                            <label for="tls-client-id-confirmation">@L["Clients.Edit.ConfirmClientIdLabel"]</label>
                                             <input id="tls-client-id-confirmation"
                                                    name="tlsClientIdConfirmation"
                                                    class="form-control technical-value"
@@ -790,12 +787,12 @@ else
                                                    spellcheck="false"
                                                    @bind="tlsClientIdConfirmation"
                                                    @bind:event="oninput" />
-                                            <span class="field-hint">Digite <code>@client.ClientId</code> para vincular o material à aplicação correta.</span>
+                                            <span class="field-hint">@L["Clients.Detail.DeleteConfirmPrefix"] <code>@client.ClientId</code> @L["Clients.Edit.LinkMaterialSuffix"]</span>
                                         </div>
                                     </div>
 
                                     <div class="field-group">
-                                        <label for="tls-certificate-pem">Certificado público PEM</label>
+                                        <label for="tls-certificate-pem">@L["Clients.Edit.CertificatePemLabel"]</label>
                                         <textarea id="tls-certificate-pem"
                                                   name="tlsCertificatePem"
                                                   class="form-control form-control--textarea technical-value client-key-method__textarea"
@@ -803,21 +800,21 @@ else
                                                   placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
                                                   @bind="tlsCertificatePem"
                                                   @bind:event="oninput"></textarea>
-                                        <span class="field-hint">Nunca cole PFX, senha ou bloco PRIVATE KEY. Para PKI, envie somente a CA subordinada não autoemitida.</span>
+                                        <span class="field-hint">@L["Clients.Edit.CertificatePemHint"]</span>
                                     </div>
 
                                     @if (!string.IsNullOrWhiteSpace(tlsCertificateErrorMessage))
                                     {
                                         <div class="inline-notice inline-notice--danger" role="alert">
                                             <SUIIcon Name="alert" Size="19" />
-                                            <div><strong>Não foi possível registrar o certificado</strong><span>@tlsCertificateErrorMessage</span></div>
+                                            <div><strong>@L["Clients.Edit.RegisterCertErrorTitle"]</strong><span>@tlsCertificateErrorMessage</span></div>
                                         </div>
                                     }
 
                                     <div class="client-credential-editor__actions">
-                                        <button class="button button--secondary" type="button" disabled="@savingTlsCertificate" @onclick="CancelTlsCertificateRegistration">Cancelar</button>
+                                        <button class="button button--secondary" type="button" disabled="@savingTlsCertificate" @onclick="CancelTlsCertificateRegistration">@L["Clients.Detail.Cancel"]</button>
                                         <button class="button button--primary" type="button" disabled="@(!CanSubmitTlsCertificate)" @onclick="RegisterTlsCertificateAsync">
-                                            @(savingTlsCertificate ? "Registrando…" : "Registrar certificado")
+                                            @(savingTlsCertificate ? L["Clients.Edit.Registering"] : L["Clients.Edit.RegisterCertificateAction"])
                                         </button>
                                     </div>
                                 </div>
@@ -829,30 +826,30 @@ else
                         <summary>
                             <span class="client-key-method__icon"><SUIIcon Name="key" Size="19" /></span>
                             <span>
-                                <strong>Chaves públicas — private_key_jwt</strong>
-                                <small>Recomendado para serviços capazes de assinar uma client assertion.</small>
+                                <strong>@L["Clients.Edit.PublicKeysTitle"]</strong>
+                                <small>@L["Clients.Edit.PublicKeysDescription"]</small>
                             </span>
                             <span class="status-badge status-badge--@(HasPrivateKeyJwt ? "success" : "neutral")">
-                                @(HasPrivateKeyJwt ? "Ativo" : "Opcional")
+                                @(HasPrivateKeyJwt ? L["Clients.List.ClientStatusActive"] : L["Clients.Edit.OptionalBadge"])
                             </span>
                         </summary>
                         <div class="client-key-method__body">
                             <div class="inline-notice" role="note">
                                 <SUIIcon Name="info" Size="18" />
                                 <div>
-                                    <strong>Envie somente material público</strong>
-                                    <span>O Identity rejeita parâmetros privados, chaves simétricas e kids duplicados. Até 10 chaves podem coexistir durante a rotação.</span>
+                                    <strong>@L["Clients.Edit.PublicMaterialOnlyTitle"]</strong>
+                                    <span>@L["Clients.Edit.PublicMaterialOnlyMessage"]</span>
                                 </div>
                             </div>
                             <div class="field-group">
-                                <label for="client-public-jwks">JWKS público</label>
+                                <label for="client-public-jwks">@L["Clients.Edit.JwksLabel"]</label>
                                 <textarea id="client-public-jwks"
                                           name="clientPublicJwks"
                                           class="form-control form-control--textarea technical-value client-key-method__textarea"
                                           spellcheck="false"
                                           placeholder='{"keys":[{"kty":"EC","kid":"...","use":"sig","crv":"P-256","x":"...","y":"..."}]}'
                                           @bind="publicJwksJson"></textarea>
-                                <span class="field-hint">Deixe vazio e salve para remover o método. Nunca cole a chave privada.</span>
+                                <span class="field-hint">@L["Clients.Edit.JwksHint"]</span>
                             </div>
                             @if (!string.IsNullOrWhiteSpace(jwksErrorMessage))
                             {
@@ -860,7 +857,7 @@ else
                             }
                             <div class="client-key-method__actions">
                                 <button class="button button--primary" type="button" disabled="@savingJwks" @onclick="SavePublicJwksAsync">
-                                    @(savingJwks ? "Salvando…" : "Salvar chaves públicas")
+                                    @(savingJwks ? L["Clients.Draft.Saving"] : L["Clients.Edit.SaveJwksAction"])
                                 </button>
                             </div>
                         </div>
@@ -872,7 +869,7 @@ else
             {
                 <div class="inline-notice inline-notice--danger" role="alert">
                     <SUIIcon Name="alert" Size="19" />
-                    <div><strong>Revise a configuração</strong><span>@errorMessage</span></div>
+                    <div><strong>@L["Clients.Edit.ReviewConfigErrorTitle"]</strong><span>@errorMessage</span></div>
                 </div>
             }
 
@@ -881,10 +878,10 @@ else
                 <div class="wizard-actions">
                     <div>
                         <button class="button button--primary" type="button" disabled="@saving" @onclick="SaveAsync">
-                            @if (saving) { <span class="button-spinner" aria-hidden="true"></span><span>Salvando…</span> } else { <SUIIcon Name="check" Size="17" /><span>Salvar alterações</span> }
+                            @if (saving) { <span class="button-spinner" aria-hidden="true"></span><span>@L["Clients.Draft.Saving"]</span> } else { <SUIIcon Name="check" Size="17" /><span>@L["Clients.Edit.SaveChangesAction"]</span> }
                         </button>
                     </div>
-                    <span class="field-hint">As alterações serão auditadas e usam a versão @client.Version.</span>
+                    <span class="field-hint">@L["Clients.Edit.AuditVersionNote", client.Version]</span>
                 </div>
             }
         </main>
@@ -897,13 +894,13 @@ else
     [SupplyParameterFromQuery(Name = "section")]
     public string? InitialSection { get; set; }
 
-    private static readonly EditorSection[] Sections =
+    private EditorSection[] Sections =>
     [
-        new("Identidade", "settings"),
-        new("Protocolos e scopes", "workflow"),
-        new("Tokens", "key"),
-        new("URLs e logout", "browser"),
-        new("Credenciais", "lock"),
+        new(L["Clients.Draft.Step.Identity"].Value, "settings"),
+        new(L["Clients.Edit.SectionProtocolsScopes"].Value, "workflow"),
+        new(L["Clients.Draft.TokensLabel"].Value, "key"),
+        new(L["Clients.Edit.SectionUrlsLogout"].Value, "browser"),
+        new(L["Clients.Draft.Step.Credentials"].Value, "lock"),
     ];
     private ManagementClientDetail? client;
     private ManagementDataResult<ManagementClientDetail>? loadResult;
@@ -967,18 +964,18 @@ else
     private string DetailHref => $"clients/{Uri.EscapeDataString(Id)}";
     private string HeaderTitle =>
         client is null
-            ? "Editar aplicação"
-            : $"Editar aplicação — {DisplayNameOrClientId}";
+            ? L["Clients.Edit.EditAppTitle"].Value
+            : L["Clients.Edit.EditAppTitleWithName", DisplayNameOrClientId].Value;
 
     private string HeaderDescription => client is null
-        ? "Altere qualquer seção e salve todas as mudanças de uma vez."
-        : $"Aplicação: {client.ClientId}. Ajustes gerais são salvos em conjunto; a credencial possui confirmação e auditoria próprias.";
+        ? L["Clients.Edit.HeaderDescriptionFallback"].Value
+        : L["Clients.Edit.HeaderDescriptionFormat", client.ClientId].Value;
 
-    private string PageTitleText => $"{DisplayNameOrClientId} — Editar aplicação | Sufficit Identity";
+    private string PageTitleText => $"{DisplayNameOrClientId} — {L["Clients.Edit.EditAppTitle"].Value} | Sufficit Identity";
 
     private string DisplayNameOrClientId =>
         string.IsNullOrWhiteSpace(displayName)
-            ? client?.ClientId ?? "aplicação"
+            ? client?.ClientId ?? L["Clients.Edit.GenericApplicationWord"].Value
             : displayName;
 
     private bool ShowsCredentialsSection => client is not null;
@@ -1032,11 +1029,11 @@ else
 
     private string SectionDescription => activeSection switch
     {
-        0 => "Altere apenas os dados de apresentação e consentimento; o client ID permanece estável.",
-        1 => "Escolha somente os fluxos necessários e os scopes que a aplicação realmente consome.",
-        2 => "Defina a validade padrão dos tokens emitidos para esta aplicação ou herde o valor global.",
-        3 => "Confira os destinos antes de salvar. Cada URI é validada no servidor.",
-        _ => "Faça rotação sem indisponibilidade e prefira autenticação assimétrica quando a aplicação suportar.",
+        0 => L["Clients.Edit.SectionDescIdentity"].Value,
+        1 => L["Clients.Edit.SectionDescProtocol"].Value,
+        2 => L["Clients.Edit.SectionDescTokens"].Value,
+        3 => L["Clients.Edit.SectionDescUrls"].Value,
+        _ => L["Clients.Edit.SectionDescCredentials"].Value,
     };
 
     protected override async Task OnParametersSetAsync()
@@ -1101,7 +1098,7 @@ else
             Navigation.NavigateTo($"{DetailHref}?updated=1");
             return;
         }
-        errorMessage = result.ErrorMessage ?? "Não foi possível salvar as alterações.";
+        errorMessage = result.ErrorMessage ?? L["Clients.Edit.SaveFailedError"].Value;
     }
 
     private UpdateManagementClientCommand BuildUpdateCommand(
@@ -1110,7 +1107,7 @@ else
         if (client is null)
         {
             throw new InvalidOperationException(
-                "A aplicação precisa estar carregada antes de salvar.");
+                "The application must be loaded before saving.");
         }
 
         int? accessLifetime = inheritAccessTokenLifetime
@@ -1262,7 +1259,7 @@ else
         if (!result.IsSuccess || result.Value is null)
         {
             credentialErrorMessage = result.ErrorMessage
-                ?? "Não foi possível adicionar a credencial.";
+                ?? L["Clients.Edit.AddCredentialError"].Value;
             return;
         }
 
@@ -1293,7 +1290,7 @@ else
         if (!result.IsSuccess || result.Value is null)
         {
             credentialErrorMessage = result.ErrorMessage
-                ?? "Não foi possível substituir a credencial.";
+                ?? L["Clients.Edit.ReplaceCredentialError"].Value;
             return;
         }
 
@@ -1356,7 +1353,7 @@ else
         }
 
         credentialErrorMessage = result.ErrorMessage
-            ?? "Não foi possível carregar as credenciais.";
+            ?? L["Clients.Edit.LoadCredentialsError"].Value;
     }
 
     private async Task RefreshClientAsync()
@@ -1416,7 +1413,7 @@ else
         if (!result.IsSuccess || result.Value is null)
         {
             credentialErrorMessage = result.ErrorMessage
-                ?? "Não foi possível revogar a credencial.";
+                ?? L["Clients.Edit.RevokeCredentialError"].Value;
             return;
         }
 
@@ -1463,7 +1460,7 @@ else
         if (string.IsNullOrWhiteSpace(expectedVersion))
         {
             tlsCertificateErrorMessage =
-                "Recarregue a aplicação para confirmar a versão atual.";
+                L["Clients.Edit.ReloadToConfirmVersion"].Value;
             return;
         }
 
@@ -1480,7 +1477,7 @@ else
         if (!result.IsSuccess || result.Value is null)
         {
             tlsCertificateErrorMessage = result.ErrorMessage
-                ?? "Não foi possível registrar o certificado.";
+                ?? L["Clients.Edit.RegisterCertError"].Value;
             return;
         }
 
@@ -1513,7 +1510,7 @@ else
         if (string.IsNullOrWhiteSpace(expectedVersion))
         {
             tlsCertificateErrorMessage =
-                "Recarregue a aplicação para confirmar a versão atual.";
+                L["Clients.Edit.ReloadToConfirmVersion"].Value;
             return;
         }
 
@@ -1527,7 +1524,7 @@ else
         if (!result.IsSuccess || result.Value is null)
         {
             tlsCertificateErrorMessage = result.ErrorMessage
-                ?? "Não foi possível revogar o certificado.";
+                ?? L["Clients.Edit.RevokeCertError"].Value;
             return;
         }
 
@@ -1552,7 +1549,7 @@ else
         if (!result.IsSuccess || result.Value is null)
         {
             jwksErrorMessage = result.ErrorMessage
-                ?? "Não foi possível salvar as chaves públicas.";
+                ?? L["Clients.Edit.SaveJwksError"].Value;
             return;
         }
 
@@ -1615,43 +1612,43 @@ else
             _ => 0,
         };
 
-    private static string FormatMinutes(int minutes)
+    private string FormatMinutes(int minutes)
     {
         if (minutes % (24 * 60) == 0)
         {
             var days = minutes / (24 * 60);
-            return days is 1 ? "1 dia" : $"{days} dias";
+            return days is 1 ? L["Clients.Detail.OneDay"].Value : L["Clients.Detail.DaysFormat", days].Value;
         }
         if (minutes % 60 == 0)
         {
             var hours = minutes / 60;
-            return hours is 1 ? "1 hora" : $"{hours} horas";
+            return hours is 1 ? L["Clients.Detail.OneHour"].Value : L["Clients.Detail.HoursFormat", hours].Value;
         }
-        return minutes is 1 ? "1 minuto" : $"{minutes} minutos";
+        return minutes is 1 ? L["Clients.Detail.OneMinute"].Value : L["Clients.Detail.MinutesFormat", minutes].Value;
     }
 
-    private static string FormatDays(double days)
+    private string FormatDays(double days)
     {
         var value = days.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture);
-        return days is 1 ? "1 dia" : $"{value} dias";
+        return days is 1 ? L["Clients.Detail.OneDay"].Value : L["Clients.Detail.DaysFormat", value].Value;
     }
 
-    private static string AuthenticationMethodLabel(string method) => method switch
+    private string AuthenticationMethodLabel(string method) => method switch
     {
-        "client_secret_basic" => "Segredo no cabeçalho (Basic)",
-        "client_secret_post" => "Segredo no corpo",
-        "private_key_jwt" => "JWT assinado (private_key_jwt)",
-        "tls_client_auth" => "Certificado mTLS",
-        "self_signed_tls_client_auth" => "Certificado mTLS autoassinado",
+        "client_secret_basic" => L["Clients.Edit.AuthMethodSecretHeaderBasic"].Value,
+        "client_secret_post" => L["Clients.Edit.AuthMethodSecretBodyLabel"].Value,
+        "private_key_jwt" => L["Clients.Edit.AuthMethodSignedJwtLabel"].Value,
+        "tls_client_auth" => L["Clients.Edit.AuthMethodMtlsLabel"].Value,
+        "self_signed_tls_client_auth" => L["Clients.Edit.AuthMethodMtlsSelfSignedLabel"].Value,
         _ => method,
     };
 
-    private static string CredentialStatusLabel(string status) => status switch
+    private string CredentialStatusLabel(string status) => status switch
     {
-        "active" => "Ativa",
-        "scheduled" => "Agendada",
-        "expired" => "Expirada",
-        "revoked" => "Revogada",
+        "active" => L["Clients.Edit.StatusActive"].Value,
+        "scheduled" => L["Clients.Edit.StatusScheduled"].Value,
+        "expired" => L["Clients.Edit.StatusExpired"].Value,
+        "revoked" => L["Clients.Edit.StatusRevoked"].Value,
         _ => status,
     };
 
@@ -1682,11 +1679,11 @@ else
                     Math.Min(2, normalized.Length - index * 2))));
     }
 
-    private static string ClientTypeLabel(string? type) => type?.ToLowerInvariant() switch
+    private string ClientTypeLabel(string? type) => type?.ToLowerInvariant() switch
     {
-        "confidential" => "confidencial",
-        "public" => "público",
-        _ => "não informado"
+        "confidential" => L["Clients.Edit.TypeConfidentialLower"].Value,
+        "public" => L["Clients.Edit.TypePublicLower"].Value,
+        _ => L["Clients.Edit.TypeNotInformedLower"].Value
     };
 
     private sealed record EditorSection(string Label, string Icon);

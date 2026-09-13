@@ -1,17 +1,20 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Management.Audit;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.UI.Management.Clients;
+using Sufficit.Identity.UI.Management.Resources;
 
 namespace Sufficit.Identity.UI.Management.Audit;
 
 public sealed class ManagementAuditDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
-    ILogger<ManagementAuditDataSource> logger)
+    ILogger<ManagementAuditDataSource> logger,
+    IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer)
 {
     public async Task<ManagementDataResult<IReadOnlyList<ManagementAuditRecord>>>
         GetEventsAsync(
@@ -46,8 +49,8 @@ public sealed class ManagementAuditDataSource(
                 .Failure(
                     outcome,
                     outcome is ManagementDataOutcome.StepUpRequired
-                        ? "Conclua a autenticação multifator para continuar."
-                        : "Sua conta não possui a autoridade necessária.");
+                        ? localizer["Common.Access.StepUpRequired"]
+                        : localizer["Common.Access.Forbidden"]);
         }
         catch (OperationCanceledException)
         {
@@ -61,7 +64,7 @@ public sealed class ManagementAuditDataSource(
             return ManagementDataResult<IReadOnlyList<ManagementAuditRecord>>
                 .Failure(
                     ManagementDataOutcome.Unavailable,
-                    "Não foi possível consultar os eventos de auditoria.");
+                    localizer["Common.Unavailable"]);
         }
     }
 }

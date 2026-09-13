@@ -80,17 +80,17 @@ else if (result?.IsSuccess is true && result.Value is not null)
                 <code class="detail-value detail-value--code">@client.ClientId</code>
             </div>
             <div>
-                <span class="detail-label">Tipo</span>
+                <span class="detail-label">@L["Clients.Detail.TypeLabel"]</span>
                 <SUIStatusBadge ToneValue="@IdentitySuiTone.From(ClientTypeTone(client.Type))">
                     @ClientTypeLabel(client.Type)
                 </SUIStatusBadge>
             </div>
             <div>
-                <span class="detail-label">Consentimento</span>
+                <span class="detail-label">@L["Clients.Detail.ConsentLabel"]</span>
                 <strong class="detail-value">@ConsentTypeLabel(client.ConsentType)</strong>
             </div>
             <div>
-                <span class="detail-label">Identificador interno</span>
+                <span class="detail-label">@L["Clients.Detail.InternalIdLabel"]</span>
                 <code class="detail-value detail-value--code">@client.Id</code>
             </div>
         </div>
@@ -99,7 +99,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
         {
             <div class="inline-notice inline-notice--warning" role="status">
                 <SUIIcon Name="lock" Size="19" />
-                <div><strong>Gerenciada por manifesto</strong><span>Altere a definição declarativa para evitar que o próximo provisionamento sobrescreva este registro.</span></div>
+                <div><strong>@L["Clients.Detail.ManifestManagedTitle"]</strong><span>@L["Clients.Detail.ManifestManagedDescription"]</span></div>
             </div>
         }
 
@@ -108,14 +108,14 @@ else if (result?.IsSuccess is true && result.Value is not null)
                      aria-labelledby="permission-heading">
                 <header class="client-detail-panel__heading">
                     <div>
-                        <h2 id="permission-heading">Protocolos e permissões</h2>
-                        <p>@client.Permissions.Count permissões registradas</p>
+                        <h2 id="permission-heading">@L["Clients.Detail.PermissionsHeading"]</h2>
+                        <p>@L["Clients.Detail.PermissionsCount", client.Permissions.Count]</p>
                     </div>
                 </header>
 
                 @if (client.Permissions.Count is 0)
                 {
-                    <p class="detail-empty">Nenhuma permissão registrada.</p>
+                    <p class="detail-empty">@L["Clients.Detail.NoPermissions"]</p>
                 }
                 else
                 {
@@ -147,7 +147,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                         @if (HasOtherPermissions(client))
                         {
                             <div class="permission-group">
-                                <span class="detail-label">Endpoints e respostas</span>
+                                <span class="detail-label">@L["Clients.Detail.EndpointsAndResponses"]</span>
                                 <div class="permission-badges">
                                     @foreach (var permission in OtherPermissions(client))
                                     {
@@ -164,12 +164,12 @@ else if (result?.IsSuccess is true && result.Value is not null)
                      aria-labelledby="token-lifetime-heading">
                 <header class="client-detail-panel__heading client-detail-panel__heading--action">
                     <div>
-                        <h2 id="token-lifetime-heading">Validade dos tokens</h2>
-                        <p>Valor efetivo e origem da política</p>
+                        <h2 id="token-lifetime-heading">@L["Clients.Detail.TokenValidityHeading"]</h2>
+                        <p>@L["Clients.Detail.TokenValiditySubheading"]</p>
                     </div>
                     @if (!client.IsManifestManaged)
                     {
-                        <a class="compact-action" href="@EditTokensHref(client.Id)">Ajustar</a>
+                        <a class="compact-action" href="@EditTokensHref(client.Id)">@L["Clients.Detail.AdjustAction"]</a>
                     }
                 </header>
                 <dl class="token-policy-list">
@@ -205,13 +205,13 @@ else if (result?.IsSuccess is true && result.Value is not null)
                          aria-labelledby="client-secret-heading">
                     <header class="client-detail-panel__heading client-detail-panel__heading--action">
                         <div>
-                            <h2 id="client-secret-heading">Autenticação da aplicação</h2>
-                            <p>Credenciais compartilhadas e chaves públicas aceitas nos endpoints OAuth</p>
+                            <h2 id="client-secret-heading">@L["Clients.Detail.AppAuthHeading"]</h2>
+                            <p>@L["Clients.Detail.AppAuthSubheading"]</p>
                         </div>
                         @if (!client.IsManifestManaged)
                         {
                             <a class="compact-action" href="@EditCredentialsHref(client.Id)">
-                                Gerenciar
+                                @L["Clients.Detail.ManageAction"]
                             </a>
                         }
                     </header>
@@ -223,16 +223,16 @@ else if (result?.IsSuccess is true && result.Value is not null)
                             <strong>
                                 @(HasAuthenticationMethod(client)
                                     ? AuthenticationSummaryTitle(client)
-                                    : "Autenticação de cliente ainda não configurada")
+                                    : L["Clients.Detail.AuthNotConfigured"].Value)
                             </strong>
                             <span>
                                 @(HasAuthenticationMethod(client)
                                     ? AuthenticationMethodsDescription(client)
-                                    : "Adicione um segredo ou uma chave pública antes de usar fluxos de cliente confidencial.")
+                                    : L["Clients.Detail.AuthNotConfiguredHint"].Value)
                             </span>
                         </div>
                         <SUIStatusBadge ToneValue="@(HasAuthenticationMethod(client) ? SUITone.Success : SUITone.Warning)">
-                            @(HasAuthenticationMethod(client) ? "Configurada" : "Ação necessária")
+                            @(HasAuthenticationMethod(client) ? L["Clients.Detail.ConfiguredBadge"] : L["Clients.Detail.ActionRequiredBadge"])
                         </SUIStatusBadge>
                     </div>
                 </section>
@@ -242,8 +242,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
                      aria-labelledby="redirect-heading">
                 <header class="client-detail-panel__heading">
                     <div>
-                        <h2 id="redirect-heading">Destinos e logout</h2>
-                        <p>URLs utilizadas pelo navegador e pelos canais de encerramento</p>
+                        <h2 id="redirect-heading">@L["Clients.Detail.DestinationsHeading"]</h2>
+                        <p>@L["Clients.Detail.DestinationsSubheading"]</p>
                     </div>
                 </header>
                 <div class="uri-groups">
@@ -254,7 +254,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                         </div>
                         @if (client.RedirectUris.Count is 0)
                         {
-                            <p class="detail-empty">Nenhuma URI registrada.</p>
+                            <p class="detail-empty">@L["Clients.Detail.NoUris"]</p>
                         }
                         else
                         {
@@ -268,12 +268,12 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     </div>
                     <div class="uri-group">
                         <div class="uri-group__heading">
-                            <h3>Após logout</h3>
+                            <h3>@L["Clients.Detail.AfterLogoutHeading"]</h3>
                             <span>@client.PostLogoutRedirectUris.Count</span>
                         </div>
                         @if (client.PostLogoutRedirectUris.Count is 0)
                         {
-                            <p class="detail-empty">Nenhum destino registrado.</p>
+                            <p class="detail-empty">@L["Clients.Detail.NoDestinations"]</p>
                         }
                         else
                         {
@@ -287,12 +287,12 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     </div>
                     <div class="uri-group">
                         <div class="uri-group__heading">
-                            <h3>Retornos nativos</h3>
+                            <h3>@L["Clients.Detail.NativeReturnsHeading"]</h3>
                             <span>@(client.NativeReturnUris?.Count ?? 0)</span>
                         </div>
                         @if ((client.NativeReturnUris?.Count ?? 0) is 0)
                         {
-                            <p class="detail-empty">Nenhum retorno registrado.</p>
+                            <p class="detail-empty">@L["Clients.Detail.NoReturns"]</p>
                         }
                         else
                         {
@@ -306,12 +306,12 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     </div>
                     <div class="uri-group">
                         <div class="uri-group__heading">
-                            <h3>Logout federado</h3>
+                            <h3>@L["Clients.Detail.FederatedLogoutHeading"]</h3>
                             <span>@FederatedLogoutCount(client)</span>
                         </div>
                         @if (client.FrontchannelLogoutUri is null && client.BackchannelLogoutUri is null)
                         {
-                            <p class="detail-empty">Nenhum endpoint registrado.</p>
+                            <p class="detail-empty">@L["Clients.Detail.NoEndpoints"]</p>
                         }
                         else
                         {
@@ -335,8 +335,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
                 <section class="client-detail-panel client-detail-panel--requirements"
                          aria-labelledby="requirements-heading">
                     <div>
-                        <h2 id="requirements-heading">Requisitos de segurança</h2>
-                        <p>Controles adicionais aplicados durante a autorização.</p>
+                        <h2 id="requirements-heading">@L["Clients.Detail.SecurityRequirementsHeading"]</h2>
+                        <p>@L["Clients.Detail.SecurityRequirementsSubheading"]</p>
                     </div>
                     <div class="token-row">
                         @foreach (var requirement in client.Requirements)
@@ -351,10 +351,9 @@ else if (result?.IsSuccess is true && result.Value is not null)
 
     <div class="danger-zone" aria-labelledby="delete-client-heading">
         <div>
-            <h2 id="delete-client-heading">Excluir cliente</h2>
+            <h2 id="delete-client-heading">@L["Clients.Detail.DeleteClient"]</h2>
             <p>
-                A exclusão interrompe novos fluxos OAuth deste cliente e é registrada
-                de forma permanente na auditoria administrativa.
+                @L["Clients.Detail.DeleteDescription"]
             </p>
         </div>
 
@@ -364,14 +363,14 @@ else if (result?.IsSuccess is true && result.Value is not null)
                     type="button"
                     @onclick="BeginDelete">
                 <SUIIcon Name="trash" Size="17" />
-                Excluir cliente
+                @L["Clients.Detail.DeleteClient"]
             </button>
         }
         else
         {
             <div class="delete-confirmation">
                 <label for="delete-confirmation">
-                    Digite <code>@client.ClientId</code> para confirmar
+                    @L["Clients.Detail.DeleteConfirmPrefix"] <code>@client.ClientId</code> @L["Clients.Detail.DeleteConfirmSuffix"]
                 </label>
                 <input id="delete-confirmation"
                        class="form-control"
@@ -387,7 +386,7 @@ else if (result?.IsSuccess is true && result.Value is not null)
                             type="button"
                             disabled="@deleting"
                             @onclick="CancelDelete">
-                        Cancelar
+                        @L["Clients.Detail.Cancel"]
                     </button>
                     <button class="button button--danger"
                             type="button"
@@ -396,12 +395,12 @@ else if (result?.IsSuccess is true && result.Value is not null)
                         @if (deleting)
                         {
                             <span class="button-spinner" aria-hidden="true"></span>
-                            <span>Excluindo…</span>
+                            <span>@L["Clients.Detail.Deleting"]</span>
                         }
                         else
                         {
                             <SUIIcon Name="trash" Size="17" />
-                            <span>Confirmar exclusão</span>
+                            <span>@L["Clients.Detail.ConfirmDelete"]</span>
                         }
                     </button>
                 </div>
@@ -416,13 +415,13 @@ else
                     Title="@ErrorTitle"
                     Description="@ErrorDescription">
             <Actions>
-                <a class="button button--secondary" href="clients">Voltar para clientes</a>
+                <a class="button button--secondary" href="clients">@L["Clients.Detail.Back"]</a>
                 @if (result?.Outcome is ManagementDataOutcome.Unavailable)
                 {
                     <button class="button button--primary"
                             type="button"
                             @onclick="LoadAsync">
-                        Tentar novamente
+                        @L["Clients.Create.Retry"]
                     </button>
                 }
             </Actions>
@@ -453,7 +452,7 @@ else
     private string HeaderTitle =>
         result?.Value?.DisplayName
         ?? result?.Value?.ClientId
-        ?? "Detalhes do cliente";
+        ?? L["Clients.Detail.HeaderFallbackTitle"].Value;
 
     private string PageTitleText =>
         $"{HeaderTitle} | Sufficit Identity";
@@ -483,12 +482,12 @@ else
 
     private string ErrorTitle =>
         result?.Outcome is ManagementDataOutcome.NotFound
-            ? "Cliente não encontrado"
-            : "Não foi possível abrir o cliente";
+            ? L["Clients.Detail.NotFoundTitle"].Value
+            : L["Clients.Detail.GenericErrorTitle"].Value;
 
     private string ErrorDescription =>
         result?.ErrorMessage
-        ?? "O serviço de identidade não conseguiu ler esse registro. Tente novamente.";
+        ?? L["Clients.Detail.GenericErrorDescription"].Value;
 
     protected override async Task OnParametersSetAsync() =>
         await LoadAsync();
@@ -532,12 +531,12 @@ else
         }
     }
 
-    private static string ClientTypeLabel(string? type) =>
+    private string ClientTypeLabel(string? type) =>
         type?.ToLowerInvariant() switch
         {
-            "public" => "Público",
-            "confidential" => "Confidencial",
-            null or "" => "Não informado",
+            "public" => L["Clients.Detail.TypePublic"].Value,
+            "confidential" => L["Clients.Detail.TypeConfidential"].Value,
+            null or "" => L["Clients.Detail.NotInformed"].Value,
             _ => type
         };
 
@@ -546,14 +545,14 @@ else
             ? "info"
             : "neutral";
 
-    private static string ConsentTypeLabel(string? consentType) =>
+    private string ConsentTypeLabel(string? consentType) =>
         consentType?.ToLowerInvariant() switch
         {
-            "explicit" => "Explícito",
-            "implicit" => "Implícito",
-            "external" => "Externo",
-            "systematic" => "Sistemático",
-            null or "" => "Não informado",
+            "explicit" => L["Clients.Detail.ConsentExplicit"].Value,
+            "implicit" => L["Clients.Detail.ConsentImplicit"].Value,
+            "external" => L["Clients.Detail.ConsentExternal"].Value,
+            "systematic" => L["Clients.Detail.ConsentSystematic"].Value,
+            null or "" => L["Clients.Detail.NotInformed"].Value,
             _ => consentType
         };
 
@@ -564,11 +563,11 @@ else
             .Replace("ept:", "endpoint: ", StringComparison.Ordinal)
             .Replace("rst:", "response: ", StringComparison.Ordinal);
 
-    private static string RequirementLabel(string requirement) =>
+    private string RequirementLabel(string requirement) =>
         requirement switch
         {
-            "ft:pkce" => "PKCE obrigatório",
-            "ft:par" => "PAR obrigatório",
+            "ft:pkce" => L["Clients.Detail.PkceRequired"].Value,
+            "ft:par" => L["Clients.Detail.ParRequired"].Value,
             _ => requirement
         };
 
@@ -585,37 +584,37 @@ else
     private static bool HasAuthenticationMethod(ManagementClientDetail client) =>
         client.AuthenticationMethods?.Count is > 0;
 
-    private static string AuthenticationMethodsDescription(
+    private string AuthenticationMethodsDescription(
         ManagementClientDetail client)
     {
         var methods = client.AuthenticationMethods ?? [];
         var labels = methods
             .Select(method => method switch
             {
-                "client_secret_basic" => "segredo no cabeçalho",
-                "client_secret_post" => "segredo no corpo",
-                "private_key_jwt" => "JWT assinado",
-                "tls_client_auth" => "certificado mTLS",
-                "self_signed_tls_client_auth" => "certificado mTLS autoassinado",
+                "client_secret_basic" => L["Clients.Detail.AuthMethodSecretHeader"].Value,
+                "client_secret_post" => L["Clients.Detail.AuthMethodSecretBody"].Value,
+                "private_key_jwt" => L["Clients.Detail.AuthMethodSignedJwt"].Value,
+                "tls_client_auth" => L["Clients.Detail.AuthMethodMtls"].Value,
+                "self_signed_tls_client_auth" => L["Clients.Detail.AuthMethodMtlsSelfSigned"].Value,
                 _ => method,
             })
             .Distinct(StringComparer.Ordinal)
             .ToArray();
         return labels.Length is 0
-            ? "Nenhum método disponível."
-            : $"Métodos disponíveis: {string.Join(", ", labels)}. Cada requisição usa somente um método.";
+            ? L["Clients.Detail.NoAuthMethodsAvailable"].Value
+            : L["Clients.Detail.AuthMethodsAvailable", string.Join(", ", labels)].Value;
     }
 
-    private static string AuthenticationSummaryTitle(
+    private string AuthenticationSummaryTitle(
         ManagementClientDetail client) =>
         client.ActiveCredentialCount switch
         {
-            > 1 => $"{client.ActiveCredentialCount} credenciais compartilhadas ativas",
-            1 => "1 credencial compartilhada ativa",
+            > 1 => L["Clients.Detail.ActiveCredentialsCount", client.ActiveCredentialCount].Value,
+            1 => L["Clients.Detail.ActiveCredentialSingular"].Value,
             _ when client.AuthenticationMethods?.Contains(
                 "private_key_jwt",
-                StringComparer.Ordinal) is true => "Autenticação por chave pública ativa",
-            _ => "Autenticação de cliente configurada",
+                StringComparer.Ordinal) is true => L["Clients.Detail.PublicKeyAuthActive"].Value,
+            _ => L["Clients.Detail.ClientAuthConfigured"].Value,
         };
 
     private static IEnumerable<string> PermissionsWithPrefix(
@@ -648,27 +647,29 @@ else
         (client.FrontchannelLogoutUri is null ? 0 : 1)
         + (client.BackchannelLogoutUri is null ? 0 : 1);
 
-    private static string PolicySource(int? configuredValue) =>
-        configuredValue is null ? "Padrão global" : "Personalizado";
+    private string PolicySource(int? configuredValue) =>
+        configuredValue is null
+            ? L["Clients.Detail.PolicyGlobalDefault"].Value
+            : L["Clients.Detail.PolicyCustom"].Value;
 
-    private static string FormatMinutes(int minutes)
+    private string FormatMinutes(int minutes)
     {
         if (minutes % (24 * 60) == 0)
         {
             var days = minutes / (24 * 60);
-            return days is 1 ? "1 dia" : $"{days} dias";
+            return days is 1 ? L["Clients.Detail.OneDay"].Value : L["Clients.Detail.DaysFormat", days].Value;
         }
         if (minutes % 60 == 0)
         {
             var hours = minutes / 60;
-            return hours is 1 ? "1 hora" : $"{hours} horas";
+            return hours is 1 ? L["Clients.Detail.OneHour"].Value : L["Clients.Detail.HoursFormat", hours].Value;
         }
-        return minutes is 1 ? "1 minuto" : $"{minutes} minutos";
+        return minutes is 1 ? L["Clients.Detail.OneMinute"].Value : L["Clients.Detail.MinutesFormat", minutes].Value;
     }
 
-    private static string FormatDays(double days)
+    private string FormatDays(double days)
     {
         var value = days.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture);
-        return days is 1 ? "1 dia" : $"{value} dias";
+        return days is 1 ? L["Clients.Detail.OneDay"].Value : L["Clients.Detail.DaysFormat", value].Value;
     }
 }

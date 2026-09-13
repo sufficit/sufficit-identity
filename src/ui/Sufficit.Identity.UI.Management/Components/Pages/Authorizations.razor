@@ -3,17 +3,17 @@
 @attribute [StreamRendering]
 @inject ManagementAuthorizationDataSource AuthorizationData
 
-<PageTitle>Autorizações | Sufficit Identity</PageTitle>
+<PageTitle>@L["Authorizations.PageTitle"]</PageTitle>
 
-<SUIPageHeader Title="Autorizações"
-            Description="Revise consentimentos e grants OAuth/OpenID Connect mantidos pelo provedor.">
+<SUIPageHeader Title="@L["Authorizations.HeaderTitle"].Value"
+            Description="@L["Authorizations.HeaderDescription"].Value">
 </SUIPageHeader>
 
 <div class="contract-strip contract-strip--info">
     <SUIIcon Name="shield" Size="20" />
     <div>
-        <strong>Autorizações persistidas</strong>
-        <span>Revogar uma autorização também invalida todas as credenciais associadas a ela.</span>
+        <strong>@L["Authorizations.ContractStrip.Title"]</strong>
+        <span>@L["Authorizations.ContractStrip.Description"]</span>
     </div>
     <SUIStatusBadge ToneValue="SUITone.Info">OAuth &amp; OIDC</SUIStatusBadge>
 </div>
@@ -23,8 +23,8 @@
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
         <div>
-            <strong>Autorização revogada</strong>
-            <span>O grant e suas credenciais relacionadas não podem mais ser utilizados.</span>
+            <strong>@L["Authorizations.Revoked.Title"]</strong>
+            <span>@L["Authorizations.Revoked.Description"]</span>
         </div>
     </div>
 }
@@ -32,27 +32,27 @@
 <div class="table-panel" aria-labelledby="authorizations-list-heading" aria-busy="@loading">
     <div class="data-toolbar data-toolbar--users">
         <div>
-            <h2 id="authorizations-list-heading">Grants e consentimentos</h2>
+            <h2 id="authorizations-list-heading">@L["Authorizations.List.Heading"]</h2>
             <p>@FilterDescription</p>
         </div>
         <div class="data-toolbar__actions">
             <form class="user-search" @onsubmit="SearchAsync" @onsubmit:preventDefault>
                 <label class="search-field">
-                    <span class="visually-hidden">Pesquisar autorizações</span>
+                    <span class="visually-hidden">@L["Authorizations.Search.VisuallyHidden"]</span>
                     <SUIIcon Name="search" Size="18" />
                     <input type="search"
-                           placeholder="Usuário, cliente, tipo ou estado"
+                           placeholder="@L["Authorizations.Search.Placeholder"].Value"
                            autocomplete="off"
                            @bind="search" />
                 </label>
                 <div class="select-field">
-                    <span>Estado</span>
-                    <SUISelect T="string" id="authorization-state-filter" name="state" aria-label="Estado" @bind-Value="stateFilter">
-                        <SUISelectItem Value="@("active")">Ativas</SUISelectItem>
-                        <SUISelectItem Value="@("all")">Todas</SUISelectItem>
+                    <span>@L["Authorizations.Filter.StateLabel"]</span>
+                    <SUISelect T="string" id="authorization-state-filter" name="state" aria-label="@L["Authorizations.Filter.StateLabel"].Value" @bind-Value="stateFilter">
+                        <SUISelectItem Value="@("active")">@L["Authorizations.Filter.Active"]</SUISelectItem>
+                        <SUISelectItem Value="@("all")">@L["Authorizations.Filter.All"]</SUISelectItem>
                     </SUISelect>
                 </div>
-                <button class="button button--secondary" type="submit" disabled="@loading">Aplicar</button>
+                <button class="button button--secondary" type="submit" disabled="@loading">@L["Authorizations.Apply"]</button>
             </form>
         </div>
     </div>
@@ -60,7 +60,7 @@
     <div class="client-results" aria-live="polite">
         @if (loading)
         {
-            <div class="table-skeleton" aria-label="Carregando autorizações">
+            <div class="table-skeleton" aria-label="@L["Authorizations.LoadingAriaLabel"].Value">
                 @for (var index = 0; index < 4; index++)
                 {
                     <span></span>
@@ -72,8 +72,8 @@
             @if (Page.Items.Count is 0)
             {
                 <SUIEmptyState Icon="shield"
-                            Title="Nenhuma autorização encontrada"
-                            Description="Não há grants neste recorte. Altere o estado ou a pesquisa para ampliar a consulta." />
+                            Title="@L["Authorizations.Empty.Title"].Value"
+                            Description="@L["Authorizations.Empty.Description"].Value" />
             }
             else
             {
@@ -81,43 +81,43 @@
                     <table class="data-table data-table--claims">
                         <thead>
                             <tr>
-                                <th scope="col">Usuário</th>
-                                <th scope="col">Cliente</th>
-                                <th scope="col">Scopes</th>
-                                <th scope="col">Tipo / criação</th>
-                                <th scope="col">Credenciais</th>
-                                <th scope="col">Estado</th>
-                                <th scope="col"><span class="visually-hidden">Ações</span></th>
+                                <th scope="col">@L["Authorizations.Column.User"]</th>
+                                <th scope="col">@L["Authorizations.Column.Client"]</th>
+                                <th scope="col">@L["Authorizations.Column.Scopes"]</th>
+                                <th scope="col">@L["Authorizations.Column.TypeCreated"]</th>
+                                <th scope="col">@L["Authorizations.Column.Credentials"]</th>
+                                <th scope="col">@L["Authorizations.Column.State"]</th>
+                                <th scope="col"><span class="visually-hidden">@L["Authorizations.Column.Actions"]</span></th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach (var grant in Page.Items)
                             {
                                 <tr>
-                                    <td data-label="Usuário">
+                                    <td data-label="@L["Authorizations.Column.User"].Value">
                                         @if (grant.UserId is not null)
                                         {
                                             <a class="client-name" href="@UserHref(grant.UserId)">@UserLabel(grant)</a>
                                         }
                                         else
                                         {
-                                            <span>Sem usuário</span>
+                                            <span>@L["Authorizations.NoUser"]</span>
                                         }
                                     </td>
-                                    <td data-label="Cliente">
+                                    <td data-label="@L["Authorizations.Column.Client"].Value">
                                         <span class="scope-identity">
-                                            <strong>@(grant.ClientDisplayName ?? grant.ClientId ?? "Sem cliente")</strong>
+                                            <strong>@(grant.ClientDisplayName ?? grant.ClientId ?? L["Authorizations.NoClient"].Value)</strong>
                                             @if (grant.ClientId is not null)
                                             {
                                                 <code>@grant.ClientId</code>
                                             }
                                         </span>
                                     </td>
-                                    <td data-label="Scopes">
+                                    <td data-label="@L["Authorizations.Column.Scopes"].Value">
                                         <span class="token-row">
                                             @if (grant.Scopes.Count is 0)
                                             {
-                                                <span>Sem scopes</span>
+                                                <span>@L["Authorizations.NoScopes"]</span>
                                             }
                                             else
                                             {
@@ -132,25 +132,25 @@
                                             }
                                         </span>
                                     </td>
-                                    <td data-label="Tipo / criação">
+                                    <td data-label="@L["Authorizations.Column.TypeCreated"].Value">
                                         <span class="scope-identity">
                                             <strong>@TypeLabel(grant.Type)</strong>
                                             <code>@DateLabel(grant.CreatedAt)</code>
                                         </span>
                                     </td>
-                                    <td data-label="Credenciais">@grant.CredentialCount</td>
-                                    <td data-label="Estado">
+                                    <td data-label="@L["Authorizations.Column.Credentials"].Value">@grant.CredentialCount</td>
+                                    <td data-label="@L["Authorizations.Column.State"].Value">
                                         <SUIStatusBadge ToneValue="@(grant.IsActive ? SUITone.Success : SUITone.Neutral)">
                                             @StatusLabel(grant.Status)
                                         </SUIStatusBadge>
                                     </td>
-                                    <td data-label="Ações">
+                                    <td data-label="@L["Authorizations.Column.Actions"].Value">
                                         @if (grant.IsActive)
                                         {
                                             <button class="row-action row-action--button"
                                                     type="button"
                                                     @onclick="() => SelectForRevocation(grant)">
-                                                Revogar
+                                                @L["Authorizations.RevokeAction"]
                                                 <SUIIcon Name="lock" Size="15" />
                                             </button>
                                         }
@@ -166,9 +166,9 @@
         {
             <SUIEmptyState Icon="alert"
                         Title="@ErrorTitle"
-                        Description="@(result?.ErrorMessage ?? "O serviço não conseguiu consultar as autorizações.")">
+                        Description="@(result?.ErrorMessage ?? L["Authorizations.Error.GenericDescription"].Value)">
                 <Actions>
-                    <button class="button button--secondary" type="button" @onclick="LoadAsync">Tentar novamente</button>
+                    <button class="button button--secondary" type="button" @onclick="LoadAsync">@L["Authorizations.Retry"]</button>
                 </Actions>
             </SUIEmptyState>
         }
@@ -178,14 +178,14 @@
         <span>@ResultCountLabel</span>
         @if (result?.IsSuccess is true && Page.TotalCount > Page.PageSize)
         {
-            <div class="pagination" aria-label="Paginação de autorizações">
+            <div class="pagination" aria-label="@L["Authorizations.PaginationAriaLabel"].Value">
                 <button class="button button--secondary button--compact" type="button"
                         disabled="@(Page.Page <= 1 || loading)"
-                        @onclick="PreviousPageAsync">Anterior</button>
-                <span>Página @Page.Page de @TotalPages</span>
+                        @onclick="PreviousPageAsync">@L["Authorizations.Previous"]</button>
+                <span>@string.Format(L["Authorizations.PageOfFormat"].Value, Page.Page, TotalPages)</span>
                 <button class="button button--secondary button--compact" type="button"
                         disabled="@(Page.Page >= TotalPages || loading)"
-                        @onclick="NextPageAsync">Próxima</button>
+                        @onclick="NextPageAsync">@L["Authorizations.Next"]</button>
             </div>
         }
     </footer>
@@ -195,20 +195,20 @@
 {
     <div class="delete-zone" aria-labelledby="revoke-authorization-heading">
         <div>
-            <h2 id="revoke-authorization-heading">Revogar esta autorização?</h2>
-            <p>@UserLabel(selected) · @(selected.ClientDisplayName ?? selected.ClientId ?? "Sem cliente") · @selected.CredentialCount credencial(is) associada(s).</p>
+            <h2 id="revoke-authorization-heading">@L["Authorizations.RevokeConfirm.Heading"]</h2>
+            <p>@UserLabel(selected) · @(selected.ClientDisplayName ?? selected.ClientId ?? L["Authorizations.NoClient"].Value) · @string.Format(L["Authorizations.RevokeConfirm.CredentialCountFormat"].Value, selected.CredentialCount)</p>
         </div>
         @if (revocation?.IsSuccess is false)
         {
             <div class="inline-notice inline-notice--danger" role="alert">
                 <SUIIcon Name="alert" Size="19" />
-                <div><strong>Não foi possível revogar</strong><span>@revocation.ErrorMessage</span></div>
+                <div><strong>@L["Authorizations.RevokeConfirm.ErrorTitle"]</strong><span>@revocation.ErrorMessage</span></div>
             </div>
         }
-        <button class="button button--secondary" type="button" @onclick="CancelRevocation">Cancelar</button>
+        <button class="button button--secondary" type="button" @onclick="CancelRevocation">@L["Authorizations.Cancel"]</button>
         <button class="button button--danger" type="button" disabled="@revoking" @onclick="RevokeAsync">
             <SUIIcon Name="lock" Size="17" />
-            @(revoking ? "Revogando…" : "Confirmar revogação")
+            @(revoking ? L["Authorizations.Revoking"] : L["Authorizations.ConfirmRevocation"])
         </button>
     </div>
 }
@@ -239,24 +239,24 @@
 
     private string FilterDescription =>
         UserId is not null
-            ? $"Filtradas pela conta {UserId}."
+            ? string.Format(L["Authorizations.FilterDescription.ByAccountFormat"].Value, UserId)
             : ClientId is not null
-                ? $"Filtradas pelo cliente {ClientId}."
-                : "Cada linha representa uma autorização persistida pelo runtime de autorização.";
+                ? string.Format(L["Authorizations.FilterDescription.ByClientFormat"].Value, ClientId)
+                : L["Authorizations.FilterDescription.Default"].Value;
 
     private string ErrorTitle =>
         result?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? "MFA exigido para consultar autorizações"
+            ? L["Authorizations.Error.StepUp"].Value
             : result?.Outcome is ManagementDataOutcome.Forbidden
-                ? "Acesso às autorizações negado"
-                : "Não foi possível consultar as autorizações";
+                ? L["Authorizations.Error.Forbidden"].Value
+                : L["Authorizations.Error.Generic"].Value;
 
     private string ResultCountLabel =>
         loading
-            ? "Carregando autorizações"
+            ? L["Authorizations.ResultCount.Loading"].Value
             : result?.IsSuccess is true
-                ? $"{Page.TotalCount} autorização(ões)"
-                : "Nenhum resultado carregado";
+                ? string.Format(L["Authorizations.ResultCount.Format"].Value, Page.TotalCount)
+                : L["Authorizations.ResultCount.NoneLoaded"].Value;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -327,8 +327,8 @@
         }
     }
 
-    private static string UserLabel(ManagementAuthorizationSummary grant) =>
-        grant.UserName ?? grant.Email ?? grant.UserId ?? "Sem usuário";
+    private string UserLabel(ManagementAuthorizationSummary grant) =>
+        grant.UserName ?? grant.Email ?? grant.UserId ?? L["Authorizations.NoUser"].Value;
 
     private static string UserHref(string id) =>
         $"users/{Uri.EscapeDataString(id)}";
@@ -336,14 +336,14 @@
     private static string TypeLabel(string value) =>
         value.Replace('_', ' ');
 
-    private static string StatusLabel(string value) =>
+    private string StatusLabel(string value) =>
         value switch
         {
-            "valid" => "Ativa",
-            "revoked" => "Revogada",
+            "valid" => L["Authorizations.Status.Active"].Value,
+            "revoked" => L["Authorizations.Status.Revoked"].Value,
             _ => value
         };
 
-    private static string DateLabel(DateTimeOffset? value) =>
-        value?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "data não registrada";
+    private string DateLabel(DateTimeOffset? value) =>
+        value?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? L["Authorizations.NoDateRecorded"].Value;
 }

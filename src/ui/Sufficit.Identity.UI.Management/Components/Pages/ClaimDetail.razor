@@ -5,14 +5,14 @@
 
 @{ var claim = result?.Value!; }
 
-<PageTitle>Editar claim | Sufficit Identity</PageTitle>
+<PageTitle>@L["ClaimDetail.PageTitle"]</PageTitle>
 
-<SUIPageHeader Title="Editar claim"
-            Description="Atualize o tipo ou o valor desta atribuição sem recriar o registro.">
+<SUIPageHeader Title="@L["ClaimDetail.HeaderTitle"].Value"
+            Description="@L["ClaimDetail.HeaderDescription"].Value">
     <Actions>
         <a class="button button--secondary" href="@BackHref">
             <SUIIcon Name="arrow-left" Size="17" />
-            Voltar para claims
+            @L["ClaimDetail.BackToClaims"]
         </a>
     </Actions>
 </SUIPageHeader>
@@ -22,8 +22,8 @@
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
         <div>
-            <strong>Claim atualizada</strong>
-            <span>A nova versão foi persistida e os tokens anteriores da conta foram revogados.</span>
+            <strong>@L["ClaimDetail.Updated.Title"]</strong>
+            <span>@L["ClaimDetail.Updated.Description"]</span>
         </div>
     </div>
 }
@@ -32,17 +32,17 @@
 {
     <div>
         <SUIEmptyState Icon="users"
-                    Title="Selecione uma claim"
-                    Description="Abra as claims de um usuário e escolha a atribuição que deseja editar.">
+                    Title="@L["ClaimDetail.SelectClaim.Title"].Value"
+                    Description="@L["ClaimDetail.SelectClaim.Description"].Value">
             <Actions>
-                <a class="button button--primary" href="users">Abrir diretório de usuários</a>
+                <a class="button button--primary" href="users">@L["ClaimDetail.OpenUserDirectory"]</a>
             </Actions>
         </SUIEmptyState>
     </div>
 }
 else if (loading)
 {
-    <div class="detail-shell" aria-busy="true" aria-label="Carregando claim">
+    <div class="detail-shell" aria-busy="true" aria-label="@L["ClaimDetail.LoadingAriaLabel"].Value">
         <div class="detail-skeleton"></div>
         <div class="detail-skeleton detail-skeleton--short"></div>
     </div>
@@ -53,10 +53,10 @@ else if (result?.IsSuccess is true && result.Value is not null
     <div class="contract-strip contract-strip--warning">
         <SUIIcon Name="refresh" Size="20" />
         <div>
-            <strong>Atualização com invalidação</strong>
-            <span>Salvar gira o selo de segurança e revoga as credenciais emitidas para @AccountLabel(claim).</span>
+            <strong>@L["ClaimDetail.ContractStrip.Title"]</strong>
+            <span>@string.Format(L["ClaimDetail.ContractStrip.DescriptionFormat"].Value, AccountLabel(claim))</span>
         </div>
-        <SUIStatusBadge ToneValue="SUITone.Warning">Impacta credenciais</SUIStatusBadge>
+        <SUIStatusBadge ToneValue="SUITone.Warning">@L["ClaimDetail.ContractStrip.Badge"]</SUIStatusBadge>
     </div>
 
     @if (submission?.IsSuccess is false)
@@ -64,7 +64,7 @@ else if (result?.IsSuccess is true && result.Value is not null
         <div class="inline-notice inline-notice--danger" role="alert">
             <SUIIcon Name="alert" Size="19" />
             <div>
-                <strong>Não foi possível atualizar a claim</strong>
+                <strong>@L["ClaimDetail.SubmitError.Title"]</strong>
                 <span>@submission.ErrorMessage</span>
             </div>
         </div>
@@ -79,16 +79,16 @@ else if (result?.IsSuccess is true && result.Value is not null
 
         <div class="form-section" aria-labelledby="claim-identity-heading">
             <div class="form-section__heading">
-                <h2 id="claim-identity-heading">Atribuição</h2>
-                <p>O identificador e a conta permanecem fixos; tipo e valor podem ser corrigidos.</p>
+                <h2 id="claim-identity-heading">@L["ClaimDetail.Assignment.Heading"]</h2>
+                <p>@L["ClaimDetail.Assignment.Description"]</p>
             </div>
             <dl class="property-list">
                 <div>
-                    <dt>Conta</dt>
+                    <dt>@L["ClaimDetail.Field.Account"]</dt>
                     <dd><a class="client-name" href="@UserHref">@AccountLabel(claim)</a></dd>
                 </div>
                 <div>
-                    <dt>Identificador</dt>
+                    <dt>@L["ClaimDetail.Field.Identifier"]</dt>
                     <dd><code class="client-id">@claim.Id</code></dd>
                 </div>
             </dl>
@@ -96,12 +96,12 @@ else if (result?.IsSuccess is true && result.Value is not null
 
         <div class="form-section" aria-labelledby="claim-edit-heading">
             <div class="form-section__heading">
-                <h2 id="claim-edit-heading">Tipo e valor</h2>
-                <p>Claims multivaloradas continuam representadas por atribuições independentes.</p>
+                <h2 id="claim-edit-heading">@L["ClaimDetail.TypeValue.Heading"]</h2>
+                <p>@L["ClaimDetail.TypeValue.Description"]</p>
             </div>
 
             <div class="field-group">
-                <label for="claim-type">Tipo da claim</label>
+                <label for="claim-type">@L["ClaimDetail.Field.Type"]</label>
                 <InputText id="claim-type"
                            class="form-control"
                            autocomplete="off"
@@ -110,27 +110,27 @@ else if (result?.IsSuccess is true && result.Value is not null
             </div>
 
             <div class="field-group">
-                <label for="claim-value">Valor</label>
+                <label for="claim-value">@L["ClaimDetail.Field.Value"]</label>
                 <InputTextArea id="claim-value"
                                class="form-control form-control--textarea"
                                @bind-Value="model.Value" />
                 <ValidationMessage For="() => model.Value" />
-                <span class="field-hint">O conteúdo não será registrado no evento de auditoria.</span>
+                <span class="field-hint">@L["ClaimDetail.Field.ValueHint"]</span>
             </div>
         </div>
 
         <footer class="form-actions">
-            <a class="button button--secondary" href="@BackHref">Cancelar</a>
+            <a class="button button--secondary" href="@BackHref">@L["ClaimDetail.Cancel"]</a>
             <button class="button button--primary" type="submit" disabled="@saving">
                 @if (saving)
                 {
                     <span class="button-spinner" aria-hidden="true"></span>
-                    <span>Salvando…</span>
+                    <span>@L["ClaimDetail.Saving"]</span>
                 }
                 else
                 {
                     <SUIIcon Name="edit" Size="17" />
-                    <span>Salvar claim</span>
+                    <span>@L["ClaimDetail.SaveClaim"]</span>
                 }
             </button>
         </footer>
@@ -139,29 +139,29 @@ else if (result?.IsSuccess is true && result.Value is not null
 
     <div class="delete-zone" aria-labelledby="delete-claim-heading">
         <div>
-            <h2 id="delete-claim-heading">Remover atribuição</h2>
-            <p>Exclui somente esta claim e invalida as credenciais emitidas anteriormente.</p>
+            <h2 id="delete-claim-heading">@L["ClaimDetail.Delete.Heading"]</h2>
+            <p>@L["ClaimDetail.Delete.Description"]</p>
         </div>
         @if (deletion?.IsSuccess is false)
         {
             <div class="inline-notice inline-notice--danger" role="alert">
                 <SUIIcon Name="alert" Size="19" />
                 <div>
-                    <strong>Não foi possível remover a claim</strong>
+                    <strong>@L["ClaimDetail.Delete.ErrorTitle"]</strong>
                     <span>@deletion.ErrorMessage</span>
                 </div>
             </div>
         }
         <label class="delete-confirmation">
             <input type="checkbox" @bind="confirmed" />
-            <span>Confirmo a remoção desta atribuição.</span>
+            <span>@L["ClaimDetail.Delete.ConfirmLabel"]</span>
         </label>
         <button class="button button--danger"
                 type="button"
                 disabled="@(!confirmed || deleting)"
                 @onclick="DeleteAsync">
             <SUIIcon Name="trash" Size="17" />
-            @(deleting ? "Removendo…" : "Remover claim")
+            @(deleting ? L["ClaimDetail.Delete.Removing"] : L["ClaimDetail.Delete.Submit"])
         </button>
     </div>
 }
@@ -170,9 +170,9 @@ else
     <div>
         <SUIEmptyState Icon="alert"
                     Title="@ErrorTitle"
-                    Description="@(result?.ErrorMessage ?? "A claim não pertence a esta conta ou não foi encontrada.")">
+                    Description="@(result?.ErrorMessage ?? L["ClaimDetail.Error.GenericDescription"].Value)">
             <Actions>
-                <a class="button button--secondary" href="@BackHref">Voltar para claims</a>
+                <a class="button button--secondary" href="@BackHref">@L["ClaimDetail.BackToClaims"]</a>
             </Actions>
         </SUIEmptyState>
     </div>
@@ -210,10 +210,10 @@ else
 
     private string ErrorTitle =>
         result?.Outcome is ManagementDataOutcome.NotFound
-            ? "Claim não encontrada"
+            ? L["ClaimDetail.Error.NotFound"].Value
             : result?.Outcome is ManagementDataOutcome.StepUpRequired
-                ? "MFA exigido para consultar a claim"
-                : "Não foi possível abrir a claim";
+                ? L["ClaimDetail.Error.StepUp"].Value
+                : L["ClaimDetail.Error.Generic"].Value;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -278,14 +278,41 @@ else
     private static string AccountLabel(ManagementClaimAssignment claim) =>
         claim.UserName ?? claim.Email ?? claim.UserId;
 
-    private sealed class ClaimEditModel
+    protected override void OnInitialized()
     {
-        [Required(ErrorMessage = "Informe o tipo da claim.")]
-        [StringLength(256, ErrorMessage = "Use no máximo 256 caracteres.")]
+        model.Localizer = L;
+        base.OnInitialized();
+    }
+
+    private sealed class ClaimEditModel : IValidatableObject
+    {
+        public IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource>? Localizer { get; set; }
+
         public string Type { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Informe o valor da claim.")]
-        [StringLength(4096, ErrorMessage = "Use no máximo 4096 caracteres.")]
         public string Value { get; set; } = string.Empty;
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            var l = Localizer ?? throw new InvalidOperationException(
+                "The form model localizer must be set before validation.");
+
+            if (string.IsNullOrWhiteSpace(Type))
+            {
+                yield return new ValidationResult(l["Claims.Validation.TypeRequired"].Value, [nameof(Type)]);
+            }
+            if (Type?.Length > 256)
+            {
+                yield return new ValidationResult(l["Common.Validation.MaxLength", 256].Value, [nameof(Type)]);
+            }
+            if (string.IsNullOrWhiteSpace(Value))
+            {
+                yield return new ValidationResult(l["Claims.Validation.ValueRequired"].Value, [nameof(Value)]);
+            }
+            if (Value?.Length > 4096)
+            {
+                yield return new ValidationResult(l["Common.Validation.MaxLength", 4096].Value, [nameof(Value)]);
+            }
+        }
     }
 }
