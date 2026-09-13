@@ -457,8 +457,8 @@ public sealed class ScimProvisioningTests
                         ["Sufficit:Identity:Scim:RequiredScope"] = requiredScope
                     });
             });
-            builder.ConfigureServices((context, services) =>
-                services.AddSufficitIdentityScim(context.Configuration));
+            // No service registration here: the parent factory composes SCIM
+            // through ScimIdentityModule once Scim:Enabled is true.
         });
 
     private static StringContent ScimJson(object value) =>

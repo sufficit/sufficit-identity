@@ -12,8 +12,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using System.Security.Cryptography.X509Certificates;
 using Sufficit.Identity.Core.Data;
+using Sufficit.Identity.Hosting;
 using Sufficit.Identity.Management;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Scim;
 using Sufficit.Identity.STS;
 using Sufficit.Identity.Vault;
 using Xunit;
@@ -138,7 +140,11 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
             services.AddSufficitIdentitySTS(
                 context.Configuration,
                 secretStore: new TestSecretStore(context.Configuration));
-            services.AddSufficitIdentityManagement(context.Configuration);
+            // Management (and SCIM, when a test enables it) are composed
+            // through the same modules as src/server/Program.cs, so these
+            // tests exercise the module registrations themselves.
+            CreateModules(context.Configuration)
+                .ConfigureServices(services, context.Configuration);
 
             // Keep the test host on the Development pass-through key backend,
             // whose database is created after host startup, while letting the
@@ -212,14 +218,22 @@ public sealed class ManagementTestFactory : WebApplicationFactory<ManagementTest
 
             app.UseEndpoints(endpoints => endpoints.MapControllers());
 
-            // Map the management endpoints under their configured prefix
-            // (default "api"), exactly as src/server/Program.cs does.
-            // UseSufficitIdentityManagementEndpoints does its own MapWhen +
-            // branch (UseRouting/UseEndpoints) internally, so it must run on
-            // the app pipeline, not inside a UseEndpoints callback.
-            app.UseSufficitIdentityManagementEndpoints(configuration);
+            // Module endpoints (the management API under its configured
+            // prefix) at the same position as src/server/Program.cs. The
+            // management module maps through its own MapWhen branch, so it
+            // runs on the app pipeline, not inside a UseEndpoints callback.
+            var pipeline = new IdentityPipelineBuilder();
+            CreateModules(configuration).ConfigurePipeline(pipeline);
+            pipeline.ApplyStage(app, IdentityPipelineStage.Endpoints);
+            pipeline.EnsureAllApplied();
         });
     }
+
+    private static IdentityModuleCatalog CreateModules(IConfiguration configuration) =>
+        IdentityModuleCatalog.Create(
+            configuration,
+            new ManagementIdentityModule(),
+            new ScimIdentityModule());
 
     private static void ReplaceDatabaseWithSqlite(IServiceCollection services, SqliteConnection connection)
     {
