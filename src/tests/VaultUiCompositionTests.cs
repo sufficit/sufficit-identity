@@ -1,3 +1,4 @@
+using System.Xml.Linq;
 using Xunit;
 
 namespace Sufficit.Identity.Tests;
@@ -29,6 +30,14 @@ public sealed class VaultUiCompositionTests
         var css = File.ReadAllText(Path.Combine(
             root, "src", "ui", "Sufficit.Identity.UI.Vault", "wwwroot",
             "vault.css"));
+        var portuguese = XDocument.Load(Path.Combine(
+                root, "src", "ui", "Sufficit.Identity.UI.Vault", "Resources",
+                "VaultResource.pt-BR.resx"))
+            .Root!.Elements("data")
+            .ToDictionary(
+                data => (string)data.Attribute("name")!,
+                data => (string?)data.Element("value") ?? string.Empty,
+                StringComparer.Ordinal);
 
         Assert.Contains("Sufficit.Identity.Application.Abstractions", project,
             StringComparison.Ordinal);
@@ -37,38 +46,39 @@ public sealed class VaultUiCompositionTests
         Assert.DoesNotContain("DbContext", userPage, StringComparison.Ordinal);
         Assert.DoesNotContain("Ciphertext", userPage, StringComparison.Ordinal);
         Assert.Contains("@page \"/vault\"", userPage, StringComparison.Ordinal);
-        Assert.Contains("Credenciais conectadas", userPage,
-            StringComparison.Ordinal);
-        Assert.Contains("Gerenciada pelo aplicativo", userPage,
-            StringComparison.Ordinal);
+        AssertLocalized(userPage, portuguese,
+            "Vault.UserVault.ManagedCredentialHeading", "Credenciais conectadas");
+        AssertLocalized(userPage, portuguese,
+            "Vault.UserVault.ManagedByApp", "Gerenciada pelo aplicativo");
         Assert.Contains("LoadPersonalOverviewAsync", userPage,
             StringComparison.Ordinal);
         Assert.Contains("<AuthorizeView Policy=\"@VaultUiPolicies.Admin\">",
             userPage, StringComparison.Ordinal);
         Assert.Contains("Href=\"/vault/admin\"", userPage,
             StringComparison.Ordinal);
-        Assert.Contains("Administração global", userPage,
-            StringComparison.Ordinal);
-        Assert.Contains("Credenciais pessoais permanecem isoladas por usuário",
-            userPage, StringComparison.Ordinal);
+        AssertLocalized(userPage, portuguese,
+            "Vault.UserVault.AdminEntryHeading", "Administração global");
+        AssertLocalized(userPage, portuguese,
+            "Vault.UserVault.AdminEntryBody",
+            "Credenciais pessoais permanecem isoladas por usuário");
         Assert.Contains("@page \"/vault/admin\"", adminPage,
             StringComparison.Ordinal);
         Assert.Contains("@page \"/management/vault\"", adminPage,
             StringComparison.Ordinal);
-        Assert.Contains("Vaults de usuários", adminPage,
-            StringComparison.Ordinal);
-        Assert.Contains("Segredos globais", adminPage,
-            StringComparison.Ordinal);
+        AssertLocalized(adminPage, portuguese,
+            "Vault.AdminVault.UserVaultsTab", "Vaults de usuários");
+        AssertLocalized(adminPage, portuguese,
+            "Vault.AdminVault.GlobalSecretsHeading", "Segredos globais");
         Assert.Contains("ListVaultUsersAsync", adminPage,
             StringComparison.Ordinal);
         Assert.Contains("@page \"/vault/admin/users/{OwnerSubject}\"",
             adminUserPage, StringComparison.Ordinal);
-        Assert.Contains("Credenciais conectadas", adminUserPage,
-            StringComparison.Ordinal);
-        Assert.Contains("Segredos pessoais", adminUserPage,
-            StringComparison.Ordinal);
-        Assert.Contains("Limpar o Vault deste usuário", adminUserPage,
-            StringComparison.Ordinal);
+        AssertLocalized(adminUserPage, portuguese,
+            "Vault.AdminUserVault.ManagedCredentialsHeading", "Credenciais conectadas");
+        AssertLocalized(adminUserPage, portuguese,
+            "Vault.AdminUserVault.PersonalSecretsHeading", "Segredos pessoais");
+        AssertLocalized(adminUserPage, portuguese,
+            "Vault.AdminUserVault.CleanupHeading", "Limpar o Vault deste usuário");
         Assert.DoesNotContain("Ciphertext", adminPage, StringComparison.Ordinal);
         Assert.DoesNotContain("Ciphertext", adminUserPage, StringComparison.Ordinal);
         Assert.DoesNotContain("ResolveAsync", dataSource, StringComparison.Ordinal);
@@ -201,5 +211,20 @@ public sealed class VaultUiCompositionTests
 
         return directory?.FullName
             ?? throw new DirectoryNotFoundException("Identity repository root was not found.");
+    }
+
+    /// <summary>
+    /// The page renders the text through its resource key, and the pt-BR
+    /// satellite keeps the wording the page used before localization.
+    /// </summary>
+    private static void AssertLocalized(
+        string source,
+        IReadOnlyDictionary<string, string> portuguese,
+        string key,
+        string expectedPortuguese)
+    {
+        Assert.Contains($"\"{key}\"", source, StringComparison.Ordinal);
+        Assert.True(portuguese.TryGetValue(key, out var value), $"Missing pt-BR resource {key}.");
+        Assert.Contains(expectedPortuguese, value, StringComparison.Ordinal);
     }
 }

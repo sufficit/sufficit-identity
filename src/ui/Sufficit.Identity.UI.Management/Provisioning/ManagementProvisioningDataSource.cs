@@ -2,10 +2,12 @@ using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Provisioning;
 using Sufficit.Identity.UI.Management.Clients;
+using Sufficit.Identity.UI.Management.Resources;
 
 namespace Sufficit.Identity.UI.Management.Provisioning;
 
@@ -17,7 +19,8 @@ namespace Sufficit.Identity.UI.Management.Provisioning;
 public sealed class ManagementProvisioningDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
-    ILogger<ManagementProvisioningDataSource> logger)
+    ILogger<ManagementProvisioningDataSource> logger,
+    IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer)
 {
     public const int MaxManifestLength = 262_144;
 
@@ -62,15 +65,15 @@ public sealed class ManagementProvisioningDataSource(
         if (string.IsNullOrWhiteSpace(manifestJson))
         {
             return Invalid(
-                "Informe o manifesto JSON.",
-                "O documento não pode ficar vazio.");
+                localizer["Provisioning.Validation.ManifestRequired"],
+                localizer["Provisioning.Validation.ManifestRequiredDetail"]);
         }
 
         if (manifestJson.Length > MaxManifestLength)
         {
             return Invalid(
-                "O manifesto excede o limite permitido.",
-                $"Use no máximo {MaxManifestLength:N0} caracteres.");
+                localizer["Provisioning.Validation.ManifestTooLarge"],
+                localizer["Common.Validation.MaxLength", MaxManifestLength.ToString("N0")]);
         }
 
         IdentityProvisioningManifest? manifest;
@@ -83,15 +86,15 @@ public sealed class ManagementProvisioningDataSource(
         catch (JsonException exception)
         {
             return Invalid(
-                "O JSON não pôde ser interpretado.",
+                localizer["Provisioning.Validation.JsonInvalid"],
                 JsonError(exception));
         }
 
         if (manifest is null)
         {
             return Invalid(
-                "Informe um objeto JSON válido.",
-                "O valor JSON null não representa um manifesto.");
+                localizer["Provisioning.Validation.ManifestObjectRequired"],
+                localizer["Provisioning.Validation.ManifestNullDetail"]);
         }
 
         try
@@ -113,18 +116,20 @@ public sealed class ManagementProvisioningDataSource(
         {
             return ManagementDataResult<IdentityProvisioningPlan>.Failure(
                 ManagementDataOutcome.Invalid,
-                "O manifesto não passou pela validação de segurança.",
+                localizer["Provisioning.Validation.SecurityValidationFailed"],
                 errorDetails: exception.Errors);
         }
         catch (ManagementConflictException exception)
         {
             return ProvisioningErrorMessages.ConflictFailure<IdentityProvisioningPlan>(
+                localizer,
                 exception,
                 operationName);
         }
         catch (ManagementAccessException exception)
         {
             return ProvisioningErrorMessages.AccessFailure<IdentityProvisioningPlan>(
+                localizer,
                 exception.Decision,
                 operationName,
                 operationName is "Provisioning apply"
@@ -138,11 +143,12 @@ public sealed class ManagementProvisioningDataSource(
             return ManagementDataResult<IdentityProvisioningPlan>.Failure(
                 ManagementDataOutcome.Unavailable,
                 ProvisioningErrorMessages.TimeoutMessage(
+                    localizer,
                     operationName is "Provisioning apply"
-                        ? "aplicar o manifesto"
-                        : "gerar o preview"),
+                        ? localizer["Provisioning.Operation.ApplyManifest"]
+                        : localizer["Provisioning.Operation.GeneratePreview"]),
                 errorDetails: [
-                    "Próximo passo: confirme o estado do Identity em /health/ready e tente novamente."
+                    localizer["Provisioning.NextStep.CheckHealth"]
                 ]);
         }
         catch (OperationCanceledException)
@@ -158,16 +164,17 @@ public sealed class ManagementProvisioningDataSource(
             return ManagementDataResult<IdentityProvisioningPlan>.Failure(
                 ManagementDataOutcome.Unavailable,
                 ProvisioningErrorMessages.DependencyMessage(
+                    localizer,
                     operationName is "Provisioning apply"
-                        ? "aplicar o manifesto"
-                        : "gerar o preview"),
+                        ? localizer["Provisioning.Operation.ApplyManifest"]
+                        : localizer["Provisioning.Operation.GeneratePreview"]),
                 errorDetails: [
-                    "Se o problema persistir, encaminhe o horário e o ID de correlação ao administrador do serviço."
+                    localizer["Provisioning.NextStep.ForwardCorrelationId"]
                 ]);
         }
     }
 
-    private static ManagementDataResult<IdentityProvisioningPlan> Invalid(
+    private ManagementDataResult<IdentityProvisioningPlan> Invalid(
         string message,
         string detail) =>
         ManagementDataResult<IdentityProvisioningPlan>.Failure(
@@ -175,12 +182,15 @@ public sealed class ManagementProvisioningDataSource(
             message,
             errorDetails: [detail]);
 
-    private static string JsonError(JsonException exception)
+    private string JsonError(JsonException exception)
     {
         var location = exception.LineNumber is null
             ? null
-            : $"Linha {exception.LineNumber + 1}, coluna {(exception.BytePositionInLine ?? 0) + 1}.";
+            : localizer[
+                "Provisioning.Validation.JsonInvalidLocation",
+                exception.LineNumber + 1,
+                (exception.BytePositionInLine ?? 0) + 1].Value;
         return location
-            ?? "Revise a sintaxe e os nomes das propriedades.";
+            ?? localizer["Provisioning.Validation.JsonInvalidGeneric"];
     }
 }

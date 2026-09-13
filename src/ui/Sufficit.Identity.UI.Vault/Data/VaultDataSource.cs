@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Vault;
+using Sufficit.Identity.UI.Vault.Resources;
 
 namespace Sufficit.Identity.UI.Vault.Data;
 
@@ -16,7 +18,8 @@ public sealed record VaultDataResult<T>(bool IsSuccess, T? Value, string? Error)
 public sealed class VaultDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
-    ILogger<VaultDataSource> logger)
+    ILogger<VaultDataSource> logger,
+    IStringLocalizer<Sufficit.Identity.UI.Vault.Resources.VaultResource> localizer)
 {
     public async Task<VaultDataResult<UserVaultOverview>> LoadPersonalOverviewAsync(
         CancellationToken cancellationToken = default)
@@ -24,7 +27,7 @@ public sealed class VaultDataSource(
         var subject = await SubjectAsync();
         if (subject is null)
             return VaultDataResult<UserVaultOverview>.Failure(
-                "Sua sessão não possui uma identidade válida.");
+                localizer["Vault.Data.SessionWithoutIdentity"].Value);
         return await ExecuteAsync<IUserVaultOverviewService, UserVaultOverview>(
             (service, _) => service.GetAsync(subject, cancellationToken),
             "personal Vault overview", cancellationToken);
@@ -34,7 +37,7 @@ public sealed class VaultDataSource(
         string @namespace, string name, string value, CancellationToken cancellationToken = default)
     {
         var subject = await SubjectAsync();
-        if (subject is null) return VaultDataResult<UserVaultSecretMetadata>.Failure("Sua sessão não possui uma identidade válida.");
+        if (subject is null) return VaultDataResult<UserVaultSecretMetadata>.Failure(localizer["Vault.Data.SessionWithoutIdentity"].Value);
         return await ExecuteAsync<IUserVaultService, UserVaultSecretMetadata>(
             (service, _) => service.PutAsync(subject, @namespace, name,
                 new SaveUserVaultSecret(value), cancellationToken),
@@ -45,7 +48,7 @@ public sealed class VaultDataSource(
         string @namespace, string name, CancellationToken cancellationToken = default)
     {
         var subject = await SubjectAsync();
-        if (subject is null) return VaultDataResult<bool>.Failure("Sua sessão não possui uma identidade válida.");
+        if (subject is null) return VaultDataResult<bool>.Failure(localizer["Vault.Data.SessionWithoutIdentity"].Value);
         return await ExecuteAsync<IUserVaultService, bool>(
             async (service, _) => { await service.DeleteAsync(subject, @namespace, name, cancellationToken); return true; },
             "personal Vault deletion", cancellationToken);
@@ -162,12 +165,12 @@ public sealed class VaultDataSource(
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return VaultDataResult<T>.Failure("O Vault demorou mais que o esperado. Tente novamente.");
+            return VaultDataResult<T>.Failure(localizer["Vault.Data.OperationTimedOut"].Value);
         }
         catch (Exception exception)
         {
             logger.LogError(exception, "{OperationName} failed.", operationName);
-            return VaultDataResult<T>.Failure("Não foi possível concluir a operação do Vault.");
+            return VaultDataResult<T>.Failure(localizer["Vault.Data.OperationFailed"].Value);
         }
     }
 

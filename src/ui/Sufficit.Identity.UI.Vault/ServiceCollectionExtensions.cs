@@ -93,6 +93,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuthorizationHandler,
             VaultCapabilityAuthorizationHandler>();
         services.AddCascadingAuthenticationState();
+        services.AddLocalization();
         services.TryAddScoped<VaultDataSource>();
         services.AddRazorComponents().AddInteractiveServerComponents();
         // SUI component library — default theme (blue #2563eb). Vault has no

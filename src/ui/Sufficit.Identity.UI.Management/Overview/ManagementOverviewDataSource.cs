@@ -1,10 +1,12 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Overview;
 using Sufficit.Identity.UI.Management.Clients;
+using Sufficit.Identity.UI.Management.Resources;
 
 namespace Sufficit.Identity.UI.Management.Overview;
 
@@ -14,7 +16,8 @@ namespace Sufficit.Identity.UI.Management.Overview;
 public sealed class ManagementOverviewDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
-    ILogger<ManagementOverviewDataSource> logger)
+    ILogger<ManagementOverviewDataSource> logger,
+    IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer)
 {
     public async Task<ManagementDataResult<ManagementOverview>> GetAsync(
         CancellationToken cancellationToken = default)
@@ -48,8 +51,8 @@ public sealed class ManagementOverviewDataSource(
             return ManagementDataResult<ManagementOverview>.Failure(
                 outcome,
                 outcome is ManagementDataOutcome.StepUpRequired
-                    ? "Conclua a autenticação multifator para continuar."
-                    : "Sua conta não possui autoridade administrativa.");
+                    ? localizer["Common.Access.StepUpRequired"]
+                    : localizer["Common.Access.Forbidden"]);
         }
         catch (OperationCanceledException)
             when (!cancellationToken.IsCancellationRequested)
@@ -57,7 +60,7 @@ public sealed class ManagementOverviewDataSource(
             logger.LogWarning("Management runtime discovery timed out.");
             return ManagementDataResult<ManagementOverview>.Failure(
                 ManagementDataOutcome.Unavailable,
-                "O runtime demorou mais que o esperado. Tente novamente.");
+                localizer["Common.Timeout"]);
         }
         catch (OperationCanceledException)
         {
@@ -70,7 +73,7 @@ public sealed class ManagementOverviewDataSource(
                 "Management runtime discovery failed in the embedded module.");
             return ManagementDataResult<ManagementOverview>.Failure(
                 ManagementDataOutcome.Unavailable,
-                "O serviço de identidade não conseguiu informar seu estado.");
+                localizer["Common.Unavailable"]);
         }
     }
 }

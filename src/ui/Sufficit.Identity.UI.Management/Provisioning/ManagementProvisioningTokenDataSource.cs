@@ -1,10 +1,12 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Provisioning;
 using Sufficit.Identity.UI.Management.Clients;
+using Sufficit.Identity.UI.Management.Resources;
 
 namespace Sufficit.Identity.UI.Management.Provisioning;
 
@@ -16,13 +18,15 @@ namespace Sufficit.Identity.UI.Management.Provisioning;
 public sealed class ManagementProvisioningTokenDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
-    ILogger<ManagementProvisioningTokenDataSource> logger)
+    ILogger<ManagementProvisioningTokenDataSource> logger,
+    IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer)
 {
     public async Task<ManagementDataResult<ProvisioningTokenIssueResult>>
         IssueAsync(
             int lifetimeSeconds,
             CancellationToken cancellationToken = default)
     {
+        string operation = localizer["Provisioning.Operation.IssueTemporaryToken"];
         try
         {
             await using var scope = scopeFactory.CreateAsyncScope();
@@ -45,23 +49,25 @@ public sealed class ManagementProvisioningTokenDataSource(
         {
             return ManagementDataResult<ProvisioningTokenIssueResult>.Failure(
                 ManagementDataOutcome.Invalid,
-                exception.Message,
+                ManagementErrorText.For(localizer, exception),
                 exception.Field,
                 errorDetails: [
-                    "Próximo passo: escolha uma validade entre 60 segundos e o limite configurado no Identity."
+                    localizer["Provisioning.Validation.LifetimeNextStep"]
                 ]);
         }
         catch (ManagementConflictException exception)
         {
             return ProvisioningErrorMessages.ConflictFailure<ProvisioningTokenIssueResult>(
+                localizer,
                 exception,
-                "emitir o token temporário");
+                operation);
         }
         catch (ManagementAccessException exception)
         {
             return ProvisioningErrorMessages.AccessFailure<ProvisioningTokenIssueResult>(
+                localizer,
                 exception.Decision,
-                "emitir o token temporário",
+                operation,
                 ManagementCapabilities.ProvisioningApply);
         }
         catch (OperationCanceledException)
@@ -71,9 +77,10 @@ public sealed class ManagementProvisioningTokenDataSource(
             return ManagementDataResult<ProvisioningTokenIssueResult>.Failure(
                 ManagementDataOutcome.Unavailable,
                 ProvisioningErrorMessages.TimeoutMessage(
-                    "emitir o token temporário"),
+                    localizer,
+                    operation),
                 errorDetails: [
-                    "Próximo passo: confirme o estado do Identity em /health/ready e tente novamente."
+                    localizer["Provisioning.NextStep.CheckHealth"]
                 ]);
         }
         catch (OperationCanceledException)
@@ -88,9 +95,10 @@ public sealed class ManagementProvisioningTokenDataSource(
             return ManagementDataResult<ProvisioningTokenIssueResult>.Failure(
                 ManagementDataOutcome.Unavailable,
                 ProvisioningErrorMessages.DependencyMessage(
-                    "emitir o token temporário"),
+                    localizer,
+                    operation),
                 errorDetails: [
-                    "Próximo passo: confirme que esta versão do Identity está implantada e que a emissão temporária foi habilitada pela infraestrutura."
+                    localizer["Provisioning.NextStep.ConfirmDeploymentEnabled"]
                 ]);
         }
     }

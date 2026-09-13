@@ -1,10 +1,12 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.Management.Branding;
 using Sufficit.Identity.UI.Management.Clients;
+using Sufficit.Identity.UI.Management.Resources;
 
 namespace Sufficit.Identity.UI.Management.Branding;
 
@@ -15,7 +17,8 @@ namespace Sufficit.Identity.UI.Management.Branding;
 public sealed class ManagementBrandingDataSource(
     IServiceScopeFactory scopeFactory,
     AuthenticationStateProvider authenticationStateProvider,
-    ILogger<ManagementBrandingDataSource> logger)
+    ILogger<ManagementBrandingDataSource> logger,
+    IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer)
 {
     public Task<ManagementDataResult<IReadOnlyList<ManagementBrandingTheme>>>
         GetThemesAsync(CancellationToken cancellationToken = default) =>
@@ -99,20 +102,20 @@ public sealed class ManagementBrandingDataSource(
         {
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.Invalid,
-                exception.Message,
+                ManagementErrorText.For(localizer, exception),
                 exception.Field);
         }
         catch (ManagementConflictException exception)
         {
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.Conflict,
-                exception.Message);
+                ManagementErrorText.For(localizer, exception));
         }
         catch (ManagementNotFoundException exception)
         {
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.NotFound,
-                exception.Message);
+                ManagementErrorText.For(localizer, exception));
         }
         catch (ManagementAccessException exception)
         {
@@ -123,8 +126,8 @@ public sealed class ManagementBrandingDataSource(
             return ManagementDataResult<T>.Failure(
                 outcome,
                 outcome is ManagementDataOutcome.StepUpRequired
-                    ? "Conclua a autenticação multifator para continuar."
-                    : "Sua conta não possui a autoridade necessária.");
+                    ? localizer["Common.Access.StepUpRequired"]
+                    : localizer["Common.Access.Forbidden"]);
         }
         catch (OperationCanceledException)
             when (!cancellationToken.IsCancellationRequested)
@@ -132,7 +135,7 @@ public sealed class ManagementBrandingDataSource(
             logger.LogWarning("{OperationName} timed out.", operationName);
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.Unavailable,
-                "O serviço demorou mais que o esperado. Tente novamente.");
+                localizer["Common.Timeout"]);
         }
         catch (OperationCanceledException)
         {
@@ -146,7 +149,7 @@ public sealed class ManagementBrandingDataSource(
                 operationName);
             return ManagementDataResult<T>.Failure(
                 ManagementDataOutcome.Unavailable,
-                "O serviço de identidade não conseguiu concluir a operação.");
+                localizer["Common.Unavailable"]);
         }
     }
 

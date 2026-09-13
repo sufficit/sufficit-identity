@@ -6,28 +6,28 @@
 @inject VaultDataSource Data
 @inject NavigationManager Navigation
 
-<PageTitle>Gestão do Vault | Sufficit Identity</PageTitle>
-<SUIPageHeader Title="Gestão do Vault"
-            Description="Localize credenciais por usuário, remova acessos comprometidos e mantenha os segredos globais dos serviços.">
-    <Actions><SUIStatusBadge ToneValue="SUITone.Warning" Icon="shield">Acesso administrativo</SUIStatusBadge></Actions>
+<PageTitle>@L["Vault.AdminVault.PageTitle"].Value | Sufficit Identity</PageTitle>
+<SUIPageHeader Title="@L["Vault.AdminVault.PageTitle"].Value"
+            Description="@L["Vault.AdminVault.Description"].Value">
+    <Actions><SUIStatusBadge ToneValue="SUITone.Warning" Icon="shield">@L["Vault.AdminVault.AdminAccessBadge"]</SUIStatusBadge></Actions>
 </SUIPageHeader>
 
 <div class="vault-note vault-note--warning" role="note">
     <SUIIcon Name="alert" Size="20" />
     <div>
-        <strong>Valores protegidos continuam invisíveis.</strong>
-        <span>Esta área mostra somente metadados. Remoções são definitivas, exigem permissão de gestão e ficam registradas na auditoria.</span>
+        <strong>@L["Vault.AdminVault.WarningNoteTitle"]</strong>
+        <span>@L["Vault.AdminVault.WarningNoteBody"]</span>
     </div>
 </div>
 
-<nav class="vault-admin-tabs" aria-label="Áreas da gestão do Vault">
+<nav class="vault-admin-tabs" aria-label="@L["Vault.AdminVault.TabsAriaLabel"].Value">
     <a class="vault-admin-tab @(!IsGlobalView ? "vault-admin-tab--active" : null)"
        href="@UsersUrl()" aria-current="@(!IsGlobalView ? "page" : null)">
-        <SUIIcon Name="users" Size="17" /> Vaults de usuários
+        <SUIIcon Name="users" Size="17" /> @L["Vault.AdminVault.UserVaultsTab"]
     </a>
     <a class="vault-admin-tab @(IsGlobalView ? "vault-admin-tab--active" : null)"
        href="/vault/admin?view=global" aria-current="@(IsGlobalView ? "page" : null)">
-        <SUIIcon Name="database" Size="17" /> Segredos globais
+        <SUIIcon Name="database" Size="17" /> @L["Vault.AdminVault.GlobalSecretsTab"]
     </a>
 </nav>
 
@@ -35,7 +35,7 @@
 {
     <section class="vault-panel" aria-labelledby="admin-secret-heading">
         <div class="vault-panel__heading">
-            <div><h2 id="admin-secret-heading">Criar ou rotacionar</h2><p>O novo valor é aceito somente nesta operação e não poderá ser consultado nesta tela.</p></div>
+            <div><h2 id="admin-secret-heading">@L["Vault.AdminVault.CreateOrRotateHeading"]</h2><p>@L["Vault.AdminVault.CreateOrRotateDescription"]</p></div>
         </div>
         <AuthorizeView Policy="@VaultUiPolicies.AdminManage">
             <Authorized Context="vaultAuthorization">
@@ -44,25 +44,25 @@
                     @* Keep EditContext notifications and validation explicit while consuming SUI 1.28.0. *@
                     <SUIFormGrid Columns="2" LabelLines="1">
                         <div>
-                            <SUITextField T="string" Id="admin-secret-name" Label="Nome lógico" Value="@form.Name"
+                            <SUITextField T="string" Id="admin-secret-name" Label="@L["Vault.AdminVault.NameLabel"].Value" Value="@form.Name"
                                           ValueChanged="value => { form.Name = value ?? string.Empty; editContext.NotifyFieldChanged(new(form, nameof(form.Name))); }"
-                                          autocomplete="off" Placeholder="ex.: metrics/victoria-token" />
+                                          autocomplete="off" Placeholder="@L["Vault.AdminVault.NamePlaceholder"].Value" />
                             <ValidationMessage For="() => form.Name" />
                         </div>
                         <div>
-                            <SUITextField T="string" Id="admin-secret-value" Label="Novo valor" Value="@form.Value"
+                            <SUITextField T="string" Id="admin-secret-value" Label="@L["Vault.AdminVault.ValueLabel"].Value" Value="@form.Value"
                                           ValueChanged="value => { form.Value = value ?? string.Empty; editContext.NotifyFieldChanged(new(form, nameof(form.Value))); }"
                                           InputType="password" autocomplete="new-password" />
                             <ValidationMessage For="() => form.Value" />
                         </div>
                     </SUIFormGrid>
                     <div class="vault-form__actions">
-                        <SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@saving">@(saving ? "Salvando…" : "Salvar rotação")</SUIButton>
+                        <SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@saving">@(saving ? L["Vault.Common.Saving"].Value : L["Vault.AdminVault.SaveRotation"].Value)</SUIButton>
                     </div>
                 </EditForm>
             </Authorized>
             <NotAuthorized>
-                <p class="vault-panel__hint">Sua permissão permite consultar metadados, mas não criar nem rotacionar segredos.</p>
+                <p class="vault-panel__hint">@L["Vault.AdminVault.ReadOnlyHint"]</p>
             </NotAuthorized>
         </AuthorizeView>
         @if (!string.IsNullOrWhiteSpace(message))
@@ -73,16 +73,16 @@
 
     <section class="vault-panel" aria-labelledby="admin-list-heading">
         <div class="vault-panel__heading">
-            <div><h2 id="admin-list-heading">Segredos globais</h2><p>Credenciais compartilhadas por serviços e rotinas internas.</p></div>
-            <SUIStatusBadge ToneValue="SUITone.Info">@globalItems.Count @(globalItems.Count == 1 ? "item" : "itens")</SUIStatusBadge>
+            <div><h2 id="admin-list-heading">@L["Vault.AdminVault.GlobalSecretsHeading"]</h2><p>@L["Vault.AdminVault.GlobalSecretsDescription"]</p></div>
+            <SUIStatusBadge ToneValue="SUITone.Info">@globalItems.Count @(globalItems.Count == 1 ? L["Vault.Common.ItemSingular"].Value : L["Vault.Common.ItemPlural"].Value)</SUIStatusBadge>
         </div>
         @if (loading)
         {
-            <div class="vault-loading" aria-label="Carregando segredos globais"></div>
+            <div class="vault-loading" aria-label="@L["Vault.AdminVault.LoadingGlobalAriaLabel"].Value"></div>
         }
         else if (globalItems.Count == 0)
         {
-            <SUIEmptyState Icon="database" Title="Nenhum segredo global" Description="O armazenamento ainda não possui segredos administrativos." />
+            <SUIEmptyState Icon="database" Title="@L["Vault.AdminVault.NoGlobalSecretsTitle"].Value" Description="@L["Vault.AdminVault.NoGlobalSecretsDescription"].Value" />
         }
         else
         {
@@ -93,10 +93,10 @@
                         <span class="vault-list__icon"><SUIIcon Name="lock" Size="18" /></span>
                         <div class="vault-list__copy">
                             <strong>@item.Name</strong>
-                            <span>Atualizado por @item.UpdatedBy em @FormatDate(item.UpdatedAtUtc)</span>
+                            <span>@string.Format(L["Vault.AdminVault.UpdatedByOn"].Value, item.UpdatedBy, FormatDate(item.UpdatedAtUtc))</span>
                         </div>
                         <AuthorizeView Policy="@VaultUiPolicies.AdminManage">
-                            <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="() => DeleteGlobalAsync(item.Name)" Disabled="@saving">Remover</SUIButton>
+                            <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="() => DeleteGlobalAsync(item.Name)" Disabled="@saving">@L["Vault.Common.Remove"]</SUIButton>
                         </AuthorizeView>
                     </div>
                 }
@@ -108,10 +108,10 @@ else
 {
     <section class="vault-panel" aria-labelledby="vault-users-heading">
         <div class="vault-panel__heading vault-panel__heading--users">
-            <div><h2 id="vault-users-heading">Usuários com dados no Vault</h2><p>Inclui contas ativas e resíduos de contas removidas que ainda exigem limpeza.</p></div>
+            <div><h2 id="vault-users-heading">@L["Vault.AdminVault.UsersHeading"]</h2><p>@L["Vault.AdminVault.UsersDescription"]</p></div>
             @if (userPage is not null)
             {
-                <span class="vault-result-count">@userPage.TotalUsers @(userPage.TotalUsers == 1 ? "usuário" : "usuários")</span>
+                <span class="vault-result-count">@userPage.TotalUsers @(userPage.TotalUsers == 1 ? L["Vault.AdminVault.UserSingular"].Value : L["Vault.AdminVault.UserPlural"].Value)</span>
             }
         </div>
 
@@ -119,13 +119,13 @@ else
             <div class="vault-search__controls">
                 <div class="vault-search-field">
                     <SUIIcon Name="search" Size="18" />
-                    <SUITextField T="string" Id="vault-user-search" Label="Buscar usuário" @bind-Value="search"
-                              InputType="search" Placeholder="E-mail, nome ou identificador" autocomplete="off" />
+                    <SUITextField T="string" Id="vault-user-search" Label="@L["Vault.AdminVault.SearchLabel"].Value" @bind-Value="search"
+                              InputType="search" Placeholder="@L["Vault.AdminVault.SearchPlaceholder"].Value" autocomplete="off" />
                 </div>
-                <SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@loading">Buscar</SUIButton>
+                <SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@loading">@L["Vault.AdminVault.SearchButton"]</SUIButton>
                 @if (!string.IsNullOrWhiteSpace(QuerySearch))
                 {
-                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" Href="/vault/admin">Limpar</SUIButton>
+                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" Href="/vault/admin">@L["Vault.AdminVault.ClearSearch"]</SUIButton>
                 }
             </div>
         </form>
@@ -133,26 +133,26 @@ else
         @if (userPage is not null)
         {
             <dl class="vault-inventory-strip">
-                <div><dt>Vaults encontrados</dt><dd>@userPage.TotalUsers</dd></div>
-                <div><dt>Segredos pessoais</dt><dd>@userPage.TotalPersonalSecrets</dd></div>
-                <div><dt>Credenciais conectadas</dt><dd>@userPage.TotalManagedCredentials</dd></div>
+                <div><dt>@L["Vault.AdminVault.VaultsFoundLabel"]</dt><dd>@userPage.TotalUsers</dd></div>
+                <div><dt>@L["Vault.AdminVault.PersonalSecretsFoundLabel"]</dt><dd>@userPage.TotalPersonalSecrets</dd></div>
+                <div><dt>@L["Vault.AdminVault.ManagedCredentialsFoundLabel"]</dt><dd>@userPage.TotalManagedCredentials</dd></div>
             </dl>
         }
 
         @if (loading)
         {
-            <div class="vault-loading" aria-label="Carregando usuários do Vault"></div>
+            <div class="vault-loading" aria-label="@L["Vault.AdminVault.LoadingUsersAriaLabel"].Value"></div>
         }
         else if (!string.IsNullOrWhiteSpace(message) && !success)
         {
             <div class="vault-load-error" role="alert">
-                <div><strong>Não foi possível carregar os Vaults</strong><span>@message</span></div>
-                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="LoadUsersAsync">Tentar novamente</SUIButton>
+                <div><strong>@L["Vault.AdminVault.LoadErrorTitle"]</strong><span>@message</span></div>
+                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="LoadUsersAsync">@L["Vault.Common.Retry"]</SUIButton>
             </div>
         }
         else if (userPage is null || userPage.Items.Count == 0)
         {
-            <SUIEmptyState Icon="users" Title="Nenhum Vault encontrado" Description="Altere a busca ou aguarde até que uma credencial seja armazenada." />
+            <SUIEmptyState Icon="users" Title="@L["Vault.AdminVault.NoVaultFoundTitle"].Value" Description="@L["Vault.AdminVault.NoVaultFoundDescription"].Value" />
         }
         else
         {
@@ -166,20 +166,20 @@ else
                             <span>@UserSubtitle(item)</span>
                         </span>
                         <span class="vault-user-row__counts">
-                            <span>@item.PersonalSecretCount pessoais</span>
-                            <span>@item.ManagedCredentialCount conectadas</span>
+                            <span>@item.PersonalSecretCount @L["Vault.AdminVault.PersonalCountSuffix"]</span>
+                            <span>@item.ManagedCredentialCount @L["Vault.AdminVault.ConnectedCountSuffix"]</span>
                         </span>
-                        <span class="vault-user-row__activity">@(item.LastUpdatedAtUtc is null ? "Sem data" : $"Atualizado {FormatDate(item.LastUpdatedAtUtc.Value)}")</span>
+                        <span class="vault-user-row__activity">@(item.LastUpdatedAtUtc is null ? L["Vault.Common.NoDate"].Value : string.Format(L["Vault.AdminVault.UpdatedPrefix"].Value, FormatDate(item.LastUpdatedAtUtc.Value)))</span>
                         <SUIIcon Name="arrow-right" Size="17" />
                     </a>
                 }
             </div>
             @if (TotalPages > 1)
             {
-                <nav class="vault-pagination" aria-label="Paginação dos Vaults de usuários">
-                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" Disabled="@(CurrentPage <= 1)" Href="@(CurrentPage > 1 ? UsersUrl(CurrentPage - 1) : null)">Anterior</SUIButton>
-                    <span>Página @CurrentPage de @TotalPages</span>
-                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" Disabled="@(CurrentPage >= TotalPages)" Href="@(CurrentPage < TotalPages ? UsersUrl(CurrentPage + 1) : null)">Próxima</SUIButton>
+                <nav class="vault-pagination" aria-label="@L["Vault.AdminVault.PaginationAriaLabel"].Value">
+                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" Disabled="@(CurrentPage <= 1)" Href="@(CurrentPage > 1 ? UsersUrl(CurrentPage - 1) : null)">@L["Vault.AdminVault.Previous"]</SUIButton>
+                    <span>@string.Format(L["Vault.AdminVault.PageOf"].Value, CurrentPage, TotalPages)</span>
+                    <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" Disabled="@(CurrentPage >= TotalPages)" Href="@(CurrentPage < TotalPages ? UsersUrl(CurrentPage + 1) : null)">@L["Vault.AdminVault.Next"]</SUIButton>
                 </nav>
             }
         }
@@ -205,6 +205,8 @@ else
     private bool IsGlobalView => string.Equals(View, "global", StringComparison.OrdinalIgnoreCase);
     private int CurrentPage => Math.Max(1, QueryPage);
     private int TotalPages => Math.Max(1, (int)Math.Ceiling((userPage?.TotalUsers ?? 0) / (double)PageSize));
+
+    protected override void OnInitialized() => form.Localizer = L;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -251,7 +253,7 @@ else
         message = null;
         var result = await Data.PutAdminAsync(form.Name, form.Value);
         success = result.IsSuccess;
-        message = result.IsSuccess ? "Segredo global salvo." : result.Error;
+        message = result.IsSuccess ? L["Vault.AdminVault.GlobalSecretSaved"].Value : result.Error;
         if (result.IsSuccess)
         {
             form.Value = string.Empty;
@@ -265,7 +267,7 @@ else
         saving = true;
         var result = await Data.DeleteAdminAsync(name);
         success = result.IsSuccess;
-        message = result.IsSuccess ? "Segredo global removido." : result.Error;
+        message = result.IsSuccess ? L["Vault.AdminVault.GlobalSecretRemoved"].Value : result.Error;
         if (result.IsSuccess) await LoadGlobalAsync();
         saving = false;
     }
@@ -286,9 +288,9 @@ else
     private static string UserTitle(VaultUserInventoryItem item) =>
         item.Email ?? item.UserName ?? item.OwnerSubject;
 
-    private static string UserSubtitle(VaultUserInventoryItem item)
+    private string UserSubtitle(VaultUserInventoryItem item)
     {
-        if (!item.UserExists) return $"Conta removida · {item.OwnerSubject}";
+        if (!item.UserExists) return string.Format(L["Vault.AdminVault.AccountRemovedSubtitle"].Value, item.OwnerSubject);
         if (!string.IsNullOrWhiteSpace(item.Email)
             && !string.IsNullOrWhiteSpace(item.UserName))
             return $"{item.UserName} · {item.OwnerSubject}";
@@ -298,12 +300,25 @@ else
     private static string FormatDate(DateTime value) =>
         value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
 
-    private sealed class AdminSecretForm
+    private sealed class AdminSecretForm : IValidatableObject
     {
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Informe um nome.")]
+        public IStringLocalizer<Sufficit.Identity.UI.Vault.Resources.VaultResource>? Localizer { get; set; }
+
         public string Name { get; set; } = string.Empty;
 
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Informe um valor.")]
         public string Value { get; set; } = string.Empty;
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (Localizer is null)
+                throw new InvalidOperationException("Localizer must be assigned before validation.");
+            var l = Localizer;
+
+            if (string.IsNullOrWhiteSpace(Name))
+                yield return new ValidationResult(l["Vault.AdminVault.Validation.NameRequired"].Value, [nameof(Name)]);
+
+            if (string.IsNullOrWhiteSpace(Value))
+                yield return new ValidationResult(l["Vault.AdminVault.Validation.ValueRequired"].Value, [nameof(Value)]);
+        }
     }
 }

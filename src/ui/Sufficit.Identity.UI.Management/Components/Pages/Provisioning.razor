@@ -5,18 +5,18 @@
 @inject ManagementProvisioningTokenDataSource TokenData
 @inject IJSRuntime JS
 
-<PageTitle>Provisionamento | Sufficit Identity</PageTitle>
+<PageTitle>@L["Provisioning.PageTitle"]</PageTitle>
 
-<SUIPageHeader Title="Provisionamento"
-            Description="Revise e aplique manifestos aditivos de clientes e scopes usando o mesmo caso de uso da API." />
+<SUIPageHeader Title="@L["Provisioning.Header.Title"].Value"
+            Description="@L["Provisioning.Header.Description"].Value" />
 
 <div class="contract-strip contract-strip--success">
     <SUIIcon Name="shield" Size="20" />
     <div>
-        <strong>Operação centralizada e auditável</strong>
-        <span>Preview e aplicação passam pela autorização do Management; nenhum segredo é recebido em texto puro.</span>
+        <strong>@L["Provisioning.Contract.Title"]</strong>
+        <span>@L["Provisioning.Contract.Description"]</span>
     </div>
-    <SUIStatusBadge ToneValue="SUITone.Success">Ativo</SUIStatusBadge>
+    <SUIStatusBadge ToneValue="SUITone.Success">@L["Provisioning.Contract.ActiveBadge"]</SUIStatusBadge>
 </div>
 
 <AuthorizeView Policy="@ManagementUiPolicies.ManageProvisioningToken">
@@ -28,23 +28,23 @@
                         <SUIIcon Name="key" Size="20" />
                     </span>
                     <div>
-                        <h2 id="temporary-token-heading">Token temporário para provisioning</h2>
-                        <p>Gere uma credencial curta para usar no terminal ou em uma aplicação. Ela recebe somente preview e apply, exige MFA e nunca é registrada na auditoria.</p>
+                        <h2 id="temporary-token-heading">@L["Provisioning.TemporaryToken.Title"]</h2>
+                        <p>@L["Provisioning.TemporaryToken.Description"]</p>
                     </div>
                 </div>
                 <div class="temporary-token-panel__controls" data-sui-align-row>
                     <SUISelect T="int"
                                id="provisioning-token-lifetime"
-                               aria-label="Validade"
-                               Label="Validade"
+                               aria-label="@L["Provisioning.TemporaryToken.LifetimeLabel"].Value"
+                               Label="@L["Provisioning.TemporaryToken.LifetimeLabel"].Value"
                                Class="temporary-token-field"
                                Disabled="@tokenIssuing"
                                Value="@tokenLifetimeSeconds"
                                ValueChanged="TokenLifetimeChanged">
-                        <SUISelectItem Value="@(600)">10 minutos</SUISelectItem>
-                        <SUISelectItem Value="@(900)">15 minutos</SUISelectItem>
-                        <SUISelectItem Value="@(1800)">30 minutos</SUISelectItem>
-                        <SUISelectItem Value="@(3600)">60 minutos</SUISelectItem>
+                        <SUISelectItem Value="@(600)">@L["Provisioning.TemporaryToken.Lifetime10Min"]</SUISelectItem>
+                        <SUISelectItem Value="@(900)">@L["Provisioning.TemporaryToken.Lifetime15Min"]</SUISelectItem>
+                        <SUISelectItem Value="@(1800)">@L["Provisioning.TemporaryToken.Lifetime30Min"]</SUISelectItem>
+                        <SUISelectItem Value="@(3600)">@L["Provisioning.TemporaryToken.Lifetime60Min"]</SUISelectItem>
                     </SUISelect>
                     <SUILoadingButton IsLoading="@tokenIssuing"
                                       Disabled="@tokenIssuing"
@@ -53,7 +53,7 @@
                                       OnClick="IssueTemporaryTokenAsync"
                                       aria-busy="@tokenIssuing">
                         <SUIIcon Name="key" Size="17" />
-                        <span>Gerar token temporário</span>
+                        <span>@L["Provisioning.TemporaryToken.GenerateButton"]</span>
                     </SUILoadingButton>
                 </div>
             </div>
@@ -63,35 +63,35 @@
                 <div class="temporary-token-panel__reveal" role="status">
                     <div class="temporary-token-panel__reveal-heading">
                         <div>
-                            <strong>Token emitido uma única vez</strong>
-                            <span>Copie agora. Depois de ocultar este valor, ele não poderá ser recuperado pela interface.</span>
+                            <strong>@L["Provisioning.TemporaryToken.IssuedTitle"]</strong>
+                            <span>@L["Provisioning.TemporaryToken.IssuedDescription"]</span>
                         </div>
-                        <SUIStatusBadge ToneValue="SUITone.Warning">Expira @TokenExpirationLabel</SUIStatusBadge>
+                        <SUIStatusBadge ToneValue="SUITone.Warning">@L["Provisioning.TemporaryToken.ExpiresBadge", TokenExpirationLabel]</SUIStatusBadge>
                     </div>
                     <textarea class="temporary-token-value"
-                              aria-label="Token temporário de provisioning"
+                              aria-label="@L["Provisioning.TemporaryToken.ValueAriaLabel"].Value"
                               readonly
                               spellcheck="false"
                               autocomplete="off">@temporaryToken</textarea>
                     <div class="temporary-token-panel__actions">
-                        <span class="temporary-token-panel__hint">Capacidades: <code>identity.provisioning.preview</code> e <code>identity.provisioning.apply</code></span>
+                        <span class="temporary-token-panel__hint">@L["Provisioning.TemporaryToken.CapabilitiesLabel"].Value <code>identity.provisioning.preview</code> @L["Provisioning.Common.And"].Value <code>identity.provisioning.apply</code></span>
                         <div>
                             <SUIButton VariantValue="SUIVariant.Outlined"
                                        ColorValue="SUIColor.Primary"
                                        OnClick="CopyTemporaryTokenAsync">
                                 <SUIIcon Name="copy" Size="17" />
-                                @(tokenCopied ? "Copiado" : "Copiar token")
+                                @(tokenCopied ? L["Provisioning.TemporaryToken.Copied"] : L["Provisioning.TemporaryToken.CopyButton"])
                             </SUIButton>
                             <SUIButton VariantValue="SUIVariant.Text"
                                        ColorValue="SUIColor.Default"
                                        OnClick="HideTemporaryToken">
-                                Ocultar token
+                                @L["Provisioning.TemporaryToken.HideButton"]
                             </SUIButton>
                         </div>
                     </div>
                     @if (clipboardUnavailable)
                     {
-                        <span class="temporary-token-panel__clipboard-note">A cópia automática não está disponível neste navegador; selecione o valor acima e use Ctrl+C.</span>
+                        <span class="temporary-token-panel__clipboard-note">@L["Provisioning.TemporaryToken.ClipboardUnavailable"]</span>
                     }
                 </div>
             }
@@ -100,8 +100,8 @@
                 <div class="inline-notice inline-notice--success" role="status">
                     <SUIIcon Name="check" Size="19" />
                     <div>
-                        <strong>Token ocultado</strong>
-                        <span>O valor não pode ser recuperado pela interface. Emita outro somente se necessário.</span>
+                        <strong>@L["Provisioning.TemporaryToken.HiddenTitle"]</strong>
+                        <span>@L["Provisioning.TemporaryToken.HiddenDescription"]</span>
                     </div>
                 </div>
             }
@@ -119,20 +119,20 @@
     </Authorized>
 </AuthorizeView>
 
-<ol class="workflow-steps" aria-label="Etapas do provisionamento">
+<ol class="workflow-steps" aria-label="@L["Provisioning.Workflow.Aria"].Value">
     <li class="@StepClass(1)">
         <span>1</span>
-        <div><strong>Manifesto</strong><small>Definir intenção</small></div>
+        <div><strong>@L["Provisioning.Workflow.Step1.Title"]</strong><small>@L["Provisioning.Workflow.Step1.Subtitle"]</small></div>
     </li>
     <li class="workflow-connector" aria-hidden="true"></li>
     <li class="@StepClass(2)">
         <span>2</span>
-        <div><strong>Preview</strong><small>Revisar mudanças</small></div>
+        <div><strong>@L["Provisioning.Workflow.Step2.Title"]</strong><small>@L["Provisioning.Workflow.Step2.Subtitle"]</small></div>
     </li>
     <li class="workflow-connector" aria-hidden="true"></li>
     <li class="@StepClass(3)">
         <span>3</span>
-        <div><strong>Aplicar</strong><small>Confirmar operação</small></div>
+        <div><strong>@L["Capability.Label.Apply"]</strong><small>@L["Provisioning.Workflow.Step3.Subtitle"]</small></div>
     </li>
 </ol>
 
@@ -160,8 +160,8 @@ else if (applyResult?.IsSuccess is true)
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
         <div>
-            <strong>Manifesto aplicado</strong>
-            <span>A operação foi concluída de forma transacional e registrada na auditoria.</span>
+            <strong>@L["Provisioning.Applied.Title"]</strong>
+            <span>@L["Provisioning.Applied.Description"]</span>
         </div>
     </div>
 }
@@ -170,13 +170,13 @@ else if (applyResult?.IsSuccess is true)
     <div class="manifest-panel" aria-labelledby="manifest-heading">
         <div class="panel-header">
             <div>
-                <h2 id="manifest-heading">Manifesto JSON</h2>
-                <p>Edite ou cole o contrato declarativo completo antes de gerar o preview.</p>
+                <h2 id="manifest-heading">@L["Provisioning.Manifest.Heading"]</h2>
+                <p>@L["Provisioning.Manifest.Description"]</p>
             </div>
-            <SUIStatusBadge ToneValue="SUITone.Neutral">Schema v1</SUIStatusBadge>
+            <SUIStatusBadge ToneValue="SUITone.Neutral">@L["Provisioning.Manifest.SchemaBadge"]</SUIStatusBadge>
         </div>
         <label class="manifest-editor">
-            <span class="visually-hidden">Conteúdo do manifesto JSON</span>
+            <span class="visually-hidden">@L["Provisioning.Manifest.VisuallyHidden"]</span>
             <textarea spellcheck="false"
                       autocomplete="off"
                       maxlength="@ManagementProvisioningDataSource.MaxManifestLength"
@@ -186,8 +186,8 @@ else if (applyResult?.IsSuccess is true)
         </label>
         <footer class="manifest-actions">
             <div>
-                <span id="manifest-guidance">Use somente referências externas para segredos.</span>
-                <span id="manifest-count">@ManifestJson.Length.ToString("N0") de @ManagementProvisioningDataSource.MaxManifestLength.ToString("N0") caracteres</span>
+                <span id="manifest-guidance">@L["Provisioning.Manifest.Guidance"]</span>
+                <span id="manifest-count">@L["Provisioning.Manifest.CountFormat", ManifestJson.Length.ToString("N0"), ManagementProvisioningDataSource.MaxManifestLength.ToString("N0")]</span>
             </div>
             <SUILoadingButton IsLoading="@previewing"
                               Disabled="@IsBusy"
@@ -195,21 +195,21 @@ else if (applyResult?.IsSuccess is true)
                               OnClick="PreviewAsync"
                               aria-busy="@previewing">
                 <SUIIcon Name="search" Size="17" />
-                <span>Gerar preview</span>
+                <span>@L["Capability.Label.Preview"]</span>
             </SUILoadingButton>
         </footer>
     </div>
 
     <aside class="safety-panel" aria-labelledby="safety-heading">
         <span class="safety-panel__icon"><SUIIcon Name="shield" Size="24" /></span>
-        <h2 id="safety-heading">Garantias do fluxo</h2>
+        <h2 id="safety-heading">@L["Provisioning.Safety.Heading"]</h2>
         <ul class="plain-check-list">
-            <li><SUIIcon Name="check" Size="16" /> Preview não altera o banco</li>
-            <li><SUIIcon Name="check" Size="16" /> Objetos omitidos não são excluídos</li>
-            <li><SUIIcon Name="check" Size="16" /> Segredos usam referência externa</li>
-            <li><SUIIcon Name="check" Size="16" /> Apply e auditoria usam a mesma transação</li>
+            <li><SUIIcon Name="check" Size="16" /> @L["Provisioning.Safety.Item1"]</li>
+            <li><SUIIcon Name="check" Size="16" /> @L["Provisioning.Safety.Item2"]</li>
+            <li><SUIIcon Name="check" Size="16" /> @L["Provisioning.Safety.Item3"]</li>
+            <li><SUIIcon Name="check" Size="16" /> @L["Provisioning.Safety.Item4"]</li>
         </ul>
-        <a href="audit">Consultar trilha de auditoria <SUIIcon Name="arrow-right" Size="15" /></a>
+        <a href="audit">@L["Provisioning.Safety.AuditLink"] <SUIIcon Name="arrow-right" Size="15" /></a>
     </aside>
 </div>
 
@@ -218,21 +218,21 @@ else if (applyResult?.IsSuccess is true)
     <div class="provisioning-plan" aria-labelledby="plan-heading">
         <div class="data-toolbar">
             <div>
-                <h2 id="plan-heading">@(applyResult?.IsSuccess is true ? "Mudanças aplicadas" : "Preview do manifesto")</h2>
+                <h2 id="plan-heading">@(applyResult?.IsSuccess is true ? L["Provisioning.Plan.AppliedHeading"] : L["Provisioning.Plan.PreviewHeading"])</h2>
                 <p>@PlanSummary</p>
             </div>
-            <div class="provisioning-plan__counts" aria-label="Resumo das mudanças">
-                <span><strong>@ChangeCount(IdentityManifestChangeKind.Create)</strong> criar</span>
-                <span><strong>@ChangeCount(IdentityManifestChangeKind.Update)</strong> atualizar</span>
-                <span><strong>@ChangeCount(IdentityManifestChangeKind.Unchanged)</strong> sem mudança</span>
+            <div class="provisioning-plan__counts" aria-label="@L["Provisioning.Plan.CountsAria"].Value">
+                <span><strong>@ChangeCount(IdentityManifestChangeKind.Create)</strong> @L["Provisioning.Plan.CreateLabel"]</span>
+                <span><strong>@ChangeCount(IdentityManifestChangeKind.Update)</strong> @L["Provisioning.Plan.UpdateLabel"]</span>
+                <span><strong>@ChangeCount(IdentityManifestChangeKind.Unchanged)</strong> @L["Provisioning.Plan.UnchangedLabel"]</span>
             </div>
         </div>
 
         @if (Plan.Changes.Count is 0)
         {
             <SUIEmptyState Icon="workflow"
-                        Title="Manifesto vazio"
-                        Description="Nenhum cliente ou scope foi declarado. Nada será alterado." />
+                        Title="@L["Provisioning.Plan.EmptyTitle"].Value"
+                        Description="@L["Provisioning.Plan.EmptyDescription"].Value" />
         }
         else
         {
@@ -240,18 +240,18 @@ else if (applyResult?.IsSuccess is true)
                 <table class="data-table data-table--provisioning">
                     <thead>
                         <tr>
-                            <th scope="col">Recurso</th>
-                            <th scope="col">Identificador</th>
-                            <th scope="col">Resultado</th>
+                            <th scope="col">@L["Provisioning.Plan.Table.Resource"]</th>
+                            <th scope="col">@L["Provisioning.Plan.Table.Identifier"]</th>
+                            <th scope="col">@L["Provisioning.Plan.Table.Result"]</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var change in Plan.Changes)
                         {
                             <tr>
-                                <td data-label="Recurso">@ResourceLabel(change.ResourceType)</td>
-                                <td data-label="Identificador"><code>@change.Identifier</code></td>
-                                <td data-label="Resultado">
+                                <td data-label="@L["Provisioning.Plan.Table.Resource"].Value">@ResourceLabel(change.ResourceType)</td>
+                                <td data-label="@L["Provisioning.Plan.Table.Identifier"].Value"><code>@change.Identifier</code></td>
+                                <td data-label="@L["Provisioning.Plan.Table.Result"].Value">
                                     <SUIStatusBadge ToneValue="@IdentitySuiTone.From(ChangeTone(change.Kind))">
                                         @ChangeLabel(change.Kind)
                                     </SUIStatusBadge>
@@ -273,8 +273,8 @@ else if (applyResult?.IsSuccess is true)
                                disabled="@IsBusy"
                                @bind="confirmed" />
                         <span>
-                            <strong>Confirmo a aplicação deste preview</strong>
-                            <small>Somente os itens marcados como criar ou atualizar serão modificados.</small>
+                            <strong>@L["Provisioning.Plan.ConfirmLabel"]</strong>
+                            <small>@L["Provisioning.Plan.ConfirmHint"]</small>
                         </span>
                     </label>
                     <SUILoadingButton IsLoading="@applying"
@@ -283,14 +283,14 @@ else if (applyResult?.IsSuccess is true)
                                       OnClick="ApplyAsync"
                                       aria-busy="@applying">
                         <SUIIcon Name="workflow" Size="17" />
-                        <span>Aplicar manifesto</span>
+                        <span>@L["Provisioning.Plan.ApplyButton"]</span>
                     </SUILoadingButton>
                 }
                 else
                 {
                     <span class="provisioning-current">
                         <SUIIcon Name="check" Size="18" />
-                        O ambiente já corresponde ao manifesto.
+                        @L["Provisioning.Plan.AlreadyCurrent"]
                     </span>
                 }
             </footer>
@@ -345,7 +345,7 @@ else if (applyResult?.IsSuccess is true)
 
     private string TokenExpirationLabel =>
         temporaryTokenExpiresAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")
-        ?? "em breve";
+        ?? L["Provisioning.TemporaryToken.ExpiresSoon"].Value;
 
     private bool HasFreshPreview =>
         previewResult?.IsSuccess is true
@@ -387,29 +387,31 @@ else if (applyResult?.IsSuccess is true)
     private string ErrorTitle =>
         OperationResult?.Outcome switch
         {
-            ManagementDataOutcome.Invalid => "Manifesto inválido — corrija os itens abaixo",
-            ManagementDataOutcome.Forbidden => "Capability de provisioning ausente",
-            ManagementDataOutcome.StepUpRequired => "MFA necessário para continuar",
-            ManagementDataOutcome.Conflict => "Configuração do Identity impede a operação",
-            ManagementDataOutcome.Unavailable => "Identity não respondeu à operação",
-            _ => "A operação não foi concluída"
+            ManagementDataOutcome.Invalid => L["Provisioning.Error.InvalidTitle"].Value,
+            ManagementDataOutcome.Forbidden => L["Provisioning.Error.ForbiddenTitle"].Value,
+            ManagementDataOutcome.StepUpRequired => L["Provisioning.Error.StepUpTitle"].Value,
+            ManagementDataOutcome.Conflict => L["Provisioning.Error.ConflictTitle"].Value,
+            ManagementDataOutcome.Unavailable => L["Provisioning.Error.UnavailableTitle"].Value,
+            _ => L["Provisioning.Error.GenericTitle"].Value
         };
 
     private string TokenErrorTitle =>
         tokenResult?.Outcome switch
         {
-            ManagementDataOutcome.Forbidden => "Capability de emissão ausente",
-            ManagementDataOutcome.StepUpRequired => "MFA necessário para emitir o token",
-            ManagementDataOutcome.Conflict => "Emissão temporária desabilitada ou incompleta",
-            ManagementDataOutcome.Invalid => "Validade do token inválida",
-            ManagementDataOutcome.Unavailable => "Identity não respondeu à emissão",
-            _ => "O token não foi emitido"
+            ManagementDataOutcome.Forbidden => L["Provisioning.TokenError.ForbiddenTitle"].Value,
+            ManagementDataOutcome.StepUpRequired => L["Provisioning.TokenError.StepUpTitle"].Value,
+            ManagementDataOutcome.Conflict => L["Provisioning.TokenError.ConflictTitle"].Value,
+            ManagementDataOutcome.Invalid => L["Provisioning.TokenError.InvalidTitle"].Value,
+            ManagementDataOutcome.Unavailable => L["Provisioning.TokenError.UnavailableTitle"].Value,
+            _ => L["Provisioning.TokenError.GenericTitle"].Value
         };
 
     private string PlanSummary =>
         Plan?.HasChanges is true
-            ? $"{Plan.Changes.Count(change => change.Kind is not IdentityManifestChangeKind.Unchanged)} mudança(s) efetiva(s) encontrada(s)."
-            : "Nenhuma mudança efetiva foi encontrada.";
+            ? L[
+                "Provisioning.Plan.SummaryFormat",
+                Plan.Changes.Count(change => change.Kind is not IdentityManifestChangeKind.Unchanged)].Value
+            : L["Provisioning.Plan.SummaryEmpty"].Value;
 
     private async Task PreviewAsync()
     {
@@ -512,20 +514,20 @@ else if (applyResult?.IsSuccess is true)
     private int ChangeCount(IdentityManifestChangeKind kind) =>
         Plan?.Changes.Count(change => change.Kind == kind) ?? 0;
 
-    private static string ResourceLabel(string resourceType) =>
+    private string ResourceLabel(string resourceType) =>
         resourceType switch
         {
-            "client" => "Cliente",
-            "scope" => "Scope",
+            "client" => L["Provisioning.Resource.Client"].Value,
+            "scope" => L["Provisioning.Resource.Scope"].Value,
             _ => resourceType
         };
 
-    private static string ChangeLabel(IdentityManifestChangeKind kind) =>
+    private string ChangeLabel(IdentityManifestChangeKind kind) =>
         kind switch
         {
-            IdentityManifestChangeKind.Create => "Criar",
-            IdentityManifestChangeKind.Update => "Atualizar",
-            IdentityManifestChangeKind.Unchanged => "Sem mudança",
+            IdentityManifestChangeKind.Create => L["Capability.Label.Create"].Value,
+            IdentityManifestChangeKind.Update => L["Capability.Label.Update"].Value,
+            IdentityManifestChangeKind.Unchanged => L["Provisioning.Change.Unchanged"].Value,
             _ => kind.ToString()
         };
 

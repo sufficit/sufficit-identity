@@ -298,7 +298,7 @@ public sealed partial class ManagementUiArchitectureTests
         Assert.Contains("SafePreviewImageUrl", page, StringComparison.Ordinal);
         Assert.Contains("--preview-background-image", page, StringComparison.Ordinal);
         Assert.Contains("var(--preview-background-image, none)", styles, StringComparison.Ordinal);
-        Assert.Contains("Fundo personalizado", page, StringComparison.Ordinal);
+        Assert.Contains("L[\"Branding.CustomBackground\"]", page, StringComparison.Ordinal);
     }
 
     [Fact]

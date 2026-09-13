@@ -4,16 +4,16 @@
 
 @{ var overview = result?.Value!; }
 
-<PageTitle>Visão geral | Sufficit Identity</PageTitle>
+<PageTitle>@L["Home.PageTitle"]</PageTitle>
 
-<SUIPageHeader Title="Visão geral"
-            Description="Consulte as áreas liberadas para sua sessão e a política efetiva do serviço de identidade.">
+<SUIPageHeader Title="@L["Home.HeaderTitle"].Value"
+            Description="@L["Home.HeaderDescription"].Value">
     <Actions>
         <SUIButton Href="settings"
                    VariantValue="SUIVariant.Outlined"
                    ColorValue="SUIColor.Default">
             <SUIIcon Name="settings" Size="17" />
-            Ver configuração
+            @L["Home.ViewConfiguration"]
         </SUIButton>
     </Actions>
 </SUIPageHeader>
@@ -22,7 +22,7 @@
 {
     <div class="detail-shell"
              aria-busy="true"
-             aria-label="Carregando estado administrativo">
+             aria-label="@L["Home.LoadingAriaLabel"].Value">
         <div class="detail-skeleton"></div>
         <div class="detail-skeleton detail-skeleton--short"></div>
     </div>
@@ -31,12 +31,12 @@ else if (result?.IsSuccess is not true || result.Value is null)
 {
     <div>
         <SUIEmptyState Icon="alert"
-                    Title="Não foi possível consultar o runtime"
-                    Description="@(result?.ErrorMessage ?? "O serviço de identidade não informou seu estado administrativo.")">
+                    Title="@L["Home.RuntimeError.Title"].Value"
+                    Description="@(result?.ErrorMessage ?? L["Home.RuntimeError.Description"].Value)">
             <Actions>
                 <SUIButton ColorValue="SUIColor.Primary"
                            OnClick="RefreshAsync">
-                    Tentar novamente
+                    @L["Home.Retry"]
                 </SUIButton>
             </Actions>
         </SUIEmptyState>
@@ -47,19 +47,19 @@ else
     <div class="contract-strip contract-strip--success">
         <SUIIcon Name="shield" Size="20" />
         <div>
-            <strong>Estado fornecido pelo runtime</strong>
-            <span>Ambiente @overview.EnvironmentName · @overview.Operator.Capabilities.Count capabilities efetivas</span>
+            <strong>@L["Home.RuntimeState.Title"]</strong>
+            <span>@L["Home.RuntimeState.Summary", overview.EnvironmentName, overview.Operator.Capabilities.Count]</span>
         </div>
-        <SUIStatusBadge ToneValue="SUITone.Success">Atual</SUIStatusBadge>
+        <SUIStatusBadge ToneValue="SUITone.Success">@L["Home.Current"]</SUIStatusBadge>
     </div>
 
     <div class="dashboard-grid">
         <div class="panel" aria-labelledby="available-modules-heading">
             <div class="panel-header">
                 <div>
-                    <h2 id="available-modules-heading">Áreas disponíveis</h2>
+                    <h2 id="available-modules-heading">@L["Home.AvailableAreas.Title"]</h2>
                 </div>
-                <span class="section-meta">@AccessibleModuleCount autorizadas</span>
+                <span class="section-meta">@L["Home.AvailableAreas.AuthorizedCount", AccessibleModuleCount]</span>
             </div>
 
             @if (AccessibleModules.Count is 0)
@@ -77,20 +77,20 @@ else
                                 <input type="hidden" name="force_mfa" value="true" />
                                 <SUIButton ButtonTypeValue="SUIButtonType.Submit"
                                            ColorValue="SUIColor.Error">
-                                    Encerrar sessão e entrar com MFA
+                                    @L["Home.EndSessionMfa"]
                                 </SUIButton>
                             </form>
                             <SUIButton Href="/management/"
                                        VariantValue="SUIVariant.Outlined"
                                        ColorValue="SUIColor.Default"
                                        data-enhance-nav="false">
-                                Recarregar sessão
+                                @L["Home.ReloadSession"]
                             </SUIButton>
                             <SUIButton Href="/manage/twofactor"
                                        VariantValue="SUIVariant.Outlined"
                                        ColorValue="SUIColor.Default"
                                        data-enhance-nav="false">
-                                Ver configuração de MFA
+                                @L["Home.ViewMfaConfig"]
                             </SUIButton>
                         }
                     </Actions>
@@ -109,7 +109,7 @@ else
                                 <strong>@module.Presentation.Title</strong>
                                 <span>@module.Presentation.Description</span>
                             </span>
-                            <SUIStatusBadge ToneValue="SUITone.Success">Permitido</SUIStatusBadge>
+                            <SUIStatusBadge ToneValue="SUITone.Success">@L["Home.Allowed"]</SUIStatusBadge>
                             <SUIIcon Name="arrow-right"
                                      Size="17"
                                      CssClass="capability-row__arrow" />
@@ -122,13 +122,13 @@ else
         <div class="settings-panel" aria-labelledby="effective-policy-heading">
             <div class="panel-header">
                 <div>
-                    <h2 id="effective-policy-heading">Política efetiva</h2>
+                    <h2 id="effective-policy-heading">@L["Home.EffectivePolicy.Title"]</h2>
                 </div>
             </div>
             <dl class="config-list">
                 <div>
                     <dt>
-                        <span>Ambiente</span>
+                        <span>@L["Home.Field.Environment"]</span>
                         <code>Environment</code>
                     </dt>
                     <dd>
@@ -138,7 +138,7 @@ else
                 </div>
                 <div>
                     <dt>
-                        <span>Autenticação multifator</span>
+                        <span>@L["Home.Field.Mfa"]</span>
                         <code>RequireMfa</code>
                     </dt>
                     <dd>
@@ -148,7 +148,7 @@ else
                 </div>
                 <div>
                     <dt>
-                        <span>Escopo do transporte HTTP</span>
+                        <span>@L["Home.Field.HttpScope"]</span>
                         <code>RequiredScope</code>
                     </dt>
                     <dd>
@@ -165,14 +165,13 @@ else
     <div class="security-note" aria-labelledby="runtime-source-title">
         <SUIIcon Name="check" Size="21" />
         <div>
-            <h2 id="runtime-source-title">Uma consulta, a mesma decisão</h2>
+            <h2 id="runtime-source-title">@L["Home.SecurityNote.Title"]</h2>
             <p>
-                A interface e o adaptador HTTP projetam o mesmo catálogo de módulos,
-                capabilities e políticas calculado pelo serviço de aplicação.
+                @L["Home.SecurityNote.Description"]
             </p>
         </div>
         <a href="settings">
-            Ver detalhes
+            @L["Home.ViewDetails"]
             <SUIIcon Name="arrow-right" Size="15" />
         </a>
     </div>
@@ -207,14 +206,16 @@ else
     private int AccessibleModuleCount => AccessibleModules.Count;
 
     private string MfaPolicyLabel =>
-        Overview.Operator.RequiresMfa ? "Obrigatória" : "Opcional";
+        Overview.Operator.RequiresMfa
+            ? L["Home.Mfa.Required"].Value
+            : L["Home.Mfa.Optional"].Value;
 
     private string MfaSessionLabel =>
         !Overview.Operator.RequiresMfa
-            ? "Não exigida"
+            ? L["Home.Mfa.NotRequired"].Value
             : Overview.Operator.MeetsMfaRequirement
-                ? "Atendida"
-                : "Pendente";
+                ? L["Home.Mfa.Met"].Value
+                : L["Home.Mfa.Pending"].Value;
 
     private string MfaTone =>
         Overview.Operator is
@@ -225,13 +226,13 @@ else
     private string NoAccessTitle =>
         Overview.Operator is
             { RequiresMfa: true, MeetsMfaRequirement: false }
-            ? "Autenticação multifator necessária"
-            : "Nenhuma área liberada";
+            ? L["Home.NoAccess.MfaRequired"].Value
+            : L["Home.NoAccess.NoAreas"].Value;
 
     private string NoAccessDescription =>
         MfaIsPending
-            ? "Esta sessão não contém evidência de MFA. Encerre-a, entre novamente e informe o código de seis dígitos; se o MFA foi concluído em outra aba, use Recarregar sessão."
-            : "O runtime não concedeu acesso a nenhum módulo para esta sessão.";
+            ? L["Home.NoAccess.MfaPendingDescription", L["Home.ReloadSession"].Value].Value
+            : L["Home.NoAccess.NoModulesGranted"].Value;
 
     private bool MfaIsPending =>
         Overview.Operator is
@@ -262,10 +263,10 @@ else
         loading = false;
     }
 
-    private static ModuleView? CreateModuleView(
+    private ModuleView? CreateModuleView(
         ManagementModuleDescriptor module)
     {
-        var presentation = ManagementModulePresentations.Find(module.Key);
+        var presentation = ManagementModulePresentations.Find(module.Key, L);
         return presentation is null
             ? null
             : new ModuleView(module, presentation);

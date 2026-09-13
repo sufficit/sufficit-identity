@@ -1526,4 +1526,393 @@
   <data name="Users.Detail.Validation.ConfirmNewPasswordRequired" xml:space="preserve"><value>Confirme a nova senha.</value></data>
   <data name="Claims.Validation.TypeRequired" xml:space="preserve"><value>Informe o tipo da claim.</value></data>
   <data name="Claims.Validation.ValueRequired" xml:space="preserve"><value>Informe o valor da claim.</value></data>
+  <data name="Provisioning.Error.NoAuthenticatedSession" xml:space="preserve"><value>Não há uma sessão autenticada para {0}.</value></data>
+  <data name="Provisioning.Error.CapabilityMissing" xml:space="preserve"><value>A sessão está autenticada, mas falta a capability {0} para {1}.</value></data>
+  <data name="Provisioning.Error.MfaRequired" xml:space="preserve"><value>A sessão está autenticada, mas o MFA ainda não foi comprovado para {0}.</value></data>
+  <data name="Provisioning.Error.TemporaryTokenCannotMint" xml:space="preserve"><value>Um token temporário não pode emitir outro token temporário.</value></data>
+  <data name="Provisioning.Error.SecurityRuleRefused" xml:space="preserve"><value>O Identity recusou {0} por uma regra de segurança.</value></data>
+  <data name="Provisioning.NextStep.Login" xml:space="preserve"><value>Próximo passo: faça login no Management e repita a operação.</value></data>
+  <data name="Provisioning.NextStep.AssignCapability" xml:space="preserve"><value>Próximo passo: peça a um administrador para atribuir {0} ao seu operador.</value></data>
+  <data name="Provisioning.NextStep.CompleteMfa" xml:space="preserve"><value>Próximo passo: conclua o segundo fator e retorne ao Management; senha isolada não basta.</value></data>
+  <data name="Provisioning.NextStep.ReauthenticateOperator" xml:space="preserve"><value>Próximo passo: autentique-se novamente como operador humano para emitir um novo token.</value></data>
+  <data name="Provisioning.NextStep.SupportCode" xml:space="preserve"><value>Código de suporte: {0}.</value></data>
+  <data name="Provisioning.Conflict.TemporaryTokenDisabled" xml:space="preserve"><value>Próximo passo: a infraestrutura deve definir Sufficit__Identity__Management__TemporaryProvisioningToken__Enabled=true e implantar essa configuração antes de emitir tokens.</value></data>
+  <data name="Provisioning.Conflict.IssuerMissing" xml:space="preserve"><value>Próximo passo: configure o issuer público Sufficit:Identity:Issuer e reinicie o Identity.</value></data>
+  <data name="Provisioning.Conflict.SecretUnavailable" xml:space="preserve"><value>Próximo passo: verifique a referência de segredo do cliente e o acesso ao secret store; nenhuma alteração foi aplicada.</value></data>
+  <data name="Provisioning.Conflict.CheckConfiguration" xml:space="preserve"><value>Próximo passo: verifique a configuração necessária para {0} ou peça ao administrador do Identity para corrigir o ambiente.</value></data>
+  <data name="Provisioning.Error.Timeout" xml:space="preserve"><value>O Identity demorou para {0} e a operação foi interrompida antes de confirmar o resultado.</value></data>
+  <data name="Provisioning.Error.Dependency" xml:space="preserve"><value>O Identity não conseguiu {0}. Confira se o módulo Management está implantado, se a base de dados está disponível e tente novamente.</value></data>
+  <data name="Provisioning.Operation.ApplyManifest" xml:space="preserve"><value>aplicar o manifesto</value></data>
+  <data name="Provisioning.Operation.GeneratePreview" xml:space="preserve"><value>gerar o preview</value></data>
+  <data name="Provisioning.Validation.ManifestRequired" xml:space="preserve"><value>Informe o manifesto JSON.</value></data>
+  <data name="Provisioning.Validation.ManifestRequiredDetail" xml:space="preserve"><value>O documento não pode ficar vazio.</value></data>
+  <data name="Provisioning.Validation.ManifestTooLarge" xml:space="preserve"><value>O manifesto excede o limite permitido.</value></data>
+  <data name="Provisioning.Validation.JsonInvalid" xml:space="preserve"><value>O JSON não pôde ser interpretado.</value></data>
+  <data name="Provisioning.Validation.JsonInvalidLocation" xml:space="preserve"><value>Linha {0}, coluna {1}.</value></data>
+  <data name="Provisioning.Validation.JsonInvalidGeneric" xml:space="preserve"><value>Revise a sintaxe e os nomes das propriedades.</value></data>
+  <data name="Provisioning.Validation.ManifestObjectRequired" xml:space="preserve"><value>Informe um objeto JSON válido.</value></data>
+  <data name="Provisioning.Validation.ManifestNullDetail" xml:space="preserve"><value>O valor JSON null não representa um manifesto.</value></data>
+  <data name="Provisioning.Validation.SecurityValidationFailed" xml:space="preserve"><value>O manifesto não passou pela validação de segurança.</value></data>
+  <data name="Provisioning.NextStep.CheckHealth" xml:space="preserve"><value>Próximo passo: confirme o estado do Identity em /health/ready e tente novamente.</value></data>
+  <data name="Provisioning.NextStep.ForwardCorrelationId" xml:space="preserve"><value>Se o problema persistir, encaminhe o horário e o ID de correlação ao administrador do serviço.</value></data>
+  <data name="Provisioning.Operation.IssueTemporaryToken" xml:space="preserve"><value>emitir o token temporário</value></data>
+  <data name="Provisioning.Validation.LifetimeNextStep" xml:space="preserve"><value>Próximo passo: escolha uma validade entre 60 segundos e o limite configurado no Identity.</value></data>
+  <data name="Provisioning.NextStep.ConfirmDeploymentEnabled" xml:space="preserve"><value>Próximo passo: confirme que esta versão do Identity está implantada e que a emissão temporária foi habilitada pela infraestrutura.</value></data>
+  <data name="Provisioning.PageTitle" xml:space="preserve"><value>Provisionamento | Sufficit Identity</value></data>
+  <data name="Provisioning.Header.Title" xml:space="preserve"><value>Provisionamento</value></data>
+  <data name="Provisioning.Header.Description" xml:space="preserve"><value>Revise e aplique manifestos aditivos de clientes e scopes usando o mesmo caso de uso da API.</value></data>
+  <data name="Provisioning.Contract.Title" xml:space="preserve"><value>Operação centralizada e auditável</value></data>
+  <data name="Provisioning.Contract.Description" xml:space="preserve"><value>Preview e aplicação passam pela autorização do Management; nenhum segredo é recebido em texto puro.</value></data>
+  <data name="Provisioning.Contract.ActiveBadge" xml:space="preserve"><value>Ativo</value></data>
+  <data name="Provisioning.TemporaryToken.Title" xml:space="preserve"><value>Token temporário para provisioning</value></data>
+  <data name="Provisioning.TemporaryToken.Description" xml:space="preserve"><value>Gere uma credencial curta para usar no terminal ou em uma aplicação. Ela recebe somente preview e apply, exige MFA e nunca é registrada na auditoria.</value></data>
+  <data name="Provisioning.TemporaryToken.LifetimeLabel" xml:space="preserve"><value>Validade</value></data>
+  <data name="Provisioning.TemporaryToken.Lifetime10Min" xml:space="preserve"><value>10 minutos</value></data>
+  <data name="Provisioning.TemporaryToken.Lifetime15Min" xml:space="preserve"><value>15 minutos</value></data>
+  <data name="Provisioning.TemporaryToken.Lifetime30Min" xml:space="preserve"><value>30 minutos</value></data>
+  <data name="Provisioning.TemporaryToken.Lifetime60Min" xml:space="preserve"><value>60 minutos</value></data>
+  <data name="Provisioning.TemporaryToken.GenerateButton" xml:space="preserve"><value>Gerar token temporário</value></data>
+  <data name="Provisioning.TemporaryToken.IssuedTitle" xml:space="preserve"><value>Token emitido uma única vez</value></data>
+  <data name="Provisioning.TemporaryToken.IssuedDescription" xml:space="preserve"><value>Copie agora. Depois de ocultar este valor, ele não poderá ser recuperado pela interface.</value></data>
+  <data name="Provisioning.TemporaryToken.ExpiresBadge" xml:space="preserve"><value>Expira {0}</value></data>
+  <data name="Provisioning.TemporaryToken.ExpiresSoon" xml:space="preserve"><value>em breve</value></data>
+  <data name="Provisioning.TemporaryToken.ValueAriaLabel" xml:space="preserve"><value>Token temporário de provisioning</value></data>
+  <data name="Provisioning.TemporaryToken.CapabilitiesLabel" xml:space="preserve"><value>Capacidades:</value></data>
+  <data name="Provisioning.Common.And" xml:space="preserve"><value>e</value></data>
+  <data name="Provisioning.TemporaryToken.Copied" xml:space="preserve"><value>Copiado</value></data>
+  <data name="Provisioning.TemporaryToken.CopyButton" xml:space="preserve"><value>Copiar token</value></data>
+  <data name="Provisioning.TemporaryToken.HideButton" xml:space="preserve"><value>Ocultar token</value></data>
+  <data name="Provisioning.TemporaryToken.ClipboardUnavailable" xml:space="preserve"><value>A cópia automática não está disponível neste navegador; selecione o valor acima e use Ctrl+C.</value></data>
+  <data name="Provisioning.TemporaryToken.HiddenTitle" xml:space="preserve"><value>Token ocultado</value></data>
+  <data name="Provisioning.TemporaryToken.HiddenDescription" xml:space="preserve"><value>O valor não pode ser recuperado pela interface. Emita outro somente se necessário.</value></data>
+  <data name="Provisioning.Workflow.Aria" xml:space="preserve"><value>Etapas do provisionamento</value></data>
+  <data name="Provisioning.Workflow.Step1.Title" xml:space="preserve"><value>Manifesto</value></data>
+  <data name="Provisioning.Workflow.Step1.Subtitle" xml:space="preserve"><value>Definir intenção</value></data>
+  <data name="Provisioning.Workflow.Step2.Title" xml:space="preserve"><value>Preview</value></data>
+  <data name="Provisioning.Workflow.Step2.Subtitle" xml:space="preserve"><value>Revisar mudanças</value></data>
+  <data name="Provisioning.Workflow.Step3.Subtitle" xml:space="preserve"><value>Confirmar operação</value></data>
+  <data name="Provisioning.Applied.Title" xml:space="preserve"><value>Manifesto aplicado</value></data>
+  <data name="Provisioning.Applied.Description" xml:space="preserve"><value>A operação foi concluída de forma transacional e registrada na auditoria.</value></data>
+  <data name="Provisioning.Manifest.Heading" xml:space="preserve"><value>Manifesto JSON</value></data>
+  <data name="Provisioning.Manifest.Description" xml:space="preserve"><value>Edite ou cole o contrato declarativo completo antes de gerar o preview.</value></data>
+  <data name="Provisioning.Manifest.SchemaBadge" xml:space="preserve"><value>Schema v1</value></data>
+  <data name="Provisioning.Manifest.VisuallyHidden" xml:space="preserve"><value>Conteúdo do manifesto JSON</value></data>
+  <data name="Provisioning.Manifest.Guidance" xml:space="preserve"><value>Use somente referências externas para segredos.</value></data>
+  <data name="Provisioning.Manifest.CountFormat" xml:space="preserve"><value>{0} de {1} caracteres</value></data>
+  <data name="Provisioning.Safety.Heading" xml:space="preserve"><value>Garantias do fluxo</value></data>
+  <data name="Provisioning.Safety.Item1" xml:space="preserve"><value>Preview não altera o banco</value></data>
+  <data name="Provisioning.Safety.Item2" xml:space="preserve"><value>Objetos omitidos não são excluídos</value></data>
+  <data name="Provisioning.Safety.Item3" xml:space="preserve"><value>Segredos usam referência externa</value></data>
+  <data name="Provisioning.Safety.Item4" xml:space="preserve"><value>Apply e auditoria usam a mesma transação</value></data>
+  <data name="Provisioning.Safety.AuditLink" xml:space="preserve"><value>Consultar trilha de auditoria</value></data>
+  <data name="Provisioning.Plan.AppliedHeading" xml:space="preserve"><value>Mudanças aplicadas</value></data>
+  <data name="Provisioning.Plan.PreviewHeading" xml:space="preserve"><value>Preview do manifesto</value></data>
+  <data name="Provisioning.Plan.CountsAria" xml:space="preserve"><value>Resumo das mudanças</value></data>
+  <data name="Provisioning.Plan.CreateLabel" xml:space="preserve"><value>criar</value></data>
+  <data name="Provisioning.Plan.UpdateLabel" xml:space="preserve"><value>atualizar</value></data>
+  <data name="Provisioning.Plan.UnchangedLabel" xml:space="preserve"><value>sem mudança</value></data>
+  <data name="Provisioning.Plan.EmptyTitle" xml:space="preserve"><value>Manifesto vazio</value></data>
+  <data name="Provisioning.Plan.EmptyDescription" xml:space="preserve"><value>Nenhum cliente ou scope foi declarado. Nada será alterado.</value></data>
+  <data name="Provisioning.Plan.Table.Resource" xml:space="preserve"><value>Recurso</value></data>
+  <data name="Provisioning.Plan.Table.Identifier" xml:space="preserve"><value>Identificador</value></data>
+  <data name="Provisioning.Plan.Table.Result" xml:space="preserve"><value>Resultado</value></data>
+  <data name="Provisioning.Plan.ConfirmLabel" xml:space="preserve"><value>Confirmo a aplicação deste preview</value></data>
+  <data name="Provisioning.Plan.ConfirmHint" xml:space="preserve"><value>Somente os itens marcados como criar ou atualizar serão modificados.</value></data>
+  <data name="Provisioning.Plan.ApplyButton" xml:space="preserve"><value>Aplicar manifesto</value></data>
+  <data name="Provisioning.Plan.AlreadyCurrent" xml:space="preserve"><value>O ambiente já corresponde ao manifesto.</value></data>
+  <data name="Provisioning.Error.InvalidTitle" xml:space="preserve"><value>Manifesto inválido — corrija os itens abaixo</value></data>
+  <data name="Provisioning.Error.ForbiddenTitle" xml:space="preserve"><value>Capability de provisioning ausente</value></data>
+  <data name="Provisioning.Error.StepUpTitle" xml:space="preserve"><value>MFA necessário para continuar</value></data>
+  <data name="Provisioning.Error.ConflictTitle" xml:space="preserve"><value>Configuração do Identity impede a operação</value></data>
+  <data name="Provisioning.Error.UnavailableTitle" xml:space="preserve"><value>Identity não respondeu à operação</value></data>
+  <data name="Provisioning.Error.GenericTitle" xml:space="preserve"><value>A operação não foi concluída</value></data>
+  <data name="Provisioning.TokenError.ForbiddenTitle" xml:space="preserve"><value>Capability de emissão ausente</value></data>
+  <data name="Provisioning.TokenError.StepUpTitle" xml:space="preserve"><value>MFA necessário para emitir o token</value></data>
+  <data name="Provisioning.TokenError.ConflictTitle" xml:space="preserve"><value>Emissão temporária desabilitada ou incompleta</value></data>
+  <data name="Provisioning.TokenError.InvalidTitle" xml:space="preserve"><value>Validade do token inválida</value></data>
+  <data name="Provisioning.TokenError.UnavailableTitle" xml:space="preserve"><value>Identity não respondeu à emissão</value></data>
+  <data name="Provisioning.TokenError.GenericTitle" xml:space="preserve"><value>O token não foi emitido</value></data>
+  <data name="Provisioning.Plan.SummaryFormat" xml:space="preserve"><value>{0} mudança(s) efetiva(s) encontrada(s).</value></data>
+  <data name="Provisioning.Plan.SummaryEmpty" xml:space="preserve"><value>Nenhuma mudança efetiva foi encontrada.</value></data>
+  <data name="Provisioning.Resource.Client" xml:space="preserve"><value>Cliente</value></data>
+  <data name="Provisioning.Resource.Scope" xml:space="preserve"><value>Scope</value></data>
+  <data name="Provisioning.Change.Unchanged" xml:space="preserve"><value>Sem mudança</value></data>
+  <data name="OperatorTokens.Operation.ViewTokens" xml:space="preserve"><value>consultar os tokens temporários</value></data>
+  <data name="OperatorTokens.Operation.IssueToken" xml:space="preserve"><value>emitir o token temporário</value></data>
+  <data name="OperatorTokens.Operation.RevokeToken" xml:space="preserve"><value>revogar o token temporário</value></data>
+  <data name="OperatorTokens.Conflict.CheckPolicy" xml:space="preserve"><value>Confirme a política TemporaryOperatorToken do ambiente e tente novamente.</value></data>
+  <data name="OperatorTokens.Access.TechnicalReason" xml:space="preserve"><value>Motivo técnico: {0}.</value></data>
+  <data name="OperatorTokens.PageTitle" xml:space="preserve"><value>Tokens temporários | Sufficit Identity</value></data>
+  <data name="OperatorTokens.Header.Title" xml:space="preserve"><value>Tokens temporários</value></data>
+  <data name="OperatorTokens.Header.Description" xml:space="preserve"><value>Emita credenciais curtas e atenuadas para automações administrativas em nome do operador autenticado.</value></data>
+  <data name="OperatorTokens.LinkPrepares.Title" xml:space="preserve"><value>O link prepara; somente você autoriza</value></data>
+  <data name="OperatorTokens.LinkPrepares.Description" xml:space="preserve"><value>Parâmetros da URL preenchem a solicitação, mas nunca emitem o token nem ampliam as capabilities do operador.</value></data>
+  <data name="OperatorTokens.MfaRequiredBadge" xml:space="preserve"><value>MFA obrigatório</value></data>
+  <data name="OperatorTokens.Loading" xml:space="preserve"><value>Consultando tokens do operador…</value></data>
+  <data name="OperatorTokens.PreparedRequest.Title" xml:space="preserve"><value>Solicitação preparada pelo link</value></data>
+  <data name="OperatorTokens.PreparedRequest.Description" xml:space="preserve"><value>Confira finalidade, duração e acessos. Nenhuma operação foi executada.</value></data>
+  <data name="OperatorTokens.Field.PurposeLabel" xml:space="preserve"><value>Finalidade</value></data>
+  <data name="OperatorTokens.Field.LifetimeLabel" xml:space="preserve"><value>Validade</value></data>
+  <data name="OperatorTokens.Field.CapabilitiesLabel" xml:space="preserve"><value>Capabilities</value></data>
+  <data name="OperatorTokens.Field.CapabilitiesSelectedCount" xml:space="preserve"><value>{0} selecionada(s)</value></data>
+  <data name="OperatorTokens.AwaitingConfirmation" xml:space="preserve"><value>Aguardando confirmação</value></data>
+  <data name="OperatorTokens.UnavailableAccess.Title" xml:space="preserve"><value>O link solicitou acessos indisponíveis</value></data>
+  <data name="OperatorTokens.UnavailableAccess.Description" xml:space="preserve"><value>Remova da URL ou obtenha autorização para: {0}.</value></data>
+  <data name="OperatorTokens.InvalidLinkParameters.Title" xml:space="preserve"><value>O link contém parâmetros inválidos</value></data>
+  <data name="OperatorTokens.Revoked.Title" xml:space="preserve"><value>Token revogado</value></data>
+  <data name="OperatorTokens.Revoked.Description" xml:space="preserve"><value>“{0}” deixou de autorizar novas requisições.</value></data>
+  <data name="OperatorTokens.Issuer.Title" xml:space="preserve"><value>Preparar credencial</value></data>
+  <data name="OperatorTokens.Issuer.Description" xml:space="preserve"><value>O token terá somente os acessos selecionados e expirará automaticamente.</value></data>
+  <data name="OperatorTokens.Issuer.EnabledBadge" xml:space="preserve"><value>Emissão habilitada</value></data>
+  <data name="OperatorTokens.Issuer.DisabledBadge" xml:space="preserve"><value>Emissão desabilitada</value></data>
+  <data name="OperatorTokens.Field.Purpose.Helper" xml:space="preserve"><value>Esta descrição aparece na lista e na auditoria; não inclua segredos.</value></data>
+  <data name="OperatorTokens.Field.Purpose.Placeholder" xml:space="preserve"><value>Ex.: atualizar clientes Hermes e Symposium</value></data>
+  <data name="OperatorTokens.CapabilityPicker.Summary" xml:space="preserve"><value>Selecionar capabilities</value></data>
+  <data name="OperatorTokens.CapabilityFilter.Label" xml:space="preserve"><value>Filtrar capabilities</value></data>
+  <data name="OperatorTokens.CapabilityFilter.Placeholder" xml:space="preserve"><value>Nome ou área</value></data>
+  <data name="OperatorTokens.CapabilityPicker.Empty" xml:space="preserve"><value>Nenhuma capability corresponde ao filtro atual.</value></data>
+  <data name="OperatorTokens.Issuer.SelectedSummary" xml:space="preserve"><value>{0} de {1} capabilities</value></data>
+  <data name="OperatorTokens.Issue.ConfirmButton" xml:space="preserve"><value>Confirmar e gerar token</value></data>
+  <data name="OperatorTokens.Issue.GenerateButton" xml:space="preserve"><value>Gerar token temporário</value></data>
+  <data name="OperatorTokens.Issue.MissingCapability" xml:space="preserve"><value>Seu usuário não possui</value></data>
+  <data name="OperatorTokens.Safety.Title" xml:space="preserve"><value>Limites aplicados</value></data>
+  <data name="OperatorTokens.Safety.FixedScope" xml:space="preserve"><value>Escopo OAuth fixo em</value></data>
+  <data name="OperatorTokens.Safety.NoAdminRole" xml:space="preserve"><value>Sem papel de administrador incorporado</value></data>
+  <data name="OperatorTokens.Safety.MfaPreserved" xml:space="preserve"><value>MFA e autenticação atual preservados</value></data>
+  <data name="OperatorTokens.Safety.AuditedIssuance" xml:space="preserve"><value>Emissão e revogação auditadas</value></data>
+  <data name="OperatorTokens.Safety.NoChaining" xml:space="preserve"><value>Um token temporário não emite outro</value></data>
+  <data name="OperatorTokens.Safety.UrlNote" xml:space="preserve"><value>A URL pode solicitar somente valores de formulário. O servidor recalcula todas as permissões no momento da emissão.</value></data>
+  <data name="OperatorTokens.Reveal.Title" xml:space="preserve"><value>Token disponível uma única vez</value></data>
+  <data name="OperatorTokens.Reveal.Description" xml:space="preserve"><value>Copie agora. A lista abaixo mantém somente metadados para revogação e auditoria.</value></data>
+  <data name="OperatorTokens.Reveal.ExpiresBadge" xml:space="preserve"><value>Expira {0}</value></data>
+  <data name="OperatorTokens.Reveal.TokenAriaLabel" xml:space="preserve"><value>Token temporário de Management</value></data>
+  <data name="OperatorTokens.Reveal.CapabilitiesCount" xml:space="preserve"><value>Bearer · {0} capability(s)</value></data>
+  <data name="OperatorTokens.Reveal.Copied" xml:space="preserve"><value>Copiado</value></data>
+  <data name="OperatorTokens.Reveal.CopyButton" xml:space="preserve"><value>Copiar token</value></data>
+  <data name="OperatorTokens.Reveal.Hide" xml:space="preserve"><value>Ocultar</value></data>
+  <data name="OperatorTokens.Reveal.ClipboardBlocked" xml:space="preserve"><value>A cópia automática foi bloqueada; selecione o valor e use Ctrl+C.</value></data>
+  <data name="OperatorTokens.Active.Title" xml:space="preserve"><value>Tokens ativos</value></data>
+  <data name="OperatorTokens.Active.Description" xml:space="preserve"><value>Somente credenciais temporárias emitidas para este operador são exibidas.</value></data>
+  <data name="OperatorTokens.Active.CountBadge" xml:space="preserve"><value>{0} ativo(s)</value></data>
+  <data name="OperatorTokens.Active.EmptyTitle" xml:space="preserve"><value>Nenhum token temporário ativo</value></data>
+  <data name="OperatorTokens.Active.EmptyDescription" xml:space="preserve"><value>Prepare uma credencial acima ou abra um link parametrizado enviado para uma tarefa específica.</value></data>
+  <data name="OperatorTokens.Active.IssuedExpires" xml:space="preserve"><value>Emitido {0} · expira {1}</value></data>
+  <data name="OperatorTokens.Active.StatusBadge" xml:space="preserve"><value>Ativo</value></data>
+  <data name="OperatorTokens.Active.AuditableId" xml:space="preserve"><value>Identificador auditável</value></data>
+  <data name="OperatorTokens.Revoke.ConfirmPrompt" xml:space="preserve"><value>Revogar agora?</value></data>
+  <data name="OperatorTokens.Revoke.Confirm" xml:space="preserve"><value>Confirmar</value></data>
+  <data name="OperatorTokens.Revoke.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="OperatorTokens.DefaultPurpose" xml:space="preserve"><value>Operação administrativa temporária</value></data>
+  <data name="OperatorTokens.Field.Lifetime.Helper" xml:space="preserve"><value>Limite deste ambiente: {0}.</value></data>
+  <data name="OperatorTokens.Duration.OneHour" xml:space="preserve"><value>1 hora</value></data>
+  <data name="OperatorTokens.Duration.Minutes" xml:space="preserve"><value>{0} minutos</value></data>
+  <data name="OperatorTokens.Duration.Seconds" xml:space="preserve"><value>{0} segundos</value></data>
+  <data name="OperatorTokens.Error.InvalidTitle" xml:space="preserve"><value>Revise os dados da solicitação</value></data>
+  <data name="OperatorTokens.Error.ConflictTitle" xml:space="preserve"><value>A emissão não está disponível neste ambiente</value></data>
+  <data name="OperatorTokens.Error.NotFoundTitle" xml:space="preserve"><value>Token não encontrado</value></data>
+  <data name="OperatorTokens.Error.ForbiddenTitle" xml:space="preserve"><value>Capability administrativa ausente</value></data>
+  <data name="OperatorTokens.Error.StepUpTitle" xml:space="preserve"><value>Autenticação multifator necessária</value></data>
+  <data name="OperatorTokens.Error.UnavailableTitle" xml:space="preserve"><value>Identity não concluiu a operação</value></data>
+  <data name="OperatorTokens.Error.GenericTitle" xml:space="preserve"><value>A operação não foi concluída</value></data>
+  <data name="Nav.Brand.Subtitle" xml:space="preserve"><value>Administração</value></data>
+  <data name="Nav.AriaLabel" xml:space="preserve"><value>Navegação principal</value></data>
+  <data name="Nav.Section.Overview" xml:space="preserve"><value>Visão geral</value></data>
+  <data name="Nav.Home" xml:space="preserve"><value>Início</value></data>
+  <data name="Nav.Settings" xml:space="preserve"><value>Configurações</value></data>
+  <data name="Nav.ServerTooltip" xml:space="preserve"><value>Servidor que está processando esta interface</value></data>
+  <data name="Nav.Server" xml:space="preserve"><value>Servidor</value></data>
+  <data name="Nav.Runtime.ModuleSingular" xml:space="preserve"><value>módulo</value></data>
+  <data name="Nav.Runtime.ModulePlural" xml:space="preserve"><value>módulos</value></data>
+  <data name="Nav.Runtime.Unavailable" xml:space="preserve"><value>Estado indisponível</value></data>
+  <data name="Nav.Runtime.UnknownEnvironment" xml:space="preserve"><value>Não foi possível consultar o runtime</value></data>
+  <data name="Layout.SkipToContent" xml:space="preserve"><value>Pular para o conteúdo</value></data>
+  <data name="Layout.CloseNavigation" xml:space="preserve"><value>Fechar navegação</value></data>
+  <data name="Layout.Navigation" xml:space="preserve"><value>Navegação</value></data>
+  <data name="Layout.OpenNavigation" xml:space="preserve"><value>Abrir navegação</value></data>
+  <data name="Layout.Environment" xml:space="preserve"><value>Ambiente</value></data>
+  <data name="Layout.AuthenticatedOperator" xml:space="preserve"><value>Operador autenticado</value></data>
+  <data name="Layout.IdentitySession" xml:space="preserve"><value>Sessão do Identity</value></data>
+  <data name="Layout.Unavailable" xml:space="preserve"><value>Indisponível</value></data>
+  <data name="Layout.Runtime.Unavailable" xml:space="preserve"><value>Estado do runtime indisponível</value></data>
+  <data name="Layout.Mfa.Required" xml:space="preserve"><value>Autenticação multifator necessária</value></data>
+  <data name="Layout.Policy.Verified" xml:space="preserve"><value>Política administrativa verificada</value></data>
+  <data name="Layout.Mfa.RequiredShort" xml:space="preserve"><value>MFA necessária</value></data>
+  <data name="Layout.Verified" xml:space="preserve"><value>Verificado</value></data>
+  <data name="Routes.AccessDenied.Title" xml:space="preserve"><value>Acesso não autorizado</value></data>
+  <data name="Routes.AccessDenied.Description" xml:space="preserve"><value>Sua sessão está ativa, mas não possui a autoridade necessária para esta área administrativa.</value></data>
+  <data name="Routes.AccessDenied.OpenAccount" xml:space="preserve"><value>Abrir minha conta</value></data>
+  <data name="Layout.ConnectionLost" xml:space="preserve"><value>Não foi possível manter a conexão com o painel.</value></data>
+  <data name="Layout.Reload" xml:space="preserve"><value>Recarregar</value></data>
+  <data name="Layout.DismissNotice" xml:space="preserve"><value>Fechar aviso</value></data>
+  <data name="ErrorPage.PageTitle" xml:space="preserve"><value>Erro | Sufficit Identity</value></data>
+  <data name="ErrorPage.Title" xml:space="preserve"><value>Não foi possível concluir a operação</value></data>
+  <data name="ErrorPage.Description" xml:space="preserve"><value>Recarregue o painel. Se o problema continuar, consulte os logs usando o correlation ID.</value></data>
+  <data name="ErrorPage.BackToOverview" xml:space="preserve"><value>Voltar para a visão geral</value></data>
+  <data name="NotFound.PageTitle" xml:space="preserve"><value>Página não encontrada | Sufficit Identity</value></data>
+  <data name="NotFound.Title" xml:space="preserve"><value>Página não encontrada</value></data>
+  <data name="NotFound.Description" xml:space="preserve"><value>O endereço informado não pertence ao módulo administrativo.</value></data>
+  <data name="NotFound.BackToOverview" xml:space="preserve"><value>Voltar para a visão geral</value></data>
+  <data name="Home.PageTitle" xml:space="preserve"><value>Visão geral | Sufficit Identity</value></data>
+  <data name="Home.HeaderTitle" xml:space="preserve"><value>Visão geral</value></data>
+  <data name="Home.HeaderDescription" xml:space="preserve"><value>Consulte as áreas liberadas para sua sessão e a política efetiva do serviço de identidade.</value></data>
+  <data name="Home.ViewConfiguration" xml:space="preserve"><value>Ver configuração</value></data>
+  <data name="Home.LoadingAriaLabel" xml:space="preserve"><value>Carregando estado administrativo</value></data>
+  <data name="Home.RuntimeError.Title" xml:space="preserve"><value>Não foi possível consultar o runtime</value></data>
+  <data name="Home.RuntimeError.Description" xml:space="preserve"><value>O serviço de identidade não informou seu estado administrativo.</value></data>
+  <data name="Home.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Home.RuntimeState.Title" xml:space="preserve"><value>Estado fornecido pelo runtime</value></data>
+  <data name="Home.RuntimeState.Summary" xml:space="preserve"><value>Ambiente {0} · {1} capabilities efetivas</value></data>
+  <data name="Home.Current" xml:space="preserve"><value>Atual</value></data>
+  <data name="Home.AvailableAreas.Title" xml:space="preserve"><value>Áreas disponíveis</value></data>
+  <data name="Home.AvailableAreas.AuthorizedCount" xml:space="preserve"><value>{0} autorizadas</value></data>
+  <data name="Home.NoAccess.MfaRequired" xml:space="preserve"><value>Autenticação multifator necessária</value></data>
+  <data name="Home.NoAccess.NoAreas" xml:space="preserve"><value>Nenhuma área liberada</value></data>
+  <data name="Home.NoAccess.MfaPendingDescription" xml:space="preserve"><value>Esta sessão não contém evidência de MFA. Encerre-a, entre novamente e informe o código de seis dígitos; se o MFA foi concluído em outra aba, use {0}.</value></data>
+  <data name="Home.NoAccess.NoModulesGranted" xml:space="preserve"><value>O runtime não concedeu acesso a nenhum módulo para esta sessão.</value></data>
+  <data name="Home.EndSessionMfa" xml:space="preserve"><value>Encerrar sessão e entrar com MFA</value></data>
+  <data name="Home.ReloadSession" xml:space="preserve"><value>Recarregar sessão</value></data>
+  <data name="Home.ViewMfaConfig" xml:space="preserve"><value>Ver configuração de MFA</value></data>
+  <data name="Home.Allowed" xml:space="preserve"><value>Permitido</value></data>
+  <data name="Home.EffectivePolicy.Title" xml:space="preserve"><value>Política efetiva</value></data>
+  <data name="Home.Field.Environment" xml:space="preserve"><value>Ambiente</value></data>
+  <data name="Home.Field.Mfa" xml:space="preserve"><value>Autenticação multifator</value></data>
+  <data name="Home.Mfa.Required" xml:space="preserve"><value>Obrigatória</value></data>
+  <data name="Home.Mfa.Optional" xml:space="preserve"><value>Opcional</value></data>
+  <data name="Home.Mfa.NotRequired" xml:space="preserve"><value>Não exigida</value></data>
+  <data name="Home.Mfa.Met" xml:space="preserve"><value>Atendida</value></data>
+  <data name="Home.Mfa.Pending" xml:space="preserve"><value>Pendente</value></data>
+  <data name="Home.Field.HttpScope" xml:space="preserve"><value>Escopo do transporte HTTP</value></data>
+  <data name="Home.SecurityNote.Title" xml:space="preserve"><value>Uma consulta, a mesma decisão</value></data>
+  <data name="Home.SecurityNote.Description" xml:space="preserve"><value>A interface e o adaptador HTTP projetam o mesmo catálogo de módulos, capabilities e políticas calculado pelo serviço de aplicação.</value></data>
+  <data name="Home.ViewDetails" xml:space="preserve"><value>Ver detalhes</value></data>
+  <data name="Overview.Module.Users.Title" xml:space="preserve"><value>Usuários</value></data>
+  <data name="Overview.Module.Users.Description" xml:space="preserve"><value>Contas, perfil, credenciais e estado de acesso</value></data>
+  <data name="Overview.Module.Claims.Title" xml:space="preserve"><value>Claims de usuários</value></data>
+  <data name="Overview.Module.Claims.Description" xml:space="preserve"><value>Atributos personalizados vinculados a cada identidade</value></data>
+  <data name="Overview.Module.Clients.Title" xml:space="preserve"><value>Clientes</value></data>
+  <data name="Overview.Module.Clients.Description" xml:space="preserve"><value>Aplicações, redirects e fluxos autorizados</value></data>
+  <data name="Overview.Module.ServiceAccounts.Title" xml:space="preserve"><value>Contas de sistema</value></data>
+  <data name="Overview.Module.ServiceAccounts.Description" xml:space="preserve"><value>Serviços que se autenticam sozinhos e seus papéis de gestão</value></data>
+  <data name="Overview.Module.Scopes.Description" xml:space="preserve"><value>Recursos e permissões delegadas do protocolo</value></data>
+  <data name="Overview.Module.Audiences.Title" xml:space="preserve"><value>Audiências</value></data>
+  <data name="Overview.Module.Audiences.Description" xml:space="preserve"><value>Destinatários dos tokens e vínculos com scopes</value></data>
+  <data name="Overview.Module.Authorizations.Title" xml:space="preserve"><value>Autorizações</value></data>
+  <data name="Overview.Module.Authorizations.Description" xml:space="preserve"><value>Grants e consentimentos persistidos</value></data>
+  <data name="Overview.Module.Branding.Description" xml:space="preserve"><value>Temas aplicados às superfícies públicas</value></data>
+  <data name="Overview.Module.Sessions.Title" xml:space="preserve"><value>Sessões</value></data>
+  <data name="Overview.Module.Sessions.Description" xml:space="preserve"><value>Credenciais ativas e revogação segura</value></data>
+  <data name="Overview.Module.Provisioning.Title" xml:space="preserve"><value>Provisionamento</value></data>
+  <data name="Overview.Module.Provisioning.Description" xml:space="preserve"><value>Manifestos e tokens temporários de provisioning</value></data>
+  <data name="Overview.Module.OperatorTokens.Title" xml:space="preserve"><value>Tokens temporários</value></data>
+  <data name="Overview.Module.OperatorTokens.Description" xml:space="preserve"><value>Credenciais curtas e atenuadas para automações administrativas</value></data>
+  <data name="Overview.Module.Audit.Title" xml:space="preserve"><value>Auditoria</value></data>
+  <data name="Overview.Module.Audit.Description" xml:space="preserve"><value>Decisões e mutações administrativas persistidas</value></data>
+  <data name="Overview.Module.Metrics.Title" xml:space="preserve"><value>Métricas</value></data>
+  <data name="Overview.Module.Metrics.Description" xml:space="preserve"><value>Uso das aplicações e saúde da coleta</value></data>
+  <data name="Overview.Module.TrustedProxies.Title" xml:space="preserve"><value>Proxies confiáveis</value></data>
+  <data name="Overview.Module.TrustedProxies.Description" xml:space="preserve"><value>Origem dos clientes e cadeia de encaminhamento</value></data>
+  <data name="Overview.Module.Database.Title" xml:space="preserve"><value>Banco de dados</value></data>
+  <data name="Overview.Module.Database.Description" xml:space="preserve"><value>Pool, conexões ativas e recuperação do runtime</value></data>
+  <data name="Settings.PageTitle" xml:space="preserve"><value>Configurações | Sufficit Identity</value></data>
+  <data name="Settings.HeaderTitle" xml:space="preserve"><value>Configuração administrativa</value></data>
+  <data name="Settings.HeaderDescription" xml:space="preserve"><value>Consulte a política, o transporte HTTP e os módulos informados pelo runtime.</value></data>
+  <data name="Settings.ConfigureTrustedProxies" xml:space="preserve"><value>Configurar proxies confiáveis</value></data>
+  <data name="Settings.LoadingAriaLabel" xml:space="preserve"><value>Carregando configuração administrativa</value></data>
+  <data name="Settings.LoadError.Title" xml:space="preserve"><value>Não foi possível carregar a configuração</value></data>
+  <data name="Settings.LoadError.Description" xml:space="preserve"><value>O serviço de identidade não informou sua configuração administrativa.</value></data>
+  <data name="Settings.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Settings.ProvidedByService.Title" xml:space="preserve"><value>Configuração fornecida pelo serviço</value></data>
+  <data name="Settings.ProvidedByService.Description" xml:space="preserve"><value>Os valores abaixo são a mesma projeção publicada pelo adaptador HTTP.</value></data>
+  <data name="Settings.OperatorPolicy.Title" xml:space="preserve"><value>Política do operador</value></data>
+  <data name="Settings.Field.Capabilities" xml:space="preserve"><value>Capabilities concedidas</value></data>
+  <data name="Settings.Calculated" xml:space="preserve"><value>Calculadas</value></data>
+  <data name="Settings.Field.Mfa" xml:space="preserve"><value>Autenticação multifator</value></data>
+  <data name="Settings.Mandatory" xml:space="preserve"><value>Obrigatória</value></data>
+  <data name="Settings.Optional" xml:space="preserve"><value>Opcional</value></data>
+  <data name="Settings.Field.AuthorizedModules" xml:space="preserve"><value>Módulos autorizados</value></data>
+  <data name="Settings.ModuleCountFormat" xml:space="preserve"><value>{0} de {1}</value></data>
+  <data name="Settings.ThisSession" xml:space="preserve"><value>Nesta sessão</value></data>
+  <data name="Settings.HttpTransport.Title" xml:space="preserve"><value>Transporte HTTP</value></data>
+  <data name="Settings.Field.ConfiguredPrefix" xml:space="preserve"><value>Prefixo configurado</value></data>
+  <data name="Settings.Route" xml:space="preserve"><value>Rota</value></data>
+  <data name="Settings.Field.TransportAuthorization" xml:space="preserve"><value>Autorização do transporte</value></data>
+  <data name="Settings.Disabled" xml:space="preserve"><value>Desabilitada</value></data>
+  <data name="Settings.Protected" xml:space="preserve"><value>Protegido</value></data>
+  <data name="Settings.Review" xml:space="preserve"><value>Revisar</value></data>
+  <data name="Settings.Field.RequiredScope" xml:space="preserve"><value>Escopo obrigatório</value></data>
+  <data name="Settings.ModuleCatalog.Title" xml:space="preserve"><value>Catálogo de módulos</value></data>
+  <data name="Settings.ReportedByRuntime" xml:space="preserve"><value>Informado pelo runtime</value></data>
+  <data name="Settings.Mfa.NotRequired" xml:space="preserve"><value>Não exigida</value></data>
+  <data name="Settings.Mfa.Met" xml:space="preserve"><value>Atendida</value></data>
+  <data name="Settings.Mfa.Pending" xml:space="preserve"><value>Pendente</value></data>
+  <data name="Settings.Module.Unavailable" xml:space="preserve"><value>Indisponível</value></data>
+  <data name="Settings.Module.Allowed" xml:space="preserve"><value>Permitido</value></data>
+  <data name="Settings.Module.MfaRequired" xml:space="preserve"><value>Exige MFA</value></data>
+  <data name="Settings.Module.NoCapability" xml:space="preserve"><value>Sem capability</value></data>
+  <data name="Settings.Module.NotAvailableDescription" xml:space="preserve"><value>Contrato de aplicação ainda não disponível</value></data>
+  <data name="Settings.Module.NoCapabilityDeclared" xml:space="preserve"><value>Sem capability declarada</value></data>
+  <data name="Branding.HeaderDescription" xml:space="preserve"><value>Gerencie a identidade visual aplicada às superfícies públicas do serviço.</value></data>
+  <data name="Branding.Refresh" xml:space="preserve"><value>Atualizar</value></data>
+  <data name="Branding.NewTheme" xml:space="preserve"><value>Novo tema</value></data>
+  <data name="Branding.SingleSourceOfTruth.Title" xml:space="preserve"><value>Uma fonte de verdade</value></data>
+  <data name="Branding.SingleSourceOfTruth.Description" xml:space="preserve"><value>Esta tela e a API executam os mesmos casos de uso, validações, autorização e auditoria.</value></data>
+  <data name="Branding.Integrated" xml:space="preserve"><value>Integrado</value></data>
+  <data name="Branding.MultipleActiveThemes.Title" xml:space="preserve"><value>Mais de um tema está marcado como ativo</value></data>
+  <data name="Branding.MultipleActiveThemes.Description" xml:space="preserve"><value>Ative o tema correto abaixo; a operação desativará os demais de forma atômica.</value></data>
+  <data name="Branding.Updated" xml:space="preserve"><value>Branding atualizado</value></data>
+  <data name="Branding.OperationError.Title" xml:space="preserve"><value>Não foi possível concluir a operação</value></data>
+  <data name="Branding.SavedConfigurations" xml:space="preserve"><value>Configurações salvas</value></data>
+  <data name="Branding.LoadingThemes" xml:space="preserve"><value>Carregando temas</value></data>
+  <data name="Branding.LoadError.Title" xml:space="preserve"><value>Não foi possível carregar os temas</value></data>
+  <data name="Branding.Retry" xml:space="preserve"><value>Tentar novamente</value></data>
+  <data name="Branding.NoThemes.Title" xml:space="preserve"><value>Nenhum tema configurado</value></data>
+  <data name="Branding.NoThemes.Description" xml:space="preserve"><value>Crie a primeira identidade visual; ela só será publicada após a ativação.</value></data>
+  <data name="Branding.CreateTheme" xml:space="preserve"><value>Criar tema</value></data>
+  <data name="Branding.Active" xml:space="preserve"><value>Ativo</value></data>
+  <data name="Branding.SelectTheme" xml:space="preserve"><value>Selecione um tema</value></data>
+  <data name="Branding.PreviewUsesPersistedValues" xml:space="preserve"><value>A prévia usa os valores persistidos pelo serviço de identidade.</value></data>
+  <data name="Branding.Published" xml:space="preserve"><value>Publicado</value></data>
+  <data name="Branding.Draft" xml:space="preserve"><value>Rascunho</value></data>
+  <data name="Branding.CustomBackground" xml:space="preserve"><value>Fundo personalizado</value></data>
+  <data name="Branding.Field.Brand" xml:space="preserve"><value>Marca</value></data>
+  <data name="Branding.Field.SoftHighlight" xml:space="preserve"><value>Destaque suave</value></data>
+  <data name="Branding.Field.UpdatedAt" xml:space="preserve"><value>Atualizado</value></data>
+  <data name="Branding.EditTheme" xml:space="preserve"><value>Editar tema</value></data>
+  <data name="Branding.Publishing" xml:space="preserve"><value>Publicando…</value></data>
+  <data name="Branding.PublishTheme" xml:space="preserve"><value>Publicar tema</value></data>
+  <data name="Branding.Form.IdentityHelp" xml:space="preserve"><value>Textos e ativos são persistidos no serviço e reutilizados pelas superfícies públicas.</value></data>
+  <data name="Branding.Field.ThemeName" xml:space="preserve"><value>Nome do tema</value></data>
+  <data name="Branding.Field.BrowserTitle" xml:space="preserve"><value>Título do navegador</value></data>
+  <data name="Branding.Field.BrandName" xml:space="preserve"><value>Nome da marca</value></data>
+  <data name="Branding.Field.BrandSubtitle" xml:space="preserve"><value>Complemento da marca</value></data>
+  <data name="Branding.Form.AssetsTitle" xml:space="preserve"><value>Ativos visuais</value></data>
+  <data name="Branding.Form.AssetsHelp" xml:space="preserve"><value>Use caminhos relativos à raiz, como /_content/…, ou URLs HTTP(S) absolutas.</value></data>
+  <data name="Branding.Field.MainLogo" xml:space="preserve"><value>Logo principal</value></data>
+  <data name="Branding.Field.HeaderIcon" xml:space="preserve"><value>Ícone do cabeçalho</value></data>
+  <data name="Branding.Field.BackgroundImage" xml:space="preserve"><value>Imagem de fundo</value></data>
+  <data name="Branding.Form.BackgroundHint" xml:space="preserve"><value>A prévia acima atualiza enquanto você ajusta a URL; o tema público usa o valor salvo.</value></data>
+  <data name="Branding.Form.ColorsTitle" xml:space="preserve"><value>Cores</value></data>
+  <data name="Branding.Form.ColorsHelp" xml:space="preserve"><value>Valores opcionais no formato hexadecimal #RRGGBB; campos vazios usam o padrão do host.</value></data>
+  <data name="Branding.Field.Interaction" xml:space="preserve"><value>Interação</value></data>
+  <data name="Branding.Field.SoftBackground" xml:space="preserve"><value>Fundo suave</value></data>
+  <data name="Branding.Field.Browser" xml:space="preserve"><value>Navegador</value></data>
+  <data name="Branding.Form.AvatarsTitle" xml:space="preserve"><value>Avatares administrativos</value></data>
+  <data name="Branding.Form.AvatarsHelp" xml:space="preserve"><value>O marcador {userid} será substituído pelo identificador do usuário.</value></data>
+  <data name="Branding.Field.AvatarUrlTemplate" xml:space="preserve"><value>Template de URL</value></data>
+  <data name="Branding.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Branding.Saving" xml:space="preserve"><value>Salvando…</value></data>
+  <data name="Branding.SaveChanges" xml:space="preserve"><value>Salvar alterações</value></data>
+  <data name="Branding.DeleteTheme" xml:space="preserve"><value>Excluir tema</value></data>
+  <data name="Branding.DeleteTheme.Description" xml:space="preserve"><value>A exclusão remove este rascunho e registra a operação na auditoria administrativa.</value></data>
+  <data name="Branding.DeleteConfirmPrefix" xml:space="preserve"><value>Digite</value></data>
+  <data name="Branding.DeleteConfirmSuffix" xml:space="preserve"><value>para confirmar</value></data>
+  <data name="Branding.Deleting" xml:space="preserve"><value>Excluindo…</value></data>
+  <data name="Branding.ConfirmDeletion" xml:space="preserve"><value>Confirmar exclusão</value></data>
+  <data name="Branding.Success.Created" xml:space="preserve"><value>O tema “{0}” foi criado como rascunho.</value></data>
+  <data name="Branding.Success.Updated" xml:space="preserve"><value>As alterações de “{0}” foram salvas.</value></data>
+  <data name="Branding.Success.Activated" xml:space="preserve"><value>O tema “{0}” está publicado.</value></data>
+  <data name="Branding.Success.Deleted" xml:space="preserve"><value>O tema “{0}” foi excluído.</value></data>
+  <data name="Branding.HostDefault" xml:space="preserve"><value>padrão do host</value></data>
+  <data name="Branding.Validation.NameRequired" xml:space="preserve"><value>Informe o nome do tema.</value></data>
+  <data name="Branding.Validation.HexColorFormat" xml:space="preserve"><value>Use o formato #RRGGBB (ex: #cc0000).</value></data>
 </root>

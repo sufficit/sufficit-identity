@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+
+  <data name="Vault.AdminUserVault.AccountNotFoundIdentifierPrefix" xml:space="preserve"><value>Account not found · identifier</value></data>
+  <data name="Vault.AdminUserVault.AccountRemoved" xml:space="preserve"><value>Account removed</value></data>
+  <data name="Vault.AdminUserVault.BackLink" xml:space="preserve"><value>Back to user Vaults</value></data>
+  <data name="Vault.AdminUserVault.BackToManagement" xml:space="preserve"><value>Back to management</value></data>
+  <data name="Vault.AdminUserVault.CleanupConfirmAriaLabel" xml:space="preserve"><value>Confirm full cleanup</value></data>
+  <data name="Vault.AdminUserVault.CleanupDescription" xml:space="preserve"><value>Removes all personal secrets and all connected credentials. Temporary authentication states are not changed.</value></data>
+  <data name="Vault.AdminUserVault.CleanupHeading" xml:space="preserve"><value>Clear this user's Vault</value></data>
+  <data name="Vault.AdminUserVault.CleanupIrreversible" xml:space="preserve"><value>This action cannot be undone.</value></data>
+  <data name="Vault.AdminUserVault.ClearCredentials" xml:space="preserve"><value>Clear credentials</value></data>
+  <data name="Vault.AdminUserVault.Clearing" xml:space="preserve"><value>Clearing…</value></data>
+  <data name="Vault.AdminUserVault.ConfirmCleanup" xml:space="preserve"><value>Confirm cleanup</value></data>
+  <data name="Vault.AdminUserVault.ConfirmRemovalAriaLabel" xml:space="preserve"><value>Confirm removal</value></data>
+  <data name="Vault.AdminUserVault.ConnectedIntegration" xml:space="preserve"><value>Connected integration</value></data>
+  <data name="Vault.AdminUserVault.ConnectedLabel" xml:space="preserve"><value>Connected</value></data>
+  <data name="Vault.AdminUserVault.DefaultTitle" xml:space="preserve"><value>User Vault</value></data>
+  <data name="Vault.AdminUserVault.Description" xml:space="preserve"><value>Review metadata and remove credentials without revealing protected values.</value></data>
+  <data name="Vault.AdminUserVault.ExpiresOn" xml:space="preserve"><value>Expires on {0}</value></data>
+  <data name="Vault.AdminUserVault.IdentificationAriaLabel" xml:space="preserve"><value>User identification</value></data>
+  <data name="Vault.AdminUserVault.IdentifierPrefix" xml:space="preserve"><value>Identifier</value></data>
+  <data name="Vault.AdminUserVault.LastActivityLabel" xml:space="preserve"><value>Last activity</value></data>
+  <data name="Vault.AdminUserVault.LoadErrorTitle" xml:space="preserve"><value>Could not load this Vault</value></data>
+  <data name="Vault.AdminUserVault.LoadingAriaLabel" xml:space="preserve"><value>Loading user Vault</value></data>
+  <data name="Vault.AdminUserVault.ManagedCredentialMeta" xml:space="preserve"><value>{0} · updated on {1}</value></data>
+  <data name="Vault.AdminUserVault.ManagedCredentialRemoved" xml:space="preserve"><value>Connected credential removed.</value></data>
+  <data name="Vault.AdminUserVault.ManagedCredentialsDescription" xml:space="preserve"><value>Tokens and keys kept by integrations on behalf of this user.</value></data>
+  <data name="Vault.AdminUserVault.ManagedCredentialsEmptyDescription" xml:space="preserve"><value>There are no persisted integrations for this user.</value></data>
+  <data name="Vault.AdminUserVault.ManagedCredentialsEmptyTitle" xml:space="preserve"><value>No connected credential</value></data>
+  <data name="Vault.AdminUserVault.ManagedCredentialsHeading" xml:space="preserve"><value>Connected credentials</value></data>
+  <data name="Vault.AdminUserVault.MetadataProtected" xml:space="preserve"><value>Protected metadata</value></data>
+  <data name="Vault.AdminUserVault.NoExpirationInfo" xml:space="preserve"><value>No expiration provided</value></data>
+  <data name="Vault.AdminUserVault.NoPasswordShown" xml:space="preserve"><value>No password is shown.</value></data>
+  <data name="Vault.AdminUserVault.NoteBody" xml:space="preserve"><value>Removal revokes the stored data; the connected app may require the user to authorize again.</value></data>
+  <data name="Vault.AdminUserVault.NotFoundDescription" xml:space="preserve"><value>The account does not exist or no longer has stored credentials.</value></data>
+  <data name="Vault.AdminUserVault.NotFoundTitle" xml:space="preserve"><value>Vault not found</value></data>
+  <data name="Vault.AdminUserVault.PersonalLabel" xml:space="preserve"><value>Personal</value></data>
+  <data name="Vault.AdminUserVault.PersonalSecretMeta" xml:space="preserve"><value>Namespace {0} · updated on {1}</value></data>
+  <data name="Vault.AdminUserVault.PersonalSecretRemoved" xml:space="preserve"><value>Personal secret removed.</value></data>
+  <data name="Vault.AdminUserVault.PersonalSecretsDescription" xml:space="preserve"><value>Entries created directly by the user in personal storage.</value></data>
+  <data name="Vault.AdminUserVault.PersonalSecretsEmptyDescription" xml:space="preserve"><value>The user has not created personal entries in this Vault.</value></data>
+  <data name="Vault.AdminUserVault.PersonalSecretsEmptyTitle" xml:space="preserve"><value>No personal secret</value></data>
+  <data name="Vault.AdminUserVault.PersonalSecretsHeading" xml:space="preserve"><value>Personal secrets</value></data>
+  <data name="Vault.AdminUserVault.RemoveQuestion" xml:space="preserve"><value>Remove?</value></data>
+  <data name="Vault.AdminUserVault.VaultCleared" xml:space="preserve"><value>Vault cleared: {0} personal secrets and {1} connected credentials removed.</value></data>
+  <data name="Vault.AdminVault.AccountRemovedSubtitle" xml:space="preserve"><value>Removed account · {0}</value></data>
+  <data name="Vault.AdminVault.AdminAccessBadge" xml:space="preserve"><value>Administrative access</value></data>
+  <data name="Vault.AdminVault.ClearSearch" xml:space="preserve"><value>Clear</value></data>
+  <data name="Vault.AdminVault.ConnectedCountSuffix" xml:space="preserve"><value>connected</value></data>
+  <data name="Vault.AdminVault.CreateOrRotateDescription" xml:space="preserve"><value>The new value is accepted only for this operation and cannot be viewed on this screen.</value></data>
+  <data name="Vault.AdminVault.CreateOrRotateHeading" xml:space="preserve"><value>Create or rotate</value></data>
+  <data name="Vault.AdminVault.Description" xml:space="preserve"><value>Find credentials by user, remove compromised access, and maintain global service secrets.</value></data>
+  <data name="Vault.AdminVault.GlobalSecretRemoved" xml:space="preserve"><value>Global secret removed.</value></data>
+  <data name="Vault.AdminVault.GlobalSecretSaved" xml:space="preserve"><value>Global secret saved.</value></data>
+  <data name="Vault.AdminVault.GlobalSecretsDescription" xml:space="preserve"><value>Credentials shared by services and internal routines.</value></data>
+  <data name="Vault.AdminVault.GlobalSecretsHeading" xml:space="preserve"><value>Global secrets</value></data>
+  <data name="Vault.AdminVault.GlobalSecretsTab" xml:space="preserve"><value>Global secrets</value></data>
+  <data name="Vault.AdminVault.LoadErrorTitle" xml:space="preserve"><value>Could not load the Vaults</value></data>
+  <data name="Vault.AdminVault.LoadingGlobalAriaLabel" xml:space="preserve"><value>Loading global secrets</value></data>
+  <data name="Vault.AdminVault.LoadingUsersAriaLabel" xml:space="preserve"><value>Loading Vault users</value></data>
+  <data name="Vault.AdminVault.ManagedCredentialsFoundLabel" xml:space="preserve"><value>Connected credentials</value></data>
+  <data name="Vault.AdminVault.NameLabel" xml:space="preserve"><value>Logical name</value></data>
+  <data name="Vault.AdminVault.NamePlaceholder" xml:space="preserve"><value>e.g.: metrics/victoria-token</value></data>
+  <data name="Vault.AdminVault.Next" xml:space="preserve"><value>Next</value></data>
+  <data name="Vault.AdminVault.NoGlobalSecretsDescription" xml:space="preserve"><value>Storage does not have administrative secrets yet.</value></data>
+  <data name="Vault.AdminVault.NoGlobalSecretsTitle" xml:space="preserve"><value>No global secret</value></data>
+  <data name="Vault.AdminVault.NoVaultFoundDescription" xml:space="preserve"><value>Change the search or wait until a credential is stored.</value></data>
+  <data name="Vault.AdminVault.NoVaultFoundTitle" xml:space="preserve"><value>No Vault found</value></data>
+  <data name="Vault.AdminVault.PageOf" xml:space="preserve"><value>Page {0} of {1}</value></data>
+  <data name="Vault.AdminVault.PageTitle" xml:space="preserve"><value>Vault management</value></data>
+  <data name="Vault.AdminVault.PaginationAriaLabel" xml:space="preserve"><value>User Vault pagination</value></data>
+  <data name="Vault.AdminVault.PersonalCountSuffix" xml:space="preserve"><value>personal</value></data>
+  <data name="Vault.AdminVault.PersonalSecretsFoundLabel" xml:space="preserve"><value>Personal secrets</value></data>
+  <data name="Vault.AdminVault.Previous" xml:space="preserve"><value>Previous</value></data>
+  <data name="Vault.AdminVault.ReadOnlyHint" xml:space="preserve"><value>Your permission allows viewing metadata, but not creating or rotating secrets.</value></data>
+  <data name="Vault.AdminVault.SaveRotation" xml:space="preserve"><value>Save rotation</value></data>
+  <data name="Vault.AdminVault.SearchButton" xml:space="preserve"><value>Search</value></data>
+  <data name="Vault.AdminVault.SearchLabel" xml:space="preserve"><value>Search user</value></data>
+  <data name="Vault.AdminVault.SearchPlaceholder" xml:space="preserve"><value>Email, name, or identifier</value></data>
+  <data name="Vault.AdminVault.TabsAriaLabel" xml:space="preserve"><value>Vault management areas</value></data>
+  <data name="Vault.AdminVault.UpdatedByOn" xml:space="preserve"><value>Updated by {0} on {1}</value></data>
+  <data name="Vault.AdminVault.UpdatedPrefix" xml:space="preserve"><value>Updated {0}</value></data>
+  <data name="Vault.AdminVault.UserPlural" xml:space="preserve"><value>users</value></data>
+  <data name="Vault.AdminVault.UsersDescription" xml:space="preserve"><value>Includes active accounts and leftovers from removed accounts that still require cleanup.</value></data>
+  <data name="Vault.AdminVault.UsersHeading" xml:space="preserve"><value>Users with data in the Vault</value></data>
+  <data name="Vault.AdminVault.UserSingular" xml:space="preserve"><value>user</value></data>
+  <data name="Vault.AdminVault.UserVaultsTab" xml:space="preserve"><value>User Vaults</value></data>
+  <data name="Vault.AdminVault.Validation.NameRequired" xml:space="preserve"><value>Enter a name.</value></data>
+  <data name="Vault.AdminVault.Validation.ValueRequired" xml:space="preserve"><value>Enter a value.</value></data>
+  <data name="Vault.AdminVault.ValueLabel" xml:space="preserve"><value>New value</value></data>
+  <data name="Vault.AdminVault.VaultsFoundLabel" xml:space="preserve"><value>Vaults found</value></data>
+  <data name="Vault.AdminVault.WarningNoteBody" xml:space="preserve"><value>This area shows only metadata. Removals are final, require management permission, and are logged in the audit trail.</value></data>
+  <data name="Vault.AdminVault.WarningNoteTitle" xml:space="preserve"><value>Protected values remain invisible.</value></data>
+  <data name="Vault.App.ConnectionLost" xml:space="preserve"><value>Could not keep the connection to the Vault.</value></data>
+  <data name="Vault.App.Reload" xml:space="preserve"><value>Reload</value></data>
+  <data name="Vault.Common.Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Vault.Common.Confirm" xml:space="preserve"><value>Confirm</value></data>
+  <data name="Vault.Common.ItemPlural" xml:space="preserve"><value>items</value></data>
+  <data name="Vault.Common.ItemSingular" xml:space="preserve"><value>item</value></data>
+  <data name="Vault.Common.NoDate" xml:space="preserve"><value>No date</value></data>
+  <data name="Vault.Common.Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="Vault.Common.Retry" xml:space="preserve"><value>Try again</value></data>
+  <data name="Vault.Common.Saving" xml:space="preserve"><value>Saving…</value></data>
+  <data name="Vault.Data.OperationFailed" xml:space="preserve"><value>Could not complete the Vault operation.</value></data>
+  <data name="Vault.Data.OperationTimedOut" xml:space="preserve"><value>The Vault took longer than expected. Try again.</value></data>
+  <data name="Vault.Data.SessionWithoutIdentity" xml:space="preserve"><value>Your session does not have a valid identity.</value></data>
+  <data name="Vault.Layout.ProtectedSecrets" xml:space="preserve"><value>Protected secrets</value></data>
+  <data name="Vault.Routes.NotFoundDescription" xml:space="preserve"><value>This Vault address does not exist.</value></data>
+  <data name="Vault.Routes.NotFoundTitle" xml:space="preserve"><value>Page not found</value></data>
+  <data name="Vault.UserVault.ActiveBadge" xml:space="preserve"><value>Active</value></data>
+  <data name="Vault.UserVault.AddedSecretsDescription" xml:space="preserve"><value>Metadata to confirm existence and last rotation.</value></data>
+  <data name="Vault.UserVault.AddedSecretsHeading" xml:space="preserve"><value>Secrets added by you</value></data>
+  <data name="Vault.UserVault.AddOrReplaceHeading" xml:space="preserve"><value>Add or replace secret</value></data>
+  <data name="Vault.UserVault.AdminEntryBody" xml:space="preserve"><value>Manage global secrets used by services and integrations. Personal credentials remain isolated per user.</value></data>
+  <data name="Vault.UserVault.AdminEntryHeading" xml:space="preserve"><value>Global administration</value></data>
+  <data name="Vault.UserVault.CredentialPlural" xml:space="preserve"><value>credentials</value></data>
+  <data name="Vault.UserVault.CredentialSingular" xml:space="preserve"><value>credential</value></data>
+  <data name="Vault.UserVault.CredentialUpdatedOn" xml:space="preserve"><value>{0} · Updated on {1}</value></data>
+  <data name="Vault.UserVault.Description" xml:space="preserve"><value>Track connected credentials and store personal secrets without exposing their values.</value></data>
+  <data name="Vault.UserVault.EncryptedBadge" xml:space="preserve"><value>Encrypted</value></data>
+  <data name="Vault.UserVault.ExpiredBadge" xml:space="preserve"><value>Expired</value></data>
+  <data name="Vault.UserVault.LoadErrorTitle" xml:space="preserve"><value>Could not load your Vault.</value></data>
+  <data name="Vault.UserVault.LoadingManagedAriaLabel" xml:space="preserve"><value>Loading connected credentials</value></data>
+  <data name="Vault.UserVault.LoadingPersonalAriaLabel" xml:space="preserve"><value>Loading personal secrets</value></data>
+  <data name="Vault.UserVault.ManagedByApp" xml:space="preserve"><value>Managed by the app</value></data>
+  <data name="Vault.UserVault.ManagedCredentialDescription" xml:space="preserve"><value>Metadata of credentials kept by apps and integrations.</value></data>
+  <data name="Vault.UserVault.ManagedCredentialHeading" xml:space="preserve"><value>Connected credentials</value></data>
+  <data name="Vault.UserVault.ManagedRemoveHint" xml:space="preserve"><value>To remove a connected credential, disconnect the account in the app that created it.</value></data>
+  <data name="Vault.UserVault.MetadataOnlyBody" xml:space="preserve"><value>Values remain encrypted on the server and are never returned by the listing.</value></data>
+  <data name="Vault.UserVault.MetadataOnlyTitle" xml:space="preserve"><value>Only metadata appears on this page.</value></data>
+  <data name="Vault.UserVault.NameHelperText" xml:space="preserve"><value>Use letters, numbers, and at least one slash.</value></data>
+  <data name="Vault.UserVault.NameLabel" xml:space="preserve"><value>Name</value></data>
+  <data name="Vault.UserVault.NamePlaceholder" xml:space="preserve"><value>e.g.: vendor/api-key</value></data>
+  <data name="Vault.UserVault.NoManagedCredentialDescription" xml:space="preserve"><value>When an app connects an account or saves a credential, it will appear here.</value></data>
+  <data name="Vault.UserVault.NoManagedCredentialTitle" xml:space="preserve"><value>No connected credential</value></data>
+  <data name="Vault.UserVault.NoSecretAddedDescription" xml:space="preserve"><value>Save the first value for an integration you control.</value></data>
+  <data name="Vault.UserVault.NoSecretAddedTitle" xml:space="preserve"><value>No secret added</value></data>
+  <data name="Vault.UserVault.OAuthIntegration" xml:space="preserve"><value>OAuth integration</value></data>
+  <data name="Vault.UserVault.OpenAdminVault" xml:space="preserve"><value>Open administrative Vault</value></data>
+  <data name="Vault.UserVault.PageTitle" xml:space="preserve"><value>My Vault</value></data>
+  <data name="Vault.UserVault.PersonalNamespaceBadge" xml:space="preserve"><value>namespace: personal</value></data>
+  <data name="Vault.UserVault.PersonalSecretHintPrefix" xml:space="preserve"><value>Use a logical name, such as</value></data>
+  <data name="Vault.UserVault.SaveSecret" xml:space="preserve"><value>Save secret</value></data>
+  <data name="Vault.UserVault.SecretRemoved" xml:space="preserve"><value>Secret removed.</value></data>
+  <data name="Vault.UserVault.SecretSavedWithEnvelope" xml:space="preserve"><value>Secret saved with envelope protection.</value></data>
+  <data name="Vault.UserVault.UpdatedOn" xml:space="preserve"><value>Updated on {0}</value></data>
+  <data name="Vault.UserVault.Validation.NameMaxLength" xml:space="preserve"><value>Use at most 128 characters.</value></data>
+  <data name="Vault.UserVault.Validation.NamePattern" xml:space="preserve"><value>Use a valid logical path, such as vendor/api-key.</value></data>
+  <data name="Vault.UserVault.Validation.NameRequired" xml:space="preserve"><value>Enter a name.</value></data>
+  <data name="Vault.UserVault.Validation.ValueMaxLength" xml:space="preserve"><value>The value exceeds the 16 KiB limit.</value></data>
+  <data name="Vault.UserVault.Validation.ValueRequired" xml:space="preserve"><value>Enter a value.</value></data>
+  <data name="Vault.UserVault.ValueLabel" xml:space="preserve"><value>Value</value></data>
+  <data name="Vault.UserVault.ValuePlaceholder" xml:space="preserve"><value>Won't be shown again</value></data>
+</root>

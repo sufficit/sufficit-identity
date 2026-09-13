@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Localization;
 using Sufficit.Identity.Management.Authorization;
 using Sufficit.Identity.UI.Management.Clients;
+using Sufficit.Identity.UI.Management.Resources;
 
 namespace Sufficit.Identity.UI.Management.Provisioning;
 
@@ -11,28 +13,33 @@ namespace Sufficit.Identity.UI.Management.Provisioning;
 internal static class ProvisioningErrorMessages
 {
     public static ManagementDataResult<T> AccessFailure<T>(
+        IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer,
         ManagementAuthorizationDecision decision,
         string operation,
         string capability) =>
         ManagementDataResult<T>.Failure(
             ToOutcome(decision),
-            AccessMessage(decision, operation, capability),
-            errorDetails: [AccessNextStep(decision, capability)]);
+            AccessMessage(localizer, decision, operation, capability),
+            errorDetails: [AccessNextStep(localizer, decision, capability)]);
 
     public static ManagementDataResult<T> ConflictFailure<T>(
+        IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer,
         ManagementConflictException exception,
         string operation) =>
         ManagementDataResult<T>.Failure(
             ManagementDataOutcome.Conflict,
-            exception.Message,
-            errorDetails: [ConflictNextStep(exception, operation)]);
+            ManagementErrorText.For(localizer, exception),
+            errorDetails: [ConflictNextStep(localizer, exception, operation)]);
 
-    public static string TimeoutMessage(string operation) =>
-        $"O Identity demorou para {operation} e a operação foi interrompida antes de confirmar o resultado.";
+    public static string TimeoutMessage(
+        IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer,
+        string operation) =>
+        localizer["Provisioning.Error.Timeout", operation].Value;
 
-    public static string DependencyMessage(string operation) =>
-        $"O Identity não conseguiu {operation}. Confira se o módulo Management está implantado, " +
-        "se a base de dados está disponível e tente novamente.";
+    public static string DependencyMessage(
+        IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer,
+        string operation) =>
+        localizer["Provisioning.Error.Dependency", operation].Value;
 
     private static ManagementDataOutcome ToOutcome(
         ManagementAuthorizationDecision decision) =>
@@ -41,55 +48,54 @@ internal static class ProvisioningErrorMessages
             : ManagementDataOutcome.Forbidden;
 
     private static string AccessMessage(
+        IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer,
         ManagementAuthorizationDecision decision,
         string operation,
         string capability) =>
         decision.ReasonCode switch
         {
             "operator_not_authenticated" =>
-                $"Não há uma sessão autenticada para {operation}.",
+                localizer["Provisioning.Error.NoAuthenticatedSession", operation].Value,
             "capability_not_granted" =>
-                $"A sessão está autenticada, mas falta a capability {capability} para {operation}.",
+                localizer["Provisioning.Error.CapabilityMissing", capability, operation].Value,
             "mfa_required" =>
-                $"A sessão está autenticada, mas o MFA ainda não foi comprovado para {operation}.",
+                localizer["Provisioning.Error.MfaRequired", operation].Value,
             "temporary_token_cannot_mint" =>
-                "Um token temporário não pode emitir outro token temporário.",
+                localizer["Provisioning.Error.TemporaryTokenCannotMint"].Value,
             _ =>
-                $"O Identity recusou {operation} por uma regra de segurança."
+                localizer["Provisioning.Error.SecurityRuleRefused", operation].Value
         };
 
     private static string AccessNextStep(
+        IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer,
         ManagementAuthorizationDecision decision,
         string capability) =>
         decision.ReasonCode switch
         {
             "operator_not_authenticated" =>
-                "Próximo passo: faça login no Management e repita a operação.",
+                localizer["Provisioning.NextStep.Login"].Value,
             "capability_not_granted" =>
-                $"Próximo passo: peça a um administrador para atribuir {capability} ao seu operador.",
+                localizer["Provisioning.NextStep.AssignCapability", capability].Value,
             "mfa_required" =>
-                "Próximo passo: conclua o segundo fator e retorne ao Management; senha isolada não basta.",
+                localizer["Provisioning.NextStep.CompleteMfa"].Value,
             "temporary_token_cannot_mint" =>
-                "Próximo passo: autentique-se novamente como operador humano para emitir um novo token.",
-            _ => $"Código de suporte: {decision.ReasonCode}."
+                localizer["Provisioning.NextStep.ReauthenticateOperator"].Value,
+            _ => localizer["Provisioning.NextStep.SupportCode", decision.ReasonCode].Value
         };
 
     private static string ConflictNextStep(
+        IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource> localizer,
         ManagementConflictException exception,
         string operation) =>
         exception.ReasonCode switch
         {
             "temporary_provisioning_token_disabled" =>
-                "Próximo passo: a infraestrutura deve definir " +
-                "Sufficit__Identity__Management__TemporaryProvisioningToken__Enabled=true " +
-                "e implantar essa configuração antes de emitir tokens.",
+                localizer["Provisioning.Conflict.TemporaryTokenDisabled"].Value,
             "temporary_provisioning_token_issuer_missing" =>
-                "Próximo passo: configure o issuer público " +
-                "Sufficit:Identity:Issuer e reinicie o Identity.",
+                localizer["Provisioning.Conflict.IssuerMissing"].Value,
             "provisioning_secret_unavailable" =>
-                "Próximo passo: verifique a referência de segredo do cliente e o acesso ao secret store; nenhuma alteração foi aplicada.",
+                localizer["Provisioning.Conflict.SecretUnavailable"].Value,
             _ =>
-                $"Próximo passo: verifique a configuração necessária para {operation} " +
-                "ou peça ao administrador do Identity para corrigir o ambiente."
+                localizer["Provisioning.Conflict.CheckConfiguration", operation].Value
         };
 }

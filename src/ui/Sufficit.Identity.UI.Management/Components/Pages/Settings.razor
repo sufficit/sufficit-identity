@@ -4,20 +4,20 @@
 
 @{ var overview = result?.Value!; }
 
-<PageTitle>Configurações | Sufficit Identity</PageTitle>
+<PageTitle>@L["Settings.PageTitle"]</PageTitle>
 
-<SUIPageHeader Title="Configuração administrativa"
-            Description="Consulte a política, o transporte HTTP e os módulos informados pelo runtime." />
+<SUIPageHeader Title="@L["Settings.HeaderTitle"].Value"
+            Description="@L["Settings.HeaderDescription"].Value" />
 
 <AuthorizeView Policy="@ManagementUiPolicies.ReadTrustedProxies">
-    <a class="button button--secondary" href="settings/trusted-proxies">Configurar proxies confiáveis</a>
+    <a class="button button--secondary" href="settings/trusted-proxies">@L["Settings.ConfigureTrustedProxies"]</a>
 </AuthorizeView>
 
 @if (loading)
 {
     <div class="detail-shell"
              aria-busy="true"
-             aria-label="Carregando configuração administrativa">
+             aria-label="@L["Settings.LoadingAriaLabel"].Value">
         <div class="detail-skeleton"></div>
         <div class="detail-skeleton detail-skeleton--short"></div>
     </div>
@@ -26,13 +26,13 @@ else if (result?.IsSuccess is not true || result.Value is null)
 {
     <div>
         <SUIEmptyState Icon="alert"
-                    Title="Não foi possível carregar a configuração"
-                    Description="@(result?.ErrorMessage ?? "O serviço de identidade não informou sua configuração administrativa.")">
+                    Title="@L["Settings.LoadError.Title"].Value"
+                    Description="@(result?.ErrorMessage ?? L["Settings.LoadError.Description"].Value)">
             <Actions>
                 <button class="button button--primary"
                         type="button"
                         @onclick="RefreshAsync">
-                    Tentar novamente
+                    @L["Settings.Retry"]
                 </button>
             </Actions>
         </SUIEmptyState>
@@ -43,8 +43,8 @@ else
     <div class="contract-strip contract-strip--info">
         <SUIIcon Name="settings" Size="20" />
         <div>
-            <strong>Configuração fornecida pelo serviço</strong>
-            <span>Os valores abaixo são a mesma projeção publicada pelo adaptador HTTP.</span>
+            <strong>@L["Settings.ProvidedByService.Title"]</strong>
+            <span>@L["Settings.ProvidedByService.Description"]</span>
         </div>
         <SUIStatusBadge ToneValue="SUITone.Info">@overview.EnvironmentName</SUIStatusBadge>
     </div>
@@ -53,40 +53,40 @@ else
         <div class="settings-panel" aria-labelledby="policy-settings-heading">
             <div class="panel-header">
                 <div>
-                    <h2 id="policy-settings-heading">Política do operador</h2>
+                    <h2 id="policy-settings-heading">@L["Settings.OperatorPolicy.Title"]</h2>
                 </div>
             </div>
             <dl class="config-list">
                 <div>
                     <dt>
-                        <span>Capabilities concedidas</span>
+                        <span>@L["Settings.Field.Capabilities"]</span>
                         <code>Capabilities</code>
                     </dt>
                     <dd>
                         <span class="config-value">@overview.Operator.Capabilities.Count</span>
-                        <SUIStatusBadge ToneValue="SUITone.Success">Calculadas</SUIStatusBadge>
+                        <SUIStatusBadge ToneValue="SUITone.Success">@L["Settings.Calculated"]</SUIStatusBadge>
                     </dd>
                 </div>
                 <div>
                     <dt>
-                        <span>Autenticação multifator</span>
+                        <span>@L["Settings.Field.Mfa"]</span>
                         <code>RequireMfa</code>
                     </dt>
                     <dd>
                         <span class="config-value">
-                            @(overview.Operator.RequiresMfa ? "Obrigatória" : "Opcional")
+                            @(overview.Operator.RequiresMfa ? L["Settings.Mandatory"].Value : L["Settings.Optional"].Value)
                         </span>
                         <SUIStatusBadge ToneValue="@IdentitySuiTone.From(MfaTone)">@MfaStatus</SUIStatusBadge>
                     </dd>
                 </div>
                 <div>
                     <dt>
-                        <span>Módulos autorizados</span>
+                        <span>@L["Settings.Field.AuthorizedModules"]</span>
                         <code>CanAccess</code>
                     </dt>
                     <dd>
-                        <span class="config-value">@AccessibleModuleCount de @overview.Modules.Count</span>
-                        <SUIStatusBadge ToneValue="SUITone.Neutral">Nesta sessão</SUIStatusBadge>
+                        <span class="config-value">@L["Settings.ModuleCountFormat", AccessibleModuleCount, overview.Modules.Count]</span>
+                        <SUIStatusBadge ToneValue="SUITone.Neutral">@L["Settings.ThisSession"]</SUIStatusBadge>
                     </dd>
                 </div>
             </dl>
@@ -95,37 +95,37 @@ else
         <div class="settings-panel" aria-labelledby="transport-settings-heading">
             <div class="panel-header">
                 <div>
-                    <h2 id="transport-settings-heading">Transporte HTTP</h2>
+                    <h2 id="transport-settings-heading">@L["Settings.HttpTransport.Title"]</h2>
                 </div>
             </div>
             <dl class="config-list">
                 <div>
                     <dt>
-                        <span>Prefixo configurado</span>
+                        <span>@L["Settings.Field.ConfiguredPrefix"]</span>
                         <code>RoutePrefix</code>
                     </dt>
                     <dd>
                         <span class="config-value"><code>/@overview.Api.RoutePrefix</code></span>
-                        <SUIStatusBadge ToneValue="SUITone.Neutral">Rota</SUIStatusBadge>
+                        <SUIStatusBadge ToneValue="SUITone.Neutral">@L["Settings.Route"]</SUIStatusBadge>
                     </dd>
                 </div>
                 <div>
                     <dt>
-                        <span>Autorização do transporte</span>
+                        <span>@L["Settings.Field.TransportAuthorization"]</span>
                         <code>RequireAuthorization</code>
                     </dt>
                     <dd>
                         <span class="config-value">
-                            @(overview.Api.RequiresAuthorization ? "Obrigatória" : "Desabilitada")
+                            @(overview.Api.RequiresAuthorization ? L["Settings.Mandatory"].Value : L["Settings.Disabled"].Value)
                         </span>
                         <SUIStatusBadge ToneValue="@(overview.Api.RequiresAuthorization ? SUITone.Success : SUITone.Warning)">
-                            @(overview.Api.RequiresAuthorization ? "Protegido" : "Revisar")
+                            @(overview.Api.RequiresAuthorization ? L["Settings.Protected"].Value : L["Settings.Review"].Value)
                         </SUIStatusBadge>
                     </dd>
                 </div>
                 <div>
                     <dt>
-                        <span>Escopo obrigatório</span>
+                        <span>@L["Settings.Field.RequiredScope"]</span>
                         <code>RequiredScope</code>
                     </dt>
                     <dd>
@@ -140,9 +140,9 @@ else
     <div class="settings-panel" aria-labelledby="module-settings-heading">
         <div class="panel-header">
             <div>
-                <h2 id="module-settings-heading">Catálogo de módulos</h2>
+                <h2 id="module-settings-heading">@L["Settings.ModuleCatalog.Title"]</h2>
             </div>
-            <span class="section-meta">Informado pelo runtime</span>
+            <span class="section-meta">@L["Settings.ReportedByRuntime"]</span>
         </div>
         <dl class="config-list">
             @foreach (var module in Modules)
@@ -194,10 +194,10 @@ else
 
     private string MfaStatus =>
         !Overview.Operator.RequiresMfa
-            ? "Não exigida"
+            ? L["Settings.Mfa.NotRequired"].Value
             : Overview.Operator.MeetsMfaRequirement
-                ? "Atendida"
-                : "Pendente";
+                ? L["Settings.Mfa.Met"].Value
+                : L["Settings.Mfa.Pending"].Value;
 
     private string MfaTone =>
         Overview.Operator is
@@ -230,15 +230,15 @@ else
         loading = false;
     }
 
-    private static string ModuleStatus(ManagementModuleDescriptor module) =>
+    private string ModuleStatus(ManagementModuleDescriptor module) =>
         !module.IsAvailable
-            ? "Indisponível"
+            ? L["Settings.Module.Unavailable"].Value
             : module.AccessOutcome is ManagementAuthorizationOutcome.Allowed
-                ? "Permitido"
+                ? L["Settings.Module.Allowed"].Value
                 : module.AccessOutcome is
                     ManagementAuthorizationOutcome.StepUpRequired
-                    ? "Exige MFA"
-                    : "Sem capability";
+                    ? L["Settings.Module.MfaRequired"].Value
+                    : L["Settings.Module.NoCapability"].Value;
 
     private static string ModuleTone(ManagementModuleDescriptor module) =>
         !module.IsAvailable
@@ -250,16 +250,16 @@ else
                     ? "warning"
                     : "neutral";
 
-    private static string ModuleDescription(
+    private string ModuleDescription(
         ManagementModuleDescriptor module) =>
         !module.IsAvailable
-            ? "Contrato de aplicação ainda não disponível"
-            : module.RequiredCapability ?? "Sem capability declarada";
+            ? L["Settings.Module.NotAvailableDescription"].Value
+            : module.RequiredCapability ?? L["Settings.Module.NoCapabilityDeclared"].Value;
 
-    private static ModuleView? CreateModuleView(
+    private ModuleView? CreateModuleView(
         ManagementModuleDescriptor module)
     {
-        var presentation = ManagementModulePresentations.Find(module.Key);
+        var presentation = ManagementModulePresentations.Find(module.Key, L);
         return presentation is null
             ? null
             : new ModuleView(module, presentation);

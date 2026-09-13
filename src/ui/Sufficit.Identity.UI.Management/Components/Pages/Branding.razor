@@ -1,25 +1,26 @@
 @page "/branding"
+@using System.Text.RegularExpressions
 @attribute [Authorize(Policy = ManagementUiPolicies.ManageBranding)]
 @inject ManagementBrandingDataSource BrandingData
 
 <PageTitle>Branding | Sufficit Identity</PageTitle>
 
 <SUIPageHeader Title="Branding"
-            Description="Gerencie a identidade visual aplicada às superfícies públicas do serviço.">
+            Description="@L["Branding.HeaderDescription"].Value">
     <Actions>
         <button class="button button--secondary"
                 type="button"
                 disabled="@busy"
                 @onclick="RefreshAsync">
             <SUIIcon Name="refresh" Size="17" />
-            Atualizar
+            @L["Branding.Refresh"]
         </button>
         <button class="button button--primary"
                 type="button"
                 disabled="@busy"
                 @onclick="BeginCreate">
             <SUIIcon Name="plus" Size="17" />
-            Novo tema
+            @L["Branding.NewTheme"]
         </button>
     </Actions>
 </SUIPageHeader>
@@ -27,10 +28,10 @@
 <div class="contract-strip contract-strip--success">
     <SUIIcon Name="shield" Size="20" />
     <div>
-        <strong>Uma fonte de verdade</strong>
-        <span>Esta tela e a API executam os mesmos casos de uso, validações, autorização e auditoria.</span>
+        <strong>@L["Branding.SingleSourceOfTruth.Title"]</strong>
+        <span>@L["Branding.SingleSourceOfTruth.Description"]</span>
     </div>
-    <SUIStatusBadge ToneValue="SUITone.Success">Integrado</SUIStatusBadge>
+    <SUIStatusBadge ToneValue="SUITone.Success">@L["Branding.Integrated"]</SUIStatusBadge>
 </div>
 
 @if (ActiveThemeCount > 1)
@@ -38,8 +39,8 @@
     <div class="inline-notice inline-notice--danger" role="alert">
         <SUIIcon Name="alert" Size="19" />
         <div>
-            <strong>Mais de um tema está marcado como ativo</strong>
-            <span>Ative o tema correto abaixo; a operação desativará os demais de forma atômica.</span>
+            <strong>@L["Branding.MultipleActiveThemes.Title"]</strong>
+            <span>@L["Branding.MultipleActiveThemes.Description"]</span>
         </div>
     </div>
 }
@@ -49,7 +50,7 @@
     <div class="inline-notice inline-notice--success" role="status">
         <SUIIcon Name="check" Size="19" />
         <div>
-            <strong>Branding atualizado</strong>
+            <strong>@L["Branding.Updated"]</strong>
             <span>@successMessage</span>
         </div>
     </div>
@@ -60,7 +61,7 @@
     <div class="inline-notice inline-notice--danger" role="alert">
         <SUIIcon Name="alert" Size="19" />
         <div>
-            <strong>Não foi possível concluir a operação</strong>
+            <strong>@L["Branding.OperationError.Title"]</strong>
             <span>@operation.ErrorMessage</span>
         </div>
     </div>
@@ -70,7 +71,7 @@
     <div class="panel branding-themes" aria-labelledby="themes-heading">
         <div class="panel-header">
             <div>
-                <h2 id="themes-heading">Configurações salvas</h2>
+                <h2 id="themes-heading">@L["Branding.SavedConfigurations"]</h2>
             </div>
             @if (!loading && themes.Count > 0)
             {
@@ -82,7 +83,7 @@
         {
             <div class="theme-list theme-list--loading"
                  aria-busy="true"
-                 aria-label="Carregando temas">
+                 aria-label="@L["Branding.LoadingThemes"].Value">
                 <div class="theme-row-skeleton"></div>
                 <div class="theme-row-skeleton"></div>
             </div>
@@ -90,13 +91,13 @@
         else if (loadResult?.IsSuccess is false)
         {
             <SUIEmptyState Icon="alert"
-                        Title="Não foi possível carregar os temas"
+                        Title="@L["Branding.LoadError.Title"].Value"
                         Description="@loadResult.ErrorMessage">
                 <Actions>
                     <button class="button button--primary"
                             type="button"
                             @onclick="RefreshAsync">
-                        Tentar novamente
+                        @L["Branding.Retry"]
                     </button>
                 </Actions>
             </SUIEmptyState>
@@ -104,13 +105,13 @@
         else if (themes.Count is 0)
         {
             <SUIEmptyState Icon="palette"
-                        Title="Nenhum tema configurado"
-                        Description="Crie a primeira identidade visual; ela só será publicada após a ativação.">
+                        Title="@L["Branding.NoThemes.Title"].Value"
+                        Description="@L["Branding.NoThemes.Description"].Value">
                 <Actions>
                     <button class="button button--primary"
                             type="button"
                             @onclick="BeginCreate">
-                        Criar tema
+                        @L["Branding.CreateTheme"]
                     </button>
                 </Actions>
             </SUIEmptyState>
@@ -133,7 +134,7 @@
                         </span>
                         @if (theme.IsActive)
                         {
-                            <SUIStatusBadge ToneValue="SUITone.Success">Ativo</SUIStatusBadge>
+                            <SUIStatusBadge ToneValue="SUITone.Success">@L["Branding.Active"]</SUIStatusBadge>
                         }
                         else
                         {
@@ -149,8 +150,8 @@
         @if (Selected is null)
         {
             <SUIEmptyState Icon="palette"
-                        Title="Selecione um tema"
-                        Description="A prévia usa os valores persistidos pelo serviço de identidade." />
+                        Title="@L["Branding.SelectTheme"].Value"
+                        Description="@L["Branding.PreviewUsesPersistedValues"].Value" />
         }
         else if (Selected is { } theme)
         {
@@ -159,7 +160,7 @@
                     <h2 id="brand-preview-heading">@theme.Name</h2>
                 </div>
                 <SUIStatusBadge ToneValue="@(theme.IsActive ? SUITone.Success : SUITone.Neutral)">
-                    @(theme.IsActive ? "Publicado" : "Rascunho")
+                    @(theme.IsActive ? L["Branding.Published"] : L["Branding.Draft"])
                 </SUIStatusBadge>
             </div>
 
@@ -174,7 +175,7 @@
                     <span>@ThemeIdentity(theme)</span>
                     @if (PreviewBackgroundUrl is not null)
                     {
-                        <span class="identity-preview__asset-badge">Fundo personalizado</span>
+                        <span class="identity-preview__asset-badge">@L["Branding.CustomBackground"]</span>
                     }
                 </div>
                 <div class="identity-preview__body">
@@ -195,7 +196,7 @@
 
             <dl class="token-list">
                 <div>
-                    <dt>Marca</dt>
+                    <dt>@L["Branding.Field.Brand"]</dt>
                     <dd>
                         <span class="color-swatch"
                               style="@SwatchStyle(theme.BrandColor)"></span>
@@ -203,7 +204,7 @@
                     </dd>
                 </div>
                 <div>
-                    <dt>Destaque suave</dt>
+                    <dt>@L["Branding.Field.SoftHighlight"]</dt>
                     <dd>
                         <span class="color-swatch"
                               style="@SwatchStyle(theme.BrandSoftColor)"></span>
@@ -211,7 +212,7 @@
                     </dd>
                 </div>
                 <div>
-                    <dt>Atualizado</dt>
+                    <dt>@L["Branding.Field.UpdatedAt"]</dt>
                     <dd><time datetime="@theme.UpdatedAt.ToString("O")">@FormatDate(theme.UpdatedAt)</time></dd>
                 </div>
             </dl>
@@ -222,7 +223,7 @@
                         disabled="@busy"
                         @onclick="BeginEdit">
                     <SUIIcon Name="edit" Size="17" />
-                    Editar tema
+                    @L["Branding.EditTheme"]
                 </button>
                 @if (!theme.IsActive)
                 {
@@ -233,12 +234,12 @@
                         @if (activating)
                         {
                             <span class="button-spinner" aria-hidden="true"></span>
-                            <span>Publicando…</span>
+                            <span>@L["Branding.Publishing"]</span>
                         }
                         else
                         {
                             <SUIIcon Name="check" Size="17" />
-                            <span>Publicar tema</span>
+                            <span>@L["Branding.PublishTheme"]</span>
                         }
                     </button>
                 }
@@ -258,13 +259,13 @@
 
         <div class="form-section" aria-labelledby="branding-identity-heading">
             <div class="form-section__heading">
-                <h2 id="branding-identity-heading">@(creating ? "Novo tema" : "Editar tema")</h2>
-                <p>Textos e ativos são persistidos no serviço e reutilizados pelas superfícies públicas.</p>
+                <h2 id="branding-identity-heading">@(creating ? L["Branding.NewTheme"] : L["Branding.EditTheme"])</h2>
+                <p>@L["Branding.Form.IdentityHelp"]</p>
             </div>
 
             <div class="form-grid form-grid--two">
                 <div class="field-group">
-                    <label for="theme-name">Nome do tema</label>
+                    <label for="theme-name">@L["Branding.Field.ThemeName"]</label>
                     <InputText id="theme-name"
                                class="form-control"
                                @bind-Value="model.Name"
@@ -272,21 +273,21 @@
                     <ValidationMessage For="() => model.Name" />
                 </div>
                 <div class="field-group">
-                    <label for="theme-title">Título do navegador</label>
+                    <label for="theme-title">@L["Branding.Field.BrowserTitle"]</label>
                     <InputText id="theme-title"
                                class="form-control"
                                @bind-Value="model.Title"
                                autocomplete="off" />
                 </div>
                 <div class="field-group">
-                    <label for="brand-name">Nome da marca</label>
+                    <label for="brand-name">@L["Branding.Field.BrandName"]</label>
                     <InputText id="brand-name"
                                class="form-control"
                                @bind-Value="model.BrandName"
                                autocomplete="off" />
                 </div>
                 <div class="field-group">
-                    <label for="brand-subtitle">Complemento da marca</label>
+                    <label for="brand-subtitle">@L["Branding.Field.BrandSubtitle"]</label>
                     <InputText id="brand-subtitle"
                                class="form-control"
                                @bind-Value="model.BrandSubtitle"
@@ -297,20 +298,20 @@
 
         <div class="form-section" aria-labelledby="branding-assets-heading">
             <div class="form-section__heading">
-                <h2 id="branding-assets-heading">Ativos visuais</h2>
-                <p>Use caminhos relativos à raiz, como /_content/…, ou URLs HTTP(S) absolutas.</p>
+                <h2 id="branding-assets-heading">@L["Branding.Form.AssetsTitle"]</h2>
+                <p>@L["Branding.Form.AssetsHelp"]</p>
             </div>
 
             <div class="form-grid form-grid--two">
                 <div class="field-group">
-                    <label for="logo-url">Logo principal</label>
+                    <label for="logo-url">@L["Branding.Field.MainLogo"]</label>
                     <InputText id="logo-url"
                                class="form-control"
                                @bind-Value="model.LogoUrl"
                                autocomplete="url" />
                 </div>
                 <div class="field-group">
-                    <label for="header-icon-url">Ícone do cabeçalho</label>
+                    <label for="header-icon-url">@L["Branding.Field.HeaderIcon"]</label>
                     <InputText id="header-icon-url"
                                class="form-control"
                                @bind-Value="model.HeaderIconUrl"
@@ -324,14 +325,14 @@
                                autocomplete="url" />
                 </div>
                 <div class="field-group">
-                    <label for="background-url">Imagem de fundo</label>
+                    <label for="background-url">@L["Branding.Field.BackgroundImage"]</label>
                     <InputText id="background-url"
                                class="form-control"
                                @bind-Value="model.BackgroundImageUrl"
                                @bind-Value:event="oninput"
                                autocomplete="url" />
                     <span class="field-hint">
-                        A prévia acima atualiza enquanto você ajusta a URL; o tema público usa o valor salvo.
+                        @L["Branding.Form.BackgroundHint"]
                     </span>
                 </div>
             </div>
@@ -339,13 +340,13 @@
 
         <div class="form-section" aria-labelledby="branding-colors-heading">
             <div class="form-section__heading">
-                <h2 id="branding-colors-heading">Cores</h2>
-                <p>Valores opcionais no formato hexadecimal #RRGGBB; campos vazios usam o padrão do host.</p>
+                <h2 id="branding-colors-heading">@L["Branding.Form.ColorsTitle"]</h2>
+                <p>@L["Branding.Form.ColorsHelp"]</p>
             </div>
 
             <div class="form-grid form-grid--four">
                 <div class="field-group">
-                    <label for="brand-color">Marca</label>
+                    <label for="brand-color">@L["Branding.Field.Brand"]</label>
                     <InputText id="brand-color"
                                class="form-control"
                                @bind-Value="model.BrandColor"
@@ -353,7 +354,7 @@
                                autocomplete="off" />
                 </div>
                 <div class="field-group">
-                    <label for="brand-hover-color">Interação</label>
+                    <label for="brand-hover-color">@L["Branding.Field.Interaction"]</label>
                     <InputText id="brand-hover-color"
                                class="form-control"
                                @bind-Value="model.BrandHoverColor"
@@ -361,7 +362,7 @@
                                autocomplete="off" />
                 </div>
                 <div class="field-group">
-                    <label for="brand-soft-color">Fundo suave</label>
+                    <label for="brand-soft-color">@L["Branding.Field.SoftBackground"]</label>
                     <InputText id="brand-soft-color"
                                class="form-control"
                                @bind-Value="model.BrandSoftColor"
@@ -369,7 +370,7 @@
                                autocomplete="off" />
                 </div>
                 <div class="field-group">
-                    <label for="theme-color">Navegador</label>
+                    <label for="theme-color">@L["Branding.Field.Browser"]</label>
                     <InputText id="theme-color"
                                class="form-control"
                                @bind-Value="model.ThemeColor"
@@ -381,11 +382,11 @@
 
         <div class="form-section" aria-labelledby="branding-avatar-heading">
             <div class="form-section__heading">
-                <h2 id="branding-avatar-heading">Avatares administrativos</h2>
-                <p>O marcador &#123;userid&#125; será substituído pelo identificador do usuário.</p>
+                <h2 id="branding-avatar-heading">@L["Branding.Form.AvatarsTitle"]</h2>
+                <p>@L["Branding.Form.AvatarsHelp"]</p>
             </div>
             <div class="field-group">
-                <label for="avatar-url-template">Template de URL</label>
+                <label for="avatar-url-template">@L["Branding.Field.AvatarUrlTemplate"]</label>
                 <InputText id="avatar-url-template"
                            class="form-control"
                            @bind-Value="model.AvatarUrlTemplate"
@@ -398,7 +399,7 @@
                     type="button"
                     disabled="@saving"
                     @onclick="CancelEdit">
-                Cancelar
+                @L["Branding.Cancel"]
             </button>
             <button class="button button--primary"
                     type="submit"
@@ -406,12 +407,12 @@
                 @if (saving)
                 {
                     <span class="button-spinner" aria-hidden="true"></span>
-                    <span>Salvando…</span>
+                    <span>@L["Branding.Saving"]</span>
                 }
                 else
                 {
                     <SUIIcon Name="check" Size="17" />
-                    <span>@(creating ? "Criar tema" : "Salvar alterações")</span>
+                    <span>@(creating ? L["Branding.CreateTheme"] : L["Branding.SaveChanges"])</span>
                 }
             </button>
         </footer>
@@ -423,8 +424,8 @@
 {
     <div class="danger-zone" aria-labelledby="delete-theme-heading">
         <div>
-            <h2 id="delete-theme-heading">Excluir tema</h2>
-            <p>A exclusão remove este rascunho e registra a operação na auditoria administrativa.</p>
+            <h2 id="delete-theme-heading">@L["Branding.DeleteTheme"]</h2>
+            <p>@L["Branding.DeleteTheme.Description"]</p>
         </div>
 
         @if (!confirmingDelete)
@@ -434,14 +435,14 @@
                     disabled="@busy"
                     @onclick="BeginDelete">
                 <SUIIcon Name="trash" Size="17" />
-                Excluir tema
+                @L["Branding.DeleteTheme"]
             </button>
         }
         else
         {
             <div class="delete-confirmation">
                 <label for="delete-theme-confirmation">
-                    Digite <code>@selectedTheme.Name</code> para confirmar
+                    @L["Branding.DeleteConfirmPrefix"] <code>@selectedTheme.Name</code> @L["Branding.DeleteConfirmSuffix"]
                 </label>
                 <input id="delete-theme-confirmation"
                        class="form-control"
@@ -453,7 +454,7 @@
                             type="button"
                             disabled="@deleting"
                             @onclick="CancelDelete">
-                        Cancelar
+                        @L["Branding.Cancel"]
                     </button>
                     <button class="button button--danger"
                             type="button"
@@ -462,12 +463,12 @@
                         @if (deleting)
                         {
                             <span class="button-spinner" aria-hidden="true"></span>
-                            <span>Excluindo…</span>
+                            <span>@L["Branding.Deleting"]</span>
                         }
                         else
                         {
                             <SUIIcon Name="trash" Size="17" />
-                            <span>Confirmar exclusão</span>
+                            <span>@L["Branding.ConfirmDeletion"]</span>
                         }
                     </button>
                 </div>
@@ -523,8 +524,11 @@
             editing ? model.BrandSoftColor : Selected?.BrandSoftColor,
             PreviewBackgroundUrl);
 
-    protected override async Task OnInitializedAsync() =>
+    protected override async Task OnInitializedAsync()
+    {
+        model.Localizer = L;
         await LoadAsync();
+    }
 
     private async Task RefreshAsync() =>
         await LoadAsync(Selected?.Id);
@@ -556,6 +560,7 @@
     private void BeginCreate()
     {
         model = BrandingEditModel.CreateDefault();
+        model.Localizer = L;
         creating = true;
         editing = true;
         operation = null;
@@ -570,6 +575,7 @@
         }
 
         model = BrandingEditModel.From(Selected);
+        model.Localizer = L;
         creating = false;
         editing = true;
         operation = null;
@@ -598,7 +604,7 @@
             operation = Box(created);
             if (created.IsSuccess && created.Value is not null)
             {
-                successMessage = $"O tema “{created.Value.Name}” foi criado como rascunho.";
+                successMessage = L["Branding.Success.Created", created.Value.Name].Value;
                 editing = false;
                 creating = false;
                 await LoadAsync(created.Value.Id);
@@ -612,7 +618,7 @@
             operation = Box(updated);
             if (updated.IsSuccess && updated.Value is not null)
             {
-                successMessage = $"As alterações de “{updated.Value.Name}” foram salvas.";
+                successMessage = L["Branding.Success.Updated", updated.Value.Name].Value;
                 editing = false;
                 await LoadAsync(updated.Value.Id);
             }
@@ -632,7 +638,7 @@
         operation = Box(activated);
         if (activated.IsSuccess && activated.Value is not null)
         {
-            successMessage = $"O tema “{activated.Value.Name}” está publicado.";
+            successMessage = L["Branding.Success.Activated", activated.Value.Name].Value;
             await LoadAsync(activated.Value.Id);
         }
         activating = false;
@@ -664,7 +670,7 @@
         operation = Box(deleted);
         if (deleted.IsSuccess)
         {
-            successMessage = $"O tema “{deletedName}” foi excluído.";
+            successMessage = L["Branding.Success.Deleted", deletedName].Value;
             confirmingDelete = false;
             await LoadAsync();
         }
@@ -727,8 +733,8 @@
     private static string SwatchStyle(string? color) =>
         $"background:{color ?? "#cc0000"}";
 
-    private static string DisplayColor(string? color) =>
-        color ?? "padrão do host";
+    private string DisplayColor(string? color) =>
+        color ?? L["Branding.HostDefault"].Value;
 
     private static string FormatDate(DateTime value) =>
         value.ToLocalTime().ToString("dd/MM/yyyy HH:mm");
@@ -742,10 +748,14 @@
                 result.ErrorMessage,
                 result.ErrorField);
 
-    private sealed class BrandingEditModel
+    private sealed class BrandingEditModel : IValidatableObject
     {
-        [Required(ErrorMessage = "Informe o nome do tema.")]
-        [StringLength(100, ErrorMessage = "Use no máximo 100 caracteres.")]
+        private static readonly Regex HexColorPattern = new(
+            "^#[0-9A-Fa-f]{6}$",
+            RegexOptions.Compiled);
+
+        public IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource>? Localizer { get; set; }
+
         public string Name { get; set; } = string.Empty;
 
         [StringLength(512)]
@@ -761,23 +771,15 @@
         public string? BackgroundImageUrl { get; set; }
 
         [StringLength(7)]
-        [RegularExpression("^#[0-9A-Fa-f]{6}$",
-            ErrorMessage = "Use o formato #RRGGBB (ex: #cc0000).")]
         public string? BrandColor { get; set; }
 
         [StringLength(7)]
-        [RegularExpression("^#[0-9A-Fa-f]{6}$",
-            ErrorMessage = "Use o formato #RRGGBB (ex: #cc0000).")]
         public string? BrandHoverColor { get; set; }
 
         [StringLength(7)]
-        [RegularExpression("^#[0-9A-Fa-f]{6}$",
-            ErrorMessage = "Use o formato #RRGGBB (ex: #cc0000).")]
         public string? BrandSoftColor { get; set; }
 
         [StringLength(7)]
-        [RegularExpression("^#[0-9A-Fa-f]{6}$",
-            ErrorMessage = "Use o formato #RRGGBB (ex: #cc0000).")]
         public string? ThemeColor { get; set; }
 
         [StringLength(200)]
@@ -791,6 +793,46 @@
 
         [StringLength(512)]
         public string? AvatarUrlTemplate { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            var l = Localizer;
+            if (l is null)
+            {
+                throw new InvalidOperationException(
+                    "Localizer must be set before validating BrandingEditModel.");
+            }
+
+            if (string.IsNullOrWhiteSpace(Name))
+            {
+                yield return new ValidationResult(
+                    l["Branding.Validation.NameRequired"].Value,
+                    [nameof(Name)]);
+            }
+            else if (Name.Length > 100)
+            {
+                yield return new ValidationResult(
+                    l["Common.Validation.MaxLength", 100].Value,
+                    [nameof(Name)]);
+            }
+
+            foreach (var (value, fieldName) in new (string? Value, string FieldName)[]
+            {
+                (BrandColor, nameof(BrandColor)),
+                (BrandHoverColor, nameof(BrandHoverColor)),
+                (BrandSoftColor, nameof(BrandSoftColor)),
+                (ThemeColor, nameof(ThemeColor)),
+            })
+            {
+                if (!string.IsNullOrWhiteSpace(value)
+                    && !HexColorPattern.IsMatch(value))
+                {
+                    yield return new ValidationResult(
+                        l["Branding.Validation.HexColorFormat"].Value,
+                        [fieldName]);
+                }
+            }
+        }
 
         public SaveManagementBrandingThemeCommand ToCommand() =>
             new(

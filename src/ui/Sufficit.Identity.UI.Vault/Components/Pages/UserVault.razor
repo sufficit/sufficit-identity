@@ -4,15 +4,15 @@
 @layout VaultLayout
 @inject VaultDataSource Data
 
-<PageTitle>Meu Vault | Sufficit Identity</PageTitle>
-<SUIPageHeader Title="Meu Vault"
-            Description="Acompanhe credenciais conectadas e guarde segredos pessoais sem expor seus valores.">
-    <Actions><SUIStatusBadge ToneValue="SUITone.Success" Icon="shield">Criptografado</SUIStatusBadge></Actions>
+<PageTitle>@L["Vault.UserVault.PageTitle"].Value | Sufficit Identity</PageTitle>
+<SUIPageHeader Title="@L["Vault.UserVault.PageTitle"].Value"
+            Description="@L["Vault.UserVault.Description"].Value">
+    <Actions><SUIStatusBadge ToneValue="SUITone.Success" Icon="shield">@L["Vault.UserVault.EncryptedBadge"]</SUIStatusBadge></Actions>
 </SUIPageHeader>
 
 <div class="vault-note" role="note">
     <SUIIcon Name="lock" Size="20" />
-    <div><strong>Somente metadados aparecem nesta página.</strong><span>Os valores permanecem criptografados no servidor e nunca são devolvidos pela listagem.</span></div>
+    <div><strong>@L["Vault.UserVault.MetadataOnlyTitle"]</strong><span>@L["Vault.UserVault.MetadataOnlyBody"]</span></div>
 </div>
 
 <AuthorizeView Policy="@VaultUiPolicies.Admin">
@@ -22,13 +22,13 @@
             <div class="vault-admin-entry__copy">
                 <SUIIcon Name="shield" Size="22" />
                 <div>
-                    <h2 id="vault-admin-entry-heading">Administração global</h2>
-                    <p>Gerencie segredos globais usados por serviços e integrações. Credenciais pessoais permanecem isoladas por usuário.</p>
+                    <h2 id="vault-admin-entry-heading">@L["Vault.UserVault.AdminEntryHeading"]</h2>
+                    <p>@L["Vault.UserVault.AdminEntryBody"]</p>
                 </div>
             </div>
             <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Warning"
                Href="/vault/admin">
-                Abrir Vault administrativo
+                @L["Vault.UserVault.OpenAdminVault"]
                 <SUIIcon Name="arrow-right" Size="16" />
             </SUIButton>
         </section>
@@ -38,23 +38,23 @@
 @if (!string.IsNullOrWhiteSpace(loadError))
 {
     <div class="vault-load-error" role="alert">
-        <div><strong>Não foi possível carregar seu Vault.</strong><span>@loadError</span></div>
-        <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="LoadAsync" Disabled="@loading">Tentar novamente</SUIButton>
+        <div><strong>@L["Vault.UserVault.LoadErrorTitle"]</strong><span>@loadError</span></div>
+        <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="LoadAsync" Disabled="@loading">@L["Vault.Common.Retry"]</SUIButton>
     </div>
 }
 
 <section class="vault-panel" aria-labelledby="managed-credential-heading" aria-busy="@loading">
     <div class="vault-panel__heading">
-        <div><h2 id="managed-credential-heading">Credenciais conectadas</h2><p>Metadados de credenciais mantidas por aplicativos e integrações.</p></div>
-        <SUIStatusBadge ToneValue="SUITone.Info">@managedCredentials.Count @(managedCredentials.Count == 1 ? "credencial" : "credenciais")</SUIStatusBadge>
+        <div><h2 id="managed-credential-heading">@L["Vault.UserVault.ManagedCredentialHeading"]</h2><p>@L["Vault.UserVault.ManagedCredentialDescription"]</p></div>
+        <SUIStatusBadge ToneValue="SUITone.Info">@managedCredentials.Count @(managedCredentials.Count == 1 ? L["Vault.UserVault.CredentialSingular"].Value : L["Vault.UserVault.CredentialPlural"].Value)</SUIStatusBadge>
     </div>
     @if (loading)
     {
-        <div class="vault-loading" aria-label="Carregando credenciais conectadas"></div>
+        <div class="vault-loading" aria-label="@L["Vault.UserVault.LoadingManagedAriaLabel"].Value"></div>
     }
     else if (string.IsNullOrWhiteSpace(loadError) && managedCredentials.Count == 0)
     {
-        <SUIEmptyState Icon="key" Title="Nenhuma credencial conectada" Description="Quando um aplicativo conectar uma conta ou salvar uma credencial, ela aparecerá aqui." />
+        <SUIEmptyState Icon="key" Title="@L["Vault.UserVault.NoManagedCredentialTitle"].Value" Description="@L["Vault.UserVault.NoManagedCredentialDescription"].Value" />
     }
     else if (string.IsNullOrWhiteSpace(loadError))
     {
@@ -70,55 +70,55 @@
                     <div class="vault-list__status">
                         @if (IsExpired(item))
                         {
-                            <SUIStatusBadge ToneValue="SUITone.Warning">Expirada</SUIStatusBadge>
+                            <SUIStatusBadge ToneValue="SUITone.Warning">@L["Vault.UserVault.ExpiredBadge"]</SUIStatusBadge>
                         }
                         else
                         {
-                            <SUIStatusBadge ToneValue="SUITone.Success">Ativa</SUIStatusBadge>
+                            <SUIStatusBadge ToneValue="SUITone.Success">@L["Vault.UserVault.ActiveBadge"]</SUIStatusBadge>
                         }
-                        <span>Gerenciada pelo aplicativo</span>
+                        <span>@L["Vault.UserVault.ManagedByApp"]</span>
                     </div>
                 </div>
             }
         </div>
-        <p class="vault-panel__hint">Para remover uma credencial conectada, desconecte a conta no aplicativo que a criou.</p>
+        <p class="vault-panel__hint">@L["Vault.UserVault.ManagedRemoveHint"]</p>
     }
 </section>
 
 <section class="vault-panel" aria-labelledby="personal-secret-heading">
-    <div class="vault-panel__heading"><div><h2 id="personal-secret-heading">Adicionar ou substituir segredo</h2><p>Use um nome lógico, como <code>openai/api-key</code>.</p></div><SUIStatusBadge ToneValue="SUITone.Neutral">namespace: pessoal</SUIStatusBadge></div>
+    <div class="vault-panel__heading"><div><h2 id="personal-secret-heading">@L["Vault.UserVault.AddOrReplaceHeading"]</h2><p>@L["Vault.UserVault.PersonalSecretHintPrefix"] <code>openai/api-key</code>.</p></div><SUIStatusBadge ToneValue="SUITone.Neutral">@L["Vault.UserVault.PersonalNamespaceBadge"]</SUIStatusBadge></div>
     <EditForm Model="form" Context="editContext" OnValidSubmit="SaveAsync" class="vault-form" aria-busy="@saving">
         <DataAnnotationsValidator />
         @* Keep EditContext notifications and validation explicit while consuming SUI 1.28.0. *@
         <SUIFormGrid Columns="2" LabelLines="1">
             <div>
-                <SUITextField T="string" Id="personal-secret-name" Label="Nome" Value="@form.Name"
+                <SUITextField T="string" Id="personal-secret-name" Label="@L["Vault.UserVault.NameLabel"].Value" Value="@form.Name"
                               ValueChanged="value => { form.Name = value ?? string.Empty; editContext.NotifyFieldChanged(new(form, nameof(form.Name))); }"
-                              autocomplete="off" Placeholder="ex.: fornecedor/api-key" MaxLength="128" HelperText="Use letras, números e pelo menos uma barra." />
+                              autocomplete="off" Placeholder="@L["Vault.UserVault.NamePlaceholder"].Value" MaxLength="128" HelperText="@L["Vault.UserVault.NameHelperText"].Value" />
                 <ValidationMessage For="() => form.Name" />
             </div>
             <div>
-                <SUITextField T="string" Id="personal-secret-value" Label="Valor" Value="@form.Value"
+                <SUITextField T="string" Id="personal-secret-value" Label="@L["Vault.UserVault.ValueLabel"].Value" Value="@form.Value"
                               ValueChanged="value => { form.Value = value ?? string.Empty; editContext.NotifyFieldChanged(new(form, nameof(form.Value))); }"
-                              InputType="password" autocomplete="new-password" MaxLength="16384" Placeholder="Não será exibido novamente" />
+                              InputType="password" autocomplete="new-password" MaxLength="16384" Placeholder="@L["Vault.UserVault.ValuePlaceholder"].Value" />
                 <ValidationMessage For="() => form.Value" />
             </div>
         </SUIFormGrid>
-        <div class="vault-form__actions"><SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@saving">@(saving ? "Salvando…" : "Salvar segredo")</SUIButton></div>
+        <div class="vault-form__actions"><SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@saving">@(saving ? L["Vault.Common.Saving"].Value : L["Vault.UserVault.SaveSecret"].Value)</SUIButton></div>
     </EditForm>
     @if (!string.IsNullOrWhiteSpace(message)) { <p class="vault-feedback @(success ? "vault-feedback--success" : "vault-feedback--error")" role="status">@message</p> }
 </section>
 
 <section class="vault-panel" aria-labelledby="personal-list-heading">
-    <div class="vault-panel__heading"><div><h2 id="personal-list-heading">Segredos adicionados por você</h2><p>Metadados para confirmar existência e última rotação.</p></div><SUIStatusBadge ToneValue="SUITone.Info">@personalSecrets.Count @(personalSecrets.Count == 1 ? "item" : "itens")</SUIStatusBadge></div>
-    @if (loading) { <div class="vault-loading" aria-label="Carregando segredos pessoais"></div> }
-    else if (string.IsNullOrWhiteSpace(loadError) && personalSecrets.Count == 0) { <SUIEmptyState Icon="key" Title="Nenhum segredo adicionado" Description="Salve o primeiro valor para uma integração que você controla." /> }
+    <div class="vault-panel__heading"><div><h2 id="personal-list-heading">@L["Vault.UserVault.AddedSecretsHeading"]</h2><p>@L["Vault.UserVault.AddedSecretsDescription"]</p></div><SUIStatusBadge ToneValue="SUITone.Info">@personalSecrets.Count @(personalSecrets.Count == 1 ? L["Vault.Common.ItemSingular"].Value : L["Vault.Common.ItemPlural"].Value)</SUIStatusBadge></div>
+    @if (loading) { <div class="vault-loading" aria-label="@L["Vault.UserVault.LoadingPersonalAriaLabel"].Value"></div> }
+    else if (string.IsNullOrWhiteSpace(loadError) && personalSecrets.Count == 0) { <SUIEmptyState Icon="key" Title="@L["Vault.UserVault.NoSecretAddedTitle"].Value" Description="@L["Vault.UserVault.NoSecretAddedDescription"].Value" /> }
     else if (string.IsNullOrWhiteSpace(loadError))
     {
         <div class="vault-list">
             @foreach (var item in personalSecrets)
             {
-                <div class="vault-list__item"><span class="vault-list__icon"><SUIIcon Name="key" Size="18" /></span><div class="vault-list__copy"><strong>@item.Name</strong><span>Atualizado em @item.UpdatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></div><SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="() => DeleteAsync(item.Name)" Disabled="@saving">Remover</SUIButton></div>
+                <div class="vault-list__item"><span class="vault-list__icon"><SUIIcon Name="key" Size="18" /></span><div class="vault-list__copy"><strong>@item.Name</strong><span>@string.Format(L["Vault.UserVault.UpdatedOn"].Value, item.UpdatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm"))</span></div><SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" OnClick="() => DeleteAsync(item.Name)" Disabled="@saving">@L["Vault.Common.Remove"]</SUIButton></div>
             }
         </div>
     }
@@ -135,7 +135,11 @@
     private string? message;
     private string? loadError;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        form.Localizer = L;
+        await LoadAsync();
+    }
 
     private async Task LoadAsync()
     {
@@ -161,7 +165,7 @@
         saving = true; message = null;
         var result = await Data.PutPersonalAsync(Namespace, form.Name, form.Value);
         success = result.IsSuccess;
-        message = result.IsSuccess ? "Segredo salvo com proteção de envelope." : result.Error;
+        message = result.IsSuccess ? L["Vault.UserVault.SecretSavedWithEnvelope"].Value : result.Error;
         if (result.IsSuccess) { form.Value = string.Empty; await LoadAsync(); }
         saving = false;
     }
@@ -171,20 +175,44 @@
         saving = true;
         var result = await Data.DeletePersonalAsync(Namespace, name);
         success = result.IsSuccess;
-        message = result.IsSuccess ? "Segredo removido." : result.Error;
+        message = result.IsSuccess ? L["Vault.UserVault.SecretRemoved"].Value : result.Error;
         if (result.IsSuccess) await LoadAsync();
         saving = false;
     }
 
-    private sealed class PersonalSecretForm
+    private sealed class PersonalSecretForm : IValidatableObject
     {
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Informe um nome.")]
-        [System.ComponentModel.DataAnnotations.StringLength(128, ErrorMessage = "Use no máximo 128 caracteres.")]
-        [System.ComponentModel.DataAnnotations.RegularExpression(@"^(?!/)(?!.*(?:\.\.|//))[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)+(?<!/)$", ErrorMessage = "Use um caminho lógico válido, como fornecedor/api-key.")]
+        public IStringLocalizer<Sufficit.Identity.UI.Vault.Resources.VaultResource>? Localizer { get; set; }
+
         public string Name { get; set; } = string.Empty;
-        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Informe um valor.")]
-        [System.ComponentModel.DataAnnotations.StringLength(16384, ErrorMessage = "O valor excede o limite de 16 KiB.")]
         public string Value { get; set; } = string.Empty;
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (Localizer is null)
+                throw new InvalidOperationException("Localizer must be assigned before validation.");
+            var l = Localizer;
+
+            if (string.IsNullOrWhiteSpace(Name))
+            {
+                yield return new ValidationResult(l["Vault.UserVault.Validation.NameRequired"].Value, [nameof(Name)]);
+            }
+            else
+            {
+                if (Name.Length > 128)
+                    yield return new ValidationResult(l["Vault.UserVault.Validation.NameMaxLength"].Value, [nameof(Name)]);
+
+                if (!System.Text.RegularExpressions.Regex.IsMatch(
+                        Name,
+                        @"^(?!/)(?!.*(?:\.\.|//))[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)+(?<!/)$"))
+                    yield return new ValidationResult(l["Vault.UserVault.Validation.NamePattern"].Value, [nameof(Name)]);
+            }
+
+            if (string.IsNullOrWhiteSpace(Value))
+                yield return new ValidationResult(l["Vault.UserVault.Validation.ValueRequired"].Value, [nameof(Value)]);
+            else if (Value.Length > 16384)
+                yield return new ValidationResult(l["Vault.UserVault.Validation.ValueMaxLength"].Value, [nameof(Value)]);
+        }
     }
 
     private static bool IsExpired(UserVaultManagedCredentialMetadata item) =>
@@ -200,9 +228,12 @@
             _ => item.Name,
         };
 
-    private static string CredentialDescription(UserVaultManagedCredentialMetadata item)
+    private string CredentialDescription(UserVaultManagedCredentialMetadata item)
     {
-        var origin = item.Provider is null ? item.Namespace : "Integração OAuth";
-        return $"{origin} · Atualizada em {item.UpdatedAtUtc.ToLocalTime():dd/MM/yyyy HH:mm}";
+        var origin = item.Provider is null ? item.Namespace : L["Vault.UserVault.OAuthIntegration"].Value;
+        return string.Format(
+            L["Vault.UserVault.CredentialUpdatedOn"].Value,
+            origin,
+            item.UpdatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm"));
     }
 }
