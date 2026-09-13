@@ -1153,6 +1153,9 @@
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )"
         }
       },
+      "sufficit.identity.hosting.abstractions": {
+        "type": "Project"
+      },
       "sufficit.identity.management": {
         "type": "Project",
         "dependencies": {
@@ -1167,7 +1170,8 @@
         "dependencies": {
           "OpenIddict.AspNetCore": "[7.7.0, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
-          "Sufficit.Identity.Core": "[0.4.0-alpha, )"
+          "Sufficit.Identity.Core": "[0.4.0-alpha, )",
+          "Sufficit.Identity.Hosting.Abstractions": "[0.4.0-alpha, )"
         }
       },
       "sufficit.identity.server": {
@@ -1181,6 +1185,7 @@
           "Sufficit.Blazor.UI": "[2.*, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.Core": "[0.4.0-alpha, )",
+          "Sufficit.Identity.Hosting.Abstractions": "[0.4.0-alpha, )",
           "Sufficit.Identity.Management": "[0.4.0-alpha, )",
           "Sufficit.Identity.STS": "[0.4.0-alpha, )",
           "Sufficit.Identity.Scim": "[0.4.0-alpha, )",
