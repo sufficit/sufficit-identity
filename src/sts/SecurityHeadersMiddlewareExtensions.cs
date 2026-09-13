@@ -124,10 +124,10 @@ public static class SecurityHeadersMiddlewareExtensions
                     context.Items[CspNonceItemKey] = nonce;
                 }
 
-                context.Response.Headers[header] =
-                    await AddLogoutFormActionAsync(
-                        context,
-                        BuildContentSecurityPolicy(options, nonce));
+                var policy = BuildContentSecurityPolicy(options, nonce);
+                policy = await AddLogoutFormActionAsync(context, policy);
+                policy = await AddConsentFormActionAsync(context, policy);
+                context.Response.Headers[header] = policy;
             }
 
             await next();
@@ -404,6 +404,69 @@ public static class SecurityHeadersMiddlewareExtensions
         }
 
         return policy;
+    }
+
+    /// <summary>
+    ///     Lets the consent form complete at the registered relying-party
+    ///     callback without opening <c>form-action</c> to caller-controlled
+    ///     destinations.
+    /// </summary>
+    /// <remarks>
+    ///     The consent page posts to the same-origin authorization endpoint,
+    ///     but the successful response redirects to the client's callback.
+    ///     Browsers enforce <c>form-action</c> across that redirect chain. The
+    ///     redirect URI is therefore admitted only when it belongs to the
+    ///     application identified by the same request's <c>client_id</c>.
+    /// </remarks>
+    private static async Task<string> AddConsentFormActionAsync(
+        HttpContext context,
+        string policy)
+    {
+        if (!context.Request.Path.StartsWithSegments(
+                "/consent", StringComparison.OrdinalIgnoreCase))
+        {
+            return policy;
+        }
+
+        var clientId = context.Request.Query["client_id"].FirstOrDefault();
+        var requested = context.Request.Query["redirect_uri"].FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(clientId)
+            || string.IsNullOrWhiteSpace(requested)
+            || !Uri.TryCreate(requested, UriKind.Absolute, out var uri)
+            || (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+            || !string.IsNullOrEmpty(uri.UserInfo))
+        {
+            return policy;
+        }
+
+        var applications = context.RequestServices
+            .GetService<IOpenIddictApplicationManager>();
+        if (applications is null)
+        {
+            return policy;
+        }
+
+        var application = await applications.FindByClientIdAsync(
+            clientId,
+            context.RequestAborted);
+        if (application is null)
+        {
+            return policy;
+        }
+
+        var redirectUris = await applications.GetRedirectUrisAsync(
+            application,
+            context.RequestAborted);
+        if (!redirectUris.Contains(requested, StringComparer.Ordinal))
+        {
+            return policy;
+        }
+
+        return AddSources(
+            policy,
+            "form-action",
+            uri.GetLeftPart(UriPartial.Path));
     }
 
     private static string AddSources(
