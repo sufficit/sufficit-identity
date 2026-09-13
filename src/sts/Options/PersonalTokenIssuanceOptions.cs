@@ -9,6 +9,20 @@ namespace Sufficit.Identity.STS;
 /// </summary>
 public sealed class PersonalTokenIssuanceOptions
 {
+    /// <summary>Client id stamped into personal tokens when none is configured.</summary>
+    public const string DefaultClientId = "identity-personal-access-token";
+
+    /// <summary>
+    /// The <c>client_id</c> claim and metadata written into newly issued
+    /// personal tokens. A deployment that already issued personal tokens
+    /// under another value can keep it here so resource servers see a stable
+    /// client id. Listing does not depend on this value.
+    /// </summary>
+    public string ClientId { get; init; } = DefaultClientId;
+
+    public string EffectiveClientId =>
+        string.IsNullOrWhiteSpace(ClientId) ? DefaultClientId : ClientId.Trim();
+
     public SecurityPolicyEnforcementMode Mode { get; init; } =
         SecurityPolicyEnforcementMode.Enforce;
 

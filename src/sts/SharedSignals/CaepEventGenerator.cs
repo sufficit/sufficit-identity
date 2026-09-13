@@ -406,9 +406,9 @@ public sealed class CaepEventGenerator
         CaepCredentialType.Otp => "otp",
         CaepCredentialType.Federated => "federated",
         CaepCredentialType.Passkey => "passkey",
-        // Not a CAEP-defined credential_type; emitted as a Sufficit-local
+        // Not a CAEP-defined credential_type; emitted as a product-local
         // value so receivers can react to privilege/authority changes.
-        CaepCredentialType.Privilege => "urn:sufficit:credential-type:privilege",
+        CaepCredentialType.Privilege => "urn:identity:credential-type:privilege",
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown credential type."),
     };
 

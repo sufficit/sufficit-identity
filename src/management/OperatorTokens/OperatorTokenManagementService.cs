@@ -31,15 +31,19 @@ internal sealed partial class OperatorTokenManagementService(
     internal const string TemporaryTokenMarker =
         "identity:temporary-operator-token";
     internal const string TemporaryClientId =
-        "SufficitIdentityOperatorTemporary";
+        "identity-operator-temporary";
 
     private const string PermissionClaimType = "permission";
-    private const string KindProperty =
-        "urn:sufficit:identity:temporary-token:kind";
-    private const string PurposeProperty =
-        "urn:sufficit:identity:temporary-token:purpose";
+    // Tokens issued before the vocabulary became product-neutral carry the
+    // legacy prefix; readers resolve either (see ResolvePropertyKey).
+    private const string TemporaryTokenPropertyPrefix =
+        "urn:identity:temporary-token:";
+    private const string LegacyTemporaryTokenPropertyPrefix =
+        "urn:sufficit:identity:temporary-token:";
+    private const string KindProperty = TemporaryTokenPropertyPrefix + "kind";
+    private const string PurposeProperty = TemporaryTokenPropertyPrefix + "purpose";
     private const string CapabilitiesProperty =
-        "urn:sufficit:identity:temporary-token:capabilities";
+        TemporaryTokenPropertyPrefix + "capabilities";
     private const string OperatorKind = "operator";
 
     private static readonly ManagementResource CollectionResource =

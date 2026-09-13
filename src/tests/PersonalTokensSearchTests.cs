@@ -66,6 +66,43 @@ public sealed partial class PersonalTokensTests
     }
 
     [Fact]
+    public async Task Search_reads_tokens_stored_with_the_legacy_metadata_prefix()
+    {
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var owner = Guid.NewGuid().ToString();
+        var active = LegacyPrefixed(SearchRow(owner, "legacy-prefix-active"));
+        var archived = LegacyPrefixed(SearchRow(owner, "legacy-prefix-archived",
+            ("archived_at", DateTimeOffset.UtcNow.ToString("O"))));
+        var replaced = SearchRow(owner, "legacy-prefix-replaced");
+        replaced.Type = "legacy_reference_token";
+        var replacement = LegacyPrefixed(SearchRow(owner, "legacy-prefix-replacement",
+            ("replaces_id", replaced.Id!)));
+        db.AddRange(active, archived, replaced, replacement);
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        var all = await PersonalTokenSearch.ReadAsync(db, owner, 0, 25, "all", null, default);
+
+        var found = Assert.Single(all.Items, t => t.Key == active.Id);
+        Assert.Equal("legacy-prefix-active", found.Description);
+        Assert.Equal("any-personal-token-client", found.ClientId);
+        Assert.Contains(all.Items, t => t.Key == replacement.Id);
+        Assert.DoesNotContain(all.Items, t => t.Key == archived.Id || t.Key == replaced.Id);
+    }
+
+    /// <summary>
+    /// Rewrites a fixture row to the metadata prefix used before the
+    /// vocabulary became product-neutral, as rows imported by migration 012.
+    /// </summary>
+    private static OpenIddictEntityFrameworkCoreToken LegacyPrefixed(OpenIddictEntityFrameworkCoreToken row)
+    {
+        row.Properties = row.Properties!.Replace(
+            "urn:identity:token:", "urn:sufficit:token:", StringComparison.Ordinal);
+        return row;
+    }
+
+    [Fact]
     public async Task Search_limits_scan_even_when_nothing_matches()
     {
         await using var scope = _factory.Services.CreateAsyncScope();
@@ -97,9 +134,9 @@ public sealed partial class PersonalTokensTests
 
     private static OpenIddictEntityFrameworkCoreToken SearchRow(string owner, string description, params (string Key, string Value)[] extra)
     {
-        var props = new Dictionary<string, string> { ["urn:sufficit:token:client_id"] = "SufficitAPIUserAccess",
-            ["urn:sufficit:token:description"] = description };
-        foreach (var (key, value) in extra) props["urn:sufficit:token:" + key] = value;
+        var props = new Dictionary<string, string> { ["urn:identity:token:client_id"] = "any-personal-token-client",
+            ["urn:identity:token:description"] = description };
+        foreach (var (key, value) in extra) props["urn:identity:token:" + key] = value;
         return new() { Id = Guid.NewGuid().ToString(), Subject = owner, Type = OpenIddict.Abstractions.OpenIddictConstants.TokenTypeIdentifiers.AccessToken, Status = "valid",
             CreationDate = DateTime.UtcNow.AddDays(-3), ExpirationDate = DateTime.UtcNow.AddDays(1),
             ReferenceId = "secret-reference-" + Guid.NewGuid(), Payload = "secret-payload",
@@ -121,9 +158,9 @@ public sealed partial class PersonalTokensTests
             .Where(t => t.Id == token!.Token.Key).Select(t => new { t.Subject, t.Type, t.Properties, HasReference = t.ReferenceId != null }).SingleAsync();
         Assert.True(persisted.HasReference);
         Assert.Equal(token!.Token.SubjectId.ToString(), persisted.Subject);
-        Assert.Contains("SufficitAPIUserAccess", persisted.Properties);
+        Assert.Contains(Sufficit.Identity.STS.PersonalTokenIssuanceOptions.DefaultClientId, persisted.Properties);
         using var metadata = JsonDocument.Parse(persisted.Properties!);
-        Assert.Equal("SufficitAPIUserAccess", metadata.RootElement.GetProperty("urn:sufficit:token:client_id").GetString());
+        Assert.Equal(Sufficit.Identity.STS.PersonalTokenIssuanceOptions.DefaultClientId, metadata.RootElement.GetProperty("urn:identity:token:client_id").GetString());
         var direct = await PersonalTokenSearch.ReadAsync(db, persisted.Subject!, 0, 100, "all", null, default, [token.Token.Key]);
         Assert.Equal("access_token", Assert.Single(direct.Items).Type);
         db.Add(other); await db.SaveChangesAsync();

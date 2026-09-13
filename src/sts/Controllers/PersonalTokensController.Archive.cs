@@ -59,5 +59,9 @@ public sealed partial class PersonalTokensController
     }
 
     private async Task<bool> IsArchivedAsync(object token, CancellationToken cancellationToken)
-        => (await _tokenManager.GetPropertiesAsync(token, cancellationToken)).ContainsKey(ArchivedAtProperty);
+    {
+        var properties = await _tokenManager.GetPropertiesAsync(token, cancellationToken);
+        return properties.ContainsKey(ArchivedAtProperty)
+            || properties.ContainsKey(LegacyPropertyName(ArchivedAtProperty));
+    }
 }

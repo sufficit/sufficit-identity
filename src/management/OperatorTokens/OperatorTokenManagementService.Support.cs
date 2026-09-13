@@ -270,10 +270,18 @@ internal sealed partial class OperatorTokenManagementService
         TemporaryOperatorTokenOptions policy) =>
         Math.Clamp(policy.MaximumCapabilities, 1, 64);
 
+    private static string ResolvePropertyKey(
+        IReadOnlyDictionary<string, JsonElement> properties,
+        string key) =>
+        properties.ContainsKey(key)
+        || !key.StartsWith(TemporaryTokenPropertyPrefix, StringComparison.Ordinal)
+            ? key
+            : LegacyTemporaryTokenPropertyPrefix + key[TemporaryTokenPropertyPrefix.Length..];
+
     private static string? GetStringProperty(
         IReadOnlyDictionary<string, JsonElement> properties,
         string key) =>
-        properties.TryGetValue(key, out var value)
+        properties.TryGetValue(ResolvePropertyKey(properties, key), out var value)
         && value.ValueKind is JsonValueKind.String
             ? value.GetString()
             : null;
@@ -282,7 +290,7 @@ internal sealed partial class OperatorTokenManagementService
         IReadOnlyDictionary<string, JsonElement> properties,
         string key)
     {
-        if (!properties.TryGetValue(key, out var value)
+        if (!properties.TryGetValue(ResolvePropertyKey(properties, key), out var value)
             || value.ValueKind is not JsonValueKind.Array)
         {
             return [];
