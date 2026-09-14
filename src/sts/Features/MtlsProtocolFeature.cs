@@ -1,34 +1,87 @@
 using System.Text.Json.Nodes;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
-using OpenIddict.Abstractions;
-using OpenIddict.Server;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Sufficit.Identity.STS.Metrics;
-using Sufficit.Identity.Vault;
-using static OpenIddict.Abstractions.OpenIddictConstants;
+using OpenIddict.Server;
+using Sufficit.Identity.Core.Data;
+using Sufficit.Identity.Management;
 
-namespace Sufficit.Identity.STS;
+namespace Sufficit.Identity.STS.Features;
 
-public static partial class ServiceCollectionExtensions
+/// <summary>
+/// OAuth 2.0 Mutual-TLS client authentication and certificate-bound access
+/// tokens (RFC 8705): endpoint aliases, native client authentication and the
+/// rule that DPoP and mTLS sender constraints are not combined.
+/// </summary>
+/// <remarks>
+/// The host must request and validate client certificates at the TLS layer;
+/// the server project owns certificate forwarding from a trusted proxy.
+/// private_key_jwt (RFC 7523) is enabled by OpenIddict unconditionally and is
+/// not gated here.
+/// </remarks>
+internal sealed class MtlsProtocolFeature : IProtocolFeature
 {
-    /// <summary>
-    /// Registers the RFC 8705 mTLS endpoint aliases and certificate-bound client authentication when mTLS is enabled.
-    /// </summary>
-    private static void ConfigureMtlsEndpoints(
-        OpenIddictServerBuilder server,
-        SufficitIdentityOptions options)
+    public string Name => "mtls";
+
+    public bool IsEnabled(SufficitIdentityOptions options) => options.Mtls.Enabled;
+
+    public IEnumerable<string> RuntimeCapabilities(SufficitIdentityOptions options) =>
+        options.Mtls.Enabled ? [ManagementRuntimeCapabilities.Mtls] : [];
+
+    public void Validate(SufficitIdentityOptions options)
     {
-        // -------------------------------------------------------------------
-        // Mutual TLS (mTLS) endpoint aliases (RFC 8705, item 3.4).
-        // Opt-in via Sufficit:Identity:Mtls:Enabled — mTLS requires the
-        // HOST to request/validate client certificates at the TLS layer,
-        // so the aliased paths must be registered as real protocol
-        // endpoints in addition to being published in discovery.
-        // private_key_jwt
-        // (RFC 7523) is enabled by OpenIddict unconditionally and is
-        // NOT gated here — it is the OTHER strong client-auth method.
-        // -------------------------------------------------------------------
+        if (!options.Mtls.Enabled)
+        {
+            return;
+        }
+
+        if (options.Mtls.DeploymentMode == MtlsDeploymentMode.Unattested)
+        {
+            throw new InvalidOperationException(
+                "mTLS is enabled without Sufficit:Identity:Mtls:DeploymentMode attestation.");
+        }
+        if (!string.IsNullOrWhiteSpace(options.Mtls.EndpointBaseUrl)
+            && (!Uri.TryCreate(
+                    options.Mtls.EndpointBaseUrl,
+                    UriKind.Absolute,
+                    out var endpointBase)
+                || endpointBase is null
+                || (endpointBase.Scheme != Uri.UriSchemeHttps
+                    && endpointBase.Scheme != Uri.UriSchemeHttp)
+                || !string.IsNullOrEmpty(endpointBase.UserInfo)
+                || !string.IsNullOrEmpty(endpointBase.Query)
+                || !string.IsNullOrEmpty(endpointBase.Fragment)))
+        {
+            throw new InvalidOperationException(
+                "mTLS EndpointBaseUrl must be an absolute HTTP(S) URL without user information, query or fragment.");
+        }
+        if (options.Mtls.RevocationTimeoutSeconds is < 1 or > 30)
+        {
+            throw new InvalidOperationException(
+                "mTLS RevocationTimeoutSeconds must be between 1 and 30 seconds.");
+        }
+        if (string.IsNullOrWhiteSpace(options.Mtls.ForwardedCertificateHeader)
+            || options.Mtls.ForwardedCertificateHeader.Length > 64
+            || options.Mtls.ForwardedCertificateHeader.Any(character =>
+                !char.IsAsciiLetterOrDigit(character)
+                && character != '-'))
+        {
+            throw new InvalidOperationException(
+                "mTLS ForwardedCertificateHeader must be a non-empty HTTP token using only ASCII letters, digits and hyphens.");
+        }
+        var trustedNetworks =
+            Mtls.MtlsClientCertificateForwarding.ParseNetworks(
+                options.Mtls.TrustedProxyNetworks);
+        if (options.Mtls.DeploymentMode == MtlsDeploymentMode.TrustedProxy
+            && trustedNetworks.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "mTLS TrustedProxy deployment requires at least one dedicated Mtls:TrustedProxyNetworks entry.");
+        }
+    }
+
+    public void ConfigureServer(OpenIddictServerBuilder server, ProtocolFeatureContext context)
+    {
+        var options = context.Options;
         if (options.Mtls.Enabled)
         {
             // Alias metadata alone does not map an ASP.NET endpoint.
@@ -95,6 +148,12 @@ public static partial class ServiceCollectionExtensions
                   .SetMtlsDeviceAuthorizationEndpointAliasUri(new Uri(mtlsBase, "connect/deviceauthorization/mtls").AbsoluteUri)
                   .SetMtlsUserInfoEndpointAliasUri(new Uri(mtlsBase, "connect/userinfo/mtls").AbsoluteUri)
                   .SetMtlsPushedAuthorizationEndpointAliasUri(new Uri(mtlsBase, "connect/par/mtls").AbsoluteUri);
+        }
+
+        if (options.Mtls.Enabled)
+        {
+            server.AddEventHandler(Mtls
+                .RejectCombinedDpopAndMtlsSenderConstraints.Descriptor);
         }
     }
 }

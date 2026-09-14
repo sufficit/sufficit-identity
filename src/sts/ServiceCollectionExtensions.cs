@@ -653,13 +653,9 @@ public static partial class ServiceCollectionExtensions
             {
                 validation.UseLocalServer();
                 validation.UseAspNetCore();
-                if (options.Dpop.Enabled)
-                {
-                    validation.AddEventHandler(
-                        Dpop.ExtractDpopValidationToken.Descriptor);
-                    validation.AddEventHandler(
-                        Dpop.ValidateDpopApiAccessTokenProof.Descriptor);
-                }
+                Features.ProtocolFeatureCatalog.ConfigureValidation(
+                    validation,
+                    new Features.ProtocolFeatureContext(options, auxiliarySigningCredentials));
             });
 
         services.AddScoped<IIdentityUserSessionRevoker,

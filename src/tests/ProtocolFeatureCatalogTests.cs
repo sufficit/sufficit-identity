@@ -17,6 +17,7 @@ public sealed class ProtocolFeatureCatalogTests
         "ServiceCollectionExtensions.Validation.cs",
         "OpenIddictServerConfiguration.cs",
         "OpenIddictServerConfiguration.Discovery.cs",
+        "OpenIddictServerConfiguration.Credentials.cs",
         "RuntimeCapabilityCatalog.cs",
     ];
 
@@ -26,6 +27,14 @@ public sealed class ProtocolFeatureCatalogTests
         "options.Jarm.",
         "options.SharedSignals.",
         "options.IdentityAssertions.",
+        "options.BackchannelLogout.",
+        "options.FrontchannelLogout.",
+        "options.Dpop.",
+        "options.Jar.",
+        "options.Mtls.",
+        "options.Fapi2.",
+        "options.Mcp.Dcr.",
+        "options.Mcp.ClientIdMetadataDocuments.",
     ];
 
     [Fact]

@@ -41,34 +41,7 @@ internal sealed class SufficitIdentityRuntimeCapabilityCatalog
             ManagementRuntimeCapabilities.Par,
         };
 
-        if (options.Jar.Enabled)
-        {
-            features.Add(ManagementRuntimeCapabilities.Jar);
-        }
-
-        if (options.Dpop.Enabled)
-        {
-            features.Add(ManagementRuntimeCapabilities.Dpop);
-        }
-
-        if (options.Mtls.Enabled)
-        {
-            features.Add(ManagementRuntimeCapabilities.Mtls);
-        }
-
-        if (options.Fapi2.Enabled)
-        {
-            features.Add(ManagementRuntimeCapabilities.Fapi2);
-        }
-
         features.UnionWith(Features.ProtocolFeatureCatalog.RuntimeCapabilities(options));
-
-        // Initial access tokens are issued at runtime through the management
-        // API, so an enabled endpoint is usable without startup configuration.
-        if (options.Mcp.Dcr.Enabled)
-        {
-            features.Add(ManagementRuntimeCapabilities.DynamicClientRegistration);
-        }
 
         if (options.Mcp.ProtectedResourceMetadataEnabled)
         {

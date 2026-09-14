@@ -51,7 +51,6 @@ public static partial class ServiceCollectionExtensions
               .SetJsonWebKeySetEndpointUris(".well-known/openid-configuration/jwks")
               .SetPushedAuthorizationEndpointUris("connect/par");
 
-        ConfigureMtlsEndpoints(server, options);
 
         // -------------------------------------------------------------------
         // Issuer (#8). Without this, OpenIddict derives `issuer` /
@@ -195,36 +194,6 @@ public static partial class ServiceCollectionExtensions
             ErrorPages.BrowserAuthorizationErrorPage
                 .RenderBrowserFriendlyAuthorizationError.Descriptor);
 
-        if (options.Fapi2.Enabled)
-        {
-            // These OpenIddict lifetimes are global. Tightening them
-            // for all clients is backward compatible and avoids a
-            // profiled client accidentally receiving a five-minute
-            // authorization code or hour-long PAR request URI.
-            server.SetAuthorizationCodeLifetime(TimeSpan.FromSeconds(
-                options.Fapi2.AuthorizationCodeLifetimeSeconds));
-            server.Configure(serverOptions =>
-                serverOptions.RequestTokenLifetime = TimeSpan.FromSeconds(
-                    options.Fapi2.PushedAuthorizationRequestLifetimeSeconds));
-
-            server.AddEventHandler(Fapi.ValidateFapiAuthorizationRequest.Descriptor);
-            server.AddEventHandler(Fapi.ValidateFapiPushedAuthorizationRequest.Descriptor);
-            server.AddEventHandler(Fapi.ValidateFapiTokenRequest.Descriptor);
-        }
-
-        // ---- JWT-Secured Authorization Requests (JAR, RFC 9101) ----
-        // Two endpoint hooks (authorization + PAR) that extract a
-        // signed `request` parameter, validate it against the client's
-        // registered keys, and merge its claims into the request. The
-        // handlers are scoped (need IOpenIddictApplicationManager).
-        if (options.Jar.Enabled)
-        {
-            server.AddEventHandler(Jar.JarRequestObjectHandler
-                .ExtractAuthorizationRequestObject.Descriptor);
-            server.AddEventHandler(Jar.JarRequestObjectHandler
-                .ExtractPushedAuthorizationRequestObject.Descriptor);
-        }
-
         if (options.LegacyGrants.Password)
             server.AllowPasswordFlow();
 
@@ -248,20 +217,6 @@ public static partial class ServiceCollectionExtensions
         // behind an option would mean the storage rename is safe on some hosts
         // and silently breaking on others.
         server.AddEventHandler(ProjectEntitlementClaimUnderBothNames.Descriptor);
-
-        if (options.Dpop.Enabled)
-        {
-            server.AddEventHandler(Dpop.AttachDpopConfirmation.Descriptor);
-            server.AddEventHandler(Dpop.AttachDpopTokenType.Descriptor);
-            server.AddEventHandler(Dpop.ExtractDpopUserInfoToken.Descriptor);
-            server.AddEventHandler(Dpop.ValidateDpopAccessTokenProof.Descriptor);
-        }
-
-        if (options.Mtls.Enabled)
-        {
-            server.AddEventHandler(Mtls
-                .RejectCombinedDpopAndMtlsSenderConstraints.Descriptor);
-        }
 
         // -------------------------------------------------------------------
         // Token lifetimes (Sufficit:Identity:Tokens). Refresh rotation is
