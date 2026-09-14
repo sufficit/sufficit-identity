@@ -28,6 +28,7 @@ using Sufficit.Identity.Management.Sessions;
 using Sufficit.Identity.Management.Users;
 using Sufficit.Identity.UI.Management;
 using Xunit;
+using Sufficit.Identity.Management.Registration;
 
 namespace Sufficit.Identity.Tests;
 
@@ -306,5 +307,58 @@ public sealed partial class ManagementUiRoutingTests
             "Conecte a API",
             html,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Client_registrations_page_lists_registration_tokens()
+    {
+        await using var app = await CreateHostAsync();
+        using var client = app.GetTestClient();
+
+        await SignInAsync(client, "administrator");
+
+        using var response = await client.GetAsync("/management/clients/registrations");
+        var html = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("Tokens de registro", html, StringComparison.Ordinal);
+        Assert.Contains("Partner agent", html, StringComparison.Ordinal);
+        Assert.Contains("a1b2c3d4e5f6", html, StringComparison.Ordinal);
+        Assert.Contains("Emitir token", html, StringComparison.Ordinal);
+    }
+
+    private sealed class StubDcrInitialAccessTokenManagementService
+        : IDcrInitialAccessTokenManagementService
+    {
+        public Task<IReadOnlyList<DcrInitialAccessTokenSummary>> ListAsync(
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<DcrInitialAccessTokenSummary>>(
+            [
+                new(
+                    Guid.Parse("7b0f4c1e-2a8d-4e53-9a61-0d3c5e2f8b14"),
+                    "Partner agent",
+                    "a1b2c3d4e5f6",
+                    "operator-subject",
+                    DateTime.UtcNow.AddHours(-1),
+                    DateTime.UtcNow.AddHours(23),
+                    SingleUse: true,
+                    RegistrationCount: 0,
+                    LastUsedAtUtc: null,
+                    RevokedAtUtc: null,
+                    Status: "active"),
+            ]);
+
+        public Task<DcrInitialAccessTokenIssueResult> IssueAsync(
+            IssueDcrInitialAccessTokenCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task RevokeAsync(
+            Guid id,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 }

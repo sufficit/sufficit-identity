@@ -1,0 +1,310 @@
+@using Microsoft.JSInterop
+@using Sufficit.Identity.Management.Registration
+@using Sufficit.Identity.UI.Management.Clients
+@inject ManagementRegistrationTokenDataSource TokenData
+@inject IJSRuntime JS
+
+@* Initial access tokens for dynamic client registration: issued here, one per
+   registrant, and shown only once. *@
+<section class="table-card registration-tokens" aria-labelledby="registration-tokens-heading">
+    <div class="table-card__body">
+        <header class="registration-tokens__header">
+            <h2 id="registration-tokens-heading">@L["Clients.RegistrationTokens.Title"]</h2>
+            <p>@L["Clients.RegistrationTokens.Description"]</p>
+        </header>
+
+        @if (!string.IsNullOrWhiteSpace(issueError))
+        {
+            <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+                <div>
+                    <strong>@L["Clients.RegistrationTokens.IssueErrorTitle"]</strong>
+                    <span>@issueError</span>
+                </div>
+            </SUIAlert>
+        }
+
+        <div class="operator-token-fields" data-sui-align-row>
+            <SUITextField T="string"
+                          id="registration-token-label"
+                          aria-label="@L["Clients.RegistrationTokens.LabelField"].Value"
+                          Label="@L["Clients.RegistrationTokens.LabelField"].Value"
+                          HelperText="@L["Clients.RegistrationTokens.LabelHelper"].Value"
+                          Placeholder="@L["Clients.RegistrationTokens.LabelPlaceholder"].Value"
+                          MaxLength="100"
+                          Immediate
+                          Disabled="@issuing"
+                          Value="@label"
+                          ValueChanged="@((string value) => label = value)"
+                          autocomplete="off" />
+
+            <SUISelect T="int"
+                       id="registration-token-lifetime"
+                       aria-label="@L["Clients.RegistrationTokens.LifetimeField"].Value"
+                       Label="@L["Clients.RegistrationTokens.LifetimeField"].Value"
+                       Disabled="@issuing"
+                       Value="@lifetimeHours"
+                       ValueChanged="@((int value) => lifetimeHours = value)">
+                @foreach (var hours in LifetimeOptions)
+                {
+                    <SUISelectItem Value="@hours">@L[$"Clients.RegistrationTokens.Lifetime.{hours}"]</SUISelectItem>
+                }
+            </SUISelect>
+        </div>
+
+        <div class="registration-tokens__issue">
+            <label class="registration-tokens__single-use">
+                <input type="checkbox"
+                       checked="@singleUse"
+                       disabled="@issuing"
+                       @onchange="eventArgs => singleUse = eventArgs.Value is true" />
+                <span>@L["Clients.RegistrationTokens.SingleUse"]</span>
+            </label>
+            <SUILoadingButton IsLoading="@issuing"
+                              Disabled="@(!CanIssue)"
+                              ColorValue="SUIColor.Primary"
+                              OnClick="IssueAsync"
+                              aria-busy="@issuing">
+                <SUIIcon Name="key" Size="17" />
+                <span>@L["Clients.RegistrationTokens.IssueButton"]</span>
+            </SUILoadingButton>
+        </div>
+
+        @if (issuedToken is not null)
+        {
+            <section class="operator-token-reveal" aria-labelledby="registration-token-reveal-heading" role="status">
+                <header>
+                    <div>
+                        <h2 id="registration-token-reveal-heading">@L["Clients.RegistrationTokens.RevealTitle"]</h2>
+                        <p>@L["Clients.RegistrationTokens.RevealDescription"]</p>
+                    </div>
+                    <SUIStatusBadge ToneValue="SUITone.Warning">@L["Clients.RegistrationTokens.RevealExpires", FormatInstant(issuedExpiresAtUtc)]</SUIStatusBadge>
+                </header>
+                <textarea class="operator-token-value"
+                          aria-label="@L["Clients.RegistrationTokens.RevealAriaLabel"].Value"
+                          readonly
+                          spellcheck="false"
+                          autocomplete="off">@issuedToken</textarea>
+                <footer>
+                    <span></span>
+                    <div>
+                        <SUIButton VariantValue="SUIVariant.Outlined"
+                                   ColorValue="SUIColor.Primary"
+                                   OnClick="CopyIssuedTokenAsync">
+                            <SUIIcon Name="code" Size="17" />
+                            @(tokenCopied ? L["Clients.RegistrationTokens.Copied"] : L["Clients.RegistrationTokens.Copy"])
+                        </SUIButton>
+                        <SUIButton VariantValue="SUIVariant.Text"
+                                   ColorValue="SUIColor.Default"
+                                   OnClick="HideIssuedToken">
+                            @L["Clients.RegistrationTokens.Hide"]
+                        </SUIButton>
+                    </div>
+                </footer>
+                @if (clipboardUnavailable)
+                {
+                    <span class="operator-token-clipboard-note">@L["Clients.RegistrationTokens.ClipboardBlocked"]</span>
+                }
+            </section>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(revokeError))
+        {
+            <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+                <span>@revokeError</span>
+            </SUIAlert>
+        }
+
+        @if (tokens is null)
+        {
+            <div class="table-skeleton" aria-label="@L["Clients.RegistrationTokens.Loading"].Value">
+                @for (var index = 0; index < 2; index++)
+                {
+                    <span></span>
+                }
+            </div>
+        }
+        else if (!tokens.IsSuccess)
+        {
+            <SUIAlert ToneValue="SUITone.Danger" Icon="alert">
+                <span>@(tokens.ErrorMessage ?? L["Clients.RegistrationTokens.LoadError"].Value)</span>
+            </SUIAlert>
+        }
+        else if (tokens.Value is not { Count: > 0 } items)
+        {
+            <SUIEmptyState Icon="key"
+                           Title="@L["Clients.RegistrationTokens.EmptyTitle"].Value"
+                           Description="@L["Clients.RegistrationTokens.EmptyDescription"].Value" />
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">@L["Clients.RegistrationTokens.ColumnRegistrant"]</th>
+                            <th scope="col">@L["Clients.RegistrationTokens.ColumnFingerprint"]</th>
+                            <th scope="col">@L["Clients.RegistrationTokens.ColumnIssuedBy"]</th>
+                            <th scope="col">@L["Clients.RegistrationTokens.ColumnExpires"]</th>
+                            <th scope="col">@L["Clients.RegistrationTokens.ColumnRegistrations"]</th>
+                            <th scope="col">@L["Clients.RegistrationTokens.ColumnStatus"]</th>
+                            <th scope="col"><span class="visually-hidden">@L["Clients.RegistrationTokens.ColumnActions"]</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var token in items)
+                        {
+                            <tr>
+                                <td data-label="@L["Clients.RegistrationTokens.ColumnRegistrant"].Value">@token.Label</td>
+                                <td data-label="@L["Clients.RegistrationTokens.ColumnFingerprint"].Value"><code>@token.TokenHint</code></td>
+                                <td data-label="@L["Clients.RegistrationTokens.ColumnIssuedBy"].Value"><code>@token.IssuedBy</code></td>
+                                <td data-label="@L["Clients.RegistrationTokens.ColumnExpires"].Value">@FormatInstant(token.ExpiresAtUtc)</td>
+                                <td data-label="@L["Clients.RegistrationTokens.ColumnRegistrations"].Value">
+                                    @token.RegistrationCount
+                                    <span class="registration-hint">
+                                        @(token.SingleUse ? L["Clients.RegistrationTokens.SingleUseBadge"] : L["Clients.RegistrationTokens.ReusableBadge"])
+                                    </span>
+                                </td>
+                                <td data-label="@L["Clients.RegistrationTokens.ColumnStatus"].Value">
+                                    <SUIStatusBadge ToneValue="@StatusTone(token.Status)">@L[$"Clients.RegistrationTokens.Status.{token.Status}"]</SUIStatusBadge>
+                                </td>
+                                <td data-label="@L["Clients.RegistrationTokens.ColumnActions"].Value">
+                                    @if (token.RevokedAtUtc is null)
+                                    {
+                                        @if (pendingRevokeId == token.Id)
+                                        {
+                                            <span>@L["Clients.RegistrationTokens.RevokeConfirmPrompt"]</span>
+                                            <SUILoadingButton IsLoading="@revoking"
+                                                              Disabled="@revoking"
+                                                              SizeValue="SUISize.Small"
+                                                              ColorValue="SUIColor.Error"
+                                                              OnClick="async _ => await RevokeAsync(token.Id)">
+                                                @L["Clients.RegistrationTokens.RevokeConfirm"]
+                                            </SUILoadingButton>
+                                            <SUIButton VariantValue="SUIVariant.Text"
+                                                       ColorValue="SUIColor.Default"
+                                                       SizeValue="SUISize.Small"
+                                                       Disabled="@revoking"
+                                                       OnClick="_ => pendingRevokeId = null">
+                                                @L["Clients.RegistrationTokens.RevokeCancel"]
+                                            </SUIButton>
+                                        }
+                                        else
+                                        {
+                                            <SUIButton VariantValue="SUIVariant.Text"
+                                                       ColorValue="SUIColor.Error"
+                                                       SizeValue="SUISize.Small"
+                                                       OnClick="_ => pendingRevokeId = token.Id">
+                                                @L["Clients.RegistrationTokens.Revoke"]
+                                            </SUIButton>
+                                        }
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    private static readonly int[] LifetimeOptions = [1, 24, 168, 720];
+
+    private ManagementDataResult<IReadOnlyList<DcrInitialAccessTokenSummary>>? tokens;
+    private string label = string.Empty;
+    private int lifetimeHours = 24;
+    private bool singleUse = true;
+    private bool issuing;
+    private string? issueError;
+    private string? issuedToken;
+    private DateTime issuedExpiresAtUtc;
+    private bool tokenCopied;
+    private bool clipboardUnavailable;
+    private Guid? pendingRevokeId;
+    private bool revoking;
+    private string? revokeError;
+
+    private bool CanIssue => !issuing && !string.IsNullOrWhiteSpace(label);
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync() => tokens = await TokenData.ListAsync();
+
+    private async Task IssueAsync()
+    {
+        issuing = true;
+        issueError = null;
+        issuedToken = null;
+        tokenCopied = false;
+        clipboardUnavailable = false;
+        var result = await TokenData.IssueAsync(
+            new IssueDcrInitialAccessTokenCommand(label, lifetimeHours, singleUse));
+        issuing = false;
+        if (!result.IsSuccess || result.Value is null)
+        {
+            issueError = result.ErrorMessage
+                ?? L["Clients.RegistrationTokens.IssueGenericError"].Value;
+            return;
+        }
+
+        issuedToken = result.Value.InitialAccessToken;
+        issuedExpiresAtUtc = result.Value.Token.ExpiresAtUtc;
+        label = string.Empty;
+        await LoadAsync();
+    }
+
+    private async Task CopyIssuedTokenAsync()
+    {
+        if (string.IsNullOrWhiteSpace(issuedToken))
+        {
+            return;
+        }
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", issuedToken);
+            tokenCopied = true;
+            clipboardUnavailable = false;
+        }
+        catch (JSException)
+        {
+            clipboardUnavailable = true;
+        }
+    }
+
+    private void HideIssuedToken()
+    {
+        issuedToken = null;
+        tokenCopied = false;
+        clipboardUnavailable = false;
+    }
+
+    private async Task RevokeAsync(Guid id)
+    {
+        revoking = true;
+        revokeError = null;
+        var result = await TokenData.RevokeAsync(id);
+        revoking = false;
+        pendingRevokeId = null;
+        if (!result.IsSuccess)
+        {
+            revokeError = result.ErrorMessage
+                ?? L["Clients.RegistrationTokens.RevokeGenericError"].Value;
+        }
+        await LoadAsync();
+    }
+
+    private static SUITone StatusTone(string status) => status switch
+    {
+        "active" => SUITone.Success,
+        "used" => SUITone.Neutral,
+        "expired" => SUITone.Warning,
+        _ => SUITone.Danger,
+    };
+
+    // Stored instants are UTC; the database round trip drops the kind.
+    private static string FormatInstant(DateTime utc) =>
+        DateTime.SpecifyKind(utc, DateTimeKind.Utc)
+            .ToLocalTime()
+            .ToString("dd/MM/yyyy HH:mm");
+}

@@ -203,6 +203,9 @@ public sealed partial class ManagementUiRoutingTests
         builder.Services.AddSingleton<
             IOperatorTokenManagementService,
             StubOperatorTokenManagementService>();
+        builder.Services.AddSingleton<
+            Sufficit.Identity.Management.Registration.IDcrInitialAccessTokenManagementService,
+            StubDcrInitialAccessTokenManagementService>();
         builder.Services.AddSingleton<IManagementAuditService, StubManagementAuditService>();
         builder.Services.AddSingleton<
             IDatabaseMonitoringService,

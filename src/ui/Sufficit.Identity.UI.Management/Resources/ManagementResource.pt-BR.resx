@@ -2026,4 +2026,53 @@
   <data name="Error.secret_value_required" xml:space="preserve"><value>O valor do segredo é obrigatório.</value></data>
   <data name="Error.secret_expiration_invalid" xml:space="preserve"><value>A expiração do segredo deve estar no futuro.</value></data>
   <data name="Error.secret_not_found" xml:space="preserve"><value>Segredo nomeado não encontrado.</value></data>
+  <data name="Clients.RegistrationTokens.Title" xml:space="preserve"><value>Tokens de registro</value></data>
+  <data name="Clients.RegistrationTokens.Description" xml:space="preserve"><value>Emita um token de acesso inicial para cada aplicação que vai se registrar sozinha pelo registro dinâmico de clientes. O valor aparece uma única vez.</value></data>
+  <data name="Clients.RegistrationTokens.LabelField" xml:space="preserve"><value>Registrante</value></data>
+  <data name="Clients.RegistrationTokens.LabelHelper" xml:space="preserve"><value>Quem vai usar este token, por exemplo o nome do parceiro ou do agente.</value></data>
+  <data name="Clients.RegistrationTokens.LabelPlaceholder" xml:space="preserve"><value>Agente do parceiro</value></data>
+  <data name="Clients.RegistrationTokens.LifetimeField" xml:space="preserve"><value>Válido por</value></data>
+  <data name="Clients.RegistrationTokens.Lifetime.1" xml:space="preserve"><value>1 hora</value></data>
+  <data name="Clients.RegistrationTokens.Lifetime.24" xml:space="preserve"><value>24 horas</value></data>
+  <data name="Clients.RegistrationTokens.Lifetime.168" xml:space="preserve"><value>7 dias</value></data>
+  <data name="Clients.RegistrationTokens.Lifetime.720" xml:space="preserve"><value>30 dias</value></data>
+  <data name="Clients.RegistrationTokens.SingleUse" xml:space="preserve"><value>Uso único (registra uma aplicação)</value></data>
+  <data name="Clients.RegistrationTokens.IssueButton" xml:space="preserve"><value>Emitir token</value></data>
+  <data name="Clients.RegistrationTokens.IssueErrorTitle" xml:space="preserve"><value>Token não emitido</value></data>
+  <data name="Clients.RegistrationTokens.IssueGenericError" xml:space="preserve"><value>Não foi possível emitir o token.</value></data>
+  <data name="Clients.RegistrationTokens.RevealTitle" xml:space="preserve"><value>Copie o token agora</value></data>
+  <data name="Clients.RegistrationTokens.RevealDescription" xml:space="preserve"><value>Ele não será exibido de novo. Envie ao registrante por um canal seguro; ele vai no cabeçalho Authorization: Bearer do pedido de registro.</value></data>
+  <data name="Clients.RegistrationTokens.RevealExpires" xml:space="preserve"><value>Expira em {0}</value></data>
+  <data name="Clients.RegistrationTokens.RevealAriaLabel" xml:space="preserve"><value>Valor do token de registro</value></data>
+  <data name="Clients.RegistrationTokens.Copy" xml:space="preserve"><value>Copiar</value></data>
+  <data name="Clients.RegistrationTokens.Copied" xml:space="preserve"><value>Copiado</value></data>
+  <data name="Clients.RegistrationTokens.Hide" xml:space="preserve"><value>Ocultar</value></data>
+  <data name="Clients.RegistrationTokens.ClipboardBlocked" xml:space="preserve"><value>O navegador bloqueou a área de transferência. Selecione o texto e copie manualmente.</value></data>
+  <data name="Clients.RegistrationTokens.Loading" xml:space="preserve"><value>Carregando tokens de registro</value></data>
+  <data name="Clients.RegistrationTokens.LoadError" xml:space="preserve"><value>Os tokens de registro estão indisponíveis.</value></data>
+  <data name="Clients.RegistrationTokens.EmptyTitle" xml:space="preserve"><value>Nenhum token de registro</value></data>
+  <data name="Clients.RegistrationTokens.EmptyDescription" xml:space="preserve"><value>Emita um token para permitir que uma aplicação se registre sozinha.</value></data>
+  <data name="Clients.RegistrationTokens.ColumnRegistrant" xml:space="preserve"><value>Registrante</value></data>
+  <data name="Clients.RegistrationTokens.ColumnFingerprint" xml:space="preserve"><value>Impressão</value></data>
+  <data name="Clients.RegistrationTokens.ColumnIssuedBy" xml:space="preserve"><value>Emitido por</value></data>
+  <data name="Clients.RegistrationTokens.ColumnExpires" xml:space="preserve"><value>Expira</value></data>
+  <data name="Clients.RegistrationTokens.ColumnRegistrations" xml:space="preserve"><value>Registros</value></data>
+  <data name="Clients.RegistrationTokens.ColumnStatus" xml:space="preserve"><value>Situação</value></data>
+  <data name="Clients.RegistrationTokens.ColumnActions" xml:space="preserve"><value>Ações</value></data>
+  <data name="Clients.RegistrationTokens.Status.active" xml:space="preserve"><value>Ativo</value></data>
+  <data name="Clients.RegistrationTokens.Status.used" xml:space="preserve"><value>Usado</value></data>
+  <data name="Clients.RegistrationTokens.Status.expired" xml:space="preserve"><value>Expirado</value></data>
+  <data name="Clients.RegistrationTokens.Status.revoked" xml:space="preserve"><value>Revogado</value></data>
+  <data name="Clients.RegistrationTokens.SingleUseBadge" xml:space="preserve"><value>uso único</value></data>
+  <data name="Clients.RegistrationTokens.ReusableBadge" xml:space="preserve"><value>reutilizável</value></data>
+  <data name="Clients.RegistrationTokens.Revoke" xml:space="preserve"><value>Revogar</value></data>
+  <data name="Clients.RegistrationTokens.RevokeConfirmPrompt" xml:space="preserve"><value>Revogar este token?</value></data>
+  <data name="Clients.RegistrationTokens.RevokeConfirm" xml:space="preserve"><value>Confirmar</value></data>
+  <data name="Clients.RegistrationTokens.RevokeCancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Clients.RegistrationTokens.RevokeGenericError" xml:space="preserve"><value>Não foi possível revogar o token.</value></data>
+  <data name="Clients.RegistrationTokens.TechnicalReason" xml:space="preserve"><value>Motivo técnico: {0}</value></data>
+  <data name="Error.registration_token_label_required" xml:space="preserve"><value>Informe quem vai usar o token.</value></data>
+  <data name="Error.registration_token_label_too_long" xml:space="preserve"><value>O nome do registrante é longo demais.</value></data>
+  <data name="Error.registration_token_lifetime_invalid" xml:space="preserve"><value>A validade deve ficar entre 1 e 720 horas.</value></data>
+  <data name="Error.registration_token_not_found" xml:space="preserve"><value>O token de registro não existe.</value></data>
 </root>
