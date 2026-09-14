@@ -45,6 +45,12 @@ public static class IdentityDatabaseSchema
     public const string OAuthClientCredentialsMigrationId = "20260820143602_AddOAuthClientCredentials";
 
     /// <summary>
+    /// Per-registrant, revocable initial access tokens for dynamic client
+    /// registration, replacing the shared static token.
+    /// </summary>
+    public const string DcrInitialAccessTokensMigrationId = "20260914012253_AddDcrInitialAccessTokens";
+
+    /// <summary>
     /// Durable primary for DPoP nonces, front-channel logout context and
     /// passkey ceremony tickets (eval 2026-08-30, F-4).
     /// </summary>
@@ -90,6 +96,12 @@ public static class IdentityDatabaseSchema
     public const int OAuthClientCredentialHintLength = 12;
     public const int OAuthClientCredentialReasonLength = 256;
     public const int OAuthClientCredentialConcurrencyLength = 32;
+
+    // Dynamic client registration initial access tokens.
+    public const int DcrInitialAccessTokenLabelLength = 100;
+    public const int DcrInitialAccessTokenHashLength = 64;
+    public const int DcrInitialAccessTokenHintLength = 12;
+    public const int DcrInitialAccessTokenSubjectLength = 255;
 
     // Branding
     public const int BrandingUrlLength = 512;

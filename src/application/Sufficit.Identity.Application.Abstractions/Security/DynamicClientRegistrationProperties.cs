@@ -22,4 +22,9 @@ public static class DynamicClientRegistrationProperties
     public const string RemoteAddress = "identity:client:dcr-remote-address";
 
     public const string UserAgent = "identity:client:dcr-user-agent";
+
+    /// <summary>Identifier of the initial access token that authorized the
+    /// registration, so every client traces back to the operator who issued
+    /// the token.</summary>
+    public const string InitialAccessTokenId = "identity:client:dcr-initial-access-token-id";
 }

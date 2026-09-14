@@ -102,16 +102,25 @@ public static partial class ServiceCollectionExtensions
         }
         ValidateAdvancedProtocolOptions(options);
         options.HumanVerification.Validate();
-        var dcrInitialAccessTokenConfigured = !string.IsNullOrWhiteSpace(
-            ResolveSecret(
+        // The shared DCR initial access token gave no attribution and could not
+        // be revoked per registrant. Refuse to start while it is configured, so
+        // a deployment learns about the change instead of registrations
+        // failing with invalid_token.
+        if (!string.IsNullOrWhiteSpace(ResolveSecret(
                 startupSecretStore,
-                "identity/dcr/initial-access-token"));
+                "identity/dcr/initial-access-token")))
+        {
+            throw new InvalidOperationException(
+                "The shared DCR initial access token (secret identity/dcr/initial-access-token, "
+                + "Sufficit:Identity:Mcp:Dcr:InitialAccessToken) is no longer supported. Remove it "
+                + "and issue one initial access token per registrant through the management API "
+                + "(POST api/registration-tokens).");
+        }
         services.AddSingleton(options);
+        services.TryAddSingleton<Sufficit.Identity.Core.Services.DcrInitialAccessTokenStore>();
         services.Replace(ServiceDescriptor.Singleton<
             IIdentityRuntimeCapabilityCatalog>(
-            new SufficitIdentityRuntimeCapabilityCatalog(
-                options,
-                dcrInitialAccessTokenConfigured)));
+            new SufficitIdentityRuntimeCapabilityCatalog(options)));
         services.AddSingleton(options.HumanVerification);
         services.AddSingleton(options.TwoFactor);
         services.AddSingleton(options.Branding);

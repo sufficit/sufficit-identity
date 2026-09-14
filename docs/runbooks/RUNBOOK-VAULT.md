@@ -112,7 +112,7 @@ provedor de configuração:
 | `identity/certificates/encryption-password` | `SUFFICIT_SECRET_IDENTITY_CERTIFICATES_ENCRYPTION_PASSWORD` | `Sufficit:Identity:Certificates:EncryptionPassword` |
 | `vault/kek-certificate-password` | `SUFFICIT_SECRET_VAULT_KEK_CERTIFICATE_PASSWORD` | `Sufficit:Vault:CertificatePassword` |
 | `identity/human-verification/secret-key` | `SUFFICIT_SECRET_IDENTITY_HUMAN_VERIFICATION_SECRET_KEY` | `Sufficit:Identity:HumanVerification:SecretKey` |
-| `identity/dcr/initial-access-token` | `SUFFICIT_SECRET_IDENTITY_DCR_INITIAL_ACCESS_TOKEN` | `Sufficit:Identity:Mcp:Dcr:InitialAccessToken` |
+| `identity/dcr/initial-access-token` | `SUFFICIT_SECRET_IDENTITY_DCR_INITIAL_ACCESS_TOKEN` | Retired: startup fails while set. Issue per-registrant tokens through `api/registration-tokens` (see `docs/rfc/RFC-7591-DYNAMIC-CLIENT-REGISTRATION.md`). |
 | `identity/external-providers/{google,github,gitlab,facebook}/client-id` | `SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_*_CLIENT_ID` | credencial pública do provedor |
 | `identity/external-providers/{google,github,gitlab,facebook}/client-secret` | `SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_*_CLIENT_SECRET` | credencial do provedor |
 | `identity/smtp/password` | `SUFFICIT_SECRET_IDENTITY_SMTP_PASSWORD` | `Sufficit:Identity:Smtp:Password` |

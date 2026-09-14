@@ -163,6 +163,8 @@ public static class ManagementResourceTypes
     public const string Provisioning = "provisioning";
     public const string OperatorToken = "operator-token";
     public const string OperatorTokenCollection = "operator-token-collection";
+    public const string DcrInitialAccessToken = "dcr-initial-access-token";
+    public const string DcrInitialAccessTokenCollection = "dcr-initial-access-token-collection";
 }
 
 public sealed record ManagementRequestContext(

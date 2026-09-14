@@ -87,30 +87,19 @@ public sealed class DcrOptions
     public bool Enabled { get; init; } = false;
 
     /// <summary>
-    /// When <c>true</c>, the <c>/connect/register</c> endpoint requires a
-    /// valid initial access token (bearer) in the Authorization header. Default
-    /// <c>true</c> — without it, anyone can register a client. The token is
-    /// validated against <see cref="InitialAccessToken"/>; leave that empty to
-    /// disable the endpoint entirely (Enabled must be true AND a token
-    /// configured for DCR to actually accept requests).
+    /// When <c>true</c> (default), <c>/connect/register</c> requires an
+    /// initial access token (bearer) issued through the management API
+    /// (<c>api/registration-tokens</c>): one per registrant, expiring,
+    /// revocable and single-use unless issued otherwise. When <c>false</c>,
+    /// registration is anonymous and restricted to the interactive profile
+    /// (<see cref="AnonymousGrantTypes"/>, <see cref="AnonymousScopes"/>).
     /// </summary>
+    /// <remarks>
+    /// The shared static token (<c>InitialAccessToken</c>, secret
+    /// <c>identity/dcr/initial-access-token</c>) is retired: startup fails
+    /// while it is still configured, so it cannot silently stop working.
+    /// </remarks>
     public bool RequireInitialAccessToken { get; init; } = true;
-
-    /// <summary>
-    /// The static initial access token accepted by <c>/connect/register</c>
-    /// when <see cref="RequireInitialAccessToken"/> is true. Configure via User
-    /// Secrets / env var in real environments — NEVER commit a real value.
-    /// Empty = endpoint rejects all requests (even when Enabled).
-    /// </summary>
-    public string InitialAccessToken { get; init; } = "";
-
-    /// <summary>
-    /// Required expiry for the bootstrap credential when DCR is enabled.
-    /// Provision a new credential/expiry for each registration ceremony.
-    /// </summary>
-    public DateTimeOffset? InitialAccessTokenExpiresAtUtc { get; init; }
-
-    public bool InitialAccessTokenSingleUse { get; init; } = true;
 
     /// <summary>
     /// Deprecated migration adapters, <b>secure-by-default since eval

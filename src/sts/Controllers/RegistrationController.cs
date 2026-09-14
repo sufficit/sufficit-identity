@@ -16,7 +16,8 @@ namespace Sufficit.Identity.STS.Controllers;
 /// <summary>
 /// RFC 7591 Dynamic Client Registration (DCR) — item 4.3. Exposes
 /// <c>/connect/register</c> so clients (including MCP clients) can self-register.
-/// Gated: off by default, and requires an initial access token when enabled.
+/// Gated: off by default, and requires an operator-issued initial access token
+/// when enabled.
 /// </summary>
 /// <remarks>
 /// OpenIddict 7.6 ships no DCR (verified: zero "registration" strings). This
@@ -49,24 +50,23 @@ public sealed class RegistrationController : ControllerBase
         DynamicClientRegistrationProperties.RemoteAddress;
     internal const string UserAgentProperty =
         DynamicClientRegistrationProperties.UserAgent;
+    internal const string InitialAccessTokenIdProperty =
+        DynamicClientRegistrationProperties.InitialAccessTokenId;
 
     private readonly IOpenIddictApplicationManager _applications;
     private readonly DcrOptions _options;
     private readonly IClientDefinitionValidator _validator;
-    private readonly IDpopReplayCache _bootstrapCredentialReplay;
-    private readonly ISecretStore _secretStore;
+    private readonly Sufficit.Identity.Core.Services.DcrInitialAccessTokenStore _initialAccessTokens;
 
     public RegistrationController(
         IOpenIddictApplicationManager applications,
         IConfiguration configuration,
         IClientDefinitionValidator validator,
-        IDpopReplayCache bootstrapCredentialReplay,
-        ISecretStore secretStore)
+        Sufficit.Identity.Core.Services.DcrInitialAccessTokenStore initialAccessTokens)
     {
         _applications = applications;
         _validator = validator;
-        _bootstrapCredentialReplay = bootstrapCredentialReplay;
-        _secretStore = secretStore;
+        _initialAccessTokens = initialAccessTokens;
         var root = configuration.GetSection("Sufficit:Identity")
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
         _options = root.Mcp.Dcr;
@@ -86,62 +86,19 @@ public sealed class RegistrationController : ControllerBase
             return NotFound();
         }
 
-        // Gate 2: initial access token. When required (default), the caller
-        // must present the configured bearer token in the Authorization header.
-        // Without it, anyone could register a client — the open-registration
-        // risk DCR is notorious for.
+        // Gate 2: initial access token. Each token is issued by an operator
+        // to one registrant through the management API, expires, can be
+        // revoked and is single-use by default, so every registration traces
+        // back to who allowed it. Without the gate anyone could register a
+        // client, the open-registration risk DCR is notorious for.
+        Sufficit.Identity.Core.Entities.DcrInitialAccessToken? initialAccessToken = null;
         if (_options.RequireInitialAccessToken)
         {
-            var initialAccessToken = await ResolveInitialAccessTokenAsync(ct);
-            if (string.IsNullOrEmpty(initialAccessToken))
+            initialAccessToken = await _initialAccessTokens.FindActiveAsync(
+                ReadBearerToken(), ct);
+            if (initialAccessToken is null)
             {
-                // Enabled + require token, but no token configured: fail closed.
-                return StatusCode(StatusCodes.Status503ServiceUnavailable, new
-                {
-                    error = "server_error",
-                    error_description = "Dynamic client registration is enabled but no initial access token is configured."
-                });
-            }
-
-            if (_options.InitialAccessTokenExpiresAtUtc is not { } expiresAt)
-            {
-                return StatusCode(StatusCodes.Status503ServiceUnavailable, new
-                {
-                    error = "server_error",
-                    error_description = "Dynamic client registration requires an expiring initial access token."
-                });
-            }
-            if (expiresAt <= DateTimeOffset.UtcNow)
-            {
-                return Unauthorized(new { error = "invalid_token" });
-            }
-
-            var header = Request.Headers.Authorization.ToString();
-            // L2 fix (eval L2): constant-time comparison to avoid a theoretical
-            // timing side-channel on the initial access token.
-            var expected = "Bearer " + initialAccessToken;
-            var headerBytes = System.Text.Encoding.UTF8.GetBytes(header);
-            var expectedBytes = System.Text.Encoding.UTF8.GetBytes(expected);
-            if (headerBytes.Length != expectedBytes.Length
-                || !System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(headerBytes, expectedBytes))
-            {
-                return Unauthorized(new { error = "invalid_token" });
-            }
-        }
-
-        if (_options.RequireInitialAccessToken
-            && _options.InitialAccessTokenSingleUse)
-        {
-            var tokenDigest = Convert.ToHexString(SHA256.HashData(
-                System.Text.Encoding.UTF8.GetBytes(
-                    (await ResolveInitialAccessTokenAsync(ct)) ?? string.Empty)));
-            var remaining = _options.InitialAccessTokenExpiresAtUtc!.Value
-                - DateTimeOffset.UtcNow;
-            if (_bootstrapCredentialReplay.IsReplay(
-                "dcr-initial-access:" + tokenDigest,
-                remaining))
-            {
-                return Unauthorized(new { error = "invalid_token" });
+                return InvalidInitialAccessToken();
             }
         }
 
@@ -290,6 +247,20 @@ public sealed class RegistrationController : ControllerBase
             descriptor.Requirements.Add(OpenIddictConstants.Requirements.Features.ProofKeyForCodeExchange);
         }
 
+        // Consume only now, after the metadata validated, so a rejected request
+        // does not burn a single-use token. The update is atomic: of two
+        // concurrent registrations with one single-use token, one proceeds.
+        if (initialAccessToken is not null)
+        {
+            if (!await _initialAccessTokens.TryConsumeAsync(initialAccessToken.Id, ct))
+            {
+                return InvalidInitialAccessToken();
+            }
+
+            descriptor.Properties[InitialAccessTokenIdProperty] =
+                JsonSerializer.SerializeToElement(initialAccessToken.Id.ToString());
+        }
+
         await _applications.CreateAsync(descriptor, ct);
 
         // RFC 7591 §3.2.1 response: client_id, and client_secret when confidential.
@@ -371,11 +342,21 @@ public sealed class RegistrationController : ControllerBase
         return address is null ? null : address.ToString();
     }
 
-    private async Task<string?> ResolveInitialAccessTokenAsync(
-        CancellationToken cancellationToken) =>
-        await _secretStore.GetSecretAsync(
-            "identity/dcr/initial-access-token",
-            cancellationToken);
+    private string? ReadBearerToken()
+    {
+        const string scheme = "Bearer ";
+        var header = Request.Headers.Authorization.ToString();
+        return header.StartsWith(scheme, StringComparison.OrdinalIgnoreCase)
+            ? header[scheme.Length..].Trim()
+            : null;
+    }
+
+    private IActionResult InvalidInitialAccessToken()
+    {
+        // RFC 6750 §3: the challenge names the bearer error.
+        Response.Headers.WWWAuthenticate = "Bearer error=\"invalid_token\"";
+        return Unauthorized(new { error = "invalid_token" });
+    }
 
     /// <summary>
     /// Maps an RFC 7591 grant-type name (plain: <c>client_credentials</c>,

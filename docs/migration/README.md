@@ -138,6 +138,13 @@ A host that provisions schema by SQL and skips this step does not fail at
 startup — it fails on the first DPoP nonce challenge and on every passkey
 ceremony, at runtime. Apply it before deploying that build.
 
+`098-add-dcr-initial-access-tokens.sql` creates `dcrinitialaccesstokens`, the
+per-registrant initial access tokens for dynamic client registration issued
+through `api/registration-tokens`. It is required before deploying that build
+wherever DCR is enabled; without it a registration fails at runtime. The same
+build refuses to start while the retired shared token
+(`identity/dcr/initial-access-token`) is still configured.
+
 That same evaluation made `Sufficit:Identity:DeploymentTopology` a **required
 configuration key** outside Development: the production posture check refuses to
 start with `deployment-topology-undeclared` until the deployment states its
