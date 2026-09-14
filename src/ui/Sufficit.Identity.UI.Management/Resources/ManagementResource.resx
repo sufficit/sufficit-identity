@@ -2081,4 +2081,12 @@
   <data name="Clients.RegistrationTokens.PolicyGrants" xml:space="preserve"><value>Grants: {0}</value></data>
   <data name="Clients.RegistrationTokens.PolicyScopes" xml:space="preserve"><value>Scopes: {0}</value></data>
   <data name="Error.registration_token_policy_invalid" xml:space="preserve"><value>Each value must be an identifier without spaces, at most 20 values.</value></data>
+  <data name="Home.SecurityAdvisories.Title" xml:space="preserve"><value>Security recommendations</value></data>
+  <data name="Home.SecurityAdvisories.Description" xml:space="preserve"><value>These settings are allowed and do not block startup, but they are weaker than recommended.</value></data>
+  <data name="Posture.password-breach-check-disabled.Summary" xml:space="preserve"><value>New and changed passwords are not checked against known breached passwords.</value></data>
+  <data name="Posture.password-breach-check-disabled.Recommendation" xml:space="preserve"><value>Set Sufficit:Identity:Password:RejectBreached=true.</value></data>
+  <data name="Posture.password-breach-check-fail-open.Summary" xml:space="preserve"><value>When the breached-password service cannot be reached, passwords are accepted without the check.</value></data>
+  <data name="Posture.password-breach-check-fail-open.Recommendation" xml:space="preserve"><value>Set Sufficit:Identity:Password:BreachedCheckFailureMode=FailClosed if blocking registration and password changes during an outage of that service is acceptable.</value></data>
+  <data name="Posture.vault-kek-in-data-protection.Summary" xml:space="preserve"><value>The vault key-encryption key is protected by the Data Protection key ring, stored in the same database as the wrapped data keys.</value></data>
+  <data name="Posture.vault-kek-in-data-protection.Recommendation" xml:space="preserve"><value>Set Sufficit:Vault:KeySource=certificate with a dedicated certificate readable only by the service account.</value></data>
 </root>

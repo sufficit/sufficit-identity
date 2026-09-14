@@ -424,6 +424,91 @@ public sealed class ProductionPostureCheckTests
             new FixedTimeProvider(Now));
     }
 
+    [Fact]
+    public void Advisories_are_reported_but_never_block_startup()
+    {
+        var advisory = new ProductionPostureFinding(
+            "advisory-only", "summary", "remedy", Severity: ProductionPostureSeverity.Advisory);
+        var vault = new VaultOptions { Enabled = true };
+
+        Assert.Empty(ProductionPostureCheck.Evaluate(
+            [new StubContributor(advisory), new VaultProductionPostureContributor(vault)],
+            new SecurityPostureOptions(),
+            Now));
+
+        var reported = ProductionPostureCheck.EvaluateAdvisories(
+                [
+                    new StsProductionPostureContributor(
+                        new SufficitIdentityOptions(),
+                        new ConfigurationBuilder().Build()),
+                    new VaultProductionPostureContributor(vault),
+                ],
+                new SecurityPostureOptions(),
+                Now)
+            .Select(finding => finding.Id)
+            .ToHashSet();
+        Assert.Contains("password-breach-check-disabled", reported);
+        Assert.Contains("vault-kek-in-data-protection", reported);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IProductionPostureContributor>(new StubContributor(advisory));
+        using var provider = services.BuildServiceProvider();
+        ProductionPostureCheck.Enforce(
+            provider,
+            new SufficitIdentityOptions(),
+            isDevelopment: false,
+            NullLogger.Instance,
+            new FixedTimeProvider(Now));
+    }
+
+    [Fact]
+    public void Acknowledged_advisory_is_silenced_and_not_stale()
+    {
+        var options = new SecurityPostureOptions
+        {
+            Acknowledgements = new Dictionary<string, ProductionPostureAcknowledgement>(
+                StringComparer.Ordinal)
+            {
+                ["advisory-only"] = new()
+                {
+                    Owner = "identity-team",
+                    Reason = "accepted risk",
+                    ExpiresAtUtc = Now.AddDays(30),
+                },
+            },
+        };
+        IProductionPostureContributor[] contributors =
+        [
+            new StubContributor(new ProductionPostureFinding(
+                "advisory-only", "summary", "remedy", Severity: ProductionPostureSeverity.Advisory)),
+        ];
+
+        Assert.Empty(ProductionPostureCheck.EvaluateAdvisories(contributors, options, Now));
+        Assert.Empty(ProductionPostureCheck.Evaluate(contributors, options, Now));
+    }
+
+    [Fact]
+    public void Certificate_key_source_and_enabled_breach_check_fail_closed_have_no_advisories()
+    {
+        var root = new SufficitIdentityOptions
+        {
+            Password = new PasswordPolicyOptions
+            {
+                RejectBreached = true,
+                BreachedCheckFailureMode = BreachedPasswordFailureMode.FailClosed,
+            },
+        };
+        var vault = new VaultOptions { Enabled = true, KeySource = "certificate" };
+
+        Assert.Empty(ProductionPostureCheck.EvaluateAdvisories(
+            [
+                new StsProductionPostureContributor(root, new ConfigurationBuilder().Build()),
+                new VaultProductionPostureContributor(vault),
+            ],
+            new SecurityPostureOptions(),
+            Now));
+    }
+
     private static IReadOnlyList<ProductionPostureFinding> Evaluate(
         params IProductionPostureContributor[] contributors) =>
         ProductionPostureCheck.Evaluate(

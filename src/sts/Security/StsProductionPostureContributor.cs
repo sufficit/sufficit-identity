@@ -17,6 +17,26 @@ public sealed class StsProductionPostureContributor(
 {
     public IEnumerable<ProductionPostureFinding> Evaluate()
     {
+        // V12 (evaluation 2026-09-12): advisory by the maintainer's decision,
+        // because the check calls an external service on every registration
+        // and password change.
+        if (!options.Password.RejectBreached)
+        {
+            yield return new(
+                "password-breach-check-disabled",
+                "New and changed passwords are not checked against known breached passwords.",
+                "Set Sufficit:Identity:Password:RejectBreached=true.",
+                Severity: ProductionPostureSeverity.Advisory);
+        }
+        else if (options.Password.BreachedCheckFailureMode == BreachedPasswordFailureMode.FailOpen)
+        {
+            yield return new(
+                "password-breach-check-fail-open",
+                "When the breached-password service cannot be reached, passwords are accepted without the check.",
+                "Set Sufficit:Identity:Password:BreachedCheckFailureMode=FailClosed if blocking registration and password changes during an outage of that service is acceptable.",
+                Severity: ProductionPostureSeverity.Advisory);
+        }
+
         if (options.Csp.Enabled && options.Csp.ReportOnly)
         {
             yield return new(

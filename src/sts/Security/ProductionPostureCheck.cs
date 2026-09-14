@@ -39,6 +39,12 @@ public static class ProductionPostureCheck
 
         foreach (var finding in raw)
         {
+            // Advisories never refuse startup; EvaluateAdvisories reports them.
+            if (finding.Severity == ProductionPostureSeverity.Advisory)
+            {
+                continue;
+            }
+
             if (options.Acknowledgements.TryGetValue(
                     finding.Id,
                     out var acknowledgement))
@@ -85,6 +91,25 @@ public static class ProductionPostureCheck
         return unresolved;
     }
 
+    /// <summary>
+    /// Advisory findings that no valid acknowledgement silences.
+    /// </summary>
+    public static IReadOnlyList<ProductionPostureFinding> EvaluateAdvisories(
+        IEnumerable<IProductionPostureContributor> contributors,
+        SecurityPostureOptions options,
+        DateTimeOffset now)
+    {
+        ArgumentNullException.ThrowIfNull(contributors);
+        ArgumentNullException.ThrowIfNull(options);
+
+        return contributors
+            .SelectMany(contributor => contributor.Evaluate())
+            .Where(finding => finding.Severity == ProductionPostureSeverity.Advisory
+                && !(options.Acknowledgements.TryGetValue(finding.Id, out var acknowledgement)
+                    && acknowledgement.IsValid(now)))
+            .ToArray();
+    }
+
     public static void Enforce(
         IServiceProvider services,
         SufficitIdentityOptions options,
@@ -97,15 +122,24 @@ public static class ProductionPostureCheck
         ArgumentNullException.ThrowIfNull(logger);
 
         IReadOnlyList<ProductionPostureFinding> findings;
+        IReadOnlyList<ProductionPostureFinding> advisories;
         using (var scope = services.CreateScope())
         {
             var contributors = scope.ServiceProvider
-                .GetServices<IProductionPostureContributor>();
-            findings = Evaluate(
-                contributors,
-                options.Security,
-                (timeProvider ?? TimeProvider.System).GetUtcNow(),
-                logger);
+                .GetServices<IProductionPostureContributor>()
+                .ToArray();
+            var now = (timeProvider ?? TimeProvider.System).GetUtcNow();
+            findings = Evaluate(contributors, options.Security, now, logger);
+            advisories = EvaluateAdvisories(contributors, options.Security, now);
+        }
+
+        foreach (var advisory in advisories)
+        {
+            logger.LogWarning(
+                "Security posture advisory [{FindingId}]: {Summary} Recommendation: {Remedy}",
+                advisory.Id,
+                advisory.Summary,
+                advisory.Remedy);
         }
 
         if (findings.Count == 0)
@@ -142,6 +176,21 @@ public static class ProductionPostureCheck
             + Environment.NewLine
             + "Resolve each finding or configure a bounded Security:Acknowledgements entry with owner, reason and expiry.");
     }
+}
+
+/// <summary>
+/// Evaluates advisories on demand, so operators see the current configuration
+/// rather than a startup snapshot.
+/// </summary>
+internal sealed class ProductionPostureAdvisories(
+    IEnumerable<IProductionPostureContributor> contributors,
+    SufficitIdentityOptions options) : IProductionPostureAdvisories
+{
+    public IReadOnlyList<ProductionPostureFinding> Evaluate() =>
+        ProductionPostureCheck.EvaluateAdvisories(
+            contributors,
+            options.Security,
+            TimeProvider.System.GetUtcNow());
 }
 
 public sealed class ProductionPostureException(
