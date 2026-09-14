@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\application\Sufficit.Identity.Application.Abstractions\Sufficit.Identity.Application.Abstractions.csproj" />
+    <ProjectReference Include="/mnt/sufficit/sufficit-identity/.worktrees/context-purge-20260914182449/src/application/Sufficit.Identity.Application.Abstractions/Sufficit.Identity.Application.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>
