@@ -66,6 +66,7 @@ An `act` already present in the subject token is nested under the new one
 | Scopes | Intersection between the request and the `subject_token`'s scopes; with no request, it inherits all of them. |
 | Resources | `invalid_target` if the requested resource is not authorized by the subject token; the result is the intersection. |
 | Actor chain | `act` is **nested**, preserving the previous chain instead of overwriting it (§4.1). |
+| Authorized actor | When the `subject_token` carries `may_act`, its `sub` must equal the acting party (the `actor_token` subject, or the calling client without one) and its `client_id`, when present, the calling client. A claim that is not a JSON object or names neither member authorizes nobody. A `may_act` claim persisted on a user reaches that user's access tokens. |
 | Subject status | User: `CanSignInAsync` is revalidated. Client: the registration must still exist. |
 
 ## Requirements
@@ -77,15 +78,15 @@ An `act` already present in the subject token is nested under the new one
 | `requested_token_type` | 2.1 | Validated by OpenIddict against `RequestedTokenTypes`; only access tokens are supported |
 | `issued_token_type` in the response | 2.2.1 | Inherited from OpenIddict |
 | `act` claim with nesting | 4.1 | Yes |
-| `may_act` | 4.4 | No |
+| `may_act` | 4.4 | Yes; every member present (`sub`, `client_id`) must match the acting party |
 | `invalid_target` | 2.2.2 | Yes |
 
 ## Remaining gaps
 
-- `may_act` (§4.4) is not evaluated.
-- Only access tokens can be requested.
-- The *Cross-App Access* / ID-JAG pattern
-  (draft-ietf-oauth-identity-assertion-authz-grant) is not implemented.
+- Only access tokens can be requested, apart from the ID-JAG token type (see
+  [SPEC-OAUTH-ID-JAG.md](SPEC-OAUTH-ID-JAG.md)).
+- `may_act` is enforced but not issued by policy: it reaches a token only as a
+  claim persisted on the user. `iss` inside `may_act` is not compared.
 
 ## Tests
 
