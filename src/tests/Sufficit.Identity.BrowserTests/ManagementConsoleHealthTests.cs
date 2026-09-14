@@ -31,7 +31,6 @@ public class ManagementConsoleHealthTests : PageTest
     public async Task AuthenticateAsync()
     {
         TestServerProbe.EnsureServerAvailable();
-        _console = new ConsoleCollector(Page);
         await Page.GotoAsync($"{BaseUrl}/account/login");
         var userInput = Page.Locator(
             "#username, input[name='UserName']");
@@ -72,6 +71,15 @@ public class ManagementConsoleHealthTests : PageTest
             // prerendering sees the elevated claims.
             await Page.GotoAsync($"{BaseUrl}/management/");
         }
+
+        // Attach the console collector only after the optional MFA upgrade
+        // probe. The fetch above intentionally targets /__test__/signin,
+        // which exists only in Development: on a production host it answers
+        // 404 and the browser records the request as a console error / failed
+        // resource. That probe noise is expected outside Development, so the
+        // collector starts after it, keeping the per-page checks below
+        // meaningful on both host types.
+        _console = new ConsoleCollector(Page);
     }
 
     [TearDown]
