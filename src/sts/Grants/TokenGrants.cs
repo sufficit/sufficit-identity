@@ -642,6 +642,15 @@ public sealed class TokenExchangeGrantHandler(
             actorSubject = actorTokenSubject;
         }
 
+        // RFC 8693 §4.4: a subject_token that names who may act for its
+        // subject restricts the exchange to that actor.
+        if (result.Principal.GetClaim(GrantOperations.MayActClaimType) is { } mayAct
+            && !MayActAuthorizes(mayAct, actorSubject, request.ClientId!))
+        {
+            return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant,
+                "The subject_token does not authorize this actor (may_act).");
+        }
+
         ClaimsIdentity identity;
         if (user is not null)
         {
@@ -719,6 +728,48 @@ public sealed class TokenExchangeGrantHandler(
         return new SignInResult(
             OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
             new ClaimsPrincipal(identity));
+    }
+
+    /// <summary>
+    /// Evaluates a <c>may_act</c> claim against the acting party. Each member
+    /// the claim carries must match: <c>sub</c> the actor subject and
+    /// <c>client_id</c> the calling client. A claim that is not a JSON object,
+    /// or names neither, authorizes nobody.
+    /// </summary>
+    internal static bool MayActAuthorizes(string mayAct, string actorSubject, string clientId)
+    {
+        JsonElement element;
+        try
+        {
+            element = JsonSerializer.Deserialize<JsonElement>(mayAct);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        var constrained = false;
+        foreach (var (member, expected) in new[] { ("sub", actorSubject), ("client_id", clientId) })
+        {
+            if (!element.TryGetProperty(member, out var value))
+            {
+                continue;
+            }
+
+            constrained = true;
+            if (value.ValueKind != JsonValueKind.String
+                || !string.Equals(value.GetString(), expected, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        return constrained;
     }
 
     private static string[] AuthorizedParties(ClaimsPrincipal principal) =>

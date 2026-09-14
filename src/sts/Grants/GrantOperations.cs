@@ -39,6 +39,13 @@ public sealed class GrantOperations(
 
     internal const string ActClaimType = "act";
 
+    /// <summary>
+    /// RFC 8693 §4.4: names the party allowed to act for the token's subject.
+    /// Persisted on a user, it reaches access tokens so a later exchange can
+    /// enforce it.
+    /// </summary>
+    internal const string MayActClaimType = "may_act";
+
     public UserManager<ApplicationUser> UserManager => userManager;
 
     public IAuthenticationContextClassMapper AuthenticationContextClasses =>
@@ -270,12 +277,40 @@ public sealed class GrantOperations(
                 continue;
             }
 
+            if (claim.Type == MayActClaimType)
+            {
+                // OpenIddict requires may_act to be a JSON object claim. A
+                // malformed persisted value is dropped rather than failing
+                // every sign-in of the user.
+                if (TryParseJsonObject(claim.Value, out var mayAct)
+                    && existing.Add((claim.Type, claim.Value)))
+                {
+                    identity.SetClaim(MayActClaimType, mayAct);
+                }
+
+                continue;
+            }
+
             if (ReservedClaimTypes.Contains(claim.Type) || !existing.Add((claim.Type, claim.Value)))
             {
                 continue;
             }
 
             identity.AddClaim(claim);
+        }
+    }
+
+    private static bool TryParseJsonObject(string value, out System.Text.Json.JsonElement element)
+    {
+        try
+        {
+            element = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(value);
+            return element.ValueKind == System.Text.Json.JsonValueKind.Object;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            element = default;
+            return false;
         }
     }
 
@@ -365,6 +400,12 @@ public sealed class GrantOperations(
                 // token only — resource servers validate it; the id_token is
                 // for the client and must not carry the sender-binding
                 // thumbprint.
+                yield return Destinations.AccessToken;
+                yield break;
+
+            case MayActClaimType:
+                // Read by the token exchange of a resource server or of this
+                // server; the client has no use for it in the id_token.
                 yield return Destinations.AccessToken;
                 yield break;
 

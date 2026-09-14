@@ -130,6 +130,67 @@ public sealed class TokenExchangeDelegationTests
         Assert.Equal("invalid_grant", body.GetProperty("error").GetString());
     }
 
+    [Fact]
+    public async Task May_act_admits_only_the_named_actor()
+    {
+        using var factory = await CreateFactoryAsync(allowClientSubjectTokens: false);
+        const string password = "Act0r!Passw0rd#21";
+        var allowedName = $"allowed-{Guid.NewGuid():N}";
+        var otherName = $"other-{Guid.NewGuid():N}";
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var allowed = await TestDataSeeder.CreateUserAsync(users, allowedName, password);
+            await TestDataSeeder.CreateUserAsync(users, otherName, password);
+            var subject = await users.FindByNameAsync(TestDataSeeder.DefaultUsername)
+                ?? throw new InvalidOperationException("Seed user not found.");
+            await users.AddClaimAsync(subject, new System.Security.Claims.Claim(
+                "may_act", JsonSerializer.Serialize(new { sub = allowed.Id })));
+        }
+
+        var client = factory.CreateClient();
+        var subjectToken = await PasswordTokenAsync(client,
+            TestDataSeeder.DefaultUsername, TestDataSeeder.DefaultPassword,
+            TestDataSeeder.PasswordClientId, TestDataSeeder.PasswordClientSecret);
+
+        async Task<(HttpStatusCode Status, JsonElement Body)> ExchangeAsync(string actorName)
+        {
+            var actorToken = await PasswordTokenAsync(client, actorName, password,
+                TestDataSeeder.TokenExchangeClientId, TestDataSeeder.TokenExchangeClientSecret);
+            return await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+            {
+                ["grant_type"] = TokenExchangeGrant,
+                ["subject_token"] = subjectToken,
+                ["subject_token_type"] = AccessTokenType,
+                ["actor_token"] = actorToken,
+                ["actor_token_type"] = AccessTokenType,
+                ["client_id"] = TestDataSeeder.TokenExchangeClientId,
+                ["client_secret"] = TestDataSeeder.TokenExchangeClientSecret,
+            });
+        }
+
+        var (otherStatus, otherBody) = await ExchangeAsync(otherName);
+        Assert.Equal(HttpStatusCode.BadRequest, otherStatus);
+        Assert.Equal("invalid_grant", otherBody.GetProperty("error").GetString());
+
+        var (allowedStatus, _) = await ExchangeAsync(allowedName);
+        Assert.Equal(HttpStatusCode.OK, allowedStatus);
+    }
+
+    [Theory]
+    [InlineData("{\"sub\":\"actor\"}", true)]
+    [InlineData("{\"sub\":\"actor\",\"client_id\":\"caller\"}", true)]
+    [InlineData("{\"client_id\":\"caller\"}", true)]
+    [InlineData("{\"sub\":\"someone-else\"}", false)]
+    [InlineData("{\"sub\":\"actor\",\"client_id\":\"other-client\"}", false)]
+    [InlineData("{\"iss\":\"https://issuer.example\"}", false)]
+    [InlineData("\"actor\"", false)]
+    [InlineData("not json", false)]
+    public void May_act_requires_every_named_member_to_match(string mayAct, bool expected) =>
+        Assert.Equal(expected,
+            Sufficit.Identity.STS.Grants.TokenExchangeGrantHandler.MayActAuthorizes(
+                mayAct, "actor", "caller"));
+
     private static async Task<SufficitIdentityTestFactory> CreateFactoryAsync(
         bool allowClientSubjectTokens)
     {
