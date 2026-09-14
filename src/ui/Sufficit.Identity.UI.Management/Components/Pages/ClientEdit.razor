@@ -881,7 +881,7 @@ else
                             @if (saving) { <span class="button-spinner" aria-hidden="true"></span><span>@L["Clients.Draft.Saving"]</span> } else { <SUIIcon Name="check" Size="17" /><span>@L["Clients.Edit.SaveChangesAction"]</span> }
                         </button>
                     </div>
-                    <span class="field-hint">@L["Clients.Edit.AuditVersionNote", client.Version]</span>
+                    <span class="field-hint">@L["Clients.Edit.AuditVersionNote", client.Version ?? string.Empty]</span>
                 </div>
             }
         </main>
