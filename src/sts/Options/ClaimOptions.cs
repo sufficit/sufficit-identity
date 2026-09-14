@@ -20,6 +20,13 @@ namespace Sufficit.Identity.STS;
 /// </remarks>
 public sealed class ClaimScopeMapOptions
 {
+    /// <summary>Deployment-defined entitlement keys retrieved explicitly through
+    /// current UserInfo, never released in access/identity tokens. Keys and values
+    /// are opaque to Identity; resource servers own their business semantics.
+    /// Empty by default to preserve existing deployments.</summary>
+    public HashSet<string> ServerResolvedEntitlementKeys { get; init; } =
+        new(StringComparer.Ordinal);
+
     /// <summary>
     /// Map of claim type → scope name. When a token is being built, a claim
     /// whose type matches a key here is included in the access token ONLY if

@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using OpenIddict.Abstractions;
@@ -52,6 +53,7 @@ public partial class AuthorizationController : Controller
     private readonly Logout.IFrontchannelLogoutDispatcher _frontchannelLogoutDispatcher;
     private readonly SharedSignals.ISharedSignalsDispatcher _sharedSignalsDispatcher;
     private readonly Fapi2Options _fapi2Options;
+    private readonly ClaimScopeMapOptions _claimScopeMap;
     private readonly IAntiforgery _antiforgery;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<AuthorizationController> _logger;
@@ -95,6 +97,8 @@ public partial class AuthorizationController : Controller
         // token-endpoint DPoP/FAPI preamble lives in the grant dispatcher.
         _fapi2Options = (configuration.GetSection("Sufficit:Identity")
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions()).Fapi2;
+        _claimScopeMap = (configuration.GetSection("Sufficit:Identity")
+            .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions()).ClaimScopeMap;
     }
 
     // -----------------------------------------------------------------------
@@ -470,6 +474,8 @@ public partial class AuthorizationController : Controller
 
                 var values = persistedClaims
                     .Where(claim => string.Equals(claim.Type, mapping.Key, StringComparison.Ordinal))
+                    .Where(claim => !ServerResolvedEntitlements.IsServerResolved(claim,
+                        _claimScopeMap.ServerResolvedEntitlementKeys))
                     .Select(claim => claim.Value)
                     .Distinct(StringComparer.Ordinal)
                     .ToArray();
@@ -485,6 +491,25 @@ public partial class AuthorizationController : Controller
         }
 
         ProjectEntitlementUnderBothNames(claims);
+
+        // Explicit current authorization query; identity always comes from the
+        // validated access-token subject, never a caller-supplied user/context.
+        if (Request.Query.TryGetValue("entitlements", out var query)
+            && query.Count == 1 && query[0] == "current")
+        {
+            var effective = persistedClaims.ToList();
+            var roleManager = HttpContext.RequestServices.GetRequiredService<RoleManager<ApplicationRole>>();
+            foreach (var roleName in await _userManager.GetRolesAsync(user))
+            {
+                var role = await roleManager.FindByNameAsync(roleName);
+                if (role is not null) effective.AddRange(await roleManager.GetClaimsAsync(role));
+            }
+            var grants = ServerResolvedEntitlements.Resolve(effective,
+                _claimScopeMap.ServerResolvedEntitlementKeys);
+            if (grants.Length > 1024) return StatusCode(StatusCodes.Status503ServiceUnavailable);
+            claims["authorization"] = new { schemaVersion = 1, grants };
+        }
+        Response.Headers.CacheControl = "no-store";
 
         return Ok(claims);
     }
