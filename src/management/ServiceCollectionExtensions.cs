@@ -121,6 +121,8 @@ public static class ServiceCollectionExtensions
             ProvisioningTokenManagementService>();
         services.TryAddScoped<IProvisioningTokenIssuer,
             ProvisioningTokenIssuer>();
+        services.TryAddScoped<Registration.IDcrInitialAccessTokenManagementService,
+            Registration.DcrInitialAccessTokenManagementService>();
         services.TryAddScoped<IOperatorTokenManagementService,
             OperatorTokenManagementService>();
         services.TryAddScoped<ServiceAccounts.IServiceAccountManagementService,

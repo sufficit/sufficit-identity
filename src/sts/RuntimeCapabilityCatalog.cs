@@ -12,8 +12,7 @@ internal sealed class SufficitIdentityRuntimeCapabilityCatalog
     : IIdentityRuntimeCapabilityCatalog
 {
     public SufficitIdentityRuntimeCapabilityCatalog(
-        SufficitIdentityOptions options,
-        bool dcrInitialAccessTokenConfigured = false)
+        SufficitIdentityOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
 
@@ -72,9 +71,9 @@ internal sealed class SufficitIdentityRuntimeCapabilityCatalog
             features.Add(ManagementRuntimeCapabilities.Ciba);
         }
 
-        if (options.Mcp.Dcr.Enabled &&
-            (!options.Mcp.Dcr.RequireInitialAccessToken ||
-             dcrInitialAccessTokenConfigured))
+        // Initial access tokens are issued at runtime through the management
+        // API, so an enabled endpoint is usable without startup configuration.
+        if (options.Mcp.Dcr.Enabled)
         {
             features.Add(ManagementRuntimeCapabilities.DynamicClientRegistration);
         }

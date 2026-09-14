@@ -129,6 +129,9 @@ public sealed class AppDbContext
 
     public DbSet<TrustedProxyConfiguration> TrustedProxyConfigurations => Set<TrustedProxyConfiguration>();
 
+    public DbSet<Entities.DcrInitialAccessToken> DcrInitialAccessTokens =>
+        Set<Entities.DcrInitialAccessToken>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -149,6 +152,7 @@ public sealed class AppDbContext
         TrustedProxyMapping.Apply(builder);
         ProtocolSecurityStateMapping.Apply(builder);
         OAuthClientCredentialMapping.Apply(builder);
+        DcrInitialAccessTokenMapping.Apply(builder);
 
         // F-3 (eval 2026-08-14): opaque CSPRNG identifiers are matched by
         // equality and must not fold case. Applied only under MySQL/MariaDB —
