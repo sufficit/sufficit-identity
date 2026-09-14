@@ -141,6 +141,8 @@ public static partial class ServiceCollectionExtensions
             ServiceDescriptor.Singleton<
                 IProductionPostureContributor,
                 Security.StsProductionPostureContributor>());
+        services.TryAddScoped<IProductionPostureAdvisories,
+            Security.ProductionPostureAdvisories>();
         services.AddSingleton<IPublicOriginResolver, PublicOriginResolver>();
         services.AddScoped<IAccountLookupPolicy, AccountLookupPolicy>();
         services.AddSingleton<ISecurityDecisionTelemetry,

@@ -2081,4 +2081,12 @@
   <data name="Clients.RegistrationTokens.PolicyGrants" xml:space="preserve"><value>Grants: {0}</value></data>
   <data name="Clients.RegistrationTokens.PolicyScopes" xml:space="preserve"><value>Escopos: {0}</value></data>
   <data name="Error.registration_token_policy_invalid" xml:space="preserve"><value>Cada valor deve ser um identificador sem espaços, até 20 valores.</value></data>
+  <data name="Home.SecurityAdvisories.Title" xml:space="preserve"><value>Recomendações de segurança</value></data>
+  <data name="Home.SecurityAdvisories.Description" xml:space="preserve"><value>Estas configurações são permitidas e não impedem a inicialização, mas são mais fracas que o recomendado.</value></data>
+  <data name="Posture.password-breach-check-disabled.Summary" xml:space="preserve"><value>Senhas novas e alteradas não são comparadas com senhas vazadas conhecidas.</value></data>
+  <data name="Posture.password-breach-check-disabled.Recommendation" xml:space="preserve"><value>Defina Sufficit:Identity:Password:RejectBreached=true.</value></data>
+  <data name="Posture.password-breach-check-fail-open.Summary" xml:space="preserve"><value>Quando o serviço de senhas vazadas não responde, a senha é aceita sem a verificação.</value></data>
+  <data name="Posture.password-breach-check-fail-open.Recommendation" xml:space="preserve"><value>Defina Sufficit:Identity:Password:BreachedCheckFailureMode=FailClosed se for aceitável bloquear cadastro e troca de senha enquanto esse serviço estiver fora.</value></data>
+  <data name="Posture.vault-kek-in-data-protection.Summary" xml:space="preserve"><value>A chave mestra do cofre é protegida pelo anel de chaves do Data Protection, guardado no mesmo banco das chaves de dados cifradas.</value></data>
+  <data name="Posture.vault-kek-in-data-protection.Recommendation" xml:space="preserve"><value>Defina Sufficit:Vault:KeySource=certificate com um certificado dedicado, legível só pela conta do serviço.</value></data>
 </root>

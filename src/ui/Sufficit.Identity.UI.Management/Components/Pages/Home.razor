@@ -53,6 +53,26 @@ else
         <SUIStatusBadge ToneValue="SUITone.Success">@L["Home.Current"]</SUIStatusBadge>
     </div>
 
+    @if (Overview.SecurityAdvisories is { Count: > 0 } advisories)
+    {
+        <SUIAlert ToneValue="SUITone.Warning" Icon="alert" Class="security-advisories">
+            <div>
+                <strong>@L["Home.SecurityAdvisories.Title"]</strong>
+                <span>@L["Home.SecurityAdvisories.Description"]</span>
+                <ul>
+                    @foreach (var advisory in advisories)
+                    {
+                        <li>
+                            <code>@advisory.Id</code>
+                            <span>@AdvisoryText(advisory.Id, "Summary", advisory.Summary)</span>
+                            <em>@AdvisoryText(advisory.Id, "Recommendation", advisory.Recommendation)</em>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </SUIAlert>
+    }
+
     <div class="dashboard-grid">
         <div class="panel" aria-labelledby="available-modules-heading">
             <div class="panel-header">
@@ -275,4 +295,12 @@ else
     private sealed record ModuleView(
         ManagementModuleDescriptor Module,
         ManagementModulePresentation Presentation);
+
+    // Known advisories are translated by id; an unknown one falls back to the
+    // English text the server reports.
+    private string AdvisoryText(string id, string part, string fallback)
+    {
+        var localized = L[$"Posture.{id}.{part}"];
+        return localized.ResourceNotFound ? fallback : localized.Value;
+    }
 }

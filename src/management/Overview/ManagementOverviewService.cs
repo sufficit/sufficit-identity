@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Overview;
@@ -11,7 +12,8 @@ public sealed class ManagementOverviewService(
     IManagementAuthorizationEvaluator authorization,
     IOptions<ManagementOptions> options,
     IHostEnvironment hostEnvironment,
-    ILogger<ManagementOverviewService>? logger = null) : IManagementOverviewService
+    ILogger<ManagementOverviewService>? logger = null,
+    IProductionPostureAdvisories? postureAdvisories = null) : IManagementOverviewService
 {
     private static readonly ManagementResource OverviewResource =
         new(ManagementResourceTypes.Overview);
@@ -140,7 +142,15 @@ public sealed class ManagementOverviewService(
                 accessPolicy.RequireMfa,
                 !accessPolicy.RequireMfa || sessionDecision.IsAllowed,
                 capabilities),
-            modules);
+            modules,
+            // Configuration weaknesses are security-sensitive; only operators
+            // who can read the audit trail see them.
+            capabilities.Contains(ManagementCapabilities.AuditRead, StringComparer.Ordinal)
+                ? (postureAdvisories?.Evaluate() ?? [])
+                    .Select(finding => new ManagementSecurityAdvisory(
+                        finding.Id, finding.Summary, finding.Remedy))
+                    .ToArray()
+                : null);
     }
 
     private static string NormalizeRoutePrefix(string? value)

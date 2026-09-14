@@ -18,7 +18,17 @@ public sealed record ManagementOverview(
     string EnvironmentName,
     ManagementApiDescriptor Api,
     ManagementOperatorDescriptor Operator,
-    IReadOnlyList<ManagementModuleDescriptor> Modules);
+    IReadOnlyList<ManagementModuleDescriptor> Modules,
+    IReadOnlyList<ManagementSecurityAdvisory>? SecurityAdvisories = null);
+
+/// <summary>
+/// A setting that is allowed but weaker than recommended. Listed only for
+/// operators who can read the audit trail.
+/// </summary>
+public sealed record ManagementSecurityAdvisory(
+    string Id,
+    string Summary,
+    string Recommendation);
 
 public sealed record ManagementApiDescriptor(
     string RoutePrefix,
