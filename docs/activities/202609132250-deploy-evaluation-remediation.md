@@ -84,9 +84,18 @@ preflight with `+-` (failure ignored); the bits were removed there too and the
 preflight now passes. `helpers/package-release.sh` normalizes modes before
 packaging (`51504ad`).
 
-Follow-up: the eveo-apps drop-in `10-dotnet10.conf` ignores preflight failures
-(`ExecStartPre=+-...`), unlike castrum-apps. Aligning it is a separate
-configuration change.
+Follow-up: the eveo-apps drop-in `10-dotnet10.conf` ignored preflight failures
+(`ExecStartPre=+-...`) and ran the release copy of `prestart.sh`, which the
+service account owns, as root. On 2026-09-14 11:24 BRT, at the user's request,
+it was aligned with castrum-apps: only the root-owned
+`/usr/libexec/sufficit-identity/prestart.sh`, as the service user, failures not
+ignored. The strict preflight was dry-run as the service user first; the
+restart took 5 s, logged "Runtime invariants verified" and no errors. Backup:
+`/root/10-dotnet10.conf.before-prestart-align-20260914T142410Z`.
+
+apoint-apps still carries the same root execution of the release copy
+(`ExecStartPre=+-/bin/bash /opt/sufficit-identity/helpers/prestart.sh`), in
+addition to the strict preflight from the base unit.
 
 ## Verification
 
