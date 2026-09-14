@@ -43,6 +43,11 @@ internal interface IProtocolFeature
     {
     }
 
+    /// <summary>Handlers of OpenIddict's token validation (local API calls).</summary>
+    void ConfigureValidation(OpenIddictValidationBuilder validation, ProtocolFeatureContext context)
+    {
+    }
+
     void ConfigureDiscovery(
         OpenIddictServerEvents.HandleConfigurationRequestContext discovery,
         ProtocolFeatureContext context)
@@ -60,10 +65,17 @@ internal static class ProtocolFeatureCatalog
 {
     public static IReadOnlyList<IProtocolFeature> All { get; } =
     [
+        new LogoutProtocolFeature(),
+        new DpopProtocolFeature(),
+        new JarProtocolFeature(),
         new IdentityAssertionProtocolFeature(),
         new CibaProtocolFeature(),
         new JarmProtocolFeature(),
         new SharedSignalsProtocolFeature(),
+        new MtlsProtocolFeature(),
+        new Fapi2ProtocolFeature(),
+        new DynamicClientRegistrationProtocolFeature(),
+        new ClientIdMetadataDocumentProtocolFeature(),
     ];
 
     public static void Validate(SufficitIdentityOptions options)
@@ -97,6 +109,14 @@ internal static class ProtocolFeatureCatalog
         foreach (var feature in All)
         {
             feature.ConfigureDiscovery(discovery, context);
+        }
+    }
+
+    public static void ConfigureValidation(OpenIddictValidationBuilder validation, ProtocolFeatureContext context)
+    {
+        foreach (var feature in All)
+        {
+            feature.ConfigureValidation(validation, context);
         }
     }
 
