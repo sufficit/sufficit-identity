@@ -25,7 +25,7 @@ The endpoint is announced in the discovery document only when enabled
    | Method | Path | Capability |
    |---|---|---|
    | `GET` | `api/registration-tokens` | `identity.clients.read` |
-   | `POST` | `api/registration-tokens` (`label`, `lifetimeHours` 1–720, default 24; `singleUse`, default `true`) | `identity.clients.create` |
+   | `POST` | `api/registration-tokens` (`label`, `lifetimeHours` 1–720, default 24; `singleUse`, default `true`; optional `allowedGrantTypes` and `allowedScopes`) | `identity.clients.create` |
    | `DELETE` | `api/registration-tokens/{id}` | `identity.clients.create` |
 
    The management console offers the same operations on **Applications ›
@@ -35,6 +35,12 @@ The endpoint is announced in the discovery document only when enabled
    operator, expiry, usage count and revocation. Issuance and revocation are
    written to the management audit. An unknown, expired, revoked or used token
    gets `401` with `WWW-Authenticate: Bearer error="invalid_token"`.
+
+   A token may narrow what a registration made with it can request:
+   `allowedGrantTypes` and `allowedScopes` (up to 20 identifiers each) are
+   checked after the server-wide `AllowedGrantTypes` and `AllowedScopes`, so the
+   effective limit is the intersection. A request outside the token's lists gets
+   `invalid_client_metadata`.
 
    The token is consumed only after the client metadata validated, so a rejected
    request does not burn a single-use token, and consumption is an atomic
@@ -79,8 +85,6 @@ Its own bucket, `client-registration`
 - **No RFC 7592**: there is no `registration_access_token` nor an endpoint for
   reading/updating/deleting a registered client. The post-registration lifecycle
   is only through the management plane.
-- Grant and scope limits are global (`AllowedGrantTypes`, `AllowedScopes`), not
-  per initial access token.
 - `software_statement` (§2.3) is not accepted.
 - The MCP authorization specification **deprecates** DCR in favor of CIMD — see
   [SPEC-OAUTH-CIMD.md](SPEC-OAUTH-CIMD.md).

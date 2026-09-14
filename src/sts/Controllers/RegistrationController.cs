@@ -156,6 +156,14 @@ public sealed class RegistrationController : ControllerBase
             });
         }
 
+        // The operator may narrow what a registration with this particular
+        // token may request; the server-wide allowlist still applies on top.
+        if (initialAccessToken is not null
+            && ValidateTokenPolicy(initialAccessToken, request) is { } policyIssue)
+        {
+            return BadRequest(policyIssue);
+        }
+
         if (request.JwksUri is not null)
         {
             try
@@ -330,6 +338,43 @@ public sealed class RegistrationController : ControllerBase
         }
 
         return null;
+    }
+
+    private static object? ValidateTokenPolicy(
+        Sufficit.Identity.Core.Entities.DcrInitialAccessToken token,
+        DcrRequest request)
+    {
+        var allowedGrants = Sufficit.Identity.Core.Services.DcrInitialAccessTokenStore
+            .ReadList(token.AllowedGrantTypesJson);
+        var deniedGrant = allowedGrants is null
+            ? null
+            : (request.GrantTypes ?? [])
+                .Select(NormalizeGrantTypeName)
+                .FirstOrDefault(grant => !allowedGrants.Contains(grant, StringComparer.Ordinal));
+        if (deniedGrant is not null)
+        {
+            return new
+            {
+                error = "invalid_client_metadata",
+                error_description =
+                    $"The initial access token does not allow the '{deniedGrant}' grant type.",
+            };
+        }
+
+        var allowedScopes = Sufficit.Identity.Core.Services.DcrInitialAccessTokenStore
+            .ReadList(token.AllowedScopesJson);
+        var deniedScope = allowedScopes is null
+            ? null
+            : (request.Scopes ?? [])
+                .FirstOrDefault(scope => !allowedScopes.Contains(scope, StringComparer.Ordinal));
+        return deniedScope is null
+            ? null
+            : new
+            {
+                error = "invalid_client_metadata",
+                error_description =
+                    $"The initial access token does not allow the '{deniedScope}' scope.",
+            };
     }
 
     /// <summary>Maps the RFC 7591 spelling to the value the allowlists use.</summary>

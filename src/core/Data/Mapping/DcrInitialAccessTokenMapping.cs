@@ -22,6 +22,10 @@ internal static class DcrInitialAccessTokenMapping
             b.Property(x => x.IssuedBy)
                 .HasMaxLength(IdentityDatabaseSchema.DcrInitialAccessTokenSubjectLength)
                 .IsRequired();
+            b.Property(x => x.AllowedGrantTypesJson)
+                .HasMaxLength(IdentityDatabaseSchema.DcrInitialAccessTokenPolicyJsonLength);
+            b.Property(x => x.AllowedScopesJson)
+                .HasMaxLength(IdentityDatabaseSchema.DcrInitialAccessTokenPolicyJsonLength);
             b.Property(x => x.RevokedBy)
                 .HasMaxLength(IdentityDatabaseSchema.DcrInitialAccessTokenSubjectLength);
             b.Property(x => x.CreatedAtUtc).HasColumnType("datetime(6)").IsRequired();
@@ -43,6 +47,8 @@ internal static class DcrInitialAccessTokenMapping
                 ("ExpiresAtUtc", "expiresatutc"),
                 ("SingleUse", "singleuse"),
                 ("RegistrationCount", "registrationcount"),
+                ("AllowedGrantTypesJson", "allowedgranttypesjson"),
+                ("AllowedScopesJson", "allowedscopesjson"),
                 ("LastUsedAtUtc", "lastusedatutc"),
                 ("RevokedAtUtc", "revokedatutc"),
                 ("RevokedBy", "revokedby"),

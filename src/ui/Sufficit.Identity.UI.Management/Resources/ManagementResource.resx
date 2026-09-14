@@ -2075,4 +2075,10 @@
   <data name="Error.registration_token_label_too_long" xml:space="preserve"><value>The registrant label is too long.</value></data>
   <data name="Error.registration_token_lifetime_invalid" xml:space="preserve"><value>The lifetime must be between 1 and 720 hours.</value></data>
   <data name="Error.registration_token_not_found" xml:space="preserve"><value>The registration token does not exist.</value></data>
+  <data name="Clients.RegistrationTokens.GrantsField" xml:space="preserve"><value>Allowed grant types</value></data>
+  <data name="Clients.RegistrationTokens.ScopesField" xml:space="preserve"><value>Allowed scopes</value></data>
+  <data name="Clients.RegistrationTokens.PolicyHelper" xml:space="preserve"><value>Optional, separated by spaces. Empty keeps only the server-wide list.</value></data>
+  <data name="Clients.RegistrationTokens.PolicyGrants" xml:space="preserve"><value>Grants: {0}</value></data>
+  <data name="Clients.RegistrationTokens.PolicyScopes" xml:space="preserve"><value>Scopes: {0}</value></data>
+  <data name="Error.registration_token_policy_invalid" xml:space="preserve"><value>Each value must be an identifier without spaces, at most 20 values.</value></data>
 </root>

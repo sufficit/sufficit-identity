@@ -13,15 +13,22 @@ public sealed record DcrInitialAccessTokenSummary(
     int RegistrationCount,
     DateTime? LastUsedAtUtc,
     DateTime? RevokedAtUtc,
-    string Status);
+    string Status,
+    IReadOnlyList<string>? AllowedGrantTypes = null,
+    IReadOnlyList<string>? AllowedScopes = null);
 
 /// <param name="Label">Who the token is for; required, shown in listings and audit.</param>
 /// <param name="LifetimeHours">Default 24, at most 720.</param>
 /// <param name="SingleUse">Default true: the token registers one client.</param>
+/// <param name="AllowedGrantTypes">Optional subset of the server-wide DCR grant
+/// types a registration with this token may request. Empty: no per-token limit.</param>
+/// <param name="AllowedScopes">Optional subset of scopes, as above.</param>
 public sealed record IssueDcrInitialAccessTokenCommand(
     string? Label,
     int? LifetimeHours = null,
-    bool? SingleUse = null);
+    bool? SingleUse = null,
+    IReadOnlyList<string>? AllowedGrantTypes = null,
+    IReadOnlyList<string>? AllowedScopes = null);
 
 /// <summary>The token value is returned only here, once.</summary>
 public sealed record DcrInitialAccessTokenIssueResult(

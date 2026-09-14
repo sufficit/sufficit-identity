@@ -817,3 +817,13 @@ VALUES ('20260914012253_AddDcrInitialAccessTokens', '10.0.11');
 
 COMMIT;
 
+START TRANSACTION;
+ALTER TABLE `dcrinitialaccesstokens` ADD `allowedgranttypesjson` varchar(2048) CHARACTER SET utf8mb4 NULL;
+
+ALTER TABLE `dcrinitialaccesstokens` ADD `allowedscopesjson` varchar(2048) CHARACTER SET utf8mb4 NULL;
+
+INSERT INTO `__sufficit_identity_migrations` (`MigrationId`, `ProductVersion`)
+VALUES ('20260914151128_AddDcrInitialAccessTokenPolicy', '10.0.11');
+
+COMMIT;
+

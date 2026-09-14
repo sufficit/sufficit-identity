@@ -50,6 +50,9 @@ public static class IdentityDatabaseSchema
     /// </summary>
     public const string DcrInitialAccessTokensMigrationId = "20260914012253_AddDcrInitialAccessTokens";
 
+    /// <summary>Per-token grant type and scope limits for DCR initial access tokens.</summary>
+    public const string DcrInitialAccessTokenPolicyMigrationId = "20260914151128_AddDcrInitialAccessTokenPolicy";
+
     /// <summary>
     /// Durable primary for DPoP nonces, front-channel logout context and
     /// passkey ceremony tickets (eval 2026-08-30, F-4).
@@ -102,6 +105,7 @@ public static class IdentityDatabaseSchema
     public const int DcrInitialAccessTokenHashLength = 64;
     public const int DcrInitialAccessTokenHintLength = 12;
     public const int DcrInitialAccessTokenSubjectLength = 255;
+    public const int DcrInitialAccessTokenPolicyJsonLength = 2048;
 
     // Branding
     public const int BrandingUrlLength = 512;

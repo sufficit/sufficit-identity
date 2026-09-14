@@ -51,6 +51,32 @@
             </SUISelect>
         </div>
 
+        <div class="operator-token-fields" data-sui-align-row>
+            <SUITextField T="string"
+                          id="registration-token-grants"
+                          aria-label="@L["Clients.RegistrationTokens.GrantsField"].Value"
+                          Label="@L["Clients.RegistrationTokens.GrantsField"].Value"
+                          HelperText="@L["Clients.RegistrationTokens.PolicyHelper"].Value"
+                          Placeholder="authorization_code refresh_token"
+                          Immediate
+                          Disabled="@issuing"
+                          Value="@grantsText"
+                          ValueChanged="@((string value) => grantsText = value)"
+                          autocomplete="off" />
+
+            <SUITextField T="string"
+                          id="registration-token-scopes"
+                          aria-label="@L["Clients.RegistrationTokens.ScopesField"].Value"
+                          Label="@L["Clients.RegistrationTokens.ScopesField"].Value"
+                          HelperText="@L["Clients.RegistrationTokens.PolicyHelper"].Value"
+                          Placeholder="openid profile"
+                          Immediate
+                          Disabled="@issuing"
+                          Value="@scopesText"
+                          ValueChanged="@((string value) => scopesText = value)"
+                          autocomplete="off" />
+        </div>
+
         <div class="registration-tokens__issue">
             <label class="registration-tokens__single-use">
                 <input type="checkbox"
@@ -154,7 +180,17 @@
                         @foreach (var token in items)
                         {
                             <tr>
-                                <td data-label="@L["Clients.RegistrationTokens.ColumnRegistrant"].Value">@token.Label</td>
+                                <td data-label="@L["Clients.RegistrationTokens.ColumnRegistrant"].Value">
+                                    @token.Label
+                                    @if (token.AllowedGrantTypes is { Count: > 0 } grants)
+                                    {
+                                        <span class="registration-hint">@L["Clients.RegistrationTokens.PolicyGrants", string.Join(' ', grants)]</span>
+                                    }
+                                    @if (token.AllowedScopes is { Count: > 0 } scopes)
+                                    {
+                                        <span class="registration-hint">@L["Clients.RegistrationTokens.PolicyScopes", string.Join(' ', scopes)]</span>
+                                    }
+                                </td>
                                 <td data-label="@L["Clients.RegistrationTokens.ColumnFingerprint"].Value"><code>@token.TokenHint</code></td>
                                 <td data-label="@L["Clients.RegistrationTokens.ColumnIssuedBy"].Value"><code>@token.IssuedBy</code></td>
                                 <td data-label="@L["Clients.RegistrationTokens.ColumnExpires"].Value">@FormatInstant(token.ExpiresAtUtc)</td>
@@ -213,6 +249,8 @@
 
     private ManagementDataResult<IReadOnlyList<DcrInitialAccessTokenSummary>>? tokens;
     private string label = string.Empty;
+    private string grantsText = string.Empty;
+    private string scopesText = string.Empty;
     private int lifetimeHours = 24;
     private bool singleUse = true;
     private bool issuing;
@@ -239,7 +277,12 @@
         tokenCopied = false;
         clipboardUnavailable = false;
         var result = await TokenData.IssueAsync(
-            new IssueDcrInitialAccessTokenCommand(label, lifetimeHours, singleUse));
+            new IssueDcrInitialAccessTokenCommand(
+                label,
+                lifetimeHours,
+                singleUse,
+                SplitList(grantsText),
+                SplitList(scopesText)));
         issuing = false;
         if (!result.IsSuccess || result.Value is null)
         {
@@ -251,6 +294,8 @@
         issuedToken = result.Value.InitialAccessToken;
         issuedExpiresAtUtc = result.Value.Token.ExpiresAtUtc;
         label = string.Empty;
+        grantsText = string.Empty;
+        scopesText = string.Empty;
         await LoadAsync();
     }
 
@@ -293,6 +338,9 @@
         }
         await LoadAsync();
     }
+
+    private static string[] SplitList(string text) =>
+        text.Split([' ', ',', '\n', '\t'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static SUITone StatusTone(string status) => status switch
     {

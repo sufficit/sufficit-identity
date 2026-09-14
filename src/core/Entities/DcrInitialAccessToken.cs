@@ -31,6 +31,17 @@ public sealed class DcrInitialAccessToken
 
     public int RegistrationCount { get; set; }
 
+    /// <summary>
+    /// JSON array of the grant types a registration with this token may
+    /// request, within the server-wide allowlist. Null leaves the server-wide
+    /// allowlist as the only limit.
+    /// </summary>
+    public string? AllowedGrantTypesJson { get; set; }
+
+    /// <summary>JSON array of the scopes a registration may request; see
+    /// <see cref="AllowedGrantTypesJson"/>.</summary>
+    public string? AllowedScopesJson { get; set; }
+
     public DateTime? LastUsedAtUtc { get; set; }
 
     public DateTime? RevokedAtUtc { get; set; }
