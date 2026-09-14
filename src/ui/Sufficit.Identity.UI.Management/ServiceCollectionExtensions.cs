@@ -319,6 +319,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<ManagementMetricsDataSource>();
         services.TryAddScoped<Networking.ManagementTrustedProxiesDataSource>();
         services.TryAddScoped<ManagementOperatorTokenDataSource>();
+        services.TryAddScoped<ManagementRegistrationTokenDataSource>();
 
         services.AddCascadingAuthenticationState();
         // i18n: IStringLocalizer for Management UI strings.

@@ -28,7 +28,9 @@ The endpoint is announced in the discovery document only when enabled
    | `POST` | `api/registration-tokens` (`label`, `lifetimeHours` 1–720, default 24; `singleUse`, default `true`) | `identity.clients.create` |
    | `DELETE` | `api/registration-tokens/{id}` | `identity.clients.create` |
 
-   The token value (`dcr_iat_…`) is returned only by the `POST`. The database
+   The management console offers the same operations on **Applications ›
+   Registrations** (`/clients/registrations`), with a one-time reveal and copy of
+   the issued value. The token value (`dcr_iat_…`) is returned only by the `POST`. The database
    (`dcrinitialaccesstokens`) keeps its SHA-256 hash, a short hint, the issuing
    operator, expiry, usage count and revocation. Issuance and revocation are
    written to the management audit. An unknown, expired, revoked or used token
@@ -79,7 +81,6 @@ Its own bucket, `client-registration`
   is only through the management plane.
 - Grant and scope limits are global (`AllowedGrantTypes`, `AllowedScopes`), not
   per initial access token.
-- The management console has no page for registration tokens yet; use the API.
 - `software_statement` (§2.3) is not accepted.
 - The MCP authorization specification **deprecates** DCR in favor of CIMD — see
   [SPEC-OAUTH-CIMD.md](SPEC-OAUTH-CIMD.md).
