@@ -88,6 +88,11 @@ then
     exit 1
 fi
 
+# The runtime preflight refuses any group- or other-writable release path, and
+# tar extracted as root keeps the archived modes. A workstation umask of 0002
+# would otherwise produce a release that only fails once the service restarts.
+chmod -R go-w -- "${release_directory}"
+
 tar -C "${release_directory}" -czf "${archive}" .
 chmod 0644 "${archive}"
 archive_sha256=$(sha256sum "${archive}" | awk '{print $1}')
