@@ -43,6 +43,7 @@ public class CibaController : Controller
     private readonly IAntiforgery _antiforgery;
     private readonly CibaOptions _options;
     private readonly Ciba.ICibaClientPolicy _clientPolicy;
+    private readonly Ciba.ICibaClientAuthenticator _clientAuthenticator;
     private readonly IAccountLookupPolicy _accountLookup;
 
     public CibaController(
@@ -53,6 +54,7 @@ public class CibaController : Controller
         IConfiguration configuration,
         IAntiforgery antiforgery,
         Ciba.ICibaClientPolicy clientPolicy,
+        Ciba.ICibaClientAuthenticator clientAuthenticator,
         IAccountLookupPolicy accountLookup)
     {
         _applicationManager = applicationManager;
@@ -61,6 +63,7 @@ public class CibaController : Controller
         _userManager = userManager;
         _antiforgery = antiforgery;
         _clientPolicy = clientPolicy;
+        _clientAuthenticator = clientAuthenticator;
         _accountLookup = accountLookup;
         var root = configuration.GetSection("Sufficit:Identity")
             .Get<SufficitIdentityOptions>() ?? new SufficitIdentityOptions();
@@ -102,20 +105,67 @@ public class CibaController : Controller
             return BadRequest(new { error = "invalid_binding_message", error_description = "binding_message must not exceed 180 characters." });
         }
         var scope = form["scope"].ToString();
+        var assertionType = form["client_assertion_type"].ToString();
+        var assertion = form["client_assertion"].ToString();
+        var basic = ReadBasicCredentials();
 
-        if (string.IsNullOrEmpty(clientId))
+        // This endpoint is not an OpenIddict endpoint, so it authenticates the
+        // client itself: client_secret_basic, client_secret_post or
+        // private_key_jwt (RFC 7523). A request may use exactly one method.
+        var usesAssertion = !string.IsNullOrEmpty(assertion) || !string.IsNullOrEmpty(assertionType);
+        var methods = (usesAssertion ? 1 : 0)
+            + (basic is not null ? 1 : 0)
+            + (!string.IsNullOrEmpty(clientSecret) ? 1 : 0);
+        if (methods > 1)
         {
-            return BadRequest(new { error = "invalid_request", error_description = "client_id is required." });
+            return BadRequest(new { error = Errors.InvalidRequest, error_description = "Use exactly one client authentication method." });
         }
 
-        // This custom endpoint does not enter OpenIddict's token-endpoint
-        // client-authentication pipeline, so initiation and polling share one
-        // explicit client/entitlement policy.
-        var clientAuthorization = await _clientPolicy.AuthorizeAsync(
-            clientId,
-            clientSecret,
-            "initiate",
-            HttpContext.RequestAborted);
+        Ciba.CibaClientAuthorization clientAuthorization;
+        if (usesAssertion)
+        {
+            var authentication = await _clientAuthenticator.AuthenticateAssertionAsync(
+                clientId,
+                assertionType,
+                assertion,
+                $"{Request.Scheme}://{Request.Host}{Request.PathBase}/bc-authorize",
+                HttpContext.RequestAborted);
+            if (!authentication.Succeeded)
+            {
+                return Unauthorized(new { error = Errors.InvalidClient });
+            }
+
+            clientId = authentication.ClientId!;
+            clientAuthorization = await _clientPolicy.AuthorizeAuthenticatedClientAsync(
+                clientId,
+                "initiate",
+                HttpContext.RequestAborted);
+        }
+        else
+        {
+            if (basic is { } credentials)
+            {
+                if (!string.IsNullOrEmpty(clientId)
+                    && !string.Equals(clientId, credentials.ClientId, StringComparison.Ordinal))
+                {
+                    return BadRequest(new { error = Errors.InvalidRequest, error_description = "client_id does not match the Authorization header." });
+                }
+
+                (clientId, clientSecret) = credentials;
+            }
+
+            if (string.IsNullOrEmpty(clientId))
+            {
+                return BadRequest(new { error = Errors.InvalidRequest, error_description = "client_id is required." });
+            }
+
+            clientAuthorization = await _clientPolicy.AuthorizeAsync(
+                clientId,
+                clientSecret,
+                "initiate",
+                HttpContext.RequestAborted);
+        }
+
         if (!clientAuthorization.Allowed)
         {
             return Unauthorized(new { error = clientAuthorization.ErrorCode });
@@ -165,6 +215,31 @@ public class CibaController : Controller
             expires_in = _options.ExpiresInSeconds,
             interval = _options.PollIntervalSeconds,
         });
+    }
+
+    /// <summary>RFC 6749 §2.3.1 client_secret_basic, form-urlencoded parts.</summary>
+    private (string ClientId, string ClientSecret)? ReadBasicCredentials()
+    {
+        var header = Request.Headers.Authorization.ToString();
+        const string scheme = "Basic ";
+        if (!header.StartsWith(scheme, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        try
+        {
+            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(header[scheme.Length..].Trim()));
+            var separator = decoded.IndexOf(':');
+            return separator <= 0
+                ? null
+                : (Uri.UnescapeDataString(decoded[..separator].Replace('+', ' ')),
+                    Uri.UnescapeDataString(decoded[(separator + 1)..].Replace('+', ' ')));
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
     }
 
     // -----------------------------------------------------------------------
