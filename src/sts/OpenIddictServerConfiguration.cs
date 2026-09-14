@@ -167,43 +167,11 @@ public static partial class ServiceCollectionExtensions
               .AllowRefreshTokenFlow()
               .AllowTokenExchangeFlow();
 
-        // ID-JAG (draft-ietf-oauth-identity-assertion-authz-grant): the IdP
-        // role is a token exchange for a custom requested_token_type, and the
-        // resource authorization server role is the RFC 7523 jwt-bearer grant.
-        // Both are handled in Grants/IdentityAssertionGrants.cs.
-        if (options.IdentityAssertions.Issuance.Enabled)
-        {
-            server.Configure(serverOptions => serverOptions.RequestedTokenTypes.Add(
-                Grants.IdentityAssertionGrant.TokenType));
-            server.AddEventHandler(
-                Grants.DeferIdentityAssertionRequestValidation.Descriptor);
-
-            // OpenIddict rejects unregistered audience values before the grant
-            // handler runs, and still requires the per-client "aud:" permission,
-            // so each client must be allowed to address each trusted audience.
-            var identityAssertionAudiences = options.IdentityAssertions.Issuance.Audiences
-                .SelectMany(audience => audience.Aliases.Prepend(audience.Issuer))
-                .Where(value => !string.IsNullOrWhiteSpace(value))
-                .Distinct(StringComparer.Ordinal)
-                .ToArray();
-            if (identityAssertionAudiences.Length > 0)
-            {
-                server.RegisterAudiences(identityAssertionAudiences);
-            }
-        }
-
-        if (options.IdentityAssertions.Redemption.Enabled)
-        {
-            server.AllowCustomFlow(Grants.IdentityAssertionGrant.JwtBearerGrantType);
-        }
-
-        // CIBA poll mode (CIBA Core 1.0 §10.1) at the standard token endpoint,
-        // so the grant inherits client authentication, DPoP and mTLS binding.
-        // Handled in Grants/CibaGrantHandler.cs.
-        if (options.Ciba.Enabled)
-        {
-            server.AllowCustomFlow(Grants.CibaGrantHandler.GrantType);
-        }
+        // Optional protocol features contribute their flows, handlers and
+        // server options; see Features/ProtocolFeatureCatalog.
+        Features.ProtocolFeatureCatalog.ConfigureServer(
+            server,
+            new Features.ProtocolFeatureContext(options, auxiliarySigningCredentials));
 
         server.AddEventHandler(RecordIdentityUsage.Descriptor);
         server.AddEventHandler(RecordAuthorizationUsageFailure.Descriptor);
@@ -242,18 +210,6 @@ public static partial class ServiceCollectionExtensions
             server.AddEventHandler(Fapi.ValidateFapiAuthorizationRequest.Descriptor);
             server.AddEventHandler(Fapi.ValidateFapiPushedAuthorizationRequest.Descriptor);
             server.AddEventHandler(Fapi.ValidateFapiTokenRequest.Descriptor);
-        }
-
-        if (options.Jarm.Enabled)
-        {
-            server.Configure(serverOptions =>
-            {
-                serverOptions.ResponseModes.Add(Jarm.JarmAuthorizationResponseHandler.QueryJwt);
-                serverOptions.ResponseModes.Add(Jarm.JarmAuthorizationResponseHandler.FragmentJwt);
-                serverOptions.ResponseModes.Add(Jarm.JarmAuthorizationResponseHandler.FormPostJwt);
-                serverOptions.ResponseModes.Add(Jarm.JarmAuthorizationResponseHandler.Jwt);
-            });
-            server.AddEventHandler(Jarm.JarmAuthorizationResponseHandler.Descriptor);
         }
 
         // ---- JWT-Secured Authorization Requests (JAR, RFC 9101) ----

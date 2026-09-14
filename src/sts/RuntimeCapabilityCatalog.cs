@@ -46,11 +46,6 @@ internal sealed class SufficitIdentityRuntimeCapabilityCatalog
             features.Add(ManagementRuntimeCapabilities.Jar);
         }
 
-        if (options.Jarm.Enabled)
-        {
-            features.Add(ManagementRuntimeCapabilities.Jarm);
-        }
-
         if (options.Dpop.Enabled)
         {
             features.Add(ManagementRuntimeCapabilities.Dpop);
@@ -66,10 +61,7 @@ internal sealed class SufficitIdentityRuntimeCapabilityCatalog
             features.Add(ManagementRuntimeCapabilities.Fapi2);
         }
 
-        if (options.Ciba.Enabled)
-        {
-            features.Add(ManagementRuntimeCapabilities.Ciba);
-        }
+        features.UnionWith(Features.ProtocolFeatureCatalog.RuntimeCapabilities(options));
 
         // Initial access tokens are issued at runtime through the management
         // API, so an enabled endpoint is usable without startup configuration.

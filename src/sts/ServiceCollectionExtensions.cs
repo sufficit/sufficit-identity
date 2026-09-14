@@ -715,11 +715,6 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<Grants.ITokenGrantHandler, Grants.ClientCredentialsGrantHandler>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.PasswordGrantHandler>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.TokenExchangeGrantHandler>();
-        services.AddSingleton(new Grants.IdentityAssertionSigner(auxiliarySigningCredentials));
-        services.AddScoped<Grants.IdentityAssertionIssuer>();
-        services.AddSingleton<Grants.IIdentityAssertionKeyResolver,
-            Grants.DiscoveryIdentityAssertionKeyResolver>();
-        services.AddScoped<Grants.ITokenGrantHandler, Grants.IdentityAssertionGrantHandler>();
         services.AddScoped<Grants.TokenGrantDispatcher>();
         services.Replace(ServiceDescriptor.Scoped<ISecurityStampValidator,
             SessionSecurityStampValidator>());
