@@ -93,9 +93,14 @@ ignored. The strict preflight was dry-run as the service user first; the
 restart took 5 s, logged "Runtime invariants verified" and no errors. Backup:
 `/root/10-dotnet10.conf.before-prestart-align-20260914T142410Z`.
 
-apoint-apps still carries the same root execution of the release copy
-(`ExecStartPre=+-/bin/bash /opt/sufficit-identity/helpers/prestart.sh`), in
-addition to the strict preflight from the base unit.
+apoint-apps carried the same root execution of the release copy
+(`ExecStartPre=+-/bin/bash /opt/sufficit-identity/helpers/prestart.sh`) in
+addition to the strict preflight from the base unit. It was aligned the same
+way at 11:26 BRT, after a dry run of the strict preflight as the service user:
+4 s restart, no errors. Backup:
+`/root/10-dotnet10.conf.before-prestart-align-20260914T142653Z`. All three
+nodes now run only the root-owned installed preflight, without ignoring
+failures.
 
 ## Verification
 
