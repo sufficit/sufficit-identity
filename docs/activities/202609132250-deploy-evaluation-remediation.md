@@ -105,3 +105,29 @@ each node. Roll back one node at a time: stop the service, move the active
 directory aside, restore the backup, start and wait for readiness. The DCR
 migration is additive and stays. The compatibility drop-in is harmless for the
 previous binary.
+
+## Second rollout: may_act
+
+Still on 2026-09-13, `main` at `9e0e7cba0c15b572ac928e5382c6050f90535b43`
+was deployed on top of `e41e2e1`. The only runtime change is `may_act`
+enforcement in token exchange (RFC 8693 §4.4); there was no migration and no
+configuration change. CI run 34797424148 passed.
+
+- Isolated worktree, locked restore, locked `Sufficit.Blazor.UI`, modes
+  normalized before packaging. Archive SHA-256
+  `6eeafef67d1cd774d594d7436f0515ef690888b0a83bf11440cf02ad99be7b00`.
+- One script per node: checksum, staging with persistent files compared by
+  content, owner and mode, writable-path gate, backup, switch, readiness gate and
+  automatic rollback.
+
+| Node | Healthy (BRT) | Downtime | Restarts |
+|---|---|---|---|
+| eveo-apps | 22:59:35 | 4 s | 0 |
+| apoint-apps | 22:59:47 | 4 s | 0 |
+| castrum-apps | 22:59:57 | 3 s | 0 |
+
+`helpers/verify-production-cluster.sh 9e0e7cb…` reports the cluster uniform,
+healthy and ready, with the same certificate and JWKS digests as before. Public
+discovery and login answer, the compatibility drop-in is in each process
+environment, and no warning was logged after activation. Previous release kept
+as `/opt/sufficit-identity.before-mayact-9e0e7cb`.
