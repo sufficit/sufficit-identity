@@ -34,6 +34,9 @@ public static partial class ServiceCollectionExtensions
         // discovery metadata) has been removed entirely: none of those
         // features are actually implemented either.
         // -------------------------------------------------------------------
+        var featureContext = new Features.ProtocolFeatureContext(
+            options,
+            auxiliarySigningCredentials);
         server.AddEventHandler(OpenIddictServerHandlerDescriptor
             .CreateBuilder<OpenIddictServerEvents.HandleConfigurationRequestContext>()
             .UseInlineHandler(context =>
@@ -56,19 +59,9 @@ public static partial class ServiceCollectionExtensions
                 context.Metadata["frontchannel_logout_session_supported"] =
                     JsonValue.Create(options.FrontchannelLogout.Enabled);
 
-                // ID-JAG metadata (draft §7): published only for the roles
-                // that are enabled.
-                if (options.IdentityAssertions.Issuance.Enabled)
-                {
-                    context.Metadata["identity_chaining_requested_token_types_supported"] =
-                        new JsonArray(JsonValue.Create(Grants.IdentityAssertionGrant.TokenType));
-                }
-
-                if (options.IdentityAssertions.Redemption.Enabled)
-                {
-                    context.Metadata["authorization_grant_profiles_supported"] =
-                        new JsonArray(JsonValue.Create(Grants.IdentityAssertionGrant.GrantProfile));
-                }
+                // Optional protocol features publish their own metadata; see
+                // Features/ProtocolFeatureCatalog.
+                Features.ProtocolFeatureCatalog.ConfigureDiscovery(context, featureContext);
 
                 // mTLS sender-constrained access tokens (RFC 8705, item
                 // 3.4). Advertised ONLY when Mtls.Enabled — the host
@@ -92,21 +85,6 @@ public static partial class ServiceCollectionExtensions
                         JsonValue.Create(new Uri(
                             context.Issuer ?? new Uri("/", UriKind.Relative),
                             "connect/register").AbsoluteUri);
-                }
-
-                // CIBA (CIBA Core 1.0 §4): OpenIddict lists the grant type
-                // in grant_types_supported from the custom flow; the
-                // initiation endpoint and delivery mode are ours to publish.
-                if (options.Ciba.Enabled)
-                {
-                    context.Metadata["backchannel_authentication_endpoint"] =
-                        JsonValue.Create(new Uri(
-                            context.Issuer ?? new Uri("/", UriKind.Relative),
-                            "bc-authorize").AbsoluteUri);
-                    context.Metadata["backchannel_token_delivery_modes_supported"] =
-                        new JsonArray(JsonValue.Create("poll"));
-                    context.Metadata["backchannel_user_code_parameter_supported"] =
-                        JsonValue.Create(false);
                 }
 
                 // OpenIddict attaches `iss` to every redirectable
@@ -143,27 +121,6 @@ public static partial class ServiceCollectionExtensions
                     context.Metadata["dpop_signing_alg_values_supported"] =
                         System.Text.Json.JsonSerializer.SerializeToNode(
                             new[] { "ES256", "RS256" });
-                }
-
-                if (options.Jarm.Enabled)
-                {
-                    // JARM final section 4 defines this metadata value.
-                    context.Metadata["authorization_signing_alg_values_supported"] =
-                        System.Text.Json.JsonSerializer.SerializeToNode(
-                            new[] { auxiliarySigningCredentials.Algorithm });
-
-                    // When JWE encryption is configured, advertise the
-                    // key-management and content-encryption algorithms
-                    // (FAPI 2.0 Advancing Profile signed+encrypted mode).
-                    if (options.Jarm.Encryption.Enabled)
-                    {
-                        context.Metadata["authorization_encryption_alg_values_supported"] =
-                            System.Text.Json.JsonSerializer.SerializeToNode(
-                                new[] { options.Jarm.Encryption.KeyManagementAlgorithm });
-                        context.Metadata["authorization_encryption_enc_values_supported"] =
-                            System.Text.Json.JsonSerializer.SerializeToNode(
-                                new[] { options.Jarm.Encryption.ContentEncryptionAlgorithm });
-                    }
                 }
 
                 // JAR (RFC 9101): advertise request object support and

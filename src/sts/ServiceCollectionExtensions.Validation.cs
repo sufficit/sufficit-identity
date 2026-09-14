@@ -146,45 +146,7 @@ public static partial class ServiceCollectionExtensions
             // revoke those bindings through the management API.
         }
 
-        if (options.Jarm.Enabled)
-        {
-            if (options.Jarm.LifetimeSeconds is < 1 or > 600)
-                throw new InvalidOperationException(
-                    "JARM response lifetime must be between 1 and 600 seconds.");
-            if (!Uri.TryCreate(options.Issuer, UriKind.Absolute, out _))
-                throw new InvalidOperationException(
-                    "JARM requires an explicit absolute Sufficit:Identity:Issuer.");
-        }
-
-        if (options.SharedSignals.Enabled)
-        {
-            if (!Uri.TryCreate(options.Issuer, UriKind.Absolute, out var issuer) ||
-                issuer.Scheme != Uri.UriSchemeHttps)
-                throw new InvalidOperationException(
-                    "SSF/CAEP requires an explicit HTTPS Sufficit:Identity:Issuer.");
-            if (issuer.AbsolutePath != "/")
-                throw new InvalidOperationException(
-                    "This SSF/CAEP transmitter currently requires an issuer without a path component.");
-
-            var duplicate = options.SharedSignals.Receivers
-                .Where(receiver => !string.IsNullOrWhiteSpace(receiver.Id))
-                .GroupBy(receiver => receiver.Id, StringComparer.Ordinal)
-                .FirstOrDefault(group => group.Count() > 1);
-            if (duplicate is not null)
-                throw new InvalidOperationException(
-                    $"SSF/CAEP receiver id '{duplicate.Key}' is duplicated.");
-
-            foreach (var receiver in options.SharedSignals.Receivers)
-            {
-                if (string.IsNullOrWhiteSpace(receiver.Id) ||
-                    string.IsNullOrWhiteSpace(receiver.Audience) ||
-                    !Uri.TryCreate(receiver.Endpoint, UriKind.Absolute, out var endpoint) ||
-                    endpoint.Scheme != Uri.UriSchemeHttps ||
-                    endpoint.Fragment.Length != 0)
-                    throw new InvalidOperationException(
-                        "Each SSF/CAEP receiver requires an id, audience and fragment-free HTTPS endpoint.");
-            }
-        }
+        Features.ProtocolFeatureCatalog.Validate(options);
     }
 
     private static void ValidateTokenFormatMap(

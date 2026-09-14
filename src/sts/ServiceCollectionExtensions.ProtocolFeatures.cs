@@ -160,99 +160,10 @@ public static partial class ServiceCollectionExtensions
             }
         }
 
-        if (options.Jarm.Enabled)
-        {
-            var issuer = string.IsNullOrWhiteSpace(options.Issuer)
-                ? "https://localhost/"
-                : options.Issuer;
-
-            services.AddSingleton(new Jarm.JarmResponseGenerator(
-                auxiliarySigningCredentials,
-                issuer,
-                TimeSpan.FromSeconds(options.Jarm.LifetimeSeconds)));
-            services.AddScoped<Jarm.IJarmClientEncryptionCredentialsResolver,
-                Jarm.JarmClientEncryptionCredentialsResolver>();
-        }
-
-        if (options.SharedSignals.Enabled)
-        {
-            services.AddSingleton(new SharedSignals.CaepEventGenerator(
-                auxiliarySigningCredentials, options.Issuer!));
-            services.AddHttpClient<SharedSignals.ISharedSignalsDispatcher,
-                    SharedSignals.SharedSignalsPushDispatcher>()
-                .ConfigureHttpClient(client =>
-                    client.Timeout = TimeSpan.FromSeconds(7))
-                .UseSafeOutboundHttp(options.OutboundHttp);
-
-            // ISecurityEventTrigger adapter: translates credential/device
-            // change calls from the account/management/SCIM surfaces into
-            // SSF dispatcher calls. Real implementation only when SSF is on.
-            services.AddScoped<ISecurityEventTrigger,
-                SharedSignals.SharedSignalsSecurityEventTrigger>();
-
-            // Stream-management store (RFC 8933/8934). Always available when
-            // SSF is on so the push dispatcher can route poll streams to the
-            // persistent queue even if the REST API is not exposed.
-            services.AddScoped<SharedSignals.ISsfStreamStore, SharedSignals.SsfStreamStore>();
-            services.AddSingleton<SharedSignals.ISsfSubscriptionMatcher,
-                SharedSignals.SsfSubscriptionMatcher>();
-        }
-        else
-        {
-            services.AddSingleton<SharedSignals.ISharedSignalsDispatcher,
-                SharedSignals.NullSharedSignalsDispatcher>();
-            // Always resolvable: account/management/SCIM services take this as
-            // a hard dependency regardless of the SSF feature flag.
-            services.AddSingleton<ISecurityEventTrigger,
-                SharedSignals.NullSecurityEventTrigger>();
-        }
-
-        // ---- Stream-management REST surface (RFC 8933, opt-in) ----
-        // The /ssf/streams + /ssf/events controllers and the authorization
-        // policy are registered only when the operator opts in. The store is
-        // registered above (under SSF Enabled) so push-vs-poll routing works.
-        if (options.SharedSignals is { Enabled: true, StreamManagementEnabled: true })
-        {
-            services.AddHttpClient("ssf-verification")
-                .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(7))
-                .UseSafeOutboundHttp(options.OutboundHttp);
-            services.AddScoped<IAuthorizationHandler, Controllers.SsfScopeHandler>();
-            services.AddScoped<IAuthorizationHandler, Controllers.SsfMfaHandler>();
-            services.AddAuthorizationBuilder()
-                .AddPolicy("sufficit-ssf-transmitter", policy =>
-                {
-                    policy.AuthenticationSchemes.Add(
-                        OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
-                    policy.RequireAuthenticatedUser();
-                    policy.Requirements.Add(
-                        new Controllers.SsfScopeRequirement(options.SharedSignals.RequiredScope));
-                    if (options.SharedSignals.RequireMfa)
-                    {
-                        policy.Requirements.Add(new Controllers.SsfMfaRequirement());
-                    }
-                });
-        }
-
-        // ---- OpenID Connect CIBA Core 1.0 ----
-        // The pending-request store is distributed (IDistributedCache-backed)
-        // so CIBA works across replicas and survives restarts. The in-memory
-        // fallback is still used when IDistributedCache is the local memory
-        // cache (single-node default). The CibaController and the CIBA poll
-        // branch only run when the option is enabled, but the store is always
-        // available so the dependency resolves regardless.
-        services.AddSingleton(sp => new Ciba.DistributedCibaPendingRequestStore(
-            sp.GetRequiredService<Microsoft.Extensions.Caching.Distributed.IDistributedCache>(),
-            TimeProvider.System,
-            sp.GetRequiredService<Sufficit.Identity.Vault.IKeyVault>()));
-        services.AddSingleton(sp => new Ciba.DatabaseCibaPendingRequestStore(
-            sp.GetRequiredService<IDbContextFactory<AppDbContext>>(),
-            TimeProvider.System));
-        services.AddSingleton<Ciba.ICibaPendingRequestStore,
-            Ciba.RollingCibaPendingRequestStore>();
-        services.AddScoped<Ciba.ICibaClientPolicy, Ciba.CibaClientPolicy>();
-        services.AddScoped<Ciba.ICibaClientAuthenticator, Ciba.CibaClientAuthenticator>();
-        // Tokens are issued by the regular token pipeline; the handler
-        // refuses the grant while CIBA is disabled.
-        services.AddScoped<Grants.ITokenGrantHandler, Grants.CibaGrantHandler>();
+        // Optional protocol features (CIBA, ID-JAG, JARM, Shared Signals) own
+        // their registrations; see Features/ProtocolFeatureCatalog.
+        Features.ProtocolFeatureCatalog.ConfigureServices(
+            services,
+            new Features.ProtocolFeatureContext(options, auxiliarySigningCredentials));
     }
 }
