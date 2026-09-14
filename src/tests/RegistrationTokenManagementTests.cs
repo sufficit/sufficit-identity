@@ -77,4 +77,35 @@ public sealed class RegistrationTokenManagementTests
         Assert.Equal(2, reasons.Count(reason => reason == "dcr_initial_access_token_issued"));
         Assert.Single(reasons, reason => reason == "dcr_initial_access_token_revoked");
     }
+
+    [Fact]
+    public async Task Issued_token_policy_is_validated_normalized_and_listed()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+
+        using var invalid = await client.PostAsJsonAsync(
+            "/api/registration-tokens",
+            new { label = "bad policy", allowedScopes = new[] { "has space" } });
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+
+        using var issued = await client.PostAsJsonAsync(
+            "/api/registration-tokens",
+            new
+            {
+                label = "scoped partner",
+                allowedGrantTypes = new[] { "client_credentials" },
+                allowedScopes = new[] { "test.scope", " test.scope " },
+            });
+        Assert.Equal(HttpStatusCode.OK, issued.StatusCode);
+        var summary = (await issued.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("token");
+        Assert.Equal(["test.scope"], summary.GetProperty("allowedScopes")
+            .EnumerateArray().Select(value => value.GetString()!).ToArray());
+
+        var listed = await client.GetFromJsonAsync<JsonElement>("/api/registration-tokens");
+        var item = Assert.Single(listed.EnumerateArray());
+        Assert.Equal(["client_credentials"], item.GetProperty("allowedGrantTypes")
+            .EnumerateArray().Select(value => value.GetString()!).ToArray());
+    }
 }

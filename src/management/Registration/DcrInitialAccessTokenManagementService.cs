@@ -92,7 +92,9 @@ internal sealed class DcrInitialAccessTokenManagementService(
             Truncate(context.OperatorSubject),
             now,
             TimeSpan.FromHours(lifetimeHours),
-            command.SingleUse ?? true);
+            command.SingleUse ?? true,
+            NormalizePolicyList(command.AllowedGrantTypes, "allowedGrantTypes"),
+            NormalizePolicyList(command.AllowedScopes, "allowedScopes"));
         database.DcrInitialAccessTokens.Add(record);
         database.ManagementAuditEvents.Add(ManagementAuditEventFactory.Create(
             context,
@@ -177,7 +179,42 @@ internal sealed class DcrInitialAccessTokenManagementService(
             record.RevokedAtUtc is not null ? "revoked"
             : record.ExpiresAtUtc <= nowUtc ? "expired"
             : record.SingleUse && record.RegistrationCount > 0 ? "used"
-            : "active");
+            : "active",
+            DcrInitialAccessTokenStore.ReadList(record.AllowedGrantTypesJson),
+            DcrInitialAccessTokenStore.ReadList(record.AllowedScopesJson));
+
+    private const int MaximumPolicyEntries = 20;
+    private const int MaximumPolicyValueLength = 200;
+
+    /// <summary>
+    /// Trims and de-duplicates a policy list. Values are OAuth identifiers, so
+    /// whitespace inside a value is rejected rather than split.
+    /// </summary>
+    private static IReadOnlyCollection<string>? NormalizePolicyList(
+        IReadOnlyList<string>? values,
+        string field)
+    {
+        if (values is null || values.Count == 0)
+        {
+            return null;
+        }
+
+        var normalized = values
+            .Select(value => value?.Trim() ?? string.Empty)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (normalized.Length > MaximumPolicyEntries
+            || normalized.Any(value => value.Length is 0 or > MaximumPolicyValueLength
+                || value.Any(char.IsWhiteSpace)))
+        {
+            throw new ManagementValidationException(
+                "registration_token_policy_invalid",
+                $"Each value must be a non-empty identifier without spaces, at most {MaximumPolicyEntries} values.",
+                field);
+        }
+
+        return normalized;
+    }
 
     private static string Truncate(string value) =>
         value.Length <= IdentityDatabaseSchema.DcrInitialAccessTokenSubjectLength

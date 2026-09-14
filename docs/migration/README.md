@@ -145,6 +145,10 @@ wherever DCR is enabled; without it a registration fails at runtime. The same
 build refuses to start while the retired shared token
 (`identity/dcr/initial-access-token`) is still configured.
 
+`099-add-dcr-initial-access-token-policy.sql` adds the optional per-token
+`allowedgranttypesjson` and `allowedscopesjson` columns to that table. It is
+additive; apply it before deploying the build that issues tokens with a policy.
+
 That same evaluation made `Sufficit:Identity:DeploymentTopology` a **required
 configuration key** outside Development: the production posture check refuses to
 start with `deployment-topology-undeclared` until the deployment states its

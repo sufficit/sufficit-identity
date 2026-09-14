@@ -493,6 +493,54 @@ public sealed class DcrTests
     }
 
     [Fact]
+    public async Task Dcr_enforces_the_grant_and_scope_policy_of_the_initial_access_token()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
+        {
+            ["Sufficit:Identity:Mcp:Dcr:Enabled"] = "true",
+            ["Sufficit:Identity:Mcp:Dcr:AllowedGrantTypes:0"] = "authorization_code",
+            ["Sufficit:Identity:Mcp:Dcr:AllowedGrantTypes:1"] = "client_credentials",
+            ["Sufficit:Identity:Mcp:Dcr:AllowedScopes:0"] = "openid",
+            ["Sufficit:Identity:Mcp:Dcr:AllowedScopes:1"] = "test.scope",
+        });
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var initialAccessToken = await IssueInitialAccessTokenAsync(
+            factory,
+            singleUse: false,
+            allowedGrantTypes: ["client_credentials"],
+            allowedScopes: ["test.scope"]);
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", initialAccessToken);
+
+        using var deniedGrant = await client.PostAsJsonAsync("/connect/register", new DcrRequest
+        {
+            GrantTypes = new() { "authorization_code" },
+            Scopes = new() { "openid" },
+            RedirectUris = new() { new Uri("https://client.example/callback") },
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, deniedGrant.StatusCode);
+        Assert.Contains("initial access token",
+            (await deniedGrant.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("error_description").GetString(),
+            StringComparison.Ordinal);
+
+        using var deniedScope = await client.PostAsJsonAsync("/connect/register", new DcrRequest
+        {
+            TokenEndpointAuthMethod = "client_secret_basic",
+            GrantTypes = new() { "client_credentials" },
+            Scopes = new() { "openid" },
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, deniedScope.StatusCode);
+
+        using var accepted = await client.PostAsJsonAsync("/connect/register", new DcrRequest
+        {
+            TokenEndpointAuthMethod = "client_secret_basic",
+            GrantTypes = new() { "client_credentials" },
+            Scopes = new() { "test.scope" },
+        });
+        Assert.Equal(HttpStatusCode.Created, accepted.StatusCode);
+    }
+
+    [Fact]
     public async Task Startup_fails_while_the_retired_shared_initial_access_token_is_configured()
     {
         using var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
@@ -517,7 +565,9 @@ public sealed class DcrTests
         bool singleUse = true,
         TimeSpan? lifetime = null,
         DateTime? createdAtUtc = null,
-        bool revoked = false)
+        bool revoked = false,
+        string[]? allowedGrantTypes = null,
+        string[]? allowedScopes = null)
     {
         using var scope = factory.Services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -526,7 +576,9 @@ public sealed class DcrTests
             "test-operator",
             createdAtUtc ?? DateTime.UtcNow,
             lifetime ?? TimeSpan.FromHours(1),
-            singleUse);
+            singleUse,
+            allowedGrantTypes,
+            allowedScopes);
         if (revoked)
         {
             record.RevokedAtUtc = DateTime.UtcNow;

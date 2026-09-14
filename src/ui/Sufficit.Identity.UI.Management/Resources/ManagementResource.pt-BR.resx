@@ -2075,4 +2075,10 @@
   <data name="Error.registration_token_label_too_long" xml:space="preserve"><value>O nome do registrante é longo demais.</value></data>
   <data name="Error.registration_token_lifetime_invalid" xml:space="preserve"><value>A validade deve ficar entre 1 e 720 horas.</value></data>
   <data name="Error.registration_token_not_found" xml:space="preserve"><value>O token de registro não existe.</value></data>
+  <data name="Clients.RegistrationTokens.GrantsField" xml:space="preserve"><value>Grants permitidos</value></data>
+  <data name="Clients.RegistrationTokens.ScopesField" xml:space="preserve"><value>Escopos permitidos</value></data>
+  <data name="Clients.RegistrationTokens.PolicyHelper" xml:space="preserve"><value>Opcional, separados por espaço. Vazio mantém só a lista geral do servidor.</value></data>
+  <data name="Clients.RegistrationTokens.PolicyGrants" xml:space="preserve"><value>Grants: {0}</value></data>
+  <data name="Clients.RegistrationTokens.PolicyScopes" xml:space="preserve"><value>Escopos: {0}</value></data>
+  <data name="Error.registration_token_policy_invalid" xml:space="preserve"><value>Cada valor deve ser um identificador sem espaços, até 20 valores.</value></data>
 </root>

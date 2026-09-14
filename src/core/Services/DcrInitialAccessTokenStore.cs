@@ -1,6 +1,7 @@
 using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
@@ -30,7 +31,9 @@ public sealed class DcrInitialAccessTokenStore(
         string issuedBy,
         DateTime createdAtUtc,
         TimeSpan lifetime,
-        bool singleUse)
+        bool singleUse,
+        IReadOnlyCollection<string>? allowedGrantTypes = null,
+        IReadOnlyCollection<string>? allowedScopes = null)
     {
         var token = TokenPrefix + Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(32));
         var hash = Hash(token);
@@ -44,8 +47,36 @@ public sealed class DcrInitialAccessTokenStore(
             CreatedAtUtc = createdAtUtc,
             ExpiresAtUtc = createdAtUtc + lifetime,
             SingleUse = singleUse,
+            AllowedGrantTypesJson = WriteList(allowedGrantTypes),
+            AllowedScopesJson = WriteList(allowedScopes),
         }, token);
     }
+
+    /// <summary>
+    /// Reads a stored policy list. Null means no per-token limit; an unreadable
+    /// value is treated as an empty list, which admits nothing.
+    /// </summary>
+    public static IReadOnlyList<string>? ReadList(string? json)
+    {
+        if (json is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<string[]>(json) ?? [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    private static string? WriteList(IReadOnlyCollection<string>? values) =>
+        values is { Count: > 0 }
+            ? JsonSerializer.Serialize(values.Distinct(StringComparer.Ordinal).ToArray())
+            : null;
 
     public static string Hash(string token) =>
         Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(token)));

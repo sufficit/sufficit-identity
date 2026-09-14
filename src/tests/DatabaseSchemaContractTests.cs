@@ -217,6 +217,7 @@ public sealed class DatabaseSchemaContractTests
             IdentityDatabaseSchema.VaultSecretTypesMigrationId,
             IdentityDatabaseSchema.TrustedProxyConfigurationMigrationId,
             IdentityDatabaseSchema.DcrInitialAccessTokensMigrationId,
+            IdentityDatabaseSchema.DcrInitialAccessTokenPolicyMigrationId,
         ], context.Database.GetMigrations());
 
         var history = context.GetService<IHistoryRepository>().GetCreateScript();
