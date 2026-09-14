@@ -52,9 +52,19 @@ private_key_jwt, mTLS), as do DPoP binding and the grant-type permission
 permission even when `ClientPolicyMode` is `Observe`; the eligibility policy
 still runs on top of it.
 
-The initiation endpoint is not a token endpoint: it still authenticates the
-client itself, with the client secret from the form body. `private_key_jwt`
-and mTLS at `/bc-authorize` are not implemented.
+The initiation endpoint is not a token endpoint, so it authenticates the client
+itself (`CibaController.Initiate`, `Ciba/CibaClientAuthenticator.cs`), with
+exactly one of:
+
+- `client_secret_basic` (Authorization header) or `client_secret_post`;
+- `private_key_jwt` (RFC 7523): `iss` and `sub` equal the client, `aud` is the
+  issuer or the endpoint URL, `exp` is required and at most 300 seconds after
+  `iat`, `jti` is required and single-use. The keys are the client's registered
+  `jwks` or `jwks_uri`, resolved like request objects; only asymmetric keys are
+  accepted.
+
+The eligibility policy then applies as at the token endpoint. mTLS client
+authentication at `/bc-authorize` is not implemented.
 
 ## Token issuance
 

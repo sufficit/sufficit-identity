@@ -351,6 +351,125 @@ public sealed class CibaInitiationTests
         Assert.Equal("unauthorized_client", body.GetProperty("error").GetString());
     }
 
+    [Fact]
+    public async Task Initiation_accepts_private_key_jwt_once_and_rejects_foreign_keys()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(CibaEnabled());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var clientKey = System.Security.Cryptography.ECDsa.Create(
+            System.Security.Cryptography.ECCurve.NamedCurves.nistP256);
+        var signingKey = new Microsoft.IdentityModel.Tokens.ECDsaSecurityKey(clientKey) { KeyId = "ciba-client-key" };
+        await EnsureJwksCibaClientAsync(factory, "test-ciba-jwt", signingKey);
+
+        var client = factory.CreateClient();
+        var assertion = ClientAssertion("test-ciba-jwt", "https://sts.tests.local", signingKey);
+        var (status, body) = await client.PostFormAsync("/bc-authorize", AssertionForm(assertion));
+        Assert.Equal(HttpStatusCode.OK, status);
+        Assert.False(string.IsNullOrEmpty(body.GetProperty("auth_req_id").GetString()));
+
+        var (replayStatus, replayBody) = await client.PostFormAsync("/bc-authorize", AssertionForm(assertion));
+        Assert.Equal(HttpStatusCode.Unauthorized, replayStatus);
+        Assert.Equal("invalid_client", replayBody.GetProperty("error").GetString());
+
+        using var foreignKey = System.Security.Cryptography.ECDsa.Create(
+            System.Security.Cryptography.ECCurve.NamedCurves.nistP256);
+        var forged = ClientAssertion("test-ciba-jwt", "https://sts.tests.local",
+            new Microsoft.IdentityModel.Tokens.ECDsaSecurityKey(foreignKey) { KeyId = "ciba-client-key" });
+        var (forgedStatus, _) = await client.PostFormAsync("/bc-authorize", AssertionForm(forged));
+        Assert.Equal(HttpStatusCode.Unauthorized, forgedStatus);
+
+        var wrongAudience = ClientAssertion("test-ciba-jwt", "https://other.example", signingKey);
+        var (audienceStatus, _) = await client.PostFormAsync("/bc-authorize", AssertionForm(wrongAudience));
+        Assert.Equal(HttpStatusCode.Unauthorized, audienceStatus);
+    }
+
+    [Fact]
+    public async Task Initiation_accepts_client_secret_basic_and_refuses_two_methods()
+    {
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(CibaEnabled());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await EnsureCibaClientAsync(factory);
+
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = IntrospectionTests.BasicAuthFor(
+            "test-ciba", "test-ciba-secret");
+        var (status, _) = await client.PostFormAsync("/bc-authorize", new Dictionary<string, string>
+        {
+            ["scope"] = TestDataSeeder.ScopeName,
+            ["login_hint"] = TestDataSeeder.DefaultUsername,
+        });
+        Assert.Equal(HttpStatusCode.OK, status);
+
+        var (twoMethodsStatus, twoMethodsBody) = await client.PostFormAsync("/bc-authorize", new Dictionary<string, string>
+        {
+            ["scope"] = TestDataSeeder.ScopeName,
+            ["client_secret"] = "test-ciba-secret",
+            ["login_hint"] = TestDataSeeder.DefaultUsername,
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, twoMethodsStatus);
+        Assert.Equal("invalid_request", twoMethodsBody.GetProperty("error").GetString());
+    }
+
+    private static Dictionary<string, string> AssertionForm(string assertion) => new()
+    {
+        ["scope"] = TestDataSeeder.ScopeName,
+        ["login_hint"] = TestDataSeeder.DefaultUsername,
+        ["client_assertion_type"] = "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+        ["client_assertion"] = assertion,
+    };
+
+    private static string ClientAssertion(
+        string clientId,
+        string audience,
+        Microsoft.IdentityModel.Tokens.SecurityKey key)
+    {
+        var now = DateTime.UtcNow;
+        return new Microsoft.IdentityModel.JsonWebTokens.JsonWebTokenHandler().CreateToken(
+            new Microsoft.IdentityModel.Tokens.SecurityTokenDescriptor
+            {
+                Issuer = clientId,
+                Audience = audience,
+                IssuedAt = now,
+                NotBefore = now,
+                Expires = now.AddMinutes(2),
+                Claims = new Dictionary<string, object>
+                {
+                    ["sub"] = clientId,
+                    ["jti"] = Guid.NewGuid().ToString("N"),
+                },
+                SigningCredentials = new Microsoft.IdentityModel.Tokens.SigningCredentials(
+                    key, Microsoft.IdentityModel.Tokens.SecurityAlgorithms.EcdsaSha256),
+            });
+    }
+
+    private static async Task EnsureJwksCibaClientAsync(
+        SufficitIdentityTestFactory factory,
+        string clientId,
+        Microsoft.IdentityModel.Tokens.ECDsaSecurityKey key)
+    {
+        using var scope = factory.Services.CreateScope();
+        var appManager = scope.ServiceProvider.GetRequiredService<OpenIddict.Abstractions.IOpenIddictApplicationManager>();
+        var publicJwk = Microsoft.IdentityModel.Tokens.JsonWebKeyConverter.ConvertFromECDsaSecurityKey(
+            new Microsoft.IdentityModel.Tokens.ECDsaSecurityKey(
+                System.Security.Cryptography.ECDsa.Create(key.ECDsa.ExportParameters(false)))
+            { KeyId = key.KeyId });
+        publicJwk.Use = "sig";
+        var keySet = new Microsoft.IdentityModel.Tokens.JsonWebKeySet();
+        keySet.Keys.Add(publicJwk);
+        await appManager.CreateAsync(new OpenIddict.Abstractions.OpenIddictApplicationDescriptor
+        {
+            ClientId = clientId,
+            ClientType = OpenIddict.Abstractions.OpenIddictConstants.ClientTypes.Confidential,
+            JsonWebKeySet = keySet,
+            Permissions =
+            {
+                OpenIddict.Abstractions.OpenIddictConstants.Permissions.Endpoints.Token,
+                OpenIddict.Abstractions.OpenIddictConstants.Permissions.Prefixes.Scope + TestDataSeeder.ScopeName,
+                "gt:urn:openid:params:grant-type:ciba",
+            },
+        });
+    }
+
     private static IReadOnlyDictionary<string, string?> CibaEnabled() => new Dictionary<string, string?>
     {
         ["Sufficit:Identity:Ciba:Enabled"] = "true",

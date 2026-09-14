@@ -250,6 +250,7 @@ public static partial class ServiceCollectionExtensions
         services.AddSingleton<Ciba.ICibaPendingRequestStore,
             Ciba.RollingCibaPendingRequestStore>();
         services.AddScoped<Ciba.ICibaClientPolicy, Ciba.CibaClientPolicy>();
+        services.AddScoped<Ciba.ICibaClientAuthenticator, Ciba.CibaClientAuthenticator>();
         // Tokens are issued by the regular token pipeline; the handler
         // refuses the grant while CIBA is disabled.
         services.AddScoped<Grants.ITokenGrantHandler, Grants.CibaGrantHandler>();
