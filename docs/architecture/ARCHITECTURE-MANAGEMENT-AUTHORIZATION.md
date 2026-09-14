@@ -68,41 +68,38 @@ returned by list or detail operations.
 Named Vault secrets use an explicit provider-owned authorization tuple:
 `(contextId, namespace, normalizedName)`. The first path segment is the
 namespace; descendants inherit it and cannot declare a different owner or
-context. The capability authorizes the operation, the Management tenant
-authority (`identity:tenant`) authorizes the tenant, and
-`identity_vault_namespace` authorizes
-one exact `<contextId>:<namespace>` pair. Lists apply the same predicate as
-get/put/delete.
+context. The capability authorizes the operation and
+`identity_vault_namespace` authorizes one exact `<contextId>:<namespace>` pair.
+Contexts organize data; they are not a tenant boundary. Lists apply the same
+predicate as get/put/delete.
 
 `identity_vault_break_glass` is a separate MFA-bound claim issued outside the
 generic Management APIs. Its use is always recorded in the Management audit
-log. It may bypass a Vault namespace restriction, but never tenant membership.
+log. It may bypass a Vault namespace restriction.
 The generic Claims API reserves all authorization-sensitive claim types,
-including tenant, namespace, capability and break-glass types, so claim
+including namespace, capability and break-glass types, so claim
 administration cannot grant Management authority.
 
-### Management tenant boundary
+### No tenant boundary inside a deployment
 
-Management tenant membership is represented by the private claim
-`identity:tenant`. The claim is not a business role, an OAuth scope or a value
-accepted from the browser. Before authorization, the host discards incoming
-tenant claims and reconstructs them from the deployment-controlled mapping
-`Management:Authorization:TenantAccess:SubjectTenants`, keyed by the stable
-operator `sub`.
+One deployment serves one organization. There is no tenant concept in the
+data model or in Management authorization: the former `identity:tenant`
+authority, the `TenantAccess:SubjectTenants` mapping and
+`ManagementResource.TenantId` were removed in August 2026, and object-level
+authorization is capability, MFA and protected principals.
 
-The mapping is stored in the root-controlled hardening configuration. A role
-such as `administrator` can grant provider capabilities only after the same
-subject has at least one explicit tenant assignment. An empty or malformed
-mapping is a production-posture failure; there is no role-to-`global`
-compatibility fallback.
+Isolation between organizations is a separate deployment. Starting another
+application instance is cheap, and a process, database and key boundary is both
+stronger and simpler than a row-level tenant filter that every query must
+remember.
 
-Provider-wide objects whose model has no narrower tenant belong to
-`ProviderTenantId` (currently `global`). This value identifies the resource;
-it never grants membership. The operator still needs an explicit
-`subject -> global` assignment. Deployments that introduce tenant-owned
-objects must populate `ManagementResource.TenantId` and enforce exact ordinal
-matching. The generic user directory remains provider-owned unless a separate
-realm/organization feature is deliberately designed.
+The 2026-09-12 evaluation (A10) recommended keeping a `TenantId` column on the
+provider-owned tables anyway, for a future second customer. The maintainer
+confirmed on 2026-09-14 that the August decision stands: a column that always
+holds the same value is dead code that each change would have to maintain, and
+a future shared deployment would need a deliberate realm design rather than a
+retrofitted column. Do not reintroduce tenant data or authority without a new
+decision recorded here.
 
 ## Relying-party responsibilities
 
