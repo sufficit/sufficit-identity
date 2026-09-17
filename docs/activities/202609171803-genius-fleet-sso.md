@@ -35,7 +35,8 @@ existing SDKs; 1355 passed, 1 environment-dependent integration test skipped,
 scope request, then `fleet_specialists` returned all six authorized specialists.
 No new enrollment or personal token was created. Test conversation
 `a810e443-f711-4d49-b78d-10a23e0c40c1`; real Fleet mission accepted as
-`01a0b12e-43cf-791a-afd3-0cbdbcaefe57` (execution outcome tracked in Genius report).
+`01a0b12e-43cf-791a-afd3-0cbdbcaefe57`: Completed, created 21:03:14Z,
+started 21:03:18Z, ended 21:03:28Z. Specialist text returned to the original chat.
 - Automated regression also proves unchanged subject/original audience,
 registration and permission requirements, other-client isolation and no implicit
 scope for client_credentials.
