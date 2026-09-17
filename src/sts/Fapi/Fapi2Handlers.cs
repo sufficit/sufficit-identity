@@ -175,11 +175,19 @@ internal sealed class ValidateFapiPushedAuthorizationRequest :
             return;
         }
 
+        // Binding the code to the DPoP key is optional for the client:
+        // dpop_jkt is a MAY in RFC 9449 10.1, and a proof sent with this
+        // request does the same job (see Dpop/DpopPushedAuthorizationBinding).
+        // What the profile requires is a sender-constrained access token,
+        // which is enforced at the token endpoint. Requiring dpop_jkt here
+        // rejected conformant clients — the conformance suite's FAPI 2 plan
+        // could not get past its first request.
         if (_options.SenderConstraint == Fapi2SenderConstraint.Dpop &&
+            !string.IsNullOrWhiteSpace((string?)context.Request["dpop_jkt"]) &&
             !Fapi2Policy.HasValidDpopJkt(context.Request))
         {
             context.Reject(Errors.InvalidRequest,
-                "A valid dpop_jkt parameter is required to bind the authorization code.");
+                "The dpop_jkt parameter is not a valid JWK thumbprint.");
         }
     }
 }
@@ -231,6 +239,15 @@ internal sealed class ValidateFapiTokenRequest :
             context.Reject(Errors.InvalidClient,
                 "This FAPI 2.0 client requires mutual-TLS sender-constrained tokens.");
         }
-
+        // The profile is about the token that comes out of here being
+        // sender-constrained: with DPoP that means a proof on this very
+        // request. The proof itself is validated by the grant dispatcher.
+        else if (_options.SenderConstraint == Fapi2SenderConstraint.Dpop
+                 && string.IsNullOrEmpty(
+                     httpContext?.Request.Headers["DPoP"].ToString()))
+        {
+            context.Reject(Errors.InvalidRequest,
+                "This FAPI 2.0 client requires a DPoP proof on the token request.");
+        }
     }
 }

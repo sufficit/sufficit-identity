@@ -15,25 +15,7 @@
     "current-block": "",
     "condition": "VerifyScopesReturnedInUserInfoClaims",
     "expected-result": "warning",
-    "comment": "The condition requires every standard claim of the requested scope (given_name, birthdate, gender, ...). OIDC Core 5.5.2 returns a claim only when the account has it, and the product stores name, preferred_username, email, phone number and address. Nothing is missing that the server holds."
-  },
-  {
-    "test-name": "oidcc-scope-address",
-    "variant": "*",
-    "configuration-filename": "*plan-config.json",
-    "current-block": "",
-    "condition": "VerifyScopesReturnedInUserInfoClaims",
-    "expected-result": "warning",
-    "comment": "The condition requires every standard claim of the requested scope (given_name, birthdate, gender, ...). OIDC Core 5.5.2 returns a claim only when the account has it, and the product stores name, preferred_username, email, phone number and address. Nothing is missing that the server holds."
-  },
-  {
-    "test-name": "oidcc-scope-phone",
-    "variant": "*",
-    "configuration-filename": "*plan-config.json",
-    "current-block": "",
-    "condition": "VerifyScopesReturnedInUserInfoClaims",
-    "expected-result": "warning",
-    "comment": "The condition requires every standard claim of the requested scope (given_name, birthdate, gender, ...). OIDC Core 5.5.2 returns a claim only when the account has it, and the product stores name, preferred_username, email, phone number and address. Nothing is missing that the server holds."
+    "comment": "The condition requires every standard claim of the requested scope (given_name, birthdate, gender, ...). OIDC Core 5.5.2 returns a claim only when the account has it; the product stores name, preferred_username, email, phone number and address, and answers all of those. The address and phone scopes pass in full."
   },
   {
     "test-name": "oidcc-scope-all",
@@ -42,7 +24,7 @@
     "current-block": "",
     "condition": "VerifyScopesReturnedInUserInfoClaims",
     "expected-result": "warning",
-    "comment": "The condition requires every standard claim of the requested scope (given_name, birthdate, gender, ...). OIDC Core 5.5.2 returns a claim only when the account has it, and the product stores name, preferred_username, email, phone number and address. Nothing is missing that the server holds."
+    "comment": "The condition requires every standard claim of the requested scope (given_name, birthdate, gender, ...). OIDC Core 5.5.2 returns a claim only when the account has it; the product stores name, preferred_username, email, phone number and address, and answers all of those. The address and phone scopes pass in full."
   },
   {
     "test-name": "oidcc-scope-email",

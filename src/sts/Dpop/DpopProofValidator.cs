@@ -159,6 +159,17 @@ public sealed class DpopProofValidator
             return null;
         }
 
+        // RFC 9449 4.2: the jwk header carries the PUBLIC key. A proof that
+        // embeds private or symmetric key material is malformed, and accepting
+        // it would let a client hand the server a secret it has no business
+        // holding (found by the conformance suite's dpop-negative-tests).
+        if (HasNonPublicKeyMaterial(jwk))
+        {
+            _logger.LogWarning(
+                "DPoP proof jwk header contains private or symmetric key material.");
+            return null;
+        }
+
         // Validate the signature against the embedded key. We do NOT enforce an
         // issuer/audience here: DPoP proofs are not bearer tokens — their
         // security comes from the signature + htm/htu binding + jti replay
@@ -171,6 +182,11 @@ public sealed class DpopProofValidator
                 ValidateIssuer = false,
                 ValidateAudience = false,
                 ValidateLifetime = true,
+                // RFC 9449 4.2 lists jti, htm, htu and iat as the required
+                // claims of a proof; exp is optional and most clients — the
+                // OpenID conformance suite among them — do not send it.
+                // Freshness is enforced below from iat and the jti cache.
+                RequireExpirationTime = false,
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = jwk,
                 // DPoP proofs have very short validity; enforce a max skew.
@@ -208,13 +224,13 @@ public sealed class DpopProofValidator
             return null;
         }
 
-        // iat/exp: require an explicit short lifetime. Relying only on the
-        // in-memory jti cache would allow a captured proof to become usable
-        // again after cache eviction.
-        if (!jwt.TryGetPayloadValue("iat", out long issuedAt)
-            || !jwt.TryGetPayloadValue("exp", out long expiresAt))
+        // iat: the proof is only accepted inside the window the jti cache
+        // covers, so a captured proof cannot become usable again after the
+        // cache evicts its identifier. exp is optional in RFC 9449; when a
+        // client does send one it has to agree with that same window.
+        if (!jwt.TryGetPayloadValue("iat", out long issuedAt))
         {
-            _logger.LogWarning("DPoP proof must contain both iat and exp claims.");
+            _logger.LogWarning("DPoP proof must contain an iat claim.");
             return null;
         }
         var nowSeconds = _timeProvider.GetUtcNow().ToUnixTimeSeconds();
@@ -223,9 +239,10 @@ public sealed class DpopProofValidator
             _logger.LogWarning("DPoP proof lifetime is outside the allowed replay window.");
             return null;
         }
-        if (expiresAt <= nowSeconds
-            || expiresAt <= issuedAt
-            || expiresAt - issuedAt > (long)JtiCacheTtl.TotalSeconds)
+        if (jwt.TryGetPayloadValue("exp", out long expiresAt)
+            && (expiresAt <= nowSeconds
+                || expiresAt <= issuedAt
+                || expiresAt - issuedAt > (long)JtiCacheTtl.TotalSeconds))
         {
             _logger.LogWarning("DPoP proof exp is outside the allowed replay window.");
             return null;
@@ -296,6 +313,20 @@ public sealed class DpopProofValidator
         _logger.LogDebug("DPoP proof valid; binding token to key thumbprint {Thumbprint}.", thumbprint);
         return new DpopProof(jti, thumbprint, jwk);
     }
+
+    /// <summary>
+    /// Whether a JWK carries anything beyond a public key: an asymmetric
+    /// private parameter or a symmetric secret.
+    /// </summary>
+    private static bool HasNonPublicKeyMaterial(JsonWebKey key) =>
+        !string.IsNullOrEmpty(key.D)
+        || !string.IsNullOrEmpty(key.P)
+        || !string.IsNullOrEmpty(key.Q)
+        || !string.IsNullOrEmpty(key.DP)
+        || !string.IsNullOrEmpty(key.DQ)
+        || !string.IsNullOrEmpty(key.QI)
+        || !string.IsNullOrEmpty(key.K)
+        || key.Oth.Count > 0;
 
     /// <summary>
     /// Extracts the public-key thumbprint used only to partition a nonce

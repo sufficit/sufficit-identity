@@ -1,0 +1,265 @@
+{
+  "alias": "{ALIAS}",
+  "description": "Sufficit Identity - FAPI 2.0 Security Profile (final)",
+  "server": {
+    "discoveryUrl": "https://identity-op.test/.well-known/openid-configuration"
+  },
+  "client": {
+    "client_id": "{CLIENT1_ID}",
+    "jwks": {
+      "keys": [
+        "{CLIENT1_JWK}"
+      ]
+    },
+    "scope": "openid profile"
+  },
+  "client2": {
+    "client_id": "{CLIENT2_ID}",
+    "jwks": {
+      "keys": [
+        "{CLIENT2_JWK}"
+      ]
+    },
+    "scope": "openid profile"
+  },
+  "resource": {
+    "resourceUrl": "https://identity-op.test/connect/userinfo",
+    "resourceMethod": "GET"
+  },
+  "browser": [
+    {
+      "match": "https://identity-op.test/connect/authorize*",
+      "tasks": [
+        {
+          "task": "Login",
+          "optional": true,
+          "match": "https://identity-op.test/account/login*",
+          "commands": [
+            [
+              "text",
+              "id",
+              "username",
+              "{USER_NAME}"
+            ],
+            [
+              "text",
+              "id",
+              "password",
+              "{USER_PASSWORD}"
+            ],
+            [
+              "wait",
+              "css",
+              "button[type=submit]",
+              10,
+              ".*",
+              "update-image-placeholder-optional"
+            ],
+            [
+              "click",
+              "css",
+              "button[type=submit]"
+            ]
+          ]
+        },
+        {
+          "task": "Verify Complete",
+          "match": "{SUITE_BASE_URL}/test/*/callback*",
+          "commands": [
+            [
+              "wait",
+              "id",
+              "submission_complete",
+              10
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "override": {
+    "fapi2-security-profile-final-par-attempt-reuse-request_uri": {
+      "browser": [
+        {
+          "match": "https://identity-op.test/connect/authorize*",
+          "tasks": [
+            {
+              "task": "Login",
+              "optional": true,
+              "match": "https://identity-op.test/account/login*",
+              "commands": [
+                [
+                  "text",
+                  "id",
+                  "username",
+                  "{USER_NAME}"
+                ],
+                [
+                  "text",
+                  "id",
+                  "password",
+                  "{USER_PASSWORD}"
+                ],
+                [
+                  "wait",
+                  "css",
+                  "button[type=submit]",
+                  10,
+                  ".*",
+                  "update-image-placeholder-optional"
+                ],
+                [
+                  "click",
+                  "css",
+                  "button[type=submit]"
+                ]
+              ]
+            },
+            {
+              "task": "Authorization error page",
+              "optional": true,
+              "match": "https://identity-op.test/connect/authorize*",
+              "commands": [
+                [
+                  "wait",
+                  "css",
+                  "body",
+                  10,
+                  ".*",
+                  "update-image-placeholder-optional"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "fapi2-security-profile-final-ensure-unsigned-authorization-request-without-using-par-fails": {
+      "browser": [
+        {
+          "match": "https://identity-op.test/connect/authorize*",
+          "tasks": [
+            {
+              "task": "Login",
+              "optional": true,
+              "match": "https://identity-op.test/account/login*",
+              "commands": [
+                [
+                  "text",
+                  "id",
+                  "username",
+                  "{USER_NAME}"
+                ],
+                [
+                  "text",
+                  "id",
+                  "password",
+                  "{USER_PASSWORD}"
+                ],
+                [
+                  "wait",
+                  "css",
+                  "button[type=submit]",
+                  10,
+                  ".*",
+                  "update-image-placeholder-optional"
+                ],
+                [
+                  "click",
+                  "css",
+                  "button[type=submit]"
+                ]
+              ]
+            },
+            {
+              "task": "Authorization error page",
+              "optional": true,
+              "match": "https://identity-op.test/connect/authorize*",
+              "commands": [
+                [
+                  "wait",
+                  "css",
+                  "body",
+                  10,
+                  ".*",
+                  "update-image-placeholder-optional"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "fapi2-security-profile-final-par-ensure-reused-request-uri-prior-to-auth-completion-succeeds": {
+      "browser": [
+        {
+          "match": "https://identity-op.test/connect/authorize*",
+          "match-limit": 1,
+          "tasks": [
+            {
+              "task": "Show the login page without signing in",
+              "match": "https://identity-op.test/account/login*",
+              "commands": [
+                [
+                  "wait",
+                  "id",
+                  "username",
+                  10
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "match": "https://identity-op.test/connect/authorize*",
+          "tasks": [
+            {
+              "task": "Login",
+              "optional": true,
+              "match": "https://identity-op.test/account/login*",
+              "commands": [
+                [
+                  "text",
+                  "id",
+                  "username",
+                  "{USER_NAME}"
+                ],
+                [
+                  "text",
+                  "id",
+                  "password",
+                  "{USER_PASSWORD}"
+                ],
+                [
+                  "wait",
+                  "css",
+                  "button[type=submit]",
+                  10,
+                  ".*",
+                  "update-image-placeholder-optional"
+                ],
+                [
+                  "click",
+                  "css",
+                  "button[type=submit]"
+                ]
+              ]
+            },
+            {
+              "task": "Verify Complete",
+              "match": "{SUITE_BASE_URL}/test/*/callback*",
+              "commands": [
+                [
+                  "wait",
+                  "id",
+                  "submission_complete",
+                  10
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
