@@ -1,0 +1,14 @@
+[
+  {
+    "test-name": "oidcc-unsigned-request-object-supported-correctly-or-rejected-as-unsupported",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "comment": "Skipped by the suite because request_object_signing_alg_values_supported does not contain 'none': JAR request objects have to be signed (RFC 9101 6.1), and an unsigned one is refused."
+  },
+  {
+    "test-name": "oidcc-ensure-request-object-with-redirect-uri",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "comment": "Same reason: the module's request object is unsigned."
+  }
+]

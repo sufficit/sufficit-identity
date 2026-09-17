@@ -48,6 +48,24 @@ from `UserManager` at call time — not replicated from the token — and filter
 by scope (`:437-470`). `email_verified` reflects the account's current state,
 not the state at issuance time.
 
+UserInfo answers more scopes than the `id_token` carries:
+
+| Scope | Claims |
+|---|---|
+| `profile` | `name`, `preferred_username`, `picture` |
+| `email` | `email`, `email_verified` |
+| `phone` | `phone_number`, `phone_number_verified` (ASP.NET Identity fields) |
+| `address` | `address`, as the JSON object of §5.1.1, from the persisted claim |
+| `roles` | `role` |
+
+`phone` and `address` were added after the conformance run of 2026-09-17:
+`address` had been advertised in discovery since the beginning while UserInfo
+returned nothing for it, and `phone` was not advertised at all even though the
+data was already stored. A scope that grants nothing is worse than an absent
+one. Claims are only returned when the account actually has the data
+(§5.5.2), which is why the suite still warns that a scope's full set of
+standard claims is not present — see `conformance/config/expected-failures.json`.
+
 ## `prompt` and `max_age`
 
 | Parameter | Behavior |
@@ -56,6 +74,13 @@ not the state at issuance time.
 | `prompt=login` | Forces reauthentication via `AuthorizationReauthenticationPolicy` |
 | `prompt=consent` | Participates in the consent policy instead of bypassing it |
 | `max_age` | Requires recent authentication; `max_age=0` uses a signed receipt to avoid a loop |
+
+`prompt=login` (§3.1.2.1) had the same shape of defect until the OpenID
+conformance suite exercised it (`oidcc-prompt-login`): this document claimed the
+behavior while `AuthorizationReauthenticationPolicy` only looked at `max_age`,
+so a recent session was reused and the second `id_token` repeated `auth_time`.
+The parameter now demands a new credential ceremony on its own, cleared by the
+same receipt `max_age=0` uses.
 
 The handling of `prompt=consent` deserves a note: the previous implementation
 **skipped** the consent check when the parameter was present, exactly the
@@ -75,6 +100,14 @@ enough.
 
 The UI can **narrow** scopes on resubmission; widening them doesn't work,
 because OpenIddict's scope validation runs again on the resubmitted request.
+
+Requested scopes are filtered by the client's `scp:` permissions, with one
+exception: `openid` is never filtered (`AuthorizationController.cs`,
+`GetRequestedScopesAsync`). It is what makes the request an OpenID Connect
+request, and OpenIddict does not enforce a `scp:openid` permission either.
+Dropping it silently turned an OIDC request into a plain OAuth one and the token
+response carried no `id_token` (§3.1.3.3); the conformance suite caught it in the
+scope modules, and `OpenIdScopePermissionTests` keeps it caught.
 
 ## `sub`
 

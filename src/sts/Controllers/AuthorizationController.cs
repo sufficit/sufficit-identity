@@ -130,11 +130,18 @@ public partial class AuthorizationController : Controller
             });
         }
 
+        // max_age=0 and prompt=login both demand a brand-new credential
+        // ceremony, so the elapsed session age cannot clear them: only the
+        // receipt issued by the ceremony itself can, or the request would
+        // bounce back to the login page forever.
+        var requiresFreshCeremony = request.MaxAge == 0
+            || request.HasPromptValue(PromptValues.Login);
+
         if (AuthorizationReauthenticationPolicy.IsRequired(
                 request,
                 result.Principal,
                 _timeProvider.GetUtcNow())
-            && !(request.MaxAge == 0 && AuthorizationAuthenticationReceipt.IsValid(
+            && !(requiresFreshCeremony && AuthorizationAuthenticationReceipt.IsValid(
                 HttpContext, CurrentAuthorizationRequestUrl())))
         {
             if (request.HasPromptValue(PromptValues.None))
@@ -357,8 +364,26 @@ public partial class AuthorizationController : Controller
         identity.SetAuthorizationId(await _authorizationManager.GetIdAsync(authorization));
         identity.SetDestinations(_grants.GetDestinations);
 
-        if (request.MaxAge == 0) AuthorizationAuthenticationReceipt.Clear(HttpContext);
+        if (requiresFreshCeremony) AuthorizationAuthenticationReceipt.Clear(HttpContext);
         return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+    }
+
+    /// <summary>
+    /// Whether a persisted claim value is already a JSON object, so it can be
+    /// returned as the structured <c>address</c> claim instead of a string.
+    /// </summary>
+    private static bool TryParseJsonObject(string value, out JsonElement element)
+    {
+        try
+        {
+            element = JsonSerializer.Deserialize<JsonElement>(value);
+            return element.ValueKind == JsonValueKind.Object;
+        }
+        catch (JsonException)
+        {
+            element = default;
+            return false;
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -447,6 +472,42 @@ public partial class AuthorizationController : Controller
             if (!string.IsNullOrWhiteSpace(avatarUrl))
             {
                 claims[Claims.Picture] = avatarUrl;
+            }
+        }
+
+        if (User.HasScope(Scopes.Phone))
+        {
+            // ASP.NET Core Identity already stores the phone number and its
+            // confirmation; the phone scope is what makes them shareable
+            // (OIDC Core 5.4). The scope is advertised in discovery, so a
+            // client that asks for it has to get an answer.
+            var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
+            if (!string.IsNullOrWhiteSpace(phoneNumber))
+            {
+                claims[Claims.PhoneNumber] = phoneNumber;
+                claims[Claims.PhoneNumberVerified] =
+                    await _userManager.IsPhoneNumberConfirmedAsync(user);
+            }
+        }
+
+        if (User.HasScope(Scopes.Address))
+        {
+            // address is a JSON object (OIDC Core 5.1.1); the persisted claim
+            // holds either that object or one formatted line. Discovery has
+            // advertised the address scope from the start while UserInfo never
+            // returned anything for it — a scope that grants nothing is worse
+            // than an absent one (found by the conformance suite).
+            var address = persistedClaims
+                .LastOrDefault(claim => string.Equals(
+                    claim.Type,
+                    Claims.Address,
+                    StringComparison.Ordinal))
+                ?.Value;
+            if (!string.IsNullOrWhiteSpace(address))
+            {
+                claims[Claims.Address] = TryParseJsonObject(address, out var structured)
+                    ? structured
+                    : new Dictionary<string, string?> { ["formatted"] = address };
             }
         }
 
@@ -602,9 +663,15 @@ public partial class AuthorizationController : Controller
         var allowedScopes = ImmutableArray.CreateBuilder<string>();
         foreach (var scope in scopes)
         {
-            if (await _applicationManager.HasPermissionAsync(
-                application,
-                Permissions.Prefixes.Scope + scope))
+            // openid is not subject to scope permissions: it is what makes the
+            // request an OpenID Connect request, and OpenIddict never enforces
+            // a scp:openid permission either. Dropping it here turned an OIDC
+            // request into a plain OAuth one, so the token response carried no
+            // id_token (OIDCC-3.1.3.3; found by the conformance suite).
+            if (string.Equals(scope, Scopes.OpenId, StringComparison.Ordinal)
+                || await _applicationManager.HasPermissionAsync(
+                    application,
+                    Permissions.Prefixes.Scope + scope))
             {
                 allowedScopes.Add(scope);
             }

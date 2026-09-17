@@ -188,6 +188,42 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
             QueryHelpers.ParseQuery(callback.Query)["error"].ToString());
     }
 
+    /// <summary>
+    /// prompt=login must reauthenticate however fresh the session is
+    /// (OIDC Core 3.1.2.1); the conformance suite compares auth_time across two
+    /// authorizations (oidcc-prompt-login).
+    /// </summary>
+    [Fact]
+    public async Task Prompt_login_reauthenticates_a_recent_session()
+    {
+        var username = $"recent-auth-prompt-login-{Guid.NewGuid():N}";
+        using (var scope = factory.Services.CreateScope())
+        {
+            var users = scope.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            await TestDataSeeder.CreateUserAsync(
+                users,
+                username,
+                TestDataSeeder.DefaultPassword);
+            await EnsureClientAsync(scope.ServiceProvider);
+        }
+
+        using var client = factory.CreateClient(
+            new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, BaseAddress = new Uri("https://identity.tests.local") });
+        await TestOnlyEndpoints.SignInAsync(client, username, withMfa: true);
+        var requestUri = await PushAuthorizationRequestAsync(
+            client,
+            prompt: PromptValues.Login);
+
+        using var response = await client.GetAsync(AuthorizeUrl(requestUri));
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.StartsWith(
+            "/account/reauthenticate?",
+            response.Headers.Location!.OriginalString,
+            StringComparison.Ordinal);
+    }
+
     private static async Task EnsureClientAsync(IServiceProvider services)
     {
         var applications = services

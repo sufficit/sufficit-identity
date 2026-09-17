@@ -28,6 +28,17 @@ out of scope.
 | `In-house` | Written in this repository, because OpenIddict doesn't cover it. |
 | `Mixed` | OpenIddict base with in-house handlers in the event pipeline. |
 
+## External conformance
+
+Every claim here is backed by tests inside this repository, which show the
+behavior the code intends. The OpenID Foundation conformance suite shows how an
+independent implementation sees the same server: `conformance/` builds a
+disposable environment from the working tree and runs a certification plan
+against it (`conformance/README.md`). The nightly `OpenID conformance` workflow
+runs the OpenID Connect Basic OP plan; accepted results live in
+`conformance/config/expected-failures.json` with the reason, and a finding that
+reflects a real defect is fixed in the server instead of being listed.
+
 ## Index — IETF
 
 | RFC | Subject | Level | Origin | Document |

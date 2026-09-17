@@ -1,0 +1,5 @@
+# Suite checkout and run outputs (rendered config holds throwaway secrets).
+.suite/
+results/
+seeder/bin/
+seeder/obj/

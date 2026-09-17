@@ -1,0 +1,83 @@
+[
+  {
+    "test-name": "oidcc-server",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "current-block": "",
+    "condition": "EnsureIdTokenDoesNotContainNonRequestedClaims",
+    "expected-result": "warning",
+    "comment": "oi_tkn_id and oi_au_id are OpenIddict's own token and authorization identifiers. OpenIddict resolves the stored token from them, including for an id_token used as id_token_hint, so they are not ours to drop. They carry no data about the user."
+  },
+  {
+    "test-name": "oidcc-scope-profile",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "current-block": "",
+    "condition": "VerifyScopesReturnedInUserInfoClaims",
+    "expected-result": "warning",
+    "comment": "The condition requires every standard claim of the requested scope (given_name, birthdate, gender, ...). OIDC Core 5.5.2 returns a claim only when the account has it, and the product stores name, preferred_username, email, phone number and address. Nothing is missing that the server holds."
+  },
+  {
+    "test-name": "oidcc-scope-address",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "current-block": "",
+    "condition": "VerifyScopesReturnedInUserInfoClaims",
+    "expected-result": "warning",
+    "comment": "The condition requires every standard claim of the requested scope (given_name, birthdate, gender, ...). OIDC Core 5.5.2 returns a claim only when the account has it, and the product stores name, preferred_username, email, phone number and address. Nothing is missing that the server holds."
+  },
+  {
+    "test-name": "oidcc-scope-phone",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "current-block": "",
+    "condition": "VerifyScopesReturnedInUserInfoClaims",
+    "expected-result": "warning",
+    "comment": "The condition requires every standard claim of the requested scope (given_name, birthdate, gender, ...). OIDC Core 5.5.2 returns a claim only when the account has it, and the product stores name, preferred_username, email, phone number and address. Nothing is missing that the server holds."
+  },
+  {
+    "test-name": "oidcc-scope-all",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "current-block": "",
+    "condition": "VerifyScopesReturnedInUserInfoClaims",
+    "expected-result": "warning",
+    "comment": "The condition requires every standard claim of the requested scope (given_name, birthdate, gender, ...). OIDC Core 5.5.2 returns a claim only when the account has it, and the product stores name, preferred_username, email, phone number and address. Nothing is missing that the server holds."
+  },
+  {
+    "test-name": "oidcc-scope-email",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "current-block": "Verify authorization endpoint response",
+    "condition": "EnsureIdTokenDoesNotContainEmailForScopeEmail",
+    "expected-result": "warning",
+    "comment": "Deliberate: the id_token carries the identity claims of the granted scopes because the product's clients read them there instead of calling UserInfo on every page. UserInfo returns the same claims, and the spec text the condition cites is a SHOULD for the code flow."
+  },
+  {
+    "test-name": "oidcc-alternate-happy-flow",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "current-block": "Verify authorization endpoint response",
+    "condition": "EnsureIdTokenDoesNotContainEmailForScopeEmail",
+    "expected-result": "warning",
+    "comment": "Same deliberate behavior as oidcc-scope-email."
+  },
+  {
+    "test-name": "oidcc-ensure-request-with-acr-values-succeeds",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "current-block": "Verify authorization endpoint response",
+    "condition": "ValidateIdTokenACRClaimAgainstAcrValuesRequest",
+    "expected-result": "warning",
+    "comment": "acr_values is a voluntary request (OIDC Core 3.1.2.1): the server returns the acr it actually achieved rather than echoing a value it did not enforce. Discovery advertises no acr_values_supported, so the suite requests a value of its own choosing."
+  },
+  {
+    "test-name": "oidcc-claims-essential",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "current-block": "",
+    "condition": "EnsureUserInfoContainsName",
+    "expected-result": "warning",
+    "comment": "The claims request parameter is not implemented, and discovery does not announce claims_parameter_supported; claims are selected by scope. The module asks for name as an essential claim without the profile scope."
+  }
+]

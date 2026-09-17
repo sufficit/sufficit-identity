@@ -99,6 +99,7 @@ public static partial class ServiceCollectionExtensions
             Scopes.Roles,
             Scopes.OfflineAccess,
             Scopes.Address,
+            Scopes.Phone,
             "identity.management",
             .. string.IsNullOrWhiteSpace(options.PersonalTokens.RequiredScope)
                 ? Array.Empty<string>()
@@ -144,6 +145,9 @@ public static partial class ServiceCollectionExtensions
             Claims.EmailVerified,
             Claims.Role,
             Claims.PreferredUsername,
+            Claims.Address,
+            Claims.PhoneNumber,
+            Claims.PhoneNumberVerified,
             .. applicationClaims]);
 
         // -------------------------------------------------------------------

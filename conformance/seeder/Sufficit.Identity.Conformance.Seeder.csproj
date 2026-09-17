@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Test-only tool for the OpenID conformance environment (conformance/).
+    Creates the conformance user and the two static clients through the same
+    STS composition the server uses. Deliberately outside Sufficit.Identity.sln:
+    it is never built into or shipped with the server.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <RestorePackagesWithLockFile>false</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\sts\Sufficit.Identity.STS.csproj" />
+  </ItemGroup>
+
+</Project>
