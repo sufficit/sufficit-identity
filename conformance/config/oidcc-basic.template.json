@@ -1,0 +1,240 @@
+{
+  "alias": "{ALIAS}",
+  "description": "Sufficit Identity - OpenID Connect Basic OP",
+  "server": {
+    "discoveryUrl": "https://identity-op.test/.well-known/openid-configuration"
+  },
+  "client": {
+    "client_id": "{CLIENT1_ID}",
+    "client_secret": "{CLIENT1_SECRET}"
+  },
+  "client_secret_post": {
+    "client_id": "{CLIENT1_ID}",
+    "client_secret": "{CLIENT1_SECRET}"
+  },
+  "client2": {
+    "client_id": "{CLIENT2_ID}",
+    "client_secret": "{CLIENT2_SECRET}"
+  },
+  "browser": [
+    {
+      "match": "https://identity-op.test/connect/authorize*",
+      "tasks": [
+        {
+          "task": "Login",
+          "optional": true,
+          "match": "https://identity-op.test/account/login*",
+          "commands": [
+            [
+              "text",
+              "id",
+              "username",
+              "{USER_NAME}"
+            ],
+            [
+              "text",
+              "id",
+              "password",
+              "{USER_PASSWORD}"
+            ],
+            [
+              "wait",
+              "css",
+              "button[type=submit]",
+              10,
+              ".*",
+              "update-image-placeholder-optional"
+            ],
+            [
+              "click",
+              "css",
+              "button[type=submit]"
+            ]
+          ]
+        },
+        {
+          "task": "Verify Complete",
+          "match": "{SUITE_BASE_URL}/test/*/callback*",
+          "commands": [
+            [
+              "wait",
+              "id",
+              "submission_complete",
+              10
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "override": {
+    "oidcc-response-type-missing": {
+      "browser": [
+        {
+          "match": "https://identity-op.test/connect/authorize*",
+          "tasks": [
+            {
+              "task": "Login",
+              "optional": true,
+              "match": "https://identity-op.test/account/login*",
+              "commands": [
+                [
+                  "text",
+                  "id",
+                  "username",
+                  "{USER_NAME}"
+                ],
+                [
+                  "text",
+                  "id",
+                  "password",
+                  "{USER_PASSWORD}"
+                ],
+                [
+                  "wait",
+                  "css",
+                  "button[type=submit]",
+                  10,
+                  ".*",
+                  "update-image-placeholder-optional"
+                ],
+                [
+                  "click",
+                  "css",
+                  "button[type=submit]"
+                ]
+              ]
+            },
+            {
+              "task": "Authorization error page",
+              "optional": true,
+              "match": "https://identity-op.test/connect/authorize*",
+              "commands": [
+                [
+                  "wait",
+                  "css",
+                  "body",
+                  10,
+                  ".*",
+                  "update-image-placeholder-optional"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "oidcc-ensure-registered-redirect-uri": {
+      "browser": [
+        {
+          "match": "https://identity-op.test/connect/authorize*",
+          "tasks": [
+            {
+              "task": "Login",
+              "optional": true,
+              "match": "https://identity-op.test/account/login*",
+              "commands": [
+                [
+                  "text",
+                  "id",
+                  "username",
+                  "{USER_NAME}"
+                ],
+                [
+                  "text",
+                  "id",
+                  "password",
+                  "{USER_PASSWORD}"
+                ],
+                [
+                  "wait",
+                  "css",
+                  "button[type=submit]",
+                  10,
+                  ".*",
+                  "update-image-placeholder-optional"
+                ],
+                [
+                  "click",
+                  "css",
+                  "button[type=submit]"
+                ]
+              ]
+            },
+            {
+              "task": "Authorization error page",
+              "optional": true,
+              "match": "https://identity-op.test/connect/authorize*",
+              "commands": [
+                [
+                  "wait",
+                  "css",
+                  "body",
+                  10,
+                  ".*",
+                  "update-image-placeholder-optional"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "oidcc-ensure-request-object-with-redirect-uri": {
+      "browser": [
+        {
+          "match": "https://identity-op.test/connect/authorize*",
+          "tasks": [
+            {
+              "task": "Login",
+              "optional": true,
+              "match": "https://identity-op.test/account/login*",
+              "commands": [
+                [
+                  "text",
+                  "id",
+                  "username",
+                  "{USER_NAME}"
+                ],
+                [
+                  "text",
+                  "id",
+                  "password",
+                  "{USER_PASSWORD}"
+                ],
+                [
+                  "wait",
+                  "css",
+                  "button[type=submit]",
+                  10,
+                  ".*",
+                  "update-image-placeholder-optional"
+                ],
+                [
+                  "click",
+                  "css",
+                  "button[type=submit]"
+                ]
+              ]
+            },
+            {
+              "task": "Authorization error page",
+              "optional": true,
+              "match": "https://identity-op.test/connect/authorize*",
+              "commands": [
+                [
+                  "wait",
+                  "css",
+                  "body",
+                  10,
+                  ".*",
+                  "update-image-placeholder-optional"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

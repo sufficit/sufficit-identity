@@ -33,3 +33,8 @@ src/tests/
 
 # Local deployment data
 deploy/local/
+# --- Conformance environment outputs (the rendered plan holds throwaway
+# secrets) and other sessions' local worktrees ---
+conformance/.suite/
+conformance/results/
+.worktrees/

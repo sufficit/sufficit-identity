@@ -29,6 +29,18 @@ public sealed class AuthorizationReauthenticationPolicyTests
             new OpenIddictRequest { MaxAge = 0 }, PrincipalAuthenticatedAt(Now), Now));
     }
 
+    [Fact]
+    public void Prompt_login_always_requires_a_new_ceremony_without_receipt()
+    {
+        Assert.True(AuthorizationReauthenticationPolicy.IsRequired(
+            new OpenIddictRequest
+            {
+                Prompt = OpenIddictConstants.PromptValues.Login,
+            },
+            PrincipalAuthenticatedAt(Now),
+            Now));
+    }
+
     [Theory]
     [InlineData(899, false)]
     [InlineData(900, false)]

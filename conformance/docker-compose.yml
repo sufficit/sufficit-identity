@@ -1,0 +1,176 @@
+# Disposable OpenID conformance environment for Sufficit Identity.
+# Started by conformance/run.sh; not a deployment recipe. All credentials are
+# generated per run and the containers are removed afterwards.
+
+x-identity-env: &identity-env
+  ASPNETCORE_ENVIRONMENT: Development
+  # The server refuses plaintext connection strings in configuration; secrets
+  # arrive through the SUFFICIT_SECRET_* environment boundary.
+  SUFFICIT_SECRET_DATABASE_CONNECTION_STRING: "server=db;port=3306;database=identity;user=identity;password=identity;SslMode=Disabled"
+  Sufficit__Identity__Issuer: "https://identity-op.test/"
+  Sufficit__Identity__TrustedProxies__0: "172.16.0.0/12"
+  Sufficit__Identity__TrustedProxies__1: "192.168.0.0/16"
+  Sufficit__Identity__RateLimit__FailOnUntrustedProxy: "false"
+  # A whole certification plan runs from a single address in about two minutes,
+  # which is exactly the shape rate limiting exists to stop: the last modules of
+  # the plan were answered with temporarily_unavailable. Production keeps the
+  # limiter on.
+  Sufficit__Identity__RateLimit__Enabled: "false"
+  # JAR on: the plan sends a request object, and with the feature off OpenIddict
+  # refuses the request parameter while extracting the request — before the
+  # redirect URI is validated — so the error cannot be returned to the client
+  # (OIDCC-3.1.2.6). With the feature on, discovery announces which signing
+  # algorithms are accepted and the suite skips what the server does not offer.
+  Sufficit__Identity__Jar__Enabled: "true"
+  # The OpenID Connect Basic profile does not send PKCE. Production keeps the
+  # OAuth 2.1 default of PKCE for every client.
+  Sufficit__Identity__Pkce__RequireForAllClients: "false"
+  # Only the public sign-in UI takes part in the OpenID Connect flows; the
+  # management console and Vault UI need the management API, which stays off.
+  Sufficit__Identity__UI__Management__Mode: "None"
+  Sufficit__Identity__UI__Vault__Mode: "None"
+
+services:
+  db:
+    image: mariadb:10.4.34
+    environment:
+      MARIADB_ROOT_PASSWORD: conformance-root
+      MARIADB_DATABASE: identity
+      MARIADB_USER: identity
+      MARIADB_PASSWORD: identity
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "--silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  identity:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *identity-env
+      ASPNETCORE_URLS: http://+:8080
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health/ready"]
+      interval: 5s
+      timeout: 5s
+      start_period: 90s
+      retries: 30
+
+  identity-op:
+    image: nginx:1.27-alpine
+    depends_on:
+      identity:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "/proxy/entrypoint.sh"]
+    volumes:
+      - ./proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./proxy/entrypoint.sh:/proxy/entrypoint.sh:ro
+    healthcheck:
+      # This image's nc does not support -z reliably; probe over TLS instead.
+      test: ["CMD", "wget", "-q", "--no-check-certificate", "-O", "/dev/null", "https://127.0.0.1/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    networks:
+      default:
+        aliases:
+          - identity-op.test
+
+  seeder:
+    build:
+      context: ..
+      dockerfile: conformance/seeder/Dockerfile
+    depends_on:
+      identity:
+        condition: service_healthy
+    environment:
+      <<: *identity-env
+      Conformance__SuiteBaseUrl: "https://localhost.emobix.co.uk:8443"
+      Conformance__Alias: ${CONFORMANCE_ALIAS:?}
+      Conformance__UserName: ${CONFORMANCE_USER_NAME:?}
+      Conformance__UserPassword: ${CONFORMANCE_USER_PASSWORD:?}
+      Conformance__Client1__ClientId: ${CONFORMANCE_CLIENT1_ID:?}
+      Conformance__Client1__ClientSecret: ${CONFORMANCE_CLIENT1_SECRET:?}
+      Conformance__Client2__ClientId: ${CONFORMANCE_CLIENT2_ID:?}
+      Conformance__Client2__ClientSecret: ${CONFORMANCE_CLIENT2_SECRET:?}
+    profiles: ["tools"]
+
+  mongodb:
+    image: mongo:6.0.13
+
+  suite-server:
+    image: registry.gitlab.com/openid/conformance-suite:${CONFORMANCE_SUITE_TAG:-release-v5.2.4}
+    depends_on:
+      - mongodb
+    environment:
+      BASE_URL: https://localhost.emobix.co.uk:8443
+      BASE_MTLS_URL: https://localhost.emobix.co.uk:8444
+      MONGODB_HOST: mongodb
+      SPRING_PROFILES_ACTIVE: dev
+      # The suite's own sign-in providers are configured but unused (the runner
+      # talks to its API in development mode); Spring refuses to start with
+      # empty client registrations, so placeholders are required.
+      OIDC_GOOGLE_CLIENTID: google-client
+      OIDC_GOOGLE_SECRET: google-secret
+      OIDC_GITLAB_CLIENTID: gitlab-client
+      OIDC_GITLAB_SECRET: gitlab-secret
+    networks:
+      default:
+        aliases:
+          # The suite's nginx image proxies to http://server:8080.
+          - server
+
+  suite-nginx:
+    image: registry.gitlab.com/openid/conformance-suite/nginx:${CONFORMANCE_SUITE_TAG:-release-v5.2.4}
+    depends_on:
+      - suite-server
+    networks:
+      default:
+        aliases:
+          # The suite reaches its own public hostname, and the OP redirects the
+          # browser to it, through this proxy.
+          - localhost.emobix.co.uk
+
+  runner:
+    image: python:3.12-slim
+    depends_on:
+      - suite-nginx
+      - identity-op
+    working_dir: /suite
+    volumes:
+      - ${CONFORMANCE_SUITE_DIR:?}:/suite
+      - ./config:/config:ro
+      - ${CONFORMANCE_RESULTS_DIR:-./results}:/results
+    environment:
+      CONFORMANCE_SERVER: https://localhost.emobix.co.uk:8443/
+      CONFORMANCE_DEV_MODE: "1"
+      CONFORMANCE_PLAN: ${CONFORMANCE_PLAN:-}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        pip install --quiet --disable-pip-version-check httpx pyparsing
+        python - <<'PY'
+        import time, httpx
+        deadline = time.time() + 300
+        while True:
+            try:
+                if httpx.get("https://localhost.emobix.co.uk:8443/api/runner/available", verify=False, timeout=5).status_code < 500:
+                    break
+            except Exception:
+                pass
+            if time.time() > deadline:
+                raise SystemExit("conformance suite did not become available")
+            time.sleep(3)
+        PY
+        exec python scripts/run-test-plan.py --export-dir /results \
+          --expected-failures-file /config/expected-failures.json \
+          --expected-skips-file /config/expected-skips.json \
+          "$$CONFORMANCE_PLAN" /results/plan-config.json
+    profiles: ["tools"]

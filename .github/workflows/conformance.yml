@@ -1,0 +1,55 @@
+name: OpenID conformance
+
+# Runs the OpenID Foundation conformance suite against a disposable environment
+# built from the checked-out revision (see conformance/README.md). Nightly and on
+# demand; it is not a pull-request gate because a full plan takes tens of
+# minutes and depends on the suite's container registry.
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+    inputs:
+      plan:
+        description: Test plan with variants
+        required: false
+        default: "oidcc-basic-certification-test-plan[server_metadata=discovery][client_registration=static_client]"
+      template:
+        description: Plan configuration template
+        required: false
+        default: conformance/config/oidcc-basic.template.json
+
+permissions:
+  contents: read
+
+concurrency:
+  group: conformance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  oidcc-basic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run conformance plan
+        env:
+          CONFORMANCE_RESULTS_DIR: ${{ github.workspace }}/conformance/results
+        run: |
+          conformance/run.sh \
+            "${{ inputs.plan || 'oidcc-basic-certification-test-plan[server_metadata=discovery][client_registration=static_client]' }}" \
+            "${{ inputs.template || 'conformance/config/oidcc-basic.template.json' }}"
+
+      - name: Remove rendered configuration
+        if: always()
+        run: rm -f conformance/results/plan-config.json
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: conformance-results
+          path: conformance/results/
+          if-no-files-found: warn
+          retention-days: 30

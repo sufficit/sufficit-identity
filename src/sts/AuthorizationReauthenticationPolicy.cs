@@ -5,8 +5,9 @@ using OpenIddict.Abstractions;
 namespace Sufficit.Identity.STS;
 
 /// <summary>
-/// Evaluates the OIDC max_age contract against the time at which the user
-/// actually authenticated. Token issue/refresh time is intentionally ignored.
+/// Evaluates the OIDC max_age and prompt=login contracts against the time at
+/// which the user actually authenticated. Token issue/refresh time is
+/// intentionally ignored.
 /// </summary>
 internal static class AuthorizationReauthenticationPolicy
 {
@@ -19,6 +20,16 @@ internal static class AuthorizationReauthenticationPolicy
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(principal);
+
+        // prompt=login requires the OP to reauthenticate the end user however
+        // recent the session is (OIDC Core 3.1.2.1); the conformance suite
+        // checks it by comparing auth_time across two authorizations
+        // (oidcc-prompt-login). Like max_age=0, the ceremony that satisfies it
+        // is recognized by the controller through the authentication receipt.
+        if (request.HasPromptValue(OpenIddictConstants.PromptValues.Login))
+        {
+            return true;
+        }
 
         if (request.MaxAge is not { } maximumAgeSeconds)
         {
