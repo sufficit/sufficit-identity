@@ -21,6 +21,14 @@ using Sufficit.Identity.UI.Management;
 using Sufficit.Identity.UI.Vault;
 using Sufficit.Identity.Vault;
 
+if (args.Contains("--prune-tokens", StringComparer.Ordinal)
+    || args.Contains("--check-token-pruning", StringComparer.Ordinal))
+{
+    Environment.ExitCode = await TokenPruningCommand.RunAsync(
+        args.Contains("--check-token-pruning", StringComparer.Ordinal));
+    return;
+}
+
 var builder = WebApplication.CreateBuilder(args);
 var migrateOnly = args.Contains("--migrate-only", StringComparer.Ordinal);
 var reconcileClientTokenLifetimes = args.Contains(

@@ -25,11 +25,9 @@ namespace Sufficit.Identity.STS.Tokens;
 /// created before the threshold is never touched.
 /// </para>
 /// <para>
-/// The store batches deletes internally and the manager calls are idempotent,
-/// so the cluster nodes running this sweep concurrently merely race to delete
-/// the same rows — the same posture as the management audit retention worker.
-/// A failed sweep is an operational problem that logs and waits for the next
-/// interval; it is never a reason to take the identity provider down.
+/// Deployments sharing a replicated database should disable this worker on
+/// every API replica and schedule the maintenance command on one owner.
+/// Pruning remains idempotent to tolerate scheduler retries.
 /// </para>
 /// </remarks>
 internal sealed class OpenIddictPruningWorker(
@@ -82,30 +80,9 @@ internal sealed class OpenIddictPruningWorker(
             return;
         }
 
-        var threshold = DateTimeOffset.UtcNow.AddDays(-options.RetentionDays);
-
-        // The OpenIddict managers are scoped (they consume the scoped
-        // AppDbContext) while this worker is a singleton, so each sweep
-        // borrows a scope instead of holding a captive dependency.
-        await using var scope = services.CreateAsyncScope();
-        var tokens = scope.ServiceProvider.GetRequiredService<IOpenIddictTokenManager>();
-        var authorizations = scope.ServiceProvider
-            .GetRequiredService<IOpenIddictAuthorizationManager>();
-
-        // Tokens first: the authorization sweep only removes authorizations
-        // with no remaining tokens, so this ordering lets a single pass
-        // retire ad-hoc chains behind the same threshold.
-        var removedTokens = await tokens.PruneAsync(threshold, cancellationToken);
-        var removedAuthorizations =
-            await authorizations.PruneAsync(threshold, cancellationToken);
-
-        if (removedTokens > 0 || removedAuthorizations > 0)
-        {
-            logger.LogInformation(
-                "Pruned {Tokens} tokens and {Authorizations} authorizations older than {RetentionDays} days.",
-                removedTokens,
-                removedAuthorizations,
-                options.RetentionDays);
-        }
+        var result = await new OpenIddictPruningService(services).PruneAsync(
+            options.RetentionDays, cancellationToken);
+        logger.LogInformation("Pruned {Tokens} tokens and {Authorizations} authorizations.",
+            result.Tokens, result.Authorizations);
     }
 }

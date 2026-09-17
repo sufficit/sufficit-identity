@@ -75,6 +75,7 @@ claim cites `file:line`.
 ## Architecture
 
 - [Repository and module architecture](architecture/ARCHITECTURE-REPOSITORY.md)
+- [Revogação de tokens e limpeza de registros](architecture/ARCHITECTURE-TOKEN-REVOCATION.md)
 - [Distributed snapshot cache architecture](architecture/ARCHITECTURE-DISTRIBUTED-CACHE.md)
 - [Single-source UI boundary](architecture/ARCHITECTURE-SINGLE-SOURCE-UI.md)
 - [Management authorization boundary](architecture/ARCHITECTURE-MANAGEMENT-AUTHORIZATION.md)
@@ -127,3 +128,5 @@ must never silently become the current roadmap.
 ## Shared patterns
 
 - [Runtime snapshots](architecture/ARCHITECTURE-RUNTIME-SNAPSHOTS.md) — reference to the Sufficit contract and differences from the current implementation.
+
+- [Limpeza centralizada de tokens e alerta de atraso](operations/TOKEN-PRUNING.md)

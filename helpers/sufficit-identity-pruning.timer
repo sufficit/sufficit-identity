@@ -1,0 +1,10 @@
+[Unit]
+Description=Prune Identity tokens every six hours (Castrum only)
+
+[Timer]
+OnCalendar=*-*-* 00,06,12,18:00:00 UTC
+RandomizedDelaySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

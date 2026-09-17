@@ -1,0 +1,27 @@
+[Unit]
+Description=Sufficit Identity token pruning (single scheduler: Castrum)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/sufficit-identity
+User=dotnetuser
+Group=www-data
+Environment=DOTNET_ENVIRONMENT=Production
+Environment=DOTNET_ROOT=/opt/dotnet-10
+Environment=Sufficit__Identity__TokenPruning__StatePath=/var/lib/sufficit-identity-maintenance/token-pruning.json
+Environment=Sufficit__Identity__TokenPruning__AlertAfterHours=14
+StateDirectory=sufficit-identity-maintenance
+StateDirectoryMode=0750
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+TimeoutStartSec=35min
+TimeoutStopSec=30s
+EnvironmentFile=/etc/sufficit/identity/vault-secrets.env
+Environment=Sufficit__Identity__TokenPruning__RetentionDays=30
+Environment=Sufficit__Identity__TokenPruning__TimeoutMinutes=30
+ExecStart=/opt/dotnet-10/dotnet /opt/sufficit-identity/Sufficit.Identity.Server.dll --prune-tokens

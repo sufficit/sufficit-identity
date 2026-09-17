@@ -284,11 +284,14 @@ public static partial class ServiceCollectionExtensions
             // for real connection strings for the same reason as the metrics
             // writer above: the shared in-memory SQLite connection used by
             // integration hosts races background writers.
-            services.AddHostedService<Tokens.OpenIddictPruningWorker>();
+            if (options.TokenPruning.RunInWebHost)
+                services.AddHostedService<Tokens.OpenIddictPruningWorker>();
             // MariaDB rejects the LIMIT-in-subquery DELETE that the EF Core
             // bulk path emits for OpenIddict's PruneAsync batches (the same
             // dialect gap the audit retention worker hit in production), so
             // real deployments force the transactional batch path instead.
+            // SufficitOpenIddictTokenStore keeps authorization-chain revocation
+            // set-based independently of this pruning compatibility switch.
             services.AddOptions<OpenIddict.EntityFrameworkCore.OpenIddictEntityFrameworkCoreOptions>()
                 .Configure(entityFrameworkCore => entityFrameworkCore.DisableBulkOperations = true);
         }
@@ -637,6 +640,9 @@ public static partial class ServiceCollectionExtensions
             {
                 core.UseEntityFrameworkCore()
                     .UseDbContext<AppDbContext>();
+                core.ReplaceTokenStore<
+                    OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreToken,
+                    Tokens.SufficitOpenIddictTokenStore>();
                 core.ReplaceApplicationManager<
                     OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication,
                     SufficitOpenIddictApplicationManager>();

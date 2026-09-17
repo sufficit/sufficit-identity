@@ -63,6 +63,14 @@
       "AesGcmMessageBudgetPerKeyVersion": 250000000
     },
     "Identity": {
+      "TokenPruning": {
+        "_": "Em cluster, definir RunInWebHost=false em TODAS as APIs e agendar --prune-tokens em um único executor. O watchdog --check-token-pruning usa o mesmo StatePath persistente. Ver docs/operations/TOKEN-PRUNING.md.",
+        "RetentionDays": 30,
+        "RunInWebHost": true,
+        "StatePath": null,
+        "AlertAfterHours": 14,
+        "TimeoutMinutes": 30
+      },
       "Issuer": "https://your-identity-host/",
       "PublicUrl": "https://your-identity-host/",
       "_AllowDevelopmentOnPublicHost": "Keep false. With ASPNETCORE_ENVIRONMENT=Development the host refuses to start when Issuer/PublicUrl point at a public host or production certificates are configured, because Development enables ephemeral certificates and relaxed security checks. Set true only for a deliberate development server on a public name.",

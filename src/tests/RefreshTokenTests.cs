@@ -1,9 +1,15 @@
 using System.Net;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
+using OpenIddict.Abstractions;
+using OpenIddict.EntityFrameworkCore;
+using OpenIddict.EntityFrameworkCore.Models;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.STS.Tokens;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
 
@@ -21,6 +27,78 @@ public sealed class RefreshTokenTests
     private readonly SufficitIdentityTestFactory _factory;
 
     public RefreshTokenTests(SufficitIdentityTestFactory factory) => _factory = factory;
+
+    [Fact]
+    public async Task Reuse_outside_leeway_revokes_the_chain_and_rejects_the_rotated_refresh_token()
+    {
+        using var parent = new SufficitIdentityTestFactory();
+        await ((IAsyncLifetime)parent).InitializeAsync();
+        using var factory = parent.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            services.Configure<OpenIddictEntityFrameworkCoreOptions>(options => options.DisableBulkOperations = true)));
+        var username = $"refresh-replay-{Guid.NewGuid():N}";
+        string subject;
+        using (var scope = factory.Services.CreateScope())
+        {
+            Assert.IsType<SufficitOpenIddictTokenStore>(scope.ServiceProvider
+                .GetRequiredService<IOpenIddictTokenStore<OpenIddictEntityFrameworkCoreToken>>());
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await TestDataSeeder.CreateUserAsync(users, username, "Str0ng!Passw0rd#Replay");
+            subject = user.Id;
+        }
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        await TestOnlyEndpoints.SignInAsync(client, username);
+        var (verifier, challenge) = Pkce.CreatePair();
+        var code = await AuthorizationCodeFlowTests.AuthorizeAsync(client, challenge, scope: "openid offline_access");
+        var (initialStatus, initial) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "authorization_code", ["code"] = code,
+            ["redirect_uri"] = TestDataSeeder.AuthorizationCodeRedirectUri,
+            ["client_id"] = TestDataSeeder.AuthorizationCodeClientId, ["code_verifier"] = verifier,
+        });
+        Assert.Equal(HttpStatusCode.OK, initialStatus);
+        var original = initial.GetProperty("refresh_token").GetString()!;
+        var (rotationStatus, rotation) = await RedeemAsync(original);
+        Assert.Equal(HttpStatusCode.OK, rotationStatus);
+        var rotated = rotation.GetProperty("refresh_token").GetString()!;
+
+        // Age only this test's redeemed token beyond the real configured
+        // leeway. Keep production protocol options and the shared clock intact.
+        using (var scope = factory.Services.CreateScope())
+        {
+            var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictTokenManager>();
+            var leeway = scope.ServiceProvider.GetRequiredService<
+                IOptionsMonitor<OpenIddict.Server.OpenIddictServerOptions>>().CurrentValue.RefreshTokenReuseLeeway;
+            Assert.NotNull(leeway);
+            var aged = 0;
+            await foreach (var token in manager.FindBySubjectAsync(subject))
+            {
+                if (await manager.GetTypeAsync(token) != OpenIddictConstants.TokenTypeIdentifiers.RefreshToken ||
+                    await manager.GetStatusAsync(token) != OpenIddictConstants.Statuses.Redeemed)
+                    continue;
+                var descriptor = new OpenIddictTokenDescriptor();
+                await manager.PopulateAsync(descriptor, token);
+                descriptor.RedemptionDate = DateTimeOffset.UtcNow - leeway.Value - TimeSpan.FromMinutes(1);
+                await manager.UpdateAsync(token, descriptor);
+                aged++;
+            }
+            Assert.Equal(1, aged);
+        }
+
+        var (replayStatus, replay) = await RedeemAsync(original);
+        Assert.Equal(HttpStatusCode.BadRequest, replayStatus);
+        Assert.Equal(OpenIddictConstants.Errors.InvalidGrant, replay.GetProperty("error").GetString());
+        var (revokedStatus, revoked) = await RedeemAsync(rotated);
+        Assert.Equal(HttpStatusCode.BadRequest, revokedStatus);
+        Assert.Equal(OpenIddictConstants.Errors.InvalidGrant, revoked.GetProperty("error").GetString());
+
+        Task<(HttpStatusCode, System.Text.Json.JsonElement)> RedeemAsync(string token) =>
+            client.PostFormAsync("/connect/token", new Dictionary<string, string>
+            {
+                ["grant_type"] = "refresh_token", ["refresh_token"] = token,
+                ["client_id"] = TestDataSeeder.AuthorizationCodeClientId,
+            });
+    }
 
     [Fact]
     public async Task Redeeming_a_refresh_token_rotates_to_a_new_distinct_refresh_token()
@@ -202,7 +280,7 @@ public sealed class RefreshTokenTests
     [Fact]
     public async Task Reusing_the_just_rotated_refresh_token_immediately_is_tolerated_within_the_reuse_leeway()
     {
-        // NOTE (residual gap, per the eval task's own fallback instruction):
+        // OpenIddict deliberately tolerates retries within the reuse leeway.
         // OpenIddict's OpenIddictServerOptions.RefreshTokenReuseLeeway
         // defaults to 30 seconds and is never overridden in
         // ServiceCollectionExtensions.cs. Presenting an already-redeemed
@@ -212,10 +290,9 @@ public sealed class RefreshTokenTests
         // produced are reissued rather than the request being rejected.
         // True reuse-detection (an old, already-consumed refresh token being
         // rejected and its whole authorization chain revoked) only triggers
-        // once that leeway window has elapsed — which is impractical to
-        // assert here without either sleeping 30+ seconds (slows the whole
-        // suite for one test) or overriding server config in a way that
-        // could mask a real behavior difference. This test instead pins
+        // once that leeway window has elapsed. The separate outside-leeway
+        // test ages the redeemed entry to exercise that path without sleeping
+        // or changing the protocol options. This test pins
         // TODAY's actual, documented behavior (tolerated reuse) so a future
         // change to that default is a deliberate, visible diff instead of a
         // silent regression. Asserting outright rejection here would be
