@@ -64,7 +64,7 @@
     },
     "Identity": {
       "TokenPruning": {
-        "_": "Em cluster, definir RunInWebHost=false em TODAS as APIs e agendar --prune-tokens em um único executor. O watchdog --check-token-pruning usa o mesmo StatePath persistente. Ver docs/operations/TOKEN-PRUNING.md.",
+        "_": "Em cluster, definir RunInWebHost=false em TODAS as APIs e agendar --prune-tokens em um único executor. O watchdog --check-token-pruning usa o mesmo StatePath persistente. Ver docs/operations/RUNBOOK-TOKEN-PRUNING.md.",
         "RetentionDays": 30,
         "RunInWebHost": true,
         "StatePath": null,

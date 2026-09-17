@@ -59,7 +59,7 @@ para instalações sem agendador externo. A retenção padrão é de 30 dias pel
 data de criação; um token válido e ainda não expirado não é removido apenas
 por ser antigo. A revogação especializada não altera esse comportamento nem
 o contorno de compatibilidade SQL da limpeza. Consulte o
-[runbook de limpeza e alerta de atraso](../operations/TOKEN-PRUNING.md).
+[runbook de limpeza e alerta de atraso](../operations/RUNBOOK-TOKEN-PRUNING.md).
 
 ## Contrato de validação
 
