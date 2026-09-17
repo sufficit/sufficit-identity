@@ -15,10 +15,27 @@ For the existing Genius client, preserve all existing permissions and add only
 `scp:fleet.api`. Preserve the existing `fleet.api` scope resource `sufficit_fleet`.
 Configure all Identity nodes:
 
-```ini
-[Service]
-Environment="Sufficit__Identity__FirstPartyUserScopes__sufficit-ai-genius__0=fleet.api"
+Add the following mapping to the existing `Sufficit.Identity` section in each
+node's active `appsettings.Production.json`, preserving all other properties:
+
+```json
+{
+  "Sufficit": {
+    "Identity": {
+      "FirstPartyUserScopes": {
+        "sufficit-ai-genius": ["fleet.api"]
+      }
+    }
+  }
+}
 ```
+
+Do not put that dictionary key in a systemd `Environment=` name: the hyphens
+in `sufficit-ai-genius` make it an invalid environment variable name and systemd
+ignores the assignment. Apply the JSON configuration as a separate audited
+change under the deployment lease, retain a protected backup, then restart
+through the coordinated cluster wrapper. Verify with a real legacy-client refresh
+and resource request; a healthy process alone does not prove the mapping loaded.
 
 Deploy through the coordinated cluster procedure. Existing clients must omit the
 optional `scope` field on refresh to receive the issuer's complete updated grant.
