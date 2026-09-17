@@ -129,4 +129,4 @@ must never silently become the current roadmap.
 
 - [Runtime snapshots](architecture/ARCHITECTURE-RUNTIME-SNAPSHOTS.md) — reference to the Sufficit contract and differences from the current implementation.
 
-- [Limpeza centralizada de tokens e alerta de atraso](operations/TOKEN-PRUNING.md)
+- [Limpeza centralizada de tokens e alerta de atraso](operations/RUNBOOK-TOKEN-PRUNING.md)
