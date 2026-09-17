@@ -24,6 +24,20 @@ arguments:
 conformance/run.sh "<plan-name[variants]>" conformance/config/<template>.json
 ```
 
+The FAPI 2.0 Security Profile plan runs from the same harness:
+
+```bash
+conformance/run.sh \
+  "fapi2-security-profile-final-test-plan[client_auth_type=private_key_jwt][sender_constrain=dpop][openid=openid_connect][fapi_profile=plain_fapi]" \
+  config/fapi2.template.json
+```
+
+The template name selects both the accepted-result files
+(`config/<name>.expected-*.json`) and the protocol options of the environment:
+the FAPI 2 run turns the profile and DPoP on and seeds clients that authenticate
+with `private_key_jwt` against keys generated per run. It is **not** a gate yet
+— see `docs/plans/PLAN-FAPI2-CONFORMANCE.md` for what is still failing.
+
 Requirements: Docker with Compose v2 and network access to pull the suite images
 from `registry.gitlab.com/openid/conformance-suite` and to clone the suite scripts.
 

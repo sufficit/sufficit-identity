@@ -70,6 +70,10 @@ internal sealed class DpopProtocolFeature : IProtocolFeature
         server.AddEventHandler(Dpop.AttachDpopTokenType.Descriptor);
         server.AddEventHandler(Dpop.ExtractDpopUserInfoToken.Descriptor);
         server.AddEventHandler(Dpop.ValidateDpopAccessTokenProof.Descriptor);
+        // RFC 9449 10.1: a proof sent with a pushed authorization request
+        // binds the code, with or without a dpop_jkt parameter.
+        server.AddEventHandler(
+            Dpop.BindPushedAuthorizationToDpopProof.Descriptor);
     }
 
     public void ConfigureValidation(OpenIddictValidationBuilder validation, ProtocolFeatureContext context)

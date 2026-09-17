@@ -60,21 +60,18 @@ with a regression test:
 ## Result
 
 `oidcc-basic-certification-test-plan[server_metadata=discovery][client_registration=static_client]`,
-35 modules, exit code 0:
-
-| Result | Modules |
-|---|---|
-| PASSED | 20 |
-| WARNING, accepted in `expected-failures.json` | 8 |
-| REVIEW (the suite asks a human to look at an uploaded screenshot) | 4 |
-| SKIPPED, accepted in `expected-skips.json` | 2 |
-| FAILED or INTERRUPTED | 0 |
+36 modules, exit code 0, 1841 condition successes and no failure. Seven
+warnings and two skips are accepted in `conformance/config/`, four modules end
+in REVIEW (the suite asks a human to look at an uploaded screenshot), and the
+rest pass.
 
 The accepted warnings are: OpenIddict's own `oi_tkn_id`/`oi_au_id` in the
 `id_token`; identity claims in the `id_token` for their scopes, which the
-product's clients depend on; the suite's requirement that a scope return every
-one of its standard claims; `acr` not echoing a voluntary `acr_values`; and the
-unimplemented `claims` request parameter. Each entry in the file says why.
+product's clients depend on; the suite's requirement that the `profile` scope
+return every one of its standard claims (`given_name`, `birthdate`, ... — the
+`address` and `phone` scopes now pass in full); `acr` not echoing a voluntary
+`acr_values`; and the unimplemented `claims` request parameter. Each entry in
+the file says why.
 
 Two environment settings were needed to make the plan run end to end, both
 recorded in `conformance/README.md`: the rate limiter is off, because a whole
@@ -84,6 +81,34 @@ off OpenIddict refuses a `request` parameter while extracting the request —
 before the redirect URI is validated — so the error cannot be returned to the
 client as OIDCC-3.1.2.6 requires. With JAR on, discovery announces which signing
 algorithms are accepted and the suite skips the unsigned request object modules.
+
+## FAPI 2.0
+
+The same harness runs the FAPI 2.0 Security Profile plan
+(`conformance/config/fapi2.template.json`): clients authenticate with
+`private_key_jwt` against keys the seeder generates and registers, and the
+profile, DPoP and a short pushed-request lifetime are turned on by the plan's
+name. It is **not** a gate yet — 20 of 56 modules pass. What is left is written
+down in `docs/plans/PLAN-FAPI2-CONFORMANCE.md`; most of the failures come from
+one environment fact (the development signing certificate is RSA, and the
+profile wants PS256 or ES256).
+
+Getting that far found four more defects, all fixed with regression tests:
+
+- `private_key_jwt` assertions signed with the ordinary `typ: JWT` were refused.
+  OpenIddict accepts only its own `client-authentication+jwt`, so every standard
+  client library — and the suite — got `invalid_client`
+  (`ClientAuthentication/StandardClientAssertionType.cs`).
+- A DPoP proof sent with a pushed authorization request did not bind the
+  authorization code (RFC 9449 10.1), and the FAPI 2 check demanded a `dpop_jkt`
+  parameter the RFC makes optional. The binding now comes from the proof, and
+  the profile requires the proof on the token request instead.
+- DPoP proofs without `exp` were refused; RFC 9449 4.2 does not require it, and
+  freshness already comes from `iat` and the replay cache.
+- A DPoP proof whose `jwk` header carried the private key was accepted.
+
+Discovery also gained `token_endpoint_auth_signing_alg_values_supported`, which
+RFC 8414 requires alongside `private_key_jwt`.
 
 ## Not deployed
 

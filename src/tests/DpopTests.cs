@@ -82,6 +82,99 @@ public sealed class DpopTests
     }
 
     [Fact]
+    public async Task Proof_whose_jwk_header_carries_the_private_key_is_rejected()
+    {
+        // RFC 9449 4.2: the jwk header is the public key. A proof that ships
+        // the private half is malformed, and the server has no business
+        // holding a client secret (conformance: dpop-negative-tests).
+        var key = new ECDsaSecurityKey(ECDsa.Create(ECCurve.NamedCurves.nistP256));
+        var jwk = JsonWebKeyConverter.ConvertFromECDsaSecurityKey(key);
+        var claims = new Dictionary<string, object>
+        {
+            ["htm"] = "POST",
+            ["htu"] = "https://sts.tests.local/connect/token",
+            ["iat"] = EpochTime.GetIntDate(DateTimeOffset.UtcNow.UtcDateTime),
+            ["jti"] = Guid.NewGuid().ToString("N"),
+        };
+        var proofJwt = new JsonWebTokenHandler
+        {
+            SetDefaultTimesOnTokenCreation = false,
+        }.CreateToken(new SecurityTokenDescriptor
+        {
+            Claims = claims,
+            SigningCredentials = new SigningCredentials(
+                key,
+                SecurityAlgorithms.EcdsaSha256),
+            AdditionalHeaderClaims = new Dictionary<string, object>
+            {
+                ["typ"] = DpopProofValidator.DpopHeaderType,
+                // Deliberately NOT stripping d.
+                ["jwk"] = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(
+                    System.Text.Json.JsonSerializer.Serialize(jwk)),
+            },
+        });
+
+        var validator = new DpopProofValidator(TimeProvider.System,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<DpopProofValidator>.Instance);
+
+        var proof = await validator.ValidateAsync(
+            proofJwt,
+            "POST",
+            "https://sts.tests.local/connect/token",
+            expectedNonce: null,
+            CancellationToken.None);
+
+        Assert.Null(proof);
+    }
+
+    [Fact]
+    public async Task Proof_without_exp_is_accepted()
+    {
+        // RFC 9449 4.2 requires jti, htm, htu and iat; exp is not in that list
+        // and the clients that matter — including the OpenID conformance
+        // suite's FAPI 2 plan — do not send it. Freshness comes from iat and
+        // the jti replay cache, which the next test pins down.
+        var (proofJwt, _) = BuildDpopProof(
+            method: "POST",
+            url: "https://sts.tests.local/connect/token",
+            includeExpiry: false);
+
+        var validator = new DpopProofValidator(TimeProvider.System,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<DpopProofValidator>.Instance);
+
+        var proof = await validator.ValidateAsync(
+            proofJwt,
+            "POST",
+            "https://sts.tests.local/connect/token",
+            expectedNonce: null,
+            CancellationToken.None);
+
+        Assert.NotNull(proof);
+    }
+
+    [Fact]
+    public async Task Proof_issued_before_the_replay_window_is_rejected()
+    {
+        var (proofJwt, _) = BuildDpopProof(
+            method: "POST",
+            url: "https://sts.tests.local/connect/token",
+            includeExpiry: false,
+            issuedAt: DateTimeOffset.UtcNow.AddHours(-2));
+
+        var validator = new DpopProofValidator(TimeProvider.System,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<DpopProofValidator>.Instance);
+
+        var proof = await validator.ValidateAsync(
+            proofJwt,
+            "POST",
+            "https://sts.tests.local/connect/token",
+            expectedNonce: null,
+            CancellationToken.None);
+
+        Assert.Null(proof);
+    }
+
+    [Fact]
     public async Task Proof_with_mismatched_htu_is_rejected()
     {
         // htu (HTTP URL) mismatch is the core anti-replay protection: a proof
@@ -529,7 +622,9 @@ public sealed class DpopTests
         string? jti = null,
         string? nonce = null,
         string? accessToken = null,
-        ECDsaSecurityKey? signingKey = null)
+        ECDsaSecurityKey? signingKey = null,
+        bool includeExpiry = true,
+        DateTimeOffset? issuedAt = null)
     {
         var key = signingKey ?? new ECDsaSecurityKey(
             ECDsa.Create(ECCurve.NamedCurves.nistP256));
@@ -543,10 +638,16 @@ public sealed class DpopTests
         {
             ["htm"] = method,
             ["htu"] = url,
-            ["iat"] = EpochTime.GetIntDate(DateTimeOffset.UtcNow.UtcDateTime),
-            ["exp"] = EpochTime.GetIntDate(DateTimeOffset.UtcNow.AddMinutes(1).UtcDateTime),
+            ["iat"] = EpochTime.GetIntDate(
+                (issuedAt ?? DateTimeOffset.UtcNow).UtcDateTime),
             ["jti"] = jti ?? Guid.NewGuid().ToString("N"),
         };
+        // exp is optional in RFC 9449 4.2; the tests cover both shapes.
+        if (includeExpiry)
+        {
+            claims["exp"] = EpochTime.GetIntDate(
+                (issuedAt ?? DateTimeOffset.UtcNow).AddMinutes(1).UtcDateTime);
+        }
         // RFC 9449 §8 nonce claim — present only when the AS challenged.
         if (nonce is not null)
         {
@@ -571,7 +672,12 @@ public sealed class DpopTests
             },
         };
 
-        var handler = new JsonWebTokenHandler();
+        var handler = new JsonWebTokenHandler
+        {
+            // Otherwise the handler stamps its own hour-long exp on a proof
+            // that is supposed to have none.
+            SetDefaultTimesOnTokenCreation = includeExpiry,
+        };
         var token = handler.CreateToken(descriptor);
         return (token, key);
     }

@@ -176,6 +176,13 @@ public static partial class ServiceCollectionExtensions
             server,
             new Features.ProtocolFeatureContext(options, auxiliarySigningCredentials));
 
+        // private_key_jwt from any standard client library: OpenIddict only
+        // accepts its own assertion media type. See
+        // ClientAuthentication/StandardClientAssertionType.cs.
+        server.AddEventHandler(
+            ClientAuthentication.AcceptStandardClientAssertionType.Descriptor);
+        server.AddEventHandler(
+            ClientAuthentication.RestoreStandardClientAssertionTokenType.Descriptor);
         server.AddEventHandler(RecordIdentityUsage.Descriptor);
         server.AddEventHandler(RecordAuthorizationUsageFailure.Descriptor);
         server.AddEventHandler(RecordTokenUsageFailure.Descriptor);

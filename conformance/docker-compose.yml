@@ -22,6 +22,17 @@ x-identity-env: &identity-env
   # (OIDCC-3.1.2.6). With the feature on, discovery announces which signing
   # algorithms are accepted and the suite skips what the server does not offer.
   Sufficit__Identity__Jar__Enabled: "true"
+  # FAPI 2.0 is selected per plan by conformance/run.sh: the Basic profile runs
+  # with the product defaults, the FAPI 2 plan needs the profile, DPoP-bound
+  # tokens and the clients under the profile.
+  Sufficit__Identity__Fapi2__Enabled: "${CONFORMANCE_FAPI2:-false}"
+  Sufficit__Identity__Fapi2__ClientIds__0: "${CONFORMANCE_CLIENT1_ID:?}"
+  Sufficit__Identity__Fapi2__ClientIds__1: "${CONFORMANCE_CLIENT2_ID:?}"
+  Sufficit__Identity__Dpop__Enabled: "${CONFORMANCE_DPOP:-false}"
+  # One module waits for a pushed request to expire before reusing it, and the
+  # runner gives a module four minutes. FAPI 2.0 caps this at 599 seconds;
+  # production keeps the 300-second default.
+  Sufficit__Identity__Fapi2__PushedAuthorizationRequestLifetimeSeconds: "${CONFORMANCE_PAR_LIFETIME:-300}"
   # The OpenID Connect Basic profile does not send PKCE. Production keeps the
   # OAuth 2.1 default of PKCE for every client.
   Sufficit__Identity__Pkce__RequireForAllClients: "false"
@@ -98,6 +109,10 @@ services:
       Conformance__Client1__ClientSecret: ${CONFORMANCE_CLIENT1_SECRET:?}
       Conformance__Client2__ClientId: ${CONFORMANCE_CLIENT2_ID:?}
       Conformance__Client2__ClientSecret: ${CONFORMANCE_CLIENT2_SECRET:?}
+      Conformance__ClientAuthentication: ${CONFORMANCE_CLIENT_AUTHENTICATION:-client_secret_basic}
+      Conformance__ClientKeysPath: /results/client-keys.json
+    volumes:
+      - ${CONFORMANCE_RESULTS_DIR:-./results}:/results
     profiles: ["tools"]
 
   mongodb:
@@ -150,6 +165,7 @@ services:
       CONFORMANCE_SERVER: https://localhost.emobix.co.uk:8443/
       CONFORMANCE_DEV_MODE: "1"
       CONFORMANCE_PLAN: ${CONFORMANCE_PLAN:-}
+      CONFORMANCE_EXPECTED_PREFIX: ${CONFORMANCE_EXPECTED_PREFIX:-oidcc-basic}
     entrypoint:
       - /bin/sh
       - -c
@@ -170,7 +186,7 @@ services:
             time.sleep(3)
         PY
         exec python scripts/run-test-plan.py --export-dir /results \
-          --expected-failures-file /config/expected-failures.json \
-          --expected-skips-file /config/expected-skips.json \
+          --expected-failures-file "/config/$$CONFORMANCE_EXPECTED_PREFIX.expected-failures.json" \
+          --expected-skips-file "/config/$$CONFORMANCE_EXPECTED_PREFIX.expected-skips.json" \
           "$$CONFORMANCE_PLAN" /results/plan-config.json
     profiles: ["tools"]

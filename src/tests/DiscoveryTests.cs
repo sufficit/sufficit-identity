@@ -17,6 +17,33 @@ public sealed class DiscoveryTests
     public DiscoveryTests(SufficitIdentityTestFactory factory) => _factory = factory;
 
     [Fact]
+    public async Task Discovery_document_names_the_client_assertion_algorithms()
+    {
+        // RFC 8414 requires this alongside private_key_jwt, and FAPI 2.0 fails
+        // a server without it (conformance:
+        // fapi2-security-profile-final-discovery-end-point-verification).
+        var client = _factory.CreateClient();
+        var json = await client.GetFromJsonAsync<JsonElement>(
+            "/.well-known/openid-configuration");
+
+        var methods = json.GetProperty("token_endpoint_auth_methods_supported")
+            .EnumerateArray()
+            .Select(value => value.GetString())
+            .ToArray();
+        Assert.Contains("private_key_jwt", methods);
+
+        var algorithms = json
+            .GetProperty("token_endpoint_auth_signing_alg_values_supported")
+            .EnumerateArray()
+            .Select(value => value.GetString())
+            .ToArray();
+        Assert.Contains("PS256", algorithms);
+        Assert.Contains("ES256", algorithms);
+        Assert.DoesNotContain("none", algorithms);
+        Assert.DoesNotContain("HS256", algorithms);
+    }
+
+    [Fact]
     public async Task Discovery_document_advertises_supported_logout_without_claiming_sid_support()
     {
         var client = _factory.CreateClient();

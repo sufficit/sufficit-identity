@@ -1,4 +1,8 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -78,6 +82,12 @@ if (!(await users.GetClaimsAsync(user)).Any(claim => claim.Type == Claims.Addres
         "add the conformance user address claim");
 }
 
+var privateKeyJwt = string.Equals(
+    configuration["Conformance:ClientAuthentication"],
+    "private_key_jwt",
+    StringComparison.OrdinalIgnoreCase);
+var clientKeys = new Dictionary<string, JsonObject>(StringComparer.Ordinal);
+
 var applications = services.GetRequiredService<IOpenIddictApplicationManager>();
 foreach (var index in new[] { 1, 2 })
 {
@@ -90,13 +100,24 @@ foreach (var index in new[] { 1, 2 })
     var descriptor = new OpenIddictApplicationDescriptor
     {
         ClientId = clientId,
-        ClientSecret = Required($"Conformance:Client{index}:ClientSecret"),
+        // FAPI 2.0 forbids a shared secret: the client proves itself with a
+        // JWT assertion signed by a key it owns (RFC 7523), so the private key
+        // goes to the suite and only the public one is registered here.
+        ClientSecret = privateKeyJwt
+            ? null
+            : Required($"Conformance:Client{index}:ClientSecret"),
         ClientType = ClientTypes.Confidential,
         // The suite drives the browser; a consent page would need its own
         // automation and is not what the Basic profile tests.
         ConsentType = ConsentTypes.Implicit,
         DisplayName = $"OpenID conformance client {index}",
-        RedirectUris = { new Uri($"{suiteBaseUrl}/test/a/{alias}/callback") },
+        RedirectUris =
+        {
+            new Uri($"{suiteBaseUrl}/test/a/{alias}/callback"),
+            // The FAPI 2 plan checks that a redirect URI with a query string is
+            // matched exactly, so the suite uses this one for its second client.
+            new Uri($"{suiteBaseUrl}/test/a/{alias}/callback?dummy1=lorem&dummy2=ipsum"),
+        },
         PostLogoutRedirectUris = { new Uri($"{suiteBaseUrl}/test/a/{alias}/post_logout_redirect") },
         Permissions =
         {
@@ -112,14 +133,66 @@ foreach (var index in new[] { 1, 2 })
             Permissions.Prefixes.Scope + Scopes.Address,
             Permissions.Prefixes.Scope + Scopes.Phone,
             Permissions.Prefixes.Scope + Scopes.OfflineAccess,
+            Permissions.Endpoints.PushedAuthorization,
         },
     };
+
+    if (privateKeyJwt)
+    {
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var securityKey = new ECDsaSecurityKey(key)
+        {
+            KeyId = Base64UrlEncoder.Encode(RandomNumberGenerator.GetBytes(16)),
+        };
+
+        descriptor.JsonWebKeySet = new JsonWebKeySet();
+        descriptor.JsonWebKeySet.Keys.Add(PublicJwk(securityKey));
+        clientKeys[clientId] = PrivateJwk(securityKey, key);
+    }
+
     await applications.CreateAsync(descriptor);
     Console.WriteLine($"Seeded client {clientId}.");
 }
 
+if (clientKeys.Count > 0)
+{
+    // conformance/run.sh renders the plan configuration after this runs, so the
+    // suite receives exactly the keys that were registered.
+    var path = Required("Conformance:ClientKeysPath");
+    await File.WriteAllTextAsync(
+        path,
+        JsonSerializer.Serialize(clientKeys, new JsonSerializerOptions { WriteIndented = true }));
+    Console.WriteLine($"Wrote client keys to {path}.");
+}
+
 Console.WriteLine($"Seeded user {userName}.");
 return 0;
+
+// The suite needs the private key as a JWK; OpenIddict stores the public half.
+static JsonWebKey PublicJwk(ECDsaSecurityKey key)
+{
+    var jwk = JsonWebKeyConverter.ConvertFromECDsaSecurityKey(key);
+    jwk.D = null;
+    jwk.Alg = SecurityAlgorithms.EcdsaSha256;
+    jwk.Use = "sig";
+    return jwk;
+}
+
+static JsonObject PrivateJwk(ECDsaSecurityKey key, ECDsa algorithm)
+{
+    var parameters = algorithm.ExportParameters(includePrivateParameters: true);
+    return new JsonObject
+    {
+        ["kty"] = "EC",
+        ["crv"] = "P-256",
+        ["kid"] = key.KeyId,
+        ["alg"] = SecurityAlgorithms.EcdsaSha256,
+        ["use"] = "sig",
+        ["x"] = Base64UrlEncoder.Encode(parameters.Q.X),
+        ["y"] = Base64UrlEncoder.Encode(parameters.Q.Y),
+        ["d"] = Base64UrlEncoder.Encode(parameters.D),
+    };
+}
 
 static void Ensure(IdentityResult result, string action)
 {

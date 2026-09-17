@@ -41,6 +41,17 @@ public static partial class ServiceCollectionExtensions
                 context.Metadata["authorization_response_iss_parameter_supported"] =
                     JsonValue.Create(true);
 
+                // RFC 8414: required alongside private_key_jwt, which every
+                // client with a registered key set can use, and FAPI 2.0 fails
+                // a server without it
+                // (FAPI2CheckDiscEndpointTokenEndpointAuthSigningAlgValuesSupported).
+                // The assertion is verified against the client's own key, so
+                // the announced set is the asymmetric one the profile expects
+                // plus RS256 for clients that predate it. Symmetric algorithms
+                // are deliberately absent: client_secret_jwt is not offered.
+                context.Metadata["token_endpoint_auth_signing_alg_values_supported"] =
+                    new JsonArray("PS256", "ES256", "RS256");
+
                 // Note: request_uri_parameter_supported and
                 // require_pushed_authorization_requests are published
                 // by OpenIddict itself based on the server options
@@ -51,7 +62,11 @@ public static partial class ServiceCollectionExtensions
 
                 return default;
             })
-            .SetOrder(OpenIddictServerHandlers.Discovery.AttachEndpoints.Descriptor.Order + 1)
+            // After OpenIddict published the client authentication methods:
+            // the signing algorithms below are only announced when a signed
+            // assertion is actually accepted.
+            .SetOrder(OpenIddictServerHandlers.Discovery
+                .AttachClientAuthenticationMethods.Descriptor.Order + 1)
             .SetType(OpenIddictServerHandlerType.Custom)
             .Build());
     }
