@@ -26,6 +26,7 @@ public sealed class GrantOperations(
     IAuthenticationContextClassMapper authenticationContextClasses,
     ScopeEntitlementProvisioner scopeEntitlementProvisioner,
     McpScopeGrantPolicy mcpScopeGrantPolicy,
+    FirstPartyUserScopePolicy firstPartyUserScopes,
     IConfiguration configuration)
 {
     internal const string SessionIdClaimType =
@@ -64,11 +65,10 @@ public sealed class GrantOperations(
             approvedScopes,
             cancellationToken);
 
-    public System.Collections.Immutable.ImmutableArray<string>
-        ResolveImplicitMcpScopes(
-            string? clientId,
-            IEnumerable<string> grantedScopes) =>
-        mcpScopeGrantPolicy.Resolve(clientId, grantedScopes);
+    public ValueTask<ImmutableArray<string>> ResolveFirstPartyUserScopesAsync(
+        string? clientId, IEnumerable<string> grantedScopes, CancellationToken ct = default) =>
+        firstPartyUserScopes.ResolveAsync(clientId,
+            mcpScopeGrantPolicy.Resolve(clientId, grantedScopes), ct);
 
     public TokenExchangeOptions TokenExchangeOptions { get; } =
         configuration.GetSection("Sufficit:Identity:TokenExchange")
