@@ -1,0 +1,98 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sufficit-identity-pruning
+spec:
+  suspend: true # Activate only after disabling the previous scheduler.
+  schedule: "0 */6 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 1800
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 2100
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001 # Align with the image UID.
+            fsGroup: 10001
+          containers:
+            - name: maintenance
+              image: REPLACE_WITH_IDENTITY_IMAGE_DIGEST
+              args: ["--prune-tokens"]
+              env:
+                - name: DOTNET_ENVIRONMENT
+                  value: Production
+                - name: Sufficit__Identity__TokenPruning__StatePath
+                  value: /state/token-pruning.json
+                - name: Sufficit__Identity__TokenPruning__AlertAfterHours
+                  value: "14"
+                - name: Sufficit__Identity__TokenPruning__RetentionDays
+                  value: "30"
+                - name: SUFFICIT_SECRET_DATABASE_CONNECTION_STRING
+                  valueFrom:
+                    secretKeyRef:
+                      name: identity-maintenance
+                      key: database-connection-string
+              volumeMounts:
+                - name: state
+                  mountPath: /state
+              resources:
+                requests: {cpu: 100m, memory: 128Mi}
+                limits: {cpu: "1", memory: 512Mi}
+          volumes:
+            - name: state
+              persistentVolumeClaim:
+                claimName: identity-maintenance-state
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sufficit-identity-pruning-watchdog
+spec:
+  suspend: true # Activate only after disabling the previous scheduler.
+  schedule: "0 * * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 1800
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 60
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001 # Align with the image UID.
+            fsGroup: 10001
+          containers:
+            - name: maintenance
+              image: REPLACE_WITH_IDENTITY_IMAGE_DIGEST
+              args: ["--check-token-pruning"]
+              env:
+                - name: DOTNET_ENVIRONMENT
+                  value: Production
+                - name: Sufficit__Identity__TokenPruning__StatePath
+                  value: /state/token-pruning.json
+                - name: Sufficit__Identity__TokenPruning__AlertAfterHours
+                  value: "14"
+                - name: Sufficit__Identity__TokenPruning__RetentionDays
+                  value: "30"
+              volumeMounts:
+                - name: state
+                  mountPath: /state
+              resources:
+                requests: {cpu: 100m, memory: 128Mi}
+                limits: {cpu: "1", memory: 512Mi}
+          volumes:
+            - name: state
+              persistentVolumeClaim:
+                claimName: identity-maintenance-state

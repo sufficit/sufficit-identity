@@ -1,0 +1,22 @@
+[Unit]
+Description=Alert when Identity token pruning has no recent success
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/sufficit-identity
+User=dotnetuser
+Group=www-data
+Environment=DOTNET_ENVIRONMENT=Production
+Environment=DOTNET_ROOT=/opt/dotnet-10
+Environment=Sufficit__Identity__TokenPruning__StatePath=/var/lib/sufficit-identity-maintenance/token-pruning.json
+Environment=Sufficit__Identity__TokenPruning__AlertAfterHours=14
+StateDirectory=sufficit-identity-maintenance
+StateDirectoryMode=0750
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+TimeoutStartSec=1min
+TimeoutStopSec=30s
+ExecStart=/opt/dotnet-10/dotnet /opt/sufficit-identity/Sufficit.Identity.Server.dll --check-token-pruning

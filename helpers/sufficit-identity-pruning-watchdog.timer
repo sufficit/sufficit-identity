@@ -1,0 +1,10 @@
+[Unit]
+Description=Check Identity token pruning success every hour
+
+[Timer]
+OnBootSec=10min
+OnCalendar=hourly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
