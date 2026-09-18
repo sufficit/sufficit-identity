@@ -113,6 +113,16 @@ builder.Services.AddSingleton<ITrustedProxyChangePublisher>(sp => sp.GetRequired
 builder.Services.AddHostedService(sp => sp.GetRequiredService<TrustedProxyNatsBridge>());
 builder.Services.AddHostedService<TrustedProxyRefreshWorker>();
 
+// Session validity notifications: the same best-effort shape as the trusted
+// proxy bridge. Off unless configured; see UserSessions:ValidityCacheSeconds.
+builder.Services.Configure<Sufficit.Identity.Server.UserSecurityNatsOptions>(
+    builder.Configuration.GetSection("Sufficit:Identity:UserSessions:Nats"));
+builder.Services.AddSingleton<Sufficit.Identity.Server.UserSecurityNatsBridge>();
+builder.Services.AddSingleton<Sufficit.Identity.Core.Sessions.IUserSecurityChangePublisher>(
+    sp => sp.GetRequiredService<Sufficit.Identity.Server.UserSecurityNatsBridge>());
+builder.Services.AddHostedService(
+    sp => sp.GetRequiredService<Sufficit.Identity.Server.UserSecurityNatsBridge>());
+
 // ---- Compact JSON globally (before STS so OpenIddict picks it up) ----
 builder.Services.Configure<Microsoft.AspNetCore.Http.Json.JsonOptions>(o =>
 {

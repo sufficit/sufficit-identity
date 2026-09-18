@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Security.Claims;
+using Sufficit.Identity.Core.Sessions;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
@@ -37,19 +40,31 @@ public sealed class SessionSecurityStampValidator : SecurityStampValidator<Appli
     /// </summary>
     public const string UserVersionItem = ".identity.user_version";
 
+    /// <summary>
+    /// Ticket property holding the moment the user row was last read and
+    /// accepted for this session.
+    /// </summary>
+    public const string VerifiedAtItem = ".identity.verified_at";
+
     private readonly TimeSpan _refreshInterval;
+    private readonly ISessionValidityCache? _validityCache;
+    private readonly IUserSecurityChangePublisher? _changePublisher;
 
     public SessionSecurityStampValidator(
         IOptions<SecurityStampValidatorOptions> options,
         SignInManager<ApplicationUser> signInManager,
         ILoggerFactory logger,
-        SufficitIdentityOptions identityOptions)
+        SufficitIdentityOptions identityOptions,
+        ISessionValidityCache? validityCache = null,
+        IUserSecurityChangePublisher? changePublisher = null)
         : base(options, signInManager, logger)
     {
         _refreshInterval = TimeSpan.FromSeconds(Math.Clamp(
             identityOptions.UserSessions.PrincipalRefreshIntervalSeconds,
             0,
             3600));
+        _validityCache = validityCache;
+        _changePublisher = changePublisher;
     }
 
     public override async Task ValidateAsync(CookieValidatePrincipalContext context)
@@ -62,11 +77,21 @@ public sealed class SessionSecurityStampValidator : SecurityStampValidator<Appli
             return;
         }
 
+        // The stamp read is one primary-key lookup, but it happens on every
+        // request of every signed-in user. It can be skipped only while a
+        // change notification channel is connected: without one, this node
+        // would not hear about a revocation performed on another node.
+        if (CanTrustWithoutReading(context))
+        {
+            return;
+        }
+
         var user = await VerifySecurityStamp(context.Principal);
         if (user is not null &&
             context.Properties.Items.TryGetValue(UserVersionItem, out var version) &&
             string.Equals(version, user.ConcurrencyStamp, StringComparison.Ordinal))
         {
+            RecordVerification(context, user);
             return;
         }
 
@@ -82,5 +107,52 @@ public sealed class SessionSecurityStampValidator : SecurityStampValidator<Appli
     {
         await base.SecurityStampVerified(user, context);
         context.Properties.Items[UserVersionItem] = user.ConcurrencyStamp;
+        RecordVerification(context, user);
+    }
+
+    /// <summary>
+    /// Whether this request may accept the ticket without reading the user
+    /// row, because the row was read recently enough and nothing has
+    /// invalidated the user since.
+    /// </summary>
+    private bool CanTrustWithoutReading(CookieValidatePrincipalContext context)
+    {
+        if (_validityCache is null || _changePublisher?.Connected is not true)
+        {
+            return false;
+        }
+
+        if (context.Principal?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            is not { Length: > 0 } userId)
+        {
+            return false;
+        }
+
+        if (!context.Properties.Items.TryGetValue(VerifiedAtItem, out var value)
+            || !DateTimeOffset.TryParse(
+                value,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind,
+                out var verifiedAt))
+        {
+            return false;
+        }
+
+        return !_validityCache.IsRevalidationNeeded(userId, verifiedAt);
+    }
+
+    private void RecordVerification(
+        CookieValidatePrincipalContext context,
+        ApplicationUser user)
+    {
+        if (_validityCache is null)
+        {
+            return;
+        }
+
+        context.Properties.Items[VerifiedAtItem] = TimeProvider
+            .GetUtcNow()
+            .ToString("O", CultureInfo.InvariantCulture);
+        _validityCache.MarkVerified(user.Id);
     }
 }
