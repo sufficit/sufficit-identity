@@ -88,12 +88,13 @@ The same harness runs the FAPI 2.0 Security Profile plan
 (`conformance/config/fapi2.template.json`): clients authenticate with
 `private_key_jwt` against keys the seeder generates and registers, and the
 profile, DPoP and a short pushed-request lifetime are turned on by the plan's
-name. It is **not** a gate yet — 20 of 56 modules pass. What is left is written
-down in `docs/plans/PLAN-FAPI2-CONFORMANCE.md`; most of the failures come from
-one environment fact (the development signing certificate is RSA, and the
-profile wants PS256 or ES256).
+name, which also picks the throwaway EC signing certificate the profile needs.
+It is **not** a gate yet — 39 of 56 modules pass, 2 fail, 10 wait for the
+suite's human review, 3 are skipped and 2 warn. What is left is written down in
+`docs/plans/PLAN-FAPI2-CONFORMANCE.md`: a module that needs a consent page to
+deny, and a disagreement over which error names a missing `code_verifier`.
 
-Getting that far found four more defects, all fixed with regression tests:
+Getting that far found eight defects, all fixed with regression tests:
 
 - `private_key_jwt` assertions signed with the ordinary `typ: JWT` were refused.
   OpenIddict accepts only its own `client-authentication+jwt`, so every standard
@@ -104,8 +105,23 @@ Getting that far found four more defects, all fixed with regression tests:
   parameter the RFC makes optional. The binding now comes from the proof, and
   the profile requires the proof on the token request instead.
 - DPoP proofs without `exp` were refused; RFC 9449 4.2 does not require it, and
-  freshness already comes from `iat` and the replay cache.
+  freshness already comes from `iat` and the replay cache. `htu` was also
+  compared without dropping the query and the fragment, and without folding the
+  case of the scheme and the host (RFC 9449 4.3).
 - A DPoP proof whose `jwk` header carried the private key was accepted.
+- An elliptic-curve signing certificate could not be used at all: composition
+  threw "a signature algorithm cannot be automatically inferred from the signing
+  key", and once past that, the Data Protection key ring tried to wrap itself
+  with the same certificate — XML encryption only encrypts to RSA, so the first
+  cookie the server issued failed. EC keys are exactly what the profile asks
+  for. Covered by `EcSigningCertificateTests`.
+- A client assertion naming another audience, or dated far in the future, was
+  refused as `invalid_grant`/`invalid_token`; failing to authenticate a client
+  is `invalid_client` (RFC 6749 5.2).
+- An access token was accepted in the query string of UserInfo, which RFC 6750
+  2.3 discourages and FAPI 2.0 forbids. It is refused now, with
+  `Tokens:AllowAccessTokenInQueryString` to turn it back on while a legacy
+  consumer migrates.
 
 Discovery also gained `token_endpoint_auth_signing_alg_values_supported`, which
 RFC 8414 requires alongside `private_key_jwt`.

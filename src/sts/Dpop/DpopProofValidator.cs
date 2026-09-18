@@ -362,11 +362,35 @@ public sealed class DpopProofValidator
     /// Compares two htu values, tolerating trailing-slash differences. RFC 9449
     /// §4.3 compares the htu claim against the request URL without query/fragment.
     /// </summary>
+    /// <summary>
+    /// Compares the <c>htu</c> claim with the URL actually called, the way
+    /// RFC 9449 4.3 item 9 asks: the query and the fragment are removed before
+    /// comparing, and the scheme and the host are compared case-insensitively
+    /// (they are case-insensitive by RFC 3986), while the path is not.
+    /// </summary>
     private static bool UrisMatch(string claimed, string actual)
     {
-        var a = claimed.TrimEnd('/');
-        var b = actual.TrimEnd('/');
-        return string.Equals(a, b, StringComparison.Ordinal);
+        if (!Uri.TryCreate(claimed, UriKind.Absolute, out var claimedUri)
+            || !Uri.TryCreate(actual, UriKind.Absolute, out var actualUri))
+        {
+            return string.Equals(
+                claimed.TrimEnd('/'),
+                actual.TrimEnd('/'),
+                StringComparison.Ordinal);
+        }
+
+        return string.Equals(
+                claimedUri.Scheme,
+                actualUri.Scheme,
+                StringComparison.OrdinalIgnoreCase)
+            && string.Equals(
+                claimedUri.Authority,
+                actualUri.Authority,
+                StringComparison.OrdinalIgnoreCase)
+            && string.Equals(
+                claimedUri.AbsolutePath.TrimEnd('/'),
+                actualUri.AbsolutePath.TrimEnd('/'),
+                StringComparison.Ordinal);
     }
 
     /// <summary>

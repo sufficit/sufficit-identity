@@ -85,6 +85,21 @@ internal sealed class AcceptStandardClientAssertionType
             return default;
         }
 
+        // A client assertion that names the wrong recipient, or one dated too
+        // far in the future, is a failed client authentication: OpenIddict
+        // reports both as invalid_grant, which reads as a problem with the
+        // grant the client presented rather than with the client itself
+        // (RFC 6749 5.2, and what FAPI 2.0 checks in
+        // par-test-*-url-as-audience-fails and the nbf modules).
+        if (!IsAddressedToThisServer(token, context)
+            || IsDatedTooFarInTheFuture(token))
+        {
+            context.Reject(
+                error: Errors.InvalidClient,
+                description: "The client assertion is not valid for this server.");
+            return default;
+        }
+
         // ValidTypes is how Microsoft.IdentityModel enforces typ; clearing it
         // skips only that check, keeping signature, lifetime and audience
         // validation in place.
@@ -111,6 +126,44 @@ internal sealed class AcceptStandardClientAssertionType
         string.IsNullOrEmpty(declaredType)
         || string.Equals(declaredType, JwtConstants.HeaderType, StringComparison.OrdinalIgnoreCase)
         || string.Equals(declaredType, "application/jwt", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The assertion has to name this server as its audience, and the only
+    /// value accepted is the issuer identifier — the same one OpenIddict
+    /// requires a moment later, and the one FAPI 2.0 mandates. Checking it
+    /// here is what turns the refusal into <c>invalid_client</c> instead of
+    /// the <c>invalid_token</c> OpenIddict reports for a wrong audience.
+    /// </summary>
+    private static bool IsAddressedToThisServer(
+        JsonWebToken token,
+        ValidateTokenContext context)
+    {
+        if (token.Audiences is not { } audiences)
+        {
+            return false;
+        }
+
+        if (context.Options.Issuer is not { } issuer)
+        {
+            return true; // No issuer configured: leave the decision to OpenIddict.
+        }
+
+        return audiences.Any(audience =>
+            string.Equals(audience, issuer.AbsoluteUri, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(
+                audience,
+                issuer.AbsoluteUri.TrimEnd('/'),
+                StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// The same tolerance the DPoP proofs use: a minute of clock skew. An
+    /// assertion valid only in the future is not usable now.
+    /// </summary>
+    private static bool IsDatedTooFarInTheFuture(JsonWebToken token) =>
+        token.TryGetPayloadValue<long>(Claims.NotBefore, out var notBefore)
+        && DateTimeOffset.FromUnixTimeSeconds(notBefore)
+            > DateTimeOffset.UtcNow.AddSeconds(60);
 
     /// <summary>
     /// RFC 7523 section 3: a client authenticating itself issues the assertion

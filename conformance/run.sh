@@ -41,6 +41,11 @@ if [[ $profile == fapi2* ]]; then
     export CONFORMANCE_DPOP=${CONFORMANCE_DPOP:-true}
     export CONFORMANCE_CLIENT_AUTHENTICATION=${CONFORMANCE_CLIENT_AUTHENTICATION:-private_key_jwt}
     export CONFORMANCE_PAR_LIFETIME=${CONFORMANCE_PAR_LIFETIME:-20}
+    # FAPI 2.0 accepts PS256 and ES256 for the id_token, and the development
+    # signing certificate is RSA, so this profile signs with a throwaway EC
+    # certificate generated per run.
+    export CONFORMANCE_SIGNING_CERTIFICATE=/certs/signing.pfx
+    export CONFORMANCE_ALLOW_DEVELOPMENT_CERTIFICATES=true
 else
     export CONFORMANCE_FAPI2=${CONFORMANCE_FAPI2:-false}
     export CONFORMANCE_DPOP=${CONFORMANCE_DPOP:-false}
@@ -84,6 +89,23 @@ do
 done
 
 mkdir -p "$results_dir"
+certs_dir=$results_dir/certs
+mkdir -p "$certs_dir"
+if [[ -n ${CONFORMANCE_SIGNING_CERTIFICATE:-} && ! -f "$certs_dir/signing.pfx" ]]; then
+    openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
+        -keyout "$certs_dir/signing.key" -out "$certs_dir/signing.crt" \
+        -days 365 -nodes -subj "/CN=Sufficit Identity conformance signing" \
+        > /dev/null 2>&1
+    openssl pkcs12 -export -inkey "$certs_dir/signing.key" \
+        -in "$certs_dir/signing.crt" -out "$certs_dir/signing.pfx" \
+        -passout pass: > /dev/null 2>&1
+    rm -f "$certs_dir/signing.key" "$certs_dir/signing.crt"
+    # Readable by the server, which runs as its own user in the container. The
+    # key lives under the results directory, is generated per run and deleted
+    # with the environment; it signs nothing outside it.
+    chmod 644 "$certs_dir/signing.pfx"
+fi
+
 rendered="$results_dir/plan-config.json"
 render_plan_config() {
     local client1_jwk=null client2_jwk=null
@@ -114,6 +136,7 @@ cleanup() {
         "${compose[@]}" logs --no-color > "$results_dir/environment.log" 2>&1 || true
         "${compose[@]}" down --volumes --remove-orphans > /dev/null 2>&1 || true
         rm -f "$results_dir/client-keys.json"
+        rm -rf "$results_dir/certs"
     fi
 }
 trap cleanup EXIT

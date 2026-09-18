@@ -189,6 +189,9 @@ public static partial class ServiceCollectionExtensions
         server.AddEventHandler(Security
             .AttachFormPostContentSecurityPolicy.Descriptor);
         server.AddEventHandler(Tokens.ApplyAccessTokenFormat.Descriptor);
+        // RFC 6750 2.3: an access token in the query string leaks through
+        // logs, history and Referer. See Tokens/AccessTokenTransport.cs.
+        server.AddEventHandler(Tokens.RejectAccessTokenInQueryString.Descriptor);
         server.AddEventHandler(
             Tokens.PrepareSelfContainedAccessToken.Descriptor);
         // Issue #61: a replayed device_code (polling race, RFC 8628) must be
