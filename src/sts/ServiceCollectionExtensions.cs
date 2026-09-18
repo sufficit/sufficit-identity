@@ -709,6 +709,7 @@ public static partial class ServiceCollectionExtensions
             PrivilegedTokenMintingService>();
         services.AddScoped<Grants.GrantOperations>();
         services.AddSingleton<McpScopeGrantPolicy>();
+        services.AddScoped<FirstPartyUserScopePolicy>();
         services.AddScoped<McpScopeProvisioner>();
         services.AddScoped<PersonalTokenScopeProvisioner>();
         services.AddScoped<ClientTokenLifetimeReconciler>();

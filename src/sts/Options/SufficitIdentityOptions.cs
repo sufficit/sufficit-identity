@@ -9,6 +9,15 @@ namespace Sufficit.Identity.STS;
 public sealed class SufficitIdentityOptions
 {
     /// <summary>
+    /// Explicit server-approved user scopes per first-party client. Empty by
+    /// default. Each scope must exist and the client must hold its permission.
+    /// Changes apply to user grants/refresh; resource audiences derive from scopes.
+    /// Removing a mapping does not revoke grants already issued: revoke those
+    /// grants separately when withdrawing access.
+    /// </summary>
+    public Dictionary<string, string[]> FirstPartyUserScopes { get; init; } = new(StringComparer.Ordinal);
+
+    /// <summary>
     /// Issuer URI advertised in discovery documents and JWT tokens.
     /// Default: the host the request arrived on. Set explicitly in production.
     /// </summary>

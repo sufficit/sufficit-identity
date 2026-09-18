@@ -184,9 +184,9 @@ public partial class AuthorizationController : Controller
             ?? throw new InvalidOperationException(
                 "Details concerning the calling client application cannot be found.");
 
-        var requestedScopes = _grants.ResolveImplicitMcpScopes(
-            request.ClientId,
-            await GetRequestedScopesAsync(request, application));
+        var requestedScopes = await _grants.ResolveFirstPartyUserScopesAsync(
+            request.ClientId, await GetRequestedScopesAsync(request, application),
+            HttpContext.RequestAborted);
         var authorizations = await Grants.GrantOperations.ToListAsync(_authorizationManager.FindAsync(
             subject: await _userManager.GetUserIdAsync(user),
             client: await _applicationManager.GetIdAsync(application),
