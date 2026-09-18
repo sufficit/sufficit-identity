@@ -19,6 +19,21 @@ public sealed class IdentityModuleCatalog
 
     public static IdentityModuleCatalog Create(
         IConfiguration configuration,
+        params IIdentityModule[] modules) =>
+        Create(configuration, admitted: null, modules);
+
+    /// <summary>
+    /// Same, narrowed to the modules this host serves.
+    /// </summary>
+    /// <param name="admitted">
+    /// Module identifiers this host composes, or <see langword="null"/> for
+    /// every module its configuration enables. A host profile narrows what the
+    /// configuration allows; it never turns a module on, so one configuration
+    /// can serve hosts with different profiles.
+    /// </param>
+    public static IdentityModuleCatalog Create(
+        IConfiguration configuration,
+        IReadOnlySet<string>? admitted,
         params IIdentityModule[] modules)
     {
         ArgumentNullException.ThrowIfNull(configuration);
@@ -34,7 +49,10 @@ public sealed class IdentityModuleCatalog
         }
 
         return new IdentityModuleCatalog(
-            modules.Where(module => module.IsEnabled(configuration)).ToArray());
+            modules
+                .Where(module => module.IsEnabled(configuration)
+                    && (admitted is null || admitted.Contains(module.Id)))
+                .ToArray());
     }
 
     public bool IsEnabled(string id) =>

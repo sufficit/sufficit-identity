@@ -163,13 +163,27 @@ builder.Services.AddSufficitEmailSender(
 // contributes its own pipeline steps; the host only lists them. The list order
 // is the service registration order and the order of endpoint contributions:
 // management API, management console, Vault UI, public UI, SCIM (A8).
-var identityModules = Sufficit.Identity.Hosting.IdentityModuleCatalog.Create(
-    builder.Configuration,
+// Which plane this process serves (A7). All — the default — composes whatever
+// the configuration enables, exactly as before; Sts and Admin split the two
+// planes across hosts that share the database. See IdentityHostProfile.cs.
+var hostProfile = IdentityHostProfilePolicy.Resolve(builder.Configuration);
+var allModules = new Sufficit.Identity.Hosting.IIdentityModule[]
+{
     new ManagementIdentityModule(),
     new ManagementUiIdentityModule(),
     new VaultUiIdentityModule(),
     new PublicUiIdentityModule(),
-    new ScimIdentityModule());
+    new ScimIdentityModule(),
+};
+var identityModules = Sufficit.Identity.Hosting.IdentityModuleCatalog.Create(
+    builder.Configuration,
+    IdentityHostProfilePolicy.AdmittedModules(hostProfile),
+    allModules);
+var excludedModules = IdentityHostProfilePolicy.Excluded(
+    hostProfile,
+    Sufficit.Identity.Hosting.IdentityModuleCatalog
+        .Create(builder.Configuration, allModules)
+        .Enabled.Select(module => module.Id).ToArray());
 identityModules.ConfigureServices(builder.Services, builder.Configuration);
 var mgmtEnabled = identityModules.IsEnabled(ManagementIdentityModule.ModuleId);
 var vaultUiEnabled = identityModules.IsEnabled(VaultUiIdentityModule.ModuleId);
@@ -240,6 +254,14 @@ if (rateLimit.Enabled)
 }
 
 var app = builder.Build();
+
+// Say which plane this process serves, and what the profile left out: a
+// missing endpoint should be explained by a log line, not by a 404.
+app.Logger.LogInformation(
+    "Identity host profile {Profile}; modules={Modules}; excludedByProfile={Excluded}.",
+    hostProfile,
+    string.Join(',', identityModules.Enabled.Select(module => module.Id)),
+    excludedModules.Count == 0 ? "(none)" : string.Join(',', excludedModules));
 
 // One-shot maintenance path for a corrupted/legacy metrics credential. It is
 // deliberately a CLI mode (secret comes from stdin) rather than an HTTP
