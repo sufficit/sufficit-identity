@@ -140,10 +140,11 @@
                           name="Password"
                           autocomplete="current-password" required />
 
-            <div class="form-check">
-                <input id="rememberMe" name="RememberMe" type="checkbox" value="true" />
-                <label for="rememberMe">@L["Login.RememberMe"]</label>
-            </div>
+            <SUICheckbox Id="rememberMe"
+                         Name="RememberMe"
+                         FormValue="true"
+                         Label="@L["Login.RememberMe"]"
+                         @bind-Value="Model.RememberMe" />
 
             <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit" FullWidth>
                 @L["Login.Submit"]

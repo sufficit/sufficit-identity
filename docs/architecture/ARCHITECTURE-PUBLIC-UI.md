@@ -156,12 +156,15 @@ keeps that boundary honest even when both are composed into one host.
 
 ### What is deliberately not a SUI component
 
-- **Checkboxes in plain-POST forms** (remember me, remember this device, the
-  consent scope list). The decision is submitted by a real browser form to an
-  endpoint that parses `value="true"`; `SUICheckbox` renders no `value`, so it
-  cannot carry one.
-- **The passkey rename editor** on `/manage/passkeys`. The field must take
-  focus the moment it appears and `SUITextField` exposes no focus handle.
+- **The consent scope list.** Each row is a three-column grid — box, name,
+  description — not a labelled checkbox, so `SUICheckbox` has nowhere to put
+  the description.
+
+  The other two checkboxes (remember me, remember this device) are SUI now:
+  `SUICheckbox` gained `FormValue`, which is the token the controller parses,
+  and draws its tick from `:checked` rather than from a re-render — the second
+  is what makes it work on `/account/loginwith2fa`, which is statically
+  rendered and has no circuit to re-render from.
 - **`.spinner`**, because the redirect overlay is built in JavaScript
   (`js/identity.js`) and a component cannot be injected there. One spinner in
   two shapes would be worse than one shape not built from a component.
