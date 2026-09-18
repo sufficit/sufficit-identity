@@ -49,17 +49,17 @@
                 <li class="passkey-item">
                     @if (_editingCredentialId == passkey.CredentialId)
                     {
-                        @* Native input on purpose: the editor has to take focus the
-                           moment it appears, and SUITextField exposes no handle to
-                           focus. Everything else on this page is a SUI control. *@
-                        <div class="form-group passkey-inline-editor">
-                            <label for="passkey-edit-name">@L["ManagePasskeys.Name"]</label>
-                            <input id="passkey-edit-name" @ref="_renameInput"
-                                   @bind="_editingPasskeyName" @bind:event="oninput"
-                                   @onkeydown="@(args => HandleRenameKeyDownAsync(args, passkey.CredentialId))"
-                                   class="form-control" maxlength="@_overview.MaximumNameLength"
-                                   autocomplete="off" disabled="@_busy" />
-                            <span class="field-hint">@L["ManagePasskeys.RenameHint"]</span>
+                        <div class="passkey-inline-editor">
+                            <SUITextField T="string" @ref="_renameField"
+                                          Id="passkey-edit-name"
+                                          Label="@L["ManagePasskeys.Name"]"
+                                          HelperText="@L["ManagePasskeys.RenameHint"]"
+                                          MaxLength="@_overview.MaximumNameLength"
+                                          @bind-Value="_editingPasskeyName"
+                                          Immediate
+                                          Disabled="@_busy"
+                                          @onkeydown="@(args => HandleRenameKeyDownAsync(args, passkey.CredentialId))"
+                                          autocomplete="off" />
                             <div class="passkey-inline-actions">
                                 <SUILoadingButton SizeValue="SUISize.Small" Disabled="@_busy"
                                                   OnClick="@(async () => await SavePasskeyNameAsync(passkey.CredentialId))">
@@ -157,7 +157,7 @@
     [CascadingParameter] private Task<AuthenticationState>? _authTask { get; set; }
 
     private ElementReference _registrationForm;
-    private ElementReference _renameInput;
+    private SUITextField<string>? _renameField;
     private AccountPasskeyOverview? _overview;
     private string? _passkeyName;
     private string? _editingCredentialId;
@@ -192,7 +192,10 @@
             _focusRenameInput = false;
             try
             {
-                await _renameInput.FocusAsync();
+                if (_renameField is not null)
+        {
+            await _renameField.FocusAsync();
+        }
             }
             catch (JSException exception)
             {

@@ -29,10 +29,12 @@
                       name="Code"
                       autocomplete="one-time-code" autofocus required minlength="6" />
 
-        <div class="form-check">
-            <input id="rememberMachine" name="RememberClient" type="checkbox" value="true" />
-            <label for="rememberMachine">@L["TwoFactor.RememberDevice"]</label>
-        </div>
+        @* No render mode here: this page is statically rendered, so the box
+           has to show its own state. SUICheckbox draws it from :checked. *@
+        <SUICheckbox Id="rememberMachine"
+                     Name="RememberClient"
+                     FormValue="true"
+                     Label="@L["TwoFactor.RememberDevice"]" />
 
         <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit" FullWidth>
             @L["TwoFactor.Submit"]
