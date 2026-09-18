@@ -2,7 +2,11 @@
   "alias": "{ALIAS}",
   "description": "Sufficit Identity - FAPI 2.0 Security Profile (final)",
   "server": {
-    "discoveryUrl": "https://identity-op.test/.well-known/openid-configuration"
+    "discoveryUrl": "https://identity-op.test/.well-known/openid-configuration",
+    "allow_unexpected_metadata_fields": [
+      "device_authorization_endpoint_auth_methods_supported",
+      "pushed_authorization_request_endpoint_auth_methods_supported"
+    ]
   },
   "client": {
     "client_id": "{CLIENT1_ID}",
@@ -63,6 +67,18 @@
           ]
         },
         {
+          "task": "Consent (allow)",
+          "optional": true,
+          "match": "https://identity-op.test/consent*",
+          "commands": [
+            [
+              "click",
+              "css",
+              "button[name=consent_decision][value=allow]"
+            ]
+          ]
+        },
+        {
           "task": "Verify Complete",
           "match": "{SUITE_BASE_URL}/test/*/callback*",
           "commands": [
@@ -116,6 +132,18 @@
               ]
             },
             {
+              "task": "Consent (allow)",
+              "optional": true,
+              "match": "https://identity-op.test/consent*",
+              "commands": [
+                [
+                  "click",
+                  "css",
+                  "button[name=consent_decision][value=allow]"
+                ]
+              ]
+            },
+            {
               "task": "Authorization error page",
               "optional": true,
               "match": "https://identity-op.test/connect/authorize*",
@@ -129,6 +157,19 @@
                   "update-image-placeholder-optional"
                 ]
               ]
+            },
+            {
+              "task": "Verify Complete",
+              "match": "{SUITE_BASE_URL}/test/*/callback*",
+              "commands": [
+                [
+                  "wait",
+                  "id",
+                  "submission_complete",
+                  10
+                ]
+              ],
+              "optional": true
             }
           ]
         }
@@ -172,6 +213,18 @@
               ]
             },
             {
+              "task": "Consent (allow)",
+              "optional": true,
+              "match": "https://identity-op.test/consent*",
+              "commands": [
+                [
+                  "click",
+                  "css",
+                  "button[name=consent_decision][value=allow]"
+                ]
+              ]
+            },
+            {
               "task": "Authorization error page",
               "optional": true,
               "match": "https://identity-op.test/connect/authorize*",
@@ -185,6 +238,19 @@
                   "update-image-placeholder-optional"
                 ]
               ]
+            },
+            {
+              "task": "Verify Complete",
+              "match": "{SUITE_BASE_URL}/test/*/callback*",
+              "commands": [
+                [
+                  "wait",
+                  "id",
+                  "submission_complete",
+                  10
+                ]
+              ],
+              "optional": true
             }
           ]
         }
@@ -246,6 +312,18 @@
               ]
             },
             {
+              "task": "Consent (allow)",
+              "optional": true,
+              "match": "https://identity-op.test/consent*",
+              "commands": [
+                [
+                  "click",
+                  "css",
+                  "button[name=consent_decision][value=allow]"
+                ]
+              ]
+            },
+            {
               "task": "Verify Complete",
               "match": "{SUITE_BASE_URL}/test/*/callback*",
               "commands": [
@@ -295,6 +373,18 @@
                   "click",
                   "css",
                   "button[type=submit]"
+                ]
+              ]
+            },
+            {
+              "task": "Consent (allow)",
+              "optional": true,
+              "match": "https://identity-op.test/consent*",
+              "commands": [
+                [
+                  "click",
+                  "css",
+                  "button[name=consent_decision][value=allow]"
                 ]
               ]
             },
@@ -355,6 +445,18 @@
               ]
             },
             {
+              "task": "Consent (allow)",
+              "optional": true,
+              "match": "https://identity-op.test/consent*",
+              "commands": [
+                [
+                  "click",
+                  "css",
+                  "button[name=consent_decision][value=allow]"
+                ]
+              ]
+            },
+            {
               "task": "Authorization error page",
               "optional": true,
               "match": "https://identity-op.test/connect/authorize*",
@@ -366,6 +468,84 @@
                   10,
                   ".*",
                   "update-image-placeholder-optional"
+                ]
+              ]
+            },
+            {
+              "task": "Verify Complete",
+              "match": "{SUITE_BASE_URL}/test/*/callback*",
+              "commands": [
+                [
+                  "wait",
+                  "id",
+                  "submission_complete",
+                  10
+                ]
+              ],
+              "optional": true
+            }
+          ]
+        }
+      ]
+    },
+    "fapi2-security-profile-final-user-rejects-authentication": {
+      "browser": [
+        {
+          "match": "https://identity-op.test/connect/authorize*",
+          "tasks": [
+            {
+              "task": "Login",
+              "optional": true,
+              "match": "https://identity-op.test/account/login*",
+              "commands": [
+                [
+                  "text",
+                  "id",
+                  "username",
+                  "{USER_NAME}"
+                ],
+                [
+                  "text",
+                  "id",
+                  "password",
+                  "{USER_PASSWORD}"
+                ],
+                [
+                  "wait",
+                  "css",
+                  "button[type=submit]",
+                  10,
+                  ".*",
+                  "update-image-placeholder-optional"
+                ],
+                [
+                  "click",
+                  "css",
+                  "button[type=submit]"
+                ]
+              ]
+            },
+            {
+              "task": "Consent (deny)",
+              "optional": true,
+              "match": "https://identity-op.test/consent*",
+              "commands": [
+                [
+                  "click",
+                  "css",
+                  "button[name=consent_decision][value=deny]"
+                ]
+              ]
+            },
+            {
+              "task": "Verify Complete",
+              "match": "{SUITE_BASE_URL}/test/*/callback*",
+              "commands": [
+                [
+                  "wait",
+                  "id",
+                  "submission_complete",
+                  10
                 ]
               ]
             }

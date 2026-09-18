@@ -1,1 +1,29 @@
-[]
+[
+  {
+    "test-name": "fapi2-security-profile-final-happy-flow",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "current-block": "",
+    "condition": "EnsureIdTokenDoesNotContainNonRequestedClaims",
+    "expected-result": "warning",
+    "comment": "oi_tkn_id and oi_au_id are OpenIddict's own token and authorization identifiers, the same ones accepted in the Basic plan: OpenIddict resolves the stored token from them, so they are not ours to drop, and they say nothing about the user."
+  },
+  {
+    "test-name": "fapi2-security-profile-final-refresh-token",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "current-block": "Check for refresh token",
+    "condition": "FAPIEnsureServerConfigurationDoesNotSupportRefreshToken",
+    "expected-result": "warning",
+    "comment": "The server offers the refresh_token grant, but the plan's clients do not ask for offline_access, so no refresh token is issued and the module skips. Refresh tokens have their own tests in RefreshTokenTests."
+  },
+  {
+    "test-name": "fapi2-security-profile-final-par-attempt-to-use-expired-request_uri",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "current-block": "Verify authorization endpoint response",
+    "condition": "EnsureInvalidRequestUriError",
+    "expected-result": "failure",
+    "comment": "An expired request_uri is refused, but on the OP's own error page instead of as a redirect carrying invalid_request_uri. OpenIddict drops the request while extracting it, before any redirect URI has been resolved \u2014 the authorization request carries only client_id and request_uri \u2014 so there is nowhere to send the error. No authorization is granted and the user is told; sending the error to the client would mean recovering the redirect URI from the registration first. Tracked in docs/plans/PLAN-FAPI2-CONFORMANCE.md."
+  }
+]

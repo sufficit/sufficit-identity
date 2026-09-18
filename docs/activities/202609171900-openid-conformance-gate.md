@@ -85,16 +85,26 @@ algorithms are accepted and the suite skips the unsigned request object modules.
 ## FAPI 2.0
 
 The same harness runs the FAPI 2.0 Security Profile plan
-(`conformance/config/fapi2.template.json`): clients authenticate with
-`private_key_jwt` against keys the seeder generates and registers, and the
-profile, DPoP and a short pushed-request lifetime are turned on by the plan's
-name, which also picks the throwaway EC signing certificate the profile needs.
-It is **not** a gate yet — 39 of 56 modules pass, 2 fail, 10 wait for the
-suite's human review, 3 are skipped and 2 warn. What is left is written down in
-`docs/plans/PLAN-FAPI2-CONFORMANCE.md`: a module that needs a consent page to
-deny, and a disagreement over which error names a missing `code_verifier`.
+(`conformance/config/fapi2.template.json`), and the nightly workflow now runs
+both: **56 modules, exit code 0** — 42 passed, 9 awaiting the suite's human
+review, 3 skipped, 1 warning and 1 failure, the last two accepted in
+`config/fapi2.expected-*.json` with a written reason.
 
-Getting that far found eight defects, all fixed with regression tests:
+The plan's name selects the environment: the FAPI 2 profile, DPoP, mandatory
+PKCE, a throwaway EC signing certificate (the profile does not accept the RS256
+of the development one), clients that authenticate with `private_key_jwt`
+against keys the seeder generates and ask for consent on every authorization
+(one module has the user deny), a short pushed-request lifetime, and BCP 195
+TLS suites on the issuer front.
+
+The accepted failure is `par-attempt-to-use-expired-request_uri`: the expired
+`request_uri` is refused on the OP's own error page rather than as a redirect
+to the client, because OpenIddict drops the request before any redirect URI has
+been resolved — the request carries only `client_id` and `request_uri`. Closing
+it means resolving the registered redirect URI first;
+`docs/plans/PLAN-FAPI2-CONFORMANCE.md` keeps the item.
+
+Getting the plan green found ten defects, each fixed with a regression test:
 
 - `private_key_jwt` assertions signed with the ordinary `typ: JWT` were refused.
   OpenIddict accepts only its own `client-authentication+jwt`, so every standard
@@ -122,6 +132,10 @@ Getting that far found eight defects, all fixed with regression tests:
   2.3 discourages and FAPI 2.0 forbids. It is refused now, with
   `Tokens:AllowAccessTokenInQueryString` to turn it back on while a legacy
   consumer migrates.
+- A token request without `code_verifier` was answered `invalid_request`;
+  RFC 7636 4.6 compares the verifier with the stored challenge and calls a
+  mismatch `invalid_grant`, and no verifier at all cannot match either
+  (`Grants/MissingCodeVerifier.cs`, and only for clients that had to use PKCE).
 
 Discovery also gained `token_endpoint_auth_signing_alg_values_supported`, which
 RFC 8414 requires alongside `private_key_jwt`.

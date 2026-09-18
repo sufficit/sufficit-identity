@@ -82,6 +82,16 @@ if (!(await users.GetClaimsAsync(user)).Any(claim => claim.Type == Claims.Addres
         "add the conformance user address claim");
 }
 
+// The Basic profile does not test consent, so its clients skip the page. The
+// FAPI 2 plan has a module where the user denies the request: that one needs
+// the page on every authorization, because an authorization granted by an
+// earlier module would otherwise answer for this one.
+var consentType = configuration["Conformance:ConsentType"]?.ToLowerInvariant() switch
+{
+    "explicit" => ConsentTypes.Explicit,
+    "systematic" => ConsentTypes.Systematic,
+    _ => ConsentTypes.Implicit,
+};
 var privateKeyJwt = string.Equals(
     configuration["Conformance:ClientAuthentication"],
     "private_key_jwt",
@@ -107,9 +117,10 @@ foreach (var index in new[] { 1, 2 })
             ? null
             : Required($"Conformance:Client{index}:ClientSecret"),
         ClientType = ClientTypes.Confidential,
-        // The suite drives the browser; a consent page would need its own
-        // automation and is not what the Basic profile tests.
-        ConsentType = ConsentTypes.Implicit,
+        // The Basic profile does not test consent, so those clients skip the
+        // page. The FAPI 2 plan has a module where the user denies the
+        // request, which needs the page to exist (Conformance:ConsentType).
+        ConsentType = consentType,
         DisplayName = $"OpenID conformance client {index}",
         RedirectUris =
         {

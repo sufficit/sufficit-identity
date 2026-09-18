@@ -192,6 +192,9 @@ public static partial class ServiceCollectionExtensions
         // RFC 6750 2.3: an access token in the query string leaks through
         // logs, history and Referer. See Tokens/AccessTokenTransport.cs.
         server.AddEventHandler(Tokens.RejectAccessTokenInQueryString.Descriptor);
+        // RFC 7636 4.6: a missing code_verifier cannot match the stored
+        // challenge, so it is invalid_grant. See Grants/MissingCodeVerifier.cs.
+        server.AddEventHandler(Grants.RejectMissingCodeVerifier.Descriptor);
         server.AddEventHandler(
             Tokens.PrepareSelfContainedAccessToken.Descriptor);
         // Issue #61: a replayed device_code (polling race, RFC 8628) must be

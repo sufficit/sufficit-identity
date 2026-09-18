@@ -14,47 +14,42 @@ The environment it needs is in place: clients authenticate with
 FAPI 2 profile are on, and the pushed-request lifetime is shortened so the
 expiry module fits inside the runner's budget.
 
-**Status of the last run: 56 modules — 39 passed, 2 failed, 10 review, 3
-skipped, 2 warnings.** Only the OpenID Connect Basic plan is a nightly gate
-(`.github/workflows/conformance.yml`); FAPI 2 becomes one when the two
-failures below are closed and the warnings are either fixed or written into
-`config/fapi2.expected-failures.json` with a reason.
+**Status: 56 modules, exit code 0 — 42 passed, 9 review, 3 skipped, 1 warning
+and 1 failure, the last two accepted in `config/fapi2.expected-*.json` with a
+written reason.** The plan runs in the nightly workflow next to the Basic one.
 
-## What still fails
+## The one accepted failure
 
-### 1. `user-rejects-authentication` (harness)
+`par-attempt-to-use-expired-request_uri` expects the error to reach the client
+as a redirect carrying `invalid_request_uri`; the server refuses the expired
+`request_uri` on its own error page instead. OpenIddict drops the request while
+extracting it, before any redirect URI has been resolved — the authorization
+request carries only `client_id` and `request_uri` — so there is nowhere to send
+the error to. No authorization is granted and the user is told.
 
-The module needs the user to deny the request and the error to come back as
-`access_denied`. The conformance clients are seeded with implicit consent, so
-no consent page is ever shown. It needs a client with explicit consent plus a
-browser task that clicks the denial — the consent page is already automated
-nowhere else, so this is new harness work, not a server change.
+Closing it means resolving the client's registered redirect URI before the
+refusal, and only when the registration leaves no ambiguity. Worth doing, not
+worth blocking the gate on.
 
-### 2. `ensure-pkce-code-verifier-required` (decide)
+## Accepted warning and skips
 
-A token request that omits `code_verifier` is answered `invalid_request`; the
-suite expects `invalid_grant`, reading RFC 7636 section 4.6 as covering the
-missing verifier and not only a wrong one. OpenIddict raises the error before
-the code is read, so the server cannot tell "no PKCE was ever used" from "the
-verifier is missing" at that point. Either a handler decides it earlier from
-the client's PKCE requirement, or the divergence is accepted in writing.
-
-## Warnings left
-
-- `CheckForUnexpectedParametersInServerMetadata`: the discovery document
-  carries properties the suite does not know. The list has to be read from the
-  module log and each one justified or removed.
+- `FAPIEnsureServerConfigurationDoesNotSupportRefreshToken`: the plan's clients
+  never ask for `offline_access`, so no refresh token is issued and the module
+  skips. Refresh tokens have their own tests.
+- The `claims` request parameter is not implemented and discovery says so.
+- `ensure-signed-client-assertion-with-RS256-fails` needs an RSA client key; the
+  conformance clients hold EC keys.
 - `EnsureIdTokenDoesNotContainNonRequestedClaims`: OpenIddict's `oi_tkn_id` and
-  `oi_au_id`, the same ones accepted in the Basic plan
-  (`config/oidcc-basic.expected-failures.json` says why).
+  `oi_au_id`, accepted in the Basic plan for the same reason.
 
 ## Environment
 
 Recorded in `conformance/README.md`: the FAPI 2 run signs with a throwaway EC
 certificate (the profile does not accept the RS256 of the development one),
-turns the profile and DPoP on, shortens the pushed-request lifetime so the
-expiry module fits the runner's budget, and restricts the TLS of the issuer
-front to the BCP 195 suites the profile checks.
+turns the profile, DPoP and mandatory PKCE on, seeds clients that ask for
+consent on every authorization (one module has the user deny), shortens the
+pushed-request lifetime so the expiry module fits the runner's budget, and
+restricts the TLS of the issuer front to the BCP 195 suites the profile checks.
 
 ## What the plan already proved
 

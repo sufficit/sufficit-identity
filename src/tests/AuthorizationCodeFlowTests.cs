@@ -527,10 +527,12 @@ public sealed class AuthorizationCodeFlowTests
 
         // No code_verifier at all: the client requires PKCE
         // (Requirements.Features.ProofKeyForCodeExchange), so omitting it
-        // entirely must be rejected too — OpenIddict's own request
-        // validation catches this specific case (missing required
-        // parameter) one layer earlier than a present-but-wrong verifier,
-        // hence "invalid_request" rather than "invalid_grant" here.
+        // entirely must be rejected too. RFC 7636 4.6 compares the verifier
+        // with the stored challenge and calls a mismatch invalid_grant, and a
+        // request with no verifier cannot match either — OpenIddict answered
+        // invalid_request, one layer earlier; Grants/MissingCodeVerifier.cs
+        // brings it back in line (conformance:
+        // fapi2-...-ensure-pkce-code-verifier-required).
         var (status, body) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
         {
             ["grant_type"] = "authorization_code",
@@ -540,7 +542,7 @@ public sealed class AuthorizationCodeFlowTests
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, status);
-        Assert.Equal("invalid_request", body.GetProperty("error").GetString());
+        Assert.Equal("invalid_grant", body.GetProperty("error").GetString());
     }
 
     [Fact]
