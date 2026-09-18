@@ -194,6 +194,14 @@
 .identity-public .sui-btn:focus-visible {
     outline-color: var(--brand);
 }
+/* SUIButton renders an anchor when it has an Href, and the page underlines
+   links on hover. A button is not a link: it already answers the pointer with
+   its own surface. */
+.identity-public .sui-btn:hover,
+.identity-public .sui-btn:focus,
+.identity-public .sui-btn:active {
+    text-decoration: none;
+}
 /* Flat brand, not SUI's gradient wash, and the brand's own darker steps for
    hover and press — a red mixed towards black is not this red. */
 .identity-public .sui-btn--filled.sui-btn--color-primary {
@@ -777,7 +785,6 @@ a:hover { color: var(--brand-hover); text-decoration: underline; }
     background: #f8fafc;
     border-color: #b8c0cc;
     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
-    transform: translateY(-1px);
     color: #1f2937;
 }
 .identity-public .sui-btn.btn-facebook {
@@ -789,7 +796,6 @@ a:hover { color: var(--brand-hover); text-decoration: underline; }
     background: #166fe5;
     border-color: #166fe5;
     box-shadow: 0 4px 14px rgba(24, 119, 242, 0.30);
-    transform: translateY(-1px);
     color: #fff;
 }
 .provider-icon {
