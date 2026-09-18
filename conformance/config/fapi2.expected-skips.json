@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "test-name": "fapi2-security-profile-final-test-claims-parameter-identity-claims",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "comment": "The claims request parameter is not implemented and discovery says so (claims_parameter_supported=false), which the suite accepts as permitted behaviour."
+  },
+  {
+    "test-name": "fapi2-security-profile-final-ensure-signed-client-assertion-with-RS256-fails",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "comment": "The conformance clients hold EC keys, so there is no RSA key to sign an RS256 assertion with. Covered from the server side by StandardClientAssertionTests."
+  },
+  {
+    "test-name": "fapi2-security-profile-final-refresh-token",
+    "variant": "*",
+    "configuration-filename": "*plan-config.json",
+    "comment": "No refresh token is issued: the plan's clients do not request offline_access. Refresh tokens have their own tests in RefreshTokenTests."
+  }
+]

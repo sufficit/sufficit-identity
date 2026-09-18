@@ -40,12 +40,19 @@ if [[ $profile == fapi2* ]]; then
     export CONFORMANCE_FAPI2=${CONFORMANCE_FAPI2:-true}
     export CONFORMANCE_DPOP=${CONFORMANCE_DPOP:-true}
     export CONFORMANCE_CLIENT_AUTHENTICATION=${CONFORMANCE_CLIENT_AUTHENTICATION:-private_key_jwt}
-    export CONFORMANCE_PAR_LIFETIME=${CONFORMANCE_PAR_LIFETIME:-20}
+    # Long enough for a sign-in and a consent, short enough that the module
+    # which waits for a pushed request to expire fits the runner's budget.
+    export CONFORMANCE_PAR_LIFETIME=${CONFORMANCE_PAR_LIFETIME:-60}
     # FAPI 2.0 accepts PS256 and ES256 for the id_token, and the development
     # signing certificate is RSA, so this profile signs with a throwaway EC
     # certificate generated per run.
     export CONFORMANCE_SIGNING_CERTIFICATE=/certs/signing.pfx
     export CONFORMANCE_ALLOW_DEVELOPMENT_CERTIFICATES=true
+    # One module has the user deny the request, which needs a consent page.
+    export CONFORMANCE_CONSENT_TYPE=${CONFORMANCE_CONSENT_TYPE:-systematic}
+    # FAPI 2.0 requires PKCE on every authorization, which is also the product
+    # default; only the Basic profile run turns it off.
+    export CONFORMANCE_PKCE_REQUIRED=true
 else
     export CONFORMANCE_FAPI2=${CONFORMANCE_FAPI2:-false}
     export CONFORMANCE_DPOP=${CONFORMANCE_DPOP:-false}

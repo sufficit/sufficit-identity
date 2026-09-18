@@ -43,7 +43,7 @@ x-identity-env: &identity-env
   Sufficit__Identity__AllowDevelopmentOnPublicHost: "${CONFORMANCE_ALLOW_DEVELOPMENT_CERTIFICATES:-false}"
   # The OpenID Connect Basic profile does not send PKCE. Production keeps the
   # OAuth 2.1 default of PKCE for every client.
-  Sufficit__Identity__Pkce__RequireForAllClients: "false"
+  Sufficit__Identity__Pkce__RequireForAllClients: "${CONFORMANCE_PKCE_REQUIRED:-false}"
   # Only the public sign-in UI takes part in the OpenID Connect flows; the
   # management console and Vault UI need the management API, which stays off.
   Sufficit__Identity__UI__Management__Mode: "None"
@@ -122,6 +122,7 @@ services:
       Conformance__Client2__ClientId: ${CONFORMANCE_CLIENT2_ID:?}
       Conformance__Client2__ClientSecret: ${CONFORMANCE_CLIENT2_SECRET:?}
       Conformance__ClientAuthentication: ${CONFORMANCE_CLIENT_AUTHENTICATION:-client_secret_basic}
+      Conformance__ConsentType: ${CONFORMANCE_CONSENT_TYPE:-implicit}
       Conformance__ClientKeysPath: /results/client-keys.json
     volumes:
       - ${CONFORMANCE_RESULTS_DIR:-./results}:/results

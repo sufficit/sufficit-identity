@@ -41,9 +41,17 @@ jobs:
             "${{ inputs.plan || 'oidcc-basic-certification-test-plan[server_metadata=discovery][client_registration=static_client]' }}" \
             "${{ inputs.template || 'conformance/config/oidcc-basic.template.json' }}"
 
+      - name: Run FAPI 2.0 plan
+        env:
+          CONFORMANCE_RESULTS_DIR: ${{ github.workspace }}/conformance/results
+        run: |
+          conformance/run.sh \
+            "fapi2-security-profile-final-test-plan[client_auth_type=private_key_jwt][sender_constrain=dpop][openid=openid_connect][fapi_profile=plain_fapi]" \
+            conformance/config/fapi2.template.json
+
       - name: Remove rendered configuration
         if: always()
-        run: rm -f conformance/results/plan-config.json
+        run: rm -rf conformance/results/plan-config.json conformance/results/client-keys.json conformance/results/certs
 
       - name: Upload results
         if: always()
