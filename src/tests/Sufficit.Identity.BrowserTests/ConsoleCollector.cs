@@ -76,12 +76,42 @@ public static class DomHealthChecks
     /// </summary>
     public static async Task<string[]> GetUnstyledFormControlsAsync(IPage page, string sel) =>
         await Eval(page,
-            "Array.from(document.querySelectorAll('" + sel + " input," + sel + " select'))" +
+            "(()=>{" +
+            // What "unstyled" means cannot be guessed from a border or a
+            // height: a bare <input> has both, straight from the user agent.
+            // So compare against the real thing — a control of the same kind
+            // rendered outside the container, which carries the browser
+            // default plus whatever the app applies to every control. A field
+            // the stylesheet never touched matches it on every property.
+            "const probes={};" +
+            "const pristine=el=>{" +
+            "const key=el.tagName+':'+(el.type||'');" +
+            "if(!probes[key]){" +
+            "const p=document.createElement(el.tagName);" +
+            "if(el.tagName==='INPUT')p.type=el.type;" +
+            "p.style.position='absolute';p.style.left='-9999px';" +
+            "document.body.appendChild(p);" +
+            "const c=getComputedStyle(p);" +
+            "probes[key]=[c.borderTopWidth,c.borderTopStyle,c.borderTopColor," +
+            "c.borderTopLeftRadius,c.backgroundColor,c.height].join('|');" +
+            "p.remove();}" +
+            "return probes[key];};" +
+            "const look=el=>{const c=getComputedStyle(el);" +
+            "return [c.borderTopWidth,c.borderTopStyle,c.borderTopColor," +
+            "c.borderTopLeftRadius,c.backgroundColor,c.height].join('|');};" +
+            "return Array.from(document.querySelectorAll('" + sel + " input," + sel + " select'))" +
+            // A control nobody can see has no appearance to judge. Hidden
+            // inputs are how SUIDateField and friends carry their value.
+            ".filter(el=>el.type!=='hidden'&&el.getClientRects().length>0)" +
             ".filter(el=>{" +
-            "const own=getComputedStyle(el);" +
-            "if(own.borderStyle!=='none'&&own.minHeight!=='0px')return false;" +
-            "const w=el.closest('[class]');if(!w)return true;" +
+            "if(look(el)!==pristine(el))return false;" +
+            // The pill-search pattern on purpose: the wrapper draws the box
+            // and the inner control stays transparent.
+            // closest() starts at the element itself, so walk up from the
+            // parent or a styled control would vouch for itself.
+            "const w=el.parentElement&&el.parentElement.closest('[class]');" +
+            "if(!w)return true;" +
             "const ws=getComputedStyle(w);" +
-            "return ws.borderStyle==='none'||ws.minHeight==='0px';})" +
-            ".map(el=>el.tagName+' '+el.type+' unstyled')");
+            "return ws.borderStyle==='none';})" +
+            ".map(el=>el.tagName+' '+el.type+' unstyled');})()");
 }

@@ -550,6 +550,80 @@ public sealed partial class ManagementUiArchitectureTests
         Assert.Contains("PrimaryContrast = \"#ffffff\"", theme, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// The console's own tokens are derived from the theme the provider
+    /// publishes, so the hand-rolled CSS and the component library cannot drift
+    /// apart. They had: the same palette was written twice, once in C# and once
+    /// in <c>app.css</c>. Restating a theme colour as a literal here is what
+    /// this guards against.
+    /// </summary>
+    [Fact]
+    public void Console_tokens_are_derived_from_the_sui_theme_not_restated()
+    {
+        var managementUi = ResolveManagementUiSource();
+        var stylesheet = File.ReadAllText(Path.Combine(
+            managementUi, "wwwroot", "app.css"));
+
+        var rootStart = stylesheet.IndexOf(":root {", StringComparison.Ordinal);
+        Assert.True(rootStart >= 0, "app.css declares no :root token block.");
+        var rootBlock = stylesheet[rootStart..stylesheet.IndexOf(
+            "\n}", rootStart, StringComparison.Ordinal)];
+
+        foreach (var derived in new[]
+        {
+            "--brand: var(--sui-color-primary)",
+            "--ink: var(--sui-text-primary)",
+            "--ink-muted: var(--sui-text-secondary)",
+            "--surface: var(--sui-surface)",
+            "--line: var(--sui-border)",
+            "--line-strong: var(--sui-border-strong)",
+            "--danger: var(--sui-color-error)",
+            "--success: var(--sui-color-success)",
+            "--warning: var(--sui-color-warning)",
+            "--info: var(--sui-color-info)",
+            "--font-sans: var(--sui-font)",
+            "--radius: var(--sui-radius)",
+        })
+        {
+            Assert.Contains(derived, rootBlock, StringComparison.Ordinal);
+        }
+
+        // The brand red belongs to the theme class alone. Its darker steps have
+        // no SUI equivalent and stay literal, so only the base is checked.
+        Assert.DoesNotContain("--brand: #", rootBlock, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A container may decide its controls are bigger — the client editor does —
+    /// but it says so by moving the SUI size tokens, not by repainting the
+    /// component. Border, background and focus ring must keep coming from the
+    /// theme.
+    /// </summary>
+    [Fact]
+    public void The_client_editor_resizes_controls_by_token_rather_than_restyling_them()
+    {
+        var managementUi = ResolveManagementUiSource();
+        var stylesheet = File.ReadAllText(Path.Combine(
+            managementUi, "wwwroot", "app.css"));
+
+        Assert.Contains("--sui-control-h-md: 44px;", stylesheet, StringComparison.Ordinal);
+
+        var repainted = System.Text.RegularExpressions.Regex
+            .Matches(
+                stylesheet,
+                @"\.client-edit-[^{}]*\.sui-[^{}]*\{(?<body>[^}]*)\}")
+            .Where(match => match.Groups["body"].Value.Contains("border-color")
+                || match.Groups["body"].Value.Contains("background")
+                || match.Groups["body"].Value.Contains("box-shadow"))
+            .Select(match => match.Value)
+            .ToArray();
+
+        Assert.True(
+            repainted.Length is 0,
+            "The client editor repaints SUI controls instead of resizing them: "
+                + string.Join("\n", repainted));
+    }
+
     [Fact]
     public void Metrics_page_uses_shared_sui_controls_for_filters_and_configuration()
     {

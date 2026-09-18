@@ -146,8 +146,13 @@ on every pointer, the heavier button weight, the alert's left rule, the field
 hint that reads as instruction rather than as an aside. Each one is a
 deliberate difference from SUI's default, and the file says so.
 
-The scope matters: the management console composes the same stylesheet and
-carries its own calibration, so the bridge must not leak onto it.
+The scope matters: the management console does not load this stylesheet at all,
+and themes SUI the other way round — `IdentitySUITheme` is a C# class and
+`SUIThemeProvider` publishes it as `--sui-*`. Both surfaces have one owner for
+colour; they differ because the public UI's palette is chosen at runtime by the
+branding record (a tenant sets `--brand` and the SUI tokens follow it), while
+the console's is fixed at build time. Scoping the bridge to `.identity-public`
+keeps that boundary honest even when both are composed into one host.
 
 ### What is deliberately not a SUI component
 
