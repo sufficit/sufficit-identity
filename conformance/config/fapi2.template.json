@@ -389,7 +389,7 @@
               ]
             },
             {
-              "task": "Authorization error page",
+              "task": "Authorization error page (no screenshot)",
               "optional": true,
               "match": "https://identity-op.test/connect/authorize*",
               "commands": [
@@ -397,9 +397,7 @@
                   "wait",
                   "css",
                   "body",
-                  10,
-                  ".*",
-                  "update-image-placeholder-optional"
+                  10
                 ]
               ]
             }

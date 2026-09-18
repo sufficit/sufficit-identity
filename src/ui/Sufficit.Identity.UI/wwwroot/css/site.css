@@ -691,6 +691,46 @@ a:hover { color: var(--brand-hover); text-decoration: underline; }
     pointer-events: none;
 }
 
+/* --- Pressed and busy buttons --------------------------------------------
+   A click on a Blazor Server button only changes the markup after a round
+   trip, which on a phone reads as "nothing happened". These two rules answer
+   in the browser: :active gives the press back immediately, and .is-busy —
+   set by js/instant-feedback.js on the way out, and again by the component
+   when its state catches up — shows the work is running.
+   ------------------------------------------------------------------------- */
+.btn:active:not([disabled]):not(:disabled) {
+    transform: translateY(1px);
+}
+.btn.is-busy {
+    cursor: progress;
+    /* Not pointer-events: none — the button keeps its disabled state from the
+       component; this only stops a second click before that arrives. */
+    pointer-events: none;
+}
+.btn.is-busy::before {
+    content: "";
+    width: 1em;
+    height: 1em;
+    flex: 0 0 auto;
+    margin-right: var(--space-2);
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    opacity: 0.75;
+    animation: spin 0.7s linear infinite;
+}
+.btn.is-busy > .provider-icon {
+    display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+    .btn.is-busy::before {
+        animation-duration: 2.4s;
+    }
+    .btn:active:not([disabled]):not(:disabled) {
+        transform: none;
+    }
+}
+
 /* --- Alerts --------------------------------------------------------------- */
 .alert {
     padding: var(--space-3) var(--space-4);
