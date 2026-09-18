@@ -140,8 +140,8 @@ Getting the plan green found ten defects, each fixed with a regression test:
 Discovery also gained `token_endpoint_auth_signing_alg_values_supported`, which
 RFC 8414 requires alongside `private_key_jwt`.
 
-## Not deployed
+## Deployed
 
-The fixes are on `main` with CI green and are **not** deployed: the user is
-traveling and cannot verify production. They join the other undeployed commits
-listed in `docs/activities/202609132250-deploy-evaluation-remediation.md`.
+Released to the three production nodes on 2026-09-18 as `1feceae`, together
+with the Fleet SSO branch that production was already running; see
+`docs/activities/202609181200-deploy-conformance-fixes.md`.
