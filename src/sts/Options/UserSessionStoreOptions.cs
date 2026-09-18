@@ -48,4 +48,18 @@ public sealed class UserSessionStoreOptions
     /// earlier refresh. Zero rebuilds on every request. Clamped to 0..3600.
     /// </summary>
     public int PrincipalRefreshIntervalSeconds { get; init; } = 300;
+
+    /// <summary>
+    /// How long a session may be trusted without reading the user's security
+    /// stamp again, when a change notification channel is connected.
+    /// </summary>
+    /// <remarks>
+    /// Zero — the default — keeps the stamp read on every request, which is
+    /// what the server has always done. A positive value only takes effect
+    /// while <c>IUserSecurityChangePublisher</c> reports a connected channel,
+    /// so a node that cannot hear about a revocation on another node never
+    /// skips the read. The value bounds how long a lost notification can keep
+    /// a revoked session alive on one node. Clamped to 0..300.
+    /// </remarks>
+    public int ValidityCacheSeconds { get; init; } = 0;
 }

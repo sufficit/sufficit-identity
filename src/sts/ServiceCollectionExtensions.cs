@@ -719,6 +719,16 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<Grants.ITokenGrantHandler, Grants.PasswordGrantHandler>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.TokenExchangeGrantHandler>();
         services.AddScoped<Grants.TokenGrantDispatcher>();
+        // Skipping the per-request security-stamp read needs somewhere to
+        // remember what is still valid. The cache is registered even when the
+        // window is zero: the validator then never consults it, and nothing
+        // else in the graph has to know whether the feature is on.
+        services.TryAddSingleton<Core.Sessions.ISessionValidityCache>(
+            new Core.Sessions.InMemorySessionValidityCache(
+                TimeSpan.FromSeconds(Math.Clamp(
+                    options.UserSessions.ValidityCacheSeconds,
+                    0,
+                    300))));
         services.Replace(ServiceDescriptor.Scoped<ISecurityStampValidator,
             SessionSecurityStampValidator>());
         services.AddScoped<SufficitSignInManager>();

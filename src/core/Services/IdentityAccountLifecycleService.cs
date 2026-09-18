@@ -30,7 +30,9 @@ public interface IIdentityUserSessionRevoker
 public sealed class OpenIddictIdentityUserSessionRevoker(
     IOpenIddictTokenManager tokens,
     IOpenIddictAuthorizationManager authorizations,
-    ISessionManagement browserSessions)
+    ISessionManagement browserSessions,
+    Sessions.ISessionValidityCache? validityCache = null,
+    Sessions.IUserSecurityChangePublisher? changePublisher = null)
     : IIdentityUserSessionRevoker
 {
     public async Task<long> RevokeTokensAsync(
@@ -71,6 +73,17 @@ public sealed class OpenIddictIdentityUserSessionRevoker(
             subject,
             exceptBrowserSessionId,
             cancellationToken);
+        // Every node has to stop trusting this subject's cookies at once: the
+        // local cache is dropped here, and the other nodes hear about it
+        // through the notification channel when one is configured. Both are
+        // best effort — the security stamp in the database stays the
+        // authority, and a node that hears nothing simply keeps reading it.
+        validityCache?.Invalidate(subject);
+        if (changePublisher is { Enabled: true })
+        {
+            await changePublisher.PublishAsync(subject, cancellationToken);
+        }
+
         return new IdentityUserSessionRevocation(
             revokedTokens,
             revokedAuthorizations,
