@@ -210,9 +210,8 @@ public sealed class UserTokenGrantsHandler : ITokenGrantHandler
                 httpContext.RequestServices.GetRequiredService<IOpenIddictAuthorizationManager>(),
                 httpContext.RequestAborted)
             : result.Principal!.GetScopes();
-        grantedScopes = ops.ResolveImplicitMcpScopes(
-            request.ClientId,
-            grantedScopes);
+        grantedScopes = await ops.ResolveFirstPartyUserScopesAsync(
+            request.ClientId, grantedScopes, httpContext.RequestAborted);
         // NOTE (eval 2026-08-30): this deliberately runs on refresh too, so a
         // refresh token issued before scope-based entitlements existed repairs
         // the user's access (see the device-flow test that pins it). The cost
@@ -336,9 +335,8 @@ public sealed class DeviceCodeGrantHandler : ITokenGrantHandler
                 "The user is no longer allowed to sign in.");
         }
 
-        var grantedScopes = ops.ResolveImplicitMcpScopes(
-            request.ClientId,
-            result.Principal.GetScopes());
+        var grantedScopes = await ops.ResolveFirstPartyUserScopesAsync(
+            request.ClientId, result.Principal.GetScopes(), httpContext.RequestAborted);
         var entitlementResult = await ops.ProvisionScopeEntitlementsAsync(
             user,
             grantedScopes,
