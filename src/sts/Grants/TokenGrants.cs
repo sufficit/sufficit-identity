@@ -534,6 +534,7 @@ public sealed class TokenExchangeOptions
 /// </summary>
 public sealed class TokenExchangeGrantHandler(
     ISubjectTokenProvenancePolicy subjectTokenProvenancePolicy,
+    ISubjectTokenResolver subjectTokenResolver,
     IdentityAssertionIssuer identityAssertionIssuer) : ITokenGrantHandler
 {
     public IReadOnlyCollection<string> HandledGrantTypes { get; } =
@@ -575,18 +576,6 @@ public sealed class TokenExchangeGrantHandler(
             return await identityAssertionIssuer.IssueAsync(context, result.Principal);
         }
 
-        var subject = result.Principal.GetClaim(Claims.Subject);
-        var user = subject is not null
-            ? await ops.UserManager.FindByIdAsync(subject)
-            : null;
-
-        if ((user is null && !tokenExchangeOptions.AllowClientSubjectTokens)
-            || (user is not null && !await ops.SignInManager.CanSignInAsync(user)))
-        {
-            return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant,
-                "The subject_token no longer identifies a user that is allowed to sign in.");
-        }
-
         // Confused-deputy defense (RFC 8693 §4.1 / RFC 8707). This runs for
         // EVERY exchange, not only when AllowedClientIds is configured
         // (eval 2026-08-30, F-1): the previous gate meant the default
@@ -606,6 +595,21 @@ public sealed class TokenExchangeGrantHandler(
             return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant,
                 "The subject_token was not issued for this client, so it cannot be exchanged by it.");
         }
+
+        // Who the exchange is performed on behalf of: a user, or the client
+        // the token was issued to (RFC 8693 2.1). See SubjectTokenResolver.
+        var resolution = await subjectTokenResolver.ResolveAsync(
+            result.Principal,
+            provenance.AuthorizedParty,
+            httpContext.RequestAborted);
+        if (resolution.IsRejected)
+        {
+            return TokenGrantDispatcher.ForbidError(
+                Errors.InvalidGrant,
+                resolution.Rejection!);
+        }
+
+        var user = resolution.User;
 
         // OpenIddict validates the actor token's signature, lifetime and type,
         // but disables audience and presenter validation for token exchange.
@@ -649,31 +653,11 @@ public sealed class TokenExchangeGrantHandler(
                 "The subject_token does not authorize this actor (may_act).");
         }
 
-        ClaimsIdentity identity;
-        if (user is not null)
-        {
-            identity = await ops.BuildIdentityAsync(
-                user, result.Principal, httpContext.User);
-        }
-        else
-        {
-            // A subject token without a user qualifies only as the client's
-            // own token: its subject is its single authorized party. A token a
-            // client merely received from another client has a different
-            // subject and party, and provenance already bound the party to
-            // this caller.
-            var application = subject is not null
-                && string.Equals(subject, provenance.AuthorizedParty, StringComparison.Ordinal)
-                    ? await ops.ApplicationManager.FindByClientIdAsync(subject)
-                    : null;
-            if (application is null)
-            {
-                return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant,
-                    "The subject_token does not identify a user or the client it was issued to.");
-            }
-
-            identity = await ops.BuildClientIdentityAsync(application, subject!);
-        }
+        var identity = user is not null
+            ? await ops.BuildIdentityAsync(user, result.Principal, httpContext.User)
+            : await ops.BuildClientIdentityAsync(
+                resolution.Application!,
+                resolution.ClientId!);
 
         // Delegated scopes are the intersection of what the calling client
         // asked for and what the subject_token itself carried; a client that

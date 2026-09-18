@@ -28,8 +28,18 @@ request carries only `client_id` and `request_uri` — so there is nowhere to se
 the error to. No authorization is granted and the user is told.
 
 Closing it means resolving the client's registered redirect URI before the
-refusal, and only when the registration leaves no ambiguity. Worth doing, not
-worth blocking the gate on.
+refusal, and only when the registration leaves no ambiguity.
+
+**Attempted on 2026-09-18 and reverted.** A handler on
+`ApplyAuthorizationResponseContext` does find the client and its single
+registered URI, but nothing downstream honours what it sets:
+`Authentication.AttachRedirectUri` clears a redirect URI it did not validate
+itself, `InferResponseMode` derives the mode from a `response_type` this
+request never had, and the local error response is produced regardless. Making
+it work means reaching further into OpenIddict's authorization pipeline than
+this single conformance module justifies — the error is shown to the user and
+no authorization is granted either way. Revisit if a client ever needs the
+machine-readable error.
 
 ## Accepted warning and skips
 

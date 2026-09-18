@@ -717,6 +717,12 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<Grants.ITokenGrantHandler, Grants.DeviceCodeGrantHandler>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.ClientCredentialsGrantHandler>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.PasswordGrantHandler>();
+        // The same section GrantOperations reads; registered so the resolver
+        // does not have to carry the whole options graph to reach one flag.
+        services.TryAddSingleton(
+            configuration.GetSection("Sufficit:Identity:TokenExchange")
+                .Get<Grants.TokenExchangeOptions>() ?? new Grants.TokenExchangeOptions());
+        services.AddScoped<Grants.ISubjectTokenResolver, Grants.SubjectTokenResolver>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.TokenExchangeGrantHandler>();
         services.AddScoped<Grants.TokenGrantDispatcher>();
         // Skipping the per-request security-stamp read needs somewhere to
