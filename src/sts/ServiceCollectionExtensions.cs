@@ -391,12 +391,12 @@ public static partial class ServiceCollectionExtensions
             dpBuilder.UnprotectKeysWithAnyCertificate(
                 decryptOnlyCertificates.ToArray());
         }
-        else if (certificateMaterial.PrimarySigning is not null)
+        else if (CanProtectDataProtectionKeys(certificateMaterial.PrimarySigning))
         {
             // Development compatibility only. Non-Development rejects a
             // missing dedicated vault certificate in AddSufficitVault().
             dpBuilder.ProtectKeysWithCertificate(
-                certificateMaterial.PrimarySigning);
+                certificateMaterial.PrimarySigning!);
         }
 
         // ---- Internal secret vault (envelope encryption, Transit-style) ----
@@ -766,4 +766,27 @@ public static partial class ServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Whether a certificate can wrap the Data Protection key ring.
+    /// </summary>
+    /// <remarks>
+    /// The key ring is protected with XML encryption, which only knows how to
+    /// encrypt to an RSA certificate: an elliptic-curve one fails with "the
+    /// certificate key algorithm is not supported" when the ring creates its
+    /// first key — well after startup, on the first cookie issued. EC signing
+    /// certificates are legitimate (FAPI 2.0 does not accept RS256), so this
+    /// development fallback simply does not apply to them; a real deployment
+    /// protects the ring with the dedicated vault certificate.
+    /// </remarks>
+    internal static bool CanProtectDataProtectionKeys(
+        X509Certificate2? certificate)
+    {
+        if (certificate is null)
+        {
+            return false;
+        }
+
+        using var rsa = certificate.GetRSAPublicKey();
+        return rsa is not null;
+    }
 }

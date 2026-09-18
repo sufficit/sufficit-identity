@@ -14,79 +14,66 @@ The environment it needs is in place: clients authenticate with
 FAPI 2 profile are on, and the pushed-request lifetime is shortened so the
 expiry module fits inside the runner's budget.
 
-**Status of the last run: 56 modules, 20 passed, 33 failed, 1 review, 2
-skipped.** Only the OpenID Connect Basic plan is a nightly gate
-(`.github/workflows/conformance.yml`); FAPI 2 is not, until the list below is
-worked through.
+**Status of the last run: 56 modules — 39 passed, 2 failed, 10 review, 3
+skipped, 2 warnings.** Only the OpenID Connect Basic plan is a nightly gate
+(`.github/workflows/conformance.yml`); FAPI 2 becomes one when the two
+failures below are closed and the warnings are either fixed or written into
+`config/fapi2.expected-failures.json` with a reason.
 
-## What the failures are
+## What still fails
 
-### 1. `id_token` signed with RS256 (~25 modules)
+### 1. `user-rejects-authentication` (harness)
 
-`FAPI2ValidateIdTokenSigningAlg` requires PS256 or ES256. The conformance
-environment runs as Development, where signing uses
-`AddDevelopmentSigningCertificate()` — an RSA certificate, so every `id_token`
-is RS256. This single cause accounts for most of the failures.
+The module needs the user to deny the request and the error to come back as
+`access_denied`. The conformance clients are seeded with implicit consent, so
+no consent page is ever shown. It needs a client with explicit consent plus a
+browser task that clicks the denial — the consent page is already automated
+nowhere else, so this is new harness work, not a server change.
 
-Configuring `Certificates:SigningPath` with an EC certificate does not work yet:
+### 2. `ensure-pkce-code-verifier-required` (decide)
 
-- Development plus configured certificates is refused by
-  `DeploymentTopologyPolicy.ValidateDevelopmentHost`. There is an explicit
-  escape (`AllowDevelopmentOnPublicHost=true`), so that part is only a decision.
-- With an EC PFX loaded, OpenIddict fails at startup with "a signature algorithm
-  cannot be automatically inferred from the signing key". That needs
-  investigation — most likely how the PKCS#12 is produced or loaded (private key
-  presence, `X509KeyStorageFlags`), not the profile itself.
+A token request that omits `code_verifier` is answered `invalid_request`; the
+suite expects `invalid_grant`, reading RFC 7636 section 4.6 as covering the
+missing verifier and not only a wrong one. OpenIddict raises the error before
+the code is read, so the server cannot tell "no PKCE was ever used" from "the
+verifier is missing" at that point. Either a handler decides it earlier from
+the client's PKCE requirement, or the divergence is accepted in writing.
 
-Options, in the order worth trying: produce the EC PFX differently and confirm
-`X509Certificate2.GetECDsaPrivateKey()` is non-null inside the container; or let
-the product choose the development signing key type, which is a product change
-and needs a reason beyond conformance.
+## Warnings left
 
-### 2. TLS ciphers of the test front (2 modules)
+- `CheckForUnexpectedParametersInServerMetadata`: the discovery document
+  carries properties the suite does not know. The list has to be read from the
+  module log and each one justified or removed.
+- `EnsureIdTokenDoesNotContainNonRequestedClaims`: OpenIddict's `oi_tkn_id` and
+  `oi_au_id`, the same ones accepted in the Basic plan
+  (`config/oidcc-basic.expected-failures.json` says why).
 
-`RequireOnlyBCP195RecommendedCiphersForTLS12` inspects the TLS of the issuer
-host. `conformance/proxy/nginx.conf` serves a self-signed certificate with the
-image's default cipher list. Restricting it to the BCP 195 set is a change in
-the harness, not in the server.
+## Environment
 
-### 3. Discovery (1 module, partly fixed)
-
-`token_endpoint_auth_signing_alg_values_supported` is now published (RFC 8414;
-`DiscoveryTests.Discovery_document_names_the_client_assertion_algorithms`).
-`CheckForUnexpectedParametersInServerMetadata` still warns — the document
-carries properties the suite does not know; the list has to be read from the
-module log and each one justified or removed.
-
-### 4. User rejection (1 module)
-
-`user-rejects-authentication` needs the user to deny consent. The conformance
-clients are seeded with implicit consent, so no consent page is shown. It needs
-a client with explicit consent and browser automation that clicks the denial.
-
-### 5. Client assertion with the wrong audience (1 module)
-
-`CheckErrorFromTokenEndpointResponseErrorInvalidClientOrInvalidRequest`: the
-server refuses the request, but with an error the module does not accept. The
-response has to be read and mapped to `invalid_client` or `invalid_request`.
-
-### 6. Refresh tokens (1 module)
-
-`FAPIEnsureServerConfigurationDoesNotSupportRefreshToken` — the profile expects
-either a refresh token that follows its rules or a server that does not announce
-the grant. The conformance clients are seeded with `refresh_token`; decide
-whether the FAPI profile forbids it for profiled clients.
+Recorded in `conformance/README.md`: the FAPI 2 run signs with a throwaway EC
+certificate (the profile does not accept the RS256 of the development one),
+turns the profile and DPoP on, shortens the pushed-request lifetime so the
+expiry module fits the runner's budget, and restricts the TLS of the issuer
+front to the BCP 195 suites the profile checks.
 
 ## What the plan already proved
 
-Four defects the repository's own tests did not cover were found and fixed while
-getting this far:
+Defects the repository's own tests did not cover, found here and fixed with
+regression tests:
 
-- `private_key_jwt` assertions with the standard `typ: JWT` were refused
+- `private_key_jwt` assertions with the ordinary `typ: JWT` were refused
   (`ClientAuthentication/StandardClientAssertionType.cs`).
 - A DPoP proof sent with a pushed authorization request did not bind the code
   (`Dpop/DpopPushedAuthorizationBinding.cs`), and the profile demanded a
   `dpop_jkt` parameter RFC 9449 makes optional.
 - DPoP proofs without `exp` were refused, though RFC 9449 4.2 does not require
-  it.
+  it; and `htu` was compared without dropping the query and the fragment or
+  folding the case of the scheme and host (RFC 9449 4.3).
 - A DPoP proof whose `jwk` header carried the private key was accepted.
+- An elliptic-curve signing certificate could not be configured at all: the
+  server threw at startup, and the Data Protection key ring cannot be wrapped
+  with such a certificate either.
+- A client assertion naming the wrong audience, or dated far in the future, was
+  refused as `invalid_grant`/`invalid_token` — a failure to authenticate the
+  client is `invalid_client` (RFC 6749 5.2).
+- An access token was accepted in the query string of UserInfo (RFC 6750 2.3).

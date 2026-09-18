@@ -127,6 +127,35 @@ public sealed class DpopTests
         Assert.Null(proof);
     }
 
+    [Theory]
+    // RFC 9449 4.3, item 9: the query and the fragment are ignored, and the
+    // scheme and the host are compared case-insensitively
+    // (conformance: dpop-negative-tests).
+    [InlineData("https://sts.tests.local/connect/token?foo=bar", true)]
+    [InlineData("https://sts.tests.local/connect/token#fragment", true)]
+    [InlineData("https://STS.Tests.Local/connect/token", true)]
+    [InlineData("HTTPS://sts.tests.local/connect/token", true)]
+    [InlineData("https://sts.tests.local/connect/Token", false)]
+    [InlineData("https://other.tests.local/connect/token", false)]
+    public async Task Proof_htu_is_compared_the_way_the_spec_asks(
+        string claimedUrl,
+        bool expected)
+    {
+        var (proofJwt, _) = BuildDpopProof(method: "POST", url: claimedUrl);
+
+        var validator = new DpopProofValidator(TimeProvider.System,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<DpopProofValidator>.Instance);
+
+        var proof = await validator.ValidateAsync(
+            proofJwt,
+            "POST",
+            "https://sts.tests.local/connect/token",
+            expectedNonce: null,
+            CancellationToken.None);
+
+        Assert.Equal(expected, proof is not null);
+    }
+
     [Fact]
     public async Task Proof_without_exp_is_accepted()
     {

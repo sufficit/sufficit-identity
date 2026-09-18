@@ -260,6 +260,118 @@
           ]
         }
       ]
+    },
+    "fapi2-security-profile-final-par-attempt-to-use-expired-request_uri": {
+      "browser": [
+        {
+          "match": "https://identity-op.test/connect/authorize*",
+          "tasks": [
+            {
+              "task": "Login",
+              "optional": true,
+              "match": "https://identity-op.test/account/login*",
+              "commands": [
+                [
+                  "text",
+                  "id",
+                  "username",
+                  "{USER_NAME}"
+                ],
+                [
+                  "text",
+                  "id",
+                  "password",
+                  "{USER_PASSWORD}"
+                ],
+                [
+                  "wait",
+                  "css",
+                  "button[type=submit]",
+                  10,
+                  ".*",
+                  "update-image-placeholder-optional"
+                ],
+                [
+                  "click",
+                  "css",
+                  "button[type=submit]"
+                ]
+              ]
+            },
+            {
+              "task": "Authorization error page",
+              "optional": true,
+              "match": "https://identity-op.test/connect/authorize*",
+              "commands": [
+                [
+                  "wait",
+                  "css",
+                  "body",
+                  10,
+                  ".*",
+                  "update-image-placeholder-optional"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "fapi2-security-profile-final-par-attempt-to-use-request_uri-for-different-client": {
+      "browser": [
+        {
+          "match": "https://identity-op.test/connect/authorize*",
+          "tasks": [
+            {
+              "task": "Login",
+              "optional": true,
+              "match": "https://identity-op.test/account/login*",
+              "commands": [
+                [
+                  "text",
+                  "id",
+                  "username",
+                  "{USER_NAME}"
+                ],
+                [
+                  "text",
+                  "id",
+                  "password",
+                  "{USER_PASSWORD}"
+                ],
+                [
+                  "wait",
+                  "css",
+                  "button[type=submit]",
+                  10,
+                  ".*",
+                  "update-image-placeholder-optional"
+                ],
+                [
+                  "click",
+                  "css",
+                  "button[type=submit]"
+                ]
+              ]
+            },
+            {
+              "task": "Authorization error page",
+              "optional": true,
+              "match": "https://identity-op.test/connect/authorize*",
+              "commands": [
+                [
+                  "wait",
+                  "css",
+                  "body",
+                  10,
+                  ".*",
+                  "update-image-placeholder-optional"
+                ]
+              ]
+            }
+          ]
+        }
+      ]
     }
   }
 }

@@ -50,6 +50,15 @@ public sealed class TokenLifetimeOptions
     /// Exact OAuth client_id to access-token format. Resource rules take
     /// precedence when a token has a mapped audience.
     /// </summary>
+    /// <summary>
+    /// Whether an access token may be presented in the query string of a
+    /// request to the UserInfo endpoint. Off by default: RFC 6750 section 2.3
+    /// discourages it (the URL reaches proxy logs, browser history and the
+    /// Referer header) and FAPI 2.0 forbids it outright. Turn it on only while
+    /// a legacy consumer is migrated to the Authorization header.
+    /// </summary>
+    public bool AllowAccessTokenInQueryString { get; init; } = false;
+
     public Dictionary<string, AccessTokenStorageMode> AccessTokenFormatsByClient
     { get; init; } = new(StringComparer.Ordinal);
 

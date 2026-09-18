@@ -33,6 +33,14 @@ x-identity-env: &identity-env
   # runner gives a module four minutes. FAPI 2.0 caps this at 599 seconds;
   # production keeps the 300-second default.
   Sufficit__Identity__Fapi2__PushedAuthorizationRequestLifetimeSeconds: "${CONFORMANCE_PAR_LIFETIME:-300}"
+  # Empty for the Basic plan: the Development environment then signs with its
+  # own ephemeral certificate, as any developer machine does.
+  Sufficit__Identity__Certificates__SigningPath: "${CONFORMANCE_SIGNING_CERTIFICATE:-}"
+  # Development plus a configured signing certificate is a contradiction the
+  # server refuses by default. It is deliberate here: everything else stays
+  # ephemeral and the issuer is a .test host; only the signing key is real,
+  # because FAPI 2.0 does not accept the RS256 of the development one.
+  Sufficit__Identity__AllowDevelopmentOnPublicHost: "${CONFORMANCE_ALLOW_DEVELOPMENT_CERTIFICATES:-false}"
   # The OpenID Connect Basic profile does not send PKCE. Production keeps the
   # OAuth 2.1 default of PKCE for every client.
   Sufficit__Identity__Pkce__RequireForAllClients: "false"
@@ -65,6 +73,10 @@ services:
     environment:
       <<: *identity-env
       ASPNETCORE_URLS: http://+:8080
+    volumes:
+      # Throwaway EC signing certificate, generated per run by
+      # conformance/run.sh when the plan needs one.
+      - ${CONFORMANCE_RESULTS_DIR:-./results}/certs:/certs:ro
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/health/ready"]
       interval: 5s
@@ -113,6 +125,8 @@ services:
       Conformance__ClientKeysPath: /results/client-keys.json
     volumes:
       - ${CONFORMANCE_RESULTS_DIR:-./results}:/results
+      # Same server composition, same certificate configuration.
+      - ${CONFORMANCE_RESULTS_DIR:-./results}/certs:/certs:ro
     profiles: ["tools"]
 
   mongodb:

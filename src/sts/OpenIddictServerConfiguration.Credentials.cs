@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
@@ -61,7 +62,7 @@ public static partial class ServiceCollectionExtensions
         {
             foreach (var certificate in certificateMaterial.Signing)
             {
-                server.AddSigningCertificate(certificate);
+                AddSigningCertificate(server, certificate);
             }
         }
         else if (isDevelopmentEnvironment)
@@ -109,5 +110,42 @@ public static partial class ServiceCollectionExtensions
                 "valid PFX file. Ephemeral development certificates are only " +
                 "allowed when ASPNETCORE_ENVIRONMENT=Development.");
         }
+    }
+
+    /// <summary>
+    /// Registers a configured signing certificate with OpenIddict.
+    /// </summary>
+    /// <remarks>
+    /// OpenIddict infers the signature algorithm from the key, and its
+    /// inference does not cover an X.509 certificate that holds an elliptic
+    /// curve key: <c>AddSigningCertificate</c> throws "a signature algorithm
+    /// cannot be automatically inferred from the signing key". EC keys are what
+    /// a FAPI-grade deployment uses — the profile does not accept RS256 — so
+    /// the credential is built here from the curve instead.
+    /// </remarks>
+    internal static void AddSigningCertificate(
+        OpenIddictServerBuilder server,
+        X509Certificate2 certificate)
+    {
+        // Not disposed: the key is used for the lifetime of the server.
+        var ecdsa = certificate.GetECDsaPrivateKey();
+        if (ecdsa is null)
+        {
+            server.AddSigningCertificate(certificate);
+            return;
+        }
+
+        // An X509SecurityKey cannot sign with ES256 — Microsoft.IdentityModel
+        // only builds RSA signature providers from a certificate — so the key
+        // is handed over as the ECDSA key it is, keeping the certificate
+        // thumbprint as the key identifier published in the JWKS.
+        server.AddSigningCredentials(new SigningCredentials(
+            new ECDsaSecurityKey(ecdsa) { KeyId = certificate.Thumbprint },
+            ecdsa.KeySize switch
+            {
+                <= 256 => SecurityAlgorithms.EcdsaSha256,
+                <= 384 => SecurityAlgorithms.EcdsaSha384,
+                _ => SecurityAlgorithms.EcdsaSha512,
+            }));
     }
 }

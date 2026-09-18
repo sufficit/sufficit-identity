@@ -71,6 +71,36 @@ public sealed class StandardClientAssertionTests
         Assert.Equal(Errors.InvalidClient, body.GetProperty("error").GetString());
     }
 
+    [Theory]
+    // Wrong recipient and a not-before a long way ahead are both failures of
+    // client authentication, and RFC 6749 5.2 names that invalid_client;
+    // OpenIddict reports them as invalid_grant (conformance:
+    // fapi2-...-par-test-par-endpoint-url-as-audience-fails and the nbf module).
+    [InlineData("https://another.example/", 0)]
+    [InlineData("https://sts.tests.local/", 600)]
+    public async Task An_assertion_for_another_server_or_for_later_is_invalid_client(
+        string audience,
+        int notBeforeOffsetSeconds)
+    {
+        var (factory, client, clientId, key) = await CreateClientAsync();
+        using var _ = factory;
+
+        var (status, body) = await client.PostFormAsync(
+            "/connect/token",
+            TokenRequest(
+                clientId,
+                CreateAssertion(
+                    clientId,
+                    key,
+                    JwtConstants.HeaderType,
+                    clientId,
+                    audience,
+                    notBeforeOffsetSeconds)));
+
+        Assert.NotEqual(HttpStatusCode.OK, status);
+        Assert.Equal(Errors.InvalidClient, body.GetProperty("error").GetString());
+    }
+
     private static Dictionary<string, string> TokenRequest(
         string clientId,
         string assertion) => new()
@@ -131,20 +161,22 @@ public sealed class StandardClientAssertionTests
         string clientId,
         ECDsaSecurityKey key,
         string tokenType,
-        string subject)
+        string subject,
+        string audience = "https://sts.tests.local/",
+        int notBeforeOffsetSeconds = 0)
     {
         var now = DateTime.UtcNow;
         return new JsonWebTokenHandler().CreateToken(new SecurityTokenDescriptor
         {
             Issuer = clientId,
-            Audience = "https://sts.tests.local/",
+            Audience = audience,
             Subject = new ClaimsIdentity([
                 new Claim(Claims.Subject, subject),
                 new Claim(Claims.JwtId, Guid.NewGuid().ToString("N")),
             ]),
             IssuedAt = now,
-            NotBefore = now,
-            Expires = now.AddMinutes(2),
+            NotBefore = now.AddSeconds(notBeforeOffsetSeconds),
+            Expires = now.AddSeconds(notBeforeOffsetSeconds).AddMinutes(2),
             TokenType = tokenType,
             SigningCredentials = new SigningCredentials(
                 key,
