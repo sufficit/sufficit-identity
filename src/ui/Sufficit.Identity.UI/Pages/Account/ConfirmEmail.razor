@@ -10,10 +10,10 @@
 
     @if (_status is not null)
     {
-        <div class="@(_success ? "alert alert-success" : "alert alert-error")">@_status</div>
+        <SUIAlert ToneValue="@(_success ? SUITone.Success : SUITone.Danger)">@_status</SUIAlert>
     }
 
-    <a href="@LoginUrl" class="btn btn-primary">@L["Common.BackToLogin"]</a>
+    <SUIButton Href="@LoginUrl">@L["Common.BackToLogin"]</SUIButton>
 </div>
 
 @code {

@@ -129,3 +129,49 @@ logout page only submits to the standard end-session endpoint; protocol
 validation and cookie termination remain responsibilities of the runtime
 controller. Replacing the current identity engine does not require changing
 these UI pages or their routes.
+
+## Where the visual layer comes from
+
+The pages are assembled from `Sufficit.Blazor.UI` (SUI) primitives — buttons,
+fields, alerts, chips, avatar, icons. The product's look is not expressed by
+restyling those components: SUI reads its own `--sui-*` tokens, and `site.css`
+points them at the brand tokens, once, in a block scoped to `.identity-public`
+(the class the public shell puts on its root). A component therefore arrives
+already dressed, and a SUI upgrade that changes a component's internals does
+not need a matching patch here.
+
+Below the token map sits a short list of rules for shapes SUI expresses as a
+rule rather than as a token — the 48px control height these sign-in screens use
+on every pointer, the heavier button weight, the alert's left rule, the field
+hint that reads as instruction rather than as an aside. Each one is a
+deliberate difference from SUI's default, and the file says so.
+
+The scope matters: the management console composes the same stylesheet and
+carries its own calibration, so the bridge must not leak onto it.
+
+### What is deliberately not a SUI component
+
+- **Checkboxes in plain-POST forms** (remember me, remember this device, the
+  consent scope list). The decision is submitted by a real browser form to an
+  endpoint that parses `value="true"`; `SUICheckbox` renders no `value`, so it
+  cannot carry one.
+- **The passkey rename editor** on `/manage/passkeys`. The field must take
+  focus the moment it appears and `SUITextField` exposes no focus handle.
+- **`.spinner`**, because the redirect overlay is built in JavaScript
+  (`js/identity.js`) and a component cannot be injected there. One spinner in
+  two shapes would be worse than one shape not built from a component.
+- **`.manage-link`**, a navigation row with its own affordance, not a button
+  and not a drawer link.
+
+### Press feedback
+
+A click on a Blazor Server control does nothing visible until the round trip
+comes back. `SUILoadingButton` answers that in the browser — it marks the
+button in the capture phase of the click and releases the mark a few seconds
+later. The public UI used to carry its own copy of that mechanism; it no
+longer does.
+
+Two flows here are not round-trip shaped: the passkey ceremony and passkey
+registration both wait on a platform dialog for as long as the person needs.
+Those buttons carry `aria-busy` instead, and `site.css` gives that state the
+same spinner, for as long as the work really lasts.

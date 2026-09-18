@@ -520,8 +520,11 @@ public sealed partial class ManagementUiArchitectureTests
             "@onsubmit=\"PasskeySignInAsync\"",
             login,
             StringComparison.Ordinal);
+        // The registration ceremony is driven by a click handler on a SUI
+        // button, never by a form submit: the page owns the WebAuthn call.
+        Assert.Contains("<SUILoadingButton", page, StringComparison.Ordinal);
         Assert.Contains(
-            "type=\"button\" class=\"btn btn-primary\" disabled=\"@_busy\" @onclick=\"RegisterPasskeyAsync\"",
+            "OnClick=\"RegisterPasskeyAsync\"",
             page,
             StringComparison.Ordinal);
         Assert.Contains("IAccountPasskeyService", controller, StringComparison.Ordinal);

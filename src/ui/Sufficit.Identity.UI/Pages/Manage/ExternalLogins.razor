@@ -16,11 +16,11 @@
     <div aria-live="polite">
         @if (_error is not null)
         {
-            <div class="alert alert-error" role="alert">@_error</div>
+            <SUIAlert ToneValue="SUITone.Danger">@_error</SUIAlert>
         }
         @if (_success is not null)
         {
-            <div class="alert alert-success" role="status">@_success</div>
+            <SUIAlert ToneValue="SUITone.Success">@_success</SUIAlert>
         }
     </div>
 
@@ -30,9 +30,11 @@
     }
     else if (_loadFailed)
     {
-        <button type="button" class="btn btn-secondary" @onclick="LoadAsync">
+        <SUILoadingButton VariantValue="SUIVariant.Outlined"
+                          ColorValue="SUIColor.Default"
+                          OnClick="LoadAsync">
             @L["Common.TryAgain"]
-        </button>
+        </SUILoadingButton>
     }
     else
     {
@@ -55,14 +57,14 @@
                             </span>
                             @if (identity.CanRemove)
                             {
-                                <button type="button"
-                                        class="btn btn-danger btn-sm"
-                                        disabled="@IsBusy"
-                                        @onclick="() => RemoveAsync(identity)">
+                                <SUILoadingButton SizeValue="SUISize.Small"
+                                                  ColorValue="SUIColor.Error"
+                                                  Disabled="@IsBusy"
+                                                  OnClick="@(() => RemoveAsync(identity))">
                                     @(_busyIdentity == IdentityKey(identity)
                                         ? L["ExternalLogins.Removing"]
                                         : L["ExternalLogins.Remove"])
-                                </button>
+                                </SUILoadingButton>
                             }
                         </li>
                     }
@@ -81,12 +83,15 @@
                 <div class="external-providers">
                     @foreach (var provider in _overview.AvailableProviders)
                     {
-                        <a href="@BuildChallengeUrl(provider)"
-                           class="btn btn-block @ProviderClass(provider.AuthenticationScheme)"
-                           data-enhance-nav="false"
-                           data-redirect-overlay="@provider.DisplayName">
+                        <SUIButton Href="@BuildChallengeUrl(provider)"
+                                   FullWidth
+                                   VariantValue="SUIVariant.Outlined"
+                                   ColorValue="SUIColor.Default"
+                                   Class="@ProviderClass(provider.AuthenticationScheme)"
+                                   data-enhance-nav="false"
+                                   data-redirect-overlay="@provider.DisplayName">
                             @L["ExternalLogins.Link", provider.DisplayName]
-                        </a>
+                        </SUIButton>
                     }
                 </div>
             </section>

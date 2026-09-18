@@ -14,7 +14,7 @@
     margin-block: var(--space-6);
 }
 
-.authorization-error__actions .btn {
+.authorization-error__actions .sui-btn {
     min-height: 44px;
     white-space: normal;
     text-align: center;

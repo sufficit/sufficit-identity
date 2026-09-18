@@ -10,7 +10,7 @@
     <div class="auth-card">
         <h1>@L["Consent.InvalidRequest"]</h1>
         <p class="info">@L["Consent.NoPendingRequest"]</p>
-        <a href="/" class="btn btn-primary">@L["Common.Back"]</a>
+        <SUIButton Href="/">@L["Common.Back"]</SUIButton>
     </div>
 }
 else
@@ -71,12 +71,16 @@ else
             </fieldset>
 
             <div class="btn-group">
-                <button type="submit" name="consent_decision" value="allow" class="btn btn-primary">
+                <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit"
+                                  name="consent_decision" value="allow">
                     @L["Consent.Authorize"]
-                </button>
-                <button type="submit" name="consent_decision" value="deny" class="btn btn-secondary">
+                </SUILoadingButton>
+                <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit"
+                                  VariantValue="SUIVariant.Outlined"
+                                  ColorValue="SUIColor.Default"
+                                  name="consent_decision" value="deny">
                     @L["Consent.Deny"]
-                </button>
+                </SUILoadingButton>
             </div>
 
             <div class="consent-submitted info" data-consent-submitted hidden role="status" aria-live="polite">

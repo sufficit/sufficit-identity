@@ -20,7 +20,7 @@ public sealed class DeviceFlowCloseTests : PageTest
 
         await popup.SetContentAsync("""
             <main data-device-flow-result="approved" data-device-launch-mode="popup">
-                <button type="button" class="btn btn-primary btn-block" data-device-flow-close hidden>Fechar esta aba</button>
+                <button type="button" class="sui-btn sui-btn--filled sui-btn--color-primary sui-btn--full-width" data-device-flow-close hidden>Fechar esta aba</button>
                 <p data-device-close-fallback hidden>Fechamento manual</p>
             </main>
             """);
@@ -48,7 +48,7 @@ public sealed class DeviceFlowCloseTests : PageTest
             await Page.EvaluateAsync("window.open('about:blank', '_blank')"));
         await popup.SetContentAsync("""
             <main data-device-flow-result>
-                <button type="button" class="btn btn-primary btn-block" data-device-flow-close hidden>Fechar esta aba</button>
+                <button type="button" class="sui-btn sui-btn--filled sui-btn--color-primary sui-btn--full-width" data-device-flow-close hidden>Fechar esta aba</button>
                 <p data-device-close-fallback hidden>Fechamento manual</p>
             </main>
             """);
@@ -89,7 +89,7 @@ public sealed class DeviceFlowCloseTests : PageTest
             await Page.EvaluateAsync("window.open('about:blank', '_blank')"));
         await popup.SetContentAsync("""
             <main data-device-flow-result>
-                <button type="button" class="btn btn-primary btn-block" data-device-flow-close hidden>Fechar esta aba</button>
+                <button type="button" class="sui-btn sui-btn--filled sui-btn--color-primary sui-btn--full-width" data-device-flow-close hidden>Fechar esta aba</button>
                 <p data-device-close-fallback hidden>Fechamento manual</p>
             </main>
             """);
@@ -144,7 +144,7 @@ public sealed class DeviceFlowCloseTests : PageTest
         await Page.SetContentAsync("""
             <main data-device-flow-result="approved" data-device-launch-mode="browser"
                   data-device-close-fallback-url="https://fallback.test/obrigado">
-                <button type="button" class="btn btn-primary btn-block" data-device-flow-close hidden>Fechar esta aba</button>
+                <button type="button" class="sui-btn sui-btn--filled sui-btn--color-primary sui-btn--full-width" data-device-flow-close hidden>Fechar esta aba</button>
                 <p data-device-close-fallback hidden>Fechamento manual</p>
             </main>
             """);
@@ -199,7 +199,7 @@ public sealed class DeviceFlowCloseTests : PageTest
     {
         await Page.SetContentAsync("""
             <main data-device-flow-result>
-                <button type="button" class="btn btn-primary btn-block" data-device-flow-close hidden>Fechar esta aba</button>
+                <button type="button" class="sui-btn sui-btn--filled sui-btn--color-primary sui-btn--full-width" data-device-flow-close hidden>Fechar esta aba</button>
                 <p data-device-close-fallback hidden>Fechamento manual</p>
             </main>
             """);

@@ -12,10 +12,8 @@
 {
     <div class="auth-card">
         <h1>@L["Register.Title"]</h1>
-        <div class="alert alert-error" role="alert">
-            @L["Register.Disabled"]
-        </div>
-        <a href="@LoginUrl" class="btn btn-primary">@L["Common.BackToLogin"]</a>
+        <SUIAlert ToneValue="SUITone.Danger">@L["Register.Disabled"]</SUIAlert>
+        <SUIButton Href="@LoginUrl">@L["Common.BackToLogin"]</SUIButton>
     </div>
 }
 else
@@ -29,7 +27,7 @@ else
 
         @if (_registered)
         {
-            <div class="alert alert-success registration-success" role="status" aria-live="polite">
+            <SUIAlert ToneValue="SUITone.Success" Class="registration-success" aria-live="polite">
                 <div class="registration-success__content">
                     <p class="registration-success__title">@L["Register.SuccessTitle"]</p>
                     @if (_confirmationMessageSent)
@@ -45,14 +43,14 @@ else
                         <p>@L["Register.ConfirmationFailed"]</p>
                     }
                 </div>
-            </div>
-            <a href="@LoginUrl" class="btn btn-primary btn-block">@L["Common.BackToLogin"]</a>
+            </SUIAlert>
+            <SUIButton Href="@LoginUrl" FullWidth>@L["Common.BackToLogin"]</SUIButton>
         }
         else
         {
             @if (_error is not null)
             {
-                <div class="alert alert-error" role="alert">@_error</div>
+                <SUIAlert ToneValue="SUITone.Danger">@_error</SUIAlert>
             }
 
             <EditForm Model="_model" Method="post" OnValidSubmit="RegisterAsync" FormName="register">
@@ -61,43 +59,39 @@ else
 
                 @if (_registrationPolicy.RequiresUserName)
                 {
-                    <div class="form-group">
-                        <label for="username">@L["Register.UserName"]</label>
-                        <InputText id="username" @bind-Value="_model.UserName" class="form-control"
-                                   autocomplete="username" autofocus />
-                        <ValidationMessage For="@(() => _model.UserName)" />
-                    </div>
+                    <SUITextField T="string" Id="username"
+                                  Label="@L["Register.UserName"]"
+                                  @bind-Value="_model.UserName"
+                                  autocomplete="username" autofocus />
                 }
 
-                <div class="form-group">
-                    <label for="email">@L["Register.Email"]</label>
-                    <InputText id="email" @bind-Value="_model.Email" class="form-control"
-                               autocomplete="email"
-                               autofocus="@( !_registrationPolicy.RequiresUserName )" />
-                    <ValidationMessage For="@(() => _model.Email)" />
-                </div>
+                <SUITextField T="string" Id="email"
+                              Label="@L["Register.Email"]"
+                              @bind-Value="_model.Email"
+                              InputType="email"
+                              autocomplete="email"
+                              autofocus="@(!_registrationPolicy.RequiresUserName)" />
 
-                <div class="form-group">
-                    <label for="password">@L["Register.Password"]</label>
-                    <InputText id="password" type="password" @bind-Value="_model.Password" class="form-control"
-                               autocomplete="new-password" />
-                    <ValidationMessage For="@(() => _model.Password)" />
-                </div>
+                <SUITextField T="string" Id="password"
+                              Label="@L["Register.Password"]"
+                              @bind-Value="_model.Password"
+                              InputType="password"
+                              autocomplete="new-password" />
 
-                <div class="form-group">
-                    <label for="confirm">@L["Register.ConfirmPassword"]</label>
-                    <InputText id="confirm" type="password" @bind-Value="_model.ConfirmPassword" class="form-control"
-                               autocomplete="new-password" />
-                    <ValidationMessage For="@(() => _model.ConfirmPassword)" />
-                </div>
+                <SUITextField T="string" Id="confirm"
+                              Label="@L["Register.ConfirmPassword"]"
+                              @bind-Value="_model.ConfirmPassword"
+                              InputType="password"
+                              autocomplete="new-password" />
 
                 <HumanVerification Flow="HumanVerificationFlow.Registration"
                                    @bind-Token="_verificationToken"
                                    @ref="_verificationControl" />
 
-                <button type="submit" class="btn btn-primary btn-block" disabled="@_submitting">
+                <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit" FullWidth
+                                  Disabled="@_submitting">
                     @L["Register.Submit"]
-                </button>
+                </SUILoadingButton>
             </EditForm>
 
             <div class="auth-links">

@@ -18,18 +18,20 @@
         </div>
         @if (!_loading && _sessions.Count > 0)
         {
-            <span class="badge badge-outline">@L["Sessions.CredentialCount", _sessions.Count]</span>
+            <SUIChip SizeValue="SUISize.Small" VariantValue="SUIVariant.Outlined">
+                @L["Sessions.CredentialCount", _sessions.Count]
+            </SUIChip>
         }
     </header>
 
     <div aria-live="polite">
         @if (_success is not null)
         {
-            <div class="alert alert-success">@_success</div>
+            <SUIAlert ToneValue="SUITone.Success">@_success</SUIAlert>
         }
         @if (_error is not null)
         {
-            <div class="alert alert-error">@_error</div>
+            <SUIAlert ToneValue="SUITone.Danger">@_error</SUIAlert>
         }
     </div>
 
@@ -55,7 +57,9 @@
                                 <span class="access-client-id">@group.ClientId</span>
                             }
                         </div>
-                        <span class="badge">@L["Sessions.CredentialCount", group.Sessions.Count]</span>
+                        <SUIChip SizeValue="SUISize.Small">
+                            @L["Sessions.CredentialCount", group.Sessions.Count]
+                        </SUIChip>
                     </header>
                     <ul class="session-credential-list">
                         @foreach (var session in group.Sessions)
@@ -75,15 +79,16 @@
                                         <dd>@FormatDate(session.ExpiresAt, L["Sessions.NoExpiration"])</dd>
                                     </div>
                                 </dl>
-                                <button type="button"
-                                        class="btn btn-danger btn-sm access-item-action"
-                                        aria-label="@L["Sessions.RevokeAria", group.DisplayName]"
-                                        disabled="@IsBusy"
-                                        @onclick="() => RevokeAsync(session)">
+                                <SUILoadingButton SizeValue="SUISize.Small"
+                                                  ColorValue="SUIColor.Error"
+                                                  Class="access-item-action"
+                                                  aria-label="@L["Sessions.RevokeAria", group.DisplayName]"
+                                                  Disabled="@IsBusy"
+                                                  OnClick="@(() => RevokeAsync(session))">
                                     @(_busySessionId == session.Id
                                         ? L["Sessions.Revoking"]
                                         : L["Sessions.RevokeCredential"])
-                                </button>
+                                </SUILoadingButton>
                             </li>
                         }
                     </ul>
@@ -95,12 +100,11 @@
             <p class="muted">
                 @L["Sessions.RevokeAllDescription"]
             </p>
-            <button type="button"
-                    class="btn btn-danger"
-                    disabled="@IsBusy"
-                    @onclick="RevokeAllAsync">
+            <SUILoadingButton ColorValue="SUIColor.Error"
+                              Disabled="@IsBusy"
+                              OnClick="RevokeAllAsync">
                 @(_revokingAll ? L["Sessions.RevokingAll"] : L["Sessions.RevokeAll"])
-            </button>
+            </SUILoadingButton>
         </div>
     }
 </div>

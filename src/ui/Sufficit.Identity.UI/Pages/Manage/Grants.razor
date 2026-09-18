@@ -18,18 +18,20 @@
         </div>
         @if (!_loading && _applications.Count > 0)
         {
-            <span class="badge badge-outline">@L["Grants.ApplicationCount", _applications.Count]</span>
+            <SUIChip SizeValue="SUISize.Small" VariantValue="SUIVariant.Outlined">
+                @L["Grants.ApplicationCount", _applications.Count]
+            </SUIChip>
         }
     </header>
 
     <div aria-live="polite">
         @if (_success is not null)
         {
-            <div class="alert alert-success">@_success</div>
+            <SUIAlert ToneValue="SUITone.Success">@_success</SUIAlert>
         }
         @if (_error is not null)
         {
-            <div class="alert alert-error">@_error</div>
+            <SUIAlert ToneValue="SUITone.Danger">@_error</SUIAlert>
         }
     </div>
 
@@ -82,15 +84,16 @@
                             </div>
                         </dl>
                     </div>
-                    <button type="button"
-                            class="btn btn-danger btn-sm access-item-action"
-                            aria-label="@L["Grants.RevokeAria", application.DisplayName]"
-                            disabled="@IsBusy"
-                            @onclick="() => RevokeAsync(application)">
+                    <SUILoadingButton SizeValue="SUISize.Small"
+                                      ColorValue="SUIColor.Error"
+                                      Class="access-item-action"
+                                      aria-label="@L["Grants.RevokeAria", application.DisplayName]"
+                                      Disabled="@IsBusy"
+                                      OnClick="@(() => RevokeAsync(application))">
                         @(_busyApplicationId == application.ApplicationId
                             ? L["Grants.Revoking"]
                             : L["Grants.Revoke"])
-                    </button>
+                    </SUILoadingButton>
                 </li>
             }
         </ul>
