@@ -41,8 +41,14 @@
                 <input type="hidden" name="state" value="@_state" />
             }
             <div class="btn-group">
-                <button type="submit" class="btn btn-primary">@L["Logout.Confirm"]</button>
-                <a href="/" class="btn btn-secondary">@L["Logout.Cancel"]</a>
+                <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit">
+                    @L["Logout.Confirm"]
+                </SUILoadingButton>
+                <SUIButton Href="/"
+                           VariantValue="SUIVariant.Outlined"
+                           ColorValue="SUIColor.Default">
+                    @L["Logout.Cancel"]
+                </SUIButton>
             </div>
         </EditForm>
     }

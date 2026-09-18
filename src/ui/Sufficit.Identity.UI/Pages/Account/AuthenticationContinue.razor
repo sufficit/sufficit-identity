@@ -9,11 +9,9 @@
     <div class="spinner" aria-hidden="true"></div>
     <h1>@L["AuthenticationContinue.Title"]</h1>
     <p class="info">@L["AuthenticationContinue.Description"]</p>
-    <a href="@_returnUrl"
-       class="btn btn-primary btn-block"
-       data-enhance-nav="false">
+    <SUIButton Href="@_returnUrl" FullWidth data-enhance-nav="false">
         @L["AuthenticationContinue.Action"]
-    </a>
+    </SUIButton>
 </div>
 
 @code {

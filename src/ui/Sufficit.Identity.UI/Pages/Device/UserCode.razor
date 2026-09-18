@@ -32,19 +32,19 @@
         }
         @if (NativeReturnUri is { } returnUri)
         {
-            <a class="btn btn-primary btn-block" href="@returnUri"
-               data-device-flow-return aria-describedby="device-return-hint">
+            <SUIButton Href="@returnUri" FullWidth
+                       data-device-flow-return aria-describedby="device-return-hint">
                 @L["Device.ReturnToApp"]
-            </a>
+            </SUIButton>
             <p id="device-return-hint" class="device-return-hint">
                 @L["Device.ReturnToAppHint"]
             </p>
         }
         else
         {
-            <button type="button" class="btn btn-primary btn-block" data-device-flow-close>
+            <SUIButton FullWidth data-device-flow-close>
                 @L["Device.CloseTab"]
-            </button>
+            </SUIButton>
             <p id="device-close-fallback" class="device-close-fallback" data-device-close-fallback hidden role="status" aria-live="polite">
                 @L["Device.CloseFallback"]
             </p>
@@ -66,22 +66,29 @@
         </p>
 
         <form method="get" action="/connect/device">
-            <div class="form-group">
-                <label for="usercode">@L["Device.CodeLabel"]</label>
-                <input id="usercode" name="user_code" class="form-control device-code"
-                       inputmode="numeric" placeholder="@L["Device.CodePlaceholder"]"
-                       autocomplete="one-time-code" autofocus />
-                <span class="field-hint">@L["Device.CodeHint"]</span>
-            </div>
+            <SUITextField T="string" Id="usercode"
+                          Label="@L["Device.CodeLabel"]"
+                          Placeholder="@L["Device.CodePlaceholder"]"
+                          HelperText="@L["Device.CodeHint"]"
+                          Class="device-code-field"
+                          name="user_code"
+                          inputmode="numeric"
+                          autocomplete="one-time-code" autofocus />
 
-            <button type="submit" class="btn btn-primary btn-block">@L["Device.Continue"]</button>
+            <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit" FullWidth>
+                @L["Device.Continue"]
+            </SUILoadingButton>
         </form>
     }
     else if (_error is not null)
     {
         <h1>@L["Device.ConfirmationFailed"]</h1>
-        <div class="alert alert-error" role="alert">@_error</div>
-        <a class="btn btn-secondary btn-block" href="/device/usercode">@L["Device.TryAgain"]</a>
+        <SUIAlert ToneValue="SUITone.Danger">@_error</SUIAlert>
+        <SUIButton Href="/device/usercode" FullWidth
+                   VariantValue="SUIVariant.Outlined"
+                   ColorValue="SUIColor.Default">
+            @L["Device.TryAgain"]
+        </SUIButton>
     }
     else
     {
@@ -98,7 +105,9 @@
                 <strong>@_clientName</strong>
                 <code>@_clientId</code>
             </span>
-            <span class="badge badge-outline">@L["Device.Requester"]</span>
+            <SUIChip SizeValue="SUISize.Small" VariantValue="SUIVariant.Outlined">
+                @L["Device.Requester"]
+            </SUIChip>
         </div>
 
         <div class="device-code-confirmation">
@@ -195,12 +204,16 @@
             }
 
             <div class="btn-group device-authorization-actions">
-                <button type="submit" name="approved" value="true" class="btn btn-primary btn-block">
+                <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit" FullWidth
+                                  name="approved" value="true">
                     @L["Device.Authorize"]
-                </button>
-                <button type="submit" name="approved" value="false" class="btn btn-secondary btn-block">
+                </SUILoadingButton>
+                <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit" FullWidth
+                                  VariantValue="SUIVariant.Outlined"
+                                  ColorValue="SUIColor.Default"
+                                  name="approved" value="false">
                     @L["Device.Deny"]
-                </button>
+                </SUILoadingButton>
             </div>
         </form>
     }

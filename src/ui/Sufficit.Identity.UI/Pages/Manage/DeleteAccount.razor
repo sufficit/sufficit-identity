@@ -9,21 +9,21 @@
     <ManageBackLink />
     <h1>@L["DeleteAccount.Title"]</h1>
 
-    <div class="alert alert-error" role="alert">
+    <SUIAlert ToneValue="SUITone.Danger">
         <strong>@L["DeleteAccount.Warning"]</strong>
         @L["DeleteAccount.DataWarning"]
-    </div>
+    </SUIAlert>
 
     @if (_deleted)
     {
-        <div class="alert alert-success">@L["DeleteAccount.Success"]</div>
-        <a href="/" class="btn btn-primary">@L["Common.BackHome"]</a>
+        <SUIAlert ToneValue="SUITone.Success">@L["DeleteAccount.Success"]</SUIAlert>
+        <SUIButton Href="/">@L["Common.BackHome"]</SUIButton>
     }
     else
     {
         @if (_error is not null)
         {
-            <div class="alert alert-error">@_error</div>
+            <SUIAlert ToneValue="SUITone.Danger">@_error</SUIAlert>
         }
 
         <p class="info">@L["DeleteAccount.ConfirmEmail"]</p>
@@ -31,22 +31,26 @@
         <EditForm Model="_model" Method="post" OnValidSubmit="DeleteAsync" FormName="delete-account">
             <DataAnnotationsValidator />
 
-            <div class="form-group">
-                <label for="email">@L["DeleteAccount.Email"]</label>
-                <InputText id="email" @bind-Value="_model.Email" class="form-control"
-                           autocomplete="email" autofocus />
-                <ValidationMessage For="@(() => _model.Email)" />
-            </div>
+            <SUITextField T="string" Id="email"
+                          Label="@L["DeleteAccount.Email"]"
+                          @bind-Value="_model.Email"
+                          InputType="email"
+                          autocomplete="email" autofocus />
 
-            <div class="form-group">
-                <label for="password">@L["DeleteAccount.CurrentPassword"]</label>
-                <InputText id="password" type="password" @bind-Value="_model.Password" class="form-control"
-                           autocomplete="current-password" />
-                <ValidationMessage For="@(() => _model.Password)" />
-            </div>
+            <SUITextField T="string" Id="password"
+                          Label="@L["DeleteAccount.CurrentPassword"]"
+                          @bind-Value="_model.Password"
+                          InputType="password"
+                          autocomplete="current-password" />
 
-            <button type="submit" class="btn btn-danger">@L["DeleteAccount.Submit"]</button>
-            <a href="/manage/personaldata" class="btn btn-secondary">@L["Common.Cancel"]</a>
+            <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit" ColorValue="SUIColor.Error">
+                @L["DeleteAccount.Submit"]
+            </SUILoadingButton>
+            <SUIButton Href="/manage/personaldata"
+                       VariantValue="SUIVariant.Outlined"
+                       ColorValue="SUIColor.Default">
+                @L["Common.Cancel"]
+            </SUIButton>
         </EditForm>
     }
 </div>

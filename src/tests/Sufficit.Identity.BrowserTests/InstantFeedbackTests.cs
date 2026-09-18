@@ -5,69 +5,74 @@ using NUnit.Framework;
 namespace Sufficit.Identity.BrowserTests;
 
 /// <summary>
-/// The passkey button has to answer the click in the browser: its handler runs
-/// on the Blazor circuit and its first step opens the platform dialog, so
-/// anything that waits for the server arrives too late to look like a reaction.
-/// These run against the script and the stylesheet themselves — no server, no
-/// authenticator — because what is being checked is exactly the part that does
-/// not involve either.
+/// The press feedback itself belongs to Sufficit.Blazor.UI: SUILoadingButton
+/// marks the button in the capture phase of the click and releases it a few
+/// seconds later, and the library tests that. What this product owns is the
+/// skin over it, and one case the library's timer cannot serve — a passkey
+/// ceremony waits on a platform dialog for as long as the person needs, so the
+/// page carries the busy state on aria-busy instead. These run against
+/// site.css alone: no server, no circuit, no authenticator.
 /// </summary>
 [Parallelizable(ParallelScope.None)]
 public class InstantFeedbackTests : PageTest
 {
     [Test]
-    public async Task The_button_is_marked_busy_within_the_click_itself()
+    public async Task A_button_busy_with_a_ceremony_shows_a_spinner_and_stops_further_clicks()
     {
-        await GivenLoginLikeButtonAsync();
+        await GivenPasskeyLikeButtonAsync(ariaBusy: true);
 
-        // Observed from inside the click handler: whatever the browser does
-        // afterwards, the mark is already there when the page's own listeners
-        // run — which is what makes the press feel answered.
-        var markedDuringClick = await Page.EvaluateAsync<bool>(@"
-            () => new Promise(resolve => {
-                const button = document.querySelector('.btn-passkey');
-                button.addEventListener('click', () => {
-                    resolve(button.classList.contains('is-busy'));
-                }, { once: true });
-                button.click();
-            })");
+        var spinner = await Page.EvaluateAsync<string>(@"
+            () => getComputedStyle(document.querySelector('.btn-passkey'), '::after')
+                .animationName");
+        var cursor = await Page.EvaluateAsync<string>(@"
+            () => getComputedStyle(document.querySelector('.btn-passkey')).cursor");
 
-        Assert.That(markedDuringClick, Is.True);
-        await Expect(Page.Locator(".btn-passkey")).ToHaveAttributeAsync("aria-busy", "true");
+        Assert.That(spinner, Is.EqualTo("spin"));
+        Assert.That(cursor, Is.EqualTo("progress"));
     }
 
     [Test]
-    public async Task The_busy_button_shows_a_spinner_and_stops_further_clicks()
+    public async Task An_idle_button_carries_no_spinner()
     {
-        await GivenLoginLikeButtonAsync();
-        await Page.Locator(".btn-passkey").ClickAsync();
+        await GivenPasskeyLikeButtonAsync(ariaBusy: false);
 
         var spinner = await Page.EvaluateAsync<string>(@"
-            () => getComputedStyle(document.querySelector('.btn-passkey'), '::before')
+            () => getComputedStyle(document.querySelector('.btn-passkey'), '::after')
                 .animationName");
-        var pointerEvents = await Page.EvaluateAsync<string>(@"
-            () => getComputedStyle(document.querySelector('.btn-passkey')).pointerEvents");
 
-        Assert.That(spinner, Is.EqualTo("spin"));
-        Assert.That(pointerEvents, Is.EqualTo("none"));
+        Assert.That(spinner, Is.EqualTo("none"));
     }
 
-    private async Task GivenLoginLikeButtonAsync()
+    [Test]
+    public async Task The_spinner_slows_down_when_motion_is_reduced()
+    {
+        await Page.EmulateMediaAsync(new() { ReducedMotion = ReducedMotion.Reduce });
+        await GivenPasskeyLikeButtonAsync(ariaBusy: true);
+
+        var duration = await Page.EvaluateAsync<string>(@"
+            () => getComputedStyle(document.querySelector('.btn-passkey'), '::after')
+                .animationDuration");
+
+        Assert.That(duration, Is.EqualTo("2.4s"));
+    }
+
+    private async Task GivenPasskeyLikeButtonAsync(bool ariaBusy)
     {
         var root = ResolvePublicUiSource();
         var css = await File.ReadAllTextAsync(
             Path.Combine(root, "wwwroot", "css", "site.css"));
-        var script = await File.ReadAllTextAsync(
-            Path.Combine(root, "wwwroot", "js", "instant-feedback.js"));
 
         await Page.SetContentAsync($$"""
             <!DOCTYPE html>
             <html><head><style>{{css}}</style></head>
             <body>
-              <button type="button" class="btn btn-passkey btn-block" data-instant-busy>
-                <span>Sign in with passkey</span>
-              </button>
-              <script>{{script}}</script>
+              <div class="page identity-public">
+                <button type="button"
+                        class="sui-btn sui-btn--outlined sui-btn--color-default btn-passkey"
+                        aria-busy="{{(ariaBusy ? "true" : "false")}}">
+                  <span class="sui-btn__label">Sign in with passkey</span>
+                </button>
+              </div>
             </body></html>
             """);
     }

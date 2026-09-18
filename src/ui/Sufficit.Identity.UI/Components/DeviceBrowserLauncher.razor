@@ -6,18 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
     <title>@L["DeviceLauncher.Title"] — @L["Layout.BrandFallback"]</title>
+    <link rel="stylesheet" href="/_content/Sufficit.Blazor.UI/sufficit-ui.css" />
     <link rel="stylesheet" href="/_content/Sufficit.Identity.UI/css/site.css" />
     <link rel="stylesheet" href="/_content/Sufficit.Identity.UI/css/authorization-error.css" />
 </head>
 <body>
-    <div class="page">
+    <div class="page identity-public">
         <header class="topbar"><div class="topbar-brand"><a href="/"><span class="brand-wordmark"><span class="brand-name">Sufficit</span><span class="brand-sub">Identity</span></span></a></div></header>
         <main class="content">
             <section class="auth-card authorization-error" data-device-launcher aria-labelledby="launcher-title">
                 <h1 id="launcher-title">@L["DeviceLauncher.Title"]</h1>
                 <p>@L["DeviceLauncher.Explanation"]</p>
                 <div class="authorization-error__actions">
-                    <a class="btn btn-primary" href="@VerificationUrl" data-device-launch>@L["DeviceLauncher.Open"]</a>
+                    <SUIButton Href="@VerificationUrl" data-device-launch>@L["DeviceLauncher.Open"]</SUIButton>
                 </div>
                 <p data-device-waiting hidden role="status">@L["DeviceLauncher.Waiting"]</p>
                 <p data-device-complete hidden role="status">@L["DeviceLauncher.Complete"]</p>

@@ -13,14 +13,18 @@
 
     @if (_error is not null)
     {
-        <div class="alert alert-error">@_error</div>
+        <SUIAlert ToneValue="SUITone.Danger">@_error</SUIAlert>
     }
 
     <div class="btn-group">
         <EditForm Method="post" Model="_empty" OnValidSubmit="DownloadAsync" FormName="download-data">
-            <button type="submit" class="btn btn-primary">@L["PersonalData.Download"]</button>
+            <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit">
+                @L["PersonalData.Download"]
+            </SUILoadingButton>
         </EditForm>
-        <a href="/manage/deleteaccount" class="btn btn-danger">@L["PersonalData.DeleteAccount"]</a>
+        <SUIButton Href="/manage/deleteaccount" ColorValue="SUIColor.Error">
+            @L["PersonalData.DeleteAccount"]
+        </SUIButton>
     </div>
 </div>
 

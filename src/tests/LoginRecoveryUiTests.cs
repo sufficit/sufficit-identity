@@ -36,7 +36,7 @@ public sealed class LoginRecoveryUiTests
             authenticatedMarkup,
             StringComparison.Ordinal);
         Assert.Contains(
-            "href=\"@(_returnUrl ?? \"/\")\"",
+            "Href=\"@(_returnUrl ?? \"/\")\"",
             authenticatedMarkup,
             StringComparison.Ordinal);
         Assert.Contains(

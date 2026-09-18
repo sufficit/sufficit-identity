@@ -11,7 +11,7 @@
 
     @if (ErrorMessage is { } errorMessage)
     {
-        <div class="alert alert-error" role="alert">@errorMessage</div>
+        <SUIAlert ToneValue="SUITone.Danger">@errorMessage</SUIAlert>
     }
 
     <form method="post" action="/account/login/2fa" data-enhance="false" data-auth-submit-once>
@@ -22,18 +22,21 @@
             <input type="hidden" name="RememberMe" value="true" />
         }
 
-        <div class="form-group">
-            <label for="code">@L["TwoFactor.VerificationCode"]</label>
-            <input id="code" name="Code" class="form-control" placeholder="123456"
-                   autocomplete="one-time-code" autofocus required minlength="6" maxlength="7" />
-        </div>
+        <SUITextField T="string" Id="code"
+                      Label="@L["TwoFactor.VerificationCode"]"
+                      Placeholder="123456"
+                      MaxLength="7"
+                      name="Code"
+                      autocomplete="one-time-code" autofocus required minlength="6" />
 
         <div class="form-check">
             <input id="rememberMachine" name="RememberClient" type="checkbox" value="true" />
             <label for="rememberMachine">@L["TwoFactor.RememberDevice"]</label>
         </div>
 
-        <button type="submit" class="btn btn-primary btn-block">@L["TwoFactor.Submit"]</button>
+        <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit" FullWidth>
+            @L["TwoFactor.Submit"]
+        </SUILoadingButton>
     </form>
 
     <div class="auth-links">

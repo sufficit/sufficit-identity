@@ -11,20 +11,22 @@
 
     @if (ErrorMessage is { } errorMessage)
     {
-        <div class="alert alert-error" role="alert">@errorMessage</div>
+        <SUIAlert ToneValue="SUITone.Danger">@errorMessage</SUIAlert>
     }
 
     <form method="post" action="/account/login/recoverycode" data-enhance="false" data-auth-submit-once>
         <AntiforgeryToken />
         <input type="hidden" name="ReturnUrl" value="@_returnUrl" />
 
-        <div class="form-group">
-            <label for="code">@L["RecoveryCode.CodeLabel"]</label>
-            <input id="code" name="Code" class="form-control" placeholder="abc-defg"
-                   autocomplete="one-time-code" autofocus required />
-        </div>
+        <SUITextField T="string" Id="code"
+                      Label="@L["RecoveryCode.CodeLabel"]"
+                      Placeholder="abc-defg"
+                      name="Code"
+                      autocomplete="one-time-code" autofocus required />
 
-        <button type="submit" class="btn btn-primary btn-block">@L["Login.Submit"]</button>
+        <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit" FullWidth>
+            @L["Login.Submit"]
+        </SUILoadingButton>
     </form>
 
     <div class="auth-links">

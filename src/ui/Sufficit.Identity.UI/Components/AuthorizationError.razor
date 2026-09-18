@@ -7,11 +7,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
     <title>@L[$"{ResourcePrefix}.Title"] — @L["Layout.BrandFallback"]</title>
+    <link rel="stylesheet" href="/_content/Sufficit.Blazor.UI/sufficit-ui.css" />
     <link rel="stylesheet" href="/_content/Sufficit.Identity.UI/css/site.css" />
     <link rel="stylesheet" href="/_content/Sufficit.Identity.UI/css/authorization-error.css" />
 </head>
 <body>
-    <div class="page">
+    <div class="page identity-public">
         <header class="topbar">
             <div class="topbar-brand">
                 <a href="/">
@@ -25,7 +26,7 @@
                 <p>@L[$"{ResourcePrefix}.Explanation"]</p>
                 <p>@L[$"{ResourcePrefix}.Recovery", RetryAfterSeconds ?? 0]</p>
                 <div class="authorization-error__actions">
-                    <a class="btn btn-primary" href="/">@L["AuthorizationError.Home"]</a>
+                    <SUIButton Href="/">@L["AuthorizationError.Home"]</SUIButton>
                 </div>
                 <p class="authorization-error__help">@L[RetryAfterSeconds.HasValue ? "RateLimitError.Help" : "AuthorizationError.AttemptEnded"]</p>
             </section>

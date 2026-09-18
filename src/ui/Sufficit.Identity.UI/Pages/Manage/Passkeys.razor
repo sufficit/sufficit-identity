@@ -17,11 +17,11 @@
 
     @if (_error is not null)
     {
-        <div class="alert alert-error" role="alert" aria-live="assertive">@_error</div>
+        <SUIAlert ToneValue="SUITone.Danger" aria-live="assertive">@_error</SUIAlert>
     }
     @if (_success is not null)
     {
-        <div class="alert alert-success" role="status" aria-live="polite">@_success</div>
+        <SUIAlert ToneValue="SUITone.Success" aria-live="polite">@_success</SUIAlert>
     }
 
     <h3>@L["ManagePasskeys.YourPasskeys"]</h3>
@@ -31,12 +31,15 @@
     }
     else if (_loadFailed)
     {
-        <div class="alert alert-error" role="alert">
+        <SUIAlert ToneValue="SUITone.Danger">
             @L["ManagePasskeys.LoadError"]
-            <button type="button" class="btn btn-secondary btn-sm" @onclick="LoadPasskeysAsync">
+            <SUILoadingButton SizeValue="SUISize.Small"
+                              VariantValue="SUIVariant.Outlined"
+                              ColorValue="SUIColor.Default"
+                              OnClick="LoadPasskeysAsync">
                 @L["Common.TryAgain"]
-            </button>
-        </div>
+            </SUILoadingButton>
+        </SUIAlert>
     }
     else if (_overview?.Credentials.Count > 0)
     {
@@ -46,6 +49,9 @@
                 <li class="passkey-item">
                     @if (_editingCredentialId == passkey.CredentialId)
                     {
+                        @* Native input on purpose: the editor has to take focus the
+                           moment it appears, and SUITextField exposes no handle to
+                           focus. Everything else on this page is a SUI control. *@
                         <div class="form-group passkey-inline-editor">
                             <label for="passkey-edit-name">@L["ManagePasskeys.Name"]</label>
                             <input id="passkey-edit-name" @ref="_renameInput"
@@ -55,14 +61,17 @@
                                    autocomplete="off" disabled="@_busy" />
                             <span class="field-hint">@L["ManagePasskeys.RenameHint"]</span>
                             <div class="passkey-inline-actions">
-                                <button type="button" class="btn btn-primary btn-sm" disabled="@_busy"
-                                        @onclick="@(async () => await SavePasskeyNameAsync(passkey.CredentialId))">
+                                <SUILoadingButton SizeValue="SUISize.Small" Disabled="@_busy"
+                                                  OnClick="@(async () => await SavePasskeyNameAsync(passkey.CredentialId))">
                                     @(_busy ? L["ManagePasskeys.Saving"] : L["ManagePasskeys.SaveName"])
-                                </button>
-                                <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
-                                        @onclick="CancelRenaming">
+                                </SUILoadingButton>
+                                <SUILoadingButton SizeValue="SUISize.Small"
+                                                  VariantValue="SUIVariant.Outlined"
+                                                  ColorValue="SUIColor.Default"
+                                                  Disabled="@_busy"
+                                                  OnClick="CancelRenaming">
                                     @L["Common.Cancel"]
-                                </button>
+                                </SUILoadingButton>
                             </div>
                         </div>
                     }
@@ -73,20 +82,27 @@
                             <span class="passkey-meta">@L["ManagePasskeys.CreatedAt", passkey.CreatedAt.LocalDateTime.ToString("g", CultureInfo.CurrentCulture)]</span>
                             @if (passkey.IsBackedUp)
                             {
-                                <span class="badge badge-success">@L["ManagePasskeys.Synced"]</span>
+                                <SUIChip SizeValue="SUISize.Small" ColorValue="SUIColor.Success">
+                                    @L["ManagePasskeys.Synced"]
+                                </SUIChip>
                             }
                         </div>
                         <div class="passkey-item-actions">
-                            <button type="button" class="btn btn-secondary btn-sm" disabled="@_busy"
-                                    aria-label="@L["ManagePasskeys.RenameAria", passkey.Name ?? L["ManagePasskeys.Unnamed"]]"
-                                    @onclick="@(() => StartRenaming(passkey))">
+                            <SUILoadingButton SizeValue="SUISize.Small"
+                                              VariantValue="SUIVariant.Outlined"
+                                              ColorValue="SUIColor.Default"
+                                              Disabled="@_busy"
+                                              aria-label="@L["ManagePasskeys.RenameAria", passkey.Name ?? L["ManagePasskeys.Unnamed"]]"
+                                              OnClick="@(() => StartRenaming(passkey))">
                                 @L["ManagePasskeys.Rename"]
-                            </button>
-                            <button type="button" class="btn btn-danger btn-sm" disabled="@_busy"
-                                    aria-label="@L["ManagePasskeys.RemoveAria", passkey.Name ?? L["ManagePasskeys.Unnamed"]]"
-                                    @onclick="@(async () => await RemovePasskeyAsync(passkey.CredentialId))">
+                            </SUILoadingButton>
+                            <SUILoadingButton SizeValue="SUISize.Small"
+                                              ColorValue="SUIColor.Error"
+                                              Disabled="@_busy"
+                                              aria-label="@L["ManagePasskeys.RemoveAria", passkey.Name ?? L["ManagePasskeys.Unnamed"]]"
+                                              OnClick="@(async () => await RemovePasskeyAsync(passkey.CredentialId))">
                                 @L["ManagePasskeys.Remove"]
-                            </button>
+                            </SUILoadingButton>
                         </div>
                     }
                 </li>
@@ -105,30 +121,33 @@
 
         @if (!_supported)
         {
-            <div class="alert alert-info" role="status">
-                @L["ManagePasskeys.Unsupported"]
-            </div>
+            <SUIAlert ToneValue="SUITone.Info">@L["ManagePasskeys.Unsupported"]</SUIAlert>
         }
         else if (!_overview.CanRegister)
         {
-            <div class="alert alert-info" role="status">
+            <SUIAlert ToneValue="SUITone.Info">
                 @L["ManagePasskeys.LimitReached", _overview.MaximumCredentials]
-            </div>
+            </SUIAlert>
         }
         else
         {
             <form @ref="_registrationForm">
                 <AntiforgeryToken />
-                <div class="form-group">
-                    <label for="passkey-name">@L["ManagePasskeys.NameOptional"]</label>
-                    <input id="passkey-name" name="name" @bind="_passkeyName" class="form-control"
-                           maxlength="@_overview.MaximumNameLength" autocomplete="off"
-                           placeholder="@L["ManagePasskeys.NamePlaceholder"]" disabled="@_busy" />
-                    <span class="field-hint">@L["ManagePasskeys.DeviceNameHint"]</span>
-                </div>
-                <button type="button" class="btn btn-primary" disabled="@_busy" @onclick="RegisterPasskeyAsync">
+                <SUITextField T="string" Id="passkey-name"
+                              Label="@L["ManagePasskeys.NameOptional"]"
+                              Placeholder="@L["ManagePasskeys.NamePlaceholder"]"
+                              HelperText="@L["ManagePasskeys.DeviceNameHint"]"
+                              MaxLength="@_overview.MaximumNameLength"
+                              @bind-Value="_passkeyName"
+                              Disabled="@_busy"
+                              name="name" autocomplete="off" />
+                @* aria-busy, not IsLoading: the authenticator dialog is the wait,
+                   and the label says which one. *@
+                <SUILoadingButton Disabled="@_busy"
+                                  aria-busy="@(_busy ? "true" : "false")"
+                                  OnClick="RegisterPasskeyAsync">
                     @(_busy ? L["ManagePasskeys.WaitingDevice"] : L["ManagePasskeys.Register"])
-                </button>
+                </SUILoadingButton>
             </form>
         }
     }

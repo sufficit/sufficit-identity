@@ -14,29 +14,29 @@
     <h1>@L["Manage.Title"]</h1>
 
     <div class="profile-card">
-        @if (!string.IsNullOrEmpty(_avatarUrl) && !_avatarLoadFailed)
-        {
-            <img src="@_avatarUrl"
-                 class="profile-avatar"
-                 alt=""
-                 decoding="async"
-                 referrerpolicy="no-referrer"
-                 @onerror="HandleAvatarError" />
-        }
-        else
-        {
-            <div class="profile-avatar">@AvatarFallback</div>
-        }
+        @* SUIAvatar owns the "image did not load" fallback, so the page no
+           longer tracks it: a broken avatar URL shows the initial instead. *@
+        <SUIAvatar Class="profile-avatar"
+                   SizeValue="SUISize.Large"
+                   Src="@_avatarUrl"
+                   decoding="async"
+                   referrerpolicy="no-referrer">
+            @AvatarFallback
+        </SUIAvatar>
         <div>
             <h2>@_profile?.UserName</h2>
             <p class="muted">@_profile?.Email</p>
             @if (_emailConfirmed)
             {
-                <span class="badge badge-success">@L["Manage.EmailConfirmed"]</span>
+                <SUIChip SizeValue="SUISize.Small" ColorValue="SUIColor.Success">
+                    @L["Manage.EmailConfirmed"]
+                </SUIChip>
             }
             else
             {
-                <span class="badge badge-warning">@L["Manage.EmailNotConfirmed"]</span>
+                <SUIChip SizeValue="SUISize.Small" ColorValue="SUIColor.Warning">
+                    @L["Manage.EmailNotConfirmed"]
+                </SUIChip>
             }
         </div>
     </div>
@@ -84,7 +84,6 @@
     [CascadingParameter] private Task<AuthenticationState>? _authTask { get; set; }
     private AccountSelfServiceProfile? _profile;
     private bool _emailConfirmed;
-    private bool _avatarLoadFailed;
     private bool _managementAvailable;
     private string? _avatarUrl;
     private bool VaultAvailable =>
@@ -119,8 +118,4 @@
         }
     }
 
-    private void HandleAvatarError()
-    {
-        _avatarLoadFailed = true;
-    }
 }

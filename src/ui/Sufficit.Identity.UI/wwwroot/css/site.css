@@ -54,6 +54,7 @@
 
     /* Status (paired with icon + text, never color alone) */
     --danger:           #b42318;
+    --danger-hover:     #8e1a13;
     --danger-soft:      #fef3f2;
     --success:          #157f3f;
     --success-soft:     #effaf2;
@@ -97,6 +98,252 @@
     --space-14: 56px;
     --space-20: 80px;
 }
+
+/* --- Sufficit UI bridge ----------------------------------------------------
+   The public UI is assembled from Sufficit.Blazor.UI primitives. SUI reads its
+   own --sui-* tokens, so pointing those at the brand tokens above is all it
+   takes to make every SUI component arrive already dressed in this product's
+   colours, shapes and rhythm. Restyling a component here — rather than
+   retokening it — is what makes a library upgrade a patch job, so the block
+   below stays as close to pure token mapping as the two scales allow.
+
+   Scoped to .identity-public (the public shell's root) because the management
+   console composes this same stylesheet and carries its own calibration.
+   ------------------------------------------------------------------------- */
+.identity-public {
+    /* Colour */
+    --sui-color-primary:            var(--brand);
+    --sui-color-primary-contrast:   #fff;
+    --sui-color-primary-soft:       var(--brand-ring);
+    --sui-color-secondary:          var(--ink-muted);
+    --sui-color-secondary-contrast: #fff;
+    --sui-color-error:              var(--danger);
+    --sui-color-success:            var(--success);
+    --sui-color-warning:            var(--warning);
+    --sui-color-info:               var(--info);
+    --sui-color-dark:               var(--ink-strong);
+    --sui-color-light:              var(--surface-page);
+
+    /* Surfaces, ink and lines */
+    --sui-surface:        var(--surface);
+    --sui-surface-2:      var(--surface-sunken);
+    --sui-surface-3:      var(--surface-sunken);
+    --sui-text-primary:   var(--ink);
+    --sui-text-secondary: var(--ink-muted);
+    --sui-text-disabled:  var(--ink-subtle);
+    --sui-border:         var(--line);
+    --sui-border-strong:  var(--line-strong);
+    --sui-overlay:        var(--surface-overlay);
+
+    /* Shape */
+    --sui-radius-sm:   var(--radius-sm);
+    --sui-radius:      var(--radius);
+    --sui-radius-lg:   var(--radius-lg);
+    --sui-radius-full: var(--radius-pill);
+
+    /* Spacing. SUI's scale is coarser than ours past step 4, so the last two
+       steps map by value (24px, 32px) rather than by number. */
+    --sui-space-1: var(--space-1);
+    --sui-space-2: var(--space-2);
+    --sui-space-3: var(--space-3);
+    --sui-space-4: var(--space-4);
+    --sui-space-5: var(--space-6);
+    --sui-space-6: var(--space-8);
+
+    /* Elevation and motion */
+    --sui-shadow-1:        var(--shadow-btn);
+    --sui-shadow-2:        var(--shadow-card);
+    --sui-shadow-3:        var(--shadow-pop);
+    --sui-transition:      var(--dur) var(--ease);
+    --sui-transition-slow: 280ms var(--ease);
+
+    /* Type */
+    --sui-font:       var(--font-sans);
+    --sui-font-mono:  var(--font-mono);
+    --sui-fs-button:  0.9375rem;
+    --sui-fs-field:   0.9375rem;
+    --sui-fs-body2:   0.875rem;
+    --sui-fs-caption: 0.8125rem;
+
+    /* Controls. 48px is this product's touch target on every pointer: these
+       are sign-in screens, often reached on a phone held in one hand. */
+    --sui-control-h-sm:  34px;
+    --sui-control-h-md:  48px;
+    --sui-control-h-lg:  48px;
+    --sui-control-px-sm: var(--space-4);
+    --sui-control-px-md: var(--space-6);
+}
+
+/* What the tokens cannot say ------------------------------------------------
+   Everything below is a shape SUI expresses as a rule rather than as a token.
+   Each one is a deliberate difference from SUI's defaults, not a leftover.
+   -------------------------------------------------------------------------- */
+
+/* Actions read as commitments here: heavier than SUI's default, and squared to
+   the same 8px corner as the fields they sit under. */
+.identity-public .sui-btn {
+    border-radius: var(--radius);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    /* A label that wraps — "Excluir minha conta permanentemente" does, on a
+       phone — keeps the page's own leading rather than SUI's tighter one, and
+       the height stays with min-height instead of growing by the padding. */
+    line-height: 1.5;
+    padding-block: 0;
+}
+.identity-public .sui-btn:focus-visible {
+    outline-color: var(--brand);
+}
+/* Flat brand, not SUI's gradient wash, and the brand's own darker steps for
+   hover and press — a red mixed towards black is not this red. */
+.identity-public .sui-btn--filled.sui-btn--color-primary {
+    background-image: none;
+    background-color: var(--brand);
+    border-color: var(--brand);
+    box-shadow: var(--shadow-btn);
+}
+.identity-public .sui-btn--filled.sui-btn--color-primary:not(:disabled, [aria-disabled="true"]):hover {
+    background-color: var(--brand-hover);
+    border-color: var(--brand-hover);
+    box-shadow: var(--shadow-btn-hover);
+}
+.identity-public .sui-btn--filled.sui-btn--color-primary:not(:disabled, [aria-disabled="true"]):active {
+    background-color: var(--brand-press);
+}
+.identity-public .sui-btn--filled.sui-btn--color-error {
+    background-image: none;
+    border-color: var(--danger);
+}
+.identity-public .sui-btn--filled.sui-btn--color-error:not(:disabled, [aria-disabled="true"]):hover {
+    background-color: var(--danger-hover);
+    border-color: var(--danger-hover);
+}
+/* Outlined + Default is this product's secondary action: a real surface, not a
+   tinted transparency, because it sits on a photograph. */
+.identity-public .sui-btn--outlined.sui-btn--color-default {
+    background: var(--surface);
+    border-color: var(--line-strong);
+    color: var(--ink);
+}
+.identity-public .sui-btn--outlined.sui-btn--color-default:not(:disabled, [aria-disabled="true"]):hover {
+    background: var(--surface-sunken);
+    border-color: var(--line-strong);
+}
+/* The press answers in the browser; see the pending/busy block further down. */
+.identity-public .sui-btn:not(:disabled, [aria-disabled="true"]):active {
+    transform: translateY(1px);
+}
+
+/* SUI answers the press with .sui-btn--pending and releases it after a few
+   seconds, which is right for a round trip. A passkey ceremony is not a round
+   trip — it waits on a platform dialog the person may take a minute to answer —
+   so aria-busy carries the same spinner for as long as the work really lasts. */
+.identity-public .sui-btn[aria-busy="true"] {
+    cursor: progress;
+}
+.identity-public .sui-btn[aria-busy="true"]::after {
+    content: "";
+    position: absolute;
+    inset-inline-end: var(--space-2);
+    width: 1em;
+    height: 1em;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    opacity: 0.7;
+    animation: spin 0.7s linear infinite;
+}
+
+/* Fields are taller and their labels quieter than SUI's default: one column of
+   short forms, where the label is a sentence and the box is the affordance. */
+.identity-public .sui-field {
+    gap: var(--space-2);
+    margin-bottom: var(--space-5);
+}
+/* SUI reserves a line for the error so the form never jumps when one appears.
+   These forms are one column of three or four fields on a phone, where the
+   reserved lines cost a scroll; they keep the older behaviour of growing when
+   something is actually wrong. */
+.identity-public .sui-field__error:empty {
+    display: none;
+}
+.identity-public .sui-field__label {
+    color: var(--ink);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+}
+.identity-public .sui-field__input {
+    padding: 0 var(--space-4);
+    font-weight: 400;
+}
+.identity-public .sui-field__input::placeholder {
+    color: var(--ink-subtle);
+}
+/* A hint under a sign-in field is instruction, not an aside: it lines up with
+   the label and reads in the same voice, where SUI indents and italicises it. */
+.identity-public .sui-field__helper {
+    padding-left: 0;
+    font-size: 0.8125rem;
+    font-style: normal;
+    line-height: 1.45;
+}
+.identity-public .sui-field__input:focus {
+    box-shadow: 0 0 0 3px var(--brand-ring);
+}
+.identity-public .sui-field__input[disabled],
+.identity-public .sui-field__input[readonly] {
+    background-color: var(--surface-sunken);
+    color: var(--ink-muted);
+    cursor: not-allowed;
+}
+/* SUI drops fields to 44px on touch, where it also raises buttons to 44px; here
+   both are already 48px, so the touch rule would make the field shorter than
+   the button it sits above. */
+@media (pointer: coarse), (max-width: 599.98px) {
+    .identity-public .sui-field__input {
+        height: var(--sui-control-h-md);
+    }
+}
+
+/* Alerts keep the left rule this product has always used: the tinted fill on
+   its own is too quiet over the background photograph. */
+.identity-public .sui-alert {
+    margin-bottom: var(--space-5);
+    border: none;
+    border-left: 3px solid var(--_alert-bd);
+    border-radius: var(--radius);
+    font-weight: 500;
+    line-height: 1.5;
+}
+.identity-public .sui-alert--danger  { --_alert-bg: var(--danger-soft); }
+.identity-public .sui-alert--success { --_alert-bg: var(--success-soft); }
+.identity-public .sui-alert--warning { --_alert-bg: var(--warning-soft); }
+.identity-public .sui-alert--info    { --_alert-bg: var(--info-soft); }
+
+/* Badges here are a count or a state, never an action, so they are the small
+   chip and quieter than SUI's default: muted ink, no rule unless outlined. */
+.identity-public .sui-chip--small {
+    height: auto;
+    padding: 2px var(--space-2);
+    line-height: 1.6;
+    letter-spacing: 0.02em;
+}
+.identity-public .sui-chip--small .sui-chip__label {
+    transform: none;
+}
+.identity-public .sui-chip--default {
+    --_chip-fg: var(--ink-muted);
+    --_chip-bd: var(--line-strong);
+}
+/* A filled badge is a fill, not a fill inside a ring: only the outlined one
+   draws a rule here, and dropping the width (not just the colour) keeps the
+   two kinds the same height they have always been. */
+.identity-public .sui-chip--filled {
+    border: 0;
+}
+.identity-public .sui-chip--success { --_chip-bg: var(--success-soft); }
+.identity-public .sui-chip--warning { --_chip-bg: var(--warning-soft); }
 
 /* --- Reset ---------------------------------------------------------------- */
 *, *::before, *::after { box-sizing: border-box; }
@@ -210,17 +457,10 @@ a:hover { color: var(--brand-hover); text-decoration: underline; }
 .culture-selector {
     display: inline-flex;
     align-items: center;
-    --sui-color-primary: var(--brand);
-    --sui-color-primary-soft: var(--brand-ring);
-    --sui-surface: var(--surface);
-    --sui-surface-2: var(--surface-sunken);
-    --sui-text-primary: var(--ink);
-    --sui-text-secondary: var(--ink-muted);
-    --sui-border: var(--line);
-    --sui-border-strong: var(--line-strong);
 }
 .culture-selector .sui-field {
     width: auto;
+    margin-bottom: 0;
     gap: 0;
 }
 .culture-selector .sui-field__label {
@@ -531,239 +771,67 @@ a:hover { color: var(--brand-hover); text-decoration: underline; }
     margin: 0;
 }
 
-/* Device code input (larger, monospace) */
-.device-code {
+/* Device code input: the code is the content, so the box is built for it. */
+.identity-public .device-code-field .sui-field__input {
+    height: 64px;
     font-family: var(--font-mono);
     font-size: 1.75rem;
     letter-spacing: 0.25em;
     text-align: center;
     text-transform: uppercase;
-    height: 64px;
 }
 
-/* --- Buttons -------------------------------------------------------------- */
-.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-2);
-    min-height: 48px;
-    padding: 0 var(--space-6);
-    border: 1px solid transparent;
-    border-radius: var(--radius);
-    font-size: 0.9375rem;
-    font-weight: 600;
-    font-family: var(--font-sans);
-    color: var(--ink);
-    background: transparent;
-    cursor: pointer;
-    text-decoration: none;
-    letter-spacing: 0.01em;
-    transition: background var(--dur) var(--ease),
-                border-color var(--dur) var(--ease),
-                color var(--dur) var(--ease),
-                box-shadow var(--dur) var(--ease),
-                transform var(--dur-fast) var(--ease);
-}
-.btn:focus-visible {
-    outline: 2px solid var(--brand);
-    outline-offset: 2px;
-}
-.btn-primary {
-    background: var(--brand);
-    color: #fff;
-    border-color: var(--brand);
-    box-shadow: var(--shadow-btn);
-}
-.btn-primary:hover {
-    background: var(--brand-hover);
-    border-color: var(--brand-hover);
-    color: #fff;
-    box-shadow: var(--shadow-btn-hover);
-    text-decoration: none;
-}
-.btn-primary:active {
-    background: var(--brand-press);
-    transform: translateY(1px);
-}
-.btn-secondary {
-    background: var(--surface);
-    color: var(--ink);
-    border-color: var(--line-strong);
-}
-.btn-secondary:hover {
-    background: var(--surface-sunken);
-    border-color: var(--line-strong);
-    text-decoration: none;
-}
-.btn-secondary:active { transform: translateY(1px); }
-.btn-danger {
-    background: var(--danger);
-    color: #fff;
-    border-color: var(--danger);
-}
-.btn-danger:hover {
-    background: #8e1a13;
-    border-color: #8e1a13;
-    color: #fff;
-    text-decoration: none;
-}
-.btn-external {
-    background: var(--surface);
-    color: var(--ink);
-    border: 1px solid var(--line-strong);
-    width: 100%;
+/* Identity-provider buttons. Each one wears the provider's own brand, so they
+   are the one place the SUI colour tokens do not decide: the selectors carry
+   .sui-btn to outrank the bridge's variant rules above. */
+.identity-public .sui-btn.btn-external {
     margin-bottom: var(--space-2);
-    min-height: 48px;
 }
-.btn-external:hover {
-    background: var(--surface-sunken);
-    border-color: var(--line-strong);
-    text-decoration: none;
-}
-
-/* Social login buttons */
-.btn-google,
-.btn-facebook,
-.btn-passkey {
+.identity-public .sui-btn.btn-google,
+.identity-public .sui-btn.btn-facebook,
+.identity-public .sui-btn.btn-passkey {
     margin-bottom: var(--space-3);
 }
-.btn-google {
+.identity-public .sui-btn.btn-google {
     background: var(--surface);
     color: #1f2937;
-    border: 1px solid #d7dce2;
+    border-color: #d7dce2;
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.10);
-    font-weight: 600;
 }
-.btn-google:hover {
+.identity-public .sui-btn.btn-google:not(:disabled, [aria-disabled="true"]):hover {
     background: #f8fafc;
     border-color: #b8c0cc;
     box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
     transform: translateY(-1px);
     color: #1f2937;
-    text-decoration: none;
 }
-.btn-facebook {
+.identity-public .sui-btn.btn-facebook {
     background: #1877F2;
     color: #fff;
-    border: 1px solid #1877F2;
-    font-weight: 600;
+    border-color: #1877F2;
 }
-.btn-facebook:hover {
+.identity-public .sui-btn.btn-facebook:not(:disabled, [aria-disabled="true"]):hover {
     background: #166fe5;
     border-color: #166fe5;
     box-shadow: 0 4px 14px rgba(24, 119, 242, 0.30);
     transform: translateY(-1px);
     color: #fff;
-    text-decoration: none;
 }
 .provider-icon {
     flex-shrink: 0;
 }
-.btn-passkey {
-    background: var(--surface);
-    color: var(--ink);
-    border: 1px solid var(--line-strong);
-    width: 100%;
-    font-weight: 600;
-    min-height: 48px;
-}
-.btn-passkey:hover {
+.identity-public .sui-btn.btn-passkey:not(:disabled, [aria-disabled="true"]):hover {
     background: var(--surface-sunken);
     border-color: var(--brand);
     color: var(--ink);
-    text-decoration: none;
-}
-.btn-block { width: 100%; }
-.btn-sm {
-    min-height: 34px;
-    padding: 0 var(--space-4);
-    font-size: 0.8125rem;
 }
 .btn-group {
     display: flex;
     gap: var(--space-3);
     margin-top: var(--space-6);
 }
-.btn[disabled], .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
-}
-
-/* --- Pressed and busy buttons --------------------------------------------
-   A click on a Blazor Server button only changes the markup after a round
-   trip, which on a phone reads as "nothing happened". These two rules answer
-   in the browser: :active gives the press back immediately, and .is-busy —
-   set by js/instant-feedback.js on the way out, and again by the component
-   when its state catches up — shows the work is running.
-   ------------------------------------------------------------------------- */
-.btn:active:not([disabled]):not(:disabled) {
-    transform: translateY(1px);
-}
-.btn.is-busy {
-    cursor: progress;
-    /* Not pointer-events: none — the button keeps its disabled state from the
-       component; this only stops a second click before that arrives. */
-    pointer-events: none;
-}
-.btn.is-busy::before {
-    content: "";
-    width: 1em;
-    height: 1em;
-    flex: 0 0 auto;
-    margin-right: var(--space-2);
-    border: 2px solid currentColor;
-    border-top-color: transparent;
-    border-radius: 50%;
-    opacity: 0.75;
-    animation: spin 0.7s linear infinite;
-}
-.btn.is-busy > .provider-icon {
-    display: none;
-}
-@media (prefers-reduced-motion: reduce) {
-    .btn.is-busy::before {
-        animation-duration: 2.4s;
-    }
-    .btn:active:not([disabled]):not(:disabled) {
-        transform: none;
-    }
-}
-
-/* --- Alerts --------------------------------------------------------------- */
-.alert {
-    padding: var(--space-3) var(--space-4);
-    border-radius: var(--radius);
-    margin-bottom: var(--space-5);
-    font-size: 0.875rem;
-    display: flex;
-    gap: var(--space-3);
-    align-items: flex-start;
-    line-height: 1.5;
-    font-weight: 500;
-}
-.alert-error {
-    background: var(--danger-soft);
-    color: var(--danger);
-    border-left: 3px solid var(--danger);
-}
-.alert-success {
-    background: var(--success-soft);
-    color: var(--success);
-    border-left: 3px solid var(--success);
-}
-.alert-warning {
-    background: var(--warning-soft);
-    color: var(--warning);
-    border-left: 3px solid var(--warning);
-}
-.alert-info {
-    background: var(--info-soft);
-    color: var(--info);
-    border-left: 3px solid var(--info);
-}
-.registration-success {
+/* --- Registration confirmation -------------------------------------------- */
+.identity-public .sui-alert.registration-success {
     display: block;
     padding: var(--space-4);
     border-left-width: 1px;
@@ -785,27 +853,6 @@ a:hover { color: var(--brand-hover); text-decoration: underline; }
 }
 .registration-success__email {
     overflow-wrap: anywhere;
-}
-
-/* --- Badges --------------------------------------------------------------- */
-.badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 2px var(--space-2);
-    border-radius: var(--radius-pill);
-    font-size: 0.6875rem;
-    font-weight: 600;
-    background: var(--surface-sunken);
-    color: var(--ink-muted);
-    line-height: 1.6;
-    letter-spacing: 0.02em;
-}
-.badge-success { background: var(--success-soft); color: var(--success); }
-.badge-warning { background: var(--warning-soft); color: var(--warning); }
-.badge-outline {
-    border: 1px solid var(--line-strong);
-    background: transparent;
-    color: var(--ink-muted);
 }
 
 /* --- Utility -------------------------------------------------------------- */
@@ -1644,7 +1691,7 @@ img.profile-avatar { background: var(--surface-sunken); }
     .topbar-brand .brand-sub { display: none; }
     .btn-group { flex-direction: column; }
     .device-authorization-card { padding: var(--space-6); }
-    .device-client .badge { display: none; }
+    .device-client .sui-chip { display: none; }
     .device-code-confirmation { align-items: flex-start; flex-direction: column; gap: var(--space-1); }
     /* Keep manage-nav vertically stacked on mobile (the default column
        layout from line ~724). A previous version forced it into a
@@ -1705,7 +1752,7 @@ img.profile-avatar { background: var(--surface-sunken); }
         padding-left: 0;
     }
 
-    .passkey-item .btn { align-self: flex-start; }
+    .passkey-item .sui-btn { align-self: flex-start; }
     .passkey-item-actions,
     .passkey-inline-actions {
         align-self: flex-start;
@@ -1744,6 +1791,14 @@ img.profile-avatar { background: var(--surface-sunken); }
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
+    /* A progress indicator that does not move stops being one. Reduced motion
+       slows these down rather than freezing them, which the blanket rule above
+       would otherwise do — including to SUI's own pending spinner. */
+    .identity-public .sui-btn[aria-busy="true"]::after,
+    .identity-public .sui-btn--pending::after {
+        animation-duration: 2.4s !important;
+        animation-iteration-count: infinite !important;
+    }
     .spinner {
         animation: none;
         border-top-color: var(--brand);
@@ -1753,10 +1808,12 @@ img.profile-avatar { background: var(--surface-sunken); }
 
 /* --- High contrast: ensure focus ring stays visible ---------------------- */
 @media (forced-colors: active) {
-    .btn, .form-control, .scope-item, .manage-link {
+    /* SUI already outlines its own controls; these are the surfaces it does
+       not know about. */
+    .form-control, .scope-item, .manage-link {
         border: 1px solid CanvasText;
     }
-    .btn-primary, .btn-danger {
+    .identity-public .sui-btn--filled {
         forced-color-adjust: none;
         color: HighlightText;
     }

@@ -16,11 +16,11 @@
     <div aria-live="polite">
         @if (_error is not null)
         {
-            <div class="alert alert-error" role="alert">@_error</div>
+            <SUIAlert ToneValue="SUITone.Danger">@_error</SUIAlert>
         }
         else if (_success is not null)
         {
-            <div class="alert alert-success" role="status">@_success</div>
+            <SUIAlert ToneValue="SUITone.Success">@_success</SUIAlert>
         }
     </div>
 
@@ -30,21 +30,21 @@
     }
     else if (_loadFailed)
     {
-        <button type="button" class="btn btn-secondary" @onclick="LoadAsync">
+        <SUILoadingButton VariantValue="SUIVariant.Outlined"
+                          ColorValue="SUIColor.Default"
+                          OnClick="LoadAsync">
             @L["ManageTwoFactor.Retry"]
-        </button>
+        </SUILoadingButton>
     }
     else if (_overview?.IsEnabled == true)
     {
-        <div class="alert alert-success">
-            @L["ManageTwoFactor.Enabled"]
-        </div>
+        <SUIAlert ToneValue="SUITone.Success">@L["ManageTwoFactor.Enabled"]</SUIAlert>
 
         @if (_recoveryCodes.Count > 0)
         {
-            <div class="alert alert-warning" role="alert">
+            <SUIAlert ToneValue="SUITone.Warning">
                 @L["ManageTwoFactor.RecoveryCodesWarning"]
-            </div>
+            </SUIAlert>
             <div class="recovery-codes" aria-label="@L["ManageTwoFactor.RecoveryCodes"]">
                 @foreach (var recoveryCode in _recoveryCodes)
                 {
@@ -53,42 +53,38 @@
             </div>
             <p class="muted">@L["ManageTwoFactor.EachCodeOnce"]</p>
             <div class="btn-group">
-                <button type="button"
-                        class="btn btn-secondary"
-                        disabled="@_busy"
-                        @onclick="CopyRecoveryCodesAsync">
+                <SUILoadingButton VariantValue="SUIVariant.Outlined"
+                                  ColorValue="SUIColor.Default"
+                                  Disabled="@_busy"
+                                  OnClick="CopyRecoveryCodesAsync">
                     @L["ManageTwoFactor.CopyRecoveryCodes"]
-                </button>
-                <button type="button"
-                        class="btn btn-primary"
-                        disabled="@_busy"
-                        @onclick="DismissRecoveryCodes">
+                </SUILoadingButton>
+                <SUILoadingButton Disabled="@_busy" OnClick="DismissRecoveryCodes">
                     @L["ManageTwoFactor.RecoveryCodesSaved"]
-                </button>
+                </SUILoadingButton>
             </div>
         }
         else
         {
             <p class="muted">@RecoveryCodeSummary</p>
             <div class="btn-group two-factor-actions">
-                <button type="button"
-                        class="btn btn-secondary"
-                        disabled="@_busy"
-                        @onclick="ResetAuthenticatorAsync">
+                <SUILoadingButton VariantValue="SUIVariant.Outlined"
+                                  ColorValue="SUIColor.Default"
+                                  Disabled="@_busy"
+                                  OnClick="ResetAuthenticatorAsync">
                     @L["ManageTwoFactor.ResetAuthenticator"]
-                </button>
-                <button type="button"
-                        class="btn btn-secondary"
-                        disabled="@_busy"
-                        @onclick="GenerateRecoveryCodesAsync">
+                </SUILoadingButton>
+                <SUILoadingButton VariantValue="SUIVariant.Outlined"
+                                  ColorValue="SUIColor.Default"
+                                  Disabled="@_busy"
+                                  OnClick="GenerateRecoveryCodesAsync">
                     @L["ManageTwoFactor.GenerateRecoveryCodes"]
-                </button>
-                <button type="button"
-                        class="btn btn-danger"
-                        disabled="@_busy"
-                        @onclick="DisableAsync">
+                </SUILoadingButton>
+                <SUILoadingButton ColorValue="SUIColor.Error"
+                                  Disabled="@_busy"
+                                  OnClick="DisableAsync">
                     @L["ManageTwoFactor.Disable"]
-                </button>
+                </SUILoadingButton>
             </div>
         }
     }
@@ -105,33 +101,26 @@
         <code class="manual-key">@setup.ManualKey</code>
 
         <EditForm Model="Verify" Method="post" OnSubmit="EnableAsync" FormName="verify-2fa">
-            <div class="form-group">
-                <label for="code">@L["ManageTwoFactor.VerificationCode"]</label>
-                <InputText id="code"
-                           @bind-Value="Verify.Code"
-                           class="form-control"
-                           inputmode="numeric"
-                           maxlength="16"
-                           placeholder="123456"
-                           autocomplete="one-time-code"
-                           required
-                           autofocus />
-            </div>
-            <button type="submit"
-                    class="btn btn-primary btn-block"
-                    disabled="@_busy">
+            <SUITextField T="string" Id="code"
+                          Label="@L["ManageTwoFactor.VerificationCode"]"
+                          @bind-Value="Verify.Code"
+                          Placeholder="123456"
+                          MaxLength="16"
+                          inputmode="numeric"
+                          autocomplete="one-time-code"
+                          required
+                          autofocus />
+            <SUILoadingButton ButtonTypeValue="SUIButtonType.Submit" FullWidth
+                              Disabled="@_busy">
                 @(_busy ? L["ManageTwoFactor.Confirming"] : L["ManageTwoFactor.Enable"])
-            </button>
+            </SUILoadingButton>
         </EditForm>
     }
     else
     {
-        <button type="button"
-                class="btn btn-primary btn-block"
-                disabled="@_busy"
-                @onclick="BeginSetupAsync">
+        <SUILoadingButton FullWidth Disabled="@_busy" OnClick="BeginSetupAsync">
             @(_busy ? L["ManageTwoFactor.Preparing"] : L["ManageTwoFactor.ConfigureAuthenticator"])
-        </button>
+        </SUILoadingButton>
     }
 </div>
 
