@@ -272,6 +272,23 @@ public sealed class PasswordResetRevocationTests(
 
             return await inner.RevokeAsync(subject, cancellationToken);
         }
+
+        public async Task<IdentityUserSessionRevocation> RevokeAsync(
+            string subject,
+            string? exceptBrowserSessionId,
+            CancellationToken cancellationToken = default)
+        {
+            Attempts++;
+            if (Attempts <= failuresBeforeSuccess)
+            {
+                throw new InvalidOperationException("Simulated transient failure.");
+            }
+
+            return await inner.RevokeAsync(
+                subject,
+                exceptBrowserSessionId,
+                cancellationToken);
+        }
     }
 
     private sealed class CapturingSecurityEventTrigger : ISecurityEventTrigger

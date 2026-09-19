@@ -153,6 +153,8 @@ public static partial class ServiceCollectionExtensions
                     .Concat(RetiredIdentityScopes.Names)));
         services.AddSingleton<IClientScopeGrantPolicy,
             ClientScopeGrantPolicy>();
+        services.AddSingleton<ILegacyGrantAvailability>(
+            new LegacyGrantAvailability(options.LegacyGrants));
         services.AddSingleton<IClientDefinitionValidator,
             ClientDefinitionValidator>();
         services.AddSingleton<IApplicationClaimDestinationPolicy>(provider =>

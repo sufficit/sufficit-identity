@@ -14,7 +14,7 @@ arquivado.
 
 As tarefas que exigem ambientes reais, certificação ou auditoria foram
 transferidas para
-[`PLAN-PRODUCTION-READINESS.md`](../plans/PLAN-PRODUCTION-READINESS.md) e
+`PLAN-PRODUCTION-READINESS.md` (retired) e
 [`RUNBOOK-PRODUCTION-EVIDENCE.md`](../runbooks/RUNBOOK-PRODUCTION-EVIDENCE.md).
 Elas continuam abertas até produzirem evidência por ambiente; o encerramento
 deste plano não as declara executadas.

@@ -9,6 +9,73 @@ public sealed class ClientDefinitionPolicyTests
         new ClientDefinitionValidator(
             new ReservedScopePolicy(["identity.management", "scim"]));
 
+    private sealed class LegacyGrants(bool password) : ILegacyGrantAvailability
+    {
+        public bool PasswordGrantEnabled { get; } = password;
+    }
+
+    private static ClientDefinitionRequest GrantRequest(string grantType) =>
+        new(
+            ClientDefinitionSource.Management,
+            "legacy-grant-client",
+            "confidential",
+            [grantType],
+            [],
+            [],
+            RequirePkce: false,
+            HasClientSecret: true);
+
+    [Theory]
+    [InlineData("implicit")]
+    [InlineData("gt:implicit")]
+    public void Shared_validator_never_accepts_the_implicit_grant(string grantType)
+    {
+        // Removed from OAuth 2.1 and from this server. Advertising it as
+        // supported invited a client definition the runtime would refuse.
+        foreach (var validator in new[]
+        {
+            CreateValidator(),
+            new ClientDefinitionValidator(
+                new ReservedScopePolicy([]),
+                legacyGrants: new LegacyGrants(password: true)),
+        })
+        {
+            var result = validator.Validate(GrantRequest(grantType));
+            Assert.False(result.IsValid);
+            Assert.Contains(result.Issues, issue =>
+                issue.Code is "unsupported_grant_type");
+        }
+    }
+
+    [Theory]
+    [InlineData("password")]
+    [InlineData("gt:password")]
+    public void Shared_validator_gates_the_password_grant_on_the_deployment(
+        string grantType)
+    {
+        var refused = new ClientDefinitionValidator(
+                new ReservedScopePolicy([]),
+                legacyGrants: new LegacyGrants(password: false))
+            .Validate(GrantRequest(grantType));
+        Assert.False(refused.IsValid);
+        Assert.Contains(refused.Issues, issue =>
+            issue.Code is "unsupported_grant_type");
+
+        // No availability declared at all is the same answer: the validator
+        // must not accept a legacy grant merely because nobody said otherwise.
+        var byDefault = CreateValidator().Validate(GrantRequest(grantType));
+        Assert.False(byDefault.IsValid);
+        Assert.Contains(byDefault.Issues, issue =>
+            issue.Code is "unsupported_grant_type");
+
+        var allowed = new ClientDefinitionValidator(
+                new ReservedScopePolicy([]),
+                legacyGrants: new LegacyGrants(password: true))
+            .Validate(GrantRequest(grantType));
+        Assert.DoesNotContain(allowed.Issues, issue =>
+            issue.Code is "unsupported_grant_type");
+    }
+
     [Fact]
     public void Shared_validator_rejects_reserved_scope_and_public_client_credentials()
     {

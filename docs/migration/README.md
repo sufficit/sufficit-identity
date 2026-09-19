@@ -4,7 +4,7 @@ These files prepare the database contract only. They do not authorize a
 production deployment, canary, issuer change or frontend rollout.
 
 The remaining operational cutover gates — clients, keys, rehearsals — are
-section G4 of [`../plans/PLAN.md`](../plans/PLAN.md).
+section G4 of [`../plans/PLAN-IDENTITY.md`](../plans/PLAN-IDENTITY.md).
 
 ## Supported paths
 

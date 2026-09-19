@@ -5,7 +5,7 @@
 Este runbook fecha a diferença entre um controle implementado no repositório e
 um controle comprovadamente ativo em cada ambiente. Ele é o procedimento
 canônico de todo item marcado **(operational)** em
-[`PLAN.md`](../plans/PLAN.md).
+[`PLAN-IDENTITY.md`](../plans/PLAN-IDENTITY.md).
 
 O repositório não contém inventário nem configuração dos ambientes reais.
 Portanto, um item deste runbook só pode ser encerrado com evidência produzida

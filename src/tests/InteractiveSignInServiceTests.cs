@@ -97,6 +97,70 @@ public sealed class InteractiveSignInServiceTests(
     }
 
     [Fact]
+    public async Task Password_sign_in_hides_account_state_from_a_wrong_password()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        var users = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var service = services.GetRequiredService<IInteractiveSignInService>();
+
+        const string WrongPassword = "Incorrect!Passw0rd#91";
+
+        // The sign-in manager answers LockedOut and NotAllowed before it ever
+        // verifies the password, so without the enumeration floor these two
+        // tell an attacker that the account exists — and which state it is in.
+        var locked = await CreateUserAsync(users, "locked-enumeration");
+        Assert.True((await users.SetLockoutEndDateAsync(
+            locked,
+            DateTimeOffset.UtcNow.AddMinutes(10))).Succeeded);
+        SetHttpContext(services);
+        Assert.Equal(
+            InteractiveSignInStatus.Failed,
+            (await service.PasswordSignInAsync(new PasswordSignInCommand(
+                locked.UserName!,
+                WrongPassword,
+                false))).Status);
+
+        var unconfirmed = await CreateUserAsync(users, "unconfirmed-enumeration");
+        unconfirmed.EmailConfirmed = false;
+        Assert.True((await users.UpdateAsync(unconfirmed)).Succeeded);
+        SetHttpContext(services);
+        Assert.Equal(
+            InteractiveSignInStatus.Failed,
+            (await service.PasswordSignInAsync(new PasswordSignInCommand(
+                unconfirmed.UserName!,
+                WrongPassword,
+                false))).Status);
+
+        // An unknown account is indistinguishable from both of the above.
+        SetHttpContext(services);
+        Assert.Equal(
+            InteractiveSignInStatus.Failed,
+            (await service.PasswordSignInAsync(new PasswordSignInCommand(
+                $"sign-in-absent-{Guid.NewGuid():N}",
+                WrongPassword,
+                false))).Status);
+
+        // Someone holding the password learns nothing new from the reason, so
+        // the real state is still disclosed to them.
+        SetHttpContext(services);
+        Assert.Equal(
+            InteractiveSignInStatus.LockedOut,
+            (await service.PasswordSignInAsync(new PasswordSignInCommand(
+                locked.UserName!,
+                TestDataSeeder.DefaultPassword,
+                false))).Status);
+
+        SetHttpContext(services);
+        Assert.Equal(
+            InteractiveSignInStatus.NotAllowed,
+            (await service.PasswordSignInAsync(new PasswordSignInCommand(
+                unconfirmed.UserName!,
+                TestDataSeeder.DefaultPassword,
+                false))).Status);
+    }
+
+    [Fact]
     public async Task Authenticator_sign_in_uses_protected_pending_state()
     {
         await using var scope = factory.Services.CreateAsyncScope();

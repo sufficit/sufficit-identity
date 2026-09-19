@@ -8,7 +8,7 @@ inspecionados como prontos.
 
 As pendências de rollout e comprovação que não podem ser executadas somente no
 workspace foram removidas do plano de implementação e transferidas para o plano canônico
-[`PLAN-PRODUCTION-READINESS.md`](../plans/PLAN-PRODUCTION-READINESS.md).
+`PLAN-PRODUCTION-READINESS.md` (retired).
 
 Foi criado
 [`RUNBOOK-PRODUCTION-EVIDENCE.md`](../runbooks/RUNBOOK-PRODUCTION-EVIDENCE.md)

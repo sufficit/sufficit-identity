@@ -1,7 +1,7 @@
 # Vault — migração dos consumidores para `ISecretStore`
 
 **Data:** 2026-08-09 09:30  
-**Plano:** [`PLAN-VAULT.md`](../plans/PLAN-VAULT.md)  
+**Plano:** `PLAN-VAULT.md` (retired)  
 **Status:** concluído
 
 ## Entregue

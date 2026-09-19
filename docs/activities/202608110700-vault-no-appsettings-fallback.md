@@ -1,7 +1,7 @@
 # Vault — remoção do fallback de segredos em appsettings
 
 **Data:** 2026-08-11  
-**Plano:** [`PLAN-VAULT.md`](../plans/PLAN-VAULT.md)  
+**Plano:** `PLAN-VAULT.md` (retired)  
 **Status:** concluído
 
 ## Entregue
