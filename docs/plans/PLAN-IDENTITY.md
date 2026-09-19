@@ -14,6 +14,13 @@
 >
 > **Rule:** finished work leaves this file and becomes an activity under
 > `../activities/`. Nothing is recorded here as done.
+>
+> **Section ids are stable from 2026-09-19 on.** A delivered section leaves a
+> gap instead of renumbering the rest, because activities, commits and other
+> documents cite these ids — `conformance/README.md` points at B9. Sections C,
+> D and F were renumbered before this rule, so an activity written earlier that
+> day may cite an id that now names a different section; its title says which
+> work it was.
 
 Twelve plans had grown around three security evaluations, two console
 redesigns and one production rollout. They overlapped badly: the same claim
@@ -198,20 +205,6 @@ the inventory and the default flip are what remain.
 `ISubjectTokenProvenancePolicy` rejects missing, ambiguous or disallowed
 presenter identity in Enforce mode today, and a posture finding reports the
 Observe state.
-
-### B4 — DPoP nonce isolation
-
-- [ ] Rotate only after client authentication and structurally plausible proof
-  validation; keep a small bounded grace set for legitimate retries
-- [ ] Make issue/consume atomic in the shared security-state store
-- [ ] Multi-replica concurrency tests, plus anonymous-rotation and cross-client
-  denial-of-service regression tests
-
-Nonce keys are already hashed partitions over endpoint, client and proof key;
-the current/previous overlap and the atomic semantics are missing.
-
-**Done when:** one anonymous or compromised client cannot invalidate another
-client's proof, and concurrent replicas agree on accepted nonce state.
 
 ### B5 — CIBA trust boundary completion
 
@@ -851,7 +844,9 @@ Deliberately after everything above; none of it is required for production.
    across every capability that reaches a user was delivered on 2026-09-19.
 4. **B1** — the issuance kernel, one grant at a time under characterization
    tests. B2, B3 and B5's kernel item depend on it; do not start them first.
-5. **B4, B6, B7, B8** — independent of the kernel, each small.
+5. **B6, B7, B8** — independent of the kernel, each small. B4 (DPoP nonce
+   isolation) was delivered on 2026-09-19, see
+   [`202609200100-dpop-stateless-nonce.md`](../activities/202609200100-dpop-stateless-nonce.md).
 6. **D4, D2, D3, D5** — the enforcement and topology inventories, together, per
    environment. They are what actually turns Observe into Enforce, and they
    are what clears the advisories the posture check now reports at every
@@ -883,9 +878,9 @@ Deliberately after everything above; none of it is required for production.
 
 | Retired plan | Now |
 |---|---|
-| `PLAN-GPT-5-REMAINING` | A1, A4, B1–B6, C2, C4, D2, D6, F3, F4, F5, F10, F13, G1, G2, G3 |
+| `PLAN-GPT-5-REMAINING` | A1, A4, B1–B3, B5, B6, C2, C4, D2, D6, F3, F4, F5, F10, F13, G1, G2, G3 |
 | `PLAN-GLM-5-2-REMAINING` | A1, A2, A3, B1, F3, F6, F11 |
-| `PLAN-SECURITY-HARDENING-WAVE-2` | A1, A2, A3, B2–B5, B7, B8, C2, C3, C4, D1, D3, F6–F10, F14, closure criteria |
+| `PLAN-SECURITY-HARDENING-WAVE-2` | A1, A2, A3, B2, B3, B5, B7, B8, C2, C3, C4, D1, D3, F6–F10, F14, closure criteria |
 | `PLAN-FABLE-5-TRIAGE` | A4, B2, B3, C2, D6, F2, F12 |
 | `PLAN-PRODUCTION-READINESS` | C1, C2, C5, D1, D4, D5, E8, F3, G2, G5, G6 |
 | `PLAN-MANAGEMENT-APPLICATIONS` (+ `-NEXT`) | A2, E1–E4, E6 |
