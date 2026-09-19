@@ -235,11 +235,9 @@ Missing and ambiguous `azp` are tested.
   provision the missing entitlements, then enforce per client
 - [ ] Run CIBA interoperability/conformance and approval-fatigue abuse tests
   before enabling additional clients
-- [ ] Tests for a public or unauthenticated initiator and for rolling-deploy
-  compatibility of the pending-request store. Missing entitlement, a
-  mismatched polling client, one-shot consumption, concurrent consume with one
-  winner, both client-authentication methods and disabled-404 are covered in
-  `CibaTests`
+
+The test battery is complete since 2026-09-20 —
+[`202609201500-ciba-initiator-and-rolling-deploy.md`](../activities/202609201500-ciba-initiator-and-rolling-deploy.md).
 
 `ICibaClientPolicy` and the bound, displayed `binding_message` are in place,
 and `CibaProtocolFeature` already composes the whole capability as one unit:

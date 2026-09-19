@@ -48,6 +48,7 @@ found it.
 
 ## Completed work (activities/)
 
+- [CIBA: who may start one, and what happens mid-deploy](activities/202609201500-ciba-initiator-and-rolling-deploy.md) — anonymous and public initiators refused, and a request created by the previous release still honoured
 - [acr_values now asks for something](activities/202609201300-acr-values.md) — a relying party can request an assurance level and get the ceremony, with one attempt when the level is unreachable
 - [The ceremony moved in front of the token](activities/202609201100-authorize-step-up.md) — a remembered device is challenged at `/authorize` instead of letting relying parties reject the token; plus the claim that was being dropped on renewal
 - [Measuring who authorizes from a remembered device](activities/202609200900-remembered-second-factor-measurement.md) — the affected clients come from production, not from reading their source
