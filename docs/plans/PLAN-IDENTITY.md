@@ -132,17 +132,15 @@ boundary that decision rejected. What SCIM lacks is a decision per
 - [ ] Require MFA for destructive human/delegated operations; require an
   explicit destructive-operation permission plus mTLS or `private_key_jwt`/DPoP
   for client-credentials callers
-- [ ] Add a posture finding for an **empty** production allow-list: today
-  `RequireAllowedClient=true` with no ids refuses every client at request time,
-  which is safe but silent until someone provisions
 - [ ] Tests: per-operation refusal, password reset, delete and group nesting
 
 Already in place, verified 2026-09-20: `ScimOptions.RequireAllowedClient`
 (default `true`), `ClientPolicyMode` `Observe`/`Enforce`, `RequireScope`
 independent of the client decision, `RequireMfa`, the
 `ScimAuthorizationAuditFilter` auditing both decisions, and posture findings
-`scim-client-allow-list-disabled`, `scim-client-policy-observe` and
-`scim-mfa-disabled`.
+`scim-client-allow-list-disabled`, `scim-client-policy-observe`,
+`scim-mfa-disabled` and — since 2026-09-20 — the advisory
+`scim-client-allow-list-empty`.
 
 **Done when:** a client allowed to provision cannot delete or reset a password
 without being separately permitted to, with evidence appropriate to its type.

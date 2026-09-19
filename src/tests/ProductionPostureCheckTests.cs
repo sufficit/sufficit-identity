@@ -196,6 +196,45 @@ public sealed class ProductionPostureCheckTests
     }
 
     [Fact]
+    public void Enabled_scim_with_an_empty_allow_list_is_reported_without_blocking()
+    {
+        IReadOnlyList<ProductionPostureFinding> Advisories(ScimOptions scim) =>
+            ProductionPostureCheck.EvaluateAdvisories(
+                [new ScimProductionPostureContributor(Options.Create(scim))],
+                new SecurityPostureOptions(),
+                Now);
+
+        // Fail-closed, so nothing to block on — but SCIM turned on and
+        // unusable should be visible here rather than only as 403s at the
+        // provisioning client.
+        var empty = new ScimOptions
+        {
+            Enabled = true,
+            RequireAllowedClient = true,
+            ClientPolicyMode = ScimClientPolicyMode.Enforce,
+            AllowedClientIds = ["  "],
+        };
+        Assert.Contains(Advisories(empty), f => f.Id == "scim-client-allow-list-empty");
+        Assert.DoesNotContain(
+            Evaluate(new ScimProductionPostureContributor(Options.Create(empty))),
+            f => f.Id == "scim-client-allow-list-empty");
+
+        Assert.DoesNotContain(
+            Advisories(new ScimOptions
+            {
+                Enabled = true,
+                RequireAllowedClient = true,
+                AllowedClientIds = ["provisioning"],
+            }),
+            f => f.Id == "scim-client-allow-list-empty");
+
+        // Disabled SCIM has nothing to report.
+        Assert.DoesNotContain(
+            Advisories(new ScimOptions { Enabled = false }),
+            f => f.Id == "scim-client-allow-list-empty");
+    }
+
+    [Fact]
     public void Enabled_scim_without_mfa_is_a_distinct_finding()
     {
         var contributor = new ScimProductionPostureContributor(

@@ -23,6 +23,25 @@ public sealed class ScimProductionPostureContributor(
                 "Set Sufficit:Identity:Scim:RequireAllowedClient=true and provision dedicated clients.");
         }
 
+        // Empty is the documented fail-closed default, so this is not a hole:
+        // every request is refused. It is a deployment that turned SCIM on and
+        // cannot use it, which otherwise shows up only as 403s at the
+        // provisioning client, on the other side of the integration.
+        if (options.RequireAllowedClient
+            && options.ClientPolicyMode == ScimClientPolicyMode.Enforce
+            && !options.AllowedClientIds.Any(
+                clientId => !string.IsNullOrWhiteSpace(clientId)))
+        {
+            yield return new(
+                "scim-client-allow-list-empty",
+                "SCIM is enabled with an empty client allow-list, so every "
+                + "provisioning request is refused.",
+                "List the dedicated provisioning clients under "
+                + "Sufficit:Identity:Scim:AllowedClientIds, or disable SCIM "
+                + "until one exists.",
+                Severity: ProductionPostureSeverity.Advisory);
+        }
+
         if (options.ClientPolicyMode == ScimClientPolicyMode.Observe)
         {
             yield return new(
