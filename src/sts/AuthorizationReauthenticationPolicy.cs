@@ -14,13 +14,69 @@ internal static class AuthorizationReauthenticationPolicy
 {
     private static readonly TimeSpan FutureClockTolerance = TimeSpan.FromMinutes(1);
 
+    /// <summary>
+    /// The strongest level the request asks for, ignoring values this server
+    /// does not recognise.
+    /// </summary>
+    private static CaepAssuranceLevel? RequestedAssuranceLevel(
+        OpenIddictRequest request,
+        IAuthenticationContextClassMapper authenticationContextClasses)
+    {
+        if (string.IsNullOrWhiteSpace(request.AcrValues))
+        {
+            return null;
+        }
+
+        CaepAssuranceLevel? strongest = null;
+        foreach (var value in request.AcrValues.Split(
+            ' ',
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (authenticationContextClasses.Parse(value) is { } level
+                && (strongest is null || level > strongest))
+            {
+                strongest = level;
+            }
+        }
+
+        return strongest;
+    }
+
+    /// <summary>
+    /// What the session has. Missing or unreadable is the floor, which is what
+    /// an unauthenticated principal would also be.
+    /// </summary>
+    private static CaepAssuranceLevel CurrentAssuranceLevel(
+        ClaimsPrincipal principal) =>
+        Enum.TryParse<CaepAssuranceLevel>(
+            principal.FindFirst(
+                OidcSessionClaimsPrincipalFactory.AssuranceLevelClaimType)?.Value,
+            ignoreCase: false,
+            out var level)
+            ? level
+            : CaepAssuranceLevel.Loa1;
+
     public static bool IsRequired(
         OpenIddictRequest request,
         ClaimsPrincipal principal,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        IAuthenticationContextClassMapper authenticationContextClasses)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(principal);
+        ArgumentNullException.ThrowIfNull(authenticationContextClasses);
+
+        // acr_values asks for an assurance level (OIDC Core 3.1.2.1). It is a
+        // voluntary request, so an unrecognised value is ignored and a level
+        // the ceremony cannot reach is not an error — the attempt is made once
+        // and the token then tells the truth about what happened. The receipt
+        // is what bounds it to one attempt.
+        if (RequestedAssuranceLevel(request, authenticationContextClasses)
+                is { } requested
+            && CurrentAssuranceLevel(principal) < requested)
+        {
+            return true;
+        }
 
         // A second factor carried by a trusted-device cookie does not mint
         // tokens (owner's decision, 2026-09-20). The ceremony runs here,

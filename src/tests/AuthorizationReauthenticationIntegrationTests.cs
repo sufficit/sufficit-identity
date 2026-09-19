@@ -206,6 +206,98 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
     }
 
     [Fact]
+    public async Task An_acr_the_ceremony_cannot_reach_is_attempted_once_and_then_proceeds()
+    {
+        // The dangerous shape of a voluntary request: the client asks for an
+        // assurance level this server cannot give it with a password and a
+        // TOTP. Without a bound, the ceremony would be demanded, completed,
+        // and demanded again on the very next pass — a loop the user could
+        // never escape. The receipt is that bound, and this asserts it.
+        var username = $"acr-unreachable-{Guid.NewGuid():N}";
+        string authenticatorKey;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var users = scope.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await TestDataSeeder.CreateUserAsync(
+                users,
+                username,
+                TestDataSeeder.DefaultPassword);
+            Assert.True((await users.ResetAuthenticatorKeyAsync(user)).Succeeded);
+            authenticatorKey = (await users.GetAuthenticatorKeyAsync(user))!;
+            Assert.True((await users.SetTwoFactorEnabledAsync(user, true)).Succeeded);
+            await EnsureClientAsync(scope.ServiceProvider);
+        }
+
+        using var client = factory.CreateClient(
+            new WebApplicationFactoryClientOptions
+            {
+                AllowAutoRedirect = false,
+                BaseAddress = new Uri("https://identity.tests.local"),
+            });
+        await TestOnlyEndpoints.SignInAsync(
+            client,
+            username,
+            withMfa: true,
+            authenticatedAt: DateTimeOffset.UtcNow);
+
+        // loa3 against a password-plus-TOTP session: unreachable here.
+        var authorizeUrl = AuthorizationUrlWithAcr("urn:identity:acr:loa3");
+
+        using var challenged = await client.GetAsync(authorizeUrl);
+        Assert.Equal(HttpStatusCode.Redirect, challenged.StatusCode);
+        Assert.StartsWith(
+            "/account/reauthenticate?",
+            challenged.Headers.Location!.OriginalString,
+            StringComparison.Ordinal);
+
+        using var begin = await client.GetAsync(challenged.Headers.Location);
+        var secondFactor = new Uri(
+            new Uri("https://identity.tests.local"),
+            begin.Headers.Location!);
+        var query = QueryHelpers.ParseQuery(secondFactor.Query);
+        var antiforgery = await TestOnlyEndpoints.GetAntiforgeryTokenAsync(client);
+        using var mfaResponse = await client.PostAsync(
+            "/account/login/2fa",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Code"] = CurrentAuthenticatorCode(authenticatorKey),
+                ["RememberMe"] = "true",
+                ["RememberClient"] = "false",
+                ["ReturnUrl"] = query["returnUrl"].ToString(),
+                ["__RequestVerificationToken"] = antiforgery,
+            }));
+        Assert.Equal(HttpStatusCode.Redirect, mfaResponse.StatusCode);
+
+        // The session is still loa2 — the request asked for more than exists.
+        // It proceeds anyway, and the token will say what actually happened.
+        using var completed = await client.GetAsync(query["returnUrl"].ToString());
+        Assert.Equal(HttpStatusCode.Redirect, completed.StatusCode);
+        Assert.StartsWith(
+            RedirectUri,
+            completed.Headers.Location!.OriginalString,
+            StringComparison.Ordinal);
+        Assert.False(QueryHelpers.ParseQuery(completed.Headers.Location.Query)
+            .ContainsKey("error"));
+    }
+
+    private static string AuthorizationUrlWithAcr(string acrValues)
+    {
+        var (_, challenge) = Pkce.CreatePair();
+        return QueryHelpers.AddQueryString("/connect/authorize", new Dictionary<string, string?>
+        {
+            ["client_id"] = ClientId,
+            ["redirect_uri"] = RedirectUri,
+            ["response_type"] = "code",
+            ["scope"] = "openid profile",
+            ["code_challenge"] = challenge,
+            ["code_challenge_method"] = "S256",
+            ["state"] = Guid.NewGuid().ToString("N"),
+            ["acr_values"] = acrValues,
+        });
+    }
+
+    [Fact]
     public async Task Recent_session_completes_authorization_without_confirmation()
     {
         var username = $"recent-auth-current-{Guid.NewGuid():N}";

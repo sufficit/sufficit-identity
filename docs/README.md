@@ -48,6 +48,7 @@ found it.
 
 ## Completed work (activities/)
 
+- [acr_values now asks for something](activities/202609201300-acr-values.md) — a relying party can request an assurance level and get the ceremony, with one attempt when the level is unreachable
 - [The ceremony moved in front of the token](activities/202609201100-authorize-step-up.md) — a remembered device is challenged at `/authorize` instead of letting relying parties reject the token; plus the claim that was being dropped on renewal
 - [Measuring who authorizes from a remembered device](activities/202609200900-remembered-second-factor-measurement.md) — the affected clients come from production, not from reading their source
 - [A remembered device operates Management; it does not mint credentials](activities/202609200800-remembered-second-factor.md) — the owner's rule, plus one reading of `amr` and the drift it was hiding
