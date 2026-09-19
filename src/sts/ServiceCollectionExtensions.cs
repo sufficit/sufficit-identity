@@ -449,6 +449,12 @@ public static partial class ServiceCollectionExtensions
         // (see BreachedPasswordValidator remarks).
         if (options.Password.RejectBreached)
         {
+            // Shared across validations: the range cache is only worth having
+            // if it outlives one request, and the local list is read once.
+            services.AddSingleton(provider => new BreachedPasswordKnowledge(
+                options.Password,
+                provider.GetService<ILogger<BreachedPasswordKnowledge>>(),
+                TimeProvider.System));
             services.AddHttpClient<BreachedPasswordValidator>()
                 .UseSafeOutboundHttp(options.OutboundHttp);
             services.AddScoped<IPasswordValidator<ApplicationUser>, BreachedPasswordValidator>();

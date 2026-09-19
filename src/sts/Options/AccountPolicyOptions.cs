@@ -66,12 +66,53 @@ public sealed class PasswordPolicyOptions
     /// </summary>
     public BreachedPasswordFailureMode BreachedCheckFailureMode { get; init; } =
         BreachedPasswordFailureMode.FailOpen;
+
+    /// <summary>
+    /// Extra passwords the local fallback refuses, one per line, read once at
+    /// startup. Comments start with <c>#</c>; blank lines are ignored.
+    /// </summary>
+    /// <remarks>
+    /// Only consulted by
+    /// <see cref="BreachedPasswordFailureMode.LocalFallback"/>, and only while
+    /// the remote check is unavailable. A deployment that wants more than the
+    /// built-in floor points this at its own list.
+    /// </remarks>
+    public string? LocalBreachedPasswordListPath { get; init; }
+
+    /// <summary>
+    /// How many range responses to keep, so a repeated prefix does not go back
+    /// to the network and an outage does not affect a prefix already seen.
+    /// Default 512; each entry is the suffix list of one prefix.
+    /// </summary>
+    public int BreachedRangeCacheSize { get; init; } = 512;
+
+    /// <summary>How long a cached range answer stays usable. Default one hour.</summary>
+    public int BreachedRangeCacheMinutes { get; init; } = 60;
 }
 
 public enum BreachedPasswordFailureMode
 {
+    /// <summary>Accept the password. An outage does not block anybody.</summary>
     FailOpen,
+
+    /// <summary>
+    /// Refuse the password until the check succeeds. Nobody registers or
+    /// changes a password while the service is unreachable.
+    /// </summary>
     FailClosed,
+
+    /// <summary>
+    /// Answer from what is known locally — a cached range for this prefix, or
+    /// the local list — and accept only what neither refuses.
+    /// </summary>
+    /// <remarks>
+    /// The middle ground the other two do not offer: an outage stops being a
+    /// choice between letting a known-breached password through and stopping
+    /// every password change in the deployment. What it cannot do is promise
+    /// the full answer, so it is weaker than a completed check and the
+    /// degraded decision is recorded.
+    /// </remarks>
+    LocalFallback,
 }
 /// <summary>
 /// Sign-in policy applied by ASP.NET Core Identity's

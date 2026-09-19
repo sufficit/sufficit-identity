@@ -719,15 +719,13 @@ central metadata validation and public-client PKCE are already covered.
 
 ### F11 — Breached-password availability policy
 
-- [ ] Add the third mode. `BreachedPasswordFailureMode` exists with `FailOpen`
-  (the compatibility default) and `FailClosed`; `LocalFallback` is what is
-  missing, and `fail-open` already has a posture finding
-- [ ] Add a bounded local compromised-password fallback and cache successful
-  HIBP range responses — `BreachedPasswordValidator` caches nothing today
-- [ ] Timeout, upstream-error, malformed-response and recovery tests, plus
-  degraded-mode metrics
-- [ ] **(operational)** Move regulated environments to `LocalFallback` or `Deny`
-  only after audit telemetry characterizes latency and availability
+- [ ] **(operational)** Move regulated environments to `LocalFallback` or
+  `FailClosed` once the `breached_password_check` telemetry characterises
+  latency and availability
+
+`LocalFallback`, the range cache and the degraded-mode telemetry landed on
+2026-09-20 —
+[`202609201700-breached-password-fallback.md`](../activities/202609201700-breached-password-fallback.md).
 
 ### F12 — GCM budget
 

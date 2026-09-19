@@ -29,13 +29,22 @@ public sealed class BreachedPasswordValidator : IPasswordValidator<ApplicationUs
     private readonly HttpClient _httpClient;
     private readonly ILogger<BreachedPasswordValidator> _logger;
     private readonly BreachedPasswordFailureMode _failureMode;
+    private readonly BreachedPasswordKnowledge _knowledge;
+    private readonly ISecurityDecisionTelemetry _telemetry;
 
     [Microsoft.Extensions.DependencyInjection.ActivatorUtilitiesConstructor]
     public BreachedPasswordValidator(
         HttpClient httpClient,
         ILogger<BreachedPasswordValidator> logger,
-        SufficitIdentityOptions options)
-        : this(httpClient, logger, options.Password.BreachedCheckFailureMode)
+        SufficitIdentityOptions options,
+        BreachedPasswordKnowledge knowledge,
+        ISecurityDecisionTelemetry telemetry)
+        : this(
+            httpClient,
+            logger,
+            options.Password.BreachedCheckFailureMode,
+            knowledge,
+            telemetry)
     {
     }
 
@@ -47,9 +56,14 @@ public sealed class BreachedPasswordValidator : IPasswordValidator<ApplicationUs
     public BreachedPasswordValidator(
         HttpClient httpClient,
         ILogger<BreachedPasswordValidator> logger,
-        BreachedPasswordFailureMode failureMode)
+        BreachedPasswordFailureMode failureMode,
+        BreachedPasswordKnowledge? knowledge = null,
+        ISecurityDecisionTelemetry? telemetry = null)
     {
         _failureMode = failureMode;
+        _knowledge = knowledge
+            ?? new BreachedPasswordKnowledge(new PasswordPolicyOptions());
+        _telemetry = telemetry ?? new SecurityDecisionTelemetry();
         _httpClient = httpClient;
         // Only set defaults if the HttpClient hasn't been pre-configured
         // (e.g. by a test with a custom BaseAddress/handler).
@@ -73,9 +87,23 @@ public sealed class BreachedPasswordValidator : IPasswordValidator<ApplicationUs
             return IdentityResult.Success;
         }
 
+        var (prefix, suffix) = HashPassword(password);
+
+        // An answer already given covers every password sharing this prefix,
+        // so a repeat costs nothing and an outage does not reach it.
+        if (_knowledge.TryGetRange(prefix) is { } cached)
+        {
+            _telemetry.Record(
+                "breached_password_check",
+                _failureMode.ToString(),
+                wouldReject: cached.Contains(suffix),
+                rejected: cached.Contains(suffix),
+                ["served_from_cache"]);
+            return cached.Contains(suffix) ? Breached() : IdentityResult.Success;
+        }
+
         try
         {
-            var (prefix, suffix) = HashPassword(password);
             var response = await _httpClient.GetAsync(prefix);
 
             if (!response.IsSuccessStatusCode)
@@ -84,43 +112,121 @@ public sealed class BreachedPasswordValidator : IPasswordValidator<ApplicationUs
                     "HIBP range API returned {Status}; breached-password check did not complete ({FailureMode}).",
                     (int)response.StatusCode,
                     _failureMode);
-                return CheckUnavailable();
+                return CheckUnavailable(password, "upstream_status");
             }
 
             var body = await response.Content.ReadAsStringAsync();
-            // Response format: "SUFFIX:COUNT\r\nSUFFIX:COUNT\r\n..."
-            foreach (var line in body.AsSpan().EnumerateLines())
+            var suffixes = ParseRange(body);
+            if (suffixes is null)
             {
-                var colon = line.IndexOf(':');
-                if (colon > 0 && line[..colon].SequenceEqual(suffix))
-                {
-                    return IdentityResult.Failed(new IdentityError
-                    {
-                        Code = "PasswordBreached",
-                        Description = "This password has appeared in a known data breach. Choose a different password.",
-                    });
-                }
+                // A body that is not a range listing means the check did not
+                // happen, whatever the status code said. Treating it as "no
+                // match" would silently turn every password into a pass.
+                _logger.LogWarning(
+                    "HIBP range API returned an unreadable body; breached-password "
+                    + "check did not complete ({FailureMode}).",
+                    _failureMode);
+                return CheckUnavailable(password, "upstream_malformed");
             }
 
-            return IdentityResult.Success;
+            _knowledge.StoreRange(prefix, suffixes);
+            var breached = suffixes.Contains(suffix);
+            _telemetry.Record(
+                "breached_password_check",
+                _failureMode.ToString(),
+                wouldReject: breached,
+                rejected: breached,
+                ["completed"]);
+            return breached ? Breached() : IdentityResult.Success;
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             _logger.LogWarning(exception,
                 "Breached-password check failed ({FailureMode}).",
                 _failureMode);
-            return CheckUnavailable();
+            return CheckUnavailable(password, "upstream_unreachable");
         }
     }
 
-    private IdentityResult CheckUnavailable() =>
-        _failureMode == BreachedPasswordFailureMode.FailClosed
+    private static IdentityResult Breached() =>
+        IdentityResult.Failed(new IdentityError
+        {
+            Code = "PasswordBreached",
+            Description = "This password has appeared in a known data breach. Choose a different password.",
+        });
+
+    /// <summary>
+    /// The suffix set of a range response, or <see langword="null"/> when the
+    /// body is not one.
+    /// </summary>
+    private static HashSet<string>? ParseRange(string body)
+    {
+        var suffixes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var line in body.AsSpan().EnumerateLines())
+        {
+            if (line.IsWhiteSpace())
+            {
+                continue;
+            }
+
+            var colon = line.IndexOf(':');
+            // Every line is "SUFFIX:COUNT", and the suffix is the 35 hex
+            // characters that follow the 5 sent as the prefix.
+            if (colon != 35 || !IsHex(line[..colon]))
+            {
+                return null;
+            }
+
+            suffixes.Add(new string(line[..colon]));
+        }
+
+        return suffixes.Count == 0 ? null : suffixes;
+    }
+
+    private static bool IsHex(ReadOnlySpan<char> value)
+    {
+        foreach (var character in value)
+        {
+            if (!char.IsAsciiHexDigit(character))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private IdentityResult CheckUnavailable(string password, string reason)
+    {
+        // LocalFallback answers from what is known here rather than choosing
+        // between letting a known-breached password through and stopping every
+        // password change in the deployment.
+        var locallyBreached =
+            _failureMode == BreachedPasswordFailureMode.LocalFallback
+            && _knowledge.IsLocallyKnownBreached(password);
+        var rejected = locallyBreached
+            || _failureMode == BreachedPasswordFailureMode.FailClosed;
+
+        _telemetry.Record(
+            "breached_password_check",
+            _failureMode.ToString(),
+            wouldReject: true,
+            rejected: rejected,
+            [reason, locallyBreached ? "local_fallback_match" : "degraded"]);
+
+        if (locallyBreached)
+        {
+            return Breached();
+        }
+
+        return _failureMode == BreachedPasswordFailureMode.FailClosed
             ? IdentityResult.Failed(new IdentityError
             {
                 Code = "PasswordBreachCheckUnavailable",
                 Description = "The password could not be checked against known data breaches. Try again later.",
             })
             : IdentityResult.Success;
+    }
 
     /// <summary>
     /// Returns the (prefix, suffix) of the SHA-1 hash: first 5 hex chars as
