@@ -93,6 +93,20 @@ fi
 # would otherwise produce a release that only fails once the service restarts.
 chmod -R go-w -- "${release_directory}"
 
+# The opposite failure is quieter. The static-web-asset compression step writes
+# some .br files through a temporary file created 0600, whatever the umask, and
+# the service does not run as the user that extracts the release. Those files
+# answer 500, the browser falls back to nothing, and a component that imports
+# its own module takes the whole circuit down — the sign-in page's language
+# selector did, in production, on 2026-09-19. The archive holds no secrets (the
+# check above refuses them), so everything in it is meant to be readable.
+chmod -R a+rX -- "${release_directory}"
+unreadable=$(find "${release_directory}" ! -perm -o=r -print -quit)
+if [[ -n ${unreadable} ]]; then
+    echo "[package] Release file is not readable by the service: ${unreadable#"${release_directory}/"}" >&2
+    exit 1
+fi
+
 tar -C "${release_directory}" -czf "${archive}" .
 chmod 0644 "${archive}"
 archive_sha256=$(sha256sum "${archive}" | awk '{print $1}')
