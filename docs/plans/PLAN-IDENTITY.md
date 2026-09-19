@@ -281,22 +281,7 @@ The accepted warning and skips (`FAPIEnsureServerConfigurationDoesNotSupport`
 
 ## C. Secrets, keys and transport
 
-### C1 — Reject plaintext configuration after the migration gate
-
-- [ ] Expose redacted resolution provenance from `ISecretStore` so startup can
-  tell an approved secret-store value from a legacy configuration fallback
-  without reading or logging the value
-- [ ] Add a production-startup gate that rejects legacy database, provider and
-  client-secret fallbacks once the environment declares migration complete
-- [ ] Add a redacted deployment check for machine-specific configuration and
-  `deploy/local/`, reporting only logical name, source type, owner/state
-  metadata and file permission — never a matched value
-
-**Done when:** production can prove its configuration-time credentials came
-from the approved secret boundary, startup rejects a reintroduced plaintext
-fallback, and the deployment check emits no secret material.
-
-### C2 — Vault production enablement and rotation
+### C1 — Vault production enablement and rotation
 
 - [ ] **(operational)** Enable the vault in production and prove zero `pt1.`
   values and zero `pt1.` reads, a restorable backup, and a rollback that
@@ -312,7 +297,7 @@ The vault module itself (phases 1–3: envelope crypto, named secrets, signing
 keys) is delivered; `KeySource=certificate` with a dedicated KEK is deployed on
 the three nodes. Procedure lives in `../runbooks/RUNBOOK-VAULT.md`.
 
-### C3 — Signing and encryption key separation **(blocked)**
+### C2 — Signing and encryption key separation **(blocked)**
 
 The three servers still use the same `certificate.pfx` for signing and
 encryption. The runtime rejects every replacement PFX generated so far —
@@ -337,7 +322,7 @@ CLI command of `Server.dll` itself.
 - [ ] **(operational)** Inventory certificates, prove the signing/KEK
   separation and execute a restore/disaster-recovery rehearsal
 
-### C4 — Authenticator and recovery material at rest
+### C3 — Authenticator and recovery material at rest
 
 The standard ASP.NET Core Identity token store persists authenticator and
 recovery-code material in `usertokens` with no application encryption adapter.
@@ -353,7 +338,7 @@ recovery-code material in `usertokens` with no application encryption adapter.
 - [ ] Enable fail-closed encrypted writes first; disable plaintext reads only
   after migration telemetry reaches zero
 
-### C5 — Verified transport everywhere
+### C4 — Verified transport everywhere
 
 - [ ] Migrate RabbitMQ and SMTP to verified TLS, then enable each `RequireTls`
   production gate
@@ -364,7 +349,7 @@ recovery-code material in `usertokens` with no application encryption adapter.
 An explicit transport policy already validates VerifyCA/VerifyFull or a
 UnixSocket exception; production still has to choose the mode.
 
-### C6 — Legacy credential inventory and rotation **(operational)**
+### C5 — Legacy credential inventory and rotation **(operational)**
 
 - [ ] Inventory and rotate the legacy database and provider credentials and
   certificates, migrate `deploy/local/` to the approved secret store, and
@@ -851,12 +836,16 @@ Deliberately after everything above; none of it is required for production.
    [`202609191900-posture-check-coverage.md`](../activities/202609191900-posture-check-coverage.md).
    Three of D1's new findings are advisories that every deployment sees until
    it settles them — `access-token-unmapped-claims` is B2's work,
-   `certificate-purpose-not-separated` is C3's, and
+   `certificate-purpose-not-separated` is C2's, and
    `token-exchange-enabled-by-default` clears when D4 declares the switch. They
    are the plan made visible at startup.
-2. **C1, then C3** — establish the plaintext boundary before removing any
-   compatibility path. C3 is blocked on the PFX problem and needs the
-   generate-on-server approach first.
+2. **C1, then C2** — the vault's production enablement, then the key
+   separation. C2 is blocked on the PFX problem and needs the
+   generate-on-server approach first. C1 (the plaintext boundary) was
+   delivered on 2026-09-19, see
+   [`202609192100-secret-boundary-provenance.md`](../activities/202609192100-secret-boundary-provenance.md);
+   declaring `Sufficit:Vault:SecretMigrationComplete=true` per environment is
+   part of D4.
 3. **A1** — persistence and backfill before any context enforcement. A2, A3 and
    the Management side of A4 all build on its context model.
 4. **B1** — the issuance kernel, one grant at a time under characterization
@@ -893,11 +882,11 @@ Deliberately after everything above; none of it is required for production.
 
 | Retired plan | Now |
 |---|---|
-| `PLAN-GPT-5-REMAINING` | A1, A4, B1–B6, C1, C3, C5, D2, D6, F3, F4, F5, F10, F13, G1, G2, G3 |
-| `PLAN-GLM-5-2-REMAINING` | A1, A2, A3, B1, C1, F3, F6, F11 |
-| `PLAN-SECURITY-HARDENING-WAVE-2` | A1, A2, A3, B2–B5, B7, B8, C3, C4, C5, D1, D3, F6–F10, F14, closure criteria |
-| `PLAN-FABLE-5-TRIAGE` | A4, B2, B3, C3, D6, F2, F12 |
-| `PLAN-PRODUCTION-READINESS` | C2, C3, C6, D1, D4, D5, E8, F3, G2, G5, G6 |
+| `PLAN-GPT-5-REMAINING` | A1, A4, B1–B6, C2, C4, D2, D6, F3, F4, F5, F10, F13, G1, G2, G3 |
+| `PLAN-GLM-5-2-REMAINING` | A1, A2, A3, B1, F3, F6, F11 |
+| `PLAN-SECURITY-HARDENING-WAVE-2` | A1, A2, A3, B2–B5, B7, B8, C2, C3, C4, D1, D3, F6–F10, F14, closure criteria |
+| `PLAN-FABLE-5-TRIAGE` | A4, B2, B3, C2, D6, F2, F12 |
+| `PLAN-PRODUCTION-READINESS` | C1, C2, C5, D1, D4, D5, E8, F3, G2, G5, G6 |
 | `PLAN-MANAGEMENT-APPLICATIONS` (+ `-NEXT`) | A2, E1–E4, E6 |
 | `PLAN-CLIENT-OPERATIONAL-STATE` | E1 |
 | `PLAN-MANAGEMENT-UI-STATE-CONSISTENCY` | E5 |

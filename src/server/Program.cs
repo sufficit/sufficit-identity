@@ -51,7 +51,13 @@ builder.Configuration.AddMachineSpecificJsonFile();
 SecretConfigurationExtensions.EnsureNoPlaintextSecrets(builder.Configuration);
 // Resolve deployment-provided secret overrides before any startup options are
 // bound. Every startup consumer receives the same vault-secrets.env value.
-builder.Configuration.AddSufficitSecretOverrides(startupSecretStore);
+// The report records which boundary answered for each secret — names and
+// sources, never values — so the posture check can prove the configuration-time
+// credentials came from the approved one.
+builder.Configuration.AddSufficitSecretOverrides(
+    startupSecretStore,
+    out var secretResolution);
+builder.Services.AddSingleton(secretResolution);
 
 // Use the shared Redis cache when a deployment supplies a Redis connection
 // through the secret boundary. AddSufficitIdentitySTS keeps the in-process

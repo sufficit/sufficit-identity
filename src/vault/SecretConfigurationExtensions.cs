@@ -62,12 +62,27 @@ public static class SecretConfigurationExtensions
     /// </summary>
     public static IConfigurationBuilder AddSufficitSecretOverrides(
         this IConfigurationBuilder configuration,
-        ISecretStore secretStore)
+        ISecretStore secretStore) =>
+        configuration.AddSufficitSecretOverrides(secretStore, out _);
+
+    /// <summary>
+    /// Appends the overrides and reports where each known startup secret came
+    /// from. The report carries logical names and sources, never a value.
+    /// </summary>
+    public static IConfigurationBuilder AddSufficitSecretOverrides(
+        this IConfigurationBuilder configuration,
+        ISecretStore secretStore,
+        out SecretResolutionReport report)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(secretStore);
 
+        // The sources already in the builder are the legacy fallback: whatever
+        // answers here did not come through the secret store.
+        var existing = configuration.Build();
+
         var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        var resolutions = new List<SecretResolution>(Overrides.Length);
         foreach (var (logicalName, configurationKey) in Overrides)
         {
             var value = secretStore.GetSecretAsync(logicalName)
@@ -76,9 +91,22 @@ public static class SecretConfigurationExtensions
             if (!string.IsNullOrWhiteSpace(value))
             {
                 values[configurationKey] = value;
+                resolutions.Add(new(
+                    logicalName,
+                    configurationKey,
+                    SecretResolutionSource.SecretStore));
+                continue;
             }
+
+            resolutions.Add(new(
+                logicalName,
+                configurationKey,
+                string.IsNullOrWhiteSpace(existing[configurationKey])
+                    ? SecretResolutionSource.Absent
+                    : SecretResolutionSource.Configuration));
         }
 
+        report = new SecretResolutionReport(resolutions);
         return values.Count is 0
             ? configuration
             : configuration.AddInMemoryCollection(values);
@@ -102,6 +130,114 @@ public static class SecretConfigurationExtensions
                     "Remove it from appsettings/User Secrets and configure the corresponding SUFFICIT_SECRET_* variable in vault-secrets.env.");
             }
         }
+    }
+
+    /// <summary>
+    /// Configuration keys that look like secrets by name, carry a value, and
+    /// are not one of the mapped startup secrets.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="EnsureNoPlaintextSecrets"/> only knows the seventeen keys
+    /// this file maps, so a secret nobody thought to map — a resource secret,
+    /// an API key added for one integration — stays in an appsettings file
+    /// unnoticed. This finds those by naming convention, which is imprecise on
+    /// purpose: a deployment reviewing a false positive costs a minute, and a
+    /// missed credential costs considerably more.
+    ///
+    /// Returns keys only. The caller reports names, never values.
+    /// </remarks>
+    public static IReadOnlyList<string> FindUnmappedSecretLikeKeys(
+        IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var mapped = Overrides
+            .Select(mapping => mapping.ConfigurationKey)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return [.. Walk(configuration)
+            .Where(entry => !string.IsNullOrWhiteSpace(entry.Value))
+            .Where(entry => !mapped.Contains(entry.Key))
+            .Where(entry => LooksLikeSecret(entry.Key, entry.Value!))
+            .Select(entry => entry.Key)
+            .Order(StringComparer.Ordinal)];
+
+        static IEnumerable<KeyValuePair<string, string?>> Walk(
+            IConfiguration section)
+        {
+            foreach (var child in section.GetChildren())
+            {
+                if (child.Value is not null)
+                {
+                    yield return new(child.Path, child.Value);
+                }
+
+                foreach (var descendant in Walk(child))
+                {
+                    yield return descendant;
+                }
+            }
+        }
+    }
+
+    private static readonly string[] SecretSuffixes =
+        ["password", "secret", "apikey", "accesstoken", "connectionstring"];
+
+    /// <summary>
+    /// Words that turn a secret-looking name into a setting: a key's
+    /// <em>name</em>, <em>path</em> or <em>source</em> is not the key.
+    /// </summary>
+    private static readonly string[] NotSecretMarkers =
+        ["name", "path", "source", "mode", "enabled", "lifetime", "days",
+         "minutes", "seconds", "type", "provider", "url", "uri", "id",
+         "length", "size", "count", "issuer", "audience"];
+
+    /// <summary>
+    /// Prefixes that make the key a question about a secret rather than the
+    /// secret: <c>RequireInitialAccessToken</c> is a switch.
+    /// </summary>
+    private static readonly string[] NotSecretPrefixes =
+        ["require", "use", "has", "is", "allow", "enable", "reject", "validate"];
+
+    private static bool LooksLikeSecret(string key, string value)
+    {
+        // A connection string carries its credential inside the value, so the
+        // key name proves nothing: ConnectionStrings:Reporting looks innocent
+        // and may still hold "Password=...".
+        if (value.Contains("password=", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("pwd=", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var leaf = key[(key.LastIndexOf(':') + 1)..];
+
+        // This repository documents a real key by placing a commented twin
+        // beside it, prefixed with an underscore. Those hold guidance, not
+        // credentials, and every template would report a handful of them.
+        if (leaf.StartsWith('_'))
+        {
+            return false;
+        }
+
+        // A boolean is never a credential, however it is named —
+        // LegacyGrants:Password is a switch that enables ROPC.
+        if (bool.TryParse(value, out _) || long.TryParse(value, out _))
+        {
+            return false;
+        }
+
+        leaf = leaf.ToLowerInvariant();
+        if (NotSecretPrefixes.Any(prefix =>
+                leaf.StartsWith(prefix, StringComparison.Ordinal))
+            || NotSecretMarkers.Any(marker =>
+                leaf.EndsWith(marker, StringComparison.Ordinal)))
+        {
+            return false;
+        }
+
+        return SecretSuffixes.Any(suffix =>
+            leaf.EndsWith(suffix, StringComparison.Ordinal));
     }
 
     /// <summary>Returns the supported logical-to-configuration mappings.</summary>

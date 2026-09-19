@@ -39,6 +39,15 @@ public static class ServiceCollectionExtensions
             ServiceDescriptor.Singleton<
                 IProductionPostureContributor,
                 VaultProductionPostureContributor>());
+        // The provenance report is produced while configuration is still being
+        // built, before any container exists, so the host publishes it first
+        // and this empty one only applies to a host that did not. The
+        // contributor still reports the unmapped keys it can see for itself.
+        services.TryAddSingleton(new SecretResolutionReport([]));
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<
+                IProductionPostureContributor,
+                SecretBoundaryPostureContributor>());
         services.TryAddSingleton(configuration);
         var redisConnectionString = configuration.GetConnectionString("Redis");
         if (!string.IsNullOrWhiteSpace(redisConnectionString))
