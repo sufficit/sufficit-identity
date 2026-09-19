@@ -48,6 +48,7 @@ found it.
 
 ## Completed work (activities/)
 
+- [JAR and JARM: the code was done, the refusals were not proven](activities/202609200300-jar-jarm-already-built.md) — every request-object refusal asserted on its reason; replay scoped per client, proven with two clients
 - [DPoP nonces: the handler was written for a store it was not given](activities/202609200100-dpop-stateless-nonce.md) — concurrent challenges no longer displace each other; stateless nonces agree across replicas through the key ring
 - [Protected principals on every mutation that reaches a user](activities/202609192300-protected-principals-everywhere.md) — claims, sessions and authorizations no longer bypass the tier check; and why the plan's tenant machinery was taken back out first
 - [Proving a secret came from the right place](activities/202609192100-secret-boundary-provenance.md) — redacted provenance per startup secret, a convention scan for the ones nobody mapped, and a permission check on the files holding them
