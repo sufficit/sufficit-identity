@@ -90,7 +90,8 @@
                                    Class="@ProviderClass(provider.AuthenticationScheme)"
                                    data-enhance-nav="false"
                                    data-redirect-overlay="@provider.DisplayName">
-                            @L["ExternalLogins.Link", provider.DisplayName]
+                            <ProviderIcon Provider="@provider.AuthenticationScheme" />
+                            <span>@L["ExternalLogins.Link", provider.DisplayName]</span>
                         </SUIButton>
                     }
                 </div>
@@ -264,7 +265,7 @@
         {
             "google" => "btn-google",
             "facebook" => "btn-facebook",
-            _ => "btn-secondary",
+            _ => "btn-external",
         };
 
     private static string IdentityKey(AccountExternalIdentity identity) =>
