@@ -20,6 +20,7 @@ using Sufficit.Identity.Application.Branding;
 using Sufficit.Identity.Core.Entities;
 using Sufficit.Identity.STS.Consent;
 using static OpenIddict.Abstractions.OpenIddictConstants;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.STS.Controllers;
 
@@ -55,6 +56,7 @@ public partial class AuthorizationController : Controller
     private readonly IAntiforgery _antiforgery;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<AuthorizationController> _logger;
+    private readonly ISecurityDecisionTelemetry _telemetry;
 
     public AuthorizationController(
         IOpenIddictApplicationManager applicationManager,
@@ -73,7 +75,8 @@ public partial class AuthorizationController : Controller
         Grants.GrantOperations grants,
         Cimd.CimdApplicationProvisioner cimdApplications,
         TimeProvider timeProvider,
-        ILogger<AuthorizationController> logger)
+        ILogger<AuthorizationController> logger,
+        ISecurityDecisionTelemetry? telemetry = null)
     {
         _applicationManager = applicationManager;
         _authorizationManager = authorizationManager;
@@ -91,6 +94,7 @@ public partial class AuthorizationController : Controller
         _sharedSignalsDispatcher = sharedSignalsDispatcher;
         _timeProvider = timeProvider;
         _logger = logger;
+        _telemetry = telemetry ?? new SecurityDecisionTelemetry();
         // FAPI options drive the authorize-endpoint dpop_jkt binding; the
         // token-endpoint DPoP/FAPI preamble lives in the grant dispatcher.
         _fapi2Options = (configuration.GetSection("Sufficit:Identity")
@@ -128,6 +132,30 @@ public partial class AuthorizationController : Controller
             {
                 RedirectUri = CurrentAuthorizationRequestUrl()
             });
+        }
+
+        // Measurement, not enforcement. A session whose second factor came
+        // from a trusted-device cookie still mints tokens that claim
+        // amr=mfa; whether that should stay true is an open decision, and
+        // answering it needs to know which clients it reaches. Reading the
+        // relying parties' source would not answer it — what matters is who
+        // actually authorizes from a remembered session, which only
+        // production knows. The client id goes in the log, never in a metric
+        // tag: the meter is deliberately low-cardinality.
+        if (MfaEvidencePolicy.IsSecondFactorRemembered(result.Principal))
+        {
+            _logger.LogInformation(
+                "Authorization from a session whose second factor was "
+                + "remembered rather than presented. ClientId={ClientId}; "
+                + "TraceId={TraceId}.",
+                request.ClientId,
+                AuthenticationFlowDiagnostics.TraceId);
+            _telemetry.Record(
+                "token_issuance_second_factor",
+                "Observe",
+                wouldReject: true,
+                rejected: false,
+                ["remembered_second_factor"]);
         }
 
         // max_age=0 and prompt=login both demand a brand-new credential

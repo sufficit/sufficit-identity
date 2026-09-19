@@ -48,6 +48,7 @@ found it.
 
 ## Completed work (activities/)
 
+- [Measuring who authorizes from a remembered device](activities/202609200900-remembered-second-factor-measurement.md) — the affected clients come from production, not from reading their source
 - [A remembered device operates Management; it does not mint credentials](activities/202609200800-remembered-second-factor.md) — the owner's rule, plus one reading of `amr` and the drift it was hiding
 - [SCIM enabled with nobody allowed to use it](activities/202609200600-scim-empty-allow-list.md) — advisory for an enabled, enforcing SCIM with an empty client allow-list
 - [Token exchange: a delegation chain now has a bottom](activities/202609200500-delegation-depth.md) — `act` chains bounded at 5 by default; unreadable chains refused instead of throwing

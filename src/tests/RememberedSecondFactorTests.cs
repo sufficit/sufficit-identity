@@ -156,6 +156,21 @@ public sealed class RememberedSecondFactorTests : IDisposable
         Assert.Equal(hasFreshMfa, MfaEvidencePolicy.HasFreshMfaEvidence(principal));
     }
 
+    [Fact]
+    public void The_marker_survives_a_round_trip_through_claims()
+    {
+        // The measurement at the authorize endpoint, and the refusal at the
+        // mint, both read this marker off the session principal rather than
+        // off the sign-in that set it — a renewed cookie has to still carry it.
+        var renewed = new ClaimsPrincipal(new ClaimsIdentity(
+            Operator(remembered: true).Claims.ToList(),
+            "renewed"));
+
+        Assert.True(MfaEvidencePolicy.IsSecondFactorRemembered(renewed));
+        Assert.True(MfaEvidencePolicy.HasMfaEvidence(renewed));
+        Assert.False(MfaEvidencePolicy.HasFreshMfaEvidence(renewed));
+    }
+
     private sealed class AlwaysAllowedEvaluator : IManagementAuthorizationEvaluator
     {
         public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
