@@ -1,3 +1,4 @@
+using Sufficit.Identity.Application.Security;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Http;
@@ -99,6 +100,21 @@ internal sealed class OidcSessionClaimsPrincipalFactory(
                     method));
             }
         }
+        // A second factor that came from the trusted-device cookie is marked,
+        // so the operations that mint a credential can tell it apart from one
+        // presented in this sign-in. Renewals keep the mark: the evidence only
+        // exists on the request that signed in.
+        var rememberedSecondFactor = evidence?.RememberedSecondFactor
+            ?? (currentPrincipal is not null
+                && MfaEvidencePolicy.IsSecondFactorRemembered(currentPrincipal));
+        if (rememberedSecondFactor)
+        {
+            ReplaceClaim(
+                identity,
+                MfaEvidencePolicy.RememberedSecondFactorClaimType,
+                "true");
+        }
+
         var authenticatedAt = evidence?.AuthenticatedAt
             ?? ResolveAuthenticationTime(currentPrincipal)
             ?? timeProvider.GetUtcNow();

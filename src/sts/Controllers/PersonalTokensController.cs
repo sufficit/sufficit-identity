@@ -334,7 +334,9 @@ public sealed partial class PersonalTokensController : ControllerBase
             now,
             expiration,
             !string.IsNullOrWhiteSpace(User.GetClaim(Dpop.DpopProofValidator.ConfirmationClaimType)),
-            MfaEvidence.HasMfaEvidence(User)));
+            // A personal token outlives the browser, so a remembered device
+            // does not stand in for the second factor behind it.
+            MfaEvidencePolicy.HasFreshMfaEvidence(User)));
         if (issuanceDecision.ShouldReject)
         {
             return StatusCode(StatusCodes.Status403Forbidden, new

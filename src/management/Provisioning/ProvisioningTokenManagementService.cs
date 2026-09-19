@@ -12,6 +12,8 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 using static OpenIddict.Server.OpenIddictServerEvents;
 using Sufficit.Identity.Management.Authorization;
 
+using Sufficit.Identity.Application.Security;
+
 namespace Sufficit.Identity.Management.Provisioning;
 
 internal interface IProvisioningTokenIssuer
@@ -58,6 +60,20 @@ internal sealed class ProvisioningTokenManagementService(
             ManagementCapabilities.ProvisioningApply,
             TokenResource,
             cancellationToken);
+
+        // This issues a credential, so the second factor has to have been
+        // presented in this session rather than remembered from a previous
+        // one. The service authorizes directly instead of through the guard,
+        // so the rule is applied here.
+        if (decision.IsAllowed
+            && options.Value.RequireMfa
+            && MfaEvidencePolicy.HasMfaEvidence(context.Operator)
+            && MfaEvidencePolicy.IsSecondFactorRemembered(context.Operator))
+        {
+            decision = ManagementAuthorizationDecision.StepUpRequired(
+                "fresh_mfa_required",
+                ManagementCapabilities.ProvisioningApply);
+        }
 
         if (!decision.IsAllowed)
         {

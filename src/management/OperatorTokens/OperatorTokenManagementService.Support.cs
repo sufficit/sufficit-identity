@@ -13,6 +13,7 @@ using OidcClaims = OpenIddict.Abstractions.OpenIddictConstants.Claims;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using static OpenIddict.Server.OpenIddictServerEvents;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Management.OperatorTokens;
 
@@ -233,11 +234,7 @@ internal sealed partial class OperatorTokenManagementService
     }
 
     private static bool HasMfaEvidence(ClaimsPrincipal principal) =>
-        principal.FindAll("amr")
-            .SelectMany(claim => claim.Value.Split(
-                ' ',
-                StringSplitOptions.RemoveEmptyEntries))
-            .Any(MfaMethods.Contains);
+        MfaEvidencePolicy.HasMfaEvidence(principal);
 
     private static int ResolveLifetime(
         int? requested,

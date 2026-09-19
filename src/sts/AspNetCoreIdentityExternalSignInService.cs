@@ -403,7 +403,8 @@ public sealed class AspNetCoreIdentityExternalSignInService(
             timeProvider.GetUtcNow(),
             authenticationContextClasses.Map(rememberedMfa
                 ? CaepAssuranceLevel.Loa2
-                : CaepAssuranceLevel.Loa1)));
+                : CaepAssuranceLevel.Loa1),
+            RememberedSecondFactor: rememberedMfa));
 
     /// <summary>
     /// The OIDC claim type the service persists from the external provider principal.

@@ -7,17 +7,15 @@ namespace Sufficit.Identity.STS.Security;
 /// STS operations. Claims may arrive either as multiple values or as one
 /// space-delimited value after token validation.
 /// </summary>
+/// <remarks>
+/// The method list and the reading of <c>amr</c> now live in
+/// <see cref="Sufficit.Identity.Application.Security.MfaEvidencePolicy"/>, so
+/// the STS and Management cannot drift into two answers. This stays as the
+/// STS-local name its callers already use.
+/// </remarks>
 internal static class MfaEvidence
 {
-    private static readonly HashSet<string> MfaMethods = new(StringComparer.Ordinal)
-    {
-        "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina"
-    };
-
     public static bool HasMfaEvidence(ClaimsPrincipal principal) =>
-        principal.FindAll("amr")
-            .SelectMany(claim => claim.Value.Split(
-                ' ',
-                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-            .Any(MfaMethods.Contains);
+        Sufficit.Identity.Application.Security.MfaEvidencePolicy
+            .HasMfaEvidence(principal);
 }
