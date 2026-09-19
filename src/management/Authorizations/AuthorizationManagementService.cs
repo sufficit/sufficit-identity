@@ -168,6 +168,21 @@ internal sealed class AuthorizationManagementService(
                 "The authorization was not found.");
         }
 
+        // An authorization belongs to the user who granted it, and revoking it
+        // revokes every credential it issued. Decide on that user now that the
+        // grant is loaded.
+        var subject = await authorizationManager.GetSubjectAsync(
+            grant,
+            cancellationToken);
+        if (!string.IsNullOrWhiteSpace(subject))
+        {
+            decision = await DemandAsync(
+                context,
+                ManagementCapabilities.AuthorizationsRevoke,
+                resource with { SubjectId = subject },
+                cancellationToken);
+        }
+
         var revokedCredentials = await tokenManager.RevokeByAuthorizationIdAsync(
             id,
             cancellationToken);

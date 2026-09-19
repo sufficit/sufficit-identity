@@ -205,9 +205,19 @@ public sealed record ManagementRequestContext(
 /// row-level tenant boundary. Object-level authorization now means protected
 /// principals; vault secret contexts remain as pure data organization.
 /// </summary>
+/// <param name="Type">One of <see cref="ManagementResourceTypes"/>.</param>
+/// <param name="Id">The resource's own identifier.</param>
+/// <param name="SubjectId">
+/// The user this operation reaches, when it reaches one through a resource
+/// that is not the user itself — a claim, a session, an authorization. The
+/// protected-principal policy decides on the user, so without this it only
+/// ever saw operations addressed to a <see cref="ManagementResourceTypes.User"/>
+/// and missed every other way of changing or signing out that user.
+/// </param>
 public sealed record ManagementResource(
     string Type,
-    string? Id = null);
+    string? Id = null,
+    string? SubjectId = null);
 
 public enum ManagementAuthorizationOutcome
 {

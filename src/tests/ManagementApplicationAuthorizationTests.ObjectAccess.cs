@@ -207,6 +207,88 @@ public sealed partial class ManagementApplicationAuthorizationTests
         Assert.Equal("protected_principal_break_glass", breakGlass.ReasonCode);
     }
 
+    [Theory]
+    // Each reaches a user through something other than the user itself. They
+    // used to bypass the protected-principal policy, which only ever saw
+    // User resources.
+    [InlineData(ManagementCapabilities.ClaimsCreate, ManagementResourceTypes.ClaimCollection)]
+    [InlineData(ManagementCapabilities.ClaimsUpdate, ManagementResourceTypes.Claim)]
+    [InlineData(ManagementCapabilities.ClaimsDelete, ManagementResourceTypes.Claim)]
+    [InlineData(ManagementCapabilities.SessionsRevoke, ManagementResourceTypes.Session)]
+    [InlineData(ManagementCapabilities.SessionsRevoke, ManagementResourceTypes.SessionCollection)]
+    [InlineData(ManagementCapabilities.AuthorizationsRevoke, ManagementResourceTypes.Authorization)]
+    public async Task Every_mutation_that_reaches_a_user_consults_protected_principals(
+        string capability,
+        string resourceType)
+    {
+        var principals = new RecordingProtectedPrincipalPolicy();
+        var policy = new ConfigurationManagementObjectAccessPolicy(principals);
+
+        var decision = await policy.EvaluateAsync(
+            PrincipalWithClaims(),
+            capability,
+            new ManagementResource(resourceType, "item-1", SubjectId: "owner-7"));
+
+        Assert.Equal("owner-7", Assert.Single(principals.Targets));
+        Assert.Equal("protected_principal_higher_or_equal", decision.ReasonCode);
+    }
+
+    [Theory]
+    // Reads never change anyone, and an operation whose owner is not known yet
+    // — the first demand, before the item is loaded — has nobody to protect.
+    [InlineData(ManagementCapabilities.ClaimsRead, "owner-7")]
+    [InlineData(ManagementCapabilities.SessionsRead, "owner-7")]
+    [InlineData(ManagementCapabilities.ClaimsDelete, null)]
+    public async Task Reads_and_ownerless_demands_do_not_consult_protected_principals(
+        string capability,
+        string? subjectId)
+    {
+        var principals = new RecordingProtectedPrincipalPolicy();
+        var policy = new ConfigurationManagementObjectAccessPolicy(principals);
+
+        var decision = await policy.EvaluateAsync(
+            PrincipalWithClaims(),
+            capability,
+            new ManagementResource(
+                ManagementResourceTypes.Claim,
+                "item-1",
+                SubjectId: subjectId));
+
+        Assert.Empty(principals.Targets);
+        Assert.True(decision.IsAllowed);
+    }
+
+    [Fact]
+    public async Task A_user_resource_still_decides_on_its_own_id()
+    {
+        var principals = new RecordingProtectedPrincipalPolicy();
+        await new ConfigurationManagementObjectAccessPolicy(principals).EvaluateAsync(
+            PrincipalWithClaims(),
+            ManagementCapabilities.UsersReset,
+            new ManagementResource(ManagementResourceTypes.User, "user-3"));
+
+        Assert.Equal("user-3", Assert.Single(principals.Targets));
+    }
+
+    /// <summary>Denies every protected-principal check and records its target.</summary>
+    private sealed class RecordingProtectedPrincipalPolicy
+        : IProtectedPrincipalAccessPolicy
+    {
+        public List<string> Targets { get; } = [];
+
+        public ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
+            ClaimsPrincipal principal,
+            string capability,
+            string targetUserId,
+            CancellationToken cancellationToken = default)
+        {
+            Targets.Add(targetUserId);
+            return ValueTask.FromResult(
+                ManagementAuthorizationDecision.Denied(
+                    "protected_principal_higher_or_equal"));
+        }
+    }
+
     /// <summary>Stub object policy that denies every resource with a fixed reason.</summary>
     private sealed class DenyingObjectAccessPolicy(string reason)
         : IManagementObjectAccessPolicy

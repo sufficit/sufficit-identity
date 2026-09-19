@@ -218,7 +218,8 @@ internal sealed partial class ClaimManagementService(
         var value = ValidateClaimValue(command.Value);
         var resource = new ManagementResource(
             ManagementResourceTypes.ClaimCollection,
-            userId);
+            userId,
+            SubjectId: userId);
         var decision = await guard.DemandAsync(
             context,
             ManagementCapabilities.ClaimsCreate,
@@ -364,6 +365,18 @@ internal sealed partial class ClaimManagementService(
                 "The account linked to the claim was not found.");
         }
 
+        // The first demand ran before the claim was loaded, so it could only
+        // decide on the capability. Now that the owner is known, decide again
+        // on the principal — the claim may belong to someone this operator
+        // must not touch. Loading first would let an operator without the
+        // capability probe which claim ids exist.
+        decision = await guard.DemandAsync(
+            context,
+            ManagementCapabilities.ClaimsDelete,
+            resource with { SubjectId = user.Id },
+            cancellationToken,
+            auditDenial: true);
+
         await using var transaction = await database.Database
             .BeginTransactionAsync(cancellationToken);
         try
@@ -461,6 +474,18 @@ internal sealed partial class ClaimManagementService(
                 "claim_user_not_found",
                 "The account linked to the claim was not found.");
         }
+
+        // The first demand ran before the claim was loaded, so it could only
+        // decide on the capability. Now that the owner is known, decide again
+        // on the principal — the claim may belong to someone this operator
+        // must not touch. Loading first would let an operator without the
+        // capability probe which claim ids exist.
+        decision = await guard.DemandAsync(
+            context,
+            ManagementCapabilities.ClaimsUpdate,
+            resource with { SubjectId = user.Id },
+            cancellationToken,
+            auditDenial: true);
 
         if (await database.Set<IdentityUserClaim<string>>().AnyAsync(
                 item =>

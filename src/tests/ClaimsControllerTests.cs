@@ -7,6 +7,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Sufficit.Identity.Core.Data;
 using Sufficit.Identity.Core.Entities;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Sufficit.Identity.Management;
+using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Management.Claims;
 using Sufficit.Identity.Management.Controllers;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
@@ -15,6 +20,93 @@ namespace Sufficit.Identity.Tests;
 
 public sealed class ClaimsControllerTests
 {
+    [Fact]
+    public async Task A_protected_principal_keeps_its_claims_against_a_lower_operator()
+    {
+        // Claims reach a user through the claim resource, not the user one, so
+        // until the service named the owner the protected-principal policy
+        // never ran for them: an operator below a principal's tier could grant
+        // it claims, rewrite them or strip them away.
+        using var baseFactory = new ManagementTestFactory();
+        await ((IAsyncLifetime)baseFactory).InitializeAsync();
+        // The default test factory swaps the whole evaluator for one that
+        // allows everything, which also skips the object policy this test is
+        // about. Put the real one back; the factory still grants every
+        // capability and does not require MFA, so the object-level decision is
+        // the only thing left that can refuse.
+        using var factory = baseFactory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IManagementAuthorizationEvaluator>();
+                services.AddScoped<
+                    IManagementAuthorizationEvaluator,
+                    CapabilityManagementAuthorizationEvaluator>();
+            }));
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var users = scope.ServiceProvider
+            .GetRequiredService<UserManager<ApplicationUser>>();
+        var claims = scope.ServiceProvider
+            .GetRequiredService<IClaimManagementService>();
+        var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var target = await users.FindByNameAsync(TestDataSeeder.DefaultUsername)
+            ?? throw new InvalidOperationException("Seeded user is missing.");
+        Assert.True((await users.AddClaimAsync(
+            target,
+            new Claim("identity_principal_tier", "9"))).Succeeded);
+        var protectedClaimId = await database.Set<IdentityUserClaim<string>>()
+            .Where(claim => claim.UserId == target.Id
+                && claim.ClaimType == TestDataSeeder.DirectiveClaimType)
+            .Select(claim => claim.Id)
+            .SingleAsync();
+        var ordinary = await TestDataSeeder.CreateUserAsync(
+            users,
+            $"ordinary-{Guid.NewGuid():N}",
+            TestDataSeeder.DefaultPassword);
+
+        // Authenticated, holding every capability, and below tier 9.
+        var operatorContext = new ManagementRequestContext(
+            new ClaimsPrincipal(new ClaimsIdentity(
+                [
+                    new Claim("sub", $"operator-{Guid.NewGuid():N}"),
+                    new Claim("identity_principal_tier", "1"),
+                ],
+                authenticationType: "test")),
+            "correlation");
+
+        var granted = await Assert.ThrowsAnyAsync<Exception>(() =>
+            claims.CreateAsync(
+                new CreateManagementClaimCommand(
+                    target.Id,
+                    "urn:tests:department",
+                    "anything"),
+                operatorContext));
+        Assert.Contains("protected_principal_higher_or_equal", Describe(granted));
+
+        var stripped = await Assert.ThrowsAnyAsync<Exception>(() =>
+            claims.DeleteAsync(protectedClaimId, operatorContext));
+        Assert.Contains("protected_principal_higher_or_equal", Describe(stripped));
+
+        // The refusal is about whose claims these are, not about claims: the
+        // same operator still manages an ordinary account's.
+        var ordinaryGrant = await claims.CreateAsync(
+            new CreateManagementClaimCommand(
+                ordinary.Id,
+                "urn:tests:department",
+                "anything"),
+            operatorContext);
+        Assert.Equal(ordinary.Id, ordinaryGrant.UserId);
+
+        static string Describe(Exception exception) =>
+            string.Join(
+                " ",
+                exception.GetType().GetProperties()
+                    .Where(property => property.PropertyType == typeof(string))
+                    .Select(property => property.GetValue(exception) as string))
+            + " " + exception.Message;
+    }
+
     [Fact]
     public async Task Metadata_exposes_the_canonical_claim_suggestions()
     {
