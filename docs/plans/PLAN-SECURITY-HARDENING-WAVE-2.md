@@ -56,7 +56,7 @@ The review evaluated an older source snapshot. The current tree already closes t
 | Production database transport | **Partial** | an explicit transport policy now validates VerifyCA/VerifyFull or a UnixSocket exception; production still needs the mode selected and CA/socket provisioned | P2.3 |
 | Email identity uniqueness | **Partial** | recovery, external-login, CIBA and passkey lookup reject ambiguous normalized matches; 083 provides a redacted duplicate report and guarded nullable unique index, while operator cleanup/race coverage remains | P1.12 |
 | MariaDB support baseline | **Open** | CI and provider configuration remain fixed to MariaDB 10.4.34 | P2.4 |
-| Vault separation and rotation operations | **Partial** | certificate and provider-agnostic external KMS/HSM wrapping sources are implemented; provider deployment/custody and the symmetric-key production rotation orchestrator remain | P2.5 / vault plan |
+| Vault separation and rotation operations | **Partial** | certificate and provider-agnostic external KMS/HSM wrapping sources are implemented; provider deployment/custody and the symmetric-key production rotation orchestrator remain | P2.5 / `../runbooks/RUNBOOK-VAULT.md` |
 | Authenticator/recovery secret-at-rest boundary | **Open** | the standard Identity token store persists authenticator/recovery material through `usertokens` without an application encryption adapter | P1.13 |
 | Security-critical protocol comments | **Partially reconciled** | The current CIBA route comment now references the OIDC CIBA Core specification and distinguishes RFC 9126/PAR; a repository-wide standards/comment audit remains | P2.6 |
 | MariaDB integration-test gating | **Resolved** | missing MariaDB/rehearsal configuration fails tests in CI; real-provider grant and schema tests execute against the service container | Regression-only |
@@ -339,7 +339,7 @@ This is primarily an operational platform upgrade; no STS feature should change 
 
 ### P2.5 Separate vault wrapping keys and operationalize rotation
 
-**Targets:** `IKeyVault`, `DataProtectionKeySource`, new key-source abstraction, management job/runbook, `PLAN-VAULT.md`.
+**Targets:** `IKeyVault`, `DataProtectionKeySource`, new key-source abstraction, management job/runbook, `../runbooks/RUNBOOK-VAULT.md`.
 
 - [x] Extract `IVaultKeyEncryptionKeySource`; keep Data Protection as the compatibility implementation
 - [x] Add a certificate/external KMS implementation behind the wrapping-key source boundary
@@ -347,7 +347,7 @@ This is primarily an operational platform upgrade; no STS feature should change 
 - [ ] Separate database-reader authority from KEK authority in production
 - [ ] Exercise loss/recovery, old-version decrypt, concurrent rotate/encrypt, and disaster-restore tests
 
-Track the full lifecycle in `PLAN-VAULT.md`; this checklist defines only the missing boundary discovered in the reconciliation.
+Track the full lifecycle in `../runbooks/RUNBOOK-VAULT.md`; this checklist defines only the missing boundary discovered in the reconciliation. The vault build plan itself is delivered (phases 1-3) and was retired.
 
 ### P2.6 Correct security-critical protocol annotations
 

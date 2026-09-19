@@ -10,6 +10,10 @@
 
 ## Certification
 - [ ] Executar conformance OAuth/OIDC/FAPI/SSF para as capabilities anunciadas e submeter os perfis aplicáveis à certificação formal
+  — OIDC Basic (36 módulos) e FAPI 2.0 Security Profile (56 módulos) já rodam
+  verdes no workflow noturno desde 2026-09-18
+  ([atividade](../activities/202609171900-openid-conformance-gate.md)); faltam
+  SSF e a submissão formal à certificação
 - [ ] Commissionar auditoria externa de DPoP, CIBA, JARM, JAR, mTLS, token exchange, SSF e vault; corrigir e retestar findings impeditivos
 
 ## Deployment assurance
