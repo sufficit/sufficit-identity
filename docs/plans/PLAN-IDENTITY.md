@@ -47,33 +47,37 @@ path only when telemetry reaches zero legacy use.
 
 ## A. Authorization and trust boundaries
 
-### A1 — Object and context ownership
+### A1 — Protected principals and operator entitlements
 
-The single largest open boundary. A generic Management capability still implies
-global object access, and collection queries are not filtered at all.
+**There is no tenant or context boundary inside a deployment, by product
+decision** (`cd67f51`, 2026-08-15; `ARCHITECTURE-MANAGEMENT-AUTHORIZATION.md`,
+"No tenant boundary inside a deployment"). One deployment serves one
+organization; isolation between organizations is one deployment each, with its
+own database. Object-level authorization is capability, MFA step-up and
+protected principals, and the architecture says not to reintroduce tenant data
+or authority without a new decision.
 
-- [ ] Define and persist `ContextId`/ownership for users, clients, scopes,
-  sessions, authorizations, branding and provisioning manifests
-- [ ] Introduce `IManagementContextResolver` as the single source of an
-  operator's allowed contexts; the concrete object policy consumes only it
-- [ ] Backfill existing rows into an explicit legacy/global context through an
-  additive, restartable migration with progress telemetry
-- [ ] Apply context predicates to every collection query as well as item reads
-  and mutations; propagate the resolved context into every `ManagementResource`
-- [ ] Apply the protected-principal policy consistently to password reset,
-  email/profile mutation, lockout/disable/delete, MFA/passkey changes, roles,
-  claims and session revocation
+The first consolidation of this plan carried over five items from the
+2026-08-07 evaluation (V-19, "tenant-aware Management authorization") that
+predate that decision — a persisted `ContextId` per object, an
+`IManagementContextResolver`, a backfill into a global context, context
+predicates on every query, and context shadow telemetry. They were exactly the
+machinery the decision removed, and they are gone from here. What V-19 asked
+for that still applies under the current contract is below.
+
+- [ ] Apply the protected-principal policy to every mutation that reaches a
+  user, not only to the four `Users*` capabilities on a `User` resource. Claim
+  create/update/delete, session revocation and authorization revocation all
+  reach a principal through a different resource type, and the policy never
+  sees them — so an operator below a protected principal's tier can change
+  that principal's claims or sign them out
 - [ ] Separate operator entitlements from the roles and scopes issued to
   managed identities
-- [ ] Compare permissive and context-aware decisions in shadow telemetry, then
-  enforce one resource type at a time, retaining a narrowly assigned, audited
-  break-glass administrator path
-- [ ] Tests: cross-context read, mutation and enumeration; guessed identifiers;
-  collection queries; equal and higher principal; break-glass audit
+- [ ] Tests: equal and higher principal across every capability that reaches a
+  user; break-glass audit
 
-**Done when:** the configured context changes both item and collection
-authorization outcomes, and no administrator gains global object access merely
-by holding a generic role.
+**Done when:** no Management capability lets an operator change or revoke
+anything belonging to a principal of equal or higher tier without break-glass.
 
 ### A2 — Operator-aware client scope and secret authorization
 
@@ -101,29 +105,27 @@ dimension and the manifest adoption pass.
 entry point shares one decision, and new Management requests carry no plaintext
 client secret.
 
-### A3 — SCIM operation and partition policy
+### A3 — SCIM operation policy
+
+The directory a SCIM client sees is the deployment's whole directory, by the
+same product decision as A1 — partitioning it would be the row-level tenant
+boundary that decision rejected. What SCIM lacks is a decision per
+*operation*: today a client that may provision may also delete.
 
 - [ ] Introduce `IScimOperationAuthorizationPolicy` with separate decisions for
   read, create/update, password mutation, membership mutation and delete
 - [ ] Require MFA for destructive human/delegated operations; require an
   explicit destructive-operation permission plus mTLS or `private_key_jwt`/DPoP
   for client-credentials callers
-- [ ] Add a client-to-partition binding, propagate it through
-  `ScimRequestContext` and backfill existing data into a legacy/global partition
-- [ ] Apply partition predicates to every Users/Groups query and mutation,
-  including filters and membership traversal
 - [ ] Add an Observe mode that audits the client and the scope decision
   independently
 - [ ] Always require an authenticated, allow-listed client outside Development;
   an empty production allow-list fails startup once the inventory is complete
-- [ ] Run dual-read comparison and authorization shadow logging per
-  provisioning client before enforcing partition filters
-- [ ] Tests: cross-partition enumeration, password reset, delete, group nesting
-  and allow-list bypass
+- [ ] Tests: per-operation refusal, password reset, delete, group nesting and
+  allow-list bypass
 
-**Done when:** an ordinary SCIM client cannot enumerate or mutate the global
-directory, and destructive operations require evidence appropriate to the
-caller type.
+**Done when:** a client allowed to provision cannot delete or reset a password
+without being separately permitted to, with evidence appropriate to its type.
 
 ### A4 — Step-up enforcement and one MFA evidence policy
 
@@ -846,8 +848,9 @@ Deliberately after everything above; none of it is required for production.
    [`202609192100-secret-boundary-provenance.md`](../activities/202609192100-secret-boundary-provenance.md);
    declaring `Sufficit:Vault:SecretMigrationComplete=true` per environment is
    part of D4.
-3. **A1** — persistence and backfill before any context enforcement. A2, A3 and
-   the Management side of A4 all build on its context model.
+3. **A1** — protected principals across every capability that reaches a user.
+   Small, no schema change. A2, A3 and the Management side of A4 do not depend
+   on it.
 4. **B1** — the issuance kernel, one grant at a time under characterization
    tests. B2, B3 and B5's kernel item depend on it; do not start them first.
 5. **B4, B6, B7, B8** — independent of the kernel, each small.
