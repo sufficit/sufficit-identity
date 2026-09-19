@@ -525,6 +525,22 @@ public sealed class TokenExchangeOptions
     /// exist. Default <see langword="false"/>.
     /// </summary>
     public bool AllowClientSubjectTokens { get; init; }
+
+    /// <summary>
+    /// The deepest <c>act</c> chain an exchanged token may carry. Default 5.
+    /// </summary>
+    /// <remarks>
+    /// Each exchange nests the subject token's <c>act</c> claim inside the new
+    /// one (RFC 8693 §4.1), which the RFC leaves unbounded. Unbounded, a chain
+    /// grows by one level per hop — every token larger than the last — and a
+    /// loop between two services that exchange each other's tokens never
+    /// terminates. Five is well above a real delegation path (user, then a
+    /// service, then its downstream) and far below anything that could matter
+    /// for token size. Values outside 1–16 refuse startup.
+    /// </remarks>
+    public int MaxDelegationDepth { get; init; } = 5;
+
+    internal const int MaxDelegationDepthCeiling = 16;
 }
 
 /// <summary>
@@ -653,6 +669,20 @@ public sealed class TokenExchangeGrantHandler(
                 "The subject_token does not authorize this actor (may_act).");
         }
 
+        // The new token nests the subject token's act chain one level deeper.
+        // Refuse before building anything, and treat a chain that cannot be
+        // read as one that cannot be extended rather than failing later.
+        var priorDepth = DelegationDepth(
+            result.Principal.GetClaim(GrantOperations.ActClaimType));
+        if (priorDepth is null
+            || priorDepth.Value + 1 > tokenExchangeOptions.MaxDelegationDepth)
+        {
+            return TokenGrantDispatcher.ForbidError(Errors.InvalidGrant,
+                priorDepth is null
+                    ? "The subject_token carries an unreadable delegation chain."
+                    : "The subject_token's delegation chain is already at the maximum depth.");
+        }
+
         var identity = user is not null
             ? await ops.BuildIdentityAsync(user, result.Principal, httpContext.User)
             : await ops.BuildClientIdentityAsync(
@@ -718,6 +748,45 @@ public sealed class TokenExchangeGrantHandler(
     /// <c>client_id</c> the calling client. A claim that is not a JSON object,
     /// or names neither, authorizes nobody.
     /// </summary>
+    /// <summary>
+    /// How many <c>act</c> levels a token already carries: 0 without one, 1
+    /// for a single actor, and one more for each nested actor.
+    /// <see langword="null"/> when the claim is present but not a readable
+    /// chain of objects.
+    /// </summary>
+    internal static int? DelegationDepth(string? act)
+    {
+        if (string.IsNullOrWhiteSpace(act))
+        {
+            return 0;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(act);
+            var depth = 0;
+            var current = document.RootElement;
+            while (true)
+            {
+                if (current.ValueKind != JsonValueKind.Object)
+                {
+                    return null;
+                }
+
+                depth++;
+                if (!current.TryGetProperty(GrantOperations.ActClaimType, out current))
+                {
+                    return depth;
+                }
+            }
+        }
+        catch (JsonException)
+        {
+            // Includes a document nested past the parser's own depth limit.
+            return null;
+        }
+    }
+
     internal static bool MayActAuthorizes(string mayAct, string actorSubject, string clientId)
     {
         JsonElement element;

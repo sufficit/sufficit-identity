@@ -48,6 +48,7 @@ found it.
 
 ## Completed work (activities/)
 
+- [Token exchange: a delegation chain now has a bottom](activities/202609200500-delegation-depth.md) — `act` chains bounded at 5 by default; unreadable chains refused instead of throwing
 - [JAR and JARM: the code was done, the refusals were not proven](activities/202609200300-jar-jarm-already-built.md) — every request-object refusal asserted on its reason; replay scoped per client, proven with two clients
 - [DPoP nonces: the handler was written for a store it was not given](activities/202609200100-dpop-stateless-nonce.md) — concurrent challenges no longer displace each other; stateless nonces agree across replicas through the key ring
 - [Protected principals on every mutation that reaches a user](activities/202609192300-protected-principals-everywhere.md) — claims, sessions and authorizations no longer bypass the tier check; and why the plan's tenant machinery was taken back out first

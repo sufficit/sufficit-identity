@@ -65,6 +65,111 @@ public sealed class TokenExchangeDelegationTests
     }
 
     [Fact]
+    public async Task A_delegation_chain_stops_at_the_configured_depth()
+    {
+        // Each exchange nests the previous act claim inside the new one
+        // (RFC 8693 4.1). Unbounded, a chain grows one level per exchange —
+        // tokens get larger every hop, and a loop between two services never
+        // ends. The bound is the deployment's, and the refusal comes before
+        // anything is issued.
+        using var factory = await CreateFactoryAsync(
+            allowClientSubjectTokens: true,
+            maxDelegationDepth: 2);
+        var client = factory.CreateClient();
+
+        var token = await ClientCredentialsTokenAsync(client);
+        for (var depth = 1; depth <= 2; depth++)
+        {
+            var (accepted, acceptedBody) = await ExchangeOwnTokenAsync(client, token);
+            Assert.True(
+                accepted == HttpStatusCode.OK,
+                $"Exchange {depth} should be within the bound: {acceptedBody}");
+            token = acceptedBody.GetProperty("access_token").GetString()!;
+            Assert.Equal(depth, ActDepth(await IntrospectAsync(factory, token)));
+        }
+
+        var (refused, refusedBody) = await ExchangeOwnTokenAsync(client, token);
+        Assert.Equal(HttpStatusCode.BadRequest, refused);
+        Assert.Equal("invalid_grant", refusedBody.GetProperty("error").GetString());
+        Assert.Contains(
+            "delegation",
+            refusedBody.GetProperty("error_description").GetString());
+
+        static int ActDepth(JsonElement introspection)
+        {
+            var depth = 0;
+            var current = introspection;
+            while (current.ValueKind == JsonValueKind.Object
+                && current.TryGetProperty("act", out var act))
+            {
+                depth++;
+                current = act;
+            }
+
+            return depth;
+        }
+    }
+
+    [Theory]
+    [InlineData(null, 0)]
+    [InlineData("", 0)]
+    [InlineData("""{"sub":"a"}""", 1)]
+    [InlineData("""{"sub":"a","act":{"sub":"b"}}""", 2)]
+    [InlineData("""{"sub":"a","act":{"sub":"b","act":{"sub":"c"}}}""", 3)]
+    public void Delegation_depth_counts_nested_actors(string? act, int expected) =>
+        Assert.Equal(expected, Sufficit.Identity.STS.Grants.TokenExchangeGrantHandler
+            .DelegationDepth(act));
+
+    [Theory]
+    // A chain that cannot be read cannot be extended: refusing is safer than
+    // guessing its depth, and safer than the exception it would otherwise
+    // raise further down, when the prior act is deserialized for nesting.
+    [InlineData("not json")]
+    [InlineData("\"a-string\"")]
+    [InlineData("""{"sub":"a","act":"not-an-object"}""")]
+    [InlineData("""{"sub":"a","act":[1,2]}""")]
+    public void An_unreadable_delegation_chain_has_no_depth(string act) =>
+        Assert.Null(Sufficit.Identity.STS.Grants.TokenExchangeGrantHandler
+            .DelegationDepth(act));
+
+    [Fact]
+    public void A_delegation_chain_nested_past_the_parser_limit_has_no_depth()
+    {
+        var act = string.Concat(Enumerable.Repeat("""{"sub":"x","act":""", 100))
+            + """{"sub":"x"}""" + new string('}', 100);
+
+        Assert.Null(Sufficit.Identity.STS.Grants.TokenExchangeGrantHandler
+            .DelegationDepth(act));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(17)]
+    public async Task An_out_of_range_delegation_depth_refuses_startup(int depth)
+    {
+        var failure = await Assert.ThrowsAnyAsync<Exception>(async () =>
+        {
+            using var factory = await CreateFactoryAsync(
+                allowClientSubjectTokens: false,
+                maxDelegationDepth: depth);
+        });
+
+        Assert.Contains("MaxDelegationDepth", failure.ToString());
+    }
+
+    private static Task<(HttpStatusCode Status, JsonElement Body)> ExchangeOwnTokenAsync(
+        HttpClient client,
+        string subjectToken) =>
+        client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = TokenExchangeGrant,
+            ["subject_token"] = subjectToken,
+            ["subject_token_type"] = AccessTokenType,
+            ["client_id"] = TestDataSeeder.ClientCredentialsClientId,
+            ["client_secret"] = TestDataSeeder.ClientCredentialsClientSecret,
+        });
+
+    [Fact]
     public async Task Actor_token_issued_to_the_caller_names_the_actor()
     {
         using var factory = await CreateFactoryAsync(allowClientSubjectTokens: false);
@@ -192,13 +297,21 @@ public sealed class TokenExchangeDelegationTests
                 mayAct, "actor", "caller"));
 
     private static async Task<SufficitIdentityTestFactory> CreateFactoryAsync(
-        bool allowClientSubjectTokens)
+        bool allowClientSubjectTokens,
+        int? maxDelegationDepth = null)
     {
-        var factory = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>
+        var configuration = new Dictionary<string, string?>
         {
             ["Sufficit:Identity:TokenExchange:AllowClientSubjectTokens"] =
                 allowClientSubjectTokens ? "true" : "false",
-        });
+        };
+        if (maxDelegationDepth is { } depth)
+        {
+            configuration["Sufficit:Identity:TokenExchange:MaxDelegationDepth"] =
+                depth.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        var factory = SufficitIdentityTestFactory.CreateIsolated(configuration);
         await ((IAsyncLifetime)factory).InitializeAsync();
 
         await using var scope = factory.Services.CreateAsyncScope();

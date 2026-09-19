@@ -730,9 +730,17 @@ public static partial class ServiceCollectionExtensions
         services.AddScoped<Grants.ITokenGrantHandler, Grants.PasswordGrantHandler>();
         // The same section GrantOperations reads; registered so the resolver
         // does not have to carry the whole options graph to reach one flag.
-        services.TryAddSingleton(
-            configuration.GetSection("Sufficit:Identity:TokenExchange")
-                .Get<Grants.TokenExchangeOptions>() ?? new Grants.TokenExchangeOptions());
+        var tokenExchange = configuration.GetSection("Sufficit:Identity:TokenExchange")
+            .Get<Grants.TokenExchangeOptions>() ?? new Grants.TokenExchangeOptions();
+        if (tokenExchange.MaxDelegationDepth is < 1
+            or > Grants.TokenExchangeOptions.MaxDelegationDepthCeiling)
+        {
+            throw new InvalidOperationException(
+                "Sufficit:Identity:TokenExchange:MaxDelegationDepth must be between 1 and "
+                + Grants.TokenExchangeOptions.MaxDelegationDepthCeiling + ".");
+        }
+
+        services.TryAddSingleton(tokenExchange);
         services.AddScoped<Grants.ISubjectTokenResolver, Grants.SubjectTokenResolver>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.TokenExchangeGrantHandler>();
         services.AddScoped<Grants.TokenGrantDispatcher>();
