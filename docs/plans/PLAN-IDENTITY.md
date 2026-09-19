@@ -221,18 +221,6 @@ and `CibaProtocolFeature` already composes the whole capability as one unit:
 disabled answers 404 (`CibaController.cs:75`), the grant handler refuses, and
 the runtime capability is not advertised.
 
-### B6 — JAR and JARM validation and key ownership
-
-- [ ] Require JAR `typ`, `iat`, `exp` and `jti`; enforce freshness and a maximum
-  lifetime; reject replay atomically per client
-- [ ] Preserve structured and multi-valued request-object parameters; cover the
-  canonicalization edge cases
-- [ ] Resolve JARM encryption keys and allowed algorithms from each client's
-  public metadata — never encrypt every client's response with one
-  server-global private key
-- [ ] Rotation, negative interoperability and feature-off tests before enabling
-  either profile
-
 ### B7 — Consent configuration fails closed
 
 - [ ] **(operational)** Backfill null/unknown consent values to the intended
@@ -844,9 +832,11 @@ Deliberately after everything above; none of it is required for production.
    across every capability that reaches a user was delivered on 2026-09-19.
 4. **B1** — the issuance kernel, one grant at a time under characterization
    tests. B2, B3 and B5's kernel item depend on it; do not start them first.
-5. **B6, B7, B8** — independent of the kernel, each small. B4 (DPoP nonce
-   isolation) was delivered on 2026-09-19, see
-   [`202609200100-dpop-stateless-nonce.md`](../activities/202609200100-dpop-stateless-nonce.md).
+5. **B7, B8** — independent of the kernel, both operational. B4 (DPoP nonce
+   isolation) and B6 (JAR and JARM) were delivered on 2026-09-19/20, see
+   [`202609200100-dpop-stateless-nonce.md`](../activities/202609200100-dpop-stateless-nonce.md)
+   and
+   [`202609200300-jar-jarm-already-built.md`](../activities/202609200300-jar-jarm-already-built.md).
 6. **D4, D2, D3, D5** — the enforcement and topology inventories, together, per
    environment. They are what actually turns Observe into Enforce, and they
    are what clears the advisories the posture check now reports at every
@@ -878,7 +868,7 @@ Deliberately after everything above; none of it is required for production.
 
 | Retired plan | Now |
 |---|---|
-| `PLAN-GPT-5-REMAINING` | A1, A4, B1–B3, B5, B6, C2, C4, D2, D6, F3, F4, F5, F10, F13, G1, G2, G3 |
+| `PLAN-GPT-5-REMAINING` | A1, A4, B1–B3, B5, C2, C4, D2, D6, F3, F4, F5, F10, F13, G1, G2, G3 |
 | `PLAN-GLM-5-2-REMAINING` | A1, A2, A3, B1, F3, F6, F11 |
 | `PLAN-SECURITY-HARDENING-WAVE-2` | A1, A2, A3, B2, B3, B5, B7, B8, C2, C3, C4, D1, D3, F6–F10, F14, closure criteria |
 | `PLAN-FABLE-5-TRIAGE` | A4, B2, B3, C2, D6, F2, F12 |
