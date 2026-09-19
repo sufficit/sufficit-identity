@@ -33,11 +33,11 @@ claim cites `file:line`.
 
 - [GPT-5 evaluation — remaining work](plans/PLAN-GPT-5-REMAINING.md) — residual protocol, trust-boundary and production-assurance work
 - [Authorization, SCIM and secret boundaries](plans/PLAN-GLM-5-2-REMAINING.md) — residual authorization, secret and maintainability work
+- [FAPI 2.0 conformance](plans/PLAN-FAPI2-CONFORMANCE.md) — the one accepted failure, deferred by decision
 - [Management applications](plans/PLAN-MANAGEMENT-APPLICATIONS.md) — complete OAuth/OIDC application lifecycle in the Management console
 - [Production readiness](plans/PLAN-PRODUCTION-READINESS.md) — certification, CSP calibration, WCAG, forward protocols
 - [Legacy cutover — operational gates](plans/PLAN-LEGACY-CUTOVER-OPS.md) — clients, keys, rehearsals
 - [Pluggable UI — phases 2-5](plans/PLAN-PLUGGABLE-UI-PHASES-2-5.md) — remote UI, BFF, SDK
-- [Internal vault](plans/PLAN-VAULT.md) — Phase 1 delivered; named-secret and signing-key phases remain
 
 ## Completed work (activities/)
 

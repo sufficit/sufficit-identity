@@ -1,11 +1,13 @@
 # Pluggable UI — phases 2-5 pending
 
-> **Status:** Phases 0-1 complete (see `202608012000-pluggable-ui-phase0-phase1.md`). The embedded deployment works; the items below are for remote/BFF UI hosting and third-party SDK support.
+> **Status:** Phases 0-1 complete; Phase 2 partially delivered (reconferido 2026-09-19) (see `202608012000-pluggable-ui-phase0-phase1.md`). The embedded deployment works; the items below are for remote/BFF UI hosting and third-party SDK support.
 
 ## Phase 2 — explicit embedded composition
-- [ ] Versioned module descriptor and semantic endpoint registration
+- [x] Versioned module descriptor (`UiModuleDescriptor`, `IUiModuleRegistry`)
+- [ ] Semantic endpoint registration (module-declared routes, not hard-coded paths)
 - [ ] Official embedded composition executable (standalone, not just the API host)
-- [ ] Reject missing/duplicate/incompatible UI modules at startup
+- [x] Reject missing/duplicate/incompatible UI modules at startup
+  (`UiCompositionValidation`, `UiCompositionException`)
 
 ## Phase 3 — remote Management UI
 - [ ] Publish complete versioned Management HTTP contract (BFF API spec)

@@ -1,6 +1,13 @@
 # PLAN-MANAGEMENT-APPLICATIONS — gerenciamento completo de aplicações OAuth/OIDC
 
-> **Status:** In progress — pendências de gerenciamento de aplicações · **Owner:** Sufficit · **Created:** 2026-08-07 · **Updated:** 2026-08-08
+> **Status:** In progress — pendências de gerenciamento de aplicações · **Owner:** Sufficit · **Created:** 2026-08-07 · **Updated:** 2026-09-19
+>
+> **Reconciliação 2026-09-19:** Fase 0 fechou exceto a caracterização dos
+> clientes de produção; a Fase 1 fechou exceto a validação visual em 320–430 px;
+> a Fase 2 está entregue (`ClientEdit.razor`, `PUT /api/clients/{clientId}`,
+> `UpdateManagementClientCommand`, recusa `client_manifest_managed`) com uma
+> exceção: a auditoria grava capability/recurso/decisão, mas ainda não o diff de
+> nomes de campo. Fases 3–5 continuam abertas.
 > **Primary surface:** `/management/clients` · **Provider:** OpenIddict 7.6
 > **Legacy reference:** `sufficit-identity-legacy` / Skoruba Duende Admin
 
@@ -575,16 +582,18 @@ hierarquia, foco ou estado. A ação destrutiva permanece separada no fim.
 
 ### Fase 0 — contrato e segurança compartilhados
 
-- [ ] concluir `IClientDefinitionValidator` compartilhado entre CRUD e
+- [x] concluir `IClientDefinitionValidator` compartilhado entre CRUD e
   provisionamento, conforme `PLAN-GLM-5-2-REMAINING.md` P0.2;
 - [x] devolver issues estáveis por etapa/campo e manter localização na UI;
-- [ ] implementar `IManagementScopeGrantPolicy` e shadow decisions;
-- [ ] criar catálogo de perfis a partir das features habilitadas no runtime;
+- [x] implementar a policy de concessão de scope com shadow decisions
+  (entregue como `IClientScopeGrantPolicy`, com `ClientDefinitionRolloutMode`
+  `Observe`/`Enforce`);
+- [x] criar catálogo de perfis a partir das features habilitadas no runtime;
 - [x] criar entidade, migration e `IClientConfigurationDraftService`, com
   ownership, expiração, versionamento e limpeza;
 - [x] garantir por teste que rascunho, URL, log e auditoria não recebem segredo;
-- [ ] adicionar `ClientsUpdate` e separar policies de leitura/mutação;
-- [ ] projetar `IsManifestManaged` no detalhe;
+- [x] adicionar `ClientsUpdate` e separar policies de leitura/mutação;
+- [x] projetar `IsManifestManaged` no detalhe;
 - [x] adicionar ETag/version token ou equivalente para concorrência;
 - [ ] caracterizar os clientes existentes antes de alterar contratos.
 
@@ -603,15 +612,15 @@ hierarquia, foco ou estado. A ação destrutiva permanece separada no fim.
 
 ### Fase 2 — edição essencial ponta a ponta
 
-- [ ] `UpdateManagementClientCommand` e serviço;
-- [ ] `PUT /api/clients/{clientId}` com resposta de detalhe;
-- [ ] adapter da Management UI;
-- [ ] reutilizar etapas e componentes do configurador para nome,
+- [x] `UpdateManagementClientCommand` e serviço;
+- [x] `PUT /api/clients/{clientId}` com resposta de detalhe;
+- [x] adapter da Management UI;
+- [x] reutilizar etapas e componentes do configurador para nome,
   consentimento, grants, scopes, PKCE/PAR e URIs;
-- [ ] validação de combinação de tipo/grant/endpoint/redirect;
+- [x] validação de combinação de tipo/grant/endpoint/redirect;
 - [ ] auditoria com diff de nomes de campos, sem valores sensíveis;
-- [ ] bloqueio de edição para manifesto;
-- [ ] resumo de impacto e detalhe responsivo.
+- [x] bloqueio de edição para manifesto;
+- [x] resumo de impacto e detalhe responsivo.
 
 ### Fase 3 — credenciais e clonagem
 

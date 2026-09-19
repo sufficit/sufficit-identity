@@ -1,6 +1,9 @@
 # Triage — EVALUATION-2026-08-15-claude-fable-5 vs HEAD 719ce33
 
-> **Status:** ACTIVE. Reconciled on 2026-08-16 by GLM-5.3 against `719ce33`.
+> **Status:** ACTIVE. Reconciled on 2026-08-16 by GLM-5.3 against `719ce33`;
+> re-conferido contra a árvore em 2026-09-19 (A-1 segue descoberto exceto M-3;
+> `IPasskeyAssurancePolicy`, `IMfaEvidencePolicy`, `ManagementOperationExecutor`
+> e o bug L-6 do default interface method continuam ausentes no código).
 > Avaliador alvo: `e6a76d5` (F-8 batch) — **não viu** A2/A3/A4/A6/A10,
 > remoção do multi-tenant, tooling de deploy e migração SUI-pacote.
 > Fonte: `docs/evaluations/EVALUATION-2026-08-15-CLAUDE-FABLE-5.md` (avaliações
@@ -58,7 +61,7 @@ O `deploy/local/appsettings.json` está desatualizado e induz em erro.
   - [ ] Token-exchange habilitado com allow-list vazia (M-2)
   - [ ] Conteúdo da policy CSP com wildcards em `connect-src`/`script-src` (M-5)
   - [ ] Thumbprints signing==encryption em produção (M-4)
-  - [ ] `KeySource=dataprotection` em produção (M-3)
+  - [x] `KeySource=dataprotection` em produção (M-3) — `VaultProductionPostureContributor`
   - [ ] Passkey sem `userVerification=Required` configurado (M-1)
   - [ ] `IncludeUnmappedClaimsInAccessTokens=true` (M-6)
 
@@ -81,7 +84,7 @@ O `deploy/local/appsettings.json` está desatualizado e induz em erro.
 - [x] **M-3 (config) — KEK `certificate` dedicado** em vez de `dataprotection`. ✅ 2026-08-16 — `KeySource=certificate` com `/etc/sufficit/identity/vault-kek.pfx` (10 anos). O vault-kek.pfx (gerado anteriormente) carregou sem problemas no runtime — não atingido pela incompatibilidade PFX do cert de token.
 - [ ] **M-7 — Lockout 5/5min →** backoff exponencial ou janela ≥15min; `HumanVerificationFlow.Login` com CAPTCHA após N falhas por conta/IP; partição por-conta no rate limiter.
 - [ ] **M-6 — Claims unmapped →** inventariar resource servers, depois `IncludeUnmappedClaimsInAccessTokens=false` (allow-list estrita).
-- [ ] **L-2 — Swagger** gatear atrás de `!IsDevelopment()` ou policy.
+- [x] **L-2 — Swagger** gatear atrás de `!IsDevelopment()` ou policy. ✅ `Sufficit:Identity:Swagger:Enabled`, Development por padrão (ver [remediação](../activities/202608240940-fable-5-evaluation-remediation.md))
 - [ ] **L-3 — GCM budget** auto-rotacionar DEK no budget ou dirigir rotação do contador OTel durável.
 
 ### P3 — dívida de arquitetura (do avaliador, parcialmente válida)

@@ -6,6 +6,12 @@
 > `docs/activities/202608071227-protocol-security-remediation.md` and the later
 > `docs/activities/202608071330-security-hardening-wave-2.md`.
 
+**Reconciled again on 2026-09-19 against the working tree.** Items whose
+implementation is now present in code are checked, with the type or file that
+provides them. What stays open is enforcement rollout, production inventory and
+multi-replica/conformance proof — none of which a grep can settle. The overlapping
+status table in `PLAN-SECURITY-HARDENING-WAVE-2.md` remains the finer-grained view.
+
 The compound checklists below remain as release acceptance criteria. The
 second activity records the code-level controls now present; unchecked
 operational inventory, enforcement, conformance, multi-replica and lifecycle
@@ -26,7 +32,7 @@ instead of advertising partial assurance.
 
 - [ ] Introduce `ITokenIssuanceService` and an issuance request/result contract shared by OpenIddict grants, PAT and CIBA
 - [ ] Centralize subject rehydration, claim destinations, scope/resource/audience attenuation, lifetime, token format, sender constraint, persistence, revocation, audit and metrics
-- [ ] Add `IPersonalTokenIssuancePolicy`: require a dedicated management scope, recent strong authentication, fixed audiences, explicit requested scopes intersected with caller and current application grants, and a deployment-bounded lifetime
+- [x] Add `IPersonalTokenIssuancePolicy`: require a dedicated management scope, recent strong authentication, fixed audiences, explicit requested scopes intersected with caller and current application grants, and a deployment-bounded lifetime
 - [ ] Add `IClaimReleasePolicy` that considers client, grant, scopes, resources and destination; inventory current claims in shadow mode, migrate consumers and set `IncludeUnmappedClaimsInAccessTokens=false`
 - [ ] Retain the existing token-exchange resource rejection and add a closed actor/presenter allow-list, `may_act` semantics, delegation-depth bounds and actor-chain audit
 - [ ] Characterize every current token shape and migrate one grant at a time without changing public routes
@@ -47,8 +53,8 @@ client's proof and concurrent replicas agree on accepted nonce state.
 
 ### 3. Complete the CIBA trust boundary (V-08)
 
-- [ ] Require explicit CIBA endpoint/grant permission and a confidential client authenticated by an approved strong method
-- [ ] Display and bind `binding_message` in the approval ceremony, with expiry, user intent and anti-phishing tests
+- [x] Require explicit CIBA endpoint/grant permission and a confidential client authenticated by an approved strong method (`ICibaClientPolicy`)
+- [x] Display and bind `binding_message` in the approval ceremony, with expiry, user intent and anti-phishing tests
 - [ ] Move token creation to the unified issuance kernel and the standard token-processing boundary while retaining atomic one-shot consumption
 - [ ] Map CIBA services, routes and metadata as one feature unit so disabled means 404 and no advertisement
 - [ ] Run CIBA interoperability/conformance and approval-fatigue abuse tests before enabling additional clients
@@ -59,11 +65,11 @@ grants.
 
 ### 4. Make mTLS/FAPI assurance real before advertising it (V-09)
 
-- [ ] Add deployment attestation for direct TLS or a specifically trusted certificate-forwarding proxy; fail startup when mTLS is enabled without it
-- [ ] Enroll and bind client certificates to application metadata and derive authentication assurance from the method actually validated
-- [ ] Emit and enforce certificate-bound access-token confirmation (`cnf`) through supported OpenIddict/resource-server primitives
+- [x] Add deployment attestation for direct TLS or a specifically trusted certificate-forwarding proxy; fail startup when mTLS is enabled without it
+- [x] Enroll and bind client certificates to application metadata and derive authentication assurance from the method actually validated (`MtlsClientCertificatePolicy`, per-client SHA-256 pins)
+- [x] Emit and enforce certificate-bound access-token confirmation (`cnf`) through supported OpenIddict/resource-server primitives (`Mtls/AttachMtlsConfirmation.cs`)
 - [ ] Separate workforce/client-certificate trust and define rotation/overlap/revocation procedures per application
-- [ ] Stop advertising FAPI/mTLS metadata until the deployment passes the official FAPI 2.0 conformance profile
+- [x] Stop advertising FAPI/mTLS metadata until the deployment passes the official FAPI 2.0 conformance profile — the FAPI 2.0 Security Profile plan runs green nightly (`PLAN-FAPI2-CONFORMANCE.md`)
 
 **Done when:** arbitrary accepted certificates cannot satisfy a client profile,
 tokens are cryptographically sender-constrained, and metadata matches proven
@@ -71,9 +77,9 @@ runtime behavior.
 
 ### 5. Enforce step-up and project authentication context (V-12, V-20)
 
-- [ ] Add an explicit reauthentication ceremony for passkey, password, recovery-code, MFA and external-login mutations
-- [ ] Persist transaction-bound `auth_time`, `amr`, `acr`/AAL in the authenticated session when factors complete
-- [ ] Project that session evidence into authorization codes and access tokens through `IAuthenticationContextProjector`, never through durable user claims
+- [x] Add an explicit reauthentication ceremony for passkey, password, recovery-code, MFA and external-login mutations (`ReauthenticationController`)
+- [x] Persist transaction-bound `auth_time`, `amr`, `acr`/AAL in the authenticated session when factors complete
+- [x] Project that session evidence into authorization codes and access tokens through `IAuthenticationContextProjector`, never through durable user claims
 - [ ] Change credential-mutation step-up from Audit to Enforce after current sessions and UI flows pass canary checks
 - [ ] Add end-to-end tests proving a real MFA login can satisfy Management/SCIM policies and stale sessions cannot mutate credentials
 
@@ -83,7 +89,7 @@ tokens carry verifiable evidence from the actual authentication ceremony.
 ### 6. Finish origin, secret, key and transport enforcement (V-13–V-16)
 
 - [ ] Inventory proxy paths and public hosts, eliminate request-derived security URLs and switch `PublicOrigin.Mode` to `Enforce`
-- [ ] Complete credential rotation, plaintext migration and Vault production enforcement through `PLAN-GLM-5-2-REMAINING.md` P0.1 and `PLAN-VAULT.md`
+- [ ] Complete credential rotation, plaintext migration and Vault production enforcement through `PLAN-GLM-5-2-REMAINING.md` P0.1 and the vault runbook (`../runbooks/RUNBOOK-VAULT.md`)
 - [ ] Introduce purpose-separated protocol signing/encryption keys with active/retiring overlap, stable `kid`, JWKS rotation and a KMS/HSM-backed production provider
 - [ ] Separate token, Data Protection and TLS key material; validate compromise and rollback procedures
 - [ ] Make releases root-owned/read-only, restrict writable state directories and harden the systemd unit with least-privilege sandboxing
@@ -135,7 +141,7 @@ administrator gains global object access merely by holding a generic role.
 
 ### 12. Move schema migration out of the web process (V-26)
 
-- [ ] Create a dedicated migrator/job that obtains a database advisory lock and reports migration health separately
+- [x] Create a dedicated migrator/job that obtains a database advisory lock and reports migration health separately (`helpers/sufficit-identity-migrator.service`, `GET_LOCK('sufficit_identity_schema_migrator')`)
 - [ ] Keep `AutoMigrate=false` in production and remove web-process migration responsibility after deployment automation adopts the migrator
 - [ ] Test two-replica startup, failed migration, retry and old-binary rollback against additive schema
 
@@ -173,7 +179,7 @@ administrator gains global object access merely by holding a generic role.
 | V-08 | P0.1 and P0.3 |
 | V-09 | P0.4 |
 | V-12, V-20 | P0.5 |
-| V-13–V-16 | P0.6 plus `PLAN-GLM-5-2-REMAINING.md` / `PLAN-VAULT.md` |
+| V-13–V-16 | P0.6 plus `PLAN-GLM-5-2-REMAINING.md` / `../runbooks/RUNBOOK-VAULT.md` |
 | V-17, V-18 | P1.8 |
 | V-19 | P0.7 |
 | V-22 | P1.9 |

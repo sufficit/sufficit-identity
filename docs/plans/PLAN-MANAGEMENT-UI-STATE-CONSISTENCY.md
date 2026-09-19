@@ -1,7 +1,10 @@
 # Plano — consistência de estados no front de administração
 
-**Status:** proposto
+**Status:** proposto — ainda pendente (`ManagementDataView<T>` não existe no RCL)
 **Criado:** 2026-08-09
+**Reconferido:** 2026-09-19 — a cobertura por página melhorou (tabela abaixo)
+mas cada página continua escrevendo a própria árvore de condicionais, que é o
+que este plano corrige.
 **Módulo:** `Sufficit.Identity.UI.Management`, `Sufficit.Identity.UI.Components`
 
 ## Objetivo
@@ -37,13 +40,13 @@ O problema não é ausência de infraestrutura compartilhada. É que **o contrat
 de resultado é consumido de forma desigual**. Das 24 páginas que consomem
 `ManagementDataResult`:
 
-| Outcome | Páginas que tratam |
-| --- | --- |
-| `StepUpRequired` | 11 |
-| `Forbidden` | 8 |
-| `NotFound` | 6 |
-| `Unavailable` | 3 |
-| `Invalid` | 1 |
+| Outcome | Páginas que tratam (2026-08-09) | Páginas que tratam (2026-09-19) |
+| --- | --- | --- |
+| `StepUpRequired` | 11 | 14 |
+| `Forbidden` | 8 | 11 |
+| `NotFound` | 6 | 11 |
+| `Unavailable` | 3 | 10 |
+| `Invalid` | 1 | 12 |
 
 Consequência prática: na maioria das telas, um operador **sem permissão** e um
 **backend fora do ar** produzem a mesma experiência — provavelmente uma lista
