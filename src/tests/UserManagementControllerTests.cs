@@ -410,5 +410,12 @@ public sealed partial class UserManagementControllerTests
             CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException(
                 "Session revocation failed for test.");
+
+        public Task<IdentityUserSessionRevocation> RevokeAsync(
+            string subject,
+            string? exceptBrowserSessionId,
+            CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException(
+                "Session revocation failed for test.");
     }
 }

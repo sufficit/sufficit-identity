@@ -1,7 +1,7 @@
 # Vault — contrato de `kid` verificado
 
 **Data:** 2026-08-08
-**Plano:** [`PLAN-VAULT.md`](../plans/PLAN-VAULT.md)
+**Plano:** `PLAN-VAULT.md` (retired)
 
 ## Resultado
 

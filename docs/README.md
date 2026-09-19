@@ -31,7 +31,7 @@ claim cites `file:line`.
 
 ## The plan (pending work)
 
-There is one plan: [`plans/PLAN.md`](plans/PLAN.md). It consolidates the twelve
+There is one plan: [`plans/PLAN-IDENTITY.md`](plans/PLAN-IDENTITY.md). It consolidates the twelve
 that preceded it, each reconciled against the working tree first, and organises
 what is left by the boundary it belongs to rather than by which evaluation
 found it.
@@ -48,6 +48,7 @@ found it.
 
 ## Completed work (activities/)
 
+- [Account enumeration, legacy grants and a default interface method](activities/202609191500-enumeration-legacy-grants-revoker.md) — sign-in no longer reveals a locked or unconfirmed account to a wrong password; `implicit` refused outright and `password` gated on the deployment; the session revoker's dropped argument
 - [Evaluation remediation and god-service decomposition](activities/202608240940-fable-5-evaluation-remediation.md) — vault signature verification, audit retention and volume, administrative rate limiting, refusal-audit rule
 - [Identity MCP — Vault and self-service](activities/202608162300-identity-mcp-vault-self-service.md)
 - [Authorization, SCIM and secrets plan reconciliation](activities/202608092130-security-plan-reconciliation.md)

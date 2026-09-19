@@ -20,11 +20,22 @@ public interface IIdentityUserSessionRevoker
         string subject,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Revokes everything except one browser session.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately abstract. It used to carry a default body that forwarded
+    /// to the two-argument overload and dropped
+    /// <paramref name="exceptBrowserSessionId"/> on the way, so an
+    /// implementation that did not override it signed the caller out of the
+    /// session it had just asked to keep — silently, and only at runtime.
+    /// <c>CredentialMutationSecurityCoordinator</c> is that caller: it keeps
+    /// the current session alive across a password change.
+    /// </remarks>
     Task<IdentityUserSessionRevocation> RevokeAsync(
         string subject,
         string? exceptBrowserSessionId,
-        CancellationToken cancellationToken = default) =>
-        RevokeAsync(subject, cancellationToken);
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class OpenIddictIdentityUserSessionRevoker(

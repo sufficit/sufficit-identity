@@ -63,6 +63,20 @@ public interface IClientDefinitionValidator
     ClientDefinitionValidationResult Validate(ClientDefinitionRequest request);
 }
 
+/// <summary>
+/// Whether the deployment still accepts a grant the current OAuth baseline
+/// dropped. The validator lives in the abstractions and cannot read the STS
+/// options, so the decision is handed to it.
+/// </summary>
+/// <remarks>
+/// Absent, the answer is no: a client definition that asks for a legacy grant
+/// is refused where nobody deliberately enabled it.
+/// </remarks>
+public interface ILegacyGrantAvailability
+{
+    bool PasswordGrantEnabled { get; }
+}
+
 public interface IClientScopeGrantPolicy
 {
     IReadOnlyList<ClientDefinitionValidationIssue> Validate(
@@ -226,7 +240,8 @@ public sealed class ReservedScopePolicy : IReservedScopePolicy
 public sealed class ClientDefinitionValidator(
     IReservedScopePolicy reservedScopes,
     IClientScopeGrantPolicy? scopeGrantPolicy = null,
-    IClientDefinitionTransitionPolicy? transitionPolicy = null)
+    IClientDefinitionTransitionPolicy? transitionPolicy = null,
+    ILegacyGrantAvailability? legacyGrants = null)
     : IClientDefinitionValidator
 {
     private static readonly IReadOnlySet<string> SupportedGrantTypes =
@@ -237,15 +252,23 @@ public sealed class ClientDefinitionValidator(
             "refresh_token",
             "urn:ietf:params:oauth:grant-type:device_code",
             "urn:ietf:params:oauth:grant-type:token-exchange",
-            "password",
-            "implicit",
             "gt:authorization_code",
             "gt:client_credentials",
             "gt:refresh_token",
             "gt:urn:ietf:params:oauth:grant-type:device_code",
             "gt:urn:ietf:params:oauth:grant-type:token-exchange",
+        };
+
+    /// <summary>
+    /// Resource Owner Password Credentials. Outside the OAuth 2.1 baseline and
+    /// off unless the deployment turns it on, so the validator must not accept
+    /// it merely because the runtime once did.
+    /// </summary>
+    private static readonly IReadOnlySet<string> LegacyPasswordGrantTypes =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "password",
             "gt:password",
-            "gt:implicit",
         };
 
     public bool RequiresProofKeyForCodeExchange(
@@ -269,7 +292,20 @@ public sealed class ClientDefinitionValidator(
 
         foreach (var grant in grants)
         {
-            if (!SupportedGrantTypes.Contains(grant))
+            if (LegacyPasswordGrantTypes.Contains(grant))
+            {
+                // Announced only where the deployment enabled it. Anywhere
+                // else this is an unsupported grant, not a permitted one the
+                // runtime happens to refuse later.
+                if (legacyGrants?.PasswordGrantEnabled != true)
+                {
+                    issues.Add(new(
+                        "unsupported_grant_type",
+                        "grantTypes",
+                        $"Grant type '{grant}' is not supported."));
+                }
+            }
+            else if (!SupportedGrantTypes.Contains(grant))
             {
                 issues.Add(new(
                     "unsupported_grant_type",

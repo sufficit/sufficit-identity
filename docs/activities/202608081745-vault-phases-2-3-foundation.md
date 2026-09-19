@@ -1,7 +1,7 @@
 # Vault — Fases 2 e 3 (fundação entregue)
 
 **Data:** 2026-08-08
-**Plano:** [`PLAN-VAULT.md`](../plans/PLAN-VAULT.md)
+**Plano:** `PLAN-VAULT.md` (retired)
 
 ## Entregue
 

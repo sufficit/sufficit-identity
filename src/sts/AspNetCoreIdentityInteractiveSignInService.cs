@@ -68,7 +68,11 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
             isPersistent,
             lockoutOnFailure: true);
         cancellationToken.ThrowIfCancellationRequested();
-        var mapped = Map(result);
+        var mapped = await WithoutEnumerationAsync(
+            Map(result),
+            user,
+            command.Password);
+        cancellationToken.ThrowIfCancellationRequested();
         if (mapped.Status == InteractiveSignInStatus.Succeeded)
         {
             // The account id, not the typed login: usernames are often email
@@ -272,6 +276,44 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
         }
 
         return mapped;
+    }
+
+    /// <summary>
+    /// Collapses <c>LockedOut</c> and <c>NotAllowed</c> into the generic
+    /// failure unless the caller proved they hold the password.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="SignInManager{TUser}.PasswordSignInAsync(string, string, bool, bool)"/>
+    /// returns both of those before it ever verifies the password, so an
+    /// attacker typing anything at all learns that the account exists, and
+    /// whether it is locked or unconfirmed. Someone who already knows the
+    /// password learns nothing new from being told why they cannot get in, so
+    /// the state is disclosed to them and to nobody else.
+    ///
+    /// <see cref="UserManager{TUser}.CheckPasswordAsync"/> verifies the hash
+    /// without touching the lockout counter, so this cannot extend a lockout
+    /// or turn into its own brute-force oracle. It also costs one hash on
+    /// exactly the path where the sign-in manager skipped one, which keeps the
+    /// refusals from being distinguishable by how long they take.
+    /// </remarks>
+    private async Task<InteractiveSignInResult> WithoutEnumerationAsync(
+        InteractiveSignInResult mapped,
+        ApplicationUser? user,
+        string password)
+    {
+        if (mapped.Status is not (InteractiveSignInStatus.LockedOut
+            or InteractiveSignInStatus.NotAllowed))
+        {
+            return mapped;
+        }
+
+        if (user is not null
+            && await signInManager.UserManager.CheckPasswordAsync(user, password))
+        {
+            return mapped;
+        }
+
+        return new InteractiveSignInResult(InteractiveSignInStatus.Failed);
     }
 
     private static InteractiveSignInResult Map(SignInResult result) =>

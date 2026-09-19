@@ -2,7 +2,7 @@
 
 **Data:** 2026-08-08  
 **Status:** concluída, testada e validada  
-**Plano:** [`../plans/PLAN-MANAGEMENT-APPLICATIONS-NEXT.md`](../plans/PLAN-MANAGEMENT-APPLICATIONS-NEXT.md)
+**Plano:** `PLAN-MANAGEMENT-APPLICATIONS-NEXT.md` (retired)
 
 ## Entrega
 

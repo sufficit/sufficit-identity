@@ -68,7 +68,7 @@ embedded UI until the remote interaction protocol is delivered. An unsupported
 numeric value fails startup instead of silently changing topology.
 
 The architecture and remote-host delivery gates are section E7 of
-[`PLAN.md`](../plans/PLAN.md).
+[`PLAN-IDENTITY.md`](../plans/PLAN-IDENTITY.md).
 
 ## How to inject into the STS host
 

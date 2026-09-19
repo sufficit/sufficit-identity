@@ -1,7 +1,7 @@
 # Vault — ingress seguro por EnvironmentFile
 
 **Data:** 2026-08-09 09:00
-**Plano:** [`PLAN-VAULT.md`](../plans/PLAN-VAULT.md)
+**Plano:** `PLAN-VAULT.md` (retired)
 
 ## Entregue
 

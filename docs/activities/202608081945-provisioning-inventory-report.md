@@ -1,7 +1,7 @@
 # Provisioning — relatório operacional de inventário
 
 **Data:** 2026-08-08
-**Plano:** [`PLAN-SECURITY-HARDENING-WAVE-2.md`](../plans/PLAN-SECURITY-HARDENING-WAVE-2.md)
+**Plano:** `PLAN-SECURITY-HARDENING-WAVE-2.md` (retired)
 
 ## Entregue
 
