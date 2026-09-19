@@ -94,6 +94,76 @@ public sealed class CibaInitiationTests
     }
 
     [Fact]
+    public async Task Initiation_refuses_an_initiator_that_did_not_authenticate()
+    {
+        // CIBA has no browser and no user present at the initiator: whoever
+        // posts here is asking the server to interrupt someone. An anonymous
+        // caller cannot be held to anything afterwards.
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(CibaEnabled());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await EnsureCibaClientAsync(factory);
+
+        var client = factory.CreateClient();
+        var (anonymous, anonymousBody) = await client.PostFormAsync(
+            "/bc-authorize",
+            new Dictionary<string, string>
+            {
+                ["scope"] = TestDataSeeder.ScopeName,
+                ["login_hint"] = TestDataSeeder.DefaultUsername,
+            });
+        // A missing client_id is a malformed request, not a failed
+        // authentication — nothing was claimed to authenticate.
+        Assert.Equal(HttpStatusCode.BadRequest, anonymous);
+        Assert.Equal("invalid_request", anonymousBody.GetProperty("error").GetString());
+
+        // A real client id with the wrong secret is the same refusal: the
+        // request must not proceed on the strength of naming a client.
+        var (wrongSecret, wrongSecretBody) = await client.PostFormAsync(
+            "/bc-authorize",
+            new Dictionary<string, string>
+            {
+                ["scope"] = TestDataSeeder.ScopeName,
+                ["client_id"] = "test-ciba",
+                ["client_secret"] = "not-the-secret",
+                ["login_hint"] = TestDataSeeder.DefaultUsername,
+            });
+        // Naming a real client and failing its secret is a failed
+        // authentication (RFC 6749 5.2).
+        Assert.Equal(HttpStatusCode.Unauthorized, wrongSecret);
+        Assert.Equal("invalid_client", wrongSecretBody.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task Initiation_refuses_a_public_client()
+    {
+        // A public client keeps no secret, so nothing distinguishes it from
+        // anyone who copied its client_id out of a redirect URL. Giving one
+        // the power to push an approval prompt at a user is the whole risk.
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(CibaEnabled());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        await EnsureCibaClientAsync(
+            factory,
+            clientId: "test-ciba-public",
+            clientSecret: string.Empty,
+            publicClient: true);
+
+        var client = factory.CreateClient();
+        var (status, body) = await client.PostFormAsync(
+            "/bc-authorize",
+            new Dictionary<string, string>
+            {
+                ["scope"] = TestDataSeeder.ScopeName,
+                ["client_id"] = "test-ciba-public",
+                ["login_hint"] = TestDataSeeder.DefaultUsername,
+            });
+
+        // Authenticated as far as it can be — it has no secret to fail — and
+        // refused by the eligibility policy, which is unauthorized_client.
+        Assert.Equal(HttpStatusCode.Unauthorized, status);
+        Assert.Equal("unauthorized_client", body.GetProperty("error").GetString());
+    }
+
+    [Fact]
     public async Task Poll_before_approval_returns_authorization_pending()
     {
         using var factory = SufficitIdentityTestFactory.CreateIsolated(CibaEnabledWithShortInterval());
@@ -210,6 +280,47 @@ public sealed class CibaInitiationTests
                 request.AuthReqId, out var consumed))));
 
         Assert.Single(attempts, result => result);
+    }
+
+    [Fact]
+    public async Task A_request_created_by_the_previous_release_is_still_honoured()
+    {
+        // Rolling deployment: a replica still on the previous release creates
+        // the pending request in the distributed cache alone. The user
+        // approves, and the poll can land on any replica — including an
+        // upgraded one, which reads the database. Without the import, the
+        // approval would be invisible there and the flow would hang until the
+        // request expired.
+        using var factory = SufficitIdentityTestFactory.CreateIsolated(
+            CibaEnabledWithShortInterval());
+        await ((IAsyncLifetime)factory).InitializeAsync();
+
+        var legacy = factory.Services
+            .GetRequiredService<DistributedCibaPendingRequestStore>();
+        var rolling = factory.Services.GetRequiredService<ICibaPendingRequestStore>();
+
+        var previousRelease = legacy.Create(
+            "rolling-client",
+            "subject-rolling",
+            [TestDataSeeder.ScopeName],
+            "Approve from the old replica",
+            TimeSpan.FromMinutes(1));
+
+        // The upgraded replica sees it.
+        var found = rolling.Find(previousRelease.AuthReqId);
+        Assert.NotNull(found);
+        Assert.Equal("rolling-client", found!.ClientId);
+        Assert.Equal("Approve from the old replica", found.BindingMessage);
+
+        // And carries it through approval and the one-shot consume.
+        Assert.True(rolling.Approve(previousRelease.AuthReqId, "subject-rolling"));
+        Assert.True(rolling.TryConsumeApproved(
+            previousRelease.AuthReqId,
+            out var consumed));
+        Assert.Equal("subject-rolling", consumed.Subject);
+        Assert.False(rolling.TryConsumeApproved(
+            previousRelease.AuthReqId,
+            out _));
     }
 
     [Fact]
@@ -488,7 +599,8 @@ public sealed class CibaInitiationTests
         SufficitIdentityTestFactory factory,
         string clientId = "test-ciba",
         string clientSecret = "test-ciba-secret",
-        bool includeGrantPermission = true)
+        bool includeGrantPermission = true,
+        bool publicClient = false)
     {
         using var scope = factory.Services.CreateScope();
         var appManager = scope.ServiceProvider.GetRequiredService<OpenIddict.Abstractions.IOpenIddictApplicationManager>();
@@ -497,8 +609,10 @@ public sealed class CibaInitiationTests
             var descriptor = new OpenIddict.Abstractions.OpenIddictApplicationDescriptor
             {
                 ClientId = clientId,
-                ClientSecret = clientSecret,
-                ClientType = OpenIddict.Abstractions.OpenIddictConstants.ClientTypes.Confidential,
+                ClientSecret = publicClient ? null : clientSecret,
+                ClientType = publicClient
+                    ? OpenIddict.Abstractions.OpenIddictConstants.ClientTypes.Public
+                    : OpenIddict.Abstractions.OpenIddictConstants.ClientTypes.Confidential,
                 Permissions =
                 {
                     OpenIddict.Abstractions.OpenIddictConstants.Permissions.Endpoints.Token,
