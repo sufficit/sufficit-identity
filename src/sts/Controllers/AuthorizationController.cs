@@ -134,36 +134,36 @@ public partial class AuthorizationController : Controller
             });
         }
 
-        // Measurement, not enforcement. A session whose second factor came
-        // from a trusted-device cookie still mints tokens that claim
-        // amr=mfa; whether that should stay true is an open decision, and
-        // answering it needs to know which clients it reaches. Reading the
-        // relying parties' source would not answer it — what matters is who
-        // actually authorizes from a remembered session, which only
-        // production knows. The client id goes in the log, never in a metric
-        // tag: the meter is deliberately low-cardinality.
-        if (MfaEvidencePolicy.IsSecondFactorRemembered(result.Principal))
+        // A second factor that was remembered rather than presented does not
+        // mint tokens, so it demands the ceremony here — see
+        // AuthorizationReauthenticationPolicy. Recorded before the redirect:
+        // the client id says which relying parties this reaches, and stays out
+        // of the metric tags because that meter is low-cardinality by design.
+        var secondFactorRemembered =
+            MfaEvidencePolicy.IsSecondFactorRemembered(result.Principal);
+        if (secondFactorRemembered)
         {
             _logger.LogInformation(
                 "Authorization from a session whose second factor was "
-                + "remembered rather than presented. ClientId={ClientId}; "
-                + "TraceId={TraceId}.",
+                + "remembered rather than presented; requiring the ceremony. "
+                + "ClientId={ClientId}; TraceId={TraceId}.",
                 request.ClientId,
                 AuthenticationFlowDiagnostics.TraceId);
             _telemetry.Record(
                 "token_issuance_second_factor",
-                "Observe",
+                "Enforce",
                 wouldReject: true,
-                rejected: false,
+                rejected: true,
                 ["remembered_second_factor"]);
         }
 
-        // max_age=0 and prompt=login both demand a brand-new credential
-        // ceremony, so the elapsed session age cannot clear them: only the
-        // receipt issued by the ceremony itself can, or the request would
-        // bounce back to the login page forever.
+        // max_age=0, prompt=login and a remembered second factor all demand a
+        // brand-new credential ceremony, so the elapsed session age cannot
+        // clear them: only the receipt issued by the ceremony itself can, or
+        // the request would bounce back to the login page forever.
         var requiresFreshCeremony = request.MaxAge == 0
-            || request.HasPromptValue(PromptValues.Login);
+            || request.HasPromptValue(PromptValues.Login)
+            || secondFactorRemembered;
 
         if (AuthorizationReauthenticationPolicy.IsRequired(
                 request,

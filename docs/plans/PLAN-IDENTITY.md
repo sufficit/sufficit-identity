@@ -161,20 +161,14 @@ provide the ceremony and the projection into codes and tokens.
 an operator does not repeat the second factor to read a page — but it does not
 mint credentials. Delivered:
 [`202609200800-remembered-second-factor.md`](../activities/202609200800-remembered-second-factor.md).
-Whether a token issued to an ordinary relying party should still carry
-`amr=mfa` from a remembered device is a separate question.
+A remembered device no longer mints tokens for relying parties either: the
+ceremony runs at the authorization endpoint, before the token exists
+(2026-09-20, owner's call, globally) —
+[`202609201100-authorize-step-up.md`](../activities/202609201100-authorize-step-up.md).
 
-- [ ] Decide it, then enforce it **at the authorization endpoint**, not by
-  letting the relying party discover the token is insufficient: an app that
-  checks `amr` and redirects without `prompt=login` loops forever against a
-  remembered session. The server already owns the ceremony
-  (`AuthorizationReauthenticationPolicy`), so it can step the session up
-  before the token exists — no relying party changes, no loop. Honouring
-  `acr_values`, which is ignored today, would serve the apps that do ask
-- [ ] Until then, the measurement is running: an authorization from a
-  remembered session logs its `client_id` and increments
-  `token_issuance_second_factor`, so the affected clients come from production
-  rather than from reading their source
+- [ ] Honour `acr_values`, ignored today, so a relying party that asks for an
+  assurance level gets it rather than being silently given whatever the
+  session has
 
 ## B. Token issuance and claim release
 

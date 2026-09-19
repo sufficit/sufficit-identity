@@ -22,12 +22,14 @@ internal static class TestOnlyEndpoints
         HttpClient client,
         string username,
         bool withMfa = false,
-        DateTimeOffset? authenticatedAt = null)
+        DateTimeOffset? authenticatedAt = null,
+        bool rememberedMfa = false)
     {
         var form = new Dictionary<string, string>
         {
             ["username"] = username,
             ["mfa"] = withMfa ? "true" : "false",
+            ["remembered_mfa"] = rememberedMfa ? "true" : "false",
         };
         if (authenticatedAt is { } value)
         {

@@ -371,6 +371,13 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                         form["mfa"].ToString(),
                         "true",
                         StringComparison.OrdinalIgnoreCase);
+                    // A second factor carried by a trusted-device cookie:
+                    // the same amr as a real one, marked as remembered.
+                    var rememberedMfa = string.Equals(
+                        form["remembered_mfa"].ToString(),
+                        "true",
+                        StringComparison.OrdinalIgnoreCase);
+                    withMfa = withMfa || rememberedMfa;
                     var mfaAuthenticationContext = context.RequestServices
                         .GetRequiredService<IAuthenticationContextClassMapper>()
                         .Map(Sufficit.Identity.Application.Security.CaepAssuranceLevel.Loa2);
@@ -385,6 +392,17 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                                     mfaAuthenticationContext),
                             }
                             : [];
+                    if (rememberedMfa)
+                    {
+                        additionalClaims =
+                        [
+                            .. additionalClaims,
+                            new System.Security.Claims.Claim(
+                                Sufficit.Identity.Application.Security
+                                    .MfaEvidencePolicy.RememberedSecondFactorClaimType,
+                                "true"),
+                        ];
+                    }
                     if (withMfa)
                     {
                         var authenticatedAt = long.TryParse(
@@ -399,7 +417,8 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                             .Set(new AuthenticationContextEvidence(
                                 ["pwd", "otp", "mfa"],
                                 authenticatedAt,
-                                mfaAuthenticationContext));
+                                mfaAuthenticationContext,
+                                RememberedSecondFactor: rememberedMfa));
                     }
 
                     await signInManager.SignInWithClaimsAsync(
@@ -415,6 +434,14 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
                 // rendered form's <AntiforgeryToken/> would, so a test can
                 // include "__RequestVerificationToken" on a subsequent POST
                 // (e.g. to ~/connect/device) the same way the real UI form does.
+                // GET /test-only/claims — what the session principal actually
+                // carries on a later request, after the cookie round trip and
+                // whatever the security-stamp validator rebuilt.
+                endpoints.MapGet("/test-only/claims", (HttpContext context) =>
+                    Results.Json(context.User.Claims
+                        .Select(claim => new { type = claim.Type, value = claim.Value })
+                        .ToArray()));
+
                 endpoints.MapGet("/test-only/antiforgery", (HttpContext context, IAntiforgery antiforgery) =>
                 {
                     var tokens = antiforgery.GetAndStoreTokens(context);

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Claims;
 using OpenIddict.Abstractions;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.STS;
 
@@ -20,6 +21,19 @@ internal static class AuthorizationReauthenticationPolicy
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(principal);
+
+        // A second factor carried by a trusted-device cookie does not mint
+        // tokens (owner's decision, 2026-09-20). The ceremony runs here,
+        // before the token exists, rather than leaving the relying party to
+        // discover an insufficient one: an app that checks amr and redirects
+        // without prompt=login would otherwise get the same session and the
+        // same token forever. The ceremony signs the remembered cookie out and
+        // asks for the factor, so the session that returns is fresh and the
+        // next pass through here does nothing.
+        if (MfaEvidencePolicy.IsSecondFactorRemembered(principal))
+        {
+            return true;
+        }
 
         // prompt=login requires the OP to reauthenticate the end user however
         // recent the session is (OIDC Core 3.1.2.1); the conformance suite
