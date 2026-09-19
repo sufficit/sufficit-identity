@@ -146,6 +146,23 @@ public static class SecretConfigurationExtensions
     ///
     /// Returns keys only. The caller reports names, never values.
     /// </remarks>
+    /// <summary>
+    /// Whether the key is a secret-boundary variable rather than a value that
+    /// slipped past it.
+    /// </summary>
+    /// <remarks>
+    /// Environment variables are part of <see cref="IConfiguration"/>, and
+    /// <c>mapped</c> holds configuration keys — <c>ConnectionStrings:DefaultConnection</c>
+    /// — not the <c>SUFFICIT_SECRET_*</c> names those values arrive under. Without
+    /// this the scan reported every correctly placed secret and advised moving it
+    /// to a SUFFICIT_SECRET_* variable, which is where it already was. Production
+    /// logged ten such findings on 2026-09-19.
+    /// </remarks>
+    private static bool IsSecretBoundaryVariable(string key) =>
+        key.Split(':')[^1].StartsWith(
+            EnvironmentSecretStore.Prefix,
+            StringComparison.OrdinalIgnoreCase);
+
     public static IReadOnlyList<string> FindUnmappedSecretLikeKeys(
         IConfiguration configuration)
     {
@@ -158,6 +175,7 @@ public static class SecretConfigurationExtensions
         return [.. Walk(configuration)
             .Where(entry => !string.IsNullOrWhiteSpace(entry.Value))
             .Where(entry => !mapped.Contains(entry.Key))
+            .Where(entry => !IsSecretBoundaryVariable(entry.Key))
             .Where(entry => LooksLikeSecret(entry.Key, entry.Value!))
             .Select(entry => entry.Key)
             .Order(StringComparer.Ordinal)];

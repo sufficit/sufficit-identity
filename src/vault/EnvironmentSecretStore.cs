@@ -9,7 +9,7 @@ namespace Sufficit.Identity.Vault;
 /// </summary>
 public sealed class EnvironmentSecretStore : ISecretStore
 {
-    private const string Prefix = "SUFFICIT_SECRET_";
+    internal const string Prefix = "SUFFICIT_SECRET_";
 
     internal static string EnvironmentVariableName(string name) =>
         Prefix + new string(name

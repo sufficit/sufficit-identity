@@ -133,6 +133,36 @@ public sealed class SecretBoundaryTests
     }
 
     [Fact]
+    public void The_secret_boundary_variables_are_not_reported_as_being_outside_it()
+    {
+        // Environment variables are part of the configuration the scan walks,
+        // so the values that arrived through the boundary were being reported
+        // as having missed it — with the advice to move them to a
+        // SUFFICIT_SECRET_* variable, which is what they already were.
+        // Production logged ten of these on 2026-09-19.
+        var keys = SecretConfigurationExtensions.FindUnmappedSecretLikeKeys(
+            Configuration(
+                ("SUFFICIT_SECRET_DATABASE_CONNECTION_STRING", "server=db;password=p"),
+                ("SUFFICIT_SECRET_IDENTITY_CERTIFICATES_SIGNING_PASSWORD", "p"),
+                ("SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_GOOGLE_CLIENT_SECRET", "p")));
+
+        Assert.Empty(keys);
+    }
+
+    [Fact]
+    public void A_credential_outside_the_boundary_is_still_reported()
+    {
+        // The exclusion above must not blind the scan: only the prefix is
+        // trusted, and a credential sitting anywhere else is still a finding.
+        var keys = SecretConfigurationExtensions.FindUnmappedSecretLikeKeys(
+            Configuration(
+                ("SUFFICIT_SECRET_DATABASE_CONNECTION_STRING", "server=db;password=p"),
+                ("Sufficit:Integrations:Acme:ApiSecret", "abc123")));
+
+        Assert.Equal(["Sufficit:Integrations:Acme:ApiSecret"], keys);
+    }
+
+    [Fact]
     public void The_unmapped_scan_is_quiet_on_this_repository_own_configuration()
     {
         // A scanner that fires on the shipped template is a scanner operators
