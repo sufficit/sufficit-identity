@@ -11,8 +11,7 @@ Não há nova dependência em UI, contrato público, tabela ou migração.
 Isso segue [a arquitetura do repositório](ARCHITECTURE-REPOSITORY.md) e mantém
 os chamadores usando `IOpenIddictTokenManager`. A correção também se encaixa
 na centralização futura de emissão/revogação prevista em
-[GPT-5, P0.1](../plans/PLAN-GPT-5-REMAINING.md) e
-[GLM, etapa 7](../plans/PLAN-GLM-5-2-REMAINING.md): não cria outro fluxo de
+[PLAN.md, seção B1](../plans/PLAN.md): não cria outro fluxo de
 emissão nem transfere regras de protocolo para controllers.
 
 ## Por que especializar o store

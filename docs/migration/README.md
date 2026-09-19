@@ -3,8 +3,8 @@
 These files prepare the database contract only. They do not authorize a
 production deployment, canary, issuer change or frontend rollout.
 
-The reusable end-to-end migration guide is
-[`../plans/PLAN-LEGACY-CUTOVER-OPS.md`](../plans/PLAN-LEGACY-CUTOVER-OPS.md).
+The remaining operational cutover gates — clients, keys, rehearsals — are
+section G4 of [`../plans/PLAN.md`](../plans/PLAN.md).
 
 ## Supported paths
 

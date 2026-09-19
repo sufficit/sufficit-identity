@@ -29,15 +29,22 @@ specification, with coverage level, implementation origin (OpenIddict,
 in-house or mixed) and known gaps. The source of truth is the code: each
 claim cites `file:line`.
 
-## Active plans (pending work)
+## The plan (pending work)
 
-- [GPT-5 evaluation — remaining work](plans/PLAN-GPT-5-REMAINING.md) — residual protocol, trust-boundary and production-assurance work
-- [Authorization, SCIM and secret boundaries](plans/PLAN-GLM-5-2-REMAINING.md) — residual authorization, secret and maintainability work
-- [FAPI 2.0 conformance](plans/PLAN-FAPI2-CONFORMANCE.md) — the one accepted failure, deferred by decision
-- [Management applications](plans/PLAN-MANAGEMENT-APPLICATIONS.md) — complete OAuth/OIDC application lifecycle in the Management console
-- [Production readiness](plans/PLAN-PRODUCTION-READINESS.md) — certification, CSP calibration, WCAG, forward protocols
-- [Legacy cutover — operational gates](plans/PLAN-LEGACY-CUTOVER-OPS.md) — clients, keys, rehearsals
-- [Pluggable UI — phases 2-5](plans/PLAN-PLUGGABLE-UI-PHASES-2-5.md) — remote UI, BFF, SDK
+There is one plan: [`plans/PLAN.md`](plans/PLAN.md). It consolidates the twelve
+that preceded it, each reconciled against the working tree first, and organises
+what is left by the boundary it belongs to rather than by which evaluation
+found it.
+
+| Section | What it owns |
+|---|---|
+| A | Authorization and trust boundaries — context ownership, SCIM, step-up, passkey assurance |
+| B | Token issuance and claim release — the issuance kernel, claims, token exchange, DPoP, CIBA, JAR/JARM |
+| C | Secrets, keys and transport — plaintext gate, vault rotation, key separation, verified TLS |
+| D | Production posture — posture-check coverage, CSP enforcement, topology, abuse protection |
+| E | Administration console and UI — client operational state, application lifecycle, result states, pluggable UI |
+| F | Platform and architectural debt — god-files, SCIM decomposition, provider fork, MariaDB baseline |
+| G | Observability, conformance and cutover — certification, external audit, legacy cutover gates |
 
 ## Completed work (activities/)
 

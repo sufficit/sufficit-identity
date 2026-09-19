@@ -102,7 +102,7 @@ The accepted failure is `par-attempt-to-use-expired-request_uri`: the expired
 to the client, because OpenIddict drops the request before any redirect URI has
 been resolved — the request carries only `client_id` and `request_uri`. Closing
 it means resolving the registered redirect URI first;
-`docs/plans/PLAN-FAPI2-CONFORMANCE.md` keeps the item.
+`docs/plans/PLAN.md` keeps the item, as section B9.
 
 Getting the plan green found ten defects, each fixed with a regression test:
 
