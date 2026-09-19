@@ -171,6 +171,13 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
             "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina"
         };
 
+    /// <summary>
+    /// Every capability that changes, removes or revokes something belonging
+    /// to a user. The first four address the user directly; the rest reach it
+    /// through a claim, a session or an authorization, and used to bypass the
+    /// protected-principal policy entirely because it only looked at
+    /// <see cref="ManagementResourceTypes.User"/> resources.
+    /// </summary>
     private static readonly HashSet<string> ProtectedPrincipalCapabilities =
         new(StringComparer.Ordinal)
         {
@@ -178,6 +185,11 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
             ManagementCapabilities.UsersDisable,
             ManagementCapabilities.UsersDelete,
             ManagementCapabilities.UsersReset,
+            ManagementCapabilities.ClaimsCreate,
+            ManagementCapabilities.ClaimsUpdate,
+            ManagementCapabilities.ClaimsDelete,
+            ManagementCapabilities.SessionsRevoke,
+            ManagementCapabilities.AuthorizationsRevoke,
         };
 
     public async ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
@@ -194,14 +206,16 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
                 "resource_id_required");
         }
 
-        if (resource.Type == ManagementResourceTypes.User
-            && resource.Id is not null
+        var targetUserId = resource.Type == ManagementResourceTypes.User
+            ? resource.Id
+            : resource.SubjectId;
+        if (targetUserId is not null
             && ProtectedPrincipalCapabilities.Contains(capability))
         {
             return await protectedPrincipals.EvaluateAsync(
                 principal,
                 capability,
-                resource.Id,
+                targetUserId,
                 cancellationToken);
         }
 

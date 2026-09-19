@@ -65,16 +65,15 @@ predicates on every query, and context shadow telemetry. They were exactly the
 machinery the decision removed, and they are gone from here. What V-19 asked
 for that still applies under the current contract is below.
 
-- [ ] Apply the protected-principal policy to every mutation that reaches a
-  user, not only to the four `Users*` capabilities on a `User` resource. Claim
-  create/update/delete, session revocation and authorization revocation all
-  reach a principal through a different resource type, and the policy never
-  sees them — so an operator below a protected principal's tier can change
-  that principal's claims or sign them out
 - [ ] Separate operator entitlements from the roles and scopes issued to
   managed identities
-- [ ] Tests: equal and higher principal across every capability that reaches a
-  user; break-glass audit
+- [ ] Test that break-glass through a claim, session or authorization is
+  audited the same way as break-glass through a user (the equal/higher tier
+  matrix across every capability that reaches a user is covered)
+
+Protected principals now cover every mutation that reaches a user, delivered on
+2026-09-19 —
+[`202609192300-protected-principals-everywhere.md`](../activities/202609192300-protected-principals-everywhere.md).
 
 **Done when:** no Management capability lets an operator change or revoke
 anything belonging to a principal of equal or higher tier without break-glass.
@@ -848,9 +847,8 @@ Deliberately after everything above; none of it is required for production.
    [`202609192100-secret-boundary-provenance.md`](../activities/202609192100-secret-boundary-provenance.md);
    declaring `Sufficit:Vault:SecretMigrationComplete=true` per environment is
    part of D4.
-3. **A1** — protected principals across every capability that reaches a user.
-   Small, no schema change. A2, A3 and the Management side of A4 do not depend
-   on it.
+3. **A1** — what remains is operator entitlements. Protected principals
+   across every capability that reaches a user was delivered on 2026-09-19.
 4. **B1** — the issuance kernel, one grant at a time under characterization
    tests. B2, B3 and B5's kernel item depend on it; do not start them first.
 5. **B4, B6, B7, B8** — independent of the kernel, each small.

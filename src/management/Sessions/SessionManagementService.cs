@@ -169,6 +169,19 @@ internal sealed class SessionManagementService(
                 "The issued credential was not found.");
         }
 
+        // Revoking a credential signs its owner out. Decide on the owner once
+        // it is known; the first demand ran before the lookup so an operator
+        // without the capability cannot probe which ids exist.
+        var subject = await tokenManager.GetSubjectAsync(token, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(subject))
+        {
+            decision = await DemandAsync(
+                context,
+                ManagementCapabilities.SessionsRevoke,
+                resource with { SubjectId = subject },
+                cancellationToken);
+        }
+
         if (!await tokenManager.TryRevokeAsync(token, cancellationToken))
         {
             throw new ManagementConflictException(
@@ -199,7 +212,8 @@ internal sealed class SessionManagementService(
         userId = RequiredId(userId);
         var resource = new ManagementResource(
             ManagementResourceTypes.SessionCollection,
-            userId);
+            userId,
+            SubjectId: userId);
         var decision = await DemandAsync(
             context,
             ManagementCapabilities.SessionsRevoke,

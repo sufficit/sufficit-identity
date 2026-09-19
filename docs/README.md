@@ -48,6 +48,7 @@ found it.
 
 ## Completed work (activities/)
 
+- [Protected principals on every mutation that reaches a user](activities/202609192300-protected-principals-everywhere.md) — claims, sessions and authorizations no longer bypass the tier check; and why the plan's tenant machinery was taken back out first
 - [Proving a secret came from the right place](activities/202609192100-secret-boundary-provenance.md) — redacted provenance per startup secret, a convention scan for the ones nobody mapped, and a permission check on the files holding them
 - [Six settings the production posture check was not looking at](activities/202609191900-posture-check-coverage.md) — legacy grants block startup; permissive CSP sources, one certificate for two purposes, token exchange on by default, optional passkey verification and unmapped claims are reported
 - [A passkey now claims only what the ceremony proved](activities/202609191700-passkey-assurance.md) — `amr=mfa` derived from the WebAuthn user-verification flag instead of asserted before the ceremony
