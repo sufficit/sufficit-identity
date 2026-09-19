@@ -48,6 +48,7 @@ found it.
 
 ## Completed work (activities/)
 
+- [What happens when the breach service does not answer](activities/202609201700-breached-password-fallback.md) — a third failure mode, a range cache, and a 200 that is not a range listing no longer reads as "not breached"
 - [CIBA: who may start one, and what happens mid-deploy](activities/202609201500-ciba-initiator-and-rolling-deploy.md) — anonymous and public initiators refused, and a request created by the previous release still honoured
 - [acr_values now asks for something](activities/202609201300-acr-values.md) — a relying party can request an assurance level and get the ceremony, with one attempt when the level is unreachable
 - [The ceremony moved in front of the token](activities/202609201100-authorize-step-up.md) — a remembered device is challenged at `/authorize` instead of letting relying parties reject the token; plus the claim that was being dropped on renewal
