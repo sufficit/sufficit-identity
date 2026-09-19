@@ -23,6 +23,7 @@ public sealed class AspNetCoreIdentityPasskeyService(
     ICredentialMutationSecurityCoordinator credentialSecurity,
     IAccountLookupPolicy accountLookup,
     AccountPasskeyOptions options,
+    IPasskeyAssurancePolicy assurance,
     IAuthenticationContextAccessor authenticationContextAccessor,
     IAuthenticationContextClassMapper authenticationContextClasses,
     TimeProvider timeProvider,
@@ -386,14 +387,37 @@ public sealed class AspNetCoreIdentityPasskeyService(
                 "The received credential exceeds the allowed size.");
         }
 
+        // Read before the ceremony so an assertion that cannot satisfy the
+        // policy is refused without issuing anything; apply what it says only
+        // after the ceremony succeeded, which is when Identity has verified
+        // the signature covering these bytes.
+        var evidence = assurance.Read(credentialJson);
+        if (evidence is null)
+        {
+            logger.LogWarning(
+                "Passkey assertion did not carry readable authenticator data.");
+            return PasskeyAuthenticationResult.Failure(
+                "passkey-ceremony-invalid",
+                "The authentication request expired or is invalid. Try again.");
+        }
+
+        if (assurance.RequireUserVerification && !evidence.Value.UserVerified)
+        {
+            // The authenticator proved possession and nothing else. Signing in
+            // anyway would mint amr=mfa for a single factor.
+            logger.LogWarning(
+                "Passkey assertion reported no user verification while the "
+                + "deployment requires it.");
+            return PasskeyAuthenticationResult.Failure(
+                "passkey-user-verification-required",
+                "Your security key or device must confirm it is you — use its "
+                + "PIN, fingerprint or face, then try again.");
+        }
+
         SignInResult result;
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            authenticationContextAccessor.Set(new AuthenticationContextEvidence(
-                ["passkey", "hwk", "mfa"],
-                timeProvider.GetUtcNow(),
-                authenticationContextClasses.Map(CaepAssuranceLevel.PhishingResistant)));
             result = await signInManager.PasskeySignInAsync(credentialJson);
         }
         catch (Exception exception) when (IsInvalidCeremony(exception))
@@ -408,7 +432,15 @@ public sealed class AspNetCoreIdentityPasskeyService(
 
         if (result.Succeeded)
         {
-            logger.LogInformation("A user signed in with a passkey.");
+            authenticationContextAccessor.Set(new AuthenticationContextEvidence(
+                assurance.AuthenticationMethods(evidence.Value),
+                timeProvider.GetUtcNow(),
+                authenticationContextClasses.Map(evidence.Value.UserVerified
+                    ? CaepAssuranceLevel.PhishingResistant
+                    : CaepAssuranceLevel.Loa1)));
+            logger.LogInformation(
+                "A user signed in with a passkey. UserVerified={UserVerified}.",
+                evidence.Value.UserVerified);
             return PasskeyAuthenticationResult.Success;
         }
 

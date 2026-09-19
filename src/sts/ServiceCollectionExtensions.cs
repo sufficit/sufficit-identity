@@ -459,12 +459,21 @@ public static partial class ServiceCollectionExtensions
         // fallback browser error page) resolves through IStringLocalizer.
         // TryAdd-based, so a presentation module registering it too is harmless.
         services.AddLocalization();
+        services.AddSingleton<IPasskeyAssurancePolicy>(
+            new PasskeyAssurancePolicy(options.Passkeys));
         services.Configure<IdentityPasskeyOptions>(passkeys =>
         {
             if (!string.IsNullOrWhiteSpace(options.Passkeys.RelyingPartyId))
             {
                 passkeys.ServerDomain = options.Passkeys.RelyingPartyId.Trim();
             }
+
+            // Ask the ceremony for the evidence the server intends to claim.
+            // Identity puts this in the request options the browser passes to
+            // the authenticator; PasskeyAssurancePolicy checks what came back.
+            passkeys.UserVerificationRequirement =
+                new PasskeyAssurancePolicy(options.Passkeys)
+                    .UserVerificationRequirement;
         });
         // ASP.NET Identity stores WebAuthn challenge state in its temporary
         // TwoFactorUserId authentication scheme. Keeping that ticket inside

@@ -141,16 +141,6 @@ caller type.
 `ReauthenticationController` and `IAuthenticationContextProjector` already
 provide the ceremony and the projection into codes and tokens.
 
-### A5 — Passkey assurance is asserted, not measured
-
-`AspNetCoreIdentityPasskeyService.cs:392` calls `Set()` before the ceremony,
-unconditionally, so `amr=mfa`/`acr=loa3` are claimed without knowing whether
-user verification happened.
-
-- [ ] Introduce `IPasskeyAssurancePolicy` that (a) generates request options
-  with `userVerification=Required`, (b) derives `amr`/`acr` from the ceremony's
-  real UV result, and (c) moves the `Set()` to after success
-
 ## B. Token issuance and claim release
 
 ### B1 — One issuance kernel
@@ -397,7 +387,9 @@ behind the configuration surface. Findings still missing:
 - [ ] CSP policy *content* carrying wildcards in `connect-src`/`script-src`
   (the existing `csp-report-only` finding reports the mode, not the policy)
 - [ ] Signing and encryption thumbprints equal in production
-- [ ] Passkey without `userVerification=Required` configured
+- [ ] Passkey with `RequireUserVerification=false` (A5 made this a
+  deliberate, configurable relaxation; production should be told when a
+  deployment takes it)
 - [ ] `IncludeUnmappedClaimsInAccessTokens=true`
 
 `vault-kek-in-data-protection` is in place and covers the KEK source finding.
@@ -870,11 +862,13 @@ Deliberately after everything above; none of it is required for production.
 
 ## Execution order
 
-1. **A5, D1** — small, bounded, and each one closes a real hole. A5 is a
-   single-file change; D1 turns every future configuration regression into an
-   explicit decision, which is the cheapest leverage in the list. A6 (three
-   small defects) was delivered on 2026-09-19, see
-   [`202609191500-enumeration-legacy-grants-revoker.md`](../activities/202609191500-enumeration-legacy-grants-revoker.md).
+1. **D1** — the cheapest leverage in the list: it turns every future
+   configuration regression into an explicit, attributed, expirable decision.
+   A5 (passkey assurance) and A6 (three small defects) were delivered on
+   2026-09-19, see
+   [`202609191500-enumeration-legacy-grants-revoker.md`](../activities/202609191500-enumeration-legacy-grants-revoker.md)
+   and
+   [`202609191700-passkey-assurance.md`](../activities/202609191700-passkey-assurance.md).
 2. **C1, then C3** — establish the plaintext boundary before removing any
    compatibility path. C3 is blocked on the PFX problem and needs the
    generate-on-server approach first.
@@ -915,7 +909,7 @@ Deliberately after everything above; none of it is required for production.
 | `PLAN-GPT-5-REMAINING` | A1, A4, B1–B6, C1, C3, C5, D3, D7, F3, F4, F5, F10, F13, G1, G2, G3 |
 | `PLAN-GLM-5-2-REMAINING` | A1, A2, A3, B1, C1, F3, F6, F11 |
 | `PLAN-SECURITY-HARDENING-WAVE-2` | A1, A2, A3, B2–B5, B7, B8, C3, C4, C5, D2, D4, F6–F10, F14, closure criteria |
-| `PLAN-FABLE-5-TRIAGE` | A4, A5, B2, B3, C3, D1, D7, F2, F12 |
+| `PLAN-FABLE-5-TRIAGE` | A4, B2, B3, C3, D1, D7, F2, F12 |
 | `PLAN-PRODUCTION-READINESS` | C2, C3, C6, D2, D5, D6, E8, F3, G2, G5, G6 |
 | `PLAN-MANAGEMENT-APPLICATIONS` (+ `-NEXT`) | A2, E1–E4, E6 |
 | `PLAN-CLIENT-OPERATIONAL-STATE` | E1 |

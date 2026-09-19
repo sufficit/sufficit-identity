@@ -158,4 +158,17 @@ public sealed class AccountPasskeyOptions
     /// Maximum UTF-8 size accepted for a serialized WebAuthn credential.
     /// </summary>
     public int MaximumCredentialPayloadBytes { get; init; } = 131_072;
+
+    /// <summary>
+    /// Requests WebAuthn <c>userVerification=required</c> and refuses an
+    /// assertion that reports no user verification.
+    /// </summary>
+    /// <remarks>
+    /// Default <c>true</c>, because the server claims <c>amr=mfa</c> for a
+    /// passkey sign-in and only user verification makes that claim true.
+    /// Turning it off keeps the sign-in working and drops the claim: the
+    /// ceremony then reports possession alone, and any policy demanding a
+    /// second factor will ask for one.
+    /// </remarks>
+    public bool RequireUserVerification { get; init; } = true;
 }
