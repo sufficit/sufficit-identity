@@ -184,7 +184,7 @@ The CI pipeline additionally runs against real MariaDB 10.4.34 with migration re
 
 - [`appsettings.json.template`](src/server/appsettings.json.template) — every configuration key, documented inline
 - [`docs/`](docs/README.md) — architecture, design, runbooks, active plans
-- [`docs/plans/PLAN-PRODUCTION-READINESS.md`](docs/plans/PLAN-PRODUCTION-READINESS.md) — what's left for production hardening
+- [`docs/plans/PLAN.md`](docs/plans/PLAN.md) — the single action plan; section C/D/G is what's left for production hardening
 
 ## Padrão de snapshots de runtime
 

@@ -67,8 +67,8 @@ remote login, consent or account pages; interactive browser flows require an
 embedded UI until the remote interaction protocol is delivered. An unsupported
 numeric value fails startup instead of silently changing topology.
 
-The architecture and remote-host delivery gates are defined in
-[`PLAN-PLUGGABLE-USER-INTERFACES.md`](../plans/PLAN-PLUGGABLE-UI-PHASES-2-5.md).
+The architecture and remote-host delivery gates are section E7 of
+[`PLAN.md`](../plans/PLAN.md).
 
 ## How to inject into the STS host
 
