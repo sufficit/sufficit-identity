@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Core.Data;
+using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Management.Authorization;
 
 namespace Sufficit.Identity.Management.Audit;
@@ -38,8 +39,47 @@ public sealed class ManagementOperationGuard(
     IManagementAuthorizationEvaluator authorization,
     AppDbContext database,
     IMemoryCache repeatedDenials,
-    ILogger<ManagementOperationGuard> logger)
+    ILogger<ManagementOperationGuard> logger,
+    Microsoft.Extensions.Options.IOptions<ManagementOptions>? managementOptions = null)
 {
+    /// <summary>
+    /// A token outlives the browser that asked for it, so the second factor
+    /// behind it has to have happened rather than been remembered.
+    /// </summary>
+    /// <remarks>
+    /// A trusted-device cookie deliberately satisfies Management itself
+    /// (<c>9957d6d</c>): an operator should not repeat the second factor to
+    /// read a page. Minting a credential is the exception the owner drew —
+    /// the operator is sent back through the reauthentication ceremony, which
+    /// signs the remembered cookie out and asks for the factor again.
+    ///
+    /// Only downgrades evidence that is present but remembered. A deployment
+    /// that does not require MFA for Management at all is left alone; there is
+    /// no second factor to insist on being fresh.
+    /// </remarks>
+    private ManagementAuthorizationDecision RequireFreshSecondFactor(
+        ManagementRequestContext context,
+        string capability,
+        ManagementAuthorizationDecision decision)
+    {
+        if (managementOptions?.Value.RequireMfa is not true
+            || !MfaEvidencePolicy.IsSecondFactorRemembered(context.Operator)
+            || !MfaEvidencePolicy.HasMfaEvidence(context.Operator))
+        {
+            return decision;
+        }
+
+        logger.LogInformation(
+            "Credential issuance for capability {Capability} requires a second "
+            + "factor presented in this session; the operator's is remembered. "
+            + "Correlation={CorrelationId}.",
+            capability,
+            context.CorrelationId);
+        return ManagementAuthorizationDecision.StepUpRequired(
+            "fresh_mfa_required",
+            capability);
+    }
+
     /// <summary>
     /// How long an identical refusal stays suppressed. Long enough that a
     /// client looping on an endpoint it lacks the capability for cannot turn
@@ -63,13 +103,19 @@ public sealed class ManagementOperationGuard(
         string capability,
         ManagementResource resource,
         CancellationToken cancellationToken,
-        bool auditDenial = false)
+        bool auditDenial = false,
+        bool mintsCredential = false)
     {
         var decision = await authorization.EvaluateAsync(
             context.Operator,
             capability,
             resource,
             cancellationToken);
+
+        if (decision.IsAllowed && mintsCredential)
+        {
+            decision = RequireFreshSecondFactor(context, capability, decision);
+        }
 
         if (decision.IsAllowed)
         {

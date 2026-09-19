@@ -13,6 +13,7 @@ using OidcClaims = OpenIddict.Abstractions.OpenIddictConstants.Claims;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using static OpenIddict.Server.OpenIddictServerEvents;
 using Sufficit.Identity.Management.Authorization;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Management.OperatorTokens;
 
@@ -54,12 +55,6 @@ internal sealed partial class OperatorTokenManagementService(
         {
             ManagementCapabilities.ManagementTokensIssue,
             ManagementCapabilities.ManagementTokensRevoke,
-        };
-
-    private static readonly HashSet<string> MfaMethods =
-        new(StringComparer.Ordinal)
-        {
-            "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina"
         };
 
     public async Task<OperatorTokenWorkspace> GetWorkspaceAsync(
@@ -117,7 +112,8 @@ internal sealed partial class OperatorTokenManagementService(
             ManagementCapabilities.ManagementTokensIssue,
             CollectionResource,
             cancellationToken,
-            auditDenial: true);
+            auditDenial: true,
+            mintsCredential: true);
 
         if (context.Operator.FindFirst(TemporaryTokenMarker)?.Value is "true"
             || context.Operator.FindFirst(

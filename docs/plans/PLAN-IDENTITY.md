@@ -149,23 +149,20 @@ without being separately permitted to, with evidence appropriate to its type.
 
 - [ ] **(operational)** Change credential-mutation step-up from `Audit` to
   `Enforce` after current sessions and UI flows pass canary checks
-- [ ] **(decision)** Should a remembered-MFA device satisfy the Management MFA
-  requirement? Today it does, **on purpose**: `9957d6d` (2026-08-14, "preserve
-  remembered MFA sessions") projects `amr=mfa` from the trusted-device cookie so
-  operators are not rejected by Management after every login. The Fable 5
-  evaluation (M-8, 2026-08-15) asked for the opposite a day later, without
-  addressing that fix. Both positions are defensible; the plan does not get to
-  reverse the owner's choice. What M-8 also asked for is already done:
-  `/account/reauthenticate` signs the remembered cookie out before requiring
-  the second factor, the cookie is validated against the security stamp, and
-  its lifetime defaults to 30 days (`RememberedMfaLifetimeDays`, clamped 1–90)
-- [ ] Replace the six places that set `amr` for MFA with a single
-  `IMfaEvidencePolicy` in `Application.Abstractions`
+- [ ] Finish the single evidence policy: the readers are unified
+  (`MfaEvidencePolicy`), the six places that *set* `amr` are not
 - [ ] End-to-end tests proving a real MFA login satisfies Management and SCIM
   policies, and that a stale session cannot mutate credentials
 
 `ReauthenticationController` and `IAuthenticationContextProjector` already
 provide the ceremony and the projection into codes and tokens.
+
+**Decided 2026-09-20 (owner).** A remembered-MFA device satisfies Management —
+an operator does not repeat the second factor to read a page — but it does not
+mint credentials. Delivered:
+[`202609200800-remembered-second-factor.md`](../activities/202609200800-remembered-second-factor.md).
+Whether a token issued to an ordinary relying party should still carry
+`amr=mfa` from a remembered device is a separate question, not yet asked.
 
 ## B. Token issuance and claim release
 

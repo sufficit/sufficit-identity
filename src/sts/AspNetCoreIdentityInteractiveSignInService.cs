@@ -61,7 +61,8 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
             rememberedMfa ? ["pwd", "mfa"] : ["pwd"],
             authenticationContextClasses.Map(rememberedMfa
                 ? CaepAssuranceLevel.Loa2
-                : CaepAssuranceLevel.Loa1));
+                : CaepAssuranceLevel.Loa1),
+            rememberedSecondFactor: rememberedMfa);
         var result = await signInManager.PasswordSignInAsync(
             command.UserName,
             command.Password,
@@ -347,9 +348,11 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
 
     private void SetAuthenticationContext(
         IReadOnlyCollection<string> methods,
-        string authenticationContextClass) =>
+        string authenticationContextClass,
+        bool rememberedSecondFactor = false) =>
         authenticationContextAccessor.Set(new AuthenticationContextEvidence(
             methods,
             timeProvider.GetUtcNow(),
-            authenticationContextClass));
+            authenticationContextClass,
+            rememberedSecondFactor));
 }

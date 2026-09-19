@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Sufficit.Identity.Core.Entities;
 using System.Security.Claims;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Management.Authorization;
 
@@ -165,12 +166,6 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
             ManagementResourceTypes.VaultSecrets,
         };
 
-    private static readonly HashSet<string> MfaMethods =
-        new(StringComparer.Ordinal)
-        {
-            "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina"
-        };
-
     /// <summary>
     /// Every capability that changes, removes or revokes something belonging
     /// to a user. The first four address the user directly; the rest reach it
@@ -231,11 +226,7 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
                 claim.Value,
                 policy.BreakGlassClaimValue,
                 StringComparison.Ordinal));
-        var hasMfa = principal.FindAll("amr")
-            .SelectMany(claim => claim.Value.Split(
-                ' ',
-                StringSplitOptions.RemoveEmptyEntries))
-            .Any(MfaMethods.Contains);
+        var hasMfa = MfaEvidencePolicy.HasMfaEvidence(principal);
         return hasClaim && hasMfa;
     }
 }
@@ -250,12 +241,6 @@ public sealed class ConfigurationProtectedPrincipalAccessPolicy(
     ILogger<ConfigurationProtectedPrincipalAccessPolicy> logger)
     : IProtectedPrincipalAccessPolicy
 {
-    private static readonly HashSet<string> MfaMethods =
-        new(StringComparer.Ordinal)
-        {
-            "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina"
-        };
-
     public async ValueTask<ManagementAuthorizationDecision> EvaluateAsync(
         ClaimsPrincipal principal,
         string capability,
@@ -341,11 +326,7 @@ public sealed class ConfigurationProtectedPrincipalAccessPolicy(
                 claim.Value,
                 policy.BreakGlassClaimValue,
                 StringComparison.Ordinal));
-        var hasMfa = principal.FindAll("amr")
-            .SelectMany(claim => claim.Value.Split(
-                ' ',
-                StringSplitOptions.RemoveEmptyEntries))
-            .Any(MfaMethods.Contains);
+        var hasMfa = MfaEvidencePolicy.HasMfaEvidence(principal);
         return hasClaim && hasMfa;
     }
 }
@@ -356,12 +337,6 @@ public sealed class CapabilityManagementAuthorizationEvaluator
     private readonly IManagementEntitlementResolver entitlements;
     private readonly IManagementAccessPolicyProvider accessPolicies;
     private readonly IManagementObjectAccessPolicy objectAccess;
-
-    private static readonly HashSet<string> MfaMethods =
-        new(StringComparer.Ordinal)
-        {
-            "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina"
-        };
 
     public CapabilityManagementAuthorizationEvaluator(
         IManagementEntitlementResolver entitlements,
@@ -481,10 +456,6 @@ public sealed class CapabilityManagementAuthorizationEvaluator
     }
 
     private static bool HasMfaEvidence(ClaimsPrincipal principal) =>
-        principal.FindAll("amr")
-            .SelectMany(claim => claim.Value.Split(
-                ' ',
-                StringSplitOptions.RemoveEmptyEntries))
-            .Any(MfaMethods.Contains);
+        MfaEvidencePolicy.HasMfaEvidence(principal);
 
 }

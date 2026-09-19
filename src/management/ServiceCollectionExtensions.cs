@@ -374,19 +374,15 @@ public sealed class MfaRequirement : IAuthorizationRequirement;
 public sealed class MfaHandler(
     IServiceScopeFactory scopeFactory) : AuthorizationHandler<MfaRequirement>
 {
-    private const string AmrClaimType = "amr";
-
-    // amr values per RFC 8176 that prove a second factor was used.
-    private static readonly HashSet<string> MfaValues = new(StringComparer.Ordinal)
-    {
-        "mfa", "otp", "hwk", "sms", "vcm", "fpt", "eye", "voice", "retina"
-    };
-
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context, MfaRequirement requirement)
     {
-        var amrValues = context.User.FindAll(AmrClaimType).Select(c => c.Value);
-        if (amrValues.Any(v => MfaValues.Contains(v)))
+        // Reads through the shared policy: this copy compared whole claim
+        // values against the method list, so an amr that arrived
+        // space-delimited — which is how it comes back from token validation —
+        // never matched, and the requirement failed for a genuinely
+        // multi-factor caller.
+        if (MfaEvidencePolicy.HasMfaEvidence(context.User))
         {
             context.Succeed(requirement);
             return;

@@ -59,7 +59,8 @@ internal sealed class DcrInitialAccessTokenManagementService(
             ManagementCapabilities.ClientsCreate,
             CollectionResource,
             cancellationToken,
-            auditDenial: true);
+            auditDenial: true,
+            mintsCredential: true);
 
         var label = command.Label?.Trim();
         if (string.IsNullOrWhiteSpace(label))

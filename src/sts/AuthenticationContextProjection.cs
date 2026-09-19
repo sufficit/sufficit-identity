@@ -6,10 +6,17 @@ using OpenIddict.Abstractions;
 
 namespace Sufficit.Identity.STS;
 
+/// <param name="RememberedSecondFactor">
+/// The second factor in <paramref name="AuthenticationMethods"/> came from a
+/// trusted-device cookie rather than from a ceremony in this sign-in. The
+/// session still counts as multi-factor — that is deliberate — but a token
+/// minted from it does not, because the token outlives the browser.
+/// </param>
 public sealed record AuthenticationContextEvidence(
     IReadOnlyCollection<string> AuthenticationMethods,
     DateTimeOffset AuthenticatedAt,
-    string AuthenticationContextClass);
+    string AuthenticationContextClass,
+    bool RememberedSecondFactor = false);
 
 public interface IAuthenticationContextAccessor
 {
