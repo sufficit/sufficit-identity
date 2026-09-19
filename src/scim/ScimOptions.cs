@@ -58,6 +58,47 @@ public sealed class ScimOptions
     /// </summary>
     public string[] AllowedClientIds { get; init; } = [];
 
+    /// <summary>
+    /// Scope a caller must hold to delete a resource or set a password.
+    /// Empty disables the requirement. Default <c>scim.destructive</c>.
+    /// </summary>
+    /// <remarks>
+    /// Provisioning and removing are not the same authority. A directory sync
+    /// that creates and updates accounts needs neither to delete them nor to
+    /// become their owner, and until this existed it had both.
+    /// </remarks>
+    public string DestructiveOperationScope { get; init; } = "scim.destructive";
+
+    /// <summary>
+    /// Requires the destructive scope for membership changes too. Default
+    /// <c>false</c>: group membership is ordinary provisioning traffic for a
+    /// directory sync.
+    /// </summary>
+    public bool RequirePermissionForMembership { get; init; }
+
+    /// <summary>
+    /// A human or delegated caller must present a second factor to delete or
+    /// set a password, independently of <see cref="RequireMfa"/>.
+    /// </summary>
+    public bool RequireMfaForDestructive { get; init; } = true;
+
+    /// <summary>
+    /// A client-credentials caller must present a sender-constrained token —
+    /// mTLS or DPoP — to delete or set a password. An application has no
+    /// second factor to offer; what it can offer is a token that cannot be
+    /// replayed by whoever copied it.
+    /// </summary>
+    public bool RequireSenderConstraintForDestructive { get; init; } = true;
+
+    /// <summary>
+    /// Observe records the refusal a stricter deployment would produce without
+    /// interrupting the caller. Default <c>Observe</c>, because an existing
+    /// provisioning client holds neither the scope nor a bound token and would
+    /// otherwise stop working on upgrade.
+    /// </summary>
+    public ScimClientPolicyMode OperationPolicyMode { get; init; } =
+        ScimClientPolicyMode.Observe;
+
     public int MaxResults { get; init; } = 100;
 
 #pragma warning disable CS0618

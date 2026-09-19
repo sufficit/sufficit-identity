@@ -83,6 +83,12 @@ internal sealed partial class ScimProvisioningService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(resource);
+        DemandOperation(ScimOperation.Provision, context);
+        if (!string.IsNullOrEmpty(resource.Password))
+        {
+            DemandOperation(ScimOperation.PasswordMutation, context);
+        }
+
         ValidateUserResource(resource);
         var email = PrimaryEmail(resource);
         var now = DateTime.UtcNow;
@@ -148,6 +154,15 @@ internal sealed partial class ScimProvisioningService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(resource);
+        DemandOperation(ScimOperation.Provision, context);
+        if (!string.IsNullOrEmpty(resource.Password))
+        {
+            // Setting someone's password is becoming them. PatchUserAsync
+            // reaches this through ReplaceUserAsync, so a PATCH that carries a
+            // password is decided here too.
+            DemandOperation(ScimOperation.PasswordMutation, context);
+        }
+
         ValidateUserResource(resource);
         var user = await userManager.FindByIdAsync(id)
             ?? throw ScimException.NotFound(
@@ -268,6 +283,7 @@ internal sealed partial class ScimProvisioningService
         ScimRequestContext context,
         CancellationToken cancellationToken = default)
     {
+        DemandOperation(ScimOperation.Delete, context);
         var user = await userManager.FindByIdAsync(id)
             ?? throw ScimException.NotFound(
                 $"SCIM user '{id}' was not found.");

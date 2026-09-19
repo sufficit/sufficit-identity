@@ -127,12 +127,12 @@ same product decision as A1 — partitioning it would be the row-level tenant
 boundary that decision rejected. What SCIM lacks is a decision per
 *operation*: today a client that may provision may also delete.
 
-- [ ] Introduce `IScimOperationAuthorizationPolicy` with separate decisions for
-  read, create/update, password mutation, membership mutation and delete
-- [ ] Require MFA for destructive human/delegated operations; require an
-  explicit destructive-operation permission plus mTLS or `private_key_jwt`/DPoP
-  for client-credentials callers
-- [ ] Tests: per-operation refusal, password reset, delete and group nesting
+- [ ] **(operational)** Inventory the provisioning clients, grant
+  `scim.destructive` to the ones that legitimately delete or reset passwords,
+  bind their tokens, then set `Scim:OperationPolicyMode=Enforce`
+
+The per-operation decision landed on 2026-09-20, in `Observe` —
+[`202609201900-scim-per-operation.md`](../activities/202609201900-scim-per-operation.md).
 
 Already in place, verified 2026-09-20: `ScimOptions.RequireAllowedClient`
 (default `true`), `ClientPolicyMode` `Observe`/`Enforce`, `RequireScope`

@@ -90,8 +90,36 @@ internal sealed partial class ScimProvisioningService(
     ISecurityEventTrigger securityEvents,
     IOptions<ScimOptions> options,
     ILogger<ScimProvisioningService> logger,
-    IScimAuditQueue? auditQueue = null) : IScimProvisioningService
+    IScimAuditQueue? auditQueue = null,
+    IScimOperationAuthorizationPolicy? operationPolicy = null) : IScimProvisioningService
 {
+    /// <summary>
+    /// Refuses the operation the caller is not permitted to perform. Decided
+    /// here rather than at the controller because what a request does is in
+    /// its payload: a PATCH that sets a password is a password mutation, and
+    /// the route cannot tell.
+    /// </summary>
+    private void DemandOperation(ScimOperation operation, ScimRequestContext context)
+    {
+        var decision = (operationPolicy
+            ?? new ScimOperationAuthorizationPolicy(options))
+            .Evaluate(operation, context.Principal);
+        if (!decision.Allowed)
+        {
+            throw ScimException.Forbidden(
+                decision.ReasonCode switch
+                {
+                    "destructive_scope_missing" =>
+                        "This operation requires the "
+                        + options.Value.DestructiveOperationScope + " scope.",
+                    "sender_constraint_required" =>
+                        "This operation requires a sender-constrained token "
+                        + "(mTLS or DPoP).",
+                    _ => "This operation requires multi-factor authentication.",
+                });
+        }
+    }
+
     private static readonly JsonSerializerOptions PatchJsonOptions = new()
     {
         PropertyNameCaseInsensitive = true

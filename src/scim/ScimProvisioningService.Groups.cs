@@ -77,6 +77,12 @@ internal sealed partial class ScimProvisioningService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(resource);
+        DemandOperation(ScimOperation.Provision, context);
+        if (resource.Members is { Count: > 0 })
+        {
+            DemandOperation(ScimOperation.MembershipMutation, context);
+        }
+
         ValidateGroupResource(resource);
         var now = DateTime.UtcNow;
         var group = new ScimGroup
@@ -135,6 +141,12 @@ internal sealed partial class ScimProvisioningService
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(resource);
+        DemandOperation(ScimOperation.Provision, context);
+        if (resource.Members is { Count: > 0 })
+        {
+            DemandOperation(ScimOperation.MembershipMutation, context);
+        }
+
         ValidateGroupResource(resource);
         var group = await database.ScimGroups
             .SingleOrDefaultAsync(group => group.Id == id, cancellationToken)
@@ -210,6 +222,7 @@ internal sealed partial class ScimProvisioningService
         ScimRequestContext context,
         CancellationToken cancellationToken = default)
     {
+        DemandOperation(ScimOperation.Delete, context);
         var group = await database.ScimGroups
             .SingleOrDefaultAsync(group => group.Id == id, cancellationToken)
             ?? throw ScimException.NotFound(
