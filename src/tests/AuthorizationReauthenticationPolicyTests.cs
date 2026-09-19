@@ -2,11 +2,20 @@ using System.Security.Claims;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.STS;
 using Xunit;
+using Sufficit.Identity.Application.Security;
 
 namespace Sufficit.Identity.Tests;
 
 public sealed class AuthorizationReauthenticationPolicyTests
 {
+    /// <summary>
+    /// The deployment's real spelling of assurance levels, so a test that
+    /// passes an acr_values is asking for something the server recognises.
+    /// </summary>
+    private static readonly IAuthenticationContextClassMapper Classes =
+        new ConfigurableAuthenticationContextClassMapper(
+            new AuthenticationContextOptions());
+
     private static readonly DateTimeOffset Now =
         new(2026, 9, 9, 18, 0, 0, TimeSpan.Zero);
 
@@ -19,14 +28,16 @@ public sealed class AuthorizationReauthenticationPolicyTests
         Assert.False(AuthorizationReauthenticationPolicy.IsRequired(
             request,
             principal,
-            Now));
+            Now,
+            Classes));
     }
 
     [Fact]
     public void Zero_max_age_always_requires_a_new_ceremony_without_receipt()
     {
         Assert.True(AuthorizationReauthenticationPolicy.IsRequired(
-            new OpenIddictRequest { MaxAge = 0 }, PrincipalAuthenticatedAt(Now), Now));
+            new OpenIddictRequest { MaxAge = 0 }, PrincipalAuthenticatedAt(Now), Now,
+            Classes));
     }
 
     [Fact]
@@ -38,7 +49,77 @@ public sealed class AuthorizationReauthenticationPolicyTests
                 Prompt = OpenIddictConstants.PromptValues.Login,
             },
             PrincipalAuthenticatedAt(Now),
-            Now));
+            Now,
+            Classes));
+    }
+
+    [Theory]
+    // Asking for what the session already has changes nothing.
+    [InlineData("urn:identity:acr:loa1", "Loa1", false)]
+    [InlineData("urn:identity:acr:loa2", "Loa2", false)]
+    // A phishing-resistant session is above loa3, which is the strongest
+    // level this server lets a client ask for.
+    [InlineData("urn:identity:acr:loa3", "PhishingResistant", false)]
+    // Asking for more than the session has runs the ceremony.
+    [InlineData("urn:identity:acr:loa2", "Loa1", true)]
+    [InlineData("urn:identity:acr:loa3", "Loa2", true)]
+    // The strongest recognised value in the list is the one that counts, and
+    // a vocabulary this deployment does not speak is ignored rather than
+    // refused: acr_values is voluntary (OIDC Core 3.1.2.1).
+    [InlineData("urn:identity:acr:loa1 urn:identity:acr:loa3", "Loa2", true)]
+    [InlineData("urn:example:gold urn:identity:acr:loa1", "Loa1", false)]
+    [InlineData("urn:example:gold", "Loa1", false)]
+    [InlineData("", "Loa1", false)]
+    public void Acr_values_asks_for_an_assurance_level(
+        string acrValues,
+        string sessionLevel,
+        bool expected)
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim("auth_time", Now.ToUnixTimeSeconds().ToString()),
+                new Claim("aal", sessionLevel),
+            ],
+            "test"));
+
+        Assert.Equal(
+            expected,
+            AuthorizationReauthenticationPolicy.IsRequired(
+                new OpenIddictRequest { AcrValues = acrValues },
+                principal,
+                Now,
+                Classes));
+    }
+
+    [Fact]
+    public void Every_advertised_acr_value_can_be_asked_for()
+    {
+        // Discovery promises acr_values_supported; a value the policy cannot
+        // parse would be advertised and then silently ignored.
+        foreach (var level in new[]
+        {
+            CaepAssuranceLevel.Loa1,
+            CaepAssuranceLevel.Loa2,
+            CaepAssuranceLevel.Loa3,
+        })
+        {
+            Assert.Equal(level, Classes.Parse(Classes.Map(level)));
+        }
+    }
+
+    [Fact]
+    public void A_session_without_an_assurance_level_is_treated_as_the_floor()
+    {
+        // Same answer an unauthenticated principal would get: assume nothing.
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim("auth_time", Now.ToUnixTimeSeconds().ToString())],
+            "test"));
+
+        Assert.True(AuthorizationReauthenticationPolicy.IsRequired(
+            new OpenIddictRequest { AcrValues = "urn:identity:acr:loa2" },
+            principal,
+            Now,
+            Classes));
     }
 
     [Fact]
@@ -64,7 +145,8 @@ public sealed class AuthorizationReauthenticationPolicyTests
         Assert.True(AuthorizationReauthenticationPolicy.IsRequired(
             new OpenIddictRequest(),
             remembered,
-            Now));
+            Now,
+            Classes));
     }
 
     [Fact]
@@ -85,7 +167,8 @@ public sealed class AuthorizationReauthenticationPolicyTests
         Assert.False(AuthorizationReauthenticationPolicy.IsRequired(
             new OpenIddictRequest(),
             fresh,
-            Now));
+            Now,
+            Classes));
     }
 
     [Theory]
@@ -105,7 +188,8 @@ public sealed class AuthorizationReauthenticationPolicyTests
             AuthorizationReauthenticationPolicy.IsRequired(
                 request,
                 principal,
-                Now));
+                Now,
+            Classes));
     }
 
     [Theory]
@@ -126,7 +210,8 @@ public sealed class AuthorizationReauthenticationPolicyTests
         Assert.True(AuthorizationReauthenticationPolicy.IsRequired(
             request,
             principal,
-            Now));
+            Now,
+            Classes));
     }
 
     private static ClaimsPrincipal PrincipalAuthenticatedAt(

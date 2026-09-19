@@ -166,9 +166,8 @@ ceremony runs at the authorization endpoint, before the token exists
 (2026-09-20, owner's call, globally) —
 [`202609201100-authorize-step-up.md`](../activities/202609201100-authorize-step-up.md).
 
-- [ ] Honour `acr_values`, ignored today, so a relying party that asks for an
-  assurance level gets it rather than being silently given whatever the
-  session has
+`acr_values` is honoured since 2026-09-20 and advertised in discovery —
+[`202609201300-acr-values.md`](../activities/202609201300-acr-values.md).
 
 ## B. Token issuance and claim release
 

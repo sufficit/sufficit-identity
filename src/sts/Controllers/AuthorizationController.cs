@@ -55,6 +55,7 @@ public partial class AuthorizationController : Controller
     private readonly Fapi2Options _fapi2Options;
     private readonly IAntiforgery _antiforgery;
     private readonly TimeProvider _timeProvider;
+    private readonly IAuthenticationContextClassMapper _authenticationContextClasses;
     private readonly ILogger<AuthorizationController> _logger;
     private readonly ISecurityDecisionTelemetry _telemetry;
 
@@ -76,8 +77,10 @@ public partial class AuthorizationController : Controller
         Cimd.CimdApplicationProvisioner cimdApplications,
         TimeProvider timeProvider,
         ILogger<AuthorizationController> logger,
+        IAuthenticationContextClassMapper authenticationContextClasses,
         ISecurityDecisionTelemetry? telemetry = null)
     {
+        _authenticationContextClasses = authenticationContextClasses;
         _applicationManager = applicationManager;
         _authorizationManager = authorizationManager;
         _scopeManager = scopeManager;
@@ -157,18 +160,23 @@ public partial class AuthorizationController : Controller
                 ["remembered_second_factor"]);
         }
 
-        // max_age=0, prompt=login and a remembered second factor all demand a
-        // brand-new credential ceremony, so the elapsed session age cannot
-        // clear them: only the receipt issued by the ceremony itself can, or
-        // the request would bounce back to the login page forever.
+        // max_age=0, prompt=login, a remembered second factor and an
+        // acr_values the session does not reach all demand a brand-new
+        // ceremony, so the elapsed session age cannot clear them: only the
+        // receipt issued by the ceremony itself can, or the request would
+        // bounce back to the login page forever. That matters most for
+        // acr_values, where the ceremony may not be able to reach the level
+        // asked for — one attempt, then the token tells the truth.
         var requiresFreshCeremony = request.MaxAge == 0
             || request.HasPromptValue(PromptValues.Login)
-            || secondFactorRemembered;
+            || secondFactorRemembered
+            || !string.IsNullOrWhiteSpace(request.AcrValues);
 
         if (AuthorizationReauthenticationPolicy.IsRequired(
                 request,
                 result.Principal,
-                _timeProvider.GetUtcNow())
+                _timeProvider.GetUtcNow(),
+                _authenticationContextClasses)
             && !(requiresFreshCeremony && AuthorizationAuthenticationReceipt.IsValid(
                 HttpContext, CurrentAuthorizationRequestUrl())))
         {
