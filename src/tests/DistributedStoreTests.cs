@@ -212,48 +212,54 @@ public sealed class DistributedStoreTests
 
     // ---- Durable-primary DPoP nonce store (eval 2026-08-30, F-4) ----
 
+    private static RollingDpopNonceStore Rolling(
+        DatabaseDpopNonceStore? database = null,
+        DistributedDpopNonceStore? legacy = null) =>
+        new(
+            new ProtectedDpopNonceStore(new EphemeralDataProtectionProvider()),
+            database ?? new DatabaseDpopNonceStore(new InMemoryProtocolStateStore()),
+            legacy ?? new DistributedDpopNonceStore(CreateCache()));
+
     [Fact]
-    public void Rolling_nonce_store_issues_from_the_durable_primary()
+    public void Rolling_nonce_store_issues_stateless_nonces()
     {
-        // The whole point of the durable primary: the challenge must be
-        // resolvable by a replica that never saw the issuing request, which the
-        // process-local cache could not do.
+        // Issuing writes nothing to the durable store any more: a value held
+        // once per partition is what let a second challenge displace the first.
         var state = new InMemoryProtocolStateStore();
         var database = new DatabaseDpopNonceStore(state);
-        var rolling = new RollingDpopNonceStore(
-            database,
-            new DistributedDpopNonceStore(CreateCache()));
+        var rolling = Rolling(database);
 
         var nonce = rolling.Issue("partition-a");
 
-        Assert.True(database.IsValid(nonce, "partition-a"));
-        // A different replica reading the same durable store agrees.
-        Assert.True(
-            new DatabaseDpopNonceStore(state).IsValid(nonce, "partition-a"));
+        Assert.True(rolling.IsValid(nonce, "partition-a"));
+        Assert.False(database.IsValid(nonce, "partition-a"));
+    }
+
+    [Fact]
+    public void Rolling_nonce_store_still_accepts_a_durable_nonce_from_the_previous_release()
+    {
+        // A replica still on the previous release issues into the durable
+        // store; its challenge has to keep working for its sixty seconds.
+        var database = new DatabaseDpopNonceStore(new InMemoryProtocolStateStore());
+        var previousRelease = database.Issue("partition-e");
+
+        Assert.True(Rolling(database).IsValid(previousRelease, "partition-e"));
     }
 
     [Fact]
     public void Rolling_nonce_store_still_accepts_a_legacy_cache_nonce()
     {
-        // During a rolling deployment a not-yet-upgraded replica issues into
-        // the cache only; that challenge must keep working for its lifetime.
-        var cache = CreateCache();
-        var legacy = new DistributedDpopNonceStore(cache);
-        var rolling = new RollingDpopNonceStore(
-            new DatabaseDpopNonceStore(new InMemoryProtocolStateStore()),
-            legacy);
-
+        // Same for the release before that, which issued into the cache only.
+        var legacy = new DistributedDpopNonceStore(CreateCache());
         var legacyNonce = legacy.Issue("partition-b");
 
-        Assert.True(rolling.IsValid(legacyNonce, "partition-b"));
+        Assert.True(Rolling(legacy: legacy).IsValid(legacyNonce, "partition-b"));
     }
 
     [Fact]
     public void Nonce_is_bound_to_its_partition()
     {
-        var rolling = new RollingDpopNonceStore(
-            new DatabaseDpopNonceStore(new InMemoryProtocolStateStore()),
-            new DistributedDpopNonceStore(CreateCache()));
+        var rolling = Rolling();
 
         var nonce = rolling.Issue("partition-c");
 

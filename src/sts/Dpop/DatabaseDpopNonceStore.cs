@@ -91,22 +91,39 @@ internal sealed class DatabaseDpopNonceStore : IDpopNonceStore
 }
 
 /// <summary>
-/// Issues from the durable store and accepts a nonce known to either backend.
+/// Issues stateless nonces and still accepts the ones the two earlier stores
+/// issued, for as long as a rolling deployment can produce them.
 /// </summary>
 /// <remarks>
-/// Issuance is database-only: a nonce has to come from one place to be a single
-/// value. Validation accepts the legacy cache as well, so a challenge issued by
-/// a not-yet-upgraded replica is still honored for its (60 second) lifetime
-/// during a rolling deployment.
+/// The durable store keeps <em>one</em> value per partition, so issuing a
+/// challenge overwrote the previous one: a client with two token requests in
+/// flight had its first retry fail because of its second request. The handler
+/// that issues challenges was written for a stateless store and says so in its
+/// comments; the registration had drifted to this one (eval 2026-08-30, F-4,
+/// which fixed multi-replica convergence and did not notice the overwrite).
+///
+/// <see cref="ProtectedDpopNonceStore"/> keeps nothing. The nonce is its own
+/// proof — partition, expiry and entropy authenticated by Data Protection — so
+/// every nonce stays valid for its lifetime, concurrent challenges cannot
+/// displace each other, and there is no shared value for anyone to rotate. It
+/// converges across replicas through the key ring, which the host persists to
+/// the database and which the authentication cookies already depend on.
+///
+/// The durable and cache stores are validation-only here: a replica still on
+/// the previous release issues through them, and those challenges have to keep
+/// working for their sixty seconds. Remove both one release after this one.
 /// </remarks>
 internal sealed class RollingDpopNonceStore(
+    ProtectedDpopNonceStore issuer,
     DatabaseDpopNonceStore database,
     DistributedDpopNonceStore legacy) : IDpopNonceStore
 {
-    public string Issue(string partition) => database.Issue(partition);
+    public string Issue(string partition) => issuer.Issue(partition);
 
     public bool IsValid(string? nonce, string partition) =>
-        database.IsValid(nonce, partition) || legacy.IsValid(nonce, partition);
+        issuer.IsValid(nonce, partition)
+        || database.IsValid(nonce, partition)
+        || legacy.IsValid(nonce, partition);
 }
 
 /// <summary>

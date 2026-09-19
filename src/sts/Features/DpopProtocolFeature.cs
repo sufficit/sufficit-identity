@@ -38,9 +38,16 @@ internal sealed class DpopProtocolFeature : IProtocolFeature
                 sp.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>()),
             sp.GetService<Dpop.IDpopReplayCache>()));
 
-        // Partition-bound nonce (§8) with a durable primary, so a challenge
-        // issued by one replica is honored by whichever replica receives the
-        // retry. Payloads are encrypted through IKeyVault when it is enabled.
+        // Partition-bound, stateless nonce (§8): the nonce authenticates its
+        // own partition and expiry through the data protection key ring, which
+        // every replica shares, so any replica can honor any challenge and
+        // concurrent challenges never displace each other. The durable and
+        // cache stores below only validate what a previous release issued.
+        services.AddSingleton(sp => new Dpop.ProtectedDpopNonceStore(
+            sp.GetRequiredService<
+                Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>(),
+            ttl: null,
+            timeProvider: TimeProvider.System));
         services.AddSingleton<Dpop.IDpopNonceStore>(sp =>
             sp.GetRequiredService<Dpop.RollingDpopNonceStore>());
         services.AddSingleton(sp => new Dpop.DatabaseDpopNonceStore(
@@ -49,6 +56,7 @@ internal sealed class DpopProtocolFeature : IProtocolFeature
             timeProvider: TimeProvider.System,
             keyVault: sp.GetRequiredService<Sufficit.Identity.Vault.IKeyVault>()));
         services.AddSingleton(sp => new Dpop.RollingDpopNonceStore(
+            sp.GetRequiredService<Dpop.ProtectedDpopNonceStore>(),
             sp.GetRequiredService<Dpop.DatabaseDpopNonceStore>(),
             sp.GetRequiredService<Dpop.DistributedDpopNonceStore>()));
         // Concrete registration is separate so tests and deployment-specific
