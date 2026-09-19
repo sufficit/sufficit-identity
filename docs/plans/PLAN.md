@@ -3,6 +3,15 @@
 > **Status:** ACTIVE — this is the only plan in the repository.
 > **Consolidated:** 2026-09-19, from twelve separate plans, each reconciled
 > against the working tree before its items were carried over.
+> **Verified against the code on 2026-09-19.** Every item was checked against
+> the working tree, not against the plan it came from. Five turned out to be
+> already delivered and were deleted: the protocol feature registrar and the
+> feature-unit composition (`IProtocolFeature` and its eleven features), the
+> `#if APPLICATION_CONTRACTS` dual compilation, the systemd sandboxing, and
+> CIBA answering 404 when disabled. Four more were rewritten because the code
+> had moved further than the item admitted — SCIM extraction, session activity
+> writes, `AutoMigrate`, and the breached-password failure mode.
+>
 > **Rule:** finished work leaves this file and becomes an activity under
 > `../activities/`. Nothing is recorded here as done.
 
@@ -174,9 +183,11 @@ so every policy decision can drift between them.
 - [ ] Characterize every current token shape and migrate one grant at a time,
   comparing claims and token metadata before removing each legacy branch
 
-`ITokenGrantHandler` ×5 with `TokenGrantDispatcher`, and
-`IPrivilegedTokenMintingService` for personal/provisioning/operator tokens, are
-the halves that already exist.
+`ITokenGrantHandler` ×5 with `TokenGrantDispatcher`,
+`IPrivilegedTokenMintingService` for personal/provisioning/operator tokens, and
+`ITokenIssuancePolicyKernel` for scope attenuation are the pieces that already
+exist. The kernel attenuates scopes and nothing else — it is not the issuance
+service, and naming them alike would hide how much is still uncentralized.
 
 **Done when:** no grant has a parallel issuance path and every scope, resource
 and lifetime decision comes from one tested policy kernel.
@@ -226,8 +237,6 @@ client's proof, and concurrent replicas agree on accepted nonce state.
 
 ### B5 — CIBA trust boundary completion
 
-- [ ] Map CIBA services, routes and metadata as one feature unit, so disabled
-  means 404 and no advertisement (see F2)
 - [ ] **(operational)** Inventory current CIBA callers in Observe mode,
   provision the missing entitlements, then enforce per client
 - [ ] Run CIBA interoperability/conformance and approval-fatigue abuse tests
@@ -236,7 +245,10 @@ client's proof, and concurrent replicas agree on accepted nonce state.
   mismatched polling client, replay, concurrent poll/approval, rolling-deploy
   compatibility
 
-`ICibaClientPolicy` and the bound, displayed `binding_message` are in place.
+`ICibaClientPolicy` and the bound, displayed `binding_message` are in place,
+and `CibaProtocolFeature` already composes the whole capability as one unit:
+disabled answers 404 (`CibaController.cs:75`), the grant handler refuses, and
+the runtime capability is not advertised.
 
 ### B6 — JAR and JARM validation and key ownership
 
@@ -380,14 +392,6 @@ UnixSocket exception; production still has to choose the mode.
 - [ ] Inventory and rotate the legacy database and provider credentials and
   certificates, migrate `deploy/local/` to the approved secret store, and
   attach a redacted manifest with owner, version, state and retirement date
-
-### C7 — Release immutability
-
-- [ ] Make releases root-owned and read-only, restrict the writable state
-  directories, and harden the systemd unit with least-privilege sandboxing
-
-Root-owned bootstrap, unprivileged read-only preflight, certificate validation
-and hardened units are already covered by deployment tests.
 
 ---
 
@@ -633,31 +637,19 @@ versions at startup.
 
 ## F. Platform and architectural debt
 
-### F1 — The two remaining god-files
+### F1 — Posture contributors inside the feature contract
 
-`SufficitIdentityOptions` (1,812 lines) and `ServiceCollectionExtensions`.
+`IProtocolFeature` (`sts/Features/`) already gives each optional protocol its
+own `Validate`, `ConfigureServices`, `ConfigureServer`, `ConfigureValidation`,
+`ConfigureDiscovery` and `RuntimeCapabilities`, across eleven features. One
+hook from the original proposal is missing.
 
-- [ ] Extract a per-feature registrar (`AddDpop`, `AddFapi2`, …), each owning
-  its own options, wiring, posture contributor and discovery metadata
+- [ ] Add the posture contributor to the feature contract, so a feature owns
+  its production findings the same way it owns its discovery metadata (today
+  the findings live in four separate `IProductionPostureContributor`
+  implementations, which is how D1's coverage fell behind)
 
-`AuthorizationController` (1,569 → 687 lines), `ClientManagementService`
-(3,230 → 1,704) and `sts/ServiceCollectionExtensions` (2,073 → 1,337) were
-already decomposed.
-
-### F2 — Protocol modules as feature units
-
-- [ ] Make each protocol module register services, OpenIddict handlers,
-  validation, routes and metadata as one feature-on/off unit, so disabled means
-  404 and no advertisement (closes B5's first item too)
-
-### F3 — Remove the dual-compilation trick
-
-- [ ] Move the interfaces and DTOs still behind `#if APPLICATION_CONTRACTS`
-  into real files in `Application.Abstractions` and drop the external
-  `Compile Include`; Management then references them normally
-  (`Management/ServiceAccounts/ServiceAccountContracts.cs` is the last one)
-
-### F4 — One management operation executor
+### F2 — One management operation executor
 
 - [ ] Replace the `DemandAsync`/`TryWriteAuditAsync` pair repeated across six
   services with a `ManagementOperationExecutor`
@@ -667,41 +659,47 @@ already decomposed.
 made "audit this refusal" an explicit argument at the call site; the executor is
 the next step up.
 
-### F5 — SCIM decomposition and query processing
+### F3 — SCIM decomposition and query processing
 
 - [ ] Extract `IScimFilterParser` and a typed filter AST from
   `ScimProvisioningService`; translate only validated nodes to parameterized
-  LINQ
+  LINQ. Filtering is two regexes today — `EqualityFilterRegex` and
+  `MemberPathFilterRegex` — so equality is all a caller gets
 - [ ] Add `co`, `sw`, `ew`, logical composition and the multi-valued
   email/member filters current consumers need
-- [ ] Extract user and group provisioning services, repositories and a shared
-  PATCH applicator
+- [ ] Extract the repositories and promote the PATCH applicator to a shared
+  one; `NormalizePatchOperation`/`ValidatePatchRequest` are private statics in
+  `ScimProvisioningService.Support.cs`. The service is already split into
+  `.Users`, `.Groups` and `.Support`
 - [ ] Add bulk, sorting and ETags — intentionally unadvertised today; enable per
   demand, from this same extraction rather than a parallel contract
 - [ ] Tests: resource limits, parser timeout, invalid filter, MariaDB
   translation, interoperability
 
-### F6 — Sessions off the per-request write path
+### F4 — Sessions off the per-request write path
 
-- [ ] Introduce a cancellation-aware session repository with a shared cache,
-  bounded write-behind activity updates and explicit revocation invalidation
+- [ ] Introduce a cancellation-aware session repository with a shared cache and
+  explicit revocation invalidation. `OidcUserSessionTicketStore` already gates
+  the activity write behind an interval, so the unbounded per-request write is
+  gone; the repository, the shared cache and the cancellation contract are not
 - [ ] Define database/cache outage behaviour so a temporary storage failure
   neither creates an unbounded login outage nor accepts revoked sessions
   indefinitely
 - [ ] Multi-replica consistency, stale-cache, failover and cancellation tests
 
-### F7 — Schema migration out of the web process
+### F5 — Schema migration out of the web process
 
-- [ ] **(operational)** Keep `AutoMigrate=false` in production and remove the
-  web process's migration responsibility now that deployment automation has the
-  migrator
+- [ ] Remove the web process's migration responsibility now that deployment
+  automation has the migrator. `AutoMigrate` already defaults to `false`, and
+  `AllowedDatabaseNames` guards it, so this is about deleting the path rather
+  than turning a switch
 - [ ] Test two-replica startup, failed migration, retry and old-binary rollback
   against additive schema
 
 `helpers/sufficit-identity-migrator.service` and the
 `GET_LOCK('sufficit_identity_schema_migrator')` advisory lock already exist.
 
-### F8 — Provider fork retirement and provenance
+### F6 — Provider fork retirement and provenance
 
 - [ ] Validate the upstream EF Core 10 provider against the canonical MariaDB
   schema, migrations, concurrency behaviour and connection-pool settings
@@ -716,7 +714,7 @@ the next step up.
 - [ ] Run vulnerability and license scanning against the source and the final
   dependency graph
 
-### F9 — Supported MariaDB baseline
+### F7 — Supported MariaDB baseline
 
 CI and the provider configuration are pinned to MariaDB 10.4.34.
 
@@ -729,12 +727,12 @@ CI and the provider configuration are pinned to MariaDB 10.4.34.
 - [ ] Remove the 10.4 lane only after rollback and restore rehearsals succeed on
   the target
 
-### F10 — Fresh-install and additive SQL parity
+### F8 — Fresh-install and additive SQL parity
 
 - [ ] Compare the resulting legacy-schema state against the canonical
   fresh-install schema for every additive script through HEAD
 
-### F11 — Unambiguous normalized email identity
+### F9 — Unambiguous normalized email identity
 
 - [ ] **(operational)** Run the redacted duplicate report from script 083 and
   clean up, preserving existing accounts
@@ -743,7 +741,7 @@ CI and the provider configuration are pinned to MariaDB 10.4.34.
 Recovery, external-login, CIBA and passkey lookups already reject ambiguous
 normalized matches, and 083 provides the guarded nullable unique index.
 
-### F12 — Dynamic client registration lifecycle
+### F10 — Dynamic client registration lifecycle
 
 - [ ] Implement protected read, update, delete, secret rotation and the audit
   lifecycle
@@ -759,23 +757,27 @@ normalized matches, and 083 provides the guarded nullable unique index.
 Server-generated IDs and secrets, expiring single-use initial access tokens,
 central metadata validation and public-client PKCE are already covered.
 
-### F13 — Breached-password availability policy
+### F11 — Breached-password availability policy
 
-- [ ] Add `BreachedPasswordFailureMode = Allow | Deny | LocalFallback`, keeping
-  `Allow` as the compatibility default
+- [ ] Add the third mode. `BreachedPasswordFailureMode` exists with `FailOpen`
+  (the compatibility default) and `FailClosed`; `LocalFallback` is what is
+  missing, and `fail-open` already has a posture finding
 - [ ] Add a bounded local compromised-password fallback and cache successful
-  HIBP range responses
+  HIBP range responses — `BreachedPasswordValidator` caches nothing today
 - [ ] Timeout, upstream-error, malformed-response and recovery tests, plus
   degraded-mode metrics
 - [ ] **(operational)** Move regulated environments to `LocalFallback` or `Deny`
   only after audit telemetry characterizes latency and availability
 
-### F14 — GCM budget
+### F12 — GCM budget
 
-- [ ] Auto-rotate the DEK at its budget, or drive rotation from a durable OTel
-  counter
+- [ ] Auto-rotate the DEK at its budget, or drive rotation from a durable
+  counter. `VaultCryptographyTelemetry` warns at 80% and logs critical at 100%,
+  but it counts **per process** in a `ConcurrentDictionary`, so three replicas
+  reach the real budget while each reports a third of it. Automatic rotation is
+  disabled on purpose until the aggregated metric exists
 
-### F15 — Split operational and security contexts
+### F13 — Split operational and security contexts
 
 - [ ] Split the operational/security `DbContext`s and their migrations — only
   after transactional boundaries and outbox behaviour are defined. Splitting the
@@ -783,7 +785,7 @@ central metadata validation and public-client PKCE are already covered.
   cohesive methods, none over 137 lines, and the cost lands on hand-sequenced
   production SQL across a multimaster cluster
 
-### F16 — Security-critical protocol annotations
+### F14 — Security-critical protocol annotations
 
 - [ ] Remove comments claiming a guard is unconditional where composition makes
   it conditional
@@ -897,8 +899,8 @@ Deliberately after everything above; none of it is required for production.
 7. **E1** — enforcement first, UI last. E3's disable action waits on it.
 8. **E5, E6** — console consistency and the mobile pass; independent of the
    protocol work and safe to run in parallel with it.
-9. **E2, E4, E7, F1–F16** — as capacity allows, in the order the team prefers;
-   none blocks another except F2, which helps B5.
+9. **E2, E4, E7, F1–F14** — as capacity allows, in the order the team prefers;
+   none of them blocks another.
 10. **G** — conformance, audit, cutover and rehearsals, continuously, and G4
     before anyone calls the legacy migration finished.
 
@@ -921,11 +923,11 @@ Deliberately after everything above; none of it is required for production.
 
 | Retired plan | Now |
 |---|---|
-| `PLAN-GPT-5-REMAINING` | A1, A4, B1–B6, C1, C3, C5, C7, D3, D7, F2, F3, F5, F6, F7, F12, F15, G1, G2, G3 |
-| `PLAN-GLM-5-2-REMAINING` | A1, A2, A3, B1, C1, F5, F8, F13 |
-| `PLAN-SECURITY-HARDENING-WAVE-2` | A1, A2, A3, B2–B5, B7, B8, C3, C4, C5, D2, D4, F8–F12, F16, closure criteria |
-| `PLAN-FABLE-5-TRIAGE` | A4, A5, A6, B2, B3, C3, D1, D7, F1, F3, F4, F14 |
-| `PLAN-PRODUCTION-READINESS` | C2, C3, C6, D2, D5, D6, E8, F5, G2, G5, G6 |
+| `PLAN-GPT-5-REMAINING` | A1, A4, B1–B6, C1, C3, C5, D3, D7, F3, F4, F5, F10, F13, G1, G2, G3 |
+| `PLAN-GLM-5-2-REMAINING` | A1, A2, A3, B1, C1, F3, F6, F11 |
+| `PLAN-SECURITY-HARDENING-WAVE-2` | A1, A2, A3, B2–B5, B7, B8, C3, C4, C5, D2, D4, F6–F10, F14, closure criteria |
+| `PLAN-FABLE-5-TRIAGE` | A4, A5, A6, B2, B3, C3, D1, D7, F2, F12 |
+| `PLAN-PRODUCTION-READINESS` | C2, C3, C6, D2, D5, D6, E8, F3, G2, G5, G6 |
 | `PLAN-MANAGEMENT-APPLICATIONS` (+ `-NEXT`) | A2, E1–E4, E6 |
 | `PLAN-CLIENT-OPERATIONAL-STATE` | E1 |
 | `PLAN-MANAGEMENT-UI-STATE-CONSISTENCY` | E5 |
