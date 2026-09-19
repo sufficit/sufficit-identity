@@ -497,16 +497,207 @@ public sealed class ProductionPostureCheckTests
                 RejectBreached = true,
                 BreachedCheckFailureMode = BreachedPasswordFailureMode.FailClosed,
             },
+            // Both default to the permissive value and are reported until the
+            // deployment resolves them, so a "no advisories" assertion has to
+            // settle them first or it is really asserting the defaults.
+            ClaimScopeMap = new ClaimScopeMapOptions
+            {
+                IncludeUnmappedClaimsInAccessTokens = false,
+            },
         };
         var vault = new VaultOptions { Enabled = true, KeySource = "certificate" };
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:TokenExchange:Enabled"] = "true",
+            })
+            .Build();
 
         Assert.Empty(ProductionPostureCheck.EvaluateAdvisories(
             [
-                new StsProductionPostureContributor(root, new ConfigurationBuilder().Build()),
+                new StsProductionPostureContributor(root, configuration),
                 new VaultProductionPostureContributor(vault),
             ],
             new SecurityPostureOptions(),
             Now));
+    }
+
+    [Fact]
+    public void A_grant_outside_the_baseline_refuses_startup()
+    {
+        // The regression this exists for: ROPC was found enabled in a
+        // configuration nobody meant to ship. Blocking, so the boot that
+        // introduces it is the boot that reports it.
+        foreach (var legacy in new[]
+        {
+            new LegacyGrantsOptions { Password = true },
+            new LegacyGrantsOptions { None = true },
+        })
+        {
+            var findings = Evaluate(new StsProductionPostureContributor(
+                new SufficitIdentityOptions { LegacyGrants = legacy },
+                new ConfigurationBuilder().Build()));
+
+            var finding = Assert.Single(
+                findings,
+                f => f.Id == "legacy-grants-enabled");
+            Assert.Equal(ProductionPostureSeverity.Blocking, finding.Severity);
+        }
+
+        Assert.DoesNotContain(
+            Evaluate(new StsProductionPostureContributor(
+                new SufficitIdentityOptions(),
+                new ConfigurationBuilder().Build())),
+            f => f.Id == "legacy-grants-enabled");
+    }
+
+    [Theory]
+    // A wildcard, a bare scheme and an unsafe keyword each defeat the
+    // directive they are in.
+    [InlineData("script-src 'self' *; connect-src 'self'", true)]
+    [InlineData("script-src 'self'; connect-src 'self' https:", true)]
+    [InlineData("script-src 'self' 'unsafe-eval'; connect-src 'self'", true)]
+    [InlineData("script-src 'self' *.cdn.example; connect-src 'self'", true)]
+    // Other directives are not this finding's business, and a real origin is
+    // a decision rather than a hole.
+    [InlineData("script-src 'self'; connect-src 'self' https://api.example", false)]
+    [InlineData("img-src *; script-src 'self'; connect-src 'self'", false)]
+    public void A_permissive_csp_source_is_reported(string policy, bool reported)
+    {
+        var enforced = Evaluate(new StsProductionPostureContributor(
+            new SufficitIdentityOptions
+            {
+                Csp = new CspOptions { Policy = policy, ReportOnly = false },
+            },
+            new ConfigurationBuilder().Build()));
+
+        Assert.Equal(
+            reported,
+            enforced.Any(f => f.Id == "csp-policy-permissive-source"));
+
+        if (!reported)
+        {
+            return;
+        }
+
+        // Report-only blocks nothing, so the same policy is a calibration
+        // problem rather than a live hole.
+        var advisories = ProductionPostureCheck.EvaluateAdvisories(
+            [
+                new StsProductionPostureContributor(
+                    new SufficitIdentityOptions
+                    {
+                        Csp = new CspOptions { Policy = policy, ReportOnly = true },
+                    },
+                    new ConfigurationBuilder().Build()),
+            ],
+            new SecurityPostureOptions(),
+            Now);
+        Assert.Contains(advisories, f => f.Id == "csp-policy-permissive-source");
+    }
+
+    [Fact]
+    public void One_certificate_for_two_purposes_is_reported_without_blocking()
+    {
+        var advisories = ProductionPostureCheck.EvaluateAdvisories(
+            [
+                new StsProductionPostureContributor(
+                    new SufficitIdentityOptions
+                    {
+                        Certificates = new CertificatesOptions
+                        {
+                            SigningPath = "/etc/sufficit/identity/certificate.pfx",
+                            // The same file reached by a different spelling.
+                            EncryptionPath =
+                                "/etc/sufficit/identity/../identity/certificate.pfx",
+                        },
+                    },
+                    new ConfigurationBuilder().Build()),
+            ],
+            new SecurityPostureOptions(),
+            Now);
+
+        // Same file spelled two different ways is still one key.
+        Assert.Contains(
+            advisories,
+            f => f.Id == "certificate-purpose-not-separated");
+
+        // Advisory on purpose: production is in this state and cannot leave it
+        // until a replacement certificate can be generated on the server.
+        // Blocking would take the service down over a known, unresolvable one.
+        Assert.DoesNotContain(
+            Evaluate(new StsProductionPostureContributor(
+                new SufficitIdentityOptions
+                {
+                    Certificates = new CertificatesOptions
+                    {
+                        SigningPath = "/etc/sufficit/identity/certificate.pfx",
+                        EncryptionPath = "/etc/sufficit/identity/certificate.pfx",
+                    },
+                },
+                new ConfigurationBuilder().Build())),
+            f => f.Id == "certificate-purpose-not-separated");
+
+        Assert.DoesNotContain(
+            ProductionPostureCheck.EvaluateAdvisories(
+                [
+                    new StsProductionPostureContributor(
+                        new SufficitIdentityOptions
+                        {
+                            Certificates = new CertificatesOptions
+                            {
+                                SigningPath = "/etc/sufficit/identity/signing.pfx",
+                                EncryptionPath = "/etc/sufficit/identity/encryption.pfx",
+                            },
+                        },
+                        new ConfigurationBuilder().Build()),
+                ],
+                new SecurityPostureOptions(),
+                Now),
+            f => f.Id == "certificate-purpose-not-separated");
+    }
+
+    [Fact]
+    public void Permissive_defaults_are_reported_until_a_deployment_settles_them()
+    {
+        var advisories = ProductionPostureCheck.EvaluateAdvisories(
+            [
+                new StsProductionPostureContributor(
+                    new SufficitIdentityOptions
+                    {
+                        Passkeys = new AccountPasskeyOptions
+                        {
+                            RequireUserVerification = false,
+                        },
+                    },
+                    new ConfigurationBuilder().Build()),
+            ],
+            new SecurityPostureOptions(),
+            Now);
+
+        Assert.Contains(advisories, f => f.Id == "passkey-user-verification-optional");
+        // Both default to the permissive value, which is the point: a default
+        // nobody chose is still a decision the deployment is making.
+        Assert.Contains(advisories, f => f.Id == "access-token-unmapped-claims");
+        Assert.Contains(advisories, f => f.Id == "token-exchange-enabled-by-default");
+
+        // Declaring the switch is what clears it, not turning it off: an
+        // advisory that fires on every deployment teaches operators to skim.
+        Assert.DoesNotContain(
+            ProductionPostureCheck.EvaluateAdvisories(
+                [
+                    new StsProductionPostureContributor(
+                        new SufficitIdentityOptions(),
+                        new ConfigurationBuilder()
+                            .AddInMemoryCollection(new Dictionary<string, string?>
+                            {
+                                ["Sufficit:Identity:TokenExchange:Enabled"] = "true",
+                            })
+                            .Build()),
+                ],
+                new SecurityPostureOptions(),
+                Now),
+            f => f.Id == "token-exchange-enabled-by-default");
     }
 
     private static IReadOnlyList<ProductionPostureFinding> Evaluate(

@@ -374,27 +374,7 @@ UnixSocket exception; production still has to choose the mode.
 
 ## D. Production posture and configuration
 
-### D1 — Production posture check coverage
-
-`ProductionPostureCheck` with its `Acknowledgement` contract is the repository's
-best security pattern, and the cheapest way to turn every configuration
-regression into a deliberate, attributed, expirable decision. Its coverage fell
-behind the configuration surface. Findings still missing:
-
-- [ ] `LegacyGrants:Password`/`None=true` — would have caught the ROPC
-  regression at boot
-- [ ] Token exchange enabled with an empty allow-list
-- [ ] CSP policy *content* carrying wildcards in `connect-src`/`script-src`
-  (the existing `csp-report-only` finding reports the mode, not the policy)
-- [ ] Signing and encryption thumbprints equal in production
-- [ ] Passkey with `RequireUserVerification=false` (A5 made this a
-  deliberate, configurable relaxation; production should be told when a
-  deployment takes it)
-- [ ] `IncludeUnmappedClaimsInAccessTokens=true`
-
-`vault-kek-in-data-protection` is in place and covers the KEK source finding.
-
-### D2 — CSP from telemetry to enforcement
+### D1 — CSP from telemetry to enforcement
 
 - [ ] **(operational)** Inventory the actual image, style and script origins
   against the rendered UI
@@ -409,19 +389,19 @@ Procedure: [`RUNBOOK-CSP-CALIBRATION.md`](../runbooks/RUNBOOK-CSP-CALIBRATION.md
 The placeholder external image host and the websocket wildcards were already
 removed from the three servers.
 
-### D3 — Public origin enforcement
+### D2 — Public origin enforcement
 
 - [ ] **(operational)** Inventory the proxy paths and public hosts, eliminate
   request-derived security URLs, and switch `PublicOrigin.Mode` to `Enforce`
 
-### D4 — Explicit deployment topology
+### D3 — Explicit deployment topology
 
 - [ ] **(operational)** Inventory the current production topology, configure it
   explicitly, then make `FailOnUntrustedProxy`/`RequireShared` derived
   fail-closed requirements
 - [ ] Add a two-replica DPoP/CIBA/passkey smoke test
 
-### D5 — Enforcement-mode inventory per environment **(operational)**
+### D4 — Enforcement-mode inventory per environment **(operational)**
 
 - [ ] For each environment, inventory SCIM, token exchange, personal tokens,
   CIBA, credential mutations, public origin and Management; remove every
@@ -432,7 +412,7 @@ The posture check already reports `ciba-client-policy-observe`,
 `personal-tokens-observe`, `token-exchange-provenance-observe` and
 `credential-mutations-step-up-audit` — this item is the pass that empties them.
 
-### D6 — Real shared cache
+### D5 — Real shared cache
 
 - [ ] **(operational)** Configure the real Redis `IDistributedCache` in every
   environment and pass the issuance/consumption/replay rehearsal across
@@ -441,7 +421,7 @@ The posture check already reports `ciba-client-policy-observe`,
 `AddStackExchangeRedisCache` is wired and `HostStartupGuards` refuses to scale
 out without it; the multi-replica rehearsal is the missing evidence.
 
-### D7 — Distributed abuse protection
+### D6 — Distributed abuse protection
 
 Lockout is 5 failures in 5 minutes, and the limiter partitions by IP.
 
@@ -626,7 +606,9 @@ hook from the original proposal is missing.
 - [ ] Add the posture contributor to the feature contract, so a feature owns
   its production findings the same way it owns its discovery metadata (today
   the findings live in four separate `IProductionPostureContributor`
-  implementations, which is how D1's coverage fell behind)
+  implementations, one of which carries every STS finding regardless of which
+  feature owns the setting — which is how the coverage fell behind the
+  configuration surface in the first place)
 
 ### F2 — One management operation executor
 
@@ -862,13 +844,16 @@ Deliberately after everything above; none of it is required for production.
 
 ## Execution order
 
-1. **D1** — the cheapest leverage in the list: it turns every future
-   configuration regression into an explicit, attributed, expirable decision.
-   A5 (passkey assurance) and A6 (three small defects) were delivered on
-   2026-09-19, see
-   [`202609191500-enumeration-legacy-grants-revoker.md`](../activities/202609191500-enumeration-legacy-grants-revoker.md)
+1. **Done.** A5, A6 and D1 were delivered on 2026-09-19:
+   [`202609191500-enumeration-legacy-grants-revoker.md`](../activities/202609191500-enumeration-legacy-grants-revoker.md),
+   [`202609191700-passkey-assurance.md`](../activities/202609191700-passkey-assurance.md)
    and
-   [`202609191700-passkey-assurance.md`](../activities/202609191700-passkey-assurance.md).
+   [`202609191900-posture-check-coverage.md`](../activities/202609191900-posture-check-coverage.md).
+   Three of D1's new findings are advisories that every deployment sees until
+   it settles them — `access-token-unmapped-claims` is B2's work,
+   `certificate-purpose-not-separated` is C3's, and
+   `token-exchange-enabled-by-default` clears when D4 declares the switch. They
+   are the plan made visible at startup.
 2. **C1, then C3** — establish the plaintext boundary before removing any
    compatibility path. C3 is blocked on the PFX problem and needs the
    generate-on-server approach first.
@@ -877,8 +862,10 @@ Deliberately after everything above; none of it is required for production.
 4. **B1** — the issuance kernel, one grant at a time under characterization
    tests. B2, B3 and B5's kernel item depend on it; do not start them first.
 5. **B4, B6, B7, B8** — independent of the kernel, each small.
-6. **D5, D3, D4, D6** — the enforcement and topology inventories, together, per
-   environment. They are what actually turns Observe into Enforce.
+6. **D4, D2, D3, D5** — the enforcement and topology inventories, together, per
+   environment. They are what actually turns Observe into Enforce, and they
+   are what clears the advisories the posture check now reports at every
+   startup.
 7. **E1** — enforcement first, UI last. E3's disable action waits on it.
 8. **E5, E6** — console consistency and the mobile pass; independent of the
    protocol work and safe to run in parallel with it.
@@ -906,11 +893,11 @@ Deliberately after everything above; none of it is required for production.
 
 | Retired plan | Now |
 |---|---|
-| `PLAN-GPT-5-REMAINING` | A1, A4, B1–B6, C1, C3, C5, D3, D7, F3, F4, F5, F10, F13, G1, G2, G3 |
+| `PLAN-GPT-5-REMAINING` | A1, A4, B1–B6, C1, C3, C5, D2, D6, F3, F4, F5, F10, F13, G1, G2, G3 |
 | `PLAN-GLM-5-2-REMAINING` | A1, A2, A3, B1, C1, F3, F6, F11 |
-| `PLAN-SECURITY-HARDENING-WAVE-2` | A1, A2, A3, B2–B5, B7, B8, C3, C4, C5, D2, D4, F6–F10, F14, closure criteria |
-| `PLAN-FABLE-5-TRIAGE` | A4, B2, B3, C3, D1, D7, F2, F12 |
-| `PLAN-PRODUCTION-READINESS` | C2, C3, C6, D2, D5, D6, E8, F3, G2, G5, G6 |
+| `PLAN-SECURITY-HARDENING-WAVE-2` | A1, A2, A3, B2–B5, B7, B8, C3, C4, C5, D1, D3, F6–F10, F14, closure criteria |
+| `PLAN-FABLE-5-TRIAGE` | A4, B2, B3, C3, D6, F2, F12 |
+| `PLAN-PRODUCTION-READINESS` | C2, C3, C6, D1, D4, D5, E8, F3, G2, G5, G6 |
 | `PLAN-MANAGEMENT-APPLICATIONS` (+ `-NEXT`) | A2, E1–E4, E6 |
 | `PLAN-CLIENT-OPERATIONAL-STATE` | E1 |
 | `PLAN-MANAGEMENT-UI-STATE-CONSISTENCY` | E5 |
