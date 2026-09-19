@@ -41,6 +41,53 @@ public sealed class AuthorizationReauthenticationPolicyTests
             Now));
     }
 
+    [Fact]
+    public void A_remembered_second_factor_requires_the_ceremony()
+    {
+        // Owner's decision, 2026-09-20: a trusted-device cookie operates
+        // Management but does not mint tokens. The ceremony runs here rather
+        // than leaving the relying party to reject an insufficient token —
+        // an app that checks amr and redirects without prompt=login would
+        // otherwise get the same session and the same token forever.
+        var remembered = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim("amr", "pwd"),
+                new Claim("amr", "mfa"),
+                new Claim("auth_time", Now.ToUnixTimeSeconds().ToString()),
+                new Claim(
+                    Sufficit.Identity.Application.Security.MfaEvidencePolicy
+                        .RememberedSecondFactorClaimType,
+                    "true"),
+            ],
+            "test"));
+
+        Assert.True(AuthorizationReauthenticationPolicy.IsRequired(
+            new OpenIddictRequest(),
+            remembered,
+            Now));
+    }
+
+    [Fact]
+    public void A_second_factor_presented_in_this_session_does_not()
+    {
+        // The other half of the loop guard: once the ceremony has run, the
+        // session that comes back has no mark, so the next pass does nothing
+        // and the request proceeds.
+        var fresh = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim("amr", "pwd"),
+                new Claim("amr", "otp"),
+                new Claim("amr", "mfa"),
+                new Claim("auth_time", Now.ToUnixTimeSeconds().ToString()),
+            ],
+            "test"));
+
+        Assert.False(AuthorizationReauthenticationPolicy.IsRequired(
+            new OpenIddictRequest(),
+            fresh,
+            Now));
+    }
+
     [Theory]
     [InlineData(899, false)]
     [InlineData(900, false)]

@@ -606,6 +606,10 @@ public static partial class ServiceCollectionExtensions
                     AuthenticationContextProjector.AuthenticationTimeClaimType,
                     OidcSessionClaimsPrincipalFactory.AssuranceLevelClaimType,
                     AuthenticationContextProjector.AuthenticationContextClassClaimType,
+                    // Without this the mark is lost on the first renewal and a
+                    // remembered second factor silently becomes indistinguishable
+                    // from one presented in this session.
+                    MfaEvidencePolicy.RememberedSecondFactorClaimType,
                 })
                 {
                     var currentClaims = currentIdentity

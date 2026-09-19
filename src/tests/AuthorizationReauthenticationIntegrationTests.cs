@@ -118,6 +118,94 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
     }
 
     [Fact]
+    public async Task A_remembered_second_factor_is_challenged_and_then_proceeds()
+    {
+        // The whole point of running the ceremony here rather than letting the
+        // relying party reject the token: this test asserts both halves, and
+        // the second half is the one that proves there is no loop.
+        var username = $"remembered-mfa-{Guid.NewGuid():N}";
+        string authenticatorKey;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var users = scope.ServiceProvider
+                .GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await TestDataSeeder.CreateUserAsync(
+                users,
+                username,
+                TestDataSeeder.DefaultPassword);
+            Assert.True((await users.ResetAuthenticatorKeyAsync(user)).Succeeded);
+            authenticatorKey = (await users.GetAuthenticatorKeyAsync(user))!;
+            Assert.True((await users.SetTwoFactorEnabledAsync(user, true)).Succeeded);
+            await EnsureClientAsync(scope.ServiceProvider);
+        }
+
+        using var client = factory.CreateClient(
+            new WebApplicationFactoryClientOptions
+            {
+                AllowAutoRedirect = false,
+                BaseAddress = new Uri("https://identity.tests.local"),
+            });
+
+        // A session whose second factor came from a trusted-device cookie:
+        // recent, and carrying amr=mfa, so nothing else would challenge it.
+        await TestOnlyEndpoints.SignInAsync(
+            client,
+            username,
+            rememberedMfa: true,
+            authenticatedAt: DateTimeOffset.UtcNow);
+
+        // The mark has to survive the cookie round trip and the
+        // security-stamp validator's principal rebuild, which carries over an
+        // explicit list of claim types and drops everything else.
+        Assert.Contains(
+            "identity:mfa_remembered",
+            await client.GetStringAsync("/test-only/claims"));
+
+        using var challenged = await client.GetAsync(PlainAuthorizationUrl());
+        Assert.Equal(HttpStatusCode.Redirect, challenged.StatusCode);
+        Assert.StartsWith(
+            "/account/reauthenticate?",
+            challenged.Headers.Location!.OriginalString,
+            StringComparison.Ordinal);
+
+        using var begin = await client.GetAsync(challenged.Headers.Location);
+        Assert.Equal(HttpStatusCode.Redirect, begin.StatusCode);
+        var secondFactor = new Uri(
+            new Uri("https://identity.tests.local"),
+            begin.Headers.Location!);
+        Assert.StartsWith(
+            "/account/loginwith2fa?",
+            begin.Headers.Location!.OriginalString,
+            StringComparison.Ordinal);
+
+        var query = QueryHelpers.ParseQuery(secondFactor.Query);
+        var antiforgery = await TestOnlyEndpoints.GetAntiforgeryTokenAsync(client);
+        using var mfaResponse = await client.PostAsync(
+            "/account/login/2fa",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["Code"] = CurrentAuthenticatorCode(authenticatorKey),
+                ["RememberMe"] = "true",
+                ["RememberClient"] = "false",
+                ["ReturnUrl"] = query["returnUrl"].ToString(),
+                ["__RequestVerificationToken"] = antiforgery,
+            }));
+        Assert.Equal(HttpStatusCode.Redirect, mfaResponse.StatusCode);
+
+        // Back to the same authorization request: the factor was presented in
+        // this session now, so it goes through to the client instead of
+        // arriving here again.
+        using var completed = await client.GetAsync(query["returnUrl"].ToString());
+        Assert.Equal(HttpStatusCode.Redirect, completed.StatusCode);
+        Assert.StartsWith(
+            RedirectUri,
+            completed.Headers.Location!.OriginalString,
+            StringComparison.Ordinal);
+        Assert.False(QueryHelpers.ParseQuery(completed.Headers.Location.Query)
+            .ContainsKey("error"));
+    }
+
+    [Fact]
     public async Task Recent_session_completes_authorization_without_confirmation()
     {
         var username = $"recent-auth-current-{Guid.NewGuid():N}";
@@ -278,6 +366,26 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
             form);
         Assert.Equal(HttpStatusCode.Created, status);
         return body.GetProperty("request_uri").GetString()!;
+    }
+
+    /// <summary>
+    /// An ordinary authorization request: no <c>prompt</c>, no <c>max_age</c>.
+    /// Nothing in it asks for a ceremony, so whatever challenges it came from
+    /// the session itself.
+    /// </summary>
+    private static string PlainAuthorizationUrl()
+    {
+        var (_, challenge) = Pkce.CreatePair();
+        return QueryHelpers.AddQueryString("/connect/authorize", new Dictionary<string, string?>
+        {
+            ["client_id"] = ClientId,
+            ["redirect_uri"] = RedirectUri,
+            ["response_type"] = "code",
+            ["scope"] = "openid profile",
+            ["code_challenge"] = challenge,
+            ["code_challenge_method"] = "S256",
+            ["state"] = Guid.NewGuid().ToString("N"),
+        });
     }
 
     private static string DirectAuthorizationUrl(int maxAge)
