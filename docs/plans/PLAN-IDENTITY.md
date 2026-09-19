@@ -12,6 +12,15 @@
 > had moved further than the item admitted — SCIM extraction, session activity
 > writes, `AutoMigrate`, and the breached-password failure mode.
 >
+> **Re-verified on 2026-09-20 by reading the code, not by searching for
+> symbols.** The first pass trusted that a missing type meant missing work,
+> and it was wrong often enough to matter: the tenant machinery (A1) had been
+> removed by decision, JAR/JARM (B6) was built and only unproven, the DPoP
+> nonce (B4) had the right store written and the wrong one registered. This
+> pass corrected A3, A4, B3, B5, C4, D1, D6 and E4 to what the code actually
+> does, and marks one item **(decision)** — A4's remembered-MFA question,
+> where an evaluation asked the plan to reverse a deliberate fix.
+>
 > **Rule:** finished work leaves this file and becomes an activity under
 > `../activities/`. Nothing is recorded here as done.
 >
@@ -123,12 +132,17 @@ boundary that decision rejected. What SCIM lacks is a decision per
 - [ ] Require MFA for destructive human/delegated operations; require an
   explicit destructive-operation permission plus mTLS or `private_key_jwt`/DPoP
   for client-credentials callers
-- [ ] Add an Observe mode that audits the client and the scope decision
-  independently
-- [ ] Always require an authenticated, allow-listed client outside Development;
-  an empty production allow-list fails startup once the inventory is complete
-- [ ] Tests: per-operation refusal, password reset, delete, group nesting and
-  allow-list bypass
+- [ ] Add a posture finding for an **empty** production allow-list: today
+  `RequireAllowedClient=true` with no ids refuses every client at request time,
+  which is safe but silent until someone provisions
+- [ ] Tests: per-operation refusal, password reset, delete and group nesting
+
+Already in place, verified 2026-09-20: `ScimOptions.RequireAllowedClient`
+(default `true`), `ClientPolicyMode` `Observe`/`Enforce`, `RequireScope`
+independent of the client decision, `RequireMfa`, the
+`ScimAuthorizationAuditFilter` auditing both decisions, and posture findings
+`scim-client-allow-list-disabled`, `scim-client-policy-observe` and
+`scim-mfa-disabled`.
 
 **Done when:** a client allowed to provision cannot delete or reset a password
 without being separately permitted to, with evidence appropriate to its type.
@@ -137,10 +151,16 @@ without being separately permitted to, with evidence appropriate to its type.
 
 - [ ] **(operational)** Change credential-mutation step-up from `Audit` to
   `Enforce` after current sessions and UI flows pass canary checks
-- [ ] Stop honouring a remembered-MFA device wherever step-up is demanded — the
-  `force_mfa` path already does this; extend it to every remembered-device
-  projection. Shorten the default lifetime and bind the cookie to the security
-  stamp (today `amr=mfa` can survive 90 days)
+- [ ] **(decision)** Should a remembered-MFA device satisfy the Management MFA
+  requirement? Today it does, **on purpose**: `9957d6d` (2026-08-14, "preserve
+  remembered MFA sessions") projects `amr=mfa` from the trusted-device cookie so
+  operators are not rejected by Management after every login. The Fable 5
+  evaluation (M-8, 2026-08-15) asked for the opposite a day later, without
+  addressing that fix. Both positions are defensible; the plan does not get to
+  reverse the owner's choice. What M-8 also asked for is already done:
+  `/account/reauthenticate` signs the remembered cookie out before requiring
+  the second factor, the cookie is validated against the security stamp, and
+  its lifetime defaults to 30 days (`RememberedMfaLifetimeDays`, clamped 1–90)
 - [ ] Replace the six places that set `amr` for MFA with a single
   `IMfaEvidencePolicy` in `Application.Abstractions`
 - [ ] End-to-end tests proving a real MFA login satisfies Management and SCIM
@@ -192,19 +212,21 @@ the inventory and the default flip are what remain.
 
 ### B3 — Token exchange provenance and delegation
 
-- [ ] Add a closed actor/presenter allow-list, `may_act` semantics,
-  delegation-depth bounds and actor-chain audit
-- [ ] Make provenance unconditional (always require `azp` in the subject token)
-  **or** change the default to `Enabled=false`; today it is default-on with
-  conditional provenance
+- [ ] Bound the delegation depth. Each exchange nests the prior `act` inside
+  the new one (RFC 8693 §4.1, `TokenGrants.cs`), with no limit, so a chain can
+  grow by one level per exchange
 - [ ] **(operational)** Characterize legacy tokens in Observe mode and migrate
   issuers and claims before enforcement
-- [ ] Tests: missing `azp`, foreign issuer, mismatched client, personal token,
-  CIBA token, sender binding
+- [ ] Tests for a subject token from a foreign issuer, a personal token, a CIBA
+  token, and sender binding carried across the exchange
 
-`ISubjectTokenProvenancePolicy` rejects missing, ambiguous or disallowed
-presenter identity in Enforce mode today, and a posture finding reports the
-Observe state.
+Already in place, verified 2026-09-20: the actor allow-list
+(`AllowedClientIds`), `may_act`, refusal of an actor token issued to another
+client, confused-deputy refusal, and nested `act` chains — all tested.
+Provenance has been **unconditional** since `1d04868` (2026-08-30, F-1):
+evaluated on every exchange, with or without an allow-list; `Observe` remains
+only as a migration valve, reported by the posture check and cleared by D4.
+Missing and ambiguous `azp` are tested.
 
 ### B5 — CIBA trust boundary completion
 
@@ -212,9 +234,11 @@ Observe state.
   provision the missing entitlements, then enforce per client
 - [ ] Run CIBA interoperability/conformance and approval-fatigue abuse tests
   before enabling additional clients
-- [ ] Tests: public/unauthenticated callers, missing grant entitlement,
-  mismatched polling client, replay, concurrent poll/approval, rolling-deploy
-  compatibility
+- [ ] Tests for a public or unauthenticated initiator and for rolling-deploy
+  compatibility of the pending-request store. Missing entitlement, a
+  mismatched polling client, one-shot consumption, concurrent consume with one
+  winner, both client-authentication methods and disabled-404 are covered in
+  `CibaTests`
 
 `ICibaClientPolicy` and the bound, displayed `binding_message` are in place,
 and `CibaProtocolFeature` already composes the whole capability as one unit:
@@ -322,8 +346,11 @@ recovery-code material in `usertokens` with no application encryption adapter.
 
 ### C4 — Verified transport everywhere
 
-- [ ] Migrate RabbitMQ and SMTP to verified TLS, then enable each `RequireTls`
-  production gate
+- [ ] **(operational)** Turn on verified TLS for RabbitMQ (`UseTls`, then
+  `RequireTls`) and SMTP (`RequireTls`) in production. The gates, the TLS
+  server name and certificate-revocation checking are already in the code
+  (`RabbitMqEmailOptions`, `DefaultEmailSenders`), and plaintext logs a
+  warning at startup
 - [ ] **(operational)** Select `RequireVerifiedTls` — or the audited
   `PrivateSocket` exception — in each production deployment, after the CA or
   socket is provisioned
@@ -345,8 +372,10 @@ UnixSocket exception; production still has to choose the mode.
 
 - [ ] **(operational)** Inventory the actual image, style and script origins
   against the rendered UI
-- [ ] Replace the inline-style allowances with nonces, hashes or extracted
-  static styles
+- [ ] Extract the inline `style="…"` attributes from the management pages.
+  A per-request nonce for `<style>` elements already exists (`Csp:UseNonce`,
+  opt-in), but a nonce cannot authorize an attribute, and Firefox has no
+  `style-src-attr` — so the nonce stays off until the attributes are gone
 - [ ] Exercise every public and management flow in report-only mode, triage the
   violations, then enforce by deployment cohort — `ReportOnly=false`
 - [ ] Keep a bounded report-only rollback switch and record no sensitive URL or
@@ -390,7 +419,9 @@ out without it; the multi-replica rehearsal is the missing evidence.
 
 ### D6 — Distributed abuse protection
 
-Lockout is 5 failures in 5 minutes, and the limiter partitions by IP.
+Lockout is 5 failures in 5 minutes. The rate limiter is an in-process
+`PartitionedRateLimiter` — each replica counts on its own — partitioned by path,
+method and IP; there is no account dimension (verified 2026-09-20).
 
 - [ ] Implement shared partitions by endpoint, client, HMAC-normalized account
   and IP, with progressive delay and bounded lockout behaviour; use exponential
@@ -486,13 +517,15 @@ contract, integration, concurrency, cache and rollback tests pass.
 
 ### E4 — Application advanced settings (only where enforcement is real)
 
-- [ ] Per-application lifetimes
 - [ ] Typed public metadata (`description`, `client_uri`, `logo_uri`)
 - [ ] Application claims with allow-list and destinations
 - [ ] Advanced properties with a namespace and reserved keys
 - [ ] Per-client DPoP/JAR/CIBA/FAPI configuration only where the runtime
   actually honours it
 - [ ] New profiles only when each has a validator, an explanation and tests
+
+Per-application access, identity and refresh token lifetimes already exist on
+create and update (`ClientTokenLifetimePolicy`), as does per-client PAR.
 
 ### E5 — One result-state component for the Management console
 
