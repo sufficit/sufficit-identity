@@ -48,6 +48,7 @@ found it.
 
 ## Completed work (activities/)
 
+- [Six settings the production posture check was not looking at](activities/202609191900-posture-check-coverage.md) — legacy grants block startup; permissive CSP sources, one certificate for two purposes, token exchange on by default, optional passkey verification and unmapped claims are reported
 - [A passkey now claims only what the ceremony proved](activities/202609191700-passkey-assurance.md) — `amr=mfa` derived from the WebAuthn user-verification flag instead of asserted before the ceremony
 - [Account enumeration, legacy grants and a default interface method](activities/202609191500-enumeration-legacy-grants-revoker.md) — sign-in no longer reveals a locked or unconfirmed account to a wrong password; `implicit` refused outright and `password` gated on the deployment; the session revoker's dropped argument
 - [Evaluation remediation and god-service decomposition](activities/202608240940-fable-5-evaluation-remediation.md) — vault signature verification, audit retention and volume, administrative rate limiting, refusal-audit rule

@@ -173,5 +173,199 @@ public sealed class StsProductionPostureContributor(
                 "Sufficit:Identity:DeploymentTopology is not declared, so the host silently assumes SingleReplica and never applies the clustered contract — the distributed cache stays process-local even when the deployment is replicated.",
                 "Declare Sufficit:Identity:DeploymentTopology explicitly (SingleReplica, Clustered, BehindTrustedProxy or ClusteredBehindTrustedProxy).");
         }
+
+        // A grant outside the OAuth 2.1 baseline is a deliberate, dated
+        // decision or it is a regression. This one is blocking because it has
+        // already been both: ROPC was found enabled in a configuration file
+        // that nobody meant to ship (evaluation 2026-08-15, H-1), and a
+        // startup gate would have caught it at the boot that introduced it.
+        var legacy = new List<string>();
+        if (options.LegacyGrants.Password)
+        {
+            legacy.Add("password (ROPC)");
+        }
+
+        if (options.LegacyGrants.None)
+        {
+            legacy.Add("none (implicit access token)");
+        }
+
+        if (legacy.Count > 0)
+        {
+            yield return new(
+                "legacy-grants-enabled",
+                "Grants outside the OAuth 2.1 baseline are enabled: "
+                + string.Join(", ", legacy)
+                + ". They issue tokens without the protections the current "
+                + "baseline assumes.",
+                "Migrate the remaining consumers and set "
+                + "Sufficit:Identity:LegacyGrants:Password=false and "
+                + "Sufficit:Identity:LegacyGrants:None=false, or acknowledge "
+                + "this finding for the bounded migration window.");
+        }
+
+        // Deliberately not "the allow-list is empty": empty is the documented
+        // default and the OpenIddict grant permission is already a boundary,
+        // so that finding would fire on every deployment and teach operators
+        // to skim the list. What has no signal behind it is the grant being
+        // ON without anyone saying so.
+        if (tokenExchange.Enabled
+            && tokenExchange.AllowedClientIds.Count == 0
+            && string.IsNullOrWhiteSpace(
+                configuration["Sufficit:Identity:TokenExchange:Enabled"]))
+        {
+            yield return new(
+                "token-exchange-enabled-by-default",
+                "RFC 8693 token exchange is serving because it defaults to on, "
+                + "not because this deployment enabled it, and no actor "
+                + "allow-list narrows which applications may exchange tokens.",
+                "Declare Sufficit:Identity:TokenExchange:Enabled explicitly. If "
+                + "it stays on, list the exchanging applications under "
+                + "AllowedClientIds so a mis-provisioned grant permission is not "
+                + "sufficient on its own.",
+                Severity: ProductionPostureSeverity.Advisory);
+        }
+
+        if (options.Csp.Enabled)
+        {
+            var permissive = PermissiveCspSources(options.Csp.Policy).ToArray();
+            if (permissive.Length > 0)
+            {
+                yield return new(
+                    "csp-policy-permissive-source",
+                    "The Content-Security-Policy allows sources that defeat the "
+                    + "directive they are in: "
+                    + string.Join("; ", permissive) + ".",
+                    "Replace the wildcard, bare scheme or unsafe keyword with the "
+                    + "specific origins the UI actually loads, in "
+                    + "Sufficit:Identity:Csp:Policy.",
+                    // Report-only, the policy blocks nothing yet, so a weak
+                    // source is a calibration problem rather than a live hole.
+                    Severity: options.Csp.ReportOnly
+                        ? ProductionPostureSeverity.Advisory
+                        : ProductionPostureSeverity.Blocking);
+            }
+        }
+
+        if (!options.Certificates.RequirePurposeSeparation
+            && SharesCertificatePath(options.Certificates))
+        {
+            // Advisory, not blocking: production is in exactly this state and
+            // cannot leave it yet — the runtime rejects every replacement PFX
+            // generated off the server (see the PFX investigation activity).
+            // Refusing startup here would take the service down over a
+            // condition its operators already know about and cannot resolve.
+            yield return new(
+                "certificate-purpose-not-separated",
+                "The same certificate file is configured for token signing and "
+                + "token encryption, so one key compromise costs authenticity "
+                + "and confidentiality together.",
+                "Provision a dedicated encryption certificate, point "
+                + "Sufficit:Identity:Certificates:EncryptionPath at it and set "
+                + "RequirePurposeSeparation=true.",
+                Severity: ProductionPostureSeverity.Advisory);
+        }
+
+        if (!options.Passkeys.RequireUserVerification)
+        {
+            yield return new(
+                "passkey-user-verification-optional",
+                "Passkey ceremonies do not require user verification, so a "
+                + "passkey sign-in proves possession of the authenticator and "
+                + "not that the account owner is present.",
+                "Set Sufficit:Identity:Passkeys:RequireUserVerification=true. "
+                + "While it is off the server correctly stops claiming amr=mfa "
+                + "for those sign-ins, so any policy demanding a second factor "
+                + "will ask for one.",
+                Severity: ProductionPostureSeverity.Advisory);
+        }
+
+        if (options.ClaimScopeMap.IncludeUnmappedClaimsInAccessTokens)
+        {
+            yield return new(
+                "access-token-unmapped-claims",
+                "Claims with no scope mapping are released into access tokens, "
+                + "so a claim added for one consumer reaches every audience.",
+                "Inventory the claims in production, give each a required scope "
+                + "and destination, then set "
+                + "Sufficit:Identity:ClaimScopeMap:IncludeUnmappedClaimsInAccessTokens=false.",
+                Severity: ProductionPostureSeverity.Advisory);
+        }
     }
+
+    /// <summary>
+    /// Sources in <c>script-src</c> and <c>connect-src</c> that make the
+    /// directive meaningless: a wildcard, a bare scheme, or an unsafe keyword.
+    /// </summary>
+    private static IEnumerable<string> PermissiveCspSources(string? policy)
+    {
+        if (string.IsNullOrWhiteSpace(policy))
+        {
+            yield break;
+        }
+
+        foreach (var directive in policy.Split(
+            ';',
+            StringSplitOptions.RemoveEmptyEntries
+                | StringSplitOptions.TrimEntries))
+        {
+            var parts = directive.Split(
+                ' ',
+                StringSplitOptions.RemoveEmptyEntries
+                    | StringSplitOptions.TrimEntries);
+            if (parts.Length < 2)
+            {
+                continue;
+            }
+
+            var name = parts[0];
+            if (name is not ("script-src" or "connect-src"))
+            {
+                continue;
+            }
+
+            foreach (var source in parts.Skip(1))
+            {
+                if (IsPermissiveSource(source))
+                {
+                    yield return $"{name} allows {source}";
+                }
+            }
+        }
+    }
+
+    private static bool IsPermissiveSource(string source) =>
+        source == "*"
+        || source.StartsWith("*.", StringComparison.Ordinal)
+        // A bare scheme such as "https:" permits every host on it.
+        || (source.EndsWith(":", StringComparison.Ordinal)
+            && !source.Contains("//", StringComparison.Ordinal))
+        || source.Equals("'unsafe-inline'", StringComparison.OrdinalIgnoreCase)
+        || source.Equals("'unsafe-eval'", StringComparison.OrdinalIgnoreCase);
+
+    private static bool SharesCertificatePath(CertificatesOptions certificates)
+    {
+        var signing = CertificatePaths(
+            certificates.SigningPath,
+            certificates.SigningPaths);
+        var encryption = CertificatePaths(
+            certificates.EncryptionPath,
+            certificates.EncryptionPaths);
+        return signing.Count > 0
+            && encryption.Count > 0
+            && signing.Overlaps(encryption);
+    }
+
+    private static HashSet<string> CertificatePaths(
+        string? single,
+        IEnumerable<string> many) =>
+        new(
+            many.Prepend(single ?? string.Empty)
+                .Where(path => !string.IsNullOrWhiteSpace(path))
+                .Select(path => Path.GetFullPath(path.Trim())),
+            // The comparison is about the same file being named twice, so it
+            // follows the platform's own idea of path equality.
+            OperatingSystem.IsWindows()
+                ? StringComparer.OrdinalIgnoreCase
+                : StringComparer.Ordinal);
 }
