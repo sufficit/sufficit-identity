@@ -182,6 +182,12 @@ public sealed class ScimException(
 
     public static ScimException Conflict(string detail) =>
         new(StatusCodes.Status409Conflict, detail, "uniqueness");
+
+    /// <summary>
+    /// Authenticated, and not permitted to do this particular thing.
+    /// </summary>
+    public static ScimException Forbidden(string detail) =>
+        new(StatusCodes.Status403Forbidden, detail);
 }
 
 public sealed record ScimRequestContext(

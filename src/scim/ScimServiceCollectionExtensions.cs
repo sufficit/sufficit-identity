@@ -31,6 +31,8 @@ public static class ScimServiceCollectionExtensions
         services.AddControllers()
             .PartManager.ApplicationParts.Add(
                 new AssemblyPart(Assembly.GetExecutingAssembly()));
+        services.TryAddScoped<IScimOperationAuthorizationPolicy,
+            ScimOperationAuthorizationPolicy>();
         services.TryAddScoped<IScimProvisioningService,
             ScimProvisioningService>();
         services.TryAddSingleton<IScimPublicOriginResolver,

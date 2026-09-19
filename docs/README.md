@@ -48,6 +48,7 @@ found it.
 
 ## Completed work (activities/)
 
+- [SCIM decides each operation on its own terms](activities/202609201900-scim-per-operation.md) — provisioning no longer carries deletion and password reset with it
 - [What happens when the breach service does not answer](activities/202609201700-breached-password-fallback.md) — a third failure mode, a range cache, and a 200 that is not a range listing no longer reads as "not breached"
 - [CIBA: who may start one, and what happens mid-deploy](activities/202609201500-ciba-initiator-and-rolling-deploy.md) — anonymous and public initiators refused, and a request created by the previous release still honoured
 - [acr_values now asks for something](activities/202609201300-acr-values.md) — a relying party can request an assurance level and get the ceremony, with one attempt when the level is unreachable
