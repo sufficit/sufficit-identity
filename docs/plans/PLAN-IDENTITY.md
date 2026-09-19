@@ -212,13 +212,14 @@ the inventory and the default flip are what remain.
 
 ### B3 — Token exchange provenance and delegation
 
-- [ ] Bound the delegation depth. Each exchange nests the prior `act` inside
-  the new one (RFC 8693 §4.1, `TokenGrants.cs`), with no limit, so a chain can
-  grow by one level per exchange
 - [ ] **(operational)** Characterize legacy tokens in Observe mode and migrate
   issuers and claims before enforcement
 - [ ] Tests for a subject token from a foreign issuer, a personal token, a CIBA
   token, and sender binding carried across the exchange
+
+Delegation depth is bounded since 2026-09-20
+(`TokenExchange:MaxDelegationDepth`, default 5) —
+[`202609200500-delegation-depth.md`](../activities/202609200500-delegation-depth.md).
 
 Already in place, verified 2026-09-20: the actor allow-list
 (`AllowedClientIds`), `may_act`, refusal of an actor token issued to another
