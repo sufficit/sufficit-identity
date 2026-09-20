@@ -48,8 +48,11 @@ public sealed partial class FapiJarmTests
 
         // Announced because the authorization endpoint acts on them: a
         // session below what acr_values asks for runs the ceremony.
+        // GetString() is string?, and the collection overload of Assert.Equal
+        // cannot take a nullable type argument; an absent entry is a failure
+        // here anyway, so the values are asserted as non-null.
         var assuranceLevels = metadata.GetProperty("acr_values_supported")
-            .EnumerateArray().Select(value => value.GetString()).ToArray();
+            .EnumerateArray().Select(value => value.GetString()!).ToArray();
         Assert.Equal(
             ["urn:identity:acr:loa1", "urn:identity:acr:loa2", "urn:identity:acr:loa3"],
             assuranceLevels);
