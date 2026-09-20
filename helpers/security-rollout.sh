@@ -21,6 +21,10 @@ Commands:
   disable-mfa --confirmed        Emergency rollback for every MFA gate.
   enable-jarm                    Advertise and accept signed JARM responses.
   disable-jarm                   Disable JARM response modes.
+  enable-breach-check [mode]     Reject passwords found in known breaches.
+                                 mode: LocalFallback (default), FailOpen,
+                                 FailClosed.
+  disable-breach-check           Stop checking passwords against breaches.
 
 Set IDENTITY_HARDENING_ENV to operate on a file other than
 /etc/sufficit/identity/hardening.env. Restart the service after a change.
@@ -83,7 +87,9 @@ show_status() {
         Sufficit__Identity__Ciba__Enabled \
         Sufficit__Identity__Fapi2__Enabled \
         Sufficit__Identity__Jarm__Enabled \
-        Sufficit__Identity__SharedSignals__Enabled
+        Sufficit__Identity__SharedSignals__Enabled \
+        Sufficit__Identity__Password__RejectBreached \
+        Sufficit__Identity__Password__BreachedCheckFailureMode
     do
         printf '%s=%s\n' "${key}" "$(read_value "${key}")"
     done
@@ -105,6 +111,32 @@ case ${1:-} in
         write_value Sufficit__Identity__Csp__ReportOnly true
         write_value Sufficit__Identity__Csp__ReportUri "${report_uri}"
         echo "[rollout] CSP reporting prepared. Review violations before enforcement."
+        ;;
+    enable-breach-check)
+        # The check calls an external service on every password creation and
+        # change, so the failure mode is the decision, not the switch.
+        # LocalFallback answers from the cached ranges and the local list when
+        # that call cannot complete: an outage neither accepts a password from
+        # every breach corpus nor stops password changes across the
+        # deployment.
+        mode=${2:-LocalFallback}
+        case ${mode} in
+            LocalFallback|FailOpen|FailClosed) ;;
+            *)
+                echo "[rollout] Unknown failure mode '${mode}'." >&2
+                echo "Use LocalFallback, FailOpen or FailClosed." >&2
+                exit 2
+                ;;
+        esac
+        write_value Sufficit__Identity__Password__RejectBreached true
+        write_value Sufficit__Identity__Password__BreachedCheckFailureMode "${mode}"
+        echo "[rollout] Breached-password rejection enabled (${mode})."
+        echo "The host needs outbound HTTPS to api.pwnedpasswords.com; only the"
+        echo "first five characters of the hash ever leave it."
+        ;;
+    disable-breach-check)
+        write_value Sufficit__Identity__Password__RejectBreached false
+        echo "[rollout] Breached-password rejection disabled."
         ;;
     enforce-csp)
         if [[ $(read_value Sufficit__Identity__Csp__Enabled) != true ]]; then
