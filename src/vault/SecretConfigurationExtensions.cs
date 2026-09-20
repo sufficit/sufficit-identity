@@ -175,6 +175,14 @@ public static class SecretConfigurationExtensions
         return [.. Walk(configuration)
             .Where(entry => !string.IsNullOrWhiteSpace(entry.Value))
             .Where(entry => !mapped.Contains(entry.Key))
+            // The secret-store variables are the boundary, not a way around
+            // it. They reach configuration because environment variables are
+            // a configuration source, and reporting them said the opposite of
+            // what is true: every deployment that stores its secrets
+            // correctly was told it had not.
+            .Where(entry => !entry.Key.StartsWith(
+                EnvironmentSecretStore.Prefix,
+                StringComparison.OrdinalIgnoreCase))
             .Where(entry => !IsSecretBoundaryVariable(entry.Key))
             .Where(entry => LooksLikeSecret(entry.Key, entry.Value!))
             .Select(entry => entry.Key)
@@ -245,7 +253,12 @@ public static class SecretConfigurationExtensions
             return false;
         }
 
-        leaf = leaf.ToLowerInvariant();
+        // "API_KEY", "ApiKey" and "api-key" are the same word. Without this
+        // the environment-variable spelling matched nothing, so that whole
+        // channel was invisible to the scan.
+        leaf = new string([.. leaf
+            .ToLowerInvariant()
+            .Where(character => character is not ('_' or '-' or '.'))]);
         if (NotSecretPrefixes.Any(prefix =>
                 leaf.StartsWith(prefix, StringComparison.Ordinal))
             || NotSecretMarkers.Any(marker =>
