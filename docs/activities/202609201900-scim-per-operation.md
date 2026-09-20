@@ -54,3 +54,18 @@ Two of them go through the endpoint rather than the policy, because the policy
 being right proves nothing if the service never asks it: a DELETE is refused
 under `Enforce` and the same DELETE succeeds under `Observe`. Removing the
 demand from `DeleteUserAsync` turns the first back into `NoContent`.
+
+## What the per-operation decision was added on top of
+
+Read before writing, and unchanged by this work. `ScimOptions.RequireAllowedClient`
+defaults to `true`; `ClientPolicyMode` carries the same `Observe`/`Enforce`
+pair; `RequireScope` is decided independently of the client decision, so
+neither can silently stand in for the other; `RequireMfa` is enforced for
+people; and `ScimAuthorizationAuditFilter` audits both decisions rather than
+only the refusal.
+
+The posture check reports `scim-client-allow-list-disabled`,
+`scim-client-policy-observe` and `scim-mfa-disabled`, and — added on
+2026-09-20 — the advisory `scim-client-allow-list-empty`, which is what a
+deployment sees when SCIM is enabled with no allowed client and therefore
+refuses every provisioning request.
