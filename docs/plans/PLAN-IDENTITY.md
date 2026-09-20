@@ -719,9 +719,11 @@ central metadata validation and public-client PKCE are already covered.
 
 ### F11 — Breached-password availability policy
 
-- [ ] **(operational)** Move regulated environments to `LocalFallback` or
-  `FailClosed` once the `breached_password_check` telemetry characterises
-  latency and availability
+- [ ] **(operational)** Move to `FailClosed` once the
+  `breached_password_check` telemetry characterises latency and availability.
+  The three production nodes run `RejectBreached=true` with `LocalFallback`
+  since 2026-09-20 —
+  [`202609201200-breach-check-in-production.md`](../activities/202609201200-breach-check-in-production.md)
 
 `LocalFallback`, the range cache and the degraded-mode telemetry landed on
 2026-09-20 —
