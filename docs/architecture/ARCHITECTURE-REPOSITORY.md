@@ -4,6 +4,21 @@ Status: **consolidated, validated and deployed on 2026-08-01**
 
 ## Executive decision
 
+### Business-agnostic identity boundary
+
+Identity is a public, reusable identity provider, not a host for a customer's
+business authorization model. Product-specific permission keys, contextual
+identifiers, wildcard meanings and operational actions belong to resource
+servers. The provider stores generic claims, resolves current user/role claims
+and enforces configurable claim-delivery policies; it must not hard-code product
+keys or interpret their values. Deployment-specific key lists live outside this
+repository. Tests use neutral sample grants.
+
+The published self-information endpoint is `/connect/userinfo`, discoverable via
+OIDC metadata. Do not assume a `/me` alias. `/api/claims` is a management API, not
+a substitute that applications should access using elevated credentials.
+See [current claim delivery](../operations/USAGE-CURRENT-CLAIM-DELIVERY.md).
+
 Sufficit Identity has three top-level product modules:
 
 1. the Identity runtime and APIs;
