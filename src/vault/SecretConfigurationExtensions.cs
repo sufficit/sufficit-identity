@@ -180,9 +180,6 @@ public static class SecretConfigurationExtensions
             // a configuration source, and reporting them said the opposite of
             // what is true: every deployment that stores its secrets
             // correctly was told it had not.
-            .Where(entry => !entry.Key.StartsWith(
-                EnvironmentSecretStore.Prefix,
-                StringComparison.OrdinalIgnoreCase))
             .Where(entry => !IsSecretBoundaryVariable(entry.Key))
             .Where(entry => LooksLikeSecret(entry.Key, entry.Value!))
             .Select(entry => entry.Key)
