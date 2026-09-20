@@ -48,6 +48,7 @@ found it.
 
 ## Completed work (activities/)
 
+- [The secret scan was reporting the secret store](activities/202609202100-secret-scan-false-positive.md) — a finding that fired on every correctly-configured node, found in the production journal
 - [SCIM decides each operation on its own terms](activities/202609201900-scim-per-operation.md) — provisioning no longer carries deletion and password reset with it
 - [What happens when the breach service does not answer](activities/202609201700-breached-password-fallback.md) — a third failure mode, a range cache, and a 200 that is not a range listing no longer reads as "not breached"
 - [CIBA: who may start one, and what happens mid-deploy](activities/202609201500-ciba-initiator-and-rolling-deploy.md) — anonymous and public initiators refused, and a request created by the previous release still honoured

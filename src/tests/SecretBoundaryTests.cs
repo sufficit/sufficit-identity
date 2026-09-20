@@ -163,6 +163,41 @@ public sealed class SecretBoundaryTests
     }
 
     [Fact]
+    public void The_secret_store_variables_are_not_reported_as_loose_secrets()
+    {
+        // Exactly what production reported on 2026-09-19: environment
+        // variables are a configuration source, so the SUFFICIT_SECRET_*
+        // names appear in configuration like anything else. Reporting them
+        // told every correctly-configured deployment the opposite of the
+        // truth — these names are the boundary, not a way around it.
+        var configuration = Configuration(
+            ("SUFFICIT_SECRET_DATABASE_CONNECTION_STRING", "Server=db;Password=x"),
+            ("SUFFICIT_SECRET_IDENTITY_CERTIFICATES_SIGNING_PASSWORD", "abc"),
+            ("SUFFICIT_SECRET_IDENTITY_EXTERNAL_PROVIDERS_GOOGLE_CLIENT_SECRET", "abc"),
+            ("sufficit_secret_lowercase_password", "abc"));
+
+        Assert.Empty(
+            SecretConfigurationExtensions.FindUnmappedSecretLikeKeys(configuration));
+
+        // A secret in an environment variable that is not one of those is
+        // still outside the table, and still reported.
+        Assert.Contains(
+            "SOME_OTHER_API_KEY",
+            SecretConfigurationExtensions.FindUnmappedSecretLikeKeys(
+                Configuration(("SOME_OTHER_API_KEY", "abc"))));
+
+        // And the operational file beside it, which carries settings rather
+        // than secrets and spells configuration keys with double underscores.
+        Assert.Empty(SecretConfigurationExtensions.FindUnmappedSecretLikeKeys(
+            Configuration(
+                ("Sufficit:Identity:RateLimit:Enabled", "true"),
+                ("Sufficit:Identity:Csp:ReportUri", "/security/csp-report"),
+                ("Sufficit:Identity:Management:RequireMfa", "true"),
+                ("Sufficit:Vault:CertificatePath", "/etc/sufficit/identity/vault-kek.pfx"),
+                ("Sufficit:Identity:Database:ConnectionPool:ApplicationName", "Sufficit.Identity"))));
+    }
+
+    [Fact]
     public void The_unmapped_scan_is_quiet_on_this_repository_own_configuration()
     {
         // A scanner that fires on the shipped template is a scanner operators
