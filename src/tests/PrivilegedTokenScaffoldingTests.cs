@@ -1,4 +1,9 @@
+using System.Diagnostics.Metrics;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
 using Sufficit.Identity.Application.Security;
@@ -133,6 +138,74 @@ public sealed class PrivilegedTokenScaffoldingTests
 
         Assert.Empty(identity.GetResources());
         Assert.Empty(identity.GetClaims(Claims.Audience));
+    }
+
+    [Fact]
+    public async Task Every_privileged_token_is_recorded_once_by_the_surface_that_minted_it()
+    {
+        var measurements = new List<IReadOnlyDictionary<string, object?>>();
+        using var listener = new MeterListener
+        {
+            InstrumentPublished = (instrument, meterListener) =>
+            {
+                if (instrument.Name
+                    == "identity.security.privileged_tokens.minted")
+                {
+                    meterListener.EnableMeasurementEvents(instrument);
+                }
+            },
+        };
+        listener.SetMeasurementEventCallback<long>((_, _, tags, _) =>
+            measurements.Add(tags.ToArray().ToDictionary(
+                tag => tag.Key, tag => tag.Value, StringComparer.Ordinal)));
+        listener.Start();
+
+        var client = _factory.CreateClient();
+        var accessToken = await GetAccessTokenAsync(client);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var created = await client.PostAsJsonAsync(
+            "/api/account/tokens",
+            new
+            {
+                description = "issuance-record",
+                expiration = DateTimeOffset.UtcNow.AddDays(1),
+                scopes = new[] { TestDataSeeder.ScopeName },
+            });
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+
+        var personal = Assert.Single(measurements,
+            measurement => Equals(measurement["surface"], "PersonalAccessToken"));
+        Assert.Equal(true, personal["reference"]);
+
+        // The subject and the client belong in the log line; a metric tag
+        // carrying either would make the instrument unbounded.
+        Assert.All(measurements, measurement =>
+        {
+            Assert.DoesNotContain("subject", measurement.Keys);
+            Assert.DoesNotContain("client_id", measurement.Keys);
+            Assert.DoesNotContain("token", measurement.Keys);
+        });
+    }
+
+    private static async Task<string> GetAccessTokenAsync(HttpClient client)
+    {
+        using var response = await client.PostAsync(
+            "/connect/token",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["grant_type"] = "password",
+                ["username"] = TestDataSeeder.DefaultUsername,
+                ["password"] = TestDataSeeder.DefaultPassword,
+                ["client_id"] = TestDataSeeder.PasswordClientId,
+                ["client_secret"] = TestDataSeeder.PasswordClientSecret,
+                ["scope"] = TestDataSeeder.ScopeName,
+            }));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync());
+        return body.RootElement.GetProperty("access_token").GetString()!;
     }
 
     private async Task<ClaimsIdentity> ScaffoldAsync(
