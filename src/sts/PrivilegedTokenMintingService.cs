@@ -37,16 +37,6 @@ public sealed class PrivilegedTokenMintingService(
         identity.SetClaim(Claims.ClientId, request.ClientId);
         identity.SetClaim(Claims.Name,
             request.DisplayName ?? request.Subject);
-        identity.SetClaim(Claims.Scope, string.Join(' ', request.Scopes));
-        identity.SetScopes(request.Scopes);
-        identity.SetCreationDate(request.CreatedAtUtc);
-        identity.SetExpirationDate(request.ExpiresAtUtc);
-        if (string.IsNullOrWhiteSpace(request.Issuer))
-        {
-            throw new InvalidOperationException(
-                "A privileged token cannot be minted without a configured issuer.");
-        }
-        identity.SetClaim(Claims.Private.Issuer, request.Issuer);
 
         foreach (var (type, value) in request.StringClaims)
         {
@@ -58,27 +48,22 @@ public sealed class PrivilegedTokenMintingService(
             identity.AddClaim(new Claim(claim.Type, claim.Value));
         }
 
-        // Resources: resolve from the granted scopes unless the caller
-        // decided them; materialize both the private audience metadata (so
-        // introspection identifies the resource servers) and the public
-        // audience claim.
-        var resources = request.Resources;
-        if (resources is null)
+        if (string.IsNullOrWhiteSpace(request.Issuer))
         {
-            var resolved = new List<string>();
-            await foreach (var resource in scopeManager.ListResourcesAsync(
-                               identity.GetScopes(), cancellationToken))
-            {
-                resolved.Add(resource);
-            }
-            resources = resolved;
+            throw new InvalidOperationException(
+                "A privileged token cannot be minted without a configured issuer.");
         }
-        identity.SetResources(resources);
-        identity.SetClaims(Claims.Audience, [.. resources]);
 
-        // Bearer references: every claim reaches the access token only.
-        identity.SetDestinations(
-            request.Destinations ?? (_ => [Destinations.AccessToken]));
+        await ApplyScaffoldingAsync(
+            identity,
+            new PrivilegedTokenScaffold(
+                request.Scopes,
+                request.Issuer,
+                request.CreatedAtUtc,
+                request.ExpiresAtUtc,
+                request.Resources,
+                request.Destinations),
+            cancellationToken);
 
         return await MintPrincipalAsync(
             new ClaimsPrincipal(identity),
@@ -127,4 +112,41 @@ public sealed class PrivilegedTokenMintingService(
                 ?? DateTimeOffset.UtcNow.AddMinutes(5));
     }
 
+    public async ValueTask ApplyScaffoldingAsync(
+        ClaimsIdentity identity,
+        PrivilegedTokenScaffold scaffold,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(scaffold);
+
+        // GenerateTokenContext is lower-level than the token endpoint
+        // pipeline, so the public RFC claims are materialized here alongside
+        // OpenIddict's private metadata: introspection identifies the
+        // resource servers as audiences and returns their authorized claims.
+        identity.SetScopes(scaffold.Scopes);
+        identity.SetClaim(Claims.Scope, string.Join(' ', scaffold.Scopes));
+        identity.SetCreationDate(scaffold.CreatedAtUtc);
+        identity.SetExpirationDate(scaffold.ExpiresAtUtc);
+        identity.SetClaim(Claims.Private.Issuer, scaffold.Issuer);
+
+        var resources = scaffold.Resources;
+        if (resources is null)
+        {
+            var resolved = new List<string>();
+            await foreach (var resource in scopeManager.ListResourcesAsync(
+                               identity.GetScopes(), cancellationToken))
+            {
+                resolved.Add(resource);
+            }
+            resources = resolved;
+        }
+        identity.SetResources(resources);
+        identity.SetClaims(Claims.Audience, [.. resources]);
+
+        // Bearer references: every claim reaches the access token only unless
+        // the caller narrows it further.
+        identity.SetDestinations(
+            scaffold.Destinations ?? (_ => [Destinations.AccessToken]));
+    }
 }

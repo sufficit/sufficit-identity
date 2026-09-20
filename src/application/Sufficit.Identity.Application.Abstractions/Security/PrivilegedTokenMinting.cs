@@ -35,7 +35,52 @@ public interface IPrivilegedTokenMintingService
         bool referenceToken = true,
         bool persistPayload = true,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Stamps the protocol scaffolding every privileged token carries onto a
+    /// caller-built identity (B1): granted scopes as both the OpenIddict
+    /// scope set and the public <c>scope</c> claim, resources as both the
+    /// private resource set and the public <c>aud</c> claim, lifetime, issuer
+    /// and claim destinations.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="MintAsync"/> applies exactly this, so a caller that builds
+    /// its own identity — a personal token projects live user state, which no
+    /// flat request can express — gets the same token shape instead of a
+    /// second copy of these rules that drifts on the next protocol change.
+    /// The scaffolding is deliberately not a mint: the caller still decides
+    /// when to dispatch, and with which persistence flags.
+    /// </remarks>
+    ValueTask ApplyScaffoldingAsync(
+        ClaimsIdentity identity,
+        PrivilegedTokenScaffold scaffold,
+        CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// The decided protocol shape of a privileged token, applied verbatim by
+/// <see cref="IPrivilegedTokenMintingService.ApplyScaffoldingAsync"/>.
+/// </summary>
+public sealed record PrivilegedTokenScaffold(
+    IReadOnlyList<string> Scopes,
+    /// <summary>
+    /// Stamped as OpenIddict's private issuer metadata. Resolved by the
+    /// CALLER so each surface keeps its own missing-issuer error contract.
+    /// </summary>
+    string Issuer,
+    DateTimeOffset CreatedAtUtc,
+    DateTimeOffset ExpiresAtUtc,
+    /// <summary>
+    /// Audience/resource claims. When null, resources are resolved from the
+    /// scopes through the OpenIddict scope manager. Pass an empty list to
+    /// scaffold an audience-less token.
+    /// </summary>
+    IReadOnlyList<string>? Resources = null,
+    /// <summary>
+    /// Claim-destination selector; defaults to every claim reaching the
+    /// access token only — these are bearer references, never id tokens.
+    /// </summary>
+    Func<Claim, IEnumerable<string>>? Destinations = null);
 
 /// <summary>
 /// A fully-decided mint request. The service applies these verbatim —

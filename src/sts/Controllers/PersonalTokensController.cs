@@ -284,8 +284,6 @@ public sealed partial class PersonalTokensController : ControllerBase
             }
         }
 
-        identity.SetCreationDate(now);
-        identity.SetExpirationDate(expiration);
         // Preserve application scopes without baking a product vocabulary
         // into the generic STS. A scope is eligible when it is registered in
         // OpenIddict and is not one of the reserved administrative scopes;
@@ -352,20 +350,24 @@ public sealed partial class PersonalTokensController : ControllerBase
             });
         }
         var applicationScopes = issuanceDecision.EffectiveScopes;
-        identity.SetScopes(applicationScopes);
-        var resources = await ToListAsync(
-            _scopeManager.ListResourcesAsync(identity.GetScopes(), cancellationToken),
-            cancellationToken);
-        identity.SetResources(resources);
 
-        // GenerateTokenContext is intentionally lower-level than the regular
-        // token endpoint pipeline. Materialize the public RFC claims as well
-        // as OpenIddict's private metadata so introspection can identify the
-        // resource server as an audience and return its authorized claims.
-        identity.SetClaim(Claims.Scope, string.Join(' ', applicationScopes));
-        identity.SetClaims(Claims.Audience, [.. resources]);
-        identity.SetDestinations(GetPersonalTokenDestinations);
-        identity.SetClaim(Claims.Private.Issuer, ResolveIssuer());
+        // B1: scopes, resources, audience, lifetime, issuer metadata and
+        // destinations come from the shared minting service, which applies
+        // the same scaffolding to every privileged token. This controller
+        // keeps only the personal-token policy — the issuance decision, the
+        // attenuated scopes, the lifetime bounds and its own destinations,
+        // which are narrower than the default because a personal token
+        // releases profile claims only when the matching scope was granted.
+        await _minting.ApplyScaffoldingAsync(
+            identity,
+            new Application.Security.PrivilegedTokenScaffold(
+                applicationScopes,
+                ResolveIssuer(),
+                now,
+                expiration,
+                Resources: null,
+                Destinations: GetPersonalTokenDestinations),
+            cancellationToken);
 
         var principal = new ClaimsPrincipal(identity);
         var context = await GenerateAsync(
