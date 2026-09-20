@@ -183,17 +183,14 @@ they should be one.
   reference token. A contract covering both would be a union of two shapes,
   and the original item assumed a duplication that the A2/A3 extractions have
   since removed
-- [ ] Give the grant side the guarantee the privileged side now has: a grant
-  that signs in without claim destinations releases nothing, and nothing in
-  the type system says so. Seven handlers repeat `SetScopes` / `SetResources`
-  / `ApplyDpopBinding` / `SetDestinations` / `SignInResult`, which is
-  composition of shared helpers rather than duplicated policy — the resources
-  step genuinely differs per grant (token exchange intersects, the assertion
-  grant computes its own), so this is about enforcing the invariant, not
-  collapsing the lines
-- [ ] Extend the issuance record to the grant side. Privileged mints now emit
-  one counter and one log line from the single mint boundary; a grant-issued
-  token has no equivalent
+Delivered on 2026-09-20 —
+[`202609201400-one-issuance-boundary.md`](../activities/202609201400-one-issuance-boundary.md):
+`GrantOperations.SignIn` is the only way a grant returns, so claim
+destinations cannot be skipped, and it records the grant type while it is
+there. The `SetScopes` / `SetResources` / `ApplyDpopBinding` lines stay in the
+handlers on purpose — the resources step genuinely differs per grant (token
+exchange intersects, the assertion grant computes its own), so collapsing them
+would hide policy rather than centralize it.
 
 Already delivered, verified by reading the code on 2026-09-20:
 
@@ -204,10 +201,13 @@ Already delivered, verified by reading the code on 2026-09-20:
 | Subject rehydration, destinations, resources, DPoP binding | `GrantOperations.BuildIdentityAsync`, `GetDestinations`, `ResolveResourcesAsync`, `ApplyDpopBinding` |
 | Privileged token shape in one place | `IPrivilegedTokenMintingService.ApplyScaffoldingAsync` — scopes, `scope` claim, resources, `aud`, lifetime, issuer, destinations, applied for personal, provisioning and operator tokens |
 | Audit and metrics for privileged mints | `identity.security.privileged_tokens.minted` plus the mint log line |
+| Audit and metrics for grants | `identity.security.grant_tokens.issued`, tagged with the grant type |
+| Claim destinations cannot be skipped by a grant | `GrantOperations.SignIn`, the only return path |
 
-**Done when:** the grant side cannot sign in without destinations, its tokens
-are recorded the way privileged mints are, and the unified-service question is
-answered either way in writing.
+**Done when:** the unified-service question is answered either way in
+writing. The other two conditions — the grant side cannot sign in without
+destinations, and its tokens are recorded the way privileged mints are — were
+met on 2026-09-20.
 
 ### B2 — Claim release fails closed
 
