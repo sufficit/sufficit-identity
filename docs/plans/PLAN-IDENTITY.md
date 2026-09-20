@@ -173,29 +173,41 @@ ceremony runs at the authorization endpoint, before the token exists
 
 ### B1 — One issuance kernel
 
-PAT, CIBA and the OpenIddict grants still mint tokens through parallel paths,
-so every policy decision can drift between them.
+There are two issuance boundaries, not five, and the open question is whether
+they should be one.
 
-- [ ] Introduce `ITokenIssuanceService` and an issuance request/result contract
-  shared by the OpenIddict grants, personal tokens and CIBA
-- [ ] Centralize subject rehydration, claim destinations, scope/resource/
-  audience attenuation, lifetime, token format, sender constraint, persistence,
-  revocation, audit and metrics
-- [ ] Extract the remaining grant handlers behind it, leaving the current
-  routes as adapters
-- [ ] Move CIBA token creation into the kernel and the standard
-  token-processing boundary while keeping atomic one-shot consumption
-- [ ] Characterize every current token shape and migrate one grant at a time,
-  comparing claims and token metadata before removing each legacy branch
+- [ ] **(decision)** Decide whether an `ITokenIssuanceService` spanning both
+  boundaries is worth having. A grant signs in through OpenIddict's pipeline
+  and gets a JWT access token, an id token and possibly a refresh token; a
+  privileged mint dispatches `GenerateTokenContext` directly for a single
+  reference token. A contract covering both would be a union of two shapes,
+  and the original item assumed a duplication that the A2/A3 extractions have
+  since removed
+- [ ] Give the grant side the guarantee the privileged side now has: a grant
+  that signs in without claim destinations releases nothing, and nothing in
+  the type system says so. Seven handlers repeat `SetScopes` / `SetResources`
+  / `ApplyDpopBinding` / `SetDestinations` / `SignInResult`, which is
+  composition of shared helpers rather than duplicated policy — the resources
+  step genuinely differs per grant (token exchange intersects, the assertion
+  grant computes its own), so this is about enforcing the invariant, not
+  collapsing the lines
+- [ ] Extend the issuance record to the grant side. Privileged mints now emit
+  one counter and one log line from the single mint boundary; a grant-issued
+  token has no equivalent
 
-`ITokenGrantHandler` ×5 with `TokenGrantDispatcher`,
-`IPrivilegedTokenMintingService` for personal/provisioning/operator tokens, and
-`ITokenIssuancePolicyKernel` for scope attenuation are the pieces that already
-exist. The kernel attenuates scopes and nothing else — it is not the issuance
-service, and naming them alike would hide how much is still uncentralized.
+Already delivered, verified by reading the code on 2026-09-20:
 
-**Done when:** no grant has a parallel issuance path and every scope, resource
-and lifetime decision comes from one tested policy kernel.
+| Item | Where |
+|---|---|
+| Grants behind one dispatcher, routes as adapters | `Exchange()` is three lines into `TokenGrantDispatcher`; all seven grants are `ITokenGrantHandler` |
+| CIBA in the kernel and the standard boundary | `CibaGrantHandler` builds its identity through `GrantOperations` and returns `SignInResult`; `TryConsumeApproved` keeps the one-shot consumption atomic |
+| Subject rehydration, destinations, resources, DPoP binding | `GrantOperations.BuildIdentityAsync`, `GetDestinations`, `ResolveResourcesAsync`, `ApplyDpopBinding` |
+| Privileged token shape in one place | `IPrivilegedTokenMintingService.ApplyScaffoldingAsync` — scopes, `scope` claim, resources, `aud`, lifetime, issuer, destinations, applied for personal, provisioning and operator tokens |
+| Audit and metrics for privileged mints | `identity.security.privileged_tokens.minted` plus the mint log line |
+
+**Done when:** the grant side cannot sign in without destinations, its tokens
+are recorded the way privileged mints are, and the unified-service question is
+answered either way in writing.
 
 ### B2 — Claim release fails closed
 

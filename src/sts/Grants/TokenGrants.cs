@@ -290,11 +290,7 @@ public sealed class UserTokenGrantsHandler : ITokenGrantHandler
         {
             GrantOperations.ApplyDpopBinding(identity, proof);
         }
-        identity.SetDestinations(ops.GetDestinations);
-
-        return new SignInResult(
-            OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(identity));
+        return ops.SignIn(identity, request);
     }
 }
 
@@ -355,11 +351,8 @@ public sealed class DeviceCodeGrantHandler : ITokenGrantHandler
         identity.SetScopes(grantedScopes);
         identity.SetResources(await ops.ResolveResourcesAsync(identity, request));
         GrantOperations.ApplyDpopBinding(identity, proof);
-        identity.SetDestinations(ops.GetDestinations);
 
-        return new SignInResult(
-            OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(identity));
+        return ops.SignIn(identity, request);
     }
 }
 
@@ -383,12 +376,11 @@ public sealed class ClientCredentialsGrantHandler : ITokenGrantHandler
         identity.SetScopes(request.GetScopes());
         identity.SetResources(await ops.ResolveResourcesAsync(identity, request));
         GrantOperations.ApplyDpopBinding(identity, proof);
-        identity.SetDestinations(ops.GetDestinations);
-        GrantOperations.RestrictEntitlementsToAccessToken(identity);
 
-        return new SignInResult(
-            OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(identity));
+        return ops.SignIn(
+            identity,
+            request,
+            GrantOperations.RestrictEntitlementsToAccessToken);
     }
 }
 
@@ -454,11 +446,8 @@ public sealed class PasswordGrantHandler : ITokenGrantHandler
         identity.SetScopes(request.GetScopes());
         identity.SetResources(await ops.ResolveResourcesAsync(identity, request));
         GrantOperations.ApplyDpopBinding(identity, proof);
-        identity.SetDestinations(ops.GetDestinations);
 
-        return new SignInResult(
-            OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(identity));
+        return ops.SignIn(identity, request);
     }
 }
 
@@ -731,15 +720,15 @@ public sealed class TokenExchangeGrantHandler(
             JsonSerializer.SerializeToElement(actClaim));
 
         GrantOperations.ApplyDpopBinding(identity, proof);
-        identity.SetDestinations(ops.GetDestinations);
-        if (user is null)
-        {
-            GrantOperations.RestrictEntitlementsToAccessToken(identity);
-        }
 
-        return new SignInResult(
-            OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(identity));
+        // A client-only exchange has no id_token, so its entitlements reach
+        // the access token only; an exchange carrying a user does not.
+        return ops.SignIn(
+            identity,
+            request,
+            user is null
+                ? GrantOperations.RestrictEntitlementsToAccessToken
+                : null);
     }
 
     /// <summary>

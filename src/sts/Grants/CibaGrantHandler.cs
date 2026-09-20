@@ -105,11 +105,8 @@ public sealed class CibaGrantHandler(
             identity.SetScopes(grantedScopes);
             identity.SetResources(await ops.ResolveResourcesAsync(identity, request: null));
             GrantOperations.ApplyDpopBinding(identity, proof);
-            identity.SetDestinations(ops.GetDestinations);
 
-            return new SignInResult(
-                OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(identity));
+            return ops.SignIn(identity, request);
         }
 
         // Another concurrent poll consumed the approval: same terminal error
