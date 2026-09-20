@@ -1,25 +1,9 @@
 # PLAN — Sufficit Identity
 
-> **Status:** ACTIVE — this is the only plan in the repository.
-> **Consolidated:** 2026-09-19, from twelve separate plans, each reconciled
-> against the working tree before its items were carried over.
-> **Verified against the code on 2026-09-19.** Every item was checked against
-> the working tree, not against the plan it came from. Five turned out to be
-> already delivered and were deleted: the protocol feature registrar and the
-> feature-unit composition (`IProtocolFeature` and its eleven features), the
-> `#if APPLICATION_CONTRACTS` dual compilation, the systemd sandboxing, and
-> CIBA answering 404 when disabled. Four more were rewritten because the code
-> had moved further than the item admitted — SCIM extraction, session activity
-> writes, `AutoMigrate`, and the breached-password failure mode.
->
-> **Re-verified on 2026-09-20 by reading the code, not by searching for
-> symbols.** The first pass trusted that a missing type meant missing work,
-> and it was wrong often enough to matter: the tenant machinery (A1) had been
-> removed by decision, JAR/JARM (B6) was built and only unproven, the DPoP
-> nonce (B4) had the right store written and the wrong one registered. This
-> pass corrected A3, A4, B3, B5, C4, D1, D6 and E4 to what the code actually
-> does, and marks one item **(decision)** — A4's remembered-MFA question,
-> where an evaluation asked the plan to reverse a deliberate fix.
+> **Status:** ACTIVE — this is the only plan in the repository, consolidated
+> from seventeen on 2026-09-19 and verified against the code, not against the
+> plans it came from:
+> [`202609191200`](../activities/202609191200-plan-consolidation.md).
 >
 > **Rule:** finished work leaves this file and becomes an activity under
 > `../activities/`. Nothing is recorded here as done.
@@ -87,9 +71,7 @@ for that still applies under the current contract is below.
   audited the same way as break-glass through a user (the equal/higher tier
   matrix across every capability that reaches a user is covered)
 
-Protected principals now cover every mutation that reaches a user, delivered on
-2026-09-19 —
-[`202609192300-protected-principals-everywhere.md`](../activities/202609192300-protected-principals-everywhere.md).
+Protected principals: [`202609192300`](../activities/202609192300-protected-principals-everywhere.md).
 
 **Done when:** no Management capability lets an operator change or revoke
 anything belonging to a principal of equal or higher tier without break-glass.
@@ -131,16 +113,8 @@ boundary that decision rejected. What SCIM lacks is a decision per
   `scim.destructive` to the ones that legitimately delete or reset passwords,
   bind their tokens, then set `Scim:OperationPolicyMode=Enforce`
 
-The per-operation decision landed on 2026-09-20, in `Observe` —
-[`202609201900-scim-per-operation.md`](../activities/202609201900-scim-per-operation.md).
-
-Already in place, verified 2026-09-20: `ScimOptions.RequireAllowedClient`
-(default `true`), `ClientPolicyMode` `Observe`/`Enforce`, `RequireScope`
-independent of the client decision, `RequireMfa`, the
-`ScimAuthorizationAuditFilter` auditing both decisions, and posture findings
-`scim-client-allow-list-disabled`, `scim-client-policy-observe`,
-`scim-mfa-disabled` and — since 2026-09-20 — the advisory
-`scim-client-allow-list-empty`.
+Per-operation decision, in `Observe`, and what it was built on:
+[`202609201900`](../activities/202609201900-scim-per-operation.md).
 
 **Done when:** a client allowed to provision cannot delete or reset a password
 without being separately permitted to, with evidence appropriate to its type.
@@ -157,17 +131,12 @@ without being separately permitted to, with evidence appropriate to its type.
 `ReauthenticationController` and `IAuthenticationContextProjector` already
 provide the ceremony and the projection into codes and tokens.
 
-**Decided 2026-09-20 (owner).** A remembered-MFA device satisfies Management —
-an operator does not repeat the second factor to read a page — but it does not
-mint credentials. Delivered:
-[`202609200800-remembered-second-factor.md`](../activities/202609200800-remembered-second-factor.md).
-A remembered device no longer mints tokens for relying parties either: the
-ceremony runs at the authorization endpoint, before the token exists
-(2026-09-20, owner's call, globally) —
-[`202609201100-authorize-step-up.md`](../activities/202609201100-authorize-step-up.md).
-
-`acr_values` is honoured since 2026-09-20 and advertised in discovery —
-[`202609201300-acr-values.md`](../activities/202609201300-acr-values.md).
+**Decided 2026-09-20 (owner):** a remembered-MFA device satisfies Management
+but does not mint credentials, and the ceremony runs at the authorization
+endpoint rather than in each relying party.
+[`202609200800`](../activities/202609200800-remembered-second-factor.md),
+[`202609201100`](../activities/202609201100-authorize-step-up.md),
+[`202609201300`](../activities/202609201300-acr-values.md).
 
 ## B. Token issuance and claim release
 
@@ -183,31 +152,12 @@ they should be one.
   reference token. A contract covering both would be a union of two shapes,
   and the original item assumed a duplication that the A2/A3 extractions have
   since removed
-Delivered on 2026-09-20 —
-[`202609201400-one-issuance-boundary.md`](../activities/202609201400-one-issuance-boundary.md):
-`GrantOperations.SignIn` is the only way a grant returns, so claim
-destinations cannot be skipped, and it records the grant type while it is
-there. The `SetScopes` / `SetResources` / `ApplyDpopBinding` lines stay in the
-handlers on purpose — the resources step genuinely differs per grant (token
-exchange intersects, the assertion grant computes its own), so collapsing them
-would hide policy rather than centralize it.
 
-Already delivered, verified by reading the code on 2026-09-20:
-
-| Item | Where |
-|---|---|
-| Grants behind one dispatcher, routes as adapters | `Exchange()` is three lines into `TokenGrantDispatcher`; all seven grants are `ITokenGrantHandler` |
-| CIBA in the kernel and the standard boundary | `CibaGrantHandler` builds its identity through `GrantOperations` and returns `SignInResult`; `TryConsumeApproved` keeps the one-shot consumption atomic |
-| Subject rehydration, destinations, resources, DPoP binding | `GrantOperations.BuildIdentityAsync`, `GetDestinations`, `ResolveResourcesAsync`, `ApplyDpopBinding` |
-| Privileged token shape in one place | `IPrivilegedTokenMintingService.ApplyScaffoldingAsync` — scopes, `scope` claim, resources, `aud`, lifetime, issuer, destinations, applied for personal, provisioning and operator tokens |
-| Audit and metrics for privileged mints | `identity.security.privileged_tokens.minted` plus the mint log line |
-| Audit and metrics for grants | `identity.security.grant_tokens.issued`, tagged with the grant type |
-| Claim destinations cannot be skipped by a grant | `GrantOperations.SignIn`, the only return path |
+Delivered, and what the item assumed that the code had already changed:
+[`202609201400`](../activities/202609201400-one-issuance-boundary.md).
 
 **Done when:** the unified-service question is answered either way in
-writing. The other two conditions — the grant side cannot sign in without
-destinations, and its tokens are recorded the way privileged mints are — were
-met on 2026-09-20.
+writing.
 
 ### B2 — Claim release fails closed
 
@@ -855,43 +805,30 @@ Deliberately after everything above; none of it is required for production.
 
 ## Execution order
 
-1. **Done.** A5, A6 and D1 were delivered on 2026-09-19:
-   [`202609191500-enumeration-legacy-grants-revoker.md`](../activities/202609191500-enumeration-legacy-grants-revoker.md),
-   [`202609191700-passkey-assurance.md`](../activities/202609191700-passkey-assurance.md)
-   and
-   [`202609191900-posture-check-coverage.md`](../activities/202609191900-posture-check-coverage.md).
-   Three of D1's new findings are advisories that every deployment sees until
-   it settles them — `access-token-unmapped-claims` is B2's work,
-   `certificate-purpose-not-separated` is C2's, and
-   `token-exchange-enabled-by-default` clears when D4 declares the switch. They
-   are the plan made visible at startup.
-2. **C1, then C2** — the vault's production enablement, then the key
+1. **C1, then C2** — the vault's production enablement, then the key
    separation. C2 is blocked on the PFX problem and needs the
-   generate-on-server approach first. C1 (the plaintext boundary) was
-   delivered on 2026-09-19, see
-   [`202609192100-secret-boundary-provenance.md`](../activities/202609192100-secret-boundary-provenance.md);
-   declaring `Sufficit:Vault:SecretMigrationComplete=true` per environment is
-   part of D4.
-3. **A1** — what remains is operator entitlements. Protected principals
-   across every capability that reaches a user was delivered on 2026-09-19.
-4. **B1** — the issuance kernel, one grant at a time under characterization
-   tests. B2, B3 and B5's kernel item depend on it; do not start them first.
-5. **B7, B8** — independent of the kernel, both operational. B4 (DPoP nonce
-   isolation) and B6 (JAR and JARM) were delivered on 2026-09-19/20, see
-   [`202609200100-dpop-stateless-nonce.md`](../activities/202609200100-dpop-stateless-nonce.md)
-   and
-   [`202609200300-jar-jarm-already-built.md`](../activities/202609200300-jar-jarm-already-built.md).
-6. **D4, D2, D3, D5** — the enforcement and topology inventories, together, per
-   environment. They are what actually turns Observe into Enforce, and they
-   are what clears the advisories the posture check now reports at every
-   startup.
-7. **E1** — enforcement first, UI last. E3's disable action waits on it.
-8. **E5, E6** — console consistency and the mobile pass; independent of the
-   protocol work and safe to run in parallel with it.
-9. **E2, E4, E7, F1–F14** — as capacity allows, in the order the team prefers;
-   none of them blocks another.
-10. **G** — conformance, audit, cutover and rehearsals, continuously, and G4
-    before anyone calls the legacy migration finished.
+   generate-on-server approach first; declaring
+   `Sufficit:Vault:SecretMigrationComplete=true` per environment is part of D4
+2. **A1** — operator entitlements
+3. **B1** — answer the unified-service question before B2, B3 and B5's kernel
+   item, which were written assuming it
+4. **B7, B8** — independent of the kernel, both operational
+5. **D4, D2, D3, D5** — the enforcement and topology inventories, together,
+   per environment. They are what turns Observe into Enforce, and what clears
+   the advisories the posture check reports at every startup:
+   `access-token-unmapped-claims` is B2's, `certificate-purpose-not-separated`
+   is C2's, and `token-exchange-enabled-by-default` clears when D4 declares
+   the switch
+6. **E1** — enforcement first, UI last. E3's disable action waits on it
+7. **E5, E6** — console consistency and the mobile pass; independent of the
+   protocol work and safe to run in parallel with it
+8. **E2, E4, E7, F1–F14** — as capacity allows, in the order the team prefers;
+   none of them blocks another
+9. **G** — conformance, audit, cutover and rehearsals, continuously, and G4
+   before anyone calls the legacy migration finished
+
+What has already been delivered is in `../activities/`, dated, not here: this
+file is what is left to do.
 
 ## Closure criteria
 
@@ -907,25 +844,3 @@ Deliberately after everything above; none of it is required for production.
 - [ ] Every operational item has environment evidence in the format of
   [`RUNBOOK-PRODUCTION-EVIDENCE.md`](../runbooks/RUNBOOK-PRODUCTION-EVIDENCE.md)
 - [ ] Release build plus the focused and full regression suites are green
-
-## Where the retired plans went
-
-| Retired plan | Now |
-|---|---|
-| `PLAN-GPT-5-REMAINING` | A1, A4, B1–B3, B5, C2, C4, D2, D6, F3, F4, F5, F10, F13, G1, G2, G3 |
-| `PLAN-GLM-5-2-REMAINING` | A1, A2, A3, B1, F3, F6, F11 |
-| `PLAN-SECURITY-HARDENING-WAVE-2` | A1, A2, A3, B2, B3, B5, B7, B8, C2, C3, C4, D1, D3, F6–F10, F14, closure criteria |
-| `PLAN-FABLE-5-TRIAGE` | A4, B2, B3, C2, D6, F2, F12 |
-| `PLAN-PRODUCTION-READINESS` | C1, C2, C5, D1, D4, D5, E8, F3, G2, G5, G6 |
-| `PLAN-MANAGEMENT-APPLICATIONS` (+ `-NEXT`) | A2, E1–E4, E6 |
-| `PLAN-CLIENT-OPERATIONAL-STATE` | E1 |
-| `PLAN-MANAGEMENT-UI-STATE-CONSISTENCY` | E5 |
-| `PLAN-PLUGGABLE-UI-PHASES-2-5` | E7 |
-| `PLAN-LEGACY-CUTOVER-OPS` | G4 |
-| `PLAN-FAPI2-CONFORMANCE` | B9 |
-| `PLAN-VAULT`, `PLAN-VAULT-UI`, `PLAN-STRIX-IDENTITY`, `PLAN-SHARED-FRONTEND-STRATEGY`, `PLAN-20260814-EVEO-APPS-HEALTHCHECK` | delivered; retired 2026-09-19 |
-
-The delivered work behind every one of them is in `../activities/`. The vault's
-operational procedure is `../runbooks/RUNBOOK-VAULT.md`; the conformance
-environment and its accepted results are `conformance/README.md` and
-`conformance/config/`.

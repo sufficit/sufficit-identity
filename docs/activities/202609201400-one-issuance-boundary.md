@@ -57,8 +57,10 @@ flags.
 
 **Issuance had no uniform record.** Personal tokens reported a policy
 decision, provisioning tokens only their failures, operator tokens a line of
-their own, and grants nothing. Two counters now: one per privileged token that
-exists, one per grant that authorized issuance. They stay separate because
+their own, and grants nothing. Two counters now:
+`identity.security.privileged_tokens.minted`, tagged with the minting surface
+and whether the token is a reference, and
+`identity.security.grant_tokens.issued`, tagged with the grant type. They stay separate because
 they count different events — a mint produces one reference token, a grant
 produces an access token, an id token and possibly a refresh token. Subject,
 client and token identifiers stay in the log lines; as metric tags they would
