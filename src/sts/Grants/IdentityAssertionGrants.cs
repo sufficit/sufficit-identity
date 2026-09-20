@@ -523,11 +523,8 @@ public sealed class IdentityAssertionGrantHandler(
 
         identity.SetResources(resources);
         GrantOperations.ApplyDpopBinding(identity, proof);
-        identity.SetDestinations(ops.GetDestinations);
 
-        return new Microsoft.AspNetCore.Mvc.SignInResult(
-            OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
-            new ClaimsPrincipal(identity));
+        return ops.SignIn(identity, request);
     }
 
     private static ForbidResult InvalidGrant(string description) =>

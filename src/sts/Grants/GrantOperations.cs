@@ -1,8 +1,10 @@
 using System.Collections.Immutable;
+using System.Diagnostics.Metrics;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using OpenIddict.Abstractions;
+using OpenIddict.Server.AspNetCore;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using Sufficit.Identity.Core.Entities;
 
@@ -436,5 +438,53 @@ public sealed class GrantOperations(
             list.Add(item);
         }
         return list;
+    }
+
+    private static readonly Meter Meter = new(
+        "Sufficit.Identity.Security",
+        "1.0.0");
+
+    /// <summary>
+    /// One record per grant that authorized issuance, the counterpart of
+    /// <c>identity.security.privileged_tokens.minted</c> (B1). They are
+    /// deliberately separate instruments: a privileged mint records a token
+    /// that exists, while a grant records the decision OpenIddict then turns
+    /// into a token set. Tagged with the grant type only — subject, client
+    /// and token identifiers would make it unbounded.
+    /// </summary>
+    private static readonly Counter<long> Issued = Meter.CreateCounter<long>(
+        "identity.security.grant_tokens.issued");
+
+    /// <summary>
+    /// The last steps of every grant: claim destinations, the issuance
+    /// record, and the sign-in result OpenIddict turns into tokens (B1).
+    /// Kept together because a grant that signs in without destinations
+    /// releases no claim to any token and mints an empty one — going through
+    /// here is what makes that unrepresentable.
+    /// </summary>
+    /// <param name="adjustDestinations">
+    /// Applied after the destination policy, for what the policy must not
+    /// decide by claim type: client entitlements reach the access token only
+    /// in a client identity, while the same claim type may reach the id_token
+    /// in a user one.
+    /// </param>
+    public Microsoft.AspNetCore.Mvc.SignInResult SignIn(
+        ClaimsIdentity identity,
+        OpenIddictRequest request,
+        Action<ClaimsIdentity>? adjustDestinations = null)
+    {
+        ArgumentNullException.ThrowIfNull(identity);
+        ArgumentNullException.ThrowIfNull(request);
+
+        identity.SetDestinations(GetDestinations);
+        adjustDestinations?.Invoke(identity);
+
+        Issued.Add(1,
+            new KeyValuePair<string, object?>(
+                "grant_type", request.GrantType ?? "unknown"));
+
+        return new Microsoft.AspNetCore.Mvc.SignInResult(
+            OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(identity));
     }
 }
