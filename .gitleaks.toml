@@ -105,6 +105,10 @@ regexes = [
   # not credential material. Keep the exception narrower than the rule or
   # evaluation document so real findings in archived reviews still fail CI.
   '''stamp/revocation''',
+  # The XKCD 936 passphrase, used as a test fixture for the breached-password
+  # fallback. Narrower than blanket-allowing src/tests, where a real credential
+  # could then be committed without CI noticing.
+  '''correct-horse-battery-staple-\d+''',
 ]
 paths = [
   '''(^|/)(bin|obj|node_modules|\.vs|\.idea)/''',
