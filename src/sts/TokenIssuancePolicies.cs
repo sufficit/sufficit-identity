@@ -26,6 +26,9 @@ internal sealed class ApplicationClaimDestinationPolicy(
         Claim claim,
         bool includeIdentityToken)
     {
+        if (ServerResolvedEntitlements.IsServerResolved(claim, options.ServerResolvedEntitlementKeys))
+            yield break;
+
         if (options.ClaimToScope.TryGetValue(claim.Type, out var requiredScope))
         {
             // Either the mapped scope or one of its declared successors: a client
