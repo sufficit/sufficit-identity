@@ -110,6 +110,10 @@ public static class ServiceCollectionExtensions
             "Sufficit.Identity.UI.Vault.Assets.vault.css",
             "text/css; charset=utf-8");
 
+        MapEmbeddedAsset(app, "/_content/Sufficit.Identity.UI.Vault/vault-entry.js",
+            "Sufficit.Identity.UI.Vault.Assets.vault-entry.js",
+            "text/javascript; charset=utf-8");
+
         // When the public UI is embedded, it owns the single root Razor
         // component endpoint and adds this assembly as an additional route
         // assembly. Registering a second root map here creates duplicate

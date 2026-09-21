@@ -156,4 +156,15 @@
   <data name="Vault.UserVault.Validation.ValueRequired" xml:space="preserve"><value>Enter a value.</value></data>
   <data name="Vault.UserVault.ValueLabel" xml:space="preserve"><value>Value</value></data>
   <data name="Vault.UserVault.ValuePlaceholder" xml:space="preserve"><value>Won't be shown again</value></data>
+  <data name="Vault.Entry.Title" xml:space="preserve"><value>Save connection key</value></data>
+  <data name="Vault.Entry.Description" xml:space="preserve"><value>Paste the key here and save. Its value does not go through the conversation.</value></data>
+  <data name="Vault.Entry.InvalidLink" xml:space="preserve"><value>This link does not identify a valid entry. Ask the assistant for a new link.</value></data>
+  <data name="Vault.Entry.Saved" xml:space="preserve"><value>Key saved</value></data>
+  <data name="Vault.Entry.ReturnToChat" xml:space="preserve"><value>Return to Genius and say that you saved the key. It will check the connection.</value></data>
+  <data name="Vault.Entry.OpenVault" xml:space="preserve"><value>View my Vault</value></data>
+  <data name="Vault.Entry.AccountHint" xml:space="preserve"><value>This entry belongs to the Sufficit account signed in on this page.</value></data>
+  <data name="Vault.Entry.Existing" xml:space="preserve"><value>A key already exists with this name. Saving replaces it.</value></data>
+  <data name="Vault.Entry.Pasted" xml:space="preserve"><value>Clipboard text pasted. Save to finish.</value></data>
+  <data name="Vault.Entry.PasteHint" xml:space="preserve"><value>If automatic paste is unavailable, tap Paste or paste directly in the field.</value></data>
+  <data name="Vault.Entry.Paste" xml:space="preserve"><value>Paste</value></data>
 </root>

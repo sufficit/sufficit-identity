@@ -118,7 +118,7 @@ seguintes. A sessão expira após 30 minutos de inatividade e fica vinculada ao
 
 ## Ferramentas
 
-As cinco ferramentas de Vault são `vault_list`, `vault_get_info`, `vault_save`,
+As ferramentas de Vault são `vault_prepare_entry`, `vault_list`, `vault_get_info`, `vault_save`,
 `vault_delete` e `vault_resolve`. Sem `contextId`, elas operam no contexto
 pessoal `user-<sub>`. Um contexto explícito é uma operação compartilhada e
 exige a capability correspondente:
@@ -225,3 +225,43 @@ endereço de origem e user-agent). Consulte em:
 - **API:** `GET /api/clients?origin=dcr` — a listagem traz `origin`,
   `registeredAtUtc`, `registeredAnonymously`, `registeredFromAddress` e
   `registeredUserAgent`. Revogação: `DELETE /api/clients/{clientId}`.
+
+
+## Cadastro guiado sem chave na conversa
+
+Para solicitar uma chave ao usuário, descobrir e chamar `vault_prepare_entry`
+com `name`, sem valor e sem `contextId`. Por exemplo:
+
+```json
+{"name":"asaas/production/api-key"}
+```
+
+A ferramenta retorna `url` absoluta, `secretName` canônico, `exists`, `status`
+e `saved=false`. Não cria segredo vazio. Apresentar a URL retornada sem
+reconstruí-la. Em produção, a URL tem o formato:
+
+```text
+https://identity.sufficit.com.br/vault/new?name=asaas%2Fproduction%2Fapi-key
+```
+
+Esse exemplo descreve o contrato; sua disponibilidade depende da publicação.
+A página exige autenticação, mostra o nome preparado e recebe somente o valor.
+O proprietário vem da sessão autenticada, nunca da URL. O usuário deve usar a
+mesma conta Sufficit conectada no Genius. Nenhum parâmetro aceita segredo,
+proprietário ou destino externo de retorno. Se a entrada já existir, a página
+informa que salvar substituirá o valor anterior.
+
+A página tenta ler a área de transferência depois de iniciar a interação.
+Quando o navegador recusar, oferece **Colar** e colagem manual. Texto digitado
+enquanto uma leitura está pendente não é substituído por essa leitura. Não há
+salvamento automático. O suporte depende de HTTPS e das permissões do navegador:
+https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/readText
+
+Depois que o usuário disser que salvou, chamar `vault_get_info` com exatamente
+o `secretName` retornado, sem `contextId`. Neste exemplo:
+`personal/asaas/production/api-key`. Isso verifica somente existência/estado,
+sem resolver o valor. `vault_resolve` não é necessário para essa conferência.
+
+Uma chave salva não prova conectividade autenticada com o provedor. A operação
+posterior deve consumir a referência internamente na integração, sem devolver a
+chave à conversa. O cadastro guiado não implementa operações financeiras ASAAS.
