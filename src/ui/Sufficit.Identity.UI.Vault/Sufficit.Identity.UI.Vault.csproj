@@ -30,6 +30,7 @@
       <PackageReference Include="Sufficit.Blazor.UI" />
     </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="wwwroot\vault-entry.js" LogicalName="Sufficit.Identity.UI.Vault.Assets.vault-entry.js" />
     <EmbeddedResource Include="wwwroot\vault.css" LogicalName="Sufficit.Identity.UI.Vault.Assets.vault.css" />
   </ItemGroup>
 </Project>
