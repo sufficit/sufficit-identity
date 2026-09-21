@@ -19,11 +19,12 @@ public sealed record ExternalIdentityAssertion(
     string ProviderKey,
     string? ProviderDisplayName,
     string Email,
-    bool EmailAssertedVerified);
+    bool EmailAssertedVerified,
+    bool ExistingAccount = false);
 
 /// <summary>
-/// Outcome of evaluating an external assertion that does not yet match a local
-/// account.
+/// Outcome of evaluating an external assertion that is not yet linked to a
+/// local account.
 /// </summary>
 public enum ExternalIdentityLinkingDecision
 {

@@ -38,7 +38,8 @@ public sealed class PasswordLoginController(
             new PasswordSignInCommand(
                 request.UserName ?? string.Empty,
                 request.Password ?? string.Empty,
-                request.RememberMe),
+                request.RememberMe,
+                UseEmail: request.FromRegistration),
             cancellationToken);
 
         return result.Status switch
@@ -54,20 +55,28 @@ public sealed class PasswordLoginController(
                         ["rememberMe"] = request.RememberMe.ToString(),
                     })),
             InteractiveSignInStatus.LockedOut =>
-                LoginError("locked_out", returnUrl),
+                LoginError("locked_out", returnUrl, request),
             InteractiveSignInStatus.NotAllowed =>
-                LoginError("not_allowed", returnUrl),
-            _ => LoginError("invalid_credentials", returnUrl),
+                LoginError("not_allowed", returnUrl, request),
+            InteractiveSignInStatus.RequiresExternalSignIn => Redirect(
+                QueryHelpers.AddQueryString("/account/login", new Dictionary<string, string?>
+                {
+                    ["notice"] = "external_signin",
+                    ["returnUrl"] = returnUrl,
+                    ["login_hint"] = request.UserName,
+                })),
+            _ => LoginError(request.FromRegistration ? "invalid_password" : "invalid_credentials", returnUrl, request),
         };
     }
 
-    private RedirectResult LoginError(string error, string returnUrl) =>
+    private RedirectResult LoginError(string error, string returnUrl, PasswordLoginRequest? request = null) =>
         Redirect(QueryHelpers.AddQueryString(
             "/account/login",
             new Dictionary<string, string?>
             {
                 ["error"] = error,
                 ["returnUrl"] = returnUrl,
+                ["login_hint"] = request?.FromRegistration == true ? request.UserName : null,
             }));
 
     public sealed class PasswordLoginRequest
@@ -76,5 +85,6 @@ public sealed class PasswordLoginController(
         public string? Password { get; init; }
         public bool RememberMe { get; init; }
         public string? ReturnUrl { get; init; }
+        public bool FromRegistration { get; init; }
     }
 }

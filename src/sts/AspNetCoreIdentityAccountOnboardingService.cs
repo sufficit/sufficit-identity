@@ -77,6 +77,14 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
                 "New account registration is disabled.");
         }
 
+        // A registration retry must not apply NEW-password rules to an existing
+        // password, replace credentials or send another confirmation message.
+        // The HTTP sign-in transport will prove the password and issue cookies.
+        if (await accountLookup.FindUniqueByEmailAsync(command.Email, cancellationToken) is not null)
+        {
+            return new AccountRegistrationResult(false, false, [], RequiresSignIn: true);
+        }
+
         var userName = _registrationPolicy.RequiresUserName
             ? command.UserName
             : command.Email;
@@ -90,6 +98,13 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
         cancellationToken.ThrowIfCancellationRequested();
         if (!creation.Succeeded)
         {
+            // Another request can create the account after the first lookup.
+            // A colliding username with a different email must not sign in.
+            if (creation.Errors.Any(error => error.Code is "DuplicateEmail" or "DuplicateUserName")
+                && await accountLookup.FindUniqueByEmailAsync(command.Email, cancellationToken) is not null)
+            {
+                return new AccountRegistrationResult(false, false, [], RequiresSignIn: true);
+            }
             return new AccountRegistrationResult(
                 false,
                 false,

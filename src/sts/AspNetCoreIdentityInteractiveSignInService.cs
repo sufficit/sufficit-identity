@@ -14,6 +14,7 @@ namespace Sufficit.Identity.STS;
 /// </summary>
 public sealed class AspNetCoreIdentityInteractiveSignInService(
     SufficitSignInManager signInManager,
+    IAccountLookupPolicy accountLookup,
     IAuthenticationContextAccessor authenticationContextAccessor,
     IAuthenticationContextClassMapper authenticationContextClasses,
     TimeProvider timeProvider,
@@ -49,8 +50,20 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
         // the OTP challenge, but it does not add amr=mfa to the newly-issued
         // application ticket. Project that evidence explicitly so a successful
         // remembered-device login is not immediately rejected by Management.
-        var user = await signInManager.UserManager.FindByNameAsync(
-            command.UserName);
+        var user = command.UseEmail
+            ? await accountLookup.FindUniqueByEmailAsync(command.UserName, cancellationToken)
+            : await signInManager.UserManager.FindByNameAsync(command.UserName);
+        if (command.UseEmail && user is null)
+        {
+            return new InteractiveSignInResult(InteractiveSignInStatus.Failed);
+        }
+        if (command.UseEmail && !await signInManager.UserManager.HasPasswordAsync(user!))
+        {
+            // A registration retry cannot establish a password on a federated
+            // account. Offer its existing sign-in flow without a password error
+            // or consuming a failed-password attempt.
+            return new InteractiveSignInResult(InteractiveSignInStatus.RequiresExternalSignIn);
+        }
         cancellationToken.ThrowIfCancellationRequested();
         var rememberedMfa = user is not null
             && await signInManager.UserManager.GetTwoFactorEnabledAsync(user)
@@ -64,7 +77,7 @@ public sealed class AspNetCoreIdentityInteractiveSignInService(
                 : CaepAssuranceLevel.Loa1),
             rememberedSecondFactor: rememberedMfa);
         var result = await signInManager.PasswordSignInAsync(
-            command.UserName,
+            user?.UserName ?? command.UserName,
             command.Password,
             isPersistent,
             lockoutOnFailure: true);

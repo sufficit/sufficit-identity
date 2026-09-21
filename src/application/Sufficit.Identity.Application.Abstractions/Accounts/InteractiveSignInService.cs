@@ -13,7 +13,8 @@ public sealed record InteractiveSignInProvider(
 public sealed record PasswordSignInCommand(
     string UserName,
     string Password,
-    bool IsPersistent);
+    bool IsPersistent,
+    bool UseEmail = false);
 
 public sealed record AuthenticatorSignInCommand(
     string Code,
@@ -32,6 +33,7 @@ public enum InteractiveSignInStatus
     LockedOut,
     NotAllowed,
     RequiresPrimaryAuthentication,
+    RequiresExternalSignIn,
 }
 
 public sealed record InteractiveSignInResult(InteractiveSignInStatus Status)
