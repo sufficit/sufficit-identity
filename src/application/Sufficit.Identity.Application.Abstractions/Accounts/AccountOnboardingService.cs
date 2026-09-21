@@ -17,10 +17,16 @@ public sealed record AccountLifecycleError(
     string Code,
     string Description);
 
+/// <param name="RequiresSignIn">
+/// An existing unique email must continue through the normal password sign-in
+/// transport, which validates credentials and issues cookies. No credentials
+/// have been changed and no confirmation message has been sent.
+/// </param>
 public sealed record AccountRegistrationResult(
     bool Succeeded,
     bool ConfirmationMessageSent,
-    IReadOnlyList<AccountLifecycleError> Errors);
+    IReadOnlyList<AccountLifecycleError> Errors,
+    bool RequiresSignIn = false);
 
 public sealed record AccountEmailRequestResult(bool Accepted);
 

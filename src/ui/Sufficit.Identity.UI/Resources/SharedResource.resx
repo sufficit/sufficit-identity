@@ -521,6 +521,8 @@
   <data name="Login.Error.RegistrationDeniedForProvider" xml:space="preserve"><value>This provider can only be used with an account that is already linked. Sign in another way, then link it from your account settings.</value></data>
   <data name="Login.Error.ExternalLinkTicketInvalid" xml:space="preserve"><value>This confirmation link is invalid, has already been used, or has expired. Start signing in with the provider again.</value></data>
   <data name="Login.Notice.ExternalEmailVerificationSent" xml:space="preserve"><value>We sent a confirmation link to the email address your provider shared. Open it to finish creating your account.</value></data>
-  <data name="Register.Error.CreateFailed" xml:space="preserve"><value>The account could not be created. Check the information provided.</value></data>
+  <data name="Register.Error.CreateFailed" xml:space="preserve"><value>The account could not be created with the information provided. If you have used this email before, try signing in or resetting your password. If you have not confirmed your email yet, request another confirmation email.</value></data>
   <data name="Register.Error.RegistrationDisabled" xml:space="preserve"><value>New account registration is disabled.</value></data>
+  <data name="Login.Error.InvalidPassword" xml:space="preserve"><value>We could not sign you in with that password. Try again, reset your password, or sign in with the provider you already use.</value></data>
+  <data name="Login.Notice.ExternalSignIn" xml:space="preserve"><value>Continue with the provider you already use to sign in. You can also use password recovery.</value></data>
 </root>
