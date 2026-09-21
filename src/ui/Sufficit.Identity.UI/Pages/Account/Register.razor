@@ -3,6 +3,7 @@
 @using Microsoft.AspNetCore.WebUtilities
 @inject IAccountOnboardingService AccountOnboarding
 @inject IHumanVerificationService HumanVerification
+@inject IJSRuntime JS
 @inject IBrandingThemeProvider BrandingProvider
 @inject IStringLocalizer<SharedResource> L
 
@@ -53,7 +54,7 @@ else
                 <SUIAlert ToneValue="SUITone.Danger">@_error</SUIAlert>
             }
 
-            <EditForm Model="_model" Method="post" OnValidSubmit="RegisterAsync" FormName="register">
+            <EditForm id="registration-form" Model="_model" Method="post" OnValidSubmit="RegisterAsync" FormName="register">
                 <DataAnnotationsValidator />
                 <ValidationSummary class="validation-summary" role="alert" aria-live="polite" />
 
@@ -96,6 +97,13 @@ else
 
             <div class="auth-links">
                 <a href="@LoginUrl">@L["Register.HasAccount"]</a>
+                @if (_error is not null)
+                {
+                    <br />
+                    <a href="/account/forgotpassword">@L["Login.ForgotPassword"]</a>
+                    <br />
+                    <a href="/account/resendemailconfirmation">@L["Login.ResendConfirmation"]</a>
+                }
             </div>
         }
     </div>
@@ -120,6 +128,7 @@ else
     private bool _registered;
     private bool _confirmationMessageSent;
     private bool _submitting;
+    private bool _signingIn;
     private string _verificationToken = string.Empty;
     private HumanVerification? _verificationControl;
     private AccountRegistrationPolicy _registrationPolicy = new(false, false);
@@ -174,6 +183,14 @@ else
                     _model.Email,
                     _model.Password,
                     _returnUrl));
+            if (result.RequiresSignIn)
+            {
+                // Cookies require a new HTTP response, never a circuit call.
+                await JS.InvokeVoidAsync("sufficitIdentitySignInFromRegistration",
+                    "registration-form", _returnUrl);
+                _signingIn = true;
+                return;
+            }
             if (!result.Succeeded)
             {
                 // The API answers in English with a stable code; the page owns
@@ -205,7 +222,7 @@ else
         }
         finally
         {
-            _submitting = false;
+            _submitting = _signingIn;
         }
     }
 
@@ -236,7 +253,7 @@ else
             100,
             ErrorMessageResourceType = typeof(ValidationMessages),
             ErrorMessageResourceName = nameof(ValidationMessages.PasswordLength),
-            MinimumLength = 6)]
+            MinimumLength = 1)]
         [DataType(System.ComponentModel.DataAnnotations.DataType.Password)]
         public string Password { get; set; } = string.Empty;
 

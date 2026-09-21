@@ -63,14 +63,148 @@ public sealed class AspNetCoreIdentityExternalSignInService(
             info.LoginProvider,
             info.ProviderKey);
         cancellationToken.ThrowIfCancellationRequested();
+        if (linkedUser is not null)
+        {
+            return await SignInLinkedUserAsync(info, linkedUser, forceMfa, cancellationToken);
+        }
+
+        if (currentPrincipal.Identity?.IsAuthenticated == true)
+        {
+            var link = await externalIdentityService.LinkAsync(
+                currentPrincipal,
+                new AccountExternalIdentityLink(
+                    info.LoginProvider,
+                    info.ProviderKey,
+                    info.ProviderDisplayName),
+                cancellationToken);
+            if (link.Succeeded)
+            {
+                return new ExternalSignInResult(
+                    ExternalSignInStatus.Linked,
+                    info.ProviderDisplayName ?? info.LoginProvider);
+            }
+
+            var errorCode = link.Errors.FirstOrDefault()?.Code
+                ?? "external-identity-link-failed";
+            logger.LogWarning(
+                "External identity link through {Provider} failed: {ErrorCode}.",
+                info.LoginProvider,
+                errorCode);
+            return new ExternalSignInResult(
+                ExternalSignInStatus.LinkFailed,
+                ErrorCode: errorCode);
+        }
+
+        var email = info.Principal.FindFirst(ClaimTypes.Email)?.Value
+            ?? info.Principal.FindFirst("email")?.Value;
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return new ExternalSignInResult(
+                ExternalSignInStatus.MissingEmail);
+        }
+
+        var existingUser = await accountLookup.FindUniqueByEmailAsync(email, cancellationToken);
+
+        var verifiedClaim = info.Principal.FindFirst("email_verified")?.Value;
+        var emailVerified = string.Equals(
+                verifiedClaim,
+                "true",
+                StringComparison.OrdinalIgnoreCase)
+            || verifiedClaim == "1";
+        var pictureUrl = info.Principal.FindFirst(PictureClaimType)?.Value;
+
+        // Account pre-hijacking gate. Creating the account and binding the
+        // external identity BEFORE the address is proven is what lets an
+        // attacker who registered the victim's address at a provider that does
+        // not verify addresses keep that binding after the victim later proves
+        // the address through registration recovery or a confirmation resend.
+        // Nothing is persisted until the policy says control is established.
+        var evaluation = await linkingPolicy.EvaluateAsync(
+            new ExternalIdentityAssertion(
+                info.LoginProvider,
+                info.ProviderKey,
+                info.ProviderDisplayName,
+                email,
+                emailVerified,
+                ExistingAccount: existingUser is not null),
+            cancellationToken);
+
+        if (existingUser is not null)
+        {
+            if (evaluation.Decision != ExternalIdentityLinkingDecision.Immediate)
+            {
+                return new ExternalSignInResult(ExternalSignInStatus.AccountLinkRequiresSignIn);
+            }
+
+            // A provider assertion must not activate a pre-registered account
+            // with unproven credentials or bypass local sign-in restrictions.
+            if (await userManager.IsLockedOutAsync(existingUser))
+                return new ExternalSignInResult(ExternalSignInStatus.LockedOut);
+            if (!existingUser.EmailConfirmed || !await signInManager.CanSignInAsync(existingUser))
+                return new ExternalSignInResult(ExternalSignInStatus.NotAllowed);
+
+            var link = await userManager.AddLoginAsync(existingUser, new UserLoginInfo(
+                info.LoginProvider, info.ProviderKey, info.ProviderDisplayName));
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!link.Succeeded)
+            {
+                logger.LogWarning("Verified external account link through {Provider} failed: {Codes}.",
+                    info.LoginProvider, string.Join(',', link.Errors.Select(error => error.Code)));
+                return new ExternalSignInResult(ExternalSignInStatus.AccountLinkRequiresSignIn);
+            }
+            logger.LogInformation("Linked verified external identity through {Provider} to user {UserId}.",
+                info.LoginProvider, existingUser.Id);
+            return await SignInLinkedUserAsync(info, existingUser, forceMfa, cancellationToken);
+        }
+
+        var registration = await onboardingService.GetRegistrationPolicyAsync(cancellationToken);
+        if (!registration.Enabled)
+            return new ExternalSignInResult(ExternalSignInStatus.RegistrationDisabled);
+
+        switch (evaluation.Decision)
+        {
+            case ExternalIdentityLinkingDecision.Denied:
+                logger.LogInformation(
+                    "External account bootstrap denied for {Provider}: {Reason}.",
+                    info.LoginProvider,
+                    evaluation.Reason);
+                return new ExternalSignInResult(
+                    ExternalSignInStatus.RegistrationDeniedForProvider,
+                    ErrorCode: evaluation.Reason);
+
+            case ExternalIdentityLinkingDecision.RequiresEmailVerification:
+                return await HoldForEmailVerificationAsync(
+                    info,
+                    email,
+                    pictureUrl,
+                    evaluation.Reason,
+                    cancellationToken);
+        }
+
+        return await CreateAndSignInAsync(
+            new PendingExternalIdentity(
+                info.LoginProvider,
+                info.ProviderKey,
+                info.ProviderDisplayName,
+                email,
+                pictureUrl),
+            emailConfirmed: true,
+            cancellationToken);
+    }
+
+    private async Task<ExternalSignInResult> SignInLinkedUserAsync(
+        ExternalLoginInfo info,
+        ApplicationUser linkedUser,
+        bool forceMfa,
+        CancellationToken cancellationToken)
+    {
         var rememberedMfa = !forceMfa
-            && linkedUser is not null
             && await userManager.GetTwoFactorEnabledAsync(linkedUser)
             && await signInManager.IsTwoFactorClientRememberedAsync(linkedUser);
         cancellationToken.ThrowIfCancellationRequested();
         SetExternalAuthenticationContext(info.LoginProvider, rememberedMfa);
         SignInResult signIn;
-        if (forceMfa && linkedUser is { } sensitiveUser)
+        if (forceMfa)
         {
             // A remembered browser is allowed for ordinary interactive login,
             // but never for the sensitive Management return path. Clear the
@@ -83,13 +217,13 @@ public sealed class AspNetCoreIdentityExternalSignInService(
                 info.LoginProvider,
                 AuthenticationFlowDiagnostics.TraceId);
 
-            if (await userManager.IsLockedOutAsync(sensitiveUser))
+            if (await userManager.IsLockedOutAsync(linkedUser))
                 return new ExternalSignInResult(ExternalSignInStatus.LockedOut);
-            if (!await signInManager.CanSignInAsync(sensitiveUser))
+            if (!await signInManager.CanSignInAsync(linkedUser))
                 return new ExternalSignInResult(ExternalSignInStatus.NotAllowed);
 
             signIn = await signInManager.SignInOrTwoFactorForExternalAsync(
-                sensitiveUser,
+                linkedUser,
                 info.LoginProvider);
         }
         else
@@ -132,111 +266,7 @@ public sealed class AspNetCoreIdentityExternalSignInService(
                 ExternalSignInStatus.RequiresTwoFactor);
         }
 
-        if (currentPrincipal.Identity?.IsAuthenticated == true)
-        {
-            var link = await externalIdentityService.LinkAsync(
-                currentPrincipal,
-                new AccountExternalIdentityLink(
-                    info.LoginProvider,
-                    info.ProviderKey,
-                    info.ProviderDisplayName),
-                cancellationToken);
-            if (link.Succeeded)
-            {
-                return new ExternalSignInResult(
-                    ExternalSignInStatus.Linked,
-                    info.ProviderDisplayName ?? info.LoginProvider);
-            }
-
-            var errorCode = link.Errors.FirstOrDefault()?.Code
-                ?? "external-identity-link-failed";
-            logger.LogWarning(
-                "External identity link through {Provider} failed: {ErrorCode}.",
-                info.LoginProvider,
-                errorCode);
-            return new ExternalSignInResult(
-                ExternalSignInStatus.LinkFailed,
-                ErrorCode: errorCode);
-        }
-
-        var email = info.Principal.FindFirst(ClaimTypes.Email)?.Value
-            ?? info.Principal.FindFirst("email")?.Value;
-        if (string.IsNullOrWhiteSpace(email))
-        {
-            return new ExternalSignInResult(
-                ExternalSignInStatus.MissingEmail);
-        }
-
-        if (await accountLookup.FindUniqueByEmailAsync(email, cancellationToken) is not null)
-        {
-            logger.LogWarning(
-                "External {Provider} identity matched an existing local email "
-                + "without an authenticated account-linking session.",
-                info.LoginProvider);
-            return new ExternalSignInResult(
-                ExternalSignInStatus.AccountLinkRequiresSignIn);
-        }
-
-        var registration = await onboardingService
-            .GetRegistrationPolicyAsync(cancellationToken);
-        if (!registration.Enabled)
-        {
-            return new ExternalSignInResult(
-                ExternalSignInStatus.RegistrationDisabled);
-        }
-
-        var verifiedClaim = info.Principal.FindFirst("email_verified")?.Value;
-        var emailVerified = string.Equals(
-                verifiedClaim,
-                "true",
-                StringComparison.OrdinalIgnoreCase)
-            || verifiedClaim == "1";
-        var pictureUrl = info.Principal.FindFirst(PictureClaimType)?.Value;
-
-        // Account pre-hijacking gate. Creating the account and binding the
-        // external identity BEFORE the address is proven is what lets an
-        // attacker who registered the victim's address at a provider that does
-        // not verify addresses keep that binding after the victim later proves
-        // the address through registration recovery or a confirmation resend.
-        // Nothing is persisted until the policy says control is established.
-        var evaluation = await linkingPolicy.EvaluateAsync(
-            new ExternalIdentityAssertion(
-                info.LoginProvider,
-                info.ProviderKey,
-                info.ProviderDisplayName,
-                email,
-                emailVerified),
-            cancellationToken);
-
-        switch (evaluation.Decision)
-        {
-            case ExternalIdentityLinkingDecision.Denied:
-                logger.LogInformation(
-                    "External account bootstrap denied for {Provider}: {Reason}.",
-                    info.LoginProvider,
-                    evaluation.Reason);
-                return new ExternalSignInResult(
-                    ExternalSignInStatus.RegistrationDeniedForProvider,
-                    ErrorCode: evaluation.Reason);
-
-            case ExternalIdentityLinkingDecision.RequiresEmailVerification:
-                return await HoldForEmailVerificationAsync(
-                    info,
-                    email,
-                    pictureUrl,
-                    evaluation.Reason,
-                    cancellationToken);
-        }
-
-        return await CreateAndSignInAsync(
-            new PendingExternalIdentity(
-                info.LoginProvider,
-                info.ProviderKey,
-                info.ProviderDisplayName,
-                email,
-                pictureUrl),
-            emailConfirmed: true,
-            cancellationToken);
+        return new ExternalSignInResult(ExternalSignInStatus.Unavailable);
     }
 
     public async Task<ExternalSignInResult> CompletePendingLinkAsync(

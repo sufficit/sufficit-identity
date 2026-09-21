@@ -39,7 +39,7 @@ public sealed class ConfigurableExternalIdentityLinkingPolicy(
         // The protection is opt-out, not opt-in: a deployment that turns it off
         // is choosing to accept unproven addresses, and the posture check
         // reports that choice.
-        if (!options.RequireVerifiedEmail)
+        if (!options.RequireVerifiedEmail && !assertion.ExistingAccount)
         {
             return Evaluation(
                 ExternalIdentityLinkingDecision.Immediate,

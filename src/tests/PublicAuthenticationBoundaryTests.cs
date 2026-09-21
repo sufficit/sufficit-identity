@@ -81,6 +81,67 @@ public sealed class PublicAuthenticationBoundaryTests(
         Assert.True(await users.CheckPasswordAsync(user, newPassword));
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Repeated_registration_preserves_the_existing_account_and_allows_recovery(
+        bool emailConfirmed)
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        var accounts = services.GetRequiredService<IAccountOnboardingService>();
+        var users = services.GetRequiredService<UserManager<ApplicationUser>>();
+        SetHttpContext(services);
+        var email = $"repeat-registration-{Guid.NewGuid():N}@example.test";
+
+        var first = await accounts.RegisterAsync(new AccountRegistrationCommand(
+            null, email, TestDataSeeder.DefaultPassword));
+        Assert.True(first.Succeeded);
+        var original = await users.FindByEmailAsync(email);
+        Assert.NotNull(original);
+        if (emailConfirmed)
+        {
+            var token = await users.GenerateEmailConfirmationTokenAsync(original);
+            Assert.True((await users.ConfirmEmailAsync(original, token)).Succeeded);
+        }
+        var passwordHash = original.PasswordHash;
+        var securityStamp = original.SecurityStamp;
+
+        const string differentPassword = "Different!Passw0rd#84";
+        var repeated = await accounts.RegisterAsync(new AccountRegistrationCommand(
+            null, email.ToUpperInvariant(), differentPassword));
+
+        Assert.False(repeated.Succeeded);
+        Assert.False(repeated.ConfirmationMessageSent);
+        Assert.True(repeated.RequiresSignIn);
+        Assert.Empty(repeated.Errors);
+        var oldPasswordRules = await accounts.RegisterAsync(new AccountRegistrationCommand(
+            null, email, "x"));
+        Assert.True(oldPasswordRules.RequiresSignIn);
+        var unchanged = await users.FindByEmailAsync(email);
+        Assert.NotNull(unchanged);
+        Assert.Equal(original.Id, unchanged.Id);
+        Assert.Equal(emailConfirmed, unchanged.EmailConfirmed);
+        Assert.Equal(passwordHash, unchanged.PasswordHash);
+        Assert.Equal(securityStamp, unchanged.SecurityStamp);
+        Assert.True(await users.CheckPasswordAsync(unchanged, TestDataSeeder.DefaultPassword));
+        Assert.False(await users.CheckPasswordAsync(unchanged, differentPassword));
+
+        if (!emailConfirmed)
+        {
+            Assert.True((await accounts.RequestEmailConfirmationAsync(email)).Accepted);
+            var token = await users.GenerateEmailConfirmationTokenAsync(unchanged);
+            Assert.Equal(AccountEmailConfirmationStatus.Succeeded,
+                (await accounts.ConfirmEmailAsync(unchanged.Id, EncodeToken(token))).Status);
+        }
+        Assert.True((await accounts.RequestPasswordResetAsync(email)).Accepted);
+        var resetToken = await users.GeneratePasswordResetTokenAsync(unchanged);
+        Assert.Equal(AccountPasswordResetStatus.Succeeded,
+            (await accounts.ResetPasswordAsync(new AccountPasswordResetCommand(
+                unchanged.Id, EncodeToken(resetToken), differentPassword))).Status);
+        Assert.True(await users.CheckPasswordAsync(unchanged, differentPassword));
+    }
+
     [Fact]
     public async Task Public_email_requests_do_not_disclose_account_existence()
     {

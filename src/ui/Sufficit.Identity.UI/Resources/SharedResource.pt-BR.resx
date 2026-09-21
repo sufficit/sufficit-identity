@@ -521,6 +521,8 @@
   <data name="Login.Error.RegistrationDeniedForProvider" xml:space="preserve"><value>Este provedor só pode ser usado com uma conta já vinculada. Entre de outra forma e vincule-o nas configurações da sua conta.</value></data>
   <data name="Login.Error.ExternalLinkTicketInvalid" xml:space="preserve"><value>Este link de confirmação é inválido, já foi usado ou expirou. Inicie o acesso pelo provedor novamente.</value></data>
   <data name="Login.Notice.ExternalEmailVerificationSent" xml:space="preserve"><value>Enviamos um link de confirmação para o e-mail informado pelo provedor. Abra-o para concluir a criação da sua conta.</value></data>
-  <data name="Register.Error.CreateFailed" xml:space="preserve"><value>Não foi possível criar a conta. Verifique os dados informados.</value></data>
+  <data name="Register.Error.CreateFailed" xml:space="preserve"><value>Não foi possível criar a conta com os dados informados. Se já usou este e-mail, tente entrar ou recuperar a senha. Se ainda não confirmou o e-mail, solicite o reenvio da confirmação.</value></data>
   <data name="Register.Error.RegistrationDisabled" xml:space="preserve"><value>Cadastro de novas contas está desativado.</value></data>
+  <data name="Login.Error.InvalidPassword" xml:space="preserve"><value>Não foi possível entrar com essa senha. Tente novamente, recupere a senha ou entre com o provedor que já utiliza.</value></data>
+  <data name="Login.Notice.ExternalSignIn" xml:space="preserve"><value>Continue com o provedor que já utiliza para entrar. Você também pode usar a recuperação de senha.</value></data>
 </root>
