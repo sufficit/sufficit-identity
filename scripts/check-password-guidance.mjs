@@ -50,9 +50,11 @@ try {
         await page.keyboard.insertText('xyZ9'); // Paste-like insertion, exactly 8.
         await expectPending(0);
         assert.equal(await guidance.isVisible(), false);
+        assert.ok(!(await field.getAttribute('aria-describedby') || '').split(/\s+/).includes('password-requirements'));
         assert.equal(await field.inputValue(), 'aB3!xyZ9');
         await field.press('Backspace');
         await expectPending(1);
+        assert.ok((await field.getAttribute('aria-describedby')).includes('password-requirements'));
         await field.fill('abcdefgh');
         await expectPending(3);
         assert.match(await guidance.innerText(), /maiúscula/);
