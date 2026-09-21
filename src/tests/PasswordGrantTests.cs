@@ -120,7 +120,7 @@ public sealed class PasswordGrantTests
     }
 
     // ----------------------------------------------------------------------
-    // Item 2.2 [M2] — password complexity policy (RequiredLength=12 default).
+    // Item 2.2 [M2] — password complexity policy (RequiredLength=8 default).
     // ----------------------------------------------------------------------
 
     [Fact]
@@ -136,16 +136,15 @@ public sealed class PasswordGrantTests
             EmailConfirmed = true,
         };
 
-        // 8 chars, satisfies NIST floor but NOT the configured RequiredLength
-        // (default 12) — the configured policy must reject it.
-        var result = await userManager.CreateAsync(user, "Abcd123!");
+        // Seven characters satisfy composition, but fall below the minimum.
+        var result = await userManager.CreateAsync(user, "Qx7!mZ2");
 
         Assert.False(result.Succeeded);
         Assert.Contains(result.Errors, e => e.Code.Contains("PasswordTooShort", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
-    public async Task Creating_a_user_with_a_strong_password_succeeds()
+    public async Task Creating_a_user_with_exactly_eight_characters_succeeds()
     {
         using var scope = _factory.Services.CreateScope();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -158,9 +157,8 @@ public sealed class PasswordGrantTests
             EmailConfirmed = true,
         };
 
-        // ≥12 chars, upper+lower+digit+non-alphanumeric, >4 unique — satisfies
-        // every dimension of the configured PasswordPolicyOptions.
-        var result = await userManager.CreateAsync(user, "Str0ng!Passw0rd#Z");
+        // Exactly eight, with all required character categories.
+        var result = await userManager.CreateAsync(user, "Qx7!mZ2p");
 
         Assert.True(result.Succeeded);
     }

@@ -22,8 +22,8 @@ public sealed class PasswordFormTests(SufficitIdentityTestFactory factory)
     [Theory]
     [InlineData(false, "success", "Senha alterada com sucesso.")]
     [InlineData(true, "success", "Senha redefinida com sucesso.")]
-    [InlineData(false, "short", "Use pelo menos 12 caracteres.")]
-    [InlineData(true, "short", "Use pelo menos 12 caracteres.")]
+    [InlineData(false, "short", "Use pelo menos 8 caracteres.")]
+    [InlineData(true, "short", "Use pelo menos 8 caracteres.")]
     [InlineData(false, "symbol", "Inclua um símbolo")]
     [InlineData(true, "symbol", "Inclua um símbolo")]
     [InlineData(false, "confirmation", "Digite a mesma senha nos dois campos")]
@@ -55,7 +55,7 @@ public sealed class PasswordFormTests(SufficitIdentityTestFactory factory)
         var response = await client.GetAsync(url);
         response.EnsureSuccessStatusCode();
         var html = await response.Content.ReadAsStringAsync();
-        Assert.Contains(reset ? "Use de 12 a 100" : "Use pelo menos 12", WebUtility.HtmlDecode(html));
+        Assert.Contains(reset ? "Use de 8 a 100" : "Use pelo menos 8", WebUtility.HtmlDecode(html));
         Assert.Contains("password-requirements", html);
 
         // Build the request from rendered controls, as the browser does. A
@@ -66,9 +66,9 @@ public sealed class PasswordFormTests(SufficitIdentityTestFactory factory)
         Assert.Contains("_model.ConfirmPassword", fields.Keys);
         var password = scenario switch
         {
-            "short" => "Ab1!x",
+            "short" => "Qx7!mZ2",
             "symbol" => "ReplacementPassword123",
-            _ => "Replacement!Passw0rd#84",
+            _ => "Qx7!mZ2p",
         };
         fields[passwordField] = password;
         fields["_model.ConfirmPassword"] = scenario == "confirmation" ? "Different!Password123" : password;
@@ -105,7 +105,9 @@ public sealed class PasswordFormTests(SufficitIdentityTestFactory factory)
         var html = WebUtility.HtmlDecode(await client.GetStringAsync("/account/register?culture=en-US&ui-culture=en-US"));
         Assert.Contains("Use 16 to 100 characters.", html);
         Assert.Contains("Use at least 5 distinct characters.", html);
-        Assert.Contains("passwords exposed in data breaches", html);
+        Assert.DoesNotContain("passwords exposed in data breaches", html);
+        Assert.Contains("data-password-minimum=\"16\"", html);
+        Assert.Contains("data-password-unique=\"5\"", html);
         Assert.DoesNotContain("Include a symbol", html);
         using var scope = ui.Services.CreateScope();
         var policy = scope.ServiceProvider.GetRequiredService<IAccountPasswordPolicyProvider>().GetPolicy();

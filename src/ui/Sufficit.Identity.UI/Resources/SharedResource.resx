@@ -527,7 +527,7 @@
   <data name="Login.Notice.ExternalSignIn" xml:space="preserve"><value>Continue with the provider you already use to sign in. You can also use password recovery.</value></data>
 
   <!-- Password requirements and actionable feedback -->
-  <data name="PasswordRules.Title" xml:space="preserve"><value>To create your password:</value></data>
+  <data name="PasswordRules.Title" xml:space="preserve"><value>Your password still needs:</value></data>
   <data name="PasswordRules.MinimumLength" xml:space="preserve"><value>Use at least {0} characters.</value></data>
   <data name="PasswordRules.LengthRange" xml:space="preserve"><value>Use {0} to {1} characters.</value></data>
   <data name="PasswordRules.Uppercase" xml:space="preserve"><value>Include an uppercase letter, such as A, B or C.</value></data>
