@@ -28,6 +28,19 @@
             // Do not claim that the password was accepted before submission.
             var complete = pending === 0;
             if (guidance.hidden !== complete) guidance.hidden = complete;
+            // A directly referenced hidden element still contributes its full
+            // text to the accessible description. Detach only this guidance
+            // when complete, preserving other field help/error descriptions.
+            var descriptions = (input.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+            var attached = descriptions.includes(guidance.id);
+            if (complete && attached) {
+                descriptions = descriptions.filter(function (id) { return id !== guidance.id; });
+                if (descriptions.length) input.setAttribute('aria-describedby', descriptions.join(' '));
+                else input.removeAttribute('aria-describedby');
+            } else if (!complete && !attached) {
+                descriptions.push(guidance.id);
+                input.setAttribute('aria-describedby', descriptions.join(' '));
+            }
         });
     }
 
