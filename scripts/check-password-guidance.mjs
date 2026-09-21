@@ -21,6 +21,16 @@ try {
         const guidance = page.locator('#password-requirements');
         await guidance.waitFor();
         const field = page.locator('#' + await guidance.getAttribute('data-password-requirements'));
+        const formId = await field.evaluate(element => element.form.id);
+        if (['reset-password-form', 'change-password-form'].includes(formId)) {
+            const account = page.locator('#password-account');
+            assert.equal(await account.getAttribute('type'), 'text');
+            assert.equal(await account.getAttribute('name'), 'username');
+            assert.equal(await account.getAttribute('autocomplete'), 'username');
+            assert.ok(await account.inputValue());
+            assert.equal(await account.isVisible(), false);
+            assert.equal(await account.evaluate(element => element.form.id), formId);
+        }
         const visibleRules = () => guidance.locator('[data-password-rule]:visible');
         const expectPending = async expected => {
             await page.waitForFunction(count => document.querySelectorAll(
