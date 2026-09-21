@@ -33,14 +33,14 @@ public sealed class PasswordFormTests(SufficitIdentityTestFactory factory)
         bool reset, string scenario, string expected)
     {
         using var ui = CreateUiHost(factory);
-        string userId, username, resetCode;
+        string userId, email, resetCode;
         await using (var scope = ui.Services.CreateAsyncScope())
         {
             var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var user = await TestDataSeeder.CreateUserAsync(users,
                 $"password-form-{Guid.NewGuid():N}", TestDataSeeder.DefaultPassword);
             userId = user.Id;
-            username = user.UserName!;
+            email = user.Email!;
             resetCode = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(
                 await users.GeneratePasswordResetTokenAsync(user)));
         }
@@ -60,7 +60,18 @@ public sealed class PasswordFormTests(SufficitIdentityTestFactory factory)
 
         // Build the request from rendered controls, as the browser does. A
         // missing Name must fail here instead of a hand-built POST hiding it.
-        var fields = ReadInputs(html);
+        var formId = reset ? "reset-password-form" : "change-password-form";
+        var form = Regex.Match(html, $"<form[^>]*id=\"{formId}\"[^>]*>(.*?)</form>",
+            RegexOptions.Singleline | RegexOptions.IgnoreCase).Groups[1].Value;
+        Assert.NotEmpty(form);
+        var accountInput = Regex.Match(form, "<input[^>]*id=\"password-account\"[^>]*>").Value;
+        Assert.Contains("type=\"text\"", accountInput);
+        Assert.Contains("autocomplete=\"username\"", accountInput);
+        Assert.Contains("hidden", accountInput);
+        var fields = ReadInputs(form);
+        Assert.Equal(email, fields["username"]);
+        // The browser hint is not authority to select the target account.
+        fields["username"] = "different-account@example.test";
         var passwordField = reset ? "_model.Password" : "_model.NewPassword";
         Assert.Contains(passwordField, fields.Keys);
         Assert.Contains("_model.ConfirmPassword", fields.Keys);
@@ -88,6 +99,31 @@ public sealed class PasswordFormTests(SufficitIdentityTestFactory factory)
         Assert.NotNull(changed);
         Assert.True(await manager.CheckPasswordAsync(changed,
             scenario == "success" ? password : TestDataSeeder.DefaultPassword));
+    }
+
+    [Fact]
+    public async Task Invalid_reset_token_does_not_reveal_password_manager_account()
+    {
+        using var ui = CreateUiHost(factory);
+        string userId, email;
+        await using (var scope = ui.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await TestDataSeeder.CreateUserAsync(users,
+                $"invalid-reset-form-{Guid.NewGuid():N}", TestDataSeeder.DefaultPassword);
+            userId = user.Id;
+            email = user.Email!;
+        }
+        using var client = ui.CreateClient();
+        var url = QueryHelpers.AddQueryString("/account/resetpassword", new Dictionary<string, string?>
+        {
+            ["userId"] = userId,
+            ["code"] = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes("invalid-token")),
+        });
+        var html = await client.GetStringAsync(url);
+        Assert.DoesNotContain("password-account", html);
+        Assert.DoesNotContain(email, WebUtility.HtmlDecode(html));
+        Assert.DoesNotContain("reset-password-form", html);
     }
 
     [Fact]
