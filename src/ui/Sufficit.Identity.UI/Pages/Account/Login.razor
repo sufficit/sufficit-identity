@@ -120,6 +120,10 @@
         <form method="post" action="/account/login/password" data-enhance="false" data-auth-submit-once>
             <AntiforgeryToken />
             <input type="hidden" name="ReturnUrl" value="@(_returnUrl ?? "/")" />
+            @if (!string.IsNullOrEmpty(_loginHint))
+            {
+                <input type="hidden" name="FromRegistration" value="true" />
+            }
 
             <SUITextField T="string" Id="username"
                           Label="@(_registrationPolicy.RequiresUserName ? L["Login.EmailOrUsername"] : L["Login.Email"])"
@@ -131,6 +135,7 @@
                           Label="@L["Login.Password"]"
                           InputType="password"
                           name="Password"
+                          autofocus="@(!string.IsNullOrEmpty(_loginHint))"
                           autocomplete="current-password" required />
 
             <SUICheckbox Id="rememberMe"
@@ -180,6 +185,9 @@
 
     [SupplyParameterFromQuery(Name = "error")]
     private string? _externalError { get; set; }
+
+    [SupplyParameterFromQuery(Name = "login_hint")]
+    private string? _loginHint { get; set; }
 
     // A flow that is waiting on the user (for example, a confirmation link sent
     // to their mailbox) is not an error, so it arrives on its own parameter and
@@ -233,6 +241,7 @@
         _returnUrl = LocalUrlValidator.EnsureLocal(
             queryReturnUrl ?? _returnUrlQueryPascal ?? _returnUrlQuery);
         Model.ReturnUrl = _returnUrl;
+        Model.UserName = _loginHint ?? string.Empty;
 
         _externalProviders = await SignInService.GetExternalProvidersAsync();
         _registrationPolicy = await AccountOnboarding
@@ -257,6 +266,8 @@
                 L["Login.Error.ExternalCorrelationFailed"],
             "invalid_credentials" =>
                 L["Login.Error.InvalidCredentials"],
+            "invalid_password" =>
+                L["Login.Error.InvalidPassword"],
             "request_expired" =>
                 L["Login.Error.RequestExpired"],
             "registration_denied_for_provider" =>
@@ -267,6 +278,8 @@
         };
         _noticeMessage = _externalNotice switch
         {
+            "external_signin" =>
+                L["Login.Notice.ExternalSignIn"].Value,
             "external_email_verification_sent" =>
                 L["Login.Notice.ExternalEmailVerificationSent"].Value,
             _ => null,

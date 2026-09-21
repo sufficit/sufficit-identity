@@ -61,18 +61,30 @@ ORDER BY cnt DESC;
 
 ### 3. Garantir ClaimActions de TODOS os provedores externos
 
-O STS só registra o `ClaimAction` `email_verified` para **Google**
-(`src/sts/ServiceCollectionExtensions.cs`, `AddExternalProviders`).
-**Facebook e GitHub não o emitem hoje.** Antes de ativar a flag:
+Os adaptadores vivem em `src/sts/ServiceCollectionExtensions.ExternalProviders.cs`.
+O Google só fornece prova aceita quando `email_verified=true` e o endereço é
+Gmail ou há domínio hospedado `hd` (Google Workspace). Para endereço de terceiros,
+`email_verified` isolado pode representar controle histórico, conforme a
+[documentação do Google](https://developers.google.com/identity/sign-in/web/backend-auth).
+A marca de perfil `verified` do Facebook não é usada como prova de e-mail.
+O mapeamento do GitHub só aproveita `email_verified` quando efetivamente fornecido.
 
-- Em `src/sts/AspNetCoreIdentityExternalSignInService.cs`, confirmar que o
-  adaptador lê `email_verified` do `Principal` e seta
-  `EmailConfirmed = emailVerified` apenas quando o provedor assevera `true`
-  (já faz — verificar a versão compilada na solução única).
-- Para provedores que **não** asseveram `email_verified` (Facebook clássico,
-  GitHub sem escopo extra de e-mail verificado), decidir uma das políticas:
-  - não auto-confirmar → usuário externo recebe e-mail de confirmação pós-cadastro;
-  - ou desabilitar esse provedor até resolver.
+`IExternalIdentityLinkingPolicy` avalia a prova e as listas explícitas de provedores
+confiáveis/negados. Sem prova, um cadastro novo aguarda a verificação por e-mail
+antes de persistir conta ou vínculo. `TrustedEmailProviders` deve conter somente
+provedores cuja validação de e-mail o operador conhece.
+
+Para uma conta **já confirmada**, a prova confiável do mesmo e-mail permite
+vincular o provedor e continuar o login automaticamente, sem pedir a senha local.
+MFA, bloqueio e demais restrições continuam valendo. Contas locais não confirmadas
+não são ativadas por esse caminho. Uma identidade externa já vinculada sempre
+identifica sua conta original, mesmo que o e-mail do provedor mude.
+`RequireVerifiedEmail=false` não dispensa prova ao vincular uma conta existente.
+
+Na tentativa de cadastro por senha de e-mail já existente, a UI continua pelo
+POST normal de login, sem criar conta ou trocar senha. Falhas retornam ao login
+com o e-mail preenchido e a senha vazia; contas sem senha local mantêm disponíveis
+as opções de acesso externo e recuperação.
 
 ### 4. Garantir fluxo de reenvio de confirmação
 

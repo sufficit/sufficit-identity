@@ -78,10 +78,10 @@ public static partial class ServiceCollectionExtensions
                 options.ClientSecret = googleClientSecret!;
                 // Use the ASP.NET Core default (/signin-google) to match the
                 // redirect URI already authorized in the Google Cloud Console.
-                // Surface Google's email_verified so the UI external-login flow
-                // only auto-confirms accounts with a provider-verified email
-                // (account-takeover fix). Google returns it as a JSON bool.
-                options.ClaimActions.MapJsonKey("email_verified", "email_verified", "boolean");
+                // Only authoritative Gmail/Workspace proof can confirm or link
+                // an address. Historical email_verified for third-party mail
+                // does not establish current ownership.
+                options.ClaimActions.MapCustomJson("email_verified", GoogleEmailProof.FromProfile);
                 // Surface Google's profile photo url as the raw OIDC "picture" claim
                 // so the sign-in service can persist it for avatar consumption.
                 options.ClaimActions.MapJsonKey("picture", "picture");
@@ -175,13 +175,9 @@ public static partial class ServiceCollectionExtensions
                 options.TokenEndpoint = "https://graph.facebook.com/v22.0/oauth/access_token";
                 options.UserInformationEndpoint = "https://graph.facebook.com/v22.0/me?fields=id,name,email";
 
-                // Surface Facebook's email verification (M5 fix, eval M5 —
-                // matches the Google/GitHub mappings). Meta's Graph API exposes
-                // the verified flag as the "verified" boolean field on the user
-                // object; map it onto the same "email_verified" claim the
-                // external-login flow reads, so a provider-verified email yields
-                // EmailConfirmed=true.
-                options.ClaimActions.MapJsonKey("email_verified", "verified", "boolean");
+                // Profile verification is not proof of control over the email
+                // address. Classic Facebook Login does not supply that proof;
+                // retain the email-verification/authenticated-linking flow.
 
                 // Disable automatic PKCE: ASP.NET Core 8+ enables PKCE by default
                 // for all OAuth handlers, but Facebook's /dialog/oauth endpoint

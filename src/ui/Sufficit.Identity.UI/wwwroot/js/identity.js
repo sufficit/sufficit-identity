@@ -2,6 +2,39 @@
 // Exposed globally as window.sufficitIdentity* so Blazor components can
 // call them via JS interop (IJSRuntime.InvokeVoidAsync).
 
+// Continue a registration for an existing account through the normal HTTP
+// password endpoint. Credentials stay in the POST body and are read from the
+// current inputs; never copy them into a URL or browser storage.
+window.sufficitIdentitySignInFromRegistration = function (formId, returnUrl) {
+    var source = document.getElementById(formId);
+    var token = source && source.querySelector('input[name="__RequestVerificationToken"]');
+    var email = source && source.querySelector('input[id="email"]');
+    var password = source && source.querySelector('input[id="password"]');
+    if (!token || !email || !password) {
+        throw new Error('Registration sign-in form is unavailable.');
+    }
+    var form = document.createElement('form');
+    form.method = 'post';
+    form.action = '/account/login/password';
+    form.hidden = true;
+    var values = {
+        __RequestVerificationToken: token.value,
+        UserName: email.value,
+        Password: password.value,
+        ReturnUrl: returnUrl,
+        FromRegistration: 'true'
+    };
+    Object.keys(values).forEach(function (name) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = values[name];
+        form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    HTMLFormElement.prototype.submit.call(form);
+};
+
 /**
  * Triggers a browser file download from a base64-encoded payload.
  * Used by PersonalData.razor to download the LGPD JSON.
