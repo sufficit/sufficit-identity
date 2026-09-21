@@ -15,6 +15,7 @@ public static class ValidationMessages
     public static string UserNameRequired => Get("Validation.UserNameRequired");
     public static string EmailRequired => Get("Validation.EmailRequired");
     public static string EmailInvalid => Get("Validation.EmailInvalid");
+    public static string CurrentPasswordRequired => Get("Validation.CurrentPasswordRequired");
     public static string PasswordRequired => Get("Validation.PasswordRequired");
     public static string PasswordLength => Get("Validation.PasswordLength");
     public static string ConfirmPasswordRequired => Get("Validation.ConfirmPasswordRequired");
