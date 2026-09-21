@@ -2,6 +2,7 @@
 @rendermode @(RenderMode.InteractiveServer)
 @using Microsoft.AspNetCore.WebUtilities
 @inject IAccountOnboardingService AccountOnboarding
+@inject IAccountPasswordPolicyProvider PasswordPolicyProvider
 @inject IHumanVerificationService HumanVerification
 @inject IJSRuntime JS
 @inject IBrandingThemeProvider BrandingProvider
@@ -76,9 +77,11 @@ else
                 <SUITextField T="string" Id="password"
                               Label="@L["Register.Password"]"
                               @bind-Value="_model.Password"
+                              AriaDescribedBy="password-requirements"
                               InputType="password"
                               autocomplete="new-password" />
 
+                <PasswordRequirements Policy="_passwordPolicy" MaximumLength="100" />
                 <SUITextField T="string" Id="confirm"
                               Label="@L["Register.ConfirmPassword"]"
                               @bind-Value="_model.ConfirmPassword"
@@ -131,6 +134,7 @@ else
     private bool _signingIn;
     private string _verificationToken = string.Empty;
     private HumanVerification? _verificationControl;
+    private AccountPasswordPolicy _passwordPolicy = default!;
     private AccountRegistrationPolicy _registrationPolicy = new(false, false);
     private string _logoUrl = "_content/Sufficit.Identity.UI/img/logo-full.png";
     private string _returnUrl = "/";
@@ -141,6 +145,7 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        _passwordPolicy = PasswordPolicyProvider.GetPolicy();
         _returnUrl = LocalUrlValidator.EnsureLocal(
             ReturnUrlPascal ?? ReturnUrl);
         _registrationPolicy = await AccountOnboarding
@@ -205,7 +210,8 @@ else
                                 L["Register.Error.CreateFailed"].Value,
                             "registration-disabled" =>
                                 L["Register.Error.RegistrationDisabled"].Value,
-                            _ => error.Description,
+                            _ => PasswordMessages.ForError(error.Code, _passwordPolicy, L)
+                                ?? error.Description,
                         })
                         .Distinct(StringComparer.Ordinal));
                 if (_verificationControl is not null)

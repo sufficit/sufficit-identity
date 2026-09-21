@@ -411,9 +411,9 @@
   <data name="Validation.EmailRequired" xml:space="preserve"><value>O e-mail é obrigatório.</value></data>
   <data name="Validation.EmailInvalid" xml:space="preserve"><value>E-mail inválido.</value></data>
   <data name="Validation.PasswordRequired" xml:space="preserve"><value>A senha é obrigatória.</value></data>
-  <data name="Validation.PasswordLength" xml:space="preserve"><value>A senha deve ter pelo menos {2} caracteres.</value></data>
+  <data name="Validation.PasswordLength" xml:space="preserve"><value>Use uma senha com no máximo {1} caracteres.</value></data>
   <data name="Validation.ConfirmPasswordRequired" xml:space="preserve"><value>Confirme a senha.</value></data>
-  <data name="Validation.PasswordMismatch" xml:space="preserve"><value>As senhas não conferem.</value></data>
+  <data name="Validation.PasswordMismatch" xml:space="preserve"><value>Digite a mesma senha nos dois campos de nova senha.</value></data>
   <data name="Validation.LoginIdentifierRequired" xml:space="preserve"><value>Informe o e-mail ou usuário.</value></data>
   <data name="Validation.LoginIdentifier" xml:space="preserve"><value>E-mail ou usuário</value></data>
   <data name="Validation.LoginPasswordRequired" xml:space="preserve"><value>Informe a senha.</value></data>
@@ -525,4 +525,22 @@
   <data name="Register.Error.RegistrationDisabled" xml:space="preserve"><value>Cadastro de novas contas está desativado.</value></data>
   <data name="Login.Error.InvalidPassword" xml:space="preserve"><value>Não foi possível entrar com essa senha. Tente novamente, recupere a senha ou entre com o provedor que já utiliza.</value></data>
   <data name="Login.Notice.ExternalSignIn" xml:space="preserve"><value>Continue com o provedor que já utiliza para entrar. Você também pode usar a recuperação de senha.</value></data>
+
+  <!-- Password requirements and actionable feedback -->
+  <data name="PasswordRules.Title" xml:space="preserve"><value>Para criar sua senha:</value></data>
+  <data name="PasswordRules.MinimumLength" xml:space="preserve"><value>Use pelo menos {0} caracteres.</value></data>
+  <data name="PasswordRules.LengthRange" xml:space="preserve"><value>Use de {0} a {1} caracteres.</value></data>
+  <data name="PasswordRules.Uppercase" xml:space="preserve"><value>Inclua uma letra maiúscula, como A, B ou C.</value></data>
+  <data name="PasswordRules.Lowercase" xml:space="preserve"><value>Inclua uma letra minúscula, como a, b ou c.</value></data>
+  <data name="PasswordRules.Digit" xml:space="preserve"><value>Inclua um número, como 1, 2 ou 3.</value></data>
+  <data name="PasswordRules.Symbol" xml:space="preserve"><value>Inclua um símbolo, como !, @ ou #.</value></data>
+  <data name="PasswordRules.Unique" xml:space="preserve"><value>Use pelo menos {0} caracteres diferentes entre si.</value></data>
+  <data name="PasswordRules.BreachCheck" xml:space="preserve"><value>Para proteger sua conta, senhas já divulgadas na internet não são aceitas.</value></data>
+  <data name="PasswordError.Breached" xml:space="preserve"><value>Essa senha já foi divulgada na internet. Escolha outra para proteger sua conta.</value></data>
+  <data name="PasswordError.CheckUnavailable" xml:space="preserve"><value>Não conseguimos verificar a segurança da senha agora. Aguarde um pouco e tente novamente.</value></data>
+  <data name="PasswordError.CurrentIncorrect" xml:space="preserve"><value>A senha atual está incorreta. Digite a senha que você usa para entrar ou use “Esqueceu a senha?” na tela de login.</value></data>
+  <data name="PasswordError.Required" xml:space="preserve"><value>Preencha a senha atual e a nova senha.</value></data>
+  <data name="PasswordError.ConcurrentChange" xml:space="preserve"><value>Sua conta foi atualizada durante esta tentativa. Abra a página novamente e tente alterar a senha.</value></data>
+  <data name="PasswordError.Unknown" xml:space="preserve"><value>Não foi possível salvar a senha. Confira os campos e tente novamente.</value></data>
+  <data name="Validation.CurrentPasswordRequired" xml:space="preserve"><value>Digite sua senha atual.</value></data>
 </root>
