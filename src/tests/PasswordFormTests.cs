@@ -147,12 +147,14 @@ public sealed class PasswordFormTests(SufficitIdentityTestFactory factory)
 
     private static Dictionary<string, string> ReadInputs(string html)
     {
+        // HTML attribute names are case-insensitive. Older SUI packages
+        // forward Name as an input attribute; current SUI emits name directly.
         var result = new Dictionary<string, string>();
-        foreach (Match input in Regex.Matches(html, @"<input\b[^>]*>"))
+        foreach (Match input in Regex.Matches(html, @"<input\b[^>]*>", RegexOptions.IgnoreCase))
         {
-            var name = Regex.Match(input.Value, "\\bname=\"([^\"]*)\"");
+            var name = Regex.Match(input.Value, "\\bname=\"([^\"]*)\"", RegexOptions.IgnoreCase);
             if (!name.Success) continue;
-            var value = Regex.Match(input.Value, "\\bvalue=\"([^\"]*)\"");
+            var value = Regex.Match(input.Value, "\\bvalue=\"([^\"]*)\"", RegexOptions.IgnoreCase);
             result[WebUtility.HtmlDecode(name.Groups[1].Value)] = WebUtility.HtmlDecode(value.Groups[1].Value);
         }
         return result;
