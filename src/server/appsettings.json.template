@@ -342,10 +342,10 @@
         "_DurationMinutes": "How long the account stays locked.",
         "DurationMinutes": 5
       },
-      "_Password": "Password complexity policy applied on user creation and password change/reset (eval M2). Defaults raise the bar above ASP.NET Core defaults (RequiredLength=6) toward the 2026 baseline (NIST 800-63B favors length; minimum 8, default here is 12). Existing users are NOT forced to change their password on login — Identity applies these rules only at creation/change time.",
+      "_Password": "Product password policy applied on user creation and password change/reset. The default minimum is 8 characters; this is not a claim of NIST compliance. Existing users are NOT forced to change their password on login — Identity applies these rules only at creation/change time.",
       "Password": {
-        "_RequiredLength": "Minimum password length. Default 12 (NIST 800-63B floor is 8).",
-        "RequiredLength": 12,
+        "_RequiredLength": "Minimum password length. Product default: 8.",
+        "RequiredLength": 8,
         "_RequireDigit": "Require at least one digit. Default true.",
         "RequireDigit": true,
         "_RequireLowercase": "Require at least one lowercase letter. Default true.",
