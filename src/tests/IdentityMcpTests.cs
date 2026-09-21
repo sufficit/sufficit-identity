@@ -16,7 +16,7 @@ using Xunit;
 
 namespace Sufficit.Identity.Tests;
 
-public sealed class IdentityMcpTests
+public sealed partial class IdentityMcpTests
 {
     [Fact]
     public void Sessions_are_bound_to_the_authenticated_subject()

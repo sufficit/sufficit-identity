@@ -156,4 +156,15 @@
   <data name="Vault.UserVault.Validation.ValueRequired" xml:space="preserve"><value>Informe um valor.</value></data>
   <data name="Vault.UserVault.ValueLabel" xml:space="preserve"><value>Valor</value></data>
   <data name="Vault.UserVault.ValuePlaceholder" xml:space="preserve"><value>Não será exibido novamente</value></data>
+  <data name="Vault.Entry.Title" xml:space="preserve"><value>Salvar chave da conexão</value></data>
+  <data name="Vault.Entry.Description" xml:space="preserve"><value>Cole a chave aqui e salve. O valor não passa pela conversa.</value></data>
+  <data name="Vault.Entry.InvalidLink" xml:space="preserve"><value>Este link não identifica um cadastro válido. Peça um novo link ao assistente.</value></data>
+  <data name="Vault.Entry.Saved" xml:space="preserve"><value>Chave salva</value></data>
+  <data name="Vault.Entry.ReturnToChat" xml:space="preserve"><value>Volte ao Genius e diga que salvou a chave. Ele verificará a conexão.</value></data>
+  <data name="Vault.Entry.OpenVault" xml:space="preserve"><value>Ver meu Vault</value></data>
+  <data name="Vault.Entry.AccountHint" xml:space="preserve"><value>Este cadastro pertence à conta Sufficit conectada nesta página.</value></data>
+  <data name="Vault.Entry.Existing" xml:space="preserve"><value>Já existe uma chave com este nome. Salvar substitui a chave anterior.</value></data>
+  <data name="Vault.Entry.Pasted" xml:space="preserve"><value>Texto da área de transferência colado. Salve para concluir.</value></data>
+  <data name="Vault.Entry.PasteHint" xml:space="preserve"><value>Se a colagem automática não funcionar, toque em Colar ou cole diretamente no campo.</value></data>
+  <data name="Vault.Entry.Paste" xml:space="preserve"><value>Colar</value></data>
 </root>

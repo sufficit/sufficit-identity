@@ -191,6 +191,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IUserVaultManagementService,
             UserVaultManagementService>();
         services.TryAddSingleton<McpSessionManager>();
+        services.AddHttpContextAccessor();
         services.TryAddScoped<VaultMcpTools>();
         services.TryAddScoped<SelfServiceMcpTools>();
         services.TryAddScoped<IdentityMcpToolRegistry>();

@@ -14,16 +14,18 @@ namespace Sufficit.Identity.Management.Mcp;
 /// corresponding vault capability. Plaintext resolution demands the
 /// <c>confirmPlaintext</c> flag and is always journaled.
 /// </summary>
-public sealed class VaultMcpTools(
+public sealed partial class VaultMcpTools(
     IVaultNamedSecretStore store,
     IManagementAuthorizationEvaluator authorization,
     AppDbContext database,
-    IOptions<VaultOptions> options)
+    IOptions<VaultOptions> options,
+    Microsoft.AspNetCore.Http.IHttpContextAccessor httpContextAccessor)
 {
     internal const string PersonalContextPrefix = "user-";
 
     public IReadOnlyList<McpToolDescriptor> Tools =>
     [
+        PrepareEntryTool,
         new(
             "vault_list",
             "Lists secret metadata (never values) in your personal vault, or in an explicit shared context when authorized. Secrets in the ai/ namespace are also visible to Sufficit AI agents.",
@@ -43,7 +45,7 @@ public sealed class VaultMcpTools(
             GetInfoAsync),
         new(
             "vault_save",
-            "Creates or rotates a secret. Optional ISO-8601 expiresAtUtc; expired secrets stop resolving.",
+            "Creates or rotates a secret from a value already available. For a new API key from the user, prefer vault_prepare_entry so they paste directly into Identity instead of chat. Optional ISO-8601 expiresAtUtc; expired secrets stop resolving.",
             Schema(new Dictionary<string, object>
             {
                 ["name"] = new { type = "string", description = "Secret path, e.g. ai/anthropic-key. Use the ai/ namespace to share with Sufficit AI agents." },
