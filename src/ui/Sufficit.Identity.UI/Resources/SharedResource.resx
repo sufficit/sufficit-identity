@@ -411,9 +411,9 @@
   <data name="Validation.EmailRequired" xml:space="preserve"><value>Email is required.</value></data>
   <data name="Validation.EmailInvalid" xml:space="preserve"><value>Enter a valid email address.</value></data>
   <data name="Validation.PasswordRequired" xml:space="preserve"><value>Password is required.</value></data>
-  <data name="Validation.PasswordLength" xml:space="preserve"><value>The password must be at least {2} characters long.</value></data>
+  <data name="Validation.PasswordLength" xml:space="preserve"><value>Use a password with no more than {1} characters.</value></data>
   <data name="Validation.ConfirmPasswordRequired" xml:space="preserve"><value>Confirm your password.</value></data>
-  <data name="Validation.PasswordMismatch" xml:space="preserve"><value>The passwords do not match.</value></data>
+  <data name="Validation.PasswordMismatch" xml:space="preserve"><value>Enter the same password in both new password fields.</value></data>
   <data name="Validation.LoginIdentifierRequired" xml:space="preserve"><value>Enter your email or username.</value></data>
   <data name="Validation.LoginIdentifier" xml:space="preserve"><value>Email or username</value></data>
   <data name="Validation.LoginPasswordRequired" xml:space="preserve"><value>Enter your password.</value></data>
@@ -525,4 +525,22 @@
   <data name="Register.Error.RegistrationDisabled" xml:space="preserve"><value>New account registration is disabled.</value></data>
   <data name="Login.Error.InvalidPassword" xml:space="preserve"><value>We could not sign you in with that password. Try again, reset your password, or sign in with the provider you already use.</value></data>
   <data name="Login.Notice.ExternalSignIn" xml:space="preserve"><value>Continue with the provider you already use to sign in. You can also use password recovery.</value></data>
+
+  <!-- Password requirements and actionable feedback -->
+  <data name="PasswordRules.Title" xml:space="preserve"><value>To create your password:</value></data>
+  <data name="PasswordRules.MinimumLength" xml:space="preserve"><value>Use at least {0} characters.</value></data>
+  <data name="PasswordRules.LengthRange" xml:space="preserve"><value>Use {0} to {1} characters.</value></data>
+  <data name="PasswordRules.Uppercase" xml:space="preserve"><value>Include an uppercase letter, such as A, B or C.</value></data>
+  <data name="PasswordRules.Lowercase" xml:space="preserve"><value>Include a lowercase letter, such as a, b or c.</value></data>
+  <data name="PasswordRules.Digit" xml:space="preserve"><value>Include a number, such as 1, 2 or 3.</value></data>
+  <data name="PasswordRules.Symbol" xml:space="preserve"><value>Include a symbol, such as !, @ or #.</value></data>
+  <data name="PasswordRules.Unique" xml:space="preserve"><value>Use at least {0} distinct characters.</value></data>
+  <data name="PasswordRules.BreachCheck" xml:space="preserve"><value>To protect your account, passwords exposed in data breaches are not accepted.</value></data>
+  <data name="PasswordError.Breached" xml:space="preserve"><value>This password has been exposed in a data breach. Choose a different one to protect your account.</value></data>
+  <data name="PasswordError.CheckUnavailable" xml:space="preserve"><value>We could not check the password security right now. Wait a moment and try again.</value></data>
+  <data name="PasswordError.CurrentIncorrect" xml:space="preserve"><value>The current password is incorrect. Enter the password you use to sign in, or use "Forgot password?" on the sign-in page.</value></data>
+  <data name="PasswordError.Required" xml:space="preserve"><value>Enter your current password and your new password.</value></data>
+  <data name="PasswordError.ConcurrentChange" xml:space="preserve"><value>Your account was updated during this attempt. Reopen the page and try changing your password again.</value></data>
+  <data name="PasswordError.Unknown" xml:space="preserve"><value>We could not save the password. Check the fields and try again.</value></data>
+  <data name="Validation.CurrentPasswordRequired" xml:space="preserve"><value>Enter your current password.</value></data>
 </root>

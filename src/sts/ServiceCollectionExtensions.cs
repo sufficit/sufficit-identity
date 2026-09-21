@@ -694,6 +694,7 @@ public static partial class ServiceCollectionExtensions
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IAssuranceLevelResolver, AmrBasedAssuranceLevelResolver>();
         services.AddScoped<IAccountSelfService, AccountSelfService>();
+        services.AddScoped<IAccountPasswordPolicyProvider, AccountPasswordPolicyProvider>();
         services.AddScoped<IAccountAccessService, AccountAccessService>();
         services.AddScoped<IAccountExternalIdentityService,
             AspNetCoreIdentityAccountExternalIdentityService>();
