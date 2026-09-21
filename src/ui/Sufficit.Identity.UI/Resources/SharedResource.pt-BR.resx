@@ -527,7 +527,7 @@
   <data name="Login.Notice.ExternalSignIn" xml:space="preserve"><value>Continue com o provedor que já utiliza para entrar. Você também pode usar a recuperação de senha.</value></data>
 
   <!-- Password requirements and actionable feedback -->
-  <data name="PasswordRules.Title" xml:space="preserve"><value>Para criar sua senha:</value></data>
+  <data name="PasswordRules.Title" xml:space="preserve"><value>O que falta na senha:</value></data>
   <data name="PasswordRules.MinimumLength" xml:space="preserve"><value>Use pelo menos {0} caracteres.</value></data>
   <data name="PasswordRules.LengthRange" xml:space="preserve"><value>Use de {0} a {1} caracteres.</value></data>
   <data name="PasswordRules.Uppercase" xml:space="preserve"><value>Inclua uma letra maiúscula, como A, B ou C.</value></data>

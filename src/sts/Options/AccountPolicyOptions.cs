@@ -20,17 +20,16 @@ public sealed class LockoutOptions
 }
 /// <summary>
 /// Password complexity policy enforced by ASP.NET Core Identity on user
-/// creation and password change/reset (eval M2). The defaults raise the bar
-/// above the ASP.NET Core defaults (<c>RequiredLength=6</c>) toward the 2026
-/// baseline (NIST 800-63B: favor length over composition rules, but require a
-/// minimum of 8 — this policy defaults to 12). Existing users are NOT forced
+/// creation and password change/reset. The product policy defaults to eight
+/// characters; deployments may configure a different minimum. This is not a
+/// claim of NIST compliance. Existing users are NOT forced
 /// to change their password on login: ASP.NET Core Identity applies password
 /// rules only at creation/change time, never retroactively.
 /// </summary>
 public sealed class PasswordPolicyOptions
 {
-    /// <summary>Minimum password length. Default 12 (NIST 800-63B floor is 8).</summary>
-    public int RequiredLength { get; init; } = 12;
+    /// <summary>Minimum password length. Product default: 8.</summary>
+    public int RequiredLength { get; init; } = 8;
 
     /// <summary>Require at least one digit ('0'-'9'). Default true.</summary>
     public bool RequireDigit { get; init; } = true;
