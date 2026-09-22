@@ -23,21 +23,30 @@ try {
   assert.equal(await page.locator('#new-password').count(), 0);
   assert.equal(await page.locator('#delete-user-confirmation').count(), 0);
   const accountActions = page.getByRole('button', { name: 'Ações da conta', exact: true });
+  const actionsMenu = page.locator('#user-account-actions-menu');
+  assert.equal(await accountActions.isVisible(), false);
+  assert.equal(await actionsMenu.isVisible(), true);
+  const desktopActionPositions = await page.locator('.user-account-action').evaluateAll(elements =>
+    elements.map(element => Math.round(element.getBoundingClientRect().top)));
+  assert.equal(new Set(desktopActionPositions).size, 1);
+  await page.screenshot({ path: `${output}/desktop-actions.png`, fullPage: true, animations: 'disabled' });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'desktop: action row overflow');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await accountActions.waitFor();
+  assert.equal(await actionsMenu.isVisible(), false);
   assert.equal(await accountActions.getAttribute('aria-expanded'), 'false');
   await accountActions.click();
-  await page.locator('#user-account-actions-menu').waitFor();
+  await actionsMenu.waitFor();
   assert.equal(await accountActions.getAttribute('aria-expanded'), 'true');
   assert.match(await page.getByRole('link', { name: /Redefinir autenticação de dois fatores/ }).getAttribute('href'), /users\/user-1\/actions\/mfa$/);
   assert.match(await page.getByRole('link', { name: /Gerenciar acesso/ }).getAttribute('href'), /users\/user-1\/actions\/access$/);
   assert.match(await page.getByRole('link', { name: /Redefinir senha/ }).getAttribute('href'), /users\/user-1\/actions\/password$/);
   assert.match(await page.getByRole('link', { name: /Excluir conta do provedor/ }).getAttribute('href'), /users\/user-1\/actions\/delete$/);
-  for (const [name, width, height] of [['desktop', 1440, 1000], ['mobile', 390, 844]]) {
-    await page.setViewportSize({ width, height });
-    await page.screenshot({ path: `${output}/${name}-action-menu.png`, fullPage: true, animations: 'disabled' });
-    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${name}: action menu overflow`);
-  }
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: `${output}/mobile-action-menu.png`, fullPage: true, animations: 'disabled' });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'mobile: action menu overflow');
   await accountActions.click();
-  await page.locator('#user-account-actions-menu').waitFor({ state: 'detached' });
+  await actionsMenu.waitFor({ state: 'hidden' });
   assert.equal(await accountActions.getAttribute('aria-expanded'), 'false');
   for (const [route, marker] of [
     ['access', '#confirm-account-lockout'],
@@ -54,7 +63,7 @@ try {
   await page.goto(`${origin}/management/users/user-1`);
   await page.waitForLoadState('networkidle');
   await accountActions.click();
-  await page.locator('#user-account-actions-menu').waitFor();
+  await actionsMenu.waitFor();
   await page.getByRole('link', { name: /Redefinir autenticação de dois fatores/ }).click();
   await page.waitForURL('**/management/users/user-1/actions/mfa');
   await page.getByRole('button', { name: 'Redefinir autenticação de dois fatores', exact: true }).click();

@@ -159,42 +159,40 @@ else if (result?.IsSuccess is true && result.Value is not null)
         </div>
     </div>
 
-    <section class="user-account-actions" aria-labelledby="user-account-actions-heading">
+    <section class="user-account-actions" aria-label="@L["Users.Detail.Actions.Toggle"].Value">
         <button class="button button--secondary user-account-actions__toggle"
                 type="button"
                 aria-expanded="@(showAccountActions ? "true" : "false")"
                 aria-controls="user-account-actions-menu"
                 @onclick="() => showAccountActions = !showAccountActions">
             <SUIIcon Name="settings" Size="17" />
-            <span id="user-account-actions-heading">@L["Users.Detail.Actions.Toggle"]</span>
+            <span>@L["Users.Detail.Actions.Toggle"]</span>
             <SUIIcon Name="@(showAccountActions ? "chevron-up" : "chevron-down")" Size="15" />
         </button>
 
-        @if (showAccountActions)
-        {
-            <div id="user-account-actions-menu" class="user-account-actions__menu">
-                <a class="user-account-action" href="@MfaResetHref">
-                    <span class="user-account-action__icon"><SUIIcon Name="shield" Size="19" /></span>
-                    <span><strong>@L["Users.MfaReset.Title"]</strong><small>@L["Users.MfaReset.Description"]</small></span>
-                    <SUIIcon Name="arrow-right" Size="16" />
-                </a>
-                <a class="user-account-action" href="@AccessHref">
-                    <span class="user-account-action__icon"><SUIIcon Name="lock" Size="19" /></span>
-                    <span><strong>@L["Users.Detail.Actions.Access"]</strong><small>@L["Users.Detail.Actions.AccessDescription"]</small></span>
-                    <SUIIcon Name="arrow-right" Size="16" />
-                </a>
-                <a class="user-account-action" href="@PasswordResetHref">
-                    <span class="user-account-action__icon"><SUIIcon Name="key" Size="19" /></span>
-                    <span><strong>@L["Users.Detail.Reset.Title"]</strong><small>@L["Users.Detail.Reset.Description"]</small></span>
-                    <SUIIcon Name="arrow-right" Size="16" />
-                </a>
-                <a class="user-account-action user-account-action--danger" href="@DeleteHref">
-                    <span class="user-account-action__icon"><SUIIcon Name="trash" Size="19" /></span>
-                    <span><strong>@L["Users.Detail.Delete.Heading"]</strong><small>@L["Users.Detail.Actions.DeleteDescription"]</small></span>
-                    <SUIIcon Name="arrow-right" Size="16" />
-                </a>
-            </div>
-        }
+        <div id="user-account-actions-menu"
+             class="user-account-actions__menu @(showAccountActions ? "user-account-actions__menu--open" : null)">
+            <a class="user-account-action" href="@MfaResetHref">
+                <span class="user-account-action__icon"><SUIIcon Name="shield" Size="19" /></span>
+                <span><strong>@L["Users.MfaReset.Title"]</strong><small>@L["Users.MfaReset.Description"]</small></span>
+                <SUIIcon Name="arrow-right" Size="16" />
+            </a>
+            <a class="user-account-action" href="@AccessHref">
+                <span class="user-account-action__icon"><SUIIcon Name="lock" Size="19" /></span>
+                <span><strong>@L["Users.Detail.Actions.Access"]</strong><small>@L["Users.Detail.Actions.AccessDescription"]</small></span>
+                <SUIIcon Name="arrow-right" Size="16" />
+            </a>
+            <a class="user-account-action" href="@PasswordResetHref">
+                <span class="user-account-action__icon"><SUIIcon Name="key" Size="19" /></span>
+                <span><strong>@L["Users.Detail.Reset.Title"]</strong><small>@L["Users.Detail.Reset.Description"]</small></span>
+                <SUIIcon Name="arrow-right" Size="16" />
+            </a>
+            <a class="user-account-action user-account-action--danger" href="@DeleteHref">
+                <span class="user-account-action__icon"><SUIIcon Name="trash" Size="19" /></span>
+                <span><strong>@L["Users.Detail.Delete.Heading"]</strong><small>@L["Users.Detail.Actions.DeleteDescription"]</small></span>
+                <SUIIcon Name="arrow-right" Size="16" />
+            </a>
+        </div>
     </section>
 }
 else
