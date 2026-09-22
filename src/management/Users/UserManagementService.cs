@@ -22,6 +22,7 @@ internal sealed partial class UserManagementService(
     IIdentityAccountLifecycleService accountLifecycle,
     IAccountOnboardingService accountOnboarding,
     ISecurityEventTrigger securityEvents,
+    Microsoft.AspNetCore.Identity.UI.Services.IEmailSender emailSender,
     IOptions<ManagementOptions> managementOptions,
     ILogger<UserManagementService> logger) : IUserManagementService
 {

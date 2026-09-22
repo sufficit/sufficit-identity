@@ -404,6 +404,39 @@ public sealed class AuthorizationReauthenticationIntegrationTests(
             StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Pending_mfa_recovery_preserves_interactive_and_silent_authorization(bool silent)
+    {
+        var username = $"mfa-recovery-authorization-{Guid.NewGuid():N}";
+        using (var scope = factory.Services.CreateScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = await TestDataSeeder.CreateUserAsync(users, username, TestDataSeeder.DefaultPassword);
+            Assert.True((await Sufficit.Identity.Core.Services.MfaRecoveryState.RequireAsync(users, user)).Succeeded);
+            await EnsureClientAsync(scope.ServiceProvider);
+        }
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false, BaseAddress = new Uri("https://identity.tests.local"),
+        });
+        await TestOnlyEndpoints.SignInAsync(client, username, withMfa: true);
+        client.DefaultRequestHeaders.Accept.ParseAdd("text/html");
+        var url = PlainAuthorizationUrl();
+        if (silent) url = QueryHelpers.AddQueryString(url, "prompt", PromptValues.None);
+        using var response = await client.GetAsync(url);
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        if (silent)
+        {
+            var callback = response.Headers.Location!;
+            Assert.StartsWith(RedirectUri, callback.OriginalString, StringComparison.Ordinal);
+            Assert.Equal(Errors.InteractionRequired, QueryHelpers.ParseQuery(callback.Query)["error"].ToString());
+        }
+        else Assert.Equal("/manage/twofactor", response.Headers.Location!.OriginalString);
+    }
+
     private static async Task EnsureClientAsync(IServiceProvider services)
     {
         var applications = services

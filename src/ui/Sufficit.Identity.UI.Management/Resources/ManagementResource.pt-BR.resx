@@ -2089,4 +2089,34 @@
   <data name="Posture.password-breach-check-fail-open.Recommendation" xml:space="preserve"><value>Defina Sufficit:Identity:Password:BreachedCheckFailureMode=FailClosed se for aceitável bloquear cadastro e troca de senha enquanto esse serviço estiver fora.</value></data>
   <data name="Posture.vault-kek-in-data-protection.Summary" xml:space="preserve"><value>A chave mestra do cofre é protegida pelo anel de chaves do Data Protection, guardado no mesmo banco das chaves de dados cifradas.</value></data>
   <data name="Posture.vault-kek-in-data-protection.Recommendation" xml:space="preserve"><value>Defina Sufficit:Vault:KeySource=certificate com um certificado dedicado, legível só pela conta do serviço.</value></data>
+  <data name="Capability.Label.ResetMfa" xml:space="preserve"><value>Redefinir duas etapas</value></data>
+  <data name="Capability.identity.users.reset-mfa.Title" xml:space="preserve"><value>Redefinir autenticação de dois fatores de usuários</value></data>
+  <data name="Capability.identity.users.reset-mfa.Description" xml:space="preserve"><value>Permite recuperar o acesso de outro usuário após verificar sua identidade. Exige MFA recente, revoga os acessos anteriores e obriga o recadastro do autenticador.</value></data>
+  <data name="Users.MfaReset.Title" xml:space="preserve"><value>Redefinir autenticação de dois fatores</value></data>
+  <data name="Users.MfaReset.Description" xml:space="preserve"><value>Recupere o acesso de quem perdeu o autenticador e os códigos de recuperação.</value></data>
+  <data name="Users.MfaReset.Pending" xml:space="preserve"><value>Aguardando novo autenticador</value></data>
+  <data name="Users.MfaReset.Success" xml:space="preserve"><value>Autenticação de dois fatores redefinida.</value></data>
+  <data name="Users.MfaReset.NextStep" xml:space="preserve"><value>Oriente o titular a entrar pelo endereço habitual e cadastrar o autenticador no novo aparelho. O acesso aos aplicativos fica bloqueado até a confirmação do novo código.</value></data>
+  <data name="Users.MfaReset.NotificationFailed" xml:space="preserve"><value>A redefinição foi concluída, mas não foi possível encaminhar o aviso por e-mail. Avise o titular pelo canal de suporte verificado.</value></data>
+  <data name="Users.MfaReset.Error" xml:space="preserve"><value>A redefinição não foi concluída</value></data>
+  <data name="Users.MfaReset.NotEnabled" xml:space="preserve"><value>Esta conta não tem autenticação de dois fatores ativa para redefinir.</value></data>
+  <data name="Users.MfaReset.StepUp" xml:space="preserve"><value>Confirme novamente seu segundo fator para executar esta ação. A confirmação vale por 15 minutos.</value></data>
+  <data name="Users.MfaReset.Reauthenticate" xml:space="preserve"><value>Confirmar minha identidade</value></data>
+  <data name="Users.MfaReset.SelfDenied" xml:space="preserve"><value>Para alterar seu próprio autenticador, use as configurações de segurança da sua conta.</value></data>
+  <data name="Users.MfaReset.Forbidden" xml:space="preserve"><value>Seu perfil não tem permissão para redefinir o segundo fator desta conta.</value></data>
+  <data name="Users.MfaReset.VerificationNote" xml:space="preserve"><value>Verifique a identidade do titular antes de iniciar. A ação será registrada na auditoria.</value></data>
+  <data name="Users.MfaReset.Consequences" xml:space="preserve"><value>Você está redefinindo o segundo fator de {0}. O autenticador e os códigos antigos deixarão de funcionar; as sessões e os tokens anteriores serão revogados. A senha e o bloqueio da conta não serão alterados.</value></data>
+  <data name="Users.MfaReset.Reason" xml:space="preserve"><value>Motivo da redefinição</value></data>
+  <data name="Users.MfaReset.ReasonHelp" xml:space="preserve"><value>Use de 10 a 500 caracteres. Informe o chamado ou o motivo, sem senhas, códigos ou documentos pessoais.</value></data>
+  <data name="Users.MfaReset.Confirmation" xml:space="preserve"><value>Digite {0} para confirmar a conta</value></data>
+  <data name="Users.MfaReset.IdentityVerified" xml:space="preserve"><value>Verifiquei a identidade do titular pelo procedimento de suporte.</value></data>
+  <data name="Users.MfaReset.Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="Users.MfaReset.Submitting" xml:space="preserve"><value>Redefinindo…</value></data>
+  <data name="Users.MfaReset.Confirm" xml:space="preserve"><value>Confirmar redefinição</value></data>
+  <data name="Error.user_mfa_reset_reason_required" xml:space="preserve"><value>Informe o motivo da redefinição.</value></data>
+  <data name="Error.user_mfa_reset_reason_invalid" xml:space="preserve"><value>Descreva o motivo em 10 a 500 caracteres, sem senhas ou códigos.</value></data>
+  <data name="Error.user_mfa_reset_verification_required" xml:space="preserve"><value>Confirme a verificação da identidade do titular antes de continuar.</value></data>
+  <data name="Error.user_mfa_reset_confirmation_invalid" xml:space="preserve"><value>Digite a identificação da conta exatamente como exibida.</value></data>
+  <data name="Error.user_mfa_not_enabled" xml:space="preserve"><value>A autenticação de dois fatores não está ativa. Atualize a página.</value></data>
+  <data name="Error.user_mfa_reset_failed" xml:space="preserve"><value>Não foi possível redefinir a autenticação. Nenhuma alteração foi confirmada.</value></data>
 </root>
