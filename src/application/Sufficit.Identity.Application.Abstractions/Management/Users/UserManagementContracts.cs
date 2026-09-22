@@ -41,6 +41,12 @@ public interface IUserManagementService
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 
+    Task<ManagementMfaResetResult> ResetTwoFactorAsync(
+        string id,
+        ResetManagementUserTwoFactorCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
     Task<ManagementUserDetail> SetLockoutAsync(
         string id,
         SetManagementUserLockoutCommand command,
@@ -81,6 +87,15 @@ public sealed record UpdateManagementUserProfileCommand(
 
 public sealed record ResetManagementUserPasswordCommand(
     string NewPassword);
+
+public sealed record ResetManagementUserTwoFactorCommand(
+    string Reason,
+    string Confirmation,
+    bool IdentityVerified);
+
+public sealed record ManagementMfaResetResult(
+    ManagementUserDetail User,
+    bool NotificationQueued);
 
 public sealed record SetManagementUserLockoutCommand(
     bool Locked);
@@ -173,7 +188,10 @@ public sealed record ManagementUserActions(
     string UpdateProfileReasonCode = "not_evaluated",
     bool CanDelete = false,
     bool DeleteRequiresMfa = false,
-    string DeleteReasonCode = "not_evaluated");
+    string DeleteReasonCode = "not_evaluated",
+    bool CanResetTwoFactor = false,
+    bool ResetTwoFactorRequiresMfa = false,
+    string ResetTwoFactorReasonCode = "not_evaluated");
 
 [method: JsonConstructor]
 public sealed record ManagementUserDetail(
@@ -190,6 +208,8 @@ public sealed record ManagementUserDetail(
     DateTime UpdatedAt,
     ManagementUserActions Actions)
 {
+    public bool TwoFactorReenrollmentRequired { get; init; }
+
     public ManagementUserDetail(
         string id,
         string? userName,

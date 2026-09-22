@@ -15,6 +15,30 @@ public sealed class PasswordGrantTests
     public PasswordGrantTests(SufficitIdentityTestFactory factory) => _factory = factory;
 
     [Fact]
+    public async Task Administrative_mfa_recovery_blocks_password_grant_until_reenrollment()
+    {
+        string username;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var target = await TestDataSeeder.CreateUserAsync(users, $"mfa-grant-{Guid.NewGuid():N}", TestDataSeeder.DefaultPassword);
+            username = target.UserName!;
+            Assert.True((await Sufficit.Identity.Core.Services.MfaRecoveryState.RequireAsync(users, target)).Succeeded);
+        }
+        var client = _factory.CreateClient();
+        var (status, body) = await client.PostFormAsync("/connect/token", new Dictionary<string, string>
+        {
+            ["grant_type"] = "password", ["username"] = username,
+            ["password"] = TestDataSeeder.DefaultPassword,
+            ["client_id"] = TestDataSeeder.PasswordClientId,
+            ["client_secret"] = TestDataSeeder.PasswordClientSecret,
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, status);
+        Assert.Equal("access_denied", body.GetProperty("error").GetString());
+        Assert.False(body.TryGetProperty("access_token", out _));
+    }
+
+    [Fact]
     public async Task Password_grant_with_valid_credentials_issues_an_access_token()
     {
         var client = _factory.CreateClient();

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 using Sufficit.Identity.STS;
 using Xunit;
@@ -9,7 +10,7 @@ public sealed class SecurityDecisionTelemetryTests
     [Fact]
     public void Security_metrics_are_low_cardinality_and_record_observe_fallbacks()
     {
-        var measurements = new List<(
+        var measurements = new ConcurrentQueue<(
             string Instrument,
             IReadOnlyDictionary<string, object?> Tags)>();
         using var listener = new MeterListener
@@ -26,7 +27,7 @@ public sealed class SecurityDecisionTelemetryTests
             instrument,
             _,
             tags,
-            _) => measurements.Add((
+            _) => measurements.Enqueue((
                 instrument.Name,
                 tags.ToArray().ToDictionary(
                     tag => tag.Key,

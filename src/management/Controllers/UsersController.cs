@@ -84,6 +84,13 @@ public sealed class UsersController(IUserManagementService users)
             RequestContext(),
             cancellationToken));
 
+    [HttpPost("{id}/reset-two-factor")]
+    public async Task<ActionResult<ManagementMfaResetResult>> ResetTwoFactor(
+        string id,
+        [FromBody] ResetManagementUserTwoFactorCommand command,
+        CancellationToken cancellationToken) =>
+        Ok(await users.ResetTwoFactorAsync(id, command, RequestContext(), cancellationToken));
+
     [HttpPost("{id}/lockout")]
     public async Task<ActionResult<ManagementUserDetail>> SetLockout(
         string id,

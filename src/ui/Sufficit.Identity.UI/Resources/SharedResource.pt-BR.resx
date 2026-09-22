@@ -543,4 +543,5 @@
   <data name="PasswordError.ConcurrentChange" xml:space="preserve"><value>Sua conta foi atualizada durante esta tentativa. Abra a página novamente e tente alterar a senha.</value></data>
   <data name="PasswordError.Unknown" xml:space="preserve"><value>Não foi possível salvar a senha. Confira os campos e tente novamente.</value></data>
   <data name="Validation.CurrentPasswordRequired" xml:space="preserve"><value>Digite sua senha atual.</value></data>
+  <data name="ManageTwoFactor.ReenrollmentRequired" xml:space="preserve"><value>Seu autenticador foi redefinido por um gestor. Configure o novo aparelho e confirme um código para liberar novamente o acesso aos aplicativos. Guarde os novos códigos de recuperação.</value></data>
 </root>
