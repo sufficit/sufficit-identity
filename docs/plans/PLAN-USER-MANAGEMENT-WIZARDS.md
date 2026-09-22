@@ -1,6 +1,6 @@
 # Plano — ações de usuário em fluxos dedicados
 
-Atualizado em: 2026-09-22 15:22 BRT
+Atualizado em: 2026-09-22 12:51 BRT
 
 Objetivo: reduzir a tela de detalhe do usuário a um resumo limpo e mover cada operação sensível para uma rota própria, adequada a dispositivos móveis e organizada como um fluxo de uma função por vez.
 
@@ -11,7 +11,9 @@ Objetivo: reduzir a tela de detalhe do usuário a um resumo limpo e mover cada o
 - [x] Implementar o seletor recolhível, as páginas dedicadas e o motivo de MFA em uma linha.
 - [x] Atualizar testes de rota e navegador; validar desktop, mobile, acessibilidade e build.
 - [x] Revisar o diff, registrar decisões e preparar a mudança para integração.
-- [ ] **Em andamento:** publicar a revisão aprovada em produção e verificar os três nós.
+- [x] Publicar a revisão aprovada em produção e verificar os três nós.
+
+Plano concluído. Entrega registrada em `docs/activities/202609221251-user-management-action-wizards.md`.
 
 ## Decisões
 
