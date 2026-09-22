@@ -62,6 +62,9 @@ internal sealed partial class UserManagementService
         if (reason.Length is < 10 or > 500)
             throw new ManagementValidationException("user_mfa_reset_reason_invalid",
                 "Descreva o motivo em 10 a 500 caracteres, sem senhas ou códigos.", "reason");
+        // This is the authorized operator's support attestation, not proof of
+        // authentication. EvaluateResetTwoFactorAsync above always enforces
+        // identity, capability, object access and fresh MFA before this input.
         if (!command.IdentityVerified)
             throw new ManagementValidationException("user_mfa_reset_verification_required",
                 "Confirme a verificação da identidade do titular antes de continuar.", "identityVerified");
@@ -108,7 +111,8 @@ internal sealed partial class UserManagementService
             await transaction.DisposeAsync();
             // Do not accidentally flush the failed mutation when recording failure.
             database.ChangeTracker.Clear();
-            logger.LogError(exception, "Administrative MFA reset failed. User={UserId}; Correlation={CorrelationId}", id, context.CorrelationId);
+            logger.LogError(exception, "Administrative MFA reset failed. User={UserId}; Correlation={CorrelationId}", id.Replace("\r", string.Empty).Replace("\n", string.Empty),
+                context.CorrelationId.Replace("\r", string.Empty).Replace("\n", string.Empty));
             await TryWriteAuditAsync(context, ManagementCapabilities.UsersResetMfa,
                 resource, decision, "failed", "user_mfa_reset_failed", CancellationToken.None);
             throw new ManagementConflictException("user_mfa_reset_failed",
@@ -132,7 +136,8 @@ internal sealed partial class UserManagementService
             }
             catch (Exception exception)
             {
-                logger.LogError(exception, "MFA reset committed but notification failed. User={UserId}; Correlation={CorrelationId}", id, context.CorrelationId);
+                logger.LogError(exception, "MFA reset committed but notification failed. User={UserId}; Correlation={CorrelationId}", id.Replace("\r", string.Empty).Replace("\n", string.Empty),
+                context.CorrelationId.Replace("\r", string.Empty).Replace("\n", string.Empty));
             }
         }
         await TryWriteAuditAsync(context, ManagementCapabilities.UsersResetMfa, resource,
@@ -146,7 +151,8 @@ internal sealed partial class UserManagementService
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "MFA reset committed but security event delivery failed. User={UserId}", id);
+            logger.LogError(exception, "MFA reset committed but security event delivery failed. User={UserId}",
+                id.Replace("\r", string.Empty).Replace("\n", string.Empty));
         }
         return new ManagementMfaResetResult(await GetAsync(id, context, CancellationToken.None), notificationQueued);
     }
