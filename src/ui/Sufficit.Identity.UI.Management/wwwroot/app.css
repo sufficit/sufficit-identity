@@ -2685,6 +2685,92 @@ h3 {
     font-size: 11px;
 }
 
+.user-account-actions {
+    display: grid;
+    justify-items: start;
+    gap: 12px;
+}
+
+.user-account-actions__toggle {
+    min-height: 42px;
+}
+
+.user-account-actions__toggle .sui-icon:last-child {
+    margin-left: 2px;
+}
+
+.user-account-actions__menu {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: min(100%, 920px);
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+}
+
+.user-account-action {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 76px;
+    padding: 14px 16px;
+    color: var(--ink);
+    text-decoration: none;
+}
+
+.user-account-action:nth-child(even) {
+    border-left: 1px solid var(--line);
+}
+
+.user-account-action:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
+}
+
+.user-account-action:hover {
+    background: var(--surface-page);
+}
+
+.user-account-action:focus-visible {
+    position: relative;
+    z-index: 1;
+    outline: 2px solid var(--brand);
+    outline-offset: -2px;
+}
+
+.user-account-action > span:nth-child(2) {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.user-account-action strong {
+    font-size: 13px;
+}
+
+.user-account-action small {
+    color: var(--ink-muted);
+    font-size: 11px;
+    line-height: 1.45;
+}
+
+.user-account-action__icon {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border-radius: var(--radius);
+    background: var(--brand-soft);
+    color: var(--brand);
+}
+
+.user-account-action--danger .user-account-action__icon {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
 .account-access-panel {
     display: grid;
     gap: 18px;
@@ -6630,6 +6716,27 @@ h3 {
 
     .credential-panel {
         padding: 20px 16px;
+    }
+
+    .user-account-actions {
+        justify-items: stretch;
+    }
+
+    .user-account-actions__toggle {
+        width: 100%;
+    }
+
+    .user-account-actions__menu {
+        grid-template-columns: minmax(0, 1fr);
+        width: 100%;
+    }
+
+    .user-account-action:nth-child(even) {
+        border-left: 0;
+    }
+
+    .user-account-action + .user-account-action {
+        border-top: 1px solid var(--line);
     }
 
     .credential-panel__heading,

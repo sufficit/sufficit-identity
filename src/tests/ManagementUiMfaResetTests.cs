@@ -7,15 +7,30 @@ namespace Sufficit.Identity.Tests;
 
 public sealed partial class ManagementUiRoutingTests
 {
-    [Theory]
-    [InlineData("/management/users/user-1")]
-    [InlineData("/management/users/user-1/edit")]
-    public async Task User_screens_offer_administrative_mfa_recovery(string path)
+    [Fact]
+    public async Task User_detail_keeps_account_actions_collapsed_and_edit_stays_profile_only()
     {
         await using var app = await CreateHostAsync();
         using var client = app.GetTestClient();
         await SignInAsync(client, "administrator");
-        using var response = await client.GetAsync(path);
+        using var detail = await client.GetAsync("/management/users/user-1");
+        using var edit = await client.GetAsync("/management/users/user-1/edit");
+        detail.EnsureSuccessStatusCode();
+        edit.EnsureSuccessStatusCode();
+        var detailHtml = WebUtility.HtmlDecode(await detail.Content.ReadAsStringAsync());
+        var editHtml = WebUtility.HtmlDecode(await edit.Content.ReadAsStringAsync());
+        Assert.Contains("Ações da conta", detailHtml);
+        Assert.DoesNotContain("mfa-reset-reason", detailHtml);
+        Assert.DoesNotContain("Redefinir autenticação de dois fatores", editHtml);
+    }
+
+    [Fact]
+    public async Task Dedicated_mfa_route_offers_administrative_recovery()
+    {
+        await using var app = await CreateHostAsync();
+        using var client = app.GetTestClient();
+        await SignInAsync(client, "administrator");
+        using var response = await client.GetAsync("/management/users/user-1/actions/mfa");
         response.EnsureSuccessStatusCode();
         var html = WebUtility.HtmlDecode(await response.Content.ReadAsStringAsync());
         Assert.Contains("Redefinir autenticação de dois fatores", html);
