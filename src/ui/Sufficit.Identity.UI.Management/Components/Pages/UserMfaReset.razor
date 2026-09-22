@@ -1,0 +1,70 @@
+@page "/users/{Id}/actions/mfa"
+@attribute [Authorize(Policy = ManagementUiPolicies.Access)]
+@attribute [StreamRendering]
+@inject ManagementUserDataSource UserData
+
+<PageTitle>@L["Users.MfaReset.PageTitle"]</PageTitle>
+
+<SUIPageHeader Title="@HeaderTitle" Description="@L["Users.MfaReset.Description"].Value">
+    <Actions>
+        <a class="button button--secondary" href="@DetailHref">
+            <SUIIcon Name="arrow-left" Size="17" />
+            @L["Users.Actions.BackToUser"]
+        </a>
+    </Actions>
+</SUIPageHeader>
+
+@if (loading)
+{
+    <div class="credential-panel" aria-busy="true" aria-label="@L["Users.Actions.Loading"].Value">
+        <div class="detail-skeleton"></div>
+        <div class="detail-skeleton detail-skeleton--short"></div>
+    </div>
+}
+else if (result?.IsSuccess is true && result.Value is not null)
+{
+    <UserMfaResetPanel User="result.Value" UserChanged="OnUserChanged" />
+}
+else
+{
+    <div class="panel">
+        <SUIEmptyState Icon="alert" Title="@ErrorTitle" Description="@ErrorDescription">
+            <Actions>
+                <a class="button button--secondary" href="@DetailHref">@L["Users.Actions.BackToUser"]</a>
+                @if (result?.Outcome is ManagementDataOutcome.Unavailable)
+                {
+                    <button class="button button--primary" type="button" @onclick="LoadAsync">@L["Users.Detail.Retry"]</button>
+                }
+            </Actions>
+        </SUIEmptyState>
+    </div>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    private ManagementDataResult<ManagementUserDetail>? result;
+    private bool loading = true;
+    private string DetailHref => $"users/{Uri.EscapeDataString(Id)}";
+    private string HeaderTitle => result?.Value?.UserName ?? result?.Value?.Email ?? L["Users.MfaReset.Title"].Value;
+    private string ErrorTitle => result?.Outcome is ManagementDataOutcome.NotFound
+        ? L["Users.Detail.Error.NotFound"].Value
+        : result?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? L["Users.Detail.Error.StepUp"].Value
+            : result?.Outcome is ManagementDataOutcome.Forbidden
+                ? L["Users.Detail.Error.Forbidden"].Value
+                : L["Users.Detail.Error.Generic"].Value;
+    private string ErrorDescription => result?.ErrorMessage ?? L["Users.Detail.Error.GenericDescription"].Value;
+
+    protected override async Task OnParametersSetAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true;
+        result = await UserData.GetAsync(Id);
+        loading = false;
+    }
+
+    private void OnUserChanged(ManagementUserDetail user) =>
+        result = ManagementDataResult<ManagementUserDetail>.Success(user);
+}

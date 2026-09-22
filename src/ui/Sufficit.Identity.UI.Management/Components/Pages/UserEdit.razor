@@ -184,11 +184,6 @@ else
     </div>
 }
 
-@if (!loading && detailResult?.IsSuccess == true)
-{
-    <UserMfaResetPanel User="User" UserChanged="OnMfaReset" />
-}
-
 @code {
     [Parameter]
     public string Id { get; set; } = string.Empty;
@@ -238,8 +233,6 @@ else
                     : L["Users.Edit.SubmitError.Generic"].Value;
 
     protected override async Task OnParametersSetAsync() => await LoadAsync();
-
-    private void OnMfaReset(ManagementUserDetail user) => detailResult = ManagementDataResult<ManagementUserDetail>.Success(user);
 
     private async Task LoadAsync()
     {

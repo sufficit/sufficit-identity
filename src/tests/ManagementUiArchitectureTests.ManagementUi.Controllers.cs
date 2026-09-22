@@ -186,6 +186,9 @@ public sealed partial class ManagementUiArchitectureTests
         var userDetail = File.ReadAllText(Path.Combine(
             pages,
             "UserDetail.razor"));
+        var userAccess = File.ReadAllText(Path.Combine(
+            pages,
+            "UserAccess.razor"));
         var navigation = File.ReadAllText(Path.Combine(
             ResolveManagementUiSource(),
             "Components",
@@ -209,11 +212,11 @@ public sealed partial class ManagementUiArchitectureTests
             StringComparison.Ordinal);
         Assert.Contains(
             "private static bool IsLockedOut(ManagementUserDetail? user)",
-            userDetail,
+            userAccess,
             StringComparison.Ordinal);
         Assert.Contains(
             "user?.LockoutEnd",
-            userDetail,
+            userAccess,
             StringComparison.Ordinal);
         Assert.Contains(
             "[SupplyParameterFromQuery(Name = \"user\")]",
