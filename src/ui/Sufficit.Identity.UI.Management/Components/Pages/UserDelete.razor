@@ -1,0 +1,98 @@
+@page "/users/{Id}/actions/delete"
+@attribute [Authorize(Policy = ManagementUiPolicies.Access)]
+@attribute [StreamRendering]
+@inject ManagementUserDataSource UserData
+@inject NavigationManager Navigation
+
+<PageTitle>@L["Users.Delete.PageTitle"]</PageTitle>
+
+<SUIPageHeader Title="@HeaderTitle" Description="@L["Users.Detail.Actions.DeleteDescription"].Value">
+    <Actions>
+        <a class="button button--secondary" href="@DetailHref"><SUIIcon Name="arrow-left" Size="17" />@L["Users.Actions.BackToUser"]</a>
+    </Actions>
+</SUIPageHeader>
+
+@if (loading)
+{
+    <div class="delete-zone" aria-busy="true" aria-label="@L["Users.Actions.Loading"].Value"><div class="detail-skeleton"></div><div class="detail-skeleton detail-skeleton--short"></div></div>
+}
+else if (result?.IsSuccess is false || result?.Value is null)
+{
+    <div class="panel"><SUIEmptyState Icon="alert" Title="@LoadErrorTitle" Description="@result?.ErrorMessage"><Actions><a class="button button--secondary" href="@DetailHref">@L["Users.Actions.BackToUser"]</a></Actions></SUIEmptyState></div>
+}
+else if (result.Value.Actions.CanDelete)
+{
+    <section class="delete-zone" aria-labelledby="delete-user-heading">
+        <div><h2 id="delete-user-heading">@L["Users.Detail.Delete.Heading"]</h2><p>@L["Users.Detail.Delete.Description"]</p></div>
+        <div class="delete-confirmation">
+            <label for="delete-user-confirmation">@L["Users.Detail.Delete.ConfirmLabelPrefix"] <strong>@ConfirmationValue</strong> @L["Users.Detail.Delete.ConfirmLabelSuffix"]</label>
+            <input id="delete-user-confirmation" class="form-control" type="text" autocomplete="off" spellcheck="false"
+                   aria-describedby="delete-user-help" @bind="confirmation" @bind:event="oninput" />
+            <small id="delete-user-help">@L["Users.Detail.Delete.Help"]</small>
+        </div>
+        <button class="button button--danger" type="button" disabled="@(!CanSubmit)" @onclick="DeleteAsync">
+            @if (busy) { <span class="button-spinner" aria-hidden="true"></span><span>@L["Users.Detail.Delete.Submitting"]</span> }
+            else { <SUIIcon Name="trash" Size="17" /><span>@L["Users.Detail.Delete.Submit"]</span> }
+        </button>
+        @if (operation?.IsSuccess is false)
+        {
+            <div class="inline-notice inline-notice--danger" role="alert"><SUIIcon Name="alert" Size="19" /><div><strong>@OperationErrorTitle</strong><span>@operation.ErrorMessage</span></div></div>
+        }
+    </section>
+}
+else if (result.Value.Actions.DeleteRequiresMfa)
+{
+    <div class="decision-note decision-note--neutral"><SUIIcon Name="shield" Size="21" /><div><h2>@L["Users.Detail.Delete.MfaRequiredTitle"]</h2><p>@L["Users.Detail.Delete.MfaRequiredDescription"]</p></div></div>
+}
+else if (result.Value.Actions.DeleteReasonCode is "user_self_delete_not_allowed")
+{
+    <div class="decision-note decision-note--neutral"><SUIIcon Name="shield" Size="21" /><div><h2>@L["Users.Detail.Delete.SelfTitle"]</h2><p>@L["Users.Detail.Delete.SelfDescription"]</p></div></div>
+}
+else
+{
+    <div class="decision-note decision-note--neutral"><SUIIcon Name="lock" Size="21" /><div><h2>@L["Users.Detail.Delete.Error.Forbidden"]</h2><p>@L["Common.Access.Forbidden"]</p></div></div>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    private ManagementDataResult<ManagementUserDetail>? result;
+    private ManagementDataResult<bool>? operation;
+    private bool loading = true;
+    private bool busy;
+    private string confirmation = string.Empty;
+    private string DetailHref => $"users/{Uri.EscapeDataString(Id)}";
+    private string HeaderTitle => result?.Value?.UserName ?? result?.Value?.Email ?? L["Users.Detail.Delete.Heading"].Value;
+    private string ConfirmationValue => result?.Value?.UserName ?? result?.Value?.Email ?? Id;
+    private bool CanSubmit => !busy && string.Equals(confirmation.Trim(), ConfirmationValue, StringComparison.Ordinal);
+    private string LoadErrorTitle => result?.Outcome is ManagementDataOutcome.NotFound
+        ? L["Users.Detail.Error.NotFound"].Value
+        : result?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? L["Users.Detail.Error.StepUp"].Value
+            : result?.Outcome is ManagementDataOutcome.Forbidden
+                ? L["Users.Detail.Error.Forbidden"].Value
+                : L["Users.Detail.Error.Generic"].Value;
+    private string OperationErrorTitle => operation?.Outcome is ManagementDataOutcome.StepUpRequired
+        ? L["Users.Detail.Delete.Error.StepUp"].Value
+        : operation?.Outcome is ManagementDataOutcome.Forbidden
+            ? L["Users.Detail.Delete.Error.Forbidden"].Value
+            : operation?.Outcome is ManagementDataOutcome.NotFound
+                ? L["Users.Detail.Delete.Error.NotFound"].Value
+                : L["Users.Detail.Delete.Error.Generic"].Value;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        result = await UserData.GetAsync(Id);
+        loading = false;
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (!CanSubmit) return;
+        busy = true;
+        operation = await UserData.DeleteAsync(Id);
+        busy = false;
+        if (operation.IsSuccess) Navigation.NavigateTo("users?deleted=1");
+    }
+}

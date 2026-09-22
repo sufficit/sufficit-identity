@@ -1,0 +1,152 @@
+@page "/users/{Id}/actions/access"
+@attribute [Authorize(Policy = ManagementUiPolicies.Access)]
+@attribute [StreamRendering]
+@inject ManagementUserDataSource UserData
+
+@{ var user = result?.Value; var currentlyLocked = IsLockedOut(user); }
+
+<PageTitle>@L["Users.Access.PageTitle"]</PageTitle>
+
+<SUIPageHeader Title="@HeaderTitle" Description="@L["Users.Detail.Actions.AccessDescription"].Value">
+    <Actions>
+        <a class="button button--secondary" href="@DetailHref">
+            <SUIIcon Name="arrow-left" Size="17" />
+            @L["Users.Actions.BackToUser"]
+        </a>
+    </Actions>
+</SUIPageHeader>
+
+@if (loading)
+{
+    <div class="account-access-panel" aria-busy="true" aria-label="@L["Users.Actions.Loading"].Value">
+        <div class="detail-skeleton"></div>
+        <div class="detail-skeleton detail-skeleton--short"></div>
+    </div>
+}
+else if (result?.IsSuccess is false || user is null)
+{
+    <div class="panel">
+        <SUIEmptyState Icon="alert" Title="@LoadErrorTitle" Description="@result?.ErrorMessage">
+            <Actions><a class="button button--secondary" href="@DetailHref">@L["Users.Actions.BackToUser"]</a></Actions>
+        </SUIEmptyState>
+    </div>
+}
+else if (user.Actions.CanSetLockout)
+{
+    <section class="account-access-panel @(currentlyLocked ? "account-access-panel--restore" : "account-access-panel--restrict")"
+             aria-labelledby="account-access-heading">
+        <div class="account-access-panel__heading">
+            <div class="account-access-panel__icon"><SUIIcon Name="@(currentlyLocked ? "refresh" : "lock")" Size="20" /></div>
+            <div>
+                <h2 id="account-access-heading">@(currentlyLocked ? L["Users.Detail.Access.UnlockHeading"] : L["Users.Detail.Access.LockHeading"])</h2>
+                <p>@(currentlyLocked ? L["Users.Detail.Access.UnlockDescription"] : L["Users.Detail.Access.LockDescription"])</p>
+            </div>
+            <SUIStatusBadge ToneValue="@(currentlyLocked ? SUITone.Warning : SUITone.Danger)">
+                @(currentlyLocked ? L["Users.Detail.Access.LockedBadge"] : L["Users.Detail.Access.ActiveBadge"])
+            </SUIStatusBadge>
+        </div>
+
+        @if (operation?.IsSuccess is true)
+        {
+            <div class="inline-notice inline-notice--success" role="status">
+                <SUIIcon Name="check" Size="19" />
+                <div>
+                    <strong>@(lastLockoutState is true ? L["Users.Detail.LockoutChanged.LockedTitle"] : L["Users.Detail.LockoutChanged.UnlockedTitle"])</strong>
+                    <span>@(lastLockoutState is true ? L["Users.Detail.LockoutChanged.LockedDescription"] : L["Users.Detail.LockoutChanged.UnlockedDescription"])</span>
+                </div>
+            </div>
+        }
+        else if (operation?.IsSuccess is false)
+        {
+            <div class="inline-notice inline-notice--danger" role="alert">
+                <SUIIcon Name="alert" Size="19" />
+                <div><strong>@OperationErrorTitle</strong><span>@operation.ErrorMessage</span></div>
+            </div>
+        }
+
+        @if (!currentlyLocked)
+        {
+            <label class="account-access-confirmation" for="confirm-account-lockout">
+                <input id="confirm-account-lockout" type="checkbox" @bind="lockoutConfirmed" />
+                <span><strong>@L["Users.Detail.Access.ConfirmLabel"]</strong><small>@L["Users.Detail.Access.ConfirmHint"]</small></span>
+            </label>
+        }
+
+        <div class="account-access-panel__actions">
+            <span>@L["Users.Detail.Access.ActionNote"]</span>
+            <button class="button @(currentlyLocked ? "button--secondary" : "button--danger")" type="button"
+                    disabled="@(busy || (!currentlyLocked && !lockoutConfirmed))" @onclick="() => SetLockoutAsync(!currentlyLocked)">
+                @if (busy)
+                {
+                    <span class="button-spinner" aria-hidden="true"></span>
+                    <span>@(currentlyLocked ? L["Users.Detail.Access.Unlocking"] : L["Users.Detail.Access.Locking"])</span>
+                }
+                else
+                {
+                    <SUIIcon Name="@(currentlyLocked ? "refresh" : "lock")" Size="17" />
+                    <span>@(currentlyLocked ? L["Users.Detail.Access.UnlockButton"] : L["Users.Detail.Access.LockButton"])</span>
+                }
+            </button>
+        </div>
+    </section>
+}
+else if (user.Actions.SetLockoutRequiresMfa)
+{
+    <div class="decision-note decision-note--neutral"><SUIIcon Name="shield" Size="21" /><div><h2>@L["Users.Detail.Access.MfaRequiredTitle"]</h2><p>@L["Users.Detail.MfaRequiredDescription"]</p></div></div>
+}
+else if (user.Actions.SetLockoutReasonCode is "user_self_lockout_not_allowed")
+{
+    <div class="decision-note decision-note--neutral"><SUIIcon Name="shield" Size="21" /><div><h2>@L["Users.Detail.Access.SelfProtectedTitle"]</h2><p>@L["Users.Detail.Access.SelfProtectedDescription"]</p></div></div>
+}
+else
+{
+    <div class="decision-note decision-note--neutral"><SUIIcon Name="lock" Size="21" /><div><h2>@L["Users.Detail.Access.ForbiddenTitle"]</h2><p>@L["Users.Detail.Access.ForbiddenDescription"]</p></div></div>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    private ManagementDataResult<ManagementUserDetail>? result;
+    private ManagementDataResult<ManagementUserDetail>? operation;
+    private bool loading = true;
+    private bool busy;
+    private bool lockoutConfirmed;
+    private bool? lastLockoutState;
+    private string DetailHref => $"users/{Uri.EscapeDataString(Id)}";
+    private string HeaderTitle => result?.Value?.UserName ?? result?.Value?.Email ?? L["Users.Detail.Actions.Access"].Value;
+    private string LoadErrorTitle => result?.Outcome is ManagementDataOutcome.NotFound
+        ? L["Users.Detail.Error.NotFound"].Value
+        : result?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? L["Users.Detail.Error.StepUp"].Value
+            : result?.Outcome is ManagementDataOutcome.Forbidden
+                ? L["Users.Detail.Error.Forbidden"].Value
+                : L["Users.Detail.Error.Generic"].Value;
+    private string OperationErrorTitle => operation?.Outcome is ManagementDataOutcome.StepUpRequired
+        ? L["Users.Detail.Access.Error.StepUp"].Value
+        : operation?.Outcome is ManagementDataOutcome.Forbidden
+            ? L["Users.Detail.Error.InsufficientAuthority"].Value
+            : L["Users.Detail.Access.Error.Generic"].Value;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        result = await UserData.GetAsync(Id);
+        loading = false;
+    }
+
+    private async Task SetLockoutAsync(bool locked)
+    {
+        if (busy || (locked && !lockoutConfirmed)) return;
+        busy = true;
+        operation = await UserData.SetLockoutAsync(Id, new SetManagementUserLockoutCommand(locked));
+        busy = false;
+        if (operation.IsSuccess && operation.Value is not null)
+        {
+            result = operation;
+            lastLockoutState = locked;
+            lockoutConfirmed = false;
+        }
+    }
+
+    private static bool IsLockedOut(ManagementUserDetail? user) => user?.LockoutEnd is { } end && end > DateTimeOffset.UtcNow;
+}

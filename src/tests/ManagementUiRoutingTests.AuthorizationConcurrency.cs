@@ -22,6 +22,10 @@ public sealed partial class ManagementUiRoutingTests
     [InlineData("/management/")]
     [InlineData("/management/users")]
     [InlineData("/management/users/user-1/edit")]
+    [InlineData("/management/users/user-1/actions/mfa")]
+    [InlineData("/management/users/user-1/actions/access")]
+    [InlineData("/management/users/user-1/actions/password")]
+    [InlineData("/management/users/user-1/actions/delete")]
     public async Task Authenticated_pages_render_with_overlapping_recovery_state_queries(string path)
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"identity-ui-authz-{Guid.NewGuid():N}.db");

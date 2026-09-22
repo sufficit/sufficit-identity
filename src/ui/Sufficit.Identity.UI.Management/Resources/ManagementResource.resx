@@ -819,6 +819,12 @@
   <data name="Users.Detail.SessionsLink" xml:space="preserve"><value>Sessions</value></data>
   <data name="Users.Detail.AuthorizationsLink" xml:space="preserve"><value>Authorizations</value></data>
   <data name="Users.Detail.EditProfileLink" xml:space="preserve"><value>Edit profile</value></data>
+  <data name="Users.Detail.Actions.Toggle" xml:space="preserve"><value>Account actions</value></data>
+  <data name="Users.Detail.Actions.Access" xml:space="preserve"><value>Manage access</value></data>
+  <data name="Users.Detail.Actions.AccessDescription" xml:space="preserve"><value>Block or restore sign-in for this account.</value></data>
+  <data name="Users.Detail.Actions.DeleteDescription" xml:space="preserve"><value>Permanently remove the provider account.</value></data>
+  <data name="Users.Actions.BackToUser" xml:space="preserve"><value>Back to user</value></data>
+  <data name="Users.Actions.Loading" xml:space="preserve"><value>Loading account action</value></data>
   <data name="Users.Detail.Created.Title" xml:space="preserve"><value>User created</value></data>
   <data name="Users.Detail.Created.Description" xml:space="preserve"><value>The account was created without assigning roles or application-specific permissions.</value></data>
   <data name="Users.Detail.Updated.Title" xml:space="preserve"><value>Profile updated</value></data>
@@ -2093,6 +2099,10 @@
   <data name="Capability.identity.users.reset-mfa.Title" xml:space="preserve"><value>Reset user two-factor authentication</value></data>
   <data name="Capability.identity.users.reset-mfa.Description" xml:space="preserve"><value>Allows recovery of another user after verifying their identity. Requires recent MFA, revokes previous access and requires authenticator enrollment.</value></data>
   <data name="Users.MfaReset.Title" xml:space="preserve"><value>Reset two-factor authentication</value></data>
+  <data name="Users.MfaReset.PageTitle" xml:space="preserve"><value>Reset two-factor authentication | Sufficit Identity</value></data>
+  <data name="Users.Access.PageTitle" xml:space="preserve"><value>Manage user access | Sufficit Identity</value></data>
+  <data name="Users.PasswordReset.PageTitle" xml:space="preserve"><value>Reset password | Sufficit Identity</value></data>
+  <data name="Users.Delete.PageTitle" xml:space="preserve"><value>Delete user | Sufficit Identity</value></data>
   <data name="Users.MfaReset.Description" xml:space="preserve"><value>Restore access for someone who lost their authenticator and recovery codes.</value></data>
   <data name="Users.MfaReset.Pending" xml:space="preserve"><value>Awaiting new authenticator</value></data>
   <data name="Users.MfaReset.Success" xml:space="preserve"><value>Two-factor authentication reset.</value></data>
