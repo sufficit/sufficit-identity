@@ -2692,6 +2692,7 @@ h3 {
 }
 
 .user-account-actions__toggle {
+    display: none;
     min-height: 42px;
 }
 
@@ -2701,8 +2702,8 @@ h3 {
 
 .user-account-actions__menu {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: min(100%, 920px);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
     overflow: hidden;
     border: 1px solid var(--line);
     border-radius: var(--radius-lg);
@@ -2721,12 +2722,8 @@ h3 {
     text-decoration: none;
 }
 
-.user-account-action:nth-child(even) {
+.user-account-action + .user-account-action {
     border-left: 1px solid var(--line);
-}
-
-.user-account-action:nth-child(n + 3) {
-    border-top: 1px solid var(--line);
 }
 
 .user-account-action:hover {
@@ -2769,6 +2766,34 @@ h3 {
 .user-account-action--danger .user-account-action__icon {
     background: var(--danger-soft);
     color: var(--danger);
+}
+
+@media (max-width: 960px) {
+    .user-account-actions__toggle {
+        display: flex;
+    }
+
+    .user-account-actions__menu {
+        display: none;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: min(100%, 920px);
+    }
+
+    .user-account-actions__menu--open {
+        display: grid;
+    }
+
+    .user-account-action + .user-account-action {
+        border-left: 0;
+    }
+
+    .user-account-action:nth-child(even) {
+        border-left: 1px solid var(--line);
+    }
+
+    .user-account-action:nth-child(n + 3) {
+        border-top: 1px solid var(--line);
+    }
 }
 
 .account-access-panel {

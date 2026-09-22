@@ -15,6 +15,13 @@ Objetivo: reduzir a tela de detalhe do usuário a um resumo limpo e mover cada o
 
 Plano concluído. Entrega registrada em `docs/activities/202609221251-user-management-action-wizards.md`.
 
+## Ajuste responsivo — 2026-09-22
+
+- [x] Confirmar na nova captura que o seletor recolhível também estava sendo usado em telas largas.
+- [x] Exibir as quatro ações lado a lado quando houver largura e reservar o toggle para resoluções compactas.
+- [x] Atualizar o teste de navegador para validar desktop aberto por padrão e mobile recolhido.
+- [ ] **Em andamento:** integrar, publicar e verificar os três nós.
+
 ## Decisões
 
 - A tela de detalhe continua sendo o ponto de consulta do usuário e passa a mostrar apenas um botão compacto para as operações extras.
