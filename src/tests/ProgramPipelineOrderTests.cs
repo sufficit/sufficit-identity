@@ -43,6 +43,7 @@ public sealed class ProgramPipelineOrderTests
             // Module steps before authentication (public UI browser errors).
             "identityPipeline.ApplyStage",
             "UseAuthenticationExceptStaticAssets",
+            "UseMiddleware<Sufficit.Identity.STS.MfaRecoveryNavigationMiddleware>",
             "UseAuthorization",
             "Use",
             "MapControllers",

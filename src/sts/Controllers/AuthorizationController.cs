@@ -212,6 +212,17 @@ public partial class AuthorizationController : Controller
         var user = await _userManager.GetUserAsync(result.Principal) ??
             throw new InvalidOperationException("The user details cannot be retrieved.");
 
+        if (await Sufficit.Identity.Core.Services.MfaRecoveryState.IsRequiredAsync(_userManager, user))
+        {
+            if (request.HasPromptValue(OpenIddictConstants.PromptValues.None))
+                return Forbid(new AuthenticationProperties(new Dictionary<string, string?>
+                {
+                    [OpenIddictServerAspNetCoreConstants.Properties.Error] = OpenIddictConstants.Errors.InteractionRequired,
+                    [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "Two-factor enrollment is required.",
+                }), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+            return Redirect("/manage/twofactor");
+        }
+
         var application = await _applicationManager.FindByClientIdAsync(request.ClientId!)
             // CIMD (A10, eval 2026-08-14): an unknown client_id with the
             // metadata-document URL shape is provisioned on first use from

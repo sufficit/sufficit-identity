@@ -188,6 +188,7 @@ public static partial class ServiceCollectionExtensions
         server.AddEventHandler(RecordTokenUsageFailure.Descriptor);
         server.AddEventHandler(Security
             .AttachFormPostContentSecurityPolicy.Descriptor);
+        server.AddEventHandler(Tokens.MfaRecoveryTokenGuard.Descriptor);
         server.AddEventHandler(Tokens.ApplyAccessTokenFormat.Descriptor);
         // RFC 6750 2.3: an access token in the query string leaks through
         // logs, history and Referer. See Tokens/AccessTokenTransport.cs.

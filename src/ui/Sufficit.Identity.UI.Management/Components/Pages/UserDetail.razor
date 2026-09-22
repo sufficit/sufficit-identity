@@ -186,6 +186,8 @@ else if (result?.IsSuccess is true && result.Value is not null)
         </div>
     </div>
 
+    <UserMfaResetPanel User="user" UserChanged="OnMfaReset" />
+
     @if (user.Actions.CanSetLockout)
     {
         <div class="account-access-panel @(currentlyLocked ? "account-access-panel--restore" : "account-access-panel--restrict")"
@@ -578,6 +580,8 @@ else
         result = await UserData.GetAsync(Id);
         loading = false;
     }
+
+    private void OnMfaReset(ManagementUserDetail user) => result = ManagementDataResult<ManagementUserDetail>.Success(user);
 
     private async Task ResetPasswordAsync()
     {
