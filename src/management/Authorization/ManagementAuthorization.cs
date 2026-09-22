@@ -289,7 +289,7 @@ public sealed class ConfigurationProtectedPrincipalAccessPolicy(
             logger.LogWarning(
                 "Break-glass management access used for capability {Capability} against protected user {TargetUserId}",
                 capability,
-                targetUserId);
+                targetUserId.Replace("\r", string.Empty).Replace("\n", string.Empty));
             return ManagementAuthorizationDecision.Allowed(
                 "protected_principal_break_glass");
         }
