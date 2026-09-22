@@ -819,6 +819,12 @@
   <data name="Users.Detail.SessionsLink" xml:space="preserve"><value>Sessões</value></data>
   <data name="Users.Detail.AuthorizationsLink" xml:space="preserve"><value>Autorizações</value></data>
   <data name="Users.Detail.EditProfileLink" xml:space="preserve"><value>Editar perfil</value></data>
+  <data name="Users.Detail.Actions.Toggle" xml:space="preserve"><value>Ações da conta</value></data>
+  <data name="Users.Detail.Actions.Access" xml:space="preserve"><value>Gerenciar acesso</value></data>
+  <data name="Users.Detail.Actions.AccessDescription" xml:space="preserve"><value>Bloqueie ou restabeleça o acesso desta conta.</value></data>
+  <data name="Users.Detail.Actions.DeleteDescription" xml:space="preserve"><value>Remova permanentemente a conta do provedor.</value></data>
+  <data name="Users.Actions.BackToUser" xml:space="preserve"><value>Voltar para o usuário</value></data>
+  <data name="Users.Actions.Loading" xml:space="preserve"><value>Carregando ação da conta</value></data>
   <data name="Users.Detail.Created.Title" xml:space="preserve"><value>Usuário criado</value></data>
   <data name="Users.Detail.Created.Description" xml:space="preserve"><value>A conta foi criada sem atribuir cargos ou permissões próprias de aplicações.</value></data>
   <data name="Users.Detail.Updated.Title" xml:space="preserve"><value>Perfil atualizado</value></data>
@@ -2093,6 +2099,10 @@
   <data name="Capability.identity.users.reset-mfa.Title" xml:space="preserve"><value>Redefinir autenticação de dois fatores de usuários</value></data>
   <data name="Capability.identity.users.reset-mfa.Description" xml:space="preserve"><value>Permite recuperar o acesso de outro usuário após verificar sua identidade. Exige MFA recente, revoga os acessos anteriores e obriga o recadastro do autenticador.</value></data>
   <data name="Users.MfaReset.Title" xml:space="preserve"><value>Redefinir autenticação de dois fatores</value></data>
+  <data name="Users.MfaReset.PageTitle" xml:space="preserve"><value>Redefinir autenticação de dois fatores | Sufficit Identity</value></data>
+  <data name="Users.Access.PageTitle" xml:space="preserve"><value>Gerenciar acesso do usuário | Sufficit Identity</value></data>
+  <data name="Users.PasswordReset.PageTitle" xml:space="preserve"><value>Redefinir senha | Sufficit Identity</value></data>
+  <data name="Users.Delete.PageTitle" xml:space="preserve"><value>Excluir usuário | Sufficit Identity</value></data>
   <data name="Users.MfaReset.Description" xml:space="preserve"><value>Recupere o acesso de quem perdeu o autenticador e os códigos de recuperação.</value></data>
   <data name="Users.MfaReset.Pending" xml:space="preserve"><value>Aguardando novo autenticador</value></data>
   <data name="Users.MfaReset.Success" xml:space="preserve"><value>Autenticação de dois fatores redefinida.</value></data>

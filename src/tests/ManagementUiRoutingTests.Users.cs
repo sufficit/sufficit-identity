@@ -143,6 +143,26 @@ public sealed partial class ManagementUiRoutingTests
             "/management/users/user-1/edit");
         var editHtml = WebUtility.HtmlDecode(
             await edit.Content.ReadAsStringAsync());
+        using var mfa = await client.GetAsync(
+            "/management/users/user-1/actions/mfa");
+        var mfaHtml = WebUtility.HtmlDecode(
+            await mfa.Content.ReadAsStringAsync());
+        using var access = await client.GetAsync(
+            "/management/users/user-1/actions/access");
+        var accessHtml = WebUtility.HtmlDecode(
+            await access.Content.ReadAsStringAsync());
+        using var password = await client.GetAsync(
+            "/management/users/user-1/actions/password");
+        var passwordHtml = WebUtility.HtmlDecode(
+            await password.Content.ReadAsStringAsync());
+        using var delete = await client.GetAsync(
+            "/management/users/user-1/actions/delete");
+        var deleteHtml = WebUtility.HtmlDecode(
+            await delete.Content.ReadAsStringAsync());
+        using var detailEnglish = await client.GetAsync(
+            "/management/users/user-1?culture=en-US&ui-culture=en-US");
+        var detailEnglishHtml = WebUtility.HtmlDecode(
+            await detailEnglish.Content.ReadAsStringAsync());
 
         Assert.Equal(HttpStatusCode.OK, create.StatusCode);
         Assert.Contains("Novo usuário", createHtml, StringComparison.Ordinal);
@@ -153,29 +173,17 @@ public sealed partial class ManagementUiRoutingTests
             StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.OK, detail.StatusCode);
         Assert.Contains(
-            "Redefinir senha",
+            "Ações da conta",
             detailHtml,
             StringComparison.Ordinal);
+        Assert.Contains("aria-expanded=\"false\"", detailHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("mfa-reset-reason", detailHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("new-password", detailHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("delete-user-confirmation", detailHtml, StringComparison.Ordinal);
         Assert.DoesNotContain("Contexto", detailHtml, StringComparison.Ordinal);
         Assert.DoesNotContain("Manager", detailHtml, StringComparison.Ordinal);
         Assert.Contains(
-            "Bloquear acesso",
-            detailHtml,
-            StringComparison.Ordinal);
-        Assert.Contains(
-            "Confirmo o bloqueio desta conta",
-            detailHtml,
-            StringComparison.Ordinal);
-        Assert.Contains(
             "Editar perfil",
-            detailHtml,
-            StringComparison.Ordinal);
-        Assert.Contains(
-            "Excluir conta do provedor",
-            detailHtml,
-            StringComparison.Ordinal);
-        Assert.Contains(
-            "Digite <strong>alice</strong> para confirmar",
             detailHtml,
             StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
@@ -187,6 +195,17 @@ public sealed partial class ManagementUiRoutingTests
             "Alteração da conta no provedor",
             editHtml,
             StringComparison.Ordinal);
+        Assert.DoesNotContain("Redefinir autenticação de dois fatores", editHtml, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, mfa.StatusCode);
+        Assert.Contains("Redefinir autenticação de dois fatores", mfaHtml, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, access.StatusCode);
+        Assert.Contains("Confirmo o bloqueio desta conta", accessHtml, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, password.StatusCode);
+        Assert.Contains("reset-management-user-password", passwordHtml, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, delete.StatusCode);
+        Assert.Contains("Digite <strong>alice</strong> para confirmar", deleteHtml, StringComparison.Ordinal);
+        Assert.Equal(HttpStatusCode.OK, detailEnglish.StatusCode);
+        Assert.Contains("Account actions", detailEnglishHtml, StringComparison.Ordinal);
     }
 
     [Fact]

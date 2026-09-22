@@ -17,11 +17,50 @@ try {
   page.on('pageerror', error => { errors.push(error.message); console.error(error.message); });
   page.on('console', message => { if (message.type() === 'error') console.error(message.text()); });
   page.setDefaultTimeout(15000);
-  await page.goto(`${origin}/management/users/user-1/edit`);
+  await page.goto(`${origin}/management/users/user-1`);
   await page.waitForLoadState('networkidle');
+  assert.equal(await page.locator('#mfa-reset-reason').count(), 0);
+  assert.equal(await page.locator('#new-password').count(), 0);
+  assert.equal(await page.locator('#delete-user-confirmation').count(), 0);
+  const accountActions = page.getByRole('button', { name: 'Ações da conta', exact: true });
+  assert.equal(await accountActions.getAttribute('aria-expanded'), 'false');
+  await accountActions.click();
+  await page.locator('#user-account-actions-menu').waitFor();
+  assert.equal(await accountActions.getAttribute('aria-expanded'), 'true');
+  assert.match(await page.getByRole('link', { name: /Redefinir autenticação de dois fatores/ }).getAttribute('href'), /users\/user-1\/actions\/mfa$/);
+  assert.match(await page.getByRole('link', { name: /Gerenciar acesso/ }).getAttribute('href'), /users\/user-1\/actions\/access$/);
+  assert.match(await page.getByRole('link', { name: /Redefinir senha/ }).getAttribute('href'), /users\/user-1\/actions\/password$/);
+  assert.match(await page.getByRole('link', { name: /Excluir conta do provedor/ }).getAttribute('href'), /users\/user-1\/actions\/delete$/);
+  for (const [name, width, height] of [['desktop', 1440, 1000], ['mobile', 390, 844]]) {
+    await page.setViewportSize({ width, height });
+    await page.screenshot({ path: `${output}/${name}-action-menu.png`, fullPage: true, animations: 'disabled' });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${name}: action menu overflow`);
+  }
+  await accountActions.click();
+  await page.locator('#user-account-actions-menu').waitFor({ state: 'detached' });
+  assert.equal(await accountActions.getAttribute('aria-expanded'), 'false');
+  for (const [route, marker] of [
+    ['access', '#confirm-account-lockout'],
+    ['password', '#new-password'],
+    ['delete', '#delete-user-confirmation'],
+  ]) {
+    await page.goto(`${origin}/management/users/user-1/actions/${route}`);
+    await page.waitForLoadState('networkidle');
+    await page.locator(marker).waitFor();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: `${output}/mobile-${route}.png`, fullPage: true, animations: 'disabled' });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${route}: mobile overflow`);
+  }
+  await page.goto(`${origin}/management/users/user-1`);
+  await page.waitForLoadState('networkidle');
+  await accountActions.click();
+  await page.locator('#user-account-actions-menu').waitFor();
+  await page.getByRole('link', { name: /Redefinir autenticação de dois fatores/ }).click();
+  await page.waitForURL('**/management/users/user-1/actions/mfa');
   await page.getByRole('button', { name: 'Redefinir autenticação de dois fatores', exact: true }).click();
   const form = page.locator('[data-mfa-reset-confirmation]');
   await form.waitFor();
+  assert.equal(await page.locator('#mfa-reset-reason').evaluate(element => element.tagName), 'INPUT');
   const confirm = page.getByRole('button', { name: 'Confirmar redefinição', exact: true });
   assert.equal(await confirm.isDisabled(), true);
   await page.getByLabel('Motivo da redefinição', { exact: true }).fill('Chamado 123: perda do aparelho confirmada pelo suporte.');
@@ -51,8 +90,6 @@ try {
   await page.getByText('Aguardando novo autenticador', { exact: true }).waitFor();
   assert.equal(await page.getByRole('button', { name: 'Redefinir autenticação de dois fatores', exact: true }).count(), 0);
   await page.screenshot({ path: `${output}/mobile-success.png`, fullPage: true, animations: 'disabled' });
-  await page.goto(`${origin}/management/users/user-1?culture=en-US&ui-culture=en-US`);
-  await page.getByRole('button', { name: 'Reset two-factor authentication', exact: true }).waitFor();
   assert.deepEqual(errors, []);
-  console.log('PASS: edit/detail, cancellation, required reason/identity/target, reset success, reenrollment state, translations, desktop/mobile without overflow or JS errors.');
+  console.log('PASS: collapsed action menu, dedicated MFA route, single-line reason, cancellation, required reason/identity/target, reset success, desktop/mobile without overflow or JS errors.');
 } finally { await browser.close(); }

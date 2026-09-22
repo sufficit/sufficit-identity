@@ -1,9 +1,8 @@
 @page "/users/{Id}"
 @attribute [Authorize(Policy = ManagementUiPolicies.Access)]
 @inject ManagementUserDataSource UserData
-@inject NavigationManager Navigation
 
-@{ var user = result?.Value!; var currentlyLocked = IsLockedOut(user); }
+@{ var user = result?.Value!; }
 
 <PageTitle>@PageTitleText</PageTitle>
 
@@ -66,32 +65,6 @@
         <div>
             <strong>@L["Users.Detail.Updated.Title"]</strong>
             <span>@L["Users.Detail.Updated.Description"]</span>
-        </div>
-    </div>
-}
-
-@if (passwordResetSucceeded)
-{
-    <div class="inline-notice inline-notice--success" role="status">
-        <SUIIcon Name="check" Size="19" />
-        <div>
-            <strong>@L["Users.Detail.PasswordReset.Title"]</strong>
-            <span>@L["Users.Detail.PasswordReset.Description"]</span>
-        </div>
-    </div>
-}
-
-@if (lockoutChangeSucceeded)
-{
-    <div class="inline-notice inline-notice--success" role="status">
-        <SUIIcon Name="check" Size="19" />
-        <div>
-            <strong>@(lastLockoutState is true ? L["Users.Detail.LockoutChanged.LockedTitle"] : L["Users.Detail.LockoutChanged.UnlockedTitle"])</strong>
-            <span>
-                @(lastLockoutState is true
-                    ? L["Users.Detail.LockoutChanged.LockedDescription"]
-                    : L["Users.Detail.LockoutChanged.UnlockedDescription"])
-            </span>
         </div>
     </div>
 }
@@ -186,271 +159,43 @@ else if (result?.IsSuccess is true && result.Value is not null)
         </div>
     </div>
 
-    <UserMfaResetPanel User="user" UserChanged="OnMfaReset" />
+    <section class="user-account-actions" aria-labelledby="user-account-actions-heading">
+        <button class="button button--secondary user-account-actions__toggle"
+                type="button"
+                aria-expanded="@(showAccountActions ? "true" : "false")"
+                aria-controls="user-account-actions-menu"
+                @onclick="() => showAccountActions = !showAccountActions">
+            <SUIIcon Name="settings" Size="17" />
+            <span id="user-account-actions-heading">@L["Users.Detail.Actions.Toggle"]</span>
+            <SUIIcon Name="@(showAccountActions ? "chevron-up" : "chevron-down")" Size="15" />
+        </button>
 
-    @if (user.Actions.CanSetLockout)
-    {
-        <div class="account-access-panel @(currentlyLocked ? "account-access-panel--restore" : "account-access-panel--restrict")"
-                 aria-labelledby="account-access-heading">
-            <div class="account-access-panel__heading">
-                <div class="account-access-panel__icon">
-                    <SUIIcon Name="@(currentlyLocked ? "refresh" : "lock")" Size="20" />
-                </div>
-                <div>
-                    <h2 id="account-access-heading">
-                        @(currentlyLocked ? L["Users.Detail.Access.UnlockHeading"] : L["Users.Detail.Access.LockHeading"])
-                    </h2>
-                    <p>
-                        @(currentlyLocked
-                            ? L["Users.Detail.Access.UnlockDescription"]
-                            : L["Users.Detail.Access.LockDescription"])
-                    </p>
-                </div>
-                <SUIStatusBadge ToneValue="@(currentlyLocked ? SUITone.Warning : SUITone.Danger)">
-                    @(currentlyLocked ? L["Users.Detail.Access.LockedBadge"] : L["Users.Detail.Access.ActiveBadge"])
-                </SUIStatusBadge>
+        @if (showAccountActions)
+        {
+            <div id="user-account-actions-menu" class="user-account-actions__menu">
+                <a class="user-account-action" href="@MfaResetHref">
+                    <span class="user-account-action__icon"><SUIIcon Name="shield" Size="19" /></span>
+                    <span><strong>@L["Users.MfaReset.Title"]</strong><small>@L["Users.MfaReset.Description"]</small></span>
+                    <SUIIcon Name="arrow-right" Size="16" />
+                </a>
+                <a class="user-account-action" href="@AccessHref">
+                    <span class="user-account-action__icon"><SUIIcon Name="lock" Size="19" /></span>
+                    <span><strong>@L["Users.Detail.Actions.Access"]</strong><small>@L["Users.Detail.Actions.AccessDescription"]</small></span>
+                    <SUIIcon Name="arrow-right" Size="16" />
+                </a>
+                <a class="user-account-action" href="@PasswordResetHref">
+                    <span class="user-account-action__icon"><SUIIcon Name="key" Size="19" /></span>
+                    <span><strong>@L["Users.Detail.Reset.Title"]</strong><small>@L["Users.Detail.Reset.Description"]</small></span>
+                    <SUIIcon Name="arrow-right" Size="16" />
+                </a>
+                <a class="user-account-action user-account-action--danger" href="@DeleteHref">
+                    <span class="user-account-action__icon"><SUIIcon Name="trash" Size="19" /></span>
+                    <span><strong>@L["Users.Detail.Delete.Heading"]</strong><small>@L["Users.Detail.Actions.DeleteDescription"]</small></span>
+                    <SUIIcon Name="arrow-right" Size="16" />
+                </a>
             </div>
-
-            @if (lockoutResult?.IsSuccess is false)
-            {
-                <div class="inline-notice inline-notice--danger" role="alert">
-                    <SUIIcon Name="alert" Size="19" />
-                    <div>
-                        <strong>@LockoutErrorTitle</strong>
-                        <span>@lockoutResult.ErrorMessage</span>
-                    </div>
-                </div>
-            }
-
-            @if (!currentlyLocked)
-            {
-                <label class="account-access-confirmation" for="confirm-account-lockout">
-                    <input id="confirm-account-lockout"
-                           type="checkbox"
-                           @bind="lockoutConfirmed" />
-                    <span>
-                        <strong>@L["Users.Detail.Access.ConfirmLabel"]</strong>
-                        <small>@L["Users.Detail.Access.ConfirmHint"]</small>
-                    </span>
-                </label>
-            }
-
-            <div class="account-access-panel__actions">
-                <span>@L["Users.Detail.Access.ActionNote"]</span>
-                <button class="button @(currentlyLocked ? "button--secondary" : "button--danger")"
-                        type="button"
-                        disabled="@(changingLockout || (!currentlyLocked && !lockoutConfirmed))"
-                        @onclick="() => SetLockoutAsync(!currentlyLocked)">
-                    @if (changingLockout)
-                    {
-                        <span class="button-spinner" aria-hidden="true"></span>
-                        <span>@(currentlyLocked ? L["Users.Detail.Access.Unlocking"] : L["Users.Detail.Access.Locking"])</span>
-                    }
-                    else
-                    {
-                        <SUIIcon Name="@(currentlyLocked ? "refresh" : "lock")" Size="17" />
-                        <span>@(currentlyLocked ? L["Users.Detail.Access.UnlockButton"] : L["Users.Detail.Access.LockButton"])</span>
-                    }
-                </button>
-            </div>
-        </div>
-    }
-    else if (user.Actions.SetLockoutRequiresMfa)
-    {
-        <div class="decision-note decision-note--neutral">
-            <SUIIcon Name="shield" Size="21" />
-            <div>
-                <h2>@L["Users.Detail.Access.MfaRequiredTitle"]</h2>
-                <p>@L["Users.Detail.MfaRequiredDescription"]</p>
-            </div>
-        </div>
-    }
-    else if (user.Actions.SetLockoutReasonCode is "user_self_lockout_not_allowed")
-    {
-        <div class="decision-note decision-note--neutral">
-            <SUIIcon Name="shield" Size="21" />
-            <div>
-                <h2>@L["Users.Detail.Access.SelfProtectedTitle"]</h2>
-                <p>@L["Users.Detail.Access.SelfProtectedDescription"]</p>
-            </div>
-        </div>
-    }
-    else
-    {
-        <div class="decision-note decision-note--neutral">
-            <SUIIcon Name="lock" Size="21" />
-            <div>
-                <h2>@L["Users.Detail.Access.ForbiddenTitle"]</h2>
-                <p>@L["Users.Detail.Access.ForbiddenDescription"]</p>
-            </div>
-        </div>
-    }
-
-    @if (user.Actions.CanResetPassword)
-    {
-        <EditForm Model="passwordModel"
-                  OnValidSubmit="ResetPasswordAsync"
-                  FormName="reset-management-user-password"
-                  class="credential-panel">
-            <DataAnnotationsValidator />
-            <div class="credential-panel__heading">
-                <div class="credential-panel__icon">
-                    <SUIIcon Name="key" Size="20" />
-                </div>
-                <div>
-                    <h2>@L["Users.Detail.Reset.Title"]</h2>
-                    <p>@L["Users.Detail.Reset.Description"]</p>
-                </div>
-                <SUIStatusBadge ToneValue="SUITone.Info">@L["Users.Detail.Reset.Badge"]</SUIStatusBadge>
-            </div>
-
-            @if (resetResult?.IsSuccess is false)
-            {
-                <div class="inline-notice inline-notice--danger" role="alert">
-                    <SUIIcon Name="alert" Size="19" />
-                    <div>
-                        <strong>@ResetErrorTitle</strong>
-                        <span>@resetResult.ErrorMessage</span>
-                    </div>
-                </div>
-            }
-
-            <div class="form-grid form-grid--two credential-panel__fields">
-                <div class="field-group">
-                    <label for="new-password">@L["Users.Detail.Reset.Field.NewPassword"]</label>
-                    <InputText id="new-password"
-                               class="form-control"
-                               type="password"
-                               autocomplete="new-password"
-                               @bind-Value="passwordModel.NewPassword" />
-                    <ValidationMessage For="() => passwordModel.NewPassword" />
-                    @if (resetResult?.ErrorField is "newPassword")
-                    {
-                        <p class="validation-message">@resetResult.ErrorMessage</p>
-                    }
-                </div>
-                <div class="field-group">
-                    <label for="confirm-new-password">@L["Users.Detail.Reset.Field.ConfirmPassword"]</label>
-                    <InputText id="confirm-new-password"
-                               class="form-control"
-                               type="password"
-                               autocomplete="new-password"
-                               @bind-Value="passwordModel.ConfirmPassword" />
-                    <ValidationMessage For="() => passwordModel.ConfirmPassword" />
-                </div>
-            </div>
-
-            <div class="credential-panel__actions">
-                <span>@L["Users.Detail.Reset.PolicyNote"]</span>
-                <button class="button button--primary"
-                        type="submit"
-                        disabled="@resettingPassword">
-                    @if (resettingPassword)
-                    {
-                        <span class="button-spinner" aria-hidden="true"></span>
-                        <span>@L["Users.Detail.Reset.Submitting"]</span>
-                    }
-                    else
-                    {
-                        <SUIIcon Name="key" Size="17" />
-                        <span>@L["Users.Detail.Reset.Title"]</span>
-                    }
-                </button>
-            </div>
-        </EditForm>
-    }
-    else if (user.Actions.ResetPasswordRequiresMfa)
-    {
-        <div class="decision-note decision-note--neutral">
-            <SUIIcon Name="shield" Size="21" />
-            <div>
-                <h2>@L["Users.Detail.Reset.MfaRequiredTitle"]</h2>
-                <p>@L["Users.Detail.MfaRequiredDescription"]</p>
-            </div>
-        </div>
-    }
-    else
-    {
-        <div class="decision-note decision-note--neutral">
-            <SUIIcon Name="lock" Size="21" />
-            <div>
-                <h2>@L["Users.Detail.Reset.ForbiddenTitle"]</h2>
-                <p>@L["Users.Detail.Reset.ForbiddenDescription"]</p>
-            </div>
-        </div>
-    }
-
-    @if (user.Actions.CanDelete)
-    {
-        <div class="delete-zone" aria-labelledby="delete-user-heading">
-            <div>
-                <h2 id="delete-user-heading">@L["Users.Detail.Delete.Heading"]</h2>
-                <p>@L["Users.Detail.Delete.Description"]</p>
-            </div>
-
-            <div class="delete-confirmation">
-                <label for="delete-user-confirmation">
-                    @L["Users.Detail.Delete.ConfirmLabelPrefix"] <strong>@DeletionConfirmationValue</strong> @L["Users.Detail.Delete.ConfirmLabelSuffix"]
-                </label>
-                <input id="delete-user-confirmation"
-                       class="form-control"
-                       type="text"
-                       autocomplete="off"
-                       spellcheck="false"
-                       aria-describedby="delete-user-help"
-                       @bind="deleteConfirmation"
-                       @bind:event="oninput" />
-                <small id="delete-user-help">@L["Users.Detail.Delete.Help"]</small>
-            </div>
-
-            <button class="button button--danger"
-                    type="button"
-                    disabled="@(!CanSubmitDeletion)"
-                    @onclick="DeleteAsync">
-                @if (deleting)
-                {
-                    <span class="button-spinner" aria-hidden="true"></span>
-                    <span>@L["Users.Detail.Delete.Submitting"]</span>
-                }
-                else
-                {
-                    <SUIIcon Name="trash" Size="17" />
-                    <span>@L["Users.Detail.Delete.Submit"]</span>
-                }
-            </button>
-
-            @if (deleteResult?.IsSuccess is false)
-            {
-                <div class="inline-notice inline-notice--danger" role="alert">
-                    <SUIIcon Name="alert" Size="19" />
-                    <div>
-                        <strong>@DeleteErrorTitle</strong>
-                        <span>@deleteResult.ErrorMessage</span>
-                    </div>
-                </div>
-            }
-        </div>
-    }
-    else if (user.Actions.DeleteRequiresMfa)
-    {
-        <div class="decision-note decision-note--neutral">
-            <SUIIcon Name="shield" Size="21" />
-            <div>
-                <h2>@L["Users.Detail.Delete.MfaRequiredTitle"]</h2>
-                <p>@L["Users.Detail.Delete.MfaRequiredDescription"]</p>
-            </div>
-        </div>
-    }
-    else if (user.Actions.DeleteReasonCode is "user_self_delete_not_allowed")
-    {
-        <div class="decision-note decision-note--neutral">
-            <SUIIcon Name="shield" Size="21" />
-            <div>
-                <h2>@L["Users.Detail.Delete.SelfTitle"]</h2>
-                <p>@L["Users.Detail.Delete.SelfDescription"]</p>
-            </div>
-        </div>
-    }
+        }
+    </section>
 }
 else
 {
@@ -484,19 +229,8 @@ else
     public int UpdatedFlag { get; set; }
 
     private ManagementDataResult<ManagementUserDetail>? result;
-    private ManagementDataResult<ManagementUserDetail>? resetResult;
-    private ManagementDataResult<ManagementUserDetail>? lockoutResult;
-    private ManagementDataResult<bool>? deleteResult;
-    private readonly PasswordResetModel passwordModel = new();
     private bool loading = true;
-    private bool resettingPassword;
-    private bool changingLockout;
-    private bool passwordResetSucceeded;
-    private bool lockoutChangeSucceeded;
-    private bool deleting;
-    private bool? lastLockoutState;
-    private bool lockoutConfirmed;
-    private string deleteConfirmation = string.Empty;
+    private bool showAccountActions;
 
     private bool Created => CreatedFlag is 1;
 
@@ -524,6 +258,14 @@ else
     private string AuthorizationsHref =>
         $"authorizations?user={Uri.EscapeDataString(Id)}";
 
+    private string MfaResetHref => ActionHref("mfa");
+    private string AccessHref => ActionHref("access");
+    private string PasswordResetHref => ActionHref("password");
+    private string DeleteHref => ActionHref("delete");
+
+    private string ActionHref(string action) =>
+        $"users/{Uri.EscapeDataString(Id)}/actions/{action}";
+
     private string ErrorTitle =>
         result?.Outcome is ManagementDataOutcome.NotFound
             ? L["Users.Detail.Error.NotFound"].Value
@@ -537,41 +279,6 @@ else
         result?.ErrorMessage
         ?? L["Users.Detail.Error.GenericDescription"].Value;
 
-    private string ResetErrorTitle =>
-        resetResult?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? L["Users.Detail.Reset.Error.StepUp"].Value
-            : resetResult?.Outcome is ManagementDataOutcome.Forbidden
-                ? L["Users.Detail.Error.InsufficientAuthority"].Value
-                : L["Users.Detail.Reset.Error.Generic"].Value;
-
-    private string LockoutErrorTitle =>
-        lockoutResult?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? L["Users.Detail.Access.Error.StepUp"].Value
-            : lockoutResult?.Outcome is ManagementDataOutcome.Forbidden
-                ? L["Users.Detail.Error.InsufficientAuthority"].Value
-                : L["Users.Detail.Access.Error.Generic"].Value;
-
-    private string DeleteErrorTitle =>
-        deleteResult?.Outcome is ManagementDataOutcome.StepUpRequired
-            ? L["Users.Detail.Delete.Error.StepUp"].Value
-            : deleteResult?.Outcome is ManagementDataOutcome.Forbidden
-                ? L["Users.Detail.Delete.Error.Forbidden"].Value
-                : deleteResult?.Outcome is ManagementDataOutcome.NotFound
-                    ? L["Users.Detail.Delete.Error.NotFound"].Value
-                    : L["Users.Detail.Delete.Error.Generic"].Value;
-
-    private string DeletionConfirmationValue =>
-        result?.Value?.UserName
-        ?? result?.Value?.Email
-        ?? Id;
-
-    private bool CanSubmitDeletion =>
-        !deleting
-        && string.Equals(
-            deleteConfirmation.Trim(),
-            DeletionConfirmationValue,
-            StringComparison.Ordinal);
-
     protected override async Task OnParametersSetAsync() => await LoadAsync();
 
     private async Task LoadAsync()
@@ -579,72 +286,6 @@ else
         loading = true;
         result = await UserData.GetAsync(Id);
         loading = false;
-    }
-
-    private void OnMfaReset(ManagementUserDetail user) => result = ManagementDataResult<ManagementUserDetail>.Success(user);
-
-    private async Task ResetPasswordAsync()
-    {
-        if (resettingPassword)
-        {
-            return;
-        }
-
-        resettingPassword = true;
-        passwordResetSucceeded = false;
-        resetResult = await UserData.ResetPasswordAsync(
-            Id,
-            new ResetManagementUserPasswordCommand(
-                passwordModel.NewPassword));
-        resettingPassword = false;
-
-        if (resetResult.IsSuccess && resetResult.Value is not null)
-        {
-            result = resetResult;
-            passwordModel.NewPassword = string.Empty;
-            passwordModel.ConfirmPassword = string.Empty;
-            passwordResetSucceeded = true;
-        }
-    }
-
-    private async Task SetLockoutAsync(bool locked)
-    {
-        if (changingLockout || (locked && !lockoutConfirmed))
-        {
-            return;
-        }
-
-        changingLockout = true;
-        lockoutChangeSucceeded = false;
-        lockoutResult = await UserData.SetLockoutAsync(
-            Id,
-            new SetManagementUserLockoutCommand(locked));
-        changingLockout = false;
-
-        if (lockoutResult.IsSuccess && lockoutResult.Value is not null)
-        {
-            result = lockoutResult;
-            lastLockoutState = locked;
-            lockoutConfirmed = false;
-            lockoutChangeSucceeded = true;
-        }
-    }
-
-    private async Task DeleteAsync()
-    {
-        if (!CanSubmitDeletion)
-        {
-            return;
-        }
-
-        deleting = true;
-        deleteResult = await UserData.DeleteAsync(Id);
-        deleting = false;
-
-        if (deleteResult.IsSuccess)
-        {
-            Navigation.NavigateTo("users?deleted=1");
-        }
     }
 
     private string Display(string? value) =>
@@ -664,41 +305,4 @@ else
             : L["Users.Detail.Security.NoActiveLockout"].Value;
     }
 
-    private static bool IsLockedOut(ManagementUserDetail? user) =>
-        user?.LockoutEnd is { } end
-        && end > DateTimeOffset.UtcNow;
-
-    protected override void OnInitialized()
-    {
-        passwordModel.Localizer = L;
-        base.OnInitialized();
-    }
-
-    private sealed class PasswordResetModel : IValidatableObject
-    {
-        public IStringLocalizer<Sufficit.Identity.UI.Management.Resources.ManagementResource>? Localizer { get; set; }
-
-        public string NewPassword { get; set; } = string.Empty;
-
-        public string ConfirmPassword { get; set; } = string.Empty;
-
-        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
-        {
-            var l = Localizer ?? throw new InvalidOperationException(
-                "The form model localizer must be set before validation.");
-
-            if (string.IsNullOrWhiteSpace(NewPassword))
-            {
-                yield return new ValidationResult(l["Users.Detail.Validation.NewPasswordRequired"].Value, [nameof(NewPassword)]);
-            }
-            if (string.IsNullOrWhiteSpace(ConfirmPassword))
-            {
-                yield return new ValidationResult(l["Users.Detail.Validation.ConfirmNewPasswordRequired"].Value, [nameof(ConfirmPassword)]);
-            }
-            if (!string.Equals(NewPassword, ConfirmPassword, StringComparison.Ordinal))
-            {
-                yield return new ValidationResult(l["Users.Create.Validation.PasswordsDoNotMatch"].Value, [nameof(ConfirmPassword)]);
-            }
-        }
-    }
 }
