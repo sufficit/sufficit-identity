@@ -87,13 +87,19 @@ internal sealed class ManagementUiAccessAuthorizationHandler(
 }
 
 internal sealed class ManagementCapabilityAuthorizationHandler(
-    IManagementAuthorizationEvaluator evaluator)
+    IServiceScopeFactory scopeFactory)
     : AuthorizationHandler<ManagementCapabilityRequirement>
 {
     protected override async Task HandleRequirementAsync(
         AuthorizationHandlerContext context,
         ManagementCapabilityRequirement requirement)
     {
+        // AuthorizeView instances can evaluate concurrently within the same
+        // render/circuit. The evaluator reads database-backed recovery state;
+        // give each operation its own scope and database session.
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var evaluator = scope.ServiceProvider
+            .GetRequiredService<IManagementAuthorizationEvaluator>();
         var decision = await evaluator.EvaluateAsync(
             context.User,
             requirement.Capability,
