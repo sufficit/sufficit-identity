@@ -16,6 +16,7 @@ public static class ManagementCapabilities
     public const string UsersDisable = "identity.users.disable";
     public const string UsersDelete = "identity.users.delete";
     public const string UsersReset = "identity.users.reset";
+    public const string UsersResetMfa = "identity.users.reset-mfa";
 
     /// <summary>
     /// Resends the account-confirmation email to an arbitrary user. Gated by
@@ -89,6 +90,7 @@ public static class ManagementCapabilities
                 UsersDisable,
                 UsersDelete,
                 UsersReset,
+                UsersResetMfa,
                 UsersConfirmation,
                 ClaimsRead,
                 ClaimsCreate,

@@ -151,7 +151,8 @@ public sealed class DefaultManagementObjectAccessPolicy
 /// are the complete object-level contract.
 /// </summary>
 public sealed class ConfigurationManagementObjectAccessPolicy(
-    IProtectedPrincipalAccessPolicy protectedPrincipals)
+    IProtectedPrincipalAccessPolicy protectedPrincipals,
+    Sufficit.Identity.Core.Data.AppDbContext? recoveryDatabase = null)
     : IManagementObjectAccessPolicy
 {
     private static readonly HashSet<string> ItemResourceTypes =
@@ -180,6 +181,7 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
             ManagementCapabilities.UsersDisable,
             ManagementCapabilities.UsersDelete,
             ManagementCapabilities.UsersReset,
+            ManagementCapabilities.UsersResetMfa,
             ManagementCapabilities.ClaimsCreate,
             ManagementCapabilities.ClaimsUpdate,
             ManagementCapabilities.ClaimsDelete,
@@ -194,6 +196,11 @@ public sealed class ConfigurationManagementObjectAccessPolicy(
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        var operatorId = principal.FindFirst("sub")?.Value ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (recoveryDatabase is not null && operatorId is not null
+            && await Sufficit.Identity.Core.Services.MfaRecoveryState.IsRequiredAsync(recoveryDatabase, operatorId, cancellationToken))
+            return ManagementAuthorizationDecision.Denied("mfa_reenrollment_required");
+
         if (ItemResourceTypes.Contains(resource.Type)
             && string.IsNullOrWhiteSpace(resource.Id))
         {

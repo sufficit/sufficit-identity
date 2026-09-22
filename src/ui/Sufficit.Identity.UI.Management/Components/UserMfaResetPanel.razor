@@ -1,0 +1,140 @@
+@inject ManagementUserDataSource UserData
+@inject NavigationManager Navigation
+
+<section class="credential-panel" aria-labelledby="mfa-reset-heading">
+    <div class="credential-panel__heading">
+        <div class="credential-panel__icon"><SUIIcon Name="shield" Size="20" /></div>
+        <div>
+            <h2 id="mfa-reset-heading">@L["Users.MfaReset.Title"]</h2>
+            <p>@L["Users.MfaReset.Description"]</p>
+        </div>
+        <SUIStatusBadge ToneValue="@(User.TwoFactorReenrollmentRequired ? SUITone.Warning : User.TwoFactorEnabled ? SUITone.Success : SUITone.Neutral)">
+            @(User.TwoFactorReenrollmentRequired ? L["Users.MfaReset.Pending"] : User.TwoFactorEnabled ? L["Users.Detail.Security.MfaActive"] : L["Users.Detail.Security.MfaInactive"])
+        </SUIStatusBadge>
+    </div>
+
+    @if (submission?.IsSuccess == true)
+    {
+        <div class="inline-notice inline-notice--success" role="status">
+            <SUIIcon Name="check" Size="19" />
+            <div><strong>@L["Users.MfaReset.Success"]</strong><span>@L["Users.MfaReset.NextStep"]</span></div>
+        </div>
+        @if (submission.Value?.NotificationQueued != true)
+        {
+            <SUIAlert ToneValue="SUITone.Warning">@L["Users.MfaReset.NotificationFailed"]</SUIAlert>
+        }
+    }
+    @if (submission?.IsSuccess == false)
+    {
+        <div class="inline-notice inline-notice--danger" role="alert">
+            <SUIIcon Name="alert" Size="19" />
+            <div><strong>@L["Users.MfaReset.Error"]</strong><span>@submission.ErrorMessage</span></div>
+        </div>
+    }
+
+    @if (!User.TwoFactorEnabled)
+    {
+        <p>@(User.TwoFactorReenrollmentRequired ? L["Users.MfaReset.NextStep"] : L["Users.MfaReset.NotEnabled"])</p>
+    }
+    else if (User.Actions.ResetTwoFactorRequiresMfa || submission?.Outcome == ManagementDataOutcome.StepUpRequired)
+    {
+        <p>@L["Users.MfaReset.StepUp"]</p>
+        <SUIButton Href="@ReauthenticationHref" data-enhance-nav="false">@L["Users.MfaReset.Reauthenticate"]</SUIButton>
+    }
+    else if (!User.Actions.CanResetTwoFactor)
+    {
+        <p>@(User.Actions.ResetTwoFactorReasonCode == "user_self_mfa_reset_not_allowed" ? L["Users.MfaReset.SelfDenied"] : L["Users.MfaReset.Forbidden"])</p>
+    }
+    else if (!confirming)
+    {
+        <div class="credential-panel__actions">
+            <span>@L["Users.MfaReset.VerificationNote"]</span>
+            <SUIButton ColorValue="SUIColor.Error" VariantValue="SUIVariant.Outlined" OnClick="BeginConfirmation">
+                @L["Users.MfaReset.Title"]
+            </SUIButton>
+        </div>
+    }
+    else
+    {
+        <form class="form-grid" @onsubmit="ResetAsync" @onsubmit:preventDefault data-mfa-reset-confirmation>
+            <SUIAlert ToneValue="SUITone.Warning">@L["Users.MfaReset.Consequences", ConfirmationValue]</SUIAlert>
+            <div class="form-grid credential-panel__fields">
+                <div class="field-group">
+                    <label for="mfa-reset-reason">@L["Users.MfaReset.Reason"]</label>
+                    <textarea id="mfa-reset-reason" class="form-control" rows="3" minlength="10" maxlength="500" required
+                              aria-describedby="mfa-reset-reason-help" disabled="@busy" @bind="reason" @bind:event="oninput"></textarea>
+                    <span id="mfa-reset-reason-help" class="field-hint">@L["Users.MfaReset.ReasonHelp"]</span>
+                </div>
+                <div class="field-group">
+                    <label for="mfa-reset-confirmation">@L["Users.MfaReset.Confirmation", ConfirmationValue]</label>
+                    <input id="mfa-reset-confirmation" class="form-control" type="text" autocomplete="off" spellcheck="false" required
+                           disabled="@busy" @bind="confirmation" @bind:event="oninput" />
+                </div>
+                <label class="account-access-confirmation" for="mfa-reset-verified">
+                    <input id="mfa-reset-verified" type="checkbox" disabled="@busy" @bind="identityVerified" />
+                    <span>@L["Users.MfaReset.IdentityVerified"]</span>
+                </label>
+            </div>
+            <div class="credential-panel__actions">
+                <SUIButton VariantValue="SUIVariant.Outlined" ColorValue="SUIColor.Default" Disabled="@busy" OnClick="Cancel">
+                    @L["Users.MfaReset.Cancel"]
+                </SUIButton>
+                <SUIButton ButtonTypeValue="SUIButtonType.Submit" ColorValue="SUIColor.Error" Disabled="@(!CanSubmit)">
+                    @(busy ? L["Users.MfaReset.Submitting"] : L["Users.MfaReset.Confirm"])
+                </SUIButton>
+            </div>
+        </form>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public ManagementUserDetail User { get; set; } = default!;
+    [Parameter] public EventCallback<ManagementUserDetail> UserChanged { get; set; }
+    private ManagementDataResult<ManagementMfaResetResult>? submission;
+    private string? previousId;
+    private bool confirming;
+    private bool busy;
+    private bool identityVerified;
+    private string reason = string.Empty;
+    private string confirmation = string.Empty;
+    private string ConfirmationValue => User.UserName ?? User.Email ?? User.Id;
+    private bool CanSubmit => !busy && identityVerified && reason.Trim().Length is >= 10 and <= 500
+        && string.Equals(confirmation.Trim(), ConfirmationValue, StringComparison.Ordinal);
+    private string ReauthenticationHref => "/account/reauthenticate?returnUrl="
+        + Uri.EscapeDataString(new Uri(Navigation.Uri).PathAndQuery);
+
+    protected override void OnParametersSet()
+    {
+        if (previousId == User.Id) return;
+        previousId = User.Id;
+        Cancel();
+    }
+
+    private void BeginConfirmation() { confirming = true; submission = null; }
+    private void Cancel()
+    {
+        confirming = false;
+        identityVerified = false;
+        reason = confirmation = string.Empty;
+        submission = null;
+    }
+
+    private async Task ResetAsync()
+    {
+        if (!CanSubmit) return;
+        busy = true;
+        try
+        {
+            submission = await UserData.ResetTwoFactorAsync(User.Id,
+                new ResetManagementUserTwoFactorCommand(reason, confirmation, identityVerified));
+            if (submission.IsSuccess && submission.Value is { } reset)
+            {
+                confirming = false;
+                reason = confirmation = string.Empty;
+                identityVerified = false;
+                await UserChanged.InvokeAsync(reset.User);
+            }
+        }
+        finally { busy = false; }
+    }
+}

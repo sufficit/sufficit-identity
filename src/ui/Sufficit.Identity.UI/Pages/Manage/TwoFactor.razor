@@ -13,6 +13,11 @@
     <h1>@L["ManageTwoFactor.Title"]</h1>
     <p class="info">@L["ManageTwoFactor.Description"]</p>
 
+    @if (_overview?.RequiresReenrollment == true)
+    {
+        <SUIAlert ToneValue="SUITone.Warning">@L["ManageTwoFactor.ReenrollmentRequired"]</SUIAlert>
+    }
+
     <div aria-live="polite">
         @if (_error is not null)
         {

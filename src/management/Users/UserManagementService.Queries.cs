@@ -288,6 +288,10 @@ internal sealed partial class UserManagementService
             ManagementCapabilities.UsersReset,
             resource,
             cancellationToken);
+        var mfaResetDecision = await EvaluateResetTwoFactorAsync(
+            user.Id, context, cancellationToken);
+        var requiresReenrollment = await MfaRecoveryState.IsRequiredAsync(
+            database, user.Id, cancellationToken);
         var isLockedOut = user.LockoutEnd is { } lockoutEnd
             && lockoutEnd > DateTimeOffset.UtcNow;
         var lockoutDecision = await EvaluateLockoutChangeAsync(
@@ -330,7 +334,15 @@ internal sealed partial class UserManagementService
                 resetDecision,
                 lockoutDecision,
                 updateProfileDecision,
-                deleteDecision));
+                deleteDecision) with
+                {
+                    CanResetTwoFactor = mfaResetDecision.IsAllowed,
+                    ResetTwoFactorRequiresMfa = mfaResetDecision.Outcome is ManagementAuthorizationOutcome.StepUpRequired,
+                    ResetTwoFactorReasonCode = mfaResetDecision.ReasonCode,
+                })
+        {
+            TwoFactorReenrollmentRequired = requiresReenrollment,
+        };
     }
 
     private static decimal Median(IReadOnlyList<int> values)

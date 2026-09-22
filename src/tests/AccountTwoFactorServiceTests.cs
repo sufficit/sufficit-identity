@@ -241,6 +241,29 @@ public sealed class AccountTwoFactorServiceTests(
             });
     }
 
+    [Fact]
+    public async Task Administrative_recovery_requires_a_verified_new_code_before_releasing_access()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var service = scope.ServiceProvider.GetRequiredService<IAccountTwoFactorService>();
+        var user = await CreateUserAsync(users);
+        Assert.True((await Sufficit.Identity.Core.Services.MfaRecoveryState.RequireAsync(users, user)).Succeeded);
+        var principal = PrincipalFor(user);
+        var started = await service.BeginSetupAsync(principal);
+        Assert.True(started.State?.RequiresReenrollment);
+        var invalid = await service.EnableAsync(principal, "invalid");
+        Assert.False(invalid.Succeeded);
+        Assert.True(invalid.State?.RequiresReenrollment);
+        var disabled = await service.DisableAsync(principal);
+        Assert.True(disabled.State?.RequiresReenrollment);
+        var key = Assert.IsType<AccountAuthenticatorSetup>(started.State?.AuthenticatorSetup).SharedKey;
+        var enabled = await service.EnableAsync(principal, CurrentAuthenticatorCode(key));
+        Assert.True(enabled.Succeeded);
+        Assert.False(enabled.State?.RequiresReenrollment);
+        Assert.Equal(10, enabled.RecoveryCodes.Count);
+    }
+
     private static async Task<ApplicationUser> CreateUserAsync(
         UserManager<ApplicationUser> users) =>
         await TestDataSeeder.CreateUserAsync(

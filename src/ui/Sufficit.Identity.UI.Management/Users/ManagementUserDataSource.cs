@@ -88,6 +88,15 @@ public sealed class ManagementUserDataSource(
             "User password reset",
             cancellationToken);
 
+    public Task<ManagementDataResult<ManagementMfaResetResult>> ResetTwoFactorAsync(
+        string id,
+        ResetManagementUserTwoFactorCommand command,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (users, context) => users.ResetTwoFactorAsync(id, command, context, cancellationToken),
+            "User two-factor reset",
+            cancellationToken);
+
     public Task<ManagementDataResult<ManagementUserDetail>> SetLockoutAsync(
         string id,
         SetManagementUserLockoutCommand command,

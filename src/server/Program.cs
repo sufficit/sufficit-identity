@@ -504,6 +504,7 @@ identityPipeline.ApplyStage(app, Sufficit.Identity.Hosting.IdentityPipelineStage
 // a security-stamp read per script and stylesheet. The exclusion is based on
 // endpoint metadata, so OpenIddict protocol requests still authenticate.
 app.UseAuthenticationExceptStaticAssets();
+app.UseMiddleware<Sufficit.Identity.STS.MfaRecoveryNavigationMiddleware>();
 app.UseAuthorization();
 
 // Account recovery and registration are anonymous-only surfaces. Keep the

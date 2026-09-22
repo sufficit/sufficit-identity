@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Sufficit.Identity.Core.Entities;
+using Sufficit.Identity.Core.Services;
 using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Application.Security;
 
@@ -163,6 +164,12 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         var recoveryCodes = await GenerateRecoveryCodesInternalAsync(
             user,
             cancellationToken);
+        if (recoveryCodes is not null)
+        {
+            var recoveryCompleted = await MfaRecoveryState.CompleteAsync(userManager, user);
+            if (!recoveryCompleted.Succeeded)
+                return await FromIdentityResultAsync(recoveryCompleted, user, cancellationToken);
+        }
         var enabledState = await BuildOverviewAsync(user, cancellationToken);
 
         // Capture the pre-step-up AAL before the coordinator refreshes the
@@ -242,6 +249,11 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
                 "New recovery codes could not be generated.",
                 state);
         }
+
+        var recoveryCompleted = await MfaRecoveryState.CompleteAsync(userManager, user);
+        if (!recoveryCompleted.Succeeded)
+            return await FromIdentityResultAsync(recoveryCompleted, user, cancellationToken);
+        state = await BuildOverviewAsync(user, cancellationToken);
 
         logger.LogInformation(
             "User {UserId} regenerated two-factor recovery codes.",
@@ -383,7 +395,8 @@ public sealed class AspNetCoreIdentityAccountTwoFactorService(
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        return new AccountTwoFactorOverview(enabled, recoveryCodes, setup);
+        return new AccountTwoFactorOverview(enabled, recoveryCodes, setup,
+            await MfaRecoveryState.IsRequiredAsync(userManager, user));
     }
 
     private async Task<IReadOnlyList<string>?> GenerateRecoveryCodesInternalAsync(

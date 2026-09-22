@@ -10,7 +10,8 @@ public sealed record AccountAuthenticatorSetup(
 public sealed record AccountTwoFactorOverview(
     bool IsEnabled,
     int RecoveryCodesRemaining,
-    AccountAuthenticatorSetup? AuthenticatorSetup);
+    AccountAuthenticatorSetup? AuthenticatorSetup,
+    bool RequiresReenrollment = false);
 
 public sealed record AccountTwoFactorResult(
     bool Succeeded,

@@ -543,4 +543,5 @@
   <data name="PasswordError.ConcurrentChange" xml:space="preserve"><value>Your account was updated during this attempt. Reopen the page and try changing your password again.</value></data>
   <data name="PasswordError.Unknown" xml:space="preserve"><value>We could not save the password. Check the fields and try again.</value></data>
   <data name="Validation.CurrentPasswordRequired" xml:space="preserve"><value>Enter your current password.</value></data>
+  <data name="ManageTwoFactor.ReenrollmentRequired" xml:space="preserve"><value>An administrator reset your authenticator. Set up your new device and confirm a code to restore access to applications. Save the new recovery codes.</value></data>
 </root>
