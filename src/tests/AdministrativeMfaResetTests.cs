@@ -206,6 +206,13 @@ public sealed class AdministrativeMfaResetTests
         context.Request.Path = "/manage/twofactor";
         await middleware.InvokeAsync(context, db);
         Assert.True(called);
+        called = false;
+        context.Response.Headers.Remove("Location");
+        context.Request.Path = "/connect/authorize";
+        context.Request.QueryString = new QueryString("?prompt=none");
+        await middleware.InvokeAsync(context, db);
+        Assert.True(called);
+        Assert.False(context.Response.Headers.ContainsKey("Location"));
         Assert.True((await MfaRecoveryState.CompleteAsync(users, target)).Succeeded);
         var allowed = new OpenIddictServerEvents.GenerateTokenContext(new OpenIddictServerTransaction()) { Principal = principal };
         await new MfaRecoveryTokenGuard(db).HandleAsync(allowed);

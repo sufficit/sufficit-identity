@@ -16,7 +16,9 @@ public sealed class MfaRecoveryNavigationMiddleware(RequestDelegate next)
         if (isPage && context.User.Identity?.IsAuthenticated == true
             && !path.StartsWithSegments("/manage/twofactor", StringComparison.OrdinalIgnoreCase)
             && !path.StartsWithSegments("/account/logout", StringComparison.OrdinalIgnoreCase)
-            && !path.StartsWithSegments("/connect/endsession", StringComparison.OrdinalIgnoreCase)
+            // Protocol endpoints decide between an interactive redirect and
+            // an OAuth error (notably prompt=none) in their own handlers.
+            && !path.StartsWithSegments("/connect", StringComparison.OrdinalIgnoreCase)
             && !path.StartsWithSegments("/account/reauthenticate", StringComparison.OrdinalIgnoreCase)
             && !path.StartsWithSegments("/account/loginwith2fa", StringComparison.OrdinalIgnoreCase)
             && !path.StartsWithSegments("/_blazor", StringComparison.OrdinalIgnoreCase)
