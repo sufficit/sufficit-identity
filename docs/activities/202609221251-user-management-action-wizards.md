@@ -49,3 +49,18 @@ Ledger visual:
 As operações autenticadas foram exercitadas no host isolado de testes. O smoke de produção não executou nenhuma alteração em conta real; o gestor pode validar o novo fluxo diretamente no gerenciamento.
 
 Evidências temporárias: `/tmp/identity-user-actions-package.env`, `/tmp/identity-user-actions-package.log`, `/tmp/identity-user-actions-prepare.log`, `/tmp/identity-user-actions-migrator.log`, `/tmp/identity-user-actions-activate.log`, `/tmp/identity-user-actions-verify.log` e `/tmp/identity-mfa-screenshots/`.
+
+## Ajuste responsivo posterior
+
+Após a primeira publicação, o usuário esclareceu que o recolhimento deve ocorrer apenas quando faltar espaço. O [PR #86](https://github.com/sufficit/sufficit-identity/pull/86) passou a exibir as quatro ações em uma única linha acima de 960 px, ocultando o botão de toggle. Até 960 px, o seletor permanece recolhido por padrão; abaixo de 768 px, abre como lista vertical. A semântica, as URLs e os fluxos dedicados não mudaram.
+
+- Commit funcional `4e0b201`, integrado em `cfb7bcc87bb4ef5b5519f60b9c0c769ab6de4dd1`.
+- Suíte local novamente aprovada: **1.627 testes, zero falhas**. CI, CodeQL e secret scan do PR também aprovados.
+- Playwright confirmou quatro ações na mesma coordenada vertical em 1440 px, toggle invisível no desktop, menu fechado por padrão em 390 px e ausência de overflow nas duas resoluções.
+- Release `20260922T161302Z-cfb7bcc`, arquivo `/tmp/identity-user-actions-releases/20260922T161302Z-cfb7bcc.tar.gz`, SHA-256 `8d13cb1974590af96bbcf3af0f796d85abbaf282cd767cd004529d9d79c06a61`.
+- Migrator único em eveo: `Result=success`, `ExecMainStatus=0`; nenhuma migration nova.
+- Três nós ativos e saudáveis em `cfb7bcc87bb4ef5b5519f60b9c0c769ab6de4dd1`, certificado e JWKS preservados.
+- Assembly UI.Management uniforme e idêntico ao artefato: `594a5a0e95c667d9f641066e600535d3565fe6221d653a644b3b9b15765d73e6`.
+- CSS público contém a grade responsiva nova; login 200 e gerenciamento anônimo 302. Zero entradas de prioridade `err` desde o restart nos três nós.
+
+Evidências adicionais: `/tmp/identity-user-actions-responsive-package.env`, `/tmp/identity-user-actions-responsive-package.log`, `/tmp/identity-user-actions-responsive-prepare.log`, `/tmp/identity-user-actions-responsive-migrator.log`, `/tmp/identity-user-actions-responsive-activate.log` e `/tmp/identity-user-actions-responsive-verify.log`.

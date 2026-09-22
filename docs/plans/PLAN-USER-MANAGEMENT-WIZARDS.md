@@ -1,6 +1,6 @@
 # Plano — ações de usuário em fluxos dedicados
 
-Atualizado em: 2026-09-22 12:51 BRT
+Atualizado em: 2026-09-22 13:15 BRT
 
 Objetivo: reduzir a tela de detalhe do usuário a um resumo limpo e mover cada operação sensível para uma rota própria, adequada a dispositivos móveis e organizada como um fluxo de uma função por vez.
 
@@ -20,7 +20,9 @@ Plano concluído. Entrega registrada em `docs/activities/202609221251-user-manag
 - [x] Confirmar na nova captura que o seletor recolhível também estava sendo usado em telas largas.
 - [x] Exibir as quatro ações lado a lado quando houver largura e reservar o toggle para resoluções compactas.
 - [x] Atualizar o teste de navegador para validar desktop aberto por padrão e mobile recolhido.
-- [ ] **Em andamento:** integrar, publicar e verificar os três nós.
+- [x] Integrar, publicar e verificar os três nós.
+
+Ajuste responsivo concluído e registrado no relatório da entrega.
 
 ## Decisões
 
