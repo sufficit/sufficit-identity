@@ -160,7 +160,8 @@ public sealed partial class ManagementUiRoutingTests
             StringComparison.Ordinal);
     }
 
-    private static async Task<WebApplication> CreateHostAsync(bool useKestrel = false)
+    private static async Task<WebApplication> CreateHostAsync(
+        bool useKestrel = false, Action<IServiceCollection>? configureServices = null)
     {
         var builder = WebApplication.CreateBuilder();
         if (useKestrel)
@@ -229,6 +230,7 @@ public sealed partial class ManagementUiRoutingTests
         builder.Services.AddScoped<IManagementOverviewService,
             ManagementOverviewService>();
         builder.Services.AddSufficitIdentityManagementUI(builder.Configuration);
+        configureServices?.Invoke(builder.Services);
 
         var app = builder.Build();
         if (useKestrel) app.UseStaticFiles();
