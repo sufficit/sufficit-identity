@@ -106,3 +106,6 @@ deploy/local/
 helpers/github-bot-tokens.sh
 # Worktrees (padrao): arvores de trabalho em <repo>/.worktrees/
 **/.worktrees/
+
+# python bytecode
+**/__pycache__/
