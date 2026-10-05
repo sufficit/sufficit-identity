@@ -2131,9 +2131,8 @@
   <data name="Error.user_mfa_reset_failed" xml:space="preserve"><value>Não foi possível redefinir a autenticação. Nenhuma alteração foi confirmada.</value></data>
   <data name="Users.Detail.Actions.ResendConfirmation" xml:space="preserve"><value>Reenviar e-mail de confirmação</value></data>
   <data name="Users.Detail.Actions.ResendConfirmationDescription" xml:space="preserve"><value>Envie um novo link de confirmação para o e-mail da conta</value></data>
-  <data name="Users.Detail.ResendConfirmation.Sent.Title" xml:space="preserve"><value>E-mail de confirmação enviado</value></data>
-  <data name="Users.Detail.ResendConfirmation.Sent.Description" xml:space="preserve"><value>Um novo link de confirmação foi entregue ao e-mail da conta.</value></data>
-  <data name="Users.Detail.ResendConfirmation.Failed.Title" xml:space="preserve"><value>E-mail de confirmação não enviado</value></data>
   <data name="Error.user_email_already_confirmed" xml:space="preserve"><value>O e-mail desta conta já está confirmado.</value></data>
   <data name="Error.user_email_missing" xml:space="preserve"><value>A conta não tem e-mail cadastrado.</value></data>
+  <data name="Users.Detail.ResendConfirmation.Sent" xml:space="preserve"><value>E-mail de confirmação enviado para o endereço da conta.</value></data>
+  <data name="Users.Detail.ResendConfirmation.FailedFormat" xml:space="preserve"><value>E-mail de confirmação não enviado: {0}</value></data>
 </root>

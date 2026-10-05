@@ -1,6 +1,7 @@
 @page "/users/{Id}"
 @attribute [Authorize(Policy = ManagementUiPolicies.Access)]
 @inject ManagementUserDataSource UserData
+@inject ISUIToast Toast
 
 @{ var user = result?.Value!; }
 
@@ -67,30 +68,6 @@
             <span>@L["Users.Detail.Updated.Description"]</span>
         </div>
     </div>
-}
-
-@if (confirmationResend is { } resend)
-{
-    if (resend.IsSuccess)
-    {
-        <div class="inline-notice inline-notice--success" role="status">
-            <SUIIcon Name="check" Size="19" />
-            <div>
-                <strong>@L["Users.Detail.ResendConfirmation.Sent.Title"]</strong>
-                <span>@L["Users.Detail.ResendConfirmation.Sent.Description"]</span>
-            </div>
-        </div>
-    }
-    else
-    {
-        <div class="inline-notice inline-notice--danger" role="alert">
-            <SUIIcon Name="alert" Size="19" />
-            <div>
-                <strong>@L["Users.Detail.ResendConfirmation.Failed.Title"]</strong>
-                <span>@resend.ErrorMessage</span>
-            </div>
-        </div>
-    }
 }
 
 @if (loading)
@@ -272,7 +249,6 @@ else
     private bool loading = true;
     private bool showAccountActions;
     private bool resendingConfirmation;
-    private ManagementDataResult<bool>? confirmationResend;
 
     private bool Created => CreatedFlag is 1;
 
@@ -338,10 +314,19 @@ else
         }
 
         resendingConfirmation = true;
-        confirmationResend = null;
         try
         {
-            confirmationResend = await UserData.ResendConfirmationAsync(Id);
+            var resend = await UserData.ResendConfirmationAsync(Id);
+            if (resend.IsSuccess)
+            {
+                Toast.Success(L["Users.Detail.ResendConfirmation.Sent"].Value);
+            }
+            else
+            {
+                Toast.Error(string.Format(
+                    L["Users.Detail.ResendConfirmation.FailedFormat"].Value,
+                    resend.ErrorMessage));
+            }
         }
         finally
         {

@@ -2131,9 +2131,8 @@
   <data name="Error.user_mfa_reset_failed" xml:space="preserve"><value>Authentication could not be reset. No changes were committed.</value></data>
   <data name="Users.Detail.Actions.ResendConfirmation" xml:space="preserve"><value>Resend confirmation email</value></data>
   <data name="Users.Detail.Actions.ResendConfirmationDescription" xml:space="preserve"><value>Send a new confirmation link to the account address</value></data>
-  <data name="Users.Detail.ResendConfirmation.Sent.Title" xml:space="preserve"><value>Confirmation email sent</value></data>
-  <data name="Users.Detail.ResendConfirmation.Sent.Description" xml:space="preserve"><value>A new confirmation link was delivered to the account address.</value></data>
-  <data name="Users.Detail.ResendConfirmation.Failed.Title" xml:space="preserve"><value>Confirmation email not sent</value></data>
   <data name="Error.user_email_already_confirmed" xml:space="preserve"><value>The email address is already confirmed.</value></data>
   <data name="Error.user_email_missing" xml:space="preserve"><value>The account has no email address.</value></data>
+  <data name="Users.Detail.ResendConfirmation.Sent" xml:space="preserve"><value>Confirmation email sent to the account address.</value></data>
+  <data name="Users.Detail.ResendConfirmation.FailedFormat" xml:space="preserve"><value>Confirmation email not sent: {0}</value></data>
 </root>
