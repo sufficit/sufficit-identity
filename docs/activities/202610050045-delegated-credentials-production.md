@@ -49,7 +49,11 @@ com `/health/ready`.
   token-exchange anunciado.
 - Posture check: passou (apenas avisos).
 
-## Pendente
+## Permissão do cliente Genius (2026-10-05)
 
-Conceder `gt:token-exchange` e `scp:genius.executor.delegate` ao cliente
-`sufficit-ai-genius` (token de operador novo).
+`sufficit-ai-genius` recebeu `gt:urn:ietf:params:oauth:grant-type:token-exchange`
+e `scp:genius.executor.delegate` (PUT de Management com `expectedVersion`;
+nada removido, `ft:pkce`, tempos de vida e retornos nativos preservados). A
+partir daqui a delegação está ativa ponta a ponta no servidor; o Genius local
+só a usa com `WorkspaceExecution:DelegatedCredential:Enabled=true` e um login
+novo (o escopo entra no login).
