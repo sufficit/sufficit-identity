@@ -69,13 +69,68 @@ An `act` already present in the subject token is nested under the new one
 | Authorized actor | When the `subject_token` carries `may_act`, its `sub` must equal the acting party (the `actor_token` subject, or the calling client without one) and its `client_id`, when present, the calling client. A claim that is not a JSON object or names neither member authorizes nobody. A `may_act` claim persisted on a user reaches that user's access tokens. |
 | Subject status | User: `CanSignInAsync` is revalidated. Client: the registration must still exist. |
 
+## Delegated device credentials
+
+A configurable mode of the same grant, off by default
+(`Sufficit:Identity:TokenExchange:DelegatedCredentials`, see
+`DelegatedCredentialOptions`). A trusted first-party client exchanges a fresh
+user access token for a **refresh token of another registered client** (the
+delegate), bound to the DPoP key of the device that will use it (RFC 9449).
+Whoever transports the credential cannot use it without the device's private
+key. Logic in `DelegatedCredentialIssuer`; OpenIddict glue in
+`DelegatedCredentialHandlers.cs`.
+
+Selected by `requested_token_type=urn:ietf:params:oauth:token-type:refresh_token`
+with `audience` equal to `DelegateClientId`. Extra parameters: `dpop_jkt` (RFC
+7638 SHA-256 thumbprint of the device key) and `executor_id` (UUID labelling
+the device). The general provenance and attenuation rules are replaced by
+stricter ones:
+
+| Rule | Refusal |
+|---|---|
+| Caller in `DelegatorClientIds` (empty = nobody) | `unauthorized_client` |
+| No `actor_token`; subject is an access token whose only authorized party is the caller | `invalid_request` / `invalid_grant` |
+| Subject is a user that still passes `CanSignInAsync` | `invalid_grant` |
+| Subject carries `RequiredScope` | `invalid_scope` |
+| `auth_time` present and at most `MaxAuthAgeHours` old | `invalid_grant` |
+| `dpop_jkt` canonical base64url of 32 bytes; `executor_id` a UUID | `invalid_request` |
+| `may_act` and `MaxDelegationDepth`, as above | `invalid_grant` |
+| Fewer than `MaxActivePerUser` active credentials (the same label does not count) | `invalid_request` with the limit in the description |
+
+Result: an OpenIddict ad-hoc authorization of the user for the delegate
+client, with property `delegated_credential` (`label`, `delegator`,
+`expires_at`); scopes = delegate's `scp:` permissions ∩ subject scopes (∩
+requested scopes), never `RequiredScope`, plus `offline_access`; `act` =
+`{ "sub": <caller> }` nesting the prior chain and preserved on every refresh;
+absolute deadline `CredentialLifetimeDays`, which no refresh extends
+(`ClampDelegatedCredentialLifetime`). The same label issued again for the same
+user revokes the previous authorization and its tokens.
+
+Response (§2.2.1): the refresh token travels in `access_token` with
+`issued_token_type=urn:ietf:params:oauth:token-type:refresh_token` and
+`token_type=N_A`. The device redeems it with the `refresh_token` grant as the
+delegate client and a DPoP proof made with the bound key, obtaining DPoP-bound
+access tokens (`cnf.jkt`).
+
+Every issuance and refusal is audited (`ManagementAuditEvents`, capability
+`token_exchange.delegated_credential`) without token material; an issuance
+whose audit row cannot be written is withdrawn. `NotifyOnIssue` emails the
+user. Users list and revoke the credentials at `/manage/grants`. Enabling the
+mode requires `Dpop:Enabled=true` and refuses startup with an empty delegate
+or scope; `ProductionPostureCheck` reports an empty delegator list, a lifetime
+above 90 days (blocking), a sign-in age above 24 hours and disabled
+notification.
+
+The limits are initial values chosen by the owner on 2026-10-04 to be
+adjusted by configuration after operating the feature; none is fixed in code.
+
 ## Requirements
 
 | Requirement | § | Status |
 |---|---|---|
 | `subject_token` and `subject_token_type` | 2.1 | Yes |
 | `actor_token` / `actor_token_type` | 2.1 | Yes; must be issued to the caller |
-| `requested_token_type` | 2.1 | Validated by OpenIddict against `RequestedTokenTypes`; only access tokens are supported |
+| `requested_token_type` | 2.1 | Validated by OpenIddict against `RequestedTokenTypes`; access tokens, plus refresh tokens only as a delegated device credential when that mode is enabled |
 | `issued_token_type` in the response | 2.2.1 | Inherited from OpenIddict |
 | `act` claim with nesting | 4.1 | Yes |
 | `may_act` | 4.4 | Yes; every member present (`sub`, `client_id`) must match the acting party |
@@ -84,11 +139,13 @@ An `act` already present in the subject token is nested under the new one
 ## Remaining gaps
 
 - Only access tokens can be requested, apart from the ID-JAG token type (see
-  [SPEC-OAUTH-ID-JAG.md](SPEC-OAUTH-ID-JAG.md)).
+  [SPEC-OAUTH-ID-JAG.md](SPEC-OAUTH-ID-JAG.md)) and the delegated device
+  credential above.
 - `may_act` is enforced but not issued by policy: it reaches a token only as a
   claim persisted on the user. `iss` inside `may_act` is not compared.
 
 ## Tests
 
 `TokenExchangeTests`, `TokenExchangeDelegationTests`,
-`TokenExchangeConfusedDeputyTests`, `ResourceIndicatorTests`.
+`TokenExchangeConfusedDeputyTests`, `ResourceIndicatorTests`,
+`DelegatedCredentialTests`.

@@ -1132,6 +1132,14 @@ img.profile-avatar { background: var(--surface-sunken); }
     margin-top: 2px;
 }
 
+.manage-grants__delegated {
+    margin-top: var(--space-7);
+}
+
+.manage-grants__delegated .info {
+    max-width: 60ch;
+}
+
 .grant-item {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;

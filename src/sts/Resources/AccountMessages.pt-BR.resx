@@ -10,6 +10,8 @@
   <data name="ResetPassword.Body" xml:space="preserve"><value>Redefina sua senha &lt;a href="{0}"&gt;clicando aqui&lt;/a&gt;.</value></data>
   <data name="ExternalLink.Subject" xml:space="preserve"><value>Confirme seu e-mail — {0}</value></data>
   <data name="ExternalLink.Body" xml:space="preserve"><value>Confirme que este endereço é seu para concluir o acesso por {0}: &lt;a href="{1}"&gt;clique aqui&lt;/a&gt;. Se você não iniciou este acesso, ignore esta mensagem — nenhuma conta foi criada.</value></data>
+  <data name="DelegatedCredential.Subject" xml:space="preserve"><value>Nova credencial de dispositivo — {0}</value></data>
+  <data name="DelegatedCredential.Body" xml:space="preserve"><value>&lt;p&gt;{0} emitiu uma credencial para o dispositivo {1} na sua conta. Ela só funciona nesse dispositivo e expira em {2}.&lt;/p&gt;&lt;p&gt;Se você não esperava por isso, revogue-a em Aplicações conectadas na sua conta e troque sua senha.&lt;/p&gt;</value></data>
   <data name="AuthorizationError.Heading" xml:space="preserve"><value>Não foi possível concluir o acesso</value></data>
   <data name="AuthorizationError.InvalidToken" xml:space="preserve"><value>O pedido de autorização que abriu esta tela já foi utilizado ou expirou. Isso costuma acontecer quando a tela de login fica aberta depois que o acesso já foi concluído, ou quando o mesmo link é aberto uma segunda vez.</value></data>
   <data name="AuthorizationError.InvalidRequest" xml:space="preserve"><value>O pedido de autorização chegou incompleto ou inválido e não pôde ser processado.</value></data>

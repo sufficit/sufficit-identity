@@ -115,6 +115,11 @@ public sealed class StsProductionPostureContributor(
                 "Migrate subject tokens to an unambiguous azp/client_id and set TokenExchange:ProvenanceMode=Enforce.");
         }
 
+        foreach (var finding in EvaluateDelegatedCredentials(tokenExchange))
+        {
+            yield return finding;
+        }
+
         if (options.Ciba.Enabled
             && options.Ciba.ClientPolicyMode
                 == SecurityPolicyEnforcementMode.Observe)
@@ -342,6 +347,59 @@ public sealed class StsProductionPostureContributor(
             && !source.Contains("//", StringComparison.Ordinal))
         || source.Equals("'unsafe-inline'", StringComparison.OrdinalIgnoreCase)
         || source.Equals("'unsafe-eval'", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Delegated device credentials: reported only while enabled. A lifetime
+    /// beyond <see cref="DelegatedCredentialLifetimeWarningDays"/> blocks
+    /// startup; the other findings are advisory.
+    /// </summary>
+    internal static IEnumerable<ProductionPostureFinding> EvaluateDelegatedCredentials(
+        Grants.TokenExchangeOptions tokenExchange)
+    {
+        var delegation = tokenExchange.DelegatedCredentials;
+        if (!tokenExchange.Enabled || !delegation.Enabled)
+        {
+            yield break;
+        }
+
+        if (delegation.DelegatorClientIds.Count == 0)
+        {
+            yield return new(
+                "delegated-credentials-no-delegators",
+                "Delegated credentials are enabled but no delegator client is configured, so every delegation is refused.",
+                "List the trusted first-party clients in TokenExchange:DelegatedCredentials:DelegatorClientIds, or disable the feature.",
+                Severity: ProductionPostureSeverity.Advisory);
+        }
+
+        if (delegation.CredentialLifetimeDays > DelegatedCredentialLifetimeWarningDays)
+        {
+            yield return new(
+                "delegated-credentials-long-lifetime",
+                $"Delegated credentials live {delegation.CredentialLifetimeDays} days, beyond the {DelegatedCredentialLifetimeWarningDays}-day ceiling for a credential the user does not re-approve.",
+                $"Set TokenExchange:DelegatedCredentials:CredentialLifetimeDays to {DelegatedCredentialLifetimeWarningDays} or less; the delegating application renews credentials it still needs.");
+        }
+
+        if (delegation.MaxAuthAgeHours > DelegatedCredentialAuthAgeWarningHours)
+        {
+            yield return new(
+                "delegated-credentials-stale-sign-in",
+                $"A delegation accepts a sign-in up to {delegation.MaxAuthAgeHours} hours old.",
+                $"Set TokenExchange:DelegatedCredentials:MaxAuthAgeHours to {DelegatedCredentialAuthAgeWarningHours} or less.",
+                Severity: ProductionPostureSeverity.Advisory);
+        }
+
+        if (!delegation.NotifyOnIssue)
+        {
+            yield return new(
+                "delegated-credentials-silent",
+                "Users are not notified when a delegated credential is issued for their account; issuance is only audited.",
+                "Set TokenExchange:DelegatedCredentials:NotifyOnIssue=true.",
+                Severity: ProductionPostureSeverity.Advisory);
+        }
+    }
+
+    internal const int DelegatedCredentialLifetimeWarningDays = 90;
+    internal const int DelegatedCredentialAuthAgeWarningHours = 24;
 
     private static bool SharesCertificatePath(CertificatesOptions certificates)
     {

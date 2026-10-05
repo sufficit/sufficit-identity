@@ -311,7 +311,7 @@ public sealed class AccountAccessServiceTests(
         return await manager.GetStatusAsync(token);
     }
 
-    private static ClaimsPrincipal PrincipalFor(ApplicationUser user) =>
+    internal static ClaimsPrincipal PrincipalFor(ApplicationUser user) =>
         new(
             new ClaimsIdentity(
                 [

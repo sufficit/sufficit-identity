@@ -751,7 +751,17 @@ public static partial class ServiceCollectionExtensions
                 + Grants.TokenExchangeOptions.MaxDelegationDepthCeiling + ".");
         }
 
+        var delegatedCredentialErrors = tokenExchange.DelegatedCredentials
+            .Validate(options)
+            .ToArray();
+        if (delegatedCredentialErrors.Length > 0)
+        {
+            throw new InvalidOperationException(string.Join(" ", delegatedCredentialErrors));
+        }
+
         services.TryAddSingleton(tokenExchange);
+        services.AddScoped<Grants.DelegatedCredentialIssuer>();
+        services.AddScoped<Grants.DelegatedCredentialEvents>();
         services.AddScoped<Grants.ISubjectTokenResolver, Grants.SubjectTokenResolver>();
         services.AddScoped<Grants.ITokenGrantHandler, Grants.TokenExchangeGrantHandler>();
         services.AddScoped<Grants.TokenGrantDispatcher>();
