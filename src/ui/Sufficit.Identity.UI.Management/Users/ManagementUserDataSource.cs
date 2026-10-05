@@ -127,6 +127,30 @@ public sealed class ManagementUserDataSource(
             "User confirmation resend",
             cancellationToken);
 
+    public Task<ManagementDataResult<ManagementUserExternalLogins>> GetExternalLoginsAsync(
+        string id,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (users, context) => users.GetExternalLoginsAsync(
+                id,
+                context,
+                cancellationToken),
+            "User external logins",
+            cancellationToken);
+
+    public Task<ManagementDataResult<ManagementUserExternalLogins>> RemoveExternalLoginAsync(
+        string id,
+        RemoveManagementUserExternalLoginCommand command,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            (users, context) => users.RemoveExternalLoginAsync(
+                id,
+                command,
+                context,
+                cancellationToken),
+            "User external login removal",
+            cancellationToken);
+
     public Task<ManagementDataResult<bool>> DeleteAsync(
         string id,
         CancellationToken cancellationToken = default) =>

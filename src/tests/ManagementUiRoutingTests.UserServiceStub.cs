@@ -119,6 +119,27 @@ public sealed partial class ManagementUiRoutingTests
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
+        public Task<ManagementUserExternalLogins> GetExternalLoginsAsync(
+            string id,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new ManagementUserExternalLogins(
+                Summary.Id,
+                Summary.UserName,
+                Summary.Email,
+                [new ManagementUserExternalLogin("Google", "google-subject-1", "Google")],
+                HasPassword: true,
+                CanRemove: true,
+                RemoveRequiresMfa: false,
+                RemoveReasonCode: "allowed"));
+
+        public Task<ManagementUserExternalLogins> RemoveExternalLoginAsync(
+            string id,
+            RemoveManagementUserExternalLoginCommand command,
+            ManagementRequestContext context,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task DeleteAsync(
             string id,
             ManagementRequestContext context,

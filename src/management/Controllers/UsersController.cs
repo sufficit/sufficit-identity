@@ -114,6 +114,27 @@ public sealed class UsersController(IUserManagementService users)
         return NoContent();
     }
 
+    [HttpGet("{id}/external-logins")]
+    public async Task<ActionResult<ManagementUserExternalLogins>> GetExternalLogins(
+        string id,
+        CancellationToken cancellationToken) =>
+        Ok(await users.GetExternalLoginsAsync(
+            id,
+            RequestContext(),
+            cancellationToken));
+
+    [HttpDelete("{id}/external-logins")]
+    public async Task<ActionResult<ManagementUserExternalLogins>> RemoveExternalLogin(
+        string id,
+        [FromQuery] string provider,
+        [FromQuery] string key,
+        CancellationToken cancellationToken) =>
+        Ok(await users.RemoveExternalLoginAsync(
+            id,
+            new RemoveManagementUserExternalLoginCommand(provider, key),
+            RequestContext(),
+            cancellationToken));
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(
         string id,

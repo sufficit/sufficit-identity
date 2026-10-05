@@ -65,11 +65,51 @@ public interface IUserManagementService
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Lists the external identities (Google, GitHub, ...) bound to the user.
+    /// Requires <c>identity.users.read</c>.
+    /// </summary>
+    Task<ManagementUserExternalLogins> GetExternalLoginsAsync(
+        string id,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Unbinds one external identity from the user. A sign-in credential
+    /// change, so it requires <c>identity.users.reset</c> like a password
+    /// reset. Operators may remove the last sign-in method; the owner can
+    /// still recover through password recovery.
+    /// </summary>
+    Task<ManagementUserExternalLogins> RemoveExternalLoginAsync(
+        string id,
+        RemoveManagementUserExternalLoginCommand command,
+        ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
     Task DeleteAsync(
         string id,
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 }
+
+public sealed record ManagementUserExternalLogin(
+    string LoginProvider,
+    string ProviderKey,
+    string? DisplayName);
+
+public sealed record ManagementUserExternalLogins(
+    string UserId,
+    string? UserName,
+    string? Email,
+    IReadOnlyList<ManagementUserExternalLogin> Logins,
+    bool HasPassword,
+    bool CanRemove,
+    bool RemoveRequiresMfa,
+    string RemoveReasonCode);
+
+public sealed record RemoveManagementUserExternalLoginCommand(
+    string LoginProvider,
+    string ProviderKey);
 
 public sealed record ManagementUserAccess(
     bool CanRead,

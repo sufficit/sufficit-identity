@@ -185,6 +185,11 @@ else if (result?.IsSuccess is true && result.Value is not null)
                 <span><strong>@L["Users.MfaReset.Title"]</strong><small>@L["Users.MfaReset.Description"]</small></span>
                 <SUIIcon Name="arrow-right" Size="16" />
             </a>
+            <a class="user-account-action" href="@ExternalLoginsHref">
+                <span class="user-account-action__icon"><SUIIcon Name="external" Size="19" /></span>
+                <span><strong>@L["Users.ExternalLogins.Title"]</strong><small>@L["Users.ExternalLogins.CardDescription"]</small></span>
+                <SUIIcon Name="arrow-right" Size="16" />
+            </a>
             <a class="user-account-action" href="@AccessHref">
                 <span class="user-account-action__icon"><SUIIcon Name="lock" Size="19" /></span>
                 <span><strong>@L["Users.Detail.Actions.Access"]</strong><small>@L["Users.Detail.Actions.AccessDescription"]</small></span>
@@ -267,6 +272,7 @@ else
     private string ConfirmationHref => ActionHref("confirmation");
     private string MfaResetHref => ActionHref("mfa");
     private string AccessHref => ActionHref("access");
+    private string ExternalLoginsHref => ActionHref("logins");
     private string PasswordResetHref => ActionHref("password");
     private string DeleteHref => ActionHref("delete");
 

@@ -1,0 +1,157 @@
+@page "/users/{Id}/actions/logins"
+@attribute [Authorize(Policy = ManagementUiPolicies.Access)]
+@attribute [StreamRendering]
+@inject ManagementUserDataSource UserData
+@inject ISUIToast Toast
+@inject ISUIDialogService Dialogs
+
+@{ var logins = result?.Value; }
+
+<PageTitle>@L["Users.ExternalLogins.Title"]</PageTitle>
+
+<SUIPageHeader Title="@HeaderTitle" Description="@L["Users.ExternalLogins.Description"].Value">
+    <Actions>
+        <a class="button button--secondary" href="@DetailHref">
+            <SUIIcon Name="arrow-left" Size="17" />
+            @L["Users.Actions.BackToUser"]
+        </a>
+    </Actions>
+</SUIPageHeader>
+
+@if (loading)
+{
+    <div class="account-access-panel" aria-busy="true" aria-label="@L["Users.Actions.Loading"].Value">
+        <div class="detail-skeleton"></div>
+        <div class="detail-skeleton detail-skeleton--short"></div>
+    </div>
+}
+else if (result?.IsSuccess is false || logins is null)
+{
+    <div class="panel">
+        <SUIEmptyState Icon="alert" Title="@LoadErrorTitle" Description="@result?.ErrorMessage">
+            <Actions><a class="button button--secondary" href="@DetailHref">@L["Users.Actions.BackToUser"]</a></Actions>
+        </SUIEmptyState>
+    </div>
+}
+else if (logins.Logins.Count == 0)
+{
+    <div class="decision-note decision-note--neutral"><SUIIcon Name="external" Size="21" /><div><h2>@L["Users.ExternalLogins.EmptyTitle"]</h2><p>@L["Users.ExternalLogins.EmptyDescription"]</p></div></div>
+}
+else
+{
+    <section class="account-access-panel" aria-labelledby="external-logins-heading">
+        <div class="account-access-panel__heading">
+            <div class="account-access-panel__icon"><SUIIcon Name="external" Size="20" /></div>
+            <div>
+                <h2 id="external-logins-heading">@L["Users.ExternalLogins.Heading"]</h2>
+                <p>@L["Users.ExternalLogins.HeadingDescription"]</p>
+            </div>
+            <SUIStatusBadge ToneValue="@(logins.HasPassword ? SUITone.Success : SUITone.Neutral)">
+                @(logins.HasPassword ? L["Users.ExternalLogins.HasPassword"] : L["Users.ExternalLogins.NoPassword"])
+            </SUIStatusBadge>
+        </div>
+
+        <ul class="external-login-list">
+            @foreach (var login in logins.Logins)
+            {
+                var current = login;
+                var removing = busyKey == KeyOf(current);
+                <li class="external-login-list__item">
+                    <div>
+                        <strong>@(current.DisplayName ?? current.LoginProvider)</strong>
+                        <code title="@current.ProviderKey">@current.ProviderKey</code>
+                    </div>
+                    @if (logins.CanRemove)
+                    {
+                        <button class="button button--danger"
+                                type="button"
+                                disabled="@(busyKey is not null)"
+                                @onclick="() => RemoveAsync(current)">
+                            @if (removing)
+                            {
+                                <span class="button-spinner" aria-hidden="true"></span>
+                                <span>@L["Users.ExternalLogins.Removing"]</span>
+                            }
+                            else
+                            {
+                                <SUIIcon Name="trash" Size="17" />
+                                <span>@L["Users.ExternalLogins.RemoveButton"]</span>
+                            }
+                        </button>
+                    }
+                </li>
+            }
+        </ul>
+
+        @if (!logins.CanRemove)
+        {
+            <div class="decision-note decision-note--neutral">
+                <SUIIcon Name="@(logins.RemoveRequiresMfa ? "shield" : "lock")" Size="21" />
+                <div>
+                    <h2>@(logins.RemoveRequiresMfa ? L["Users.ExternalLogins.MfaRequiredTitle"] : L["Users.ExternalLogins.ForbiddenTitle"])</h2>
+                    <p>@(logins.RemoveRequiresMfa ? L["Users.Detail.MfaRequiredDescription"] : L["Users.ExternalLogins.ForbiddenDescription"])</p>
+                </div>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    private ManagementDataResult<ManagementUserExternalLogins>? result;
+    private bool loading = true;
+    private string? busyKey;
+    private string DetailHref => $"users/{Uri.EscapeDataString(Id)}";
+    private string HeaderTitle => result?.Value?.UserName ?? result?.Value?.Email ?? L["Users.ExternalLogins.Title"].Value;
+    private string LoadErrorTitle => result?.Outcome is ManagementDataOutcome.NotFound
+        ? L["Users.Detail.Error.NotFound"].Value
+        : result?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? L["Users.Detail.Error.StepUp"].Value
+            : result?.Outcome is ManagementDataOutcome.Forbidden
+                ? L["Users.Detail.Error.Forbidden"].Value
+                : L["Users.Detail.Error.Generic"].Value;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        result = await UserData.GetExternalLoginsAsync(Id);
+        loading = false;
+    }
+
+    private static string KeyOf(ManagementUserExternalLogin login) =>
+        $"{login.LoginProvider}\n{login.ProviderKey}";
+
+    private async Task RemoveAsync(ManagementUserExternalLogin login)
+    {
+        if (busyKey is not null || result?.Value is not { } current) return;
+
+        var name = login.DisplayName ?? login.LoginProvider;
+        var lastMethod = !current.HasPassword && current.Logins.Count == 1;
+        var message = string.Format(
+            L[lastMethod ? "Users.ExternalLogins.ConfirmLastFormat" : "Users.ExternalLogins.ConfirmFormat"].Value,
+            name);
+        if (!await Dialogs.ConfirmAsync(L["Users.ExternalLogins.ConfirmTitle"].Value, message)) return;
+
+        busyKey = KeyOf(login);
+        try
+        {
+            var removal = await UserData.RemoveExternalLoginAsync(
+                Id,
+                new RemoveManagementUserExternalLoginCommand(login.LoginProvider, login.ProviderKey));
+            if (removal.IsSuccess && removal.Value is not null)
+            {
+                result = removal;
+                Toast.Success(string.Format(L["Users.ExternalLogins.RemovedFormat"].Value, name));
+            }
+            else
+            {
+                Toast.Error(string.Format(L["Users.ExternalLogins.RemoveFailedFormat"].Value, removal.ErrorMessage));
+            }
+        }
+        finally
+        {
+            busyKey = null;
+        }
+    }
+}

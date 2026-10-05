@@ -163,11 +163,19 @@ public sealed partial class ManagementUiRoutingTests
             "/management/users/user-1/actions/confirmation");
         var confirmationHtml = WebUtility.HtmlDecode(
             await confirmation.Content.ReadAsStringAsync());
+        using var logins = await client.GetAsync(
+            "/management/users/user-1/actions/logins");
+        var loginsHtml = WebUtility.HtmlDecode(
+            await logins.Content.ReadAsStringAsync());
         using var detailEnglish = await client.GetAsync(
             "/management/users/user-1?culture=en-US&ui-culture=en-US");
         var detailEnglishHtml = WebUtility.HtmlDecode(
             await detailEnglish.Content.ReadAsStringAsync());
 
+        Assert.Equal(HttpStatusCode.OK, logins.StatusCode);
+        Assert.Contains("Contas vinculadas", loginsHtml, StringComparison.Ordinal);
+        Assert.Contains("google-subject-1", loginsHtml, StringComparison.Ordinal);
+        Assert.Contains("actions/logins", detailHtml, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.OK, confirmation.StatusCode);
         Assert.Contains("E-mail já confirmado", confirmationHtml, StringComparison.Ordinal);
         Assert.DoesNotContain("actions/confirmation", detailHtml, StringComparison.Ordinal);

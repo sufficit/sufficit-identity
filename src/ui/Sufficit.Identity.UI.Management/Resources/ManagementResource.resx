@@ -2147,4 +2147,25 @@
   <data name="Users.Confirmation.MfaRequiredTitle" xml:space="preserve"><value>Recent MFA required to resend</value></data>
   <data name="Users.Confirmation.ForbiddenTitle" xml:space="preserve"><value>Resend not allowed</value></data>
   <data name="Users.Confirmation.ForbiddenDescription" xml:space="preserve"><value>Your operator permissions do not include resending confirmation emails.</value></data>
+  <data name="Users.ExternalLogins.Title" xml:space="preserve"><value>External sign-ins</value></data>
+  <data name="Users.ExternalLogins.CardDescription" xml:space="preserve"><value>Review and remove linked Google, GitHub and other accounts</value></data>
+  <data name="Users.ExternalLogins.Description" xml:space="preserve"><value>Accounts from other providers that can sign in as this user.</value></data>
+  <data name="Users.ExternalLogins.Heading" xml:space="preserve"><value>Linked accounts</value></data>
+  <data name="Users.ExternalLogins.HeadingDescription" xml:space="preserve"><value>Removing an account ends the sessions opened with it. The user can link it again after signing in.</value></data>
+  <data name="Users.ExternalLogins.HasPassword" xml:space="preserve"><value>Has password</value></data>
+  <data name="Users.ExternalLogins.NoPassword" xml:space="preserve"><value>No password</value></data>
+  <data name="Users.ExternalLogins.RemoveButton" xml:space="preserve"><value>Remove</value></data>
+  <data name="Users.ExternalLogins.Removing" xml:space="preserve"><value>Removing…</value></data>
+  <data name="Users.ExternalLogins.EmptyTitle" xml:space="preserve"><value>No linked accounts</value></data>
+  <data name="Users.ExternalLogins.EmptyDescription" xml:space="preserve"><value>This user signs in only with local credentials.</value></data>
+  <data name="Users.ExternalLogins.ConfirmTitle" xml:space="preserve"><value>Remove linked account</value></data>
+  <data name="Users.ExternalLogins.ConfirmFormat" xml:space="preserve"><value>Remove the {0} account from this user? Sessions opened with it will end.</value></data>
+  <data name="Users.ExternalLogins.ConfirmLastFormat" xml:space="preserve"><value>{0} is this user's only sign-in method. After removal they can only get back in through password recovery. Remove anyway?</value></data>
+  <data name="Users.ExternalLogins.RemovedFormat" xml:space="preserve"><value>{0} account removed.</value></data>
+  <data name="Users.ExternalLogins.RemoveFailedFormat" xml:space="preserve"><value>Account not removed: {0}</value></data>
+  <data name="Users.ExternalLogins.MfaRequiredTitle" xml:space="preserve"><value>Recent MFA required to remove</value></data>
+  <data name="Users.ExternalLogins.ForbiddenTitle" xml:space="preserve"><value>Removal not allowed</value></data>
+  <data name="Users.ExternalLogins.ForbiddenDescription" xml:space="preserve"><value>Your operator permissions do not include changing this user's sign-in credentials.</value></data>
+  <data name="Error.user_external_login_not_found" xml:space="preserve"><value>The linked account was not found. It may have been removed already.</value></data>
+  <data name="Error.user_external_login_remove_failed" xml:space="preserve"><value>The linked account could not be removed.</value></data>
 </root>

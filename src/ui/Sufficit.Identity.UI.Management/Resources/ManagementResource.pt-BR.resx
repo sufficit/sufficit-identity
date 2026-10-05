@@ -2147,4 +2147,25 @@
   <data name="Users.Confirmation.MfaRequiredTitle" xml:space="preserve"><value>MFA recente exigido para reenviar</value></data>
   <data name="Users.Confirmation.ForbiddenTitle" xml:space="preserve"><value>Reenvio não permitido</value></data>
   <data name="Users.Confirmation.ForbiddenDescription" xml:space="preserve"><value>Suas permissões de operador não incluem reenviar e-mails de confirmação.</value></data>
+  <data name="Users.ExternalLogins.Title" xml:space="preserve"><value>Acessos externos</value></data>
+  <data name="Users.ExternalLogins.CardDescription" xml:space="preserve"><value>Veja e remova contas Google, GitHub e outras vinculadas</value></data>
+  <data name="Users.ExternalLogins.Description" xml:space="preserve"><value>Contas de outros provedores que podem entrar como este usuário.</value></data>
+  <data name="Users.ExternalLogins.Heading" xml:space="preserve"><value>Contas vinculadas</value></data>
+  <data name="Users.ExternalLogins.HeadingDescription" xml:space="preserve"><value>Remover uma conta encerra as sessões abertas com ela. O usuário pode vinculá-la de novo depois de entrar.</value></data>
+  <data name="Users.ExternalLogins.HasPassword" xml:space="preserve"><value>Tem senha</value></data>
+  <data name="Users.ExternalLogins.NoPassword" xml:space="preserve"><value>Sem senha</value></data>
+  <data name="Users.ExternalLogins.RemoveButton" xml:space="preserve"><value>Remover</value></data>
+  <data name="Users.ExternalLogins.Removing" xml:space="preserve"><value>Removendo…</value></data>
+  <data name="Users.ExternalLogins.EmptyTitle" xml:space="preserve"><value>Nenhuma conta vinculada</value></data>
+  <data name="Users.ExternalLogins.EmptyDescription" xml:space="preserve"><value>Este usuário entra apenas com credenciais locais.</value></data>
+  <data name="Users.ExternalLogins.ConfirmTitle" xml:space="preserve"><value>Remover conta vinculada</value></data>
+  <data name="Users.ExternalLogins.ConfirmFormat" xml:space="preserve"><value>Remover a conta {0} deste usuário? As sessões abertas com ela serão encerradas.</value></data>
+  <data name="Users.ExternalLogins.ConfirmLastFormat" xml:space="preserve"><value>{0} é a única forma de entrada deste usuário. Depois de remover, ele só volta pela recuperação de senha. Remover mesmo assim?</value></data>
+  <data name="Users.ExternalLogins.RemovedFormat" xml:space="preserve"><value>Conta {0} removida.</value></data>
+  <data name="Users.ExternalLogins.RemoveFailedFormat" xml:space="preserve"><value>Conta não removida: {0}</value></data>
+  <data name="Users.ExternalLogins.MfaRequiredTitle" xml:space="preserve"><value>MFA recente exigido para remover</value></data>
+  <data name="Users.ExternalLogins.ForbiddenTitle" xml:space="preserve"><value>Remoção não permitida</value></data>
+  <data name="Users.ExternalLogins.ForbiddenDescription" xml:space="preserve"><value>Suas permissões de operador não incluem alterar as credenciais de entrada deste usuário.</value></data>
+  <data name="Error.user_external_login_not_found" xml:space="preserve"><value>A conta vinculada não foi encontrada. Ela pode já ter sido removida.</value></data>
+  <data name="Error.user_external_login_remove_failed" xml:space="preserve"><value>Não foi possível remover a conta vinculada.</value></data>
 </root>

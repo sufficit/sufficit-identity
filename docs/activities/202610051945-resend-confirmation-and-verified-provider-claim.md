@@ -36,3 +36,11 @@ Usuário `c58fee7c-50ff-4add-8042-c21290594d23` cadastrou-se por e-mail/senha (G
 - Commit `ac45efe646fdaf85fc9d0dd7fee8daa08603787d`, release `20261005T200504Z-ac45efe` (SHA-256 `110ad65dc56d478d885f1fb01c47228d1ac4e4626a31f95332fce380911e24fe`).
 - Container SDK 10: build `-warnaserror` limpo; 1650 aprovados (rota nova incluída), 1 ignorado, mesma falha ambiental.
 - Ativação node-a → node-b → node-c sem rollback; cluster uniforme, cert/JWKS preservados, wwwroot legível. Smoke `/account/login` limpo; rota da página nova responde 302 para o login sem sessão. Página e toast não exercitados com sessão de operador.
+
+## Acessos externos por usuário
+
+- Página `users/{id}/actions/logins` (card "Acessos externos" na grade): lista as contas vinculadas (provedor e chave) e remove uma a uma, com confirmação em diálogo (`ISUIDialogService.ConfirmAsync`, `SUIDialogHost` no layout) e resultado em toast.
+- Serviço: `GetExternalLoginsAsync` (capability `identity.users.read`) e `RemoveExternalLoginAsync` (`identity.users.reset`, a mesma da redefinição de senha: altera credencial de entrada). Remoção por provedor+chave exatos, auditada (`user_external_login_removed`, `user_external_login_not_found`, `user_external_login_remove_failed`), troca o security stamp (via `RemoveLoginAsync`) e emite CAEP credential-change `federated/deleted`.
+- O operador pode remover o último método de entrada; o diálogo avisa que o usuário só volta pela recuperação de senha. Diferente do autoatendimento, que bloqueia esse caso.
+- API: `GET api/users/{id}/external-logins`, `DELETE api/users/{id}/external-logins?provider=&key=`.
+- Grade de ações passa a 3 colunas no desktop (5 ou 6 cards em 2 linhas), conferida renderizando o CSS em 1030 e 1450 px.
