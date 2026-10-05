@@ -16,8 +16,9 @@ internal static class IdentityTablesMapping
 {
         /// <summary>
         /// Maps the 8 ASP.NET Core Identity entities to the legacy lowercase
-        /// table names already present in the <c>identity2</c> database, so the
-        /// existing users/roles/claims load without re-migration.
+        /// table names already present in the <c>identity</c> database
+        /// (MariaDB/Galera, db-node-1), so the existing users/roles/claims
+        /// load without re-migration.
         /// </summary>
         internal static void Apply(ModelBuilder builder)
         {
