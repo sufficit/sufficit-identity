@@ -72,6 +72,7 @@ when `Dpop:RequireNonce`:
 | Issuance | `cnf.jkt` attached by `AttachDpopConfirmation`; `token_type` becomes `DPoP` |
 | Refresh | The **original** binding is preserved; the token cannot be rebound to another key (`UserTokenGrantsHandler`) |
 | Authorization code | Under FAPI 2.0, `dpop_jkt` authenticated at PAR is preserved in the code's principal (`AuthorizationController.cs`) |
+| Delegated device credential | RFC 8693 exchange binds the delegate's refresh token to the `dpop_jkt` the caller names, without a proof from that key; the first refresh by the device must prove it (see [RFC-8693-TOKEN-EXCHANGE.md](RFC-8693-TOKEN-EXCHANGE.md)) |
 | Userinfo | `ExtractDpopUserInfoToken` + `ath` verification |
 | Conflict with mTLS | Rejected by `RejectCombinedDpopAndMtlsSenderConstraints` |
 
@@ -92,4 +93,4 @@ when `Dpop:RequireNonce`:
 ## Tests
 
 `DpopTests`, `SenderConstraintTests`, `DistributedStoreTests`,
-`FapiJarmTests`.
+`FapiJarmTests`, `DelegatedCredentialTests`.

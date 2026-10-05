@@ -416,6 +416,12 @@ public sealed class GrantOperations(
                 // OpenIddict prepares the concrete token principals.
                 yield break;
 
+            case DelegatedCredential.ExpiresAtClaimType:
+            case DelegatedCredential.LabelClaimType:
+                // Delegated-credential bookkeeping: lives in the refresh
+                // token (which keeps every claim) and nowhere else.
+                yield break;
+
             default:
                 // Custom persisted claims (AspNetUserClaims): the
                 // config-driven claim-to-scope map decides (eval #10).

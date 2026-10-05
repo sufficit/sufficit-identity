@@ -10,6 +10,8 @@
   <data name="ResetPassword.Body" xml:space="preserve"><value>Reset your password by &lt;a href="{0}"&gt;clicking here&lt;/a&gt;.</value></data>
   <data name="ExternalLink.Subject" xml:space="preserve"><value>Confirm your email — {0}</value></data>
   <data name="ExternalLink.Body" xml:space="preserve"><value>Confirm that this address is yours to finish signing in with {0}: &lt;a href="{1}"&gt;click here&lt;/a&gt;. If you did not start this sign-in, ignore this message — no account has been created.</value></data>
+  <data name="DelegatedCredential.Subject" xml:space="preserve"><value>New device credential — {0}</value></data>
+  <data name="DelegatedCredential.Body" xml:space="preserve"><value>&lt;p&gt;{0} issued a credential for device {1} on your account. It works only on that device and expires on {2}.&lt;/p&gt;&lt;p&gt;If you did not expect this, revoke it under Connected applications in your account and change your password.&lt;/p&gt;</value></data>
   <data name="AuthorizationError.Heading" xml:space="preserve"><value>The sign-in could not be completed</value></data>
   <data name="AuthorizationError.InvalidToken" xml:space="preserve"><value>The authorization request that opened this page has already been used or has expired. This usually happens when the sign-in page stays open after access was already granted, or when the same link is opened a second time.</value></data>
   <data name="AuthorizationError.InvalidRequest" xml:space="preserve"><value>The authorization request arrived incomplete or invalid and could not be processed.</value></data>

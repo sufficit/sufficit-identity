@@ -210,8 +210,15 @@ public sealed class UserTokenGrantsHandler : ITokenGrantHandler
                 httpContext.RequestServices.GetRequiredService<IOpenIddictAuthorizationManager>(),
                 httpContext.RequestAborted)
             : result.Principal!.GetScopes();
-        grantedScopes = await ops.ResolveFirstPartyUserScopesAsync(
-            request.ClientId, grantedScopes, httpContext.RequestAborted);
+        // A delegated credential keeps exactly the scopes it was delegated
+        // with: the first-party additions are for the user's own sign-ins.
+        var delegated = request.IsRefreshTokenGrantType()
+            && DelegatedCredential.IsDelegated(result.Principal!);
+        if (!delegated)
+        {
+            grantedScopes = await ops.ResolveFirstPartyUserScopesAsync(
+                request.ClientId, grantedScopes, httpContext.RequestAborted);
+        }
         // NOTE (eval 2026-08-30): this deliberately runs on refresh too, so a
         // refresh token issued before scope-based entitlements existed repairs
         // the user's access (see the device-flow test that pins it). The cost
@@ -254,6 +261,27 @@ public sealed class UserTokenGrantsHandler : ITokenGrantHandler
             // current user state and does NOT inherit oi_scp/oi_resrc.
             identity.SetScopes(grantedScopes);
             identity.SetResources(await ops.ResolveResourcesAsync(identity, request));
+
+            if (delegated)
+            {
+                // The deadline, the device label and the actor chain belong
+                // to the credential, not to current user state: carry them
+                // forward so every refresh stays inside the same delegation.
+                foreach (var type in new[]
+                {
+                    DelegatedCredential.ExpiresAtClaimType,
+                    DelegatedCredential.LabelClaimType,
+                })
+                {
+                    identity.SetClaim(type, result.Principal!.GetClaim(type));
+                }
+
+                if (result.Principal!.GetClaim(GrantOperations.ActClaimType) is { } act)
+                {
+                    identity.SetClaim(GrantOperations.ActClaimType,
+                        JsonSerializer.Deserialize<JsonElement>(act));
+                }
+            }
         }
         else
         {
@@ -530,6 +558,13 @@ public sealed class TokenExchangeOptions
     public int MaxDelegationDepth { get; init; } = 5;
 
     internal const int MaxDelegationDepthCeiling = 16;
+
+    /// <summary>
+    /// Delegated device credentials (<c>requested_token_type=refresh_token</c>
+    /// issued to a configured delegate client). Disabled by default; see
+    /// <see cref="DelegatedCredentialOptions"/>.
+    /// </summary>
+    public DelegatedCredentialOptions DelegatedCredentials { get; init; } = new();
 }
 
 /// <summary>
@@ -540,7 +575,8 @@ public sealed class TokenExchangeOptions
 public sealed class TokenExchangeGrantHandler(
     ISubjectTokenProvenancePolicy subjectTokenProvenancePolicy,
     ISubjectTokenResolver subjectTokenResolver,
-    IdentityAssertionIssuer identityAssertionIssuer) : ITokenGrantHandler
+    IdentityAssertionIssuer identityAssertionIssuer,
+    DelegatedCredentialIssuer delegatedCredentialIssuer) : ITokenGrantHandler
 {
     public IReadOnlyCollection<string> HandledGrantTypes { get; } =
         [GrantTypes.TokenExchange];
@@ -579,6 +615,23 @@ public sealed class TokenExchangeGrantHandler(
             IdentityAssertionGrant.TokenType, StringComparison.Ordinal))
         {
             return await identityAssertionIssuer.IssueAsync(context, result.Principal);
+        }
+
+        // Delegated device credential: a refresh token for the configured
+        // delegate client, bound to the device's DPoP key. Its own rules
+        // replace the general ones below (see DelegatedCredentialIssuer).
+        if (DelegatedCredentialIssuer.IsRequested(request))
+        {
+            return await delegatedCredentialIssuer.IssueAsync(context, result.Principal);
+        }
+
+        // Only reachable when the delegated-credential feature registered the
+        // refresh token type: any other refresh-token request is refused.
+        if (string.Equals(request.RequestedTokenType,
+            TokenTypeIdentifiers.RefreshToken, StringComparison.Ordinal))
+        {
+            return TokenGrantDispatcher.ForbidError(Errors.InvalidRequest,
+                "A refresh token can only be requested as a delegated credential for the configured delegate client.");
         }
 
         // Confused-deputy defense (RFC 8693 §4.1 / RFC 8707). This runs for
@@ -812,7 +865,7 @@ public sealed class TokenExchangeGrantHandler(
         return constrained;
     }
 
-    private static string[] AuthorizedParties(ClaimsPrincipal principal) =>
+    internal static string[] AuthorizedParties(ClaimsPrincipal principal) =>
         new[]
             {
                 principal.GetClaim(Claims.AuthorizedParty),

@@ -272,6 +272,17 @@
   <data name="Grants.RevokeSuccess" xml:space="preserve"><value>Access for {0} was revoked.</value></data>
   <data name="Grants.RevokeFailed" xml:space="preserve"><value>Could not revoke application access. Try again.</value></data>
   <data name="Grants.NotFound" xml:space="preserve"><value>The connected application was not found. Refresh the page and try again.</value></data>
+  <data name="Grants.Delegated.Title" xml:space="preserve"><value>Device credentials</value></data>
+  <data name="Grants.Delegated.Description" xml:space="preserve"><value>Devices another application signed in on your behalf. Each credential works only on the device that holds its key and expires on the date shown.</value></data>
+  <data name="Grants.Delegated.Device" xml:space="preserve"><value>Device</value></data>
+  <data name="Grants.Delegated.Delegator" xml:space="preserve"><value>Authorized by</value></data>
+  <data name="Grants.Delegated.Issued" xml:space="preserve"><value>Issued</value></data>
+  <data name="Grants.Delegated.Expires" xml:space="preserve"><value>Expires</value></data>
+  <data name="Grants.Delegated.RevokeAria" xml:space="preserve"><value>Revoke the credential of device {0}</value></data>
+  <data name="Grants.Delegated.RevokeConfirm" xml:space="preserve"><value>Revoke the credential of device {0}? It stops working immediately.</value></data>
+  <data name="Grants.Delegated.RevokeSuccess" xml:space="preserve"><value>The credential of device {0} was revoked.</value></data>
+  <data name="Grants.Delegated.RevokeFailed" xml:space="preserve"><value>The device credential could not be revoked. Try again.</value></data>
+  <data name="Grants.Delegated.NotFound" xml:space="preserve"><value>The device credential was not found. It may have expired or been revoked already.</value></data>
 
   <!-- ===== Manage: Passkeys ===== -->
   <data name="ManagePasskeys.Title" xml:space="preserve"><value>Passkeys (WebAuthn)</value></data>

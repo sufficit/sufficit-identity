@@ -98,12 +98,62 @@
             }
         </ul>
     }
+
+    @if (!_loading && _delegated.Count > 0)
+    {
+        <section class="manage-grants__delegated" aria-labelledby="delegated-credentials-title">
+            <h2 id="delegated-credentials-title">@L["Grants.Delegated.Title"]</h2>
+            <p class="info">@L["Grants.Delegated.Description"]</p>
+            <ul class="grant-list">
+                @foreach (var credential in _delegated)
+                {
+                    <li class="grant-item">
+                        <div class="access-item-body">
+                            <strong class="access-item-title">@credential.DisplayName</strong>
+                            <dl class="access-metadata">
+                                <div>
+                                    <dt>@L["Grants.Delegated.Device"]</dt>
+                                    <dd><code class="scope-chip">@credential.Label</code></dd>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(credential.DelegatorClientId))
+                                {
+                                    <div>
+                                        <dt>@L["Grants.Delegated.Delegator"]</dt>
+                                        <dd>@credential.DelegatorClientId</dd>
+                                    </div>
+                                }
+                                <div>
+                                    <dt>@L["Grants.Delegated.Issued"]</dt>
+                                    <dd>@FormatDate(credential.CreatedAt)</dd>
+                                </div>
+                                <div>
+                                    <dt>@L["Grants.Delegated.Expires"]</dt>
+                                    <dd>@FormatDate(credential.ExpiresAt)</dd>
+                                </div>
+                            </dl>
+                        </div>
+                        <SUILoadingButton SizeValue="SUISize.Small"
+                                          ColorValue="SUIColor.Error"
+                                          Class="access-item-action"
+                                          aria-label="@L["Grants.Delegated.RevokeAria", credential.Label]"
+                                          Disabled="@IsBusy"
+                                          OnClick="@(() => RevokeDelegatedAsync(credential))">
+                            @(_busyApplicationId == credential.Id
+                                ? L["Grants.Revoking"]
+                                : L["Grants.Revoke"])
+                        </SUILoadingButton>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
 </div>
 
 @code {
     [CascadingParameter] private Task<AuthenticationState>? _authTask { get; set; }
 
     private IReadOnlyList<AccountConnectedApplication> _applications = [];
+    private IReadOnlyList<AccountDelegatedCredential> _delegated = [];
     private bool _loading = true;
     private string? _busyApplicationId;
     private string? _success;
@@ -123,6 +173,8 @@
 
             _applications = await AccountAccessService
                 .GetConnectedApplicationsAsync(principal);
+            _delegated = await AccountAccessService
+                .GetDelegatedCredentialsAsync(principal);
         }
         catch (Exception exception)
         {
@@ -182,6 +234,58 @@
                 "Connected application {ApplicationId} could not be revoked.",
                 application.ApplicationId);
             _error = L["Grants.RevokeFailed"];
+        }
+        finally
+        {
+            _busyApplicationId = null;
+        }
+    }
+
+    private async Task RevokeDelegatedAsync(AccountDelegatedCredential credential)
+    {
+        var confirmed = await JS.InvokeAsync<bool>(
+            "confirm",
+            L["Grants.Delegated.RevokeConfirm", credential.Label].Value);
+        if (!confirmed)
+        {
+            return;
+        }
+
+        _busyApplicationId = credential.Id;
+        _success = null;
+        _error = null;
+        try
+        {
+            var principal = await _authTask.GetAuthenticatedPrincipalAsync();
+            if (principal is null)
+            {
+                _error = L["ChangePassword.SessionExpired"];
+                return;
+            }
+
+            var result = await AccountAccessService
+                .RevokeDelegatedCredentialAsync(principal, credential.Id);
+            if (!result.Succeeded)
+            {
+                _error = result.Errors.Any(error =>
+                    error.Code == "delegated-credential-not-found")
+                    ? L["Grants.Delegated.NotFound"]
+                    : L["Grants.Delegated.RevokeFailed"];
+                return;
+            }
+
+            _delegated = _delegated
+                .Where(item => item.Id != credential.Id)
+                .ToArray();
+            _success = L["Grants.Delegated.RevokeSuccess", credential.Label];
+        }
+        catch (Exception exception)
+        {
+            Logger.LogError(
+                exception,
+                "Delegated credential {CredentialId} could not be revoked.",
+                credential.Id);
+            _error = L["Grants.Delegated.RevokeFailed"];
         }
         finally
         {

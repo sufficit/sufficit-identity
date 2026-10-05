@@ -272,6 +272,17 @@
   <data name="Grants.RevokeSuccess" xml:space="preserve"><value>O acesso de {0} foi revogado.</value></data>
   <data name="Grants.RevokeFailed" xml:space="preserve"><value>Não foi possível revogar o acesso da aplicação. Tente novamente.</value></data>
   <data name="Grants.NotFound" xml:space="preserve"><value>A aplicação conectada não foi encontrada. Atualize a página e tente novamente.</value></data>
+  <data name="Grants.Delegated.Title" xml:space="preserve"><value>Credenciais de dispositivos</value></data>
+  <data name="Grants.Delegated.Description" xml:space="preserve"><value>Dispositivos que outra aplicação conectou em seu nome. Cada credencial só funciona no dispositivo que guarda a chave dela e expira na data indicada.</value></data>
+  <data name="Grants.Delegated.Device" xml:space="preserve"><value>Dispositivo</value></data>
+  <data name="Grants.Delegated.Delegator" xml:space="preserve"><value>Autorizado por</value></data>
+  <data name="Grants.Delegated.Issued" xml:space="preserve"><value>Emitida em</value></data>
+  <data name="Grants.Delegated.Expires" xml:space="preserve"><value>Expira em</value></data>
+  <data name="Grants.Delegated.RevokeAria" xml:space="preserve"><value>Revogar a credencial do dispositivo {0}</value></data>
+  <data name="Grants.Delegated.RevokeConfirm" xml:space="preserve"><value>Revogar a credencial do dispositivo {0}? Ela deixa de funcionar imediatamente.</value></data>
+  <data name="Grants.Delegated.RevokeSuccess" xml:space="preserve"><value>A credencial do dispositivo {0} foi revogada.</value></data>
+  <data name="Grants.Delegated.RevokeFailed" xml:space="preserve"><value>Não foi possível revogar a credencial do dispositivo. Tente novamente.</value></data>
+  <data name="Grants.Delegated.NotFound" xml:space="preserve"><value>A credencial do dispositivo não foi encontrada. Ela pode ter expirado ou já ter sido revogada.</value></data>
 
   <!-- ===== Manage: Passkeys ===== -->
   <data name="ManagePasskeys.Title" xml:space="preserve"><value>Passkeys (WebAuthn)</value></data>

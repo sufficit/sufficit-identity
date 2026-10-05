@@ -204,6 +204,20 @@ public static partial class ServiceCollectionExtensions
         // tokens just issued to the race's winner, turning their userinfo
         // 401. See Tokens/DeviceCodeReplayGuard.cs for the full rationale.
         server.AddEventHandler(Tokens.RejectRedeemedDeviceCodeReplay.Descriptor);
+        // Delegated device credentials (RFC 8693 + RFC 9449). The handlers
+        // are inert without the feature's private claims and parameters; only
+        // the requested token type below depends on the switch, so a disabled
+        // deployment keeps refusing requested_token_type=refresh_token.
+        // See Grants/DelegatedCredentialIssuer.cs.
+        server.AddEventHandler(Grants.DeferDelegatedCredentialAudience.Descriptor);
+        server.AddEventHandler(Grants.AttachDelegatedCredentialApplication.Descriptor);
+        server.AddEventHandler(Grants.ClampDelegatedCredentialLifetime.Descriptor);
+        if (configuration.GetSection("Sufficit:Identity:TokenExchange")
+                .Get<Grants.TokenExchangeOptions>()?.DelegatedCredentials.Enabled == true)
+        {
+            server.Configure(serverOptions => serverOptions.RequestedTokenTypes.Add(
+                TokenTypeIdentifiers.RefreshToken));
+        }
         // Humanize unrecoverable /connect/authorize errors (e.g. the ID2013
         // replay of a consumed PAR request_uri) for top-level browser
         // navigations; machine clients keep the raw payload. See

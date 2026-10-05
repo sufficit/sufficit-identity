@@ -183,6 +183,11 @@ Delegation depth is bounded since 2026-09-20
 (`TokenExchange:MaxDelegationDepth`, default 5) —
 [`202609200500-delegation-depth.md`](../activities/202609200500-delegation-depth.md).
 
+Delegated device credentials since 2026-10-04, off by default
+(`TokenExchange:DelegatedCredentials`): a refresh token of another client,
+bound to the device's DPoP key —
+[`202610042300-delegated-device-credentials.md`](../activities/202610042300-delegated-device-credentials.md).
+
 Already in place, verified 2026-09-20: the actor allow-list
 (`AllowedClientIds`), `may_act`, refusal of an actor token issued to another
 client, confused-deputy refusal, and nested `act` chains — all tested.

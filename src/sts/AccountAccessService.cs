@@ -286,6 +286,145 @@ public sealed class AccountAccessService(
         return AccountSelfServiceResult.Success;
     }
 
+    public async Task<IReadOnlyList<AccountDelegatedCredential>>
+        GetDelegatedCredentialsAsync(
+            ClaimsPrincipal principal,
+            CancellationToken cancellationToken = default)
+    {
+        var user = await GetAuthenticatedUserAsync(principal, cancellationToken);
+        if (user is null)
+        {
+            return [];
+        }
+
+        var rows = await DelegatedAuthorizations(user.Id)
+            .ToArrayAsync(cancellationToken);
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        return rows
+            .Select(row => (Row: row, Record: ReadDelegation(row.Properties)))
+            .Where(item => item.Record is not null && item.Record.ExpiresAt > now)
+            .Select(item => new AccountDelegatedCredential(
+                item.Row.Id,
+                item.Row.ClientId,
+                DisplayName(item.Row.DisplayName, item.Row.ClientId),
+                item.Record!.Label,
+                item.Record.Delegator,
+                ToOffset(item.Row.CreationDate),
+                DateTimeOffset.FromUnixTimeSeconds(item.Record.ExpiresAt)))
+            .OrderByDescending(credential => credential.CreatedAt)
+            .ThenBy(credential => credential.Label, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    public async Task<AccountSelfServiceResult> RevokeDelegatedCredentialAsync(
+        ClaimsPrincipal principal,
+        string credentialId,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await GetAuthenticatedUserAsync(principal, cancellationToken);
+        if (user is null)
+        {
+            return Unauthenticated();
+        }
+
+        credentialId = NormalizeId(credentialId);
+        var owned = credentialId.Length > 0
+            && (await DelegatedAuthorizations(user.Id, credentialId)
+                    .ToArrayAsync(cancellationToken))
+                .Any(row => ReadDelegation(row.Properties) is not null);
+        if (!owned)
+        {
+            return NotFoundDelegatedCredential();
+        }
+
+        var revokedCredentials = await tokenManager.RevokeByAuthorizationIdAsync(
+            credentialId,
+            cancellationToken);
+        var authorization = await authorizationManager.FindByIdAsync(
+            credentialId,
+            cancellationToken);
+        if (authorization is null
+            || !await authorizationManager.TryRevokeAsync(
+                authorization,
+                cancellationToken))
+        {
+            return AccountSelfServiceResult.Failure(
+                "delegated-credential-revoke-failed",
+                "The delegated credential could not be revoked.");
+        }
+
+        logger.LogInformation(
+            "User {UserId} revoked delegated credential {AuthorizationId}; {CredentialCount} tokens were revoked.",
+            user.Id,
+            credentialId,
+            revokedCredentials);
+        return AccountSelfServiceResult.Success;
+    }
+
+    /// <summary>
+    /// Valid authorizations of the user whose properties mention the
+    /// delegated-credential record. The text match only narrows the query;
+    /// <see cref="ReadDelegation"/> decides.
+    /// </summary>
+    private IQueryable<DelegatedAuthorizationRow> DelegatedAuthorizations(
+        string userId,
+        string? authorizationId = null) =>
+        from authorization in database
+            .Set<OpenIddictEntityFrameworkCoreAuthorization>()
+            .AsNoTracking()
+        join application in database
+            .Set<OpenIddictEntityFrameworkCoreApplication>()
+            .AsNoTracking()
+            on EF.Property<string?>(authorization, "ApplicationId")
+            equals application.Id
+            into applications
+        from application in applications.DefaultIfEmpty()
+        where authorization.Subject == userId
+            && (authorizationId == null || authorization.Id == authorizationId)
+            && authorization.Status == OpenIddictConstants.Statuses.Valid
+            && authorization.Properties != null
+            && authorization.Properties.Contains(
+                Grants.DelegatedCredential.AuthorizationPropertyName)
+        select new DelegatedAuthorizationRow(
+            authorization.Id!,
+            application == null ? null : application.ClientId,
+            application == null ? null : application.DisplayName,
+            authorization.CreationDate,
+            authorization.Properties);
+
+    private static Grants.DelegatedCredentialRecord? ReadDelegation(string? properties)
+    {
+        if (string.IsNullOrWhiteSpace(properties))
+        {
+            return null;
+        }
+
+        try
+        {
+            var parsed = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(properties);
+            return parsed is not null
+                && Grants.DelegatedCredentialRecord.TryRead(parsed, out var record)
+                ? record
+                : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private sealed record DelegatedAuthorizationRow(
+        string Id,
+        string? ClientId,
+        string? DisplayName,
+        DateTime? CreationDate,
+        string? Properties);
+
+    private static AccountSelfServiceResult NotFoundDelegatedCredential() =>
+        AccountSelfServiceResult.Failure(
+            "delegated-credential-not-found",
+            "The delegated credential was not found.");
+
     private async Task<ApplicationUser?> GetAuthenticatedUserAsync(
         ClaimsPrincipal principal,
         CancellationToken cancellationToken)

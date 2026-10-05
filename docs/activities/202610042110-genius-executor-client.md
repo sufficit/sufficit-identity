@@ -24,3 +24,7 @@ regras da troca: `requested_token_type=refresh_token` emitido ao cliente do
 executor, preso ao `jkt` informado (DPoP), escopo reduzido, login recente,
 teto por conta, aviso por emissão e revogação no retire/purge do executor.
 Sem esse código, conceder a permissão abriria a troca genérica atual.
+
+Código entregue em [202610042300-delegated-device-credentials.md](202610042300-delegated-device-credentials.md),
+desligado por padrão; a permissão continua não concedida até a configuração
+ser aplicada em produção.
