@@ -1,0 +1,127 @@
+@page "/users/{Id}/actions/confirmation"
+@attribute [Authorize(Policy = ManagementUiPolicies.Access)]
+@attribute [StreamRendering]
+@inject ManagementUserDataSource UserData
+@inject ISUIToast Toast
+
+@{ var user = result?.Value; }
+
+<PageTitle>@L["Users.Confirmation.PageTitle"]</PageTitle>
+
+<SUIPageHeader Title="@HeaderTitle" Description="@L["Users.Detail.Actions.ResendConfirmationDescription"].Value">
+    <Actions>
+        <a class="button button--secondary" href="@DetailHref">
+            <SUIIcon Name="arrow-left" Size="17" />
+            @L["Users.Actions.BackToUser"]
+        </a>
+    </Actions>
+</SUIPageHeader>
+
+@if (loading)
+{
+    <div class="account-access-panel" aria-busy="true" aria-label="@L["Users.Actions.Loading"].Value">
+        <div class="detail-skeleton"></div>
+        <div class="detail-skeleton detail-skeleton--short"></div>
+    </div>
+}
+else if (result?.IsSuccess is false || user is null)
+{
+    <div class="panel">
+        <SUIEmptyState Icon="alert" Title="@LoadErrorTitle" Description="@result?.ErrorMessage">
+            <Actions><a class="button button--secondary" href="@DetailHref">@L["Users.Actions.BackToUser"]</a></Actions>
+        </SUIEmptyState>
+    </div>
+}
+else if (user.EmailConfirmed)
+{
+    <div class="decision-note decision-note--neutral"><SUIIcon Name="check" Size="21" /><div><h2>@L["Users.Confirmation.AlreadyConfirmedTitle"]</h2><p>@L["Users.Confirmation.AlreadyConfirmedDescription"]</p></div></div>
+}
+else if (string.IsNullOrWhiteSpace(user.Email))
+{
+    <div class="decision-note decision-note--neutral"><SUIIcon Name="alert" Size="21" /><div><h2>@L["Users.Confirmation.NoEmailTitle"]</h2><p>@L["Error.user_email_missing"]</p></div></div>
+}
+else if (user.Actions.CanResendConfirmation)
+{
+    <section class="account-access-panel" aria-labelledby="account-confirmation-heading">
+        <div class="account-access-panel__heading">
+            <div class="account-access-panel__icon"><SUIIcon Name="inbox" Size="20" /></div>
+            <div>
+                <h2 id="account-confirmation-heading">@L["Users.Confirmation.Heading"]</h2>
+                <p>@string.Format(L["Users.Confirmation.DescriptionFormat"].Value, user.Email)</p>
+            </div>
+            <SUIStatusBadge ToneValue="SUITone.Neutral">@L["Users.Detail.EmailConfirmedPending"]</SUIStatusBadge>
+        </div>
+
+        <div class="account-access-panel__actions">
+            <span>@L["Users.Confirmation.ActionNote"]</span>
+            <button class="button button--primary" type="button" disabled="@busy" @onclick="ResendAsync">
+                @if (busy)
+                {
+                    <span class="button-spinner" aria-hidden="true"></span>
+                    <span>@L["Users.Confirmation.Sending"]</span>
+                }
+                else
+                {
+                    <SUIIcon Name="inbox" Size="17" />
+                    <span>@L["Users.Confirmation.SendButton"]</span>
+                }
+            </button>
+        </div>
+    </section>
+}
+else if (user.Actions.ResendConfirmationRequiresMfa)
+{
+    <div class="decision-note decision-note--neutral"><SUIIcon Name="shield" Size="21" /><div><h2>@L["Users.Confirmation.MfaRequiredTitle"]</h2><p>@L["Users.Detail.MfaRequiredDescription"]</p></div></div>
+}
+else
+{
+    <div class="decision-note decision-note--neutral"><SUIIcon Name="lock" Size="21" /><div><h2>@L["Users.Confirmation.ForbiddenTitle"]</h2><p>@L["Users.Confirmation.ForbiddenDescription"]</p></div></div>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    private ManagementDataResult<ManagementUserDetail>? result;
+    private bool loading = true;
+    private bool busy;
+    private string DetailHref => $"users/{Uri.EscapeDataString(Id)}";
+    private string HeaderTitle => result?.Value?.UserName ?? result?.Value?.Email ?? L["Users.Detail.Actions.ResendConfirmation"].Value;
+    private string LoadErrorTitle => result?.Outcome is ManagementDataOutcome.NotFound
+        ? L["Users.Detail.Error.NotFound"].Value
+        : result?.Outcome is ManagementDataOutcome.StepUpRequired
+            ? L["Users.Detail.Error.StepUp"].Value
+            : result?.Outcome is ManagementDataOutcome.Forbidden
+                ? L["Users.Detail.Error.Forbidden"].Value
+                : L["Users.Detail.Error.Generic"].Value;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        result = await UserData.GetAsync(Id);
+        loading = false;
+    }
+
+    private async Task ResendAsync()
+    {
+        if (busy) return;
+        busy = true;
+        try
+        {
+            var resend = await UserData.ResendConfirmationAsync(Id);
+            if (resend.IsSuccess)
+            {
+                Toast.Success(L["Users.Detail.ResendConfirmation.Sent"].Value);
+            }
+            else
+            {
+                Toast.Error(string.Format(
+                    L["Users.Detail.ResendConfirmation.FailedFormat"].Value,
+                    resend.ErrorMessage));
+            }
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

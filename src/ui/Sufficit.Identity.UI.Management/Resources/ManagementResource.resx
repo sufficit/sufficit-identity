@@ -2135,4 +2135,16 @@
   <data name="Error.user_email_missing" xml:space="preserve"><value>The account has no email address.</value></data>
   <data name="Users.Detail.ResendConfirmation.Sent" xml:space="preserve"><value>Confirmation email sent to the account address.</value></data>
   <data name="Users.Detail.ResendConfirmation.FailedFormat" xml:space="preserve"><value>Confirmation email not sent: {0}</value></data>
+  <data name="Users.Confirmation.PageTitle" xml:space="preserve"><value>Resend confirmation email</value></data>
+  <data name="Users.Confirmation.Heading" xml:space="preserve"><value>Email address not confirmed</value></data>
+  <data name="Users.Confirmation.DescriptionFormat" xml:space="preserve"><value>A new confirmation link will be sent to {0}. Password sign-in stays blocked until the user opens it.</value></data>
+  <data name="Users.Confirmation.ActionNote" xml:space="preserve"><value>The operation is recorded in the management audit.</value></data>
+  <data name="Users.Confirmation.SendButton" xml:space="preserve"><value>Send confirmation email</value></data>
+  <data name="Users.Confirmation.Sending" xml:space="preserve"><value>Sending…</value></data>
+  <data name="Users.Confirmation.AlreadyConfirmedTitle" xml:space="preserve"><value>Email already confirmed</value></data>
+  <data name="Users.Confirmation.AlreadyConfirmedDescription" xml:space="preserve"><value>This account no longer needs a confirmation link.</value></data>
+  <data name="Users.Confirmation.NoEmailTitle" xml:space="preserve"><value>Account without email</value></data>
+  <data name="Users.Confirmation.MfaRequiredTitle" xml:space="preserve"><value>Recent MFA required to resend</value></data>
+  <data name="Users.Confirmation.ForbiddenTitle" xml:space="preserve"><value>Resend not allowed</value></data>
+  <data name="Users.Confirmation.ForbiddenDescription" xml:space="preserve"><value>Your operator permissions do not include resending confirmation emails.</value></data>
 </root>

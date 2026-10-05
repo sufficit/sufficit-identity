@@ -73,7 +73,9 @@ public sealed partial class ManagementUiRoutingTests
                     DeleteRequiresMfa: false,
                     DeleteReasonCode: "allowed",
                     CanResetTwoFactor: true,
-                    ResetTwoFactorReasonCode: "allowed")));
+                    ResetTwoFactorReasonCode: "allowed",
+                    CanResendConfirmation: true,
+                    ResendConfirmationReasonCode: "allowed")));
 
         public Task<ManagementUserDetail> CreateAsync(
             CreateManagementUserCommand command,

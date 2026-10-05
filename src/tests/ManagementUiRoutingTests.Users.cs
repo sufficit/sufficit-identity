@@ -159,11 +159,18 @@ public sealed partial class ManagementUiRoutingTests
             "/management/users/user-1/actions/delete");
         var deleteHtml = WebUtility.HtmlDecode(
             await delete.Content.ReadAsStringAsync());
+        using var confirmation = await client.GetAsync(
+            "/management/users/user-1/actions/confirmation");
+        var confirmationHtml = WebUtility.HtmlDecode(
+            await confirmation.Content.ReadAsStringAsync());
         using var detailEnglish = await client.GetAsync(
             "/management/users/user-1?culture=en-US&ui-culture=en-US");
         var detailEnglishHtml = WebUtility.HtmlDecode(
             await detailEnglish.Content.ReadAsStringAsync());
 
+        Assert.Equal(HttpStatusCode.OK, confirmation.StatusCode);
+        Assert.Contains("E-mail já confirmado", confirmationHtml, StringComparison.Ordinal);
+        Assert.DoesNotContain("actions/confirmation", detailHtml, StringComparison.Ordinal);
         Assert.Equal(HttpStatusCode.OK, create.StatusCode);
         Assert.Contains("Novo usuário", createHtml, StringComparison.Ordinal);
         Assert.Contains("Senha inicial", createHtml, StringComparison.Ordinal);

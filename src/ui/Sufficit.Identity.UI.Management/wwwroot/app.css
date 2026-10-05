@@ -2700,39 +2700,10 @@ h3 {
     margin-left: 2px;
 }
 
-.detail-inline-action {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 8px;
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--brand);
-    font: inherit;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.detail-inline-action:hover:not(:disabled) {
-    text-decoration: underline;
-}
-
-.detail-inline-action:focus-visible {
-    outline: 2px solid var(--brand);
-    outline-offset: 2px;
-    border-radius: 2px;
-}
-
-.detail-inline-action:disabled {
-    color: var(--ink-muted);
-    cursor: progress;
-}
-
 .user-account-actions__menu {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
     width: 100%;
     overflow: hidden;
     border: 1px solid var(--line);
@@ -2805,6 +2776,7 @@ h3 {
 
     .user-account-actions__menu {
         display: none;
+        grid-auto-flow: row;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         width: min(100%, 920px);
     }

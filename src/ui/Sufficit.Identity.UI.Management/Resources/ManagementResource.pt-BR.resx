@@ -2135,4 +2135,16 @@
   <data name="Error.user_email_missing" xml:space="preserve"><value>A conta não tem e-mail cadastrado.</value></data>
   <data name="Users.Detail.ResendConfirmation.Sent" xml:space="preserve"><value>E-mail de confirmação enviado para o endereço da conta.</value></data>
   <data name="Users.Detail.ResendConfirmation.FailedFormat" xml:space="preserve"><value>E-mail de confirmação não enviado: {0}</value></data>
+  <data name="Users.Confirmation.PageTitle" xml:space="preserve"><value>Reenviar e-mail de confirmação</value></data>
+  <data name="Users.Confirmation.Heading" xml:space="preserve"><value>E-mail ainda não confirmado</value></data>
+  <data name="Users.Confirmation.DescriptionFormat" xml:space="preserve"><value>Um novo link de confirmação será enviado para {0}. O login com senha continua bloqueado até o usuário abri-lo.</value></data>
+  <data name="Users.Confirmation.ActionNote" xml:space="preserve"><value>A operação fica registrada na auditoria de gestão.</value></data>
+  <data name="Users.Confirmation.SendButton" xml:space="preserve"><value>Enviar e-mail de confirmação</value></data>
+  <data name="Users.Confirmation.Sending" xml:space="preserve"><value>Enviando…</value></data>
+  <data name="Users.Confirmation.AlreadyConfirmedTitle" xml:space="preserve"><value>E-mail já confirmado</value></data>
+  <data name="Users.Confirmation.AlreadyConfirmedDescription" xml:space="preserve"><value>Esta conta não precisa mais de link de confirmação.</value></data>
+  <data name="Users.Confirmation.NoEmailTitle" xml:space="preserve"><value>Conta sem e-mail</value></data>
+  <data name="Users.Confirmation.MfaRequiredTitle" xml:space="preserve"><value>MFA recente exigido para reenviar</value></data>
+  <data name="Users.Confirmation.ForbiddenTitle" xml:space="preserve"><value>Reenvio não permitido</value></data>
+  <data name="Users.Confirmation.ForbiddenDescription" xml:space="preserve"><value>Suas permissões de operador não incluem reenviar e-mails de confirmação.</value></data>
 </root>
