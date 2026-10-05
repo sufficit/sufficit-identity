@@ -140,7 +140,10 @@ três nós (operação de configuração separada) → **só então** conceder
   contrato, recurso desligado = comportamento antigo, listagem e revogação
   pelo usuário, `IsRecent`, thumbprint canônico, postura e validação de
   configuração.
-- Suítes existentes intactas (ver contagem no commit).
+- Suíte completa: **1.648 testes aprovados, 0 falhas, 1 ignorado** (NATS
+  opcional), em Debug e em Release com SUI empacotado; build Release com
+  `-warnaserror` limpo; gitleaks sem achados.
+- Commit funcional `a978654`. Nada foi implantado nem configurado em produção.
 
 ## Pendências
 
