@@ -205,6 +205,28 @@ public sealed class AspNetCoreIdentityExternalSignInService(
     /// proof: the password, external logins and authenticator. The owner can
     /// set a new password later through password recovery.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The external sign-in itself never uses the password; it is revoked
+    /// because confirming the address is what would make it usable. Until
+    /// now the password was inert: sign-in requires a confirmed address.
+    /// Whoever chose it never proved control of the mailbox, and nothing
+    /// tells us it was the owner. Pre-account takeover: an attacker
+    /// registers victim@gmail.com with a password only they know and leaves
+    /// it pending; once the owner signs in with Google, keeping that password
+    /// would hand the attacker silent, persistent access to the owner's
+    /// account. Same reasoning for pre-bound external logins and the
+    /// authenticator.
+    /// </para>
+    /// <para>
+    /// Decision (2026-10-05, product owner): always discard. When the
+    /// registrant was the owner they only lose the password, recoverable via
+    /// "forgot password". Rejected alternative: prompt the user after the
+    /// callback to re-enter the old password to keep it (knowing it plus the
+    /// provider proof would establish the same person) — an extra step and
+    /// cross-request state for a rare case.
+    /// </para>
+    /// </remarks>
     private async Task<bool> ClaimUnconfirmedAccountAsync(
         ApplicationUser user,
         string provider,
