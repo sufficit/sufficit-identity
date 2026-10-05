@@ -191,7 +191,10 @@ public sealed record ManagementUserActions(
     string DeleteReasonCode = "not_evaluated",
     bool CanResetTwoFactor = false,
     bool ResetTwoFactorRequiresMfa = false,
-    string ResetTwoFactorReasonCode = "not_evaluated");
+    string ResetTwoFactorReasonCode = "not_evaluated",
+    bool CanResendConfirmation = false,
+    bool ResendConfirmationRequiresMfa = false,
+    string ResendConfirmationReasonCode = "not_evaluated");
 
 [method: JsonConstructor]
 public sealed record ManagementUserDetail(

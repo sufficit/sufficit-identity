@@ -112,6 +112,21 @@ public sealed class ManagementUserDataSource(
                 : "User unlock",
             cancellationToken);
 
+    public Task<ManagementDataResult<bool>> ResendConfirmationAsync(
+        string id,
+        CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            async (users, context) =>
+            {
+                await users.RequestEmailConfirmationAsync(
+                    id,
+                    context,
+                    cancellationToken);
+                return true;
+            },
+            "User confirmation resend",
+            cancellationToken);
+
     public Task<ManagementDataResult<bool>> DeleteAsync(
         string id,
         CancellationToken cancellationToken = default) =>

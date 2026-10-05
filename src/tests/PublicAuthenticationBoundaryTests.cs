@@ -143,6 +143,30 @@ public sealed class PublicAuthenticationBoundaryTests(
     }
 
     [Fact]
+    public async Task Operator_confirmation_dispatch_reports_the_real_outcome()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        var accounts = services.GetRequiredService<IAccountOnboardingService>();
+        var users = services.GetRequiredService<UserManager<ApplicationUser>>();
+        SetHttpContext(services);
+        var user = await TestDataSeeder.CreateUserAsync(users,
+            $"dispatch-{Guid.NewGuid():N}", TestDataSeeder.DefaultPassword);
+        user.EmailConfirmed = false;
+        Assert.True((await users.UpdateAsync(user)).Succeeded);
+
+        Assert.Equal(AccountEmailConfirmationDispatch.Sent,
+            await accounts.SendEmailConfirmationAsync(user.Id));
+        Assert.Equal(AccountEmailConfirmationDispatch.NotFound,
+            await accounts.SendEmailConfirmationAsync(Guid.NewGuid().ToString()));
+
+        user.EmailConfirmed = true;
+        Assert.True((await users.UpdateAsync(user)).Succeeded);
+        Assert.Equal(AccountEmailConfirmationDispatch.AlreadyConfirmed,
+            await accounts.SendEmailConfirmationAsync(user.Id));
+    }
+
+    [Fact]
     public async Task Public_email_requests_do_not_disclose_account_existence()
     {
         await using var scope = factory.Services.CreateAsyncScope();

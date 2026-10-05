@@ -232,39 +232,15 @@ internal sealed partial class UserManagementService
             auditResource,
             cancellationToken);
 
-        var user = await userManager.FindByIdAsync(id);
-        if (user is null)
-        {
-            await TryWriteAuditAsync(
-                context,
-                ManagementCapabilities.UsersConfirmation,
-                auditResource,
-                decision,
-                "failed",
-                "user_not_found",
-                cancellationToken);
-            throw new ManagementNotFoundException(
-                "user_not_found",
-                "The user was not found.");
-        }
-
-        if (string.IsNullOrWhiteSpace(user.Email))
-        {
-            await TryWriteAuditAsync(
-                context,
-                ManagementCapabilities.UsersConfirmation,
-                auditResource,
-                decision,
-                "skipped",
-                "user_email_missing",
-                cancellationToken);
-            return;
-        }
-
+        // Dispatch straight to the resolved account: the public
+        // enumeration-safe path looks the address up again (silently sending
+        // nothing when it is shared by several accounts) and always reports
+        // Accepted, so the audit row claimed delivery even when mail failed.
+        AccountEmailConfirmationDispatch dispatch;
         try
         {
-            await accountOnboarding.RequestEmailConfirmationAsync(
-                user.Email,
+            dispatch = await accountOnboarding.SendEmailConfirmationAsync(
+                id,
                 cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -273,27 +249,47 @@ internal sealed partial class UserManagementService
                 exception,
                 "Unable to resend the account confirmation email. CorrelationId={CorrelationId}",
                 context.CorrelationId);
-            await TryWriteAuditAsync(
-                context,
-                ManagementCapabilities.UsersConfirmation,
-                auditResource,
-                decision,
-                "failed",
-                "user_confirmation_resend_failed",
-                cancellationToken);
-            throw new ManagementConflictException(
-                "user_confirmation_resend_failed",
-                "The email confirmation could not be resent.");
+            dispatch = AccountEmailConfirmationDispatch.Failed;
         }
 
+        var (outcome, reasonCode) = dispatch switch
+        {
+            AccountEmailConfirmationDispatch.Sent => ("succeeded", "user_confirmation_resent"),
+            AccountEmailConfirmationDispatch.NotFound => ("failed", "user_not_found"),
+            AccountEmailConfirmationDispatch.MissingEmail => ("skipped", "user_email_missing"),
+            AccountEmailConfirmationDispatch.AlreadyConfirmed => ("skipped", "user_email_already_confirmed"),
+            _ => ("failed", "user_confirmation_resend_failed"),
+        };
         await TryWriteAuditAsync(
             context,
             ManagementCapabilities.UsersConfirmation,
             auditResource,
             decision,
-            "succeeded",
-            "user_confirmation_resent",
+            outcome,
+            reasonCode,
             cancellationToken);
+
+        switch (dispatch)
+        {
+            case AccountEmailConfirmationDispatch.Sent:
+                return;
+            case AccountEmailConfirmationDispatch.NotFound:
+                throw new ManagementNotFoundException(
+                    reasonCode,
+                    "The user was not found.");
+            case AccountEmailConfirmationDispatch.MissingEmail:
+                throw new ManagementConflictException(
+                    reasonCode,
+                    "The user has no email address.");
+            case AccountEmailConfirmationDispatch.AlreadyConfirmed:
+                throw new ManagementConflictException(
+                    reasonCode,
+                    "The user's email address is already confirmed.");
+            default:
+                throw new ManagementConflictException(
+                    reasonCode,
+                    "The email confirmation could not be resent.");
+        }
     }
 
     private static decimal Median(IReadOnlyList<decimal> values)

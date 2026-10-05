@@ -22,7 +22,6 @@ public sealed class VerifiedExternalSignInTests(SufficitIdentityTestFactory fact
     [InlineData("confirmed", true, ExternalSignInStatus.Succeeded, true)]
     [InlineData("no-password", true, ExternalSignInStatus.Succeeded, true)]
     [InlineData("confirmed", false, ExternalSignInStatus.AccountLinkRequiresSignIn, false)]
-    [InlineData("unconfirmed", true, ExternalSignInStatus.NotAllowed, false)]
     [InlineData("locked", true, ExternalSignInStatus.LockedOut, false)]
     [InlineData("mfa", true, ExternalSignInStatus.RequiresTwoFactor, true)]
     [InlineData("registration-disabled", true, ExternalSignInStatus.Succeeded, true)]
@@ -68,6 +67,65 @@ public sealed class VerifiedExternalSignInTests(SufficitIdentityTestFactory fact
         Assert.Equal(expected == ExternalSignInStatus.Succeeded,
             context.Response.Headers.SetCookie.Any(cookie =>
                 cookie!.StartsWith(".AspNetCore.Identity.Application=", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task Verified_assertion_confirms_unconfirmed_account_and_revokes_unproven_credentials()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        var users = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await TestDataSeeder.CreateUserAsync(users,
+            $"external-claim-{Guid.NewGuid():N}", TestDataSeeder.DefaultPassword);
+        user.EmailConfirmed = false;
+        Assert.True((await users.UpdateAsync(user)).Succeeded);
+        var preBoundKey = Guid.NewGuid().ToString("N");
+        Assert.True((await users.AddLoginAsync(user,
+            new UserLoginInfo("PreBoundProvider", preBoundKey, "Pre-bound"))).Succeeded);
+        Assert.True((await users.ResetAuthenticatorKeyAsync(user)).Succeeded);
+        Assert.True((await users.SetTwoFactorEnabledAsync(user, true)).Succeeded);
+        var stamp = (await users.FindByIdAsync(user.Id))!.SecurityStamp;
+        var providerKey = Guid.NewGuid().ToString("N");
+        var context = ExternalContext(services, providerKey, user.Email!, verified: true);
+
+        var result = await services.GetRequiredService<IExternalSignInService>()
+            .CompleteAsync(new ClaimsPrincipal(new ClaimsIdentity()), forceMfa: false);
+
+        Assert.Equal(ExternalSignInStatus.Succeeded, result.Status);
+        var claimed = (await users.FindByIdAsync(user.Id))!;
+        Assert.True(claimed.EmailConfirmed);
+        Assert.Null(claimed.PasswordHash);
+        Assert.False(claimed.TwoFactorEnabled);
+        Assert.NotEqual(stamp, claimed.SecurityStamp);
+        var logins = await users.GetLoginsAsync(claimed);
+        var login = Assert.Single(logins);
+        Assert.Equal(("VerifiedTestProvider", providerKey), (login.LoginProvider, login.ProviderKey));
+        Assert.Contains(context.Response.Headers.SetCookie, cookie =>
+            cookie!.StartsWith(".AspNetCore.Identity.Application=", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Unverified_assertion_leaves_unconfirmed_account_untouched()
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        var users = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var user = await TestDataSeeder.CreateUserAsync(users,
+            $"external-unproven-{Guid.NewGuid():N}", TestDataSeeder.DefaultPassword);
+        user.EmailConfirmed = false;
+        Assert.True((await users.UpdateAsync(user)).Succeeded);
+        var originalHash = user.PasswordHash;
+        var providerKey = Guid.NewGuid().ToString("N");
+        ExternalContext(services, providerKey, user.Email!, verified: false);
+
+        var result = await services.GetRequiredService<IExternalSignInService>()
+            .CompleteAsync(new ClaimsPrincipal(new ClaimsIdentity()), forceMfa: false);
+
+        Assert.Equal(ExternalSignInStatus.AccountLinkRequiresSignIn, result.Status);
+        var unchanged = (await users.FindByIdAsync(user.Id))!;
+        Assert.False(unchanged.EmailConfirmed);
+        Assert.Equal(originalHash, unchanged.PasswordHash);
+        Assert.Null(await users.FindByLoginAsync("VerifiedTestProvider", providerKey));
     }
 
     [Fact]

@@ -30,6 +30,20 @@ public sealed record AccountRegistrationResult(
 
 public sealed record AccountEmailRequestResult(bool Accepted);
 
+/// <summary>
+/// Outcome of a confirmation message addressed to a known account. Unlike
+/// <see cref="AccountEmailRequestResult"/> it is not enumeration-safe and is
+/// meant for operator surfaces that already resolved the account.
+/// </summary>
+public enum AccountEmailConfirmationDispatch
+{
+    Sent,
+    AlreadyConfirmed,
+    MissingEmail,
+    NotFound,
+    Failed,
+}
+
 public enum AccountEmailConfirmationStatus
 {
     Succeeded,
@@ -77,6 +91,14 @@ public interface IAccountOnboardingService
 
     Task<AccountEmailRequestResult> RequestEmailConfirmationAsync(
         string email,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a confirmation message to the account identified by
+    /// <paramref name="userId"/> and reports whether it was delivered.
+    /// </summary>
+    Task<AccountEmailConfirmationDispatch> SendEmailConfirmationAsync(
+        string userId,
         CancellationToken cancellationToken = default);
 
     Task<AccountEmailConfirmationResult> ConfirmEmailAsync(

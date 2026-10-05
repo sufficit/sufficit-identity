@@ -136,11 +136,18 @@ public sealed class AspNetCoreIdentityExternalSignInService(
                 return new ExternalSignInResult(ExternalSignInStatus.AccountLinkRequiresSignIn);
             }
 
-            // A provider assertion must not activate a pre-registered account
-            // with unproven credentials or bypass local sign-in restrictions.
+            // A provider assertion must not bypass local sign-in restrictions,
+            // nor activate a pre-registered account while keeping credentials
+            // nobody proved. When the address was never confirmed, the verified
+            // assertion is the first proof of ownership: confirm it and drop
+            // every credential bound before that proof, so whoever registered
+            // the address first (possibly not its owner) keeps nothing.
             if (await userManager.IsLockedOutAsync(existingUser))
                 return new ExternalSignInResult(ExternalSignInStatus.LockedOut);
-            if (!existingUser.EmailConfirmed || !await signInManager.CanSignInAsync(existingUser))
+            if (!existingUser.EmailConfirmed
+                && !await ClaimUnconfirmedAccountAsync(existingUser, info.LoginProvider, cancellationToken))
+                return new ExternalSignInResult(ExternalSignInStatus.NotAllowed);
+            if (!await signInManager.CanSignInAsync(existingUser))
                 return new ExternalSignInResult(ExternalSignInStatus.NotAllowed);
 
             var link = await userManager.AddLoginAsync(existingUser, new UserLoginInfo(
@@ -190,6 +197,75 @@ public sealed class AspNetCoreIdentityExternalSignInService(
                 pictureUrl),
             emailConfirmed: true,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Confirms a never-confirmed account on the strength of a verified
+    /// provider assertion and revokes every credential bound before that
+    /// proof: the password, external logins and authenticator. The owner can
+    /// set a new password later through password recovery.
+    /// </summary>
+    private async Task<bool> ClaimUnconfirmedAccountAsync(
+        ApplicationUser user,
+        string provider,
+        CancellationToken cancellationToken)
+    {
+        // Revoke before confirming: a partial failure must leave the account
+        // unconfirmed (still unusable), never confirmed with a stale password.
+        var revoked = new List<string>();
+        if (await userManager.HasPasswordAsync(user))
+        {
+            var removal = await userManager.RemovePasswordAsync(user);
+            if (!removal.Succeeded)
+                return LogClaimFailure(user, provider, "password", removal);
+            revoked.Add("password");
+        }
+
+        foreach (var login in await userManager.GetLoginsAsync(user))
+        {
+            var removal = await userManager.RemoveLoginAsync(user, login.LoginProvider, login.ProviderKey);
+            if (!removal.Succeeded)
+                return LogClaimFailure(user, provider, "external_login", removal);
+            revoked.Add($"login:{login.LoginProvider}");
+        }
+
+        if (await userManager.GetTwoFactorEnabledAsync(user)
+            || await userManager.GetAuthenticatorKeyAsync(user) is not null)
+        {
+            var disable = await userManager.SetTwoFactorEnabledAsync(user, false);
+            if (!disable.Succeeded)
+                return LogClaimFailure(user, provider, "two_factor", disable);
+            var reset = await userManager.ResetAuthenticatorKeyAsync(user);
+            if (!reset.Succeeded)
+                return LogClaimFailure(user, provider, "authenticator", reset);
+            revoked.Add("two_factor");
+        }
+
+        var token = await userManager.GenerateEmailConfirmationTokenAsync(user);
+        var confirmation = await userManager.ConfirmEmailAsync(user, token);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!confirmation.Succeeded)
+            return LogClaimFailure(user, provider, "email_confirmation", confirmation);
+
+        await userManager.UpdateSecurityStampAsync(user);
+        cancellationToken.ThrowIfCancellationRequested();
+        logger.LogWarning(
+            "Confirmed unconfirmed user {UserId} through verified {Provider} assertion; "
+            + "revoked unproven credentials: {Revoked}.",
+            user.Id, provider, revoked.Count == 0 ? "none" : string.Join(',', revoked));
+        return true;
+    }
+
+    private bool LogClaimFailure(
+        ApplicationUser user,
+        string provider,
+        string step,
+        IdentityResult result)
+    {
+        logger.LogError(
+            "Claiming unconfirmed user {UserId} through {Provider} failed at {Step}: {Codes}.",
+            user.Id, provider, step, string.Join(',', result.Errors.Select(error => error.Code)));
+        return false;
     }
 
     private async Task<ExternalSignInResult> SignInLinkedUserAsync(

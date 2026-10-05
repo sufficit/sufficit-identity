@@ -308,6 +308,11 @@ internal sealed partial class UserManagementService
             user.Id,
             context,
             cancellationToken);
+        var confirmationDecision = await authorization.EvaluateAsync(
+            context.Operator,
+            ManagementCapabilities.UsersConfirmation,
+            resource,
+            cancellationToken);
 
         await WriteAuditAsync(
             context,
@@ -339,6 +344,9 @@ internal sealed partial class UserManagementService
                     CanResetTwoFactor = mfaResetDecision.IsAllowed,
                     ResetTwoFactorRequiresMfa = mfaResetDecision.Outcome is ManagementAuthorizationOutcome.StepUpRequired,
                     ResetTwoFactorReasonCode = mfaResetDecision.ReasonCode,
+                    CanResendConfirmation = confirmationDecision.IsAllowed,
+                    ResendConfirmationRequiresMfa = confirmationDecision.Outcome is ManagementAuthorizationOutcome.StepUpRequired,
+                    ResendConfirmationReasonCode = confirmationDecision.ReasonCode,
                 })
         {
             TwoFactorReenrollmentRequired = requiresReenrollment,

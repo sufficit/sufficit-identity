@@ -131,7 +131,7 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
         cancellationToken.ThrowIfCancellationRequested();
         var user = await accountLookup.FindUniqueByEmailAsync(email, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
-        if (user is not null)
+        if (user is not null && !user.EmailConfirmed)
         {
             await SendConfirmationMessageAsync(
                 user,
@@ -141,6 +141,31 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
         }
 
         return new AccountEmailRequestResult(true);
+    }
+
+    public async Task<AccountEmailConfirmationDispatch>
+        SendEmailConfirmationAsync(
+            string userId,
+            CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(userId);
+        cancellationToken.ThrowIfCancellationRequested();
+        var user = await userManager.FindByIdAsync(userId);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (user is null)
+            return AccountEmailConfirmationDispatch.NotFound;
+        if (string.IsNullOrWhiteSpace(user.Email))
+            return AccountEmailConfirmationDispatch.MissingEmail;
+        if (user.EmailConfirmed)
+            return AccountEmailConfirmationDispatch.AlreadyConfirmed;
+
+        return await SendConfirmationMessageAsync(
+                user,
+                user.Email,
+                null,
+                cancellationToken)
+            ? AccountEmailConfirmationDispatch.Sent
+            : AccountEmailConfirmationDispatch.Failed;
     }
 
     public async Task<AccountEmailConfirmationResult> ConfirmEmailAsync(
