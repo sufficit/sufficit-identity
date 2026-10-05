@@ -30,3 +30,9 @@ Usuário `c58fee7c-50ff-4add-8042-c21290594d23` cadastrou-se por e-mail/senha (G
 - Commit `2c2025340b96f1d8b1a6bd69712a12c13072ec35`, release `20261005T200206Z-2c20253` (SHA-256 `4eea55e91894d33f16f1969bc592b6f64b822de2d4b04b97e72abe52fe254e50`), SUI 2.26.920.117 em modo pacote.
 - Container SDK 10: build `-warnaserror` limpo; 1649 aprovados, 1 ignorado, mesma falha ambiental de `DeploymentHardeningTests`.
 - Ativação node-a → node-b → node-c sem rollback; cluster uniforme, cert/JWKS preservados, wwwroot legível. Smoke `/account/login` sem erro de console nem 4xx/5xx. Toast na gestão não exercitado em produção (exige sessão de operador).
+
+## Ajuste: página dedicada
+
+- Commit `ac45efe646fdaf85fc9d0dd7fee8daa08603787d`, release `20261005T200504Z-ac45efe` (SHA-256 `110ad65dc56d478d885f1fb01c47228d1ac4e4626a31f95332fce380911e24fe`).
+- Container SDK 10: build `-warnaserror` limpo; 1650 aprovados (rota nova incluída), 1 ignorado, mesma falha ambiental.
+- Ativação node-a → node-b → node-c sem rollback; cluster uniforme, cert/JWKS preservados, wwwroot legível. Smoke `/account/login` limpo; rota da página nova responde 302 para o login sem sessão. Página e toast não exercitados com sessão de operador.
