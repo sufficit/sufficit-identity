@@ -8,8 +8,8 @@ Objetivo: operador solicita envio ao e-mail confirmado da conta; cliente define 
 4. CONCLUÍDO — Registro de entrega e integração à main local em Identity/Blazor, preservando mudanças externas e código recente de cobrança de serviços.
 5. CONCLUÍDO — Adaptadores genéricos Identity mantêm T e delegam ao SUI; build local e pacote passaram sem erros.
 6. CONCLUÍDO — Builds local/pacote e 106 testes com SUI local passaram, incluindo renderização real do campo. Helpers aceitam host de saúde configurável; bash -n passou.
-7. EM ANDAMENTO — Publicar Identity por helpers oficiais de cluster, depois Blazor pela raiz/deploy.py, preservando navegação/aparência autorizadas; conferir saúde, versões/hashes e registrar entrega.
+7. CONCLUÍDO — Identity e Blazor publicados nos três hosts por entrypoints oficiais; saúde/ready, hashes, certificado/JWKS e navegador público conferidos. Blazor preserva árvore autorizada com navegação/aparência e publicação concorrente equivalente.
 
 Escopo: fluxo administrativo de recuperação, modelos genéricos de identidade. Presets/permissões não mudam. Referência visual: ações atuais da tela de usuários.
 
-Validação: 42 testes Identity e 39 Blazor passaram; suíte de provisionamento Identity excluída por erro de sintaxe preexistente e SUI publicado usado. Autorização recebida; bloqueio de compilação identificado antes da publicação.
+Validação: 106 testes Identity com SUI local e 39 Blazor passaram; suíte de provisionamento Identity excluída por erro de sintaxe preexistente. Builds com SUI local e pacote publicados passaram. Nenhum reset/envio real ou teste autenticado de cliente em produção. Blazor é deploy manual de árvore autorizada parcialmente não commitada; futuro CI de checkout limpo pode substituí-lo. Nenhum push desta tarefa.
