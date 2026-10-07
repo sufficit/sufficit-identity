@@ -90,6 +90,9 @@ public sealed partial class ManagementUiRoutingTests
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
+        public Task RequestPasswordResetAsync(string id, ManagementRequestContext context, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
         public Task<ManagementUserDetail> ResetPasswordAsync(
             string id,
             ResetManagementUserPasswordCommand command,

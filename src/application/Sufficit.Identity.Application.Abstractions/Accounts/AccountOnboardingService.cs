@@ -44,6 +44,9 @@ public enum AccountEmailConfirmationDispatch
     Failed,
 }
 
+/// <summary>Dispatch outcome for an operator targeting a resolved account.</summary>
+public enum AccountPasswordResetDispatch { Sent, NotFound, MissingEmail, EmailUnconfirmed, Failed }
+
 public enum AccountEmailConfirmationStatus
 {
     Succeeded,
@@ -109,6 +112,10 @@ public interface IAccountOnboardingService
     Task<AccountEmailRequestResult> RequestPasswordResetAsync(
         string email,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Queues a recovery link for this account without changing its password.</summary>
+    Task<AccountPasswordResetDispatch> SendPasswordResetAsync(
+        string userId, CancellationToken cancellationToken = default);
 
     Task<AccountPasswordResetContext> GetPasswordResetContextAsync(
         string? userId,

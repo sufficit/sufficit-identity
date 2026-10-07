@@ -228,6 +228,25 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
             return new AccountEmailRequestResult(true);
         }
 
+        await DispatchPasswordResetAsync(user, cancellationToken);
+        // Public recovery must not reveal existence or delivery outcome.
+        return new AccountEmailRequestResult(true);
+    }
+
+    public async Task<AccountPasswordResetDispatch> SendPasswordResetAsync(
+        string userId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null) return AccountPasswordResetDispatch.NotFound;
+        if (string.IsNullOrWhiteSpace(user.Email)) return AccountPasswordResetDispatch.MissingEmail;
+        if (!await userManager.IsEmailConfirmedAsync(user)) return AccountPasswordResetDispatch.EmailUnconfirmed;
+        return await DispatchPasswordResetAsync(user, cancellationToken);
+    }
+
+    private async Task<AccountPasswordResetDispatch> DispatchPasswordResetAsync(
+        ApplicationUser user, CancellationToken cancellationToken)
+    {
         try
         {
             var token = await userManager.GeneratePasswordResetTokenAsync(user);
@@ -242,13 +261,14 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
                 "ResetPassword.Body",
                 HtmlEncoder.Default.Encode(callbackUrl)].Value;
             await emailSender.SendEmailAsync(
-                email,
+                user.Email!,
                 messages["ResetPassword.Subject", _productName].Value,
                 body);
             cancellationToken.ThrowIfCancellationRequested();
             logger.LogInformation(
                 "Password reset message accepted for user {UserId}.",
                 user.Id);
+            return AccountPasswordResetDispatch.Sent;
         }
         catch (OperationCanceledException)
             when (cancellationToken.IsCancellationRequested)
@@ -261,10 +281,9 @@ public sealed class AspNetCoreIdentityAccountOnboardingService(
                 exception,
                 "Password reset message delivery failed for user {UserId}.",
                 user.Id);
+            return AccountPasswordResetDispatch.Failed;
         }
 
-        // Never reveal whether an account exists or whether delivery failed.
-        return new AccountEmailRequestResult(true);
     }
 
     public async Task<AccountPasswordResetContext>

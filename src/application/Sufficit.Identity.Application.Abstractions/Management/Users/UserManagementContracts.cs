@@ -41,6 +41,10 @@ public interface IUserManagementService
         ManagementRequestContext context,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Requests recovery mail for a resolved user, without accepting a new password.</summary>
+    Task RequestPasswordResetAsync(string id, ManagementRequestContext context,
+        CancellationToken cancellationToken = default);
+
     Task<ManagementMfaResetResult> ResetTwoFactorAsync(
         string id,
         ResetManagementUserTwoFactorCommand command,

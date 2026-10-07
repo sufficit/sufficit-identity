@@ -84,6 +84,13 @@ public sealed class UsersController(IUserManagementService users)
             RequestContext(),
             cancellationToken));
 
+    [HttpPost("{id}/password-recovery")]
+    public async Task<IActionResult> RequestPasswordRecovery(string id, CancellationToken cancellationToken)
+    {
+        await users.RequestPasswordResetAsync(id, RequestContext(), cancellationToken);
+        return NoContent();
+    }
+
     [HttpPost("{id}/reset-two-factor")]
     public async Task<ActionResult<ManagementMfaResetResult>> ResetTwoFactor(
         string id,
