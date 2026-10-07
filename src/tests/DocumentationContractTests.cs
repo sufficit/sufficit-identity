@@ -62,7 +62,11 @@ public sealed partial class DocumentationContractTests
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(["README.md"], topLevelDocuments);
+        Assert.Contains("README.md", topLevelDocuments);
+        // Workspace convention permits live PLAN-*.md checkpoints directly in docs/.
+        // Their uppercase purpose/name contract is checked above.
+        Assert.All(topLevelDocuments, name =>
+            Assert.True(name == "README.md" || name.StartsWith("PLAN-", StringComparison.Ordinal), name));
     }
 
     [Fact]
