@@ -5,3 +5,7 @@ Adicionado dispatch por ID com resultado tipado no onboarding, endpoint password
 42 testes selecionados passaram: seis de envio/negação/falha e fluxo completo com e-mail capturado, mais autorização e revogação existentes. SUI publicado usado; ProvisioningManifestTests*.cs excluídos temporariamente por erro de sintaxe preexistente. Build Management sem erros e composição Server compilou nos testes. Nenhuma conta ou e-mail de produção alterados.
 
 Consumidor Blazor: 38 testes passaram; publicação coordenada ainda pendente de decisão sobre mudanças externas no checkout Blazor (disciplina de AGENTS.md).
+
+Integrado à main local de ambos os projetos. Testes Blazor repetidos após incorporar as atualizações locais de cobrança: 38 passaram. Publicação permanece pendente; arquivos externos preservados.
+
+Validação final Blazor: 39 testes passaram, incluindo sidecar somente leitura e resposta serializável para ferramenta desconhecida; build servidor integrado passou sem erros. Nenhum push de main/deploy desta tarefa.
