@@ -39,7 +39,7 @@ public sealed partial class ProvisioningManifestTests
     }
 
     [Fact]
-    public void node-c_endpoints_manifest_is_secret_free_and_valid()
+    public void node_c_endpoints_manifest_is_secret_free_and_valid()
     {
         var json = File.ReadAllText(RepositoryFile(
             "docs",
