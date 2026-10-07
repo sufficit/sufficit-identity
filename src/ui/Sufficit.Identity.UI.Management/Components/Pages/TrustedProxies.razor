@@ -61,7 +61,7 @@ else
                     <EditForm Model="model" OnValidSubmit="SaveAsync" FormName="trusted-proxies">
                         <DataAnnotationsValidator />
                         <fieldset disabled="@saving" class="proxy-fields">
-                            <SUITextField T="string" id="trusted-proxy-networks" name="networks"
+                            <IdentityTextField T="string" id="trusted-proxy-networks" name="networks"
                                           Label="@L["TrustedProxies.Field.Networks.Label"].Value" Multiline="true" Rows="6"
                                           HelperText="@L["TrustedProxies.Field.Networks.Helper"].Value"
                                           Placeholder="172.16.2.0/32" MaxLength="@(8448)"
@@ -70,7 +70,7 @@ else
                                        Label="@L["TrustedProxies.Field.InheritLimit.Label"].Value" />
                             @if (!model.InheritLimit)
                             {
-                                <SUINumericField T="int" id="proxy-forward-limit" name="forwardLimit"
+                                <IdentityNumericField T="int" id="proxy-forward-limit" name="forwardLimit"
                                                  Label="@L["TrustedProxies.Field.ForwardLimit.Label"].Value" Min="@(1)" Max="@(10)"
                                                  @bind-Value="model.ForwardLimit" />
                                 <ValidationMessage For="@(() => model.ForwardLimit)" />

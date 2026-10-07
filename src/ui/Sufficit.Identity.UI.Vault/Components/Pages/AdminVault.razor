@@ -44,13 +44,13 @@
                     @* Keep EditContext notifications and validation explicit while consuming SUI 1.28.0. *@
                     <SUIFormGrid Columns="2" LabelLines="1">
                         <div>
-                            <SUITextField T="string" Id="admin-secret-name" Label="@L["Vault.AdminVault.NameLabel"].Value" Value="@form.Name"
+                            <IdentityTextField T="string" Id="admin-secret-name" Label="@L["Vault.AdminVault.NameLabel"].Value" Value="@form.Name"
                                           ValueChanged="value => { form.Name = value ?? string.Empty; editContext.NotifyFieldChanged(new(form, nameof(form.Name))); }"
                                           autocomplete="off" Placeholder="@L["Vault.AdminVault.NamePlaceholder"].Value" />
                             <ValidationMessage For="() => form.Name" />
                         </div>
                         <div>
-                            <SUITextField T="string" Id="admin-secret-value" Label="@L["Vault.AdminVault.ValueLabel"].Value" Value="@form.Value"
+                            <IdentityTextField T="string" Id="admin-secret-value" Label="@L["Vault.AdminVault.ValueLabel"].Value" Value="@form.Value"
                                           ValueChanged="value => { form.Value = value ?? string.Empty; editContext.NotifyFieldChanged(new(form, nameof(form.Value))); }"
                                           InputType="password" autocomplete="new-password" />
                             <ValidationMessage For="() => form.Value" />
@@ -119,7 +119,7 @@ else
             <div class="vault-search__controls">
                 <div class="vault-search-field">
                     <SUIIcon Name="search" Size="18" />
-                    <SUITextField T="string" Id="vault-user-search" Label="@L["Vault.AdminVault.SearchLabel"].Value" @bind-Value="search"
+                    <IdentityTextField T="string" Id="vault-user-search" Label="@L["Vault.AdminVault.SearchLabel"].Value" @bind-Value="search"
                               InputType="search" Placeholder="@L["Vault.AdminVault.SearchPlaceholder"].Value" autocomplete="off" />
                 </div>
                 <SUIButton ButtonTypeValue="SUIButtonType.Submit" Disabled="@loading">@L["Vault.AdminVault.SearchButton"]</SUIButton>

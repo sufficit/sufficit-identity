@@ -106,7 +106,7 @@
         <code class="manual-key">@setup.ManualKey</code>
 
         <EditForm Model="Verify" Method="post" OnSubmit="EnableAsync" FormName="verify-2fa">
-            <SUITextField T="string" Id="code"
+            <IdentityTextField T="string" Id="code"
                           Label="@L["ManageTwoFactor.VerificationCode"]"
                           @bind-Value="Verify.Code"
                           Placeholder="123456"

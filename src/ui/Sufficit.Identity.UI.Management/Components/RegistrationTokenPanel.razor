@@ -24,7 +24,7 @@
         }
 
         <div class="operator-token-fields" data-sui-align-row>
-            <SUITextField T="string"
+            <IdentityTextField T="string"
                           id="registration-token-label"
                           aria-label="@L["Clients.RegistrationTokens.LabelField"].Value"
                           Label="@L["Clients.RegistrationTokens.LabelField"].Value"
@@ -37,7 +37,7 @@
                           ValueChanged="@((string value) => label = value)"
                           autocomplete="off" />
 
-            <SUISelect T="int"
+            <IdentitySelect T="int"
                        id="registration-token-lifetime"
                        aria-label="@L["Clients.RegistrationTokens.LifetimeField"].Value"
                        Label="@L["Clients.RegistrationTokens.LifetimeField"].Value"
@@ -48,11 +48,11 @@
                 {
                     <SUISelectItem Value="@hours">@L[$"Clients.RegistrationTokens.Lifetime.{hours}"]</SUISelectItem>
                 }
-            </SUISelect>
+            </IdentitySelect>
         </div>
 
         <div class="operator-token-fields" data-sui-align-row>
-            <SUITextField T="string"
+            <IdentityTextField T="string"
                           id="registration-token-grants"
                           aria-label="@L["Clients.RegistrationTokens.GrantsField"].Value"
                           Label="@L["Clients.RegistrationTokens.GrantsField"].Value"
@@ -64,7 +64,7 @@
                           ValueChanged="@((string value) => grantsText = value)"
                           autocomplete="off" />
 
-            <SUITextField T="string"
+            <IdentityTextField T="string"
                           id="registration-token-scopes"
                           aria-label="@L["Clients.RegistrationTokens.ScopesField"].Value"
                           Label="@L["Clients.RegistrationTokens.ScopesField"].Value"

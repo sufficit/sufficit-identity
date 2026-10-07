@@ -35,6 +35,12 @@
       },
       "sufficit.identity.ui.abstractions": {
         "type": "Project"
+      },
+      "sufficit.identity.ui.components": {
+        "type": "Project",
+        "dependencies": {
+          "Sufficit.Blazor.UI": "[2.*, )"
+        }
       }
     }
   }

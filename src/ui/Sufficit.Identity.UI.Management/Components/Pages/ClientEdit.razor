@@ -84,14 +84,14 @@ else
             @if (activeSection == 0)
             {
                 <SUIFormGrid Class="client-edit-form-grid" Columns="2" Spacing="4" LabelLines="2">
-                    <SUITextField T="string"
+                    <IdentityTextField T="string"
                                   id="edit-display-name"
                                   name="displayName"
                                   Label="@L["Clients.Draft.AppNameLabel"].Value"
                                   HelperText="@L["Clients.Edit.AppNameHelper"].Value"
                                   autocomplete="organization"
                                   @bind-Value="displayName" />
-                    <SUITextField T="string"
+                    <IdentityTextField T="string"
                                   id="edit-client-id"
                                   name="clientId"
                                   Class="client-edit-technical-field"
@@ -101,7 +101,7 @@ else
                                   readonly />
                 </SUIFormGrid>
                 <SUIFormGrid Class="client-edit-form-grid client-edit-form-grid--consent" Columns="2" Spacing="4" LabelLines="2">
-                    <SUISelect T="string"
+                    <IdentitySelect T="string"
                                id="edit-consent"
                                name="consentType"
                                Label="@L["Clients.Detail.ConsentLabel"].Value"
@@ -111,7 +111,7 @@ else
                         <SUISelectItem Value="@("implicit")">@L["Clients.Draft.ConsentImplicitOption"]</SUISelectItem>
                         <SUISelectItem Value="@("external")">@L["Clients.Edit.ConsentExternalOption"]</SUISelectItem>
                         <SUISelectItem Value="@("systematic")">@L["Clients.Draft.ConsentSystematicOption"]</SUISelectItem>
-                    </SUISelect>
+                    </IdentitySelect>
                     <div class="client-edit-choice-field" data-sui-align-field>
                         <span class="client-edit-choice-field__label" data-sui-field-label aria-hidden="true"></span>
                         <label class="choice-control client-edit-par-choice">

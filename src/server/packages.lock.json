@@ -737,7 +737,8 @@
           "QRCoder": "[1.8.0, )",
           "Sufficit.Blazor.UI": "[2.*, )",
           "Sufficit.Identity.Application.Abstractions": "[0.4.0-alpha, )",
-          "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )"
+          "Sufficit.Identity.UI.Abstractions": "[0.4.0-alpha, )",
+          "Sufficit.Identity.UI.Components": "[0.4.0-alpha, )"
         }
       },
       "sufficit.identity.ui.abstractions": {

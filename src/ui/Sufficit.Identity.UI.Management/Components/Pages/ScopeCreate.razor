@@ -48,7 +48,7 @@
             <p>@L["Scopes.Identification.Description"]</p>
         </div>
         <SUIFormGrid Columns="2" Spacing="4" LabelLines="2">
-            <SUITextField T="string"
+            <IdentityTextField T="string"
                           id="scope-name"
                           Label="@L["Scopes.Field.Name.Label"].Value"
                           HelperText="@L["Scopes.Field.Name.Helper"].Value"
@@ -56,7 +56,7 @@
                           ErrorText="@ErrorFor(definition, nameof(model.Name))"
                           autocomplete="off"
                           @bind-Value="model.Name" />
-            <SUITextField T="string"
+            <IdentityTextField T="string"
                           id="scope-display-name"
                           Label="@L["Scopes.Field.DisplayName.Label"].Value"
                           HelperText="@L["Scopes.Field.DisplayName.Helper"].Value"
@@ -66,7 +66,7 @@
                           @bind-Value="model.DisplayName" />
         </SUIFormGrid>
         <SUIFormGrid Columns="1" Spacing="4">
-            <SUITextField T="string"
+            <IdentityTextField T="string"
                           id="scope-description"
                           Label="@L["Scopes.Field.Description.Label"].Value"
                           HelperText="@L["Scopes.Field.Description.Helper"].Value"
@@ -83,7 +83,7 @@
             <p>@L["Scopes.Resources.Description"]</p>
         </div>
         <SUIFormGrid Columns="1" Spacing="4">
-            <SUITextField T="string"
+            <IdentityTextField T="string"
                           id="scope-resources"
                           Label="@L["Scopes.Field.Resources.Label"].Value"
                           HelperText="@L["Scopes.Field.Resources.Helper"].Value"

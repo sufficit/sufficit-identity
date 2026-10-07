@@ -50,7 +50,7 @@
                     @if (_editingCredentialId == passkey.CredentialId)
                     {
                         <div class="passkey-inline-editor">
-                            <SUITextField T="string" @ref="_renameField"
+                            <IdentityTextField T="string" @ref="_renameField"
                                           Id="passkey-edit-name"
                                           Label="@L["ManagePasskeys.Name"]"
                                           HelperText="@L["ManagePasskeys.RenameHint"]"
@@ -133,7 +133,7 @@
         {
             <form @ref="_registrationForm">
                 <AntiforgeryToken />
-                <SUITextField T="string" Id="passkey-name"
+                <IdentityTextField T="string" Id="passkey-name"
                               Label="@L["ManagePasskeys.NameOptional"]"
                               Placeholder="@L["ManagePasskeys.NamePlaceholder"]"
                               HelperText="@L["ManagePasskeys.DeviceNameHint"]"

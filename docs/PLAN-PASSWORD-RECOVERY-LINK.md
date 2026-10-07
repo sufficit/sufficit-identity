@@ -6,8 +6,10 @@ Objetivo: operador solicita envio ao e-mail confirmado da conta; cliente define 
 2. CONCLUÍDO — Substituir diálogo de senha no Blazor por confirmação do envio, sidecar IA somente leitura.
 3. CONCLUÍDO — Testes de envio/negação/falha, senha intacta, transporte sem senha e builds.
 4. CONCLUÍDO — Registro de entrega e integração à main local em Identity/Blazor, preservando mudanças externas e código recente de cobrança de serviços.
-5. EM ANDAMENTO — Publicação coordenada aguardando decisão sobre navegação/aparência externas no checkout Blazor. Nenhum push de main ou deploy deste fluxo foi executado.
+5. CONCLUÍDO — Adaptadores genéricos Identity mantêm T e delegam ao SUI; build local e pacote passaram sem erros.
+6. CONCLUÍDO — Builds local/pacote e 106 testes com SUI local passaram, incluindo renderização real do campo. Helpers aceitam host de saúde configurável; bash -n passou.
+7. EM ANDAMENTO — Publicar Identity por helpers oficiais de cluster, depois Blazor pela raiz/deploy.py, preservando navegação/aparência autorizadas; conferir saúde, versões/hashes e registrar entrega.
 
 Escopo: fluxo administrativo de recuperação, modelos genéricos de identidade. Presets/permissões não mudam. Referência visual: ações atuais da tela de usuários.
 
-Validação: 42 testes Identity e 39 Blazor passaram; suíte de provisionamento Identity excluída por erro de sintaxe preexistente e SUI publicado usado. Publicação ainda depende da decisão de navegação externa no checkout Blazor.
+Validação: 42 testes Identity e 39 Blazor passaram; suíte de provisionamento Identity excluída por erro de sintaxe preexistente e SUI publicado usado. Autorização recebida; bloqueio de compilação identificado antes da publicação.

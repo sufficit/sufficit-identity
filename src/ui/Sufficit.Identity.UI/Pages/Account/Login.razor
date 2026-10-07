@@ -125,13 +125,13 @@
                 <input type="hidden" name="FromRegistration" value="true" />
             }
 
-            <SUITextField T="string" Id="username"
+            <IdentityTextField T="string" Id="username"
                           Label="@(_registrationPolicy.RequiresUserName ? L["Login.EmailOrUsername"] : L["Login.Email"])"
                           @bind-Value="Model.UserName"
                           name="UserName"
                           autocomplete="username" required />
 
-            <SUITextField T="string" Id="password"
+            <IdentityTextField T="string" Id="password"
                           Label="@L["Login.Password"]"
                           InputType="password"
                           name="Password"

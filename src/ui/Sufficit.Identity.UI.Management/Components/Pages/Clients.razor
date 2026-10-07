@@ -84,33 +84,33 @@
             {
                 <div class="clients-filter--search">
                     <SUIIcon Name="search" Size="18" />
-                    <SUITextField T="string" Class="clients-filter"
+                    <IdentityTextField T="string" Class="clients-filter"
                               Id="client-search" name="q" InputType="search" aria-label="@L["Clients.List.SearchAriaLabel"].Value"
                               Placeholder="@L["Clients.List.SearchPlaceholder"].Value" autocomplete="off"
                               Value="@search" ValueChanged="SearchChanged" />
                 </div>
-                <SUISelect T="string" id="client-type-filter" name="type" Label="@L["Clients.Detail.TypeLabel"].Value" Class="clients-filter" Value="@typeFilter" ValueChanged="TypeSelected">
+                <IdentitySelect T="string" id="client-type-filter" name="type" Label="@L["Clients.Detail.TypeLabel"].Value" Class="clients-filter" Value="@typeFilter" ValueChanged="TypeSelected">
                     <SUISelectItem Value="@("all")">@L["Clients.List.All"]</SUISelectItem>
                     <SUISelectItem Value="@("public")">@L["Clients.List.FilterPublic"]</SUISelectItem>
                     <SUISelectItem Value="@("confidential")">@L["Clients.List.FilterConfidential"]</SUISelectItem>
-                </SUISelect>
-                <SUISelect T="string" id="client-grant-filter" name="grant" Label="@L["Clients.List.FlowLabel"].Value" Class="clients-filter" Value="@grantFilter" ValueChanged="GrantSelected">
+                </IdentitySelect>
+                <IdentitySelect T="string" id="client-grant-filter" name="grant" Label="@L["Clients.List.FlowLabel"].Value" Class="clients-filter" Value="@grantFilter" ValueChanged="GrantSelected">
                     <SUISelectItem Value="@("all")">@L["Clients.List.AllFlows"]</SUISelectItem>
                     <SUISelectItem Value="@("authorization_code")">Authorization Code</SUISelectItem>
                     <SUISelectItem Value="@("client_credentials")">Client Credentials</SUISelectItem>
                     <SUISelectItem Value="@("device_code")">Device Code</SUISelectItem>
                     <SUISelectItem Value="@("refresh_token")">Refresh Token</SUISelectItem>
-                </SUISelect>
-                <SUISelect T="string" id="client-origin-filter" name="origin" Label="@L["Clients.List.OriginLabel"].Value" Class="clients-filter" Value="@originFilter" ValueChanged="OriginSelected">
+                </IdentitySelect>
+                <IdentitySelect T="string" id="client-origin-filter" name="origin" Label="@L["Clients.List.OriginLabel"].Value" Class="clients-filter" Value="@originFilter" ValueChanged="OriginSelected">
                     <SUISelectItem Value="@("all")">@L["Clients.List.AllFeminine"]</SUISelectItem>
                     <SUISelectItem Value="@("manual")">@L["Clients.List.OriginManual"]</SUISelectItem>
                     <SUISelectItem Value="@("manifest")">@L["Clients.List.OriginManifest"]</SUISelectItem>
-                </SUISelect>
-                <SUISelect T="string" id="client-status-filter" name="status" Label="@L["Clients.List.StatusLabel"].Value" Class="clients-filter" Value="@statusFilter" ValueChanged="StatusSelected">
+                </IdentitySelect>
+                <IdentitySelect T="string" id="client-status-filter" name="status" Label="@L["Clients.List.StatusLabel"].Value" Class="clients-filter" Value="@statusFilter" ValueChanged="StatusSelected">
                     <SUISelectItem Value="@("all")">@L["Clients.List.All"]</SUISelectItem>
                     <SUISelectItem Value="@("active")">@L["Clients.List.StatusActive"]</SUISelectItem>
-                </SUISelect>
-                <SUITextField T="string" Class="clients-filter" Label="Scope"
+                </IdentitySelect>
+                <IdentityTextField T="string" Class="clients-filter" Label="Scope"
                               Id="client-scope-filter" name="scope" Value="@scopeFilter"
                               Placeholder="@L["Clients.List.ScopePlaceholder"].Value" ValueChanged="ScopeChanged" />
             }

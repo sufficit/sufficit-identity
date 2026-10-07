@@ -198,7 +198,7 @@ rollback() {
         target="${IDENTITY_SSH_USER:-root}@${changed_hosts[rollback_host]}"
         previous=${previous_release[${changed_hosts[rollback_host]}]}
         if ssh "${ssh_options[@]}" "${target}" \
-            /opt/sufficit-identity/helpers/activate-release.sh "${previous}"; then
+            env "IDENTITY_HEALTH_HOST=${IDENTITY_HEALTH_HOST:-identity.example.com}" /opt/sufficit-identity/helpers/activate-release.sh "${previous}"; then
             echo "[cluster] ${changed_hosts[rollback_host]}: rollback healthy at ${previous}" >&2
         else
             echo "[cluster] CRITICAL: rollback failed on ${changed_hosts[rollback_host]}" >&2
@@ -211,7 +211,7 @@ for host in "${hosts[@]}"; do
     target="${IDENTITY_SSH_USER:-root}@${host}"
     echo "[cluster] Activating ${release_name} on ${host}..."
     if ! ssh "${ssh_options[@]}" "${target}" \
-        /opt/sufficit-identity/helpers/activate-release.sh \
+        env "IDENTITY_HEALTH_HOST=${IDENTITY_HEALTH_HOST:-identity.example.com}" /opt/sufficit-identity/helpers/activate-release.sh \
         "/opt/sufficit-identity.releases/${release_name}"; then
         echo "[cluster] ${host}: activation failed." >&2
         rollback

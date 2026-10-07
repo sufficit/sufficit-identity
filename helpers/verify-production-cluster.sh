@@ -60,10 +60,11 @@ for host in "${hosts[@]}"; do
     target="${IDENTITY_SSH_USER:-root}@${host}"
     result=''
 
-    if ! result=$(ssh "${ssh_options[@]}" "${target}" bash -s -- "${expected_revision}" <<'REMOTE_CHECK'
+    if ! result=$(ssh "${ssh_options[@]}" "${target}" bash -s -- "${expected_revision}" "${IDENTITY_HEALTH_HOST:-identity.example.com}" <<'REMOTE_CHECK'
 set -uo pipefail
 
 expected=$1
+health_host=$2
 app_link=/opt/sufficit-identity
 active=$(readlink -f -- "${app_link}" 2>/dev/null || true)
 revision=missing
@@ -81,15 +82,15 @@ service=$(systemctl is-active sufficit-identity.service 2>/dev/null || true)
 
 health=Unhealthy
 if curl --fail --silent --show-error --max-time 10 \
-    --resolve identity.example.com:26501:127.0.0.1 \
-    "https://identity.example.com:26501/health" >/dev/null 2>&1; then
+    --resolve "${health_host}:26501:127.0.0.1" \
+    "https://${health_host}:26501/health" >/dev/null 2>&1; then
     health=Healthy
 fi
 
 ready=Unhealthy
 if curl --fail --silent --show-error --max-time 10 \
-    --resolve identity.example.com:26501:127.0.0.1 \
-    "https://identity.example.com:26501/health/ready" >/dev/null 2>&1; then
+    --resolve "${health_host}:26501:127.0.0.1" \
+    "https://${health_host}:26501/health/ready" >/dev/null 2>&1; then
     ready=Healthy
 fi
 
@@ -100,8 +101,8 @@ fi
 
 jwks_sha=missing
 if jwks_sha=$(curl --fail --silent --show-error --max-time 10 \
-    --resolve identity.example.com:26501:127.0.0.1 \
-    "https://identity.example.com:26501/.well-known/openid-configuration/jwks" \
+    --resolve "${health_host}:26501:127.0.0.1" \
+    "https://${health_host}:26501/.well-known/openid-configuration/jwks" \
     | sha256sum | awk '{print $1}'); then
     :
 else

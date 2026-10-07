@@ -47,6 +47,7 @@ the repository:
 
 ```bash
 export IDENTITY_PRODUCTION_HOSTS='app-node-1.example.com,app-node-2.example.com,app-node-3.example.com'
+export IDENTITY_HEALTH_HOST=identity.example.com
 export IDENTITY_SSH_USER=root
 export IDENTITY_SSH_PORT=26492
 export IDENTITY_SSH_KEY=/protected/path/identity-deploy-key

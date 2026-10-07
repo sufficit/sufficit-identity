@@ -61,20 +61,20 @@ else
 
                 @if (_registrationPolicy.RequiresUserName)
                 {
-                    <SUITextField T="string" Id="username"
+                    <IdentityTextField T="string" Id="username"
                                   Label="@L["Register.UserName"]"
                                   @bind-Value="_model.UserName"
                                   autocomplete="username" autofocus />
                 }
 
-                <SUITextField T="string" Id="email"
+                <IdentityTextField T="string" Id="email"
                               Label="@L["Register.Email"]"
                               @bind-Value="_model.Email"
                               InputType="email"
                               autocomplete="email"
                               autofocus="@(!_registrationPolicy.RequiresUserName)" />
 
-                <SUITextField T="string" Id="password"
+                <IdentityTextField T="string" Id="password"
                               Label="@L["Register.Password"]"
                               @bind-Value="_model.Password"
                               AriaDescribedBy="password-requirements"
@@ -82,7 +82,7 @@ else
                               autocomplete="new-password" />
 
                 <PasswordRequirements InputId="password" Policy="_passwordPolicy" MaximumLength="100" />
-                <SUITextField T="string" Id="confirm"
+                <IdentityTextField T="string" Id="confirm"
                               Label="@L["Register.ConfirmPassword"]"
                               @bind-Value="_model.ConfirmPassword"
                               InputType="password"

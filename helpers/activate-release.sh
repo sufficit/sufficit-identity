@@ -6,7 +6,8 @@ readonly app_name="sufficit-identity"
 readonly app_link="/opt/${app_name}"
 readonly releases_root="/opt/${app_name}.releases"
 readonly lock_file="/run/lock/${app_name}-deploy.lock"
-readonly health_url="https://identity.example.com:26501/health"
+readonly health_host="${IDENTITY_HEALTH_HOST:-identity.example.com}"
+readonly health_url="https://${health_host}:26501/health"
 readonly health_timeout_seconds=45
 
 usage() {
@@ -18,7 +19,7 @@ wait_for_health() {
 
     until curl --fail --silent --show-error --max-time 5 \
         --output /dev/null \
-        --resolve identity.example.com:26501:127.0.0.1 \
+        --resolve "${health_host}:26501:127.0.0.1" \
         "${health_url}"
     do
         if (( SECONDS >= deadline )); then

@@ -33,7 +33,7 @@
                     </div>
                 </div>
                 <div class="temporary-token-panel__controls" data-sui-align-row>
-                    <SUISelect T="int"
+                    <IdentitySelect T="int"
                                id="provisioning-token-lifetime"
                                aria-label="@L["Provisioning.TemporaryToken.LifetimeLabel"].Value"
                                Label="@L["Provisioning.TemporaryToken.LifetimeLabel"].Value"
@@ -45,7 +45,7 @@
                         <SUISelectItem Value="@(900)">@L["Provisioning.TemporaryToken.Lifetime15Min"]</SUISelectItem>
                         <SUISelectItem Value="@(1800)">@L["Provisioning.TemporaryToken.Lifetime30Min"]</SUISelectItem>
                         <SUISelectItem Value="@(3600)">@L["Provisioning.TemporaryToken.Lifetime60Min"]</SUISelectItem>
-                    </SUISelect>
+                    </IdentitySelect>
                     <SUILoadingButton IsLoading="@tokenIssuing"
                                       Disabled="@tokenIssuing"
                                       VariantValue="SUIVariant.Outlined"

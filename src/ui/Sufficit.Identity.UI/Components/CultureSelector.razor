@@ -6,7 +6,7 @@
 @if (_cultures.Length > 1)
 {
     <div class="culture-selector" data-culture-selector>
-        <SUISelect T="string"
+        <IdentitySelect T="string"
                    Value="@_currentCulture.Name"
                    ValueChanged="ChangeCulture"
                    Label="@L["Culture.Selector"]"
@@ -19,7 +19,7 @@
                     @GetCultureLabel(culture)
                 </SUISelectItem>
             }
-        </SUISelect>
+        </IdentitySelect>
 
         <noscript>
             <form class="culture-selector__fallback"

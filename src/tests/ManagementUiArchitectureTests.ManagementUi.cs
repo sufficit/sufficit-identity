@@ -165,9 +165,9 @@ public sealed partial class ManagementUiArchitectureTests
             "<SUIFormGrid Class=\"client-edit-form-grid\"",
             editor,
             StringComparison.Ordinal);
-        Assert.Contains("<SUITextField T=\"string\"", editor,
+        Assert.Contains("<IdentityTextField T=\"string\"", editor,
             StringComparison.Ordinal);
-        Assert.Contains("<SUISelect T=\"string\"", editor,
+        Assert.Contains("<IdentitySelect T=\"string\"", editor,
             StringComparison.Ordinal);
         Assert.Contains("data-sui-align-field", editor,
             StringComparison.Ordinal);
@@ -224,7 +224,7 @@ public sealed partial class ManagementUiArchitectureTests
             var row = TwoColumnRow(page, name);
             Assert.Equal(
                 2,
-                row.Split("<SUITextField T=\"string\"", StringSplitOptions.None)
+                row.Split("<IdentityTextField T=\"string\"", StringSplitOptions.None)
                     .Length - 1);
             Assert.Equal(
                 2,
@@ -442,7 +442,7 @@ public sealed partial class ManagementUiArchitectureTests
             "wwwroot",
             "app.css"));
 
-        Assert.Contains("<SUITextField T=\"string\"", page, StringComparison.Ordinal);
+        Assert.Contains("<IdentityTextField T=\"string\"", page, StringComparison.Ordinal);
         Assert.Contains("<SUILoadingButton", page, StringComparison.Ordinal);
         Assert.Contains("<SUIAlert", page, StringComparison.Ordinal);
         Assert.Contains("data-sui-align-row", page, StringComparison.Ordinal);
@@ -512,8 +512,8 @@ public sealed partial class ManagementUiArchitectureTests
             "app.css"));
 
         Assert.Contains("data-sui-align-row", page, StringComparison.Ordinal);
-        Assert.Contains("<SUITextField T=\"string\"", page, StringComparison.Ordinal);
-        Assert.Contains("<SUISelect T=\"int\"", page, StringComparison.Ordinal);
+        Assert.Contains("<IdentityTextField T=\"string\"", page, StringComparison.Ordinal);
+        Assert.Contains("<IdentitySelect T=\"int\"", page, StringComparison.Ordinal);
         Assert.Contains("<SUISelectItem", page, StringComparison.Ordinal);
         Assert.Contains("<SUILoadingButton", page, StringComparison.Ordinal);
         Assert.Contains("<SUIButton", page, StringComparison.Ordinal);
@@ -634,10 +634,10 @@ public sealed partial class ManagementUiArchitectureTests
             "Pages",
             "Metrics.razor"));
 
-        Assert.Contains("<SUISelect T=\"int\"", page, StringComparison.Ordinal);
-        Assert.Contains("<SUISelect T=\"string\"", page, StringComparison.Ordinal);
-        Assert.Contains("<SUITextField T=\"string\"", page, StringComparison.Ordinal);
-        Assert.Contains("<SUINumericField T=\"int\"", page, StringComparison.Ordinal);
+        Assert.Contains("<IdentitySelect T=\"int\"", page, StringComparison.Ordinal);
+        Assert.Contains("<IdentitySelect T=\"string\"", page, StringComparison.Ordinal);
+        Assert.Contains("<IdentityTextField T=\"string\"", page, StringComparison.Ordinal);
+        Assert.Contains("<IdentityNumericField T=\"int\"", page, StringComparison.Ordinal);
         Assert.Contains("<SUISwitch", page, StringComparison.Ordinal);
         Assert.Contains("<SUIButton", page, StringComparison.Ordinal);
         Assert.Contains("<SUIAlert", page, StringComparison.Ordinal);
@@ -668,7 +668,7 @@ public sealed partial class ManagementUiArchitectureTests
             "app.css"));
 
         Assert.Contains("data-sui-align-row", page, StringComparison.Ordinal);
-        Assert.Contains("<SUISelect T=\"int\"", page, StringComparison.Ordinal);
+        Assert.Contains("<IdentitySelect T=\"int\"", page, StringComparison.Ordinal);
         Assert.Contains("<SUISelectItem", page, StringComparison.Ordinal);
         Assert.Equal(
             3,
@@ -697,7 +697,7 @@ public sealed partial class ManagementUiArchitectureTests
 
         Assert.Contains("data-toolbar--clients", page, StringComparison.Ordinal);
         Assert.Contains("clients-filters", page, StringComparison.Ordinal);
-        Assert.Equal(4, page.Split("<SUISelect T=\"string\" id=\"client-", StringSplitOptions.None).Length - 1);
+        Assert.Equal(4, page.Split("<IdentitySelect T=\"string\" id=\"client-", StringSplitOptions.None).Length - 1);
         Assert.DoesNotContain("<select id=\"client-", page, StringComparison.Ordinal);
         Assert.Contains("grid-template-columns: minmax(220px, 1.45fr)", stylesheet, StringComparison.Ordinal);
         Assert.Contains(".clients-filter--search", stylesheet, StringComparison.Ordinal);
@@ -719,7 +719,7 @@ public sealed partial class ManagementUiArchitectureTests
             "wwwroot",
             "users.css"));
 
-        Assert.Equal(6, page.Split("<SUISelect T=", StringSplitOptions.None).Length - 1);
+        Assert.Equal(6, page.Split("<IdentitySelect T=", StringSplitOptions.None).Length - 1);
         Assert.DoesNotContain("<select", page, StringComparison.Ordinal);
         Assert.Contains("users-review-filter", page, StringComparison.Ordinal);
         Assert.Contains("users-state-filter", page, StringComparison.Ordinal);

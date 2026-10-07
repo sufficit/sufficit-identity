@@ -47,10 +47,10 @@
                 </label>
                 <div class="select-field">
                     <span>@L["Authorizations.Filter.StateLabel"]</span>
-                    <SUISelect T="string" id="authorization-state-filter" name="state" aria-label="@L["Authorizations.Filter.StateLabel"].Value" @bind-Value="stateFilter">
+                    <IdentitySelect T="string" id="authorization-state-filter" name="state" aria-label="@L["Authorizations.Filter.StateLabel"].Value" @bind-Value="stateFilter">
                         <SUISelectItem Value="@("active")">@L["Authorizations.Filter.Active"]</SUISelectItem>
                         <SUISelectItem Value="@("all")">@L["Authorizations.Filter.All"]</SUISelectItem>
-                    </SUISelect>
+                    </IdentitySelect>
                 </div>
                 <button class="button button--secondary" type="submit" disabled="@loading">@L["Authorizations.Apply"]</button>
             </form>

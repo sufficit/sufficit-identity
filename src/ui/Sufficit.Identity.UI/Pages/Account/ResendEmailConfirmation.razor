@@ -24,7 +24,7 @@
         <EditForm Model="_model" Method="post" OnValidSubmit="ResendAsync" FormName="resend-confirm">
             <DataAnnotationsValidator />
 
-            <SUITextField T="string" Id="email"
+            <IdentityTextField T="string" Id="email"
                           Label="@L["ResendEmail.Email"]"
                           @bind-Value="_model.Email"
                           InputType="email"

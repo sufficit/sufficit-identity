@@ -92,13 +92,13 @@
         @* Keep EditContext notifications and validation explicit while consuming SUI 1.28.0. *@
         <SUIFormGrid Columns="2" LabelLines="1">
             <div>
-                <SUITextField T="string" Id="personal-secret-name" Label="@L["Vault.UserVault.NameLabel"].Value" Value="@form.Name"
+                <IdentityTextField T="string" Id="personal-secret-name" Label="@L["Vault.UserVault.NameLabel"].Value" Value="@form.Name"
                               ValueChanged="value => { form.Name = value ?? string.Empty; editContext.NotifyFieldChanged(new(form, nameof(form.Name))); }"
                               autocomplete="off" Placeholder="@L["Vault.UserVault.NamePlaceholder"].Value" MaxLength="128" HelperText="@L["Vault.UserVault.NameHelperText"].Value" />
                 <ValidationMessage For="() => form.Name" />
             </div>
             <div>
-                <SUITextField T="string" Id="personal-secret-value" Label="@L["Vault.UserVault.ValueLabel"].Value" Value="@form.Value"
+                <IdentityTextField T="string" Id="personal-secret-value" Label="@L["Vault.UserVault.ValueLabel"].Value" Value="@form.Value"
                               ValueChanged="value => { form.Value = value ?? string.Empty; editContext.NotifyFieldChanged(new(form, nameof(form.Value))); }"
                               InputType="password" autocomplete="new-password" MaxLength="16384" Placeholder="@L["Vault.UserVault.ValuePlaceholder"].Value" />
                 <ValidationMessage For="() => form.Value" />

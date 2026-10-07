@@ -41,4 +41,7 @@
       <PackageReference Include="Sufficit.Blazor.UI" />
     </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="../Sufficit.Identity.UI.Components/Sufficit.Identity.UI.Components.csproj" />
+  </ItemGroup>
 </Project>

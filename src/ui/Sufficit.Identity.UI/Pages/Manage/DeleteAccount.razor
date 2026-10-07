@@ -31,13 +31,13 @@
         <EditForm Model="_model" Method="post" OnValidSubmit="DeleteAsync" FormName="delete-account">
             <DataAnnotationsValidator />
 
-            <SUITextField T="string" Id="email"
+            <IdentityTextField T="string" Id="email"
                           Label="@L["DeleteAccount.Email"]"
                           @bind-Value="_model.Email"
                           InputType="email"
                           autocomplete="email" autofocus />
 
-            <SUITextField T="string" Id="password"
+            <IdentityTextField T="string" Id="password"
                           Label="@L["DeleteAccount.CurrentPassword"]"
                           @bind-Value="_model.Password"
                           InputType="password"

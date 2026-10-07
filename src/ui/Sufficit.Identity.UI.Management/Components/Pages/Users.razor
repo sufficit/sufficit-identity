@@ -143,37 +143,37 @@ else
                 <span class="users-filter-count">@ActiveFilterLabel</span>
             </summary>
             <form class="users-filter-form" data-sui-align-row @onsubmit="ApplyFilters" @onsubmit:preventDefault>
-                <SUITextField T="string" Class="users-field users-field--search"
+                <IdentityTextField T="string" Class="users-field users-field--search"
                               Id="users-search" name="search" autocomplete="off"
                               Label="@L["Users.Filters.NameOrEmail"]" InputType="search" Placeholder="@L["Users.Filters.SearchPlaceholder"]"
                               Value="@search" ValueChanged="SearchSelected" Immediate />
-                <SUISelect T="ManagementUserReviewFilter" Class="users-field users-field--review"
+                <IdentitySelect T="ManagementUserReviewFilter" Class="users-field users-field--review"
                            Label="@L["Users.Filters.Investigation"]" id="users-review-filter" name="review"
                            Value="@review" ValueChanged="ReviewSelected">
                     <SUISelectItem Value="@ManagementUserReviewFilter.All">@L["Users.Filters.Review.All"]</SUISelectItem>
                     <SUISelectItem Value="@ManagementUserReviewFilter.StaleUnverifiedWithoutExternal">@L["Users.Filters.Review.Stale"]</SUISelectItem>
-                </SUISelect>
-                <SUISelect T="ManagementUserStateFilter" Class="users-field"
+                </IdentitySelect>
+                <IdentitySelect T="ManagementUserStateFilter" Class="users-field"
                            Label="@L["Users.Filters.State"]" id="users-state-filter" name="state"
                            Value="@state" ValueChanged="StateSelected">
                     <SUISelectItem Value="@ManagementUserStateFilter.All">@L["Users.Filters.All"]</SUISelectItem>
                     <SUISelectItem Value="@ManagementUserStateFilter.Active">@L["Users.Filters.State.Active"]</SUISelectItem>
                     <SUISelectItem Value="@ManagementUserStateFilter.Locked">@L["Users.Filters.State.Locked"]</SUISelectItem>
-                </SUISelect>
-                <SUISelect T="ManagementUserBooleanFilter" Class="users-field"
+                </IdentitySelect>
+                <IdentitySelect T="ManagementUserBooleanFilter" Class="users-field"
                            Label="@L["Users.Common.Email"]" id="users-email-filter" name="email"
                            Value="@emailConfirmed" ValueChanged="EmailSelected">
                     <SUISelectItem Value="@ManagementUserBooleanFilter.All">@L["Users.Filters.All"]</SUISelectItem>
                     <SUISelectItem Value="@ManagementUserBooleanFilter.Enabled">@L["Users.Filters.Email.Confirmed"]</SUISelectItem>
                     <SUISelectItem Value="@ManagementUserBooleanFilter.Disabled">@L["Users.Filters.Email.NotConfirmed"]</SUISelectItem>
-                </SUISelect>
-                <SUISelect T="ManagementUserBooleanFilter" Class="users-field"
+                </IdentitySelect>
+                <IdentitySelect T="ManagementUserBooleanFilter" Class="users-field"
                            Label="@L["Users.Filters.Mfa"]" id="users-mfa-filter" name="mfa"
                            Value="@mfa" ValueChanged="MfaSelected">
                     <SUISelectItem Value="@ManagementUserBooleanFilter.All">@L["Users.Filters.All"]</SUISelectItem>
                     <SUISelectItem Value="@ManagementUserBooleanFilter.Enabled">@L["Users.Filters.Active"]</SUISelectItem>
                     <SUISelectItem Value="@ManagementUserBooleanFilter.Disabled">@L["Users.Filters.Inactive"]</SUISelectItem>
-                </SUISelect>
+                </IdentitySelect>
                 <SUIDateField Class="users-field"
                               Id="users-registered-from" Name="registeredFrom"
                               Label="@L["Users.Filters.RegisteredFrom"]" Culture="@PtBr"
@@ -182,7 +182,7 @@ else
                               Id="users-registered-to" Name="registeredTo"
                               Label="@L["Users.Filters.RegisteredTo"]" Culture="@PtBr"
                               Value="@registeredTo" ValueChanged="RegisteredToSelected" />
-                <SUISelect T="ManagementUserSort" Class="users-field"
+                <IdentitySelect T="ManagementUserSort" Class="users-field"
                            Label="@L["Users.Filters.SortBy"]" id="users-sort-filter" name="sort"
                            Value="@sort" ValueChanged="SortSelected">
                     <SUISelectItem Value="@ManagementUserSort.CreatedNewest">@L["Users.Sort.CreatedNewest"]</SUISelectItem>
@@ -191,15 +191,15 @@ else
                     <SUISelectItem Value="@ManagementUserSort.NameDescending">@L["Users.Sort.NameDesc"]</SUISelectItem>
                     <SUISelectItem Value="@ManagementUserSort.EmailAscending">@L["Users.Sort.EmailAsc"]</SUISelectItem>
                     <SUISelectItem Value="@ManagementUserSort.EmailDescending">@L["Users.Sort.EmailDesc"]</SUISelectItem>
-                </SUISelect>
-                <SUISelect T="int" Class="users-field"
+                </IdentitySelect>
+                <IdentitySelect T="int" Class="users-field"
                            Label="@L["Users.Filters.ChartHistory"]" id="users-analytics-filter" name="range"
                            Value="@analyticsDays" ValueChanged="AnalyticsDaysSelected">
                     <SUISelectItem Value="@(14)">@L["Users.Range.Days", 14]</SUISelectItem>
                     <SUISelectItem Value="@(30)">@L["Users.Range.Days", 30]</SUISelectItem>
                     <SUISelectItem Value="@(60)">@L["Users.Range.Days", 60]</SUISelectItem>
                     <SUISelectItem Value="@(90)">@L["Users.Range.Days", 90]</SUISelectItem>
-                </SUISelect>
+                </IdentitySelect>
                 <div class="users-filter-actions">
                     <SUIButton ColorValue="SUIColor.Primary" ButtonTypeValue="SUIButtonType.Submit" Disabled="@usersLoading">@(usersLoading ? L["Users.Filters.Applying"] : L["Users.Filters.Apply"])</SUIButton>
                     <SUIButton ColorValue="SUIColor.Default" VariantValue="SUIVariant.Outlined" Disabled="@usersLoading" OnClick="ClearFilters">@L["Users.Filters.Clear"]</SUIButton>

@@ -58,7 +58,7 @@ public sealed partial class ManagementUiArchitectureTests
         var page = File.ReadAllText(Path.Combine(
             publicUi, "Pages", "Manage", "Passkeys.razor"));
 
-        Assert.Contains("<SUITextField T=\"string\" @ref=\"_renameField\"", page, StringComparison.Ordinal);
+        Assert.Contains("<IdentityTextField T=\"string\" @ref=\"_renameField\"", page, StringComparison.Ordinal);
         Assert.Contains("_renameField.FocusAsync()", page, StringComparison.Ordinal);
         Assert.DoesNotContain("class=\"form-control\"", page, StringComparison.Ordinal);
     }

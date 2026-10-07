@@ -53,14 +53,14 @@
             else
             {
                 <SUIFormGrid Columns="2" Spacing="4" LabelLines="2">
-                    <SUITextField T="string" id="audience-name" Label="@L["Audiences.FieldIdentifier"].Value" HelperText="@L["Audiences.FieldIdentifierHelp"].Value" MaxLength="512" Disabled="@(busy || loading)" @bind-Value="audienceName" />
-                    <SUISelect T="string" id="audience-scope" Label="@L["Audiences.FieldScope"].Value" Disabled="@(busy || loading)" @bind-Value="selectedScopeId">
+                    <IdentityTextField T="string" id="audience-name" Label="@L["Audiences.FieldIdentifier"].Value" HelperText="@L["Audiences.FieldIdentifierHelp"].Value" MaxLength="512" Disabled="@(busy || loading)" @bind-Value="audienceName" />
+                    <IdentitySelect T="string" id="audience-scope" Label="@L["Audiences.FieldScope"].Value" Disabled="@(busy || loading)" @bind-Value="selectedScopeId">
                         <SUISelectItem Value="@(string.Empty)">@L["Audiences.SelectScope"]</SUISelectItem>
                         @foreach (var scope in EditableScopes)
                         {
                             <SUISelectItem Value="@scope.Id">@scope.Name</SUISelectItem>
                         }
-                    </SUISelect>
+                    </IdentitySelect>
                 </SUIFormGrid>
                 <p class="audience-binding-impact">@L["Audiences.BindingImpact"]</p>
             }

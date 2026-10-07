@@ -58,10 +58,10 @@
                 </label>
                 <div class="select-field">
                     <span>@L["Sessions.Filter.StateLabel"]</span>
-                    <SUISelect T="string" @bind-Value="stateFilter">
+                    <IdentitySelect T="string" @bind-Value="stateFilter">
                         <SUISelectItem Value="@("active")">@L["Sessions.Filter.Active"]</SUISelectItem>
                         <SUISelectItem Value="@("all")">@L["Sessions.Filter.All"]</SUISelectItem>
-                    </SUISelect>
+                    </IdentitySelect>
                 </div>
                 <button class="button button--secondary" type="submit" disabled="@loading">@L["Sessions.Apply"]</button>
             </form>

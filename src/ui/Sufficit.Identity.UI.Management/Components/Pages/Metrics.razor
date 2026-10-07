@@ -26,7 +26,7 @@
         <p>@L["Metrics.Filter.Description"]</p>
     </div>
     <div class="metrics-filter__controls" data-sui-align-row>
-        <SUISelect T="int"
+        <IdentitySelect T="int"
                    id="metrics-days"
                    name="days"
                    aria-label="@L["Metrics.Filter.PeriodAria"].Value"
@@ -37,8 +37,8 @@
             <SUISelectItem Value="@(30)">@L["Metrics.Filter.Last30Days"]</SUISelectItem>
             <SUISelectItem Value="@(90)">@L["Metrics.Filter.Last90Days"]</SUISelectItem>
             <SUISelectItem Value="@(365)">@L["Metrics.Filter.Last12Months"]</SUISelectItem>
-        </SUISelect>
-        <SUITextField T="string"
+        </IdentitySelect>
+        <IdentityTextField T="string"
                       id="metrics-client"
                       name="client"
                       aria-label="@L["Metrics.Filter.ClientIdAria"].Value"
@@ -166,35 +166,35 @@ else
                 </div>
             </div>
             <div class="form-grid form-grid--two metrics-settings__fields" data-sui-align-row>
-                <SUISelect T="string"
+                <IdentitySelect T="string"
                            id="metrics-provider"
                            aria-label="@L["Metrics.Field.Provider.Label"].Value"
                            Label="@L["Metrics.Field.Provider.Label"].Value"
                            @bind-Value="configuration.Provider">
                     <SUISelectItem Value="@("internal")">@L["Metrics.Provider.InternalOnly"]</SUISelectItem>
                     <SUISelectItem Value="@("victoria_metrics")">VictoriaMetrics</SUISelectItem>
-                </SUISelect>
-                <SUINumericField T="int"
+                </IdentitySelect>
+                <IdentityNumericField T="int"
                                  id="metrics-retention"
                                  aria-label="@L["Metrics.Field.RetentionDays.Label"].Value"
                                  Label="@L["Metrics.Field.RetentionDays.Label"].Value"
                                  Min="@(1)"
                                  Max="@(3650)"
                                  @bind-Value="configuration.RetentionDays" />
-                <SUITextField T="string"
+                <IdentityTextField T="string"
                               id="metrics-endpoint"
                               aria-label="@L["Metrics.Field.Endpoint.Label"].Value"
                               Label="@L["Metrics.Field.Endpoint.Label"].Value"
                               InputType="url"
                               Placeholder="https://metrics.example.com"
                               @bind-Value="configuration.Endpoint" />
-                <SUITextField T="string"
+                <IdentityTextField T="string"
                               id="metrics-database"
                               aria-label="@L["Metrics.Field.Database.Label"].Value"
                               Label="@L["Metrics.Field.Database.Label"].Value"
                               Placeholder="identity"
                               @bind-Value="configuration.Database" />
-                <SUISelect T="string"
+                <IdentitySelect T="string"
                            id="metrics-auth"
                            aria-label="@L["Metrics.Field.AuthScheme.Label"].Value"
                            Label="@L["Metrics.Field.AuthScheme.Label"].Value"
@@ -203,14 +203,14 @@ else
                     <SUISelectItem Value="@string.Empty">@L["Metrics.AuthScheme.None"]</SUISelectItem>
                     <SUISelectItem Value="@("Bearer")">Bearer</SUISelectItem>
                     <SUISelectItem Value="@("Basic")">Basic</SUISelectItem>
-                </SUISelect>
-                <SUITextField T="string"
+                </IdentitySelect>
+                <IdentityTextField T="string"
                               id="metrics-username"
                               aria-label="@L["Metrics.Field.Username.Aria"].Value"
                               Label="@L["Metrics.Field.Username.Label"].Value"
                               @bind-Value="configuration.Username"
                               autocomplete="username" />
-                <SUITextField T="string"
+                <IdentityTextField T="string"
                               id="metrics-secret"
                               aria-label="@L["Metrics.Field.Secret.Aria"].Value"
                               Label="@L["Metrics.Field.Secret.Label"].Value"
@@ -218,14 +218,14 @@ else
                               HelperText="@SecretHelperText"
                               @bind-Value="configuration.Secret"
                               autocomplete="new-password" />
-                <SUINumericField T="int"
+                <IdentityNumericField T="int"
                                  id="metrics-batch"
                                  aria-label="@L["Metrics.Field.BatchSize.Label"].Value"
                                  Label="@L["Metrics.Field.BatchSize.Label"].Value"
                                  Min="@(1)"
                                  Max="@(2000)"
                                  @bind-Value="configuration.BatchSize" />
-                <SUINumericField T="int"
+                <IdentityNumericField T="int"
                                  id="metrics-timeout"
                                  aria-label="@L["Metrics.Field.Timeout.Label"].Value"
                                  Label="@L["Metrics.Field.Timeout.Label"].Value"
