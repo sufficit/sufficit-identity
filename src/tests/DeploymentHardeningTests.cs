@@ -356,6 +356,7 @@ public sealed class DeploymentHardeningTests
     [InlineData(false)]
     public async Task Activation_preserves_the_actual_node_override_and_accepts_generic_nodes(bool nodeOverride)
     {
+        if (OperatingSystem.IsWindows()) return; // Deployment helpers run on Unix hosts.
         var root = Directory.CreateTempSubdirectory("identity-activation-");
         try
         {
