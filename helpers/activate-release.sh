@@ -65,7 +65,6 @@ esac
 for required in \
     Sufficit.Identity.Server.dll \
     appsettings.Production.json \
-    appsettings.app-node-1.json \
     helpers/bootstrap-release.sh \
     helpers/prestart.sh
 do
@@ -74,6 +73,15 @@ do
         exit 1
     fi
 done
+
+# Machine overrides are optional at runtime. When the current node uses one,
+# require the same file in the candidate rather than a template node name.
+machine_name=$(hostname | tr '[:upper:]' '[:lower:]')
+machine_configuration="appsettings.${machine_name}.json"
+if [[ -f "${previous_release}/${machine_configuration}" && ! -f "${candidate_release}/${machine_configuration}" ]]; then
+    echo "[deploy] Required node configuration is missing: ${machine_configuration}" >&2
+    exit 1
+fi
 
 # Prepare certificate state and immutable ownership before the symlink switch.
 # This calls the root-owned installed helper, never code from the candidate.

@@ -351,6 +351,55 @@ public sealed class DeploymentHardeningTests
         }
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Activation_preserves_the_actual_node_override_and_accepts_generic_nodes(bool nodeOverride)
+    {
+        var root = Directory.CreateTempSubdirectory("identity-activation-");
+        try
+        {
+            var releases = Directory.CreateDirectory(Path.Combine(root.FullName, "releases"));
+            var active = Directory.CreateDirectory(Path.Combine(releases.FullName, "previous"));
+            var candidate = Directory.CreateDirectory(Path.Combine(releases.FullName, "candidate"));
+            var bin = Directory.CreateDirectory(Path.Combine(root.FullName, "bin"));
+            var link = Path.Combine(root.FullName, "live");
+            Directory.CreateSymbolicLink(link, active.FullName);
+            foreach (var command in new[] { "curl", "systemctl" })
+            {
+                var file = Path.Combine(bin.FullName, command);
+                File.WriteAllText(file, "#!/bin/sh\nexit 0\n");
+                File.SetUnixFileMode(file, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            }
+            var hostname = Path.Combine(bin.FullName, "hostname");
+            File.WriteAllText(hostname, "#!/bin/sh\nprintf 'CUSTOM-NODE\\n'\n");
+            File.SetUnixFileMode(hostname, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            Directory.CreateDirectory(Path.Combine(candidate.FullName, "helpers"));
+            foreach (var name in new[] { "Sufficit.Identity.Server.dll", "appsettings.Production.json", "helpers/bootstrap-release.sh", "helpers/prestart.sh" })
+                File.WriteAllText(Path.Combine(candidate.FullName, name), "fixture");
+            if (nodeOverride) File.WriteAllText(Path.Combine(active.FullName, "appsettings.custom-node.json"), "{}");
+            var script = File.ReadAllText(Path.Combine(ResolveRepository(), "helpers/activate-release.sh"))
+                .Replace("readonly app_link=\"/opt/${app_name}\"", $"readonly app_link=\"{link}\"")
+                .Replace("readonly releases_root=\"/opt/${app_name}.releases\"", $"readonly releases_root=\"{releases.FullName}\"")
+                .Replace("readonly lock_file=\"/run/lock/${app_name}-deploy.lock\"", $"readonly lock_file=\"{root.FullName}/lock\"")
+                .Replace("/usr/libexec/${app_name}/bootstrap-release.sh \"${candidate_release}\"", "true");
+            var scriptPath = Path.Combine(root.FullName, "activate.sh");
+            File.WriteAllText(scriptPath, script);
+            var env = new Dictionary<string, string?> { ["PATH"] = bin.FullName + ":" + Environment.GetEnvironmentVariable("PATH") };
+            if (nodeOverride)
+            {
+                var refused = await RunScriptAsync(scriptPath, [candidate.FullName], env);
+                Assert.NotEqual(0, refused.ExitCode);
+                Assert.Equal(active.FullName, Directory.ResolveLinkTarget(link, true)!.FullName);
+                File.WriteAllText(Path.Combine(candidate.FullName, "appsettings.custom-node.json"), "{}");
+            }
+            var result = await RunScriptAsync(scriptPath, [candidate.FullName], env);
+            Assert.True(result.ExitCode == 0, result.Error);
+            Assert.Equal(candidate.FullName, Directory.ResolveLinkTarget(link, true)!.FullName);
+        }
+        finally { root.Delete(recursive: true); }
+    }
+
     private static string ResolveRepository()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
