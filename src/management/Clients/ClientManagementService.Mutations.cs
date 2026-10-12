@@ -45,7 +45,9 @@ internal sealed partial class ClientManagementService
             ClientCredentialPolicy.ValidateClientId(clientId);
             var redirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.RedirectUris,
-                "redirectUris");
+                "redirectUris",
+                allowPrivateUseScheme: string.IsNullOrEmpty(command.ClientSecret)
+                    && string.IsNullOrWhiteSpace(command.JwksJson));
             var postLogoutRedirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.PostLogoutRedirectUris,
                 "postLogoutRedirectUris");
@@ -384,7 +386,11 @@ internal sealed partial class ClientManagementService
 
             var redirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.RedirectUris,
-                "redirectUris");
+                "redirectUris",
+                allowPrivateUseScheme: string.Equals(
+                    descriptor.ClientType ?? OpenIddictConstants.ClientTypes.Public,
+                    OpenIddictConstants.ClientTypes.Public,
+                    StringComparison.Ordinal));
             var postLogoutRedirectUris = ClientUriPolicy.ValidateRedirectUris(
                 command.PostLogoutRedirectUris,
                 "postLogoutRedirectUris");

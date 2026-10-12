@@ -250,6 +250,54 @@ public sealed partial class ClientsControllerTests
     }
 
     [Fact]
+    public async Task Create_accepts_private_use_scheme_for_public_native_client()
+    {
+        // RFC 8252 section 7.1: desktop clients such as the VS Code extension
+        // receive the code on vscode://publisher.extension/callback.
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+
+        var request = ConfidentialClient($"pub-native-{Guid.NewGuid():N}",
+            "vscode://publisher.extension/callback");
+        request.ClientSecret = null;
+
+        using var response = await client.PostAsJsonAsync("/api/clients", request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_rejects_private_use_scheme_for_confidential_client()
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+
+        var request = ConfidentialClient($"cc-native-{Guid.NewGuid():N}",
+            "vscode://publisher.extension/callback");
+
+        using var response = await client.PostAsJsonAsync("/api/clients", request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("javascript://x/callback")]
+    [InlineData("file:///tmp/callback")]
+    [InlineData("data://x/callback")]
+    public async Task Create_rejects_dangerous_scheme_for_public_client(string redirect)
+    {
+        using var factory = new ManagementTestFactory();
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        var client = factory.CreateClient();
+
+        var request = ConfidentialClient($"pub-bad-{Guid.NewGuid():N}", redirect);
+        request.ClientSecret = null;
+
+        using var response = await client.PostAsJsonAsync("/api/clients", request);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Create_accepts_https_redirect_uri()
     {
         using var factory = new ManagementTestFactory();
