@@ -148,6 +148,69 @@ public sealed class CspHeaderTests
         Assert.Contains(expected, csp, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Native clients (VS Code extensions) return through a private-use scheme.
+    /// Without it in form-action, approving consent is silently blocked by the
+    /// browser ("violates form-action 'self'").
+    /// </summary>
+    [Fact]
+    public async Task Consent_page_allows_form_action_to_a_registered_private_use_scheme()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+        var query = new Dictionary<string, string?>
+        {
+            ["client_id"] = TestDataSeeder.AuthorizationCodeClientId,
+            ["redirect_uri"] = TestDataSeeder.AuthorizationCodeNativeRedirectUri,
+        };
+
+        using var response = await client.GetAsync(
+            QueryHelpers.AddQueryString("/consent", query));
+
+        var csp = string.Join(' ', response.Headers.GetValues(
+            "Content-Security-Policy-Report-Only"));
+        var formAction = csp.Split(';', StringSplitOptions.TrimEntries)
+            .Single(value => value.StartsWith("form-action ", StringComparison.Ordinal));
+
+        Assert.Equal("form-action 'self' test-native-app:", formAction);
+    }
+
+    [Fact]
+    public async Task Consent_page_ignores_an_unregistered_private_use_scheme()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+        });
+        var query = new Dictionary<string, string?>
+        {
+            ["client_id"] = TestDataSeeder.AuthorizationCodeClientId,
+            ["redirect_uri"] = "evil-app://attacker/callback",
+        };
+
+        using var response = await client.GetAsync(
+            QueryHelpers.AddQueryString("/consent", query));
+
+        var csp = string.Join(' ', response.Headers.GetValues(
+            "Content-Security-Policy-Report-Only"));
+
+        Assert.DoesNotContain("evil-app", csp, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("vscode", true)]
+    [InlineData("com.example.app", true)]
+    [InlineData("javascript", false)]
+    [InlineData("data", false)]
+    [InlineData("file", false)]
+    [InlineData("1bad", false)]
+    public void Private_use_scheme_filter_rejects_executable_schemes(string scheme, bool expected)
+    {
+        Assert.Equal(expected, SecurityHeadersMiddlewareExtensions.IsPrivateUseRedirectScheme(scheme));
+    }
+
     [Fact]
     public async Task Consent_page_ignores_an_unregistered_redirect_uri()
     {

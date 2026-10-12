@@ -53,6 +53,12 @@ public static class TestDataSeeder
     // (headless-unreachable) /consent UI page for the happy-path tests.
     public const string AuthorizationCodeClientId = "test-authcode";
     public const string AuthorizationCodeRedirectUri = "https://client.tests.local/callback";
+
+    /// <summary>
+    /// Private-use scheme callback (RFC 8252 §7.1), like vscode://publisher.ext/callback.
+    /// </summary>
+    public const string AuthorizationCodeNativeRedirectUri =
+        "test-native-app://test.publisher/callback";
     public const string AuthorizationCodePostLogoutRedirectUri =
         "https://client.tests.local/signout-callback-oidc";
 
@@ -230,7 +236,11 @@ public static class TestDataSeeder
             ClientId = AuthorizationCodeClientId,
             ClientType = ClientTypes.Public,
             ConsentType = ConsentTypes.Implicit,
-            RedirectUris = { new Uri(AuthorizationCodeRedirectUri) },
+            RedirectUris =
+            {
+                new Uri(AuthorizationCodeRedirectUri),
+                new Uri(AuthorizationCodeNativeRedirectUri),
+            },
             PostLogoutRedirectUris = { new Uri(AuthorizationCodePostLogoutRedirectUri) },
             Permissions =
             {
