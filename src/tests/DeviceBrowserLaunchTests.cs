@@ -26,29 +26,22 @@ public sealed class DeviceBrowserLaunchTests
     }
 
     [Theory]
-    [InlineData("pt-BR", "Abrir autentica")]
-    [InlineData("en-US", "Open sign-in")]
-    public async Task Launcher_is_anonymous_localized_and_only_targets_same_origin_device_flow(string culture, string label)
+    [InlineData("ABCD-EFGH")]
+    [InlineData("2705-5719-6354")]
+    [InlineData("ABCD EFGH")]
+    public async Task Launcher_redirects_to_same_origin_device_flow_without_an_intermediate_page(string code)
     {
         await using var app = await StartAsync();
         using var client = app.GetTestClient();
-        client.DefaultRequestHeaders.AcceptLanguage.ParseAdd(culture);
-        using var response = await client.GetAsync("/device/launch?user_code=ABCD-EFGH&returnUrl=https://evil.invalid&device_code=SECRET");
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var response = await client.GetAsync("/device/launch?user_code=" + Uri.EscapeDataString(code)
+            + "&launch_mode=popup&returnUrl=https://evil.invalid&device_code=SECRET");
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
         Assert.True(response.Headers.CacheControl!.NoStore);
         Assert.Equal("no-referrer", Assert.Single(response.Headers.GetValues("Referrer-Policy")));
         Assert.Equal("same-origin-allow-popups", Assert.Single(response.Headers.GetValues("Cross-Origin-Opener-Policy")));
-        var html = await response.Content.ReadAsStringAsync();
-        Assert.Contains(label, WebUtility.HtmlDecode(html));
-        Assert.Contains("/connect/device?user_code=ABCD-EFGH&amp;launch_mode=popup", html);
-        Assert.DoesNotContain("evil.invalid", html);
-        Assert.DoesNotContain("SECRET", html);
-        Assert.Contains("device-launcher.js", html);
-        if (Environment.GetEnvironmentVariable("SUFFICIT_AUTH_PREVIEW_DIR") is { Length: > 0 } directory)
-        {
-            Directory.CreateDirectory(directory);
-            await File.WriteAllTextAsync(Path.Combine(directory, $"device-launcher-{culture}.html"), html);
-        }
+        Assert.Equal("/connect/device?user_code=" + Uri.EscapeDataString(code) + "&launch_mode=popup",
+            response.Headers.Location!.OriginalString);
+        Assert.Empty(await response.Content.ReadAsStringAsync());
     }
 
     [Theory]

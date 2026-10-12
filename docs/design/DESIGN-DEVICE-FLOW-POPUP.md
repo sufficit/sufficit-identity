@@ -66,31 +66,24 @@ o navegador pode não considerar a aba scriptável. Nesse caso o Identity não
 força o fechamento: exibe a instrução de fechamento manual para não esconder
 o resultado do usuário.
 
-## Symposium e abertura externa
+## Genius e abertura externa
 
-O Symposium 2026.910.1 abre `/device/launch?user_code=...&launch_mode=popup`
-quando o endpoint de verificação do Identity é `/connect/device`. O launcher é
-uma página SSR anônima da mesma origem do Identity, com `no-store`,
-`no-referrer` e COOP `same-origin-allow-popups`. Aceita somente o código curto
-(até 64 caracteres ASCII alfanuméricos, espaços e hífens); não aceita URL de
-retorno nem recebe device_code ou tokens.
+Clientes desktop já instalados podem abrir
+`/device/launch?user_code=...&launch_mode=popup`. Essa rota anônima redireciona
+com HTTP 302 diretamente para `/connect/device?user_code=...&launch_mode=popup`
+na mesma janela. Não renderiza uma página intermediária nem abre um popup filho.
+Login e consentimento explícito seguem nos endpoints existentes.
 
-Um clique em **Abrir autenticação** cria o popup de mesma origem. Esse clique
-é necessário nos navegadores que bloqueiam popups sem interação. O launcher
-permanece no documento inicial; a autenticação e seus redirecionamentos
-acontecem no popup. Ao receber `sufficit-auth-complete`, valida origem exata,
-janela emissora, flow e resultado approved/denied, fecha o popup e tenta fechar
-a própria aba. O polling do token no Symposium continua sendo a autoridade
-para concluir o login: uma mensagem do navegador nunca fornece credenciais.
+A rota mantém `no-store`, `no-referrer` e COOP `same-origin-allow-popups`.
+Aceita somente código público curto (até 64 caracteres ASCII alfanuméricos,
+espaços e hífens) e monta um destino relativo fixo. Parâmetros adicionais,
+incluindo URLs de retorno e device_code, não são repassados.
 
-No Chrome, a aba externa nova com uma entrada no histórico fecha junto com o
-popup. Uma aba reutilizada com histórico anterior pode recusar o fechamento;
-a página mantém o resultado e a orientação manual. Popup bloqueado oferece
-**Continuar nesta aba**. Sem JavaScript, o link também continua diretamente e
-exige fechamento manual. Fechar/reabrir o popup não cria novo device code.
+O polling OAuth do token no Genius continua sendo a autoridade para concluir
+o login. O marcador `launch_mode=popup` permite a conclusão existente, mas
+não torna uma aba aberta pelo sistema operacional scriptável: quando o
+navegador recusa fechamento automático, a página final orienta o fechamento
+manual. Essa limitação não exige outra janela de autenticação.
 
-O launcher foi testado com COOP real e o script de conclusão do Identity,
-incluindo aprovação, recusa, mensagem de janela incorreta, popup bloqueado e
-recusa de fechamento da aba. Autenticação externa federada que rompa a relação
-opener pode exigir fallback; o launcher não reduz a política global para
-`unsafe-none` nem contorna a segurança do navegador.
+Clientes nativos que usam `launch_mode=app` e callback registrado continuam
+usando seu fluxo direto, sem passar por essa rota de compatibilidade.
