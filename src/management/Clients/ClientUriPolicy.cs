@@ -1,3 +1,4 @@
+using Sufficit.Identity.Application.Security;
 using Sufficit.Identity.Application.Accounts;
 using Sufficit.Identity.Management.Authorization;
 
@@ -20,11 +21,15 @@ internal static class ClientUriPolicy
     /// Validates redirect (or post-logout redirect) URIs. Each must be
     /// absolute, carry no fragment, and use HTTPS — with plain HTTP allowed
     /// only for loopback, which is how native and CLI clients legitimately
-    /// receive a code on the user's own machine. Duplicates collapse.
+    /// receive a code on the user's own machine. Public native clients may
+    /// also register a private-use URI scheme (RFC 8252, section 7.1) such as
+    /// <c>vscode://</c>, matching what the provisioning manifest accepts.
+    /// Duplicates collapse.
     /// </summary>
     internal static IReadOnlyList<Uri> ValidateRedirectUris(
         IReadOnlyList<string>? values,
-        string field)
+        string field,
+        bool allowPrivateUseScheme = false)
     {
         var result = new List<Uri>();
 
@@ -53,11 +58,24 @@ internal static class ClientUriPolicy
                     field);
             }
 
-            var isLoopback = redirect.IsLoopback
-                || string.Equals(
-                    redirect.Host,
-                    "localhost",
-                    StringComparison.OrdinalIgnoreCase);
+            // file:///x reports IsLoopback=true (empty host), so the loopback
+            // exemption must be tied to the http scheme explicitly.
+            var isLoopback = string.Equals(
+                    redirect.Scheme,
+                    Uri.UriSchemeHttp,
+                    StringComparison.OrdinalIgnoreCase)
+                && (redirect.IsLoopback
+                    || string.Equals(
+                        redirect.Host,
+                        "localhost",
+                        StringComparison.OrdinalIgnoreCase));
+            if (allowPrivateUseScheme
+                && PrivateUseRedirectScheme.IsAllowed(redirect))
+            {
+                result.Add(redirect);
+                continue;
+            }
+
             if (!string.Equals(
                     redirect.Scheme,
                     Uri.UriSchemeHttps,

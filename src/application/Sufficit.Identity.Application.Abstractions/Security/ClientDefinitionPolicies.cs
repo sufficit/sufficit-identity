@@ -390,11 +390,22 @@ public sealed class ClientDefinitionValidator(
 
         foreach (var redirect in request.RedirectUris)
         {
-            var isLoopback = redirect.IsLoopback
-                || string.Equals(
-                    redirect.Host,
-                    "localhost",
-                    StringComparison.OrdinalIgnoreCase);
+            if (isPublic && PrivateUseRedirectScheme.IsAllowed(redirect))
+            {
+                continue;
+            }
+
+            // file:///x reports IsLoopback=true (empty host), so the loopback
+            // exemption must be tied to the http scheme explicitly.
+            var isLoopback = string.Equals(
+                    redirect.Scheme,
+                    Uri.UriSchemeHttp,
+                    StringComparison.OrdinalIgnoreCase)
+                && (redirect.IsLoopback
+                    || string.Equals(
+                        redirect.Host,
+                        "localhost",
+                        StringComparison.OrdinalIgnoreCase));
             if (!redirect.IsAbsoluteUri
                 || redirect.Fragment.Length > 0
                 || (!string.Equals(
@@ -406,7 +417,7 @@ public sealed class ClientDefinitionValidator(
                 issues.Add(new(
                     "redirect_uri_invalid",
                     "redirectUris",
-                    "Redirect URIs must be absolute HTTPS URIs (HTTP is allowed only for loopback) without fragments."));
+                    "Redirect URIs must be absolute HTTPS URIs (HTTP is allowed only for loopback; public native clients may use a private-use scheme) without fragments."));
             }
         }
 
