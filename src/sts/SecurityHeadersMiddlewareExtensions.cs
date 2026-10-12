@@ -433,9 +433,14 @@ public static class SecurityHeadersMiddlewareExtensions
         if (string.IsNullOrWhiteSpace(clientId)
             || string.IsNullOrWhiteSpace(requested)
             || !Uri.TryCreate(requested, UriKind.Absolute, out var uri)
-            || (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
             || !string.IsNullOrEmpty(uri.UserInfo))
+        {
+            return policy;
+        }
+
+        var isWeb = string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
+        if (!isWeb && !IsPrivateUseRedirectScheme(uri.Scheme))
         {
             return policy;
         }
@@ -463,10 +468,47 @@ public static class SecurityHeadersMiddlewareExtensions
             return policy;
         }
 
-        return AddSources(
-            policy,
-            "form-action",
-            uri.GetLeftPart(UriPartial.Path));
+        // Native clients (RFC 8252 §7.1) return through a private-use scheme
+        // such as vscode://. Chromium does not reliably parse an authority in
+        // non-special URLs, so a host-source would never match; a scheme-source
+        // ("vscode:") does. It is emitted only after the exact URI was matched
+        // against this client's registration, so it cannot be widened by a
+        // crafted link.
+        var source = isWeb
+            ? uri.GetLeftPart(UriPartial.Path)
+            : uri.Scheme.ToLowerInvariant() + ":";
+        return AddSources(policy, "form-action", source);
+    }
+
+    /// <summary>
+    ///     Schemes that must never be admitted to <c>form-action</c> even when
+    ///     registered: they execute or embed content instead of handing the
+    ///     response to a native application.
+    /// </summary>
+    private static readonly HashSet<string> ForbiddenFormActionSchemes =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "javascript", "data", "blob", "filesystem", "file", "about", "ws", "wss",
+        };
+
+    internal static bool IsPrivateUseRedirectScheme(string scheme)
+    {
+        if (string.IsNullOrEmpty(scheme)
+            || ForbiddenFormActionSchemes.Contains(scheme)
+            || !char.IsAsciiLetter(scheme[0]))
+        {
+            return false;
+        }
+
+        foreach (var c in scheme)
+        {
+            if (!char.IsAsciiLetterOrDigit(c) && c is not ('+' or '-' or '.'))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static string AddSources(
