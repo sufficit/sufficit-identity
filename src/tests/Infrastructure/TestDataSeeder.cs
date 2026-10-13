@@ -184,6 +184,7 @@ public static class TestDataSeeder
                 Permissions.Prefixes.Scope + Scopes.Roles,
                 Permissions.Prefixes.Scope + "directives",
                 Permissions.Prefixes.Scope + "identity.mcp",
+                Permissions.Prefixes.Scope + "identity.vault",
             },
         };
         passwordApplication.Properties[NativeReturnUriPolicy.PropertyKey] =

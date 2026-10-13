@@ -15,27 +15,42 @@ namespace Sufficit.Identity.Management.Controllers;
 /// <summary>
 /// Subject-bound HTTP adapter for the personal Identity Vault. Unlike the
 /// management Vault API, callers cannot choose a context: every operation is
-/// forced into <c>user-&lt;sub&gt;</c> and requires the dedicated Identity MCP
-/// scope. It exists so first-party device clients can implement a secret store
-/// without tunnelling CRUD through MCP tool calls.
+/// forced into <c>user-&lt;sub&gt;</c>. It exists so first-party device clients
+/// can implement a secret store without tunnelling CRUD through MCP tool calls.
 /// </summary>
+/// <remarks>
+/// Two scopes open it. The Identity MCP scope gives the whole personal Vault, as
+/// before. The narrow <see cref="NarrowScope"/> is what a delegated agent
+/// credential carries (a cloud executor acting for its owner): it never gets the
+/// Identity MCP, and with this scope alone it reads and writes only
+/// <c>genius/…</c> (Genius device secrets, such as an agent's channel tokens) and
+/// reads <c>ai/…</c> (what the owner shares with their AI agents).
+/// </remarks>
 [ApiController]
-[Authorize(Policy = McpResourceMetadataChallenge.PolicyName)]
+[Authorize(Policy = PolicyName)]
 [Route("api/vault/personal/secrets")]
 public sealed class PersonalVaultController(
     IVaultNamedSecretStore store,
     AppDbContext database,
-    IOptions<VaultOptions> options) : ControllerBase
+    IOptions<VaultOptions> options,
+    IAuthorizationService authorization) : ControllerBase
 {
+    public const string PolicyName = "sufficit-identity-personal-vault";
+    public const string NarrowScope = "identity.vault";
+    private static readonly string[] NarrowWritable = ["genius/"];
+    private static readonly string[] NarrowReadable = ["genius/", "ai/"];
+
     [HttpGet]
     public async Task<IActionResult> List(
         CancellationToken cancellationToken = default)
     {
         EnsureEnabled();
-        var items = await store.ListAsync(
+        var narrow = await IsNarrowAsync();
+        var items = (await store.ListAsync(
             PersonalContext(),
             namespaces: null,
-            cancellationToken);
+            cancellationToken))
+            .Where(item => !narrow || Allowed(item.Name, NarrowReadable));
         var now = DateTime.UtcNow;
 
         return Ok(new
@@ -60,6 +75,10 @@ public sealed class PersonalVaultController(
     {
         EnsureEnabled();
         var normalizedName = NormalizeName(name);
+        if (await IsNarrowAsync() && !Allowed(normalizedName, NarrowReadable))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = "vault_name_outside_scope" });
+        }
         var contextId = PersonalContext();
         var resolution = await store.ResolveAsync(
             normalizedName,
@@ -116,6 +135,10 @@ public sealed class PersonalVaultController(
         }
 
         var normalizedName = NormalizeName(name);
+        if (await IsNarrowAsync() && !Allowed(normalizedName, NarrowWritable))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = "vault_name_outside_scope" });
+        }
         var contextId = PersonalContext();
         var metadata = await store.PutAsync(
             normalizedName,
@@ -139,12 +162,24 @@ public sealed class PersonalVaultController(
         CancellationToken cancellationToken = default)
     {
         EnsureEnabled();
+        var normalizedName = NormalizeName(name);
+        if (await IsNarrowAsync() && !Allowed(normalizedName, NarrowWritable))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = "vault_name_outside_scope" });
+        }
         var deleted = await store.DeleteAsync(
-            NormalizeName(name),
+            normalizedName,
             PersonalContext(),
             cancellationToken);
         return deleted ? NoContent() : NotFound();
     }
+
+    /// <summary>True when the caller holds only the narrow scope, not the Identity MCP.</summary>
+    private async Task<bool> IsNarrowAsync() =>
+        !(await authorization.AuthorizeAsync(User, McpResourceMetadataChallenge.PolicyName)).Succeeded;
+
+    private static bool Allowed(string name, IEnumerable<string> prefixes) =>
+        prefixes.Any(prefix => name.StartsWith(prefix, StringComparison.Ordinal));
 
     private string PersonalContext() =>
         VaultBackedSecretStore.NormalizeContextId(

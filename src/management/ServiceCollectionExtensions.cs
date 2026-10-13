@@ -237,6 +237,17 @@ public static class ServiceCollectionExtensions
                 policy.RequireAuthenticatedUser();
                 policy.Requirements.Add(new ScopeRequirement(mcpRequiredScope));
             });
+            // The personal Vault HTTP API: the full Identity MCP scope, or the narrow
+            // personal Vault scope a delegated agent credential carries (the controller
+            // confines that one to the agent namespaces).
+            builder.AddPolicy(Controllers.PersonalVaultController.PolicyName, policy =>
+            {
+                policy.AuthenticationSchemes.Add(
+                    OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+                policy.RequireAuthenticatedUser();
+                policy.Requirements.Add(new ScopeRequirement(
+                    mcpRequiredScope, Controllers.PersonalVaultController.NarrowScope));
+            });
         });
 
         services.AddSingleton<IAuthorizationHandler, ScopeHandler>();
@@ -321,11 +332,13 @@ public sealed class ManagementRoutePrefixConvention(string routePrefix)
     }
 }
 
-/// <summary>Policy requirement that checks for a specific OAuth scope.</summary>
+/// <summary>Policy requirement that checks for a specific OAuth scope (any of several).</summary>
 public sealed class ScopeRequirement : IAuthorizationRequirement
 {
-    public string Scope { get; }
-    public ScopeRequirement(string scope) => Scope = scope;
+    public string Scope => Scopes[0];
+    public IReadOnlyList<string> Scopes { get; }
+    public ScopeRequirement(string scope, params string[] alternatives) =>
+        Scopes = [scope, .. alternatives];
 }
 
 /// <summary>Validates that the access token carries the required scope.</summary>
@@ -346,9 +359,9 @@ public sealed class ScopeHandler : AuthorizationHandler<ScopeRequirement>
             .SelectMany(claim => claim.Value.Split(
                 ' ',
                 StringSplitOptions.RemoveEmptyEntries))
-            .Contains(requirement.Scope, StringComparer.Ordinal);
+            .Any(scope => requirement.Scopes.Contains(scope, StringComparer.Ordinal));
 
-        if (context.User.HasScope(requirement.Scope) || hasPublicScope)
+        if (requirement.Scopes.Any(context.User.HasScope) || hasPublicScope)
         {
             context.Succeed(requirement);
         }
