@@ -326,6 +326,17 @@ public sealed class DeviceFlowTests
         Assert.False(string.IsNullOrEmpty(pollBody.GetProperty("id_token").GetString()));
         Assert.InRange(pollBody.GetProperty("expires_in").GetInt32(), 2_690, 2_700);
 
+        // The approving browser session is the user's authentication for this
+        // grant. Without auth_time a device-flow login can never satisfy a
+        // recent-sign-in rule (delegated executor credentials refused every
+        // Genius login as missing_auth_time).
+        var idTokenPayload = pollBody.GetProperty("id_token").GetString()!.Split('.')[1];
+        using var idToken = JsonDocument.Parse(Microsoft.IdentityModel.Tokens.Base64UrlEncoder.Decode(idTokenPayload));
+        Assert.True(idToken.RootElement.TryGetProperty("auth_time", out var authTime),
+            "device-flow tokens must carry the approver's auth_time");
+        Assert.InRange(
+            DateTimeOffset.UtcNow.ToUnixTimeSeconds() - authTime.GetInt64(), 0, 300);
+
         var grantedScopes = pollBody.GetProperty("scope").GetString()!
             .Split(' ', StringSplitOptions.RemoveEmptyEntries);
         Assert.Contains("openid", grantedScopes);

@@ -117,6 +117,7 @@ public class DeviceController : Controller
     private readonly INativeReturnUriTicketService _nativeReturnTickets;
     private readonly IClientDeviceCloseFallbackResolver _deviceCloseFallbacks;
     private readonly IDeviceCloseFallbackTicketService _deviceCloseTickets;
+    private readonly IAuthenticationContextProjector _authenticationContext;
 
     public DeviceController(
         IOpenIddictTokenManager tokenManager,
@@ -129,7 +130,8 @@ public class DeviceController : Controller
         IClientNativeReturnUriResolver nativeReturnUris,
         INativeReturnUriTicketService nativeReturnTickets,
         IClientDeviceCloseFallbackResolver deviceCloseFallbacks,
-        IDeviceCloseFallbackTicketService deviceCloseTickets)
+        IDeviceCloseFallbackTicketService deviceCloseTickets,
+        IAuthenticationContextProjector authenticationContext)
     {
         _tokenManager = tokenManager;
         _applicationManager = applicationManager;
@@ -142,6 +144,7 @@ public class DeviceController : Controller
         _nativeReturnTickets = nativeReturnTickets;
         _deviceCloseFallbacks = deviceCloseFallbacks;
         _deviceCloseTickets = deviceCloseTickets;
+        _authenticationContext = authenticationContext;
     }
 
     // -----------------------------------------------------------------------
@@ -396,8 +399,9 @@ public class DeviceController : Controller
                 });
         }
 
-        // Deliberately minimal: only Subject + Scopes need to survive onto the
-        // device_code's attached principal. AuthorizationController.
+        // Deliberately minimal: only Subject + Scopes (and the approver's
+        // authentication context below, which cannot be re-derived later)
+        // need to survive onto the device_code's attached principal. AuthorizationController.
         // ExchangeForDeviceCodeAsync re-derives the FULL identity
         // (name/email/roles/persisted claims) fresh from current user state
         // at token-redemption time — same rationale as the authorization_code
@@ -411,6 +415,12 @@ public class DeviceController : Controller
 
         identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user));
         identity.SetClaim(Claims.Private.DeviceCodeId, deviceCodeId);
+        // The approving browser session IS the user's authentication for this
+        // grant: carry amr/acr/auth_time so the redeemed tokens say when and
+        // how the user signed in. Without auth_time a device-flow login could
+        // never be used where a recent sign-in is required (delegated
+        // executor credentials refused every Genius login as missing_auth_time).
+        _authenticationContext.Project(result.Principal, identity);
         identity.SetScopes(approvedScopes);
         identity.SetResources(authorization.Principal.GetResources());
 
