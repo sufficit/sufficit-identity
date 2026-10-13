@@ -398,7 +398,7 @@ public sealed partial class IdentityMcpTests
             StringComparison.OrdinalIgnoreCase);
     }
 
-    private static async Task AuthenticateAsync(
+    internal static async Task AuthenticateAsync(
         HttpClient client,
         bool includeMcpScope = true,
         string? username = null,
