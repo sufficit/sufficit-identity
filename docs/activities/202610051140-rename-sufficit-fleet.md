@@ -26,3 +26,21 @@ Candidatos à mesma migração, um de cada vez: `sufficit_run_console`,
 `sufficit_mobile_ai_models`, `sufficit_mobile_apps`,
 `sufficit_endpoints_swagger_ui`, `sufficit_fleet_beta`. `dcr_*` e GUIDs são
 gerados e ficam como estão.
+
+## 12–13/10: passo 4 executado e revertido
+
+O timer trocou o Fleet para `sufficit-fleet` em 12/10 13:00 UTC (Fleet pronto,
+login redirecionando com `client_id=sufficit-fleet`). Em 13/10 a API recusou um
+token pessoal do Fleet: tokens pessoais (`SufficitAPIUserAccess`) são duráveis e
+os emitidos antes de 05/10 têm só `aud=sufficit_fleet`, então a introspecção
+pelo cliente novo responde `active=false`. A janela de 7 dias só valia para os
+access tokens comuns.
+
+- 13/10: Fleet voltou ao cliente `sufficit_fleet` (API 200 de novo).
+- Fleet `906bc46`: `Fleet:Identity:LegacyClientId/LegacyClientSecret` — se o
+  cliente atual recebe `active=false`, a introspecção repete com o legado.
+- Configuração final pronta em `/etc/sufficit-fleet/identity.env.target`
+  (cliente novo + legado), a aplicar só com `906bc46` no ar.
+- Remover o legado (passos 5 e 6) só depois que vencer o último token pessoal
+  emitido antes de 05/10 ~11:40 UTC — conferir pela lista de tokens pessoais,
+  não por prazo fixo.
