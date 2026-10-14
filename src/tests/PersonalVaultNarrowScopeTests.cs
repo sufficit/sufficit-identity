@@ -7,14 +7,13 @@ using Xunit;
 namespace Sufficit.Identity.Tests;
 
 /// <summary>
-/// A delegated agent credential never carries the Identity MCP scope; the narrow
-/// personal Vault scope lets it keep its own channel tokens under <c>genius/</c>
-/// and read what the owner shares under <c>ai/</c>, and nothing else.
+/// A delegated agent credential never carries the Identity MCP scope; the personal
+/// Vault scope opens the owner's whole personal Vault to it, and nothing else.
 /// </summary>
 public sealed class PersonalVaultNarrowScopeTests
 {
     [Fact]
-    public async Task Narrow_scope_reaches_only_the_agent_namespaces()
+    public async Task Vault_scope_reaches_the_whole_personal_vault_but_not_the_identity_mcp()
     {
         await using var factory = new ManagementTestFactory(
             bypassAuthz: false,
@@ -31,35 +30,24 @@ public sealed class PersonalVaultNarrowScopeTests
         using var owner = factory.CreateClient();
         await IdentityMcpTests.AuthenticateAsync(owner);
         Assert.Equal(HttpStatusCode.OK, (await owner.PutAsJsonAsync(
-            "/api/vault/personal/secrets/ai/shared/github-token", new { value = "shared" })).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await owner.PutAsJsonAsync(
             "/api/vault/personal/secrets/personal/bank/password", new { value = "private" })).StatusCode);
 
         using var agent = factory.CreateClient();
         await AuthenticateNarrowAsync(agent);
 
-        // Its own channel token: written, read and removed under genius/.
-        const string own = "/api/vault/personal/secrets/genius/device-1/telegram.bot-token";
+        // Everything of the owner, read and written, by the owner's decision.
+        var read = await (await agent.GetAsync("/api/vault/personal/secrets/personal/bank/password"))
+            .Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("private", read.GetProperty("value").GetString());
+        const string own = "/api/vault/personal/secrets/6bfda9ed-9a1e-43b1-8f1c-8ef3e58069b7/telegram-token";
         Assert.Equal(HttpStatusCode.OK, (await agent.PutAsJsonAsync(own, new { value = "bot" })).StatusCode);
-        var read = await (await agent.GetAsync(own)).Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("bot", read.GetProperty("value").GetString());
-
-        // What the owner shares with agents: readable, not writable.
-        Assert.Equal(HttpStatusCode.OK, (await agent.GetAsync("/api/vault/personal/secrets/ai/shared/github-token")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await agent.PutAsJsonAsync(
-            "/api/vault/personal/secrets/ai/shared/github-token", new { value = "x" })).StatusCode);
-
-        // Everything else stays out of reach, and out of the list.
-        Assert.Equal(HttpStatusCode.Forbidden, (await agent.GetAsync("/api/vault/personal/secrets/personal/bank/password")).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await agent.DeleteAsync("/api/vault/personal/secrets/personal/bank/password")).StatusCode);
         var listed = await (await agent.GetAsync("/api/vault/personal/secrets")).Content.ReadFromJsonAsync<JsonElement>();
-        var names = listed.GetProperty("secrets").EnumerateArray().Select(item => item.GetProperty("name").GetString()).ToList();
-        Assert.Equal(["ai/shared/github-token", "genius/device-1/telegram.bot-token"], names.Order().ToList());
-
+        Assert.Equal(2, listed.GetProperty("secrets").GetArrayLength());
         Assert.Equal(HttpStatusCode.NoContent, (await agent.DeleteAsync(own)).StatusCode);
 
-        // The full scope still sees the whole personal Vault.
-        Assert.Equal(HttpStatusCode.OK, (await owner.GetAsync("/api/vault/personal/secrets/personal/bank/password")).StatusCode);
+        // The rest of the Identity MCP stays closed to it.
+        using var mcp = await agent.PostAsJsonAsync("/api/mcp", new { jsonrpc = "2.0", id = 1, method = "initialize" });
+        Assert.True(mcp.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized);
     }
 
     private static async Task AuthenticateNarrowAsync(HttpClient client)
