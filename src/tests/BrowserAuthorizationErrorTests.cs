@@ -1,6 +1,9 @@
 using System.Net;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using OpenIddict.Server;
+using Microsoft.Extensions.Options;
 using Sufficit.Identity.Server;
 using Sufficit.Identity.Tests.Infrastructure;
 using Xunit;
@@ -14,6 +17,12 @@ public sealed class BrowserAuthorizationErrorTests(SufficitIdentityTestFactory f
     [InlineData("/connect/authorize", "text/html", null, null, true)]
     [InlineData("/connect/authorize", "text/html", "navigate", "document", true)]
     [InlineData("/connect/endsession", "text/html", "navigate", "document", true)]
+    [InlineData("/connect/device", "text/html", "navigate", "document", true)]
+    [InlineData("/connect/device", "application/json", "navigate", "document", false)]
+    [InlineData("/connect/device", "text/html", "cors", "empty", false)]
+    [InlineData("/connect/device", "text/html", "navigate", "iframe", false)]
+    [InlineData("/connect/device/info", "text/html", "navigate", "document", false)]
+    [InlineData("/connect/deviceauthorization", "text/html", "navigate", "document", false)]
     [InlineData("/connect/authorize", "text/html;q=0", "navigate", "document", false)]
     [InlineData("/connect/authorize", "application/json,text/html;q=0.5", null, null, false)]
     [InlineData("/connect/authorize", "*/*", null, null, false)]
@@ -34,7 +43,65 @@ public sealed class BrowserAuthorizationErrorTests(SufficitIdentityTestFactory f
         if (destination is not null) request.Headers["Sec-Fetch-Dest"] = destination;
         Assert.Equal(expected, BrowserAuthorizationErrors.IsHtmlNavigation(request));
         request.Method = "POST";
-        Assert.False(BrowserAuthorizationErrors.IsHtmlNavigation(request));
+        Assert.Equal(expected && path == "/connect/device", BrowserAuthorizationErrors.IsHtmlNavigation(request));
+    }
+
+    [Theory]
+    [InlineData("text/html", true)]
+    [InlineData("application/json", false)]
+    [InlineData("*/*", false)]
+    [InlineData("application/json,text/html;q=0.5", false)]
+    public async Task Unavailable_device_verification_uses_html_only_for_browser_navigation(
+        string accept, bool expectsHtml)
+    {
+        using var isolated = SufficitIdentityTestFactory.CreateIsolated(new Dictionary<string, string?>());
+        await ((IAsyncLifetime)isolated).InitializeAsync();
+        using var client = isolated.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var options = isolated.Services.GetRequiredService<IOptionsMonitor<OpenIddictServerOptions>>().CurrentValue;
+        options.UserCodeLifetime = options.DeviceCodeLifetime = TimeSpan.FromDays(-1);
+        var (status, body) = await client.PostFormAsync("/connect/deviceauthorization", new Dictionary<string, string>
+        {
+            ["client_id"] = TestDataSeeder.DeviceClientId,
+            ["client_secret"] = TestDataSeeder.DeviceClientSecret,
+            ["scope"] = "openid",
+        });
+        Assert.Equal(HttpStatusCode.OK, status);
+        var userCode = body.GetProperty("user_code").GetString()!;
+        await TestOnlyEndpoints.SignInAsync(client, TestDataSeeder.DefaultUsername);
+        var antiforgery = await TestOnlyEndpoints.GetAntiforgeryTokenAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/connect/device")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["user_code"] = userCode,
+                ["approved"] = "true",
+                ["__RequestVerificationToken"] = antiforgery,
+            })
+        };
+        request.Headers.Accept.ParseAdd(accept);
+        request.Headers.Add("Sec-Fetch-Mode", "navigate");
+        request.Headers.Add("Sec-Fetch-Dest", "document");
+        using var response = await client.SendAsync(request);
+        var content = await response.Content.ReadAsStringAsync();
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Null(response.Headers.Location);
+        if (expectsHtml)
+        {
+            Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
+            Assert.Contains("Não foi possível continuar este acesso", WebUtility.HtmlDecode(content));
+            Assert.Contains("Volte ao aplicativo e inicie o acesso novamente", WebUtility.HtmlDecode(content));
+            Assert.Contains("authorization-error.css", content);
+            Assert.Contains("href=\"/\"", content);
+            Assert.DoesNotContain(userCode, content);
+            Assert.DoesNotContain("error_description", content);
+            Assert.True(response.Headers.CacheControl?.NoStore);
+            Assert.Contains("no-referrer", response.Headers.GetValues("Referrer-Policy"));
+        }
+        else
+        {
+            Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+            Assert.Contains("invalid_grant", content);
+        }
     }
 
     [Fact]

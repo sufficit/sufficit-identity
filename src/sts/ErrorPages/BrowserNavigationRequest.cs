@@ -7,9 +7,11 @@ public static class BrowserNavigationRequest
 {
     public static bool IsHtmlNavigation(HttpRequest request)
     {
-        if (!HttpMethods.IsGet(request.Method)
+        var device = request.Path.Equals("/connect/device", StringComparison.OrdinalIgnoreCase);
+        if (!(HttpMethods.IsGet(request.Method) || (device && HttpMethods.IsPost(request.Method)))
             || !(request.Path.Equals("/connect/authorize", StringComparison.OrdinalIgnoreCase)
-                || request.Path.Equals("/connect/endsession", StringComparison.OrdinalIgnoreCase)))
+                || request.Path.Equals("/connect/endsession", StringComparison.OrdinalIgnoreCase)
+                || device))
             return false;
         return PrefersHtmlDocument(request);
     }

@@ -23,6 +23,7 @@ public sealed class PublicUiIdentityModule : IIdentityModule
     {
         services.AddSufficitIdentityUI(configuration);
         services.AddSingleton<BrowserRateLimitErrors>();
+        services.AddBrowserAuthorizationErrors();
     }
 
     public void ConfigurePipeline(IdentityPipelineBuilder pipeline)

@@ -218,6 +218,7 @@ public sealed class SufficitIdentityTestFactory : WebApplicationFactory<Sufficit
             // harmless no-op if Program.cs's real wiring already added it.
             services.AddAntiforgery();
             services.AddRazorComponents();
+            services.AddBrowserAuthorizationErrors();
             services.AddLocalization();
 
             services.AddAuthorization(options =>
