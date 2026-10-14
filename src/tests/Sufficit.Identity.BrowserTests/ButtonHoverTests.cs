@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Playwright;
 using Microsoft.Playwright.NUnit;
 using NUnit.Framework;
@@ -61,17 +62,56 @@ public class ButtonHoverTests : PageTest
         Assert.That(decoration, Is.EqualTo("underline"));
     }
 
+    [TestCase(1280)]
+    [TestCase(390)]
+    public async Task Anchor_button_labels_keep_their_variant_color_on_hover_and_keyboard_focus(int width)
+    {
+        await Page.SetViewportSizeAsync(width, 800);
+        await GivenAnchorButtonsAsync();
+        for (var index = 0; index < AnchorButtons.Length; index++)
+        {
+            var label = Page.Locator($"#anchor-{index} .sui-btn__label");
+            var normal = await label.EvaluateAsync<string>("e => getComputedStyle(e).color");
+            if (index == 0)
+                Assert.That(normal, Is.EqualTo("rgb(255, 255, 255)"));
+            await Page.HoverAsync($"#anchor-{index}");
+            await Page.WaitForTimeoutAsync(250); // Let the color transition settle.
+            var hovered = await label.EvaluateAsync<string>("e => getComputedStyle(e).color");
+            Assert.That(hovered, Is.EqualTo(normal), $"{AnchorButtons[index]} loses its label color on hover.");
+            await Page.Mouse.MoveAsync(0, 0);
+            await Page.Locator($"#anchor-{index}").FocusAsync();
+            await Page.WaitForTimeoutAsync(250);
+            var focused = await label.EvaluateAsync<string>("e => getComputedStyle(e).color");
+            Assert.That(focused, Is.EqualTo(normal), $"{AnchorButtons[index]} loses its label color on focus.");
+        }
+    }
+
     private async Task GivenAnchorButtonsAsync()
     {
         var css = await File.ReadAllTextAsync(Path.Combine(
             ResolvePublicUiSource(), "wwwroot", "css", "site.css"));
+
+        // Load the actual SUI stylesheet before the product skin, as the page does.
+        var repository = Path.GetFullPath(Path.Combine(ResolvePublicUiSource(), "..", "..", ".."));
+        var suiCssPath = Path.Combine(repository, "..", "sufficit-blazor-ui", "src", "wwwroot", "sufficit-ui.css");
+        if (!File.Exists(suiCssPath))
+        {
+            using var packages = JsonDocument.Parse(await File.ReadAllTextAsync(
+                Path.Combine(repository, "src", "server", "packages.lock.json")));
+            var version = packages.RootElement.GetProperty("dependencies").GetProperty("net10.0")
+                .GetProperty("Sufficit.Blazor.UI").GetProperty("resolved").GetString()!;
+            var cache = Environment.GetEnvironmentVariable("NUGET_PACKAGES")
+                ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
+            suiCssPath = Path.Combine(cache, "sufficit.blazor.ui", version, "staticwebassets", "sufficit-ui.css");
+        }
+        var suiCss = await File.ReadAllTextAsync(suiCssPath);
 
         var anchors = string.Join("\n", AnchorButtons.Select((cls, index) =>
             $"""<a id="anchor-{index}" href="/" class="{cls}"><span class="sui-btn__label">Entrar</span></a>"""));
 
         await Page.SetContentAsync($$"""
             <!DOCTYPE html>
-            <html><head><style>{{css}}</style></head>
+            <html><head><style>{{suiCss}}</style><style>{{css}}</style></head>
             <body><div class="page identity-public"><div class="auth-card">
               {{anchors}}
               <a id="plain-link" href="/account/forgotpassword">Esqueceu a senha?</a>

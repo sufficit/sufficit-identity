@@ -415,7 +415,9 @@ a {
     text-decoration: none;
     transition: color var(--dur-fast) var(--ease);
 }
-a:hover { color: var(--brand-hover); text-decoration: underline; }
+/* Anchor buttons retain the foreground owned by their SUI variant.
+   :where keeps this rule at the same specificity as the plain link hover. */
+a:where(:not(.sui-btn)):hover { color: var(--brand-hover); text-decoration: underline; }
 
 :focus-visible {
     outline: 2px solid var(--brand);
