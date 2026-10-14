@@ -37,3 +37,11 @@ O token do Genius do dono passa a carregar `identity.vault` no próximo refresh
 (sem novo login); a troca RFC 8693 repassa o escopo à credencial delegada (o
 cliente do executor tem a permissão). Credenciais delegadas emitidas antes não
 têm o escopo: valem a partir da próxima delegação.
+
+## Revisão 2026-10-14 (`7bd6c48`): Vault pessoal inteiro
+
+Decisão do dono: o agente alcança **tudo** do Vault pessoal do dono, como os aparelhos dele.
+`identity.vault` deixou de restringir a `genius/` e `ai/`; continua abrindo só a API do Vault
+pessoal, nunca o resto do MCP do Identity. Entradas exclusivas de um agente ficam em
+`<id do agente>/…` e o Genius do dono as apaga ao remover o agente. Release
+`20261014T023555Z-7bd6c48` nos 3 nós (configuração herdada).
