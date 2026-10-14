@@ -19,3 +19,15 @@ Comando: `dotnet test src/tests/Sufficit.Identity.Tests.csproj -p:SufficitUseLoc
 Resultado final: 65 testes passaram, sem warnings. `git diff --check` passou.
 
 Entrega local; sem commit, push ou deploy. Renderização SSR conferida pelos testes HTTP; não houve validação em navegador real nem em produção.
+
+## Deploy autorizado em 14/10/2026
+
+Após pedido explícito `deploy`, correção commitada localmente em `199e8d222fa1a64702557d1c2fb2e71af3d6798a` e publicada pelos helpers oficiais package → prepare → activate-cluster, com SUI local. Os 65 testes direcionados passaram também nesse modo; auditoria NuGet emitiu cinco avisos sobre Pkcs/Xml 10.0.11 já presentes nas dependências. Nenhuma dependência foi alterada e os lockfiles de modo pacote foram preservados.
+
+Release `20261014T172900Z-199e8d2`, archive SHA-256 `4f2aaeb71fa1f9a168aa02bd5161fea37a21abcafe21805d543c2da3173ed6bd`. Ativação sequencial em eveo-apps, apoint-apps e castrum-apps, substituindo `20261014T023555Z-7bd6c48`; quatro arquivos de configuração herdados por nó. Sem migrations no diff desde a revisão de produção, portanto migrator não foi executado.
+
+Gate final: três serviços ativos, mesma revisão, health/ready Healthy; certificado SHA-256 `5e858b8d138993436730db83743ac67183495e44de8e2e041e72b2882410eefb` e JWKS SHA-256 `85d43862afae2e2eea21c6668aa9ec34fa0c029ac906cd0eaee9122847aed769`, preservados do baseline. Sem rollback.
+
+Smoke HTTP público em https://identity.sufficit.com.br: POST de device verification sem antiforgery válido (rejeitado antes de qualquer aprovação) retornou 400 HTML para navegação humana e 400 JSON para máquina. Título em português, ausência de código/descrição, no-store/no-referrer e três estilos CSS 200 conferidos; discovery 200 com issuer correto. O invalid_grant foi exercitado nos testes isolados; não foi usado device code real de usuário em produção. Sem navegador real nesta etapa.
+
+Commit e documentação permanecem locais, sem push. Plano temporário concluído e removido; este registro guarda evidências e release efetivamente publicada.
