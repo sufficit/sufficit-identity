@@ -39,13 +39,18 @@ public sealed partial class IntegrationOAuthController(
     : ControllerBase
 {
     private const string McpPolicy = "sufficit-identity-mcp";
+    /// <summary>The personal-Vault policy: Identity MCP or the narrow identity.vault scope a delegated
+    /// agent credential carries. By the owner's decision (13/10) an agent reaches everything of its
+    /// owner, so it reads integration status and access like the owner's devices; connecting and
+    /// disconnecting an integration stay with the owner's MCP scope.</summary>
+    private const string OwnerDataPolicy = "sufficit-identity-personal-vault";
     private const string HttpClientName = "identity-integration-oauth";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private readonly ITimeLimitedDataProtector tickets = dataProtection
         .CreateProtector("Sufficit.Identity.IntegrationOAuth.v1")
         .ToTimeLimitedDataProtector();
 
-    [Authorize(Policy = McpPolicy)]
+    [Authorize(Policy = OwnerDataPolicy)]
     [HttpGet("{provider}/status")]
     public async Task<IActionResult> Status(
         string provider,
@@ -287,7 +292,7 @@ public sealed partial class IntegrationOAuthController(
         }
     }
 
-    [Authorize(Policy = McpPolicy)]
+    [Authorize(Policy = OwnerDataPolicy)]
     [HttpGet("{provider}/access")]
     public async Task<IActionResult> Access(
         string provider,

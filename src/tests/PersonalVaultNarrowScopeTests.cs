@@ -50,6 +50,31 @@ public sealed class PersonalVaultNarrowScopeTests
         Assert.True(mcp.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized);
     }
 
+    [Fact]
+    public async Task Vault_scope_reads_integration_status_but_cannot_connect_one()
+    {
+        await using var factory = new ManagementTestFactory(
+            bypassAuthz: false,
+            extraConfiguration: new Dictionary<string, string?>
+            {
+                ["Sufficit:Identity:Mcp:ImplicitClientIds:1"] = "not-the-password-client",
+                ["Sufficit:Identity:ApplicationScopes:0"] = "identity.vault",
+            },
+            enablePersonalVaultTestSurface: true);
+        await ((IAsyncLifetime)factory).InitializeAsync();
+        using var agent = factory.CreateClient();
+        await AuthenticateNarrowAsync(agent);
+
+        // An agent reads its owner's integrations (status, access) like the owner's devices do...
+        using var status = await agent.GetAsync("/api/integrations/oauth/google-workspace/status");
+        Assert.False(status.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden, status.StatusCode.ToString());
+        using var access = await agent.GetAsync("/api/integrations/oauth/google-workspace/access");
+        Assert.False(access.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden, access.StatusCode.ToString());
+        // ...but connecting one stays with the owner.
+        using var authorize = await agent.PostAsync("/api/integrations/oauth/google-workspace/authorize", null);
+        Assert.True(authorize.StatusCode is HttpStatusCode.Forbidden or HttpStatusCode.Unauthorized, authorize.StatusCode.ToString());
+    }
+
     private static async Task AuthenticateNarrowAsync(HttpClient client)
     {
         using var response = await client.PostAsync("/connect/token", new FormUrlEncodedContent(new Dictionary<string, string>
