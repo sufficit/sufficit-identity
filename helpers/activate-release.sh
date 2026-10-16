@@ -104,8 +104,32 @@ if [[ ${switch_release} == true && ${candidate_release} != "${previous_release}"
     echo "[deploy] Activated release ${candidate_release}"
 fi
 
+# Keep the newest releases plus anything younger than the retention age; the
+# active, rolled-back-from and .previous targets are never removed.
+prune_releases() {
+    local keep=3 max_age_minutes=$((5 * 24 * 60)) index=0 release
+    local -A protected=(
+        ["${candidate_release}"]=1
+        ["${previous_release}"]=1
+    )
+    if [[ -L "${app_link}.previous" ]]; then
+        protected["$(readlink -f "${app_link}.previous")"]=1
+    fi
+    while IFS= read -r release; do
+        index=$((index + 1))
+        (( index <= keep )) && continue
+        [[ -n ${protected["${release}"]:-} ]] && continue
+        if [[ -n $(find "${release}" -maxdepth 0 -mmin "+${max_age_minutes}") ]]; then
+            rm -rf -- "${release}"
+            echo "[deploy] Old release removed: ${release}"
+        fi
+    done < <(find "${releases_root}" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
+        | sort -rn | cut -d' ' -f2-)
+}
+
 if systemctl restart "${app_name}.service" && wait_for_health; then
     echo "[deploy] Identity is healthy on ${candidate_release}"
+    prune_releases || echo "[deploy] Release retention skipped" >&2
     exit 0
 fi
 
