@@ -419,7 +419,7 @@ public class DeviceController : Controller
         // grant: carry amr/acr/auth_time so the redeemed tokens say when and
         // how the user signed in. Without auth_time a device-flow login could
         // never be used where a recent sign-in is required (delegated
-        // executor credentials refused every Genius login as missing_auth_time).
+        // executor credentials refused every native-client login as missing_auth_time).
         _authenticationContext.Project(result.Principal, identity);
         identity.SetScopes(approvedScopes);
         identity.SetResources(authorization.Principal.GetResources());

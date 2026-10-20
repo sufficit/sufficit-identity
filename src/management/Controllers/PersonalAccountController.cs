@@ -63,7 +63,7 @@ public sealed class PersonalAccountController(
 
     /// <summary>
     /// Revokes the caller's own delegated device credentials issued for one device
-    /// (the <c>executor_id</c> label of the exchange). The owner's Genius calls it when
+    /// (the <c>executor_id</c> label of the exchange). The owner's client calls it when
     /// it retires a cloud executor: a suspended executor cannot revoke its own
     /// credential, which otherwise stays active and counts toward the per-user cap.
     /// </summary>

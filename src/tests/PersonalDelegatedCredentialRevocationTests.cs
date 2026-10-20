@@ -12,7 +12,7 @@ using Xunit;
 namespace Sufficit.Identity.Tests;
 
 /// <summary>
-/// The owner's Genius revokes the delegated credential of a cloud executor it retires.
+/// The owner's client revokes the delegated credential of a cloud executor it retires.
 /// A suspended executor cannot revoke its own, so without this the credential stayed
 /// active and counted toward the per-user cap (seen in production 2026-10-13).
 /// </summary>
@@ -24,10 +24,10 @@ public sealed class PersonalDelegatedCredentialRevocationTests
     public async Task Revokes_only_the_callers_credentials_for_that_device()
     {
         var access = new RecordingAccess(
-            new AccountDelegatedCredential("a1", "sufficit-ai-genius-executor", "Executor",
-                Device.ToString("D"), "sufficit-ai-genius", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(30)),
-            new AccountDelegatedCredential("a2", "sufficit-ai-genius-executor", "Executor",
-                Guid.NewGuid().ToString("D"), "sufficit-ai-genius", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(30)));
+            new AccountDelegatedCredential("a1", "example-app-executor", "Executor",
+                Device.ToString("D"), "example-app", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(30)),
+            new AccountDelegatedCredential("a2", "example-app-executor", "Executor",
+                Guid.NewGuid().ToString("D"), "example-app", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddDays(30)));
         await using var factory = ManagementTestFactory.CreateWithRealAuthz();
         await ((IAsyncLifetime)factory).InitializeAsync();
         await using var host = factory.WithWebHostBuilder(builder =>

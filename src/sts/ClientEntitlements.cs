@@ -38,8 +38,7 @@ public static class ClientEntitlements
     public const string ClaimType = "entitlements";
 
     /// <summary>
-    /// Short name already consumed by our own services (sufficit-ai and
-    /// sufficit-provisioning). Emitted in parallel during the transition: it
+    /// Legacy short name consumed by existing relying parties. Emitted in parallel during the transition: it
     /// is not in the IANA registry and RFC 7519 §4.3 asks for
     /// collision-resistant names, but cutting it before the consumers
     /// migrate would break things to gain elegance.

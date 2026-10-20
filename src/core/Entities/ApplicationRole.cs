@@ -7,6 +7,6 @@ namespace Sufficit.Identity.Core.Entities;
 /// (Id, Name, NormalizedName, ConcurrencyStamp). Mapped to the legacy
 /// lowercase <c>roles</c> table in <c>AppDbContext.OnModelCreating</c>.
 /// Kept as a distinct type (instead of using <c>IdentityRole</c> directly)
-/// to allow adding Sufficit-specific properties later if needed.
+/// to keep identity persistence mapping explicit and independent of consumer business roles.
 /// </summary>
 public sealed class ApplicationRole : IdentityRole { }

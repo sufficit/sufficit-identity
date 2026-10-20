@@ -646,8 +646,7 @@ public partial class AuthorizationController : Controller
     ///         under. Renaming the stored type therefore stayed a breaking change
     ///         for every userinfo consumer — precisely the coupling the token-side
     ///         handler was written to remove — and a relying party reading only the
-    ///         old name saw the user lose every grant at once (QuePasa refused
-    ///         those logins outright with "no context assigned yet").
+    ///         old name saw the user lose every grant at once and could refuse login.
     ///     </para>
     ///     <para>
     ///         The source is the response being built, never the persisted claims:

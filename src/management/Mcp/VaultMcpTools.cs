@@ -28,7 +28,7 @@ public sealed partial class VaultMcpTools(
         PrepareEntryTool,
         new(
             "vault_list",
-            "Lists secret metadata (never values) in your personal vault, or in an explicit shared context when authorized. Secrets in the ai/ namespace are also visible to Sufficit AI agents.",
+            "Lists secret metadata (never values) in your personal vault, or in an explicit shared context when authorized. Access depends on the authenticated subject and granted capabilities.",
             Schema(new Dictionary<string, object>
             {
                 ["contextId"] = new { type = "string", description = "Optional shared context. Omit for your personal vault." },
@@ -48,7 +48,7 @@ public sealed partial class VaultMcpTools(
             "Creates or rotates a secret from a value already available. For a new API key from the user, prefer vault_prepare_entry so they paste directly into Identity instead of chat. Optional ISO-8601 expiresAtUtc; expired secrets stop resolving.",
             Schema(new Dictionary<string, object>
             {
-                ["name"] = new { type = "string", description = "Secret path, e.g. ai/anthropic-key. Use the ai/ namespace to share with Sufficit AI agents." },
+                ["name"] = new { type = "string", description = "Secret path, e.g. ai/anthropic-key. Namespaces organize entries; they do not grant access." },
                 ["value"] = new { type = "string", description = "Plaintext value to store (encrypted at rest)." },
                 ["expiresAtUtc"] = new { type = "string", description = "Optional ISO-8601 expiration instant (must be in the future)." },
                 ["contextId"] = new { type = "string", description = "Optional shared context. Omit for your personal vault." },

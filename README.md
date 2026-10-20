@@ -14,6 +14,10 @@ OAuth 2.0 / OpenID Connect Security Token Service (STS) built on [.NET 10](https
 
 A self-hostable, .NET-native identity provider that goes well beyond stock OpenIddict. It hand-implements modern protocol features OpenIddict 7.7 does not have — DPoP, CIBA, FAPI 2.0 enforcement, JARM, JAR, SSF/CAEP — on top of the OpenIddict server/validation core, with ASP.NET Core Identity and MySQL/MariaDB storage.
 
+The provider is reusable by any person or organization. Consumer business rules,
+domain roles and product-specific integrations belong in the consuming applications,
+not in Identity. See the [product boundary](PRODUCT.md#generic-product-boundary).
+
 ## Protocol coverage
 
 | Protocol | RFC / Spec | Status |

@@ -544,7 +544,7 @@ public sealed class ClaimScopeMapTests
 
         var username = $"csm-nogate-{Guid.NewGuid():N}";
         const string password = "Str0ng!Passw0rd#Gate";
-        var value = $"telephonyadmin:{Guid.NewGuid():N}";
+        var value = $"resourceadmin:{Guid.NewGuid():N}";
 
         using (var scope = factory.Services.CreateScope())
         {
@@ -602,7 +602,7 @@ public sealed class ClaimScopeMapTests
     // The token-side handler runs on ProcessSignIn, which userinfo never
     // reaches: that response is assembled from persisted claims by hand, so it
     // published whichever name the grant happened to be stored under. A
-    // relying party that reads userinfo (QuePasa) therefore saw the user lose
+    // relying party that reads userinfo therefore saw the user lose
     // every grant the moment the storage rename landed, and refused the login
     // outright.
     // ------------------------------------------------------------------
@@ -659,7 +659,7 @@ public sealed class ClaimScopeMapTests
 
         var username = $"csm-ui-gate-{Guid.NewGuid():N}";
         const string password = "Str0ng!Passw0rd#UG";
-        var value = $"telephonyadmin:{Guid.NewGuid():N}";
+        var value = $"resourceadmin:{Guid.NewGuid():N}";
 
         using (var scope = factory.Services.CreateScope())
         {

@@ -8,7 +8,7 @@ web
 
 ## Users
 
-- Pessoas que autenticam em aplicações Sufficit e de terceiros. Em geral chegam
+- Pessoas que autenticam em aplicações de qualquer organização. Em geral chegam
   por redirecionamento, querem concluir a autenticação rapidamente e podem estar
   em dispositivos móveis ou conexões lentas.
 - Operadores do provedor que receberam capabilities administrativas explícitas.
@@ -22,6 +22,17 @@ Sufficit Identity é um provedor OAuth 2.0/OpenID Connect auto-hospedável sobre
 autenticação e uma console administrativa segura. Sucesso significa autenticação
 rápida e confiável para o usuário final e operação precisa, auditável e acionável
 para o operador.
+
+## Generic product boundary
+
+O projeto é público e reutilizável por qualquer pessoa ou organização. Não deve
+incorporar o modelo de negócio da mantenedora nem de aplicações consumidoras:
+regras comerciais, permissões de domínio, integrações financeiras ou de telefonia
+e fluxos exclusivos de outros produtos pertencem aos respectivos consumidores.
+Claims, scopes, capabilities e contextos são mecanismos genéricos; seus valores de
+negócio são definidos pelas implantações e pelos clientes, sem interpretação pelo
+Identity. Exemplos e instruções devem usar serviços e aplicações fictícios.
+Nomes de pacotes, namespaces, marca do projeto e autoria não são regras de negócio.
 
 ## Positioning
 
@@ -44,8 +55,8 @@ de pool e supervisão do processo fazem parte da operação do serviço.
   enriquecer os dados por adaptadores específicos quando o driver oferecer métricas.
 - A console não pode expor credenciais, connection strings, SQL, parâmetros,
   payloads de tokens ou outros dados sensíveis.
-- O acesso administrativo é controlado por capabilities; papéis de negócio do
-  ecossistema Sufficit não pertencem ao modelo genérico do provedor.
+- O acesso administrativo é controlado por capabilities; papéis e regras de
+  negócio das aplicações consumidoras não pertencem ao modelo genérico do provedor.
 - UI e API chamam o mesmo serviço de aplicação; a UI não acessa `DbContext`,
   ASP.NET Identity ou gerenciadores OpenIddict diretamente.
 - O runtime precisa limitar espera, tamanho e vida útil do pool e recuperar-se de

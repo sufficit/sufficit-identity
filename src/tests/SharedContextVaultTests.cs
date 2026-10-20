@@ -29,7 +29,7 @@ public sealed class SharedContextVaultTests
         await AuthenticateNarrowAsync(agent);
 
         using var withoutCapability = await agent.GetAsync(
-            "/api/vault/context/secrets/resolve?contextId=d21cfb04-9d37-473b-837c-67591a26feed&name=ai/asaas/token");
+            "/api/vault/context/secrets/resolve?contextId=d21cfb04-9d37-473b-837c-67591a26feed&name=ai/service/token");
         Assert.Equal(HttpStatusCode.Forbidden, withoutCapability.StatusCode);
 
         using var personal = await agent.GetAsync(

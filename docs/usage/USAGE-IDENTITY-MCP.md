@@ -30,9 +30,8 @@ compartilhados.
 
 ## Como as aplicações se conectam
 
-Diferente do sufficit-ai — onde era preciso gerar um token e colar na
-configuração — aqui o próprio Identity é o Authorization Server, então o
-cliente MCP negocia o acesso sozinho.
+O próprio Identity é o Authorization Server, então o cliente MCP negocia
+o acesso por OAuth, sem exigir que o usuário copie tokens para a configuração.
 
 ### Clientes MCP (Claude Code, VS Code, Claude Desktop)
 
@@ -140,11 +139,11 @@ verificação de step-up e não é exposta ao agente.
 
 ## Vault pessoal por HTTP
 
-Clientes first-party que precisam implementar um secret store, como o Genius,
+Clientes first-party que precisam implementar um secret store
 podem usar a superfície fina protegida pelo mesmo scope:
 
 ```http
-PUT /api/vault/personal/secrets/genius/device-1/external/github-token
+PUT /api/vault/personal/secrets/my-app/device-1/external/github-token
 Authorization: Bearer <token-com-identity.mcp>
 Content-Type: application/json
 
@@ -166,11 +165,10 @@ O perfil próprio usado por clientes first-party fica em
 dados da conta e a URL de avatar resolvida pelo tema ativo. O subject vem
 exclusivamente do bearer; não há parâmetro para selecionar outro usuário.
 
-## Compatibilidade com o sufficit-ai
+## Integração com clientes externos
 
-O sufficit-ai continua podendo consumir seu endpoint MCP durante a transição,
-mas seu cliente REST de Vault aponta para o mesmo named-secret store do
-Identity. Segredos `ai/<referência>` mantêm o namespace usado pelos agentes;
+Clientes MCP e REST de Vault acessam o mesmo named-secret store do Identity.
+Namespaces como `ai/<referência>` podem organizar segredos de agentes;
 contextos pessoais continuam no formato `user-<guid>`, sem fallback para um
 contexto global.
 
@@ -233,7 +231,7 @@ Para solicitar uma chave ao usuário, descobrir e chamar `vault_prepare_entry`
 com `name`, sem valor e sem `contextId`. Por exemplo:
 
 ```json
-{"name":"asaas/production/api-key"}
+{"name":"service/production/api-key"}
 ```
 
 A ferramenta retorna `url` absoluta, `secretName` canônico, `exists`, `status`
@@ -241,13 +239,13 @@ e `saved=false`. Não cria segredo vazio. Apresentar a URL retornada sem
 reconstruí-la. Em produção, a URL tem o formato:
 
 ```text
-https://identity.example.com/vault/new?name=asaas%2Fproduction%2Fapi-key
+https://identity.example.com/vault/new?name=service%2Fproduction%2Fapi-key
 ```
 
 Esse exemplo descreve o contrato; sua disponibilidade depende da publicação.
 A página exige autenticação, mostra o nome preparado e recebe somente o valor.
 O proprietário vem da sessão autenticada, nunca da URL. O usuário deve usar a
-mesma conta Sufficit conectada no Genius. Nenhum parâmetro aceita segredo,
+mesma conta Identity usada pelo cliente solicitante. Nenhum parâmetro aceita segredo,
 proprietário ou destino externo de retorno. Se a entrada já existir, a página
 informa que salvar substituirá o valor anterior.
 
@@ -259,9 +257,10 @@ https://developer.mozilla.org/en-US/docs/Web/API/Clipboard/readText
 
 Depois que o usuário disser que salvou, chamar `vault_get_info` com exatamente
 o `secretName` retornado, sem `contextId`. Neste exemplo:
-`personal/asaas/production/api-key`. Isso verifica somente existência/estado,
+`personal/service/production/api-key`. Isso verifica somente existência/estado,
 sem resolver o valor. `vault_resolve` não é necessário para essa conferência.
 
 Uma chave salva não prova conectividade autenticada com o provedor. A operação
 posterior deve consumir a referência internamente na integração, sem devolver a
-chave à conversa. O cadastro guiado não implementa operações financeiras ASAAS.
+chave à conversa. O cadastro guiado apenas armazena a credencial; operações do
+serviço externo pertencem à integração consumidora.

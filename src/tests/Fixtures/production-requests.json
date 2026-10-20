@@ -21,16 +21,16 @@
     "clientIdsByVolume": {
       "legacy-webforms-client": 13328,
       "Grafana": 3300,
-      "sufficitwebforms": 154,
-      "sufficit-quepasa": 152,
+      "legacy-web-client": 154,
+      "legacy-messaging-client": 152,
       "legacy-blazor-client": 84,
       "legacy-ai-client": 49,
-      "sufficit-phone-desktop": 21,
+      "legacy-desktop-client": 21,
       "legacy-mobile-ai-client": 13,
-      "SufficitChromeExtension": 9,
+      "legacy-browser-extension": 9,
       "skoruba_identity_admin": 8,
-      "SufficitKnowledgeBase": 6,
-      "hermes": 3,
+      "legacy-knowledge-base": 6,
+      "legacy-portal": 3,
       "legacy-mobile-client": 2,
       "legacy-swagger-client": 1
     },
@@ -44,7 +44,7 @@
   "samples": [
     {
       "id": "authz-01-webforms-implicit-formpost",
-      "$comment": "WebForms legado (sufficit-web) — fluxo implicit + form_post. O fluxo fica fora do baseline atual do rascunho OAuth 2.1 e a política de novos clientes exige migração para authorization_code+PKCE antes da Onda E. A compatibilidade legada permanece controlada por LegacyGrants, conforme a configuração do ambiente.",
+      "$comment": "WebForms legado (cliente de exemplo) — fluxo implicit + form_post. O fluxo fica fora do baseline atual do rascunho OAuth 2.1 e a política de novos clientes exige migração para authorization_code+PKCE antes da Onda E. A compatibilidade legada permanece controlada por LegacyGrants, conforme a configuração do ambiente.",
       "method": "GET",
       "path": "/connect/authorize",
       "queryParams": {
@@ -69,7 +69,7 @@
       "method": "GET",
       "path": "/connect/authorize",
       "queryParams": {
-        "redirect_uri": "sufficitaigateway://callback",
+        "redirect_uri": "examplegateway://callback",
         "client_id": "legacy-mobile-client",
         "response_type": "code",
         "state": "STATE",
@@ -89,7 +89,7 @@
       "method": "GET",
       "path": "/connect/authorize",
       "queryParams": {
-        "redirect_uri": "sufficitmobileaimodels://callback",
+        "redirect_uri": "examplemodels://callback",
         "client_id": "legacy-mobile-ai-client",
         "response_type": "code",
         "state": "STATE",
@@ -105,7 +105,7 @@
     },
     {
       "id": "authz-04-endpoints-swagger-implicit",
-      "$comment": "SwaggerUI do sufficit-endpoints usando implicit flow (response_type=token). O fluxo fica fora do baseline atual do rascunho OAuth 2.1; SwaggerUI moderno suporta PKCE, mas a compatibilidade legada permanece durante a migração. Mesma situação do WebForms.",
+      "$comment": "SwaggerUI de uma API consumidora usando implicit flow (response_type=token). O fluxo fica fora do baseline atual do rascunho OAuth 2.1; SwaggerUI moderno suporta PKCE, mas a compatibilidade legada permanece durante a migração. Mesma situação do WebForms.",
       "method": "GET",
       "path": "/connect/authorize",
       "queryParams": {
@@ -130,7 +130,7 @@
     },
     {
       "id": "introspect-01-high-volume",
-      "$comment": "POST /connect/introspect é o segundo endpoint mais batido (2553 amostras). Usado por sufficit-endpoints, legacy-ai-client, legacy-blazor-client para validar reference tokens a cada request. Reference tokens estão default ON no novo STS (Tokens.UseReferenceAccessTokens=true).",
+      "$comment": "POST /connect/introspect é o segundo endpoint mais batido (2553 amostras). Usado por APIs consumidoras, legacy-ai-client, legacy-blazor-client para validar reference tokens a cada request. Reference tokens estão default ON no novo STS (Tokens.UseReferenceAccessTokens=true).",
       "method": "POST",
       "path": "/connect/introspect",
       "observedStatusCodes": { "200": 2487, "499": 48, "500": 10, "502": 6 },
@@ -162,7 +162,7 @@
     },
     {
       "id": "account-01-login-page",
-      "$comment": "GET /account/login — 32 amostras. Página de login interativo servida pela UI Blazor Server (sufficit-identity-ui). Path lowercase canonicalizado pelo novo STS (LowercasePathMiddleware).",
+      "$comment": "GET /account/login — 32 amostras. Página de login interativo servida pela UI Blazor Server (Identity UI). Path lowercase canonicalizado pelo novo STS (LowercasePathMiddleware).",
       "method": "GET",
       "path": "/account/login",
       "expectedBehavior": "200 HTML login page. Served by sibling UI project."

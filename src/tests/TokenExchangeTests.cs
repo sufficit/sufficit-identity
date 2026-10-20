@@ -220,7 +220,7 @@ public sealed class TokenExchangeTests
 /// allowlist gate (eval #4/#8): a client can carry the OpenIddict-level
 /// <c>Permissions.GrantTypes.TokenExchange</c> permission (so it reaches
 /// <c>AuthorizationController.ExchangeForTokenExchangeAsync</c> at all) and
-/// still be rejected by this second, Sufficit-specific layer.
+/// still be rejected by this second, deployment-policy layer.
 ///
 /// The shared <see cref="StsCollection"/> fixture leaves
 /// <c>AllowedClientIds</c> empty (= "no restriction", so

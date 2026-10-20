@@ -329,7 +329,7 @@ public sealed class DeviceFlowTests
         // The approving browser session is the user's authentication for this
         // grant. Without auth_time a device-flow login can never satisfy a
         // recent-sign-in rule (delegated executor credentials refused every
-        // Genius login as missing_auth_time).
+        // native-client login as missing_auth_time).
         var idTokenPayload = pollBody.GetProperty("id_token").GetString()!.Split('.')[1];
         using var idToken = JsonDocument.Parse(Microsoft.IdentityModel.Tokens.Base64UrlEncoder.Decode(idTokenPayload));
         Assert.True(idToken.RootElement.TryGetProperty("auth_time", out var authTime),

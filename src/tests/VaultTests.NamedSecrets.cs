@@ -66,7 +66,7 @@ public sealed partial class VaultTests
             vault,
             new VaultOptions { Enabled = true });
 
-        const string name = "providers/asaas/api-token";
+        const string name = "providers/service/api-token";
         var expiresAtUtc = DateTime.UtcNow.AddDays(3);
         var metadata = await store.PutAsync(
             name, "expiring-value", "operator-1", "global", expiresAtUtc);
@@ -97,7 +97,7 @@ public sealed partial class VaultTests
         Assert.NotNull(expired.Metadata.ExpiresAtUtc);
 
         // Absent secrets remain distinguishable from expired ones.
-        Assert.Null(await store.ResolveAsync("providers/asaas/other", "global"));
+        Assert.Null(await store.ResolveAsync("providers/service/other", "global"));
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public sealed partial class VaultTests
             new VaultOptions { Enabled = true });
 
         await Assert.ThrowsAsync<ArgumentException>(() => store.PutAsync(
-            "providers/asaas/api-token",
+            "providers/service/api-token",
             "value",
             "operator-1",
             "global",

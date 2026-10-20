@@ -14,19 +14,19 @@ public sealed partial class IdentityMcpTests
         await ((IAsyncLifetime)factory).InitializeAsync();
         using var client = factory.CreateClient();
         await AuthenticateAsync(client);
-        var prepared = await CallEntryAsync(client, "ASAAS/production/api-key");
+        var prepared = await CallEntryAsync(client, "SERVICE/production/api-key");
         Assert.False(prepared.TryGetProperty("isError", out var failed) && failed.GetBoolean());
         var result = JsonDocument.Parse(prepared.GetProperty("content")[0].GetProperty("text").GetString()!).RootElement;
-        Assert.Equal("personal/asaas/production/api-key", result.GetProperty("secretName").GetString());
-        Assert.Equal("http://localhost/vault/new?name=asaas%2Fproduction%2Fapi-key", result.GetProperty("url").GetString());
+        Assert.Equal("personal/service/production/api-key", result.GetProperty("secretName").GetString());
+        Assert.Equal("http://localhost/vault/new?name=service%2Fproduction%2Fapi-key", result.GetProperty("url").GetString());
         Assert.False(result.GetProperty("exists").GetBoolean());
         Assert.False(result.GetProperty("saved").GetBoolean());
         using var listed = await client.GetAsync("/api/vault/personal/secrets");
         var body = await listed.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Empty(body.GetProperty("secrets").EnumerateArray());
-        using var saved = await client.PutAsJsonAsync("/api/vault/personal/secrets/personal/asaas/production/api-key", new { value = "fixture-only-key" });
+        using var saved = await client.PutAsJsonAsync("/api/vault/personal/secrets/personal/service/production/api-key", new { value = "fixture-only-key" });
         saved.EnsureSuccessStatusCode();
-        var repeated = await CallEntryAsync(client, "asaas/production/api-key");
+        var repeated = await CallEntryAsync(client, "service/production/api-key");
         var repeatedResult = JsonDocument.Parse(repeated.GetProperty("content")[0].GetProperty("text").GetString()!).RootElement;
         Assert.True(repeatedResult.GetProperty("exists").GetBoolean());
         Assert.DoesNotContain("fixture-only-key", repeated.GetRawText());
@@ -34,8 +34,8 @@ public sealed partial class IdentityMcpTests
 
     [Theory]
     [InlineData("../admin/key")]
-    [InlineData("/asaas/key")]
-    [InlineData("asaas/key?value=secret")]
+    [InlineData("/service/key")]
+    [InlineData("service/key?value=secret")]
     [InlineData("")]
     public async Task Prepared_entry_rejects_invalid_names(string name)
     {
